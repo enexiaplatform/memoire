@@ -1,23 +1,134 @@
-import { Card } from '../../components/ui/Card';
+import { useState } from 'react';
+import { extractEntities } from '../../lib/claude';
+import { CaptureInput } from './CaptureInput';
+import { CapturePreview } from './CapturePreview';
+import { CaptureHistory } from './CaptureHistory';
+import { useCaptureSubmit } from './useCaptureSubmit';
+import type { ExtractionResponse } from './types';
 
 export function CapturePage() {
+  const [rawText, setRawText] = useState('');
+  const [extraction, setExtraction] = useState<ExtractionResponse | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [showHistoryMobile, setShowHistoryMobile] = useState(false);
+
+  const { saveCapture, isSaving } = useCaptureSubmit();
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleProcess = async () => {
+    if (!rawText.trim() || rawText.length < 10) return;
+    
+    setIsProcessing(true);
+    try {
+      const result = await extractEntities(rawText);
+      if (result.error) {
+        showToast('Extraction failed. Processing again or saving as raw text.', 'error');
+      } else {
+        setExtraction(result);
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Connection to AI failed.', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!extraction) return;
+    const success = await saveCapture(rawText, extraction);
+    
+    if (success) {
+      setRawText('');
+      setExtraction(null);
+      showToast('Captured ✓', 'success');
+    } else {
+      showToast('Save failed — please try again', 'error');
+    }
+  };
+
+  const handleDiscard = () => {
+    setExtraction(null);
+    setRawText('');
+  };
+
   return (
-    <div>
-      <h1 className="text-2xl font-semibold text-gray-900 mb-6">Capture</h1>
-      <Card>
-        <div className="text-center py-12">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-memoire-50 flex items-center justify-center">
-            <svg className="w-8 h-8 text-memoire-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
-            </svg>
-          </div>
-          <h2 className="text-lg font-medium text-gray-900 mb-2">Capture interface coming soon</h2>
-          <p className="text-sm text-gray-500 max-w-md mx-auto">
-            Quickly capture meeting notes, client conversations, and business intelligence.
-            AI will automatically extract entities and relationships.
-          </p>
+    <div className="h-full flex relative">
+      {/* Main Content Area */}
+      <div className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 py-8">
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-2xl font-semibold text-gray-900">Capture</h1>
+          <button
+            onClick={() => setShowHistoryMobile(!showHistoryMobile)}
+            className="lg:hidden text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-200"
+          >
+            {showHistoryMobile ? 'Hide History' : 'Show History'}
+          </button>
         </div>
-      </Card>
+
+        <div className="space-y-6">
+          {!extraction && (
+            <CaptureInput
+              rawText={rawText}
+              setRawText={setRawText}
+              onProcess={handleProcess}
+              isProcessing={isProcessing}
+            />
+          )}
+
+          {extraction && (
+            <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-700 font-medium">
+                {rawText}
+              </div>
+              <CapturePreview
+                extraction={extraction}
+                setExtraction={setExtraction}
+                onSave={handleSave}
+                onDiscard={handleDiscard}
+                isSaving={isSaving}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* History Sidebar */}
+      <div
+        className={`fixed inset-y-0 right-0 z-20 transform lg:transform-none lg:static transition-transform duration-300 ease-in-out ${
+          showHistoryMobile ? 'translate-x-0 pt-16' : 'translate-x-full lg:translate-x-0 lg:pt-0'
+        }`}
+      >
+        <CaptureHistory />
+      </div>
+
+      {/* Mobile History Backdrop */}
+      {showHistoryMobile && (
+        <div
+          className="fixed inset-0 bg-black/20 z-10 lg:hidden pt-16"
+          onClick={() => setShowHistoryMobile(false)}
+        />
+      )}
+
+      {/* Toasts */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4">
+          <div
+            className={`px-4 py-2.5 rounded-full shadow-lg text-sm font-medium ${
+              toast.type === 'success'
+                ? 'bg-green-600 text-white shadow-green-600/20'
+                : 'bg-red-600 text-white shadow-red-600/20'
+            }`}
+          >
+            {toast.message}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
