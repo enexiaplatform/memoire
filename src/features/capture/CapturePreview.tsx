@@ -31,6 +31,28 @@ export function CapturePreview({
   const [addingEntity, setAddingEntity] = useState(false);
   const [newEntityType, setNewEntityType] = useState<ExtractedEntity['entity_type']>('contact');
   const [newEntityName, setNewEntityName] = useState('');
+  const [editingTempId, setEditingTempId] = useState<string | null>(null);
+  const [editNameValue, setEditNameValue] = useState('');
+
+  const startEditing = (tempId: string, currentName: string) => {
+    setEditingTempId(tempId);
+    setEditNameValue(currentName);
+  };
+
+  const saveEdit = (tempId: string) => {
+    if (editNameValue.trim()) {
+      setExtraction((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          entities: prev.entities.map((e) =>
+            e.tempId === tempId ? { ...e, name: editNameValue.trim() } : e
+          ),
+        };
+      });
+    }
+    setEditingTempId(null);
+  };
 
   const removeEntity = (tempId: string) => {
     setExtraction((prev) => {
@@ -108,7 +130,28 @@ export function CapturePreview({
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-100 text-blue-900 text-sm group"
               >
                 <span>{ICONS[entity.entity_type]}</span>
-                <span className="font-medium">{entity.name}</span>
+                {editingTempId === entity.tempId ? (
+                  <input
+                    type="text"
+                    value={editNameValue}
+                    onChange={(e) => setEditNameValue(e.target.value)}
+                    onBlur={() => saveEdit(entity.tempId)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveEdit(entity.tempId);
+                      if (e.key === 'Escape') setEditingTempId(null);
+                    }}
+                    autoFocus
+                    className="font-medium bg-white px-1 py-0 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 w-24 text-sm"
+                  />
+                ) : (
+                  <span
+                    className="font-medium cursor-pointer hover:underline decoration-blue-300"
+                    onClick={() => startEditing(entity.tempId, entity.name)}
+                    title="Click to edit"
+                  >
+                    {entity.name}
+                  </span>
+                )}
                 {entity.matchedExistingId && (
                   <span className="text-[10px] uppercase tracking-wider font-bold text-blue-500 ml-1">
                     existing
