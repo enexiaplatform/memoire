@@ -1,6 +1,21 @@
 import { Card } from '../../components/ui/Card';
+import { usePlanLimits } from '../../hooks/usePlanLimits';
+import { SearchPaywall } from '../../components/paywall/SearchPaywall';
 
 export function SearchPage() {
+  const { canSearch, loading } = usePlanLimits();
+
+  if (loading) return null;
+
+  if (!canSearch) {
+    return (
+      <div className="p-8">
+        <h1 className="text-2xl font-semibold text-gray-900 mb-6">Search</h1>
+        <SearchPaywall />
+      </div>
+    );
+  }
+
   return (
     <div>
       <h1 className="text-2xl font-semibold text-gray-900 mb-6">Search</h1>
@@ -20,3 +35,4 @@ export function SearchPage() {
     </div>
   );
 }
+

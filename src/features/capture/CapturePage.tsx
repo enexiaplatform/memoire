@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { extractEntities } from '../../lib/claude';
 import { CaptureInput } from './CaptureInput';
 import { CapturePreview } from './CapturePreview';
 import { CaptureHistory } from './CaptureHistory';
 import { useCaptureSubmit } from './useCaptureSubmit';
 import type { ExtractionResponse } from './types';
+import { PaywallBanner } from '../../components/paywall/PaywallBanner';
+import { PaywallModal } from '../../components/paywall/PaywallModal';
+import { usePlanLimits } from '../../hooks/usePlanLimits';
 
 export function CapturePage() {
   const [rawText, setRawText] = useState('');
@@ -12,8 +15,19 @@ export function CapturePage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showHistoryMobile, setShowHistoryMobile] = useState(false);
+  const [showUpgradeSuccess, setShowUpgradeSuccess] = useState(false);
 
   const { saveCapture, isSaving } = useCaptureSubmit();
+  const { isAtCaptureLimit } = usePlanLimits();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('upgrade') === 'success') {
+      setShowUpgradeSuccess(true);
+      window.history.replaceState({}, '', '/app/capture');
+      setTimeout(() => setShowUpgradeSuccess(false), 5000);
+    }
+  }, []);
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -22,6 +36,7 @@ export function CapturePage() {
 
   const handleProcess = async () => {
     if (!rawText.trim() || rawText.length < 10) return;
+    if (isAtCaptureLimit) return;
     
     setIsProcessing(true);
     try {
@@ -59,6 +74,8 @@ export function CapturePage() {
 
   return (
     <div className="h-full flex relative">
+      <PaywallModal isOpen={isAtCaptureLimit} onClose={() => {}} />
+      
       {/* Main Content Area */}
       <div className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-8">
@@ -71,13 +88,23 @@ export function CapturePage() {
           </button>
         </div>
 
+        {showUpgradeSuccess && (
+          <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-6 flex justify-between items-center animate-in fade-in slide-in-from-top-4">
+            <p className="text-green-800 text-sm font-medium">🎉 Welcome to Memoire Personal. All limits removed — capture everything.</p>
+            <button onClick={() => setShowUpgradeSuccess(false)} className="text-green-600 hover:text-green-800 font-bold px-2">&times;</button>
+          </div>
+        )}
+
         <div className="space-y-6">
+          <PaywallBanner />
+          
           {!extraction && (
             <CaptureInput
               rawText={rawText}
               setRawText={setRawText}
               onProcess={handleProcess}
               isProcessing={isProcessing}
+              disabled={isAtCaptureLimit}
             />
           )}
 

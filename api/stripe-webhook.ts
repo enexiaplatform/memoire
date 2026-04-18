@@ -7,35 +7,70 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+export const config = { api: { bodyParser: false } };
+
 export default async function handler(req: any, res: any) {
+  if (req.method !== 'POST') return res.status(405).end();
+
   const sig = req.headers['stripe-signature'];
   let event: Stripe.Event;
+  let rawBody = '';
+
+  await new Promise<void>((resolve) => {
+    req.on('data', (chunk: Buffer) => { rawBody += chunk.toString(); });
+    req.on('end', resolve);
+  });
 
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
-  } catch (err) {
-    return res.status(400).send(`Webhook Error: ${err}`);
+    event = stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET!);
+  } catch (err: any) {
+    console.error('Webhook signature verification failed:', err);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
   }
+
+  const getUserId = (obj: any): string | null =>
+    obj?.metadata?.supabase_user_id || null;
 
   switch (event.type) {
     case 'customer.subscription.created':
     case 'customer.subscription.updated': {
-      const subscription = event.data.object as Stripe.Subscription;
-      await supabase
-        .from('user_profiles')
-        .update({
-          subscription_status: subscription.status === 'active' ? 'active' : 'cancelled',
-          subscription_tier: 'personal', // expand later based on price_id
-        })
-        .eq('stripe_customer_id', subscription.customer);
+      const sub = event.data.object as Stripe.Subscription;
+      const userId = getUserId(sub);
+      if (!userId) break;
+
+      const isActive = sub.status === 'active' || sub.status === 'trialing';
+      const priceId = sub.items.data[0]?.price?.id;
+      const tier = priceId === process.env.STRIPE_TEAM_PRICE_ID ? 'team' : 'personal';
+
+      await supabase.from('user_profiles').update({
+        subscription_status: isActive ? 'active' : 'cancelled',
+        subscription_tier: isActive ? tier : 'free',
+      }).eq('id', userId);
       break;
     }
+
     case 'customer.subscription.deleted': {
-      const subscription = event.data.object as Stripe.Subscription;
-      await supabase
-        .from('user_profiles')
-        .update({ subscription_status: 'cancelled', subscription_tier: 'free' })
-        .eq('stripe_customer_id', subscription.customer);
+      const sub = event.data.object as Stripe.Subscription;
+      const userId = getUserId(sub);
+      if (!userId) break;
+
+      await supabase.from('user_profiles').update({
+        subscription_status: 'cancelled',
+        subscription_tier: 'free',
+      }).eq('id', userId);
+      break;
+    }
+
+    case 'checkout.session.completed': {
+      const session = event.data.object as Stripe.CheckoutSession;
+      const userId = getUserId(session);
+      if (userId) {
+        await supabase.from('activity_log').insert({
+          user_id: userId,
+          action: 'subscription_started',
+          metadata: { session_id: session.id },
+        });
+      }
       break;
     }
   }

@@ -1,23 +1,51 @@
+import { useState } from 'react';
+import { BillingPage } from '../billing/BillingPage';
 import { Card } from '../../components/ui/Card';
 
 export function SettingsPage() {
+  const [activeTab, setActiveTab] = useState<'billing' | 'export'>('billing');
+
   return (
-    <div>
-      <h1 className="text-2xl font-semibold text-gray-900 mb-6">Settings</h1>
-      <Card>
-        <div className="text-center py-12">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-memoire-50 flex items-center justify-center">
-            <svg className="w-8 h-8 text-memoire-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </div>
-          <h2 className="text-lg font-medium text-gray-900 mb-2">Settings coming soon</h2>
-          <p className="text-sm text-gray-500 max-w-md mx-auto">
-            Manage your account, export your data, and configure billing and subscription preferences.
-          </p>
-        </div>
-      </Card>
+    <div className="max-w-4xl">
+      <div className="flex space-x-6 border-b border-gray-200 mb-8">
+        <button
+          onClick={() => setActiveTab('billing')}
+          className={`pb-4 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'billing'
+              ? 'border-memoire-900 text-memoire-900'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          Billing & Subscription
+        </button>
+        <button
+          onClick={() => setActiveTab('export')}
+          className={`pb-4 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'export'
+              ? 'border-memoire-900 text-memoire-900'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          Export Data
+        </button>
+      </div>
+
+      <div>
+        {activeTab === 'billing' && <BillingPage />}
+        {activeTab === 'export' && (
+          <Card>
+            <div className="p-12 text-center">
+              <h2 className="text-lg font-medium text-gray-900 mb-2">Export coming soon</h2>
+              <p className="text-sm text-gray-500 mb-6">
+                Your data is always yours. Export your complete memory to a standard JSON format.
+              </p>
+              <button disabled className="px-4 py-2 bg-gray-100 text-gray-400 rounded-lg font-medium text-sm cursor-not-allowed">
+                Export Data.zil
+              </button>
+            </div>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

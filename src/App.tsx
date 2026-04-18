@@ -5,6 +5,7 @@ import { LandingPage } from './features/auth/LandingPage';
 import { LoginPage } from './features/auth/LoginPage';
 import { SignupPage } from './features/auth/SignupPage';
 import { VerifyEmailPage } from './features/auth/VerifyEmailPage';
+import { PricingPage } from './features/pricing/PricingPage';
 import { CapturePage } from './features/capture/CapturePage';
 import { EntitiesPage } from './features/entities/EntitiesPage';
 import { SearchPage } from './features/search/SearchPage';
@@ -19,6 +20,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/pricing" element={<PricingPage />} />
 
         {/* Protected app routes */}
         <Route
