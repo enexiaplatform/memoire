@@ -1,12 +1,6 @@
 {
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "env": {
-    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
-    "STRIPE_SECRET_KEY": "@stripe_secret_key",
-    "STRIPE_WEBHOOK_SECRET": "@stripe_webhook_secret",
-    "ANTHROPIC_API_KEY": "@anthropic_api_key"
-  }
+    "rewrites": [
+          { "source": "/api/(.*)", "destination": "/api/$1" },
+          { "source": "/(.*)", "destination": "/index.html" }
+    ]
 }
