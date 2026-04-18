@@ -11,6 +11,8 @@ import { EntitiesPage } from './features/entities/EntitiesPage';
 import { SearchPage } from './features/search/SearchPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 
+import { EntityDetailPage } from './features/entities/EntityDetailPage';
+
 function App() {
   return (
     <BrowserRouter>
@@ -34,6 +36,7 @@ function App() {
           <Route index element={<Navigate to="/app/capture" replace />} />
           <Route path="capture" element={<CapturePage />} />
           <Route path="entities" element={<EntitiesPage />} />
+          <Route path="entities/:entityId" element={<EntityDetailPage />} />
           <Route path="search" element={<SearchPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

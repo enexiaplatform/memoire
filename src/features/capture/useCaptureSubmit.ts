@@ -103,6 +103,17 @@ export function useCaptureSubmit() {
             tag_count: extraction.tags.length,
           },
         });
+
+        // Trigger embedding generation — non-blocking fire-and-forget
+        fetch('/api/generate-embedding', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            captureId: captureData.id,
+            text: rawText,
+            userId: userId,
+          }),
+        }).catch(console.error);
       }
 
       setIsSaving(false);
