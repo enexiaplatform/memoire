@@ -19,16 +19,16 @@ export function PlanCard() {
 
   return (
     <div className="space-y-6">
-      <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Current plan</h3>
+      <h3 className="text-[15px] font-semibold font-display text-navy border-b border-gray-200 pb-2 uppercase tracking-wider">Current plan</h3>
       
-      <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+      <div className="bg-white rounded-[12px] p-5 shadow-card">
         <div className="flex justify-between items-start mb-2">
           <div>
-            <h4 className="font-semibold text-gray-900">{name}</h4>
-            <p className="text-sm text-gray-500 mt-1">{description}</p>
+            <h4 className="font-bold font-display text-navy text-[16px]">{name}</h4>
+            <p className="text-[14px] font-body text-gray-500 mt-1">{description}</p>
           </div>
           <div className="text-right">
-            <span className="font-medium text-gray-900">{price}</span>
+            <span className="font-bold font-display text-navy text-[16px]">{price}</span>
           </div>
         </div>
       </div>
@@ -36,7 +36,7 @@ export function PlanCard() {
       {currentTier === 'free' ? (
         <button
           onClick={() => navigate('/pricing')}
-          className="px-4 py-2 bg-memoire-600 text-white text-sm font-medium rounded-lg hover:bg-memoire-700 transition"
+          className="px-5 py-2.5 bg-brand-blue text-white text-[15px] font-semibold font-display rounded-full hover:bg-brand-blue-dark transition-all active:scale-[0.98]"
         >
           Upgrade to Personal — $19/month →
         </button>

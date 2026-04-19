@@ -15,25 +15,24 @@ export function SourceCard({ source, index }: SourceCardProps) {
   const percentage = Math.round(source.similarity * 100);
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5 hover:border-memoire-300 transition-colors shadow-sm cursor-pointer animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${index * 50}ms` }}>
+    <div className="bg-white rounded-[12px] shadow-card p-5 hover:shadow-elevated hover:-translate-y-0.5 transition-all cursor-pointer animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${index * 50}ms` }}>
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2 text-sm text-gray-500 font-medium">
+        <div className="flex items-center gap-2 text-[14px] font-display font-semibold text-navy">
           <span>📝</span>
           <span>{date}</span>
         </div>
-        <div className="text-xs font-semibold text-gray-400 bg-gray-50 px-2 py-1 rounded">
+        <div className="text-[12px] font-semibold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
           {percentage}% match
         </div>
       </div>
       
-      <p className="text-gray-700 text-sm line-clamp-3 mb-4 leading-relaxed">
+      <p className="font-body text-gray-500 text-[13px] line-clamp-3 mb-4 leading-relaxed">
         "{source.raw_text}"
       </p>
 
       {source.entity_ids && source.entity_ids.length > 0 && (
         <div className="flex flex-wrap gap-2">
-           {/* Need a fallback since entity data might not be populated gracefully in MVP for sources component yet */}
-           <span className="text-xs text-gray-500 px-2 py-1 bg-gray-100 rounded-full">{source.entity_ids.length} related entities</span>
+           <span className="text-[12px] text-gray-600 font-medium px-3 py-1 bg-[#F1F5F9] rounded-full">{source.entity_ids.length} related entities</span>
         </div>
       )}
     </div>

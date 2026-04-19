@@ -24,10 +24,10 @@ export function EntityFilters({ currentType, onTypeChange, currentSort, onSortCh
           <button
             key={t.id}
             onClick={() => onTypeChange(t.id)}
-            className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            className={`whitespace-nowrap px-4 py-1.5 rounded-full text-[14px] font-semibold font-body transition-colors ${
               currentType === t.id 
-                ? 'bg-gray-900 text-white' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-brand-blue text-white' 
+                : 'bg-transparent border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-900'
             }`}
           >
             {t.label}

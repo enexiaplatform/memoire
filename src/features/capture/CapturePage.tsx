@@ -79,7 +79,7 @@ export function CapturePage() {
       {/* Main Content Area */}
       <div className="flex-1 max-w-4xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Capture</h1>
+          <h1 className="text-[24px] font-bold font-display text-navy tracking-tight">Capture</h1>
           <button
             onClick={() => setShowHistoryMobile(!showHistoryMobile)}
             className="lg:hidden text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-200"

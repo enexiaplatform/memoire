@@ -27,16 +27,14 @@ export function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2">
-            <div className="w-10 h-10 rounded-lg bg-memoire-600 flex items-center justify-center">
-              <span className="text-white font-bold text-lg">M</span>
-            </div>
+            <span className="text-[24px] font-extrabold tracking-tight brand-gradient-text font-display">Memoire</span>
           </Link>
-          <h1 className="text-2xl font-semibold text-gray-900 mt-4">Welcome back</h1>
-          <p className="text-sm text-gray-500 mt-1">Sign in to your Memoire account</p>
+          <h1 className="text-[24px] font-bold font-display text-navy mt-4 tracking-tight">Welcome back</h1>
+          <p className="text-[15px] font-body text-gray-500 mt-1">Sign in to your Memoire account</p>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-white rounded-[16px] shadow-elevated p-10 space-y-5 max-w-[440px] mx-auto">
           <Input
             label="Email address"
             type="email"

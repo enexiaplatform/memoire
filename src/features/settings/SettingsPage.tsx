@@ -10,20 +10,20 @@ export function SettingsPage() {
       <div className="flex space-x-6 border-b border-gray-200 mb-8">
         <button
           onClick={() => setActiveTab('billing')}
-          className={`pb-4 text-sm font-medium border-b-2 transition-colors ${
+          className={`pb-4 text-[15px] border-b-[2px] transition-colors ${
             activeTab === 'billing'
-              ? 'border-memoire-900 text-memoire-900'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              ? 'border-brand-blue text-navy font-semibold font-display'
+              : 'border-transparent text-gray-500 hover:text-[#334155] font-medium font-body hover:border-gray-300'
           }`}
         >
           Billing & Subscription
         </button>
         <button
           onClick={() => setActiveTab('export')}
-          className={`pb-4 text-sm font-medium border-b-2 transition-colors ${
+          className={`pb-4 text-[15px] border-b-[2px] transition-colors ${
             activeTab === 'export'
-              ? 'border-memoire-900 text-memoire-900'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              ? 'border-brand-blue text-navy font-semibold font-display'
+              : 'border-transparent text-gray-500 hover:text-[#334155] font-medium font-body hover:border-gray-300'
           }`}
         >
           Export Data

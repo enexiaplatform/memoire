@@ -70,36 +70,36 @@ export function EntityDetailPage() {
         <div className="md:col-span-1 space-y-10">
           {/* About */}
           <section>
-            <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wider">About</h3>
+            <h3 className="text-[13px] font-semibold text-gray-500 font-body mb-3 uppercase tracking-wider">About</h3>
             <InlineEdit 
               value={entity.description || ''} 
               onSave={(v) => handleUpdate('description', v)}
               placeholder="Add a description..."
               multiline
-              className="text-sm text-gray-600 leading-relaxed"
+              className="text-[14px] font-body text-gray-600 leading-relaxed"
             />
           </section>
 
           {/* Details / Attributes */}
           <section>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">Details</h3>
+              <h3 className="text-[13px] font-semibold text-gray-500 font-body uppercase tracking-wider">Details</h3>
               <button 
                 onClick={() => handleUpdateAttribute('New Field', 'Value')}
-                className="text-xs font-medium text-memoire-600"
+                className="text-[13px] font-medium text-brand-blue"
               >
                 + Add field
               </button>
             </div>
             <div className="space-y-3">
-              {attributesList.length === 0 && <p className="text-xs text-gray-400 italic">No details added</p>}
+              {attributesList.length === 0 && <p className="text-[13px] text-gray-400 italic">No details added</p>}
               {attributesList.map(([key, val]) => (
                 <div key={key} className="flex flex-col border-b border-gray-100 pb-2">
-                  <span className="text-xs font-medium text-gray-400">{key}</span>
+                  <span className="text-[12px] font-medium text-gray-400">{key}</span>
                   <InlineEdit 
                     value={String(val)} 
                     onSave={(v) => handleUpdateAttribute(key, v)}
-                    className="text-sm font-medium text-gray-900"
+                    className="text-[14px] font-medium text-gray-900"
                   />
                 </div>
               ))}
@@ -108,7 +108,7 @@ export function EntityDetailPage() {
 
           {/* Relationships */}
           <section>
-            <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wider">Connected to</h3>
+            <h3 className="text-[13px] font-semibold text-gray-500 font-body mb-3 uppercase tracking-wider">Connected to</h3>
             {relationships.length === 0 && <p className="text-xs text-gray-400 italic">No connections</p>}
             <div className="flex flex-wrap gap-2">
               {relationships.map(rel => (
@@ -120,27 +120,26 @@ export function EntityDetailPage() {
           </section>
         </div>
 
-        {/* Right Column - Timeline */}
         <div className="md:col-span-2">
-          <h3 className="text-sm font-semibold text-gray-900 mb-6 uppercase tracking-wider border-b border-gray-200 pb-2">
+          <h3 className="text-[14px] font-bold font-display text-navy mb-6 uppercase tracking-wider border-b border-gray-200 pb-2">
             Timeline ({captures.length} captures)
           </h3>
           
           {captures.length === 0 ? (
             <div className="text-center py-10 bg-gray-50 rounded-xl">
-              <p className="text-sm text-gray-500">No captures linked to this entity yet.<br/>This entity was created manually.</p>
+              <p className="text-[14px] font-body text-gray-500">No captures linked to this entity yet.<br/>This entity was created manually.</p>
             </div>
           ) : (
             <div className="space-y-6">
               {captures.map(cap => (
-                <div key={cap.id} className="relative pl-6 before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-[-24px] before:w-px before:bg-gray-200 last:before:hidden">
-                  <div className="absolute left-[-4px] top-2 w-2 h-2 rounded-full bg-memoire-400 border-[3px] border-white box-content shadow-sm"></div>
+                <div key={cap.id} className="relative pl-6 before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-[-24px] before:w-[2px] before:bg-brand-blue last:before:hidden">
+                  <div className="absolute left-[-4px] top-2 w-[10px] h-[10px] rounded-full bg-brand-blue border-[2px] border-white box-content shadow-sm"></div>
                   
-                  <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                    <p className="text-sm font-semibold text-gray-900 mb-3">
+                  <div className="bg-white rounded-[12px] shadow-card p-5 hover:shadow-elevated transition-shadow">
+                    <p className="text-[14px] font-semibold font-display text-navy mb-3">
                       {new Date(cap.captured_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                     </p>
-                    <p className="text-sm text-gray-700 mb-4 whitespace-pre-wrap">{cap.raw_text}</p>
+                    <p className="text-[14px] font-body text-gray-900 leading-relaxed mb-4 whitespace-pre-wrap">{cap.raw_text}</p>
                     
                     {cap.entity_ids.length > 1 && (
                       <div className="flex items-center gap-2 pt-3 border-t border-gray-50">

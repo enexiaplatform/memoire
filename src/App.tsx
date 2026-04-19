@@ -1,12 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
-import { LandingPage } from './features/auth/LandingPage';
+import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './features/auth/LoginPage';
 import { SignupPage } from './features/auth/SignupPage';
 import { VerifyEmailPage } from './features/auth/VerifyEmailPage';
 import { PricingPage } from './features/pricing/PricingPage';
 import { CapturePage } from './features/capture/CapturePage';
+import { HistoryPage } from './features/history/HistoryPage';
 import { EntitiesPage } from './features/entities/EntitiesPage';
 import { SearchPage } from './features/search/SearchPage';
 import { SettingsPage } from './features/settings/SettingsPage';
@@ -35,6 +36,7 @@ function App() {
         >
           <Route index element={<Navigate to="/app/capture" replace />} />
           <Route path="capture" element={<CapturePage />} />
+          <Route path="history" element={<HistoryPage />} />
           <Route path="entities" element={<EntitiesPage />} />
           <Route path="entities/:entityId" element={<EntityDetailPage />} />
           <Route path="search" element={<SearchPage />} />

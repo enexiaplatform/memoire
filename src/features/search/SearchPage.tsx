@@ -29,9 +29,9 @@ export function SearchPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto h-full flex flex-col py-8 px-4 sm:px-6">
+    <div className="max-w-4xl mx-auto h-full flex flex-col py-8 px-4 sm:px-6 w-full">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-6">Search your memory</h1>
+        <h1 className="text-2xl font-bold font-display text-navy mb-6 tracking-tight">Search your memory</h1>
         <SearchBar onSearch={handleSearch} isLoading={searchLoading} initialQuery={currentQuery} />
       </div>
 

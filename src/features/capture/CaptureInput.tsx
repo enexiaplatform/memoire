@@ -56,7 +56,7 @@ export function CaptureInput({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-1 focus-within:ring-2 focus-within:ring-memoire-500 focus-within:border-memoire-500 transition-all">
+    <div className="bg-white rounded-[16px] border-[1.5px] border-gray-200 shadow-sm focus-within:border-brand-blue focus-within:shadow-[0_0_0_3px_rgba(25,118,210,0.10)] transition-all flex flex-col group overflow-hidden">
       <textarea
         ref={textareaRef}
         value={rawText}
@@ -64,14 +64,14 @@ export function CaptureInput({
         onKeyDown={handleKeyDown}
         disabled={isProcessing || disabled}
         placeholder="What happened today? Write freely — a meeting, a call, an insight, anything. Memoire will structure it for you."
-        className="w-full resize-none bg-transparent border-none focus:ring-0 p-4 min-h-[150px] text-base sm:text-lg text-gray-900 placeholder:text-gray-400 block"
+        className="w-full resize-none bg-transparent border-none focus:ring-0 px-5 pt-4 pb-2 min-h-[150px] font-body text-[16px] text-gray-900 leading-[1.65] placeholder:text-gray-400 block"
         rows={6}
       />
       
-      {error && <div className="px-4 py-2 text-sm text-red-600 font-medium">{error}</div>}
+      {error && <div className="px-5 py-2 text-sm text-red-600 font-medium">{error}</div>}
 
-      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50/50 rounded-b-lg">
-        <span className="text-xs text-gray-400 hidden sm:inline-block">Cmd+Enter to process</span>
+      <div className="flex items-center justify-between px-5 py-3">
+        <span className="text-[12px] font-body text-[#94A3B8] hidden sm:inline-block">Cmd+Enter to process</span>
         <Button
           onClick={handleProcess}
           loading={isProcessing}

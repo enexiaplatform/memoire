@@ -18,24 +18,28 @@ export function SearchBar({ onSearch, isLoading, initialQuery = '' }: SearchBarP
 
   return (
     <form onSubmit={handleSubmit} className="w-full relative">
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Ask anything about your captures..."
-        className="w-full pl-12 pr-24 py-4 text-lg bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-memoire-500 focus:border-memoire-500"
-        disabled={isLoading}
-      />
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-        <span className="text-xl">🔍</span>
+      <div className="relative flex items-center bg-[#F8FAFC] border-[1.5px] border-[#E2E8F0] rounded-full focus-within:border-[#1976D2] focus-within:shadow-[0_0_0_3px_rgba(25,118,210,0.10)] transition-all overflow-hidden p-1.5 focus-within:bg-white pl-5">
+        <div className="text-[#94A3B8] mr-3">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Ask anything about your captures..."
+          className="flex-1 bg-transparent border-none focus:ring-0 py-3 text-[16px] font-body text-[#1B2B3A] placeholder-[#94A3B8] w-full"
+          disabled={isLoading}
+        />
+        <button
+          type="submit"
+          disabled={isLoading || !query.trim()}
+          className="ml-2 px-6 py-3 bg-[#1976D2] text-white rounded-full text-sm font-semibold font-display hover:bg-[#1565C0] disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+        >
+          Search
+        </button>
       </div>
-      <button
-        type="submit"
-        disabled={isLoading || !query.trim()}
-        className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        Search
-      </button>
     </form>
   );
 }

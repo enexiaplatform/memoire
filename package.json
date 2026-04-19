@@ -10,12 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.20.9",
     "@supabase/supabase-js": "^2.103.3",
+    "date-fns": "^4.1.0",
     "jszip": "^3.10.1",
     "openai": "^6.34.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "react-helmet-async": "^3.0.0",
     "react-router-dom": "^6.30.3",
     "stripe": "^14.25.0",
     "zustand": "^4.5.7"

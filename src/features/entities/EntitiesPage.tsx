@@ -51,9 +51,9 @@ export function EntitiesPage() {
   }, [entities, currentType, currentSort, searchQuery]);
 
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6">
+    <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900">Your Memory</h1>
+        <h1 className="text-[24px] font-bold font-display text-navy tracking-tight">Your Memory</h1>
         <div className="flex items-center gap-4 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-64">
             <input
@@ -61,11 +61,11 @@ export function EntitiesPage() {
               placeholder="Filter by name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-memoire-500"
+              className="w-full pl-10 pr-4 py-2 border-[1.5px] border-gray-200 rounded-full text-[14px] font-body bg-white focus:outline-none focus:border-brand-blue focus:shadow-[0_0_0_3px_rgba(25,118,210,0.10)] transition-all"
             />
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
           </div>
-          <button className="whitespace-nowrap px-4 py-2 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800 text-sm">
+          <button className="whitespace-nowrap px-4 py-2 bg-brand-blue text-white font-semibold font-display rounded-full hover:bg-brand-blue-dark text-[15px] transition-all">
             + New Entity
           </button>
         </div>
