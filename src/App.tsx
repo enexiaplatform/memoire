@@ -6,11 +6,15 @@ import { LoginPage } from './features/auth/LoginPage';
 import { SignupPage } from './features/auth/SignupPage';
 import { VerifyEmailPage } from './features/auth/VerifyEmailPage';
 import { PricingPage } from './features/pricing/PricingPage';
+import { DashboardPage } from './pages/DashboardPage';
 import { CapturePage } from './features/capture/CapturePage';
 import { HistoryPage } from './features/history/HistoryPage';
 import { EntitiesPage } from './features/entities/EntitiesPage';
 import { SearchPage } from './features/search/SearchPage';
 import { SettingsPage } from './features/settings/SettingsPage';
+import { DealArchivePage } from './pages/DealArchivePage';
+import { DealDetailPage } from './pages/DealDetailPage';
+import { DealEditPage } from './pages/DealEditPage';
 
 import { EntityDetailPage } from './features/entities/EntityDetailPage';
 
@@ -34,11 +38,16 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="/app/capture" replace />} />
+          <Route index element={<Navigate to="/app/dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
           <Route path="capture" element={<CapturePage />} />
           <Route path="history" element={<HistoryPage />} />
           <Route path="entities" element={<EntitiesPage />} />
           <Route path="entities/:entityId" element={<EntityDetailPage />} />
+          <Route path="deals" element={<DealArchivePage />} />
+          <Route path="deals/new" element={<DealEditPage />} />
+          <Route path="deals/:id" element={<DealDetailPage />} />
+          <Route path="deals/:id/edit" element={<DealEditPage />} />
           <Route path="search" element={<SearchPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

@@ -102,6 +102,13 @@ export function EntitiesPage() {
           </p>
         </div>
       )}
+
+      <footer className="mt-12 pt-4 border-t border-gray-100 text-center pb-8">
+        <p className="text-[12px] text-gray-500">
+          Personal knowledge tool — not a hiring signal.{' '}
+          <a href="/app/settings" className="hover:text-navy hover:underline transition-colors">View boundaries &rarr;</a>
+        </p>
+      </footer>
     </div>
   );
 }

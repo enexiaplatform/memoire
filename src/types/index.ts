@@ -10,6 +10,9 @@ export interface UserProfile {
   stripe_customer_id: string | null;
   subscription_status: SubscriptionStatus;
   subscription_tier: SubscriptionTier;
+  acknowledged_at?: string | null;
+  acknowledged_hiring_boundary_at?: string | null;
+  anonymize_default?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -42,6 +45,9 @@ export interface Capture {
   structured_data: Record<string, unknown>;
   entity_ids: string[];
   status: 'pending' | 'processed';
+  anonymization_state?: 'original' | 'anonymized' | 'mixed';
+  original_text?: string | null;
+  anonymized_at?: string | null;
   captured_at: string;
   created_at: string;
 }

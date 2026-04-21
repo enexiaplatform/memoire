@@ -16,6 +16,9 @@ export function CapturePage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showHistoryMobile, setShowHistoryMobile] = useState(false);
   const [showUpgradeSuccess, setShowUpgradeSuccess] = useState(false);
+  
+  // Track anonymization state from input component
+  const [anonymizationData, setAnonymizationData] = useState<{ state: 'original' | 'anonymized' | 'mixed', originalText?: string }>({ state: 'original' });
 
   const { saveCapture, isSaving } = useCaptureSubmit();
   const { isAtCaptureLimit } = usePlanLimits();
@@ -56,11 +59,12 @@ export function CapturePage() {
 
   const handleSave = async () => {
     if (!extraction) return;
-    const success = await saveCapture(rawText, extraction);
+    const success = await saveCapture(rawText, extraction, anonymizationData);
     
     if (success) {
       setRawText('');
       setExtraction(null);
+      setAnonymizationData({ state: 'original' });
       showToast('Captured ✓', 'success');
     } else {
       showToast('Save failed — please try again', 'error');
@@ -105,6 +109,7 @@ export function CapturePage() {
               onProcess={handleProcess}
               isProcessing={isProcessing}
               disabled={isAtCaptureLimit}
+              onAnonymizeData={setAnonymizationData}
             />
           )}
 

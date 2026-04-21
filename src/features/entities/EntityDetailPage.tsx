@@ -7,8 +7,9 @@ export function EntityDetailPage() {
   const { entityId } = useParams<{ entityId: string }>();
   const navigate = useNavigate();
   
-  const { entity, relationships, captures, loading } = useEntityDetail(entityId || '');
+  const { entity, relationships, captures, deals, loading } = useEntityDetail(entityId || '');
   const { updateEntity, deleteEntity } = useEntityUpdate(entityId || '');
+  const [activeTab, setActiveTab] = useState<'timeline' | 'deals'>('timeline');
 
   if (loading) {
     return <div className="p-8 text-center text-gray-500 animate-pulse">Loading entity...</div>;
@@ -42,14 +43,14 @@ export function EntityDetailPage() {
   const attributesList = Object.entries(entity.attributes || {});
 
   return (
-    <div className="max-w-3xl mx-auto py-8 px-4 sm:px-6">
+    <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
       <button onClick={() => navigate('/app/entities')} className="text-gray-500 hover:text-gray-900 mb-6 text-sm font-medium">← Back to entities</button>
       
       {/* Header */}
       <div className="flex items-start justify-between border-b border-gray-200 pb-6 mb-8">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <span className="text-3xl">👤</span>
+            <span className="text-3xl">{entity.entity_type === 'contact' ? '👤' : '🏢'}</span>
             <InlineEdit 
               value={entity.name} 
               onSave={(v) => handleUpdate('name', v)} 
@@ -120,39 +121,76 @@ export function EntityDetailPage() {
           </section>
         </div>
 
+        {/* Right Column - Tabs */}
         <div className="md:col-span-2">
-          <h3 className="text-[14px] font-bold font-display text-navy mb-6 uppercase tracking-wider border-b border-gray-200 pb-2">
-            Timeline ({captures.length} captures)
-          </h3>
+          <div className="flex items-center gap-8 border-b border-gray-200 mb-6">
+            <button 
+              onClick={() => setActiveTab('timeline')}
+              className={`pb-2 text-[14px] font-bold uppercase tracking-wider transition-all relative ${
+                activeTab === 'timeline' ? 'text-navy' : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              Timeline ({captures.length})
+              {activeTab === 'timeline' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-blue" />}
+            </button>
+            <button 
+              onClick={() => setActiveTab('deals')}
+              className={`pb-2 text-[14px] font-bold uppercase tracking-wider transition-all relative ${
+                activeTab === 'deals' ? 'text-navy' : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              Deals ({deals.length})
+              {activeTab === 'deals' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-blue" />}
+            </button>
+          </div>
           
-          {captures.length === 0 ? (
-            <div className="text-center py-10 bg-gray-50 rounded-xl">
-              <p className="text-[14px] font-body text-gray-500">No captures linked to this entity yet.<br/>This entity was created manually.</p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {captures.map(cap => (
-                <div key={cap.id} className="relative pl-6 before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-[-24px] before:w-[2px] before:bg-brand-blue last:before:hidden">
-                  <div className="absolute left-[-4px] top-2 w-[10px] h-[10px] rounded-full bg-brand-blue border-[2px] border-white box-content shadow-sm"></div>
-                  
-                  <div className="bg-white rounded-[12px] shadow-card p-5 hover:shadow-elevated transition-shadow">
-                    <p className="text-[14px] font-semibold font-display text-navy mb-3">
-                      {new Date(cap.captured_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                    </p>
-                    <p className="text-[14px] font-body text-gray-900 leading-relaxed mb-4 whitespace-pre-wrap">{cap.raw_text}</p>
-                    
-                    {cap.entity_ids.length > 1 && (
-                      <div className="flex items-center gap-2 pt-3 border-t border-gray-50">
-                        <span className="text-xs text-gray-400 font-medium">Also in:</span>
-                        <div className="flex gap-1">
-                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{cap.entity_ids.length - 1} other entities</span>
-                        </div>
-                      </div>
-                    )}
+          {activeTab === 'timeline' ? (
+            captures.length === 0 ? (
+              <div className="text-center py-10 bg-gray-50 rounded-xl">
+                <p className="text-[14px] font-body text-gray-500">No captures linked to this entity yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {captures.map(cap => (
+                  <div key={cap.id} className="relative pl-6 before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-[-24px] before:w-[2px] before:bg-brand-blue last:before:hidden">
+                    <div className="absolute left-[-4px] top-2 w-[10px] h-[10px] rounded-full bg-brand-blue border-[2px] border-white box-content shadow-sm"></div>
+                    <div className="bg-white rounded-[12px] shadow-card p-5 hover:shadow-elevated transition-shadow">
+                      <p className="text-[14px] font-semibold font-display text-navy mb-3">
+                        {new Date(cap.captured_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                      </p>
+                      <p className="text-[14px] font-body text-gray-900 leading-relaxed mb-4 whitespace-pre-wrap">{cap.raw_text}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )
+          ) : (
+            deals.length === 0 ? (
+              <div className="text-center py-10 bg-gray-50 rounded-xl">
+                <p className="text-[14px] font-body text-gray-500">No deal history for this contact.</p>
+                <button onClick={() => navigate('/app/deals/new')} className="mt-4 text-brand-blue text-sm font-bold">+ Record a deal</button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {deals.map(deal => (
+                  <div 
+                    key={deal.id} 
+                    onClick={() => navigate(`/app/deals/${deal.id}`)}
+                    className="bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between hover:border-brand-blue/30 cursor-pointer shadow-sm transition-all"
+                  >
+                    <div>
+                      <div className="text-sm font-bold text-navy truncate">{deal.company_anonymized}</div>
+                      <div className="text-[11px] text-gray-400 font-medium uppercase mt-1">
+                        {deal.revenue_band} • {deal.outcome}
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500 font-medium">
+                      {deal.close_date ? new Date(deal.close_date).getFullYear() : 'Ongoing'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
           )}
         </div>
       </div>

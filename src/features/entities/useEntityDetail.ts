@@ -8,6 +8,7 @@ export function useEntityDetail(entityId: string) {
   const [entity, setEntity] = useState<EntityWithMeta | null>(null);
   const [relationships, setRelationships] = useState<RelationshipDetails[]>([]);
   const [captures, setCaptures] = useState<any[]>([]);
+  const [deals, setDeals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,6 +67,19 @@ export function useEntityDetail(entityId: string) {
       if (capError) throw capError;
       setCaptures(capData || []);
 
+      // 4. Fetch Related Deals
+      const { data: dealData, error: dealError } = await supabase
+        .from('deals')
+        .select('*')
+        .or(`contact_id.eq.${entityId},stakeholder_contact_ids.cs.{${entityId}}`)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (dealError) {
+        console.error('Failed to fetch deals:', dealError);
+      }
+      setDeals(dealData || []);
+
     } catch (err) {
       console.error(err);
       setError('Could not load entity details.');
@@ -78,5 +92,5 @@ export function useEntityDetail(entityId: string) {
     fetchDetail();
   }, [user, entityId]);
 
-  return { entity, relationships, captures, loading, error, refetch: fetchDetail };
+  return { entity, relationships, captures, deals, loading, error, refetch: fetchDetail };
 }

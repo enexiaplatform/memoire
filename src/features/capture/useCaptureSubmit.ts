@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import type { ExtractionResponse } from './types';
 
+import type { AnonymizationState } from '../../types/anonymization';
+
 export function useCaptureSubmit() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -10,7 +12,8 @@ export function useCaptureSubmit() {
 
   const saveCapture = async (
     rawText: string,
-    extraction: ExtractionResponse
+    extraction: ExtractionResponse,
+    anonymizationData?: { state: AnonymizationState; originalText?: string; }
   ): Promise<boolean> => {
     if (!user) {
       setError('User not authenticated');
@@ -86,6 +89,9 @@ export function useCaptureSubmit() {
           structured_data: extraction, // The full preview JSON
           entity_ids: finalEntityIds, // Array of real entity UUIDs
           status: 'processed',
+          anonymization_state: anonymizationData?.state || 'original',
+          original_text: anonymizationData?.originalText || null,
+          anonymized_at: anonymizationData?.state !== 'original' ? new Date().toISOString() : null,
         })
         .select('id')
         .single();

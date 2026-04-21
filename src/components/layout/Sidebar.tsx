@@ -1,7 +1,13 @@
 import { NavLink } from 'react-router-dom';
 import { usePlanLimits } from '../../hooks/usePlanLimits';
+import { LayoutDashboard, Briefcase } from 'lucide-react';
 
 const navItems = [
+  {
+    to: '/app/dashboard',
+    label: 'Dashboard',
+    icon: <LayoutDashboard className="w-5 h-5" />
+  },
   {
     to: '/app/capture',
     label: 'Capture',
@@ -21,20 +27,25 @@ const navItems = [
     ),
   },
   {
-    to: '/app/search',
-    label: 'Search',
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-      </svg>
-    ),
-  },
-  {
     to: '/app/entities',
     label: 'Entities',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    ),
+  },
+  {
+    to: '/app/deals',
+    label: 'Deals',
+    icon: <Briefcase className="w-5 h-5" />
+  },
+  {
+    to: '/app/search',
+    label: 'Search',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
       </svg>
     ),
   },
@@ -93,7 +104,6 @@ export function Sidebar() {
           {[
             { id: 'contact', icon: '👤', label: 'Contacts' },
             { id: 'company', icon: '🏢', label: 'Companies' },
-            { id: 'deal', icon: '💼', label: 'Deals' },
             { id: 'meeting', icon: '📅', label: 'Meetings' },
             { id: 'insight', icon: '💡', label: 'Insights' },
           ].map(type => (
