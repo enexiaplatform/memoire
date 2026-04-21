@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Capture } from './useCaptures';
+import type { Capture } from './useCaptures';
 import { CaptureDetailModal } from './CaptureDetailModal';
 
 const entityTypeIcon: Record<string, string> = {

@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { HeatmapCell, EntityCount, TopRetrievedEntity } from '../types/dashboard';
-import { Capture } from '../types';
+import type { HeatmapCell, EntityCount } from '../types/dashboard';
+import type { Capture } from '../types';
 
 export function useDashboard() {
   const [loading, setLoading] = useState(true);
   const [heatmap, setHeatmap] = useState<HeatmapCell[]>([]);
   const [inventory, setInventory] = useState<EntityCount[]>([]);
   const [recentCaptures, setRecentCaptures] = useState<Capture[]>([]);
-  const [topEntities, setTopEntities] = useState<TopRetrievedEntity[]>([]);
 
   useEffect(() => {
     async function loadDashboard() {
@@ -67,7 +66,6 @@ export function useDashboard() {
       setHeatmap(heatmapCells);
       setInventory(counts);
       setRecentCaptures((recent as Capture[]) || []);
-      setTopEntities([]); // Not supported in v1 schema
       
       setLoading(false);
     }
@@ -75,5 +73,5 @@ export function useDashboard() {
     loadDashboard();
   }, []);
 
-  return { heatmap, inventory, recentCaptures, topEntities, loading };
+  return { heatmap, inventory, recentCaptures, loading };
 }

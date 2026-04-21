@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDeals } from '../hooks/useDeals';
-import { Briefcase, Search, Plus, Filter } from 'lucide-react';
+import { Briefcase, Search, Plus } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { DEAL_OUTCOMES } from '../types/Deal';
 
@@ -9,8 +9,8 @@ export function DealArchivePage() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [outcomeFilter, setOutcomeFilter] = useState('all');
-  const [revenueFilter, setRevenueFilter] = useState('all');
-  const [sortOrder, setSortOrder] = useState('recent');
+  const revenueFilter = 'all';
+  const sortOrder = 'recent';
 
   const { deals, loading } = useDeals();
 
@@ -19,7 +19,7 @@ export function DealArchivePage() {
       const matchesSearch = 
         !searchQuery || 
         (deal.company_anonymized || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (deal.contact?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (deal.contact_id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         deal.product_categories.some(cat => cat.toLowerCase().includes(searchQuery.toLowerCase()));
       
       const matchesOutcome = outcomeFilter === 'all' || deal.outcome === outcomeFilter;
@@ -109,9 +109,9 @@ export function DealArchivePage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">
-                          {deal.contact?.name?.[0] || '?' }
+                          {deal.contact_id?.[0] || '?' }
                         </div>
-                        <span className="text-sm text-gray-600">{deal.contact?.name || 'Manual entry'}</span>
+                        <span className="text-sm text-gray-600">{deal.contact_id || 'Manual entry'}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">

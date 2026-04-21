@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { format } from 'date-fns';
-import { Capture } from './useCaptures';
+import type { Capture } from './useCaptures';
 import { Link } from 'react-router-dom';
 
 const entityTypeIcon: Record<string, string> = {

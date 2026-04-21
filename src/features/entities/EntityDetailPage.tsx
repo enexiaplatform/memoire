@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom';
+import { useState } from 'react';
 import { useEntityDetail } from './useEntityDetail';
 import { useEntityUpdate } from './useEntityUpdate';
 import { InlineEdit } from '../../components/ui/InlineEdit';

@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useCaptures, Capture } from './useCaptures';
+import { useCaptures } from './useCaptures';
+import type { Capture } from './useCaptures';
 import { CaptureCard } from './CaptureCard';
 import { HistoryFilters } from './HistoryFilters';
 import { startOfDay, differenceInDays, format } from 'date-fns';

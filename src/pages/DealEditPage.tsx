@@ -5,6 +5,7 @@ import { useEntities } from '../features/entities/useEntities';
 import { ArrowLeft, Save, X, Plus } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { REVENUE_BANDS, DEAL_OUTCOMES } from '../types/Deal';
+import type { RevenueBand, DealOutcome, DealPrivacy } from '../types/Deal';
 
 export function DealEditPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,15 +20,15 @@ export function DealEditPage() {
     company_anonymized: '',
     company_label: '',
     contact_id: '',
-    revenue_band: 'undisclosed',
-    outcome: 'in-progress',
+    revenue_band: 'undisclosed' as RevenueBand,
+    outcome: 'in-progress' as DealOutcome,
     close_date: '',
     product_categories: [] as string[],
     what_won: '',
     what_almost_killed: '',
     lessons: '',
     stakeholder_contact_ids: [] as string[],
-    privacy_flag: 'personal'
+    privacy_flag: 'personal' as DealPrivacy
   });
 
   const [newCategory, setNewCategory] = useState('');
@@ -140,7 +141,7 @@ export function DealEditPage() {
               <label className="text-sm font-bold text-navy font-display">Revenue Band</label>
               <select
                 value={formData.revenue_band}
-                onChange={e => setFormData({ ...formData, revenue_band: e.target.value as any })}
+                onChange={e => setFormData({ ...formData, revenue_band: e.target.value as RevenueBand })}
                 className="w-full px-4 py-2 bg-[#F4F6FB] border-none rounded-xl text-sm focus:ring-2 focus:ring-brand-blue/20 outline-none"
               >
                 {REVENUE_BANDS.map(b => <option key={b} value={b}>{b}</option>)}

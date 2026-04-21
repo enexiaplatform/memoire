@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { Info, ArrowRight } from 'lucide-react';
 
 export function DashboardPage() {
-  const { heatmap, inventory, recentCaptures, topEntities, loading } = useDashboard();
+  const { heatmap, inventory, recentCaptures, loading } = useDashboard();
   const [firstName, setFirstName] = useState('');
   const [showBanner, setShowBanner] = useState(false);
 

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useDeal, useDealMutations } from '../hooks/useDeals';
 import { useEntities } from '../features/entities/useEntities'; // Needed for stakeholders
-import { ArrowLeft, Edit3, Trash2, Globe, Lock, ChevronRight, User } from 'lucide-react';
+import { Edit3, Trash2, Globe, Lock, ChevronRight } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { DEAL_OUTCOMES } from '../types/Deal';
 
@@ -105,13 +105,13 @@ export function DealDetailPage() {
           <section>
             <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">Stakeholders</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {deal.contact && (
-                <Link to={`/app/entities/${deal.contact.id}`} className="p-4 bg-white border border-gray-100 rounded-xl flex items-center gap-3 hover:border-brand-blue/30 transition-colors shadow-sm">
+              {deal.contact_id && (
+                <Link to={`/app/entities/${deal.contact_id}`} className="p-4 bg-white border border-gray-100 rounded-xl flex items-center gap-3 hover:border-brand-blue/30 transition-colors shadow-sm">
                   <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">
-                    {deal.contact.name?.[0] || '?' }
+                    {deal.contact_id?.[0] || '?' }
                   </div>
                   <div>
-                    <div className="text-sm font-bold text-navy">{deal.contact.name}</div>
+                    <div className="text-sm font-bold text-navy">{deal.contact_id}</div>
                     <div className="text-xs text-gray-500">Primary Contact</div>
                   </div>
                 </Link>

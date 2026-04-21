@@ -2,7 +2,6 @@ import { useState } from 'react';
 import JSZip from 'jszip';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
-import { Card } from '../../components/ui/Card';
 
 export function ExportTab() {
   const { user } = useAuth();

@@ -62,7 +62,8 @@ const navItems = [
 ];
 
 export function Sidebar() {
-  const { isPro } = usePlanLimits();
+  const { currentTier } = usePlanLimits();
+  const isPro = currentTier !== 'free';
 
   return (
     <aside className="fixed left-0 top-0 h-full w-[220px] bg-navy flex flex-col z-40 shadow-xl border-r border-[#243447]">
