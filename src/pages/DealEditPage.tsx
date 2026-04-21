@@ -59,9 +59,9 @@ export function DealEditPage() {
     
     try {
       if (isEdit) {
-        await updateDeal(id!, formData);
+        await updateDeal(id!, { ...formData, revenue_band: formData.revenue_band as RevenueBand });
       } else {
-        const { error } = await createDeal(formData);
+        const { error } = await createDeal({ ...formData, revenue_band: formData.revenue_band as RevenueBand });
         if (error) throw error;
       }
       navigate(isEdit ? `/app/deals/${id}` : '/app/deals');
