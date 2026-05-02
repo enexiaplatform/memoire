@@ -17,7 +17,7 @@ export function LoginPage() {
     const { error } = await signIn(email, password);
     setSubmitting(false);
     if (!error) {
-      navigate('/app/capture');
+      navigate('/app/today');
     }
   };
 

@@ -1,11 +1,27 @@
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
+import { getSupabaseServiceRoleKey, getSupabaseUrl } from './_env.js';
 
 const supabase = createClient(
-    process.env.VITE_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    getSupabaseUrl(),
+    getSupabaseServiceRoleKey()
   );
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+interface ApiRequest {
+  method?: string;
+  body?: {
+    captureId?: unknown;
+    text?: unknown;
+    userId?: unknown;
+  };
+}
+
+interface ApiResponse {
+  status: (code: number) => ApiResponse;
+  json: (body: unknown) => void;
+  end: () => void;
+}
 
 export async function generateEmbedding(text: string): Promise<number[]> {
     const response = await openai.embeddings.create({
@@ -16,12 +32,15 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     return response.data[0].embedding;
 }
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: ApiRequest, res: ApiResponse) {
     if (req.method !== 'POST') return res.status(405).end();
 
-  const { captureId, text, userId } = req.body;
+  const { captureId, text, userId } = req.body || {};
     if (!captureId || !text || !userId) {
           return res.status(400).json({ error: 'captureId, text, userId required' });
+    }
+    if (typeof captureId !== 'string' || typeof text !== 'string' || typeof userId !== 'string') {
+          return res.status(400).json({ error: 'Invalid request payload' });
     }
 
   try {

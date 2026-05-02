@@ -1,119 +1,119 @@
 # Memoire
 
-> Your professional memory OS — portable across companies, intelligent, private, always owned by you.
+Memoire is a Career Knowledge Vault + Daily Sales Action Engine for individual B2B sales professionals.
 
-Memoire helps B2B professionals (Sales Managers, Account Executives, Business Development Managers) capture, structure, and retrieve career knowledge: customer context, deal intelligence, and relationship history.
+Core statement:
+
+> Memoire is a personal sales memory system that turns every customer interaction into action, insight, and lifelong career knowledge.
+
+## V1 Scope
+
+The V1 product flow is:
+
+Quick Capture -> Structure -> Today Actions -> Account Memory -> Ask Memoire
+
+The V1 screens are:
+
+- Today
+- Vault / Accounts
+- Pipeline / Opportunities
+- Ask Memoire
+- Settings / Export
+
+V1 intentionally does not include manager dashboards, team workspaces, CRM integrations, advanced analytics, email/calendar sync, proposal generation, or complex automation.
+
+## V1 Data Model
+
+Required core tables:
+
+- `accounts`
+- `contacts`
+- `opportunities`
+- `interactions`
+- `actions`
+- `captures` for preserved raw notes
+
+Future concepts such as signals, assets, deals, learnings, and playbooks are prepared for conceptually but not built into the V1 surface.
 
 ## Tech Stack
 
-- **Frontend:** React 18 + Vite + TypeScript + Tailwind CSS
-- **Backend/DB:** Supabase (Postgres + Auth + RLS + Storage)
-- **AI:** Anthropic Claude API
-- **Payments:** Stripe (subscription billing)
-- **Hosting:** Vercel
-- **State:** Zustand
-- **Routing:** React Router v6
+- Frontend: React + Vite + TypeScript + Tailwind CSS
+- Backend/DB: Supabase Postgres + Auth + RLS
+- Hosting: Vercel
+- AI: Claude API primary, Groq/OpenAI-compatible fallback where configured, OpenAI embeddings for existing vector search
+- Payments: Stripe exists in the codebase but is not central to the immediate V1 MVP
 
 ## Local Setup
 
-### Prerequisites
-
-- Node.js 18+
-- npm 9+
-- A [Supabase](https://supabase.com) project
-- A [Stripe](https://stripe.com) account (for billing features)
-- An [Anthropic](https://console.anthropic.com) API key (for AI features)
-
-### 1. Clone and Install
-
 ```bash
-git clone https://github.com/YOUR_USERNAME/memoire-app.git
-cd memoire-app
 npm install
-```
-
-### 2. Environment Variables
-
-Copy the example env file and fill in your values:
-
-```bash
-cp .env.example .env
-```
-
-| Variable | Description |
-|---|---|
-| `VITE_SUPABASE_URL` | Your Supabase project URL (found in Project Settings > API) |
-| `VITE_SUPABASE_ANON_KEY` | Your Supabase anon/public key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Your Supabase service role key (server-side only) |
-| `STRIPE_SECRET_KEY` | Stripe secret key (starts with `sk_test_`) |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (starts with `whsec_`) |
-| `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key (starts with `pk_test_`) |
-| `ANTHROPIC_API_KEY` | Anthropic API key (starts with `sk-ant-`) |
-| `VITE_APP_URL` | Local dev URL, default `http://localhost:5173` |
-
-### 3. Supabase Migration
-
-Run the initial schema migration against your Supabase project:
-
-1. Go to your Supabase Dashboard → **SQL Editor**
-2. Open and paste the contents of `supabase/migrations/001_initial.sql`
-3. Click **Run** to create all tables, indexes, RLS policies, and triggers
-
-Alternatively, if you have the Supabase CLI installed:
-
-```bash
-supabase db push
-```
-
-### 4. Run Locally
-
-```bash
 npm run dev
 ```
 
-The app will be available at [http://localhost:5173](http://localhost:5173).
+Copy `.env.example` to `.env` and provide Supabase, AI, and Stripe values as needed.
 
-## Project Structure
+Run Supabase migrations in order, including:
 
-```
-memoire-app/
-├── src/
-│   ├── components/          # Reusable UI components
-│   │   ├── ui/              # Button, Input, Card, Modal
-│   │   └── layout/          # AppShell, Sidebar, TopNav, ProtectedRoute
-│   ├── features/            # Feature modules
-│   │   ├── auth/            # Landing, Login, Signup, VerifyEmail
-│   │   ├── capture/         # Quick-entry capture interface
-│   │   ├── entities/        # Entity views
-│   │   ├── search/          # Search interface
-│   │   └── settings/        # User settings, export, billing
-│   ├── hooks/               # useAuth, useEntities
-│   ├── lib/                 # Supabase, Stripe, Claude clients
-│   ├── types/               # TypeScript types
-│   └── utils/               # Utility functions
-├── supabase/migrations/     # Database migrations
-├── api/                     # Vercel serverless functions
-├── .env.example             # Environment variable template
-├── vercel.json              # Vercel deployment config
-└── tailwind.config.js       # Tailwind CSS config
+```text
+supabase/migrations/005_master_plan_v31_core.sql
 ```
 
-## Deployment
+## Data Principles
 
-This project is configured for Vercel:
+- Cloud-first
+- Export-first
+- Privacy-first
+- User-owned sales memory
+- Raw capture is preserved
+- AI-structured output is editable before saving
+- Every user-owned table is scoped by `user_id` and protected by RLS
 
-1. Push to GitHub
-2. Connect the repo to Vercel
-3. Add environment variables in Vercel project settings
-4. Deploy — Vercel will auto-build from `main` branch
+## Verification
 
-## Security
+```bash
+npm run build
+npm run lint
+```
 
-- All user data tables are protected by Supabase Row-Level Security (RLS)
-- Every query is scoped to `auth.uid() = user_id`
-- API keys for Stripe and Anthropic are server-side only (via Vercel serverless functions)
-- Users own their data — full export available anytime
+Current note: the app builds successfully. Lint still reports pre-existing strict TypeScript/React rule violations in legacy modules that are now hidden from the V1 navigation.
 
-## License
+## V1 QA Checklist
 
-Private — All rights reserved.
+Sample capture:
+
+> Just called Nam at Control Union. They are still reviewing the proposal. Main concerns are lead time and service support. I should follow up next Tuesday and offer a short meeting to clarify.
+
+Expected structured fields:
+
+- Type: call
+- Account: Control Union
+- Contact: Nam
+- Opportunity: proposal review or equivalent proposal-related title
+- Interaction summary: Nam / Control Union is still reviewing the proposal
+- Pain point: lead time and service support
+- Objection / blocker: lead time and service support
+- Next action: follow up next Tuesday and offer a short meeting
+- Follow-up date: the next Tuesday after the test date
+
+Expected records after save:
+
+- Raw note remains in `captures`
+- Account memory exists for Control Union
+- Contact exists for Nam and links to Control Union
+- Interaction links to the Control Union account
+- Opportunity links to Control Union when the structured opportunity title is present
+- Today action is created from the next action
+
+Manual test flow:
+
+- Quick Capture: open `/app/today`, paste the sample capture, click Structure, review/edit the structured output, then save it.
+- Today Actions: confirm the saved follow-up appears as an open action and that due/overdue sections load without errors.
+- Account Memory: open `/app/accounts`, select Control Union, and confirm the account shows contacts, latest interactions, pain points, objections, opportunities, and open actions.
+- Opportunity Basic: open `/app/opportunities` and confirm the proposal opportunity shows account, stage, blocker, next action, last touch, urgency, and confidence. Confirm opportunities without next actions are highlighted.
+- Ask Memoire: open `/app/ask` and try "Who should I follow up today?", "Summarize this account.", and "What happened last time with this customer?"
+
+Dogfood regression check:
+
+- Save the same sample capture twice.
+- Confirm Memoire does not create two clearly duplicate active opportunities for Control Union.
+- Confirm both interactions remain preserved as memory.

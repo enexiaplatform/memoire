@@ -6,17 +6,13 @@ import { LoginPage } from './features/auth/LoginPage';
 import { SignupPage } from './features/auth/SignupPage';
 import { VerifyEmailPage } from './features/auth/VerifyEmailPage';
 import { PricingPage } from './features/pricing/PricingPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { CapturePage } from './features/capture/CapturePage';
-import { HistoryPage } from './features/history/HistoryPage';
-import { EntitiesPage } from './features/entities/EntitiesPage';
-import { SearchPage } from './features/search/SearchPage';
 import { SettingsPage } from './features/settings/SettingsPage';
-import { DealArchivePage } from './pages/DealArchivePage';
-import { DealDetailPage } from './pages/DealDetailPage';
-import { DealEditPage } from './pages/DealEditPage';
-
-import { EntityDetailPage } from './features/entities/EntityDetailPage';
+import { TodayPage } from './features/v31/TodayPage';
+import { JourneyPage } from './features/v31/JourneyPage';
+import { AccountsPage } from './features/v31/AccountsPage';
+import { AccountMemoryPage } from './features/v31/AccountMemoryPage';
+import { OpportunitiesPage } from './features/v31/OpportunitiesPage';
+import { AskMemoirePage } from './features/v31/AskMemoirePage';
 
 function App() {
   return (
@@ -38,18 +34,26 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="/app/dashboard" replace />} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="capture" element={<CapturePage />} />
-          <Route path="history" element={<HistoryPage />} />
-          <Route path="entities" element={<EntitiesPage />} />
-          <Route path="entities/:entityId" element={<EntityDetailPage />} />
-          <Route path="deals" element={<DealArchivePage />} />
-          <Route path="deals/new" element={<DealEditPage />} />
-          <Route path="deals/:id" element={<DealDetailPage />} />
-          <Route path="deals/:id/edit" element={<DealEditPage />} />
-          <Route path="search" element={<SearchPage />} />
+          <Route index element={<Navigate to="/app/today" replace />} />
+          <Route path="today" element={<TodayPage />} />
+          <Route path="journey" element={<JourneyPage />} />
+          <Route path="accounts" element={<AccountsPage />} />
+          <Route path="accounts/:accountId" element={<AccountMemoryPage />} />
+          <Route path="opportunities" element={<OpportunitiesPage />} />
+          <Route path="ask" element={<AskMemoirePage />} />
           <Route path="settings" element={<SettingsPage />} />
+
+          {/* Legacy V0 routes, downgraded out of the primary V1 surface. */}
+          <Route path="dashboard" element={<Navigate to="/app/today" replace />} />
+          <Route path="capture" element={<Navigate to="/app/today" replace />} />
+          <Route path="history" element={<Navigate to="/app/today" replace />} />
+          <Route path="entities" element={<Navigate to="/app/accounts" replace />} />
+          <Route path="entities/:entityId" element={<Navigate to="/app/accounts" replace />} />
+          <Route path="deals" element={<Navigate to="/app/opportunities" replace />} />
+          <Route path="deals/new" element={<Navigate to="/app/opportunities" replace />} />
+          <Route path="deals/:id" element={<Navigate to="/app/opportunities" replace />} />
+          <Route path="deals/:id/edit" element={<Navigate to="/app/opportunities" replace />} />
+          <Route path="search" element={<Navigate to="/app/ask" replace />} />
         </Route>
 
         {/* Catch-all redirect */}
