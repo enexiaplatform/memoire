@@ -102,3 +102,36 @@ export interface StructuredSalesCapture {
   urgency: SalesPriority;
   confidence: SalesPriority;
 }
+
+export type StructuredInteractionConfidence = 'high' | 'medium' | 'low';
+
+export interface StructuredInteraction {
+  accountName?: string;
+  contactName?: string;
+  interactionType?: 'call' | 'meeting' | 'email' | 'message' | 'note';
+  summary: string;
+  opportunityName?: string;
+  painPoints: string[];
+  objections: string[];
+  nextAction?: {
+    title: string;
+    dueDate?: string;
+    priority?: SalesPriority;
+  };
+  missingFields: string[];
+  confidence: StructuredInteractionConfidence;
+}
+
+export interface AccountNarrative {
+  accountId: string;
+  narrative: string;
+  currentOpportunity?: string;
+  currentStage?: string;
+  mainBlocker?: string;
+  nextAction?: string;
+  lastInteraction?: string;
+  keyPainPoints: string[];
+  keyObjections: string[];
+  missingContext: string[];
+  updatedAt: string;
+}

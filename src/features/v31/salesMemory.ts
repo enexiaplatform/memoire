@@ -1,7 +1,7 @@
 import { supabase } from '../../lib/supabase';
 import { isDemoMode } from '../../lib/demoMode';
-import type { StructuredSalesCapture, SalesStage, SalesPriority, InteractionType } from '../../types/v31';
-import { saveLocalStructuredCapture } from './localStore';
+import type { Account, Contact, StructuredSalesCapture, SalesStage, SalesPriority, InteractionType } from '../../types/v31';
+import { readLocalMemory, saveLocalStructuredCapture } from './localStore';
 
 export const EMPTY_CAPTURE: StructuredSalesCapture = {
   type: 'note',
@@ -24,6 +24,27 @@ const stages: SalesStage[] = ['new', 'active', 'proposal', 'negotiation', 'won',
 const priorities: SalesPriority[] = ['low', 'medium', 'high'];
 const interactionTypes: InteractionType[] = ['call', 'email', 'meeting', 'note', 'proposal', 'other'];
 const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const vietnameseDayNames = [
+  { key: 'chủ nhật', index: 0 },
+  { key: 'chu nhat', index: 0 },
+  { key: 'thứ hai', index: 1 },
+  { key: 'thu hai', index: 1 },
+  { key: 'thứ ba', index: 2 },
+  { key: 'thu ba', index: 2 },
+  { key: 'thứ tư', index: 3 },
+  { key: 'thu tu', index: 3 },
+  { key: 'thứ năm', index: 4 },
+  { key: 'thu nam', index: 4 },
+  { key: 'thứ sáu', index: 5 },
+  { key: 'thu sau', index: 5 },
+  { key: 'thứ bảy', index: 6 },
+  { key: 'thu bay', index: 6 },
+];
+
+export interface InteractionStructureContext {
+  accounts: Pick<Account, 'id' | 'name'>[];
+  contacts: Pick<Contact, 'id' | 'name' | 'account_id'>[];
+}
 
 function cleanText(value: string | null | undefined) {
   return (value || '').trim();
@@ -64,15 +85,34 @@ function resolveRelativeFollowUpDate(rawNote: string, currentValue: string) {
   if (currentValue) return currentValue;
 
   const lowerNote = rawNote.toLowerCase();
-  const matchedDay = dayNames.find((day) => lowerNote.includes(`next ${day}`));
-  if (!matchedDay) return '';
-
   const today = new Date();
-  const targetDayIndex = dayNames.indexOf(matchedDay);
-  const daysUntilTarget = (targetDayIndex - today.getDay() + 7) % 7 || 7;
-  const targetDate = new Date(today);
-  targetDate.setDate(today.getDate() + daysUntilTarget);
-  return targetDate.toISOString().slice(0, 10);
+  if (/\btoday\b|hôm nay|hom nay/.test(lowerNote)) {
+    return today.toISOString().slice(0, 10);
+  }
+
+  if (/\btomorrow\b|ngày mai|ngay mai/.test(lowerNote)) {
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    return tomorrow.toISOString().slice(0, 10);
+  }
+
+  if (/\bnext week\b|tuần sau|tuan sau/.test(lowerNote)) {
+    const nextWeek = new Date(today);
+    nextWeek.setDate(today.getDate() + 7);
+    return nextWeek.toISOString().slice(0, 10);
+  }
+
+  const matchedDay = dayNames.find((day) => lowerNote.includes(`next ${day}`));
+  if (matchedDay) {
+    return nextWeekday(today, dayNames.indexOf(matchedDay));
+  }
+
+  const matchedVietnameseDay = vietnameseDayNames.find((day) => lowerNote.includes(day.key));
+  if (matchedVietnameseDay) {
+    return nextWeekday(today, matchedVietnameseDay.index);
+  }
+
+  return '';
 }
 
 function mergeList(existing: string[] | null | undefined, next: string) {
@@ -103,7 +143,138 @@ function isClearOpportunityMatch(candidateTitle: string, existingTitle: string) 
   return shorter.length >= 8 && longer.includes(shorter);
 }
 
-export async function structureSalesCapture(rawNote: string): Promise<StructuredSalesCapture> {
+function nextWeekday(today: Date, targetDayIndex: number) {
+  const daysUntilTarget = (targetDayIndex - today.getDay() + 7) % 7 || 7;
+  const targetDate = new Date(today);
+  targetDate.setDate(today.getDate() + daysUntilTarget);
+  return targetDate.toISOString().slice(0, 10);
+}
+
+function extractAfterKeyword(rawNote: string, keywords: string[]) {
+  const pattern = new RegExp(`(?:${keywords.join('|')})\\s+(?:about\\s+|are\\s+|is\\s+|là\\s+|la\\s+)?([^.;\\n]+)`, 'i');
+  return rawNote.match(pattern)?.[1]?.trim() || '';
+}
+
+function heuristicInteractionStructure(rawNote: string): StructuredSalesCapture {
+  const lowerNote = rawNote.toLowerCase();
+  const type: InteractionType = /call|called|spoke|gọi|goi/.test(lowerNote)
+    ? 'call'
+    : /meeting|met|họp|hop|hẹn|hen/.test(lowerNote)
+      ? 'meeting'
+      : /email|emailed/.test(lowerNote)
+        ? 'email'
+        : /proposal/.test(lowerNote)
+          ? 'proposal'
+          : 'note';
+  const accountMatch = rawNote.match(/\bat\s+([A-Z][A-Za-z0-9&.\- ]{2,60})/);
+  const contactMatch = rawNote.match(/\b(?:called|met|emailed|spoke with|talked to|gọi|goi|họp với|hop voi)\s+([A-Z][A-Za-z.\- ]{1,40})(?:\s+at\b|\s+from\b|,|\.|$)/i);
+  const objection = extractAfterKeyword(rawNote, [
+    'concerned about',
+    'concern about',
+    'concerns are',
+    'worry about',
+    'objection',
+    'price',
+    'budget',
+    'lead time',
+    'support',
+    'timeline',
+    'competitor',
+    'lo',
+    'ngại',
+    'ngai',
+    'giá',
+    'gia',
+    'ngân sách',
+    'ngan sach',
+    'thời gian giao hàng',
+    'thoi gian giao hang',
+    'hỗ trợ',
+    'ho tro',
+    'đối thủ',
+    'doi thu',
+  ]);
+  const nextAction = extractAfterKeyword(rawNote, [
+    'follow up',
+    'follow',
+    'send',
+    'call',
+    'schedule',
+    'prepare',
+    'gửi',
+    'gui',
+    'gọi',
+    'goi',
+    'hẹn',
+    'hen',
+    'chuẩn bị',
+    'chuan bi',
+  ]);
+  const hasProposal = /proposal|báo giá|bao gia|đề xuất|de xuat/i.test(rawNote);
+
+  return normalizeStructuredCapture({
+    type,
+    account: accountMatch?.[1]?.trim() || '',
+    contact: contactMatch?.[1]?.trim() || '',
+    opportunity: hasProposal ? 'Proposal review' : '',
+    opportunity_stage: hasProposal ? 'proposal' : 'active',
+    interaction_summary: rawNote.trim(),
+    pain_point: extractAfterKeyword(rawNote, ['pain', 'problem', 'challenge', 'need', 'cần', 'can']),
+    objection,
+    next_action: nextAction || (/follow up|follow|gửi|gui|gọi|goi|hẹn|hen/i.test(rawNote) ? 'Follow up with customer' : ''),
+    follow_up_date: resolveRelativeFollowUpDate(rawNote, ''),
+    urgency: nextAction ? 'high' : 'medium',
+    confidence: accountMatch || contactMatch || nextAction ? 'medium' : 'low',
+  }, rawNote);
+}
+
+function applyKnownMatches(structured: StructuredSalesCapture, rawNote: string, context?: InteractionStructureContext) {
+  if (!context) return structured;
+  const lowerNote = rawNote.toLowerCase();
+  const accountMatch = !structured.account
+    ? context.accounts.find((account) => lowerNote.includes(account.name.toLowerCase()))
+    : null;
+  const contactMatch = !structured.contact
+    ? context.contacts.find((contact) => lowerNote.includes(contact.name.toLowerCase()))
+    : null;
+
+  return {
+    ...structured,
+    account: structured.account || accountMatch?.name || '',
+    contact: structured.contact || contactMatch?.name || '',
+  };
+}
+
+export function getMissingInteractionFields(structured: StructuredSalesCapture) {
+  const missing: string[] = [];
+  if (!structured.account) missing.push('Account');
+  if (!structured.interaction_summary) missing.push('Interaction Summary');
+  if (!structured.next_action) missing.push('Next Action');
+  if (!structured.follow_up_date && structured.next_action) missing.push('Due Date');
+  return missing;
+}
+
+export async function loadInteractionStructureContext(userId: string): Promise<InteractionStructureContext> {
+  if (isDemoMode) {
+    const memory = readLocalMemory();
+    return {
+      accounts: memory.accounts.map((account) => ({ id: account.id, name: account.name })),
+      contacts: memory.contacts.map((contact) => ({ id: contact.id, name: contact.name, account_id: contact.account_id })),
+    };
+  }
+
+  const [accountsResult, contactsResult] = await Promise.all([
+    supabase.from('accounts').select('id,name').eq('user_id', userId).limit(80),
+    supabase.from('contacts').select('id,name,account_id').eq('user_id', userId).limit(120),
+  ]);
+
+  return {
+    accounts: (accountsResult.data || []) as Pick<Account, 'id' | 'name'>[],
+    contacts: (contactsResult.data || []) as Pick<Contact, 'id' | 'name' | 'account_id'>[],
+  };
+}
+
+export async function structureSalesCapture(rawNote: string, context?: InteractionStructureContext): Promise<StructuredSalesCapture> {
   const response = await fetch('/api/structure-capture', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -115,7 +286,17 @@ export async function structureSalesCapture(rawNote: string): Promise<Structured
   }
 
   const data = await response.json();
-  return normalizeStructuredCapture(data, rawNote);
+  const structured = normalizeStructuredCapture(data, rawNote);
+  structured.follow_up_date = resolveRelativeFollowUpDate(rawNote, structured.follow_up_date);
+  return applyKnownMatches(structured, rawNote, context);
+}
+
+export async function structureInteraction(rawNote: string, context?: InteractionStructureContext): Promise<StructuredSalesCapture> {
+  try {
+    return await structureSalesCapture(rawNote, context);
+  } catch {
+    return applyKnownMatches(heuristicInteractionStructure(rawNote), rawNote, context);
+  }
 }
 
 export async function saveStructuredSalesCapture(

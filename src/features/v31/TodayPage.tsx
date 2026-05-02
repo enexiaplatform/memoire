@@ -1,18 +1,24 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Clock, Target } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { isDemoMode } from '../../lib/demoMode';
-import type { Opportunity, SalesAction } from '../../types/v31';
+import type { Account, Interaction, Opportunity, SalesAction } from '../../types/v31';
 import { QuickCapturePanel } from './QuickCapturePanel';
 import { markLocalActionDone, readLocalMemory } from './localStore';
+import { detectBrokenLoops } from './brokenLoops';
+import type { BrokenLoop, CaptureMemory } from './brokenLoops';
 
 export function TodayPage() {
   const { user } = useAuth();
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [actions, setActions] = useState<SalesAction[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [interactions, setInteractions] = useState<Interaction[]>([]);
+  const [captures, setCaptures] = useState<CaptureMemory[]>([]);
   const [loading, setLoading] = useState(true);
 
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -25,6 +31,7 @@ export function TodayPage() {
       const memory = readLocalMemory();
       const accountById = new Map(memory.accounts.map((account) => [account.id, account]));
       const opportunityById = new Map(memory.opportunities.map((opportunity) => [opportunity.id, opportunity]));
+      setAccounts(memory.accounts);
       setActions(memory.actions
         .filter((action) => action.status === 'open')
         .map((action) => ({
@@ -34,7 +41,12 @@ export function TodayPage() {
         })));
       setOpportunities(memory.opportunities.map((opportunity) => ({
         ...opportunity,
-        account: opportunity.account_id ? accountById.get(opportunity.account_id) || null : null,
+          account: opportunity.account_id ? accountById.get(opportunity.account_id) || null : null,
+        })));
+      setInteractions(memory.interactions);
+      setCaptures(memory.captures.map((capture) => ({
+        ...capture,
+        structured_data: capture.structured_data as unknown as Record<string, unknown>,
       })));
       setLoading(false);
       return;
@@ -43,7 +55,13 @@ export function TodayPage() {
     const staleDate = new Date();
     staleDate.setDate(staleDate.getDate() - 14);
 
-    const [actionsResult, opportunitiesResult] = await Promise.all([
+    const [accountResult, actionsResult, opportunitiesResult, interactionResult, captureResult] = await Promise.all([
+      supabase
+        .from('accounts')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(40),
       supabase
         .from('actions')
         .select('*,account:account_id(id,name),contact:contact_id(id,name,role),opportunity:opportunity_id(id,title,stage)')
@@ -58,10 +76,25 @@ export function TodayPage() {
         .not('stage', 'in', '(won,lost)')
         .order('updated_at', { ascending: false })
         .limit(30),
+      supabase
+        .from('interactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('occurred_at', { ascending: false })
+        .limit(80),
+      supabase
+        .from('captures')
+        .select('id,raw_text,structured_data,status,created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(30),
     ]);
 
+    if (!accountResult.error) setAccounts((accountResult.data || []) as Account[]);
     if (!actionsResult.error) setActions((actionsResult.data || []) as SalesAction[]);
     if (!opportunitiesResult.error) setOpportunities((opportunitiesResult.data || []) as Opportunity[]);
+    if (!interactionResult.error) setInteractions((interactionResult.data || []) as Interaction[]);
+    if (!captureResult.error) setCaptures((captureResult.data || []) as CaptureMemory[]);
     setLoading(false);
   }, [user]);
 
@@ -80,6 +113,10 @@ export function TodayPage() {
     return lastTouch < cutoff;
   });
   const atRiskOpportunities = opportunities.filter((opportunity) => !opportunity.next_action_text);
+  const needsAttention = useMemo(
+    () => detectBrokenLoops({ accounts, opportunities, interactions, actions, captures }).slice(0, 3),
+    [accounts, actions, captures, interactions, opportunities]
+  );
 
   const markDone = async (actionId: string) => {
     if (!user) return;
@@ -120,6 +157,7 @@ export function TodayPage() {
           </div>
 
           <aside className="space-y-5">
+            <NeedsAttentionSection loops={needsAttention} />
             <OpportunityRiskSection title="Stale opportunities" opportunities={staleOpportunities} />
             <OpportunityRiskSection title="At-risk: no next action" opportunities={atRiskOpportunities} />
           </aside>
@@ -127,6 +165,55 @@ export function TodayPage() {
       )}
     </div>
   );
+}
+
+function NeedsAttentionSection({ loops }: { loops: BrokenLoop[] }) {
+  return (
+    <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-base font-bold text-navy">Needs Attention</h2>
+        <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">{loops.length}</span>
+      </div>
+      {loops.length === 0 ? (
+        <p className="text-sm text-gray-500">No broken loops detected. Your sales memory loop looks healthy.</p>
+      ) : (
+        <div className="space-y-3">
+          {loops.map((loop) => (
+            <div key={loop.id} className="rounded-lg border border-amber-100 bg-amber-50/60 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${priorityClass(loop.priority)}`}>{loop.priority}</span>
+                    <p className="text-sm font-bold text-gray-900">{loop.issue}</p>
+                  </div>
+                  <p className="mt-1 text-xs text-amber-800">{loop.affectedEntity}</p>
+                  <p className="mt-2 text-xs leading-5 text-gray-600">{loop.whyItMatters}</p>
+                </div>
+              </div>
+              <Link
+                to={loopTarget(loop)}
+                className="mt-3 inline-flex rounded-full bg-white px-3 py-1.5 text-xs font-bold text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100"
+              >
+                {loop.actionLabel}
+              </Link>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function priorityClass(priority: BrokenLoop['priority']) {
+  if (priority === 'P0') return 'bg-red-100 text-red-700';
+  if (priority === 'P1') return 'bg-amber-100 text-amber-700';
+  return 'bg-gray-100 text-gray-600';
+}
+
+function loopTarget(loop: BrokenLoop) {
+  if (loop.actionLabel === 'Open Account' && loop.accountId) return `/app/accounts/${loop.accountId}`;
+  if (loop.actionLabel === 'Open Opportunity') return '/app/opportunities';
+  return '/app/today';
 }
 
 function ActionSection({

@@ -1,52 +1,76 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRight, CheckCircle2, Circle, Clock3 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { AlertTriangle, ArrowRight, CheckCircle2, Circle, Clock3, PauseCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { isDemoMode } from '../../lib/demoMode';
 import { useAuth } from '../../hooks/useAuth';
-import type { Account, Interaction, Opportunity, SalesAction } from '../../types/v31';
+import type { Account, Contact, Interaction, Opportunity, SalesAction } from '../../types/v31';
 import { readLocalMemory } from './localStore';
+import { detectBrokenLoops } from './brokenLoops';
+import type { BrokenLoop, CaptureMemory } from './brokenLoops';
 
-interface CaptureMemory {
-  id: string;
-  raw_text: string;
-  structured_data: Record<string, unknown> | null;
-  status: string | null;
-  created_at: string;
+type FlowState = 'Active' | 'Completed' | 'Missing' | 'Later';
+
+interface FlowStep {
+  key: 'capture' | 'structure' | 'account' | 'opportunity' | 'action' | 'ask' | 'learning';
+  label: string;
+  description: string;
 }
 
 interface JourneyCard {
   id: string;
   accountName: string;
+  contactName: string;
   opportunityName: string;
   lastInteraction: string;
   blocker: string;
   nextAction: string;
-  status: string;
+  currentStage: string;
 }
 
-interface BrokenLoop {
-  id: string;
-  problem: string;
-  affected: string;
-  suggestedFix: string;
-}
-
-const staleDays = 14;
-
-const flowSteps = [
-  { label: 'Quick Capture', description: 'Save the raw customer note.' },
-  { label: 'Structure', description: 'Turn the note into sales memory fields.' },
-  { label: 'Account', description: 'Attach memory to the customer account.' },
-  { label: 'Opportunity', description: 'Connect the work to an active revenue motion.' },
-  { label: 'Action', description: 'Create the next follow-up or task.' },
-  { label: 'Ask Memoire', description: 'Use the memory to answer sales questions.' },
-  { label: 'Learning', description: 'Later: reusable playbook knowledge.', later: true },
+const flowSteps: FlowStep[] = [
+  {
+    key: 'capture',
+    label: 'Quick Capture',
+    description: 'Raw interaction, note, or signal is captured',
+  },
+  {
+    key: 'structure',
+    label: 'Structure',
+    description: 'Capture is converted into usable sales objects',
+  },
+  {
+    key: 'account',
+    label: 'Account Memory',
+    description: 'Customer context is stored and organized',
+  },
+  {
+    key: 'opportunity',
+    label: 'Opportunity',
+    description: 'Commercial movement is linked to the account',
+  },
+  {
+    key: 'action',
+    label: 'Action',
+    description: 'Next step is created to move revenue forward',
+  },
+  {
+    key: 'ask',
+    label: 'Ask Memoire',
+    description: 'User can query the memory system',
+  },
+  {
+    key: 'learning',
+    label: 'Learning Later',
+    description: 'Long-term sales pattern learning, not active in V1',
+  },
 ];
 
 export function JourneyPage() {
   const { user } = useAuth();
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [actions, setActions] = useState<SalesAction[]>([]);
@@ -60,6 +84,7 @@ export function JourneyPage() {
     if (isDemoMode) {
       const memory = readLocalMemory();
       setAccounts(memory.accounts);
+      setContacts(memory.contacts);
       setOpportunities(memory.opportunities);
       setInteractions(memory.interactions);
       setActions(memory.actions);
@@ -71,8 +96,9 @@ export function JourneyPage() {
       return;
     }
 
-    const [accountResult, opportunityResult, interactionResult, actionResult, captureResult] = await Promise.all([
+    const [accountResult, contactResult, opportunityResult, interactionResult, actionResult, captureResult] = await Promise.all([
       supabase.from('accounts').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
+      supabase.from('contacts').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
       supabase.from('opportunities').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
       supabase.from('interactions').select('*').eq('user_id', user.id).order('occurred_at', { ascending: false }).limit(80),
       supabase.from('actions').select('*').eq('user_id', user.id).order('due_date', { ascending: true, nullsFirst: false }),
@@ -80,6 +106,7 @@ export function JourneyPage() {
     ]);
 
     if (!accountResult.error) setAccounts((accountResult.data || []) as Account[]);
+    if (!contactResult.error) setContacts((contactResult.data || []) as Contact[]);
     if (!opportunityResult.error) setOpportunities((opportunityResult.data || []) as Opportunity[]);
     if (!interactionResult.error) setInteractions((interactionResult.data || []) as Interaction[]);
     if (!actionResult.error) setActions((actionResult.data || []) as SalesAction[]);
@@ -92,145 +119,105 @@ export function JourneyPage() {
   }, [loadJourney]);
 
   const accountById = useMemo(() => new Map(accounts.map((account) => [account.id, account])), [accounts]);
-  const openActions = actions.filter((action) => action.status === 'open');
+  const contactByAccountId = useMemo(() => firstBy(contacts, (contact) => contact.account_id || ''), [contacts]);
+  const openActions = useMemo(() => actions.filter((action) => action.status === 'open'), [actions]);
+  const activeOpportunities = useMemo(
+    () => opportunities.filter((opportunity) => !['won', 'lost'].includes(opportunity.stage)),
+    [opportunities]
+  );
+
+  const flowStates = useMemo(() => {
+    const hasMemory = accounts.length > 0 || interactions.length > 0;
+    const hasAnyAction = actions.length > 0;
+    const hasOpenAction = openActions.length > 0;
+
+    return new Map<FlowStep['key'], FlowState>([
+      ['capture', interactions.length > 0 ? 'Completed' : 'Active'],
+      ['structure', interactions.length > 0 ? 'Completed' : 'Missing'],
+      ['account', accounts.length > 0 ? 'Completed' : 'Missing'],
+      ['opportunity', activeOpportunities.length > 0 ? 'Active' : hasMemory ? 'Missing' : 'Missing'],
+      ['action', hasOpenAction ? 'Active' : hasAnyAction ? 'Completed' : hasMemory ? 'Missing' : 'Missing'],
+      ['ask', hasMemory ? 'Active' : 'Missing'],
+      ['learning', 'Later'],
+    ]);
+  }, [accounts.length, actions.length, activeOpportunities.length, interactions.length, openActions.length]);
 
   const activeJourneys = useMemo(() => {
     const latestInteractionByAccount = latestBy(interactions, (item) => item.account_id || '');
+    const latestInteractionByOpportunity = latestBy(interactions, (item) => item.opportunity_id || '');
     const openActionByOpportunity = firstBy(openActions, (item) => item.opportunity_id || '');
 
-    const opportunityCards = opportunities
-      .filter((opportunity) => !['won', 'lost'].includes(opportunity.stage))
-      .map((opportunity): JourneyCard => {
-        const account = opportunity.account_id ? accountById.get(opportunity.account_id) : null;
-        const latestInteraction = opportunity.account_id ? latestInteractionByAccount.get(opportunity.account_id) : null;
-        const action = openActionByOpportunity.get(opportunity.id);
-        return {
-          id: opportunity.id,
-          accountName: account?.name || 'No account linked',
-          opportunityName: opportunity.title,
-          lastInteraction: latestInteraction?.summary || 'No interaction captured yet',
-          blocker: opportunity.blocker || latestInteraction?.objection || 'No blocker captured',
-          nextAction: action?.title || opportunity.next_action_text || 'No next action',
-          status: getJourneyStatus(Boolean(latestInteraction), Boolean(opportunity), Boolean(action || opportunity.next_action_text)),
-        };
-      });
+    const opportunityCards = activeOpportunities.map((opportunity): JourneyCard => {
+      const account = opportunity.account_id ? accountById.get(opportunity.account_id) : null;
+      const latestInteraction = latestInteractionByOpportunity.get(opportunity.id)
+        || (opportunity.account_id ? latestInteractionByAccount.get(opportunity.account_id) : null);
+      const action = openActionByOpportunity.get(opportunity.id);
+      const hasNextAction = Boolean(action || opportunity.next_action_text);
+
+      return {
+        id: opportunity.id,
+        accountName: account?.name || 'No account linked',
+        contactName: opportunity.account_id ? contactByAccountId.get(opportunity.account_id)?.name || 'No contact linked' : 'No contact linked',
+        opportunityName: opportunity.title,
+        lastInteraction: latestInteraction?.summary || 'No interaction captured yet',
+        blocker: opportunity.blocker || latestInteraction?.objection || 'No blocker captured',
+        nextAction: action?.title || opportunity.next_action_text || 'No next action',
+        currentStage: getJourneyStage(Boolean(latestInteraction), Boolean(account), true, hasNextAction),
+      };
+    });
 
     const accountOnlyCards = accounts
-      .filter((account) => !opportunities.some((opportunity) => opportunity.account_id === account.id))
+      .filter((account) => !activeOpportunities.some((opportunity) => opportunity.account_id === account.id))
       .map((account): JourneyCard => {
         const latestInteraction = latestInteractionByAccount.get(account.id);
         const action = openActions.find((item) => item.account_id === account.id);
+
         return {
           id: account.id,
           accountName: account.name,
+          contactName: contactByAccountId.get(account.id)?.name || 'No contact linked',
           opportunityName: 'No opportunity linked',
           lastInteraction: latestInteraction?.summary || 'No interaction captured yet',
           blocker: account.objections[0] || latestInteraction?.objection || 'No blocker captured',
           nextAction: action?.title || 'No next action',
-          status: getJourneyStatus(Boolean(latestInteraction), false, Boolean(action)),
+          currentStage: getJourneyStage(Boolean(latestInteraction), true, false, Boolean(action)),
         };
       });
 
     return [...opportunityCards, ...accountOnlyCards].slice(0, 12);
-  }, [accountById, accounts, interactions, openActions, opportunities]);
+  }, [accountById, accounts, activeOpportunities, contactByAccountId, interactions, openActions]);
 
   const brokenLoops = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    const staleCutoff = new Date();
-    staleCutoff.setDate(staleCutoff.getDate() - staleDays);
-    const latestInteractionByAccount = latestBy(interactions, (item) => item.account_id || '');
-    const openActionByOpportunity = firstBy(openActions, (item) => item.opportunity_id || '');
-    const openActionByInteraction = firstBy(openActions, (item) => item.interaction_id || '');
-    const sourceCaptureIdsWithAction = new Set(
-      interactions
-        .filter((interaction) => openActionByInteraction.has(interaction.id))
-        .map((interaction) => interaction.source_capture_id)
-        .filter(Boolean)
-    );
-
-    const loops: BrokenLoop[] = [];
-
-    accounts.forEach((account) => {
-      const latestInteraction = latestInteractionByAccount.get(account.id);
-      if (!latestInteraction || new Date(latestInteraction.occurred_at) < staleCutoff) {
-        loops.push({
-          id: `stale-account-${account.id}`,
-          problem: 'Account has no recent interaction',
-          affected: account.name,
-          suggestedFix: 'Capture the latest customer touch or plan a follow-up.',
-        });
-      }
-    });
-
-    opportunities.forEach((opportunity) => {
-      if (!['won', 'lost'].includes(opportunity.stage) && !opportunity.next_action_text && !openActionByOpportunity.has(opportunity.id)) {
-        loops.push({
-          id: `missing-action-${opportunity.id}`,
-          problem: 'Opportunity has no next action',
-          affected: `${accountById.get(opportunity.account_id || '')?.name || 'Unknown account'} / ${opportunity.title}`,
-          suggestedFix: 'Add the next customer-facing follow-up.',
-        });
-      }
-    });
-
-    openActions.forEach((action) => {
-      if (action.due_date && action.due_date < today) {
-        loops.push({
-          id: `overdue-action-${action.id}`,
-          problem: 'Action is overdue',
-          affected: action.title,
-          suggestedFix: 'Complete it or capture the latest outcome.',
-        });
-      }
-    });
-
-    interactions.forEach((interaction) => {
-      if (interaction.objection && !openActionByInteraction.has(interaction.id)) {
-        loops.push({
-          id: `objection-no-action-${interaction.id}`,
-          problem: 'Interaction has an objection but no follow-up action',
-          affected: accountById.get(interaction.account_id || '')?.name || interaction.summary,
-          suggestedFix: 'Create a follow-up action that addresses the objection.',
-        });
-      }
-    });
-
-    captures.forEach((capture) => {
-      if (capture.status === 'processed' && !sourceCaptureIdsWithAction.has(capture.id)) {
-        loops.push({
-          id: `capture-no-action-${capture.id}`,
-          problem: 'Capture created memory but no action',
-          affected: String(capture.structured_data?.account || capture.raw_text.slice(0, 60)),
-          suggestedFix: 'Add a next action if this memory needs follow-up.',
-        });
-      }
-    });
-
-    return loops.slice(0, 20);
-  }, [accountById, accounts, captures, interactions, openActions, opportunities]);
+    return detectBrokenLoops({ accounts, opportunities, interactions, actions, captures });
+  }, [accounts, actions, captures, interactions, opportunities]);
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
       <header className="mb-6">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Journey</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Sales memory loop</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Journey</p>
+          {isDemoMode && (
+            <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
+              Demo Mode
+            </span>
+          )}
+        </div>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Sales Memory Loop</h1>
         <p className="mt-2 max-w-2xl text-sm text-gray-500">
-          See where customer memory is flowing, what is missing, and what needs the next action.
+          See how a customer interaction becomes memory, opportunity context, revenue action, and a grounded answer.
         </p>
       </header>
 
       <section className="mb-6 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="text-base font-bold text-navy">Sales Memory Flow Map</h2>
-        <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-7">
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-7">
           {flowSteps.map((step, index) => (
-            <div key={step.label} className={`rounded-lg border p-4 ${step.later ? 'border-gray-200 bg-gray-50 opacity-75' : 'border-blue-100 bg-blue-50/40'}`}>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-bold uppercase tracking-wide text-brand-blue">{step.later ? 'Later' : `Step ${index + 1}`}</span>
-                {!step.later && <CheckCircle2 className="h-4 w-4 text-brand-blue" />}
-              </div>
-              <p className="mt-2 text-sm font-bold text-gray-900">{step.label}</p>
-              <p className="mt-1 text-xs leading-5 text-gray-500">{step.description}</p>
-            </div>
+            <FlowStepCard
+              key={step.key}
+              step={step}
+              index={index}
+              state={flowStates.get(step.key) || 'Missing'}
+            />
           ))}
         </div>
       </section>
@@ -245,7 +232,12 @@ export function JourneyPage() {
           {loading ? (
             <p className="text-sm text-gray-500">Loading journeys...</p>
           ) : activeJourneys.length === 0 ? (
-            <p className="text-sm text-gray-500">No active journey yet. Capture a customer interaction from Today.</p>
+            <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-5">
+              <p className="text-sm font-semibold text-navy">Start by capturing an interaction.</p>
+              <p className="mt-1 text-sm leading-6 text-gray-600">
+                Memoire will turn it into account memory, opportunity context, and next action.
+              </p>
+            </div>
           ) : (
             <div className="space-y-3">
               {activeJourneys.map((journey) => (
@@ -254,12 +246,13 @@ export function JourneyPage() {
                     <div>
                       <p className="text-sm font-bold text-navy">{journey.accountName}</p>
                       <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-gray-400">{journey.opportunityName}</p>
+                      <p className="mt-1 text-xs text-gray-500">{journey.contactName}</p>
                     </div>
-                    <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-brand-blue">{journey.status}</span>
+                    <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-brand-blue">{journey.currentStage}</span>
                   </div>
                   <div className="mt-4 space-y-2 text-sm text-gray-600">
                     <JourneyLine label="Last interaction" value={journey.lastInteraction} />
-                    <JourneyLine label="Blocker" value={journey.blocker} />
+                    <JourneyLine label="Current blocker" value={journey.blocker} />
                     <JourneyLine label="Next action" value={journey.nextAction} />
                   </div>
                 </article>
@@ -278,7 +271,7 @@ export function JourneyPage() {
             <p className="text-sm text-gray-500">Checking loops...</p>
           ) : brokenLoops.length === 0 ? (
             <div className="rounded-lg border border-green-100 bg-green-50 p-4 text-sm text-green-800">
-              No broken loops detected from current memory.
+              No broken loops detected. Your sales memory loop looks healthy.
             </div>
           ) : (
             <div className="space-y-3">
@@ -287,12 +280,22 @@ export function JourneyPage() {
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
                     <div>
-                      <p className="text-sm font-bold text-amber-950">{loop.problem}</p>
-                      <p className="mt-1 text-xs text-amber-800">{loop.affected}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${priorityClass(loop.priority)}`}>{loop.priority}</span>
+                        <p className="text-sm font-bold text-amber-950">{loop.issue}</p>
+                      </div>
+                      <p className="mt-1 text-xs text-amber-800">{loop.affectedEntity}</p>
+                      <p className="mt-2 text-xs leading-5 text-amber-900">{loop.whyItMatters}</p>
                       <p className="mt-2 flex items-center gap-1 text-xs font-semibold text-amber-900">
                         <ArrowRight className="h-3.5 w-3.5" />
                         {loop.suggestedFix}
                       </p>
+                      <Link
+                        to={loopTarget(loop)}
+                        className="mt-3 inline-flex rounded-full bg-white px-3 py-1.5 text-xs font-bold text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100"
+                      >
+                        {loop.actionLabel}
+                      </Link>
                     </div>
                   </div>
                 </div>
@@ -301,6 +304,39 @@ export function JourneyPage() {
           )}
         </section>
       </div>
+    </div>
+  );
+}
+
+function priorityClass(priority: BrokenLoop['priority']) {
+  if (priority === 'P0') return 'bg-red-100 text-red-700';
+  if (priority === 'P1') return 'bg-amber-100 text-amber-700';
+  return 'bg-gray-100 text-gray-600';
+}
+
+function loopTarget(loop: BrokenLoop) {
+  if (loop.actionLabel === 'Open Account' && loop.accountId) return `/app/accounts/${loop.accountId}`;
+  if (loop.actionLabel === 'Open Opportunity') return '/app/opportunities';
+  return '/app/today';
+}
+
+function FlowStepCard({ step, index, state }: { step: FlowStep; index: number; state: FlowState }) {
+  const stateClass = {
+    Active: 'border-blue-200 bg-blue-50/70 text-brand-blue',
+    Completed: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    Missing: 'border-gray-200 bg-gray-50 text-gray-500',
+    Later: 'border-gray-200 bg-white text-gray-400',
+  }[state];
+
+  return (
+    <div className={`rounded-lg border p-4 ${stateClass}`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-bold uppercase tracking-wide">Step {index + 1}</span>
+        {state === 'Later' ? <PauseCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+      </div>
+      <p className="mt-2 text-sm font-bold text-gray-900">{step.label}</p>
+      <p className="mt-1 min-h-[40px] text-xs leading-5 text-gray-600">{step.description}</p>
+      <span className="mt-3 inline-flex rounded-full bg-white/70 px-2.5 py-1 text-xs font-bold">{state}</span>
     </div>
   );
 }
@@ -340,9 +376,10 @@ function firstBy<T>(items: T[], getKey: (item: T) => string) {
   return result;
 }
 
-function getJourneyStatus(hasInteraction: boolean, hasOpportunity: boolean, hasAction: boolean) {
-  if (!hasInteraction) return 'Needs interaction';
-  if (!hasOpportunity) return 'Needs opportunity';
-  if (!hasAction) return 'Needs action';
-  return 'Loop active';
+function getJourneyStage(hasInteraction: boolean, hasAccount: boolean, hasOpportunity: boolean, hasAction: boolean) {
+  if (!hasInteraction) return 'Missing: Capture';
+  if (!hasAccount) return 'Missing: Account';
+  if (!hasOpportunity) return 'Missing: Opportunity';
+  if (!hasAction) return 'Missing: Action';
+  return 'Active: Ask Memoire ready';
 }
