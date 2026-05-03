@@ -8,6 +8,9 @@ interface ApiRequest {
     question?: unknown;
     userId?: unknown;
     authToken?: unknown;
+    scope?: unknown;
+    accountId?: unknown;
+    opportunityId?: unknown;
   };
 }
 
@@ -26,6 +29,7 @@ interface AnthropicMessageResponse {
 }
 
 interface OpportunityMemory {
+  account_id?: string | null;
   next_action_text?: string | null;
   last_touch_at?: string | null;
 }
@@ -34,6 +38,8 @@ interface AskMemoireResponse {
   answer: string;
   sources: string[];
   suggested_questions: string[];
+  suggested_next_action?: string;
+  missing_context?: string[];
 }
 
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || process.env.CLAUDE_MODEL || 'claude-sonnet-4-6';
@@ -149,12 +155,15 @@ async function synthesize(question: string, memory: unknown): Promise<AskMemoire
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { question, userId, authToken } = req.body || {};
+  const { question, userId, authToken, scope = 'all', accountId, opportunityId } = req.body || {};
   if (!question || !userId || !authToken) {
     return res.status(400).json({ error: 'question, userId, authToken required' });
   }
   if (typeof question !== 'string' || typeof userId !== 'string' || typeof authToken !== 'string') {
     return res.status(400).json({ error: 'Invalid request payload' });
+  }
+  if (typeof scope !== 'string' || !['all', 'account', 'opportunity'].includes(scope)) {
+    return res.status(400).json({ error: 'Invalid scope' });
   }
 
   const supabase = createClient(
@@ -173,34 +182,77 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const staleDate = new Date();
     staleDate.setDate(staleDate.getDate() - 14);
 
-    const [accounts, opportunities, actions, interactions] = await Promise.all([
-      supabase.from('accounts').select('id,name,summary,pain_points,objections').eq('user_id', userId).limit(20),
-      supabase
+    let accountsQuery = supabase.from('accounts').select('id,name,summary,pain_points,objections').eq('user_id', userId).limit(20);
+    let opportunitiesQuery = supabase
         .from('opportunities')
-        .select('id,title,stage,estimated_value,blocker,next_action_text,last_touch_at,urgency,confidence,account:account_id(id,name)')
+        .select('id,account_id,title,stage,estimated_value,blocker,next_action_text,last_touch_at,urgency,confidence,account:account_id(id,name)')
         .eq('user_id', userId)
         .order('updated_at', { ascending: false })
-        .limit(30),
-      supabase
+        .limit(30);
+    let actionsQuery = supabase
         .from('actions')
         .select('id,title,due_date,status,suggested,account:account_id(id,name),opportunity:opportunity_id(id,title)')
         .eq('user_id', userId)
         .eq('status', 'open')
-        .lte('due_date', today)
         .order('due_date', { ascending: true })
-        .limit(20),
-      supabase
+        .limit(20);
+    let interactionsQuery = supabase
         .from('interactions')
         .select('id,summary,pain_point,objection,occurred_at,raw_note,account:account_id(id,name),opportunity:opportunity_id(id,title)')
         .eq('user_id', userId)
         .order('occurred_at', { ascending: false })
-        .limit(25),
+        .limit(25);
+    let objectionsQuery = supabase
+        .from('objections')
+        .select('id,title,detail,category,status,severity,response_angle,account_id,opportunity_id,linked_action_id,last_mentioned_at')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+        .limit(25);
+
+    if (scope === 'account' && typeof accountId === 'string') {
+      accountsQuery = accountsQuery.eq('id', accountId);
+      opportunitiesQuery = opportunitiesQuery.eq('account_id', accountId);
+      actionsQuery = actionsQuery.eq('account_id', accountId);
+      interactionsQuery = interactionsQuery.eq('account_id', accountId);
+      objectionsQuery = objectionsQuery.eq('account_id', accountId);
+    }
+
+    if (scope === 'opportunity' && typeof opportunityId === 'string') {
+      opportunitiesQuery = opportunitiesQuery.eq('id', opportunityId);
+      actionsQuery = actionsQuery.eq('opportunity_id', opportunityId);
+      interactionsQuery = interactionsQuery.eq('opportunity_id', opportunityId);
+      objectionsQuery = objectionsQuery.eq('opportunity_id', opportunityId);
+    } else {
+      actionsQuery = actionsQuery.lte('due_date', today);
+    }
+
+    const [accounts, opportunities, actions, interactions, objections] = await Promise.all([
+      accountsQuery,
+      opportunitiesQuery,
+      actionsQuery,
+      interactionsQuery,
+      objectionsQuery,
     ]);
 
     if (accounts.error) throw accounts.error;
     if (opportunities.error) throw opportunities.error;
     if (actions.error) throw actions.error;
     if (interactions.error) throw interactions.error;
+    if (objections.error) throw objections.error;
+
+    let scopedAccounts = accounts.data || [];
+    if (scope === 'opportunity') {
+      const accountIdFromOpportunity = ((opportunities.data || []) as OpportunityMemory[])[0]?.account_id;
+      if (accountIdFromOpportunity) {
+        const accountResult = await supabase
+          .from('accounts')
+          .select('id,name,summary,pain_points,objections')
+          .eq('user_id', userId)
+          .eq('id', accountIdFromOpportunity)
+          .single();
+        if (!accountResult.error && accountResult.data) scopedAccounts = [accountResult.data];
+      }
+    }
 
     const stuckOpportunities = ((opportunities.data || []) as OpportunityMemory[]).filter((opportunity) => {
       const noNextAction = !opportunity.next_action_text;
@@ -212,12 +264,23 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
     const result = await synthesize(question, {
       allowed_questions: allowedQuestions,
-      accounts: accounts.data || [],
+      scope,
+      accounts: scopedAccounts,
       due_actions: actions.data || [],
       opportunities: opportunities.data || [],
       stuck_opportunities: stuckOpportunities,
       recent_interactions: interactions.data || [],
+      objections: objections.data || [],
     });
+
+    result.suggested_next_action = (actions.data || [])[0]?.title || ((opportunities.data || []) as OpportunityMemory[])[0]?.next_action_text || undefined;
+    result.missing_context = [
+      scopedAccounts.length === 0 ? 'Account' : '',
+      (interactions.data || []).length === 0 ? 'Recent interaction' : '',
+      (actions.data || []).length === 0 ? 'Open action' : '',
+      (opportunities.data || []).length === 0 ? 'Opportunity stage' : '',
+      'Decision maker',
+    ].filter(Boolean);
 
     return res.status(200).json(result);
   } catch (err) {

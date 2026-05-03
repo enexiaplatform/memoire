@@ -2,13 +2,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, CircleAlert, Clock3, ContactRound, FileText, Target } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, CircleAlert, Clock3, ContactRound, Edit3, FileText, MessageCircleQuestion, Plus, Send, Target, XCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { isDemoMode } from '../../lib/demoMode';
-import type { Account, Contact, Interaction, Opportunity, SalesAction } from '../../types/v31';
+import type { Account, Contact, FollowUpContext, Interaction, MemoryHealth, Objection, ObjectionCategory, ObjectionSeverity, ObjectionStatus, Opportunity, SalesAction } from '../../types/v31';
 import { readLocalMemory } from './localStore';
 import { buildAccountNarrative, buildAccountTimeline, hasEnoughAccountContext } from './accountNarrative';
+import { emptyObjectionDraft, objectionCategories, objectionSeverities, objectionStatuses, saveObjection } from './objectionMemory';
+import type { ObjectionDraft } from './objectionMemory';
+import { FollowUpComposerPanel } from './FollowUpComposerPanel';
+import { detectBrokenLoops } from './brokenLoops';
+import { calculateMemoryHealth, memoryHealthLabel } from './memoryHealth';
 
 export function AccountMemoryPage() {
   const { accountId } = useParams<{ accountId: string }>();
@@ -18,6 +23,12 @@ export function AccountMemoryPage() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [actions, setActions] = useState<SalesAction[]>([]);
+  const [objections, setObjections] = useState<Objection[]>([]);
+  const [editingObjection, setEditingObjection] = useState<Objection | null>(null);
+  const [objectionDraft, setObjectionDraft] = useState<ObjectionDraft>(emptyObjectionDraft);
+  const [showObjectionForm, setShowObjectionForm] = useState(false);
+  const [objectionMessage, setObjectionMessage] = useState<string | null>(null);
+  const [followUpContext, setFollowUpContext] = useState<FollowUpContext | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadAccountMemory = useCallback(async () => {
@@ -33,16 +44,31 @@ export function AccountMemoryPage() {
         .filter((item) => item.account_id === accountId)
         .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at)));
       setActions(memory.actions.filter((item) => item.account_id === accountId && item.status === 'open'));
+      setObjections(memory.objections
+        .filter((item) => item.account_id === accountId)
+        .map((objection) => ({
+          ...objection,
+          linked_action: objection.linked_action_id
+            ? memory.actions.find((action) => action.id === objection.linked_action_id) || null
+            : null,
+        }))
+        .sort((a, b) => b.updated_at.localeCompare(a.updated_at)));
       setLoading(false);
       return;
     }
 
-    const [accountResult, contactsResult, opportunitiesResult, interactionsResult, actionsResult] = await Promise.all([
+    const [accountResult, contactsResult, opportunitiesResult, interactionsResult, actionsResult, objectionsResult] = await Promise.all([
       supabase.from('accounts').select('*').eq('user_id', user.id).eq('id', accountId).single(),
       supabase.from('contacts').select('*').eq('user_id', user.id).eq('account_id', accountId).order('updated_at', { ascending: false }),
       supabase.from('opportunities').select('*').eq('user_id', user.id).eq('account_id', accountId).order('updated_at', { ascending: false }),
       supabase.from('interactions').select('*').eq('user_id', user.id).eq('account_id', accountId).order('occurred_at', { ascending: false }).limit(12),
       supabase.from('actions').select('*').eq('user_id', user.id).eq('account_id', accountId).eq('status', 'open').order('due_date', { ascending: true, nullsFirst: false }),
+      supabase
+        .from('objections')
+        .select('*,linked_action:linked_action_id(id,title,status,due_date),opportunity:opportunity_id(id,title,stage),contact:contact_id(id,name,role)')
+        .eq('user_id', user.id)
+        .eq('account_id', accountId)
+        .order('updated_at', { ascending: false }),
     ]);
 
     if (!accountResult.error) setAccount(accountResult.data as Account);
@@ -50,6 +76,7 @@ export function AccountMemoryPage() {
     if (!opportunitiesResult.error) setOpportunities((opportunitiesResult.data || []) as Opportunity[]);
     if (!interactionsResult.error) setInteractions((interactionsResult.data || []) as Interaction[]);
     if (!actionsResult.error) setActions((actionsResult.data || []) as SalesAction[]);
+    if (!objectionsResult.error) setObjections((objectionsResult.data || []) as Objection[]);
     setLoading(false);
   }, [accountId, user]);
 
@@ -85,6 +112,76 @@ export function AccountMemoryPage() {
     ...contacts.map((contact) => `${contact.name}${contact.role ? `, ${contact.role}` : ''}`),
     interactions[0]?.interaction_type ? `Last touch: ${interactions[0].interaction_type}` : '',
   ].filter(Boolean);
+  const primaryContact = contacts[0];
+  const currentOpportunity = opportunities.find((opportunity) => !['won', 'lost'].includes(opportunity.stage)) || opportunities[0];
+  const brokenLoops = detectBrokenLoops({ accounts: [account], opportunities, interactions, actions, objections });
+  const memoryHealth = calculateMemoryHealth(
+    { entityType: 'account', entity: account },
+    { contacts, opportunities, interactions, actions, objections, brokenLoops }
+  );
+
+  const openComposer = (goal: FollowUpContext['goal'] = 'follow_up_after_meeting') => {
+    setFollowUpContext({
+      accountName: account.name,
+      contactName: primaryContact?.name || '',
+      opportunityName: currentOpportunity?.title || '',
+      lastInteractionSummary: interactions[0]?.summary || '',
+      objections: objections.length > 0 ? objections.map((objection) => objection.title) : narrative.keyObjections,
+      painPoints: narrative.keyPainPoints,
+      nextAction: actions[0]?.title || currentOpportunity?.next_action_text || '',
+      goal,
+      tone: 'consultative',
+      length: 'medium',
+    });
+  };
+
+  const startAddObjection = () => {
+    setEditingObjection(null);
+    setObjectionDraft(emptyObjectionDraft);
+    setObjectionMessage(null);
+    setShowObjectionForm(true);
+  };
+
+  const startEditObjection = (objection: Objection) => {
+    setEditingObjection(objection);
+    setObjectionDraft({
+      title: objection.title,
+      detail: objection.detail || '',
+      category: objection.category,
+      status: objection.status,
+      severity: objection.severity,
+      response_angle: objection.response_angle || '',
+      linked_action_id: objection.linked_action_id || '',
+    });
+    setObjectionMessage(null);
+    setShowObjectionForm(true);
+  };
+
+  const saveObjectionDraft = async () => {
+    if (!user || !account) return;
+    setObjectionMessage('Saving...');
+    try {
+      await saveObjection({
+        ...objectionDraft,
+        id: editingObjection?.id,
+        user_id: user.id,
+        account_id: account.id,
+        opportunity_id: editingObjection?.opportunity_id || opportunities[0]?.id || null,
+        contact_id: editingObjection?.contact_id || contacts[0]?.id || null,
+        source_interaction_id: editingObjection?.source_interaction_id || null,
+        first_mentioned_at: editingObjection?.first_mentioned_at || new Date().toISOString(),
+        last_mentioned_at: new Date().toISOString(),
+      });
+      setShowObjectionForm(false);
+      setEditingObjection(null);
+      setObjectionDraft(emptyObjectionDraft);
+      setObjectionMessage('Objection saved.');
+      loadAccountMemory();
+    } catch (err) {
+      console.error(err);
+      setObjectionMessage('Could not save.');
+    }
+  };
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
@@ -96,17 +193,33 @@ export function AccountMemoryPage() {
       <header className="mb-6 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Living memory page</p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Living Memory</p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">{account.name}</h1>
+            <p className="mt-2 text-sm text-gray-500">The current story, blockers, timeline, and Next Actions for this account.</p>
           </div>
           {isDemoMode && (
             <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
               Demo Mode
             </span>
           )}
+          <button
+            type="button"
+            onClick={() => openComposer()}
+            className="inline-flex items-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-sm font-semibold text-white"
+          >
+            <Send className="h-4 w-4" />
+            Draft Follow-up
+          </button>
+          <Link
+            to={`/app/ask?scope=account&accountId=${account.id}`}
+            className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-semibold text-brand-blue hover:border-brand-blue/40"
+          >
+            <MessageCircleQuestion className="h-4 w-4" />
+            Ask about this account
+          </Link>
         </div>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
-          {account.summary || 'Capture more interactions to grow this account memory.'}
+          {account.summary || 'Capture an interaction or add a Next Action to build this Account Memory.'}
         </p>
       </header>
 
@@ -123,6 +236,7 @@ export function AccountMemoryPage() {
           </span>
           <h2 className="text-base font-bold text-navy">Account Snapshot</h2>
         </div>
+        <MemoryHealthPanel health={memoryHealth} />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
           <SnapshotFact label="Account" value={account.name} />
           <SnapshotFact label="Current opportunity" value={narrative.currentOpportunity || 'Missing'} warn={!narrative.currentOpportunity} />
@@ -151,6 +265,43 @@ export function AccountMemoryPage() {
             <TagList title="Objections" items={narrative.keyObjections} warm />
             <TagList title="Decision context" items={decisionContext} />
             <TagList title="Relationship context" items={relationshipContext} />
+          </MemorySection>
+
+          <MemorySection
+            title="Objection Memory Bank"
+            icon={<CircleAlert className="h-4 w-4" />}
+            action={(
+              <button
+                type="button"
+                onClick={startAddObjection}
+                className="inline-flex items-center gap-1.5 rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add
+              </button>
+            )}
+          >
+            {objectionMessage && <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">{objectionMessage}</p>}
+            {showObjectionForm && (
+              <ObjectionForm
+                draft={objectionDraft}
+                actions={actions}
+                onChange={setObjectionDraft}
+                onCancel={() => {
+                  setShowObjectionForm(false);
+                  setEditingObjection(null);
+                  setObjectionDraft(emptyObjectionDraft);
+                }}
+                onSave={saveObjectionDraft}
+              />
+            )}
+            {objections.length === 0 ? (
+              <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-4 text-sm leading-6 text-blue-900">
+                No objections captured yet. When a customer raises a concern, Memoire will keep it here so it does not get lost.
+              </div>
+            ) : objections.map((objection) => (
+              <ObjectionCard key={objection.id} objection={objection} onEdit={() => startEditObjection(objection)} />
+            ))}
           </MemorySection>
 
           <MemorySection title="Open Actions" icon={<Clock3 className="h-4 w-4" />}>
@@ -186,7 +337,69 @@ export function AccountMemoryPage() {
           </MemorySection>
         </div>
       </div>
+      {followUpContext && (
+        <FollowUpComposerPanel
+          initialContext={followUpContext}
+          onClose={() => setFollowUpContext(null)}
+        />
+      )}
     </div>
+  );
+}
+
+function MemoryHealthPanel({ health }: { health: MemoryHealth }) {
+  const signals = [
+    ['Recent interaction', health.signals.hasRecentInteraction],
+    ['Next action', health.signals.hasNextAction],
+    ['Opportunity linked', health.signals.hasOpportunity],
+    ['Contact known', health.signals.hasContact],
+    ['Open objection', !health.signals.hasOpenObjection],
+    ['Decision context', health.signals.hasDecisionContext],
+  ] as const;
+  const limited = health.missingContext.length >= 3;
+
+  return (
+    <div className="mb-4 rounded-lg border border-gray-100 bg-gray-50 p-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <MemoryHealthBadge health={health} />
+        <p className="text-sm leading-6 text-gray-600">
+          {limited
+            ? 'Memory Health is limited because Memoire does not have enough context yet.'
+            : health.reasons[0] || 'This memory has enough context and a clear next action.'}
+        </p>
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {signals.map(([label, ok]) => (
+          <div key={label} className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+            {ok ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <XCircle className="h-4 w-4 text-amber-600" />}
+            {label}
+          </div>
+        ))}
+      </div>
+      {health.missingContext.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {health.missingContext.map((item) => (
+            <span key={item} className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-gray-500">
+              Missing: {item}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MemoryHealthBadge({ health }: { health: MemoryHealth }) {
+  const tone = {
+    healthy: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    needs_attention: 'border-amber-200 bg-amber-50 text-amber-700',
+    broken: 'border-red-200 bg-red-50 text-red-700',
+  }[health.status];
+
+  return (
+    <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${tone}`}>
+      {memoryHealthLabel(health.status)}
+    </span>
   );
 }
 
@@ -203,16 +416,157 @@ function formatMoney(value: number) {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
 }
 
-function MemorySection({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
+function MemorySection({ title, icon, children, action }: { title: string; icon: ReactNode; children: ReactNode; action?: ReactNode }) {
   return (
     <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center gap-2">
         <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 text-brand-blue">{icon}</span>
         <h2 className="text-base font-bold text-navy">{title}</h2>
+        {action && <div className="ml-auto">{action}</div>}
       </div>
       <div className="space-y-3">{children}</div>
     </section>
   );
+}
+
+function ObjectionCard({ objection, onEdit }: { objection: Objection; onEdit: () => void }) {
+  return (
+    <article className="rounded-lg border border-amber-100 bg-amber-50/50 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold text-amber-950">{objection.title}</p>
+          {objection.detail && <p className="mt-1 text-sm leading-6 text-amber-900">{objection.detail}</p>}
+        </div>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="rounded-full bg-white p-2 text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100"
+          aria-label="Edit objection"
+        >
+          <Edit3 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Pill label={objection.category} />
+        <Pill label={objection.status} tone={objection.status === 'open' ? 'red' : 'gray'} />
+        <Pill label={`${objection.severity} severity`} tone={objection.severity === 'high' ? 'red' : 'gray'} />
+        <Pill label={`Last mentioned: ${formatDate(objection.last_mentioned_at || objection.updated_at)}`} />
+      </div>
+      {objection.response_angle && (
+        <p className="mt-3 rounded-lg bg-white/70 p-3 text-xs leading-5 text-amber-900">
+          <span className="font-bold">Response angle: </span>{objection.response_angle}
+        </p>
+      )}
+      {objection.linked_action && (
+        <p className="mt-2 text-xs font-semibold text-amber-900">
+          Linked action: {objection.linked_action.title}
+        </p>
+      )}
+    </article>
+  );
+}
+
+function ObjectionForm({
+  draft,
+  actions,
+  onChange,
+  onCancel,
+  onSave,
+}: {
+  draft: ObjectionDraft;
+  actions: SalesAction[];
+  onChange: (draft: ObjectionDraft) => void;
+  onCancel: () => void;
+  onSave: () => void;
+}) {
+  const update = <K extends keyof ObjectionDraft>(field: K, value: ObjectionDraft[K]) => {
+    onChange({ ...draft, [field]: value });
+  };
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <TextField label="Title" value={draft.title} onChange={(value) => update('title', value)} />
+        <SelectField label="Category" value={draft.category} options={objectionCategories} onChange={(value) => update('category', value as ObjectionCategory)} />
+        <SelectField label="Status" value={draft.status} options={objectionStatuses} onChange={(value) => update('status', value as ObjectionStatus)} />
+        <SelectField label="Severity" value={draft.severity} options={objectionSeverities} onChange={(value) => update('severity', value as ObjectionSeverity)} />
+        <TextAreaField label="Detail" value={draft.detail} onChange={(value) => update('detail', value)} />
+        <TextAreaField label="Response angle" value={draft.response_angle} onChange={(value) => update('response_angle', value)} />
+        <label className="block md:col-span-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Linked action</span>
+          <select
+            value={draft.linked_action_id}
+            onChange={(event) => update('linked_action_id', event.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+          >
+            <option value="">No linked action</option>
+            {actions.map((action) => (
+              <option key={action.id} value={action.id}>{action.title}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="mt-4 flex justify-end gap-2">
+        <button type="button" onClick={onCancel} className="rounded-full px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100">Cancel</button>
+        <button type="button" onClick={onSave} className="rounded-full bg-brand-blue px-4 py-2 text-sm font-semibold text-white">Save objection</button>
+      </div>
+    </div>
+  );
+}
+
+function TextField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="block">
+      <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+      />
+    </label>
+  );
+}
+
+function TextAreaField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="block">
+      <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</span>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 min-h-[76px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+      />
+    </label>
+  );
+}
+
+function SelectField({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) {
+  return (
+    <label className="block">
+      <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function Pill({ label, tone = 'gray' }: { label: string; tone?: 'gray' | 'red' }) {
+  return (
+    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${tone === 'red' ? 'bg-red-50 text-red-700' : 'bg-white/80 text-gray-700'}`}>
+      {label}
+    </span>
+  );
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString();
 }
 
 function EmptyLine({ text }: { text: string }) {

@@ -2,6 +2,7 @@ import { supabase } from '../../lib/supabase';
 import { isDemoMode } from '../../lib/demoMode';
 import type { Account, Contact, StructuredSalesCapture, SalesStage, SalesPriority, InteractionType } from '../../types/v31';
 import { readLocalMemory, saveLocalStructuredCapture } from './localStore';
+import { classifyObjection, inferObjectionSeverity } from './objectionMemory';
 
 export const EMPTY_CAPTURE: StructuredSalesCapture = {
   type: 'note',
@@ -455,8 +456,9 @@ export async function saveStructuredSalesCapture(
 
   if (interactionError) throw interactionError;
 
+  let actionId: string | null = null;
   if (structured.next_action) {
-    const { error: actionError } = await supabase.from('actions').insert({
+    const { data: action, error: actionError } = await supabase.from('actions').insert({
       user_id: userId,
       account_id: accountId,
       contact_id: contactId,
@@ -466,9 +468,30 @@ export async function saveStructuredSalesCapture(
       due_date: structured.follow_up_date || null,
       suggested: false,
       source: 'capture',
-    });
+    }).select('id').single();
 
     if (actionError) throw actionError;
+    actionId = action.id;
+  }
+
+  if (structured.objection && accountId) {
+    const { error: objectionError } = await supabase.from('objections').insert({
+      user_id: userId,
+      account_id: accountId,
+      opportunity_id: opportunityId,
+      contact_id: contactId,
+      source_interaction_id: interaction.id,
+      title: structured.objection,
+      detail: structured.objection,
+      category: classifyObjection(structured.objection),
+      status: actionId ? 'addressed' : 'open',
+      severity: inferObjectionSeverity(structured.objection),
+      linked_action_id: actionId,
+      first_mentioned_at: new Date().toISOString(),
+      last_mentioned_at: new Date().toISOString(),
+    });
+
+    if (objectionError) throw objectionError;
   }
 
   await supabase

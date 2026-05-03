@@ -5,10 +5,9 @@ import { usePlanLimits } from '../../hooks/usePlanLimits';
 const navItems = [
   { to: '/app/today', label: 'Today', icon: <CalendarCheck2 className="h-5 w-5" /> },
   { to: '/app/journey', label: 'Journey', icon: <GitBranch className="h-5 w-5" /> },
-  { to: '/app/accounts', label: 'Vault', icon: <BookOpen className="h-5 w-5" /> },
-  { to: '/app/opportunities', label: 'Pipeline', icon: <Target className="h-5 w-5" /> },
+  { to: '/app/accounts', label: 'Accounts', icon: <BookOpen className="h-5 w-5" /> },
+  { to: '/app/opportunities', label: 'Opportunities', icon: <Target className="h-5 w-5" /> },
   { to: '/app/ask', label: 'Ask Memoire', icon: <MessageCircleQuestion className="h-5 w-5" /> },
-  { to: '/app/settings', label: 'Settings', icon: <Settings className="h-5 w-5" /> },
 ];
 
 export function Sidebar() {
@@ -44,9 +43,23 @@ export function Sidebar() {
           </NavLink>
         ))}
 
+        <div className="mx-4 mt-4 border-t border-white/10 pt-4">
+          <NavLink
+            to="/app/settings"
+            className={({ isActive }) =>
+              `relative flex items-center gap-3 rounded-lg px-2 py-2 text-[13px] font-medium transition-all ${
+                isActive ? 'bg-white/10 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white/75'
+              }`
+            }
+          >
+            <Settings className="h-4 w-4 opacity-80" />
+            Settings
+          </NavLink>
+        </div>
+
         <div className="mx-4 mt-6 rounded-lg border border-white/10 bg-white/5 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-white/40">V1 focus</p>
-          <p className="mt-2 text-sm leading-5 text-white/70">Capture, act today, remember accounts, move opportunities.</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-white/40">Sales Memory Loop</p>
+          <p className="mt-2 text-sm leading-5 text-white/70">Capture, structure, remember, act, ask, learn.</p>
         </div>
       </nav>
 

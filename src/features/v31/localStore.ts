@@ -1,4 +1,4 @@
-import type { Account, Contact, Interaction, Opportunity, SalesAction, StructuredSalesCapture } from '../../types/v31';
+import type { Account, Contact, Interaction, Objection, Opportunity, SalesAction, StructuredSalesCapture } from '../../types/v31';
 import { DEMO_USER_ID } from '../../lib/demoMode';
 
 interface LocalCapture {
@@ -17,6 +17,7 @@ interface LocalMemory {
   opportunities: Opportunity[];
   interactions: Interaction[];
   actions: SalesAction[];
+  objections: Objection[];
 }
 
 const KEY = 'memoire_demo_memory_v1';
@@ -32,14 +33,29 @@ function now() {
 export function readLocalMemory(): LocalMemory {
   const raw = localStorage.getItem(KEY);
   if (!raw) {
-    return { captures: [], accounts: [], contacts: [], opportunities: [], interactions: [], actions: [] };
+    return emptyMemory();
   }
 
   try {
-    return JSON.parse(raw) as LocalMemory;
+    const memory = JSON.parse(raw) as Partial<LocalMemory>;
+    return {
+      ...emptyMemory(),
+      ...memory,
+      captures: memory.captures || [],
+      accounts: memory.accounts || [],
+      contacts: memory.contacts || [],
+      opportunities: memory.opportunities || [],
+      interactions: memory.interactions || [],
+      actions: memory.actions || [],
+      objections: memory.objections || [],
+    };
   } catch {
-    return { captures: [], accounts: [], contacts: [], opportunities: [], interactions: [], actions: [] };
+    return emptyMemory();
   }
+}
+
+function emptyMemory(): LocalMemory {
+  return { captures: [], accounts: [], contacts: [], opportunities: [], interactions: [], actions: [], objections: [] };
 }
 
 function writeLocalMemory(memory: LocalMemory) {
@@ -179,9 +195,11 @@ export function saveLocalStructuredCapture(rawNote: string, structured: Structur
     created_at: timestamp,
   });
 
+  let actionId: string | null = null;
   if (structured.next_action) {
+    actionId = id();
     memory.actions.push({
-      id: id(),
+      id: actionId,
       user_id: DEMO_USER_ID,
       account_id: accountId,
       contact_id: contactId,
@@ -197,7 +215,59 @@ export function saveLocalStructuredCapture(rawNote: string, structured: Structur
     });
   }
 
+  if (structured.objection && accountId) {
+    memory.objections.push({
+      id: id(),
+      user_id: DEMO_USER_ID,
+      account_id: accountId,
+      contact_id: contactId,
+      opportunity_id: opportunityId,
+      source_interaction_id: interactionId,
+      title: structured.objection,
+      detail: structured.objection,
+      category: 'other',
+      status: actionId ? 'addressed' : 'open',
+      severity: structured.urgency,
+      response_angle: null,
+      linked_action_id: actionId,
+      first_mentioned_at: timestamp,
+      last_mentioned_at: timestamp,
+      created_at: timestamp,
+      updated_at: timestamp,
+    });
+  }
+
   writeLocalMemory(memory);
+}
+
+export function createLocalObjection(input: Omit<Objection, 'id' | 'created_at' | 'updated_at' | 'linked_action' | 'opportunity' | 'contact'>): Objection {
+  const memory = readLocalMemory();
+  const timestamp = now();
+  const objection: Objection = {
+    ...input,
+    id: id(),
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
+  memory.objections.push(objection);
+  writeLocalMemory(memory);
+  return objection;
+}
+
+export function updateLocalObjection(
+  objectionId: string,
+  input: Partial<Omit<Objection, 'id' | 'created_at' | 'updated_at' | 'linked_action' | 'opportunity' | 'contact'>>
+): Objection {
+  const memory = readLocalMemory();
+  const index = memory.objections.findIndex((item) => item.id === objectionId);
+  if (index === -1) throw new Error('Objection not found');
+  memory.objections[index] = {
+    ...memory.objections[index],
+    ...input,
+    updated_at: now(),
+  };
+  writeLocalMemory(memory);
+  return memory.objections[index];
 }
 
 export function markLocalActionDone(actionId: string) {

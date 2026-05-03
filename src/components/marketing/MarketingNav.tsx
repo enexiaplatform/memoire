@@ -14,9 +14,10 @@ export function MarketingNav() {
             </Link>
           </div>
           <div className="hidden md:flex items-center space-x-6">
+            <a href="/#demo" className="font-medium text-gray-600 hover:text-gray-900">Demo</a>
             <Link to="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</Link>
             <Link to="/signup" className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-              Get started &rarr;
+              Try Memoire
             </Link>
           </div>
           <div className="md:hidden flex items-center">
@@ -37,7 +38,8 @@ export function MarketingNav() {
       {isOpen && (
         <div className="md:hidden bg-white border-b border-gray-100 px-2 pt-2 pb-3 space-y-1 sm:px-3 shadow-lg">
           <Link to="/login" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md">Log in</Link>
-          <Link to="/signup" className="block px-3 py-2 text-base font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-md">Get started &rarr;</Link>
+          <a href="/#demo" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">View Demo</a>
+          <Link to="/signup" className="block px-3 py-2 text-base font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-md">Try Memoire</Link>
         </div>
       )}
     </nav>

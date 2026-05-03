@@ -1,8 +1,8 @@
-import type { Account, Interaction, Opportunity, SalesAction } from '../../types/v31';
+import type { Account, Interaction, Objection, Opportunity, SalesAction } from '../../types/v31';
 
 export type BrokenLoopPriority = 'P0' | 'P1' | 'P2';
 export type BrokenLoopActionLabel = 'Create Action' | 'Open Account' | 'Open Opportunity' | 'Review Capture';
-export type BrokenLoopEntityType = 'account' | 'opportunity' | 'action' | 'capture';
+export type BrokenLoopEntityType = 'account' | 'opportunity' | 'action' | 'capture' | 'objection';
 
 export interface CaptureMemory {
   id: string;
@@ -32,6 +32,7 @@ interface BrokenLoopInput {
   opportunities: Opportunity[];
   interactions: Interaction[];
   actions: SalesAction[];
+  objections?: Objection[];
   captures?: CaptureMemory[];
   staleDays?: number;
 }
@@ -44,6 +45,7 @@ export function detectBrokenLoops({
   opportunities,
   interactions,
   actions,
+  objections = [],
   captures = [],
   staleDays = 14,
 }: BrokenLoopInput): BrokenLoop[] {
@@ -58,6 +60,7 @@ export function detectBrokenLoops({
   const latestInteractionByOpportunity = latestBy(interactions, (interaction) => interaction.opportunity_id || '');
   const actionByOpportunity = firstBy(activeActions, (action) => action.opportunity_id || '');
   const actionByInteraction = firstBy(activeActions, (action) => action.interaction_id || '');
+  const actionById = new Map(activeActions.map((action) => [action.id, action]));
   const actionByCapture = firstBy(activeActions, (action) => {
     const interaction = interactions.find((item) => item.id === action.interaction_id);
     return interaction?.source_capture_id || '';
@@ -172,6 +175,25 @@ export function detectBrokenLoops({
         accountId: interaction.account_id,
         opportunityId: interaction.opportunity_id,
         captureId: interaction.source_capture_id,
+      });
+    }
+  });
+
+  objections.forEach((objection) => {
+    const linkedActionIsOpen = objection.linked_action_id ? actionById.has(objection.linked_action_id) : false;
+    if (objection.status === 'open' && !linkedActionIsOpen) {
+      loops.push({
+        id: `objection-bank-no-follow-up-${objection.id}`,
+        priority: 'P1',
+        issue: 'Objection has no follow-up',
+        affectedEntity: accountById.get(objection.account_id)?.name || objection.title,
+        whyItMatters: 'Unresolved objections can quietly block the deal.',
+        suggestedFix: 'Create an action to address this objection.',
+        actionLabel: 'Create Action',
+        entityType: 'objection',
+        entityId: objection.id,
+        accountId: objection.account_id,
+        opportunityId: objection.opportunity_id,
       });
     }
   });

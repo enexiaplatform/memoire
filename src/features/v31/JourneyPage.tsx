@@ -5,10 +5,11 @@ import { AlertTriangle, ArrowRight, CheckCircle2, Circle, Clock3, PauseCircle } 
 import { supabase } from '../../lib/supabase';
 import { isDemoMode } from '../../lib/demoMode';
 import { useAuth } from '../../hooks/useAuth';
-import type { Account, Contact, Interaction, Opportunity, SalesAction } from '../../types/v31';
+import type { Account, Contact, Interaction, MemoryHealth, Objection, Opportunity, SalesAction } from '../../types/v31';
 import { readLocalMemory } from './localStore';
 import { detectBrokenLoops } from './brokenLoops';
 import type { BrokenLoop, CaptureMemory } from './brokenLoops';
+import { calculateMemoryHealth, memoryHealthLabel } from './memoryHealth';
 
 type FlowState = 'Active' | 'Completed' | 'Missing' | 'Later';
 
@@ -27,6 +28,7 @@ interface JourneyCard {
   blocker: string;
   nextAction: string;
   currentStage: string;
+  memoryHealth: MemoryHealth;
 }
 
 const flowSteps: FlowStep[] = [
@@ -74,6 +76,7 @@ export function JourneyPage() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [actions, setActions] = useState<SalesAction[]>([]);
+  const [objections, setObjections] = useState<Objection[]>([]);
   const [captures, setCaptures] = useState<CaptureMemory[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -88,6 +91,7 @@ export function JourneyPage() {
       setOpportunities(memory.opportunities);
       setInteractions(memory.interactions);
       setActions(memory.actions);
+      setObjections(memory.objections);
       setCaptures(memory.captures.map((capture) => ({
         ...capture,
         structured_data: capture.structured_data as unknown as Record<string, unknown>,
@@ -96,12 +100,13 @@ export function JourneyPage() {
       return;
     }
 
-    const [accountResult, contactResult, opportunityResult, interactionResult, actionResult, captureResult] = await Promise.all([
+    const [accountResult, contactResult, opportunityResult, interactionResult, actionResult, objectionResult, captureResult] = await Promise.all([
       supabase.from('accounts').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
       supabase.from('contacts').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
       supabase.from('opportunities').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
       supabase.from('interactions').select('*').eq('user_id', user.id).order('occurred_at', { ascending: false }).limit(80),
       supabase.from('actions').select('*').eq('user_id', user.id).order('due_date', { ascending: true, nullsFirst: false }),
+      supabase.from('objections').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(80),
       supabase.from('captures').select('id,raw_text,structured_data,status,created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(80),
     ]);
 
@@ -110,6 +115,7 @@ export function JourneyPage() {
     if (!opportunityResult.error) setOpportunities((opportunityResult.data || []) as Opportunity[]);
     if (!interactionResult.error) setInteractions((interactionResult.data || []) as Interaction[]);
     if (!actionResult.error) setActions((actionResult.data || []) as SalesAction[]);
+    if (!objectionResult.error) setObjections((objectionResult.data || []) as Objection[]);
     if (!captureResult.error) setCaptures((captureResult.data || []) as CaptureMemory[]);
     setLoading(false);
   }, [user]);
@@ -125,6 +131,9 @@ export function JourneyPage() {
     () => opportunities.filter((opportunity) => !['won', 'lost'].includes(opportunity.stage)),
     [opportunities]
   );
+  const brokenLoops = useMemo(() => {
+    return detectBrokenLoops({ accounts, opportunities, interactions, actions, objections, captures });
+  }, [accounts, actions, captures, interactions, objections, opportunities]);
 
   const flowStates = useMemo(() => {
     const hasMemory = accounts.length > 0 || interactions.length > 0;
@@ -153,6 +162,10 @@ export function JourneyPage() {
         || (opportunity.account_id ? latestInteractionByAccount.get(opportunity.account_id) : null);
       const action = openActionByOpportunity.get(opportunity.id);
       const hasNextAction = Boolean(action || opportunity.next_action_text);
+      const memoryHealth = calculateMemoryHealth(
+        { entityType: 'opportunity', entity: opportunity },
+        { accounts, contacts, opportunities, interactions, actions, objections, brokenLoops }
+      );
 
       return {
         id: opportunity.id,
@@ -163,6 +176,7 @@ export function JourneyPage() {
         blocker: opportunity.blocker || latestInteraction?.objection || 'No blocker captured',
         nextAction: action?.title || opportunity.next_action_text || 'No next action',
         currentStage: getJourneyStage(Boolean(latestInteraction), Boolean(account), true, hasNextAction),
+        memoryHealth,
       };
     });
 
@@ -171,6 +185,10 @@ export function JourneyPage() {
       .map((account): JourneyCard => {
         const latestInteraction = latestInteractionByAccount.get(account.id);
         const action = openActions.find((item) => item.account_id === account.id);
+        const memoryHealth = calculateMemoryHealth(
+          { entityType: 'account', entity: account },
+          { accounts, contacts, opportunities, interactions, actions, objections, brokenLoops }
+        );
 
         return {
           id: account.id,
@@ -181,15 +199,12 @@ export function JourneyPage() {
           blocker: account.objections[0] || latestInteraction?.objection || 'No blocker captured',
           nextAction: action?.title || 'No next action',
           currentStage: getJourneyStage(Boolean(latestInteraction), true, false, Boolean(action)),
+          memoryHealth,
         };
       });
 
     return [...opportunityCards, ...accountOnlyCards].slice(0, 12);
-  }, [accountById, accounts, activeOpportunities, contactByAccountId, interactions, openActions]);
-
-  const brokenLoops = useMemo(() => {
-    return detectBrokenLoops({ accounts, opportunities, interactions, actions, captures });
-  }, [accounts, actions, captures, interactions, opportunities]);
+  }, [accountById, accounts, actions, activeOpportunities, brokenLoops, contactByAccountId, contacts, interactions, objections, openActions, opportunities]);
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
@@ -204,7 +219,7 @@ export function JourneyPage() {
         </div>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Sales Memory Loop</h1>
         <p className="mt-2 max-w-2xl text-sm text-gray-500">
-          See how a customer interaction becomes memory, opportunity context, revenue action, and a grounded answer.
+          See where Capture, Structure, Memory, Opportunity, Next Action, Ask Memoire, and Learning are working or broken.
         </p>
       </header>
 
@@ -237,6 +252,12 @@ export function JourneyPage() {
               <p className="mt-1 text-sm leading-6 text-gray-600">
                 Memoire will turn it into account memory, opportunity context, and next action.
               </p>
+              <Link
+                to="/app/today"
+                className="mt-4 inline-flex rounded-full bg-white px-3 py-1.5 text-xs font-bold text-brand-blue ring-1 ring-blue-100 hover:ring-brand-blue/30"
+              >
+                Go to Quick Capture
+              </Link>
             </div>
           ) : (
             <div className="space-y-3">
@@ -248,7 +269,10 @@ export function JourneyPage() {
                       <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-gray-400">{journey.opportunityName}</p>
                       <p className="mt-1 text-xs text-gray-500">{journey.contactName}</p>
                     </div>
-                    <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-brand-blue">{journey.currentStage}</span>
+                    <div className="flex flex-col items-end gap-2">
+                      <MemoryHealthBadge health={journey.memoryHealth} />
+                      <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-brand-blue">{journey.currentStage}</span>
+                    </div>
                   </div>
                   <div className="mt-4 space-y-2 text-sm text-gray-600">
                     <JourneyLine label="Last interaction" value={journey.lastInteraction} />
@@ -305,6 +329,20 @@ export function JourneyPage() {
         </section>
       </div>
     </div>
+  );
+}
+
+function MemoryHealthBadge({ health }: { health: MemoryHealth }) {
+  const tone = {
+    healthy: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    needs_attention: 'border-amber-200 bg-amber-50 text-amber-700',
+    broken: 'border-red-200 bg-red-50 text-red-700',
+  }[health.status];
+
+  return (
+    <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${tone}`}>
+      {memoryHealthLabel(health.status)}
+    </span>
   );
 }
 

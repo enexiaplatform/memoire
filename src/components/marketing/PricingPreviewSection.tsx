@@ -22,11 +22,11 @@ export function PricingPreviewSection() {
               </li>
               <li className="flex items-center text-gray-600">
                 <svg className="w-5 h-5 text-indigo-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                50 entities
+                Starter Account Memory
               </li>
               <li className="flex items-center text-gray-400">
                 <svg className="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                No AI search
+                Limited Ask Memoire
               </li>
             </ul>
             
@@ -39,7 +39,7 @@ export function PricingPreviewSection() {
           <div className="bg-white rounded-2xl p-8 border-2 border-indigo-600 shadow-md flex flex-col h-full relative">
             <div className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/2">
               <span className="bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">
-                ★ Popular
+                Popular
               </span>
             </div>
             <h3 className="text-2xl font-semibold text-gray-900 mb-2">Personal</h3>
@@ -52,27 +52,27 @@ export function PricingPreviewSection() {
               </li>
               <li className="flex items-center text-gray-600">
                 <svg className="w-5 h-5 text-indigo-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                Unlimited entities
+                Unlimited Account Memory
               </li>
               <li className="flex items-center text-gray-600">
                 <svg className="w-5 h-5 text-indigo-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                Full AI search
+                Full Ask Memoire
               </li>
               <li className="flex items-center text-gray-600">
                 <svg className="w-5 h-5 text-indigo-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                Full export
+                Export-ready Sales Memory
               </li>
             </ul>
             
             <Link to="/signup" className="block w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-center transition-colors">
-              Get Personal &rarr;
+              Get Personal
             </Link>
           </div>
         </div>
 
         <div className="text-center mt-12">
           <Link to="/pricing" className="text-indigo-600 font-medium hover:text-indigo-800 transition-colors">
-            See full pricing &rarr;
+            See full pricing
           </Link>
         </div>
       </div>

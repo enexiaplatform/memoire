@@ -5,17 +5,18 @@ export function HeroSection() {
     <section className="w-full bg-white pt-32 pb-24 md:pt-40 md:pb-32 px-4 text-center">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 leading-tight mb-6">
-          Your professional memory,<br className="hidden sm:block" /> portable across companies.
+          Your CRM tracks the deal.<br className="hidden sm:block" /> Memoire remembers the story.
         </h1>
-        <p className="max-w-[560px] mx-auto text-lg md:text-xl text-gray-600 mb-10 leading-relaxed">
-          Every meeting, customer insight, and deal context — captured in seconds, 
-          structured automatically, and owned by you forever.
+        <p className="max-w-[680px] mx-auto text-lg md:text-xl text-gray-600 mb-10 leading-relaxed">
+          Memoire is a personal Sales Memory System for B2B sales professionals. Capture customer interactions, turn them into account memory and next actions, and ask your sales brain what to do next.
         </p>
-        <div className="flex flex-col items-center gap-3">
-          <Link to="/signup" className="bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-medium px-8 py-4 rounded-lg transition-colors">
-            Start for free &rarr;
+        <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link to="/signup" className="rounded-lg bg-indigo-600 px-8 py-4 text-lg font-medium text-white transition-colors hover:bg-indigo-700">
+            Try Memoire
           </Link>
-          <span className="text-sm text-gray-400">No credit card required</span>
+          <a href="#demo" className="rounded-lg border border-gray-200 bg-white px-8 py-4 text-lg font-medium text-gray-700 transition-colors hover:border-indigo-200 hover:text-indigo-700">
+            View Demo
+          </a>
         </div>
       </div>
     </section>

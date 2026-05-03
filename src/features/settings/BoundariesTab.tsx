@@ -64,7 +64,7 @@ export function BoundariesTab() {
             </li>
             <li className="flex items-start gap-3">
               <span className="text-green-500 font-bold mt-0.5">✓</span>
-              <span className="text-sm text-gray-700">Read the algorithm behind any number shown on your dashboard</span>
+              <span className="text-sm text-gray-700">Understand the logic behind any Memory Health or Sales Memory signal shown in Memoire</span>
             </li>
           </ul>
         </div>

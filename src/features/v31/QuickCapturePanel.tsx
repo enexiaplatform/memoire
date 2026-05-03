@@ -42,7 +42,7 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
     }
 
     setLoading(true);
-    setMessage(null);
+    setMessage('Structuring interaction...');
     setSaveStatus('idle');
     try {
       const context = user ? await loadInteractionStructureContext(user.id) : undefined;
@@ -50,11 +50,13 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
       setStructured(result);
       const missing = getMissingInteractionFields(result);
       if (missing.length > 0) {
-        setMessage('Some fields are missing. You can still save this, or complete them first.');
+        setMessage('Missing context - add account, interaction, or next action if you have it.');
+      } else {
+        setMessage('Interaction structured. Review before saving to Sales Memory.');
       }
     } catch {
       setStructured({ ...EMPTY_CAPTURE, interaction_summary: rawNote.trim() });
-      setMessage('Some fields are missing. You can still save this, or complete them first.');
+      setMessage('Missing context - add account, interaction, or next action if you have it.');
     } finally {
       setLoading(false);
     }
@@ -70,12 +72,12 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
       await saveStructuredSalesCapture(user.id, rawNote, structured);
       setRawNote('');
       setStructured(null);
-      setMessage('Saved to Account Memory');
+      setMessage('Saved to Sales Memory');
       setSaveStatus('saved');
       onSaved?.();
     } catch (err) {
       console.error(err);
-      setMessage('Error - please review missing fields');
+      setMessage('Error - please try again');
       setSaveStatus('error');
     } finally {
       setSaving(false);
@@ -88,14 +90,14 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
     <section className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
-          <h2 className="text-lg font-bold text-navy">Post-Interaction Command</h2>
+          <h2 className="text-lg font-bold text-navy">Quick Capture</h2>
           {!compact && (
-            <p className="text-sm text-gray-500 mt-1">Turn a raw customer note into account memory, opportunity context, and next action.</p>
+            <p className="text-sm text-gray-500 mt-1">Paste a customer interaction and turn it into Sales Memory, opportunity context, and a Next Action.</p>
           )}
         </div>
         <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-brand-blue">
           <Sparkles className="h-3.5 w-3.5" />
-          V1 spine
+          Capture to Memory to Action
         </div>
       </div>
 
@@ -134,7 +136,7 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="text-base font-bold text-navy">Structured Preview</h3>
-              <p className="mt-1 text-sm text-gray-500">Review and edit before saving to memory.</p>
+              <p className="mt-1 text-sm text-gray-500">Review and edit before saving to Living Memory.</p>
             </div>
             <span className={`rounded-full px-3 py-1 text-xs font-bold ${
               structured.confidence === 'high'
@@ -198,7 +200,7 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
               className="inline-flex items-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save to Memory
+              Save to Sales Memory
             </button>
           </div>
         </div>

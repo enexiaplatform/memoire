@@ -86,6 +86,43 @@ export interface SalesAction {
   opportunity?: Pick<Opportunity, 'id' | 'title' | 'stage'> | null;
 }
 
+export type ObjectionCategory =
+  | 'price'
+  | 'timeline'
+  | 'support'
+  | 'product_fit'
+  | 'compliance'
+  | 'competitor'
+  | 'authority'
+  | 'budget'
+  | 'other';
+
+export type ObjectionStatus = 'open' | 'addressed' | 'resolved' | 'dismissed';
+export type ObjectionSeverity = 'low' | 'medium' | 'high';
+
+export interface Objection {
+  id: string;
+  user_id: string;
+  account_id: string;
+  opportunity_id: string | null;
+  contact_id: string | null;
+  source_interaction_id: string | null;
+  title: string;
+  detail: string | null;
+  category: ObjectionCategory;
+  status: ObjectionStatus;
+  severity: ObjectionSeverity;
+  response_angle: string | null;
+  linked_action_id: string | null;
+  first_mentioned_at: string | null;
+  last_mentioned_at: string | null;
+  created_at: string;
+  updated_at: string;
+  linked_action?: Pick<SalesAction, 'id' | 'title' | 'status' | 'due_date'> | null;
+  opportunity?: Pick<Opportunity, 'id' | 'title' | 'stage'> | null;
+  contact?: Pick<Contact, 'id' | 'name' | 'role'> | null;
+}
+
 export interface StructuredSalesCapture {
   type: InteractionType;
   account: string;
@@ -134,4 +171,119 @@ export interface AccountNarrative {
   keyObjections: string[];
   missingContext: string[];
   updatedAt: string;
+}
+
+export type FollowUpGoal =
+  | 'follow_up_after_meeting'
+  | 'address_objection'
+  | 'send_requested_information'
+  | 'confirm_next_step'
+  | 'revive_stale_deal'
+  | 'ask_decision_timeline';
+
+export type FollowUpTone = 'professional' | 'consultative' | 'concise' | 'warm' | 'firm_polite';
+export type FollowUpLength = 'short' | 'medium' | 'detailed';
+
+export interface FollowUpContext {
+  accountName: string;
+  contactName?: string;
+  opportunityName?: string;
+  lastInteractionSummary?: string;
+  objections?: string[];
+  painPoints?: string[];
+  nextAction?: string;
+  goal: FollowUpGoal;
+  tone: FollowUpTone;
+  length: FollowUpLength;
+}
+
+export interface FollowUpDraft {
+  subject: string;
+  body: string;
+  missingFields: string[];
+}
+
+export interface AskMemoireContext {
+  scope: 'all' | 'account' | 'opportunity';
+  accountId?: string;
+  opportunityId?: string;
+  includedData: {
+    accounts?: Account[];
+    opportunities?: Opportunity[];
+    interactions?: Interaction[];
+    actions?: SalesAction[];
+    objections?: Objection[];
+  };
+  missingContext: string[];
+}
+
+export interface AskMemoireAnswer {
+  answer: string;
+  contextUsed: string[];
+  suggestedNextAction?: string;
+  missingContext: string[];
+  suggestedQuestions: string[];
+}
+
+export type MemoryHealthStatus = 'healthy' | 'needs_attention' | 'broken';
+
+export interface MemoryHealth {
+  entityType: 'account' | 'opportunity';
+  entityId: string;
+  status: MemoryHealthStatus;
+  reasons: string[];
+  missingContext: string[];
+  suggestedFixes: string[];
+  signals: {
+    hasRecentInteraction: boolean;
+    hasNextAction: boolean;
+    hasOpportunity: boolean;
+    hasContact: boolean;
+    hasOpenObjection: boolean;
+    hasDecisionContext: boolean;
+    hasBrokenLoop: boolean;
+  };
+  updatedAt: string;
+}
+
+export type MemoryChangeType =
+  | 'new_interaction'
+  | 'new_objection'
+  | 'overdue_action'
+  | 'memory_health_changed'
+  | 'broken_loop_appeared'
+  | 'opportunity_stage_changed'
+  | 'next_action_created';
+
+export interface MemoryChange {
+  id: string;
+  type: MemoryChangeType;
+  title: string;
+  description: string;
+  entityType: 'account' | 'opportunity' | 'action' | 'objection' | 'interaction';
+  entityId?: string;
+  accountId?: string;
+  opportunityId?: string;
+  severity: 'low' | 'medium' | 'high';
+  suggestedReviewAction?: string;
+  createdAt: string;
+}
+
+export type SalesPatternType =
+  | 'proposal_momentum_loss'
+  | 'objection_cluster'
+  | 'capture_without_action'
+  | 'stale_after_first_meeting'
+  | 'missing_decision_context';
+
+export interface SalesPattern {
+  id: string;
+  type: SalesPatternType;
+  title: string;
+  insight: string;
+  evidence: string[];
+  affectedEntityIds: string[];
+  severity: 'low' | 'medium' | 'high';
+  suggestedBehavior: string;
+  createdAt: string;
 }

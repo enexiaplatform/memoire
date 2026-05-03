@@ -44,10 +44,10 @@ export function AccountsPage() {
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
       <header className="mb-6">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Vault / Accounts</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Account Memory</h1>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Accounts</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Living Account Memory</h1>
         <p className="mt-2 max-w-2xl text-sm text-gray-500">
-          A living memory of customers, people, pains, objections, actions, and opportunities.
+          Every account keeps the customer story, people, pains, objections, Next Actions, and opportunity context together.
         </p>
       </header>
 
@@ -62,12 +62,12 @@ export function AccountsPage() {
       </div>
 
       {loading ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading accounts...</div>
+        <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading Account Memory...</div>
       ) : visibleAccounts.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
           <Building2 className="mx-auto h-8 w-8 text-gray-300" />
-          <p className="mt-3 text-sm font-semibold text-gray-900">No account memory yet</p>
-          <p className="mt-1 text-sm text-gray-500">Use Quick Capture from Today to create your first account memory.</p>
+          <p className="mt-3 text-sm font-semibold text-gray-900">No Account Memory yet</p>
+          <p className="mt-1 text-sm text-gray-500">Start by capturing an interaction. Memoire will turn it into Account Memory, opportunity context, and a Next Action.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -83,7 +83,7 @@ export function AccountsPage() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <h2 className="truncate text-lg font-bold text-navy">{account.name}</h2>
-                  <p className="mt-1 line-clamp-2 text-sm text-gray-500">{account.summary || 'No summary captured yet.'}</p>
+                  <p className="mt-1 line-clamp-2 text-sm text-gray-500">{account.summary || 'Capture an interaction to build this Living Memory.'}</p>
                 </div>
                 <ChevronRight className="h-5 w-5 text-gray-300 transition group-hover:text-brand-blue" />
               </div>

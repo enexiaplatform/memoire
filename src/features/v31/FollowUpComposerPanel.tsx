@@ -1,0 +1,189 @@
+import { useMemo, useState } from 'react';
+import { Copy, RefreshCw, X } from 'lucide-react';
+import type { FollowUpContext, FollowUpDraft, FollowUpGoal, FollowUpLength, FollowUpTone } from '../../types/v31';
+import {
+  followUpGoals,
+  followUpLengths,
+  followUpTones,
+  generateFollowUpDraft,
+  getMissingFollowUpContext,
+} from './followUpComposer';
+
+interface FollowUpComposerPanelProps {
+  initialContext: FollowUpContext;
+  onClose: () => void;
+}
+
+export function FollowUpComposerPanel({ initialContext, onClose }: FollowUpComposerPanelProps) {
+  const [context, setContext] = useState<FollowUpContext>(initialContext);
+  const [draft, setDraft] = useState<FollowUpDraft | null>(null);
+  const [copyMessage, setCopyMessage] = useState('');
+  const [draftStatus, setDraftStatus] = useState('');
+  const missingFields = useMemo(() => getMissingFollowUpContext(context), [context]);
+
+  const updateContext = <K extends keyof FollowUpContext>(field: K, value: FollowUpContext[K]) => {
+    setContext((current) => ({ ...current, [field]: value }));
+    setDraft(null);
+    setCopyMessage('');
+    setDraftStatus('');
+  };
+
+  const generate = () => {
+    setDraftStatus('Generating...');
+    setDraft(generateFollowUpDraft(context));
+    setDraftStatus('Draft ready');
+    setCopyMessage('');
+  };
+
+  const copyDraft = async () => {
+    if (!draft) return;
+    const text = `Subject: ${draft.subject}\n\n${draft.body}`;
+    await navigator.clipboard.writeText(text);
+    setCopyMessage('Copied.');
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 px-4 py-6">
+      <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-gray-100 bg-white px-5 py-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Follow-up Composer</p>
+            <h2 className="mt-1 text-xl font-bold text-navy">Draft from sales memory</h2>
+            <p className="mt-1 text-sm text-gray-500">No email is sent. Edit and copy the draft when ready.</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="Close composer">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-5 p-5">
+          {missingFields.length > 0 && (
+            <div className="rounded-lg border border-amber-100 bg-amber-50 p-4">
+              <p className="text-sm font-bold text-amber-900">Missing context - add account, interaction, or Next Action to draft a stronger follow-up.</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {missingFields.map((field) => (
+                  <span key={field} className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-amber-800">{field}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <TextField label="Recipient / Contact" value={context.contactName || ''} onChange={(value) => updateContext('contactName', value)} />
+            <TextField label="Account" value={context.accountName} onChange={(value) => updateContext('accountName', value)} />
+            <TextField label="Opportunity" value={context.opportunityName || ''} onChange={(value) => updateContext('opportunityName', value)} />
+            <TextField label="Next action" value={context.nextAction || ''} onChange={(value) => updateContext('nextAction', value)} />
+            <TextAreaField label="Last interaction" value={context.lastInteractionSummary || ''} onChange={(value) => updateContext('lastInteractionSummary', value)} />
+            <TextAreaField label="Known objections" value={(context.objections || []).join('; ')} onChange={(value) => updateContext('objections', splitList(value))} />
+            <TextAreaField label="Pain points" value={(context.painPoints || []).join('; ')} onChange={(value) => updateContext('painPoints', splitList(value))} />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <SelectField label="Goal" value={context.goal} options={followUpGoals} onChange={(value) => updateContext('goal', value as FollowUpGoal)} />
+            <SelectField label="Tone" value={context.tone} options={followUpTones} onChange={(value) => updateContext('tone', value as FollowUpTone)} />
+            <SelectField label="Message length" value={context.length} options={followUpLengths} onChange={(value) => updateContext('length', value as FollowUpLength)} />
+          </div>
+
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            {draftStatus && (
+              <span className={`text-sm font-semibold ${draft ? 'text-emerald-700' : 'text-gray-500'}`}>
+                {draftStatus}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={generate}
+              className="inline-flex items-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-sm font-semibold text-white"
+            >
+              <RefreshCw className="h-4 w-4" />
+              {draft ? 'Regenerate' : 'Generate draft'}
+            </button>
+          </div>
+
+          {draft && (
+            <section className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <h3 className="text-base font-bold text-navy">Generated Draft</h3>
+                <div className="flex items-center gap-2">
+                  {copyMessage && <span className="text-xs font-semibold text-emerald-700">{copyMessage}</span>}
+                  <button
+                    type="button"
+                    onClick={copyDraft}
+                    className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-gray-700 ring-1 ring-gray-200 hover:bg-gray-100"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    Copy
+                  </button>
+                </div>
+              </div>
+              <TextField label="Subject" value={draft.subject} onChange={(value) => setDraft((current) => current ? { ...current, subject: value } : current)} />
+              <div className="mt-3">
+                <TextAreaField label="Message body" value={draft.body} onChange={(value) => setDraft((current) => current ? { ...current, body: value } : current)} large />
+              </div>
+            </section>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function TextField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="block">
+      <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+      />
+    </label>
+  );
+}
+
+function TextAreaField({ label, value, onChange, large = false }: { label: string; value: string; onChange: (value: string) => void; large?: boolean }) {
+  return (
+    <label className="block">
+      <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</span>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className={`mt-1 w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10 ${large ? 'min-h-[220px]' : 'min-h-[84px]'}`}
+      />
+    </label>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function splitList(value: string) {
+  return value
+    .split(/[,;]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
