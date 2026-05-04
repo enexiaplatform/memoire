@@ -62,7 +62,7 @@ export default async function handler(req: any, res: any) {
     }
 
     case 'checkout.session.completed': {
-      const session = event.data.object as Stripe.CheckoutSession;
+      const session = event.data.object as Stripe.Checkout.Session;
       const userId = getUserId(session);
       if (userId) {
         await supabase.from('activity_log').insert({
