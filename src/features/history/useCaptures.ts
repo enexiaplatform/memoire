@@ -30,7 +30,7 @@ export function useCaptures(filters: { search: string; entityId: string | null; 
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
 
-      let selectString = `
+      const selectString = `
         id,
         raw_text,
         created_at,

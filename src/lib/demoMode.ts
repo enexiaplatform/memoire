@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const demoModeEnabled = import.meta.env.VITE_ENABLE_DEMO_MODE === 'true';
+export const isFounderWorkspaceEnabled = import.meta.env.VITE_ENABLE_FOUNDER_WORKSPACE === 'true';
 
 export const isSupabaseConfigured =
   Boolean(supabaseUrl) &&
@@ -10,7 +11,7 @@ export const isSupabaseConfigured =
   !supabaseUrl.includes('placeholder') &&
   !supabaseAnonKey.includes('placeholder');
 
-export const isDemoMode = demoModeEnabled && !isSupabaseConfigured;
+export const isDemoMode = isFounderWorkspaceEnabled || (demoModeEnabled && !isSupabaseConfigured);
 
 export const missingSupabaseMessage =
   !supabaseUrl ||

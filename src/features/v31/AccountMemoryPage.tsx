@@ -105,7 +105,6 @@ export function AccountMemoryPage() {
   const hasContext = hasEnoughAccountContext(narrative);
   const decisionContext = [
     narrative.currentStage ? `Stage: ${narrative.currentStage}` : '',
-    opportunities[0]?.confidence ? `Confidence: ${opportunities[0].confidence}` : '',
     opportunities[0]?.estimated_value ? `Estimated value: ${formatMoney(opportunities[0].estimated_value)}` : '',
   ].filter(Boolean);
   const relationshipContext = [

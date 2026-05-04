@@ -1,5 +1,4 @@
 import OpenAI from 'openai';
-import { createClient } from '@supabase/supabase-js';
 
 // Groq uses OpenAI-compatible API — no extra package needed
 const groq = new OpenAI({

@@ -1,5 +1,6 @@
 import type { Account, Contact, Interaction, Objection, Opportunity, SalesAction, StructuredSalesCapture } from '../../types/v31';
 import { DEMO_USER_ID } from '../../lib/demoMode';
+import { henryFounderWorkspaceSeed, HENRY_FOUNDER_WORKSPACE_LABEL } from './data/henryFounderWorkspaceSeed';
 
 interface LocalCapture {
   id: string;
@@ -18,6 +19,13 @@ interface LocalMemory {
   interactions: Interaction[];
   actions: SalesAction[];
   objections: Objection[];
+  founderWorkspace?: {
+    label: string;
+    loadedAt: string;
+    brandReferences: unknown[];
+    pricingContexts: unknown[];
+    reviewFlags: unknown[];
+  };
 }
 
 const KEY = 'memoire_demo_memory_v1';
@@ -48,6 +56,7 @@ export function readLocalMemory(): LocalMemory {
       interactions: memory.interactions || [],
       actions: memory.actions || [],
       objections: memory.objections || [],
+      founderWorkspace: memory.founderWorkspace,
     };
   } catch {
     return emptyMemory();
@@ -278,4 +287,52 @@ export function markLocalActionDone(actionId: string) {
     action.updated_at = now();
     writeLocalMemory(memory);
   }
+}
+
+export function loadHenryFounderWorkspace() {
+  const memory = readLocalMemory();
+  const loadedAt = new Date().toISOString();
+
+  memory.accounts = mergeById(memory.accounts, henryFounderWorkspaceSeed.accounts);
+  memory.contacts = mergeById(memory.contacts, henryFounderWorkspaceSeed.contacts);
+  memory.opportunities = mergeById(memory.opportunities, henryFounderWorkspaceSeed.opportunities);
+  memory.interactions = mergeById(memory.interactions, henryFounderWorkspaceSeed.interactions);
+  memory.actions = mergeById(memory.actions, henryFounderWorkspaceSeed.actions);
+  memory.objections = mergeById(memory.objections, henryFounderWorkspaceSeed.objections);
+  memory.founderWorkspace = {
+    label: HENRY_FOUNDER_WORKSPACE_LABEL,
+    loadedAt,
+    brandReferences: henryFounderWorkspaceSeed.brandReferences,
+    pricingContexts: henryFounderWorkspaceSeed.pricingContexts,
+    reviewFlags: henryFounderWorkspaceSeed.reviewFlags,
+  };
+
+  writeLocalMemory(memory);
+  return {
+    label: HENRY_FOUNDER_WORKSPACE_LABEL,
+    loadedAt,
+    counts: {
+      accounts: henryFounderWorkspaceSeed.accounts.length,
+      contacts: henryFounderWorkspaceSeed.contacts.length,
+      opportunities: henryFounderWorkspaceSeed.opportunities.length,
+      interactions: henryFounderWorkspaceSeed.interactions.length,
+      actions: henryFounderWorkspaceSeed.actions.length,
+      objections: henryFounderWorkspaceSeed.objections.length,
+      pricingContexts: henryFounderWorkspaceSeed.pricingContexts.length,
+      brandReferences: henryFounderWorkspaceSeed.brandReferences.length,
+      reviewFlags: henryFounderWorkspaceSeed.reviewFlags.length,
+    },
+  };
+}
+
+export function getFounderWorkspaceState() {
+  return readLocalMemory().founderWorkspace || null;
+}
+
+function mergeById<T extends { id: string }>(existing: T[], incoming: T[]) {
+  const byId = new Map(existing.map((item) => [item.id, item]));
+  incoming.forEach((item) => {
+    byId.set(item.id, item);
+  });
+  return Array.from(byId.values());
 }

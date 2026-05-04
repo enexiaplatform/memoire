@@ -8,7 +8,7 @@ import { isDemoMode } from '../../lib/demoMode';
 import type { Account, AskMemoireAnswer, AskMemoireContext, Interaction, MemoryChange, Objection, Opportunity, SalesAction, SalesPattern } from '../../types/v31';
 import { readLocalMemory } from './localStore';
 import { answerFromMemory, buildAskMemoireContext, presetsForScope } from './askMemoireContext';
-import { detectBrokenLoops } from './brokenLoops';
+import { detectBrokenLoops, type BrokenLoop } from './brokenLoops';
 import { calculateMemoryHealth } from './memoryHealth';
 import { buildWhatChangedDigest, formatMemoryChangeSeverity } from './whatChangedDigest';
 import { detectSalesPatterns, salesPatternSeverityLabel } from './salesPatternDetector';
@@ -173,6 +173,17 @@ export function AskMemoirePage() {
 
     try {
       const fallbackAnswer = answerFromMemory(nextQuestion, contextPacket);
+      if (scope === 'all' && isAttentionQuestion(nextQuestion)) {
+        setAnswer(answerFromAttention({
+          context: contextPacket,
+          accounts: scopedMemory.accounts,
+          opportunities: scopedMemory.opportunities,
+          actions: scopedMemory.actions,
+          brokenLoops: scopedBrokenLoops,
+          memoryHealth: scopedMemoryHealth,
+        }));
+        return;
+      }
       if (isWhatChangedQuestion(nextQuestion)) {
         setAnswer(answerFromChanges(whatChanged, contextPacket));
         return;
@@ -383,6 +394,106 @@ function isPatternQuestion(question: string) {
   return normalized.includes('pattern') || normalized.includes('sales activity');
 }
 
+function isAttentionQuestion(question: string) {
+  const normalized = question.toLowerCase();
+  return [
+    'what needs attention',
+    'which accounts need attention',
+    'what should i focus on',
+    'which deals are broken',
+    'which accounts are broken',
+    'show broken loops',
+    'what are my broken loops',
+  ].some((pattern) => normalized.includes(pattern));
+}
+
+function answerFromAttention({
+  context,
+  accounts,
+  opportunities,
+  actions,
+  brokenLoops,
+  memoryHealth,
+}: {
+  context: AskMemoireContext;
+  accounts: Account[];
+  opportunities: Opportunity[];
+  actions: SalesAction[];
+  brokenLoops: BrokenLoop[];
+  memoryHealth: ReturnType<typeof calculateMemoryHealth>[];
+}): AskMemoireAnswer {
+  const accountById = new Map(accounts.map((account) => [account.id, account]));
+  const opportunityById = new Map(opportunities.map((opportunity) => [opportunity.id, opportunity]));
+  const openActionsByAccount = firstBy(actions.filter((action) => action.status === 'open'), (action) => action.account_id || '');
+  const openActionsByOpportunity = firstBy(actions.filter((action) => action.status === 'open'), (action) => action.opportunity_id || '');
+  const seen = new Set<string>();
+
+  const loopItems = brokenLoops.map((loop) => ({
+    id: `loop-${loop.id}`,
+    rank: loop.priority === 'P0' ? 0 : loop.priority === 'P1' ? 1 : 2,
+    entityKey: loop.opportunityId ? `opportunity-${loop.opportunityId}` : loop.accountId ? `account-${loop.accountId}` : `${loop.entityType}-${loop.entityId}`,
+    entityName: loop.affectedEntity,
+    reason: `${loop.issue}: ${loop.whyItMatters}`,
+    signalSource: 'Broken Loop',
+    suggestedNextAction: loop.suggestedFix,
+    missingContext: [] as string[],
+  }));
+
+  const healthItems = memoryHealth
+    .filter((health) => health.status === 'broken' || health.status === 'needs_attention')
+    .map((health) => {
+      const opportunity = health.entityType === 'opportunity' ? opportunityById.get(health.entityId) : undefined;
+      const account = health.entityType === 'account'
+        ? accountById.get(health.entityId)
+        : accountById.get(opportunity?.account_id || '');
+      const linkedAction = health.entityType === 'opportunity'
+        ? openActionsByOpportunity.get(health.entityId)
+        : openActionsByAccount.get(health.entityId);
+
+      return {
+        id: `health-${health.entityType}-${health.entityId}`,
+        rank: health.status === 'broken' ? 3 : 4,
+        entityKey: `${health.entityType}-${health.entityId}`,
+        entityName: opportunity ? `${account?.name || 'Unknown account'} / ${opportunity.title}` : account?.name || 'Unknown account',
+        reason: health.reasons[0] || (health.status === 'broken' ? 'Sales Memory loop is broken.' : 'Sales Memory needs more context.'),
+        signalSource: 'Memory Health',
+        suggestedNextAction: linkedAction?.title || health.suggestedFixes[0] || 'Create or confirm the next action.',
+        missingContext: health.missingContext,
+      };
+    });
+
+  const rankedItems = [...loopItems, ...healthItems]
+    .sort((a, b) => a.rank - b.rank)
+    .filter((item) => {
+      if (seen.has(item.entityKey)) return false;
+      seen.add(item.entityKey);
+      return true;
+    })
+    .slice(0, 8);
+
+  if (rankedItems.length === 0) {
+    return {
+      answer: 'No major attention items detected. Your sales memory loop looks healthy.',
+      contextUsed: ['All Memory', 'Broken Loops', 'Memory Health'],
+      missingContext: [],
+      suggestedQuestions: presetsForScope(context.scope).slice(0, 4),
+    };
+  }
+
+  return {
+    answer: `Needs attention:\n${rankedItems.map((item, index) => [
+      `${index + 1}. ${item.entityName}`,
+      `   Reason: ${item.reason}`,
+      `   Signal source: ${item.signalSource}`,
+      `   Suggested next action: ${item.suggestedNextAction}`,
+    ].join('\n')).join('\n\n')}`,
+    contextUsed: ['All Memory', `${brokenLoops.length} Broken Loop item(s)`, `${memoryHealth.length} Memory Health signal(s)`],
+    suggestedNextAction: rankedItems[0]?.suggestedNextAction,
+    missingContext: unique(rankedItems.flatMap((item) => item.missingContext)).slice(0, 5),
+    suggestedQuestions: presetsForScope(context.scope).slice(0, 4),
+  };
+}
+
 function answerFromChanges(changes: MemoryChange[], context: AskMemoireContext): AskMemoireAnswer {
   if (changes.length === 0) {
     return {
@@ -443,4 +554,17 @@ function AnswerBlock({ title, items, tone = 'gray' }: { title: string; items: st
       </div>
     </div>
   );
+}
+
+function firstBy<T>(items: T[], getKey: (item: T) => string) {
+  const result = new Map<string, T>();
+  items.forEach((item) => {
+    const key = getKey(item);
+    if (key && !result.has(key)) result.set(key, item);
+  });
+  return result;
+}
+
+function unique(values: string[]) {
+  return Array.from(new Set(values.filter(Boolean)));
 }

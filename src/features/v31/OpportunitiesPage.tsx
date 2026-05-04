@@ -180,7 +180,6 @@ function OpportunityCard({ opportunity, health, onDraft }: { opportunity: Opport
         <Fact label="Commercial movement" value={value} icon={<DollarSign className="h-3.5 w-3.5" />} />
         <Fact label="Last touch" value={lastTouch} />
         <Fact label="Urgency" value={opportunity.urgency} />
-        <Fact label="Confidence" value={opportunity.confidence} />
         <Fact label="Blocker" value={opportunity.blocker || 'None captured'} />
       </div>
 

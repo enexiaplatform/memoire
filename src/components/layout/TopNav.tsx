@@ -1,9 +1,11 @@
 import { useAuth } from '../../hooks/useAuth';
 import { isDemoMode, isSupabaseConfigured } from '../../lib/demoMode';
+import { getFounderWorkspaceState } from '../../features/v31/localStore';
 import { Button } from '../ui/Button';
 
 export function TopNav() {
   const { user, signOut } = useAuth();
+  const workspaceLabel = isDemoMode ? getFounderWorkspaceState()?.label || null : null;
 
   return (
     <header className="fixed top-0 left-[220px] right-0 h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 z-30">
@@ -21,6 +23,11 @@ export function TopNav() {
         }`}>
           {isDemoMode ? 'Demo Mode' : isSupabaseConfigured ? 'Synced Mode' : 'Setup Required'}
         </span>
+        {workspaceLabel && (
+          <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">
+            {workspaceLabel}
+          </span>
+        )}
         {user && (
           <>
             <span className="text-sm text-gray-600">{user.email}</span>
