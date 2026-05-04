@@ -67,7 +67,7 @@ export function AccountsPage() {
         <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
           <Building2 className="mx-auto h-8 w-8 text-gray-300" />
           <p className="mt-3 text-sm font-semibold text-gray-900">No Account Memory yet</p>
-          <p className="mt-1 text-sm text-gray-500">Start by capturing an interaction. Memoire will turn it into Account Memory, opportunity context, and a Next Action.</p>
+          <p className="mt-1 text-sm text-gray-500">Your accounts will become Living Memory pages once you capture interactions or import account data.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

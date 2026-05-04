@@ -440,7 +440,7 @@ function ActionSection({
       <div className="divide-y divide-gray-100">
         {actions.length === 0 ? (
           <p className="px-5 py-5 text-sm text-gray-500">
-            No Next Actions here yet. Capture an interaction and Memoire will turn it into a clear Sales Memory action.
+            Capture your first customer interaction or create a next action. Memoire will help you decide what to do today.
           </p>
         ) : actions.map((action) => (
           <div key={action.id} className="flex items-start gap-3 px-5 py-4">
@@ -455,20 +455,45 @@ function ActionSection({
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-gray-900">{action.title}</p>
               <p className="mt-1 text-xs text-gray-500">
-                {[action.account?.name, action.opportunity?.title, action.due_date].filter(Boolean).join(' / ') || 'No linked account yet'}
+                {[action.account?.name, action.opportunity?.title, formatActionTiming(action)].filter(Boolean).join(' / ') || 'No linked account yet'}
               </p>
-              <button
-                type="button"
-                onClick={() => onDraft(action)}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs font-bold text-gray-700 ring-1 ring-gray-200 hover:bg-blue-50 hover:text-brand-blue"
-              >
-                <Send className="h-3.5 w-3.5" />
-                Draft Follow-up
-              </button>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {action.account_id && (
+                  <Link
+                    to={`/app/accounts/${action.account_id}`}
+                    className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-gray-700 ring-1 ring-gray-200 hover:bg-blue-50 hover:text-brand-blue"
+                  >
+                    Open Account
+                  </Link>
+                )}
+                {action.opportunity_id && (
+                  <Link
+                    to="/app/opportunities"
+                    className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-gray-700 ring-1 ring-gray-200 hover:bg-blue-50 hover:text-brand-blue"
+                  >
+                    Open Opportunity
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onDraft(action)}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs font-bold text-gray-700 ring-1 ring-gray-200 hover:bg-blue-50 hover:text-brand-blue"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  Draft Follow-up
+                </button>
+              </div>
             </div>
           </div>
         ))}
       </div>
     </section>
   );
+}
+
+function formatActionTiming(action: SalesAction) {
+  if (action.due_date) return `Due: ${action.due_date}`;
+  const title = action.title.toLowerCase();
+  if (title.includes('tentative timing') || title.includes('source open timing')) return 'Tentative timing only';
+  return 'No due date yet';
 }

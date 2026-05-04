@@ -300,17 +300,25 @@ export async function structureInteraction(rawNote: string, context?: Interactio
   }
 }
 
+export interface SaveStructuredSalesCaptureResult {
+  captureId: string;
+  accountId: string | null;
+  contactId: string | null;
+  opportunityId: string | null;
+  interactionId: string;
+  actionId: string | null;
+}
+
 export async function saveStructuredSalesCapture(
   userId: string,
   rawNote: string,
   structuredInput: StructuredSalesCapture
-) {
+): Promise<SaveStructuredSalesCaptureResult> {
   const structured = normalizeStructuredCapture(structuredInput, rawNote);
   structured.follow_up_date = resolveRelativeFollowUpDate(rawNote, structured.follow_up_date);
 
   if (isDemoMode) {
-    saveLocalStructuredCapture(rawNote, structured);
-    return;
+    return saveLocalStructuredCapture(rawNote, structured);
   }
 
   const { data: capture, error: captureError } = await supabase
@@ -513,4 +521,13 @@ export async function saveStructuredSalesCapture(
       userId,
     }),
   }).catch(console.error);
+
+  return {
+    captureId: capture.id,
+    accountId,
+    contactId,
+    opportunityId,
+    interactionId: interaction.id,
+    actionId,
+  };
 }

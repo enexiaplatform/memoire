@@ -201,6 +201,13 @@ export function AccountMemoryPage() {
               Demo Mode
             </span>
           )}
+          <Link
+            to="/app/today"
+            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            <Plus className="h-4 w-4" />
+            Add Interaction
+          </Link>
           <button
             type="button"
             onClick={() => openComposer()}
@@ -259,6 +266,27 @@ export function AccountMemoryPage() {
             )}
           </MemorySection>
 
+          <MemorySection title="Open Actions" icon={<Clock3 className="h-4 w-4" />}>
+            {actions.length === 0 ? <EmptyLine text="No open actions related to this account." /> : actions.map((action) => (
+              <div key={action.id} className="rounded-lg border border-blue-100 bg-blue-50/50 p-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">{action.title}</p>
+                    <p className="text-xs text-gray-500">{action.due_date ? `Due: ${action.due_date}` : 'No due date yet'}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openComposer('confirm_next_step')}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-brand-blue ring-1 ring-blue-100 hover:bg-blue-50"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    Draft Follow-up
+                  </button>
+                </div>
+              </div>
+            ))}
+          </MemorySection>
+
           <MemorySection title="Key Memory Points" icon={<CircleAlert className="h-4 w-4" />}>
             <TagList title="Pain points" items={narrative.keyPainPoints} />
             <TagList title="Objections" items={narrative.keyObjections} warm />
@@ -303,14 +331,6 @@ export function AccountMemoryPage() {
             ))}
           </MemorySection>
 
-          <MemorySection title="Open Actions" icon={<Clock3 className="h-4 w-4" />}>
-            {actions.length === 0 ? <EmptyLine text="No open actions related to this account." /> : actions.map((action) => (
-              <div key={action.id} className="rounded-lg border border-blue-100 bg-blue-50/50 p-3">
-                <p className="text-sm font-semibold text-gray-900">{action.title}</p>
-                <p className="text-xs text-gray-500">{action.due_date || 'No due date'}</p>
-              </div>
-            ))}
-          </MemorySection>
         </div>
 
         <div className="space-y-5">

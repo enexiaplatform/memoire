@@ -247,6 +247,14 @@ export function saveLocalStructuredCapture(rawNote: string, structured: Structur
   }
 
   writeLocalMemory(memory);
+  return {
+    captureId,
+    accountId,
+    contactId,
+    opportunityId,
+    interactionId,
+    actionId,
+  };
 }
 
 export function createLocalObjection(input: Omit<Objection, 'id' | 'created_at' | 'updated_at' | 'linked_action' | 'opportunity' | 'contact'>): Objection {

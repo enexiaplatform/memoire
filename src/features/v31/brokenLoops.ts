@@ -73,10 +73,10 @@ export function detectBrokenLoops({
       loops.push({
         id: `opportunity-no-next-action-${opportunity.id}`,
         priority: 'P0',
-        issue: 'Opportunity has no next action',
+        issue: 'No next action',
         affectedEntity: `${accountById.get(opportunity.account_id || '')?.name || 'Unknown account'} / ${opportunity.title}`,
         whyItMatters: 'This deal may stall because there is no clear next step.',
-        suggestedFix: 'Create a follow-up action.',
+        suggestedFix: 'Create or confirm a follow-up action.',
         actionLabel: 'Create Action',
         entityType: 'opportunity',
         entityId: opportunity.id,

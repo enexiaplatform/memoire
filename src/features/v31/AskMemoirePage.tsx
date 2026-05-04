@@ -86,6 +86,7 @@ export function AskMemoirePage() {
     [accounts, actions, interactions, objections, opportunities, scope, selectedAccountId, selectedOpportunityId]
   );
   const presets = presetsForScope(scope);
+  const contextLabel = getContextLabel(scope, selectedAccountId, selectedOpportunityId, accounts, opportunities);
   const visibleOpportunities = scope === 'account' && selectedAccountId
     ? opportunities.filter((opportunity) => opportunity.account_id === selectedAccountId)
     : opportunities;
@@ -243,7 +244,12 @@ export function AskMemoirePage() {
 
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <div className="mb-5 rounded-lg border border-gray-100 bg-gray-50 p-4">
-          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400">Context Selector</p>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Context Selector</p>
+            <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-navy ring-1 ring-gray-200">
+              Current context: {contextLabel}
+            </span>
+          </div>
           <div className="flex flex-wrap gap-2">
             {(['all', 'account', 'opportunity'] as AskMemoireContext['scope'][]).map((item) => (
               <button
@@ -302,17 +308,22 @@ export function AskMemoirePage() {
           )}
         </div>
 
-        <div className="mb-4 flex flex-wrap gap-2">
-          {presets.map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              onClick={() => ask(preset)}
-              className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm font-semibold text-gray-600 hover:border-brand-blue/40 hover:text-brand-blue"
-            >
-              {preset}
-            </button>
-          ))}
+        <div className="mb-4">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">
+            {scope === 'all' ? 'All Memory presets' : scope === 'account' ? 'Account presets' : 'Opportunity presets'}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {presets.map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => ask(preset)}
+                className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm font-semibold text-gray-600 hover:border-brand-blue/40 hover:text-brand-blue"
+              >
+                {preset}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -377,7 +388,7 @@ export function AskMemoirePage() {
             )}
           </div>
         ) : (
-          <p className="text-sm text-gray-500">Choose context and ask a sales-memory question to begin.</p>
+          <p className="text-sm text-gray-500">Select All Memory, an Account, or an Opportunity so Memoire can answer with better context.</p>
         )}
       </section>
     </div>
@@ -387,6 +398,20 @@ export function AskMemoirePage() {
 function isWhatChangedQuestion(question: string) {
   const normalized = question.toLowerCase();
   return normalized.includes('what changed') || normalized.includes('changed recently');
+}
+
+function getContextLabel(
+  scope: AskMemoireContext['scope'],
+  selectedAccountId: string,
+  selectedOpportunityId: string,
+  accounts: Account[],
+  opportunities: Opportunity[]
+) {
+  if (scope === 'all') return 'All Memory';
+  if (scope === 'account') {
+    return accounts.find((account) => account.id === selectedAccountId)?.name || 'Select Account';
+  }
+  return opportunities.find((opportunity) => opportunity.id === selectedOpportunityId)?.title || 'Select Opportunity';
 }
 
 function isPatternQuestion(question: string) {

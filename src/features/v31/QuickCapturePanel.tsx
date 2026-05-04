@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Loader2, Save, Sparkles } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import type { StructuredSalesCapture, InteractionType, SalesPriority, SalesStage } from '../../types/v31';
@@ -6,6 +7,7 @@ import {
   EMPTY_CAPTURE,
   getMissingInteractionFields,
   loadInteractionStructureContext,
+  type SaveStructuredSalesCaptureResult,
   saveStructuredSalesCapture,
   structureInteraction,
 } from './salesMemory';
@@ -19,6 +21,10 @@ const typeOptions: InteractionType[] = ['call', 'email', 'meeting', 'note', 'pro
 const stageOptions: SalesStage[] = ['new', 'active', 'proposal', 'negotiation', 'won', 'lost', 'paused'];
 const priorityOptions: SalesPriority[] = ['low', 'medium', 'high'];
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+type SavedMemory = SaveStructuredSalesCaptureResult & {
+  accountName: string;
+  actionTitle: string;
+};
 
 export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePanelProps) {
   const { user } = useAuth();
@@ -28,6 +34,7 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const [savedMemory, setSavedMemory] = useState<SavedMemory | null>(null);
 
   const updateStructured = (field: keyof StructuredSalesCapture, value: string) => {
     setStructured((current) => current ? { ...current, [field]: value } : current);
@@ -44,6 +51,7 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
     setLoading(true);
     setMessage('Structuring interaction...');
     setSaveStatus('idle');
+    setSavedMemory(null);
     try {
       const context = user ? await loadInteractionStructureContext(user.id) : undefined;
       const result = await structureInteraction(rawNote, context);
@@ -68,11 +76,17 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
     setSaving(true);
     setSaveStatus('saving');
     setMessage('Saving...');
+    setSavedMemory(null);
     try {
-      await saveStructuredSalesCapture(user.id, rawNote, structured);
+      const result = await saveStructuredSalesCapture(user.id, rawNote, structured);
+      setSavedMemory({
+        ...result,
+        accountName: structured.account,
+        actionTitle: structured.next_action,
+      });
       setRawNote('');
       setStructured(null);
-      setMessage('Saved to Sales Memory');
+      setMessage('Saved to Sales Memory.');
       setSaveStatus('saved');
       onSaved?.();
     } catch (err) {
@@ -104,7 +118,7 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
       <textarea
         value={rawNote}
         onChange={(event) => setRawNote(event.target.value)}
-        placeholder="Paste or type a sales interaction..."
+        placeholder="Paste a quick note after a call, meeting, or customer message..."
         className="min-h-[120px] w-full resize-y rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm leading-6 text-gray-900 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
       />
 
@@ -130,6 +144,38 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
           </span>
         )}
       </div>
+
+      {savedMemory && saveStatus === 'saved' && (
+        <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50/70 p-4">
+          <p className="text-sm font-semibold text-emerald-900">Saved to Sales Memory.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {savedMemory.accountId && (
+              <Link
+                to={`/app/accounts/${savedMemory.accountId}`}
+                className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-100"
+              >
+                Open Account Memory
+              </Link>
+            )}
+            {savedMemory.actionId && (
+              <Link
+                to="/app/today"
+                className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-100"
+              >
+                View Next Action
+              </Link>
+            )}
+            {savedMemory.accountId && (
+              <Link
+                to={`/app/ask?scope=account&accountId=${savedMemory.accountId}`}
+                className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-100"
+              >
+                Ask about this Account
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
 
       {structured && (
         <div className="mt-5 border-t border-gray-100 pt-5">
