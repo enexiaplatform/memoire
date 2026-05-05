@@ -84,15 +84,15 @@ Behavior:
 - Redirects to `/app/today`.
 - Keeps the workspace visibly labeled as Demo Mode.
 
-Seeded sample context includes:
+Seeded sample context includes fictional sample context only:
 
-- Control Union / Nam sales interaction
+- Northstar Labs / Linh sales interaction
 - Proposal review
 - Lead time and local support blocker
 - Implementation timeline next action
-- TV Pharm supporting sample memory
+- Apex Pharma supporting sample memory
 
-This is separate from Henry Founder Workspace and does not require signup.
+This is separate from any real founder/customer data and does not require signup.
 
 ## 6. CTA Changes on Landing Page
 

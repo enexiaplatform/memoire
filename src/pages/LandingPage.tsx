@@ -114,9 +114,9 @@ export function LandingPage() {
               One customer interaction becomes memory, action, and reusable sales knowledge.
             </p>
             <div className="mt-10 rounded-xl border border-indigo-100 bg-white p-6 shadow-sm">
-              <p className="text-sm font-bold uppercase tracking-wide text-indigo-700">Control Union / Nam</p>
+              <p className="text-sm font-bold uppercase tracking-wide text-indigo-700">Northstar Labs / Linh</p>
               <p className="mt-3 text-lg leading-relaxed text-gray-700">
-                The seller just called Nam from Control Union. They are reviewing a proposal but are concerned about lead time and local support. Memoire structures the note, updates Account Memory, creates a Next Action for next Tuesday, shows the Journey, and helps draft a follow-up.
+                The seller just called Linh from Northstar Labs. They are reviewing a proposal but are concerned about lead time and local support. Memoire structures the note, updates Account Memory, creates a Next Action for next Tuesday, shows the Journey, and helps draft a follow-up.
               </p>
               <div className="mt-6 flex flex-wrap gap-2">
                 {['Quick Capture', 'Structured Interaction', 'Account Memory', 'Journey', 'Ask Memoire', 'Follow-up Composer'].map((step) => (

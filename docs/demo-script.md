@@ -2,16 +2,16 @@
 
 ## Demo Scenario
 
-Account: Control Union
+Account: Northstar Labs
 
-Contact: Nam
+Contact: Linh
 
-Scenario: The user just called Nam from Control Union. They are reviewing a proposal but are concerned about lead time and local support. The user needs to send an implementation timeline next Tuesday.
+Scenario: The user just called Linh from Northstar Labs. They are reviewing a proposal but are concerned about lead time and local support. The user needs to send an implementation timeline next Tuesday.
 
 Sample capture:
 
 ```text
-Just called Nam at Control Union. They are reviewing the proposal but are concerned about lead time and local support. I need to send an implementation timeline next Tuesday.
+Just called Linh at Northstar Labs. They are reviewing the proposal but are concerned about lead time and local support. I need to send an implementation timeline next Tuesday.
 ```
 
 ## Key Message
@@ -34,7 +34,7 @@ Show the editable structured preview.
 
 Expected fields:
 
-- Account: Control Union
+- Account: Northstar Labs
 - Contact: Nam
 - Interaction summary: reviewing proposal, concern about lead time and local support
 - Objection: lead time and local support
@@ -47,7 +47,7 @@ Click Save to Sales Memory.
 
 ### 3. Account Living Memory
 
-Open Accounts, then Control Union.
+Open Accounts, then Northstar Labs.
 
 Show:
 
@@ -81,7 +81,7 @@ Say: "Memoire helps find where customer memory is not becoming action."
 
 Open Ask Memoire.
 
-Select Specific Account: Control Union.
+Select Specific Account: Northstar Labs.
 
 Ask:
 
@@ -112,4 +112,3 @@ Say: "Memoire does not send email. It helps turn memory into a concrete follow-u
 ## Closing Line
 
 Memoire helps individual sales professionals remember the customer story, protect follow-up momentum, and build reusable sales knowledge over a career.
-

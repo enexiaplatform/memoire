@@ -1,6 +1,5 @@
 import type { Account, Contact, Interaction, Objection, Opportunity, SalesAction, StructuredSalesCapture } from '../../types/v31';
 import { DEMO_AUTH_KEY, DEMO_USER_ID, DEMO_WORKSPACE_KEY } from '../../lib/demoMode';
-import { henryFounderWorkspaceSeed, HENRY_FOUNDER_WORKSPACE_LABEL } from './data/henryFounderWorkspaceSeed';
 
 interface LocalCapture {
   id: string;
@@ -302,44 +301,8 @@ export function markLocalActionDone(actionId: string) {
   }
 }
 
-export function loadHenryFounderWorkspace() {
-  const memory = readLocalMemory();
-  const loadedAt = new Date().toISOString();
-
-  memory.accounts = mergeById(memory.accounts, henryFounderWorkspaceSeed.accounts);
-  memory.contacts = mergeById(memory.contacts, henryFounderWorkspaceSeed.contacts);
-  memory.opportunities = mergeById(memory.opportunities, henryFounderWorkspaceSeed.opportunities);
-  memory.interactions = mergeById(memory.interactions, henryFounderWorkspaceSeed.interactions);
-  memory.actions = mergeById(memory.actions, henryFounderWorkspaceSeed.actions);
-  memory.objections = mergeById(memory.objections, henryFounderWorkspaceSeed.objections);
-  memory.founderWorkspace = {
-    label: HENRY_FOUNDER_WORKSPACE_LABEL,
-    loadedAt,
-    brandReferences: henryFounderWorkspaceSeed.brandReferences,
-    pricingContexts: henryFounderWorkspaceSeed.pricingContexts,
-    reviewFlags: henryFounderWorkspaceSeed.reviewFlags,
-  };
-
-  writeLocalMemory(memory);
-  return {
-    label: HENRY_FOUNDER_WORKSPACE_LABEL,
-    loadedAt,
-    counts: {
-      accounts: henryFounderWorkspaceSeed.accounts.length,
-      contacts: henryFounderWorkspaceSeed.contacts.length,
-      opportunities: henryFounderWorkspaceSeed.opportunities.length,
-      interactions: henryFounderWorkspaceSeed.interactions.length,
-      actions: henryFounderWorkspaceSeed.actions.length,
-      objections: henryFounderWorkspaceSeed.objections.length,
-      pricingContexts: henryFounderWorkspaceSeed.pricingContexts.length,
-      brandReferences: henryFounderWorkspaceSeed.brandReferences.length,
-      reviewFlags: henryFounderWorkspaceSeed.reviewFlags.length,
-    },
-  };
-}
-
 export function getFounderWorkspaceState() {
-  return readLocalMemory().founderWorkspace || null;
+  return null;
 }
 
 export function loadInteractiveDemoWorkspace() {
@@ -349,12 +312,12 @@ export function loadInteractiveDemoWorkspace() {
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const memory = emptyMemory();
 
-  const controlUnion: Account = {
-    id: 'demo-account-control-union',
+  const northstarLabs: Account = {
+    id: 'demo-account-northstar-labs',
     user_id: DEMO_USER_ID,
-    name: 'Control Union',
-    summary: 'Control Union is reviewing the UV-VIS / Scitek proposal. The current concern is lead time and local support confidence.',
-    industry: 'Testing and certification',
+    name: 'Northstar Labs',
+    summary: 'Northstar Labs is reviewing a cleanroom validation proposal. The current concern is lead time and local support confidence.',
+    industry: 'Life science quality operations',
     status: 'active',
     pain_points: ['Implementation timeline clarity', 'Local service support'],
     objections: ['Concern about lead time and local support'],
@@ -362,27 +325,27 @@ export function loadInteractiveDemoWorkspace() {
     created_at: timestamp,
     updated_at: timestamp,
   };
-  const tvPharm: Account = {
-    id: 'demo-account-tv-pharm',
+  const apexPharma: Account = {
+    id: 'demo-account-apex-pharma',
     user_id: DEMO_USER_ID,
-    name: 'TV Pharm',
-    summary: 'TV Pharm has an active VHP / SolidFog opportunity with tender timing still unresolved.',
+    name: 'Apex Pharma',
+    summary: 'Apex Pharma has an active cleanroom readiness opportunity with procurement timing still unresolved.',
     industry: 'Pharmaceutical manufacturing',
     status: 'active',
     pain_points: ['Sterilization workflow confidence'],
-    objections: ['Tender pending'],
+    objections: ['Procurement timing pending'],
     source_capture_id: null,
     created_at: timestamp,
     updated_at: timestamp,
   };
 
-  memory.accounts = [controlUnion, tvPharm];
+  memory.accounts = [northstarLabs, apexPharma];
   memory.contacts = [
     {
-      id: 'demo-contact-nam',
+      id: 'demo-contact-linh',
       user_id: DEMO_USER_ID,
-      account_id: controlUnion.id,
-      name: 'Nam',
+      account_id: northstarLabs.id,
+      name: 'Linh',
       role: 'Technical evaluator',
       email: null,
       phone: null,
@@ -394,11 +357,11 @@ export function loadInteractiveDemoWorkspace() {
   ];
   memory.opportunities = [
     {
-      id: 'demo-opportunity-control-union-scitek',
+      id: 'demo-opportunity-northstar-validation',
       user_id: DEMO_USER_ID,
-      account_id: controlUnion.id,
-      contact_id: 'demo-contact-nam',
-      title: 'UV-VIS / Scitek proposal',
+      account_id: northstarLabs.id,
+      contact_id: 'demo-contact-linh',
+      title: 'Cleanroom validation proposal',
       stage: 'proposal',
       estimated_value: null,
       blocker: 'Concern about lead time and local support',
@@ -411,14 +374,14 @@ export function loadInteractiveDemoWorkspace() {
       updated_at: timestamp,
     },
     {
-      id: 'demo-opportunity-tv-pharm-solidfog',
+      id: 'demo-opportunity-apex-readiness',
       user_id: DEMO_USER_ID,
-      account_id: tvPharm.id,
+      account_id: apexPharma.id,
       contact_id: null,
-      title: 'VHP / SolidFog tender',
+      title: 'Cleanroom readiness project',
       stage: 'proposal',
       estimated_value: null,
-      blocker: 'Tender pending',
+      blocker: 'Procurement timing pending',
       next_action_text: null,
       last_touch_at: yesterday,
       urgency: 'medium',
@@ -430,47 +393,47 @@ export function loadInteractiveDemoWorkspace() {
   ];
   memory.interactions = [
     {
-      id: 'demo-interaction-control-union-call',
+      id: 'demo-interaction-northstar-call',
       user_id: DEMO_USER_ID,
-      account_id: controlUnion.id,
-      contact_id: 'demo-contact-nam',
-      opportunity_id: 'demo-opportunity-control-union-scitek',
-      source_capture_id: 'demo-capture-control-union',
+      account_id: northstarLabs.id,
+      contact_id: 'demo-contact-linh',
+      opportunity_id: 'demo-opportunity-northstar-validation',
+      source_capture_id: 'demo-capture-northstar',
       interaction_type: 'call',
       occurred_at: timestamp,
-      summary: 'Called Nam from Control Union. They are reviewing the proposal but are concerned about lead time and local support.',
+      summary: 'Called Linh from Northstar Labs. They are reviewing the proposal but are concerned about lead time and local support.',
       pain_point: 'Need implementation confidence before moving forward.',
       objection: 'Concern about lead time and local support',
-      raw_note: 'Just called Nam from Control Union. They are reviewing the proposal but are concerned about lead time and local support. Need to send implementation timeline next Tuesday.',
+      raw_note: 'Just called Linh from Northstar Labs. They are reviewing the proposal but are concerned about lead time and local support. Need to send implementation timeline next Tuesday.',
       structured_data: {},
       created_at: timestamp,
     },
     {
-      id: 'demo-interaction-tv-pharm-note',
+      id: 'demo-interaction-apex-note',
       user_id: DEMO_USER_ID,
-      account_id: tvPharm.id,
+      account_id: apexPharma.id,
       contact_id: null,
-      opportunity_id: 'demo-opportunity-tv-pharm-solidfog',
+      opportunity_id: 'demo-opportunity-apex-readiness',
       source_capture_id: null,
       interaction_type: 'note',
       occurred_at: yesterday,
-      summary: 'Tender remains pending. Need to confirm next action.',
+      summary: 'Procurement timing remains pending. Need to confirm next action.',
       pain_point: null,
-      objection: 'Tender pending',
-      raw_note: 'TV Pharm tender pending for VHP / SolidFog.',
+      objection: 'Procurement timing pending',
+      raw_note: 'Apex Pharma procurement timing pending for cleanroom readiness project.',
       structured_data: {},
       created_at: timestamp,
     },
   ];
   memory.actions = [
     {
-      id: 'demo-action-control-union-timeline',
+      id: 'demo-action-northstar-timeline',
       user_id: DEMO_USER_ID,
-      account_id: controlUnion.id,
-      contact_id: 'demo-contact-nam',
-      opportunity_id: 'demo-opportunity-control-union-scitek',
-      interaction_id: 'demo-interaction-control-union-call',
-      title: 'Send implementation timeline to Nam',
+      account_id: northstarLabs.id,
+      contact_id: 'demo-contact-linh',
+      opportunity_id: 'demo-opportunity-northstar-validation',
+      interaction_id: 'demo-interaction-northstar-call',
+      title: 'Send implementation timeline to Linh',
       due_date: tomorrow,
       status: 'open',
       suggested: false,
@@ -479,13 +442,13 @@ export function loadInteractiveDemoWorkspace() {
       updated_at: timestamp,
     },
     {
-      id: 'demo-action-tv-pharm-review',
+      id: 'demo-action-apex-review',
       user_id: DEMO_USER_ID,
-      account_id: tvPharm.id,
+      account_id: apexPharma.id,
       contact_id: null,
-      opportunity_id: 'demo-opportunity-tv-pharm-solidfog',
+      opportunity_id: 'demo-opportunity-apex-readiness',
       interaction_id: null,
-      title: 'Confirm next action for TV Pharm tender',
+      title: 'Confirm next action for Apex Pharma procurement timing',
       due_date: today,
       status: 'open',
       suggested: true,
@@ -496,33 +459,33 @@ export function loadInteractiveDemoWorkspace() {
   ];
   memory.objections = [
     {
-      id: 'demo-objection-control-union-support',
+      id: 'demo-objection-northstar-support',
       user_id: DEMO_USER_ID,
-      account_id: controlUnion.id,
-      opportunity_id: 'demo-opportunity-control-union-scitek',
-      contact_id: 'demo-contact-nam',
-      source_interaction_id: 'demo-interaction-control-union-call',
+      account_id: northstarLabs.id,
+      opportunity_id: 'demo-opportunity-northstar-validation',
+      contact_id: 'demo-contact-linh',
+      source_interaction_id: 'demo-interaction-northstar-call',
       title: 'Concern about lead time and local support',
       detail: 'Customer needs confidence in implementation timing and local support coverage.',
       category: 'support',
       status: 'addressed',
       severity: 'high',
       response_angle: 'Send a concise implementation timeline and clarify local support path.',
-      linked_action_id: 'demo-action-control-union-timeline',
+      linked_action_id: 'demo-action-northstar-timeline',
       first_mentioned_at: timestamp,
       last_mentioned_at: timestamp,
       created_at: timestamp,
       updated_at: timestamp,
     },
     {
-      id: 'demo-objection-tv-pharm-tender',
+      id: 'demo-objection-apex-procurement',
       user_id: DEMO_USER_ID,
-      account_id: tvPharm.id,
-      opportunity_id: 'demo-opportunity-tv-pharm-solidfog',
+      account_id: apexPharma.id,
+      opportunity_id: 'demo-opportunity-apex-readiness',
       contact_id: null,
-      source_interaction_id: 'demo-interaction-tv-pharm-note',
-      title: 'Tender pending',
-      detail: 'Tender status is unresolved and needs a clear next step.',
+      source_interaction_id: 'demo-interaction-apex-note',
+      title: 'Procurement timing pending',
+      detail: 'Procurement timing is unresolved and needs a clear next step.',
       category: 'other',
       status: 'open',
       severity: 'medium',
@@ -536,21 +499,21 @@ export function loadInteractiveDemoWorkspace() {
   ];
   memory.captures = [
     {
-      id: 'demo-capture-control-union',
+      id: 'demo-capture-northstar',
       user_id: DEMO_USER_ID,
-      raw_text: 'Just called Nam from Control Union. They are reviewing the proposal but are concerned about lead time and local support. Need to send implementation timeline next Tuesday.',
+      raw_text: 'Just called Linh from Northstar Labs. They are reviewing the proposal but are concerned about lead time and local support. Need to send implementation timeline next Tuesday.',
       structured_data: {
         type: 'call',
-        account: 'Control Union',
-        contact: 'Nam',
+        account: 'Northstar Labs',
+        contact: 'Linh',
         contact_role: 'Technical evaluator',
-        opportunity: 'UV-VIS / Scitek proposal',
+        opportunity: 'Cleanroom validation proposal',
         opportunity_stage: 'proposal',
         estimated_value: '',
-        interaction_summary: 'Control Union is reviewing the proposal and needs implementation confidence.',
+        interaction_summary: 'Northstar Labs is reviewing the proposal and needs implementation confidence.',
         pain_point: 'Implementation timeline clarity and local support confidence',
         objection: 'Concern about lead time and local support',
-        next_action: 'Send implementation timeline to Nam',
+        next_action: 'Send implementation timeline to Linh',
         follow_up_date: tomorrow,
         urgency: 'high',
         confidence: 'medium',
@@ -571,12 +534,4 @@ export function loadInteractiveDemoWorkspace() {
 
 export function getDemoWorkspaceState() {
   return readLocalMemory().demoWorkspace || null;
-}
-
-function mergeById<T extends { id: string }>(existing: T[], incoming: T[]) {
-  const byId = new Map(existing.map((item) => [item.id, item]));
-  incoming.forEach((item) => {
-    byId.set(item.id, item);
-  });
-  return Array.from(byId.values());
 }

@@ -106,7 +106,7 @@ const founderSteps: WorkflowStepConfig[] = [
     step: 'open_account_memory',
     title: 'Open a real account',
     instruction: 'Open an account with a real blocker.',
-    why: 'Founder Workspace lets you test Memoire with real sales context instead of sample data.',
+    why: 'Demo Workspace lets you test Memoire with sample sales context before adding real data.',
     primaryLabel: 'Open Account Memory',
   },
   {
@@ -387,7 +387,7 @@ export function OnboardingModal() {
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Guided Workflow</p>
               <h2 className="mt-2 text-2xl font-bold tracking-tight text-navy">
-                {founderMode ? 'Henry Founder Workspace is loaded.' : 'Welcome to Memoire'}
+                {founderMode ? 'Demo Workspace is loaded.' : 'Welcome to Memoire'}
               </h2>
               <p className="mt-1 text-sm font-semibold text-gray-700">
                 {founderMode ? 'Walk through a real Sales Memory Loop.' : 'Create your first Sales Memory Loop.'}
@@ -567,8 +567,8 @@ export function OnboardingModal() {
 
 function getFounderSuggestedAccountId() {
   const memory = readLocalMemory();
-  const preferred = memory.accounts.find((account) => account.name.toLowerCase().includes('tv pharm'))
-    || memory.accounts.find((account) => account.name.toLowerCase().includes('control union'));
+  const preferred = memory.accounts.find((account) => account.name.toLowerCase().includes('apex pharma'))
+    || memory.accounts.find((account) => account.name.toLowerCase().includes('northstar labs'));
   return preferred?.id || memory.accounts[0]?.id || null;
 }
 

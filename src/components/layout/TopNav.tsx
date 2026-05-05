@@ -1,12 +1,12 @@
 import { useAuth } from '../../hooks/useAuth';
 import { isDemoMode, isSupabaseConfigured } from '../../lib/demoMode';
-import { getDemoWorkspaceState, getFounderWorkspaceState } from '../../features/v31/localStore';
+import { getDemoWorkspaceState } from '../../features/v31/localStore';
 import { Button } from '../ui/Button';
 import { Link } from 'react-router-dom';
 
 export function TopNav() {
   const { user, signOut } = useAuth();
-  const workspaceLabel = isDemoMode ? getFounderWorkspaceState()?.label || getDemoWorkspaceState()?.label || null : null;
+  const workspaceLabel = isDemoMode ? getDemoWorkspaceState()?.label || null : null;
 
   return (
     <header className="fixed top-0 left-[220px] right-0 h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 z-30">

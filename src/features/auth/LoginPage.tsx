@@ -3,8 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { isDemoMode } from '../../lib/demoMode';
-import { loadHenryFounderWorkspace } from '../v31/localStore';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -27,17 +25,6 @@ export function LoginPage() {
       setLocalError('Login failed. Please retry.');
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const handleLoadHenryWorkspace = async () => {
-    setSubmitting(true);
-    setLocalError('');
-    loadHenryFounderWorkspace();
-    const { error } = await signIn('henry@memoire.local', 'local-founder-workspace');
-    setSubmitting(false);
-    if (!error) {
-      navigate('/app/today');
     }
   };
 
@@ -79,16 +66,6 @@ export function LoginPage() {
           <Button type="submit" loading={submitting} className="w-full">
             Sign in
           </Button>
-          {isDemoMode && (
-            <button
-              type="button"
-              onClick={handleLoadHenryWorkspace}
-              disabled={submitting}
-              className="w-full rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-700 transition-colors hover:bg-indigo-100 disabled:opacity-50"
-            >
-              Load Henry Workspace
-            </button>
-          )}
           <Link
             to="/demo"
             className="block w-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-700 transition-colors hover:bg-amber-100"
