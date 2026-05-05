@@ -1,5 +1,5 @@
 import type { Account, Contact, Interaction, Objection, Opportunity, SalesAction, StructuredSalesCapture } from '../../types/v31';
-import { DEMO_USER_ID } from '../../lib/demoMode';
+import { DEMO_AUTH_KEY, DEMO_USER_ID, DEMO_WORKSPACE_KEY } from '../../lib/demoMode';
 import { henryFounderWorkspaceSeed, HENRY_FOUNDER_WORKSPACE_LABEL } from './data/henryFounderWorkspaceSeed';
 
 interface LocalCapture {
@@ -25,6 +25,10 @@ interface LocalMemory {
     brandReferences: unknown[];
     pricingContexts: unknown[];
     reviewFlags: unknown[];
+  };
+  demoWorkspace?: {
+    label: string;
+    loadedAt: string;
   };
 }
 
@@ -57,6 +61,7 @@ export function readLocalMemory(): LocalMemory {
       actions: memory.actions || [],
       objections: memory.objections || [],
       founderWorkspace: memory.founderWorkspace,
+      demoWorkspace: memory.demoWorkspace,
     };
   } catch {
     return emptyMemory();
@@ -335,6 +340,237 @@ export function loadHenryFounderWorkspace() {
 
 export function getFounderWorkspaceState() {
   return readLocalMemory().founderWorkspace || null;
+}
+
+export function loadInteractiveDemoWorkspace() {
+  const timestamp = new Date().toISOString();
+  const today = new Date().toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const memory = emptyMemory();
+
+  const controlUnion: Account = {
+    id: 'demo-account-control-union',
+    user_id: DEMO_USER_ID,
+    name: 'Control Union',
+    summary: 'Control Union is reviewing the UV-VIS / Scitek proposal. The current concern is lead time and local support confidence.',
+    industry: 'Testing and certification',
+    status: 'active',
+    pain_points: ['Implementation timeline clarity', 'Local service support'],
+    objections: ['Concern about lead time and local support'],
+    source_capture_id: null,
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
+  const tvPharm: Account = {
+    id: 'demo-account-tv-pharm',
+    user_id: DEMO_USER_ID,
+    name: 'TV Pharm',
+    summary: 'TV Pharm has an active VHP / SolidFog opportunity with tender timing still unresolved.',
+    industry: 'Pharmaceutical manufacturing',
+    status: 'active',
+    pain_points: ['Sterilization workflow confidence'],
+    objections: ['Tender pending'],
+    source_capture_id: null,
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
+
+  memory.accounts = [controlUnion, tvPharm];
+  memory.contacts = [
+    {
+      id: 'demo-contact-nam',
+      user_id: DEMO_USER_ID,
+      account_id: controlUnion.id,
+      name: 'Nam',
+      role: 'Technical evaluator',
+      email: null,
+      phone: null,
+      notes: 'Interested in implementation timeline and local support clarity.',
+      source_capture_id: null,
+      created_at: timestamp,
+      updated_at: timestamp,
+    },
+  ];
+  memory.opportunities = [
+    {
+      id: 'demo-opportunity-control-union-scitek',
+      user_id: DEMO_USER_ID,
+      account_id: controlUnion.id,
+      contact_id: 'demo-contact-nam',
+      title: 'UV-VIS / Scitek proposal',
+      stage: 'proposal',
+      estimated_value: null,
+      blocker: 'Concern about lead time and local support',
+      next_action_text: 'Send implementation timeline next Tuesday',
+      last_touch_at: timestamp,
+      urgency: 'high',
+      confidence: 'medium',
+      source_capture_id: null,
+      created_at: timestamp,
+      updated_at: timestamp,
+    },
+    {
+      id: 'demo-opportunity-tv-pharm-solidfog',
+      user_id: DEMO_USER_ID,
+      account_id: tvPharm.id,
+      contact_id: null,
+      title: 'VHP / SolidFog tender',
+      stage: 'proposal',
+      estimated_value: null,
+      blocker: 'Tender pending',
+      next_action_text: null,
+      last_touch_at: yesterday,
+      urgency: 'medium',
+      confidence: 'medium',
+      source_capture_id: null,
+      created_at: timestamp,
+      updated_at: timestamp,
+    },
+  ];
+  memory.interactions = [
+    {
+      id: 'demo-interaction-control-union-call',
+      user_id: DEMO_USER_ID,
+      account_id: controlUnion.id,
+      contact_id: 'demo-contact-nam',
+      opportunity_id: 'demo-opportunity-control-union-scitek',
+      source_capture_id: 'demo-capture-control-union',
+      interaction_type: 'call',
+      occurred_at: timestamp,
+      summary: 'Called Nam from Control Union. They are reviewing the proposal but are concerned about lead time and local support.',
+      pain_point: 'Need implementation confidence before moving forward.',
+      objection: 'Concern about lead time and local support',
+      raw_note: 'Just called Nam from Control Union. They are reviewing the proposal but are concerned about lead time and local support. Need to send implementation timeline next Tuesday.',
+      structured_data: {},
+      created_at: timestamp,
+    },
+    {
+      id: 'demo-interaction-tv-pharm-note',
+      user_id: DEMO_USER_ID,
+      account_id: tvPharm.id,
+      contact_id: null,
+      opportunity_id: 'demo-opportunity-tv-pharm-solidfog',
+      source_capture_id: null,
+      interaction_type: 'note',
+      occurred_at: yesterday,
+      summary: 'Tender remains pending. Need to confirm next action.',
+      pain_point: null,
+      objection: 'Tender pending',
+      raw_note: 'TV Pharm tender pending for VHP / SolidFog.',
+      structured_data: {},
+      created_at: timestamp,
+    },
+  ];
+  memory.actions = [
+    {
+      id: 'demo-action-control-union-timeline',
+      user_id: DEMO_USER_ID,
+      account_id: controlUnion.id,
+      contact_id: 'demo-contact-nam',
+      opportunity_id: 'demo-opportunity-control-union-scitek',
+      interaction_id: 'demo-interaction-control-union-call',
+      title: 'Send implementation timeline to Nam',
+      due_date: tomorrow,
+      status: 'open',
+      suggested: false,
+      source: 'capture',
+      created_at: timestamp,
+      updated_at: timestamp,
+    },
+    {
+      id: 'demo-action-tv-pharm-review',
+      user_id: DEMO_USER_ID,
+      account_id: tvPharm.id,
+      contact_id: null,
+      opportunity_id: 'demo-opportunity-tv-pharm-solidfog',
+      interaction_id: null,
+      title: 'Confirm next action for TV Pharm tender',
+      due_date: today,
+      status: 'open',
+      suggested: true,
+      source: 'manual',
+      created_at: timestamp,
+      updated_at: timestamp,
+    },
+  ];
+  memory.objections = [
+    {
+      id: 'demo-objection-control-union-support',
+      user_id: DEMO_USER_ID,
+      account_id: controlUnion.id,
+      opportunity_id: 'demo-opportunity-control-union-scitek',
+      contact_id: 'demo-contact-nam',
+      source_interaction_id: 'demo-interaction-control-union-call',
+      title: 'Concern about lead time and local support',
+      detail: 'Customer needs confidence in implementation timing and local support coverage.',
+      category: 'support',
+      status: 'addressed',
+      severity: 'high',
+      response_angle: 'Send a concise implementation timeline and clarify local support path.',
+      linked_action_id: 'demo-action-control-union-timeline',
+      first_mentioned_at: timestamp,
+      last_mentioned_at: timestamp,
+      created_at: timestamp,
+      updated_at: timestamp,
+    },
+    {
+      id: 'demo-objection-tv-pharm-tender',
+      user_id: DEMO_USER_ID,
+      account_id: tvPharm.id,
+      opportunity_id: 'demo-opportunity-tv-pharm-solidfog',
+      contact_id: null,
+      source_interaction_id: 'demo-interaction-tv-pharm-note',
+      title: 'Tender pending',
+      detail: 'Tender status is unresolved and needs a clear next step.',
+      category: 'other',
+      status: 'open',
+      severity: 'medium',
+      response_angle: null,
+      linked_action_id: null,
+      first_mentioned_at: yesterday,
+      last_mentioned_at: yesterday,
+      created_at: timestamp,
+      updated_at: timestamp,
+    },
+  ];
+  memory.captures = [
+    {
+      id: 'demo-capture-control-union',
+      user_id: DEMO_USER_ID,
+      raw_text: 'Just called Nam from Control Union. They are reviewing the proposal but are concerned about lead time and local support. Need to send implementation timeline next Tuesday.',
+      structured_data: {
+        type: 'call',
+        account: 'Control Union',
+        contact: 'Nam',
+        contact_role: 'Technical evaluator',
+        opportunity: 'UV-VIS / Scitek proposal',
+        opportunity_stage: 'proposal',
+        estimated_value: '',
+        interaction_summary: 'Control Union is reviewing the proposal and needs implementation confidence.',
+        pain_point: 'Implementation timeline clarity and local support confidence',
+        objection: 'Concern about lead time and local support',
+        next_action: 'Send implementation timeline to Nam',
+        follow_up_date: tomorrow,
+        urgency: 'high',
+        confidence: 'medium',
+      },
+      status: 'processed',
+      created_at: timestamp,
+    },
+  ];
+  memory.demoWorkspace = {
+    label: 'Interactive Demo Workspace',
+    loadedAt: timestamp,
+  };
+  writeLocalMemory(memory);
+  localStorage.setItem(DEMO_AUTH_KEY, 'demo@memoire.local');
+  localStorage.setItem(DEMO_WORKSPACE_KEY, 'interactive-demo');
+  return memory.demoWorkspace;
+}
+
+export function getDemoWorkspaceState() {
+  return readLocalMemory().demoWorkspace || null;
 }
 
 function mergeById<T extends { id: string }>(existing: T[], incoming: T[]) {

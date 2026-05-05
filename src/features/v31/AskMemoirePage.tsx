@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Bot, Send, Sparkles } from 'lucide-react';
@@ -12,6 +11,9 @@ import { detectBrokenLoops, type BrokenLoop } from './brokenLoops';
 import { calculateMemoryHealth } from './memoryHealth';
 import { buildWhatChangedDigest, formatMemoryChangeSeverity } from './whatChangedDigest';
 import { detectSalesPatterns, salesPatternSeverityLabel } from './salesPatternDetector';
+import { ASK_ANSWER_READY_EVENT, ASK_GUIDED_QUESTION_EVENT } from '../onboarding/guidedWorkflow';
+import { RouteLoadingFallback } from './RouteLoadingFallback';
+import { useSlowLoadingFallback } from './useSlowLoadingFallback';
 
 export function AskMemoirePage() {
   const { user } = useAuth();
@@ -29,6 +31,7 @@ export function AskMemoirePage() {
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [actions, setActions] = useState<SalesAction[]>([]);
   const [objections, setObjections] = useState<Objection[]>([]);
+  const slowContextLoading = useSlowLoadingFallback(contextLoading);
 
   const loadMemory = useCallback(async () => {
     if (!user) return;
@@ -232,6 +235,21 @@ export function AskMemoirePage() {
     }
   };
 
+  useEffect(() => {
+    if (!answer) return;
+    window.dispatchEvent(new Event(ASK_ANSWER_READY_EVENT));
+  }, [answer]);
+
+  useEffect(() => {
+    const handleGuidedQuestion = (event: Event) => {
+      const nextQuestion = (event as CustomEvent<{ question?: string }>).detail?.question || 'What should I do next?';
+      ask(nextQuestion);
+    };
+
+    window.addEventListener(ASK_GUIDED_QUESTION_EVENT, handleGuidedQuestion as EventListener);
+    return () => window.removeEventListener(ASK_GUIDED_QUESTION_EVENT, handleGuidedQuestion as EventListener);
+  });
+
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
       <header className="mb-6">
@@ -244,6 +262,7 @@ export function AskMemoirePage() {
 
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <div className="mb-5 rounded-lg border border-gray-100 bg-gray-50 p-4">
+          {slowContextLoading && <RouteLoadingFallback onRetry={loadMemory} />}
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Context Selector</p>
             <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-navy ring-1 ring-gray-200">
@@ -423,7 +442,9 @@ function isAttentionQuestion(question: string) {
   const normalized = question.toLowerCase();
   return [
     'what needs attention',
+    'what needs attention today',
     'which accounts need attention',
+    'which accounts need action',
     'what should i focus on',
     'which deals are broken',
     'which accounts are broken',

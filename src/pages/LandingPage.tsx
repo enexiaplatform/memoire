@@ -123,6 +123,12 @@ export function LandingPage() {
                   <span key={step} className="rounded-full bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-700">{step}</span>
                 ))}
               </div>
+              <Link
+                to="/demo"
+                className="mt-6 inline-flex rounded-lg bg-indigo-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-indigo-700"
+              >
+                Try Interactive Demo
+              </Link>
             </div>
           </div>
         </section>
@@ -142,10 +148,10 @@ export function LandingPage() {
               Start building your Sales Memory today.
             </h2>
             <div className="flex flex-col items-center gap-3">
-              <Link to="/signup" className="bg-white text-indigo-600 text-lg font-medium px-8 py-4 rounded-lg transition-colors hover:bg-gray-50">
-                Try Memoire
+              <Link to="/demo" className="bg-white text-indigo-600 text-lg font-medium px-8 py-4 rounded-lg transition-colors hover:bg-gray-50">
+                Try Interactive Demo
               </Link>
-              <span className="text-sm text-indigo-200">No credit card required</span>
+              <Link to="/signup" className="text-sm font-semibold text-indigo-100 hover:text-white">Create Account</Link>
             </div>
           </div>
         </section>

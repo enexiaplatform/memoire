@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -14,6 +13,8 @@ import type { ObjectionDraft } from './objectionMemory';
 import { FollowUpComposerPanel } from './FollowUpComposerPanel';
 import { detectBrokenLoops } from './brokenLoops';
 import { calculateMemoryHealth, memoryHealthLabel } from './memoryHealth';
+import { RouteLoadingFallback } from './RouteLoadingFallback';
+import { useSlowLoadingFallback } from './useSlowLoadingFallback';
 
 export function AccountMemoryPage() {
   const { accountId } = useParams<{ accountId: string }>();
@@ -30,6 +31,7 @@ export function AccountMemoryPage() {
   const [objectionMessage, setObjectionMessage] = useState<string | null>(null);
   const [followUpContext, setFollowUpContext] = useState<FollowUpContext | null>(null);
   const [loading, setLoading] = useState(true);
+  const slowLoading = useSlowLoadingFallback(loading);
 
   const loadAccountMemory = useCallback(async () => {
     if (!user || !accountId) return;
@@ -85,7 +87,11 @@ export function AccountMemoryPage() {
   }, [loadAccountMemory]);
 
   if (loading) {
-    return <div className="mx-auto max-w-5xl px-6 py-8 text-sm text-gray-500">Loading account memory...</div>;
+    return (
+      <div className="mx-auto max-w-5xl px-6 py-8 text-sm text-gray-500">
+        {slowLoading ? <RouteLoadingFallback onRetry={loadAccountMemory} /> : 'Loading account memory...'}
+      </div>
+    );
   }
 
   if (!account) {
@@ -223,6 +229,12 @@ export function AccountMemoryPage() {
             <MessageCircleQuestion className="h-4 w-4" />
             Ask about this account
           </Link>
+          <Link
+            to="/app/journey"
+            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            Open Journey
+          </Link>
         </div>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
           {account.summary || 'Capture an interaction or add a Next Action to build this Account Memory.'}
@@ -234,6 +246,23 @@ export function AccountMemoryPage() {
           Memoire does not have enough context yet. Capture an interaction or add a next action to build this account memory.
         </div>
       )}
+
+      <section className="mb-6 rounded-lg border border-blue-100 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Fast Recall</p>
+            <h2 className="mt-1 text-xl font-bold text-navy">What is the current story?</h2>
+            <p className="mt-1 text-xs text-gray-500">Memory Health shows whether Memoire has enough context to help you act.</p>
+          </div>
+          <MemoryHealthBadge health={memoryHealth} />
+        </div>
+        <p className="text-sm leading-7 text-gray-700">{narrative.narrative}</p>
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <SnapshotFact label="Next Action" value={narrative.nextAction || 'Missing'} warn={!narrative.nextAction} />
+          <SnapshotFact label="Main Blocker / Objection" value={narrative.mainBlocker || 'Missing'} warn={!narrative.mainBlocker} />
+          <SnapshotFact label="Last Interaction" value={narrative.lastInteraction || 'Missing'} warn={!narrative.lastInteraction} />
+        </div>
+      </section>
 
       <section className="mb-6 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-center gap-2">

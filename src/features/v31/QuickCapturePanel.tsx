@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Loader2, Save, Sparkles } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import type { StructuredSalesCapture, InteractionType, SalesPriority, SalesStage } from '../../types/v31';
+import type { FollowUpContext, StructuredSalesCapture, InteractionType, SalesPriority, SalesStage } from '../../types/v31';
 import {
   EMPTY_CAPTURE,
   getMissingInteractionFields,
@@ -11,6 +11,13 @@ import {
   saveStructuredSalesCapture,
   structureInteraction,
 } from './salesMemory';
+import {
+  CAPTURE_SAVED_EVENT,
+  CAPTURE_STRUCTURED_EVENT,
+  GUIDED_WORKFLOW_SAMPLE_NOTE,
+  USE_SAMPLE_NOTE_EVENT,
+} from '../onboarding/guidedWorkflow';
+import { FollowUpComposerPanel } from './FollowUpComposerPanel';
 
 interface QuickCapturePanelProps {
   compact?: boolean;
@@ -24,6 +31,12 @@ type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type SavedMemory = SaveStructuredSalesCaptureResult & {
   accountName: string;
   actionTitle: string;
+  contactName: string;
+  opportunityName: string;
+  lastInteractionSummary: string;
+  objections: string[];
+  painPoints: string[];
+  missingFields: string[];
 };
 
 export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePanelProps) {
@@ -35,11 +48,26 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
   const [message, setMessage] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [savedMemory, setSavedMemory] = useState<SavedMemory | null>(null);
+  const [followUpContext, setFollowUpContext] = useState<FollowUpContext | null>(null);
 
   const updateStructured = (field: keyof StructuredSalesCapture, value: string) => {
     setStructured((current) => current ? { ...current, [field]: value } : current);
     setSaveStatus('idle');
   };
+
+  useEffect(() => {
+    const useSample = (event: Event) => {
+      const note = (event as CustomEvent<{ note?: string }>).detail?.note || GUIDED_WORKFLOW_SAMPLE_NOTE;
+      setRawNote(note);
+      setStructured(null);
+      setSavedMemory(null);
+      setSaveStatus('idle');
+      setMessage('Sample note added. Structure it when ready.');
+    };
+
+    window.addEventListener(USE_SAMPLE_NOTE_EVENT, useSample as EventListener);
+    return () => window.removeEventListener(USE_SAMPLE_NOTE_EVENT, useSample as EventListener);
+  }, []);
 
   const handleStructure = async () => {
     if (rawNote.trim().length < 8) {
@@ -56,6 +84,12 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
       const context = user ? await loadInteractionStructureContext(user.id) : undefined;
       const result = await structureInteraction(rawNote, context);
       setStructured(result);
+      window.dispatchEvent(new CustomEvent(CAPTURE_STRUCTURED_EVENT, {
+        detail: {
+          structured: result,
+          missingFields: getMissingInteractionFields(result),
+        },
+      }));
       const missing = getMissingInteractionFields(result);
       if (missing.length > 0) {
         setMessage('Missing context - add account, interaction, or next action if you have it.');
@@ -79,11 +113,21 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
     setSavedMemory(null);
     try {
       const result = await saveStructuredSalesCapture(user.id, rawNote, structured);
-      setSavedMemory({
+      const savedMissingFields = getMissingInteractionFields(structured);
+      const dailyMissingContext = enrichDailyMissingContext(savedMissingFields, structured);
+      const saved = {
         ...result,
         accountName: structured.account,
         actionTitle: structured.next_action,
-      });
+        contactName: structured.contact,
+        opportunityName: structured.opportunity,
+        lastInteractionSummary: structured.interaction_summary,
+        objections: structured.objection ? [structured.objection] : [],
+        painPoints: structured.pain_point ? [structured.pain_point] : [],
+        missingFields: dailyMissingContext,
+      };
+      setSavedMemory(saved);
+      window.dispatchEvent(new CustomEvent(CAPTURE_SAVED_EVENT, { detail: saved }));
       setRawNote('');
       setStructured(null);
       setMessage('Saved to Sales Memory.');
@@ -101,13 +145,13 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
   const missingFields = structured ? getMissingInteractionFields(structured) : [];
 
   return (
-    <section className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+    <section id="quick-capture" className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <h2 className="text-lg font-bold text-navy">Quick Capture</h2>
-          {!compact && (
-            <p className="text-sm text-gray-500 mt-1">Paste a customer interaction and turn it into Sales Memory, opportunity context, and a Next Action.</p>
-          )}
+          <p className="text-sm text-gray-500 mt-1">
+            {compact ? 'Capture after a call, meeting, email, or customer message.' : 'Paste a customer interaction and turn it into Sales Memory, opportunity context, and a Next Action.'}
+          </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-brand-blue">
           <Sparkles className="h-3.5 w-3.5" />
@@ -148,6 +192,23 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
       {savedMemory && saveStatus === 'saved' && (
         <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50/70 p-4">
           <p className="text-sm font-semibold text-emerald-900">Saved to Sales Memory.</p>
+          <div className="mt-3 grid grid-cols-1 gap-2 text-xs leading-5 text-emerald-900 sm:grid-cols-2">
+            <SaveOutcome ok={Boolean(savedMemory.accountId)} text={savedMemory.accountId ? 'Added to Account Memory' : 'Account Memory is missing'} />
+            <SaveOutcome ok={Boolean(savedMemory.actionId)} text={savedMemory.actionId ? 'Created or linked Next Action' : 'No Next Action created'} />
+            <SaveOutcome ok={savedMemory.objections.length > 0} text={savedMemory.objections.length > 0 ? 'Updated blocker / objection context' : 'No blocker captured'} />
+            <SaveOutcome ok text="Memory Health may have changed" />
+            <SaveOutcome ok text="Ask Memoire can now use this context" />
+          </div>
+          {savedMemory.missingFields.length > 0 && (
+            <div className="mt-3 rounded-lg bg-white/70 p-3">
+              <p className="text-xs font-bold text-amber-800">Some context is still missing.</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {savedMemory.missingFields.map((field) => (
+                  <span key={field} className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">{field}</span>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="mt-3 flex flex-wrap gap-2">
             {savedMemory.accountId && (
               <Link
@@ -173,6 +234,24 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
                 Ask about this Account
               </Link>
             )}
+            <button
+              type="button"
+              onClick={() => setFollowUpContext({
+                accountName: savedMemory.accountName || 'Unknown account',
+                contactName: savedMemory.contactName,
+                opportunityName: savedMemory.opportunityName,
+                lastInteractionSummary: savedMemory.lastInteractionSummary,
+                objections: savedMemory.objections,
+                painPoints: savedMemory.painPoints,
+                nextAction: savedMemory.actionTitle,
+                goal: savedMemory.objections.length > 0 ? 'address_objection' : 'confirm_next_step',
+                tone: 'consultative',
+                length: 'medium',
+              })}
+              className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-100"
+            >
+              Draft Follow-up
+            </button>
           </div>
         </div>
       )}
@@ -251,8 +330,31 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
           </div>
         </div>
       )}
+      {followUpContext && (
+        <FollowUpComposerPanel
+          initialContext={followUpContext}
+          onClose={() => setFollowUpContext(null)}
+        />
+      )}
     </section>
   );
+}
+
+function SaveOutcome({ ok, text }: { ok: boolean; text: string }) {
+  return (
+    <div className="rounded-lg bg-white/70 px-3 py-2">
+      <span className={ok ? 'font-semibold text-emerald-800' : 'font-semibold text-amber-800'}>{ok ? 'Done: ' : 'Missing: '}</span>
+      {text}
+    </div>
+  );
+}
+
+function enrichDailyMissingContext(missingFields: string[], structured: StructuredSalesCapture) {
+  const next = new Set(missingFields);
+  if (!structured.contact) next.add('Contact');
+  next.add('Decision maker');
+  next.add('Decision timeline');
+  return Array.from(next);
 }
 
 function capitalize(value: string) {

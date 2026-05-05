@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { BillingPage } from '../billing/BillingPage';
 import { ExportTab } from './ExportTab';
 import { BoundariesTab } from './BoundariesTab';
-import { ONBOARDING_EVENT } from '../../components/layout/OnboardingModal';
+import { REPLAY_GUIDED_WORKFLOW_EVENT } from '../onboarding/guidedWorkflow';
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'billing' | 'export' | 'boundaries'>('billing');
@@ -13,14 +13,14 @@ export function SettingsPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-navy">Sales Memory guidance</p>
-            <p className="mt-1 text-sm text-gray-500">Replay the first-time tour when you want a quick reset on the Memoire loop.</p>
+            <p className="mt-1 text-sm text-gray-500">Replay the guided workflow when you want to walk through a complete Sales Memory Loop.</p>
           </div>
           <button
             type="button"
-            onClick={() => window.dispatchEvent(new Event(ONBOARDING_EVENT))}
+            onClick={() => window.dispatchEvent(new Event(REPLAY_GUIDED_WORKFLOW_EVENT))}
             className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
           >
-            Replay onboarding
+            Replay guided workflow
           </button>
         </div>
       </div>

@@ -1,14 +1,44 @@
 import { Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { loadInteractiveDemoWorkspace } from '../../features/v31/localStore';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
+  const [slowLoad, setSlowLoad] = useState(false);
+
+  useEffect(() => {
+    if (!loading) {
+      setSlowLoad(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setSlowLoad(true), 9000);
+    return () => window.clearTimeout(timer);
+  }, [loading]);
+
+  const openDemo = () => {
+    loadInteractiveDemoWorkspace();
+    window.location.replace('/app/today');
+  };
 
   if (loading) {
+    if (slowLoad) {
+      return (
+        <LoadingFallback
+          onRetry={() => window.location.reload()}
+          onSignOut={() => {
+            signOut();
+            window.location.replace('/login');
+          }}
+          onOpenDemo={openDemo}
+        />
+      );
+    }
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-3">
@@ -24,4 +54,37 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   return <>{children}</>;
+}
+
+function LoadingFallback({
+  onRetry,
+  onSignOut,
+  onOpenDemo,
+}: {
+  onRetry: () => void;
+  onSignOut: () => void;
+  onOpenDemo: () => void;
+}) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Loading fallback</p>
+        <h1 className="mt-2 text-2xl font-bold text-navy">Memoire is taking longer than expected.</h1>
+        <p className="mt-3 text-sm leading-6 text-gray-600">
+          We could not finish loading your sales memory. You can retry, sign out, or open the demo workspace.
+        </p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <button type="button" onClick={onRetry} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+            Retry
+          </button>
+          <button type="button" onClick={onSignOut} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
+            Sign out
+          </button>
+          <button type="button" onClick={onOpenDemo} className="rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-700">
+            Open Demo Workspace
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

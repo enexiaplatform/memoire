@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Building2, ChevronRight, Search } from 'lucide-react';
@@ -7,12 +6,15 @@ import { useAuth } from '../../hooks/useAuth';
 import { isDemoMode } from '../../lib/demoMode';
 import type { Account } from '../../types/v31';
 import { readLocalMemory } from './localStore';
+import { RouteLoadingFallback } from './RouteLoadingFallback';
+import { useSlowLoadingFallback } from './useSlowLoadingFallback';
 
 export function AccountsPage() {
   const { user } = useAuth();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const slowLoading = useSlowLoadingFallback(loading);
 
   const loadAccounts = useCallback(async () => {
     if (!user) return;
@@ -62,7 +64,7 @@ export function AccountsPage() {
       </div>
 
       {loading ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading Account Memory...</div>
+        slowLoading ? <RouteLoadingFallback onRetry={loadAccounts} /> : <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading Account Memory...</div>
       ) : visibleAccounts.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
           <Building2 className="mx-auto h-8 w-8 text-gray-300" />

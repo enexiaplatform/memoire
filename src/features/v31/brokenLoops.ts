@@ -148,7 +148,7 @@ export function detectBrokenLoops({
       loops.push({
         id: `objection-no-follow-up-${interaction.id}`,
         priority: 'P1',
-        issue: 'Objection has no follow-up',
+        issue: 'Open objection has no follow-up',
         affectedEntity: accountById.get(interaction.account_id || '')?.name || interaction.summary,
         whyItMatters: 'Unresolved objections can quietly block the deal.',
         suggestedFix: 'Create an action to address this objection.',
@@ -185,7 +185,7 @@ export function detectBrokenLoops({
       loops.push({
         id: `objection-bank-no-follow-up-${objection.id}`,
         priority: 'P1',
-        issue: 'Objection has no follow-up',
+        issue: 'Open objection has no follow-up',
         affectedEntity: accountById.get(objection.account_id)?.name || objection.title,
         whyItMatters: 'Unresolved objections can quietly block the deal.',
         suggestedFix: 'Create an action to address this objection.',

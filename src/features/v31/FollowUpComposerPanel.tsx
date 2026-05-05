@@ -8,6 +8,7 @@ import {
   generateFollowUpDraft,
   getMissingFollowUpContext,
 } from './followUpComposer';
+import { FOLLOWUP_DRAFT_READY_EVENT } from '../onboarding/guidedWorkflow';
 
 interface FollowUpComposerPanelProps {
   initialContext: FollowUpContext;
@@ -30,9 +31,11 @@ export function FollowUpComposerPanel({ initialContext, onClose }: FollowUpCompo
 
   const generate = () => {
     setDraftStatus('Generating...');
-    setDraft(generateFollowUpDraft(context));
+    const nextDraft = generateFollowUpDraft(context);
+    setDraft(nextDraft);
     setDraftStatus('Draft ready');
     setCopyMessage('');
+    window.dispatchEvent(new CustomEvent(FOLLOWUP_DRAFT_READY_EVENT, { detail: { draft: nextDraft } }));
   };
 
   const copyDraft = async () => {

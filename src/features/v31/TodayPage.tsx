@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -15,6 +14,8 @@ import { FollowUpComposerPanel } from './FollowUpComposerPanel';
 import { calculateMemoryHealth, memoryHealthLabel } from './memoryHealth';
 import { buildWhatChangedDigest, formatMemoryChangeSeverity } from './whatChangedDigest';
 import { detectSalesPatterns, salesPatternSeverityLabel } from './salesPatternDetector';
+import { RouteLoadingFallback } from './RouteLoadingFallback';
+import { useSlowLoadingFallback } from './useSlowLoadingFallback';
 
 export function TodayPage() {
   const { user } = useAuth();
@@ -27,6 +28,7 @@ export function TodayPage() {
   const [followUpContext, setFollowUpContext] = useState<FollowUpContext | null>(null);
   const [actionMessage, setActionMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const slowLoading = useSlowLoadingFallback(loading);
 
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -121,6 +123,7 @@ export function TodayPage() {
   const dueActions = actions.filter((action) => action.due_date === today);
   const dueOrOverdueActions = [...overdueActions, ...dueActions];
   const topRevenueActions = prioritizeActions(actions, today).slice(0, 5);
+  const interactionsToday = interactions.filter((interaction) => interaction.occurred_at.slice(0, 10) === today);
   const brokenLoops = useMemo(
     () => detectBrokenLoops({ accounts, opportunities, interactions, actions, objections, captures }),
     [accounts, actions, captures, interactions, objections, opportunities]
@@ -206,22 +209,31 @@ export function TodayPage() {
       </header>
 
       {loading ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading today's memory...</div>
+        slowLoading ? <RouteLoadingFallback onRetry={loadToday} /> : <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading today's memory...</div>
       ) : (
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-          <div className="space-y-5">
-            <ActionSection title="Top Revenue Actions" icon={<Target className="h-4 w-4" />} actions={topRevenueActions} tone="blue" onDone={markDone} onDraft={draftFromAction} />
+        <>
+          <DailyFocusHeader actionCount={topRevenueActions.length} brokenLoopCount={needsAttention.length} />
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+            <div className="space-y-5">
+            <ActionSection sectionId="top-revenue-actions" title="Top Revenue Actions" icon={<Target className="h-4 w-4" />} actions={topRevenueActions} tone="blue" today={today} onDone={markDone} onDraft={draftFromAction} />
             {actionMessage && <p className="rounded-lg bg-white px-4 py-3 text-sm font-semibold text-gray-600 ring-1 ring-gray-200">{actionMessage}</p>}
             <NeedsAttentionSection loops={needsAttention} healthItems={memoryHealthItems} />
-            <ActionSection title="Due / Overdue Actions" icon={<AlertTriangle className="h-4 w-4" />} actions={dueOrOverdueActions} tone="red" onDone={markDone} onDraft={draftFromAction} />
+            <ActionSection title="Due / Overdue Actions" icon={<AlertTriangle className="h-4 w-4" />} actions={dueOrOverdueActions} tone="red" today={today} onDone={markDone} onDraft={draftFromAction} />
             <QuickCapturePanel compact onSaved={loadToday} />
+            <EndOfDayCheck
+              openActions={actions}
+              brokenLoops={brokenLoops}
+              interactionsToday={interactionsToday}
+              firstFocus={topRevenueActions[0] || null}
+            />
           </div>
 
           <aside className="space-y-5">
             <WhatChangedSection changes={whatChanged} />
             <SalesPatternSection pattern={salesPatterns[0]} />
           </aside>
-        </div>
+          </div>
+        </>
       )}
       {followUpContext && (
         <FollowUpComposerPanel
@@ -230,6 +242,35 @@ export function TodayPage() {
         />
       )}
     </div>
+  );
+}
+
+function DailyFocusHeader({ actionCount, brokenLoopCount }: { actionCount: number; brokenLoopCount: number }) {
+  return (
+    <section className="rounded-lg border border-blue-100 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-bold text-navy">Start today by moving the most important sales memory loops forward.</p>
+          <p className="mt-1 text-sm text-gray-500">
+            {actionCount} revenue actions ready. {brokenLoopCount} memory loops need attention.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <a
+            href="#top-revenue-actions"
+            className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
+          >
+            Start Today's Sales Loop
+          </a>
+          <a
+            href="#quick-capture"
+            className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue hover:border-brand-blue/40"
+          >
+            Capture Interaction
+          </a>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -334,7 +375,10 @@ function NeedsAttentionSection({ loops, healthItems }: { loops: BrokenLoop[]; he
   return (
     <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-base font-bold text-navy">Needs Attention</h2>
+        <div>
+          <h2 className="text-base font-bold text-navy">Needs Attention</h2>
+          <p className="mt-1 text-xs text-gray-500">Broken Loops are accounts or deals missing a clear Next Action, recent context, or follow-up.</p>
+        </div>
         <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">{loops.length + healthItems.length}</span>
       </div>
       {!hasAttention ? (
@@ -351,6 +395,7 @@ function NeedsAttentionSection({ loops, healthItems }: { loops: BrokenLoop[]; he
                   </div>
                   <p className="mt-1 text-xs text-amber-800">{loop.affectedEntity}</p>
                   <p className="mt-2 text-xs leading-5 text-gray-600">{loop.whyItMatters}</p>
+                  <p className="mt-2 text-xs font-semibold leading-5 text-amber-900">{loop.suggestedFix}</p>
                 </div>
               </div>
               <Link
@@ -410,17 +455,21 @@ function loopTarget(loop: BrokenLoop) {
 }
 
 function ActionSection({
+  sectionId,
   title,
   icon,
   actions,
   tone,
+  today,
   onDone,
   onDraft,
 }: {
+  sectionId?: string;
   title: string;
   icon: ReactNode;
   actions: SalesAction[];
   tone: 'red' | 'blue' | 'gray';
+  today: string;
   onDone: (actionId: string) => void;
   onDraft: (action: SalesAction) => void;
 }) {
@@ -431,7 +480,7 @@ function ActionSection({
   }[tone];
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
+    <section id={sectionId} className="rounded-lg border border-gray-200 bg-white shadow-sm">
       <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-4">
         <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full border ${toneClass}`}>{icon}</span>
         <h2 className="text-base font-bold text-navy">{title}</h2>
@@ -454,6 +503,7 @@ function ActionSection({
             </button>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-gray-900">{action.title}</p>
+              <p className="mt-1 text-xs leading-5 text-gray-600">{whyActionMatters(action, today)}</p>
               <p className="mt-1 text-xs text-gray-500">
                 {[action.account?.name, action.opportunity?.title, formatActionTiming(action)].filter(Boolean).join(' / ') || 'No linked account yet'}
               </p>
@@ -482,6 +532,14 @@ function ActionSection({
                   <Send className="h-3.5 w-3.5" />
                   Draft Follow-up
                 </button>
+                <button
+                  type="button"
+                  onClick={() => onDone(action.id)}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-gray-700 ring-1 ring-gray-200 hover:bg-emerald-50 hover:text-emerald-700"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Mark Done
+                </button>
               </div>
             </div>
           </div>
@@ -496,4 +554,56 @@ function formatActionTiming(action: SalesAction) {
   const title = action.title.toLowerCase();
   if (title.includes('tentative timing') || title.includes('source open timing')) return 'Tentative timing only';
   return 'No due date yet';
+}
+
+function whyActionMatters(action: SalesAction, today: string) {
+  if (action.due_date && action.due_date < today) return 'Overdue follow-up can reduce momentum.';
+  if (action.due_date === today) return 'This is due today and should be handled before the loop cools down.';
+  if (action.opportunity_id) return 'This is tied to active Opportunity Memory.';
+  if (action.suggested) return 'Memoire suggested this to keep Sales Memory moving.';
+  return 'Completing this keeps the customer story moving forward.';
+}
+
+function EndOfDayCheck({
+  openActions,
+  brokenLoops,
+  interactionsToday,
+  firstFocus,
+}: {
+  openActions: SalesAction[];
+  brokenLoops: BrokenLoop[];
+  interactionsToday: Interaction[];
+  firstFocus: SalesAction | null;
+}) {
+  return (
+    <details className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <summary className="cursor-pointer text-base font-bold text-navy">End-of-Day Check</summary>
+      <div className="mt-4 space-y-3 text-sm text-gray-600">
+        {openActions.length === 0 && brokenLoops.length === 0 && interactionsToday.length === 0 ? (
+          <p className="leading-6">
+            Capture interactions and complete actions today. Memoire will help you review your sales memory at the end of the day.
+          </p>
+        ) : (
+          <>
+            <EndOfDayLine label="Actions still open" value={`${openActions.length}`} />
+            <EndOfDayLine label="Broken loops unresolved" value={`${brokenLoops.length}`} />
+            <EndOfDayLine label="Interactions captured today" value={`${interactionsToday.length}`} />
+            <div className="rounded-lg bg-blue-50 p-3 text-blue-900">
+              <p className="text-xs font-bold uppercase tracking-wide opacity-70">Suggested first focus for tomorrow</p>
+              <p className="mt-1 font-semibold">{firstFocus?.title || brokenLoops[0]?.suggestedFix || 'Capture the next customer interaction.'}</p>
+            </div>
+          </>
+        )}
+      </div>
+    </details>
+  );
+}
+
+function EndOfDayLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+      <span>{label}</span>
+      <span className="font-bold text-navy">{value}</span>
+    </div>
+  );
 }

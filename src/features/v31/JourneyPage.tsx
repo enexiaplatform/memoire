@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, ArrowRight, CheckCircle2, Circle, Clock3, PauseCircle } from 'lucide-react';
@@ -10,6 +9,8 @@ import { readLocalMemory } from './localStore';
 import { detectBrokenLoops } from './brokenLoops';
 import type { BrokenLoop, CaptureMemory } from './brokenLoops';
 import { calculateMemoryHealth, memoryHealthLabel } from './memoryHealth';
+import { RouteLoadingFallback } from './RouteLoadingFallback';
+import { useSlowLoadingFallback } from './useSlowLoadingFallback';
 
 type FlowState = 'Active' | 'Completed' | 'Missing' | 'Later';
 
@@ -79,6 +80,7 @@ export function JourneyPage() {
   const [objections, setObjections] = useState<Objection[]>([]);
   const [captures, setCaptures] = useState<CaptureMemory[]>([]);
   const [loading, setLoading] = useState(true);
+  const slowLoading = useSlowLoadingFallback(loading);
 
   const loadJourney = useCallback(async () => {
     if (!user) return;
@@ -221,6 +223,9 @@ export function JourneyPage() {
         <p className="mt-2 max-w-2xl text-sm text-gray-500">
           See where Capture, Structure, Memory, Opportunity, Next Action, Ask Memoire, and Learning are working or broken.
         </p>
+        <p className="mt-2 max-w-2xl text-xs leading-5 text-gray-500">
+          Journey is the path from customer interaction to memory, action, and follow-up. A Broken Loop means an account or deal is missing a clear Next Action, recent context, or follow-up.
+        </p>
       </header>
 
       <section className="mb-6 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
@@ -245,7 +250,7 @@ export function JourneyPage() {
           </div>
 
           {loading ? (
-            <p className="text-sm text-gray-500">Loading journeys...</p>
+            slowLoading ? <RouteLoadingFallback onRetry={loadJourney} /> : <p className="text-sm text-gray-500">Loading journeys...</p>
           ) : activeJourneys.length === 0 ? (
             <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-5">
               <p className="text-sm font-semibold text-navy">Start by capturing an interaction.</p>
@@ -292,7 +297,7 @@ export function JourneyPage() {
           </div>
 
           {loading ? (
-            <p className="text-sm text-gray-500">Checking loops...</p>
+            slowLoading ? <RouteLoadingFallback onRetry={loadJourney} /> : <p className="text-sm text-gray-500">Checking loops...</p>
           ) : brokenLoops.length === 0 ? (
             <div className="rounded-lg border border-green-100 bg-green-50 p-4 text-sm text-green-800">
               No broken loops detected. Your sales memory loop looks healthy.

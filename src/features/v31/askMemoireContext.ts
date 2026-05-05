@@ -1,28 +1,25 @@
 import type { Account, AskMemoireAnswer, AskMemoireContext, Interaction, Objection, Opportunity, SalesAction } from '../../types/v31';
 
 export const allMemoryPresets = [
-  'What needs attention?',
+  'What needs attention today?',
+  'Which accounts need action?',
   'What changed recently?',
-  'What patterns do you see in my sales activity?',
-  'What should I do next?',
-  'Which opportunities are stuck?',
+  'What should I focus on?',
 ];
 
 export const accountPresets = [
-  'What changed recently?',
   'Summarize this account',
   'What happened last time?',
-  'What objections have appeared?',
+  'What is blocking this account?',
   'What should I do next?',
-  'Prepare me for next meeting',
+  'Draft follow-up',
 ];
 
 export const opportunityPresets = [
-  'What changed recently?',
   'What is blocking this deal?',
-  'What should I do next?',
-  'Write follow-up message',
-  'What objections have appeared?',
+  'What is the next action?',
+  'What context is missing?',
+  'Draft follow-up',
 ];
 
 export function buildAskMemoireContext({
@@ -135,6 +132,16 @@ export function answerFromMemory(question: string, context: AskMemoireContext): 
       answer: `Hi ${account},\n\nFollowing up on our recent conversation${concern ? ` regarding ${concern}` : ''}. ${suggestedNextAction ? `The next step I noted is ${suggestedNextAction}.` : 'Please let me know the best next step from your side.'}\n\nBest regards,`,
       context,
       suggestedNextAction,
+    });
+  }
+
+  if (normalized.includes('missing') || normalized.includes('context')) {
+    return response({
+      answer: context.missingContext.length > 0
+        ? `Missing context:\n- ${context.missingContext.join('\n- ')}`
+        : 'No major missing context detected in the selected memory.',
+      context,
+      suggestedNextAction: suggestedNextAction || 'Capture the next interaction or create a next action if this memory still feels incomplete.',
     });
   }
 

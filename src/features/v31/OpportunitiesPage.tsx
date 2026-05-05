@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -10,6 +9,8 @@ import type { FollowUpContext, Interaction, MemoryHealth, Objection, Opportunity
 import { readLocalMemory } from './localStore';
 import { FollowUpComposerPanel } from './FollowUpComposerPanel';
 import { calculateMemoryHealth, memoryHealthLabel } from './memoryHealth';
+import { RouteLoadingFallback } from './RouteLoadingFallback';
+import { useSlowLoadingFallback } from './useSlowLoadingFallback';
 
 const stageFilters = ['all', 'new', 'active', 'proposal', 'negotiation', 'paused'] as const;
 
@@ -22,6 +23,7 @@ export function OpportunitiesPage() {
   const [stage, setStage] = useState<(typeof stageFilters)[number]>('all');
   const [followUpContext, setFollowUpContext] = useState<FollowUpContext | null>(null);
   const [loading, setLoading] = useState(true);
+  const slowLoading = useSlowLoadingFallback(loading);
 
   const loadOpportunities = useCallback(async () => {
     if (!user) return;
@@ -109,7 +111,7 @@ export function OpportunitiesPage() {
       </div>
 
       {loading ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading Opportunity Memory...</div>
+        slowLoading ? <RouteLoadingFallback onRetry={loadOpportunities} /> : <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading Opportunity Memory...</div>
       ) : opportunities.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
           <p className="text-sm font-semibold text-gray-900">No Opportunity Memory yet</p>

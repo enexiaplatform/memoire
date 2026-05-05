@@ -10,21 +10,29 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [localError, setLocalError] = useState('');
   const { signIn, error } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    const { error } = await signIn(email, password);
-    setSubmitting(false);
-    if (!error) {
-      navigate('/app/today');
+    setLocalError('');
+    try {
+      const { error } = await signIn(email, password);
+      if (!error) {
+        navigate('/app/today');
+      }
+    } catch {
+      setLocalError('Login failed. Please retry.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleLoadHenryWorkspace = async () => {
     setSubmitting(true);
+    setLocalError('');
     loadHenryFounderWorkspace();
     const { error } = await signIn('henry@memoire.local', 'local-founder-workspace');
     setSubmitting(false);
@@ -64,8 +72,8 @@ export function LoginPage() {
             required
           />
 
-          {error && (
-            <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</div>
+          {(error || localError) && (
+            <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{localError || error}</div>
           )}
 
           <Button type="submit" loading={submitting} className="w-full">
@@ -81,6 +89,12 @@ export function LoginPage() {
               Load Henry Workspace
             </button>
           )}
+          <Link
+            to="/demo"
+            className="block w-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-700 transition-colors hover:bg-amber-100"
+          >
+            Open Demo Workspace
+          </Link>
         </form>
 
         <p className="text-center text-sm text-gray-500 mt-6">

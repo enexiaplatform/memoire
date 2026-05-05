@@ -6,6 +6,7 @@ import { LoginPage } from './features/auth/LoginPage';
 import { SignupPage } from './features/auth/SignupPage';
 import { VerifyEmailPage } from './features/auth/VerifyEmailPage';
 import { PricingPage } from './features/pricing/PricingPage';
+import { DemoEntryPage } from './features/demo/DemoEntryPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { TodayPage } from './features/v31/TodayPage';
 import { JourneyPage } from './features/v31/JourneyPage';
@@ -24,6 +25,7 @@ function App() {
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/demo" element={<DemoEntryPage />} />
 
         {/* Protected app routes */}
         <Route
