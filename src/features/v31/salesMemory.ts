@@ -6,12 +6,21 @@ import { classifyObjection, inferObjectionSeverity } from './objectionMemory';
 
 export const EMPTY_CAPTURE: StructuredSalesCapture = {
   type: 'note',
+  source_type: 'quick_note',
   account: '',
   contact: '',
   contact_role: '',
   opportunity: '',
   opportunity_stage: 'active',
   estimated_value: '',
+  email_subject: '',
+  current_status: '',
+  stuck_risk: '',
+  missing_context: [],
+  decision_maker_name: '',
+  decision_maker_role: '',
+  decision_context: '',
+  secondary_contact: '',
   interaction_summary: '',
   pain_point: '',
   objection: '',
@@ -59,12 +68,21 @@ function normalizeStructuredCapture(input: Partial<StructuredSalesCapture>, rawN
 
   return {
     type,
+    source_type: input.source_type === 'email_thread' ? 'email_thread' : 'quick_note',
     account: cleanText(input.account),
     contact: cleanText(input.contact),
     contact_role: cleanText(input.contact_role),
     opportunity: cleanText(input.opportunity),
     opportunity_stage: opportunityStage,
     estimated_value: cleanText(input.estimated_value),
+    email_subject: cleanText(input.email_subject),
+    current_status: cleanText(input.current_status),
+    stuck_risk: cleanText(input.stuck_risk),
+    missing_context: Array.isArray(input.missing_context) ? input.missing_context.map(cleanText).filter(Boolean) : [],
+    decision_maker_name: cleanText(input.decision_maker_name),
+    decision_maker_role: cleanText(input.decision_maker_role),
+    decision_context: cleanText(input.decision_context),
+    secondary_contact: cleanText(input.secondary_contact),
     interaction_summary: cleanText(input.interaction_summary) || rawNote.trim(),
     pain_point: cleanText(input.pain_point),
     objection: cleanText(input.objection),
@@ -113,6 +131,15 @@ function resolveRelativeFollowUpDate(rawNote: string, currentValue: string) {
     return nextWeekday(today, matchedVietnameseDay.index);
   }
 
+  const explicitDate = rawNote.match(/\b(?:on\s+|by\s+)?(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+(\d{1,2})(?:,\s*(\d{4}))?\b/i);
+  if (explicitDate) {
+    const monthIndex = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+      .findIndex((month) => explicitDate[1].toLowerCase().startsWith(month));
+    const year = explicitDate[3] ? Number(explicitDate[3]) : today.getFullYear();
+    const parsed = new Date(Date.UTC(year, monthIndex, Number(explicitDate[2])));
+    if (Number.isFinite(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+  }
+
   return '';
 }
 
@@ -121,6 +148,17 @@ function mergeList(existing: string[] | null | undefined, next: string) {
   if (!next) return base;
   const lower = next.toLowerCase();
   return base.some((item) => item.toLowerCase() === lower) ? base : [...base, next];
+}
+
+function mergeMany(existing: string[] | null | undefined, nextItems: string[]) {
+  return nextItems.reduce((current, item) => mergeList(current, item), existing || []);
+}
+
+function splitStructuredObjections(value: string) {
+  return value
+    .split(/\n|;/)
+    .map((item) => item.replace(/^\s*(?:\d+[.)]|[-*])\s*/, '').trim())
+    .filter(Boolean);
 }
 
 function normalizeTitle(value: string) {
@@ -229,6 +267,184 @@ function heuristicInteractionStructure(rawNote: string): StructuredSalesCapture 
   }, rawNote);
 }
 
+function extractEmailSubject(rawEmail: string) {
+  return rawEmail.match(/^Subject:\s*(.+)$/im)?.[1]?.trim()
+    || rawEmail.match(/\bSubject\s*[:-]\s*(.+)$/im)?.[1]?.trim()
+    || '';
+}
+
+function extractEmailSender(rawEmail: string) {
+  return rawEmail.match(/^From:\s*([^<\n]+?)(?:\s*<[^>]+>)?\s*$/im)?.[1]?.trim()
+    || rawEmail.match(/\bRegards,\s*\n\s*([A-Z][A-Za-z.\- ]{1,40})/i)?.[1]?.trim()
+    || rawEmail.match(/\bBest regards,\s*\n\s*([A-Z][A-Za-z.\- ]{1,40})/i)?.[1]?.trim()
+    || '';
+}
+
+function extractEmailConcern(rawEmail: string) {
+  const enumerated = extractEnumeratedObjections(rawEmail);
+  if (enumerated.length > 0) return enumerated.join('\n');
+
+  const concernMatch = rawEmail.match(/(?:main concerns are|concerns are|concerned about|concern about|concerns around)\s+([^.\n]+)/i);
+  if (concernMatch?.[1]) return concernMatch[1].trim();
+
+  const lower = rawEmail.toLowerCase();
+  const concerns = [
+    lower.includes('lead time') ? 'lead time' : '',
+    lower.includes('local support') ? 'local support' : '',
+    lower.includes('support') && !lower.includes('local support') ? 'support' : '',
+    lower.includes('price') ? 'price' : '',
+    lower.includes('budget') ? 'budget' : '',
+    lower.includes('compliance') ? 'compliance confidence' : '',
+    lower.includes('validation') ? 'validation proof' : '',
+    lower.includes('tender') ? 'tender timing' : '',
+  ].filter(Boolean);
+  return concerns.join(' and ');
+}
+
+function extractEnumeratedObjections(rawEmail: string) {
+  const lines = rawEmail.split(/\r?\n/);
+  const items = lines
+    .map((line) => line.match(/^\s*(?:\d+[.)]|[-*])\s*(.+)$/)?.[1]?.trim() || '')
+    .filter((line) => line.length > 3)
+    .filter((line) => /documentation|iq\/oq\/pq|calibration|drift|sla|service|validation|compliance|timeline|lead time|support|spec|specification|vendor|budget|approval/i.test(line));
+
+  if (items.length > 0) return items.map(normalizeTechnicalObjection);
+
+  const listMatch = rawEmail.match(/(?:following issues|following concerns|three concerns|concerns are|issues are)\s*[:-]\s*([^]+?)(?:\n\n|Regards,|Best regards,|$)/i)?.[1] || '';
+  if (listMatch.includes(';')) {
+    return listMatch.split(';').map((item) => normalizeTechnicalObjection(item.trim())).filter(Boolean);
+  }
+  return [];
+}
+
+function normalizeTechnicalObjection(value: string) {
+  const cleaned = value.replace(/\s+/g, ' ').replace(/[.;]+$/, '').trim();
+  if (/iq\/oq\/pq/i.test(cleaned)) return cleaned.includes('documentation') ? cleaned : `${cleaned} documentation`;
+  if (/calibration.*drift|drift.*calibration/i.test(cleaned)) return cleaned.includes('spec') ? cleaned : `${cleaned} specification`;
+  if (/sla/i.test(cleaned)) return cleaned.includes('service') ? cleaned : `${cleaned} coverage`;
+  return cleaned;
+}
+
+function detectGhostRisk(rawEmail: string) {
+  return /\b(no response|no reply|has not replied|has not responded|went quiet|gone quiet|silent|no update|unanswered|follow-up unanswered|still waiting|waiting for response|no feedback yet|no reply for \d+\s*(?:days|weeks)|no response for \d+\s*(?:days|weeks))\b/i.test(rawEmail);
+}
+
+function detectTenderRisk(rawEmail: string) {
+  return /\b(tender pending|procurement timeline unclear|committee review|evaluation period extended|no confirmable timeline|notification by end of month|budget approval pending|purchasing committee|internal review)\b/i.test(rawEmail);
+}
+
+function extractDecisionContext(rawEmail: string) {
+  const rolePattern = '(final decision maker|decision maker|approver|approval owner|budget owner|PO sign-off|procurement approver|committee chair|evaluation lead|technical approver|validation manager|finance director|purchasing manager|final approver|responsible for approval)';
+  const nameBeforeRole = rawEmail.match(new RegExp(`\\b([A-Z][A-Za-z.\\-]+(?:\\s+[A-Z][A-Za-z.\\-]+){0,3})\\s+(?:will attend as\\s+)?(?:the\\s+)?${rolePattern}`, 'i'));
+  const roleBeforeName = rawEmail.match(new RegExp(`${rolePattern}\\s+(?:is|will be|:)?\\s*([A-Z][A-Za-z.\\-]+(?:\\s+[A-Z][A-Za-z.\\-]+){0,3})`, 'i'));
+  const name = nameBeforeRole?.[1]?.trim() || roleBeforeName?.[2]?.trim() || '';
+  const role = nameBeforeRole?.[2]?.trim() || roleBeforeName?.[1]?.trim() || '';
+  const context = role
+    ? `${name ? `${name} - ` : ''}${role}`
+    : '';
+  return { name, role, context };
+}
+
+function extractEmailStatus(rawEmail: string) {
+  if (detectGhostRisk(rawEmail)) return 'No response / account going silent';
+  if (detectTenderRisk(rawEmail)) return 'Tender/procurement review may go silent';
+  if (/reviewing internally|internal review|reviewing the proposal|under review/i.test(rawEmail)) {
+    return 'Proposal under internal review';
+  }
+  if (/awaiting po|purchase order/i.test(rawEmail)) return 'Awaiting purchase order';
+  if (/tender pending|pending tender/i.test(rawEmail)) return 'Tender pending';
+  if (/proposal/i.test(rawEmail)) return 'Proposal discussion active';
+  return '';
+}
+
+function extractEmailNextAction(rawEmail: string) {
+  if (detectGhostRisk(rawEmail)) {
+    return 'Send re-engagement follow-up, confirm status, and ask for decision timeline';
+  }
+  if (detectTenderRisk(rawEmail)) {
+    return 'Confirm evaluation timeline, decision criteria, next communication date, and decision owner';
+  }
+  const requestMatch = rawEmail.match(/(?:could you|please|can you)\s+([^?\n.]+)(?:\?|\.|\n|$)/i)?.[1]?.trim();
+  if (requestMatch) return requestMatch.charAt(0).toUpperCase() + requestMatch.slice(1);
+
+  const sendMatch = rawEmail.match(/\b(send|share|provide|prepare)\s+([^.\n]+)/i);
+  if (sendMatch?.[0]) return sendMatch[0].trim();
+  return '';
+}
+
+function structureEmailThread(rawEmail: string, context?: InteractionStructureContext): StructuredSalesCapture {
+  const subject = extractEmailSubject(rawEmail);
+  const sender = extractEmailSender(rawEmail);
+  const concern = extractEmailConcern(rawEmail);
+  const status = extractEmailStatus(rawEmail);
+  const nextAction = extractEmailNextAction(rawEmail);
+  const ghostRisk = detectGhostRisk(rawEmail);
+  const tenderRisk = detectTenderRisk(rawEmail);
+  const decision = extractDecisionContext(rawEmail);
+  const combinedText = `${subject}\n${rawEmail}`;
+  const known = applyKnownMatches({ ...EMPTY_CAPTURE, interaction_summary: rawEmail }, combinedText, context);
+  const accountFromSubject = subject.match(/(?:Re:\s*)?([A-Z][A-Za-z0-9&.\- ]{2,60})\s+(?:proposal|review|tender|thread)/i)?.[1]?.trim() || '';
+  const missingContext = [
+    known.account || accountFromSubject ? '' : 'Account',
+    sender ? '' : 'Contact / sender',
+    nextAction ? '' : 'Next action',
+    decision.name || decision.context ? '' : 'Decision maker',
+    decision.context && /\b(timeline|date|on\s+\w+\s+\d{1,2}|next week|tomorrow|today)\b/i.test(rawEmail) ? '' : 'Decision timeline',
+    ghostRisk ? 'Current decision status' : '',
+    ghostRisk ? 'Alternate contact' : '',
+    ghostRisk ? 'Reason for silence' : '',
+    tenderRisk ? 'Decision committee' : '',
+    tenderRisk ? 'Decision criteria' : '',
+    tenderRisk ? 'Procurement timeline' : '',
+    tenderRisk ? 'Competing vendors' : '',
+    tenderRisk ? 'Budget approval status' : '',
+  ].filter(Boolean);
+  const stuckRisk = ghostRisk
+    ? 'Customer has not responded after follow-up or previous positive signal.'
+    : tenderRisk
+      ? 'Tender/procurement may go silent without confirmed timeline, criteria, and decision owner.'
+      : concern
+    ? 'May go silent if the concern is not addressed with a clear follow-up.'
+    : nextAction
+      ? 'May go silent if the requested follow-up is not scheduled.'
+      : 'May go silent because the next action is unclear.';
+  const primaryConcern = ghostRisk
+    ? 'No response / Account going silent'
+    : tenderRisk
+      ? 'Tender/procurement may go silent'
+      : concern;
+
+  return normalizeStructuredCapture({
+    source_type: 'email_thread',
+    type: 'email',
+    account: known.account || accountFromSubject,
+    contact: known.contact || sender,
+    opportunity: /proposal/i.test(combinedText) ? 'Proposal review' : '',
+    opportunity_stage: /proposal|review/i.test(combinedText) ? 'proposal' : 'active',
+    email_subject: subject,
+    current_status: status,
+    decision_maker_name: decision.name,
+    decision_maker_role: decision.role,
+    decision_context: decision.context,
+    secondary_contact: decision.name && sender && decision.name !== sender ? decision.name : '',
+    interaction_summary: [
+      subject ? `Subject: ${subject}` : '',
+      status || 'Email thread captured.',
+      primaryConcern ? `Customer concern: ${primaryConcern}` : '',
+      decision.context ? `Decision context: ${decision.context}` : '',
+      nextAction ? `Requested next action: ${nextAction}` : '',
+    ].filter(Boolean).join(' '),
+    pain_point: primaryConcern,
+    objection: primaryConcern,
+    next_action: nextAction,
+    follow_up_date: resolveRelativeFollowUpDate(rawEmail, ''),
+    urgency: concern || nextAction ? 'high' : 'medium',
+    confidence: known.account || accountFromSubject || sender ? 'medium' : 'low',
+    stuck_risk: stuckRisk,
+    missing_context: missingContext,
+  }, rawEmail);
+}
+
 function applyKnownMatches(structured: StructuredSalesCapture, rawNote: string, context?: InteractionStructureContext) {
   if (!context) return structured;
   const lowerNote = rawNote.toLowerCase();
@@ -247,12 +463,20 @@ function applyKnownMatches(structured: StructuredSalesCapture, rawNote: string, 
 }
 
 export function getMissingInteractionFields(structured: StructuredSalesCapture) {
-  const missing: string[] = [];
-  if (!structured.account) missing.push('Account');
-  if (!structured.interaction_summary) missing.push('Interaction Summary');
-  if (!structured.next_action) missing.push('Next Action');
-  if (!structured.follow_up_date && structured.next_action) missing.push('Due Date');
-  return missing;
+  const missing = new Set<string>(structured.missing_context || []);
+  if (!structured.account) missing.add('Account');
+  if (!structured.contact) missing.add(structured.source_type === 'email_thread' ? 'Contact / sender' : 'Contact');
+  if (!structured.interaction_summary) missing.add('Interaction Summary');
+  if (!structured.next_action) missing.add('Next Action');
+  if (!structured.follow_up_date && structured.next_action) missing.add('Due Date');
+  if (!structured.decision_maker_name && !structured.decision_context) missing.add('Decision maker');
+  if (!structured.decision_context || !/\b(timeline|date|on\s+\w+\s+\d{1,2}|next week|tomorrow|today)\b/i.test(structured.decision_context)) {
+    missing.add('Decision timeline');
+  }
+  const dealRelated = structured.source_type === 'email_thread' || structured.opportunity_stage === 'proposal' || /proposal|tender|quote|po|purchase|deal/i.test(structured.interaction_summary);
+  if (dealRelated && !structured.opportunity) missing.add('Opportunity context');
+  if (structured.stuck_risk && !structured.objection) missing.add('Blocker / objection');
+  return Array.from(missing);
 }
 
 export async function loadInteractionStructureContext(userId: string): Promise<InteractionStructureContext> {
@@ -300,6 +524,10 @@ export async function structureInteraction(rawNote: string, context?: Interactio
   }
 }
 
+export async function structureEmailThreadCapture(rawEmail: string, context?: InteractionStructureContext): Promise<StructuredSalesCapture> {
+  return structureEmailThread(rawEmail, context);
+}
+
 export interface SaveStructuredSalesCaptureResult {
   captureId: string;
   accountId: string | null;
@@ -316,6 +544,7 @@ export async function saveStructuredSalesCapture(
 ): Promise<SaveStructuredSalesCaptureResult> {
   const structured = normalizeStructuredCapture(structuredInput, rawNote);
   structured.follow_up_date = resolveRelativeFollowUpDate(rawNote, structured.follow_up_date);
+  const objectionItems = splitStructuredObjections(structured.objection);
 
   if (isDemoMode) {
     return saveLocalStructuredCapture(rawNote, structured);
@@ -350,7 +579,7 @@ export async function saveStructuredSalesCapture(
       name: structured.account,
       summary: structured.interaction_summary,
       pain_points: mergeList(existingAccount?.pain_points, structured.pain_point),
-      objections: mergeList(existingAccount?.objections, structured.objection),
+      objections: mergeMany(existingAccount?.objections, objectionItems),
       source_capture_id: capture.id,
     };
 
@@ -409,7 +638,7 @@ export async function saveStructuredSalesCapture(
         .from('opportunities')
         .update({
           contact_id: contactId,
-          blocker: structured.objection || clearMatch.blocker || null,
+          blocker: objectionItems.join('\n') || clearMatch.blocker || null,
           next_action_text: structured.next_action || clearMatch.next_action_text || null,
           last_touch_at: new Date().toISOString(),
           urgency: structured.urgency,
@@ -429,7 +658,7 @@ export async function saveStructuredSalesCapture(
           title,
           stage: structured.opportunity_stage,
           estimated_value: parseMoney(structured.estimated_value),
-          blocker: structured.objection || null,
+          blocker: objectionItems.join('\n') || null,
           next_action_text: structured.next_action || null,
           last_touch_at: new Date().toISOString(),
           urgency: structured.urgency,
@@ -482,22 +711,22 @@ export async function saveStructuredSalesCapture(
     actionId = action.id;
   }
 
-  if (structured.objection && accountId) {
-    const { error: objectionError } = await supabase.from('objections').insert({
+  if (objectionItems.length > 0 && accountId) {
+    const { error: objectionError } = await supabase.from('objections').insert(objectionItems.map((objection) => ({
       user_id: userId,
       account_id: accountId,
       opportunity_id: opportunityId,
       contact_id: contactId,
       source_interaction_id: interaction.id,
-      title: structured.objection,
-      detail: structured.objection,
-      category: classifyObjection(structured.objection),
+      title: objection,
+      detail: objection,
+      category: classifyObjection(objection),
       status: actionId ? 'addressed' : 'open',
-      severity: inferObjectionSeverity(structured.objection),
+      severity: inferObjectionSeverity(objection),
       linked_action_id: actionId,
       first_mentioned_at: new Date().toISOString(),
       last_mentioned_at: new Date().toISOString(),
-    });
+    })));
 
     if (objectionError) throw objectionError;
   }

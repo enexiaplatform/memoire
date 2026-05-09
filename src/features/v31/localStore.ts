@@ -84,6 +84,17 @@ function mergeList(existing: string[], next: string) {
   return existing.some((item) => sameName(item, next)) ? existing : [...existing, next];
 }
 
+function mergeMany(existing: string[], nextItems: string[]) {
+  return nextItems.reduce((current, item) => mergeList(current, item), existing);
+}
+
+function splitStructuredObjections(value: string) {
+  return value
+    .split(/\n|;/)
+    .map((item) => item.replace(/^\s*(?:\d+[.)]|[-*])\s*/, '').trim())
+    .filter(Boolean);
+}
+
 function normalizeTitle(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
@@ -101,6 +112,7 @@ export function saveLocalStructuredCapture(rawNote: string, structured: Structur
     status: 'processed',
     created_at: timestamp,
   });
+  const objectionItems = splitStructuredObjections(structured.objection);
 
   let accountId: string | null = null;
   if (structured.account) {
@@ -123,7 +135,7 @@ export function saveLocalStructuredCapture(rawNote: string, structured: Structur
     }
     account.summary = structured.interaction_summary || account.summary;
     account.pain_points = mergeList(account.pain_points, structured.pain_point);
-    account.objections = mergeList(account.objections, structured.objection);
+    account.objections = mergeMany(account.objections, objectionItems);
     account.updated_at = timestamp;
     accountId = account.id;
   }
@@ -171,7 +183,7 @@ export function saveLocalStructuredCapture(rawNote: string, structured: Structur
         title: structured.opportunity,
         stage: structured.opportunity_stage,
         estimated_value: null,
-        blocker: structured.objection || null,
+        blocker: objectionItems.join('\n') || null,
         next_action_text: structured.next_action || null,
         last_touch_at: timestamp,
         urgency: structured.urgency,
@@ -183,7 +195,7 @@ export function saveLocalStructuredCapture(rawNote: string, structured: Structur
       memory.opportunities.push(opportunity);
     }
     opportunity.contact_id = contactId;
-    opportunity.blocker = structured.objection || opportunity.blocker;
+    opportunity.blocker = objectionItems.join('\n') || opportunity.blocker;
     opportunity.next_action_text = structured.next_action || opportunity.next_action_text;
     opportunity.last_touch_at = timestamp;
     opportunity.updated_at = timestamp;
@@ -228,16 +240,16 @@ export function saveLocalStructuredCapture(rawNote: string, structured: Structur
     });
   }
 
-  if (structured.objection && accountId) {
-    memory.objections.push({
+  if (objectionItems.length > 0 && accountId) {
+    objectionItems.forEach((objection) => memory.objections.push({
       id: id(),
       user_id: DEMO_USER_ID,
       account_id: accountId,
       contact_id: contactId,
       opportunity_id: opportunityId,
       source_interaction_id: interactionId,
-      title: structured.objection,
-      detail: structured.objection,
+      title: objection,
+      detail: objection,
       category: 'other',
       status: actionId ? 'addressed' : 'open',
       severity: structured.urgency,
@@ -247,7 +259,7 @@ export function saveLocalStructuredCapture(rawNote: string, structured: Structur
       last_mentioned_at: timestamp,
       created_at: timestamp,
       updated_at: timestamp,
-    });
+    }));
   }
 
   writeLocalMemory(memory);

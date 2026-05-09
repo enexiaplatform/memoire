@@ -9,6 +9,7 @@ import {
   loadInteractionStructureContext,
   type SaveStructuredSalesCaptureResult,
   saveStructuredSalesCapture,
+  structureEmailThreadCapture,
   structureInteraction,
 } from './salesMemory';
 import {
@@ -28,7 +29,15 @@ interface QuickCapturePanelProps {
 const typeOptions: InteractionType[] = ['call', 'email', 'meeting', 'note', 'proposal', 'other'];
 const stageOptions: SalesStage[] = ['new', 'active', 'proposal', 'negotiation', 'won', 'lost', 'paused'];
 const priorityOptions: SalesPriority[] = ['low', 'medium', 'high'];
+const DEMO_EMAIL_THREAD = `Subject: Re: Control Union proposal review
+
+Hi Henry,
+Thanks for sending the proposal. We are reviewing internally. Our main concerns are lead time and local support. Could you send a clearer implementation timeline next week?
+
+Regards,
+Nam`;
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+type CaptureMode = 'quick_note' | 'email_thread';
 type SavedMemory = SaveStructuredSalesCaptureResult & {
   accountName: string;
   actionTitle: string;
@@ -38,11 +47,14 @@ type SavedMemory = SaveStructuredSalesCaptureResult & {
   objections: string[];
   painPoints: string[];
   missingFields: string[];
+  sourceType: CaptureMode;
+  stuckRisk: string;
 };
 
 export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePanelProps) {
   const { user } = useAuth();
   const [rawNote, setRawNote] = useState('');
+  const [captureMode, setCaptureMode] = useState<CaptureMode>('quick_note');
   const [structured, setStructured] = useState<StructuredSalesCapture | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -59,10 +71,13 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
     setSaveStatus('idle');
   };
 
+  const isEmailThread = captureMode === 'email_thread';
+
   useEffect(() => {
     const useSample = (event: Event) => {
       const note = (event as CustomEvent<{ note?: string }>).detail?.note || GUIDED_WORKFLOW_SAMPLE_NOTE;
       setRawNote(note);
+      setCaptureMode('quick_note');
       setStructured(null);
       setSavedMemory(null);
       setSaveStatus('idle');
@@ -99,12 +114,14 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
     }
 
     setLoading(true);
-    setMessage('Structuring interaction...');
+    setMessage(isEmailThread ? 'Structuring email thread...' : 'Structuring interaction...');
     setSaveStatus('idle');
     setSavedMemory(null);
     try {
       const context = user ? await loadInteractionStructureContext(user.id) : undefined;
-      const result = await structureInteraction(rawNote, context);
+      const result = isEmailThread
+        ? await structureEmailThreadCapture(rawNote, context)
+        : await structureInteraction(rawNote, context);
       setStructured(result);
       window.dispatchEvent(new CustomEvent(CAPTURE_STRUCTURED_EVENT, {
         detail: {
@@ -116,10 +133,10 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
       if (missing.length > 0) {
         setMessage('Missing context - add account, interaction, or next action if you have it.');
       } else {
-        setMessage('Interaction structured. Review before saving to Sales Memory.');
+        setMessage(isEmailThread ? 'Email thread structured. Review before saving to Sales Memory.' : 'Interaction structured. Review before saving to Sales Memory.');
       }
     } catch {
-      setStructured({ ...EMPTY_CAPTURE, interaction_summary: rawNote.trim() });
+      setStructured({ ...EMPTY_CAPTURE, source_type: captureMode, type: isEmailThread ? 'email' : 'note', interaction_summary: rawNote.trim() });
       setMessage('Missing context - add account, interaction, or next action if you have it.');
     } finally {
       setLoading(false);
@@ -135,8 +152,7 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
     setSavedMemory(null);
     try {
       const result = await saveStructuredSalesCapture(user.id, rawNote, structured);
-      const savedMissingFields = getMissingInteractionFields(structured);
-      const dailyMissingContext = enrichDailyMissingContext(savedMissingFields, structured);
+      const dailyMissingContext = getMissingInteractionFields(structured);
       const saved = {
         ...result,
         accountName: structured.account,
@@ -147,12 +163,14 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
         objections: structured.objection ? [structured.objection] : [],
         painPoints: structured.pain_point ? [structured.pain_point] : [],
         missingFields: dailyMissingContext,
+        sourceType: structured.source_type || captureMode,
+        stuckRisk: structured.stuck_risk || '',
       };
       setSavedMemory(saved);
       window.dispatchEvent(new CustomEvent(CAPTURE_SAVED_EVENT, { detail: saved }));
       setRawNote('');
       setStructured(null);
-      setMessage('Saved to Sales Memory.');
+      setMessage(isEmailThread ? 'Saved email thread to Account Memory.' : 'Saved to Sales Memory.');
       setSaveStatus('saved');
       onSaved?.();
     } catch (err) {
@@ -178,7 +196,9 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
         <div>
           <h2 className="text-lg font-bold text-navy">Quick Capture</h2>
           <p className="text-sm text-gray-500 mt-1">
-            {compact ? 'Capture after a call, meeting, email, or customer message.' : 'Paste a customer interaction and turn it into Sales Memory, opportunity context, and a Next Action.'}
+            {isEmailThread
+              ? 'Paste selected customer email messages and turn them into account context, concerns, and follow-up signals.'
+              : compact ? 'Capture after a call, meeting, email, or customer message.' : 'Paste a customer interaction and turn it into Sales Memory, opportunity context, and a Next Action.'}
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-brand-blue">
@@ -187,11 +207,41 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
         </div>
       </div>
 
+      <div className="mb-3 inline-flex rounded-full border border-gray-200 bg-gray-50 p-1">
+        {([
+          ['quick_note', 'Quick Note'],
+          ['email_thread', 'Email Thread'],
+        ] as const).map(([mode, label]) => (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => {
+              setCaptureMode(mode);
+              setStructured(null);
+              setSavedMemory(null);
+              setSaveStatus('idle');
+              setMessage(null);
+            }}
+            className={`rounded-full px-3 py-1.5 text-xs font-bold ${
+              captureMode === mode ? 'bg-navy text-white' : 'text-gray-600 hover:bg-white'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {isEmailThread && (
+        <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm leading-6 text-blue-900">
+          Memoire will extract account context, customer concerns, next actions, and stuck-deal signals from the thread.
+        </div>
+      )}
+
       <textarea
         ref={textareaRef}
         value={rawNote}
         onChange={(event) => setRawNote(event.target.value)}
-        placeholder="Paste a quick note after a call, meeting, or customer message..."
+        placeholder={isEmailThread ? 'Paste a customer email thread or selected email messages here...' : 'Paste a quick note after a call, meeting, or customer message...'}
         className="min-h-[120px] w-full resize-y rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm leading-6 text-gray-900 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
       />
 
@@ -203,8 +253,23 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
           className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          Structure Interaction
+          {isEmailThread ? 'Structure Email Thread' : 'Structure Interaction'}
         </button>
+        {isEmailThread && (
+          <button
+            type="button"
+            onClick={() => {
+              setRawNote(DEMO_EMAIL_THREAD);
+              setStructured(null);
+              setSavedMemory(null);
+              setSaveStatus('idle');
+              setMessage('Demo email thread added. Structure it when ready.');
+            }}
+            className="rounded-full border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-semibold text-brand-blue"
+          >
+            Use demo email thread
+          </button>
+        )}
         {message && (
           <span className={`text-sm ${
             saveStatus === 'saved'
@@ -220,12 +285,15 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
 
       {savedMemory && saveStatus === 'saved' && (
         <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50/70 p-4">
-          <p className="text-sm font-semibold text-emerald-900">Saved to Sales Memory.</p>
+          <p className="text-sm font-semibold text-emerald-900">
+            {savedMemory.sourceType === 'email_thread' ? 'Saved email thread to Account Memory.' : 'Saved to Sales Memory.'}
+          </p>
           <div className="mt-3 grid grid-cols-1 gap-2 text-xs leading-5 text-emerald-900 sm:grid-cols-2">
             <SaveOutcome ok={Boolean(savedMemory.accountId)} text={savedMemory.accountId ? 'Added to Account Memory' : 'Account Memory is missing'} />
-            <SaveOutcome ok={Boolean(savedMemory.actionId)} text={savedMemory.actionId ? 'Created or linked follow-up' : 'No follow-up created'} />
-            <SaveOutcome ok={savedMemory.objections.length > 0} text={savedMemory.objections.length > 0 ? 'Updated blocker / objection context' : 'No blocker captured'} />
-            <SaveOutcome ok text="Context Health may have changed" />
+            <SaveOutcome ok text={savedMemory.sourceType === 'email_thread' ? 'Added thread summary' : 'Added interaction summary'} />
+            <SaveOutcome ok={savedMemory.objections.length > 0} text={savedMemory.objections.length > 0 ? 'Updated customer concerns' : 'No customer concern captured'} />
+            <SaveOutcome ok={Boolean(savedMemory.actionId)} text={savedMemory.actionId ? 'Created or linked next action' : 'No next action created'} />
+            <SaveOutcome ok={Boolean(savedMemory.stuckRisk)} text={savedMemory.stuckRisk ? 'Updated stuck-deal signal' : 'No stuck-deal signal captured'} />
             <SaveOutcome ok text="Ask Memoire can now use this context" />
           </div>
           {savedMemory.missingFields.length > 0 && (
@@ -265,6 +333,20 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
             )}
             <button
               type="button"
+              onClick={() => {
+                setRawNote('');
+                setStructured(null);
+                setSavedMemory(null);
+                setSaveStatus('idle');
+                setMessage(null);
+                textareaRef.current?.focus();
+              }}
+              className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-100"
+            >
+              {savedMemory.sourceType === 'email_thread' ? 'Capture another thread' : 'Capture another note'}
+            </button>
+            <button
+              type="button"
               onClick={() => setFollowUpContext({
                 accountName: savedMemory.accountName || 'Unknown account',
                 contactName: savedMemory.contactName,
@@ -289,9 +371,16 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
         <div className="mt-5 border-t border-gray-100 pt-5">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="text-base font-bold text-navy">Structured Preview</h3>
-              <p className="mt-1 text-sm text-gray-500">Review and edit before saving to Living Memory.</p>
+              <h3 className="text-base font-bold text-navy">{structured.source_type === 'email_thread' ? 'Email Thread Preview' : 'Structured Preview'}</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {structured.source_type === 'email_thread'
+                  ? 'Review thread context, customer concern, stuck risk, and missing context before saving.'
+                  : 'Review and edit before saving to Living Memory.'}
+              </p>
             </div>
+            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600">
+              Source type: {structured.source_type === 'email_thread' ? 'Email Thread' : 'Quick Note'}
+            </span>
             <span className={`rounded-full px-3 py-1 text-xs font-bold ${
               structured.confidence === 'high'
                 ? 'bg-emerald-50 text-emerald-700'
@@ -305,13 +394,34 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <TextField label="Account" value={structured.account} onChange={(value) => updateStructured('account', value)} />
-            <TextField label="Contact" value={structured.contact} onChange={(value) => updateStructured('contact', value)} />
+            <TextField label={structured.source_type === 'email_thread' ? 'Contact / Sender' : 'Contact'} value={structured.contact} onChange={(value) => updateStructured('contact', value)} />
+            {structured.source_type === 'email_thread' && (
+              <TextField label="Subject" value={structured.email_subject || ''} onChange={(value) => updateStructured('email_subject', value)} />
+            )}
             <SelectField label="Interaction Type" value={structured.type} options={typeOptions} onChange={(value) => updateStructured('type', value)} />
-            <TextAreaField label="Interaction Summary" value={structured.interaction_summary} onChange={(value) => updateStructured('interaction_summary', value)} />
+            <TextAreaField label={structured.source_type === 'email_thread' ? 'Thread Summary' : 'Interaction Summary'} value={structured.interaction_summary} onChange={(value) => updateStructured('interaction_summary', value)} />
+            {structured.source_type === 'email_thread' && (
+              <TextAreaField label="Current Status" value={structured.current_status || ''} onChange={(value) => updateStructured('current_status', value)} />
+            )}
+            {structured.source_type === 'email_thread' && (
+              <TextField label="Decision Maker" value={structured.decision_maker_name || ''} onChange={(value) => updateStructured('decision_maker_name', value)} />
+            )}
+            {structured.source_type === 'email_thread' && (
+              <TextField label="Decision Role" value={structured.decision_maker_role || ''} onChange={(value) => updateStructured('decision_maker_role', value)} />
+            )}
+            {structured.source_type === 'email_thread' && (
+              <TextAreaField label="Decision Context" value={structured.decision_context || ''} onChange={(value) => updateStructured('decision_context', value)} />
+            )}
+            {structured.source_type === 'email_thread' && (
+              <TextField label="Secondary Contact" value={structured.secondary_contact || ''} onChange={(value) => updateStructured('secondary_contact', value)} />
+            )}
             <TextField label="Opportunity" value={structured.opportunity} onChange={(value) => updateStructured('opportunity', value)} />
-            <TextAreaField label="Pain Points" value={structured.pain_point} onChange={(value) => updateStructured('pain_point', value)} />
-            <TextAreaField label="Objections" value={structured.objection} onChange={(value) => updateStructured('objection', value)} />
-            <TextAreaField label="Next Action" value={structured.next_action} onChange={(value) => updateStructured('next_action', value)} />
+            <TextAreaField label={structured.source_type === 'email_thread' ? 'Customer Concern' : 'Pain Points'} value={structured.pain_point} onChange={(value) => updateStructured('pain_point', value)} />
+            <TextAreaField label={structured.source_type === 'email_thread' ? 'Concern / Objection' : 'Objections'} value={structured.objection} onChange={(value) => updateStructured('objection', value)} />
+            <TextAreaField label={structured.source_type === 'email_thread' ? 'Suggested Next Action' : 'Next Action'} value={structured.next_action} onChange={(value) => updateStructured('next_action', value)} />
+            {structured.source_type === 'email_thread' && (
+              <TextAreaField label="Stuck Risk" value={structured.stuck_risk || ''} onChange={(value) => updateStructured('stuck_risk', value)} />
+            )}
             <TextField label="Due Date" value={structured.follow_up_date} type="date" onChange={(value) => updateStructured('follow_up_date', value)} />
             <SelectField label="Confidence" value={structured.confidence} options={priorityOptions} onChange={(value) => updateStructured('confidence', value)} />
           </div>
@@ -336,6 +446,12 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
                   <span key={field} className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">{field}</span>
                 ))}
               </div>
+            )}
+            {structured.source_type === 'email_thread' && (
+              <details className="mt-3 rounded-lg bg-gray-50 p-3">
+                <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-gray-500">Raw email preserved</summary>
+                <p className="mt-2 whitespace-pre-line text-xs leading-5 text-gray-600">{rawNote}</p>
+              </details>
             )}
           </div>
 
@@ -376,14 +492,6 @@ function SaveOutcome({ ok, text }: { ok: boolean; text: string }) {
       {text}
     </div>
   );
-}
-
-function enrichDailyMissingContext(missingFields: string[], structured: StructuredSalesCapture) {
-  const next = new Set(missingFields);
-  if (!structured.contact) next.add('Contact');
-  next.add('Decision maker');
-  next.add('Decision timeline');
-  return Array.from(next);
 }
 
 function capitalize(value: string) {

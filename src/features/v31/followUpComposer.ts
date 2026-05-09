@@ -79,7 +79,7 @@ function buildBodyLines({
   const lines = [greeting];
 
   if (context.lastInteractionSummary) {
-    lines.push(`Thank you for the recent discussion with ${account}${opportunity}. Based on our last conversation, I understood that ${context.lastInteractionSummary}`);
+    lines.push(`Thank you for the recent discussion with ${account}${opportunity}. I wanted to follow up on the key points we discussed.`);
   } else {
     lines.push(`I wanted to follow up with ${account}${opportunity}.`);
   }

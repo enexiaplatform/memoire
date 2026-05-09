@@ -144,6 +144,32 @@ export function detectBrokenLoops({
     });
 
   interactions.forEach((interaction) => {
+    const stuckRisk = typeof interaction.structured_data?.stuck_risk === 'string'
+      ? interaction.structured_data.stuck_risk
+      : '';
+    const currentStatus = typeof interaction.structured_data?.current_status === 'string'
+      ? interaction.structured_data.current_status
+      : '';
+    if (stuckRisk || /no response|account going silent|tender\/procurement/i.test(currentStatus)) {
+      const isGhost = /no response|silent|not responded|not replied/i.test(`${stuckRisk} ${currentStatus} ${interaction.raw_note}`);
+      loops.push({
+        id: `email-stuck-risk-${interaction.id}`,
+        priority: isGhost ? 'P0' : 'P1',
+        issue: isGhost ? 'No response / Account going silent' : 'Tender/procurement may go silent',
+        affectedEntity: accountById.get(interaction.account_id || '')?.name || interaction.summary,
+        whyItMatters: stuckRisk || 'The thread indicates a stuck-deal risk.',
+        suggestedFix: isGhost
+          ? 'Send re-engagement follow-up, confirm status, and ask for decision timeline.'
+          : 'Confirm evaluation timeline, decision criteria, next communication date, and decision owner.',
+        actionLabel: 'Open Account',
+        entityType: interaction.opportunity_id ? 'opportunity' : 'account',
+        entityId: interaction.opportunity_id || interaction.account_id || interaction.id,
+        accountId: interaction.account_id,
+        opportunityId: interaction.opportunity_id,
+        captureId: interaction.source_capture_id,
+      });
+    }
+
     if (interaction.objection && !actionByInteraction.has(interaction.id)) {
       loops.push({
         id: `objection-no-follow-up-${interaction.id}`,

@@ -125,12 +125,21 @@ export interface Objection {
 
 export interface StructuredSalesCapture {
   type: InteractionType;
+  source_type?: 'quick_note' | 'email_thread';
   account: string;
   contact: string;
   contact_role: string;
   opportunity: string;
   opportunity_stage: SalesStage;
   estimated_value: string;
+  email_subject?: string;
+  current_status?: string;
+  stuck_risk?: string;
+  missing_context?: string[];
+  decision_maker_name?: string;
+  decision_maker_role?: string;
+  decision_context?: string;
+  secondary_contact?: string;
   interaction_summary: string;
   pain_point: string;
   objection: string;
