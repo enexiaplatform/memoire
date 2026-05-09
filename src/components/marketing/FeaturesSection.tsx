@@ -1,23 +1,19 @@
 const features = [
   {
-    title: 'Quick Capture',
-    description: 'Capture raw customer interactions and structure them into account, contact, opportunity, objection, and Next Action fields.',
+    title: 'Stuck Deal Queue',
+    description: 'See accounts that may go silent because of missing follow-ups, unresolved objections, stale context, or unclear decision ownership.',
   },
   {
-    title: 'Living Account Memory',
-    description: 'See the current customer story, latest interactions, open actions, pain points, objections, and blockers in one place.',
+    title: 'Account Memory',
+    description: 'Open the current account story, latest interaction, known blocker, missing context, and next action in one place.',
   },
   {
-    title: 'Journey and Broken Loops',
-    description: 'Understand where the Sales Memory loop is working, where it is broken, and what action can close the loop.',
+    title: 'Ask with Context',
+    description: 'Ask which deals may go silent, what follow-up is missing, or what Memoire knows and does not know about an account.',
   },
   {
-    title: 'Ask Memoire',
-    description: 'Ask account-specific or opportunity-specific questions grounded in your own Sales Memory, not a generic chatbot.',
-  },
-  {
-    title: 'Learning Layer',
-    description: 'Notice repeated patterns such as proposal momentum loss, objection clusters, and capture without action.',
+    title: 'Follow-up from Memory',
+    description: 'Draft a follow-up from real account context without turning Memoire into email automation.',
   },
 ];
 
@@ -26,7 +22,7 @@ export function FeaturesSection() {
     <section className="w-full bg-white py-24 px-4 border-t border-gray-100">
       <div className="max-w-5xl mx-auto">
         <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-16">
-          The personal sales brain for daily execution
+          Built around stuck deals, not dashboards
         </h2>
 
         <div className="grid gap-x-12 gap-y-12 md:grid-cols-2">

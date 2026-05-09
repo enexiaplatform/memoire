@@ -223,6 +223,22 @@ export interface AskMemoireAnswer {
   suggestedNextAction?: string;
   missingContext: string[];
   suggestedQuestions: string[];
+  cards?: AskMemoireAnswerCard[];
+}
+
+export interface AskMemoireAnswerCard {
+  kind: 'stuck_deal' | 'account' | 'opportunity' | 'follow_up';
+  title: string;
+  fields: {
+    label: string;
+    value: string | string[];
+    tone?: 'default' | 'warning' | 'good';
+  }[];
+  ctas?: {
+    label: string;
+    href?: string;
+    note?: string;
+  }[];
 }
 
 export type MemoryHealthStatus = 'healthy' | 'needs_attention' | 'broken';

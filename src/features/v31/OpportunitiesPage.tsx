@@ -171,7 +171,7 @@ function OpportunityCard({ opportunity, health, onDraft }: { opportunity: Opport
           {(isAtRisk || isStale) && (
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
               <AlertTriangle className="h-3.5 w-3.5" />
-              Broken Loop
+              Deal at Risk
             </span>
           )}
         </div>

@@ -8,11 +8,11 @@ import { PricingPreviewSection } from '../components/marketing/PricingPreviewSec
 import { Footer } from '../components/marketing/Footer';
 
 const problems = [
-  'Customer details disappear across notes, chats, emails, and memory.',
-  'Salespeople forget what blocked the deal last time.',
-  'Follow-ups are missed after meetings.',
-  'CRMs store fields but not the real customer story.',
-  'Repeated sales mistakes are hard to see.',
+  'Long-cycle deals go silent after a promising technical conversation.',
+  'Follow-ups are forgotten after meetings, demos, and proposal reviews.',
+  'Unresolved objections stay buried in notes and memory.',
+  'Customer context is scattered across chats, email, notebooks, and CRM fields.',
+  'CRM fields show status, but not what needs follow-up now.',
 ];
 
 const crmItems = [
@@ -24,11 +24,11 @@ const crmItems = [
 ];
 
 const memoireItems = [
-  'Built for individual sales execution',
-  'Remembers customer stories',
-  'Focuses on daily next action',
-  'Turns interactions into memory and action',
-  'Helps decide what to do next',
+  'Built for technical B2B follow-up',
+  'Surfaces stuck deals before they go quiet',
+  'Remembers unresolved objections',
+  'Turns account context into next actions',
+  'Helps decide what to fix today',
 ];
 
 const bestFor = [
@@ -50,10 +50,10 @@ export function LandingPage() {
   return (
     <div className="min-h-screen font-sans bg-white text-gray-900 selection:bg-indigo-100 selection:text-indigo-900 flex flex-col">
       <Helmet>
-        <title>Memoire - Personal Sales Memory System</title>
-        <meta name="description" content="Memoire turns customer interactions into account memory, next actions, and reusable sales knowledge for B2B sales professionals." />
-        <meta property="og:title" content="Memoire - Your CRM tracks the deal. Memoire remembers the story." />
-        <meta property="og:description" content="Capture customer interactions, turn them into account memory and next actions, and ask your sales brain what to do next." />
+        <title>Memoire - Catch deals before they go silent</title>
+        <meta name="description" content="Memoire helps technical B2B salespeople turn scattered customer context into stuck-deal alerts, account memory, and next actions." />
+        <meta property="og:title" content="Memoire - Catch deals before they go silent." />
+        <meta property="og:description" content="Your CRM tracks the deal. Memoire remembers what needs follow-up." />
         <meta property="og:type" content="website" />
         <link rel="canonical" href="https://memoire.app" />
       </Helmet>
@@ -67,10 +67,10 @@ export function LandingPage() {
           <div className="mx-auto max-w-5xl">
             <div className="mx-auto max-w-[680px] text-center">
               <h2 className="mb-6 text-3xl font-semibold leading-snug text-gray-900 md:text-4xl">
-                Sales context gets lost every day.
+                Deals go silent when follow-up context gets lost.
               </h2>
               <p className="text-lg leading-relaxed text-gray-600">
-                The most important sales knowledge is often buried in scattered notes, memory, and old conversations.
+                Technical B2B sellers manage long buying cycles where one missed follow-up or unresolved objection can quietly stall the deal.
               </p>
             </div>
             <div className="mt-12 grid gap-4 md:grid-cols-2">
@@ -89,10 +89,10 @@ export function LandingPage() {
           <div className="mx-auto max-w-6xl">
             <div className="mx-auto max-w-[680px] text-center">
               <h2 className="mb-6 text-3xl font-bold text-white md:text-4xl">
-                Not another CRM. A personal sales brain.
+                Not another CRM. A stuck-deal queue for the seller.
               </h2>
               <p className="text-lg leading-relaxed text-gray-300">
-                Memoire complements the CRM by helping the individual seller remember context, protect follow-up momentum, and learn from real customer conversations.
+                Memoire complements the CRM by helping the individual seller remember what needs follow-up, what is unresolved, and which accounts are going quiet.
               </p>
             </div>
 
@@ -109,17 +109,17 @@ export function LandingPage() {
 
         <section id="demo" className="w-full bg-indigo-50 py-24 px-4">
           <div className="mx-auto max-w-5xl">
-            <h2 className="text-center text-2xl font-bold text-gray-900 md:text-3xl">Demo story</h2>
+            <h2 className="text-center text-2xl font-bold text-gray-900 md:text-3xl">Demo: see stuck deals first</h2>
             <p className="mx-auto mt-4 max-w-2xl text-center text-lg leading-relaxed text-gray-600">
-              One customer interaction becomes memory, action, and reusable sales knowledge.
+              The demo opens with deals that may go silent today, then shows how a new customer note joins the queue.
             </p>
             <div className="mt-10 rounded-xl border border-indigo-100 bg-white p-6 shadow-sm">
               <p className="text-sm font-bold uppercase tracking-wide text-indigo-700">Northstar Labs / Linh</p>
               <p className="mt-3 text-lg leading-relaxed text-gray-700">
-                The seller just called Linh from Northstar Labs. They are reviewing a proposal but are concerned about lead time and local support. Memoire structures the note, updates Account Memory, creates a Next Action for next Tuesday, shows the Journey, and helps draft a follow-up.
+                The seller sees unresolved objections, missing follow-ups, and accounts going quiet before adding a new note from Linh at Northstar Labs.
               </p>
               <div className="mt-6 flex flex-wrap gap-2">
-                {['Quick Capture', 'Structured Interaction', 'Account Memory', 'Journey', 'Ask Memoire', 'Follow-up Composer'].map((step) => (
+                {['Stuck Deal Queue', 'Account Memory', 'Unresolved Objections', 'Next Actions', 'Ask Memoire', 'Follow-up from Memory'].map((step) => (
                   <span key={step} className="rounded-full bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-700">{step}</span>
                 ))}
               </div>
@@ -145,7 +145,7 @@ export function LandingPage() {
         <section className="w-full bg-indigo-600 py-24 md:py-32 px-4 text-center">
           <div className="max-w-3xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-10">
-              Start building your Sales Memory today.
+              Stop letting warm deals go quiet.
             </h2>
             <div className="flex flex-col items-center gap-3">
               <Link to="/demo" className="bg-white text-indigo-600 text-lg font-medium px-8 py-4 rounded-lg transition-colors hover:bg-gray-50">

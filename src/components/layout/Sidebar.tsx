@@ -58,8 +58,8 @@ export function Sidebar() {
         </div>
 
         <div className="mx-4 mt-6 rounded-lg border border-white/10 bg-white/5 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-white/40">Sales Memory Loop</p>
-          <p className="mt-2 text-sm leading-5 text-white/70">Capture, structure, remember, act, ask, learn.</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-white/40">Stuck Deal Queue</p>
+          <p className="mt-2 text-sm leading-5 text-white/70">Catch quiet deals, fix follow-up, remember context.</p>
         </div>
       </nav>
 

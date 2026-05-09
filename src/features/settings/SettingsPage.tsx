@@ -12,8 +12,8 @@ export function SettingsPage() {
       <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-navy">Sales Memory guidance</p>
-            <p className="mt-1 text-sm text-gray-500">Replay the guided workflow when you want to walk through a complete Sales Memory Loop.</p>
+            <p className="text-sm font-semibold text-navy">Guided workflow</p>
+            <p className="mt-1 text-sm text-gray-500">Replay the guided workflow when you want to walk through a complete Memory-to-Action flow.</p>
           </div>
           <button
             type="button"

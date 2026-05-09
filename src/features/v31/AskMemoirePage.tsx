@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Bot, Send, Sparkles } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Bot, ExternalLink, Send, Sparkles } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { isDemoMode } from '../../lib/demoMode';
-import type { Account, AskMemoireAnswer, AskMemoireContext, Interaction, MemoryChange, Objection, Opportunity, SalesAction, SalesPattern } from '../../types/v31';
+import type { Account, AskMemoireAnswer, AskMemoireAnswerCard, AskMemoireContext, Interaction, MemoryChange, Objection, Opportunity, SalesAction, SalesPattern } from '../../types/v31';
 import { readLocalMemory } from './localStore';
-import { answerFromMemory, buildAskMemoireContext, presetsForScope } from './askMemoireContext';
+import { actionFixPresets, answerFromMemory, buildAskMemoireContext, presetsForScope } from './askMemoireContext';
 import { detectBrokenLoops, type BrokenLoop } from './brokenLoops';
 import { calculateMemoryHealth } from './memoryHealth';
 import { buildWhatChangedDigest, formatMemoryChangeSeverity } from './whatChangedDigest';
@@ -176,7 +176,7 @@ export function AskMemoirePage() {
     setError(null);
 
     try {
-      const fallbackAnswer = answerFromMemory(nextQuestion, contextPacket);
+      const fallbackAnswer = withAnswerCards(answerFromMemory(nextQuestion, contextPacket), nextQuestion, contextPacket);
       if (scope === 'all' && isAttentionQuestion(nextQuestion)) {
         setAnswer(answerFromAttention({
           context: contextPacket,
@@ -220,16 +220,16 @@ export function AskMemoirePage() {
         return;
       }
       const data = await result.json();
-      setAnswer({
+      setAnswer(withAnswerCards({
         answer: data.answer || fallbackAnswer.answer,
         contextUsed: data.sources || fallbackAnswer.contextUsed,
         suggestedNextAction: data.suggested_next_action || fallbackAnswer.suggestedNextAction,
         missingContext: data.missing_context || fallbackAnswer.missingContext,
         suggestedQuestions: data.suggested_questions || fallbackAnswer.suggestedQuestions,
-      });
+      }, nextQuestion, contextPacket));
     } catch (err) {
       console.error(err);
-      setAnswer(answerFromMemory(nextQuestion, contextPacket));
+      setAnswer(withAnswerCards(answerFromMemory(nextQuestion, contextPacket), nextQuestion, contextPacket));
     } finally {
       setLoading(false);
     }
@@ -254,9 +254,9 @@ export function AskMemoirePage() {
     <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
       <header className="mb-6">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Ask Memoire</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Ask selected sales memory</h1>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Ask why deals may go silent</h1>
         <p className="mt-2 max-w-2xl text-sm text-gray-500">
-          Choose the memory context first, then ask for a grounded answer.
+          Choose a context and ask Memoire about stuck deals, missing follow-ups, unresolved objections, or account context.
         </p>
       </header>
 
@@ -281,7 +281,7 @@ export function AskMemoirePage() {
                 }}
                 className={`rounded-full px-3 py-1.5 text-sm font-semibold ${scope === item ? 'bg-navy text-white' : 'border border-gray-200 bg-white text-gray-600'}`}
               >
-                {item === 'all' ? 'All Memory' : item === 'account' ? 'Specific Account' : 'Specific Opportunity'}
+                {item === 'all' ? 'All Deals' : item === 'account' ? 'Specific Account' : 'Specific Opportunity'}
               </button>
             ))}
           </div>
@@ -322,14 +322,14 @@ export function AskMemoirePage() {
                   <option key={opportunity.id} value={opportunity.id}>{opportunity.title}</option>
                 ))}
               </select>
-              {!selectedOpportunityId && <p className="mt-2 text-xs text-gray-500">Select an opportunity so Memoire can answer with deal-specific Sales Memory.</p>}
+              {!selectedOpportunityId && <p className="mt-2 text-xs text-gray-500">Select an opportunity so Memoire can answer with deal-specific account context.</p>}
             </>
           )}
         </div>
 
         <div className="mb-4">
           <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">
-            {scope === 'all' ? 'All Memory presets' : scope === 'account' ? 'Account presets' : 'Opportunity presets'}
+            {scope === 'all' ? 'Stuck deal presets' : scope === 'account' ? 'Account presets' : 'Opportunity presets'}
           </p>
           <div className="flex flex-wrap gap-2">
             {presets.map((preset) => (
@@ -343,13 +343,26 @@ export function AskMemoirePage() {
               </button>
             ))}
           </div>
+          <p className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-gray-400">Action / fix prompts</p>
+          <div className="flex flex-wrap gap-2">
+            {actionFixPresets.map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => ask(preset)}
+                className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-brand-blue hover:border-brand-blue/40"
+              >
+                {preset}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <textarea
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
-            placeholder="Ask Memoire about selected memory..."
+            placeholder="Ask about stuck deals, missing follow-ups, or selected account context..."
             className="min-h-[88px] flex-1 resize-y rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
           />
           <button
@@ -384,7 +397,21 @@ export function AskMemoirePage() {
             <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
               Answer ready
             </span>
-            <p className="whitespace-pre-line text-sm leading-7 text-gray-800">{answer.answer}</p>
+            {answer.cards && answer.cards.length > 0 ? (
+              <div className="grid gap-4">
+                {answer.cards.map((card, index) => (
+                  <AnswerCard key={`${card.kind}-${card.title}-${index}`} card={card} />
+                ))}
+              </div>
+            ) : (
+              <p className="whitespace-pre-line text-sm leading-7 text-gray-800">{answer.answer}</p>
+            )}
+            {answer.cards && answer.cards.length > 0 && answer.answer && (
+              <details className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-gray-500">Structured text</summary>
+                <p className="mt-3 whitespace-pre-line text-sm leading-7 text-gray-700">{answer.answer}</p>
+              </details>
+            )}
             <AnswerBlock title="Based on / Context used" items={answer.contextUsed} />
             {answer.suggestedNextAction && <AnswerBlock title="Suggested next action" items={[answer.suggestedNextAction]} tone="blue" />}
             {answer.missingContext.length > 0 && <AnswerBlock title="Missing context" items={answer.missingContext} tone="amber" />}
@@ -407,11 +434,103 @@ export function AskMemoirePage() {
             )}
           </div>
         ) : (
-          <p className="text-sm text-gray-500">Select All Memory, an Account, or an Opportunity so Memoire can answer with better context.</p>
+          <p className="text-sm text-gray-500">Select All Deals, an Account, or an Opportunity so Memoire can answer with better context.</p>
         )}
       </section>
     </div>
   );
+}
+
+function withAnswerCards(answer: AskMemoireAnswer, question: string, context: AskMemoireContext): AskMemoireAnswer {
+  const normalized = question.toLowerCase();
+  const accounts = context.includedData.accounts || [];
+  const opportunities = context.includedData.opportunities || [];
+  const interactions = context.includedData.interactions || [];
+  const actions = context.includedData.actions || [];
+  const objections = context.includedData.objections || [];
+  const account = accounts[0];
+  const opportunity = opportunities.find((item) => !['won', 'lost'].includes(item.stage)) || opportunities[0];
+  const latestInteraction = [...interactions].sort((a, b) => b.occurred_at.localeCompare(a.occurred_at))[0];
+  const openAction = actions.find((action) => action.status === 'open');
+  const openObjections = objections.filter((objection) => objection.status === 'open');
+  const blocker = openObjections[0]?.title || opportunity?.blocker || interactions.find((item) => item.objection)?.objection || '';
+  const missingContext = normalizeMissing(answer.missingContext.length > 0 ? answer.missingContext : context.missingContext);
+  const nextAction = answer.suggestedNextAction || openAction?.title || opportunity?.next_action_text || '';
+  const contextHref = account?.id ? `/app/accounts/${account.id}` : opportunity?.account_id ? `/app/accounts/${opportunity.account_id}` : undefined;
+  const opportunityHref = opportunity?.id ? '/app/opportunities' : undefined;
+  const commonCtas = [
+    contextHref ? { label: 'Open Account', href: contextHref } : null,
+    opportunityHref ? { label: 'Open Opportunity', href: opportunityHref } : null,
+    contextHref ? { label: 'Draft Follow-up', href: contextHref, note: 'Open Account Memory to draft from context.' } : null,
+    { label: 'Capture Update', href: '/app/today#quick-capture' },
+  ].filter(Boolean) as AskMemoireAnswerCard['ctas'];
+
+  if (normalized.includes('draft') || normalized.includes('follow-up') || normalized.includes('follow up') || normalized.includes('address this objection') || normalized.includes('ask the customer')) {
+    return {
+      ...answer,
+      cards: [{
+        kind: 'follow_up',
+        title: 'Follow-up suggestion',
+        fields: [
+          { label: 'Goal', value: normalized.includes('address') ? 'Address the objection' : 'Move the follow-up forward' },
+          { label: 'Recipient', value: account?.name || 'Recipient not known yet' },
+          { label: 'What to mention', value: [latestInteraction ? `Last interaction: ${latestInteraction.summary}` : '', blocker ? `Concern: ${blocker}` : '', nextAction ? `Next action: ${nextAction}` : ''].filter(Boolean) },
+          { label: 'Missing context', value: missingContext.length > 0 ? missingContext : ['No major missing context detected.'] },
+          { label: 'Draft follow-up', value: answer.answer || 'Memoire does not have enough context to draft confidently.' },
+        ],
+        ctas: commonCtas,
+      }],
+    };
+  }
+
+  if (context.scope === 'opportunity' || normalized.includes('opportunity') || normalized.includes('deal stuck') || normalized.includes('blocking this')) {
+    return {
+      ...answer,
+      cards: [{
+        kind: 'opportunity',
+        title: opportunity ? `${account?.name || 'Account'} / ${opportunity.title}` : 'Selected opportunity',
+        fields: [
+          { label: 'Deal status', value: opportunity ? `${opportunity.title} (${opportunity.stage})` : 'Opportunity context missing' },
+          { label: 'Blocker', value: blocker || 'No blocker captured yet', tone: blocker ? 'warning' : 'default' },
+          { label: 'Evidence', value: [latestInteraction ? `Last interaction: ${latestInteraction.summary}` : '', blocker ? `Blocker: ${blocker}` : '', nextAction ? `Next action: ${nextAction}` : 'No open next action found'].filter(Boolean) },
+          { label: 'Missing context', value: missingContext.length > 0 ? missingContext : ['No major missing context detected.'] },
+          { label: 'Suggested fix', value: answer.suggestedNextAction || nextAction || 'Create or confirm a follow-up action.', tone: 'warning' },
+          { label: 'Next action', value: nextAction || 'Memoire does not know the next action yet.' },
+        ],
+        ctas: commonCtas,
+      }],
+    };
+  }
+
+  if (context.scope === 'account' || normalized.includes('account') || normalized.includes('memoire know') || normalized.includes('last time') || normalized.includes('what should i do next')) {
+    return {
+      ...answer,
+      cards: [{
+        kind: 'account',
+        title: account?.name || 'Selected account',
+        fields: [
+          { label: 'Current story', value: account?.summary || latestInteraction?.summary || 'Memoire does not have enough account story yet.' },
+          { label: 'Why this account may go silent', value: blocker || (!nextAction ? 'Missing follow-up' : 'No major silent-deal risk detected.'), tone: blocker || !nextAction ? 'warning' : 'good' },
+          { label: 'Based on', value: [latestInteraction ? `Last interaction: ${latestInteraction.summary}` : '', opportunity ? `Opportunity: ${opportunity.title}` : '', openObjections.length > 0 ? `Open objection: ${openObjections.map((item) => item.title).join('; ')}` : '', nextAction ? `Next action: ${nextAction}` : ''].filter(Boolean) },
+          { label: 'Memoire knows', value: [account?.name ? `Account: ${account.name}` : '', opportunity?.title ? `Opportunity: ${opportunity.title}` : '', blocker ? `Blocker: ${blocker}` : '', latestInteraction ? 'Recent interaction captured' : ''].filter(Boolean) },
+          { label: 'Memoire does not know', value: missingContext.length > 0 ? missingContext : ['No major missing context detected.'] },
+          { label: 'Suggested next move', value: answer.suggestedNextAction || nextAction || 'Create or confirm a follow-up action.', tone: 'warning' },
+        ],
+        ctas: commonCtas,
+      }],
+    };
+  }
+
+  return answer;
+}
+
+function normalizeMissing(items: string[]) {
+  return unique(items.flatMap((item) => {
+    if (item.toLowerCase().includes('decision maker') && item.toLowerCase().includes('timeline')) {
+      return ['Decision maker', 'Decision timeline'];
+    }
+    return [item];
+  }));
 }
 
 function isWhatChangedQuestion(question: string) {
@@ -445,11 +564,19 @@ function isAttentionQuestion(question: string) {
     'what needs attention today',
     'which accounts need attention',
     'which accounts need action',
+    'which deals may go silent',
+    'which accounts need follow-up',
+    'which objections are unresolved',
+    'what should i fix today',
+    'stuck deals',
+    'deals may go silent',
     'what should i focus on',
     'which deals are broken',
     'which accounts are broken',
-    'show broken loops',
-    'what are my broken loops',
+    'show stuck deals',
+    'what are my stuck deals',
+    'which deals are missing next actions',
+    'missing next actions',
   ].some((pattern) => normalized.includes(pattern));
 }
 
@@ -480,9 +607,13 @@ function answerFromAttention({
     entityKey: loop.opportunityId ? `opportunity-${loop.opportunityId}` : loop.accountId ? `account-${loop.accountId}` : `${loop.entityType}-${loop.entityId}`,
     entityName: loop.affectedEntity,
     reason: `${loop.issue}: ${loop.whyItMatters}`,
-    signalSource: 'Broken Loop',
+    signalSource: 'Stuck Deal Queue',
     suggestedNextAction: loop.suggestedFix,
     missingContext: [] as string[],
+    accountId: loop.accountId,
+    opportunityId: loop.opportunityId,
+    issue: loop.issue,
+    whyItMatters: loop.whyItMatters,
   }));
 
   const healthItems = memoryHealth
@@ -501,10 +632,14 @@ function answerFromAttention({
         rank: health.status === 'broken' ? 3 : 4,
         entityKey: `${health.entityType}-${health.entityId}`,
         entityName: opportunity ? `${account?.name || 'Unknown account'} / ${opportunity.title}` : account?.name || 'Unknown account',
-        reason: health.reasons[0] || (health.status === 'broken' ? 'Sales Memory loop is broken.' : 'Sales Memory needs more context.'),
-        signalSource: 'Memory Health',
+        reason: health.reasons[0] || (health.status === 'broken' ? 'This deal may go silent.' : 'Account context needs more detail.'),
+        signalSource: 'Context Health',
         suggestedNextAction: linkedAction?.title || health.suggestedFixes[0] || 'Create or confirm the next action.',
         missingContext: health.missingContext,
+        accountId: account?.id,
+        opportunityId: opportunity?.id,
+        issue: health.status === 'broken' ? 'Deal at risk' : 'Weak context',
+        whyItMatters: health.reasons[0] || 'Memoire does not have enough context to help you act confidently.',
       };
     });
 
@@ -519,24 +654,41 @@ function answerFromAttention({
 
   if (rankedItems.length === 0) {
     return {
-      answer: 'No major attention items detected. Your sales memory loop looks healthy.',
-      contextUsed: ['All Memory', 'Broken Loops', 'Memory Health'],
+      answer: 'No major stuck-deal items detected. Your accounts have enough context and follow-up for now.',
+      contextUsed: ['All Deals', 'Stuck Deal Queue', 'Context Health'],
       missingContext: [],
       suggestedQuestions: presetsForScope(context.scope).slice(0, 4),
     };
   }
 
   return {
-    answer: `Needs attention:\n${rankedItems.map((item, index) => [
+    answer: `Deals that may go silent:\n${rankedItems.map((item, index) => [
       `${index + 1}. ${item.entityName}`,
-      `   Reason: ${item.reason}`,
-      `   Signal source: ${item.signalSource}`,
-      `   Suggested next action: ${item.suggestedNextAction}`,
+      `   Issue: ${item.reason}`,
+      `   Evidence: ${item.signalSource}`,
+      `   Suggested fix: ${item.suggestedNextAction}`,
     ].join('\n')).join('\n\n')}`,
-    contextUsed: ['All Memory', `${brokenLoops.length} Broken Loop item(s)`, `${memoryHealth.length} Memory Health signal(s)`],
+    contextUsed: ['All Deals', `${brokenLoops.length} stuck-deal signal(s)`, `${memoryHealth.length} Context Health signal(s)`],
     suggestedNextAction: rankedItems[0]?.suggestedNextAction,
     missingContext: unique(rankedItems.flatMap((item) => item.missingContext)).slice(0, 5),
     suggestedQuestions: presetsForScope(context.scope).slice(0, 4),
+    cards: rankedItems.slice(0, 5).map((item): AskMemoireAnswerCard => ({
+      kind: 'stuck_deal',
+      title: item.entityName,
+      fields: [
+        { label: 'Issue', value: item.issue || item.reason, tone: 'warning' },
+        { label: 'Why it may go silent', value: item.whyItMatters || item.reason, tone: 'warning' },
+        { label: 'Evidence', value: [item.signalSource] },
+        { label: 'Missing context', value: item.missingContext.length > 0 ? item.missingContext : ['No additional missing context detected.'] },
+        { label: 'Suggested fix', value: item.suggestedNextAction, tone: 'warning' },
+      ],
+      ctas: [
+        item.accountId ? { label: 'Open Account', href: `/app/accounts/${item.accountId}` } : null,
+        item.opportunityId ? { label: 'Open Opportunity', href: `/app/opportunities` } : null,
+        item.accountId ? { label: 'Draft Follow-up', href: `/app/accounts/${item.accountId}`, note: 'Open Account Memory to draft from context.' } : null,
+        { label: 'Capture Update', href: '/app/today#quick-capture' },
+      ].filter(Boolean) as AskMemoireAnswerCard['ctas'],
+    })),
   };
 }
 
@@ -581,6 +733,77 @@ function answerFromPatterns(patterns: SalesPattern[], context: AskMemoireContext
     missingContext: context.missingContext,
     suggestedQuestions: presetsForScope(context.scope).slice(0, 4),
   };
+}
+
+function AnswerCard({ card }: { card: AskMemoireAnswerCard }) {
+  const toneClass = {
+    stuck_deal: 'border-amber-200 bg-amber-50/40',
+    account: 'border-blue-100 bg-blue-50/30',
+    opportunity: 'border-violet-100 bg-violet-50/30',
+    follow_up: 'border-emerald-100 bg-emerald-50/30',
+  }[card.kind];
+
+  return (
+    <article className={`rounded-lg border p-4 ${toneClass}`}>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-500">{card.kind.replace('_', ' ')}</p>
+          <h3 className="mt-1 text-base font-bold text-navy">{card.title}</h3>
+        </div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {card.fields.map((field) => (
+          <CardField key={field.label} field={field} />
+        ))}
+      </div>
+      {card.ctas && card.ctas.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {card.ctas.map((cta) => cta.href ? (
+            <Link
+              key={`${cta.label}-${cta.href}`}
+              to={cta.href}
+              title={cta.note}
+              className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:border-brand-blue/40 hover:text-brand-blue"
+            >
+              {cta.label}
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Link>
+          ) : (
+            <span key={cta.label} className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 ring-1 ring-gray-200">
+              {cta.label}
+            </span>
+          ))}
+        </div>
+      )}
+    </article>
+  );
+}
+
+function CardField({ field }: { field: AskMemoireAnswerCard['fields'][number] }) {
+  const tone = {
+    default: 'bg-white/80 text-gray-800',
+    warning: 'bg-amber-50 text-amber-950 ring-1 ring-amber-100',
+    good: 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100',
+  }[field.tone || 'default'];
+  const values = Array.isArray(field.value) ? field.value.filter(Boolean) : [field.value].filter(Boolean);
+
+  return (
+    <div className={`rounded-lg p-3 ${tone}`}>
+      <p className="text-xs font-bold uppercase tracking-wide opacity-60">{field.label}</p>
+      {values.length > 1 ? (
+        <ul className="mt-2 space-y-1 text-sm leading-6">
+          {values.map((value) => (
+            <li key={value} className="flex gap-2">
+              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-50" />
+              <span>{value}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 whitespace-pre-line text-sm leading-6">{values[0] || 'Memoire does not know yet.'}</p>
+      )}
+    </div>
+  );
 }
 
 function AnswerBlock({ title, items, tone = 'gray' }: { title: string; items: string[]; tone?: 'gray' | 'blue' | 'amber' }) {

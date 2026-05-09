@@ -95,7 +95,7 @@ export function calculateMemoryHealth(
     suggestedFixes.push('Add or link the main customer contact.');
   }
   if (!hasDecisionContext) {
-    missingContext.push('Decision timeline');
+    missingContext.push('Decision maker / timeline');
     reasons.push('Decision context is still unclear.');
     suggestedFixes.push('Capture decision timing, authority, budget, or approval context.');
   }
@@ -104,7 +104,7 @@ export function calculateMemoryHealth(
     suggestedFixes.push('Address the objection or link it to a follow-up action.');
   }
   if (hasBrokenLoop) {
-    reasons.push('A broken loop is affecting this memory.');
+    reasons.push('This deal or account may go silent without attention.');
     relevantBrokenLoops.slice(0, 2).forEach((loop) => suggestedFixes.push(loop.suggestedFix));
   }
 
@@ -136,9 +136,9 @@ export function calculateMemoryHealth(
 }
 
 export function memoryHealthLabel(status: MemoryHealth['status']) {
-  if (status === 'healthy') return 'Healthy';
-  if (status === 'needs_attention') return 'Needs Attention';
-  return 'Broken';
+  if (status === 'healthy') return 'Context Healthy';
+  if (status === 'needs_attention') return 'Needs Context';
+  return 'Deal at Risk';
 }
 
 function latestByDate<T>(items: T[], getDate: (item: T) => string | null | undefined) {

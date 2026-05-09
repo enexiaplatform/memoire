@@ -1,25 +1,34 @@
 import type { Account, AskMemoireAnswer, AskMemoireContext, Interaction, Objection, Opportunity, SalesAction } from '../../types/v31';
 
 export const allMemoryPresets = [
-  'What needs attention today?',
-  'Which accounts need action?',
+  'Which deals may go silent?',
+  'Which accounts need follow-up?',
+  'Which objections are unresolved?',
+  'What should I fix today?',
+  'Which deals are missing next actions?',
   'What changed recently?',
-  'What should I focus on?',
 ];
 
 export const accountPresets = [
-  'Summarize this account',
+  'Why may this account go silent?',
   'What happened last time?',
-  'What is blocking this account?',
+  'What does Memoire know?',
+  'What does Memoire not know?',
   'What should I do next?',
-  'Draft follow-up',
 ];
 
 export const opportunityPresets = [
-  'What is blocking this deal?',
-  'What is the next action?',
+  'Why is this deal stuck?',
+  'What is blocking this opportunity?',
+  'What follow-up is missing?',
   'What context is missing?',
-  'Draft follow-up',
+  'What should I do next?',
+];
+
+export const actionFixPresets = [
+  'Draft a follow-up',
+  'How should I address this objection?',
+  'What should I ask the customer next?',
 ];
 
 export function buildAskMemoireContext({
@@ -99,16 +108,67 @@ export function answerFromMemory(question: string, context: AskMemoireContext): 
   const latestInteraction = [...interactions].sort((a, b) => b.occurred_at.localeCompare(a.occurred_at))[0];
   const activeOpportunity = opportunities.find((opportunity) => !['won', 'lost'].includes(opportunity.stage)) || opportunities[0];
   const suggestedNextAction = openActions[0]?.title || activeOpportunity?.next_action_text || '';
+  const accountName = accounts[0]?.name || activeOpportunity?.account?.name || 'Selected account';
+  const blockers = unique([
+    ...openObjections.map((objection) => objection.title),
+    ...opportunities.map((opportunity) => opportunity.blocker || '').filter(Boolean),
+    ...interactions.map((interaction) => interaction.objection || '').filter(Boolean),
+  ]);
+  const evidence = [
+    latestInteraction ? `Last interaction: ${latestInteraction.summary}` : '',
+    activeOpportunity ? `Opportunity: ${activeOpportunity.title} (${activeOpportunity.stage})` : '',
+    blockers[0] ? `Blocker: ${blockers[0]}` : '',
+    suggestedNextAction ? `Next action: ${suggestedNextAction}` : '',
+  ].filter(Boolean);
+
+  if (normalized.includes('go silent') || normalized.includes('stuck') || normalized.includes('missing follow')) {
+    const issue = blockers[0]
+      ? 'Unresolved objection'
+      : !suggestedNextAction
+        ? 'Missing follow-up'
+        : context.missingContext.length > 0
+          ? 'Weak context'
+          : 'No major silent-deal risk detected';
+    return response({
+      answer: structuredAnswer({
+        account: accountName,
+        issue,
+        evidence,
+        suggestedFix: suggestedNextAction || 'Create or confirm a follow-up action.',
+        missingContext: context.missingContext,
+        nextAction: suggestedNextAction,
+      }),
+      context,
+      suggestedNextAction: suggestedNextAction || 'Create or confirm a follow-up action.',
+    });
+  }
+
+  if (normalized.includes('what does memoire know')) {
+    return response({
+      answer: structuredAnswer({
+        account: accountName,
+        issue: 'Known account context',
+        evidence,
+        suggestedFix: suggestedNextAction || 'Capture the next customer update.',
+        missingContext: [],
+        nextAction: suggestedNextAction,
+      }),
+      context,
+      suggestedNextAction,
+    });
+  }
 
   if (normalized.includes('blocking') || normalized.includes('block') || normalized.includes('objection')) {
-    const blockers = [
-      ...openObjections.map((objection) => objection.title),
-      ...opportunities.map((opportunity) => opportunity.blocker || '').filter(Boolean),
-      ...interactions.map((interaction) => interaction.objection || '').filter(Boolean),
-    ];
     return response({
       answer: blockers.length > 0
-        ? `Main blockers:\n- ${unique(blockers).join('\n- ')}`
+        ? structuredAnswer({
+            account: accountName,
+            issue: 'Unresolved objection',
+            evidence,
+            suggestedFix: suggestedNextAction || 'Create a follow-up action to clarify the blocker.',
+            missingContext: context.missingContext,
+            nextAction: suggestedNextAction,
+          })
         : 'No blockers or objections are captured in the selected memory.',
       context,
       suggestedNextAction: suggestedNextAction || 'Create a follow-up action to clarify the blocker.',
@@ -138,7 +198,14 @@ export function answerFromMemory(question: string, context: AskMemoireContext): 
   if (normalized.includes('missing') || normalized.includes('context')) {
     return response({
       answer: context.missingContext.length > 0
-        ? `Missing context:\n- ${context.missingContext.join('\n- ')}`
+        ? structuredAnswer({
+            account: accountName,
+            issue: 'Missing context',
+            evidence,
+            suggestedFix: suggestedNextAction || 'Capture the next interaction or create a next action.',
+            missingContext: context.missingContext,
+            nextAction: suggestedNextAction,
+          })
         : 'No major missing context detected in the selected memory.',
       context,
       suggestedNextAction: suggestedNextAction || 'Capture the next interaction or create a next action if this memory still feels incomplete.',
@@ -148,7 +215,14 @@ export function answerFromMemory(question: string, context: AskMemoireContext): 
   if (normalized.includes('next') || normalized.includes('do')) {
     return response({
       answer: suggestedNextAction
-        ? `Recommended next action:\n${suggestedNextAction}\n\nReason:\nThis is based on the selected open action, blocker, or latest opportunity memory.`
+        ? structuredAnswer({
+            account: accountName,
+            issue: blockers[0] ? 'Unresolved objection' : 'Follow-up ready',
+            evidence,
+            suggestedFix: suggestedNextAction,
+            missingContext: context.missingContext,
+            nextAction: suggestedNextAction,
+          })
         : 'Memoire does not have an open next action in the selected memory.',
       context,
       suggestedNextAction: suggestedNextAction || 'Create a next action from the latest interaction.',
@@ -211,6 +285,31 @@ function summarizeContext(accounts: Account[], opportunities: Opportunity[], int
     objections.length > 0 ? `Objections: ${objections.map((objection) => objection.title).join('; ')}` : '',
     actions.find((action) => action.status === 'open') ? `Next action: ${actions.find((action) => action.status === 'open')?.title}` : '',
   ].filter(Boolean).join('\n');
+}
+
+function structuredAnswer({
+  account,
+  issue,
+  evidence,
+  suggestedFix,
+  missingContext,
+  nextAction,
+}: {
+  account: string;
+  issue: string;
+  evidence: string[];
+  suggestedFix: string;
+  missingContext: string[];
+  nextAction?: string;
+}) {
+  return [
+    `Account: ${account}`,
+    `Issue: ${issue}`,
+    `Evidence:\n${evidence.length > 0 ? evidence.map((item) => `- ${item}`).join('\n') : '- No recent evidence captured.'}`,
+    `Suggested fix: ${suggestedFix || 'Confirm the next follow-up.'}`,
+    `Missing context:\n${missingContext.length > 0 ? missingContext.map((item) => `- ${item}`).join('\n') : '- No major missing context detected.'}`,
+    `Next action: ${nextAction || suggestedFix || 'Create a follow-up action.'}`,
+  ].join('\n\n');
 }
 
 function contextLabels(context: AskMemoireContext) {

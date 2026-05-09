@@ -108,7 +108,7 @@ export function buildWhatChangedDigest({
     changes.push({
       id: `broken-loop-${loop.id}`,
       type: 'broken_loop_appeared',
-      title: 'Broken loop needs review',
+      title: 'Stuck deal needs review',
       description: `${loop.issue}: ${loop.affectedEntity}`,
       entityType: loop.entityType === 'capture' ? 'interaction' : loop.entityType === 'objection' ? 'objection' : loop.entityType,
       entityId: loop.entityId,
@@ -130,7 +130,7 @@ export function buildWhatChangedDigest({
       changes.push({
         id: `memory-health-${health.entityType}-${health.entityId}`,
         type: 'memory_health_changed',
-        title: health.status === 'broken' ? 'Memory Health is Broken' : 'Memory Health needs attention',
+        title: health.status === 'broken' ? 'Context Health shows deal at risk' : 'Context Health needs attention',
         description: withEntity(health.reasons[0] || 'Memoire needs more context for this memory.', opportunity?.title || accountName),
         entityType: health.entityType,
         entityId: health.entityId,

@@ -2,10 +2,12 @@ import { useAuth } from '../../hooks/useAuth';
 import { isDemoMode, isSupabaseConfigured } from '../../lib/demoMode';
 import { getDemoWorkspaceState } from '../../features/v31/localStore';
 import { Button } from '../ui/Button';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { QUICK_CAPTURE_FOCUS_EVENT } from '../../features/onboarding/guidedWorkflow';
 
 export function TopNav() {
   const { user, signOut } = useAuth();
+  const location = useLocation();
   const workspaceLabel = isDemoMode ? getDemoWorkspaceState()?.label || null : null;
 
   return (
@@ -17,6 +19,11 @@ export function TopNav() {
       <div className="flex items-center gap-4">
         <Link
           to="/app/today#quick-capture"
+          onClick={() => {
+            if (location.pathname === '/app/today') {
+              window.dispatchEvent(new Event(QUICK_CAPTURE_FOCUS_EVENT));
+            }
+          }}
           className="rounded-full bg-navy px-3 py-1.5 text-sm font-bold text-white hover:bg-navy/90"
         >
           + Capture

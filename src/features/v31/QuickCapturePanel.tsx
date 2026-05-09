@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Loader2, Save, Sparkles } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -15,6 +15,7 @@ import {
   CAPTURE_SAVED_EVENT,
   CAPTURE_STRUCTURED_EVENT,
   GUIDED_WORKFLOW_SAMPLE_NOTE,
+  QUICK_CAPTURE_FOCUS_EVENT,
   USE_SAMPLE_NOTE_EVENT,
 } from '../onboarding/guidedWorkflow';
 import { FollowUpComposerPanel } from './FollowUpComposerPanel';
@@ -49,6 +50,9 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [savedMemory, setSavedMemory] = useState<SavedMemory | null>(null);
   const [followUpContext, setFollowUpContext] = useState<FollowUpContext | null>(null);
+  const [highlighted, setHighlighted] = useState(false);
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const updateStructured = (field: keyof StructuredSalesCapture, value: string) => {
     setStructured((current) => current ? { ...current, [field]: value } : current);
@@ -68,6 +72,24 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
     window.addEventListener(USE_SAMPLE_NOTE_EVENT, useSample as EventListener);
     return () => window.removeEventListener(USE_SAMPLE_NOTE_EVENT, useSample as EventListener);
   }, []);
+
+  const focusQuickCapture = useCallback(() => {
+    sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlighted(true);
+    window.setTimeout(() => {
+      textareaRef.current?.focus({ preventScroll: true });
+    }, 250);
+    window.setTimeout(() => setHighlighted(false), 1800);
+  }, []);
+
+  useEffect(() => {
+    const onFocusRequest = () => focusQuickCapture();
+    window.addEventListener(QUICK_CAPTURE_FOCUS_EVENT, onFocusRequest);
+    if (window.location.hash === '#quick-capture') {
+      window.setTimeout(focusQuickCapture, 150);
+    }
+    return () => window.removeEventListener(QUICK_CAPTURE_FOCUS_EVENT, onFocusRequest);
+  }, [focusQuickCapture]);
 
   const handleStructure = async () => {
     if (rawNote.trim().length < 8) {
@@ -145,7 +167,13 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
   const missingFields = structured ? getMissingInteractionFields(structured) : [];
 
   return (
-    <section id="quick-capture" className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+    <section
+      id="quick-capture"
+      ref={sectionRef}
+      className={`rounded-lg border bg-white p-5 shadow-sm transition-all duration-300 ${
+        highlighted ? 'border-brand-blue ring-4 ring-brand-blue/15' : 'border-gray-200'
+      }`}
+    >
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <h2 className="text-lg font-bold text-navy">Quick Capture</h2>
@@ -160,6 +188,7 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
       </div>
 
       <textarea
+        ref={textareaRef}
         value={rawNote}
         onChange={(event) => setRawNote(event.target.value)}
         placeholder="Paste a quick note after a call, meeting, or customer message..."
@@ -194,9 +223,9 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
           <p className="text-sm font-semibold text-emerald-900">Saved to Sales Memory.</p>
           <div className="mt-3 grid grid-cols-1 gap-2 text-xs leading-5 text-emerald-900 sm:grid-cols-2">
             <SaveOutcome ok={Boolean(savedMemory.accountId)} text={savedMemory.accountId ? 'Added to Account Memory' : 'Account Memory is missing'} />
-            <SaveOutcome ok={Boolean(savedMemory.actionId)} text={savedMemory.actionId ? 'Created or linked Next Action' : 'No Next Action created'} />
+            <SaveOutcome ok={Boolean(savedMemory.actionId)} text={savedMemory.actionId ? 'Created or linked follow-up' : 'No follow-up created'} />
             <SaveOutcome ok={savedMemory.objections.length > 0} text={savedMemory.objections.length > 0 ? 'Updated blocker / objection context' : 'No blocker captured'} />
-            <SaveOutcome ok text="Memory Health may have changed" />
+            <SaveOutcome ok text="Context Health may have changed" />
             <SaveOutcome ok text="Ask Memoire can now use this context" />
           </div>
           {savedMemory.missingFields.length > 0 && (

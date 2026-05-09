@@ -202,9 +202,9 @@ export function TodayPage() {
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6">
       <header className="flex flex-col gap-2">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Today</p>
-        <h1 className="text-3xl font-bold tracking-tight text-navy">What should I do today to move revenue forward?</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-navy">Catch deals before they go silent.</h1>
         <p className="max-w-2xl text-sm text-gray-500">
-          Memoire keeps the day focused on customer follow-up, stuck opportunities, and the sales memory you are building.
+          Memoire surfaces unresolved objections, forgotten follow-ups, and weak account context before long-cycle deals go quiet.
         </p>
       </header>
 
@@ -212,9 +212,17 @@ export function TodayPage() {
         slowLoading ? <RouteLoadingFallback onRetry={loadToday} /> : <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading today's memory...</div>
       ) : (
         <>
-          <DailyFocusHeader actionCount={topRevenueActions.length} brokenLoopCount={needsAttention.length} />
+          <DailyFocusHeader actionCount={topRevenueActions.length} stuckDealCount={needsAttention.length + memoryHealthItems.length} demoMode={isDemoMode} />
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.2fr_0.8fr]">
             <div className="space-y-5">
+            <StuckDealQueue
+              loops={needsAttention}
+              healthItems={memoryHealthItems}
+              actions={actions}
+              accounts={accounts}
+              opportunities={opportunities}
+              onDraft={draftFromAction}
+            />
             <ActionSection sectionId="top-revenue-actions" title="Top Revenue Actions" icon={<Target className="h-4 w-4" />} actions={topRevenueActions} tone="blue" today={today} onDone={markDone} onDraft={draftFromAction} />
             {actionMessage && <p className="rounded-lg bg-white px-4 py-3 text-sm font-semibold text-gray-600 ring-1 ring-gray-200">{actionMessage}</p>}
             <NeedsAttentionSection loops={needsAttention} healthItems={memoryHealthItems} />
@@ -245,14 +253,16 @@ export function TodayPage() {
   );
 }
 
-function DailyFocusHeader({ actionCount, brokenLoopCount }: { actionCount: number; brokenLoopCount: number }) {
+function DailyFocusHeader({ actionCount, stuckDealCount, demoMode }: { actionCount: number; stuckDealCount: number; demoMode: boolean }) {
   return (
     <section className="rounded-lg border border-blue-100 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-bold text-navy">Start today by moving the most important sales memory loops forward.</p>
+          <p className="text-sm font-bold text-navy">{demoMode ? '3 deals may go silent today.' : 'Start today by fixing the deals most likely to go quiet.'}</p>
           <p className="mt-1 text-sm text-gray-500">
-            {actionCount} revenue actions ready. {brokenLoopCount} memory loops need attention.
+            {demoMode
+              ? 'Memoire found unresolved objections, missing follow-ups, and weak context in your demo accounts.'
+              : `${stuckDealCount} deal signals need attention. ${actionCount} next actions are ready.`}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -260,7 +270,7 @@ function DailyFocusHeader({ actionCount, brokenLoopCount }: { actionCount: numbe
             href="#top-revenue-actions"
             className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
           >
-            Start Today's Sales Loop
+            Review Stuck Deals
           </a>
           <a
             href="#quick-capture"
@@ -272,6 +282,125 @@ function DailyFocusHeader({ actionCount, brokenLoopCount }: { actionCount: numbe
       </div>
     </section>
   );
+}
+
+function StuckDealQueue({
+  loops,
+  healthItems,
+  actions,
+  accounts,
+  opportunities,
+  onDraft,
+}: {
+  loops: BrokenLoop[];
+  healthItems: MemoryHealth[];
+  actions: SalesAction[];
+  accounts: Account[];
+  opportunities: Opportunity[];
+  onDraft: (action: SalesAction) => void;
+}) {
+  const actionByAccount = new Map(actions.filter((action) => action.status === 'open' && action.account_id).map((action) => [action.account_id, action]));
+  const actionByOpportunity = new Map(actions.filter((action) => action.status === 'open' && action.opportunity_id).map((action) => [action.opportunity_id, action]));
+  const accountById = new Map(accounts.map((account) => [account.id, account]));
+  const opportunityById = new Map(opportunities.map((opportunity) => [opportunity.id, opportunity]));
+  const queueItems = [
+    ...loops.map((loop) => ({
+      id: `loop-${loop.id}`,
+      accountId: loop.accountId || null,
+      opportunityId: loop.opportunityId || null,
+      entity: loop.affectedEntity,
+      reason: stuckReason(loop.issue),
+      evidence: loop.whyItMatters,
+      suggestedFix: loop.suggestedFix,
+      action: (loop.opportunityId ? actionByOpportunity.get(loop.opportunityId) : null)
+        || (loop.accountId ? actionByAccount.get(loop.accountId) : null)
+        || null,
+    })),
+    ...healthItems.map((health) => {
+      const opportunity = health.entityType === 'opportunity' ? opportunityById.get(health.entityId) : null;
+      const account = health.entityType === 'account'
+        ? accountById.get(health.entityId)
+        : accountById.get(opportunity?.account_id || '');
+      return {
+        id: `health-${health.entityType}-${health.entityId}`,
+        accountId: account?.id || null,
+        opportunityId: opportunity?.id || null,
+        entity: opportunity ? `${account?.name || 'Unknown account'} / ${opportunity.title}` : account?.name || 'Unknown account',
+        reason: health.missingContext.some((item) => item.toLowerCase().includes('decision')) ? 'Missing decision context' : health.status === 'broken' ? 'Deal at risk' : 'Weak context',
+        evidence: health.reasons[0] || 'Memoire does not have enough context to keep this moving confidently.',
+        suggestedFix: health.suggestedFixes[0] || 'Confirm the next follow-up and missing context.',
+        action: (opportunity ? actionByOpportunity.get(opportunity.id) : null)
+          || (account ? actionByAccount.get(account.id) : null)
+          || null,
+      };
+    }),
+  ].slice(0, 3);
+
+  return (
+    <section className="rounded-lg border border-amber-200 bg-white shadow-sm">
+      <div className="border-b border-amber-100 px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-navy">Deals that may go silent</h2>
+            <p className="mt-1 max-w-2xl text-sm text-gray-500">
+              Memoire surfaces accounts with unresolved objections, missing follow-ups, or weak context before they go quiet.
+            </p>
+          </div>
+          <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">{queueItems.length}</span>
+        </div>
+      </div>
+      <div className="divide-y divide-gray-100">
+        {queueItems.length === 0 ? (
+          <p className="px-5 py-5 text-sm text-gray-500">
+            No deals look at risk right now. Accounts with clear next actions and enough context stay out of this queue.
+          </p>
+        ) : queueItems.map((item) => (
+          <article key={item.id} className="px-5 py-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-sm font-bold text-gray-900">{item.entity}</p>
+                <p className="mt-1 text-sm font-semibold text-amber-800">{item.reason}</p>
+                <p className="mt-2 text-xs leading-5 text-gray-600">
+                  <span className="font-bold">Evidence: </span>{item.evidence}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-gray-700">
+                  <span className="font-bold">Suggested fix: </span>{item.suggestedFix}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 md:justify-end">
+                {item.accountId && (
+                  <Link to={`/app/accounts/${item.accountId}`} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-gray-700 ring-1 ring-gray-200 hover:bg-amber-50">
+                    Open Account
+                  </Link>
+                )}
+                {item.action ? (
+                  <button type="button" onClick={() => onDraft(item.action!)} className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">
+                    Draft Follow-up
+                  </button>
+                ) : (
+                  <Link to="/app/today#quick-capture" className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">
+                    Add Next Action
+                  </Link>
+                )}
+                {item.accountId && (
+                  <Link to={`/app/ask?scope=account&accountId=${item.accountId}`} className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-brand-blue ring-1 ring-blue-100">
+                    Ask Memoire
+                  </Link>
+                )}
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function stuckReason(issue: string) {
+  if (issue.toLowerCase().includes('objection')) return 'Unresolved objection';
+  if (issue.toLowerCase().includes('silent')) return 'Account going silent';
+  if (issue.toLowerCase().includes('missing')) return 'Missing follow-up';
+  return issue;
 }
 
 function prioritizeActions(actions: SalesAction[], today: string) {
@@ -376,13 +505,13 @@ function NeedsAttentionSection({ loops, healthItems }: { loops: BrokenLoop[]; he
     <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="text-base font-bold text-navy">Needs Attention</h2>
-          <p className="mt-1 text-xs text-gray-500">Broken Loops are accounts or deals missing a clear Next Action, recent context, or follow-up.</p>
+        <h2 className="text-base font-bold text-navy">Needs Attention</h2>
+          <p className="mt-1 text-xs text-gray-500">Stuck-deal signals show missing follow-ups, unresolved objections, or accounts going quiet.</p>
         </div>
         <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">{loops.length + healthItems.length}</span>
       </div>
       {!hasAttention ? (
-        <p className="text-sm text-gray-500">No broken loops detected. Your sales memory loop looks healthy.</p>
+        <p className="text-sm text-gray-500">No stuck deals detected. Your accounts have enough context for now.</p>
       ) : (
         <div className="space-y-3">
           {loops.map((loop) => (
@@ -415,7 +544,7 @@ function NeedsAttentionSection({ loops, healthItems }: { loops: BrokenLoop[]; he
                 </p>
               </div>
               <p className="mt-2 text-xs leading-5 text-gray-600">
-                {health.reasons[0] || 'Memory Health is limited because Memoire does not have enough context yet.'}
+                  {health.reasons[0] || 'Context Health is limited because Memoire does not have enough context yet.'}
               </p>
               {health.suggestedFixes[0] && (
                 <p className="mt-2 text-xs font-semibold text-gray-700">{health.suggestedFixes[0]}</p>
@@ -586,7 +715,7 @@ function EndOfDayCheck({
         ) : (
           <>
             <EndOfDayLine label="Actions still open" value={`${openActions.length}`} />
-            <EndOfDayLine label="Broken loops unresolved" value={`${brokenLoops.length}`} />
+            <EndOfDayLine label="Stuck-deal signals unresolved" value={`${brokenLoops.length}`} />
             <EndOfDayLine label="Interactions captured today" value={`${interactionsToday.length}`} />
             <div className="rounded-lg bg-blue-50 p-3 text-blue-900">
               <p className="text-xs font-bold uppercase tracking-wide opacity-70">Suggested first focus for tomorrow</p>

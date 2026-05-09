@@ -176,7 +176,7 @@ export function JourneyPage() {
         opportunityName: opportunity.title,
         lastInteraction: latestInteraction?.summary || 'No interaction captured yet',
         blocker: opportunity.blocker || latestInteraction?.objection || 'No blocker captured',
-        nextAction: action?.title || opportunity.next_action_text || 'No next action',
+        nextAction: action?.title || opportunity.next_action_text || 'Missing follow-up',
         currentStage: getJourneyStage(Boolean(latestInteraction), Boolean(account), true, hasNextAction),
         memoryHealth,
       };
@@ -199,7 +199,7 @@ export function JourneyPage() {
           opportunityName: 'No opportunity linked',
           lastInteraction: latestInteraction?.summary || 'No interaction captured yet',
           blocker: account.objections[0] || latestInteraction?.objection || 'No blocker captured',
-          nextAction: action?.title || 'No next action',
+        nextAction: action?.title || 'Missing follow-up',
           currentStage: getJourneyStage(Boolean(latestInteraction), true, false, Boolean(action)),
           memoryHealth,
         };
@@ -219,12 +219,12 @@ export function JourneyPage() {
             </span>
           )}
         </div>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Sales Memory Loop</h1>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Memory-to-Action Flow</h1>
         <p className="mt-2 max-w-2xl text-sm text-gray-500">
           See where Capture, Structure, Memory, Opportunity, Next Action, Ask Memoire, and Learning are working or broken.
         </p>
         <p className="mt-2 max-w-2xl text-xs leading-5 text-gray-500">
-          Journey is the path from customer interaction to memory, action, and follow-up. A Broken Loop means an account or deal is missing a clear Next Action, recent context, or follow-up.
+          Journey shows how customer context becomes account memory, next action, and follow-up. A stuck deal is missing follow-up, recent context, or a clear fix.
         </p>
       </header>
 
@@ -292,7 +292,7 @@ export function JourneyPage() {
 
         <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-bold text-navy">Broken Loops</h2>
+            <h2 className="text-base font-bold text-navy">Stuck Deals</h2>
             <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">{brokenLoops.length}</span>
           </div>
 
@@ -300,7 +300,7 @@ export function JourneyPage() {
             slowLoading ? <RouteLoadingFallback onRetry={loadJourney} /> : <p className="text-sm text-gray-500">Checking loops...</p>
           ) : brokenLoops.length === 0 ? (
             <div className="rounded-lg border border-green-100 bg-green-50 p-4 text-sm text-green-800">
-              No broken loops detected. Your sales memory loop looks healthy.
+              No stuck deals detected. Your accounts have enough context for now.
             </div>
           ) : (
             <div className="space-y-3">

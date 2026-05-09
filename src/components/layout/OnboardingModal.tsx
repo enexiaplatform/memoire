@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle2, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { getFounderWorkspaceState, readLocalMemory } from '../../features/v31/localStore';
+import { getDemoWorkspaceState, readLocalMemory } from '../../features/v31/localStore';
 import {
   CAPTURE_SAVED_EVENT,
   CAPTURE_STRUCTURED_EVENT,
@@ -10,6 +10,7 @@ import {
   ASK_GUIDED_QUESTION_EVENT,
   FOLLOWUP_DRAFT_READY_EVENT,
   GUIDED_WORKFLOW_SAMPLE_NOTE,
+  QUICK_CAPTURE_FOCUS_EVENT,
   REPLAY_GUIDED_WORKFLOW_EVENT,
   USE_SAMPLE_NOTE_EVENT,
   type GuidedCaptureSavedDetail,
@@ -86,7 +87,7 @@ const standardSteps: WorkflowStepConfig[] = [
   {
     step: 'finish',
     title: 'Finish',
-    instruction: 'You completed your first Sales Memory Loop.',
+    instruction: 'You completed your first Memory-to-Action flow.',
     why: 'One customer interaction became Account Memory, blocker context, Next Action, askable knowledge, and a follow-up draft.',
     route: '/app/today',
     primaryLabel: 'Go to Today',
@@ -96,53 +97,53 @@ const standardSteps: WorkflowStepConfig[] = [
 const founderSteps: WorkflowStepConfig[] = [
   {
     step: 'capture',
-    title: 'Start from Today',
-    instruction: 'Today shows actions and account memories that need attention.',
-    why: 'This is where daily revenue movement starts.',
+    title: 'Start with deals that may go silent',
+    instruction: 'Start from the Stuck Deal Queue before adding any new note.',
+    why: 'Memoire should show value immediately by surfacing unresolved objections, missing follow-ups, and weak context.',
     route: '/app/today',
-    primaryLabel: 'Open a real account',
+    primaryLabel: 'Open Apex Pharma',
   },
   {
     step: 'open_account_memory',
-    title: 'Open a real account',
-    instruction: 'Open an account with a real blocker.',
-    why: 'Demo Workspace lets you test Memoire with sample sales context before adding real data.',
+    title: 'Open a stuck account',
+    instruction: 'Open Apex Pharma or TV Pharm to inspect why the deal may go silent.',
+    why: 'A stuck-deal alert should be backed by account memory, evidence, and suggested action.',
     primaryLabel: 'Open Account Memory',
   },
   {
     step: 'review_preview',
-    title: 'Review Account Memory',
-    instruction: 'Review the account story, blockers, and next action.',
-    why: 'Living Memory should make the account immediately recallable before follow-up.',
+    title: 'Review why it may go silent',
+    instruction: 'Review the current story, evidence, missing follow-up, and suggested fix.',
+    why: 'The aha is seeing exactly why this account needs attention without rebuilding the story manually.',
     primaryLabel: 'Continue',
-  },
-  {
-    step: 'ask_account',
-    title: 'Ask Memoire',
-    instruction: 'Ask Memoire using this account context.',
-    why: 'The answer should be grounded in the account, blockers, and actions already in memory.',
-    primaryLabel: 'Ask: What is blocking this deal?',
   },
   {
     step: 'draft_followup',
     title: 'Draft Follow-up',
     instruction: 'Use the account context to draft a follow-up.',
-    why: 'Founder data should convert into action without becoming an email automation tool.',
+    why: 'A stuck deal should turn into a concrete next action, not just another passive record.',
     primaryLabel: 'I generated a draft',
   },
   {
-    step: 'journey',
-    title: 'Explore Journey',
-    instruction: 'Journey shows where the sales memory loop is working or broken.',
-    why: 'It makes Memoire feel like one end-to-end Sales Memory System.',
-    route: '/app/journey',
-    primaryLabel: 'Open Journey',
+    step: 'ask_account',
+    title: 'Ask why the deal is stuck',
+    instruction: 'Ask Memoire using this account context.',
+    why: 'Ask Memoire should explain the issue from account memory, not answer like a generic chatbot.',
+    primaryLabel: 'Ask: Why may this deal go silent?',
+  },
+  {
+    step: 'structure',
+    title: 'Quick Capture as the second act',
+    instruction: 'Now see how a new customer interaction becomes part of this queue.',
+    why: 'Capture matters after the user understands the value of the stuck-deal queue.',
+    route: '/app/today',
+    primaryLabel: 'Show Quick Capture',
   },
   {
     step: 'finish',
     title: 'Finish',
-    instruction: 'You have walked through a real Sales Memory Loop using founder data.',
-    why: 'Use Today, Account Memory, Ask Memoire, and Journey as one daily workflow.',
+    instruction: 'You saw how Memoire catches deals before they go silent.',
+    why: 'The demo value comes first: stuck deal, evidence, suggested fix, follow-up, and then capture.',
     route: '/app/today',
     primaryLabel: 'Go to Today',
   },
@@ -179,8 +180,9 @@ export function OnboardingModal() {
     const userKey = user?.id || user?.email || 'anonymous';
     return `memoire_guided_workflow_v1:${userKey}`;
   }, [user?.email, user?.id]);
+  const sessionKey = `${storageKey}:session-dismissed`;
 
-  const founderWorkspace = workflow.active || mode === 'welcome' ? getFounderWorkspaceState() : null;
+  const founderWorkspace = workflow.active || mode === 'welcome' ? getDemoWorkspaceState() : null;
   const founderAccountId = founderWorkspace ? getFounderSuggestedAccountId() : null;
   const founderMode = Boolean(founderWorkspace);
   const steps = founderMode ? founderSteps : standardSteps;
@@ -190,7 +192,8 @@ export function OnboardingModal() {
   useEffect(() => {
     if (!user) return;
     const preference = readPreference(storageKey);
-    if (!preference.guidedWorkflowCompleted && !preference.dontShowGuidedWorkflowAgain) {
+    const alreadyHandledThisSession = sessionStorage.getItem(sessionKey) === 'true';
+    if (!alreadyHandledThisSession && !preference.guidedWorkflowCompleted && !preference.dontShowGuidedWorkflowAgain) {
       setMode('welcome');
       setWorkflow({
         active: true,
@@ -200,7 +203,7 @@ export function OnboardingModal() {
         founderMode,
       });
     }
-  }, [founderMode, storageKey, user]);
+  }, [founderMode, sessionKey, storageKey, user]);
 
   useEffect(() => {
     const replay = () => startWorkflow();
@@ -225,12 +228,17 @@ export function OnboardingModal() {
     const onDraft = () => {
       setDraftReady(true);
       if (workflow.currentStep === 'draft_followup') {
-        setWorkflow((current) => ({ ...current, currentStep: founderMode ? 'journey' : 'finish' }));
+        setWorkflow((current) => ({ ...current, currentStep: founderMode ? 'ask_account' : 'finish' }));
       }
     };
     const onAskReady = () => {
       if (workflow.currentStep !== 'ask_account') return;
       const accountId = savedMemory?.accountId || founderAccountId;
+      if (founderMode) {
+        navigate('/app/today#quick-capture');
+        setWorkflow((current) => ({ ...current, currentStep: 'structure' }));
+        return;
+      }
       if (accountId) navigate(`/app/accounts/${accountId}`);
       setWorkflow((current) => ({ ...current, currentStep: 'draft_followup' }));
     };
@@ -257,7 +265,8 @@ export function OnboardingModal() {
   const preference = readPreference(storageKey);
 
   function startWorkflow() {
-    const nextFounderMode = Boolean(getFounderWorkspaceState());
+    sessionStorage.setItem(sessionKey, 'true');
+    const nextFounderMode = Boolean(getDemoWorkspaceState());
     setMode('workflow');
     setStructuredReady(false);
     setDraftReady(false);
@@ -275,6 +284,7 @@ export function OnboardingModal() {
   }
 
   function skip() {
+    sessionStorage.setItem(sessionKey, 'true');
     writePreference(storageKey, {
       ...preference,
       guidedWorkflowDismissedAt: new Date().toISOString(),
@@ -285,6 +295,7 @@ export function OnboardingModal() {
   }
 
   function dontShowAgain() {
+    sessionStorage.setItem(sessionKey, 'true');
     writePreference(storageKey, {
       ...preference,
       dontShowGuidedWorkflowAgain: true,
@@ -295,6 +306,7 @@ export function OnboardingModal() {
   }
 
   function finish(destination: '/app/today' | '/app/journey' = '/app/today') {
+    sessionStorage.setItem(sessionKey, 'true');
     writePreference(storageKey, {
       ...preference,
       guidedWorkflowCompleted: true,
@@ -340,6 +352,14 @@ export function OnboardingModal() {
         goToStep('structure');
         return;
       case 'structure':
+        if (founderMode) {
+          navigate('/app/today#quick-capture');
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent(QUICK_CAPTURE_FOCUS_EVENT));
+          }, 150);
+          goToStep('finish');
+          return;
+        }
         if (structuredReady) goToStep('review_preview');
         return;
       case 'review_preview':
@@ -359,7 +379,7 @@ export function OnboardingModal() {
         if (accountId) navigate(`/app/ask?scope=account&accountId=${accountId}`);
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent(ASK_GUIDED_QUESTION_EVENT, {
-            detail: { question: founderMode ? 'What is blocking this deal?' : 'What should I do next?' },
+            detail: { question: founderMode ? 'Why may this deal go silent?' : 'What should I do next?' },
           }));
         }, 300);
         return;
@@ -390,7 +410,7 @@ export function OnboardingModal() {
                 {founderMode ? 'Demo Workspace is loaded.' : 'Welcome to Memoire'}
               </h2>
               <p className="mt-1 text-sm font-semibold text-gray-700">
-                {founderMode ? 'Walk through a real Sales Memory Loop.' : 'Create your first Sales Memory Loop.'}
+                {founderMode ? 'Walk through a real Memory-to-Action flow.' : 'Create your first Memory-to-Action flow.'}
               </p>
             </div>
             <button
@@ -406,13 +426,15 @@ export function OnboardingModal() {
           <div className="space-y-4">
             <p className="text-sm leading-6 text-gray-600">
               {founderMode
-                ? "Let's walk through a real account using your founder data."
+                ? "Let's walk through a demo account with built-in stuck-deal signals."
                 : "Memoire turns customer interactions into account memory, next actions, and askable sales context. Let's walk through one complete workflow."}
             </p>
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Workflow</p>
               <p className="mt-2 text-sm font-semibold text-navy">
-                Capture - Structure - Memory - Action - Ask - Follow-up - Today
+                {founderMode
+                  ? 'Stuck Deal Queue - Account Memory - Follow-up - Ask - Capture'
+                  : 'Capture - Structure - Memory - Action - Ask - Follow-up - Today'}
               </p>
             </div>
           </div>
@@ -478,26 +500,41 @@ export function OnboardingModal() {
           <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Why this matters</p>
           <p className="mt-1 text-sm leading-6 text-gray-700">{currentStep.why}</p>
         </div>
-        {currentStep.step === 'review_preview' && (
+        {!founderMode && currentStep.step === 'review_preview' && (
           <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm leading-6 text-blue-900">
             Review Account, Contact, Objection / Blocker, Next Action, and Missing Context in the Structured Preview.
           </div>
         )}
-        {currentStep.step === 'save_memory' && (
+        {!founderMode && currentStep.step === 'save_memory' && (
           <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm leading-6 text-emerald-900">
             Click Save to Sales Memory in Quick Capture. After it saves, Memoire will show your next links.
           </div>
         )}
         {currentStep.step === 'finish' && (
           <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm leading-6 text-emerald-900">
-            <p className="font-semibold">One customer interaction became:</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5">
-              <li>Account Memory</li>
-              <li>Blocker context</li>
-              <li>Next Action</li>
-              <li>Askable knowledge</li>
-              <li>Follow-up draft</li>
-            </ul>
+            {founderMode ? (
+              <>
+                <p className="font-semibold">You saw the demo aha:</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  <li>Stuck deal surfaced before typing</li>
+                  <li>Evidence and missing follow-up explained</li>
+                  <li>Follow-up draft from Account Memory</li>
+                  <li>Ask Memoire grounded in the account</li>
+                  <li>Quick Capture as the second act</li>
+                </ul>
+              </>
+            ) : (
+              <>
+                <p className="font-semibold">One customer interaction became:</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  <li>Account Memory</li>
+                  <li>Blocker context</li>
+                  <li>Next Action</li>
+                  <li>Askable knowledge</li>
+                  <li>Follow-up draft</li>
+                </ul>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -551,7 +588,7 @@ export function OnboardingModal() {
       )}
       {currentStep.step === 'ask_account' && (
         <p className="mt-3 text-xs leading-5 text-gray-500">
-          On Ask Memoire, use the selected account context and ask {founderMode ? '"What is blocking this deal?"' : '"What should I do next?"'}.
+          On Ask Memoire, use the selected account context and ask {founderMode ? '"Why may this deal go silent?"' : '"What should I do next?"'}.
         </p>
       )}
       {currentStep.step === 'finish' && (

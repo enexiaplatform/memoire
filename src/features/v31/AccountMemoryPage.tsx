@@ -200,7 +200,7 @@ export function AccountMemoryPage() {
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Living Memory</p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">{account.name}</h1>
-            <p className="mt-2 text-sm text-gray-500">The current story, blockers, timeline, and Next Actions for this account.</p>
+            <p className="mt-2 text-sm text-gray-500">The current story, unresolved follow-ups, blockers, and next action for this account.</p>
           </div>
           {isDemoMode && (
             <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
@@ -239,6 +239,11 @@ export function AccountMemoryPage() {
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">
           {account.summary || 'Capture an interaction or add a Next Action to build this Account Memory.'}
         </p>
+        <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <HeaderFact label="Context Health" value={memoryHealthLabel(memoryHealth.status)} />
+          <HeaderFact label="Main opportunity" value={currentOpportunity?.title || 'Missing'} warn={!currentOpportunity?.title} />
+          <HeaderFact label="Main next action" value={actions[0]?.title || currentOpportunity?.next_action_text || 'Missing'} warn={!actions[0]?.title && !currentOpportunity?.next_action_text} />
+        </div>
       </header>
 
       {!hasContext && (
@@ -247,22 +252,24 @@ export function AccountMemoryPage() {
         </div>
       )}
 
-      <section className="mb-6 rounded-lg border border-blue-100 bg-white p-5 shadow-sm">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Fast Recall</p>
-            <h2 className="mt-1 text-xl font-bold text-navy">What is the current story?</h2>
-            <p className="mt-1 text-xs text-gray-500">Memory Health shows whether Memoire has enough context to help you act.</p>
-          </div>
-          <MemoryHealthBadge health={memoryHealth} />
-        </div>
-        <p className="text-sm leading-7 text-gray-700">{narrative.narrative}</p>
-        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-          <SnapshotFact label="Next Action" value={narrative.nextAction || 'Missing'} warn={!narrative.nextAction} />
-          <SnapshotFact label="Main Blocker / Objection" value={narrative.mainBlocker || 'Missing'} warn={!narrative.mainBlocker} />
-          <SnapshotFact label="Last Interaction" value={narrative.lastInteraction || 'Missing'} warn={!narrative.lastInteraction} />
-        </div>
-      </section>
+      <AccountDecisionLayer
+        account={account}
+        brokenLoops={brokenLoops}
+        memoryHealth={memoryHealth}
+        actions={actions}
+        contacts={contacts}
+        opportunities={opportunities}
+        interactions={interactions}
+        objections={objections}
+        narrative={{
+          currentStory: narrative.narrative,
+          nextAction: narrative.nextAction,
+          mainBlocker: narrative.mainBlocker,
+          lastInteraction: narrative.lastInteraction,
+          currentOpportunity: narrative.currentOpportunity,
+        }}
+        onDraftFollowUp={() => openComposer('follow_up_after_meeting')}
+      />
 
       <section className="mb-6 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-center gap-2">
@@ -412,7 +419,7 @@ function MemoryHealthPanel({ health }: { health: MemoryHealth }) {
         <MemoryHealthBadge health={health} />
         <p className="text-sm leading-6 text-gray-600">
           {limited
-            ? 'Memory Health is limited because Memoire does not have enough context yet.'
+            ? 'Context Health is limited because Memoire does not have enough context yet.'
             : health.reasons[0] || 'This memory has enough context and a clear next action.'}
         </p>
       </div>
@@ -437,6 +444,192 @@ function MemoryHealthPanel({ health }: { health: MemoryHealth }) {
   );
 }
 
+function AccountDecisionLayer({
+  account,
+  brokenLoops,
+  memoryHealth,
+  actions,
+  contacts,
+  opportunities,
+  interactions,
+  objections,
+  narrative,
+  onDraftFollowUp,
+}: {
+  account: Account;
+  brokenLoops: ReturnType<typeof detectBrokenLoops>;
+  memoryHealth: MemoryHealth;
+  actions: SalesAction[];
+  contacts: Contact[];
+  opportunities: Opportunity[];
+  interactions: Interaction[];
+  objections: Objection[];
+  narrative: {
+    currentStory: string;
+    nextAction?: string;
+    mainBlocker?: string;
+    lastInteraction?: string;
+    currentOpportunity?: string;
+  };
+  onDraftFollowUp: () => void;
+}) {
+  const issue = brokenLoops[0]?.issue
+    || (memoryHealth.status === 'healthy' ? '' : memoryHealth.reasons[0])
+    || '';
+  const missing = normalizeMissingContext(memoryHealth.missingContext);
+  const latestInteraction = interactions[0];
+  const openObjection = objections.find((objection) => objection.status === 'open') || objections[0];
+  const currentOpportunity = opportunities.find((opportunity) => !['won', 'lost'].includes(opportunity.stage)) || opportunities[0];
+  const evidence = [
+    latestInteraction ? `Last interaction: ${latestInteraction.summary}` : '',
+    openObjection ? `Open objection: ${openObjection.title}` : '',
+    !actions[0] && !currentOpportunity?.next_action_text ? 'No open next action found' : '',
+    actions[0]?.title ? `Open next action: ${actions[0].title}` : '',
+    missing.length > 0 ? `Missing context: ${missing.join(', ')}` : '',
+    latestInteraction?.raw_note ? `Source note: ${latestInteraction.raw_note}` : '',
+  ].filter(Boolean);
+  const suggestedFix = chooseSuggestedFix({
+    brokenLoopFix: brokenLoops[0]?.suggestedFix,
+    healthFix: memoryHealth.suggestedFixes[0],
+    nextAction: actions[0]?.title || currentOpportunity?.next_action_text || narrative.nextAction,
+    missing,
+    blocker: narrative.mainBlocker || openObjection?.title || currentOpportunity?.blocker || '',
+  });
+  const clear = !issue && memoryHealth.status === 'healthy';
+  const knows = [
+    contacts[0] ? `Main contact: ${contacts[0].name}${contacts[0].role ? `, ${contacts[0].role}` : ''}` : '',
+    currentOpportunity ? `Current opportunity: ${currentOpportunity.title}` : '',
+    openObjection ? `Known objection: ${openObjection.title}` : '',
+    latestInteraction ? `Last interaction: ${latestInteraction.summary}` : '',
+    actions[0]?.title ? `Open next action: ${actions[0].title}` : currentOpportunity?.next_action_text ? `Next action: ${currentOpportunity.next_action_text}` : '',
+    currentOpportunity?.title ? `Product / opportunity context: ${currentOpportunity.title}` : '',
+  ].filter(Boolean);
+  const unknowns = missing.length > 0 ? missing : ['No major missing context detected.'];
+
+  return (
+    <section className="mb-6 rounded-lg border border-amber-100 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-700">Fast Recall</p>
+          <h2 className="mt-1 text-xl font-bold text-navy">Open this before every follow-up</h2>
+          <p className="mt-1 text-sm text-gray-500">Grounded account memory, evidence, missing context, and one suggested fix.</p>
+        </div>
+        <MemoryHealthBadge health={memoryHealth} />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="space-y-4">
+          <DecisionBlock title="Current story">
+            <p>{narrative.currentStory || `${account.name} needs more captured account context.`}</p>
+          </DecisionBlock>
+
+          <DecisionBlock title="Why this may go silent" warn={!clear}>
+            <p>{clear ? 'This account has a clear next action and enough context for now.' : issue || 'Memoire does not have enough context yet.'}</p>
+          </DecisionBlock>
+
+          <DecisionBlock title="Suggested fix" warn={!clear}>
+            <p>{clear ? 'Review the next action or ask Memoire if you want a quick recap before following up.' : suggestedFix}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={onDraftFollowUp}
+                className="inline-flex items-center gap-1.5 rounded-full bg-brand-blue px-3 py-1.5 text-xs font-bold text-white"
+              >
+                <Send className="h-3.5 w-3.5" />
+                Draft Follow-up
+              </button>
+              <Link
+                to={`/app/ask?scope=account&accountId=${account.id}`}
+                className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-bold text-brand-blue"
+              >
+                <MessageCircleQuestion className="h-3.5 w-3.5" />
+                Ask Memoire
+              </Link>
+              <Link
+                to="/app/today#quick-capture"
+                className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Capture Update
+              </Link>
+            </div>
+          </DecisionBlock>
+        </div>
+
+        <div className="space-y-4">
+          <DecisionList title="Evidence" items={evidence.length > 0 ? evidence : ['No recent evidence captured.']} />
+          <DecisionList title="What Memoire knows" items={knows.length > 0 ? knows : ['Only basic account context is available.']} />
+          <DecisionList title="What Memoire does not know" items={unknowns} warn={missing.length > 0} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function normalizeMissingContext(items: string[]) {
+  return Array.from(new Set(items.flatMap((item) => {
+    if (item.toLowerCase().includes('decision maker') && item.toLowerCase().includes('timeline')) {
+      return ['Decision maker', 'Decision timeline'];
+    }
+    return [item];
+  })));
+}
+
+function chooseSuggestedFix({
+  brokenLoopFix,
+  healthFix,
+  nextAction,
+  missing,
+  blocker,
+}: {
+  brokenLoopFix?: string;
+  healthFix?: string;
+  nextAction?: string;
+  missing: string[];
+  blocker: string;
+}) {
+  if (brokenLoopFix) return brokenLoopFix;
+  if (missing.some((item) => item.toLowerCase().includes('decision timeline'))) {
+    return 'Send a follow-up asking for the decision timeline.';
+  }
+  if (missing.some((item) => item.toLowerCase().includes('decision maker'))) {
+    return 'Confirm who owns the decision.';
+  }
+  if (!nextAction) {
+    return 'Create a next action before this account goes quiet.';
+  }
+  if (blocker.toLowerCase().includes('lead time')) {
+    return 'Address the lead time objection with an implementation timeline.';
+  }
+  if (healthFix) return healthFix;
+  return nextAction || 'Create or confirm a follow-up action.';
+}
+
+function DecisionBlock({ title, children, warn = false }: { title: string; children: ReactNode; warn?: boolean }) {
+  return (
+    <div className={`rounded-lg p-4 ${warn ? 'bg-amber-50 text-amber-950' : 'bg-gray-50 text-gray-800'}`}>
+      <p className="text-xs font-bold uppercase tracking-wide opacity-60">{title}</p>
+      <div className="mt-2 text-sm leading-6">{children}</div>
+    </div>
+  );
+}
+
+function DecisionList({ title, items, warn = false }: { title: string; items: string[]; warn?: boolean }) {
+  return (
+    <div className={`rounded-lg p-4 ${warn ? 'bg-amber-50 text-amber-950' : 'bg-gray-50 text-gray-800'}`}>
+      <p className="text-xs font-bold uppercase tracking-wide opacity-60">{title}</p>
+      <ul className="mt-2 space-y-2 text-sm leading-6">
+        {items.map((item) => (
+          <li key={item} className="flex gap-2">
+            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-50" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function MemoryHealthBadge({ health }: { health: MemoryHealth }) {
   const tone = {
     healthy: 'border-emerald-200 bg-emerald-50 text-emerald-700',
@@ -448,6 +641,15 @@ function MemoryHealthBadge({ health }: { health: MemoryHealth }) {
     <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${tone}`}>
       {memoryHealthLabel(health.status)}
     </span>
+  );
+}
+
+function HeaderFact({ label, value, warn = false }: { label: string; value: string; warn?: boolean }) {
+  return (
+    <div className={`rounded-lg border px-3 py-2 ${warn ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-gray-100 bg-gray-50 text-gray-800'}`}>
+      <p className="text-[11px] font-bold uppercase tracking-wide opacity-60">{label}</p>
+      <p className="mt-1 line-clamp-2 text-sm font-semibold">{value}</p>
+    </div>
   );
 }
 

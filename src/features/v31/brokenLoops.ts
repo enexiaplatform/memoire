@@ -73,7 +73,7 @@ export function detectBrokenLoops({
       loops.push({
         id: `opportunity-no-next-action-${opportunity.id}`,
         priority: 'P0',
-        issue: 'No next action',
+        issue: 'Missing follow-up',
         affectedEntity: `${accountById.get(opportunity.account_id || '')?.name || 'Unknown account'} / ${opportunity.title}`,
         whyItMatters: 'This deal may stall because there is no clear next step.',
         suggestedFix: 'Create or confirm a follow-up action.',
@@ -92,7 +92,7 @@ export function detectBrokenLoops({
       loops.push({
         id: `stale-opportunity-${opportunity.id}`,
         priority: 'P1',
-        issue: 'Opportunity has gone stale',
+        issue: 'Account going silent',
         affectedEntity: `${accountById.get(opportunity.account_id || '')?.name || 'Unknown account'} / ${opportunity.title}`,
         whyItMatters: 'No recent interaction means the relationship may be cooling down.',
         suggestedFix: 'Schedule a check-in or log a recent update.',
@@ -131,7 +131,7 @@ export function detectBrokenLoops({
         loops.push({
           id: `stale-account-${account.id}`,
           priority: 'P1',
-          issue: 'Account has gone stale',
+          issue: 'Account going silent',
           affectedEntity: account.name,
           whyItMatters: 'No recent interaction means the relationship may be cooling down.',
           suggestedFix: 'Schedule a check-in or log a recent update.',
@@ -148,7 +148,7 @@ export function detectBrokenLoops({
       loops.push({
         id: `objection-no-follow-up-${interaction.id}`,
         priority: 'P1',
-        issue: 'Open objection has no follow-up',
+        issue: 'Unresolved objection',
         affectedEntity: accountById.get(interaction.account_id || '')?.name || interaction.summary,
         whyItMatters: 'Unresolved objections can quietly block the deal.',
         suggestedFix: 'Create an action to address this objection.',
@@ -185,7 +185,7 @@ export function detectBrokenLoops({
       loops.push({
         id: `objection-bank-no-follow-up-${objection.id}`,
         priority: 'P1',
-        issue: 'Open objection has no follow-up',
+        issue: 'Unresolved objection',
         affectedEntity: accountById.get(objection.account_id)?.name || objection.title,
         whyItMatters: 'Unresolved objections can quietly block the deal.',
         suggestedFix: 'Create an action to address this objection.',

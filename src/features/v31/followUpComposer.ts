@@ -85,7 +85,7 @@ function buildBodyLines({
   }
 
   if (mainConcern) {
-    lines.push(`I understand that ${mainConcern} is an important point to clarify.`);
+    lines.push(`I understand your concerns around ${mainConcern}. These are important points to clarify before the next step.`);
   }
 
   if (context.painPoints && context.painPoints.length > 0 && context.length !== 'short') {
