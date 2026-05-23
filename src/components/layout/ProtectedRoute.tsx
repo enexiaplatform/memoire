@@ -1,4 +1,5 @@
 import { Navigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { loadInteractiveDemoWorkspace } from '../../features/v31/localStore';
@@ -9,7 +10,9 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading, signOut } = useAuth();
+  const location = useLocation();
   const [slowLoad, setSlowLoad] = useState(false);
+  const allowsLocalFirstAccess = location.pathname === '/app/pipeline-defense';
 
   useEffect(() => {
     if (!loading) {
@@ -49,7 +52,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (!user) {
+  if (!user && !allowsLocalFirstAccess) {
     return <Navigate to="/login" replace />;
   }
 
