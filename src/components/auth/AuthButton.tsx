@@ -49,7 +49,7 @@ export function AuthButton() {
             onClick={handleSignIn}
             className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white hover:bg-navy/90"
           >
-            Sign in with Google
+            Sign in / create account with Google
           </button>
         )}
       </div>

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { GoogleAuthButton } from '../../components/auth/GoogleAuthButton';
 
 export function SignupPage() {
   const [email, setEmail] = useState('');
@@ -36,6 +37,14 @@ export function SignupPage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="bg-white rounded-[16px] shadow-elevated p-10 space-y-5 max-w-[440px] mx-auto">
+          <GoogleAuthButton label="Create account with Google" />
+
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-gray-200" />
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">or</span>
+            <div className="h-px flex-1 bg-gray-200" />
+          </div>
+
           <Input
             label="Full name"
             type="text"
