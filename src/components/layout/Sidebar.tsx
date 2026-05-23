@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { BookOpen, CalendarCheck2, GitBranch, MessageCircleQuestion, Settings, Target } from 'lucide-react';
+import { BookOpen, CalendarCheck2, FileCheck2, GitBranch, MessageCircleQuestion, Settings, Target } from 'lucide-react';
 import { usePlanLimits } from '../../hooks/usePlanLimits';
 
 const navItems = [
@@ -7,6 +7,7 @@ const navItems = [
   { to: '/app/journey', label: 'Journey', icon: <GitBranch className="h-5 w-5" /> },
   { to: '/app/accounts', label: 'Accounts', icon: <BookOpen className="h-5 w-5" /> },
   { to: '/app/opportunities', label: 'Opportunities', icon: <Target className="h-5 w-5" /> },
+  { to: '/app/pipeline-defense', label: 'Pipeline Defense', icon: <FileCheck2 className="h-5 w-5" /> },
   { to: '/app/ask', label: 'Ask Memoire', icon: <MessageCircleQuestion className="h-5 w-5" /> },
 ];
 
