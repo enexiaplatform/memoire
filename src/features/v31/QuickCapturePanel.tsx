@@ -20,6 +20,7 @@ import {
   USE_SAMPLE_NOTE_EVENT,
 } from '../onboarding/guidedWorkflow';
 import { FollowUpComposerPanel } from './FollowUpComposerPanel';
+import { recordSalesActivityFromCapture } from '../../utils/salesActivityCalendar';
 
 interface QuickCapturePanelProps {
   compact?: boolean;
@@ -152,6 +153,7 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
     setSavedMemory(null);
     try {
       const result = await saveStructuredSalesCapture(user.id, rawNote, structured);
+      recordSalesActivityFromCapture(rawNote, structured, { sourceCaptureId: result.captureId });
       const dailyMissingContext = getMissingInteractionFields(structured);
       const saved = {
         ...result,
@@ -291,6 +293,7 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
           <div className="mt-3 grid grid-cols-1 gap-2 text-xs leading-5 text-emerald-900 sm:grid-cols-2">
             <SaveOutcome ok={Boolean(savedMemory.accountId)} text={savedMemory.accountId ? 'Added to Account Memory' : 'Account Memory is missing'} />
             <SaveOutcome ok text={savedMemory.sourceType === 'email_thread' ? 'Added thread summary' : 'Added interaction summary'} />
+            <SaveOutcome ok text="Recorded on Activity Calendar" />
             <SaveOutcome ok={savedMemory.objections.length > 0} text={savedMemory.objections.length > 0 ? 'Updated customer concerns' : 'No customer concern captured'} />
             <SaveOutcome ok={Boolean(savedMemory.actionId)} text={savedMemory.actionId ? 'Created or linked next action' : 'No next action created'} />
             <SaveOutcome ok={Boolean(savedMemory.stuckRisk)} text={savedMemory.stuckRisk ? 'Updated stuck-deal signal' : 'No stuck-deal signal captured'} />

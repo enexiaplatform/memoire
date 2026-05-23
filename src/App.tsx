@@ -11,6 +11,9 @@ const PricingPage = lazy(() => import('./features/pricing/PricingPage').then((mo
 const DemoEntryPage = lazy(() => import('./features/demo/DemoEntryPage').then((module) => ({ default: module.DemoEntryPage })));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const TodayPage = lazy(() => import('./features/v31/TodayPage').then((module) => ({ default: module.TodayPage })));
+const SalesActivityCalendarPage = lazy(() =>
+  import('./features/calendar/SalesActivityCalendarPage').then((module) => ({ default: module.SalesActivityCalendarPage })),
+);
 const JourneyPage = lazy(() => import('./features/v31/JourneyPage').then((module) => ({ default: module.JourneyPage })));
 const AccountsPage = lazy(() => import('./features/v31/AccountsPage').then((module) => ({ default: module.AccountsPage })));
 const AccountMemoryPage = lazy(() => import('./features/v31/AccountMemoryPage').then((module) => ({ default: module.AccountMemoryPage })));
@@ -44,6 +47,7 @@ function App() {
           >
             <Route index element={<Navigate to="/app/today" replace />} />
             <Route path="today" element={<TodayPage />} />
+            <Route path="calendar" element={<SalesActivityCalendarPage />} />
             <Route path="journey" element={<JourneyPage />} />
             <Route path="accounts" element={<AccountsPage />} />
             <Route path="accounts/:accountId" element={<AccountMemoryPage />} />

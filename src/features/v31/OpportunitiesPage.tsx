@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, DollarSign, Filter, MessageCircleQuestion, MoveRight, Send } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ClipboardCheck, DollarSign, Filter, MessageCircleQuestion, MoveRight, Send, ShieldAlert } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { isDemoMode } from '../../lib/demoMode';
@@ -11,6 +11,7 @@ import { FollowUpComposerPanel } from './FollowUpComposerPanel';
 import { calculateMemoryHealth, memoryHealthLabel } from './memoryHealth';
 import { RouteLoadingFallback } from './RouteLoadingFallback';
 import { useSlowLoadingFallback } from './useSlowLoadingFallback';
+import { analyzeOpportunityPipelineQuality, type OpportunityQualityReview } from '../../utils/opportunityQuality';
 
 const stageFilters = ['all', 'new', 'active', 'proposal', 'negotiation', 'paused'] as const;
 
@@ -31,10 +32,7 @@ export function OpportunitiesPage() {
     if (isDemoMode) {
       const memory = readLocalMemory();
       const accountById = new Map(memory.accounts.map((account) => [account.id, account]));
-      const visible = stage === 'all'
-        ? memory.opportunities
-        : memory.opportunities.filter((opportunity) => opportunity.stage === stage);
-      setOpportunities(visible.map((opportunity) => ({
+      setOpportunities(memory.opportunities.map((opportunity) => ({
         ...opportunity,
         account: opportunity.account_id ? accountById.get(opportunity.account_id) || null : null,
       })));
@@ -45,15 +43,12 @@ export function OpportunitiesPage() {
       return;
     }
 
-    let opportunityQuery = supabase
+    const opportunityQuery = supabase
       .from('opportunities')
       .select('*,account:account_id(id,name),contact:contact_id(id,name,role)')
       .eq('user_id', user.id)
+      .not('stage', 'in', '(won,lost)')
       .order('updated_at', { ascending: false });
-
-    if (stage !== 'all') {
-      opportunityQuery = opportunityQuery.eq('stage', stage);
-    }
 
     const [opportunityResult, interactionResult, actionResult, objectionResult] = await Promise.all([
       opportunityQuery,
@@ -67,7 +62,7 @@ export function OpportunitiesPage() {
     if (!actionResult.error) setActions((actionResult.data || []) as SalesAction[]);
     if (!objectionResult.error) setObjections((objectionResult.data || []) as Objection[]);
     setLoading(false);
-  }, [stage, user]);
+  }, [user]);
 
   useEffect(() => {
     loadOpportunities();
@@ -82,16 +77,32 @@ export function OpportunitiesPage() {
       ),
     ]));
   }, [actions, interactions, objections, opportunities]);
+  const visibleOpportunities = useMemo(() => {
+    return stage === 'all'
+      ? opportunities
+      : opportunities.filter((opportunity) => opportunity.stage === stage);
+  }, [opportunities, stage]);
+  const qualityAnalysis = useMemo(() => analyzeOpportunityPipelineQuality({
+    opportunities,
+    interactions,
+    actions,
+    objections,
+  }), [actions, interactions, objections, opportunities]);
+  const qualityByOpportunityId = useMemo(() => {
+    return new Map(qualityAnalysis.reviews.map((review) => [review.opportunityId, review]));
+  }, [qualityAnalysis]);
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
       <header className="mb-6">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Opportunities</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Opportunity Memory</h1>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Pipeline Quality Center</h1>
         <p className="mt-2 max-w-2xl text-sm text-gray-500">
-          A lightweight view of commercial movement connected to Account Memory and Next Actions.
+          Review deal quality, missing next actions, unresolved objections, and weak pipeline evidence before forecast conversations.
         </p>
       </header>
+
+      <PipelineQualitySummary analysis={qualityAnalysis} />
 
       <div className="mb-5 flex flex-wrap items-center gap-2">
         <span className="inline-flex items-center gap-2 text-sm font-semibold text-gray-500">
@@ -114,16 +125,22 @@ export function OpportunitiesPage() {
         slowLoading ? <RouteLoadingFallback onRetry={loadOpportunities} /> : <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading Opportunity Memory...</div>
       ) : opportunities.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-          <p className="text-sm font-semibold text-gray-900">No Opportunity Memory yet</p>
-          <p className="mt-1 text-sm text-gray-500">Capture an account interaction from Today to create opportunity context and a Next Action.</p>
+          <p className="text-sm font-semibold text-gray-900">No pipeline opportunities yet</p>
+          <p className="mt-1 text-sm text-gray-500">Capture an account interaction from Today or add deals in Pipeline Defense to start building pipeline quality context.</p>
+        </div>
+      ) : visibleOpportunities.length === 0 ? (
+        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
+          <p className="text-sm font-semibold text-gray-900">No opportunities in this stage</p>
+          <p className="mt-1 text-sm text-gray-500">Switch stage filters or capture a new interaction with this stage.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {opportunities.map((opportunity) => (
+          {visibleOpportunities.map((opportunity) => (
             <OpportunityCard
               key={opportunity.id}
               opportunity={opportunity}
               health={healthByOpportunityId.get(opportunity.id)}
+              qualityReview={qualityByOpportunityId.get(opportunity.id)}
               onDraft={() => setFollowUpContext({
                 accountName: opportunity.account?.name || 'Unknown account',
                 contactName: opportunity.contact?.name || '',
@@ -149,7 +166,55 @@ export function OpportunitiesPage() {
   );
 }
 
-function OpportunityCard({ opportunity, health, onDraft }: { opportunity: Opportunity; health?: MemoryHealth; onDraft: () => void }) {
+function PipelineQualitySummary({ analysis }: { analysis: ReturnType<typeof analyzeOpportunityPipelineQuality> }) {
+  return (
+    <section className="mb-6 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <ClipboardCheck className="h-4 w-4 text-brand-blue" />
+            <h2 className="text-lg font-bold text-navy">Pipeline Quality Review</h2>
+          </div>
+          <p className="mt-1 text-sm leading-6 text-gray-500">
+            Hybrid opportunity view for deal hygiene, forecast readiness, and review cleanup. It uses local rules from your captured sales memory.
+          </p>
+        </div>
+        <StatusPill highRisk={analysis.highRiskCount} needsCleanup={analysis.needsCleanupCount} />
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <QualityMetric label="Pipeline" value={analysis.totalOpportunities} helper="active deals" />
+        <QualityMetric label="High risk" value={analysis.highRiskCount} helper="needs defense" tone={analysis.highRiskCount > 0 ? 'red' : 'green'} />
+        <QualityMetric label="Needs cleanup" value={analysis.needsCleanupCount} helper="medium issues" tone={analysis.needsCleanupCount > 0 ? 'amber' : 'green'} />
+        <QualityMetric label="No next action" value={analysis.missingNextActionCount} helper="broken loops" tone={analysis.missingNextActionCount > 0 ? 'amber' : 'green'} />
+        <QualityMetric label="Open objections" value={analysis.openObjectionCount} helper="response needed" tone={analysis.openObjectionCount > 0 ? 'red' : 'green'} />
+      </div>
+
+      <div className="mt-5 rounded-lg border border-blue-100 bg-blue-50/70 p-4">
+        <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">Recommended cleanup before review</p>
+        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+          {analysis.cleanupActions.map((action) => (
+            <div key={action} className="rounded-lg bg-white px-3 py-2 text-sm font-semibold leading-6 text-blue-950 ring-1 ring-blue-100">
+              {action}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OpportunityCard({
+  opportunity,
+  health,
+  qualityReview,
+  onDraft,
+}: {
+  opportunity: Opportunity;
+  health?: MemoryHealth;
+  qualityReview?: OpportunityQualityReview;
+  onDraft: () => void;
+}) {
   const isAtRisk = !opportunity.next_action_text;
   const isStale = isOpportunityStale(opportunity);
   const lastTouch = opportunity.last_touch_at
@@ -167,6 +232,7 @@ function OpportunityCard({ opportunity, health, onDraft }: { opportunity: Opport
           <h2 className="mt-1 text-lg font-bold text-navy">{opportunity.title}</h2>
         </div>
         <div className="flex flex-col items-end gap-2">
+          {qualityReview && <OpportunityQualityBadge status={qualityReview.status} />}
           {health && <MemoryHealthBadge health={health} />}
           {(isAtRisk || isStale) && (
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
@@ -192,6 +258,23 @@ function OpportunityCard({ opportunity, health, onDraft }: { opportunity: Opport
           <MoveRight className="h-4 w-4" />
         </p>
       </div>
+      {qualityReview && (
+        <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Pipeline quality</p>
+          <p className="mt-1 text-sm font-semibold text-gray-800">{qualityReview.primaryAction}</p>
+          {qualityReview.issues.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {qualityReview.issues.slice(0, 4).map((issue) => (
+                <span key={issue.id} className={`rounded-full px-2.5 py-1 text-xs font-bold ${qualityIssueTone(issue.severity)}`}>
+                  {issue.label}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-emerald-700">No major quality gaps detected.</p>
+          )}
+        </div>
+      )}
       <button
         type="button"
         onClick={onDraft}
@@ -209,6 +292,70 @@ function OpportunityCard({ opportunity, health, onDraft }: { opportunity: Opport
       </Link>
     </article>
   );
+}
+
+function StatusPill({ highRisk, needsCleanup }: { highRisk: number; needsCleanup: number }) {
+  if (highRisk > 0) {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-full border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700">
+        <ShieldAlert className="h-3.5 w-3.5" />
+        High-risk pipeline
+      </span>
+    );
+  }
+  if (needsCleanup > 0) {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-full border border-amber-100 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700">
+        <AlertTriangle className="h-3.5 w-3.5" />
+        Cleanup needed
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">
+      <CheckCircle2 className="h-3.5 w-3.5" />
+      Pipeline healthy
+    </span>
+  );
+}
+
+function QualityMetric({ label, value, helper, tone = 'blue' }: { label: string; value: number; helper: string; tone?: 'blue' | 'green' | 'amber' | 'red' }) {
+  const toneClass = {
+    blue: 'bg-blue-50 text-brand-blue',
+    green: 'bg-emerald-50 text-emerald-700',
+    amber: 'bg-amber-50 text-amber-700',
+    red: 'bg-red-50 text-red-700',
+  }[tone];
+
+  return (
+    <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
+      <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xl font-black ${toneClass}`}>{value}</p>
+      <p className="mt-1 text-xs font-semibold text-gray-500">{helper}</p>
+    </div>
+  );
+}
+
+function OpportunityQualityBadge({ status }: { status: OpportunityQualityReview['status'] }) {
+  const tone = {
+    Healthy: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    'Needs cleanup': 'border-amber-200 bg-amber-50 text-amber-700',
+    'High risk': 'border-red-200 bg-red-50 text-red-700',
+  }[status];
+
+  return (
+    <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${tone}`}>
+      {status}
+    </span>
+  );
+}
+
+function qualityIssueTone(severity: 'low' | 'medium' | 'high') {
+  return {
+    low: 'bg-blue-50 text-blue-700',
+    medium: 'bg-amber-50 text-amber-700',
+    high: 'bg-red-50 text-red-700',
+  }[severity];
 }
 
 function MemoryHealthBadge({ health }: { health: MemoryHealth }) {
