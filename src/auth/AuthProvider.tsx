@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { pipelineSupabaseConfigMessage, supabaseClient } from '../lib/supabaseClient';
 import { AuthContext, type AuthContextValue } from './authContext';
+import { clearDemoWorkspaceMode } from '../lib/demoMode';
 
 const PIPELINE_AUTH_REDIRECT_KEY = 'memoire.pipelineDefenseAuthRedirect.v1';
 const PIPELINE_DEFENSE_ROUTE = '/app/pipeline-defense';
@@ -31,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(data.session?.user ?? null);
           setError(null);
           debugAuth('auth session loaded', { hasSession: Boolean(data.session) });
-          completePendingPipelineRedirect(data.session?.user ?? null);
+          completePendingCloudWorkspace(data.session?.user ?? null);
         }
       })
       .catch((sessionError: unknown) => {
@@ -49,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       setError(null);
       debugAuth('auth state changed', { hasSession: Boolean(nextSession) });
-      completePendingPipelineRedirect(nextSession?.user ?? null);
+      completePendingCloudWorkspace(nextSession?.user ?? null);
     });
 
     return () => {
@@ -71,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setLoading(true);
+      clearDemoWorkspaceMode();
       setPendingPipelineRedirect();
       const { error: signInError } = await supabaseClient.auth.signInWithOAuth({
         provider: 'google',
@@ -95,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setLoading(true);
       const { error: signOutError } = await supabaseClient.auth.signOut();
+      clearDemoWorkspaceMode();
       setLoading(false);
       if (signOutError) {
         setError(signOutError.message);
@@ -118,8 +121,10 @@ function setPendingPipelineRedirect() {
   }
 }
 
-function completePendingPipelineRedirect(user: User | null) {
+function completePendingCloudWorkspace(user: User | null) {
   if (!user || typeof window === 'undefined') return;
+
+  const clearedDemoWorkspace = clearDemoWorkspaceMode();
 
   let target = '';
   try {
@@ -128,7 +133,14 @@ function completePendingPipelineRedirect(user: User | null) {
     target = '';
   }
 
-  if (!target) return;
+  if (!target) {
+    if (clearedDemoWorkspace) {
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 0);
+    }
+    return;
+  }
 
   try {
     window.localStorage.removeItem(PIPELINE_AUTH_REDIRECT_KEY);
@@ -139,6 +151,13 @@ function completePendingPipelineRedirect(user: User | null) {
   if (window.location.pathname !== target) {
     window.setTimeout(() => {
       window.location.replace(target);
+    }, 0);
+    return;
+  }
+
+  if (clearedDemoWorkspace) {
+    window.setTimeout(() => {
+      window.location.reload();
     }, 0);
   }
 }

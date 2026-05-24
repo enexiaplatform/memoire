@@ -39,3 +39,15 @@ export function createDemoUser(email = 'admin@memoire.local', displayName = 'Loc
     created_at: new Date().toISOString(),
   } as User;
 }
+
+export function clearDemoWorkspaceMode() {
+  if (typeof window === 'undefined') return false;
+
+  const hadDemoWorkspace =
+    window.localStorage.getItem(DEMO_WORKSPACE_KEY) === 'interactive-demo' ||
+    Boolean(window.localStorage.getItem(DEMO_AUTH_KEY));
+
+  window.localStorage.removeItem(DEMO_AUTH_KEY);
+  window.localStorage.removeItem(DEMO_WORKSPACE_KEY);
+  return hadDemoWorkspace;
+}
