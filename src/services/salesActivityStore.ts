@@ -45,6 +45,13 @@ export async function loadSalesActivities(userId?: string | null): Promise<Sales
   return loadLocalActivities();
 }
 
+export function filterSalesActivitiesByPeriod(
+  activities: SalesActivityRecord[],
+  period: { start: string; end: string }
+) {
+  return activities.filter((activity) => activity.activityDate >= period.start && activity.activityDate <= period.end);
+}
+
 export async function saveSalesActivity(
   activity: ClassifiedSalesActivity,
   userId?: string | null

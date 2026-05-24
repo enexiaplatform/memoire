@@ -12,7 +12,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading, signOut } = useAuth();
   const location = useLocation();
   const [slowLoad, setSlowLoad] = useState(false);
-  const allowsLocalFirstAccess = ['/app/pipeline-defense', '/app/capture', '/app/calendar'].includes(location.pathname);
+  const allowsLocalFirstAccess = ['/app/pipeline-defense', '/app/capture', '/app/calendar', '/app/reviews'].includes(location.pathname);
 
   useEffect(() => {
     if (!loading) {
