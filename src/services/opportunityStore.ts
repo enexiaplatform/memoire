@@ -72,6 +72,7 @@ type OpportunityRow = {
   user_id: string;
   account_name: string;
   opportunity_name: string;
+  title?: string | null;
   stage: string | null;
   estimated_value: number | string | null;
   currency: string | null;
@@ -284,7 +285,17 @@ async function createCloudOpportunity(input: OpportunityFormInput, userId: strin
     .select('*')
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    const fallback = await supabaseClient!
+      .from(TABLE_NAME)
+      .insert(opportunityToInsertWithLegacyColumns(input, userId))
+      .select('*')
+      .single();
+
+    if (fallback.error) throw new Error(fallback.error.message);
+    return rowToOpportunity(fallback.data as OpportunityRow);
+  }
+
   return rowToOpportunity(data as OpportunityRow);
 }
 
@@ -318,7 +329,7 @@ function rowToOpportunity(row: OpportunityRow): CrmLiteOpportunity {
     id: row.id,
     userId: row.user_id,
     accountName: row.account_name || '',
-    opportunityName: row.opportunity_name || '',
+    opportunityName: row.opportunity_name || row.title || '',
     stage: normalizeStage(row.stage),
     estimatedValue: normalizeNumber(row.estimated_value),
     currency: row.currency || 'VND',
@@ -349,6 +360,15 @@ function opportunityToInsert(input: OpportunityFormInput, userId: string) {
     user_id: userId,
     created_at: timestamp,
     updated_at: timestamp,
+  };
+}
+
+function opportunityToInsertWithLegacyColumns(input: OpportunityFormInput, userId: string) {
+  return {
+    ...opportunityToInsert(input, userId),
+    title: input.opportunityName,
+    next_action_text: input.nextAction || null,
+    blocker: input.objectionDebt || null,
   };
 }
 

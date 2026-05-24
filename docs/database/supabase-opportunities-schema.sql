@@ -27,6 +27,87 @@ create table if not exists public.opportunities (
   updated_at timestamptz default now()
 );
 
+-- Compatibility for older Memoire projects that already have a legacy
+-- public.opportunities table with account_id/contact_id/title fields.
+alter table public.opportunities
+  add column if not exists account_name text,
+  add column if not exists opportunity_name text,
+  add column if not exists currency text default 'VND',
+  add column if not exists expected_close_period text,
+  add column if not exists product_or_solution text,
+  add column if not exists decision_maker text,
+  add column if not exists budget_owner text,
+  add column if not exists procurement_path text,
+  add column if not exists technical_criteria text,
+  add column if not exists next_action text,
+  add column if not exists next_action_date date,
+  add column if not exists evidence text,
+  add column if not exists missing_context text,
+  add column if not exists objection_debt text,
+  add column if not exists forecast_evidence_category text,
+  add column if not exists decision_recommendation text,
+  add column if not exists status text default 'Active';
+
+alter table public.opportunities
+  drop constraint if exists opportunities_stage_check;
+
+alter table public.opportunities
+  drop constraint if exists opportunities_stage_allowed;
+
+alter table public.opportunities
+  add constraint opportunities_stage_allowed check (
+    stage is null or stage in (
+      'new', 'active', 'proposal', 'negotiation', 'won', 'lost', 'paused',
+      'Lead', 'Discovery', 'Qualification', 'Technical discussion', 'Demo',
+      'Proposal', 'Negotiation', 'Procurement', 'Won', 'Lost', 'On hold'
+    )
+  );
+
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'opportunities'
+      and column_name = 'title'
+  ) then
+    execute $sql$
+      update public.opportunities
+      set
+        account_name = coalesce(account_name, 'Legacy account'),
+        opportunity_name = coalesce(opportunity_name, title),
+        currency = coalesce(currency, 'VND'),
+        next_action = coalesce(next_action, next_action_text),
+        objection_debt = coalesce(objection_debt, blocker),
+        forecast_evidence_category = coalesce(forecast_evidence_category, 'Weak but recoverable'),
+        decision_recommendation = coalesce(decision_recommendation, 'Monitor'),
+        status = coalesce(status, case when stage = 'won' then 'Won' when stage = 'lost' then 'Lost' when stage = 'paused' then 'On hold' else 'Active' end)
+      where account_name is null
+         or opportunity_name is null
+         or currency is null
+         or forecast_evidence_category is null
+         or decision_recommendation is null
+         or status is null
+    $sql$;
+  else
+    update public.opportunities
+    set
+      account_name = coalesce(account_name, 'Legacy account'),
+      opportunity_name = coalesce(opportunity_name, 'Untitled opportunity'),
+      currency = coalesce(currency, 'VND'),
+      forecast_evidence_category = coalesce(forecast_evidence_category, 'Weak but recoverable'),
+      decision_recommendation = coalesce(decision_recommendation, 'Monitor'),
+      status = coalesce(status, 'Active')
+    where account_name is null
+       or opportunity_name is null
+       or currency is null
+       or forecast_evidence_category is null
+       or decision_recommendation is null
+       or status is null;
+  end if;
+end $$;
+
 alter table public.opportunities enable row level security;
 
 grant usage on schema public to anon, authenticated;

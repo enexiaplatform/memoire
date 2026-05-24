@@ -53,6 +53,8 @@ Allowed values are defined in `src/services/opportunityStore.ts`.
 - Cloud load failure falls back to local opportunities.
 - Cloud save/update failure preserves a local copy and shows a warning.
 - Delete uses cloud deletion for cloud records and local deletion for local records.
+- The live Supabase project already had a legacy `public.opportunities` table, so the production schema was upgraded additively instead of replacing the table.
+- The cloud store includes a legacy-column insert fallback for projects where `title` is still required.
 
 ## Pipeline quality logic
 
