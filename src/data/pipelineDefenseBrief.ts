@@ -49,6 +49,8 @@ export type PipelineDefenseDeal = {
   pipelineReviewAnswer: string;
   decisionRecommendation: DecisionRecommendation;
   assumption?: string;
+  sourceType?: 'opportunity';
+  sourceOpportunityId?: string;
 };
 
 export const objectionDebtStatuses: PipelineDefenseDeal['objectionDebt']['status'][] = [

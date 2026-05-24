@@ -136,6 +136,8 @@ export function normalizeImportedDeal(rawDeal: RawImportedDeal): PipelineDefense
     recommendedAction: normalizeText(rawDeal.recommendedAction, 'Clarify the deal truth before defending this opportunity.'),
     pipelineReviewAnswer: normalizeText(rawDeal.pipelineReviewAnswer, 'This deal needs clearer evidence before it can be defended in review.'),
     decisionRecommendation: normalizeDecisionRecommendation(rawDeal.decisionRecommendation),
+    sourceType: rawDeal.sourceType === 'opportunity' ? 'opportunity' : undefined,
+    sourceOpportunityId: normalizeOptionalText(rawDeal.sourceOpportunityId),
   };
 }
 
@@ -234,6 +236,10 @@ function normalizeStringArray(value: string[] | undefined, fallback: string[]) {
 
 function normalizeText(value: string | undefined, fallback: string) {
   return value && value.trim().length > 0 ? value.trim() : fallback;
+}
+
+function normalizeOptionalText(value: string | undefined) {
+  return value && value.trim().length > 0 ? value.trim() : undefined;
 }
 
 function normalizeKey(value: string) {
