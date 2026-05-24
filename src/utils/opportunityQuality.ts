@@ -1,4 +1,5 @@
-import type { Interaction, Objection, Opportunity, SalesAction } from '../types/v31';
+import type { Interaction, Objection, Opportunity as LegacyOpportunity, SalesAction } from '../types/v31';
+import type { CrmLiteOpportunity, ForecastEvidenceCategory } from '../services/opportunityStore';
 
 export type OpportunityQualityStatus = 'Healthy' | 'Needs cleanup' | 'High risk';
 export type OpportunityQualitySeverity = 'low' | 'medium' | 'high';
@@ -20,6 +21,176 @@ export interface OpportunityQualityReview {
   primaryAction: string;
 }
 
+export interface CrmPipelineQualityAnalysis {
+  totalOpportunities: number;
+  activeOpportunities: number;
+  estimatedActiveValue: number;
+  defensibleDeals: number;
+  weakHopeUnsupportedDeals: number;
+  missingNextActionCount: number;
+  objectionDebtCount: number;
+  missingDecisionMakerCount: number;
+  missingClosePeriodCount: number;
+  unsupportedHopeBasedCount: number;
+  rescueDowngradeCount: number;
+  staleOpportunityCount: number;
+  activeValueByForecastCategory: Record<ForecastEvidenceCategory, number>;
+  reviews: OpportunityQualityReview[];
+  cleanupActions: string[];
+}
+
+export function analyzeOpportunityQuality(opportunity: CrmLiteOpportunity): OpportunityQualityReview {
+  const issues: OpportunityQualityIssue[] = [];
+  const evidenceText = `${opportunity.evidence} ${opportunity.missingContext}`.toLowerCase();
+
+  if (!opportunity.nextAction.trim()) {
+    issues.push({
+      id: 'missing-next-action',
+      label: 'Missing next action',
+      severity: 'high',
+      reason: 'The deal has no clear next step for the seller or customer.',
+      suggestedAction: 'Add one concrete next action with owner and timing.',
+    });
+  }
+
+  if (!opportunity.decisionMaker.trim()) {
+    issues.push({
+      id: 'missing-decision-maker',
+      label: 'Missing decision maker',
+      severity: 'medium',
+      reason: 'The decision owner is not captured, so the deal is harder to defend.',
+      suggestedAction: 'Confirm the decision maker or buying committee before review.',
+    });
+  }
+
+  if (!opportunity.expectedClosePeriod.trim()) {
+    issues.push({
+      id: 'missing-close-period',
+      label: 'Missing close period',
+      severity: 'medium',
+      reason: 'There is no clear forecast timing for this opportunity.',
+      suggestedAction: 'Add the expected close period or downgrade timing confidence.',
+    });
+  }
+
+  if (opportunity.objectionDebt.trim()) {
+    issues.push({
+      id: 'objection-debt',
+      label: 'Objection debt',
+      severity: opportunity.decisionRecommendation === 'Defend' ? 'high' : 'medium',
+      reason: 'Unresolved objection debt is captured for this opportunity.',
+      suggestedAction: 'Prepare proof, escalation, or a customer response plan.',
+    });
+  }
+
+  if (opportunity.forecastEvidenceCategory === 'Unsupported') {
+    issues.push({
+      id: 'unsupported-forecast',
+      label: 'Unsupported forecast',
+      severity: 'high',
+      reason: 'The forecast evidence category is Unsupported.',
+      suggestedAction: 'Collect customer evidence or downgrade the forecast.',
+    });
+  }
+
+  if (opportunity.forecastEvidenceCategory === 'Hope-based') {
+    issues.push({
+      id: 'hope-based-forecast',
+      label: 'Hope-based forecast',
+      severity: opportunity.missingContext.trim() ? 'high' : 'medium',
+      reason: 'The deal depends on soft evidence rather than confirmed customer action.',
+      suggestedAction: 'Replace hope-based evidence with a confirmed next step, date, or owner.',
+    });
+  }
+
+  if (['Rescue', 'Downgrade', 'Deprioritize'].includes(opportunity.decisionRecommendation)) {
+    issues.push({
+      id: 'review-decision-risk',
+      label: `${opportunity.decisionRecommendation} recommended`,
+      severity: opportunity.decisionRecommendation === 'Rescue' ? 'high' : 'medium',
+      reason: 'The current recommendation signals the deal needs a manager-visible decision.',
+      suggestedAction: `Prepare a concise reason to ${opportunity.decisionRecommendation.toLowerCase()} this deal.`,
+    });
+  }
+
+  if (opportunity.nextActionDate && opportunity.status === 'Active' && new Date(opportunity.nextActionDate) < startOfToday()) {
+    issues.push({
+      id: 'stale-next-action',
+      label: 'Past-due next action',
+      severity: 'medium',
+      reason: 'The next action date is already past.',
+      suggestedAction: 'Refresh the next action date or close the loop.',
+    });
+  }
+
+  if (weakEvidenceTerms.test(evidenceText)) {
+    issues.push({
+      id: 'weak-evidence-language',
+      label: 'Weak evidence language',
+      severity: 'medium',
+      reason: 'Evidence or missing context includes unclear, pending, or unconfirmed language.',
+      suggestedAction: 'Replace soft evidence with a confirmed customer action or proof point.',
+    });
+  }
+
+  if (!opportunity.productOrSolution.trim()) {
+    issues.push({
+      id: 'missing-solution',
+      label: 'Missing solution context',
+      severity: 'low',
+      reason: 'The product or solution is not captured.',
+      suggestedAction: 'Add the product or solution so review context is easier to scan.',
+    });
+  }
+
+  return {
+    opportunityId: opportunity.id,
+    status: getOpportunityStatus(issues),
+    accountName: opportunity.accountName || 'No account',
+    opportunityTitle: opportunity.opportunityName || 'Untitled opportunity',
+    issues,
+    primaryAction: getPrimaryAction(issues),
+  };
+}
+
+export function analyzePipelineQuality(opportunities: CrmLiteOpportunity[]): CrmPipelineQualityAnalysis {
+  const reviews = opportunities.map(analyzeOpportunityQuality);
+  const activeOpportunities = opportunities.filter((opportunity) => opportunity.status === 'Active');
+  const activeValueByForecastCategory = makeEmptyForecastValueMap();
+
+  activeOpportunities.forEach((opportunity) => {
+    activeValueByForecastCategory[opportunity.forecastEvidenceCategory] += opportunity.estimatedValue || 0;
+  });
+
+  const cleanupActions = getCrmPipelineCleanupActions(opportunities, reviews);
+
+  return {
+    totalOpportunities: opportunities.length,
+    activeOpportunities: activeOpportunities.length,
+    estimatedActiveValue: activeOpportunities.reduce((sum, opportunity) => sum + (opportunity.estimatedValue || 0), 0),
+    defensibleDeals: opportunities.filter((opportunity) => opportunity.forecastEvidenceCategory === 'Defensible').length,
+    weakHopeUnsupportedDeals: opportunities.filter((opportunity) =>
+      ['Weak but recoverable', 'Hope-based', 'Unsupported'].includes(opportunity.forecastEvidenceCategory)
+    ).length,
+    missingNextActionCount: opportunities.filter((opportunity) => !opportunity.nextAction.trim()).length,
+    objectionDebtCount: opportunities.filter((opportunity) => Boolean(opportunity.objectionDebt.trim())).length,
+    missingDecisionMakerCount: opportunities.filter((opportunity) => !opportunity.decisionMaker.trim()).length,
+    missingClosePeriodCount: opportunities.filter((opportunity) => !opportunity.expectedClosePeriod.trim()).length,
+    unsupportedHopeBasedCount: opportunities.filter((opportunity) =>
+      ['Hope-based', 'Unsupported'].includes(opportunity.forecastEvidenceCategory)
+    ).length,
+    rescueDowngradeCount: opportunities.filter((opportunity) =>
+      ['Rescue', 'Downgrade'].includes(opportunity.decisionRecommendation)
+    ).length,
+    staleOpportunityCount: reviews.filter((review) =>
+      review.issues.some((issue) => issue.id === 'stale-next-action')
+    ).length,
+    activeValueByForecastCategory,
+    reviews,
+    cleanupActions,
+  };
+}
+
 export interface PipelineQualityAnalysis {
   totalOpportunities: number;
   healthyCount: number;
@@ -33,8 +204,8 @@ export interface PipelineQualityAnalysis {
   cleanupActions: string[];
 }
 
-interface PipelineQualityInput {
-  opportunities: Opportunity[];
+interface LegacyPipelineQualityInput {
+  opportunities: LegacyOpportunity[];
   interactions: Interaction[];
   actions: SalesAction[];
   objections: Objection[];
@@ -42,9 +213,9 @@ interface PipelineQualityInput {
 
 const weakEvidenceTerms = /unclear|waiting|possible|interested|no response|not confirmed|maybe|pending/i;
 
-export function analyzeOpportunityPipelineQuality(input: PipelineQualityInput): PipelineQualityAnalysis {
+export function analyzeOpportunityPipelineQuality(input: LegacyPipelineQualityInput): PipelineQualityAnalysis {
   const reviews = input.opportunities.map((opportunity) =>
-    analyzeOpportunityQuality(opportunity, {
+    analyzeLegacyOpportunityQuality(opportunity, {
       interactions: input.interactions.filter((interaction) => interaction.opportunity_id === opportunity.id),
       actions: input.actions.filter((action) => action.opportunity_id === opportunity.id),
       objections: input.objections.filter((objection) => objection.opportunity_id === opportunity.id),
@@ -54,35 +225,23 @@ export function analyzeOpportunityPipelineQuality(input: PipelineQualityInput): 
   const highRiskCount = reviews.filter((review) => review.status === 'High risk').length;
   const needsCleanupCount = reviews.filter((review) => review.status === 'Needs cleanup').length;
   const healthyCount = reviews.filter((review) => review.status === 'Healthy').length;
-  const missingNextActionCount = reviews.filter((review) =>
-    review.issues.some((issue) => issue.id === 'missing-next-action')
-  ).length;
-  const openObjectionCount = reviews.filter((review) =>
-    review.issues.some((issue) => issue.id === 'open-objection' || issue.id === 'blocker-without-action')
-  ).length;
-  const staleOpportunityCount = reviews.filter((review) =>
-    review.issues.some((issue) => issue.id === 'stale-opportunity')
-  ).length;
-  const lowConfidenceCount = reviews.filter((review) =>
-    review.issues.some((issue) => issue.id === 'low-confidence')
-  ).length;
 
   return {
     totalOpportunities: input.opportunities.length,
     healthyCount,
     needsCleanupCount,
     highRiskCount,
-    missingNextActionCount,
-    openObjectionCount,
-    staleOpportunityCount,
-    lowConfidenceCount,
+    missingNextActionCount: reviews.filter((review) => review.issues.some((issue) => issue.id === 'missing-next-action')).length,
+    openObjectionCount: reviews.filter((review) => review.issues.some((issue) => issue.id === 'open-objection' || issue.id === 'blocker-without-action')).length,
+    staleOpportunityCount: reviews.filter((review) => review.issues.some((issue) => issue.id === 'stale-opportunity')).length,
+    lowConfidenceCount: reviews.filter((review) => review.issues.some((issue) => issue.id === 'low-confidence')).length,
     reviews,
-    cleanupActions: getPipelineCleanupActions(reviews),
+    cleanupActions: getLegacyPipelineCleanupActions(reviews),
   };
 }
 
-function analyzeOpportunityQuality(
-  opportunity: Opportunity,
+function analyzeLegacyOpportunityQuality(
+  opportunity: LegacyOpportunity,
   related: { interactions: Interaction[]; actions: SalesAction[]; objections: Objection[] }
 ): OpportunityQualityReview {
   const issues: OpportunityQualityIssue[] = [];
@@ -143,16 +302,6 @@ function analyzeOpportunityQuality(
     });
   }
 
-  if (opportunity.urgency === 'high' && opportunity.confidence !== 'high') {
-    issues.push({
-      id: 'urgent-but-uncertain',
-      label: 'Urgent but uncertain',
-      severity: 'medium',
-      reason: 'The deal is urgent, but confidence is not high enough to defend it cleanly.',
-      suggestedAction: 'Confirm decision path and next customer action this week.',
-    });
-  }
-
   if (!opportunity.account_id && !opportunity.account?.name) {
     issues.push({
       id: 'missing-account',
@@ -173,18 +322,17 @@ function analyzeOpportunityQuality(
     });
   }
 
-  const status = getOpportunityStatus(issues);
   return {
     opportunityId: opportunity.id,
-    status,
+    status: getOpportunityStatus(issues),
     accountName: opportunity.account?.name || 'No account',
     opportunityTitle: opportunity.title,
     issues,
-    primaryAction: getPrimaryAction(opportunity, issues),
+    primaryAction: getPrimaryAction(issues),
   };
 }
 
-function hasRecentTouch(opportunity: Opportunity, interactions: Interaction[]) {
+function hasRecentTouch(opportunity: LegacyOpportunity, interactions: Interaction[]) {
   const latestTouch = opportunity.last_touch_at || interactions[0]?.occurred_at;
   if (!latestTouch) return false;
   const cutoff = new Date();
@@ -199,17 +347,35 @@ function getOpportunityStatus(issues: OpportunityQualityIssue[]): OpportunityQua
   return 'Healthy';
 }
 
-function getPrimaryAction(opportunity: Opportunity, issues: OpportunityQualityIssue[]) {
+function getPrimaryAction(issues: OpportunityQualityIssue[]) {
   if (issues.length === 0) return 'Keep current cadence and prepare the review answer.';
   const highIssue = issues.find((issue) => issue.severity === 'high');
-  if (highIssue) return highIssue.suggestedAction;
-  if (opportunity.stage === 'proposal' || opportunity.stage === 'negotiation') {
-    return 'Confirm decision path, timeline, and next customer action before review.';
-  }
-  return issues[0].suggestedAction;
+  return highIssue?.suggestedAction || issues[0].suggestedAction;
 }
 
-function getPipelineCleanupActions(reviews: OpportunityQualityReview[]) {
+function getCrmPipelineCleanupActions(opportunities: CrmLiteOpportunity[], reviews: OpportunityQualityReview[]) {
+  const actions = [
+    opportunities.some((opportunity) => !opportunity.nextAction.trim())
+      ? 'Add next actions to deals without a clear owner or timing.'
+      : '',
+    opportunities.some((opportunity) => Boolean(opportunity.objectionDebt.trim()))
+      ? 'Resolve or prepare response paths for objection debt.'
+      : '',
+    opportunities.some((opportunity) => !opportunity.decisionMaker.trim())
+      ? 'Confirm decision makers for deals missing buying authority.'
+      : '',
+    opportunities.some((opportunity) => ['Hope-based', 'Unsupported'].includes(opportunity.forecastEvidenceCategory))
+      ? 'Downgrade or strengthen hope-based and unsupported forecasts.'
+      : '',
+    reviews.some((review) => review.issues.some((issue) => issue.id === 'stale-next-action'))
+      ? 'Refresh past-due next actions before pipeline review.'
+      : '',
+  ].filter(Boolean);
+
+  return actions.length > 0 ? actions : ['Pipeline quality looks clean. Prepare concise defense answers for active deals.'];
+}
+
+function getLegacyPipelineCleanupActions(reviews: OpportunityQualityReview[]) {
   const actions = [
     reviews.some((review) => review.issues.some((issue) => issue.id === 'missing-next-action'))
       ? 'Add next actions to deals without a clear owner or timing.'
@@ -226,4 +392,19 @@ function getPipelineCleanupActions(reviews: OpportunityQualityReview[]) {
   ].filter(Boolean);
 
   return actions.length > 0 ? actions : ['Pipeline quality looks clean. Prepare concise defense answers for active deals.'];
+}
+
+function makeEmptyForecastValueMap(): Record<ForecastEvidenceCategory, number> {
+  return {
+    Defensible: 0,
+    'Weak but recoverable': 0,
+    'Hope-based': 0,
+    Unsupported: 0,
+  };
+}
+
+function startOfToday() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
 }

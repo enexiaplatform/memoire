@@ -23,7 +23,7 @@ const SalesReviewsPage = lazy(() =>
 const JourneyPage = lazy(() => import('./features/v31/JourneyPage').then((module) => ({ default: module.JourneyPage })));
 const AccountsPage = lazy(() => import('./features/v31/AccountsPage').then((module) => ({ default: module.AccountsPage })));
 const AccountMemoryPage = lazy(() => import('./features/v31/AccountMemoryPage').then((module) => ({ default: module.AccountMemoryPage })));
-const OpportunitiesPage = lazy(() => import('./features/v31/OpportunitiesPage').then((module) => ({ default: module.OpportunitiesPage })));
+const OpportunitiesPage = lazy(() => import('./features/opportunities/OpportunitiesPage').then((module) => ({ default: module.OpportunitiesPage })));
 const AskMemoirePage = lazy(() => import('./features/v31/AskMemoirePage').then((module) => ({ default: module.AskMemoirePage })));
 const PipelineReviewDefenseBriefPage = lazy(() =>
   import('./features/pipeline/PipelineReviewDefenseBriefPage').then((module) => ({ default: module.PipelineReviewDefenseBriefPage })),
