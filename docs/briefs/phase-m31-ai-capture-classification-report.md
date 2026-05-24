@@ -14,16 +14,16 @@
 
 ## AI Provider Behavior
 
+> Phase M.32 supersedes the original client-side env shape. Capture AI now uses a secure serverless endpoint and server-only provider secrets.
+
 - Added a Capture AI provider abstraction.
 - Active provider IDs:
   - `disabled`
   - `openai-compatible`
-- The OpenAI-compatible provider is active only when all required Vite env vars are present:
-  - `VITE_CAPTURE_AI_ENDPOINT`
-  - `VITE_CAPTURE_AI_API_KEY`
-  - `VITE_CAPTURE_AI_MODEL`
+- The OpenAI-compatible provider now calls the server-side endpoint configured by:
+  - `VITE_CAPTURE_AI_ENDPOINT=/api/capture-ai-classify`
 - No API key is hardcoded.
-- No request is made when the provider is not configured.
+- No provider API key is exposed in the frontend.
 
 ## Local Fallback Behavior
 

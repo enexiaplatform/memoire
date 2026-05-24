@@ -1,38 +1,77 @@
 # Capture AI Provider Setup
 
-Phase M.31 adds optional AI-assisted classification for Daily Capture. The app still works without these settings and falls back to local rule-based classification.
+Daily Capture AI Assist is optional. The app still works without AI configuration and falls back to local rule-based classification.
+
+## Architecture
+
+Frontend calls:
+
+```text
+POST /api/capture-ai-classify
+```
+
+The Vercel serverless endpoint calls the configured OpenAI-compatible provider using server-only environment variables.
+
+The browser never receives the provider API key.
 
 ## Environment Variables
 
-Set these only if you want to enable AI Assist:
+Public frontend variable:
 
 ```env
-VITE_CAPTURE_AI_ENDPOINT=
-VITE_CAPTURE_AI_API_KEY=
-VITE_CAPTURE_AI_MODEL=
+VITE_CAPTURE_AI_ENDPOINT=/api/capture-ai-classify
 ```
 
-Expected endpoint shape:
+Server-only variables:
 
-- OpenAI-compatible chat completions endpoint.
-- Accepts `model`, `messages`, `temperature`, and `response_format`.
-- Returns JSON content in `choices[0].message.content`.
-
-Example endpoint format:
-
-```text
-https://your-provider.example.com/v1/chat/completions
+```env
+CAPTURE_AI_PROVIDER=openai-compatible
+CAPTURE_AI_ENDPOINT=
+CAPTURE_AI_API_KEY=
+CAPTURE_AI_MODEL=
 ```
 
-Do not commit real API keys.
+Important:
+
+- `CAPTURE_AI_API_KEY` must not be prefixed with `VITE_`.
+- Any `VITE_*` variable is exposed to the client bundle by Vite.
+- Do not use `VITE_CAPTURE_AI_API_KEY` or `VITE_CAPTURE_AI_MODEL`.
+- Do not commit real API keys.
+
+## Provider Endpoint Shape
+
+`CAPTURE_AI_ENDPOINT` should be an OpenAI-compatible chat completions endpoint.
+
+Expected request support:
+
+- `model`
+- `messages`
+- `temperature`
+- `response_format`
+
+Expected response:
+
+```json
+{
+  "choices": [
+    {
+      "message": {
+        "content": "{\"activityType\":\"Customer meeting\"}"
+      }
+    }
+  ]
+}
+```
+
+If the provider rejects `response_format`, the serverless endpoint retries once without it and still attempts strict JSON parsing.
 
 ## Privacy Warning
 
-When AI Assist is configured, the raw Daily Capture note may be sent to the configured AI provider.
+When AI Assist is configured, the raw Daily Capture note is sent to the configured server-side AI endpoint.
 
-Users should not use AI Assist for confidential customer data unless that provider has been approved for the data being entered.
+Users should not use AI Assist for confidential customer data unless the AI provider is approved for that data.
 
-Only lightweight account/opportunity context is sent:
+Only lightweight context is sent:
 
 - account names
 - opportunity names
@@ -43,46 +82,54 @@ Only lightweight account/opportunity context is sent:
 
 Memoire does not send full activity history, linked notes, account notes, opportunity evidence, or pipeline defense briefs to the Capture AI provider.
 
-## How To Disable AI
+## Disable AI
 
-Leave any of these variables empty:
+Leave any server-only variable empty, or set:
 
-- `VITE_CAPTURE_AI_ENDPOINT`
-- `VITE_CAPTURE_AI_API_KEY`
-- `VITE_CAPTURE_AI_MODEL`
-
-When disabled, `/app/capture` shows:
-
-```text
-AI Assist unavailable
+```env
+CAPTURE_AI_PROVIDER=
 ```
 
-The app continues using local deterministic rules.
+Then `/api/capture-ai-classify` returns:
 
-## Fallback Behavior
+```text
+503 Capture AI is not configured on the server.
+```
 
-If the AI request fails:
+The Capture page keeps local rule-based classification available.
 
-- the raw note stays in the textarea
-- the user sees `AI Assist failed. Local rules are still available.`
-- local structured preview remains available
-- saving activity still works
+## Local Test
 
-## How To Test
+1. Leave server-only Capture AI vars empty.
+2. Run the app.
+3. Open `/app/capture`.
+4. Enter a note.
+5. Click `Classify with AI`.
+6. Confirm the app shows: `AI Assist is not configured on the server. Local rules are still available.`
+7. Confirm local preview and Save Activity still work.
+8. Add server-only env vars.
+9. Restart the dev server.
+10. Repeat and confirm an AI suggestion appears.
 
-1. Run the app with no Capture AI env vars.
-2. Open `/app/capture`.
-3. Confirm local preview works and `Classify with AI` is unavailable.
-4. Add the three Capture AI env vars.
-5. Restart the dev server or redeploy.
-6. Open `/app/capture`.
-7. Enter a note.
-8. Click `Classify with AI`.
-9. Confirm an AI suggestion appears.
-10. Click `Accept suggestion`.
-11. Edit the structured preview if needed.
-12. Click `Save Activity`.
-13. Confirm activity saves to localStorage or Supabase depending on auth mode.
+Endpoint test:
+
+```bash
+curl -X POST http://localhost:5173/api/capture-ai-classify \
+  -H "Content-Type: application/json" \
+  -d "{\"rawNote\":\"Met Control Union, need to send lead time proof this week.\",\"activityDate\":\"2026-05-24\"}"
+```
+
+Without server AI vars, expect HTTP 503.
+
+## Vercel Test
+
+1. Add server-only env vars in Vercel Project Settings.
+2. Redeploy.
+3. Open `/app/capture`.
+4. Enter a test note.
+5. Click `Classify with AI`.
+6. Confirm suggestion appears.
+7. Remove or unset server vars and redeploy to verify the 503 fallback path.
 
 ## Intentionally Not Built
 
@@ -91,5 +138,5 @@ If the AI request fails:
 - Salesforce or HubSpot sync
 - automatic opportunity/account updates
 - background AI classification
-- server-side AI proxy
+- exposing provider API key to the browser
 - hardcoded API keys

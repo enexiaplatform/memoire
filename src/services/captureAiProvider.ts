@@ -1,4 +1,3 @@
-import { buildCaptureAiMessages } from '../utils/captureAiPrompt';
 import { captureAiActivityTypes } from '../utils/captureAiPrompt';
 
 export type CaptureAiProviderId = 'disabled' | 'openai-compatible';
@@ -41,9 +40,17 @@ export type CaptureAiProvider = {
   classifyCapture(request: CaptureAiRequest): Promise<CaptureAiSuggestion>;
 };
 
-const endpoint = import.meta.env.VITE_CAPTURE_AI_ENDPOINT;
-const apiKey = import.meta.env.VITE_CAPTURE_AI_API_KEY;
-const model = import.meta.env.VITE_CAPTURE_AI_MODEL;
+const endpoint = import.meta.env.VITE_CAPTURE_AI_ENDPOINT || '/api/capture-ai-classify';
+
+export class CaptureAiProviderError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'CaptureAiProviderError';
+    this.status = status;
+  }
+}
 
 export const DisabledCaptureAiProvider: CaptureAiProvider = {
   id: 'disabled',
@@ -56,8 +63,8 @@ export const DisabledCaptureAiProvider: CaptureAiProvider = {
 
 export const OpenAiCompatibleCaptureAiProvider: CaptureAiProvider = {
   id: 'openai-compatible',
-  label: 'OpenAI-compatible',
-  isConfigured: () => Boolean(endpoint && apiKey && model),
+  label: 'Server-side AI endpoint',
+  isConfigured: () => Boolean(endpoint),
   async classifyCapture(request) {
     if (!this.isConfigured()) {
       throw new Error('Capture AI provider is not configured.');
@@ -66,24 +73,17 @@ export const OpenAiCompatibleCaptureAiProvider: CaptureAiProvider = {
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model,
-        messages: buildCaptureAiMessages(request),
-        temperature: 0,
-        response_format: { type: 'json_object' },
-      }),
+      body: JSON.stringify(request),
     });
 
     if (!response.ok) {
-      throw new Error(`AI Assist request failed with status ${response.status}.`);
+      throw new CaptureAiProviderError(`AI Assist request failed with status ${response.status}.`, response.status);
     }
 
     const payload = await response.json();
-    const content = extractResponseContent(payload);
-    return normalizeSuggestion(JSON.parse(content), request);
+    return normalizeSuggestion(payload, request);
   },
 };
 
@@ -91,28 +91,6 @@ export function getActiveCaptureAiProvider() {
   return OpenAiCompatibleCaptureAiProvider.isConfigured()
     ? OpenAiCompatibleCaptureAiProvider
     : DisabledCaptureAiProvider;
-}
-
-function extractResponseContent(payload: unknown) {
-  if (typeof payload !== 'object' || payload === null) {
-    throw new Error('AI Assist returned an invalid response.');
-  }
-
-  const maybePayload = payload as {
-    choices?: { message?: { content?: string } }[];
-    output_text?: string;
-    content?: string;
-  };
-
-  const content = maybePayload.choices?.[0]?.message?.content
-    || maybePayload.output_text
-    || maybePayload.content;
-
-  if (!content) {
-    throw new Error('AI Assist returned no structured content.');
-  }
-
-  return content;
 }
 
 function normalizeSuggestion(value: unknown, request: CaptureAiRequest): CaptureAiSuggestion {

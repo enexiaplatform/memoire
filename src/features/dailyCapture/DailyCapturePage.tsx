@@ -12,7 +12,7 @@ import {
 } from '../../services/salesActivityStore';
 import { loadOpportunities, updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { loadAccounts, type AccountMemoryRecord } from '../../services/accountStore';
-import { getActiveCaptureAiProvider, type CaptureAiSuggestion } from '../../services/captureAiProvider';
+import { CaptureAiProviderError, getActiveCaptureAiProvider, type CaptureAiSuggestion } from '../../services/captureAiProvider';
 import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
 import { applyOpportunityUpdateSuggestion, suggestOpportunityLinks, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 
@@ -142,9 +142,11 @@ export function DailyCapturePage() {
       setAiSuggestion(suggestion);
       setAiState('ready');
       setAiMessage('AI suggestion ready. Review it before accepting.');
-    } catch {
+    } catch (error) {
       setAiState('error');
-      setAiMessage('AI Assist failed. Local rules are still available.');
+      setAiMessage(error instanceof CaptureAiProviderError && error.status === 503
+        ? 'AI Assist is not configured on the server. Local rules are still available.'
+        : 'AI Assist failed. Local rules are still available.');
     }
   };
 
@@ -300,7 +302,7 @@ export function DailyCapturePage() {
               {aiConfigured && (
                 <p className="mt-2 flex gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold leading-5 text-amber-800">
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  AI Assist may send this note to your configured AI provider. Do not use it for confidential customer data unless your provider is approved.
+                  AI Assist sends this note to your configured server-side AI endpoint. Do not use it for confidential customer data unless your provider is approved.
                 </p>
               )}
               <button
