@@ -10,7 +10,7 @@ const VerifyEmailPage = lazy(() => import('./features/auth/VerifyEmailPage').the
 const PricingPage = lazy(() => import('./features/pricing/PricingPage').then((module) => ({ default: module.PricingPage })));
 const DemoEntryPage = lazy(() => import('./features/demo/DemoEntryPage').then((module) => ({ default: module.DemoEntryPage })));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })));
-const TodayPage = lazy(() => import('./features/v31/TodayPage').then((module) => ({ default: module.TodayPage })));
+const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage').then((module) => ({ default: module.DashboardPage })));
 const DailyCapturePage = lazy(() =>
   import('./features/dailyCapture/DailyCapturePage').then((module) => ({ default: module.DailyCapturePage })),
 );
@@ -51,8 +51,9 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Navigate to="/app/today" replace />} />
-            <Route path="today" element={<TodayPage />} />
+            <Route index element={<Navigate to="/app/dashboard" replace />} />
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="today" element={<Navigate to="/app/dashboard" replace />} />
             <Route path="capture" element={<DailyCapturePage />} />
             <Route path="calendar" element={<SalesActivityCalendarPage />} />
             <Route path="reviews" element={<SalesReviewsPage />} />
@@ -65,8 +66,7 @@ function App() {
             <Route path="settings" element={<SettingsPage />} />
 
             {/* Legacy V0 routes, downgraded out of the primary V1 surface. */}
-            <Route path="dashboard" element={<Navigate to="/app/today" replace />} />
-            <Route path="history" element={<Navigate to="/app/today" replace />} />
+            <Route path="history" element={<Navigate to="/app/dashboard" replace />} />
             <Route path="entities" element={<Navigate to="/app/accounts" replace />} />
             <Route path="entities/:entityId" element={<Navigate to="/app/accounts" replace />} />
             <Route path="deals" element={<Navigate to="/app/opportunities" replace />} />

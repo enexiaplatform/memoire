@@ -12,7 +12,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading, signOut } = useAuth();
   const location = useLocation();
   const [slowLoad, setSlowLoad] = useState(false);
-  const allowsLocalFirstAccess = ['/app/pipeline-defense', '/app/capture', '/app/calendar', '/app/reviews', '/app/opportunities', '/app/accounts'].includes(location.pathname);
+  const allowsLocalFirstAccess = ['/app/dashboard', '/app/today', '/app/pipeline-defense', '/app/capture', '/app/calendar', '/app/reviews', '/app/opportunities', '/app/accounts'].includes(location.pathname);
 
   useEffect(() => {
     if (!loading) {
@@ -25,7 +25,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   const openDemo = () => {
     loadInteractiveDemoWorkspace();
-    window.location.replace('/app/today');
+    window.location.replace('/app/dashboard');
   };
 
   if (loading) {
