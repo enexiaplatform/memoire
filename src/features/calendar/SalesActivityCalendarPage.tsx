@@ -1,139 +1,156 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, ChevronLeft, ChevronRight, ClipboardList, Plus, RotateCcw, Sparkles } from 'lucide-react';
-import { readLocalMemory } from '../v31/localStore';
 import {
-  buildSalesActivityRecap,
-  createSalesActivityFromCapture,
-  createSalesActivityFromText,
-  filterSalesActivitiesByRange,
-  getSalesActivityRange,
-  groupSalesActivitiesByDate,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Loader2,
+  RotateCcw,
+  Trash2,
+  X,
+} from 'lucide-react';
+import { useAuthContext } from '../../auth/authContext';
+import {
+  canUseSalesActivityCloudStore,
+  deleteSalesActivity,
   loadSalesActivities,
-  shiftSalesActivityAnchor,
-  upsertSalesActivity,
-  type SalesActivityCategory,
-  type SalesActivityPeriod,
   type SalesActivityRecord,
-} from '../../utils/salesActivityCalendar';
+} from '../../services/salesActivityStore';
+import type { SalesActivityType } from '../../utils/salesActivityClassifier';
 
-const periodOptions: { value: SalesActivityPeriod; label: string }[] = [
-  { value: 'week', label: 'Weekly' },
-  { value: 'month', label: 'Monthly' },
+type CalendarViewMode = 'day' | 'week' | 'month';
+
+type ActivitySummary = {
+  totalActivities: number;
+  accountsTouched: number;
+  opportunitiesTouched: number;
+  followUps: number;
+  objectionsCaptured: number;
+  internalCoordinationItems: number;
+  activitiesWithNextActions: number;
+  overdueDueDates: number;
+  activeDays: number;
+  topActivityType: string;
+  mostTouchedAccount: string;
+  openNextActions: number;
+};
+
+const viewOptions: { value: CalendarViewMode; label: string }[] = [
+  { value: 'day', label: 'Day' },
+  { value: 'week', label: 'Week' },
+  { value: 'month', label: 'Month' },
 ];
 
-const categoryTone: Record<SalesActivityCategory, string> = {
-  Call: 'bg-blue-50 text-blue-700 border-blue-100',
-  Meeting: 'bg-violet-50 text-violet-700 border-violet-100',
-  Email: 'bg-cyan-50 text-cyan-700 border-cyan-100',
-  Proposal: 'bg-indigo-50 text-indigo-700 border-indigo-100',
-  'Follow-up': 'bg-emerald-50 text-emerald-700 border-emerald-100',
-  Objection: 'bg-amber-50 text-amber-700 border-amber-100',
-  'Customer insight': 'bg-teal-50 text-teal-700 border-teal-100',
-  Admin: 'bg-slate-50 text-slate-700 border-slate-100',
-  Note: 'bg-gray-50 text-gray-700 border-gray-100',
+const activityTypeTone: Record<SalesActivityType, string> = {
+  'Customer meeting': 'border-blue-100 bg-blue-50 text-blue-700',
+  'Follow-up': 'border-emerald-100 bg-emerald-50 text-emerald-700',
+  'Demo / technical discussion': 'border-violet-100 bg-violet-50 text-violet-700',
+  'Quote / proposal': 'border-indigo-100 bg-indigo-50 text-indigo-700',
+  'Tender / procurement': 'border-cyan-100 bg-cyan-50 text-cyan-700',
+  'Internal coordination': 'border-slate-100 bg-slate-50 text-slate-700',
+  'Objection handling': 'border-amber-100 bg-amber-50 text-amber-700',
+  'Admin / CRM': 'border-gray-200 bg-gray-50 text-gray-700',
+  Other: 'border-gray-200 bg-white text-gray-700',
 };
 
 export function SalesActivityCalendarPage() {
-  const [period, setPeriod] = useState<SalesActivityPeriod>('week');
+  const { user, loading: authLoading } = useAuthContext();
+  const [viewMode, setViewMode] = useState<CalendarViewMode>('week');
   const [anchorDate, setAnchorDate] = useState(() => new Date());
-  const [manualNote, setManualNote] = useState('');
+  const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
+  const [loadingActivities, setLoadingActivities] = useState(true);
+  const [selectedActivity, setSelectedActivity] = useState<SalesActivityRecord | null>(null);
+  const [copiedId, setCopiedId] = useState('');
   const [message, setMessage] = useState('');
-  const [storedActivities, setStoredActivities] = useState(() => loadSalesActivities());
 
-  const allActivities = useMemo(() => {
-    return mergeActivities(storedActivities, loadSalesMemoryActivities());
-  }, [storedActivities]);
+  const storageLabel = canUseSalesActivityCloudStore(user?.id)
+    ? 'Cloud activities'
+    : authLoading
+      ? 'Checking account...'
+      : 'Local activities';
 
-  const range = useMemo(() => getSalesActivityRange(period, anchorDate), [anchorDate, period]);
-  const visibleActivities = useMemo(
-    () => filterSalesActivitiesByRange(allActivities, range),
-    [allActivities, range]
-  );
-  const groupedActivities = useMemo(() => groupSalesActivitiesByDate(visibleActivities), [visibleActivities]);
-  const recap = useMemo(() => buildSalesActivityRecap(visibleActivities), [visibleActivities]);
-  const activeCategoryCounts = Object.entries(recap.categoryCounts).filter(([, count]) => count > 0);
+  const refreshActivities = useCallback(async () => {
+    setLoadingActivities(true);
+    const loaded = await loadSalesActivities(user?.id);
+    setActivities(loaded);
+    setLoadingActivities(false);
+  }, [user?.id]);
 
-  const addManualActivity = () => {
-    if (manualNote.trim().length < 8) {
-      setMessage('Add a short sales note first.');
-      return;
+  useEffect(() => {
+    refreshActivities();
+  }, [refreshActivities]);
+
+  const range = useMemo(() => getCalendarRange(viewMode, anchorDate), [anchorDate, viewMode]);
+  const visibleActivities = useMemo(() => {
+    return activities
+      .filter((activity) => activity.activityDate >= range.start && activity.activityDate <= range.end)
+      .sort(sortByDateAscending);
+  }, [activities, range.end, range.start]);
+  const groupedActivities = useMemo(() => groupActivitiesByDate(visibleActivities), [visibleActivities]);
+  const summary = useMemo(() => buildActivitySummary(visibleActivities), [visibleActivities]);
+  const dateKeys = useMemo(() => getDateKeysForRange(range.start, range.end), [range.end, range.start]);
+
+  const shiftPeriod = (direction: -1 | 1) => {
+    setAnchorDate((date) => shiftAnchorDate(date, viewMode, direction));
+  };
+
+  const handleCopy = async (activity: SalesActivityRecord) => {
+    const summaryText = formatActivitySummary(activity);
+    try {
+      await navigator.clipboard.writeText(summaryText);
+      setCopiedId(activity.id);
+      window.setTimeout(() => setCopiedId(''), 1600);
+    } catch {
+      setMessage(summaryText);
     }
+  };
 
-    upsertSalesActivity(createSalesActivityFromText(manualNote));
-    setManualNote('');
-    setMessage('Activity added to your calendar.');
-    setStoredActivities(loadSalesActivities());
+  const handleDelete = async (activity: SalesActivityRecord) => {
+    await deleteSalesActivity(activity, user?.id);
+    setActivities((current) => current.filter((item) => item.id !== activity.id));
+    setSelectedActivity(null);
+    setMessage('Activity deleted.');
   };
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Activity Calendar</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Weekly and monthly sales memory.</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Sales Activity Calendar</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Review sales activity by day, week, and month.</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            Capture unstructured sales activity, then review what happened by week or month. Notes are classified locally from your text and Quick Capture saves.
+            Uses the activities captured in Daily Capture. No Google Calendar, Gmail, CRM sync, or AI integration is connected.
           </p>
         </div>
-        <Link
-          to="/app/today#quick-capture"
-          className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
-        >
-          <Sparkles className="h-4 w-4" />
-          Open Quick Capture
-        </Link>
-      </header>
-
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-sm font-bold text-navy">Capture a sales activity</p>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">
-              Drop a quick note after a call, customer reply, internal follow-up, objection, or proposal update. Memoire records it to this browser calendar.
-            </p>
-          </div>
-          <span className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
-            Local deterministic classification
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-600">
+            {storageLabel}
           </span>
-        </div>
-        <textarea
-          value={manualNote}
-          onChange={(event) => {
-            setManualNote(event.target.value);
-            setMessage('');
-          }}
-          placeholder="Example: Called Nam at Control Union. Lead time is still a concern. Send implementation timeline by Tuesday."
-          className="mt-4 min-h-[104px] w-full resize-y rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm leading-6 text-gray-900 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
-        />
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={addManualActivity}
-            className="inline-flex items-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-sm font-bold text-white"
+          <Link
+            to="/app/capture"
+            className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
           >
-            <Plus className="h-4 w-4" />
-            Add to Calendar
-          </button>
-          {message && <span className="text-sm font-semibold text-gray-500">{message}</span>}
+            Capture activity
+          </Link>
         </div>
-      </section>
+      </header>
 
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-bold text-navy">Review period</p>
+            <p className="text-sm font-bold text-navy">Selected period</p>
             <h2 className="mt-1 text-2xl font-bold text-navy">{range.label}</h2>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="inline-flex rounded-full border border-gray-200 bg-gray-50 p-1">
-              {periodOptions.map((option) => (
+              {viewOptions.map((option) => (
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() => setPeriod(option.value)}
+                  onClick={() => setViewMode(option.value)}
                   className={`rounded-full px-3 py-1.5 text-xs font-bold ${
-                    period === option.value ? 'bg-navy text-white' : 'text-gray-600 hover:bg-white'
+                    viewMode === option.value ? 'bg-navy text-white' : 'text-gray-600 hover:bg-white'
                   }`}
                 >
                   {option.label}
@@ -142,9 +159,9 @@ export function SalesActivityCalendarPage() {
             </div>
             <button
               type="button"
-              onClick={() => setAnchorDate((date) => shiftSalesActivityAnchor(date, period, -1))}
+              onClick={() => shiftPeriod(-1)}
               className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-              aria-label="Previous period"
+              aria-label={`Previous ${viewMode}`}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -158,153 +175,277 @@ export function SalesActivityCalendarPage() {
             </button>
             <button
               type="button"
-              onClick={() => setAnchorDate((date) => shiftSalesActivityAnchor(date, period, 1))}
+              onClick={() => shiftPeriod(1)}
               className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-              aria-label="Next period"
+              aria-label={`Next ${viewMode}`}
             >
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
-          <MetricCard label="Activities" value={String(recap.totalActivities)} helper="Captured in this period" />
-          <MetricCard label="Next actions" value={String(recap.actionItems.length)} helper="Explicit actions found" />
-          <MetricCard label="Risk signals" value={String(recap.riskSignals.length)} helper="Objections or missing context" tone={recap.riskSignals.length > 0 ? 'amber' : 'green'} />
+        {viewMode === 'month' ? (
+          <MonthlySummaryPanel summary={summary} />
+        ) : (
+          <WeeklySummaryPanel summary={summary} />
+        )}
+      </section>
+
+      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-navy">Activities</h2>
+            <p className="mt-1 text-sm text-gray-500">Grouped by activity date.</p>
+          </div>
+          <button
+            type="button"
+            onClick={refreshActivities}
+            className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+          >
+            Refresh
+          </button>
         </div>
 
-        <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[0.75fr_1.25fr]">
-          <aside className="rounded-lg border border-blue-100 bg-blue-50/60 p-4">
-            <div className="flex items-center gap-2">
-              <ClipboardList className="h-4 w-4 text-brand-blue" />
-              <h3 className="text-sm font-bold text-navy">Recap</h3>
-            </div>
-            <ul className="mt-3 space-y-2 text-sm leading-6 text-blue-950">
-              {recap.recapLines.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-            {recap.topAccounts.length > 0 && (
-              <div className="mt-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-blue-700">Top accounts</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {recap.topAccounts.map((item) => (
-                    <span key={item.account} className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-blue-900 ring-1 ring-blue-100">
-                      {item.account} · {item.count}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {activeCategoryCounts.length > 0 && (
-              <div className="mt-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-blue-700">Classification</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {activeCategoryCounts.map(([category, count]) => (
-                    <span key={category} className={`rounded-full border px-2.5 py-1 text-xs font-bold ${categoryTone[category as SalesActivityCategory]}`}>
-                      {category}: {count}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </aside>
+        {message && (
+          <p className="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+            {message}
+          </p>
+        )}
 
+        {loadingActivities ? (
+          <div className="flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 p-6 text-sm font-semibold text-gray-500">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading sales activities...
+          </div>
+        ) : visibleActivities.length === 0 ? (
+          <EmptyCalendarState />
+        ) : (
           <div className="space-y-4">
-            {visibleActivities.length === 0 ? (
-              <EmptyCalendarState />
-            ) : (
-              Object.entries(groupedActivities).map(([dateKey, records]) => (
+            {dateKeys.map((dateKey) => {
+              const records = groupedActivities[dateKey] || [];
+              if (records.length === 0 && viewMode !== 'day') return null;
+
+              return (
                 <section key={dateKey} className="rounded-lg border border-gray-200 bg-white p-4">
                   <div className="mb-3 flex items-center gap-2">
                     <CalendarDays className="h-4 w-4 text-gray-400" />
-                    <h3 className="text-sm font-bold text-navy">
-                      {new Date(`${dateKey}T00:00:00`).toLocaleDateString(undefined, {
-                        weekday: 'short',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </h3>
+                    <h3 className="text-sm font-bold text-navy">{formatDateHeading(dateKey)}</h3>
                   </div>
-                  <div className="space-y-3">
-                    {records.map((record) => (
-                      <ActivityCard key={record.id} record={record} />
-                    ))}
-                  </div>
+                  {records.length === 0 ? (
+                    <p className="rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-500">No activity captured on this day.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {records.map((activity) => (
+                        <ActivityCard
+                          key={activity.id}
+                          activity={activity}
+                          copied={copiedId === activity.id}
+                          onOpen={() => setSelectedActivity(activity)}
+                          onCopy={() => handleCopy(activity)}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </section>
-              ))
-            )}
+              );
+            })}
           </div>
-        </div>
+        )}
       </section>
+
+      {selectedActivity && (
+        <ActivityDetailModal
+          activity={selectedActivity}
+          copied={copiedId === selectedActivity.id}
+          onClose={() => setSelectedActivity(null)}
+          onCopy={() => handleCopy(selectedActivity)}
+          onDelete={() => handleDelete(selectedActivity)}
+        />
+      )}
     </div>
   );
 }
 
-function loadSalesMemoryActivities() {
-  const memory = readLocalMemory();
-  return memory.captures.map((capture) =>
-    createSalesActivityFromCapture(capture.raw_text, capture.structured_data, {
-      occurredAt: capture.created_at,
-      sourceCaptureId: capture.id,
-      source: 'sales-memory',
-    })
+function WeeklySummaryPanel({ summary }: { summary: ActivitySummary }) {
+  return (
+    <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <MetricCard label="Activities" value={summary.totalActivities} />
+      <MetricCard label="Accounts touched" value={summary.accountsTouched} />
+      <MetricCard label="Opportunities" value={summary.opportunitiesTouched} />
+      <MetricCard label="Follow-ups" value={summary.followUps} />
+      <MetricCard label="Objections" value={summary.objectionsCaptured} tone={summary.objectionsCaptured > 0 ? 'amber' : 'green'} />
+      <MetricCard label="Internal coordination" value={summary.internalCoordinationItems} />
+      <MetricCard label="Next actions" value={summary.activitiesWithNextActions} tone={summary.activitiesWithNextActions > 0 ? 'blue' : 'amber'} />
+      <MetricCard label="Overdue due dates" value={summary.overdueDueDates} tone={summary.overdueDueDates > 0 ? 'red' : 'green'} />
+    </div>
   );
 }
 
-function mergeActivities(primary: SalesActivityRecord[], secondary: SalesActivityRecord[]) {
-  const byKey = new Map<string, SalesActivityRecord>();
-  [...secondary, ...primary].forEach((record) => {
-    byKey.set(record.sourceCaptureId || record.id, record);
-  });
-  return Array.from(byKey.values()).sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+function MonthlySummaryPanel({ summary }: { summary: ActivitySummary }) {
+  return (
+    <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <MetricCard label="Activities" value={summary.totalActivities} />
+      <MetricCard label="Active days" value={summary.activeDays} />
+      <MetricCard label="Accounts touched" value={summary.accountsTouched} />
+      <MetricTextCard label="Top type" value={summary.topActivityType || 'None'} />
+      <MetricTextCard label="Top account" value={summary.mostTouchedAccount || 'None'} />
+      <MetricCard label="Open next actions" value={summary.openNextActions} tone={summary.openNextActions > 0 ? 'blue' : 'amber'} />
+      <MetricCard label="Objection handling" value={summary.objectionsCaptured} tone={summary.objectionsCaptured > 0 ? 'amber' : 'green'} />
+    </div>
+  );
 }
 
-function MetricCard({ label, value, helper, tone = 'blue' }: { label: string; value: string; helper: string; tone?: 'blue' | 'amber' | 'green' }) {
+function MetricCard({ label, value, tone = 'blue' }: { label: string; value: number; tone?: 'blue' | 'green' | 'amber' | 'red' }) {
   const toneClass = {
     blue: 'bg-blue-50 text-brand-blue',
-    amber: 'bg-amber-50 text-amber-700',
     green: 'bg-emerald-50 text-emerald-700',
+    amber: 'bg-amber-50 text-amber-700',
+    red: 'bg-red-50 text-red-700',
   }[tone];
 
   return (
     <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
       <p className={`mt-2 inline-flex rounded-full px-3 py-1 text-2xl font-black ${toneClass}`}>{value}</p>
-      <p className="mt-2 text-sm text-gray-500">{helper}</p>
     </div>
   );
 }
 
-function ActivityCard({ record }: { record: SalesActivityRecord }) {
+function MetricTextCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
+      <p className="mt-2 text-sm font-bold leading-6 text-navy">{value}</p>
+    </div>
+  );
+}
+
+function ActivityCard({
+  activity,
+  copied,
+  onOpen,
+  onCopy,
+}: {
+  activity: SalesActivityRecord;
+  copied: boolean;
+  onOpen: () => void;
+  onCopy: () => void;
+}) {
   return (
     <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${categoryTone[record.category]}`}>
-            {record.category}
+      <button type="button" onClick={onOpen} className="block w-full text-left">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${activityTypeTone[activity.activityType]}`}>
+              {activity.activityType}
+            </span>
+            <h4 className="mt-2 text-sm font-bold text-navy">{activity.summary}</h4>
+          </div>
+          <span className={`w-fit rounded-full px-2.5 py-1 text-xs font-bold ${
+            activity.storageMode === 'cloud' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+          }`}>
+            {activity.storageMode === 'cloud' ? 'Cloud' : 'Local'}
           </span>
-          <h4 className="mt-2 text-sm font-bold text-navy">{record.summary}</h4>
         </div>
-        <p className="text-xs font-semibold text-gray-400">
-          {new Date(record.occurredAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-        </p>
-      </div>
-      <div className="mt-3 grid grid-cols-1 gap-2 text-xs leading-5 text-gray-600 sm:grid-cols-2">
-        <Fact label="Account" value={record.account || 'Not captured'} />
-        <Fact label="Opportunity" value={record.opportunity || 'Not captured'} />
-        <Fact label="Next action" value={record.nextAction || 'No next action captured'} />
-        <Fact label="Risk" value={record.riskSignal || record.objection || 'No explicit risk captured'} />
+        <div className="mt-3 grid grid-cols-1 gap-2 text-xs leading-5 text-gray-600 sm:grid-cols-2">
+          <Fact label="Account" value={activity.accountName || 'Not captured'} />
+          <Fact label="Opportunity" value={activity.opportunityName || 'Not captured'} />
+          <Fact label="Next action" value={activity.nextAction || 'No next action captured'} />
+          <Fact label="Due date" value={activity.dueDate || 'No due date'} />
+        </div>
+      </button>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <TagList tags={activity.tags} />
+        <button
+          type="button"
+          onClick={onCopy}
+          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+        >
+          <Copy className="h-3.5 w-3.5" />
+          {copied ? 'Copied' : 'Copy summary'}
+        </button>
       </div>
     </article>
   );
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
+function ActivityDetailModal({
+  activity,
+  copied,
+  onClose,
+  onCopy,
+  onDelete,
+}: {
+  activity: SalesActivityRecord;
+  copied: boolean;
+  onClose: () => void;
+  onCopy: () => void;
+  onDelete: () => void;
+}) {
   return (
-    <div className="rounded-md bg-white px-3 py-2">
-      <span className="font-bold text-gray-400">{label}: </span>
-      <span className="font-semibold text-gray-700">{value}</span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 px-4 py-8">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-5 shadow-xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Activity detail</p>
+            <h2 className="mt-2 text-xl font-bold text-navy">{activity.summary}</h2>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-full p-2 text-gray-500 hover:bg-gray-100" aria-label="Close detail">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${activityTypeTone[activity.activityType]}`}>
+            {activity.activityType}
+          </span>
+          <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-600">
+            {activity.activityDate}
+          </span>
+          <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+            activity.storageMode === 'cloud' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+          }`}>
+            {activity.storageMode === 'cloud' ? 'Cloud' : 'Local'}
+          </span>
+        </div>
+
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Fact label="Account" value={activity.accountName || 'Not captured'} />
+          <Fact label="Opportunity" value={activity.opportunityName || 'Not captured'} />
+          <Fact label="Next action" value={activity.nextAction || 'No next action captured'} />
+          <Fact label="Due date" value={activity.dueDate || 'No due date'} />
+          <Fact label="Created" value={new Date(activity.createdAt).toLocaleString()} />
+          <Fact label="Updated" value={new Date(activity.updatedAt).toLocaleString()} />
+        </div>
+
+        <div className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Raw note</p>
+          <p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-800">{activity.rawNote}</p>
+        </div>
+
+        <div className="mt-4">
+          <TagList tags={activity.tags} />
+        </div>
+
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCopy}
+            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50"
+          >
+            <Copy className="h-4 w-4" />
+            {copied ? 'Copied' : 'Copy summary'}
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            className="inline-flex items-center gap-1.5 rounded-full border border-red-100 bg-red-50 px-3 py-2 text-sm font-bold text-red-700 hover:bg-red-100"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete activity
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -312,10 +453,170 @@ function Fact({ label, value }: { label: string; value: string }) {
 function EmptyCalendarState() {
   return (
     <div className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center">
-      <p className="text-sm font-bold text-navy">No activity captured for this period.</p>
-      <p className="mt-2 text-sm leading-6 text-gray-500">
-        Add a note above or use Quick Capture from Today. New captures will appear here for weekly and monthly recap.
-      </p>
+      <p className="text-sm font-bold text-navy">No sales activities captured for this period.</p>
+      <p className="mt-2 text-sm leading-6 text-gray-500">Capture activity to populate your sales calendar.</p>
+      <Link
+        to="/app/capture"
+        className="mt-4 inline-flex rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
+      >
+        Capture activity
+      </Link>
     </div>
   );
+}
+
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md bg-white px-3 py-2 ring-1 ring-gray-100">
+      <span className="font-bold text-gray-400">{label}: </span>
+      <span className="font-semibold text-gray-700">{value}</span>
+    </div>
+  );
+}
+
+function TagList({ tags }: { tags: string[] }) {
+  if (tags.length === 0) {
+    return <span className="text-xs font-semibold text-gray-400">No tags</span>;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {tags.map((tag) => (
+        <span key={tag} className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-gray-600 ring-1 ring-gray-200">
+          {tag}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function getCalendarRange(viewMode: CalendarViewMode, anchorDate: Date) {
+  if (viewMode === 'day') {
+    const start = toDateKey(anchorDate);
+    return { start, end: start, label: formatPeriodLabel(start, start) };
+  }
+
+  if (viewMode === 'month') {
+    const startDate = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
+    const endDate = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0);
+    return {
+      start: toDateKey(startDate),
+      end: toDateKey(endDate),
+      label: new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(anchorDate),
+    };
+  }
+
+  const startDate = startOfWeek(anchorDate);
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + 6);
+  const start = toDateKey(startDate);
+  const end = toDateKey(endDate);
+  return { start, end, label: formatPeriodLabel(start, end) };
+}
+
+function shiftAnchorDate(anchorDate: Date, viewMode: CalendarViewMode, direction: -1 | 1) {
+  const next = new Date(anchorDate);
+  if (viewMode === 'day') next.setDate(next.getDate() + direction);
+  if (viewMode === 'week') next.setDate(next.getDate() + direction * 7);
+  if (viewMode === 'month') next.setMonth(next.getMonth() + direction);
+  return next;
+}
+
+function startOfWeek(date: Date) {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  const daysFromMonday = (start.getDay() + 6) % 7;
+  start.setDate(start.getDate() - daysFromMonday);
+  return start;
+}
+
+function toDateKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function formatPeriodLabel(start: string, end: string) {
+  if (start === end) return formatDateHeading(start);
+  return `${formatShortDate(start)} - ${formatShortDate(end)}`;
+}
+
+function formatShortDate(dateKey: string) {
+  return new Date(`${dateKey}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function formatDateHeading(dateKey: string) {
+  return new Date(`${dateKey}T00:00:00`).toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function getDateKeysForRange(start: string, end: string) {
+  const keys: string[] = [];
+  const cursor = new Date(`${start}T00:00:00`);
+  const endDate = new Date(`${end}T00:00:00`);
+  while (cursor <= endDate) {
+    keys.push(toDateKey(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return keys;
+}
+
+function groupActivitiesByDate(activities: SalesActivityRecord[]) {
+  return activities.reduce<Record<string, SalesActivityRecord[]>>((groups, activity) => {
+    groups[activity.activityDate] = groups[activity.activityDate] || [];
+    groups[activity.activityDate].push(activity);
+    return groups;
+  }, {});
+}
+
+function buildActivitySummary(activities: SalesActivityRecord[]): ActivitySummary {
+  const accountCounts = countBy(activities.map((activity) => activity.accountName).filter(Boolean));
+  const typeCounts = countBy(activities.map((activity) => activity.activityType));
+  const activeDays = new Set(activities.map((activity) => activity.activityDate)).size;
+  const today = new Date().toISOString().slice(0, 10);
+
+  return {
+    totalActivities: activities.length,
+    accountsTouched: Object.keys(accountCounts).length,
+    opportunitiesTouched: new Set(activities.map((activity) => activity.opportunityName).filter(Boolean)).size,
+    followUps: activities.filter((activity) => activity.activityType === 'Follow-up').length,
+    objectionsCaptured: activities.filter((activity) => activity.activityType === 'Objection handling').length,
+    internalCoordinationItems: activities.filter((activity) => activity.activityType === 'Internal coordination').length,
+    activitiesWithNextActions: activities.filter((activity) => Boolean(activity.nextAction)).length,
+    overdueDueDates: activities.filter((activity) => activity.dueDate && activity.dueDate < today).length,
+    activeDays,
+    topActivityType: topCount(typeCounts),
+    mostTouchedAccount: topCount(accountCounts),
+    openNextActions: activities.filter((activity) => Boolean(activity.nextAction)).length,
+  };
+}
+
+function countBy(values: string[]) {
+  return values.reduce<Record<string, number>>((counts, value) => {
+    counts[value] = (counts[value] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function topCount(counts: Record<string, number>) {
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+}
+
+function sortByDateAscending(a: SalesActivityRecord, b: SalesActivityRecord) {
+  return `${a.activityDate}-${a.createdAt}`.localeCompare(`${b.activityDate}-${b.createdAt}`);
+}
+
+function formatActivitySummary(activity: SalesActivityRecord) {
+  return [
+    `Activity: ${activity.activityType}`,
+    `Date: ${activity.activityDate}`,
+    activity.accountName ? `Account: ${activity.accountName}` : '',
+    activity.opportunityName ? `Opportunity: ${activity.opportunityName}` : '',
+    `Summary: ${activity.summary}`,
+    activity.nextAction ? `Next action: ${activity.nextAction}` : '',
+    activity.dueDate ? `Due: ${activity.dueDate}` : '',
+    activity.tags.length > 0 ? `Tags: ${activity.tags.join(', ')}` : '',
+  ].filter(Boolean).join('\n');
 }
