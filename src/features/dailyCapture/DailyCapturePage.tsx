@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, CheckCircle2, Clipboard, Copy, Loader2, Save, Trash2 } from 'lucide-react';
+import { AlertTriangle, Bot, CalendarDays, CheckCircle2, Clipboard, Copy, Loader2, Save, Sparkles, Trash2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
-import { classifySalesActivity } from '../../utils/salesActivityClassifier';
+import { classifySalesActivity, type ClassifiedSalesActivity, type SalesActivityType } from '../../utils/salesActivityClassifier';
 import {
   canUseSalesActivityCloudStore,
   deleteSalesActivity,
@@ -11,10 +11,25 @@ import {
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
 import { loadOpportunities, updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
+import { loadAccounts, type AccountMemoryRecord } from '../../services/accountStore';
+import { getActiveCaptureAiProvider, type CaptureAiSuggestion } from '../../services/captureAiProvider';
 import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
 import { applyOpportunityUpdateSuggestion, suggestOpportunityLinks, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+type AiState = 'idle' | 'loading' | 'ready' | 'error';
+
+const activityTypes: SalesActivityType[] = [
+  'Customer meeting',
+  'Follow-up',
+  'Demo / technical discussion',
+  'Quote / proposal',
+  'Tender / procurement',
+  'Internal coordination',
+  'Objection handling',
+  'Admin / CRM',
+  'Other',
+];
 
 export function DailyCapturePage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
@@ -22,11 +37,18 @@ export function DailyCapturePage() {
   const [activityDate, setActivityDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
+  const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
   const [lastSavedActivity, setLastSavedActivity] = useState<SalesActivityRecord | null>(null);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [saveState, setSaveState] = useState<SaveState>('idle');
+  const [aiState, setAiState] = useState<AiState>('idle');
   const [message, setMessage] = useState('');
+  const [aiMessage, setAiMessage] = useState('');
+  const [aiSuggestion, setAiSuggestion] = useState<CaptureAiSuggestion | null>(null);
+  const [structuredDraft, setStructuredDraft] = useState<ClassifiedSalesActivity | null>(null);
   const [copiedId, setCopiedId] = useState('');
+  const aiProvider = useMemo(() => getActiveCaptureAiProvider(), []);
+  const aiConfigured = aiProvider.isConfigured();
 
   const storageLabel = useMemo(() => {
     if (authLoading) return 'Checking account...';
@@ -35,18 +57,21 @@ export function DailyCapturePage() {
     return 'Local capture mode';
   }, [authLoading, isAuthenticated, user?.id]);
 
-  const preview = useMemo(() => {
+  const localPreview = useMemo(() => {
     return rawNote.trim().length >= 8 ? classifySalesActivity(rawNote, activityDate) : null;
   }, [activityDate, rawNote]);
+  const preview = structuredDraft || localPreview;
 
   const refreshActivities = async () => {
     setLoadingActivities(true);
-    const [loaded, loadedOpportunities] = await Promise.all([
+    const [loaded, loadedOpportunities, loadedAccounts] = await Promise.all([
       loadSalesActivities(user?.id),
       loadOpportunities(user?.id),
+      loadAccounts(user?.id),
     ]);
     setActivities(loaded);
     setOpportunities(loadedOpportunities);
+    setAccounts(loadedAccounts);
     setLoadingActivities(false);
   };
 
@@ -56,7 +81,7 @@ export function DailyCapturePage() {
   }, [user?.id]);
 
   const handleSave = async () => {
-    if (rawNote.trim().length < 8) {
+    if (rawNote.trim().length < 8 || !preview) {
       setMessage('Capture a short sales activity first.');
       setSaveState('error');
       return;
@@ -64,13 +89,81 @@ export function DailyCapturePage() {
 
     setSaveState('saving');
     setMessage('Saving activity...');
-    const classified = classifySalesActivity(rawNote, activityDate);
+    const classified: ClassifiedSalesActivity = {
+      ...preview,
+      rawNote: rawNote.trim(),
+      activityDate,
+      tags: normalizeTags(preview.tags),
+    };
     const result = await saveSalesActivity(classified, user?.id);
     setActivities((current) => [result.record, ...current.filter((item) => item.id !== result.record.id)]);
     setLastSavedActivity(result.record);
     setRawNote('');
+    setStructuredDraft(null);
+    setAiSuggestion(null);
+    setAiMessage('');
+    setAiState('idle');
     setSaveState(result.warning ? 'error' : 'saved');
     setMessage(result.warning || (result.mode === 'cloud' ? 'Saved to cloud.' : 'Saved locally.'));
+  };
+
+  const handleClassifyWithAi = async () => {
+    if (!aiConfigured) {
+      setAiState('error');
+      setAiMessage('AI Assist unavailable - using local rules.');
+      return;
+    }
+    if (rawNote.trim().length < 8) {
+      setAiState('error');
+      setAiMessage('Capture a short sales activity first.');
+      return;
+    }
+
+    setAiState('loading');
+    setAiMessage('Classifying with AI Assist...');
+    try {
+      const suggestion = await aiProvider.classifyCapture({
+        rawNote: rawNote.trim(),
+        activityDate,
+        opportunities: opportunities.map((opportunity) => ({
+          id: opportunity.id,
+          accountName: opportunity.accountName,
+          opportunityName: opportunity.opportunityName,
+          stage: opportunity.stage,
+          productOrSolution: opportunity.productOrSolution,
+        })),
+        accounts: accounts.map((account) => ({
+          id: account.id,
+          accountName: account.accountName,
+          segment: account.segment,
+          industry: account.industry,
+        })),
+      });
+      setAiSuggestion(suggestion);
+      setAiState('ready');
+      setAiMessage('AI suggestion ready. Review it before accepting.');
+    } catch {
+      setAiState('error');
+      setAiMessage('AI Assist failed. Local rules are still available.');
+    }
+  };
+
+  const acceptAiSuggestion = () => {
+    if (!aiSuggestion) return;
+    setStructuredDraft(aiSuggestionToClassified(aiSuggestion, rawNote, activityDate));
+    setAiMessage('AI suggestion applied to the editable structured preview.');
+  };
+
+  const updateDraft = <Key extends keyof ClassifiedSalesActivity>(key: Key, value: ClassifiedSalesActivity[Key]) => {
+    if (!preview) return;
+    setStructuredDraft({
+      ...preview,
+      rawNote: rawNote.trim(),
+      activityDate,
+      [key]: value,
+    });
+    setSaveState('idle');
+    setMessage('');
   };
 
   const handleDelete = async (activity: SalesActivityRecord) => {
@@ -163,6 +256,10 @@ export function DailyCapturePage() {
               value={rawNote}
               onChange={(event) => {
                 setRawNote(event.target.value);
+                setStructuredDraft(null);
+                setAiSuggestion(null);
+                setAiState('idle');
+                setAiMessage('');
                 setSaveState('idle');
                 setMessage('');
               }}
@@ -190,6 +287,32 @@ export function DailyCapturePage() {
               {saveState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Activity
             </button>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+              <div className="flex items-center gap-2">
+                <Bot className="h-4 w-4 text-brand-blue" />
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                  {aiConfigured ? `AI Assist: ${aiProvider.label}` : 'AI Assist unavailable'}
+                </p>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-gray-500">
+                {aiConfigured ? 'Optional AI classification. You review before saving.' : 'Using local rules until an AI provider is configured.'}
+              </p>
+              {aiConfigured && (
+                <p className="mt-2 flex gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold leading-5 text-amber-800">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  AI Assist may send this note to your configured AI provider. Do not use it for confidential customer data unless your provider is approved.
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={handleClassifyWithAi}
+                disabled={!aiConfigured || aiState === 'loading' || rawNote.trim().length < 8}
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-2 text-xs font-bold text-brand-blue disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {aiState === 'loading' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                {aiState === 'loading' ? 'Classifying...' : 'Classify with AI'}
+              </button>
+            </div>
             {message && (
               <p className={`rounded-lg px-3 py-2 text-sm font-semibold ${
                 saveState === 'saved' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
@@ -197,27 +320,29 @@ export function DailyCapturePage() {
                 {message}
               </p>
             )}
+            {aiMessage && (
+              <p className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                aiState === 'ready' ? 'bg-blue-50 text-blue-700' : aiState === 'error' ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-600'
+              }`}>
+                {aiMessage}
+              </p>
+            )}
           </div>
         </div>
 
+        {aiSuggestion && (
+          <AiSuggestionPanel suggestion={aiSuggestion} onAccept={acceptAiSuggestion} />
+        )}
+
         {preview && (
           <div className="mt-5 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
-            <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">Structured preview</p>
-            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <PreviewFact label="Type" value={preview.activityType} />
-              <PreviewFact label="Account" value={preview.accountName || 'Not captured'} />
-              <PreviewFact label="Next action" value={preview.nextAction || 'Not captured'} />
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">Structured preview</p>
+              <p className="text-xs font-semibold text-blue-700">
+                {structuredDraft ? 'Editable draft' : 'Local rules preview'}
+              </p>
             </div>
-            <p className="mt-3 text-sm leading-6 text-blue-950">{preview.summary}</p>
-            {preview.tags.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {preview.tags.map((tag) => (
-                  <span key={tag} className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-blue-800 ring-1 ring-blue-100">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
+            <StructuredPreviewEditor preview={preview} onChange={updateDraft} />
             {opportunities.length > 0 && (
               <PreviewOpportunitySuggestions preview={previewToRecord(preview)} opportunities={opportunities} />
             )}
@@ -280,12 +405,121 @@ export function DailyCapturePage() {
   );
 }
 
-function PreviewFact({ label, value }: { label: string; value: string }) {
+function AiSuggestionPanel({ suggestion, onAccept }: { suggestion: CaptureAiSuggestion; onAccept: () => void }) {
   return (
-    <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-blue-100">
-      <p className="text-xs font-bold uppercase tracking-wide text-blue-500">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-blue-950">{value}</p>
+    <section className="mt-5 rounded-lg border border-violet-100 bg-violet-50/70 p-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-violet-700">AI suggestion</p>
+          <h3 className="mt-1 text-base font-bold text-violet-950">{suggestion.summary}</h3>
+          <p className="mt-2 text-sm font-semibold text-violet-800">
+            {suggestion.activityType} | {suggestion.confidence} confidence
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onAccept}
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-violet-700 px-4 py-2 text-sm font-bold text-white"
+        >
+          <CheckCircle2 className="h-4 w-4" />
+          Accept suggestion
+        </button>
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
+        <AiFact label="Account" value={suggestion.accountName || 'Not captured'} />
+        <AiFact label="Opportunity" value={suggestion.opportunityName || 'Not captured'} />
+        <AiFact label="Next action" value={suggestion.nextAction || 'Not captured'} />
+        <AiFact label="Due date" value={suggestion.dueDate || 'Not captured'} />
+        <AiFact label="Suggested opportunity ID" value={suggestion.suggestedOpportunityId || 'None'} />
+        <AiFact label="Tags" value={suggestion.tags.length ? suggestion.tags.join(', ') : 'None'} />
+      </div>
+      {suggestion.reasoning.length > 0 && (
+        <ul className="mt-3 space-y-1 text-sm leading-6 text-violet-900">
+          {suggestion.reasoning.map((reason) => <li key={reason}>- {reason}</li>)}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function AiFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-violet-100">
+      <p className="text-xs font-bold uppercase tracking-wide text-violet-500">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-violet-950">{value}</p>
     </div>
+  );
+}
+
+function StructuredPreviewEditor({
+  preview,
+  onChange,
+}: {
+  preview: ClassifiedSalesActivity;
+  onChange: <Key extends keyof ClassifiedSalesActivity>(key: Key, value: ClassifiedSalesActivity[Key]) => void;
+}) {
+  return (
+    <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+      <label className="block rounded-lg bg-white px-3 py-2 ring-1 ring-blue-100">
+        <span className="text-xs font-bold uppercase tracking-wide text-blue-500">Type</span>
+        <select
+          value={preview.activityType}
+          onChange={(event) => onChange('activityType', event.target.value as SalesActivityType)}
+          className="mt-1 w-full bg-transparent text-sm font-semibold text-blue-950 outline-none"
+        >
+          {activityTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+        </select>
+      </label>
+      <PreviewInput label="Account" value={preview.accountName} placeholder="Not captured" onChange={(value) => onChange('accountName', value)} />
+      <PreviewInput label="Opportunity" value={preview.opportunityName} placeholder="Not captured" onChange={(value) => onChange('opportunityName', value)} />
+      <PreviewInput label="Due date" value={preview.dueDate} placeholder="YYYY-MM-DD" onChange={(value) => onChange('dueDate', value)} />
+      <PreviewTextArea label="Summary" value={preview.summary} onChange={(value) => onChange('summary', value)} />
+      <PreviewTextArea label="Next action" value={preview.nextAction} onChange={(value) => onChange('nextAction', value)} />
+      <PreviewInput
+        label="Tags"
+        value={preview.tags.join(', ')}
+        placeholder="follow-up, risk-signal"
+        onChange={(value) => onChange('tags', parseTags(value))}
+      />
+    </div>
+  );
+}
+
+function PreviewInput({
+  label,
+  value,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block rounded-lg bg-white px-3 py-2 ring-1 ring-blue-100">
+      <span className="text-xs font-bold uppercase tracking-wide text-blue-500">{label}</span>
+      <input
+        value={value}
+        placeholder={placeholder}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 w-full bg-transparent text-sm font-semibold text-blue-950 outline-none placeholder:text-blue-300"
+      />
+    </label>
+  );
+}
+
+function PreviewTextArea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="block rounded-lg bg-white px-3 py-2 ring-1 ring-blue-100 md:col-span-2">
+      <span className="text-xs font-bold uppercase tracking-wide text-blue-500">{label}</span>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        rows={2}
+        className="mt-1 w-full resize-y bg-transparent text-sm font-semibold leading-6 text-blue-950 outline-none"
+      />
+    </label>
   );
 }
 
@@ -394,6 +628,34 @@ function previewToRecord(preview: ReturnType<typeof classifySalesActivity>): Sal
     updatedAt: new Date().toISOString(),
     storageMode: 'local',
   };
+}
+
+function aiSuggestionToClassified(
+  suggestion: CaptureAiSuggestion,
+  rawNote: string,
+  activityDate: string
+): ClassifiedSalesActivity {
+  return {
+    accountName: suggestion.accountName || '',
+    opportunityName: suggestion.opportunityName || '',
+    activityType: activityTypes.includes(suggestion.activityType as SalesActivityType)
+      ? suggestion.activityType as SalesActivityType
+      : 'Other',
+    summary: suggestion.summary || rawNote.trim().slice(0, 180),
+    nextAction: suggestion.nextAction || '',
+    dueDate: suggestion.dueDate || '',
+    tags: normalizeTags(suggestion.tags),
+    rawNote: rawNote.trim(),
+    activityDate,
+  };
+}
+
+function parseTags(value: string) {
+  return normalizeTags(value.split(','));
+}
+
+function normalizeTags(tags: string[]) {
+  return Array.from(new Set(tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean))).slice(0, 8);
 }
 
 function ActivityFact({ label, value }: { label: string; value: string }) {
