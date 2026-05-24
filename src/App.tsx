@@ -11,6 +11,9 @@ const PricingPage = lazy(() => import('./features/pricing/PricingPage').then((mo
 const DemoEntryPage = lazy(() => import('./features/demo/DemoEntryPage').then((module) => ({ default: module.DemoEntryPage })));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const TodayPage = lazy(() => import('./features/v31/TodayPage').then((module) => ({ default: module.TodayPage })));
+const DailyCapturePage = lazy(() =>
+  import('./features/dailyCapture/DailyCapturePage').then((module) => ({ default: module.DailyCapturePage })),
+);
 const SalesActivityCalendarPage = lazy(() =>
   import('./features/calendar/SalesActivityCalendarPage').then((module) => ({ default: module.SalesActivityCalendarPage })),
 );
@@ -47,6 +50,7 @@ function App() {
           >
             <Route index element={<Navigate to="/app/today" replace />} />
             <Route path="today" element={<TodayPage />} />
+            <Route path="capture" element={<DailyCapturePage />} />
             <Route path="calendar" element={<SalesActivityCalendarPage />} />
             <Route path="journey" element={<JourneyPage />} />
             <Route path="accounts" element={<AccountsPage />} />
@@ -58,7 +62,6 @@ function App() {
 
             {/* Legacy V0 routes, downgraded out of the primary V1 surface. */}
             <Route path="dashboard" element={<Navigate to="/app/today" replace />} />
-            <Route path="capture" element={<Navigate to="/app/today" replace />} />
             <Route path="history" element={<Navigate to="/app/today" replace />} />
             <Route path="entities" element={<Navigate to="/app/accounts" replace />} />
             <Route path="entities/:entityId" element={<Navigate to="/app/accounts" replace />} />

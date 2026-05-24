@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { BookOpen, CalendarCheck2, CalendarDays, FileCheck2, GitBranch, MessageCircleQuestion, Settings, Target } from 'lucide-react';
+import { BookOpen, CalendarCheck2, CalendarDays, FileCheck2, GitBranch, MessageCircleQuestion, NotebookPen, Settings, Target } from 'lucide-react';
 import { usePlanLimits } from '../../hooks/usePlanLimits';
 
 const navItems = [
   { to: '/app/today', label: 'Today', icon: <CalendarCheck2 className="h-5 w-5" /> },
+  { to: '/app/capture', label: 'Capture', icon: <NotebookPen className="h-5 w-5" /> },
   { to: '/app/calendar', label: 'Calendar', icon: <CalendarDays className="h-5 w-5" /> },
   { to: '/app/journey', label: 'Journey', icon: <GitBranch className="h-5 w-5" /> },
   { to: '/app/accounts', label: 'Accounts', icon: <BookOpen className="h-5 w-5" /> },
