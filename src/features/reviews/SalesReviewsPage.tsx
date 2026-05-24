@@ -37,10 +37,12 @@ export function SalesReviewsPage() {
     [activities, period]
   );
   const storageLabel = canUseSalesActivityCloudStore(user?.id)
-    ? 'Cloud activities'
+    ? 'Cloud sync enabled'
     : authLoading
       ? 'Checking account...'
-      : 'Local activities';
+      : user?.id
+        ? 'Cloud unavailable - local reviews'
+        : 'Local mode - sign in to sync';
 
   const refreshActivities = useCallback(async () => {
     setLoadingActivities(true);

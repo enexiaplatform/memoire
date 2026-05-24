@@ -51,7 +51,7 @@ export function generateMonthlySalesRecap(activities: SalesActivityRecord[], per
 }
 
 export function getAccountsTouched(activities: SalesActivityRecord[]) {
-  return uniqueClean(activities.map((activity) => activity.accountName));
+  return uniqueClean(activities.map(getActivityAccountName));
 }
 
 export function getOpportunitiesTouched(activities: SalesActivityRecord[]) {
@@ -67,7 +67,7 @@ export function getOpenNextActions(activities: SalesActivityRecord[]) {
     .filter((activity) => Boolean(activity.nextAction))
     .map((activity) => ({
       activityId: activity.id,
-      accountName: activity.accountName || undefined,
+      accountName: getActivityAccountName(activity) || undefined,
       opportunityName: getActivityOpportunityName(activity) || undefined,
       nextAction: activity.nextAction,
       dueDate: activity.dueDate || undefined,
@@ -79,7 +79,7 @@ export function getObjectionActivities(activities: SalesActivityRecord[]) {
     .filter((activity) => activity.activityType === 'Objection handling' || activity.tags.includes('risk-signal'))
     .map((activity) => ({
       activityId: activity.id,
-      accountName: activity.accountName || undefined,
+      accountName: getActivityAccountName(activity) || undefined,
       opportunityName: getActivityOpportunityName(activity) || undefined,
       summary: activity.summary,
       nextAction: activity.nextAction || undefined,
@@ -91,7 +91,7 @@ export function getFollowUpActivities(activities: SalesActivityRecord[]) {
     .filter((activity) => activity.activityType === 'Follow-up' || activity.tags.includes('follow-up'))
     .map((activity) => ({
       activityId: activity.id,
-      accountName: activity.accountName || undefined,
+      accountName: getActivityAccountName(activity) || undefined,
       opportunityName: getActivityOpportunityName(activity) || undefined,
       summary: activity.summary,
       nextAction: activity.nextAction || undefined,
@@ -260,7 +260,7 @@ function buildRecommendedActions(
 }
 
 function getTopAccounts(activities: SalesActivityRecord[]) {
-  return Object.entries(countBy(activities.map((activity) => activity.accountName).filter(Boolean)))
+  return Object.entries(countBy(activities.map(getActivityAccountName).filter(Boolean)))
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8)
     .map(([accountName, count]) => ({ accountName, count }));
@@ -268,9 +268,10 @@ function getTopAccounts(activities: SalesActivityRecord[]) {
 
 function groupByAccount(activities: SalesActivityRecord[]) {
   return activities.reduce<Record<string, SalesActivityRecord[]>>((groups, activity) => {
-    if (!activity.accountName) return groups;
-    groups[activity.accountName] = groups[activity.accountName] || [];
-    groups[activity.accountName].push(activity);
+    const accountName = getActivityAccountName(activity);
+    if (!accountName) return groups;
+    groups[accountName] = groups[accountName] || [];
+    groups[accountName].push(activity);
     return groups;
   }, {});
 }
@@ -283,6 +284,12 @@ function getActivityOpportunityName(activity: SalesActivityRecord) {
   return activity.linkStatus === 'Linked'
     ? activity.linkedOpportunityName || activity.opportunityName
     : activity.opportunityName;
+}
+
+function getActivityAccountName(activity: SalesActivityRecord) {
+  return activity.linkStatus === 'Linked'
+    ? activity.linkedAccountName || activity.accountName
+    : activity.accountName;
 }
 
 function countBy(values: string[]) {

@@ -70,10 +70,12 @@ export function SalesActivityCalendarPage() {
   const [message, setMessage] = useState('');
 
   const storageLabel = canUseSalesActivityCloudStore(user?.id)
-    ? 'Cloud activities'
+    ? 'Cloud sync enabled'
     : authLoading
       ? 'Checking account...'
-      : 'Local activities';
+      : user?.id
+        ? 'Cloud unavailable - local calendar'
+        : 'Local mode - sign in to sync';
 
   const refreshActivities = useCallback(async () => {
     setLoadingActivities(true);
@@ -646,7 +648,7 @@ function groupActivitiesByDate(activities: SalesActivityRecord[]) {
 }
 
 function buildActivitySummary(activities: SalesActivityRecord[]): ActivitySummary {
-  const accountCounts = countBy(activities.map((activity) => activity.accountName).filter(Boolean));
+  const accountCounts = countBy(activities.map(getActivityAccountName).filter(Boolean));
   const typeCounts = countBy(activities.map((activity) => activity.activityType));
   const activeDays = new Set(activities.map((activity) => activity.activityDate)).size;
   const today = new Date().toISOString().slice(0, 10);
@@ -654,7 +656,7 @@ function buildActivitySummary(activities: SalesActivityRecord[]): ActivitySummar
   return {
     totalActivities: activities.length,
     accountsTouched: Object.keys(accountCounts).length,
-    opportunitiesTouched: new Set(activities.map((activity) => activity.opportunityName).filter(Boolean)).size,
+    opportunitiesTouched: new Set(activities.map(getActivityOpportunityName).filter(Boolean)).size,
     followUps: activities.filter((activity) => activity.activityType === 'Follow-up').length,
     objectionsCaptured: activities.filter((activity) => activity.activityType === 'Objection handling').length,
     internalCoordinationItems: activities.filter((activity) => activity.activityType === 'Internal coordination').length,
@@ -686,11 +688,23 @@ function formatActivitySummary(activity: SalesActivityRecord) {
   return [
     `Activity: ${activity.activityType}`,
     `Date: ${activity.activityDate}`,
-    activity.accountName ? `Account: ${activity.accountName}` : '',
-    activity.opportunityName ? `Opportunity: ${activity.opportunityName}` : '',
+    getActivityAccountName(activity) ? `Account: ${getActivityAccountName(activity)}` : '',
+    getActivityOpportunityName(activity) ? `Opportunity: ${getActivityOpportunityName(activity)}` : '',
     `Summary: ${activity.summary}`,
     activity.nextAction ? `Next action: ${activity.nextAction}` : '',
     activity.dueDate ? `Due: ${activity.dueDate}` : '',
     activity.tags.length > 0 ? `Tags: ${activity.tags.join(', ')}` : '',
   ].filter(Boolean).join('\n');
+}
+
+function getActivityAccountName(activity: SalesActivityRecord) {
+  return activity.linkStatus === 'Linked'
+    ? activity.linkedAccountName || activity.accountName
+    : activity.accountName;
+}
+
+function getActivityOpportunityName(activity: SalesActivityRecord) {
+  return activity.linkStatus === 'Linked'
+    ? activity.linkedOpportunityName || activity.opportunityName
+    : activity.opportunityName;
 }
