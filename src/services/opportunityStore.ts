@@ -214,6 +214,30 @@ export async function deleteOpportunity(opportunity: CrmLiteOpportunity, userId?
   deleteLocalOpportunity(opportunity.id);
 }
 
+export function opportunityToFormInput(opportunity: CrmLiteOpportunity): OpportunityFormInput {
+  return {
+    accountName: opportunity.accountName,
+    opportunityName: opportunity.opportunityName,
+    stage: opportunity.stage,
+    estimatedValue: opportunity.estimatedValue,
+    currency: opportunity.currency,
+    expectedClosePeriod: opportunity.expectedClosePeriod,
+    productOrSolution: opportunity.productOrSolution,
+    decisionMaker: opportunity.decisionMaker,
+    budgetOwner: opportunity.budgetOwner,
+    procurementPath: opportunity.procurementPath,
+    technicalCriteria: opportunity.technicalCriteria,
+    nextAction: opportunity.nextAction,
+    nextActionDate: opportunity.nextActionDate,
+    evidence: opportunity.evidence,
+    missingContext: opportunity.missingContext,
+    objectionDebt: opportunity.objectionDebt,
+    forecastEvidenceCategory: opportunity.forecastEvidenceCategory,
+    decisionRecommendation: opportunity.decisionRecommendation,
+    status: opportunity.status,
+  };
+}
+
 function loadLocalOpportunities(): CrmLiteOpportunity[] {
   if (typeof localStorage === 'undefined') return [];
   const raw = localStorage.getItem(OPPORTUNITY_STORAGE_KEY);

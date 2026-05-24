@@ -7,8 +7,12 @@ import {
   deleteSalesActivity,
   loadSalesActivities,
   saveSalesActivity,
+  updateSalesActivityLink,
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
+import { loadOpportunities, updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
+import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
+import { applyOpportunityUpdateSuggestion, suggestOpportunityLinks, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -17,6 +21,8 @@ export function DailyCapturePage() {
   const [rawNote, setRawNote] = useState('');
   const [activityDate, setActivityDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
+  const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
+  const [lastSavedActivity, setLastSavedActivity] = useState<SalesActivityRecord | null>(null);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [message, setMessage] = useState('');
@@ -35,8 +41,12 @@ export function DailyCapturePage() {
 
   const refreshActivities = async () => {
     setLoadingActivities(true);
-    const loaded = await loadSalesActivities(user?.id);
+    const [loaded, loadedOpportunities] = await Promise.all([
+      loadSalesActivities(user?.id),
+      loadOpportunities(user?.id),
+    ]);
     setActivities(loaded);
+    setOpportunities(loadedOpportunities);
     setLoadingActivities(false);
   };
 
@@ -57,6 +67,7 @@ export function DailyCapturePage() {
     const classified = classifySalesActivity(rawNote, activityDate);
     const result = await saveSalesActivity(classified, user?.id);
     setActivities((current) => [result.record, ...current.filter((item) => item.id !== result.record.id)]);
+    setLastSavedActivity(result.record);
     setRawNote('');
     setSaveState(result.warning ? 'error' : 'saved');
     setMessage(result.warning || (result.mode === 'cloud' ? 'Saved to cloud.' : 'Saved locally.'));
@@ -65,6 +76,51 @@ export function DailyCapturePage() {
   const handleDelete = async (activity: SalesActivityRecord) => {
     await deleteSalesActivity(activity, user?.id);
     setActivities((current) => current.filter((item) => item.id !== activity.id));
+    if (lastSavedActivity?.id === activity.id) setLastSavedActivity(null);
+  };
+
+  const handleLinkActivity = async (
+    activity: SalesActivityRecord,
+    opportunity: CrmLiteOpportunity,
+    applyUpdates: boolean,
+    updateSuggestion: OpportunityUpdateSuggestion
+  ) => {
+    const linkedActivity = await updateSalesActivityLink(activity, {
+      linkedOpportunityId: opportunity.id,
+      linkedOpportunityName: opportunity.opportunityName,
+      linkedAccountName: opportunity.accountName,
+      linkStatus: 'Linked',
+    }, user?.id);
+
+    setActivities((current) => current.map((item) => item.id === linkedActivity.id ? linkedActivity : item));
+    if (lastSavedActivity?.id === linkedActivity.id) setLastSavedActivity(linkedActivity);
+
+    if (applyUpdates) {
+      const result = await updateOpportunity(opportunity, applyOpportunityUpdateSuggestion(opportunity, updateSuggestion), user?.id);
+      setOpportunities((current) => current.map((item) => item.id === result.opportunity.id ? result.opportunity : item));
+      setMessage(result.warning || 'Activity linked and opportunity updated.');
+      setSaveState(result.warning ? 'error' : 'saved');
+      return;
+    }
+
+    setMessage('Activity linked to opportunity.');
+    setSaveState('saved');
+  };
+
+  const handleIgnoreActivityLink = async (activity: SalesActivityRecord) => {
+    const updated = await updateSalesActivityLink(activity, { linkStatus: 'Ignored' }, user?.id);
+    setActivities((current) => current.map((item) => item.id === updated.id ? updated : item));
+    if (lastSavedActivity?.id === updated.id) setLastSavedActivity(updated);
+    setMessage('Link suggestion ignored.');
+    setSaveState('saved');
+  };
+
+  const handleUnlinkActivity = async (activity: SalesActivityRecord) => {
+    const updated = await updateSalesActivityLink(activity, { linkStatus: 'Unlinked' }, user?.id);
+    setActivities((current) => current.map((item) => item.id === updated.id ? updated : item));
+    if (lastSavedActivity?.id === updated.id) setLastSavedActivity(updated);
+    setMessage('Activity unlinked.');
+    setSaveState('saved');
   };
 
   const handleCopy = async (activity: SalesActivityRecord) => {
@@ -162,9 +218,22 @@ export function DailyCapturePage() {
                 ))}
               </div>
             )}
+            {opportunities.length > 0 && (
+              <PreviewOpportunitySuggestions preview={previewToRecord(preview)} opportunities={opportunities} />
+            )}
           </div>
         )}
       </section>
+
+      {lastSavedActivity && (
+        <ActivityOpportunityLinkPanel
+          activity={lastSavedActivity}
+          opportunities={opportunities}
+          onLink={(opportunity, applyUpdates, updateSuggestion) => handleLinkActivity(lastSavedActivity, opportunity, applyUpdates, updateSuggestion)}
+          onIgnore={() => handleIgnoreActivityLink(lastSavedActivity)}
+          onUnlink={() => handleUnlinkActivity(lastSavedActivity)}
+        />
+      )}
 
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -248,6 +317,11 @@ function ActivityCard({
             </span>
           </div>
           <h3 className="mt-3 text-base font-bold text-navy">{activity.summary}</h3>
+          <p className="mt-2 text-xs font-bold text-gray-500">
+            Link: {activity.linkStatus === 'Linked'
+              ? `${activity.linkedAccountName || 'Account'} / ${activity.linkedOpportunityName || 'Opportunity'}`
+              : activity.linkStatus}
+          </p>
           <div className="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
             <ActivityFact label="Account" value={activity.accountName || 'Not captured'} />
             <ActivityFact label="Opportunity" value={activity.opportunityName || 'Not captured'} />
@@ -285,6 +359,39 @@ function ActivityCard({
       </div>
     </article>
   );
+}
+
+function PreviewOpportunitySuggestions({ preview, opportunities }: { preview: SalesActivityRecord; opportunities: CrmLiteOpportunity[] }) {
+  const suggestions = suggestOpportunityLinks(preview, opportunities);
+  if (suggestions.length === 0) return null;
+
+  return (
+    <div className="mt-4 rounded-lg border border-blue-100 bg-white p-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">Likely opportunity links</p>
+      <div className="mt-2 space-y-2">
+        {suggestions.slice(0, 3).map((suggestion) => (
+          <div key={suggestion.opportunity.id} className="rounded-lg bg-blue-50/70 px-3 py-2 text-sm">
+            <p className="font-bold text-blue-950">{suggestion.opportunity.accountName} / {suggestion.opportunity.opportunityName}</p>
+            <p className="mt-1 text-xs font-semibold text-blue-700">{suggestion.confidence} confidence | {suggestion.reason}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function previewToRecord(preview: ReturnType<typeof classifySalesActivity>): SalesActivityRecord {
+  return {
+    ...preview,
+    id: 'preview',
+    linkedOpportunityId: '',
+    linkedOpportunityName: '',
+    linkedAccountName: '',
+    linkStatus: 'Unlinked',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    storageMode: 'local',
+  };
 }
 
 function ActivityFact({ label, value }: { label: string; value: string }) {

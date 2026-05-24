@@ -30,6 +30,7 @@ import {
   type OpportunityFormInput,
 } from '../../services/opportunityStore';
 import { analyzePipelineQuality, analyzeOpportunityQuality } from '../../utils/opportunityQuality';
+import { loadSalesActivities, type SalesActivityRecord } from '../../services/salesActivityStore';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -38,6 +39,7 @@ const allFilter = 'All';
 export function OpportunitiesPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
+  const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState(allFilter);
@@ -59,8 +61,12 @@ export function OpportunitiesPage() {
 
   const refreshOpportunities = async () => {
     setLoading(true);
-    const loaded = await loadOpportunities(user?.id);
+    const [loaded, loadedActivities] = await Promise.all([
+      loadOpportunities(user?.id),
+      loadSalesActivities(user?.id),
+    ]);
     setOpportunities(loaded);
+    setActivities(loadedActivities);
     setLoading(false);
   };
 
@@ -69,7 +75,7 @@ export function OpportunitiesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  const quality = useMemo(() => analyzePipelineQuality(opportunities), [opportunities]);
+  const quality = useMemo(() => analyzePipelineQuality(opportunities, activities), [activities, opportunities]);
 
   const visibleOpportunities = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -238,6 +244,7 @@ export function OpportunitiesPage() {
                 <OpportunityCard
                   key={opportunity.id}
                   opportunity={opportunity}
+                  linkedActivities={getLinkedActivities(opportunity, activities)}
                   onEdit={() => openEditPanel(opportunity)}
                   onDelete={() => handleDelete(opportunity)}
                 />
@@ -252,6 +259,7 @@ export function OpportunitiesPage() {
           saveState={saveState}
           message={message}
           editingOpportunity={editingOpportunity}
+          linkedActivities={editingOpportunity ? getLinkedActivities(editingOpportunity, activities) : []}
           onChange={setForm}
           onSave={handleSave}
           onClose={closePanel}
@@ -311,14 +319,16 @@ function PipelineQualitySummary({ quality }: { quality: ReturnType<typeof analyz
 
 function OpportunityCard({
   opportunity,
+  linkedActivities,
   onEdit,
   onDelete,
 }: {
   opportunity: CrmLiteOpportunity;
+  linkedActivities: SalesActivityRecord[];
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const quality = analyzeOpportunityQuality(opportunity);
+  const quality = analyzeOpportunityQuality(opportunity, linkedActivities);
 
   return (
     <article className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -360,6 +370,8 @@ function OpportunityCard({
         <Fact label="Close period" value={opportunity.expectedClosePeriod || 'Missing'} />
         <Fact label="Next action" value={opportunity.nextAction || 'Missing'} />
         <Fact label="Next action date" value={opportunity.nextActionDate || 'Not set'} />
+        <Fact label="Linked activities" value={String(linkedActivities.length)} />
+        <Fact label="Last activity" value={quality.lastLinkedActivityDate || 'No linked activity'} />
       </div>
 
       {quality.issues.length > 0 && (
@@ -387,6 +399,7 @@ function OpportunityPanel({
   saveState,
   message,
   editingOpportunity,
+  linkedActivities,
   onChange,
   onSave,
   onClose,
@@ -397,6 +410,7 @@ function OpportunityPanel({
   saveState: SaveState;
   message: string;
   editingOpportunity: CrmLiteOpportunity | null;
+  linkedActivities: SalesActivityRecord[];
   onChange: (form: OpportunityFormInput) => void;
   onSave: () => void;
   onClose: () => void;
@@ -466,6 +480,10 @@ function OpportunityPanel({
         </div>
       </div>
 
+      {mode === 'edit' && (
+        <LinkedActivitiesTimeline activities={linkedActivities} />
+      )}
+
       {message && (
         <p className={`mt-4 rounded-lg px-3 py-2 text-sm font-semibold ${
           saveState === 'saved' ? 'bg-emerald-50 text-emerald-700' : saveState === 'error' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'
@@ -496,6 +514,32 @@ function OpportunityPanel({
         )}
       </div>
     </aside>
+  );
+}
+
+function LinkedActivitiesTimeline({ activities }: { activities: SalesActivityRecord[] }) {
+  return (
+    <section className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Linked Activities</p>
+      {activities.length === 0 ? (
+        <p className="mt-3 text-sm text-gray-500">No activities linked to this opportunity yet.</p>
+      ) : (
+        <div className="mt-3 space-y-2">
+          {activities.map((activity) => (
+            <details key={activity.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
+              <summary className="cursor-pointer text-sm font-bold text-navy">
+                {activity.activityDate} | {activity.activityType}
+              </summary>
+              <p className="mt-2 text-sm leading-6 text-gray-700">{activity.summary}</p>
+              {activity.nextAction && (
+                <p className="mt-2 text-xs font-bold text-brand-blue">Next: {activity.nextAction}</p>
+              )}
+              <p className="mt-2 whitespace-pre-line text-xs leading-5 text-gray-500">{activity.rawNote}</p>
+            </details>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -687,6 +731,12 @@ function opportunityToForm(opportunity: CrmLiteOpportunity): OpportunityFormInpu
     decisionRecommendation: opportunity.decisionRecommendation,
     status: opportunity.status,
   };
+}
+
+function getLinkedActivities(opportunity: CrmLiteOpportunity, activities: SalesActivityRecord[]) {
+  return activities
+    .filter((activity) => activity.linkStatus === 'Linked' && activity.linkedOpportunityId === opportunity.id)
+    .sort((a, b) => `${b.activityDate}-${b.createdAt}`.localeCompare(`${a.activityDate}-${a.createdAt}`));
 }
 
 function formatMoney(value: number, currency = 'VND') {

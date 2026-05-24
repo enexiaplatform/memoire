@@ -4,6 +4,10 @@ import type { ClassifiedSalesActivity, SalesActivityType } from '../utils/salesA
 export interface SalesActivityRecord extends ClassifiedSalesActivity {
   id: string;
   userId?: string;
+  linkedOpportunityId: string;
+  linkedOpportunityName: string;
+  linkedAccountName: string;
+  linkStatus: 'Unlinked' | 'Suggested' | 'Linked' | 'Ignored';
   createdAt: string;
   updatedAt: string;
   storageMode: 'local' | 'cloud';
@@ -21,8 +25,19 @@ type SalesActivityRow = {
   next_action: string | null;
   due_date: string | null;
   tags: string[] | null;
+  linked_opportunity_id: string | null;
+  linked_opportunity_name: string | null;
+  linked_account_name: string | null;
+  link_status: SalesActivityRecord['linkStatus'] | null;
   created_at: string;
   updated_at: string;
+};
+
+export type SalesActivityLinkInput = {
+  linkedOpportunityId?: string;
+  linkedOpportunityName?: string;
+  linkedAccountName?: string;
+  linkStatus: SalesActivityRecord['linkStatus'];
 };
 
 const TABLE_NAME = 'sales_activities';
@@ -91,6 +106,44 @@ export async function deleteSalesActivity(activity: SalesActivityRecord, userId?
   deleteLocalActivity(activity.id);
 }
 
+export async function updateSalesActivityLink(
+  activity: SalesActivityRecord,
+  link: SalesActivityLinkInput,
+  userId?: string | null
+): Promise<SalesActivityRecord> {
+  const timestamp = new Date().toISOString();
+  const updated: SalesActivityRecord = {
+    ...activity,
+    linkedOpportunityId: link.linkStatus === 'Linked' ? link.linkedOpportunityId || '' : '',
+    linkedOpportunityName: link.linkStatus === 'Linked' ? link.linkedOpportunityName || '' : '',
+    linkedAccountName: link.linkStatus === 'Linked' ? link.linkedAccountName || '' : '',
+    linkStatus: link.linkStatus,
+    updatedAt: timestamp,
+  };
+
+  if (activity.storageMode === 'cloud' && canUseSalesActivityCloudStore(userId)) {
+    const { data, error } = await supabaseClient!
+      .from(TABLE_NAME)
+      .update({
+        linked_opportunity_id: updated.linkedOpportunityId || null,
+        linked_opportunity_name: updated.linkedOpportunityName || null,
+        linked_account_name: updated.linkedAccountName || null,
+        link_status: updated.linkStatus,
+        updated_at: timestamp,
+      })
+      .eq('id', activity.id)
+      .eq('user_id', userId)
+      .select('*')
+      .single();
+
+    if (error) throw new Error(error.message);
+    return rowToRecord(data as SalesActivityRow);
+  }
+
+  saveLocalActivityRecord({ ...updated, storageMode: 'local' });
+  return { ...updated, storageMode: 'local' };
+}
+
 function loadLocalActivities(): SalesActivityRecord[] {
   if (typeof localStorage === 'undefined') return [];
   const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -110,6 +163,10 @@ function loadLocalActivities(): SalesActivityRecord[] {
         nextAction: item.nextAction || '',
         dueDate: item.dueDate || '',
         tags: Array.isArray(item.tags) ? item.tags : [],
+        linkedOpportunityId: item.linkedOpportunityId || '',
+        linkedOpportunityName: item.linkedOpportunityName || '',
+        linkedAccountName: item.linkedAccountName || '',
+        linkStatus: normalizeLinkStatus(item.linkStatus),
         rawNote: item.rawNote || '',
         activityDate: item.activityDate || new Date().toISOString().slice(0, 10),
         createdAt: item.createdAt || new Date().toISOString(),
@@ -164,6 +221,10 @@ function createLocalActivity(activity: ClassifiedSalesActivity): SalesActivityRe
   return {
     ...activity,
     id: createId(),
+    linkedOpportunityId: '',
+    linkedOpportunityName: '',
+    linkedAccountName: '',
+    linkStatus: 'Unlinked',
     createdAt: timestamp,
     updatedAt: timestamp,
     storageMode: 'local',
@@ -183,6 +244,10 @@ function rowToRecord(row: SalesActivityRow): SalesActivityRecord {
     nextAction: row.next_action || '',
     dueDate: row.due_date || '',
     tags: Array.isArray(row.tags) ? row.tags : [],
+    linkedOpportunityId: row.linked_opportunity_id || '',
+    linkedOpportunityName: row.linked_opportunity_name || '',
+    linkedAccountName: row.linked_account_name || '',
+    linkStatus: normalizeLinkStatus(row.link_status),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     storageMode: 'cloud',
@@ -202,6 +267,10 @@ function activityToInsert(activity: ClassifiedSalesActivity, userId: string) {
     next_action: activity.nextAction || null,
     due_date: activity.dueDate || null,
     tags: activity.tags,
+    linked_opportunity_id: null,
+    linked_opportunity_name: null,
+    linked_account_name: null,
+    link_status: 'Unlinked',
     created_at: timestamp,
     updated_at: timestamp,
   };
@@ -213,6 +282,12 @@ function createId() {
 
 function sortNewestFirst(a: SalesActivityRecord, b: SalesActivityRecord) {
   return `${b.activityDate}-${b.createdAt}`.localeCompare(`${a.activityDate}-${a.createdAt}`);
+}
+
+function normalizeLinkStatus(value: unknown): SalesActivityRecord['linkStatus'] {
+  return ['Unlinked', 'Suggested', 'Linked', 'Ignored'].includes(value as string)
+    ? value as SalesActivityRecord['linkStatus']
+    : 'Unlinked';
 }
 
 function getErrorMessage(error: unknown) {

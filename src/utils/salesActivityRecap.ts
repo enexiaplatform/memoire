@@ -21,12 +21,14 @@ export type SalesActivityRecap = {
   objectionsCaptured: {
     activityId: string;
     accountName?: string;
+    opportunityName?: string;
     summary: string;
     nextAction?: string;
   }[];
   followUpsCaptured: {
     activityId: string;
     accountName?: string;
+    opportunityName?: string;
     summary: string;
     nextAction?: string;
   }[];
@@ -53,7 +55,7 @@ export function getAccountsTouched(activities: SalesActivityRecord[]) {
 }
 
 export function getOpportunitiesTouched(activities: SalesActivityRecord[]) {
-  return uniqueClean(activities.map((activity) => activity.opportunityName));
+  return uniqueClean(activities.map(getActivityOpportunityName));
 }
 
 export function getActivityTypeBreakdown(activities: SalesActivityRecord[]) {
@@ -66,7 +68,7 @@ export function getOpenNextActions(activities: SalesActivityRecord[]) {
     .map((activity) => ({
       activityId: activity.id,
       accountName: activity.accountName || undefined,
-      opportunityName: activity.opportunityName || undefined,
+      opportunityName: getActivityOpportunityName(activity) || undefined,
       nextAction: activity.nextAction,
       dueDate: activity.dueDate || undefined,
     }));
@@ -78,6 +80,7 @@ export function getObjectionActivities(activities: SalesActivityRecord[]) {
     .map((activity) => ({
       activityId: activity.id,
       accountName: activity.accountName || undefined,
+      opportunityName: getActivityOpportunityName(activity) || undefined,
       summary: activity.summary,
       nextAction: activity.nextAction || undefined,
     }));
@@ -89,6 +92,7 @@ export function getFollowUpActivities(activities: SalesActivityRecord[]) {
     .map((activity) => ({
       activityId: activity.id,
       accountName: activity.accountName || undefined,
+      opportunityName: getActivityOpportunityName(activity) || undefined,
       summary: activity.summary,
       nextAction: activity.nextAction || undefined,
     }));
@@ -273,6 +277,12 @@ function groupByAccount(activities: SalesActivityRecord[]) {
 
 function uniqueClean(values: string[]) {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean))).sort();
+}
+
+function getActivityOpportunityName(activity: SalesActivityRecord) {
+  return activity.linkStatus === 'Linked'
+    ? activity.linkedOpportunityName || activity.opportunityName
+    : activity.opportunityName;
 }
 
 function countBy(values: string[]) {

@@ -324,7 +324,7 @@ function NextActionsPanel({ actions }: { actions: SalesActivityRecap['openNextAc
       items={actions.map((item) => ({
         id: item.activityId,
         title: item.nextAction,
-        detail: [item.accountName, item.opportunityName, item.dueDate ? `Due ${item.dueDate}` : ''].filter(Boolean).join(' | '),
+        detail: [item.accountName, item.opportunityName || 'Unlinked', item.dueDate ? `Due ${item.dueDate}` : ''].filter(Boolean).join(' | '),
       }))}
     />
   );
@@ -338,7 +338,7 @@ function ObjectionsPanel({ objections }: { objections: SalesActivityRecap['objec
       items={objections.map((item) => ({
         id: item.activityId,
         title: item.summary,
-        detail: [item.accountName, item.nextAction ? `Next: ${item.nextAction}` : ''].filter(Boolean).join(' | '),
+        detail: [item.accountName, item.opportunityName || 'Unlinked', item.nextAction ? `Next: ${item.nextAction}` : ''].filter(Boolean).join(' | '),
       }))}
     />
   );
@@ -352,7 +352,7 @@ function FollowUpsPanel({ followUps }: { followUps: SalesActivityRecap['followUp
       items={followUps.map((item) => ({
         id: item.activityId,
         title: item.summary,
-        detail: [item.accountName, item.nextAction ? `Next: ${item.nextAction}` : ''].filter(Boolean).join(' | '),
+        detail: [item.accountName, item.opportunityName || 'Unlinked', item.nextAction ? `Next: ${item.nextAction}` : ''].filter(Boolean).join(' | '),
       }))}
     />
   );

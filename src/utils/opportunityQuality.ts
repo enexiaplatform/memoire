@@ -1,5 +1,6 @@
 import type { Interaction, Objection, Opportunity as LegacyOpportunity, SalesAction } from '../types/v31';
 import type { CrmLiteOpportunity, ForecastEvidenceCategory } from '../services/opportunityStore';
+import type { SalesActivityRecord } from '../services/salesActivityStore';
 
 export type OpportunityQualityStatus = 'Healthy' | 'Needs cleanup' | 'High risk';
 export type OpportunityQualitySeverity = 'low' | 'medium' | 'high';
@@ -19,6 +20,8 @@ export interface OpportunityQualityReview {
   opportunityTitle: string;
   issues: OpportunityQualityIssue[];
   primaryAction: string;
+  linkedActivityCount?: number;
+  lastLinkedActivityDate?: string;
 }
 
 export interface CrmPipelineQualityAnalysis {
@@ -39,9 +42,10 @@ export interface CrmPipelineQualityAnalysis {
   cleanupActions: string[];
 }
 
-export function analyzeOpportunityQuality(opportunity: CrmLiteOpportunity): OpportunityQualityReview {
+export function analyzeOpportunityQuality(opportunity: CrmLiteOpportunity, linkedActivities: SalesActivityRecord[] = []): OpportunityQualityReview {
   const issues: OpportunityQualityIssue[] = [];
   const evidenceText = `${opportunity.evidence} ${opportunity.missingContext}`.toLowerCase();
+  const lastLinkedActivityDate = linkedActivities.map((activity) => activity.activityDate).sort().at(-1) || '';
 
   if (!opportunity.nextAction.trim()) {
     issues.push({
@@ -123,6 +127,16 @@ export function analyzeOpportunityQuality(opportunity: CrmLiteOpportunity): Oppo
     });
   }
 
+  if (!opportunity.nextActionDate && lastLinkedActivityDate && daysSince(lastLinkedActivityDate) > 14) {
+    issues.push({
+      id: 'stale-linked-activity',
+      label: 'Old linked activity',
+      severity: 'medium',
+      reason: 'The latest linked activity is more than 14 days old and no next action date is set.',
+      suggestedAction: 'Refresh this opportunity with a current customer touch or add a next action date.',
+    });
+  }
+
   if (weakEvidenceTerms.test(evidenceText)) {
     issues.push({
       id: 'weak-evidence-language',
@@ -150,11 +164,15 @@ export function analyzeOpportunityQuality(opportunity: CrmLiteOpportunity): Oppo
     opportunityTitle: opportunity.opportunityName || 'Untitled opportunity',
     issues,
     primaryAction: getPrimaryAction(issues),
+    linkedActivityCount: linkedActivities.length,
+    lastLinkedActivityDate,
   };
 }
 
-export function analyzePipelineQuality(opportunities: CrmLiteOpportunity[]): CrmPipelineQualityAnalysis {
-  const reviews = opportunities.map(analyzeOpportunityQuality);
+export function analyzePipelineQuality(opportunities: CrmLiteOpportunity[], activities: SalesActivityRecord[] = []): CrmPipelineQualityAnalysis {
+  const reviews = opportunities.map((opportunity) =>
+    analyzeOpportunityQuality(opportunity, activities.filter((activity) => activity.linkedOpportunityId === opportunity.id))
+  );
   const activeOpportunities = opportunities.filter((opportunity) => opportunity.status === 'Active');
   const activeValueByForecastCategory = makeEmptyForecastValueMap();
 
@@ -407,4 +425,9 @@ function startOfToday() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return today;
+}
+
+function daysSince(dateKey: string) {
+  const then = new Date(`${dateKey}T00:00:00`);
+  return Math.floor((Date.now() - then.getTime()) / 86_400_000);
 }

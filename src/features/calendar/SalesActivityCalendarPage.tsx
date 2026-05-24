@@ -15,8 +15,12 @@ import {
   canUseSalesActivityCloudStore,
   deleteSalesActivity,
   loadSalesActivities,
+  updateSalesActivityLink,
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
+import { loadOpportunities, updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
+import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
+import { applyOpportunityUpdateSuggestion, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 import type { SalesActivityType } from '../../utils/salesActivityClassifier';
 
 type CalendarViewMode = 'day' | 'week' | 'month';
@@ -59,6 +63,7 @@ export function SalesActivityCalendarPage() {
   const [viewMode, setViewMode] = useState<CalendarViewMode>('week');
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
+  const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [selectedActivity, setSelectedActivity] = useState<SalesActivityRecord | null>(null);
   const [copiedId, setCopiedId] = useState('');
@@ -72,8 +77,12 @@ export function SalesActivityCalendarPage() {
 
   const refreshActivities = useCallback(async () => {
     setLoadingActivities(true);
-    const loaded = await loadSalesActivities(user?.id);
+    const [loaded, loadedOpportunities] = await Promise.all([
+      loadSalesActivities(user?.id),
+      loadOpportunities(user?.id),
+    ]);
     setActivities(loaded);
+    setOpportunities(loadedOpportunities);
     setLoadingActivities(false);
   }, [user?.id]);
 
@@ -111,6 +120,38 @@ export function SalesActivityCalendarPage() {
     setActivities((current) => current.filter((item) => item.id !== activity.id));
     setSelectedActivity(null);
     setMessage('Activity deleted.');
+  };
+
+  const handleLinkActivity = async (
+    activity: SalesActivityRecord,
+    opportunity: CrmLiteOpportunity,
+    applyUpdates: boolean,
+    updateSuggestion: OpportunityUpdateSuggestion
+  ) => {
+    const linkedActivity = await updateSalesActivityLink(activity, {
+      linkedOpportunityId: opportunity.id,
+      linkedOpportunityName: opportunity.opportunityName,
+      linkedAccountName: opportunity.accountName,
+      linkStatus: 'Linked',
+    }, user?.id);
+    setActivities((current) => current.map((item) => item.id === linkedActivity.id ? linkedActivity : item));
+    setSelectedActivity(linkedActivity);
+
+    if (applyUpdates) {
+      const result = await updateOpportunity(opportunity, applyOpportunityUpdateSuggestion(opportunity, updateSuggestion), user?.id);
+      setOpportunities((current) => current.map((item) => item.id === result.opportunity.id ? result.opportunity : item));
+      setMessage(result.warning || 'Activity linked and opportunity updated.');
+      return;
+    }
+
+    setMessage('Activity linked to opportunity.');
+  };
+
+  const handleUpdateLinkStatus = async (activity: SalesActivityRecord, linkStatus: SalesActivityRecord['linkStatus']) => {
+    const updated = await updateSalesActivityLink(activity, { linkStatus }, user?.id);
+    setActivities((current) => current.map((item) => item.id === updated.id ? updated : item));
+    setSelectedActivity(updated);
+    setMessage(linkStatus === 'Unlinked' ? 'Activity unlinked.' : 'Link suggestion ignored.');
   };
 
   return (
@@ -260,6 +301,10 @@ export function SalesActivityCalendarPage() {
           onClose={() => setSelectedActivity(null)}
           onCopy={() => handleCopy(selectedActivity)}
           onDelete={() => handleDelete(selectedActivity)}
+          opportunities={opportunities}
+          onLink={(opportunity, applyUpdates, updateSuggestion) => handleLinkActivity(selectedActivity, opportunity, applyUpdates, updateSuggestion)}
+          onIgnore={() => handleUpdateLinkStatus(selectedActivity, 'Ignored')}
+          onUnlink={() => handleUpdateLinkStatus(selectedActivity, 'Unlinked')}
         />
       )}
     </div>
@@ -350,6 +395,7 @@ function ActivityCard({
         <div className="mt-3 grid grid-cols-1 gap-2 text-xs leading-5 text-gray-600 sm:grid-cols-2">
           <Fact label="Account" value={activity.accountName || 'Not captured'} />
           <Fact label="Opportunity" value={activity.opportunityName || 'Not captured'} />
+          <Fact label="Linked" value={activity.linkStatus === 'Linked' ? `${activity.linkedAccountName} / ${activity.linkedOpportunityName}` : activity.linkStatus} />
           <Fact label="Next action" value={activity.nextAction || 'No next action captured'} />
           <Fact label="Due date" value={activity.dueDate || 'No due date'} />
         </div>
@@ -375,12 +421,20 @@ function ActivityDetailModal({
   onClose,
   onCopy,
   onDelete,
+  opportunities,
+  onLink,
+  onIgnore,
+  onUnlink,
 }: {
   activity: SalesActivityRecord;
   copied: boolean;
   onClose: () => void;
   onCopy: () => void;
   onDelete: () => void;
+  opportunities: CrmLiteOpportunity[];
+  onLink: (opportunity: CrmLiteOpportunity, applyUpdates: boolean, updateSuggestion: OpportunityUpdateSuggestion) => void;
+  onIgnore: () => void;
+  onUnlink: () => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 px-4 py-8">
@@ -416,6 +470,17 @@ function ActivityDetailModal({
           <Fact label="Due date" value={activity.dueDate || 'No due date'} />
           <Fact label="Created" value={new Date(activity.createdAt).toLocaleString()} />
           <Fact label="Updated" value={new Date(activity.updatedAt).toLocaleString()} />
+          <Fact label="Linked opportunity" value={activity.linkStatus === 'Linked' ? `${activity.linkedAccountName} / ${activity.linkedOpportunityName}` : activity.linkStatus} />
+        </div>
+
+        <div className="mt-5">
+          <ActivityOpportunityLinkPanel
+            activity={activity}
+            opportunities={opportunities}
+            onLink={onLink}
+            onIgnore={onIgnore}
+            onUnlink={onUnlink}
+          />
         </div>
 
         <div className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-4">
