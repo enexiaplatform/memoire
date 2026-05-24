@@ -473,6 +473,15 @@ function ActivityDetailModal({
           <Fact label="Linked opportunity" value={activity.linkStatus === 'Linked' ? `${activity.linkedAccountName} / ${activity.linkedOpportunityName}` : activity.linkStatus} />
         </div>
 
+        {(activity.linkedAccountName || activity.accountName) && (
+          <Link
+            to={`/app/accounts?accountName=${encodeURIComponent(activity.linkedAccountName || activity.accountName)}`}
+            className="mt-4 inline-flex rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-bold text-brand-blue hover:border-brand-blue/40"
+          >
+            View Account Memory
+          </Link>
+        )}
+
         <div className="mt-5">
           <ActivityOpportunityLinkPanel
             activity={activity}
