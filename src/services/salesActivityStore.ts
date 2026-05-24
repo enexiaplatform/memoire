@@ -41,7 +41,7 @@ export type SalesActivityLinkInput = {
 };
 
 const TABLE_NAME = 'sales_activities';
-const LOCAL_STORAGE_KEY = 'memoire.salesActivities.v1';
+export const SALES_ACTIVITY_STORAGE_KEY = 'memoire.salesActivities.v1';
 
 export function canUseSalesActivityCloudStore(userId?: string | null) {
   return Boolean(userId && supabaseClient);
@@ -146,7 +146,7 @@ export async function updateSalesActivityLink(
 
 function loadLocalActivities(): SalesActivityRecord[] {
   if (typeof localStorage === 'undefined') return [];
-  const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+  const raw = localStorage.getItem(SALES_ACTIVITY_STORAGE_KEY);
   if (!raw) return [];
 
   try {
@@ -182,14 +182,14 @@ function loadLocalActivities(): SalesActivityRecord[] {
 function saveLocalActivityRecord(record: SalesActivityRecord) {
   const next = [record, ...loadLocalActivities().filter((item) => item.id !== record.id)];
   if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(next.sort(sortNewestFirst)));
+    localStorage.setItem(SALES_ACTIVITY_STORAGE_KEY, JSON.stringify(next.sort(sortNewestFirst)));
   }
 }
 
 function deleteLocalActivity(activityId: string) {
   if (typeof localStorage === 'undefined') return;
   const next = loadLocalActivities().filter((item) => item.id !== activityId);
-  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(next));
+  localStorage.setItem(SALES_ACTIVITY_STORAGE_KEY, JSON.stringify(next));
 }
 
 async function loadCloudActivities(userId: string): Promise<SalesActivityRecord[]> {

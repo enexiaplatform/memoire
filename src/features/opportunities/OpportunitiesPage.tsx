@@ -832,7 +832,9 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
       <p className="text-base font-bold text-navy">No opportunities yet.</p>
-      <p className="mt-2 text-sm text-gray-500">Add your first opportunity or capture sales activity first.</p>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
+        Opportunities are the deals you want to track and defend. Add one active deal, then Memoire can help you inspect evidence, risk, next action, and pipeline defense readiness.
+      </p>
       <div className="mt-5 flex flex-wrap justify-center gap-2">
         <button type="button" onClick={onAdd} className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
           <Plus className="h-4 w-4" />

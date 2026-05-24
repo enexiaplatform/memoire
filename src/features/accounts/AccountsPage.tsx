@@ -508,7 +508,9 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
       <p className="text-base font-bold text-navy">No accounts yet.</p>
-      <p className="mt-2 text-sm text-gray-500">Add your first account or create opportunities/capture activities first.</p>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
+        Accounts remember the relationship context behind your deals: stakeholders, notes, linked activity, open next actions, and objection debt.
+      </p>
       <div className="mt-5 flex flex-wrap justify-center gap-2">
         <button type="button" onClick={onAdd} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Add Account</button>
         <Link to="/app/opportunities" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">Go to Opportunities</Link>

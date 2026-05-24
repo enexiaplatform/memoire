@@ -166,7 +166,7 @@ export function DailyCapturePage() {
                 setSaveState('idle');
                 setMessage('');
               }}
-              placeholder="What happened today?"
+              placeholder="Example: Met TV Pharm today. Need to clarify tender timeline next week."
               className="mt-2 min-h-[150px] w-full resize-y rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm leading-6 text-gray-900 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
             />
           </label>
@@ -258,7 +258,9 @@ export function DailyCapturePage() {
           <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
             <Clipboard className="mx-auto h-6 w-6 text-gray-400" />
             <p className="mt-3 text-sm font-bold text-navy">No activities captured yet.</p>
-            <p className="mt-1 text-sm text-gray-500">Capture your first sales activity.</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Try: "Met TV Pharm today. Need to clarify tender timeline next week."
+            </p>
           </div>
         ) : (
           <div className="space-y-3">

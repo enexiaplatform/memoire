@@ -1080,11 +1080,16 @@ export function PipelineReviewDefenseBriefPage() {
           <p className="text-sm font-semibold text-gray-900">No pipeline deals available for this review.</p>
           {!isReviewMode && (
             <>
-              <p className="mt-1 text-sm text-gray-500">Import deals, add one manually, or reset to sample data to start a review brief.</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Import deals, add one manually, or create a brief from selected opportunities in the Opportunities workspace.
+              </p>
               <div className="mt-5 flex justify-center gap-2">
                 <button type="button" onClick={addDeal} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90">
                   Add Deal
                 </button>
+                <a href="/app/opportunities" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-100">
+                  Create from opportunities
+                </a>
                 <button type="button" onClick={resetDeals} className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">
                   Reset to sample data
                 </button>
