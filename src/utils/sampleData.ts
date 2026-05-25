@@ -1,6 +1,7 @@
 import { ACCOUNT_STORAGE_KEY, type AccountMemoryRecord } from '../services/accountStore';
 import { OPPORTUNITY_STORAGE_KEY, type CrmLiteOpportunity } from '../services/opportunityStore';
 import { SALES_ACTIVITY_STORAGE_KEY, type SalesActivityRecord } from '../services/salesActivityStore';
+import { STAKEHOLDER_STORAGE_KEY, type StakeholderRecord } from '../services/stakeholderStore';
 import { classifySalesActivity } from './salesActivityClassifier';
 import { generatePipelineDefenseBriefFromOpportunities } from './opportunityToPipelineBrief';
 import {
@@ -25,6 +26,7 @@ export type SampleDataset = {
   activities: SalesActivityRecord[];
   opportunities: CrmLiteOpportunity[];
   accounts: AccountMemoryRecord[];
+  stakeholders: StakeholderRecord[];
   briefs: PipelineDefenseBrief[];
 };
 
@@ -61,6 +63,7 @@ export function loadSampleDataset(): SampleDataset {
   writeLocalArray(SALES_ACTIVITY_STORAGE_KEY, dataset.activities);
   writeLocalArray(OPPORTUNITY_STORAGE_KEY, dataset.opportunities);
   writeLocalArray(ACCOUNT_STORAGE_KEY, dataset.accounts);
+  writeLocalArray(STAKEHOLDER_STORAGE_KEY, dataset.stakeholders);
   writeLocalBriefs(dataset.briefs);
   markSampleDataLoaded();
 
@@ -77,6 +80,7 @@ export function clearSampleDataset() {
   removeSampleRecords(SALES_ACTIVITY_STORAGE_KEY);
   removeSampleRecords(OPPORTUNITY_STORAGE_KEY);
   removeSampleRecords(ACCOUNT_STORAGE_KEY);
+  removeSampleRecords(STAKEHOLDER_STORAGE_KEY);
   removeSampleBriefs();
   clearSampleDataFlag();
 }
@@ -358,6 +362,89 @@ function buildSampleDataset(): SampleDataset {
     }),
   ];
 
+  const stakeholders: StakeholderRecord[] = [
+    sampleStakeholder({
+      id: 'demo-stakeholder-dr-linh',
+      accountName: 'VHP',
+      opportunityId: 'demo-opp-vhp-solidfog-phase-2',
+      opportunityName: 'SolidFog EU-GMP Phase 2',
+      name: 'Dr. Linh',
+      roleTitle: 'QA / Technical lead',
+      stakeholderRole: 'Champion',
+      influenceLevel: 'High',
+      relationshipStrength: 'Strong',
+      stance: 'Supportive',
+      notes: 'Confirmed budget approval and supports SolidFog Phase 2.',
+      tags: ['demo-data', 'champion', 'technical-buyer'],
+      lastInteractionDate: today,
+      createdAt: timestamp,
+    }),
+    sampleStakeholder({
+      id: 'demo-stakeholder-ms-an',
+      accountName: 'VHP',
+      opportunityId: 'demo-opp-vhp-solidfog-phase-2',
+      opportunityName: 'SolidFog EU-GMP Phase 2',
+      name: 'Ms. An',
+      roleTitle: 'Procurement manager',
+      stakeholderRole: 'Procurement',
+      influenceLevel: 'Medium',
+      relationshipStrength: 'Developing',
+      stance: 'Neutral',
+      notes: 'Procurement path contact; needs revised quote and checklist.',
+      tags: ['demo-data', 'procurement'],
+      lastInteractionDate: today,
+      createdAt: timestamp,
+    }),
+    sampleStakeholder({
+      id: 'demo-stakeholder-mr-minh',
+      accountName: 'Control Union',
+      opportunityId: 'demo-opp-control-union-microbiology',
+      opportunityName: 'Microbiology workflow',
+      name: 'Mr. Minh',
+      roleTitle: 'Lab manager',
+      stakeholderRole: 'Technical buyer',
+      influenceLevel: 'High',
+      relationshipStrength: 'Developing',
+      stance: 'Neutral',
+      notes: 'Likes workflow but needs lead time proof and local support confidence.',
+      tags: ['demo-data', 'technical-buyer'],
+      lastInteractionDate: yesterday,
+      createdAt: timestamp,
+    }),
+    sampleStakeholder({
+      id: 'demo-stakeholder-tv-pharm-procurement',
+      accountName: 'TV Pharm',
+      opportunityId: 'demo-opp-tv-pharm-tender',
+      opportunityName: 'Tender opportunity',
+      name: 'TV Pharm procurement contact',
+      roleTitle: 'Procurement',
+      stakeholderRole: 'Procurement',
+      influenceLevel: 'Medium',
+      relationshipStrength: 'Weak',
+      stance: 'Unknown',
+      notes: 'Tender path unclear; committee owner not confirmed.',
+      tags: ['demo-data', 'procurement', 'tender'],
+      lastInteractionDate: twoDaysAgo,
+      createdAt: timestamp,
+    }),
+    sampleStakeholder({
+      id: 'demo-stakeholder-bidiphar-qa',
+      accountName: 'Bidiphar',
+      opportunityId: 'demo-opp-bidiphar-qc-workflow',
+      opportunityName: 'QC workflow',
+      name: 'Bidiphar QA manager',
+      roleTitle: 'QA manager',
+      stakeholderRole: 'User',
+      influenceLevel: 'Medium',
+      relationshipStrength: 'Unknown',
+      stance: 'Neutral',
+      notes: 'No confirmed decision process or next step captured.',
+      tags: ['demo-data', 'user'],
+      lastInteractionDate: fourDaysAgo,
+      createdAt: timestamp,
+    }),
+  ];
+
   const brief = {
     ...generatePipelineDefenseBriefFromOpportunities(opportunities.slice(0, 5), {
       title: `Demo Defense Brief - ${today}`,
@@ -372,6 +459,7 @@ function buildSampleDataset(): SampleDataset {
     activities,
     opportunities,
     accounts,
+    stakeholders,
     briefs: [markSampleBrief(brief)],
   };
 }
@@ -411,6 +499,17 @@ function sampleOpportunity(input: Omit<CrmLiteOpportunity, 'currency' | 'updated
 function sampleAccount(input: Omit<AccountMemoryRecord, 'updatedAt' | 'storageMode'>): AccountMemoryRecord {
   return markSampleRecord({
     ...input,
+    updatedAt: input.createdAt,
+    storageMode: 'local',
+  });
+}
+
+function sampleStakeholder(input: Omit<StakeholderRecord, 'accountId' | 'email' | 'phone' | 'updatedAt' | 'storageMode'>): StakeholderRecord {
+  return markSampleRecord({
+    ...input,
+    accountId: '',
+    email: '',
+    phone: '',
     updatedAt: input.createdAt,
     storageMode: 'local',
   });

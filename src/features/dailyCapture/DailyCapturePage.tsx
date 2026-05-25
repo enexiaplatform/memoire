@@ -15,9 +15,11 @@ import {
 } from '../../services/salesActivityStore';
 import { loadOpportunities, updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { loadAccounts, type AccountMemoryRecord } from '../../services/accountStore';
+import { createStakeholder, loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
 import { CaptureAiProviderError, getActiveCaptureAiProvider, type CaptureAiSuggestion } from '../../services/captureAiProvider';
 import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
 import { applyOpportunityUpdateSuggestion, suggestOpportunityLinks, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
+import { deriveStakeholderCandidateFromCapture } from '../../utils/stakeholderGraph';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type AiState = 'idle' | 'loading' | 'ready' | 'error';
@@ -41,6 +43,8 @@ export function DailyCapturePage() {
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
+  const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
+  const [stakeholderSuggestionDismissed, setStakeholderSuggestionDismissed] = useState(false);
   const [lastSavedActivity, setLastSavedActivity] = useState<SalesActivityRecord | null>(null);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [saveState, setSaveState] = useState<SaveState>('idle');
@@ -62,14 +66,16 @@ export function DailyCapturePage() {
 
   const refreshActivities = async () => {
     setLoadingActivities(true);
-    const [loaded, loadedOpportunities, loadedAccounts] = await Promise.all([
+    const [loaded, loadedOpportunities, loadedAccounts, loadedStakeholders] = await Promise.all([
       loadSalesActivities(dataUserId),
       loadOpportunities(dataUserId),
       loadAccounts(dataUserId),
+      loadStakeholders(dataUserId),
     ]);
     setActivities(loaded);
     setOpportunities(loadedOpportunities);
     setAccounts(loadedAccounts);
+    setStakeholders(loadedStakeholders);
     setLoadingActivities(false);
   };
 
@@ -103,6 +109,7 @@ export function DailyCapturePage() {
     setAiState('idle');
     setSaveState(result.warning ? 'error' : 'saved');
     setMessage(result.warning || (result.mode === 'cloud' ? 'Synced to your account.' : 'Saved locally in this browser.'));
+    setStakeholderSuggestionDismissed(false);
   };
 
   const handleClassifyWithAi = async () => {
@@ -227,6 +234,39 @@ export function DailyCapturePage() {
       setSaveState('error');
     }
   };
+
+  const createStakeholderFromLastActivity = async () => {
+    if (!lastSavedActivity) return;
+    const candidate = deriveStakeholderCandidateFromCapture(lastSavedActivity);
+    if (!candidate) return;
+    const result = await createStakeholder({
+      accountId: '',
+      accountName: candidate.accountName,
+      opportunityId: candidate.opportunityId,
+      opportunityName: candidate.opportunityName,
+      name: candidate.name,
+      roleTitle: '',
+      stakeholderRole: 'Unknown',
+      influenceLevel: 'Unknown',
+      relationshipStrength: 'Developing',
+      stance: 'Unknown',
+      email: '',
+      phone: '',
+      notes: candidate.notes,
+      tags: ['from-capture'],
+      lastInteractionDate: candidate.lastInteractionDate,
+    }, dataUserId);
+    setStakeholders((current) => [result.stakeholder, ...current.filter((item) => item.id !== result.stakeholder.id)]);
+    setStakeholderSuggestionDismissed(true);
+    setMessage(result.warning || 'Stakeholder created from capture.');
+    setSaveState(result.warning ? 'error' : 'saved');
+  };
+
+  const stakeholderCandidate = lastSavedActivity ? deriveStakeholderCandidateFromCapture(lastSavedActivity) : null;
+  const alreadyHasStakeholderCandidate = stakeholderCandidate ? stakeholders.some((stakeholder) => (
+    stakeholder.name.toLowerCase() === stakeholderCandidate.name.toLowerCase() &&
+    stakeholder.accountName.toLowerCase() === stakeholderCandidate.accountName.toLowerCase()
+  )) : false;
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6">
@@ -358,6 +398,23 @@ export function DailyCapturePage() {
           onIgnore={() => handleIgnoreActivityLink(lastSavedActivity)}
           onUnlink={() => handleUnlinkActivity(lastSavedActivity)}
         />
+      )}
+
+      {stakeholderCandidate && !alreadyHasStakeholderCandidate && !stakeholderSuggestionDismissed && (
+        <section className="rounded-lg border border-blue-100 bg-blue-50/70 p-4 shadow-sm">
+          <p className="text-sm font-bold text-blue-950">Create stakeholder from {stakeholderCandidate.name}?</p>
+          <p className="mt-1 text-sm leading-6 text-blue-800">
+            Memoire detected this person in the capture and can add them to {stakeholderCandidate.accountName || 'this account'} for stakeholder mapping.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" onClick={createStakeholderFromLastActivity} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+              Create stakeholder
+            </button>
+            <button type="button" onClick={() => setStakeholderSuggestionDismissed(true)} className="rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-800">
+              Ignore
+            </button>
+          </div>
+        </section>
       )}
 
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">

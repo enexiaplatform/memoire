@@ -67,7 +67,7 @@ export interface CrmLiteOpportunity {
   storageMode: 'local' | 'cloud';
 }
 
-export type OpportunityFormInput = Omit<CrmLiteOpportunity, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'storageMode'>;
+export type OpportunityFormInput = Omit<CrmLiteOpportunity, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'storageMode' | 'source' | 'isSample'>;
 
 type OpportunityRow = {
   id: string;

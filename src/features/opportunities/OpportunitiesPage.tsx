@@ -34,6 +34,8 @@ import {
 } from '../../services/opportunityStore';
 import { analyzePipelineQuality, analyzeOpportunityQuality } from '../../utils/opportunityQuality';
 import { loadSalesActivities, type SalesActivityRecord } from '../../services/salesActivityStore';
+import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
+import { analyzeStakeholderCoverage, getStakeholdersForOpportunity } from '../../utils/stakeholderGraph';
 import {
   createPipelineDefenseBrief,
   loadPipelineDefenseBriefStore,
@@ -62,6 +64,7 @@ export function OpportunitiesPage() {
   const navigate = useNavigate();
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
+  const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState(allFilter);
@@ -84,12 +87,14 @@ export function OpportunitiesPage() {
 
   const refreshOpportunities = async () => {
     setLoading(true);
-    const [loaded, loadedActivities] = await Promise.all([
+    const [loaded, loadedActivities, loadedStakeholders] = await Promise.all([
       loadOpportunities(dataUserId),
       loadSalesActivities(dataUserId),
+      loadStakeholders(dataUserId),
     ]);
     setOpportunities(loaded);
     setActivities(loadedActivities);
+    setStakeholders(loadedStakeholders);
     setLoading(false);
   };
 
@@ -379,6 +384,7 @@ export function OpportunitiesPage() {
           message={message}
           editingOpportunity={editingOpportunity}
           linkedActivities={editingOpportunity ? getLinkedActivities(editingOpportunity, activities) : []}
+          stakeholders={editingOpportunity ? getStakeholdersForOpportunity(stakeholders, editingOpportunity) : []}
           onChange={setForm}
           onSave={handleSave}
           onClose={closePanel}
@@ -547,6 +553,7 @@ function OpportunityPanel({
   message,
   editingOpportunity,
   linkedActivities,
+  stakeholders,
   onChange,
   onSave,
   onClose,
@@ -559,6 +566,7 @@ function OpportunityPanel({
   message: string;
   editingOpportunity: CrmLiteOpportunity | null;
   linkedActivities: SalesActivityRecord[];
+  stakeholders: StakeholderRecord[];
   onChange: (form: OpportunityFormInput) => void;
   onSave: () => void;
   onClose: () => void;
@@ -638,7 +646,10 @@ function OpportunityPanel({
       </div>
 
       {mode === 'edit' && (
-        <LinkedActivitiesTimeline activities={linkedActivities} />
+        <>
+          {editingOpportunity && <StakeholderMap opportunity={editingOpportunity} stakeholders={stakeholders} />}
+          <LinkedActivitiesTimeline activities={linkedActivities} />
+        </>
       )}
 
       {message && (
@@ -825,6 +836,46 @@ function LinkedActivitiesTimeline({ activities }: { activities: SalesActivityRec
               )}
               <p className="mt-2 whitespace-pre-line text-xs leading-5 text-gray-500">{activity.rawNote}</p>
             </details>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function StakeholderMap({ opportunity, stakeholders }: { opportunity: CrmLiteOpportunity; stakeholders: StakeholderRecord[] }) {
+  const coverage = analyzeStakeholderCoverage(stakeholders, opportunity);
+  return (
+    <section className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Stakeholder Map</p>
+        <Link
+          to={`/app/stakeholders?accountName=${encodeURIComponent(opportunity.accountName)}&opportunityName=${encodeURIComponent(opportunity.opportunityName)}`}
+          className="inline-flex w-fit rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-bold text-brand-blue hover:bg-blue-50"
+        >
+          Open Stakeholders
+        </Link>
+      </div>
+      {coverage.warnings.length > 0 && (
+        <div className="mt-3 rounded-lg border border-amber-100 bg-amber-50 p-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Coverage warnings</p>
+          <ul className="mt-2 space-y-1 text-sm leading-6 text-amber-800">
+            {coverage.warnings.map((warning) => <li key={warning}>- {warning}</li>)}
+          </ul>
+        </div>
+      )}
+      {stakeholders.length === 0 ? (
+        <p className="mt-3 text-sm text-gray-500">No stakeholders mapped to this opportunity/account yet.</p>
+      ) : (
+        <div className="mt-3 space-y-2">
+          {stakeholders.slice(0, 6).map((stakeholder) => (
+            <div key={stakeholder.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
+              <p className="text-sm font-bold text-navy">{stakeholder.name}</p>
+              <p className="mt-1 text-xs font-semibold text-gray-500">
+                {stakeholder.stakeholderRole} | {stakeholder.influenceLevel} influence | {stakeholder.stance}
+              </p>
+              {stakeholder.notes && <p className="mt-1 line-clamp-2 text-xs leading-5 text-gray-500">{stakeholder.notes}</p>}
+            </div>
           ))}
         </div>
       )}

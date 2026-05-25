@@ -20,6 +20,7 @@ import {
 } from '../../services/accountStore';
 import { loadOpportunities, type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { loadSalesActivities, type SalesActivityRecord } from '../../services/salesActivityStore';
+import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
 import {
   buildAccountMemory,
   deriveAccountCandidatesFromActivities,
@@ -28,6 +29,7 @@ import {
   type AccountCandidate,
   type AccountMemory,
 } from '../../utils/accountMemory';
+import { getStakeholdersForAccount } from '../../utils/stakeholderGraph';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -39,6 +41,7 @@ export function AccountsPage() {
   const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
+  const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [segmentFilter, setSegmentFilter] = useState(allFilter);
@@ -54,14 +57,16 @@ export function AccountsPage() {
 
   const refreshAccounts = async () => {
     setLoading(true);
-    const [loadedAccounts, loadedOpportunities, loadedActivities] = await Promise.all([
+    const [loadedAccounts, loadedOpportunities, loadedActivities, loadedStakeholders] = await Promise.all([
       loadAccounts(dataUserId),
       loadOpportunities(dataUserId),
       loadSalesActivities(dataUserId),
+      loadStakeholders(dataUserId),
     ]);
     setAccounts(loadedAccounts);
     setOpportunities(loadedOpportunities);
     setActivities(loadedActivities);
+    setStakeholders(loadedStakeholders);
     setLoading(false);
   };
 
@@ -271,6 +276,7 @@ export function AccountsPage() {
           selectedMemory={selectedMemory}
           saveState={saveState}
           message={message}
+          stakeholders={selectedAccount ? getStakeholdersForAccount(stakeholders, { id: selectedAccount.id, accountName: selectedAccount.accountName }) : []}
           onChange={setForm}
           onSave={handleSave}
           onClose={closePanel}
@@ -339,6 +345,7 @@ function AccountDetailPanel({
   mode,
   form,
   selectedMemory,
+  stakeholders,
   saveState,
   message,
   onChange,
@@ -349,6 +356,7 @@ function AccountDetailPanel({
   mode: 'closed' | 'add' | 'edit';
   form: AccountFormInput;
   selectedMemory: AccountMemory | null;
+  stakeholders: StakeholderRecord[];
   saveState: SaveState;
   message: string;
   onChange: (form: AccountFormInput) => void;
@@ -398,7 +406,7 @@ function AccountDetailPanel({
         <TextArea label="Notes" value={form.notes} onChange={(value) => update('notes', value)} />
       </div>
 
-      {selectedMemory && <MemorySections memory={selectedMemory} />}
+      {selectedMemory && <MemorySections memory={selectedMemory} stakeholders={stakeholders} />}
 
       {message && (
         <p className={`mt-4 rounded-lg px-3 py-2 text-sm font-semibold ${
@@ -424,7 +432,7 @@ function AccountDetailPanel({
   );
 }
 
-function MemorySections({ memory }: { memory: AccountMemory }) {
+function MemorySections({ memory, stakeholders }: { memory: AccountMemory; stakeholders: StakeholderRecord[] }) {
   const allActivities = [...memory.linkedActivities, ...memory.matchingActivities]
     .sort((a, b) => `${b.activityDate}-${b.createdAt}`.localeCompare(`${a.activityDate}-${a.createdAt}`));
   return (
@@ -438,6 +446,33 @@ function MemorySections({ memory }: { memory: AccountMemory }) {
           </ul>
         ) : (
           <p className="mt-2 text-sm text-emerald-700">No major risk signals detected.</p>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Stakeholders</p>
+          <Link
+            to={`/app/stakeholders?accountName=${encodeURIComponent(memory.account.accountName)}`}
+            className="inline-flex w-fit rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-bold text-brand-blue hover:bg-blue-50"
+          >
+            Open Stakeholders
+          </Link>
+        </div>
+        {stakeholders.length === 0 ? (
+          <p className="mt-2 text-sm text-gray-500">No stakeholders mapped to this account yet.</p>
+        ) : (
+          <div className="mt-3 space-y-2">
+            {stakeholders.slice(0, 6).map((stakeholder) => (
+              <div key={stakeholder.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
+                <p className="text-sm font-bold text-navy">{stakeholder.name}</p>
+                <p className="mt-1 text-xs font-semibold text-gray-500">
+                  {stakeholder.stakeholderRole} | {stakeholder.influenceLevel} influence | {stakeholder.stance}
+                </p>
+                <p className="mt-1 text-xs text-gray-500">{stakeholder.relationshipStrength} relationship{stakeholder.lastInteractionDate ? ` | Last: ${stakeholder.lastInteractionDate}` : ''}</p>
+              </div>
+            ))}
+          </div>
         )}
       </section>
 

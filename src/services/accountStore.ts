@@ -27,7 +27,7 @@ export interface AccountMemoryRecord {
   storageMode: 'local' | 'cloud';
 }
 
-export type AccountFormInput = Omit<AccountMemoryRecord, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'storageMode'>;
+export type AccountFormInput = Omit<AccountMemoryRecord, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'storageMode' | 'source' | 'isSample'>;
 
 type AccountRow = {
   id: string;

@@ -24,6 +24,7 @@ const JourneyPage = lazy(() => import('./features/v31/JourneyPage').then((module
 const AccountsPage = lazy(() => import('./features/accounts/AccountsPage').then((module) => ({ default: module.AccountsPage })));
 const AccountMemoryPage = lazy(() => import('./features/v31/AccountMemoryPage').then((module) => ({ default: module.AccountMemoryPage })));
 const OpportunitiesPage = lazy(() => import('./features/opportunities/OpportunitiesPage').then((module) => ({ default: module.OpportunitiesPage })));
+const StakeholdersPage = lazy(() => import('./features/stakeholders/StakeholdersPage').then((module) => ({ default: module.StakeholdersPage })));
 const AskMemoirePage = lazy(() => import('./features/v31/AskMemoirePage').then((module) => ({ default: module.AskMemoirePage })));
 const PipelineReviewDefenseBriefPage = lazy(() =>
   import('./features/pipeline/PipelineReviewDefenseBriefPage').then((module) => ({ default: module.PipelineReviewDefenseBriefPage })),
@@ -61,6 +62,7 @@ function App() {
             <Route path="accounts" element={<AccountsPage />} />
             <Route path="accounts/:accountId" element={<AccountMemoryPage />} />
             <Route path="opportunities" element={<OpportunitiesPage />} />
+            <Route path="stakeholders" element={<StakeholdersPage />} />
             <Route path="pipeline-defense" element={<PipelineReviewDefenseBriefPage />} />
             <Route path="ask" element={<AskMemoirePage />} />
             <Route path="settings" element={<SettingsPage />} />
