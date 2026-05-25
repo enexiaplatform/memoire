@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Copy, Loader2, RotateCcw } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
+import { DataModePill } from '../../components/common/DataModePill';
+import { isSupabaseConfigured } from '../../lib/demoMode';
+import { hasLocalSampleData } from '../../utils/dataMode';
 import {
   canUseSalesActivityCloudStore,
   filterSalesActivitiesByPeriod,
@@ -23,7 +26,7 @@ const periodOptions: { value: SalesRecapPeriod; label: string }[] = [
 ];
 
 export function SalesReviewsPage() {
-  const { user, loading: authLoading } = useAuthContext();
+  const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const [periodType, setPeriodType] = useState<SalesRecapPeriod>('week');
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
@@ -36,14 +39,6 @@ export function SalesReviewsPage() {
     () => filterSalesActivitiesByPeriod(activities, period),
     [activities, period]
   );
-  const storageLabel = canUseSalesActivityCloudStore(user?.id)
-    ? 'Cloud sync enabled'
-    : authLoading
-      ? 'Checking account...'
-      : user?.id
-        ? 'Cloud unavailable - local reviews'
-        : 'Local mode - sign in to sync';
-
   const refreshActivities = useCallback(async () => {
     setLoadingActivities(true);
     const loaded = await loadSalesActivities(user?.id);
@@ -88,9 +83,14 @@ export function SalesReviewsPage() {
             Generate a deterministic review from Daily Capture. No Gmail, Google Calendar, CRM, or AI integration is connected.
           </p>
         </div>
-        <span className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-600">
-          {storageLabel}
-        </span>
+        <DataModePill
+          compact
+          isLoading={authLoading}
+          isAuthenticated={isAuthenticated}
+          isSupabaseConfigured={isSupabaseConfigured}
+          cloudAvailable={canUseSalesActivityCloudStore(user?.id)}
+          hasSampleData={hasLocalSampleData()}
+        />
       </header>
 
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">

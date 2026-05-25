@@ -90,10 +90,11 @@ export async function createAccount(
     } catch (error) {
       const account = createLocalAccount(normalized, userId || undefined);
       saveLocalAccountRecord(account);
+      debugAccountStore('cloud create failed; local copy preserved', { message: getErrorMessage(error) });
       return {
         account,
         mode: 'local',
-        warning: `Cloud save failed, local copy preserved: ${getErrorMessage(error)}`,
+        warning: 'Cloud sync issue - your local copy is preserved.',
       };
     }
   }
@@ -123,10 +124,11 @@ export async function updateAccount(
         storageMode: 'local' as const,
       };
       saveLocalAccountRecord(localCopy);
+      debugAccountStore('cloud update failed; local copy preserved', { message: getErrorMessage(error) });
       return {
         account: localCopy,
         mode: 'local',
-        warning: `Cloud update failed, local copy preserved: ${getErrorMessage(error)}`,
+        warning: 'Cloud sync issue - your local copy is preserved.',
       };
     }
   }

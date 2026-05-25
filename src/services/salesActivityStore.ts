@@ -86,10 +86,11 @@ export async function saveSalesActivity(
     } catch (error) {
       const record = createLocalActivity(activity);
       saveLocalActivityRecord(record);
+      debugSalesActivityStore('cloud save failed; local copy preserved', { message: getErrorMessage(error) });
       return {
         record,
         mode: 'local',
-        warning: `Cloud save failed, local copy preserved: ${getErrorMessage(error)}`,
+        warning: 'Cloud sync issue - your local copy is preserved.',
       };
     }
   }

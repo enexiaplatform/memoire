@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, Building2, Database, Filter, Plus, Save, Search, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Building2, Filter, Plus, Save, Search, Trash2, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
+import { DataModePill } from '../../components/common/DataModePill';
+import { isSupabaseConfigured } from '../../lib/demoMode';
+import { hasLocalSampleData } from '../../utils/dataMode';
 import {
   accountPotentials,
   accountToFormInput,
@@ -46,13 +49,6 @@ export function AccountsPage() {
   const [form, setForm] = useState<AccountFormInput>(emptyAccountInput);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [message, setMessage] = useState('');
-
-  const storageLabel = useMemo(() => {
-    if (authLoading) return 'Checking account...';
-    if (canUseAccountCloudStore(user?.id)) return 'Cloud accounts enabled';
-    if (isAuthenticated) return 'Cloud unavailable - saving locally';
-    return 'Local account mode';
-  }, [authLoading, isAuthenticated, user?.id]);
 
   const refreshAccounts = async () => {
     setLoading(true);
@@ -173,7 +169,7 @@ export function AccountsPage() {
     setPanelMode('edit');
     setForm(accountToFormInput(result.account));
     setSaveState(result.warning ? 'error' : 'saved');
-    setMessage(result.warning || (result.mode === 'cloud' ? 'Saved to cloud.' : 'Saved locally.'));
+    setMessage(result.warning || (result.mode === 'cloud' ? 'Synced to your account.' : 'Saved locally in this browser.'));
     setSearchParams({ accountId: result.account.id });
   };
 
@@ -208,14 +204,14 @@ export function AccountsPage() {
             Relationship memory for your B2B accounts, aggregated from opportunities and linked sales activities.
           </p>
         </div>
-        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold ${
-          canUseAccountCloudStore(user?.id)
-            ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
-            : 'border-amber-100 bg-amber-50 text-amber-700'
-        }`}>
-          <Database className="h-3.5 w-3.5" />
-          {storageLabel}
-        </span>
+        <DataModePill
+          compact
+          isLoading={authLoading}
+          isAuthenticated={isAuthenticated}
+          isSupabaseConfigured={isSupabaseConfigured}
+          cloudAvailable={canUseAccountCloudStore(user?.id)}
+          hasSampleData={hasLocalSampleData()}
+        />
       </header>
 
       <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">

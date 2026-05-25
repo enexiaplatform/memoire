@@ -13,6 +13,8 @@ import {
   Target,
 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
+import { DataModePill } from '../../components/common/DataModePill';
+import { isSupabaseConfigured } from '../../lib/demoMode';
 import { ACCOUNT_STORAGE_KEY, type AccountMemoryRecord } from '../../services/accountStore';
 import { loadAccounts } from '../../services/accountStore';
 import { OPPORTUNITY_STORAGE_KEY, type CrmLiteOpportunity } from '../../services/opportunityStore';
@@ -43,6 +45,7 @@ import {
   type OnboardingState,
 } from '../../utils/onboardingState';
 import { generatePipelineDefenseBriefFromOpportunities } from '../../utils/opportunityToPipelineBrief';
+import { hasLocalSampleData, markSampleDataLoaded } from '../../utils/dataMode';
 
 type DashboardData = {
   activities: SalesActivityRecord[];
@@ -81,11 +84,14 @@ export function DashboardPage() {
 
         if (!mounted) return;
         setData({ activities, opportunities, accounts, briefs });
-        setMessage(getStorageMessage(isAuthenticated, user?.id));
+        setMessage('Command center ready');
         setOnboarding(syncOnboardingFromData({ activities, opportunities, accounts, briefs }));
       } catch (error) {
         if (!mounted) return;
-        setMessage(error instanceof Error ? error.message : 'Could not load dashboard data.');
+        if (import.meta.env.DEV) {
+          console.debug('[Dashboard] load failed', { message: error instanceof Error ? error.message : 'Unknown error' });
+        }
+        setMessage('Cloud sync issue - your local copy is preserved.');
       } finally {
         if (mounted) setLoading(false);
       }
@@ -118,6 +124,7 @@ export function DashboardPage() {
 
   const handleLoadSampleData = () => {
     const nextData = loadSampleSalesData();
+    markSampleDataLoaded();
     setData(nextData);
     setOnboarding(syncOnboardingFromData(nextData));
     setSampleMessage(isAuthenticated
@@ -135,8 +142,21 @@ export function DashboardPage() {
             Today and this week command center for your B2B sales work.
           </p>
         </div>
-        <div className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-bold text-brand-blue">
-          {message || (loading ? 'Loading sales memory...' : 'Command center ready')}
+        <div className="flex flex-wrap items-center gap-2">
+          <DataModePill
+            compact
+            isLoading={authLoading || loading}
+            isAuthenticated={isAuthenticated}
+            isSupabaseConfigured={isSupabaseConfigured}
+            cloudAvailable={isSupabaseConfigured}
+            syncError={message.startsWith('Cloud sync issue') ? message : null}
+            hasSampleData={hasLocalSampleData()}
+          />
+          {message && !message.startsWith('Command center ready') ? (
+            <span className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
+              {message}
+            </span>
+          ) : null}
         </div>
       </header>
 
@@ -625,11 +645,6 @@ async function loadPipelineBriefs(userId?: string | null) {
   }
 
   return loadPipelineDefenseBriefStore().briefs;
-}
-
-function getStorageMessage(isAuthenticated: boolean, userId?: string | null) {
-  if (isAuthenticated && userId) return 'Cloud + local fallback dashboard';
-  return 'Local dashboard mode';
 }
 
 function syncOnboardingFromData(data: DashboardData) {

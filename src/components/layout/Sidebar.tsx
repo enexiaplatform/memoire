@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { BookOpen, CalendarDays, ClipboardList, FileCheck2, GitBranch, LayoutDashboard, MessageCircleQuestion, NotebookPen, Settings, Target } from 'lucide-react';
-import { usePlanLimits } from '../../hooks/usePlanLimits';
+import { useAuthContext } from '../../auth/authContext';
+import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 
 const navItems = [
   { to: '/app/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
@@ -15,8 +16,9 @@ const navItems = [
 ];
 
 export function Sidebar() {
-  const { currentTier } = usePlanLimits();
-  const isPro = currentTier !== 'free';
+  const { user, profile } = useAuthContext();
+  const displayName = getUserDisplayName(user, profile);
+  const initials = getUserInitials(user, profile);
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-full w-[220px] flex-col border-r border-[#243447] bg-navy shadow-xl">
@@ -70,11 +72,11 @@ export function Sidebar() {
       <div className="border-t border-[#243447] p-4">
         <div className="flex items-center gap-3 px-2">
           <div className="brand-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-bold text-white">
-            U
+            {initials}
           </div>
           <div>
-            <div className="text-sm font-medium text-white">User</div>
-            <div className="text-xs text-white/40">{isPro ? 'Personal plan' : 'Free plan'}</div>
+            <div className="max-w-[132px] truncate text-sm font-medium text-white" title={displayName}>{displayName}</div>
+            <div className="text-xs text-white/40">Personal workspace</div>
           </div>
         </div>
       </div>

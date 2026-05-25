@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Bot, CalendarDays, CheckCircle2, Clipboard, Copy, Loader2, Save, Sparkles, Trash2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
+import { DataModePill } from '../../components/common/DataModePill';
+import { isSupabaseConfigured } from '../../lib/demoMode';
+import { hasLocalSampleData } from '../../utils/dataMode';
 import { classifySalesActivity, type ClassifiedSalesActivity, type SalesActivityType } from '../../utils/salesActivityClassifier';
 import {
   canUseSalesActivityCloudStore,
@@ -50,13 +53,6 @@ export function DailyCapturePage() {
   const aiProvider = useMemo(() => getActiveCaptureAiProvider(), []);
   const aiConfigured = aiProvider.isConfigured();
 
-  const storageLabel = useMemo(() => {
-    if (authLoading) return 'Checking account...';
-    if (canUseSalesActivityCloudStore(user?.id)) return 'Cloud capture enabled';
-    if (isAuthenticated) return 'Cloud unavailable - saving locally';
-    return 'Local capture mode';
-  }, [authLoading, isAuthenticated, user?.id]);
-
   const localPreview = useMemo(() => {
     return rawNote.trim().length >= 8 ? classifySalesActivity(rawNote, activityDate, { accounts, opportunities }) : null;
   }, [accounts, activityDate, opportunities, rawNote]);
@@ -104,7 +100,7 @@ export function DailyCapturePage() {
     setAiMessage('');
     setAiState('idle');
     setSaveState(result.warning ? 'error' : 'saved');
-    setMessage(result.warning || (result.mode === 'cloud' ? 'Saved to cloud.' : 'Saved locally.'));
+    setMessage(result.warning || (result.mode === 'cloud' ? 'Synced to your account.' : 'Saved locally in this browser.'));
   };
 
   const handleClassifyWithAi = async () => {
@@ -240,14 +236,14 @@ export function DailyCapturePage() {
             Capture sales activity in natural language. Memoire classifies it locally into structured activity records.
           </p>
         </div>
-        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold ${
-          canUseSalesActivityCloudStore(user?.id)
-            ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
-            : 'border-amber-100 bg-amber-50 text-amber-700'
-        }`}>
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          {storageLabel}
-        </span>
+        <DataModePill
+          compact
+          isLoading={authLoading}
+          isAuthenticated={isAuthenticated}
+          isSupabaseConfigured={isSupabaseConfigured}
+          cloudAvailable={canUseSalesActivityCloudStore(user?.id)}
+          hasSampleData={hasLocalSampleData()}
+        />
       </header>
 
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">

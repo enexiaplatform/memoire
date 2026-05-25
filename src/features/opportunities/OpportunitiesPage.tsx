@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   CheckCircle2,
-  Database,
   DollarSign,
   FileText,
   Filter,
@@ -16,6 +15,9 @@ import {
   X,
 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
+import { DataModePill } from '../../components/common/DataModePill';
+import { isSupabaseConfigured } from '../../lib/demoMode';
+import { hasLocalSampleData } from '../../utils/dataMode';
 import {
   canUseOpportunityCloudStore,
   createOpportunity,
@@ -43,6 +45,7 @@ import {
   generatePipelineDefenseBriefFromOpportunities,
   mapOpportunityToPipelineDefenseDeal,
 } from '../../utils/opportunityToPipelineBrief';
+import { getUserDisplayName as getWorkspaceUserDisplayName } from '../../utils/userDisplay';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type BriefPreviewMetadata = {
@@ -76,13 +79,6 @@ export function OpportunitiesPage() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [briefCreateState, setBriefCreateState] = useState<SaveState>('idle');
   const [briefCreateMessage, setBriefCreateMessage] = useState('');
-
-  const storageLabel = useMemo(() => {
-    if (authLoading) return 'Checking account...';
-    if (canUseOpportunityCloudStore(user?.id)) return 'Cloud opportunities enabled';
-    if (isAuthenticated) return 'Cloud unavailable - saving locally';
-    return 'Local opportunity mode';
-  }, [authLoading, isAuthenticated, user?.id]);
 
   const refreshOpportunities = async () => {
     setLoading(true);
@@ -172,7 +168,7 @@ export function OpportunitiesPage() {
     setPanelMode('edit');
     setForm(opportunityToForm(result.opportunity));
     setSaveState(result.warning ? 'error' : 'saved');
-    setMessage(result.warning || (result.mode === 'cloud' ? 'Saved to cloud.' : 'Saved locally.'));
+    setMessage(result.warning || (result.mode === 'cloud' ? 'Synced to your account.' : 'Saved locally in this browser.'));
   };
 
   const handleDelete = async (opportunity: CrmLiteOpportunity) => {
@@ -187,8 +183,11 @@ export function OpportunitiesPage() {
       setSaveState('saved');
       setMessage('Opportunity deleted.');
     } catch (error) {
+      if (import.meta.env.DEV) {
+        console.debug('[Opportunities] delete failed', { message: error instanceof Error ? error.message : 'Unknown error' });
+      }
       setSaveState('error');
-      setMessage(error instanceof Error ? error.message : 'Could not delete opportunity.');
+      setMessage('Cloud sync issue - your local copy is preserved.');
     }
   };
 
@@ -247,7 +246,10 @@ export function OpportunitiesPage() {
       persistCreatedBriefLocally(localBrief);
       setSelectedOpportunityIds([]);
       setBriefCreateState('error');
-      setBriefCreateMessage(`Cloud save failed, local brief preserved: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      if (import.meta.env.DEV) {
+        console.debug('[Opportunities] defense brief cloud create failed', { message: error instanceof Error ? error.message : 'Unknown error' });
+      }
+      setBriefCreateMessage('Cloud sync issue - your local copy is preserved.');
       window.setTimeout(() => navigate('/app/pipeline-defense'), 700);
     }
   };
@@ -262,14 +264,14 @@ export function OpportunitiesPage() {
             CRM-lite deal workspace for your active B2B pipeline. Track deal quality, forecast evidence, next actions, and objection debt without connecting an external CRM.
           </p>
         </div>
-        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold ${
-          canUseOpportunityCloudStore(user?.id)
-            ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
-            : 'border-amber-100 bg-amber-50 text-amber-700'
-        }`}>
-          <Database className="h-3.5 w-3.5" />
-          {storageLabel}
-        </span>
+        <DataModePill
+          compact
+          isLoading={authLoading}
+          isAuthenticated={isAuthenticated}
+          isSupabaseConfigured={isSupabaseConfigured}
+          cloudAvailable={canUseOpportunityCloudStore(user?.id)}
+          hasSampleData={hasLocalSampleData()}
+        />
       </header>
 
       <section className="rounded-lg border border-blue-100 bg-blue-50/70 p-4">
@@ -1033,20 +1035,14 @@ function persistCreatedBriefLocally(brief: PipelineDefenseBrief) {
   savePipelineDefenseBriefStore(nextStore);
 }
 
-function buildDefaultBriefMetadata(user: { email?: string; user_metadata?: Record<string, unknown> } | null): BriefPreviewMetadata {
+function buildDefaultBriefMetadata(user: Parameters<typeof getWorkspaceUserDisplayName>[0]): BriefPreviewMetadata {
   const now = new Date();
   return {
     title: `Pipeline Defense Brief - Opportunities - ${formatDate(now)}`,
     weekLabel: buildCurrentWeekLabel(now),
-    salesOwner: getUserDisplayName(user) || 'Henry',
+    salesOwner: getWorkspaceUserDisplayName(user) || 'Henry',
     scope: 'Selected opportunities',
   };
-}
-
-function getUserDisplayName(user: { email?: string; user_metadata?: Record<string, unknown> } | null) {
-  const metadata = user?.user_metadata || {};
-  const name = metadata.full_name || metadata.name;
-  return typeof name === 'string' && name.trim() ? name.trim() : user?.email || '';
 }
 
 function buildCurrentWeekLabel(date: Date) {

@@ -19,7 +19,7 @@ export function PaywallModal({ isOpen, onClose }: PaywallModalProps) {
       <div className="space-y-6">
         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
           <p className="text-sm text-gray-700">
-            <strong>Free plan:</strong> 30 captures/month
+            <strong>Starter workspace:</strong> 30 captures/month
           </p>
           <p className="text-sm text-red-600 font-medium">
             You've used all 30 this month.

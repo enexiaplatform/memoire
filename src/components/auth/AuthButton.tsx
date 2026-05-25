@@ -1,15 +1,12 @@
 import { useState } from 'react';
 import { useAuthContext } from '../../auth/authContext';
+import { getUserDisplayName } from '../../utils/userDisplay';
 
 export function AuthButton() {
-  const { user, loading, error, isAuthenticated, signInWithGoogle, signOut } = useAuthContext();
+  const { user, profile, loading, error, isAuthenticated, signInWithGoogle, signOut } = useAuthContext();
   const [actionError, setActionError] = useState('');
 
-  const displayName =
-    user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
-    user?.email ||
-    'Signed in';
+  const displayName = getUserDisplayName(user, profile);
 
   const handleSignIn = async () => {
     setActionError('');

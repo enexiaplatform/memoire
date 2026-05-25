@@ -53,7 +53,10 @@ import {
 } from '../../utils/pipelineDefenseDraftAssist';
 import { getActiveDraftAssistProvider } from '../../services/draftAssistProvider';
 import { AuthButton } from '../../components/auth/AuthButton';
+import { DataModePill } from '../../components/common/DataModePill';
 import { useAuthContext } from '../../auth/authContext';
+import { isSupabaseConfigured } from '../../lib/demoMode';
+import { hasLocalSampleData } from '../../utils/dataMode';
 import {
   canUsePipelineDefenseCloudStore,
   createCloudBrief,
@@ -129,7 +132,7 @@ export function PipelineReviewDefenseBriefPage() {
   const [editingDealId, setEditingDealId] = useState<string | null>(null);
   const [markdownPreview, setMarkdownPreview] = useState('');
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
-  const [saveStatus, setSaveStatus] = useState('Saved locally');
+  const [saveStatus, setSaveStatus] = useState('Saved locally in this browser');
   const [importOpen, setImportOpen] = useState(false);
   const [importInput, setImportInput] = useState('');
   const [parsedDeals, setParsedDeals] = useState<PipelineDefenseDeal[]>([]);
@@ -152,7 +155,7 @@ export function PipelineReviewDefenseBriefPage() {
   const [draftAssistError, setDraftAssistError] = useState('');
   const [isReviewMode, setIsReviewMode] = useState(false);
   const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus>('local');
-  const [cloudSyncMessage, setCloudSyncMessage] = useState('Sign in to sync briefs across devices.');
+  const [cloudSyncMessage, setCloudSyncMessage] = useState('');
   const [showMigrationPrompt, setShowMigrationPrompt] = useState(false);
   const [migrationBusy, setMigrationBusy] = useState(false);
 
@@ -164,20 +167,20 @@ export function PipelineReviewDefenseBriefPage() {
   useEffect(() => {
     if (accountLoading) {
       setCloudSyncStatus('loading');
-      setCloudSyncMessage('Loading account...');
+      setCloudSyncMessage('');
       return;
     }
 
     if (!user) {
       setCloudSyncStatus('local');
-      setCloudSyncMessage('Sign in to sync briefs across devices.');
+      setCloudSyncMessage('');
       setShowMigrationPrompt(false);
       return;
     }
 
     if (!canUsePipelineDefenseCloudStore()) {
       setCloudSyncStatus('error');
-      setCloudSyncMessage('Cloud sync unavailable. Saved locally.');
+      setCloudSyncMessage('Cloud sync issue - your local copy is preserved.');
       setShowMigrationPrompt(false);
       return;
     }
@@ -195,17 +198,20 @@ export function PipelineReviewDefenseBriefPage() {
         if (cloudBriefs.length > 0) {
           setStore({ activeBriefId: cloudBriefs[0].id, briefs: cloudBriefs });
           setCloudSyncStatus('ready');
-          setCloudSyncMessage('Cloud sync enabled.');
+          setCloudSyncMessage('');
         } else {
           setCloudSyncStatus('local-only');
-          setCloudSyncMessage('Cloud sync enabled. Sync local briefs to save them across devices.');
+          setCloudSyncMessage('Sync local briefs to make them available across devices.');
         }
         setShowMigrationPrompt(hasLocalOnlyBriefs);
       })
       .catch((error: unknown) => {
         if (cancelled) return;
         setCloudSyncStatus('error');
-        setCloudSyncMessage(error instanceof Error ? `Cloud sync unavailable: ${error.message}` : 'Cloud sync unavailable. Saved locally.');
+        if (import.meta.env.DEV) {
+          console.debug('[PipelineDefense] cloud load failed', { message: error instanceof Error ? error.message : 'Unknown error' });
+        }
+        setCloudSyncMessage('Cloud sync issue - your local copy is preserved.');
       });
 
     return () => {
@@ -224,17 +230,17 @@ export function PipelineReviewDefenseBriefPage() {
       }
 
       if (!user) {
-        setSaveStatus(localBackupSaved ? 'Saved locally' : 'Local save unavailable');
+        setSaveStatus(localBackupSaved ? 'Saved locally in this browser' : 'Local save unavailable');
         return;
       }
 
       if (!canUsePipelineDefenseCloudStore() || cloudSyncStatus === 'error') {
-        setSaveStatus(localBackupSaved ? 'Sync failed, local copy preserved' : 'Cloud sync unavailable');
+        setSaveStatus(localBackupSaved ? 'Cloud sync issue - your local copy is preserved' : 'Cloud sync issue');
         return;
       }
 
       if (cloudSyncStatus !== 'ready') {
-        setSaveStatus(localBackupSaved ? 'Saved locally' : 'Local save unavailable');
+        setSaveStatus(localBackupSaved ? 'Saved locally in this browser' : 'Local save unavailable');
         return;
       }
 
@@ -245,10 +251,10 @@ export function PipelineReviewDefenseBriefPage() {
 
       try {
         await Promise.all(store.briefs.map((brief) => saveCloudBrief(brief, user.id)));
-        setSaveStatus('Saved to cloud');
+        setSaveStatus('Synced to your account');
       } catch {
         debugCloudSync('cloud save failed');
-        setSaveStatus(localBackupSaved ? 'Sync failed, local copy preserved' : 'Sync failed');
+        setSaveStatus(localBackupSaved ? 'Cloud sync issue - your local copy is preserved' : 'Cloud sync issue');
       }
     }, 350);
 
@@ -384,13 +390,13 @@ export function PipelineReviewDefenseBriefPage() {
           activeBriefId: cloudBrief.id,
           briefs: [cloudBrief, ...currentStore.briefs],
         }));
-        setSaveStatus('Saved to cloud');
+        setSaveStatus('Synced to your account');
       } catch {
         setStore((currentStore) => ({
           activeBriefId: brief.id,
           briefs: [brief, ...currentStore.briefs],
         }));
-        setSaveStatus('Sync failed, local copy preserved');
+        setSaveStatus('Cloud sync issue - your local copy is preserved');
       }
       setEditingDealId(null);
       clearAnalysis();
@@ -416,13 +422,13 @@ export function PipelineReviewDefenseBriefPage() {
           activeBriefId: cloudBrief.id,
           briefs: [cloudBrief, ...currentStore.briefs],
         }));
-        setSaveStatus('Saved to cloud');
+        setSaveStatus('Synced to your account');
       } catch {
         setStore((currentStore) => ({
           activeBriefId: duplicate.id,
           briefs: [duplicate, ...currentStore.briefs],
         }));
-        setSaveStatus('Sync failed, local copy preserved');
+        setSaveStatus('Cloud sync issue - your local copy is preserved');
       }
       setEditingDealId(null);
       clearAnalysis();
@@ -454,7 +460,7 @@ export function PipelineReviewDefenseBriefPage() {
   const syncLocalBriefs = async () => {
     if (!user || !canUsePipelineDefenseCloudStore()) {
       setCloudSyncStatus('error');
-      setCloudSyncMessage('Cloud sync unavailable. Saved locally.');
+      setCloudSyncMessage('Cloud sync issue - your local copy is preserved.');
       return;
     }
 
@@ -466,12 +472,15 @@ export function PipelineReviewDefenseBriefPage() {
       savePipelineDefenseBriefStore(syncedStore);
       setShowMigrationPrompt(false);
       setCloudSyncStatus('ready');
-      setCloudSyncMessage('Cloud sync enabled.');
-      setSaveStatus('Saved to cloud');
+      setCloudSyncMessage('');
+      setSaveStatus('Synced to your account');
     } catch (error) {
       setCloudSyncStatus('error');
-      setCloudSyncMessage(error instanceof Error ? `Sync failed: ${error.message}` : 'Sync failed, local copy preserved.');
-      setSaveStatus('Sync failed, local copy preserved');
+      if (import.meta.env.DEV) {
+        console.debug('[PipelineDefense] local migration failed', { message: error instanceof Error ? error.message : 'Unknown error' });
+      }
+      setCloudSyncMessage('Cloud sync issue - your local copy is preserved.');
+      setSaveStatus('Cloud sync issue - your local copy is preserved');
       debugCloudSync('local migration failed');
     } finally {
       setMigrationBusy(false);
@@ -481,7 +490,7 @@ export function PipelineReviewDefenseBriefPage() {
   const keepLocalOnly = () => {
     setShowMigrationPrompt(false);
     setCloudSyncStatus(cloudSyncStatus === 'ready' ? 'ready' : 'local-only');
-    setCloudSyncMessage(cloudSyncStatus === 'ready' ? 'Cloud sync enabled.' : 'Keeping local briefs only on this browser.');
+    setCloudSyncMessage(cloudSyncStatus === 'ready' ? '' : 'Keeping local briefs only in this browser.');
   };
 
   const switchBrief = (briefId: string) => {
@@ -706,9 +715,22 @@ export function PipelineReviewDefenseBriefPage() {
             <p className="mt-2 max-w-3xl text-sm text-gray-500">
               Prepare Henry's weekly pipeline review: defend the strong deals, rescue the weak ones, and downgrade anything that cannot be supported.
             </p>
-            <p className="mt-3 max-w-3xl rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
-              Internal MVP - data is stored only in this browser. Do not enter confidential customer information.
-            </p>
+            <div className="mt-3 no-print">
+              <DataModePill
+                showDescription
+                isLoading={accountLoading || cloudSyncStatus === 'loading'}
+                isAuthenticated={isAuthenticated}
+                isSupabaseConfigured={isSupabaseConfigured}
+                cloudAvailable={cloudSyncStatus !== 'error'}
+                syncError={cloudSyncStatus === 'error' ? cloudSyncMessage || 'Cloud sync issue' : null}
+                hasSampleData={hasLocalSampleData()}
+              />
+            </div>
+            {cloudSyncMessage && (
+              <p className="mt-3 max-w-3xl rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+                {cloudSyncMessage}
+              </p>
+            )}
             {isReviewMode && (
               <p className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800">
                 Use this before pipeline review. Editing controls are hidden.
@@ -748,7 +770,7 @@ export function PipelineReviewDefenseBriefPage() {
                 <MetaRow label="Period" value={pipelineDefenseBriefMeta.pipelinePeriod} />
                 <MetaRow label="Draft" value={saveStatus} />
                 <p className="text-xs leading-5 text-gray-500">
-                  {isAuthenticated ? cloudSyncMessage : 'Sign in to sync briefs across devices. Local data stays in this browser via localStorage.'}
+                  {isAuthenticated ? 'Pipeline Defense follows the workspace data mode shown above.' : 'Sign in to sync briefs across devices.'}
                 </p>
               </div>
             )}
@@ -804,7 +826,7 @@ export function PipelineReviewDefenseBriefPage() {
                   <div className="mb-3 flex flex-col gap-1">
                     <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Secondary / admin actions</p>
                     <p className="text-sm text-gray-500">
-                      Use these for setup, data changes, and local storage maintenance. Local data stays in this browser via localStorage.
+                      Use these for setup, data changes, and local storage maintenance. Storage follows the workspace data mode shown above.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2 lg:justify-end">

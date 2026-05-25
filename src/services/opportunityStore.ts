@@ -149,10 +149,11 @@ export async function createOpportunity(
     } catch (error) {
       const opportunity = createLocalOpportunity(normalized, userId || undefined);
       saveLocalOpportunityRecord(opportunity);
+      debugOpportunityStore('cloud create failed; local copy preserved', { message: getErrorMessage(error) });
       return {
         opportunity,
         mode: 'local',
-        warning: `Cloud save failed, local copy preserved: ${getErrorMessage(error)}`,
+        warning: 'Cloud sync issue - your local copy is preserved.',
       };
     }
   }
@@ -182,10 +183,11 @@ export async function updateOpportunity(
         storageMode: 'local' as const,
       };
       saveLocalOpportunityRecord(localCopy);
+      debugOpportunityStore('cloud update failed; local copy preserved', { message: getErrorMessage(error) });
       return {
         opportunity: localCopy,
         mode: 'local',
-        warning: `Cloud update failed, local copy preserved: ${getErrorMessage(error)}`,
+        warning: 'Cloud sync issue - your local copy is preserved.',
       };
     }
   }
