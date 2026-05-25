@@ -41,6 +41,8 @@ export type OpportunityStatus = (typeof opportunityStatuses)[number];
 export interface CrmLiteOpportunity {
   id: string;
   userId?: string;
+  source?: 'demo' | 'user';
+  isSample?: boolean;
   accountName: string;
   opportunityName: string;
   stage: OpportunityStage;
@@ -252,6 +254,8 @@ function loadLocalOpportunities(): CrmLiteOpportunity[] {
       .map<CrmLiteOpportunity>((item) => ({
         id: item.id || createId(),
         userId: item.userId,
+        source: normalizeSource(item.source),
+        isSample: item.isSample === true,
         accountName: item.accountName || '',
         opportunityName: item.opportunityName || '',
         stage: normalizeStage(item.stage),
@@ -344,6 +348,8 @@ function createLocalOpportunity(input: OpportunityFormInput, userId?: string): C
     ...input,
     id: createId(),
     userId,
+    source: 'user',
+    isSample: false,
     createdAt: timestamp,
     updatedAt: timestamp,
     storageMode: 'local',
@@ -354,6 +360,8 @@ function rowToOpportunity(row: OpportunityRow): CrmLiteOpportunity {
   return {
     id: row.id,
     userId: row.user_id,
+    source: 'user',
+    isSample: false,
     accountName: row.account_name || '',
     opportunityName: row.opportunity_name || row.title || '',
     stage: normalizeStage(row.stage),
@@ -458,6 +466,10 @@ function normalizeDecisionRecommendation(value: unknown): DecisionRecommendation
 
 function normalizeStatus(value: unknown): OpportunityStatus {
   return opportunityStatuses.includes(value as OpportunityStatus) ? value as OpportunityStatus : 'Active';
+}
+
+function normalizeSource(value: unknown): CrmLiteOpportunity['source'] {
+  return value === 'demo' ? 'demo' : value === 'user' ? 'user' : undefined;
 }
 
 function normalizeNumber(value: unknown) {

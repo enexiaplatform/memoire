@@ -33,6 +33,8 @@ export function SalesReviewsPage() {
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [recap, setRecap] = useState<SalesActivityRecap | null>(null);
   const [copyMessage, setCopyMessage] = useState('');
+  const sampleDataActive = hasLocalSampleData();
+  const dataUserId = sampleDataActive ? undefined : user?.id;
 
   const period = useMemo(() => getRecapRange(periodType, anchorDate), [anchorDate, periodType]);
   const periodActivities = useMemo(
@@ -41,10 +43,10 @@ export function SalesReviewsPage() {
   );
   const refreshActivities = useCallback(async () => {
     setLoadingActivities(true);
-    const loaded = await loadSalesActivities(user?.id);
+    const loaded = await loadSalesActivities(dataUserId);
     setActivities(loaded);
     setLoadingActivities(false);
-  }, [user?.id]);
+  }, [dataUserId]);
 
   useEffect(() => {
     refreshActivities();
@@ -88,8 +90,8 @@ export function SalesReviewsPage() {
           isLoading={authLoading}
           isAuthenticated={isAuthenticated}
           isSupabaseConfigured={isSupabaseConfigured}
-          cloudAvailable={canUseSalesActivityCloudStore(user?.id)}
-          hasSampleData={hasLocalSampleData()}
+          cloudAvailable={canUseSalesActivityCloudStore(dataUserId)}
+          hasSampleData={sampleDataActive}
         />
       </header>
 

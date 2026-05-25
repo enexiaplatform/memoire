@@ -22,7 +22,7 @@
 
 ## Sample Data
 - Clear `memoire.sampleData.loaded`.
-- Open Dashboard and click `Load sample sales data`.
+- Open Dashboard and click `Open Demo Sandbox`.
 - Confirm the data mode label changes to `Demo local`.
 - Confirm the sample note says sample data is local and should be replaced with real activities when ready.
 

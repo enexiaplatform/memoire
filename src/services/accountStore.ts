@@ -11,6 +11,8 @@ export type RelationshipStatus = (typeof relationshipStatuses)[number];
 export interface AccountMemoryRecord {
   id: string;
   userId?: string;
+  source?: 'demo' | 'user';
+  isSample?: boolean;
   accountName: string;
   segment: string;
   industry: string;
@@ -183,6 +185,8 @@ function loadLocalAccounts(): AccountMemoryRecord[] {
       .map<AccountMemoryRecord>((item) => ({
         id: item.id || createId(),
         userId: item.userId,
+        source: normalizeSource(item.source),
+        isSample: item.isSample === true,
         accountName: item.accountName || '',
         segment: item.segment || '',
         industry: item.industry || '',
@@ -277,6 +281,8 @@ function createLocalAccount(input: AccountFormInput, userId?: string): AccountMe
     ...input,
     id: createId(),
     userId,
+    source: 'user',
+    isSample: false,
     createdAt: timestamp,
     updatedAt: timestamp,
     storageMode: 'local',
@@ -287,6 +293,8 @@ function rowToAccount(row: AccountRow): AccountMemoryRecord {
   return {
     id: row.id,
     userId: row.user_id,
+    source: 'user',
+    isSample: false,
     accountName: row.account_name || row.name || '',
     segment: row.segment || '',
     industry: row.industry || '',
@@ -370,6 +378,10 @@ function normalizePotential(value: unknown): AccountPotential {
 
 function normalizeRelationshipStatus(value: unknown): RelationshipStatus {
   return relationshipStatuses.includes(value as RelationshipStatus) ? value as RelationshipStatus : 'New';
+}
+
+function normalizeSource(value: unknown): AccountMemoryRecord['source'] {
+  return value === 'demo' ? 'demo' : value === 'user' ? 'user' : undefined;
 }
 
 function createId() {

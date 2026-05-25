@@ -1,6 +1,5 @@
 import type { Account, Contact, Interaction, Objection, Opportunity, SalesAction, StructuredSalesCapture } from '../../types/v31';
 import { DEMO_AUTH_KEY, DEMO_USER_ID, DEMO_WORKSPACE_KEY } from '../../lib/demoMode';
-import { SAMPLE_DATA_STORAGE_KEY } from '../../utils/dataMode';
 
 interface LocalCapture {
   id: string;
@@ -752,7 +751,7 @@ export function loadInteractiveDemoWorkspace() {
   writeLocalMemory(memory);
   localStorage.setItem(DEMO_AUTH_KEY, 'demo@memoire.local');
   localStorage.setItem(DEMO_WORKSPACE_KEY, 'interactive-demo');
-  localStorage.setItem(SAMPLE_DATA_STORAGE_KEY, 'true');
+  localStorage.setItem('memoire.sampleData.loaded', 'true');
   return memory.demoWorkspace;
 }
 

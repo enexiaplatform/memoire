@@ -15,14 +15,13 @@ import {
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
-import { ACCOUNT_STORAGE_KEY, type AccountMemoryRecord } from '../../services/accountStore';
+import type { AccountMemoryRecord } from '../../services/accountStore';
 import { loadAccounts } from '../../services/accountStore';
-import { OPPORTUNITY_STORAGE_KEY, type CrmLiteOpportunity } from '../../services/opportunityStore';
+import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import { loadOpportunities } from '../../services/opportunityStore';
-import { SALES_ACTIVITY_STORAGE_KEY, loadSalesActivities, type SalesActivityRecord } from '../../services/salesActivityStore';
+import { loadSalesActivities, type SalesActivityRecord } from '../../services/salesActivityStore';
 import { canUsePipelineDefenseCloudStore, loadCloudBriefs } from '../../services/pipelineDefenseCloudStore';
 import {
-  MULTI_BRIEF_STORAGE_KEY,
   loadPipelineDefenseBriefStore,
   type PipelineDefenseBrief,
 } from '../../utils/pipelineDefenseStorage';
@@ -35,7 +34,6 @@ import {
   type CommandPriority,
   type RecentActivityItem,
 } from '../../utils/salesCommandCenter';
-import { classifySalesActivity } from '../../utils/salesActivityClassifier';
 import {
   dismissOnboarding,
   loadOnboardingState,
@@ -44,8 +42,8 @@ import {
   saveOnboardingState,
   type OnboardingState,
 } from '../../utils/onboardingState';
-import { generatePipelineDefenseBriefFromOpportunities } from '../../utils/opportunityToPipelineBrief';
-import { hasLocalSampleData, markSampleDataLoaded } from '../../utils/dataMode';
+import { hasLocalSampleData } from '../../utils/dataMode';
+import { clearSampleDataset, loadSampleDataset } from '../../utils/sampleData';
 
 type DashboardData = {
   activities: SalesActivityRecord[];
@@ -66,6 +64,7 @@ export function DashboardPage() {
   const [message, setMessage] = useState('');
   const [onboarding, setOnboarding] = useState<OnboardingState>(() => loadOnboardingState());
   const [sampleMessage, setSampleMessage] = useState('');
+  const [demoSandboxPromptOpen, setDemoSandboxPromptOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -75,17 +74,12 @@ export function DashboardPage() {
       setMessage('');
 
       try {
-        const [activities, opportunities, accounts, briefs] = await Promise.all([
-          loadSalesActivities(user?.id),
-          loadOpportunities(user?.id),
-          loadAccounts(user?.id),
-          loadPipelineBriefs(user?.id),
-        ]);
+        const nextData = await loadDashboardData(hasLocalSampleData() ? undefined : user?.id);
 
         if (!mounted) return;
-        setData({ activities, opportunities, accounts, briefs });
+        setData(nextData);
         setMessage('Command center ready');
-        setOnboarding(syncOnboardingFromData({ activities, opportunities, accounts, briefs }));
+        setOnboarding(syncOnboardingFromData(nextData));
       } catch (error) {
         if (!mounted) return;
         if (import.meta.env.DEV) {
@@ -104,7 +98,7 @@ export function DashboardPage() {
     return () => {
       mounted = false;
     };
-  }, [authLoading, isAuthenticated, user?.id]);
+  }, [authLoading, isAuthenticated, user?.id, sampleMessage]);
 
   const commandCenter = useMemo(() => buildTodayCommandCenter(data), [data]);
   const onboardingProgress = useMemo(() => buildOnboardingProgress(onboarding, data), [data, onboarding]);
@@ -122,14 +116,23 @@ export function DashboardPage() {
     setOnboarding(resetOnboarding());
   };
 
-  const handleLoadSampleData = () => {
-    const nextData = loadSampleSalesData();
-    markSampleDataLoaded();
+  const handleLoadDemoSandbox = async () => {
+    loadSampleDataset();
+    const nextData = await loadDashboardData();
     setData(nextData);
     setOnboarding(syncOnboardingFromData(nextData));
     setSampleMessage(isAuthenticated
-      ? 'Sample sales data loaded into this browser only. Cloud records were not changed.'
-      : 'Sample sales data loaded locally in this browser.');
+      ? 'Demo sandbox active - sample data is local only and was not saved to your cloud account.'
+      : 'Demo sandbox active - sample data is local only.');
+    setDemoSandboxPromptOpen(false);
+  };
+
+  const handleClearDemoSandbox = async () => {
+    clearSampleDataset();
+    const nextData = await loadDashboardData(user?.id);
+    setData(nextData);
+    setOnboarding(syncOnboardingFromData(nextData));
+    setSampleMessage('Demo data cleared from this browser. Cloud data was not changed.');
   };
 
   return (
@@ -170,9 +173,33 @@ export function DashboardPage() {
             <OnboardingWelcomePanel
               progress={onboardingProgress}
               sampleMessage={sampleMessage}
+              isDemoSandboxActive={hasLocalSampleData()}
+              hasExistingData={commandCenter.hasAnyData}
+              isAuthenticated={isAuthenticated}
               onDismiss={handleDismissOnboarding}
               onReset={handleResetOnboarding}
-              onLoadSampleData={handleLoadSampleData}
+              onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)}
+              onClearDemoSandbox={handleClearDemoSandbox}
+            />
+          )}
+          {hasLocalSampleData() && (
+            <section className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800 shadow-sm md:flex-row md:items-center md:justify-between">
+              <span>Demo sandbox active - sample data is local only. Replace it with real activities when ready.</span>
+              <button
+                type="button"
+                onClick={handleClearDemoSandbox}
+                className="inline-flex w-fit rounded-full border border-amber-300 bg-white px-4 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100"
+              >
+                Clear demo data
+              </button>
+            </section>
+          )}
+          {demoSandboxPromptOpen && (
+            <DemoSandboxPrompt
+              hasExistingData={commandCenter.hasAnyData}
+              isAuthenticated={isAuthenticated}
+              onCancel={() => setDemoSandboxPromptOpen(false)}
+              onLoad={handleLoadDemoSandbox}
             />
           )}
           {!commandCenter.hasAnyData ? (
@@ -485,15 +512,23 @@ function DashboardEmptyState() {
 function OnboardingWelcomePanel({
   progress,
   sampleMessage,
+  isDemoSandboxActive,
+  hasExistingData,
+  isAuthenticated,
   onDismiss,
   onReset,
-  onLoadSampleData,
+  onOpenDemoSandbox,
+  onClearDemoSandbox,
 }: {
   progress: ReturnType<typeof buildOnboardingProgress>;
   sampleMessage: string;
+  isDemoSandboxActive: boolean;
+  hasExistingData: boolean;
+  isAuthenticated: boolean;
   onDismiss: () => void;
   onReset: () => void;
-  onLoadSampleData: () => void;
+  onOpenDemoSandbox: () => void;
+  onClearDemoSandbox: () => void;
 }) {
   return (
     <section className="rounded-xl border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
@@ -506,9 +541,14 @@ function OnboardingWelcomePanel({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={onLoadSampleData} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-            Load sample sales data
+          <button type="button" onClick={onOpenDemoSandbox} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+            Open Demo Sandbox
           </button>
+          {isDemoSandboxActive && (
+            <button type="button" onClick={onClearDemoSandbox} className="rounded-full border border-amber-300 bg-white px-4 py-2 text-sm font-bold text-amber-800">
+              Clear demo data
+            </button>
+          )}
           <button type="button" onClick={onDismiss} className="rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-800">
             Dismiss guide
           </button>
@@ -523,6 +563,11 @@ function OnboardingWelcomePanel({
           {sampleMessage}
         </p>
       )}
+
+      <p className="mt-4 rounded-lg border border-amber-100 bg-white/80 px-3 py-2 text-sm leading-6 text-amber-900">
+        Demo sandbox data stays local in this browser{isAuthenticated ? ' and will not be saved to your cloud account' : ''}.
+        {hasExistingData && !isDemoSandboxActive ? ' You already have workspace data, so Memoire will ask before loading demo records.' : ''}
+      </p>
 
       <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-5">
         {progress.map((step) => (
@@ -541,6 +586,48 @@ function OnboardingWelcomePanel({
         ))}
       </div>
     </section>
+  );
+}
+
+function DemoSandboxPrompt({
+  hasExistingData,
+  isAuthenticated,
+  onCancel,
+  onLoad,
+}: {
+  hasExistingData: boolean;
+  isAuthenticated: boolean;
+  onCancel: () => void;
+  onLoad: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/30 px-4">
+      <section className="w-full max-w-xl rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Demo sandbox</p>
+        <h2 className="mt-2 text-2xl font-bold text-navy">Load realistic sample data?</h2>
+        <p className="mt-3 text-sm leading-6 text-gray-600">
+          Demo data is stored locally in this browser and will not sync to your account. It includes healthy, weak, hope-based, and unsupported opportunities so you can see how Memoire separates risk levels.
+        </p>
+        {hasExistingData && (
+          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+            You already have workspace data. Loading demo data may mix with your local workspace.
+          </p>
+        )}
+        {isAuthenticated && (
+          <p className="mt-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800">
+            You are signed in, but demo data will remain local only and will not be saved to your cloud account.
+          </p>
+        )}
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
+          <button type="button" onClick={onCancel} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
+            Cancel
+          </button>
+          <button type="button" onClick={onLoad} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+            Load demo sandbox
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -647,6 +734,17 @@ async function loadPipelineBriefs(userId?: string | null) {
   return loadPipelineDefenseBriefStore().briefs;
 }
 
+async function loadDashboardData(userId?: string | null): Promise<DashboardData> {
+  const [activities, opportunities, accounts, briefs] = await Promise.all([
+    loadSalesActivities(userId),
+    loadOpportunities(userId),
+    loadAccounts(userId),
+    loadPipelineBriefs(userId),
+  ]);
+
+  return { activities, opportunities, accounts, briefs };
+}
+
 function syncOnboardingFromData(data: DashboardData) {
   const current = loadOnboardingState();
   const next = saveOnboardingState({
@@ -711,182 +809,6 @@ function buildOnboardingProgress(onboarding: OnboardingState, data: DashboardDat
   ];
 }
 
-function loadSampleSalesData(): DashboardData {
-  const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  const tomorrow = addDays(now, 1);
-  const nextWeek = addDays(now, 7);
-  const timestamp = now.toISOString();
-  const samplePrefix = `sample-${Date.now()}`;
-
-  const sampleActivities = [
-    createSampleActivity({
-      id: `${samplePrefix}-activity-tv-pharm`,
-      note: 'Met TV Pharm today. Need to clarify tender timeline next week.',
-      activityDate: today,
-      linkedOpportunityId: `${samplePrefix}-opp-tv-pharm`,
-      linkedOpportunityName: 'Tender opportunity',
-      linkedAccountName: 'TV Pharm',
-      createdAt: timestamp,
-    }),
-    createSampleActivity({
-      id: `${samplePrefix}-activity-control-union`,
-      note: 'Gặp Control Union, họ còn lăn tăn lead time. Cần gửi proof local support tuần này.',
-      activityDate: today,
-      linkedOpportunityId: `${samplePrefix}-opp-control-union`,
-      linkedOpportunityName: 'Microbiology workflow',
-      linkedAccountName: 'Control Union',
-      createdAt: timestamp,
-    }),
-  ];
-
-  const sampleOpportunities: CrmLiteOpportunity[] = [
-    {
-      id: `${samplePrefix}-opp-tv-pharm`,
-      accountName: 'TV Pharm',
-      opportunityName: 'Tender opportunity',
-      stage: 'Procurement',
-      estimatedValue: 900000000,
-      currency: 'VND',
-      expectedClosePeriod: 'This quarter',
-      productOrSolution: 'Sterility testing workflow',
-      decisionMaker: '',
-      budgetOwner: '',
-      procurementPath: 'Tender path not confirmed',
-      technicalCriteria: 'Tender evaluation criteria unclear',
-      nextAction: 'Clarify tender timeline and committee owner',
-      nextActionDate: nextWeek,
-      evidence: 'Customer confirmed tender interest but timing is not final.',
-      missingContext: 'Decision committee; budget owner; tender timeline',
-      objectionDebt: 'Procurement path and tender timing are unclear.',
-      forecastEvidenceCategory: 'Hope-based',
-      decisionRecommendation: 'Rescue',
-      status: 'Active',
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      storageMode: 'local',
-    },
-    {
-      id: `${samplePrefix}-opp-control-union`,
-      accountName: 'Control Union',
-      opportunityName: 'Microbiology workflow',
-      stage: 'Proposal',
-      estimatedValue: 450000000,
-      currency: 'VND',
-      expectedClosePeriod: 'Next month',
-      productOrSolution: 'Microbiology workflow',
-      decisionMaker: 'Lab manager',
-      budgetOwner: '',
-      procurementPath: 'Internal review before PO',
-      technicalCriteria: 'Lead time and local support proof required',
-      nextAction: 'Send local support proof and lead time response',
-      nextActionDate: tomorrow,
-      evidence: 'Customer raised specific lead time and support questions.',
-      missingContext: 'Budget owner; final approval date',
-      objectionDebt: 'Lead time concern and local support proof needed.',
-      forecastEvidenceCategory: 'Weak but recoverable',
-      decisionRecommendation: 'Rescue',
-      status: 'Active',
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      storageMode: 'local',
-    },
-  ];
-
-  const sampleAccounts: AccountMemoryRecord[] = [
-    {
-      id: `${samplePrefix}-account-control-union`,
-      accountName: 'Control Union',
-      segment: 'Testing lab',
-      industry: 'Quality testing',
-      location: 'Vietnam',
-      accountPotential: 'High',
-      relationshipStatus: 'Developing',
-      keyStakeholders: ['Lab manager'],
-      notes: 'Sample account memory. Customer cares about proof, response speed, and local support.',
-      tags: ['sample-data', 'microbiology'],
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      storageMode: 'local',
-    },
-  ];
-
-  const sampleBrief = generatePipelineDefenseBriefFromOpportunities(sampleOpportunities, {
-    title: `Demo Defense Brief - ${today}`,
-    weekLabel: 'Sample week',
-    salesOwner: 'Henry',
-    scope: 'Sample opportunities',
-  });
-
-  writeLocalArray(SALES_ACTIVITY_STORAGE_KEY, sampleActivities);
-  writeLocalArray(OPPORTUNITY_STORAGE_KEY, sampleOpportunities);
-  writeLocalArray(ACCOUNT_STORAGE_KEY, sampleAccounts);
-  writeLocalBrief(sampleBrief);
-
-  return {
-    activities: sampleActivities,
-    opportunities: sampleOpportunities,
-    accounts: sampleAccounts,
-    briefs: [sampleBrief, ...loadPipelineDefenseBriefStore().briefs.filter((brief) => brief.id !== sampleBrief.id)],
-  };
-}
-
-function createSampleActivity({
-  id,
-  note,
-  activityDate,
-  linkedOpportunityId,
-  linkedOpportunityName,
-  linkedAccountName,
-  createdAt,
-}: {
-  id: string;
-  note: string;
-  activityDate: string;
-  linkedOpportunityId: string;
-  linkedOpportunityName: string;
-  linkedAccountName: string;
-  createdAt: string;
-}): SalesActivityRecord {
-  const classified = classifySalesActivity(note, activityDate);
-  return {
-    ...classified,
-    id,
-    linkedOpportunityId,
-    linkedOpportunityName,
-    linkedAccountName,
-    linkStatus: 'Linked',
-    createdAt,
-    updatedAt: createdAt,
-    storageMode: 'local',
-  };
-}
-
-function writeLocalArray<T extends { id: string }>(key: string, records: T[]) {
-  try {
-    const existing = JSON.parse(window.localStorage.getItem(key) || '[]') as T[];
-    const sampleIds = new Set(records.map((record) => record.id));
-    window.localStorage.setItem(key, JSON.stringify([...records, ...existing.filter((item) => !sampleIds.has(item.id))]));
-  } catch {
-    window.localStorage.setItem(key, JSON.stringify(records));
-  }
-}
-
-function writeLocalBrief(brief: PipelineDefenseBrief) {
-  const currentStore = loadPipelineDefenseBriefStore();
-  const nextStore = {
-    activeBriefId: brief.id,
-    briefs: [brief, ...currentStore.briefs.filter((item) => item.id !== brief.id)],
-  };
-  window.localStorage.setItem(MULTI_BRIEF_STORAGE_KEY, JSON.stringify(nextStore));
-}
-
 function isUserCreatedBrief(brief: PipelineDefenseBrief) {
   return !brief.title.toLowerCase().includes('sample pipeline defense brief');
-}
-
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next.toISOString().slice(0, 10);
 }

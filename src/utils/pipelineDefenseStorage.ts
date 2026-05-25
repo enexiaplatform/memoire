@@ -6,6 +6,8 @@ export const LEGACY_LOCAL_STORAGE_KEY = 'memoire.pipelineDefenseBrief.v1';
 
 export type PipelineDefenseBrief = {
   id: string;
+  source?: 'demo' | 'user';
+  isSample?: boolean;
   title: string;
   weekLabel: string;
   salesOwner: string;
@@ -57,6 +59,8 @@ export function createPipelineDefenseBrief(overrides: Partial<PipelineDefenseBri
   const now = new Date().toISOString();
   return {
     id: overrides.id || `brief-${Date.now()}`,
+    source: overrides.source,
+    isSample: overrides.isSample,
     title: overrides.title || 'New Pipeline Defense Brief',
     weekLabel: overrides.weekLabel || 'Current Week',
     salesOwner: overrides.salesOwner || pipelineDefenseBriefMeta.salesOwner,
@@ -191,6 +195,8 @@ function sanitizeBrief(value: unknown): PipelineDefenseBrief | null {
 
   return {
     id,
+    source: normalizeSource(maybeBrief.source),
+    isSample: maybeBrief.isSample === true,
     title: typeof maybeBrief.title === 'string' && maybeBrief.title ? maybeBrief.title : 'Pipeline Defense Brief',
     weekLabel: typeof maybeBrief.weekLabel === 'string' && maybeBrief.weekLabel ? maybeBrief.weekLabel : 'Current Week',
     salesOwner: typeof maybeBrief.salesOwner === 'string' && maybeBrief.salesOwner ? maybeBrief.salesOwner : 'Henry',
@@ -199,6 +205,10 @@ function sanitizeBrief(value: unknown): PipelineDefenseBrief | null {
     updatedAt: typeof maybeBrief.updatedAt === 'string' && maybeBrief.updatedAt ? maybeBrief.updatedAt : now,
     deals,
   };
+}
+
+function normalizeSource(value: unknown): PipelineDefenseBrief['source'] {
+  return value === 'demo' ? 'demo' : value === 'user' ? 'user' : undefined;
 }
 
 function cloneDeals(deals: PipelineDefenseDeal[]) {
@@ -210,4 +220,3 @@ function cloneDeals(deals: PipelineDefenseDeal[]) {
     objectionDebt: { ...deal.objectionDebt },
   }));
 }
-

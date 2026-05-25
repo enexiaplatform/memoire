@@ -52,6 +52,8 @@ export function DailyCapturePage() {
   const [copiedId, setCopiedId] = useState('');
   const aiProvider = useMemo(() => getActiveCaptureAiProvider(), []);
   const aiConfigured = aiProvider.isConfigured();
+  const sampleDataActive = hasLocalSampleData();
+  const dataUserId = sampleDataActive ? undefined : user?.id;
 
   const localPreview = useMemo(() => {
     return rawNote.trim().length >= 8 ? classifySalesActivity(rawNote, activityDate, { accounts, opportunities }) : null;
@@ -61,9 +63,9 @@ export function DailyCapturePage() {
   const refreshActivities = async () => {
     setLoadingActivities(true);
     const [loaded, loadedOpportunities, loadedAccounts] = await Promise.all([
-      loadSalesActivities(user?.id),
-      loadOpportunities(user?.id),
-      loadAccounts(user?.id),
+      loadSalesActivities(dataUserId),
+      loadOpportunities(dataUserId),
+      loadAccounts(dataUserId),
     ]);
     setActivities(loaded);
     setOpportunities(loadedOpportunities);
@@ -74,7 +76,7 @@ export function DailyCapturePage() {
   useEffect(() => {
     refreshActivities();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [dataUserId]);
 
   const handleSave = async () => {
     if (rawNote.trim().length < 8 || !preview) {
@@ -91,7 +93,7 @@ export function DailyCapturePage() {
       activityDate,
       tags: normalizeTags(preview.tags),
     };
-    const result = await saveSalesActivity(classified, user?.id);
+    const result = await saveSalesActivity(classified, dataUserId);
     setActivities((current) => [result.record, ...current.filter((item) => item.id !== result.record.id)]);
     setLastSavedActivity(result.record);
     setRawNote('');
@@ -165,7 +167,7 @@ export function DailyCapturePage() {
   };
 
   const handleDelete = async (activity: SalesActivityRecord) => {
-    await deleteSalesActivity(activity, user?.id);
+    await deleteSalesActivity(activity, dataUserId);
     setActivities((current) => current.filter((item) => item.id !== activity.id));
     if (lastSavedActivity?.id === activity.id) setLastSavedActivity(null);
   };
@@ -181,13 +183,13 @@ export function DailyCapturePage() {
       linkedOpportunityName: opportunity.opportunityName,
       linkedAccountName: opportunity.accountName,
       linkStatus: 'Linked',
-    }, user?.id);
+    }, dataUserId);
 
     setActivities((current) => current.map((item) => item.id === linkedActivity.id ? linkedActivity : item));
     if (lastSavedActivity?.id === linkedActivity.id) setLastSavedActivity(linkedActivity);
 
     if (applyUpdates) {
-      const result = await updateOpportunity(opportunity, applyOpportunityUpdateSuggestion(opportunity, updateSuggestion), user?.id);
+      const result = await updateOpportunity(opportunity, applyOpportunityUpdateSuggestion(opportunity, updateSuggestion), dataUserId);
       setOpportunities((current) => current.map((item) => item.id === result.opportunity.id ? result.opportunity : item));
       setMessage(result.warning || 'Activity linked and opportunity updated.');
       setSaveState(result.warning ? 'error' : 'saved');
@@ -199,7 +201,7 @@ export function DailyCapturePage() {
   };
 
   const handleIgnoreActivityLink = async (activity: SalesActivityRecord) => {
-    const updated = await updateSalesActivityLink(activity, { linkStatus: 'Ignored' }, user?.id);
+    const updated = await updateSalesActivityLink(activity, { linkStatus: 'Ignored' }, dataUserId);
     setActivities((current) => current.map((item) => item.id === updated.id ? updated : item));
     if (lastSavedActivity?.id === updated.id) setLastSavedActivity(updated);
     setMessage('Link suggestion ignored.');
@@ -207,7 +209,7 @@ export function DailyCapturePage() {
   };
 
   const handleUnlinkActivity = async (activity: SalesActivityRecord) => {
-    const updated = await updateSalesActivityLink(activity, { linkStatus: 'Unlinked' }, user?.id);
+    const updated = await updateSalesActivityLink(activity, { linkStatus: 'Unlinked' }, dataUserId);
     setActivities((current) => current.map((item) => item.id === updated.id ? updated : item));
     if (lastSavedActivity?.id === updated.id) setLastSavedActivity(updated);
     setMessage('Activity unlinked.');
@@ -241,8 +243,8 @@ export function DailyCapturePage() {
           isLoading={authLoading}
           isAuthenticated={isAuthenticated}
           isSupabaseConfigured={isSupabaseConfigured}
-          cloudAvailable={canUseSalesActivityCloudStore(user?.id)}
-          hasSampleData={hasLocalSampleData()}
+          cloudAvailable={canUseSalesActivityCloudStore(dataUserId)}
+          hasSampleData={sampleDataActive}
         />
       </header>
 

@@ -4,6 +4,8 @@ import type { ClassifiedSalesActivity, SalesActivityType } from '../utils/salesA
 export interface SalesActivityRecord extends ClassifiedSalesActivity {
   id: string;
   userId?: string;
+  source?: 'demo' | 'user';
+  isSample?: boolean;
   linkedOpportunityId: string;
   linkedOpportunityName: string;
   linkedAccountName: string;
@@ -165,6 +167,8 @@ function loadLocalActivities(): SalesActivityRecord[] {
       .map<SalesActivityRecord>((item) => ({
         id: item.id || createId(),
         userId: item.userId,
+        source: normalizeSource(item.source),
+        isSample: item.isSample === true,
         accountName: item.accountName || '',
         opportunityName: item.opportunityName || '',
         contactName: item.contactName || '',
@@ -238,6 +242,8 @@ function createLocalActivity(activity: ClassifiedSalesActivity): SalesActivityRe
   return {
     ...activity,
     id: createId(),
+    source: 'user',
+    isSample: false,
     linkedOpportunityId: '',
     linkedOpportunityName: '',
     linkedAccountName: '',
@@ -252,6 +258,8 @@ function rowToRecord(row: SalesActivityRow): SalesActivityRecord {
   return {
     id: row.id,
     userId: row.user_id,
+    source: 'user',
+    isSample: false,
     activityDate: row.activity_date,
     rawNote: row.raw_note,
     activityType: row.activity_type || 'Other',
@@ -321,6 +329,10 @@ function normalizeLinkStatus(value: unknown): SalesActivityRecord['linkStatus'] 
   return ['Unlinked', 'Suggested', 'Linked', 'Ignored'].includes(value as string)
     ? value as SalesActivityRecord['linkStatus']
     : 'Unlinked';
+}
+
+function normalizeSource(value: unknown): SalesActivityRecord['source'] {
+  return value === 'demo' ? 'demo' : value === 'user' ? 'user' : undefined;
 }
 
 function normalizeStringArray(value: unknown) {

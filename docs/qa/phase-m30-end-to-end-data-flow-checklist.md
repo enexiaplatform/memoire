@@ -15,7 +15,7 @@ This checklist verifies the full Personal B2B Sales OS journey from first-run on
   - Generate your first pipeline defense brief
 - Click each CTA and confirm it navigates to the expected module.
 - Return to `/app/dashboard`.
-- In logged-out/local mode, click `Load sample sales data`.
+- In logged-out/local mode, click `Open Demo Sandbox`.
 - Verify sample activities appear in `/app/capture`.
 - Verify sample activities appear in `/app/calendar`.
 - Verify sample activities contribute to `/app/reviews`.

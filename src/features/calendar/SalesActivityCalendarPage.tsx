@@ -71,17 +71,19 @@ export function SalesActivityCalendarPage() {
   const [selectedActivity, setSelectedActivity] = useState<SalesActivityRecord | null>(null);
   const [copiedId, setCopiedId] = useState('');
   const [message, setMessage] = useState('');
+  const sampleDataActive = hasLocalSampleData();
+  const dataUserId = sampleDataActive ? undefined : user?.id;
 
   const refreshActivities = useCallback(async () => {
     setLoadingActivities(true);
     const [loaded, loadedOpportunities] = await Promise.all([
-      loadSalesActivities(user?.id),
-      loadOpportunities(user?.id),
+      loadSalesActivities(dataUserId),
+      loadOpportunities(dataUserId),
     ]);
     setActivities(loaded);
     setOpportunities(loadedOpportunities);
     setLoadingActivities(false);
-  }, [user?.id]);
+  }, [dataUserId]);
 
   useEffect(() => {
     refreshActivities();
@@ -113,7 +115,7 @@ export function SalesActivityCalendarPage() {
   };
 
   const handleDelete = async (activity: SalesActivityRecord) => {
-    await deleteSalesActivity(activity, user?.id);
+    await deleteSalesActivity(activity, dataUserId);
     setActivities((current) => current.filter((item) => item.id !== activity.id));
     setSelectedActivity(null);
     setMessage('Activity deleted.');
@@ -130,12 +132,12 @@ export function SalesActivityCalendarPage() {
       linkedOpportunityName: opportunity.opportunityName,
       linkedAccountName: opportunity.accountName,
       linkStatus: 'Linked',
-    }, user?.id);
+    }, dataUserId);
     setActivities((current) => current.map((item) => item.id === linkedActivity.id ? linkedActivity : item));
     setSelectedActivity(linkedActivity);
 
     if (applyUpdates) {
-      const result = await updateOpportunity(opportunity, applyOpportunityUpdateSuggestion(opportunity, updateSuggestion), user?.id);
+      const result = await updateOpportunity(opportunity, applyOpportunityUpdateSuggestion(opportunity, updateSuggestion), dataUserId);
       setOpportunities((current) => current.map((item) => item.id === result.opportunity.id ? result.opportunity : item));
       setMessage(result.warning || 'Activity linked and opportunity updated.');
       return;
@@ -145,7 +147,7 @@ export function SalesActivityCalendarPage() {
   };
 
   const handleUpdateLinkStatus = async (activity: SalesActivityRecord, linkStatus: SalesActivityRecord['linkStatus']) => {
-    const updated = await updateSalesActivityLink(activity, { linkStatus }, user?.id);
+    const updated = await updateSalesActivityLink(activity, { linkStatus }, dataUserId);
     setActivities((current) => current.map((item) => item.id === updated.id ? updated : item));
     setSelectedActivity(updated);
     setMessage(linkStatus === 'Unlinked' ? 'Activity unlinked.' : 'Link suggestion ignored.');
@@ -167,8 +169,8 @@ export function SalesActivityCalendarPage() {
             isLoading={authLoading}
             isAuthenticated={isAuthenticated}
             isSupabaseConfigured={isSupabaseConfigured}
-            cloudAvailable={canUseSalesActivityCloudStore(user?.id)}
-            hasSampleData={hasLocalSampleData()}
+            cloudAvailable={canUseSalesActivityCloudStore(dataUserId)}
+            hasSampleData={sampleDataActive}
           />
           <Link
             to="/app/capture"

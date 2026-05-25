@@ -49,13 +49,15 @@ export function AccountsPage() {
   const [form, setForm] = useState<AccountFormInput>(emptyAccountInput);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [message, setMessage] = useState('');
+  const sampleDataActive = hasLocalSampleData();
+  const dataUserId = sampleDataActive ? undefined : user?.id;
 
   const refreshAccounts = async () => {
     setLoading(true);
     const [loadedAccounts, loadedOpportunities, loadedActivities] = await Promise.all([
-      loadAccounts(user?.id),
-      loadOpportunities(user?.id),
-      loadSalesActivities(user?.id),
+      loadAccounts(dataUserId),
+      loadOpportunities(dataUserId),
+      loadSalesActivities(dataUserId),
     ]);
     setAccounts(loadedAccounts);
     setOpportunities(loadedOpportunities);
@@ -66,7 +68,7 @@ export function AccountsPage() {
   useEffect(() => {
     refreshAccounts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [dataUserId]);
 
   const memories = useMemo(() => {
     return accounts.map((account) => buildAccountMemory(account, opportunities, activities));
@@ -161,8 +163,8 @@ export function AccountsPage() {
     setSaveState('saving');
     setMessage('Saving account...');
     const result = panelMode === 'edit' && selectedAccount
-      ? await updateAccount(selectedAccount, form, user?.id)
-      : await createAccount(form, user?.id);
+      ? await updateAccount(selectedAccount, form, dataUserId)
+      : await createAccount(form, dataUserId);
 
     setAccounts((current) => [result.account, ...current.filter((item) => item.id !== result.account.id)]);
     setSelectedAccountId(result.account.id);
@@ -177,7 +179,7 @@ export function AccountsPage() {
     const confirmed = window.confirm(`Delete ${account.accountName}?`);
     if (!confirmed) return;
 
-    await deleteAccount(account, user?.id);
+    await deleteAccount(account, dataUserId);
     setAccounts((current) => current.filter((item) => item.id !== account.id));
     closePanel();
   };
@@ -187,7 +189,7 @@ export function AccountsPage() {
       ...emptyAccountInput,
       accountName: candidate.accountName,
       relationshipStatus: candidate.activityCount > 0 ? 'Developing' : 'New',
-    }, user?.id);
+    }, dataUserId);
     setAccounts((current) => [result.account, ...current.filter((item) => item.id !== result.account.id)]);
     openEditPanel(result.account);
     setSaveState(result.warning ? 'error' : 'saved');
@@ -209,8 +211,8 @@ export function AccountsPage() {
           isLoading={authLoading}
           isAuthenticated={isAuthenticated}
           isSupabaseConfigured={isSupabaseConfigured}
-          cloudAvailable={canUseAccountCloudStore(user?.id)}
-          hasSampleData={hasLocalSampleData()}
+          cloudAvailable={canUseAccountCloudStore(dataUserId)}
+          hasSampleData={sampleDataActive}
         />
       </header>
 

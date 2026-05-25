@@ -162,12 +162,20 @@ export function PipelineReviewDefenseBriefPage() {
   const activeBrief = getActivePipelineDefenseBrief(store);
   const deals = activeBrief?.deals || [];
   const summary = buildSummary(deals);
-  const cloudSyncReady = Boolean(user && canUsePipelineDefenseCloudStore() && cloudSyncStatus === 'ready');
+  const sampleDataActive = hasLocalSampleData();
+  const cloudSyncReady = Boolean(user && !sampleDataActive && canUsePipelineDefenseCloudStore() && cloudSyncStatus === 'ready');
 
   useEffect(() => {
     if (accountLoading) {
       setCloudSyncStatus('loading');
       setCloudSyncMessage('');
+      return;
+    }
+
+    if (sampleDataActive) {
+      setCloudSyncStatus('local');
+      setCloudSyncMessage('Demo sandbox active - sample data is local only.');
+      setShowMigrationPrompt(false);
       return;
     }
 
@@ -217,7 +225,7 @@ export function PipelineReviewDefenseBriefPage() {
     return () => {
       cancelled = true;
     };
-  }, [accountLoading, localMigrationStore.briefs, user]);
+  }, [accountLoading, localMigrationStore.briefs, sampleDataActive, user]);
 
   useEffect(() => {
     setSaveStatus('Unsaved changes');
@@ -229,7 +237,7 @@ export function PipelineReviewDefenseBriefPage() {
         return;
       }
 
-      if (!user) {
+      if (sampleDataActive || !user) {
         setSaveStatus(localBackupSaved ? 'Saved locally in this browser' : 'Local save unavailable');
         return;
       }
@@ -259,7 +267,7 @@ export function PipelineReviewDefenseBriefPage() {
     }, 350);
 
     return () => window.clearTimeout(timeoutId);
-  }, [accountLoading, cloudSyncStatus, store, user]);
+  }, [accountLoading, cloudSyncStatus, sampleDataActive, store, user]);
 
   const buildMarkdown = () => generatePipelineDefenseBriefMarkdown({
     deals,
@@ -723,7 +731,7 @@ export function PipelineReviewDefenseBriefPage() {
                 isSupabaseConfigured={isSupabaseConfigured}
                 cloudAvailable={cloudSyncStatus !== 'error'}
                 syncError={cloudSyncStatus === 'error' ? cloudSyncMessage || 'Cloud sync issue' : null}
-                hasSampleData={hasLocalSampleData()}
+                hasSampleData={sampleDataActive}
               />
             </div>
             {cloudSyncMessage && (

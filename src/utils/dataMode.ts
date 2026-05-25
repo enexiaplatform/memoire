@@ -17,8 +17,6 @@ export type DataModeInput = {
   isLoading?: boolean;
 };
 
-export const SAMPLE_DATA_STORAGE_KEY = 'memoire.sampleData.loaded';
-
 const DATA_MODE_COPY: Record<DataMode, DataModeInfo> = {
   synced: {
     mode: 'synced',
@@ -70,17 +68,8 @@ export function getDataModeInfo(input: DataModeInput): DataModeInfo {
 export function hasLocalSampleData() {
   if (typeof window === 'undefined') return false;
   try {
-    return window.localStorage.getItem(SAMPLE_DATA_STORAGE_KEY) === 'true';
+    return window.localStorage.getItem('memoire.sampleData.loaded') === 'true';
   } catch {
     return false;
-  }
-}
-
-export function markSampleDataLoaded() {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(SAMPLE_DATA_STORAGE_KEY, 'true');
-  } catch {
-    // Ignore localStorage write failures; sample data itself remains best-effort.
   }
 }

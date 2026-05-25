@@ -79,12 +79,14 @@ export function OpportunitiesPage() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [briefCreateState, setBriefCreateState] = useState<SaveState>('idle');
   const [briefCreateMessage, setBriefCreateMessage] = useState('');
+  const sampleDataActive = hasLocalSampleData();
+  const dataUserId = sampleDataActive ? undefined : user?.id;
 
   const refreshOpportunities = async () => {
     setLoading(true);
     const [loaded, loadedActivities] = await Promise.all([
-      loadOpportunities(user?.id),
-      loadSalesActivities(user?.id),
+      loadOpportunities(dataUserId),
+      loadSalesActivities(dataUserId),
     ]);
     setOpportunities(loaded);
     setActivities(loadedActivities);
@@ -94,7 +96,7 @@ export function OpportunitiesPage() {
   useEffect(() => {
     refreshOpportunities();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [dataUserId]);
 
   const quality = useMemo(() => analyzePipelineQuality(opportunities, activities), [activities, opportunities]);
 
@@ -157,8 +159,8 @@ export function OpportunitiesPage() {
     setSaveState('saving');
     setMessage('Saving opportunity...');
     const result = panelMode === 'edit' && editingOpportunity
-      ? await updateOpportunity(editingOpportunity, form, user?.id)
-      : await createOpportunity(form, user?.id);
+      ? await updateOpportunity(editingOpportunity, form, dataUserId)
+      : await createOpportunity(form, dataUserId);
 
     setOpportunities((current) => [
       result.opportunity,
@@ -176,7 +178,7 @@ export function OpportunitiesPage() {
     if (!confirmed) return;
 
     try {
-      await deleteOpportunity(opportunity, user?.id);
+      await deleteOpportunity(opportunity, dataUserId);
       setOpportunities((current) => current.filter((item) => item.id !== opportunity.id));
       setSelectedOpportunityIds((current) => current.filter((id) => id !== opportunity.id));
       if (editingOpportunity?.id === opportunity.id) closePanel();
@@ -232,8 +234,8 @@ export function OpportunitiesPage() {
     const draftBrief = generatePipelineDefenseBriefFromOpportunities(previewOpportunities, briefMetadata);
 
     try {
-      const createdBrief = user?.id && canUsePipelineDefenseCloudStore()
-        ? await createCloudBrief(draftBrief, user.id)
+      const createdBrief = dataUserId && canUsePipelineDefenseCloudStore()
+        ? await createCloudBrief(draftBrief, dataUserId)
         : createPipelineDefenseBrief(draftBrief);
 
       persistCreatedBriefLocally(createdBrief);
@@ -269,8 +271,8 @@ export function OpportunitiesPage() {
           isLoading={authLoading}
           isAuthenticated={isAuthenticated}
           isSupabaseConfigured={isSupabaseConfigured}
-          cloudAvailable={canUseOpportunityCloudStore(user?.id)}
-          hasSampleData={hasLocalSampleData()}
+          cloudAvailable={canUseOpportunityCloudStore(dataUserId)}
+          hasSampleData={sampleDataActive}
         />
       </header>
 
