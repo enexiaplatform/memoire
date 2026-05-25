@@ -63,20 +63,26 @@ export function getActivityTypeBreakdown(activities: SalesActivityRecord[]) {
 }
 
 export function getOpenNextActions(activities: SalesActivityRecord[]) {
-  return activities
-    .filter((activity) => Boolean(activity.nextAction))
-    .map((activity) => ({
+  return activities.flatMap((activity) => {
+    const extractedActions = activity.nextActions && activity.nextActions.length > 0
+      ? activity.nextActions
+      : activity.nextAction
+        ? [{ title: activity.nextAction, dueDate: activity.dueDate || undefined }]
+        : [];
+
+    return extractedActions.map((action) => ({
       activityId: activity.id,
       accountName: getActivityAccountName(activity) || undefined,
       opportunityName: getActivityOpportunityName(activity) || undefined,
-      nextAction: activity.nextAction,
-      dueDate: activity.dueDate || undefined,
+      nextAction: action.title,
+      dueDate: action.dueDate || activity.dueDate || undefined,
     }));
+  });
 }
 
 export function getObjectionActivities(activities: SalesActivityRecord[]) {
   return activities
-    .filter((activity) => activity.activityType === 'Objection handling' || activity.tags.includes('risk-signal'))
+    .filter((activity) => activity.activityType === 'Objection handling' || activity.tags.includes('risk-signal') || (activity.risks?.length || 0) > 0)
     .map((activity) => ({
       activityId: activity.id,
       accountName: getActivityAccountName(activity) || undefined,

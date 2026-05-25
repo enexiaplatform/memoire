@@ -20,9 +20,24 @@ export type OpportunityUpdateSuggestion = {
   reasons: string[];
 };
 
-const objectionTerms = /objection|concern|risk|lăn tăn|lead time|blocker|hesitat|issue|vướng|chưa chắc/i;
-const evidenceTerms = /evidence|proof|confirmed|xác nhận|proof local|đã xác nhận|commit|agreed|approved/i;
-const procurementTerms = /procurement|tender|rfq|po|purchase|đấu thầu|mua hàng|báo giá/i;
+const objectionTerms = /objection|concern|risk|lead time|blocker|hesitat|issue|unresolved|not convinced|lan tan/i;
+const evidenceTerms = /evidence|proof|confirmed|proof local|commit|agreed|approved|budget approval|budget approved/i;
+const procurementTerms = /procurement|tender|rfq|po|purchase|buying|buyer|quote|quotation/i;
+const genericOpportunityTokens = new Set([
+  'phase',
+  'project',
+  'opportunity',
+  'workflow',
+  'discussion',
+  'deal',
+  'with',
+  'for',
+  'the',
+  'and',
+  'next',
+  'gmp',
+  'eugmp',
+]);
 
 export function suggestOpportunityLinks(
   activity: SalesActivityRecord,
@@ -49,6 +64,12 @@ export function calculateLinkConfidence(activity: SalesActivityRecord, opportuni
     activity.summary,
     activity.accountName,
     activity.opportunityName,
+    activity.linkedAccountName,
+    activity.linkedOpportunityName,
+    activity.contactName,
+    activity.stakeholderName,
+    activity.buyingSignals?.join(' '),
+    activity.timelineSignals?.join(' '),
     activity.tags.join(' '),
   ].join(' '));
   const activityAccount = normalize(activity.accountName);
@@ -56,6 +77,9 @@ export function calculateLinkConfidence(activity: SalesActivityRecord, opportuni
   const opportunityAccount = normalize(opportunity.accountName);
   const opportunityName = normalize(opportunity.opportunityName);
   const product = normalize(opportunity.productOrSolution);
+  const activityTokens = meaningfulTokens([activity.rawNote, activity.summary, activity.opportunityName].join(' '));
+  const opportunityTokens = meaningfulTokens([opportunity.opportunityName, opportunity.productOrSolution].join(' '));
+  const overlapCount = countTokenOverlap(activityTokens, opportunityTokens);
   const reasons: string[] = [];
   let score = 0;
 
@@ -90,7 +114,20 @@ export function calculateLinkConfidence(activity: SalesActivityRecord, opportuni
     reasons.push('product or solution overlap');
   }
 
-  const confidence: LinkConfidence = score >= 6 ? 'High' : score >= 3 ? 'Medium' : 'Low';
+  if (overlapCount >= 2) {
+    score += overlapCount >= 3 ? 4 : 3;
+    reasons.push('meaningful opportunity token overlap');
+  } else if (overlapCount === 1 && (score > 0 || hasAccountSignal(activity, opportunity))) {
+    score += 2;
+    reasons.push('product/opportunity token overlap');
+  }
+
+  if (hasCommonPhraseSuffix(activityOpportunity, opportunityName)) {
+    score += 2;
+    reasons.push('common opportunity phrase');
+  }
+
+  const confidence: LinkConfidence = score >= 7 ? 'High' : score >= 3 ? 'Medium' : 'Low';
   return {
     confidence,
     reason: reasons.length > 0 ? reasons.join(', ') : 'weak text similarity',
@@ -115,14 +152,14 @@ export function buildOpportunityUpdateSuggestion(
     suggestion.reasons.push('activity captured a due date');
   }
 
-  if (activity.activityType === 'Objection handling' || objectionTerms.test(text)) {
-    suggestion.objectionDebt = appendUnique(opportunity.objectionDebt, activity.summary);
+  if (activity.activityType === 'Objection handling' || objectionTerms.test(text) || (activity.risks?.length || 0) > 0) {
+    suggestion.objectionDebt = appendUnique(opportunity.objectionDebt, activity.risks?.join('; ') || activity.summary);
     suggestion.reasons.push('activity appears to include objection or risk context');
   }
 
-  if (evidenceTerms.test(text)) {
-    suggestion.evidence = appendUnique(opportunity.evidence, activity.summary);
-    suggestion.reasons.push('activity appears to include proof or confirmed evidence');
+  if (evidenceTerms.test(text) || (activity.buyingSignals?.length || 0) > 0) {
+    suggestion.evidence = appendUnique(opportunity.evidence, activity.buyingSignals?.join('; ') || activity.summary);
+    suggestion.reasons.push('activity appears to include proof, buying signal, or confirmed evidence');
   }
 
   if (activity.activityType === 'Tender / procurement' || procurementTerms.test(text)) {
@@ -155,8 +192,35 @@ function hasPartialMatch(left: string, right: string) {
 }
 
 function hasTokenOverlap(left: string, right: string) {
-  const rightTokens = right.split(/\s+/).filter((token) => token.length >= 4);
+  const rightTokens = meaningfulTokens(right);
   return rightTokens.some((token) => left.includes(token));
+}
+
+function countTokenOverlap(leftTokens: string[], rightTokens: string[]) {
+  const left = new Set(leftTokens);
+  return rightTokens.filter((token) => left.has(token)).length;
+}
+
+function meaningfulTokens(value: string) {
+  return normalize(value)
+    .split(/\s+/)
+    .filter((token) => token.length >= 3 && !genericOpportunityTokens.has(token));
+}
+
+function hasAccountSignal(activity: SalesActivityRecord, opportunity: CrmLiteOpportunity) {
+  const activityAccount = normalize(activity.accountName || activity.linkedAccountName || '');
+  const opportunityAccount = normalize(opportunity.accountName);
+  const haystack = normalize(`${activity.rawNote} ${activity.summary}`);
+  return Boolean(activityAccount && opportunityAccount && hasPartialMatch(activityAccount, opportunityAccount))
+    || Boolean(opportunityAccount && haystack.includes(opportunityAccount));
+}
+
+function hasCommonPhraseSuffix(left: string, right: string) {
+  if (!left || !right) return false;
+  const leftTokens = meaningfulTokens(left);
+  const rightTokens = meaningfulTokens(right);
+  if (leftTokens.length < 2 || rightTokens.length < 2) return false;
+  return leftTokens.slice(-2).join(' ') === rightTokens.slice(-2).join(' ');
 }
 
 function appendUnique(current: string, addition: string) {

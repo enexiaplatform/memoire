@@ -21,6 +21,14 @@ type SalesActivityRow = {
   activity_type: SalesActivityType;
   account_name: string | null;
   opportunity_name: string | null;
+  contact_name?: string | null;
+  stakeholder_name?: string | null;
+  stakeholder_role?: string | null;
+  competitors?: string[] | null;
+  buying_signals?: string[] | null;
+  risks?: string[] | null;
+  timeline_signals?: string[] | null;
+  next_actions?: ClassifiedSalesActivity['nextActions'] | null;
   summary: string | null;
   next_action: string | null;
   due_date: string | null;
@@ -158,6 +166,14 @@ function loadLocalActivities(): SalesActivityRecord[] {
         userId: item.userId,
         accountName: item.accountName || '',
         opportunityName: item.opportunityName || '',
+        contactName: item.contactName || '',
+        stakeholderName: item.stakeholderName || '',
+        stakeholderRole: item.stakeholderRole || '',
+        competitors: normalizeStringArray(item.competitors),
+        buyingSignals: normalizeStringArray(item.buyingSignals),
+        risks: normalizeStringArray(item.risks),
+        timelineSignals: normalizeStringArray(item.timelineSignals),
+        nextActions: normalizeNextActions(item.nextActions),
         activityType: item.activityType || 'Other',
         summary: item.summary || item.rawNote || '',
         nextAction: item.nextAction || '',
@@ -240,6 +256,14 @@ function rowToRecord(row: SalesActivityRow): SalesActivityRecord {
     activityType: row.activity_type || 'Other',
     accountName: row.account_name || '',
     opportunityName: row.opportunity_name || '',
+    contactName: row.contact_name || '',
+    stakeholderName: row.stakeholder_name || '',
+    stakeholderRole: row.stakeholder_role || '',
+    competitors: normalizeStringArray(row.competitors),
+    buyingSignals: normalizeStringArray(row.buying_signals),
+    risks: normalizeStringArray(row.risks),
+    timelineSignals: normalizeStringArray(row.timeline_signals),
+    nextActions: normalizeNextActions(row.next_actions),
     summary: row.summary || row.raw_note,
     nextAction: row.next_action || '',
     dueDate: row.due_date || '',
@@ -263,6 +287,14 @@ function activityToInsert(activity: ClassifiedSalesActivity, userId: string) {
     activity_type: activity.activityType,
     account_name: activity.accountName || null,
     opportunity_name: activity.opportunityName || null,
+    contact_name: activity.contactName || null,
+    stakeholder_name: activity.stakeholderName || null,
+    stakeholder_role: activity.stakeholderRole || null,
+    competitors: normalizeStringArray(activity.competitors),
+    buying_signals: normalizeStringArray(activity.buyingSignals),
+    risks: normalizeStringArray(activity.risks),
+    timeline_signals: normalizeStringArray(activity.timelineSignals),
+    next_actions: normalizeNextActions(activity.nextActions),
     summary: activity.summary,
     next_action: activity.nextAction || null,
     due_date: activity.dueDate || null,
@@ -288,6 +320,32 @@ function normalizeLinkStatus(value: unknown): SalesActivityRecord['linkStatus'] 
   return ['Unlinked', 'Suggested', 'Linked', 'Ignored'].includes(value as string)
     ? value as SalesActivityRecord['linkStatus']
     : 'Unlinked';
+}
+
+function normalizeStringArray(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return Array.from(new Set(value.map((item) => typeof item === 'string' ? item.trim() : '').filter(Boolean))).slice(0, 12);
+}
+
+function normalizeNextActions(value: unknown): ClassifiedSalesActivity['nextActions'] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      const action = typeof item === 'object' && item !== null ? item as Record<string, unknown> : {};
+      const title = typeof action.title === 'string' ? action.title.trim() : '';
+      if (!title) return null;
+      const dueDate = typeof action.dueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(action.dueDate) ? action.dueDate : '';
+      const owner = typeof action.owner === 'string' ? action.owner.trim() : '';
+      const sourceText = typeof action.sourceText === 'string' ? action.sourceText.trim() : '';
+      return {
+        title,
+        ...(dueDate ? { dueDate } : {}),
+        ...(owner ? { owner } : {}),
+        ...(sourceText ? { sourceText } : {}),
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 8) as ClassifiedSalesActivity['nextActions'];
 }
 
 function getErrorMessage(error: unknown) {

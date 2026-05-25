@@ -468,12 +468,15 @@ function ActivityDetailModal({
         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Fact label="Account" value={activity.accountName || 'Not captured'} />
           <Fact label="Opportunity" value={activity.opportunityName || 'Not captured'} />
+          <Fact label="Contact / stakeholder" value={activity.contactName || activity.stakeholderName || 'Not captured'} />
           <Fact label="Next action" value={activity.nextAction || 'No next action captured'} />
           <Fact label="Due date" value={activity.dueDate || 'No due date'} />
           <Fact label="Created" value={new Date(activity.createdAt).toLocaleString()} />
           <Fact label="Updated" value={new Date(activity.updatedAt).toLocaleString()} />
           <Fact label="Linked opportunity" value={activity.linkStatus === 'Linked' ? `${activity.linkedAccountName} / ${activity.linkedOpportunityName}` : activity.linkStatus} />
         </div>
+
+        <ActivityExtractionDetail activity={activity} />
 
         {(activity.linkedAccountName || activity.accountName) && (
           <Link
@@ -693,6 +696,12 @@ function formatActivitySummary(activity: SalesActivityRecord) {
     `Summary: ${activity.summary}`,
     activity.nextAction ? `Next action: ${activity.nextAction}` : '',
     activity.dueDate ? `Due: ${activity.dueDate}` : '',
+    activity.contactName || activity.stakeholderName ? `Contact: ${activity.contactName || activity.stakeholderName}` : '',
+    activity.competitors?.length ? `Competitors: ${activity.competitors.join(', ')}` : '',
+    activity.buyingSignals?.length ? `Buying signals: ${activity.buyingSignals.join(', ')}` : '',
+    activity.risks?.length ? `Risks: ${activity.risks.join(', ')}` : '',
+    activity.timelineSignals?.length ? `Timeline: ${activity.timelineSignals.join(', ')}` : '',
+    activity.nextActions?.length ? `Next actions:\n${activity.nextActions.map((action, index) => `${index + 1}. ${action.title}${action.dueDate ? ` (${action.dueDate})` : ''}`).join('\n')}` : '',
     activity.tags.length > 0 ? `Tags: ${activity.tags.join(', ')}` : '',
   ].filter(Boolean).join('\n');
 }
@@ -707,4 +716,38 @@ function getActivityOpportunityName(activity: SalesActivityRecord) {
   return activity.linkStatus === 'Linked'
     ? activity.linkedOpportunityName || activity.opportunityName
     : activity.opportunityName;
+}
+
+function ActivityExtractionDetail({ activity }: { activity: SalesActivityRecord }) {
+  const rows = [
+    { label: 'Competitors', values: activity.competitors || [] },
+    { label: 'Buying signals', values: activity.buyingSignals || [] },
+    { label: 'Risks', values: activity.risks || [] },
+    { label: 'Timeline signals', values: activity.timelineSignals || [] },
+  ].filter((row) => row.values.length > 0);
+
+  if (rows.length === 0 && (!activity.nextActions || activity.nextActions.length === 0)) return null;
+
+  return (
+    <div className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Extraction v2</p>
+      {activity.nextActions && activity.nextActions.length > 0 && (
+        <div className="mt-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Next actions</p>
+          <ul className="mt-2 space-y-2 text-sm font-semibold text-gray-800">
+            {activity.nextActions.map((action, index) => (
+              <li key={`${action.title}-${index}`} className="rounded-md bg-white px-3 py-2 ring-1 ring-gray-100">
+                {index + 1}. {action.title}{action.dueDate ? ` | Due ${action.dueDate}` : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {rows.map((row) => (
+          <Fact key={row.label} label={row.label} value={row.values.join(', ')} />
+        ))}
+      </div>
+    </div>
+  );
 }

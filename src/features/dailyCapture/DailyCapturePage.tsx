@@ -58,8 +58,8 @@ export function DailyCapturePage() {
   }, [authLoading, isAuthenticated, user?.id]);
 
   const localPreview = useMemo(() => {
-    return rawNote.trim().length >= 8 ? classifySalesActivity(rawNote, activityDate) : null;
-  }, [activityDate, rawNote]);
+    return rawNote.trim().length >= 8 ? classifySalesActivity(rawNote, activityDate, { accounts, opportunities }) : null;
+  }, [accounts, activityDate, opportunities, rawNote]);
   const preview = structuredDraft || localPreview;
 
   const refreshActivities = async () => {
@@ -430,9 +430,12 @@ function AiSuggestionPanel({ suggestion, onAccept }: { suggestion: CaptureAiSugg
       <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
         <AiFact label="Account" value={suggestion.accountName || 'Not captured'} />
         <AiFact label="Opportunity" value={suggestion.opportunityName || 'Not captured'} />
+        <AiFact label="Contact" value={suggestion.contactName || suggestion.stakeholderName || 'Not captured'} />
         <AiFact label="Next action" value={suggestion.nextAction || 'Not captured'} />
         <AiFact label="Due date" value={suggestion.dueDate || 'Not captured'} />
-        <AiFact label="Suggested opportunity ID" value={suggestion.suggestedOpportunityId || 'None'} />
+        <AiFact label="Buying signals" value={suggestion.buyingSignals?.length ? suggestion.buyingSignals.join(', ') : 'None'} />
+        <AiFact label="Competitors" value={suggestion.competitors?.length ? suggestion.competitors.join(', ') : 'None'} />
+        <AiFact label="Timeline" value={suggestion.timelineSignals?.length ? suggestion.timelineSignals.join(', ') : 'None'} />
         <AiFact label="Tags" value={suggestion.tags.length ? suggestion.tags.join(', ') : 'None'} />
       </div>
       {suggestion.reasoning.length > 0 && (
@@ -474,9 +477,49 @@ function StructuredPreviewEditor({
       </label>
       <PreviewInput label="Account" value={preview.accountName} placeholder="Not captured" onChange={(value) => onChange('accountName', value)} />
       <PreviewInput label="Opportunity" value={preview.opportunityName} placeholder="Not captured" onChange={(value) => onChange('opportunityName', value)} />
+      <PreviewInput label="Contact" value={preview.contactName || ''} placeholder="Not captured" onChange={(value) => onChange('contactName', value)} />
+      <PreviewInput label="Stakeholder" value={preview.stakeholderName || ''} placeholder="Not captured" onChange={(value) => onChange('stakeholderName', value)} />
+      <PreviewInput label="Stakeholder role" value={preview.stakeholderRole || ''} placeholder="Optional role" onChange={(value) => onChange('stakeholderRole', value)} />
       <PreviewInput label="Due date" value={preview.dueDate} placeholder="YYYY-MM-DD" onChange={(value) => onChange('dueDate', value)} />
       <PreviewTextArea label="Summary" value={preview.summary} onChange={(value) => onChange('summary', value)} />
       <PreviewTextArea label="Next action" value={preview.nextAction} onChange={(value) => onChange('nextAction', value)} />
+      {preview.nextActions && preview.nextActions.length > 0 && (
+        <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-blue-100 md:col-span-2">
+          <span className="text-xs font-bold uppercase tracking-wide text-blue-500">Next actions detected</span>
+          <div className="mt-2 space-y-2">
+            {preview.nextActions.map((action, index) => (
+              <div key={`${action.title}-${index}`} className="rounded-md bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-950">
+                {index + 1}. {action.title}
+                {action.dueDate ? <span className="text-blue-700"> | Due {action.dueDate}</span> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <PreviewInput
+        label="Competitors"
+        value={(preview.competitors || []).join(', ')}
+        placeholder="STERIS"
+        onChange={(value) => onChange('competitors', parseList(value))}
+      />
+      <PreviewInput
+        label="Buying signals"
+        value={(preview.buyingSignals || []).join(', ')}
+        placeholder="Budget approved"
+        onChange={(value) => onChange('buyingSignals', parseList(value))}
+      />
+      <PreviewInput
+        label="Risks"
+        value={(preview.risks || []).join(', ')}
+        placeholder="Competitor still active"
+        onChange={(value) => onChange('risks', parseList(value))}
+      />
+      <PreviewInput
+        label="Timeline signals"
+        value={(preview.timelineSignals || []).join(', ')}
+        placeholder="Next quarter"
+        onChange={(value) => onChange('timelineSignals', parseList(value))}
+      />
       <PreviewInput
         label="Tags"
         value={preview.tags.join(', ')}
@@ -563,9 +606,11 @@ function ActivityCard({
           <div className="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
             <ActivityFact label="Account" value={activity.accountName || 'Not captured'} />
             <ActivityFact label="Opportunity" value={activity.opportunityName || 'Not captured'} />
+            <ActivityFact label="Contact" value={activity.contactName || activity.stakeholderName || 'Not captured'} />
             <ActivityFact label="Next action" value={activity.nextAction || 'Not captured'} />
             <ActivityFact label="Due date" value={activity.dueDate || 'Not captured'} />
           </div>
+          <ActivitySignals activity={activity} />
           {activity.tags.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
               {activity.tags.map((tag) => (
@@ -646,6 +691,14 @@ function aiSuggestionToClassified(
     summary: suggestion.summary || rawNote.trim().slice(0, 180),
     nextAction: suggestion.nextAction || '',
     dueDate: suggestion.dueDate || '',
+    contactName: suggestion.contactName || '',
+    stakeholderName: suggestion.stakeholderName || suggestion.contactName || '',
+    stakeholderRole: suggestion.stakeholderRole || '',
+    competitors: suggestion.competitors || [],
+    buyingSignals: suggestion.buyingSignals || [],
+    risks: suggestion.risks || [],
+    timelineSignals: suggestion.timelineSignals || [],
+    nextActions: suggestion.nextActions || [],
     tags: normalizeTags(suggestion.tags),
     rawNote: rawNote.trim(),
     activityDate,
@@ -654,6 +707,10 @@ function aiSuggestionToClassified(
 
 function parseTags(value: string) {
   return normalizeTags(value.split(','));
+}
+
+function parseList(value: string) {
+  return Array.from(new Set(value.split(',').map((item) => item.trim()).filter(Boolean))).slice(0, 12);
 }
 
 function normalizeTags(tags: string[]) {
@@ -669,6 +726,44 @@ function ActivityFact({ label, value }: { label: string; value: string }) {
   );
 }
 
+function ActivitySignals({ activity }: { activity: SalesActivityRecord }) {
+  const rows = [
+    { label: 'Competitors', values: activity.competitors || [] },
+    { label: 'Buying signals', values: activity.buyingSignals || [] },
+    { label: 'Risks', values: activity.risks || [] },
+    { label: 'Timeline', values: activity.timelineSignals || [] },
+  ].filter((row) => row.values.length > 0);
+
+  if (rows.length === 0 && (!activity.nextActions || activity.nextActions.length === 0)) return null;
+
+  return (
+    <div className="mt-3 space-y-2">
+      {activity.nextActions && activity.nextActions.length > 0 && (
+        <div className="rounded-lg bg-gray-50 px-3 py-2">
+          <span className="text-xs font-bold uppercase tracking-wide text-gray-400">Next actions</span>
+          <ul className="mt-1 space-y-1 text-sm font-semibold text-gray-800">
+            {activity.nextActions.map((action, index) => (
+              <li key={`${action.title}-${index}`}>
+                {index + 1}. {action.title}{action.dueDate ? ` | Due ${action.dueDate}` : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {rows.map((row) => (
+        <div key={row.label} className="flex flex-wrap gap-2">
+          <span className="text-xs font-bold uppercase tracking-wide text-gray-400">{row.label}</span>
+          {row.values.map((value) => (
+            <span key={value} className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">
+              {value}
+            </span>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function formatActivitySummary(activity: SalesActivityRecord) {
   return [
     `Activity: ${activity.activityType}`,
@@ -678,6 +773,11 @@ function formatActivitySummary(activity: SalesActivityRecord) {
     `Summary: ${activity.summary}`,
     activity.nextAction ? `Next action: ${activity.nextAction}` : '',
     activity.dueDate ? `Due: ${activity.dueDate}` : '',
+    activity.contactName || activity.stakeholderName ? `Contact: ${activity.contactName || activity.stakeholderName}` : '',
+    activity.competitors?.length ? `Competitors: ${activity.competitors.join(', ')}` : '',
+    activity.buyingSignals?.length ? `Buying signals: ${activity.buyingSignals.join(', ')}` : '',
+    activity.timelineSignals?.length ? `Timeline: ${activity.timelineSignals.join(', ')}` : '',
+    activity.nextActions?.length ? `Next actions:\n${activity.nextActions.map((action, index) => `${index + 1}. ${action.title}${action.dueDate ? ` (${action.dueDate})` : ''}`).join('\n')}` : '',
     activity.tags.length > 0 ? `Tags: ${activity.tags.join(', ')}` : '',
   ].filter(Boolean).join('\n');
 }

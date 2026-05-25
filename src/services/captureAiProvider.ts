@@ -1,4 +1,5 @@
 import { captureAiActivityTypes } from '../utils/captureAiPrompt';
+import type { SalesActivityNextAction } from '../utils/salesActivityClassifier';
 
 export type CaptureAiProviderId = 'disabled' | 'openai-compatible';
 
@@ -24,9 +25,17 @@ export type CaptureAiSuggestion = {
   activityType: string;
   accountName?: string;
   opportunityName?: string;
+  contactName?: string;
+  stakeholderName?: string;
+  stakeholderRole?: string;
   summary: string;
   nextAction?: string;
   dueDate?: string;
+  nextActions?: SalesActivityNextAction[];
+  competitors?: string[];
+  buyingSignals?: string[];
+  risks?: string[];
+  timelineSignals?: string[];
   tags: string[];
   suggestedOpportunityId?: string;
   confidence: 'High' | 'Medium' | 'Low';
@@ -104,14 +113,24 @@ function normalizeSuggestion(value: unknown, request: CaptureAiRequest): Capture
   const suggestedOpportunityId = request.opportunities?.some((opportunity) => opportunity.id === suggestion.suggestedOpportunityId)
     ? suggestion.suggestedOpportunityId
     : '';
+  const nextActions = normalizeNextActions(suggestion.nextActions);
+  const firstAction = nextActions[0];
 
   return {
     activityType,
     accountName: cleanString(suggestion.accountName),
     opportunityName: cleanString(suggestion.opportunityName),
+    contactName: cleanString(suggestion.contactName),
+    stakeholderName: cleanString(suggestion.stakeholderName),
+    stakeholderRole: cleanString(suggestion.stakeholderRole),
     summary: cleanString(suggestion.summary) || request.rawNote.trim().slice(0, 180),
-    nextAction: cleanString(suggestion.nextAction),
-    dueDate: normalizeDate(suggestion.dueDate),
+    nextAction: cleanString(suggestion.nextAction) || firstAction?.title || '',
+    dueDate: normalizeDate(suggestion.dueDate) || firstAction?.dueDate || '',
+    nextActions,
+    competitors: normalizeProperList(suggestion.competitors),
+    buyingSignals: normalizeProperList(suggestion.buyingSignals),
+    risks: normalizeProperList(suggestion.risks),
+    timelineSignals: normalizeProperList(suggestion.timelineSignals),
     tags: normalizeTags(suggestion.tags),
     suggestedOpportunityId,
     confidence,
@@ -136,4 +155,30 @@ function normalizeTags(value: unknown) {
 function normalizeReasoning(value: unknown) {
   if (!Array.isArray(value)) return ['AI Assist returned a conservative structured suggestion.'];
   return value.map(cleanString).filter(Boolean).slice(0, 5);
+}
+
+function normalizeProperList(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return Array.from(new Set(value.map(cleanString).filter(Boolean))).slice(0, 12);
+}
+
+function normalizeNextActions(value: unknown): SalesActivityNextAction[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      const action = typeof item === 'object' && item !== null ? item as Record<string, unknown> : {};
+      const title = cleanString(action.title);
+      if (!title) return null;
+      const dueDate = normalizeDate(action.dueDate);
+      const owner = cleanString(action.owner);
+      const sourceText = cleanString(action.sourceText);
+      return {
+        title,
+        ...(dueDate ? { dueDate } : {}),
+        ...(owner ? { owner } : {}),
+        ...(sourceText ? { sourceText } : {}),
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 8) as SalesActivityNextAction[];
 }
