@@ -7,7 +7,7 @@ export function DemoEntryPage() {
 
   useEffect(() => {
     loadInteractiveDemoWorkspace();
-    window.location.replace('/app/today');
+    window.location.replace('/app/dashboard');
   }, [navigate]);
 
   return (

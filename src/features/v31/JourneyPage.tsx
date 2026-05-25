@@ -83,7 +83,10 @@ export function JourneyPage() {
   const slowLoading = useSlowLoadingFallback(loading);
 
   const loadJourney = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
     if (isDemoMode) {

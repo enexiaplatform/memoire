@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
+import { isDemoMode, isSupabaseConfigured } from '../lib/demoMode';
 
 export const PLAN_LIMITS = {
   free: {
@@ -31,7 +32,7 @@ export function usePlanLimits() {
 
   useEffect(() => {
     async function fetchUsage() {
-      if (!user) {
+      if (!user || isDemoMode || !isSupabaseConfigured) {
         setLoading(false);
         return;
       }

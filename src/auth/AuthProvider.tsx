@@ -1,17 +1,44 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
+import type { UserProfile } from '../types';
 import { pipelineSupabaseConfigMessage, supabaseClient } from '../lib/supabaseClient';
-import { AuthContext, type AuthContextValue } from './authContext';
 import { clearDemoWorkspaceMode } from '../lib/demoMode';
+import { AuthContext, type AuthContextValue } from './authContext';
+import { getFriendlyAuthErrorMessage, logAuthDebug, logAuthWarning } from './authErrors';
 
 const PIPELINE_AUTH_REDIRECT_KEY = 'memoire.pipelineDefenseAuthRedirect.v1';
-const PIPELINE_DEFENSE_ROUTE = '/app/pipeline-defense';
+const DEFAULT_AUTH_ROUTE = '/app/dashboard';
+const PROFILE_TIMEOUT_MS = 5000;
+const AUTH_TIMEOUT_MS = 9000;
+
+let sessionBootstrapPromise: Promise<Session | null> | null = null;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+
+  const applySession = useCallback((nextSession: Session | null) => {
+    setSession(nextSession);
+    setUser(nextSession?.user ?? null);
+    if (!nextSession?.user) {
+      setProfile(null);
+      setProfileLoading(false);
+      setProfileError(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!supabaseClient) {
@@ -20,51 +47,149 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    let mounted = true;
+    let cancelled = false;
 
-    supabaseClient.auth.getSession()
-      .then(({ data, error: sessionError }) => {
-        if (!mounted) return;
-        if (sessionError) {
-          setError(sessionError.message);
-        } else {
-          setSession(data.session);
-          setUser(data.session?.user ?? null);
-          setError(null);
-          debugAuth('auth session loaded', { hasSession: Boolean(data.session) });
-          completePendingCloudWorkspace(data.session?.user ?? null);
-        }
+    getInitialSession()
+      .then((initialSession) => {
+        if (cancelled || !mountedRef.current) return;
+        applySession(initialSession);
+        setError(null);
+        logAuthDebug('auth session loaded', { hasSession: Boolean(initialSession) });
+        completePendingCloudWorkspace(initialSession?.user ?? null);
       })
       .catch((sessionError: unknown) => {
-        if (!mounted) return;
-        setError(sessionError instanceof Error ? sessionError.message : 'Could not load account session.');
-        debugAuth('auth session load failed');
+        if (cancelled || !mountedRef.current) return;
+        const friendlyMessage = getFriendlyAuthErrorMessage(sessionError);
+        setError(friendlyMessage);
+        logAuthWarning('auth bootstrap failed', sessionError);
       })
       .finally(() => {
-        if (mounted) setLoading(false);
+        if (!cancelled && mountedRef.current) setLoading(false);
       });
 
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      setUser(nextSession?.user ?? null);
+      if (cancelled || !mountedRef.current) return;
+      applySession(nextSession);
       setLoading(false);
       setError(null);
-      debugAuth('auth state changed', { hasSession: Boolean(nextSession) });
+      logAuthDebug('auth state changed', { hasSession: Boolean(nextSession) });
       completePendingCloudWorkspace(nextSession?.user ?? null);
     });
 
     return () => {
-      mounted = false;
+      cancelled = true;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [applySession]);
+
+  useEffect(() => {
+    if (!supabaseClient || !user) {
+      setProfile(null);
+      setProfileLoading(false);
+      setProfileError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setProfileLoading(true);
+    setProfileError(null);
+
+    loadUserProfile(user.id)
+      .then((nextProfile) => {
+        if (cancelled || !mountedRef.current) return;
+        setProfile(nextProfile);
+        setProfileError(null);
+      })
+      .catch((profileLoadError: unknown) => {
+        if (cancelled || !mountedRef.current) return;
+        setProfile(null);
+        setProfileError(getFriendlyAuthErrorMessage(profileLoadError, 'Cloud profile is temporarily unavailable.'));
+        logAuthWarning('profile lookup failed', profileLoadError);
+      })
+      .finally(() => {
+        if (!cancelled && mountedRef.current) setProfileLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const value = useMemo<AuthContextValue>(() => ({
     user,
     session,
+    profile,
+    profileLoading,
+    profileError,
     loading,
     error,
     isAuthenticated: Boolean(user),
+    signIn: async (email: string, password: string) => {
+      if (!supabaseClient) {
+        setError(pipelineSupabaseConfigMessage);
+        return { error: { message: pipelineSupabaseConfigMessage } };
+      }
+
+      setLoading(true);
+      setError(null);
+      try {
+        const { data, error: signInError } = await withTimeout(
+          supabaseClient.auth.signInWithPassword({ email, password }),
+          'Login timed out. Please retry.',
+          AUTH_TIMEOUT_MS,
+        );
+        if (signInError) {
+          const message = getFriendlyAuthErrorMessage(signInError, 'Login failed. Please retry.');
+          setError(message);
+          return { error: { message } };
+        }
+        applySession(data.session);
+        return { error: null };
+      } catch (signInFailure: unknown) {
+        const message = getFriendlyAuthErrorMessage(signInFailure, 'Login failed. Please retry.');
+        setError(message);
+        logAuthWarning('password sign-in failed', signInFailure);
+        return { error: { message } };
+      } finally {
+        if (mountedRef.current) setLoading(false);
+      }
+    },
+    signUp: async (email: string, password: string, displayName?: string) => {
+      if (!supabaseClient) {
+        setError(pipelineSupabaseConfigMessage);
+        return { error: { message: pipelineSupabaseConfigMessage } };
+      }
+
+      setLoading(true);
+      setError(null);
+      try {
+        const { data, error: signUpError } = await withTimeout(
+          supabaseClient.auth.signUp({
+            email,
+            password,
+            options: {
+              data: { display_name: displayName || '' },
+            },
+          }),
+          'Signup timed out. Please try again.',
+          AUTH_TIMEOUT_MS,
+        );
+        if (signUpError) {
+          const message = getFriendlyAuthErrorMessage(signUpError, 'Signup failed. Please retry.');
+          setError(message);
+          return { error: { message } };
+        }
+        applySession(data.session);
+        return { error: null };
+      } catch (signUpFailure: unknown) {
+        const message = getFriendlyAuthErrorMessage(signUpFailure, 'Signup failed. Please retry.');
+        setError(message);
+        logAuthWarning('password sign-up failed', signUpFailure);
+        return { error: { message } };
+      } finally {
+        if (mountedRef.current) setLoading(false);
+      }
+    },
     signInWithGoogle: async () => {
       if (!supabaseClient) {
         setError(pipelineSupabaseConfigMessage);
@@ -73,52 +198,121 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setLoading(true);
       clearDemoWorkspaceMode();
-      setPendingPipelineRedirect();
+      setPendingAuthRedirect(getCurrentAuthDestination());
       const { error: signInError } = await supabaseClient.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}${PIPELINE_DEFENSE_ROUTE}`,
+          redirectTo: `${window.location.origin}${getCurrentAuthDestination()}`,
         },
       });
       setLoading(false);
       if (signInError) {
-        setError(signInError.message);
-        return { error: signInError.message };
+        const message = getFriendlyAuthErrorMessage(signInError, 'Could not start Google sign-in.');
+        setError(message);
+        return { error: message };
       }
       return { error: null };
     },
     signOut: async () => {
       if (!supabaseClient) {
-        setUser(null);
-        setSession(null);
+        applySession(null);
         setError(null);
         return { error: null };
       }
 
       setLoading(true);
-      const { error: signOutError } = await supabaseClient.auth.signOut();
-      clearDemoWorkspaceMode();
-      setLoading(false);
-      if (signOutError) {
-        setError(signOutError.message);
-        return { error: signOutError.message };
+      try {
+        const { error: signOutError } = await withTimeout(
+          supabaseClient.auth.signOut(),
+          'Sign out timed out. Please refresh.',
+          AUTH_TIMEOUT_MS,
+        );
+        clearDemoWorkspaceMode();
+        if (signOutError) {
+          const message = getFriendlyAuthErrorMessage(signOutError, 'Could not sign out. Please retry.');
+          setError(message);
+          return { error: message };
+        }
+        applySession(null);
+        setError(null);
+        return { error: null };
+      } catch (signOutFailure: unknown) {
+        const message = getFriendlyAuthErrorMessage(signOutFailure, 'Could not sign out. Please retry.');
+        setError(message);
+        logAuthWarning('sign-out failed', signOutFailure);
+        return { error: message };
+      } finally {
+        if (mountedRef.current) setLoading(false);
       }
-      setUser(null);
-      setSession(null);
-      setError(null);
-      return { error: null };
     },
-  }), [error, loading, session, user]);
+  }), [applySession, error, loading, profile, profileError, profileLoading, session, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-function setPendingPipelineRedirect() {
+function getInitialSession() {
+  if (!supabaseClient) return Promise.resolve(null);
+
+  if (!sessionBootstrapPromise) {
+    sessionBootstrapPromise = withTimeout(
+      supabaseClient.auth.getSession().then(({ data, error }) => {
+        if (error) throw error;
+        return data.session;
+      }),
+      'Session restore timed out.',
+      AUTH_TIMEOUT_MS,
+    ).finally(() => {
+      window.setTimeout(() => {
+        sessionBootstrapPromise = null;
+      }, 0);
+    });
+  }
+
+  return sessionBootstrapPromise;
+}
+
+async function loadUserProfile(userId: string) {
+  if (!supabaseClient) return null;
+
+  const { data, error } = await withTimeout(
+    Promise.resolve(
+      supabaseClient
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle(),
+    ),
+    'Profile lookup timed out.',
+    PROFILE_TIMEOUT_MS,
+  );
+
+  if (error) throw error;
+  return data as UserProfile | null;
+}
+
+function withTimeout<T>(promise: Promise<T>, message: string, timeoutMs: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+    promise
+      .then((value) => resolve(value))
+      .catch((timeoutError) => reject(timeoutError))
+      .finally(() => window.clearTimeout(timer));
+  });
+}
+
+function setPendingAuthRedirect(target: string) {
   try {
-    window.localStorage.setItem(PIPELINE_AUTH_REDIRECT_KEY, PIPELINE_DEFENSE_ROUTE);
+    window.localStorage.setItem(PIPELINE_AUTH_REDIRECT_KEY, target);
   } catch {
     // Non-blocking: OAuth can still proceed without the marker.
   }
+}
+
+function getCurrentAuthDestination() {
+  if (typeof window === 'undefined') return DEFAULT_AUTH_ROUTE;
+  const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (currentPath.startsWith('/app/')) return currentPath;
+  return DEFAULT_AUTH_ROUTE;
 }
 
 function completePendingCloudWorkspace(user: User | null) {
@@ -148,7 +342,7 @@ function completePendingCloudWorkspace(user: User | null) {
     // Ignore localStorage cleanup errors.
   }
 
-  if (window.location.pathname !== target) {
+  if (window.location.pathname !== target.split(/[?#]/)[0]) {
     window.setTimeout(() => {
       window.location.replace(target);
     }, 0);
@@ -159,11 +353,5 @@ function completePendingCloudWorkspace(user: User | null) {
     window.setTimeout(() => {
       window.location.reload();
     }, 0);
-  }
-}
-
-function debugAuth(message: string, context?: Record<string, unknown>) {
-  if (import.meta.env.DEV) {
-    console.debug(`[MemoireAuth] ${message}`, context || {});
   }
 }

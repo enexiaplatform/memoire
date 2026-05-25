@@ -34,7 +34,10 @@ export function AskMemoirePage() {
   const slowContextLoading = useSlowLoadingFallback(contextLoading);
 
   const loadMemory = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setContextLoading(false);
+      return;
+    }
     setContextLoading(true);
 
     if (isDemoMode) {

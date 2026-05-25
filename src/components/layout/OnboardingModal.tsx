@@ -36,7 +36,7 @@ const standardSteps: WorkflowStepConfig[] = [
     title: 'Capture',
     instruction: 'Start by capturing what happened with a customer.',
     why: 'Raw notes become usable Sales Memory only after Memoire has the interaction.',
-    route: '/app/today',
+    route: '/app/capture',
     primaryLabel: 'Use sample note',
   },
   {
@@ -44,7 +44,7 @@ const standardSteps: WorkflowStepConfig[] = [
     title: 'Structure',
     instruction: 'Structure the raw note into account memory, blocker, and next action.',
     why: 'This turns one conversation into objects Memoire can remember and use.',
-    route: '/app/today',
+    route: '/app/capture',
     primaryLabel: 'I structured it',
   },
   {
@@ -52,7 +52,7 @@ const standardSteps: WorkflowStepConfig[] = [
     title: 'Review Preview',
     instruction: 'Review what Memoire extracted before saving.',
     why: 'You stay in control of the Account, Contact, Blocker, Next Action, and Missing Context.',
-    route: '/app/today',
+    route: '/app/capture',
     primaryLabel: 'Continue',
   },
   {
@@ -60,7 +60,7 @@ const standardSteps: WorkflowStepConfig[] = [
     title: 'Save to Sales Memory',
     instruction: 'Save this interaction so it becomes part of Account Memory and can create a Next Action.',
     why: 'This closes the loop from customer interaction to usable memory.',
-    route: '/app/today',
+    route: '/app/capture',
     primaryLabel: 'I saved it',
   },
   {
@@ -89,8 +89,8 @@ const standardSteps: WorkflowStepConfig[] = [
     title: 'Finish',
     instruction: 'You completed your first Memory-to-Action flow.',
     why: 'One customer interaction became Account Memory, blocker context, Next Action, askable knowledge, and a follow-up draft.',
-    route: '/app/today',
-    primaryLabel: 'Go to Today',
+    route: '/app/dashboard',
+    primaryLabel: 'Go to Dashboard',
   },
 ];
 
@@ -100,7 +100,7 @@ const founderSteps: WorkflowStepConfig[] = [
     title: 'Start with deals that may go silent',
     instruction: 'Start from the Stuck Deal Queue before adding any new note.',
     why: 'Memoire should show value immediately by surfacing unresolved objections, missing follow-ups, and weak context.',
-    route: '/app/today',
+    route: '/app/dashboard',
     primaryLabel: 'Open Apex Pharma',
   },
   {
@@ -136,7 +136,7 @@ const founderSteps: WorkflowStepConfig[] = [
     title: 'Quick Capture as the second act',
     instruction: 'Now see how a new customer interaction becomes part of this queue.',
     why: 'Capture matters after the user understands the value of the stuck-deal queue.',
-    route: '/app/today',
+    route: '/app/dashboard',
     primaryLabel: 'Show Quick Capture',
   },
   {
@@ -144,8 +144,8 @@ const founderSteps: WorkflowStepConfig[] = [
     title: 'Finish',
     instruction: 'You saw how Memoire catches deals before they go silent.',
     why: 'The demo value comes first: stuck deal, evidence, suggested fix, follow-up, and then capture.',
-    route: '/app/today',
-    primaryLabel: 'Go to Today',
+    route: '/app/capture',
+    primaryLabel: 'Go to Dashboard',
   },
 ];
 
@@ -235,7 +235,7 @@ export function OnboardingModal() {
       if (workflow.currentStep !== 'ask_account') return;
       const accountId = savedMemory?.accountId || founderAccountId;
       if (founderMode) {
-        navigate('/app/today#quick-capture');
+        navigate('/app/capture');
         setWorkflow((current) => ({ ...current, currentStep: 'structure' }));
         return;
       }
@@ -280,7 +280,7 @@ export function OnboardingModal() {
       sampleMode: !nextFounderMode,
       founderMode: nextFounderMode,
     });
-    navigate('/app/today');
+    navigate('/app/capture');
   }
 
   function skip() {
@@ -305,7 +305,7 @@ export function OnboardingModal() {
     setWorkflow((current) => ({ ...current, active: false, completed: true }));
   }
 
-  function finish(destination: '/app/today' | '/app/journey' = '/app/today') {
+  function finish(destination: '/app/dashboard' | '/app/journey' = '/app/dashboard') {
     sessionStorage.setItem(sessionKey, 'true');
     writePreference(storageKey, {
       ...preference,
@@ -353,7 +353,7 @@ export function OnboardingModal() {
         return;
       case 'structure':
         if (founderMode) {
-          navigate('/app/today#quick-capture');
+          navigate('/app/capture');
           setTimeout(() => {
             window.dispatchEvent(new CustomEvent(QUICK_CAPTURE_FOCUS_EVENT));
           }, 150);
@@ -392,7 +392,7 @@ export function OnboardingModal() {
         goNext();
         return;
       case 'finish':
-        finish('/app/today');
+        finish('/app/dashboard');
         return;
       default:
         goNext();
@@ -593,8 +593,8 @@ export function OnboardingModal() {
       )}
       {currentStep.step === 'finish' && (
         <div className="mt-3 flex gap-2">
-          <Link to="/app/today" onClick={() => finish('/app/today')} className="text-xs font-bold text-brand-blue">
-            Go to Today
+          <Link to="/app/dashboard" onClick={() => finish('/app/dashboard')} className="text-xs font-bold text-brand-blue">
+            Go to Dashboard
           </Link>
         </div>
       )}

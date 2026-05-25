@@ -1,5 +1,4 @@
-import { Navigate } from 'react-router-dom';
-import { useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { loadInteractiveDemoWorkspace } from '../../features/v31/localStore';
@@ -9,10 +8,10 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, loading, signOut } = useAuth();
+  const { user, session, loading, signOut } = useAuth();
   const location = useLocation();
   const [slowLoad, setSlowLoad] = useState(false);
-  const allowsLocalFirstAccess = ['/app/dashboard', '/app/today', '/app/pipeline-defense', '/app/capture', '/app/calendar', '/app/reviews', '/app/opportunities', '/app/accounts'].includes(location.pathname);
+  const allowsLocalFirstAccess = isLocalFirstAppRoute(location.pathname);
 
   useEffect(() => {
     if (!loading) {
@@ -27,6 +26,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     loadInteractiveDemoWorkspace();
     window.location.replace('/app/dashboard');
   };
+
+  if (allowsLocalFirstAccess) {
+    return <>{children}</>;
+  }
 
   if (loading) {
     if (slowLoad) {
@@ -52,11 +55,26 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (!user && !allowsLocalFirstAccess) {
-    return <Navigate to="/login" replace />;
+  if (!user && !session) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   return <>{children}</>;
+}
+
+function isLocalFirstAppRoute(pathname: string) {
+  return [
+    '/app/dashboard',
+    '/app/today',
+    '/app/pipeline-defense',
+    '/app/capture',
+    '/app/calendar',
+    '/app/reviews',
+    '/app/opportunities',
+    '/app/accounts',
+    '/app/ask',
+    '/app/journey',
+  ].some((route) => pathname === route || pathname.startsWith(`${route}/`));
 }
 
 function LoadingFallback({

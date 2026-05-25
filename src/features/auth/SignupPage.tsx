@@ -19,7 +19,7 @@ export function SignupPage() {
     const { error } = await signUp(email, password, displayName);
     setSubmitting(false);
     if (!error) {
-      navigate('/app/today');
+      navigate('/app/dashboard');
     }
   };
 

@@ -20,7 +20,7 @@ export function LoginPage() {
     try {
       const { error } = await signIn(email, password);
       if (!error) {
-        navigate('/app/today');
+        navigate('/app/dashboard');
       }
     } catch {
       setLocalError('Login failed. Please retry.');

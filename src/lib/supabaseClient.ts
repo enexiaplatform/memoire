@@ -12,6 +12,17 @@ export const isPipelineSupabaseConfigured =
 export const pipelineSupabaseConfigMessage =
   'Supabase cloud sync is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable Google sign-in and cloud persistence.';
 
+declare global {
+  var __memoireSupabaseClient: SupabaseClient | null | undefined;
+}
+
 export const supabaseClient: SupabaseClient | null = isPipelineSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? (globalThis.__memoireSupabaseClient ||= createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        persistSession: true,
+        storageKey: 'memoire.supabase.auth',
+      },
+    }))
   : null;

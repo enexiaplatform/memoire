@@ -1,14 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_ENV_ERROR, isSupabaseConfigured } from './demoMode';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import {
+  isPipelineSupabaseConfigured,
+  pipelineSupabaseConfigMessage,
+  supabaseClient,
+} from './supabaseClient';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!isSupabaseConfigured) {
-  console.error(SUPABASE_ENV_ERROR);
-}
-
-export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key'
-);
+export const supabase = supabaseClient as SupabaseClient;
+export { supabaseClient };
+export const isSupabaseSingletonConfigured = isPipelineSupabaseConfigured;
+export const SUPABASE_SINGLETON_CONFIG_MESSAGE = pipelineSupabaseConfigMessage;

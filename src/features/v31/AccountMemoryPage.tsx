@@ -34,7 +34,10 @@ export function AccountMemoryPage() {
   const slowLoading = useSlowLoadingFallback(loading);
 
   const loadAccountMemory = useCallback(async () => {
-    if (!user || !accountId) return;
+    if (!user || !accountId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
     if (isDemoMode) {
