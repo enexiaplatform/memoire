@@ -33,6 +33,7 @@ import {
   type OpportunityFormInput,
 } from '../../services/opportunityStore';
 import { analyzePipelineQuality, analyzeOpportunityQuality } from '../../utils/opportunityQuality';
+import { analyzeMeddicLiteOpportunity, type MeddicLiteDealCategory, type MeddicLiteStatus } from '../../utils/meddicLite';
 import { loadSalesActivities, type SalesActivityRecord } from '../../services/salesActivityStore';
 import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
 import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
@@ -241,7 +242,7 @@ export function OpportunitiesPage() {
 
     setBriefCreateState('saving');
     setBriefCreateMessage('Creating Pipeline Defense Brief...');
-    const draftBrief = generatePipelineDefenseBriefFromOpportunities(previewOpportunities, briefMetadata, objections);
+    const draftBrief = generatePipelineDefenseBriefFromOpportunities(previewOpportunities, briefMetadata, objections, stakeholders, activities);
 
     try {
       const createdBrief = dataUserId && canUsePipelineDefenseCloudStore()
@@ -403,6 +404,8 @@ export function OpportunitiesPage() {
         <DefenseBriefPreviewModal
           opportunities={previewOpportunities}
           objections={objections}
+          stakeholders={stakeholders}
+          activities={activities}
           metadata={briefMetadata}
           onMetadataChange={setBriefMetadata}
           createState={briefCreateState}
@@ -658,6 +661,14 @@ function OpportunityPanel({
         <>
           {editingOpportunity && <StakeholderMap opportunity={editingOpportunity} stakeholders={stakeholders} />}
           {editingOpportunity && <OpportunityObjectionLedger opportunity={editingOpportunity} objections={objections} />}
+          {editingOpportunity && (
+            <MeddicLitePanel
+              opportunity={editingOpportunity}
+              stakeholders={stakeholders}
+              objections={objections}
+              activities={linkedActivities}
+            />
+          )}
           <LinkedActivitiesTimeline activities={linkedActivities} />
         </>
       )}
@@ -708,6 +719,8 @@ function OpportunityPanel({
 function DefenseBriefPreviewModal({
   opportunities,
   objections,
+  stakeholders,
+  activities,
   metadata,
   onMetadataChange,
   createState,
@@ -717,6 +730,8 @@ function DefenseBriefPreviewModal({
 }: {
   opportunities: CrmLiteOpportunity[];
   objections: ObjectionRecord[];
+  stakeholders: StakeholderRecord[];
+  activities: SalesActivityRecord[];
   metadata: BriefPreviewMetadata;
   onMetadataChange: (metadata: BriefPreviewMetadata) => void;
   createState: SaveState;
@@ -724,7 +739,7 @@ function DefenseBriefPreviewModal({
   onCreate: () => void;
   onClose: () => void;
 }) {
-  const generatedDeals = opportunities.map((opportunity) => mapOpportunityToPipelineDefenseDeal(opportunity, objections));
+  const generatedDeals = opportunities.map((opportunity) => mapOpportunityToPipelineDefenseDeal(opportunity, objections, stakeholders, activities));
   const updateMetadata = <Key extends keyof BriefPreviewMetadata>(
     key: Key,
     value: BriefPreviewMetadata[Key],
@@ -942,6 +957,91 @@ function OpportunityObjectionLedger({ opportunity, objections }: { opportunity: 
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+function MeddicLitePanel({
+  opportunity,
+  stakeholders,
+  objections,
+  activities,
+}: {
+  opportunity: CrmLiteOpportunity;
+  stakeholders: StakeholderRecord[];
+  objections: ObjectionRecord[];
+  activities: SalesActivityRecord[];
+}) {
+  const review = analyzeMeddicLiteOpportunity({ opportunity, stakeholders, objections, activities });
+
+  return (
+    <section className="mt-5 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">MEDDIC-lite Review</p>
+          <h3 className="mt-1 text-base font-bold text-navy">Deal evidence check</h3>
+          <p className="mt-1 text-sm leading-6 text-blue-900/75">
+            Rule-based review of buyer, criteria, process, pain, champion, and competition.
+          </p>
+        </div>
+        <Badge label={review.category} tone={meddicCategoryTone(review.category)} />
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-2">
+        {review.fields.map((field) => (
+          <details key={field.key} className="rounded-lg bg-white p-3 ring-1 ring-blue-100">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+              <span className="text-sm font-bold text-navy">{field.label}</span>
+              <Badge label={field.status} tone={meddicStatusTone(field.status)} />
+            </summary>
+            <div className="mt-3 grid grid-cols-1 gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Evidence</p>
+                <ul className="mt-1 space-y-1 text-sm leading-6 text-gray-700">
+                  {field.evidence.slice(0, 3).map((item) => <li key={item}>- {item}</li>)}
+                </ul>
+              </div>
+              {field.gaps.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-amber-600">Gaps</p>
+                  <ul className="mt-1 space-y-1 text-sm leading-6 text-amber-800">
+                    {field.gaps.map((gap) => <li key={gap}>- {gap}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </details>
+        ))}
+      </div>
+
+      {review.gaps.length > 0 && (
+        <div className="mt-4 rounded-lg border border-amber-100 bg-amber-50 p-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Missing MEDDIC gaps</p>
+          <ul className="mt-2 space-y-1 text-sm leading-6 text-amber-900">
+            {review.gaps.slice(0, 6).map((gap) => <li key={gap}>- {gap}</li>)}
+          </ul>
+        </div>
+      )}
+
+      <div className="mt-4 rounded-lg border border-gray-100 bg-white p-3">
+        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Recommended defense answer</p>
+        <p className="mt-1 text-sm leading-6 text-gray-700">{review.defenseAnswer}</p>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="rounded-lg bg-white p-3 ring-1 ring-blue-100">
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Recommended questions</p>
+          <ul className="mt-2 space-y-1 text-sm leading-6 text-gray-700">
+            {review.recommendedQuestions.slice(0, 4).map((question) => <li key={question}>- {question}</li>)}
+          </ul>
+        </div>
+        <div className="rounded-lg bg-white p-3 ring-1 ring-blue-100">
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Recommended actions</p>
+          <ul className="mt-2 space-y-1 text-sm leading-6 text-gray-700">
+            {review.recommendedActions.slice(0, 4).map((action) => <li key={action}>- {action}</li>)}
+          </ul>
+        </div>
+      </div>
     </section>
   );
 }
@@ -1204,6 +1304,18 @@ function decisionTone(decision: string) {
   if (decision === 'Defend') return 'green';
   if (decision === 'Monitor') return 'blue';
   if (decision === 'Deprioritize') return 'gray';
+  return 'red';
+}
+
+function meddicCategoryTone(category: MeddicLiteDealCategory) {
+  if (category === 'Defensible') return 'green';
+  if (category === 'Weak but recoverable') return 'amber';
+  return 'red';
+}
+
+function meddicStatusTone(status: MeddicLiteStatus) {
+  if (status === 'Strong') return 'green';
+  if (status === 'Partial') return 'amber';
   return 'red';
 }
 

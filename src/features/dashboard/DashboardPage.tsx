@@ -21,6 +21,7 @@ import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import { loadOpportunities } from '../../services/opportunityStore';
 import { loadSalesActivities, type SalesActivityRecord } from '../../services/salesActivityStore';
 import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
+import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
 import { canUsePipelineDefenseCloudStore, loadCloudBriefs } from '../../services/pipelineDefenseCloudStore';
 import {
   loadPipelineDefenseBriefStore,
@@ -45,6 +46,7 @@ import {
 } from '../../utils/onboardingState';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { clearSampleDataset, loadSampleDataset } from '../../utils/sampleData';
+import { analyzeMeddicLitePipeline } from '../../utils/meddicLite';
 
 type DashboardData = {
   activities: SalesActivityRecord[];
@@ -52,6 +54,7 @@ type DashboardData = {
   accounts: AccountMemoryRecord[];
   briefs: PipelineDefenseBrief[];
   objections: ObjectionRecord[];
+  stakeholders: StakeholderRecord[];
 };
 
 export function DashboardPage() {
@@ -62,6 +65,7 @@ export function DashboardPage() {
     accounts: [],
     briefs: [],
     objections: [],
+    stakeholders: [],
   });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -216,6 +220,12 @@ export function DashboardPage() {
               <ThisWeekSummary commandCenter={commandCenter} />
               <PriorityActionList items={commandCenter.priorityActions} />
               <OpenObjectionSignals objections={data.objections} />
+              <MeddicRiskSignal
+                opportunities={data.opportunities}
+                stakeholders={data.stakeholders}
+                objections={data.objections}
+                activities={data.activities}
+              />
 
               <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                 <AtRiskOpportunities items={commandCenter.atRiskOpportunities} />
@@ -360,6 +370,57 @@ function OpenObjectionSignals({ objections }: { objections: ObjectionRecord[] })
           </article>
         ))}
       </div>
+    </section>
+  );
+}
+
+function MeddicRiskSignal({
+  opportunities,
+  stakeholders,
+  objections,
+  activities,
+}: {
+  opportunities: CrmLiteOpportunity[];
+  stakeholders: StakeholderRecord[];
+  objections: ObjectionRecord[];
+  activities: SalesActivityRecord[];
+}) {
+  const summary = analyzeMeddicLitePipeline({ opportunities, stakeholders, objections, activities });
+  const totalRisk = summary.missingChampionCount + summary.missingEconomicBuyerCount + summary.decisionProcessGapCount + summary.unsupportedCount + summary.hopeBasedCount;
+  if (summary.totalOpportunities === 0 || totalRisk === 0) return null;
+
+  return (
+    <section className="rounded-lg border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-brand-blue" />
+            <h2 className="text-lg font-bold text-navy">MEDDIC-lite Risk Signal</h2>
+          </div>
+          <p className="mt-1 text-sm text-blue-900/75">
+            {summary.missingChampionCount} missing champion, {summary.missingEconomicBuyerCount} missing economic buyer, {summary.decisionProcessGapCount} unclear decision process.
+          </p>
+        </div>
+        <Link to="/app/opportunities" className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          Review Opportunities
+        </Link>
+      </div>
+      {summary.topRisks.length > 0 && (
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {summary.topRisks.slice(0, 3).map((item) => (
+            <article key={item.opportunityId} className="rounded-lg bg-white p-3 ring-1 ring-blue-100">
+              <div className="flex flex-wrap gap-2">
+                <Badge label={item.category} tone={item.category === 'Unsupported' || item.category === 'Hope-based' ? 'red' : 'amber'} />
+              </div>
+              <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{item.accountName}</p>
+              <h3 className="mt-1 text-sm font-bold text-navy">{item.opportunityName}</h3>
+              {item.gaps.length > 0 && (
+                <p className="mt-1 text-xs leading-5 text-gray-500">{item.gaps.join('; ')}</p>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -775,15 +836,16 @@ async function loadPipelineBriefs(userId?: string | null) {
 }
 
 async function loadDashboardData(userId?: string | null): Promise<DashboardData> {
-  const [activities, opportunities, accounts, briefs, objections] = await Promise.all([
+  const [activities, opportunities, accounts, briefs, objections, stakeholders] = await Promise.all([
     loadSalesActivities(userId),
     loadOpportunities(userId),
     loadAccounts(userId),
     loadPipelineBriefs(userId),
     loadObjections(userId),
+    loadStakeholders(userId),
   ]);
 
-  return { activities, opportunities, accounts, briefs, objections };
+  return { activities, opportunities, accounts, briefs, objections, stakeholders };
 }
 
 function syncOnboardingFromData(data: DashboardData) {

@@ -548,7 +548,7 @@ function buildSampleDataset(): SampleDataset {
       weekLabel: 'Demo week',
       salesOwner: 'Demo Sales Owner',
       scope: 'Demo sandbox opportunities',
-    }, objections),
+    }, objections, stakeholders, activities),
     id: 'demo-brief-pipeline-defense',
   } as PipelineDefenseBrief;
 

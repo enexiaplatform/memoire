@@ -2,7 +2,10 @@ import type { PipelineDefenseDeal } from '../data/pipelineDefenseBrief';
 import { createPipelineDefenseBrief, type PipelineDefenseBrief } from './pipelineDefenseStorage';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { ObjectionRecord } from '../services/objectionStore';
+import type { SalesActivityRecord } from '../services/salesActivityStore';
+import type { StakeholderRecord } from '../services/stakeholderStore';
 import { getObjectionsForOpportunity, summarizeObjectionsForPipeline } from './objectionLedger';
+import { analyzeMeddicLiteOpportunity, getMeddicLiteDefenseAnswer, getMeddicLiteGapsSummary } from './meddicLite';
 
 export type OpportunityBriefMetadata = {
   title?: string;
@@ -11,26 +14,36 @@ export type OpportunityBriefMetadata = {
   scope?: string;
 };
 
-export function mapOpportunityToPipelineDefenseDeal(opportunity: CrmLiteOpportunity, objections: ObjectionRecord[] = []): PipelineDefenseDeal {
+export function mapOpportunityToPipelineDefenseDeal(
+  opportunity: CrmLiteOpportunity,
+  objections: ObjectionRecord[] = [],
+  stakeholders: StakeholderRecord[] = [],
+  activities: SalesActivityRecord[] = [],
+): PipelineDefenseDeal {
   const missingContext = splitTextList(opportunity.missingContext);
   const evidence = splitTextList(opportunity.evidence);
   const riskType = deriveRiskTypes(opportunity, missingContext);
   const opportunityObjections = getObjectionsForOpportunity(objections, opportunity);
-  const objectionDebt = buildObjectionDebt(opportunity, opportunityObjections);
+  const meddicReview = analyzeMeddicLiteOpportunity({ opportunity, stakeholders, objections, activities });
+  const meddicGaps = meddicReview.gaps.map((gap) => `MEDDIC-lite: ${gap}`);
+  const objectionDebt = buildObjectionDebt(opportunity, opportunityObjections, meddicReview);
 
   return {
     id: `opp-${opportunity.id}`,
     account: opportunity.accountName || 'Unknown account',
     opportunity: opportunity.opportunityName || 'Untitled opportunity',
     pipelineContext: buildPipelineContext(opportunity),
-    dealTruth: buildDealTruth(opportunity, missingContext),
-    riskType,
+    dealTruth: buildDealTruth(opportunity, missingContext, meddicReview.category),
+    riskType: Array.from(new Set([...riskType, ...meddicGaps.slice(0, 4)])).slice(0, 10),
     evidence: evidence.length > 0 ? evidence : ['No concrete customer evidence has been captured on the opportunity yet.'],
-    missingContext: missingContext.length > 0 ? missingContext : deriveDefaultMissingContext(opportunity),
+    missingContext: Array.from(new Set([
+      ...(missingContext.length > 0 ? missingContext : deriveDefaultMissingContext(opportunity)),
+      ...meddicGaps,
+    ])).slice(0, 10),
     objectionDebt,
     forecastEvidenceCategory: opportunity.forecastEvidenceCategory,
     recommendedAction: opportunity.nextAction || 'Clarify the next customer action before defending this opportunity.',
-    pipelineReviewAnswer: buildPipelineReviewAnswer(opportunity, missingContext),
+    pipelineReviewAnswer: `${buildPipelineReviewAnswer(opportunity, missingContext)} ${getMeddicLiteDefenseAnswer(meddicReview)}`.trim(),
     decisionRecommendation: opportunity.decisionRecommendation,
     sourceType: 'opportunity',
     sourceOpportunityId: opportunity.id,
@@ -41,13 +54,15 @@ export function generatePipelineDefenseBriefFromOpportunities(
   opportunities: CrmLiteOpportunity[],
   metadata: OpportunityBriefMetadata = {},
   objections: ObjectionRecord[] = [],
+  stakeholders: StakeholderRecord[] = [],
+  activities: SalesActivityRecord[] = [],
 ): PipelineDefenseBrief {
   return createPipelineDefenseBrief({
     title: metadata.title || `Pipeline Defense Brief - Opportunities - ${formatDateLabel(new Date())}`,
     weekLabel: metadata.weekLabel || getCurrentWeekLabel(),
     salesOwner: metadata.salesOwner || 'Henry',
     scope: metadata.scope || 'Selected opportunities',
-    deals: opportunities.map((opportunity) => mapOpportunityToPipelineDefenseDeal(opportunity, objections)),
+    deals: opportunities.map((opportunity) => mapOpportunityToPipelineDefenseDeal(opportunity, objections, stakeholders, activities)),
   });
 }
 
@@ -62,9 +77,10 @@ function buildPipelineContext(opportunity: CrmLiteOpportunity) {
   return parts.length > 0 ? parts.join('. ') : 'Pipeline context needs stage, close period, and solution detail.';
 }
 
-function buildDealTruth(opportunity: CrmLiteOpportunity, missingContext: string[]) {
+function buildDealTruth(opportunity: CrmLiteOpportunity, missingContext: string[], meddicCategory: string) {
   const knownParts = [
     `${opportunity.accountName || 'This account'} has ${opportunity.opportunityName || 'an opportunity'} at ${opportunity.stage || 'an unclear stage'}.`,
+    `MEDDIC-lite review: ${meddicCategory}.`,
     opportunity.evidence ? `Captured evidence: ${firstSentence(opportunity.evidence)}` : 'Customer evidence is not yet strong enough to defend on its own.',
     opportunity.objectionDebt ? `Unresolved objection/context debt: ${firstSentence(opportunity.objectionDebt)}` : '',
   ].filter(Boolean);
@@ -97,10 +113,16 @@ function buildPipelineReviewAnswer(opportunity: CrmLiteOpportunity, missingConte
   return `This opportunity should be monitored. It is ${category.toLowerCase()} and needs ${nextAction} before it becomes fully defensible.`;
 }
 
-function buildObjectionDebt(opportunity: CrmLiteOpportunity, objections: ObjectionRecord[] = []): PipelineDefenseDeal['objectionDebt'] {
+function buildObjectionDebt(
+  opportunity: CrmLiteOpportunity,
+  objections: ObjectionRecord[] = [],
+  meddicReview?: ReturnType<typeof analyzeMeddicLiteOpportunity>,
+): PipelineDefenseDeal['objectionDebt'] {
   const ledgerSummary = summarizeObjectionsForPipeline(objections);
-  const objection = [opportunity.objectionDebt, ledgerSummary].filter(Boolean).join('\n') || deriveObjectionFromContext(opportunity);
+  const meddicSummary = meddicReview ? getMeddicLiteGapsSummary(meddicReview) : '';
+  const objection = [opportunity.objectionDebt, ledgerSummary, meddicSummary].filter(Boolean).join('\n') || deriveObjectionFromContext(opportunity);
   const highestImpact = objections.find((item) => item.impact === 'High') || objections[0];
+  const meddicAction = meddicReview?.recommendedActions[0] || '';
 
   return {
     objection,
@@ -109,7 +131,7 @@ function buildObjectionDebt(opportunity: CrmLiteOpportunity, objections: Objecti
       : opportunity.objectionDebt
         ? 'Captured in the opportunity objection debt field.'
       : 'No explicit objection debt captured; review remaining context gaps.',
-    requiredAction: highestImpact?.requiredProof || opportunity.nextAction || 'Confirm the objection state and required proof with the customer.',
+    requiredAction: highestImpact?.requiredProof || meddicAction || opportunity.nextAction || 'Confirm the objection state and required proof with the customer.',
     owner: 'Henry',
     status: objections.some((item) => item.status === 'Open')
       ? 'Open'
