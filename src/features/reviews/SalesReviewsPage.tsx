@@ -14,6 +14,8 @@ import {
 import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
 import { loadOpportunities, type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
+import { loadActionOutcomes, type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
+import { analyzePipelineOutcomeLoop, getActionOutcomesInPeriod } from '../../utils/actionOutcomeLoop';
 import {
   generatePipelineOpportunityActions,
   type OpportunityRecommendedAction,
@@ -40,6 +42,7 @@ export function SalesReviewsPage() {
   const [objections, setObjections] = useState<ObjectionRecord[]>([]);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
+  const [actionOutcomes, setActionOutcomes] = useState<ActionOutcomeRecord[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [recap, setRecap] = useState<SalesActivityRecap | null>(null);
   const [copyMessage, setCopyMessage] = useState('');
@@ -65,6 +68,14 @@ export function SalesReviewsPage() {
     }),
     [opportunities, stakeholders, periodObjections, periodActivities, period]
   );
+  const periodActionOutcomes = useMemo(
+    () => getActionOutcomesInPeriod(actionOutcomes, period),
+    [actionOutcomes, period]
+  );
+  const actionOutcomeSummary = useMemo(
+    () => analyzePipelineOutcomeLoop({ opportunities, stakeholders, objections, activities: periodActivities, outcomes: actionOutcomes }),
+    [actionOutcomes, opportunities, stakeholders, objections, periodActivities]
+  );
   const refreshActivities = useCallback(async () => {
     setLoadingActivities(true);
     const [loaded, loadedObjections, loadedOpportunities, loadedStakeholders] = await Promise.all([
@@ -77,6 +88,7 @@ export function SalesReviewsPage() {
     setObjections(loadedObjections);
     setOpportunities(loadedOpportunities);
     setStakeholders(loadedStakeholders);
+    setActionOutcomes(loadActionOutcomes());
     setLoadingActivities(false);
   }, [dataUserId]);
 
@@ -227,6 +239,13 @@ export function SalesReviewsPage() {
         <RecommendedDealActionsPanel actions={recommendedDealActions} />
       )}
 
+      {(periodActionOutcomes.length > 0 || actionOutcomeSummary.unresolvedCriticalActions.length > 0) && (
+        <ActionOutcomesPanel
+          periodOutcomes={periodActionOutcomes}
+          unresolvedCriticalActions={actionOutcomeSummary.unresolvedCriticalActions}
+        />
+      )}
+
       {loadingActivities ? (
         <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -335,6 +354,64 @@ function RecommendedDealActionsPanel({ actions }: { actions: OpportunityRecommen
               <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-brand-blue">{action.sourceType}</span>
               {action.suggestedDueDate && <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-bold text-gray-600">Due {action.suggestedDueDate}</span>}
             </div>
+            <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{action.accountName} / {action.opportunityName}</p>
+            <p className="mt-1 text-sm font-bold text-navy">{action.title}</p>
+            <p className="mt-1 text-xs leading-5 text-gray-500">{action.reason}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ActionOutcomesPanel({
+  periodOutcomes,
+  unresolvedCriticalActions,
+}: {
+  periodOutcomes: ActionOutcomeRecord[];
+  unresolvedCriticalActions: OpportunityRecommendedAction[];
+}) {
+  const completed = periodOutcomes.filter((outcome) => outcome.status === 'Done');
+  const dismissed = periodOutcomes.filter((outcome) => outcome.status === 'Dismissed');
+  const improved = completed.filter((outcome) => outcome.outcomeType === 'Improved' || outcome.outcomeType === 'Resolved');
+  const negativeOrUnclear = completed.filter((outcome) => ['Worsened', 'Still unclear', 'No change', 'Downgrade recommended'].includes(outcome.outcomeType));
+
+  return (
+    <section className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-sm font-bold text-emerald-950">Action Outcomes</p>
+          <p className="mt-1 text-sm text-emerald-800">
+            What changed after recommended deal actions were completed, dismissed, or left unresolved.
+          </p>
+        </div>
+        <Link to="/app/opportunities" className="inline-flex w-fit rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          Open Opportunities
+        </Link>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <MetricCard label="Completed" value={completed.length} tone={completed.length ? 'green' : 'blue'} />
+        <MetricCard label="Improved/resolved" value={improved.length} tone={improved.length ? 'green' : 'blue'} />
+        <MetricCard label="Unclear/worse" value={negativeOrUnclear.length} tone={negativeOrUnclear.length ? 'amber' : 'green'} />
+        <MetricCard label="Dismissed" value={dismissed.length} tone={dismissed.length ? 'amber' : 'blue'} />
+      </div>
+      <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
+        {[...negativeOrUnclear, ...improved, ...dismissed].slice(0, 4).map((outcome) => (
+          <div key={outcome.id} className="rounded-lg bg-white p-3 ring-1 ring-emerald-100">
+            <div className="flex flex-wrap gap-2">
+              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${outcome.outcomeType === 'Improved' || outcome.outcomeType === 'Resolved' ? 'bg-emerald-50 text-emerald-700' : outcome.outcomeType === 'Worsened' || outcome.outcomeType === 'Downgrade recommended' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>
+                {outcome.outcomeType}
+              </span>
+              <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-bold text-gray-600">{outcome.status}</span>
+            </div>
+            <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{outcome.accountName} / {outcome.opportunityName}</p>
+            <p className="mt-1 text-sm font-bold text-navy">{outcome.actionTitle}</p>
+            {outcome.outcomeNote && <p className="mt-1 text-xs leading-5 text-gray-500">{outcome.outcomeNote}</p>}
+          </div>
+        ))}
+        {unresolvedCriticalActions.slice(0, 2).map((action) => (
+          <div key={action.id} className="rounded-lg bg-white p-3 ring-1 ring-red-100">
+            <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">Unresolved critical</span>
             <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{action.accountName} / {action.opportunityName}</p>
             <p className="mt-1 text-sm font-bold text-navy">{action.title}</p>
             <p className="mt-1 text-xs leading-5 text-gray-500">{action.reason}</p>

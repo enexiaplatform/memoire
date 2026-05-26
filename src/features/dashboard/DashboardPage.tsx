@@ -22,6 +22,7 @@ import { loadOpportunities } from '../../services/opportunityStore';
 import { loadSalesActivities, type SalesActivityRecord } from '../../services/salesActivityStore';
 import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
 import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
+import { loadActionOutcomes, type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
 import { canUsePipelineDefenseCloudStore, loadCloudBriefs } from '../../services/pipelineDefenseCloudStore';
 import {
   loadPipelineDefenseBriefStore,
@@ -48,6 +49,7 @@ import { hasLocalSampleData } from '../../utils/dataMode';
 import { clearSampleDataset, loadSampleDataset } from '../../utils/sampleData';
 import { analyzeMeddicLitePipeline } from '../../utils/meddicLite';
 import { generatePipelineOpportunityActions, type OpportunityRecommendedAction } from '../../utils/opportunityActionPlan';
+import { analyzePipelineOutcomeLoop } from '../../utils/actionOutcomeLoop';
 
 type DashboardData = {
   activities: SalesActivityRecord[];
@@ -56,6 +58,7 @@ type DashboardData = {
   briefs: PipelineDefenseBrief[];
   objections: ObjectionRecord[];
   stakeholders: StakeholderRecord[];
+  actionOutcomes: ActionOutcomeRecord[];
 };
 
 export function DashboardPage() {
@@ -67,6 +70,7 @@ export function DashboardPage() {
     briefs: [],
     objections: [],
     stakeholders: [],
+    actionOutcomes: [],
   });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -225,6 +229,7 @@ export function DashboardPage() {
                 stakeholders={data.stakeholders}
                 objections={data.objections}
                 activities={data.activities}
+                actionOutcomes={data.actionOutcomes}
               />
               <OpenObjectionSignals objections={data.objections} />
               <MeddicRiskSignal
@@ -386,17 +391,21 @@ function CriticalDealActions({
   stakeholders,
   objections,
   activities,
+  actionOutcomes,
 }: {
   opportunities: CrmLiteOpportunity[];
   stakeholders: StakeholderRecord[];
   objections: ObjectionRecord[];
   activities: SalesActivityRecord[];
+  actionOutcomes: ActionOutcomeRecord[];
 }) {
+  const outcomeLoop = analyzePipelineOutcomeLoop({ opportunities, stakeholders, objections, activities, outcomes: actionOutcomes });
   const actions = generatePipelineOpportunityActions({ opportunities, stakeholders, objections, activities, limit: 5 })
     .filter((action) => action.priority === 'High')
+    .filter((action) => !outcomeLoop.latestCompletedActions.some((outcome) => outcome.opportunityId === action.opportunityId && outcome.actionTitle === action.title))
     .slice(0, 5);
 
-  if (actions.length === 0) return null;
+  if (actions.length === 0 && outcomeLoop.latestCompletedActions.length === 0 && outcomeLoop.negativeOrUnclearOutcomes.length === 0) return null;
 
   return (
     <section className="rounded-lg border border-red-100 bg-red-50/70 p-5 shadow-sm">
@@ -407,16 +416,43 @@ function CriticalDealActions({
             <h2 className="text-lg font-bold text-navy">Critical Deal Actions</h2>
           </div>
           <p className="mt-1 text-sm text-red-800">
-            Top next-best-actions from MEDDIC gaps, stakeholder risk, objections, stale actions, and competition signals.
+            Top next-best-actions plus recent outcomes from MEDDIC gaps, stakeholder risk, objections, stale actions, and competition signals.
           </p>
         </div>
         <Link to="/app/opportunities" className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
           Open Opportunities
         </Link>
       </div>
+      <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-3">
+        <Metric label="Unresolved critical" value={actions.length} tone={actions.length ? 'red' : 'green'} />
+        <Metric label="Completed actions" value={outcomeLoop.latestCompletedActions.length} tone={outcomeLoop.latestCompletedActions.length ? 'green' : 'blue'} />
+        <Metric label="Negative/unclear" value={outcomeLoop.negativeOrUnclearOutcomes.length} tone={outcomeLoop.negativeOrUnclearOutcomes.length ? 'amber' : 'green'} />
+      </div>
       <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         {actions.map((action) => (
           <CriticalDealActionCard key={action.id} action={action} />
+        ))}
+        {outcomeLoop.negativeOrUnclearOutcomes.slice(0, Math.max(0, 3 - actions.length)).map((outcome) => (
+          <article key={outcome.id} className="rounded-lg bg-white p-3 ring-1 ring-amber-100">
+            <div className="flex flex-wrap gap-2">
+              <Badge label={outcome.outcomeType} tone={outcome.outcomeType === 'Worsened' || outcome.outcomeType === 'Downgrade recommended' ? 'red' : 'amber'} />
+              <Badge label={outcome.status} tone="gray" />
+            </div>
+            <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{outcome.accountName} / {outcome.opportunityName}</p>
+            <h3 className="mt-1 text-sm font-bold text-navy">{outcome.actionTitle}</h3>
+            {outcome.outcomeNote && <p className="mt-1 text-xs leading-5 text-gray-500">{outcome.outcomeNote}</p>}
+          </article>
+        ))}
+        {actions.length === 0 && outcomeLoop.latestCompletedActions.slice(0, 3).map((outcome) => (
+          <article key={outcome.id} className="rounded-lg bg-white p-3 ring-1 ring-emerald-100">
+            <div className="flex flex-wrap gap-2">
+              <Badge label={outcome.outcomeType} tone={outcome.outcomeType === 'Improved' || outcome.outcomeType === 'Resolved' ? 'green' : 'blue'} />
+              <Badge label="Completed" tone="green" />
+            </div>
+            <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{outcome.accountName} / {outcome.opportunityName}</p>
+            <h3 className="mt-1 text-sm font-bold text-navy">{outcome.actionTitle}</h3>
+            {outcome.outcomeNote && <p className="mt-1 text-xs leading-5 text-gray-500">{outcome.outcomeNote}</p>}
+          </article>
         ))}
       </div>
     </section>
@@ -909,7 +945,7 @@ async function loadDashboardData(userId?: string | null): Promise<DashboardData>
     loadStakeholders(userId),
   ]);
 
-  return { activities, opportunities, accounts, briefs, objections, stakeholders };
+  return { activities, opportunities, accounts, briefs, objections, stakeholders, actionOutcomes: loadActionOutcomes() };
 }
 
 function syncOnboardingFromData(data: DashboardData) {

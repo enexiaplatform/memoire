@@ -4,9 +4,11 @@ import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
+import type { ActionOutcomeRecord } from '../services/actionOutcomeStore';
 import { getObjectionsForOpportunity, summarizeObjectionsForPipeline } from './objectionLedger';
 import { analyzeMeddicLiteOpportunity, getMeddicLiteDefenseAnswer, getMeddicLiteGapsSummary } from './meddicLite';
 import { generateOpportunityActionPlan, generateOpportunityActionsMarkdown } from './opportunityActionPlan';
+import { formatActionOutcomeForBrief } from './actionOutcomeLoop';
 
 export type OpportunityBriefMetadata = {
   title?: string;
@@ -20,6 +22,7 @@ export function mapOpportunityToPipelineDefenseDeal(
   objections: ObjectionRecord[] = [],
   stakeholders: StakeholderRecord[] = [],
   activities: SalesActivityRecord[] = [],
+  actionOutcomes: ActionOutcomeRecord[] = [],
 ): PipelineDefenseDeal {
   const missingContext = splitTextList(opportunity.missingContext);
   const evidence = splitTextList(opportunity.evidence);
@@ -30,6 +33,7 @@ export function mapOpportunityToPipelineDefenseDeal(
   const meddicGaps = meddicReview.gaps.map((gap) => `MEDDIC-lite: ${gap}`);
   const objectionDebt = buildObjectionDebt(opportunity, opportunityObjections, meddicReview);
   const nextDefenseActions = buildNextDefenseActions(actionPlan);
+  const lastActionOutcome = formatActionOutcomeForBrief(actionOutcomes, opportunity);
 
   return {
     id: `opp-${opportunity.id}`,
@@ -45,21 +49,21 @@ export function mapOpportunityToPipelineDefenseDeal(
     ])).slice(0, 10),
     objectionDebt: {
       ...objectionDebt,
-      requiredAction: [objectionDebt.requiredAction, nextDefenseActions].filter(Boolean).join('\n'),
+      requiredAction: [lastActionOutcome, objectionDebt.requiredAction, nextDefenseActions].filter(Boolean).join('\n'),
     },
     forecastEvidenceCategory: opportunity.forecastEvidenceCategory,
-    recommendedAction: buildRecommendedAction(opportunity, actionPlan),
-    pipelineReviewAnswer: `${buildPipelineReviewAnswer(opportunity, missingContext)} ${getMeddicLiteDefenseAnswer(meddicReview)}`.trim(),
+    recommendedAction: buildRecommendedAction(opportunity, actionPlan, lastActionOutcome),
+    pipelineReviewAnswer: `${buildPipelineReviewAnswer(opportunity, missingContext)} ${getMeddicLiteDefenseAnswer(meddicReview)} ${lastActionOutcome}`.trim(),
     decisionRecommendation: opportunity.decisionRecommendation,
     sourceType: 'opportunity',
     sourceOpportunityId: opportunity.id,
   };
 }
 
-function buildRecommendedAction(opportunity: CrmLiteOpportunity, actions: ReturnType<typeof generateOpportunityActionPlan>) {
+function buildRecommendedAction(opportunity: CrmLiteOpportunity, actions: ReturnType<typeof generateOpportunityActionPlan>, lastActionOutcome = '') {
   const base = opportunity.nextAction || actions[0]?.title || 'Clarify the next customer action before defending this opportunity.';
   const nextDefenseActions = buildNextDefenseActions(actions);
-  return [base, nextDefenseActions].filter(Boolean).join('\n');
+  return [base, lastActionOutcome, nextDefenseActions].filter(Boolean).join('\n');
 }
 
 function buildNextDefenseActions(actions: ReturnType<typeof generateOpportunityActionPlan>) {
@@ -73,13 +77,14 @@ export function generatePipelineDefenseBriefFromOpportunities(
   objections: ObjectionRecord[] = [],
   stakeholders: StakeholderRecord[] = [],
   activities: SalesActivityRecord[] = [],
+  actionOutcomes: ActionOutcomeRecord[] = [],
 ): PipelineDefenseBrief {
   return createPipelineDefenseBrief({
     title: metadata.title || `Pipeline Defense Brief - Opportunities - ${formatDateLabel(new Date())}`,
     weekLabel: metadata.weekLabel || getCurrentWeekLabel(),
     salesOwner: metadata.salesOwner || 'Henry',
     scope: metadata.scope || 'Selected opportunities',
-    deals: opportunities.map((opportunity) => mapOpportunityToPipelineDefenseDeal(opportunity, objections, stakeholders, activities)),
+    deals: opportunities.map((opportunity) => mapOpportunityToPipelineDefenseDeal(opportunity, objections, stakeholders, activities, actionOutcomes)),
   });
 }
 

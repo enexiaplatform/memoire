@@ -3,6 +3,7 @@ import { OPPORTUNITY_STORAGE_KEY, type CrmLiteOpportunity } from '../services/op
 import { SALES_ACTIVITY_STORAGE_KEY, type SalesActivityRecord } from '../services/salesActivityStore';
 import { STAKEHOLDER_STORAGE_KEY, type StakeholderRecord } from '../services/stakeholderStore';
 import { OBJECTION_STORAGE_KEY, type ObjectionRecord } from '../services/objectionStore';
+import { ACTION_OUTCOME_STORAGE_KEY, type ActionOutcomeRecord } from '../services/actionOutcomeStore';
 import { classifySalesActivity } from './salesActivityClassifier';
 import { generatePipelineDefenseBriefFromOpportunities } from './opportunityToPipelineBrief';
 import {
@@ -29,6 +30,7 @@ export type SampleDataset = {
   accounts: AccountMemoryRecord[];
   stakeholders: StakeholderRecord[];
   objections: ObjectionRecord[];
+  actionOutcomes: ActionOutcomeRecord[];
   briefs: PipelineDefenseBrief[];
 };
 
@@ -67,6 +69,7 @@ export function loadSampleDataset(): SampleDataset {
   writeLocalArray(ACCOUNT_STORAGE_KEY, dataset.accounts);
   writeLocalArray(STAKEHOLDER_STORAGE_KEY, dataset.stakeholders);
   writeLocalArray(OBJECTION_STORAGE_KEY, dataset.objections);
+  writeLocalArray(ACTION_OUTCOME_STORAGE_KEY, dataset.actionOutcomes);
   writeLocalBriefs(dataset.briefs);
   markSampleDataLoaded();
 
@@ -85,6 +88,7 @@ export function clearSampleDataset() {
   removeSampleRecords(ACCOUNT_STORAGE_KEY);
   removeSampleRecords(STAKEHOLDER_STORAGE_KEY);
   removeSampleRecords(OBJECTION_STORAGE_KEY);
+  removeSampleRecords(ACTION_OUTCOME_STORAGE_KEY);
   removeSampleBriefs();
   clearSampleDataFlag();
 }
@@ -542,13 +546,72 @@ function buildSampleDataset(): SampleDataset {
     }),
   ];
 
+  const actionOutcomes: ActionOutcomeRecord[] = [
+    sampleActionOutcome({
+      id: 'demo-outcome-vhp-economic-buyer',
+      opportunityId: 'demo-opp-vhp-solidfog-phase-2',
+      opportunityName: 'SolidFog EU-GMP Phase 2',
+      accountName: 'VHP',
+      actionTitle: 'Confirm economic buyer for SolidFog EU-GMP Phase 2',
+      actionSourceType: 'MEDDIC Gap',
+      status: 'Done',
+      outcomeType: 'Improved',
+      outcomeNote: 'Dr. Linh confirmed budget approval and CFO office is aligned for next-quarter procurement.',
+      relatedGap: 'Economic buyer should be validated as a real buying authority.',
+      completedAt: today,
+      createdAt: yesterday,
+    }),
+    sampleActionOutcome({
+      id: 'demo-outcome-control-union-lead-time',
+      opportunityId: 'demo-opp-control-union-microbiology',
+      opportunityName: 'Microbiology workflow',
+      accountName: 'Control Union',
+      actionTitle: 'Prepare proof for lead time objection',
+      actionSourceType: 'Objection',
+      status: 'Done',
+      outcomeType: 'Still unclear',
+      outcomeNote: 'Proof was sent, but Mr. Minh still needs internal confirmation on implementation timing.',
+      relatedObjectionId: 'demo-objection-control-union-lead-time',
+      relatedStakeholderName: 'Mr. Minh',
+      completedAt: yesterday,
+      createdAt: twoDaysAgo,
+    }),
+    sampleActionOutcome({
+      id: 'demo-outcome-bidiphar-downgrade',
+      opportunityId: 'demo-opp-bidiphar-qc-workflow',
+      opportunityName: 'QC workflow',
+      accountName: 'Bidiphar',
+      actionTitle: 'Define next customer action',
+      actionSourceType: 'Stale Next Action',
+      status: 'Dismissed',
+      outcomeType: 'Downgrade recommended',
+      outcomeNote: 'No confirmed buyer or next action. Keep out of defended forecast until customer re-engages.',
+      completedAt: fourDaysAgo,
+      createdAt: fourDaysAgo,
+    }),
+    sampleActionOutcome({
+      id: 'demo-outcome-tv-pharm-tender',
+      opportunityId: 'demo-opp-tv-pharm-tender',
+      opportunityName: 'Tender opportunity',
+      accountName: 'TV Pharm',
+      actionTitle: 'Clarify procurement decision process for Tender opportunity',
+      actionSourceType: 'Timeline',
+      status: 'Accepted',
+      outcomeType: 'Still unclear',
+      outcomeNote: 'Critical follow-up is still unresolved before the next review.',
+      relatedGap: 'Decision process not fully mapped.',
+      completedAt: '',
+      createdAt: today,
+    }),
+  ];
+
   const brief = {
     ...generatePipelineDefenseBriefFromOpportunities(opportunities.slice(0, 5), {
       title: `Demo Defense Brief - ${today}`,
       weekLabel: 'Demo week',
       salesOwner: 'Demo Sales Owner',
       scope: 'Demo sandbox opportunities',
-    }, objections, stakeholders, activities),
+    }, objections, stakeholders, activities, actionOutcomes),
     id: 'demo-brief-pipeline-defense',
   } as PipelineDefenseBrief;
 
@@ -558,6 +621,7 @@ function buildSampleDataset(): SampleDataset {
     accounts,
     stakeholders,
     objections,
+    actionOutcomes,
     briefs: [markSampleBrief(brief)],
   };
 }
@@ -622,6 +686,13 @@ function sampleObjection(input: Omit<ObjectionRecord, 'accountId' | 'userId' | '
     resolutionNote: input.status === 'Resolved' ? input.responsePlan : '',
     updatedAt: input.createdAt,
     storageMode: 'local',
+  });
+}
+
+function sampleActionOutcome(input: Omit<ActionOutcomeRecord, 'updatedAt' | 'source' | 'isSample'>): ActionOutcomeRecord {
+  return markSampleRecord({
+    ...input,
+    updatedAt: input.completedAt ? `${input.completedAt}T12:00:00.000Z` : input.createdAt,
   });
 }
 

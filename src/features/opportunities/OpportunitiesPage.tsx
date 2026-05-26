@@ -39,8 +39,17 @@ import { analyzeMeddicLiteOpportunity, type MeddicLiteDealCategory, type MeddicL
 import { loadSalesActivities, type SalesActivityRecord } from '../../services/salesActivityStore';
 import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
 import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
+import {
+  actionOutcomeTypes,
+  createActionOutcomeFromRecommendedAction,
+  getActionOutcomeForAction,
+  loadActionOutcomes,
+  type ActionOutcomeRecord,
+  type ActionOutcomeType,
+} from '../../services/actionOutcomeStore';
 import { analyzeStakeholderCoverage, getStakeholdersForOpportunity } from '../../utils/stakeholderGraph';
 import { getObjectionsForOpportunity, objectionStatusTone } from '../../utils/objectionLedger';
+import { analyzeOpportunityOutcomeLoop } from '../../utils/actionOutcomeLoop';
 import {
   formatOpportunityActionCopy,
   generateOpportunityActionPlan,
@@ -78,6 +87,7 @@ export function OpportunitiesPage() {
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
   const [objections, setObjections] = useState<ObjectionRecord[]>([]);
+  const [actionOutcomes, setActionOutcomes] = useState<ActionOutcomeRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState(allFilter);
@@ -110,6 +120,7 @@ export function OpportunitiesPage() {
     setActivities(loadedActivities);
     setStakeholders(loadedStakeholders);
     setObjections(loadedObjections);
+    setActionOutcomes(loadActionOutcomes());
     setLoading(false);
   };
 
@@ -251,7 +262,7 @@ export function OpportunitiesPage() {
 
     setBriefCreateState('saving');
     setBriefCreateMessage('Creating Pipeline Defense Brief...');
-    const draftBrief = generatePipelineDefenseBriefFromOpportunities(previewOpportunities, briefMetadata, objections, stakeholders, activities);
+    const draftBrief = generatePipelineDefenseBriefFromOpportunities(previewOpportunities, briefMetadata, objections, stakeholders, activities, actionOutcomes);
 
     try {
       const createdBrief = dataUserId && canUsePipelineDefenseCloudStore()
@@ -401,7 +412,9 @@ export function OpportunitiesPage() {
           linkedActivities={editingOpportunity ? getLinkedActivities(editingOpportunity, activities) : []}
           stakeholders={editingOpportunity ? getStakeholdersForOpportunity(stakeholders, editingOpportunity) : []}
           objections={editingOpportunity ? getObjectionsForOpportunity(objections, editingOpportunity) : []}
+          actionOutcomes={editingOpportunity ? actionOutcomes : []}
           onChange={setForm}
+          onActionOutcomesChange={setActionOutcomes}
           onSave={handleSave}
           onClose={closePanel}
           onDelete={editingOpportunity ? () => handleDelete(editingOpportunity) : undefined}
@@ -415,6 +428,7 @@ export function OpportunitiesPage() {
           objections={objections}
           stakeholders={stakeholders}
           activities={activities}
+          actionOutcomes={actionOutcomes}
           metadata={briefMetadata}
           onMetadataChange={setBriefMetadata}
           createState={briefCreateState}
@@ -574,7 +588,9 @@ function OpportunityPanel({
   linkedActivities,
   stakeholders,
   objections,
+  actionOutcomes,
   onChange,
+  onActionOutcomesChange,
   onSave,
   onClose,
   onDelete,
@@ -588,7 +604,9 @@ function OpportunityPanel({
   linkedActivities: SalesActivityRecord[];
   stakeholders: StakeholderRecord[];
   objections: ObjectionRecord[];
+  actionOutcomes: ActionOutcomeRecord[];
   onChange: (form: OpportunityFormInput) => void;
+  onActionOutcomesChange: (outcomes: ActionOutcomeRecord[]) => void;
   onSave: () => void;
   onClose: () => void;
   onDelete?: () => void;
@@ -685,11 +703,22 @@ function OpportunityPanel({
               stakeholders={stakeholders}
               objections={objections}
               activities={linkedActivities}
+              actionOutcomes={actionOutcomes}
+              onActionOutcomesChange={onActionOutcomesChange}
               onUseAsNextAction={(action) => onChange({
                 ...form,
                 nextAction: action.title,
                 nextActionDate: action.suggestedDueDate || form.nextActionDate,
               })}
+            />
+          )}
+          {currentOpportunity && (
+            <ActionOutcomeHistory
+              opportunity={currentOpportunity}
+              actionOutcomes={actionOutcomes}
+              stakeholders={stakeholders}
+              objections={objections}
+              activities={linkedActivities}
             />
           )}
           <LinkedActivitiesTimeline activities={linkedActivities} />
@@ -744,6 +773,7 @@ function DefenseBriefPreviewModal({
   objections,
   stakeholders,
   activities,
+  actionOutcomes,
   metadata,
   onMetadataChange,
   createState,
@@ -755,6 +785,7 @@ function DefenseBriefPreviewModal({
   objections: ObjectionRecord[];
   stakeholders: StakeholderRecord[];
   activities: SalesActivityRecord[];
+  actionOutcomes: ActionOutcomeRecord[];
   metadata: BriefPreviewMetadata;
   onMetadataChange: (metadata: BriefPreviewMetadata) => void;
   createState: SaveState;
@@ -762,7 +793,7 @@ function DefenseBriefPreviewModal({
   onCreate: () => void;
   onClose: () => void;
 }) {
-  const generatedDeals = opportunities.map((opportunity) => mapOpportunityToPipelineDefenseDeal(opportunity, objections, stakeholders, activities));
+  const generatedDeals = opportunities.map((opportunity) => mapOpportunityToPipelineDefenseDeal(opportunity, objections, stakeholders, activities, actionOutcomes));
   const updateMetadata = <Key extends keyof BriefPreviewMetadata>(
     key: Key,
     value: BriefPreviewMetadata[Key],
@@ -1074,16 +1105,72 @@ function RecommendedActionPlanPanel({
   stakeholders,
   objections,
   activities,
+  actionOutcomes,
+  onActionOutcomesChange,
   onUseAsNextAction,
 }: {
   opportunity: CrmLiteOpportunity;
   stakeholders: StakeholderRecord[];
   objections: ObjectionRecord[];
   activities: SalesActivityRecord[];
+  actionOutcomes: ActionOutcomeRecord[];
+  onActionOutcomesChange: (outcomes: ActionOutcomeRecord[]) => void;
   onUseAsNextAction: (action: OpportunityRecommendedAction) => void;
 }) {
   const [copyMessage, setCopyMessage] = useState('');
+  const [outcomeAction, setOutcomeAction] = useState<OpportunityRecommendedAction | null>(null);
+  const [outcomeType, setOutcomeType] = useState<ActionOutcomeType>('Improved');
+  const [outcomeNote, setOutcomeNote] = useState('');
+  const [completedAt, setCompletedAt] = useState(todayKey());
   const actions = generateOpportunityActionPlan({ opportunity, stakeholders, objections, activities }).slice(0, 5);
+
+  const persistOutcome = (action: OpportunityRecommendedAction, patch: Parameters<typeof createActionOutcomeFromRecommendedAction>[1]) => {
+    const existing = getActionOutcomeForAction(actionOutcomes, action);
+    createActionOutcomeFromRecommendedAction(action, {
+      ...patch,
+      id: existing?.id,
+      createdAt: existing?.createdAt,
+    });
+    onActionOutcomesChange(loadActionOutcomes());
+  };
+
+  const markDone = (action: OpportunityRecommendedAction) => {
+    persistOutcome(action, {
+      status: 'Done',
+      outcomeType: 'Still unclear',
+      outcomeNote: 'Action completed. Outcome still needs review.',
+      completedAt: todayKey(),
+    });
+  };
+
+  const dismissAction = (action: OpportunityRecommendedAction) => {
+    persistOutcome(action, {
+      status: 'Dismissed',
+      outcomeType: 'No change',
+      outcomeNote: 'Action dismissed or deprioritized.',
+    });
+  };
+
+  const openOutcomeForm = (action: OpportunityRecommendedAction) => {
+    const existing = getActionOutcomeForAction(actionOutcomes, action);
+    setOutcomeAction(action);
+    setOutcomeType(existing?.outcomeType || 'Improved');
+    setOutcomeNote(existing?.outcomeNote || '');
+    setCompletedAt(existing?.completedAt || todayKey());
+  };
+
+  const saveOutcome = () => {
+    if (!outcomeAction) return;
+    persistOutcome(outcomeAction, {
+      status: 'Done',
+      outcomeType,
+      outcomeNote: outcomeNote.trim(),
+      completedAt,
+    });
+    setOutcomeAction(null);
+    setOutcomeNote('');
+    setCompletedAt(todayKey());
+  };
 
   const copyAction = async (action: OpportunityRecommendedAction) => {
     const text = formatOpportunityActionCopy(action);
@@ -1131,6 +1218,14 @@ function RecommendedActionPlanPanel({
       <div className="mt-4 space-y-3">
         {actions.map((action) => (
           <article key={action.id} className="rounded-lg bg-white p-3 ring-1 ring-emerald-100">
+            {getActionOutcomeForAction(actionOutcomes, action) && (
+              <div className="mb-2">
+                <Badge
+                  label={`${getActionOutcomeForAction(actionOutcomes, action)?.status}: ${getActionOutcomeForAction(actionOutcomes, action)?.outcomeType}`}
+                  tone={outcomeTone(getActionOutcomeForAction(actionOutcomes, action)?.outcomeType)}
+                />
+              </div>
+            )}
             <div className="flex flex-wrap gap-2">
               <Badge label={action.priority} tone={actionPriorityTone(action.priority)} />
               <Badge label={action.sourceType} tone={action.sourceType === 'Objection' || action.sourceType === 'Competition' ? 'amber' : 'blue'} />
@@ -1156,10 +1251,57 @@ function RecommendedActionPlanPanel({
               >
                 Add to Opportunity Next Action
               </button>
+              <button
+                type="button"
+                onClick={() => markDone(action)}
+                className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:border-emerald-300"
+              >
+                Mark Done
+              </button>
+              <button
+                type="button"
+                onClick={() => openOutcomeForm(action)}
+                className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 hover:border-amber-300"
+              >
+                Add Outcome
+              </button>
+              <button
+                type="button"
+                onClick={() => dismissAction(action)}
+                className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-100"
+              >
+                Dismiss
+              </button>
             </div>
           </article>
         ))}
       </div>
+
+      {outcomeAction && (
+        <div className="mt-4 rounded-lg border border-amber-100 bg-white p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Add Outcome</p>
+              <h4 className="mt-1 text-sm font-bold text-navy">{outcomeAction.title}</h4>
+            </div>
+            <button type="button" onClick={() => setOutcomeAction(null)} className="rounded-full border border-gray-200 p-1 text-gray-500">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <SelectField label="Outcome type" value={outcomeType} options={actionOutcomeTypes} onChange={(value) => setOutcomeType(value as ActionOutcomeType)} />
+            <Field label="Completed date" type="date" value={completedAt} onChange={setCompletedAt} />
+          </div>
+          <TextArea label="Outcome note" value={outcomeNote} onChange={setOutcomeNote} />
+          <button
+            type="button"
+            onClick={saveOutcome}
+            className="mt-3 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
+          >
+            Save Outcome
+          </button>
+        </div>
+      )}
 
       {copyMessage && (
         <p className={`mt-3 rounded-lg px-3 py-2 text-xs font-semibold ${
@@ -1167,6 +1309,57 @@ function RecommendedActionPlanPanel({
         }`}>
           {copyMessage}
         </p>
+      )}
+    </section>
+  );
+}
+
+function ActionOutcomeHistory({
+  opportunity,
+  actionOutcomes,
+  stakeholders,
+  objections,
+  activities,
+}: {
+  opportunity: CrmLiteOpportunity;
+  actionOutcomes: ActionOutcomeRecord[];
+  stakeholders: StakeholderRecord[];
+  objections: ObjectionRecord[];
+  activities: SalesActivityRecord[];
+}) {
+  const analysis = analyzeOpportunityOutcomeLoop({ opportunity, outcomes: actionOutcomes, stakeholders, objections, activities });
+  const history = [...analysis.latestCompletedActions, ...analysis.dismissedActions]
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .slice(0, 6);
+
+  return (
+    <section className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Action Outcome History</p>
+      <p className="mt-1 text-sm leading-6 text-gray-600">
+        {analysis.lastActionOutcomeSummary}
+      </p>
+      {analysis.dealNeedsReview && (
+        <p className="mt-2 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
+          Deal quality may need review: unresolved critical actions, stale actions, or unclear outcomes remain.
+        </p>
+      )}
+      {history.length === 0 ? (
+        <p className="mt-3 text-sm text-gray-500">No completed or dismissed action outcomes yet.</p>
+      ) : (
+        <div className="mt-3 space-y-2">
+          {history.map((outcome) => (
+            <article key={outcome.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
+              <div className="flex flex-wrap gap-2">
+                <Badge label={outcome.status} tone={outcome.status === 'Done' ? 'green' : 'gray'} />
+                <Badge label={outcome.outcomeType} tone={outcomeTone(outcome.outcomeType)} />
+                {(outcome.completedAt || outcome.updatedAt) && <Badge label={outcome.completedAt || outcome.updatedAt.slice(0, 10)} tone="gray" />}
+              </div>
+              <p className="mt-2 text-sm font-bold text-navy">{outcome.actionTitle}</p>
+              {outcome.outcomeNote && <p className="mt-1 text-xs leading-5 text-gray-500">{outcome.outcomeNote}</p>}
+              {outcome.relatedGap && <p className="mt-1 text-xs font-semibold text-amber-700">Gap: {outcome.relatedGap}</p>}
+            </article>
+          ))}
+        </div>
       )}
     </section>
   );
@@ -1449,6 +1642,17 @@ function actionPriorityTone(priority: OpportunityActionPriority) {
   if (priority === 'High') return 'red';
   if (priority === 'Medium') return 'amber';
   return 'green';
+}
+
+function outcomeTone(outcomeType?: ActionOutcomeType) {
+  if (outcomeType === 'Improved' || outcomeType === 'Resolved') return 'green';
+  if (outcomeType === 'Worsened' || outcomeType === 'Downgrade recommended') return 'red';
+  if (outcomeType === 'Still unclear') return 'amber';
+  return 'gray';
+}
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function issueTone(severity: 'low' | 'medium' | 'high') {
