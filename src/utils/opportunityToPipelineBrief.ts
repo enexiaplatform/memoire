@@ -6,6 +6,7 @@ import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
 import { getObjectionsForOpportunity, summarizeObjectionsForPipeline } from './objectionLedger';
 import { analyzeMeddicLiteOpportunity, getMeddicLiteDefenseAnswer, getMeddicLiteGapsSummary } from './meddicLite';
+import { generateOpportunityActionPlan, generateOpportunityActionsMarkdown } from './opportunityActionPlan';
 
 export type OpportunityBriefMetadata = {
   title?: string;
@@ -25,8 +26,10 @@ export function mapOpportunityToPipelineDefenseDeal(
   const riskType = deriveRiskTypes(opportunity, missingContext);
   const opportunityObjections = getObjectionsForOpportunity(objections, opportunity);
   const meddicReview = analyzeMeddicLiteOpportunity({ opportunity, stakeholders, objections, activities });
+  const actionPlan = generateOpportunityActionPlan({ opportunity, meddicReview, stakeholders, objections, activities });
   const meddicGaps = meddicReview.gaps.map((gap) => `MEDDIC-lite: ${gap}`);
   const objectionDebt = buildObjectionDebt(opportunity, opportunityObjections, meddicReview);
+  const nextDefenseActions = buildNextDefenseActions(actionPlan);
 
   return {
     id: `opp-${opportunity.id}`,
@@ -40,14 +43,28 @@ export function mapOpportunityToPipelineDefenseDeal(
       ...(missingContext.length > 0 ? missingContext : deriveDefaultMissingContext(opportunity)),
       ...meddicGaps,
     ])).slice(0, 10),
-    objectionDebt,
+    objectionDebt: {
+      ...objectionDebt,
+      requiredAction: [objectionDebt.requiredAction, nextDefenseActions].filter(Boolean).join('\n'),
+    },
     forecastEvidenceCategory: opportunity.forecastEvidenceCategory,
-    recommendedAction: opportunity.nextAction || 'Clarify the next customer action before defending this opportunity.',
+    recommendedAction: buildRecommendedAction(opportunity, actionPlan),
     pipelineReviewAnswer: `${buildPipelineReviewAnswer(opportunity, missingContext)} ${getMeddicLiteDefenseAnswer(meddicReview)}`.trim(),
     decisionRecommendation: opportunity.decisionRecommendation,
     sourceType: 'opportunity',
     sourceOpportunityId: opportunity.id,
   };
+}
+
+function buildRecommendedAction(opportunity: CrmLiteOpportunity, actions: ReturnType<typeof generateOpportunityActionPlan>) {
+  const base = opportunity.nextAction || actions[0]?.title || 'Clarify the next customer action before defending this opportunity.';
+  const nextDefenseActions = buildNextDefenseActions(actions);
+  return [base, nextDefenseActions].filter(Boolean).join('\n');
+}
+
+function buildNextDefenseActions(actions: ReturnType<typeof generateOpportunityActionPlan>) {
+  if (actions.length === 0) return '';
+  return `Next defense actions:\n${generateOpportunityActionsMarkdown(actions.slice(0, 4))}`;
 }
 
 export function generatePipelineDefenseBriefFromOpportunities(

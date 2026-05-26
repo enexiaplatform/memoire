@@ -12,6 +12,12 @@ import {
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
 import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
+import { loadOpportunities, type CrmLiteOpportunity } from '../../services/opportunityStore';
+import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
+import {
+  generatePipelineOpportunityActions,
+  type OpportunityRecommendedAction,
+} from '../../utils/opportunityActionPlan';
 import {
   generateMonthlySalesRecap,
   generateSalesRecapMarkdown,
@@ -32,6 +38,8 @@ export function SalesReviewsPage() {
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [objections, setObjections] = useState<ObjectionRecord[]>([]);
+  const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
+  const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [recap, setRecap] = useState<SalesActivityRecap | null>(null);
   const [copyMessage, setCopyMessage] = useState('');
@@ -47,14 +55,28 @@ export function SalesReviewsPage() {
     () => objections.filter((objection) => isObjectionInPeriod(objection, period)),
     [objections, period]
   );
+  const recommendedDealActions = useMemo(
+    () => buildPeriodDealActions({
+      opportunities,
+      stakeholders,
+      objections: periodObjections,
+      activities: periodActivities,
+      period,
+    }),
+    [opportunities, stakeholders, periodObjections, periodActivities, period]
+  );
   const refreshActivities = useCallback(async () => {
     setLoadingActivities(true);
-    const [loaded, loadedObjections] = await Promise.all([
+    const [loaded, loadedObjections, loadedOpportunities, loadedStakeholders] = await Promise.all([
       loadSalesActivities(dataUserId),
       loadObjections(dataUserId),
+      loadOpportunities(dataUserId),
+      loadStakeholders(dataUserId),
     ]);
     setActivities(loaded);
     setObjections(loadedObjections);
+    setOpportunities(loadedOpportunities);
+    setStakeholders(loadedStakeholders);
     setLoadingActivities(false);
   }, [dataUserId]);
 
@@ -201,6 +223,10 @@ export function SalesReviewsPage() {
         </section>
       )}
 
+      {recommendedDealActions.length > 0 && (
+        <RecommendedDealActionsPanel actions={recommendedDealActions} />
+      )}
+
       {loadingActivities ? (
         <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -282,6 +308,40 @@ function RecapContent({
         <FollowUpsPanel followUps={recap.followUpsCaptured} />
       </section>
     </div>
+  );
+}
+
+function RecommendedDealActionsPanel({ actions }: { actions: OpportunityRecommendedAction[] }) {
+  return (
+    <section className="rounded-lg border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-sm font-bold text-blue-950">Recommended Deal Actions</p>
+          <p className="mt-1 text-sm text-blue-800">
+            Next-best-actions from opportunities touched in this period, related objections, and captured follow-ups.
+          </p>
+        </div>
+        <Link to="/app/opportunities" className="inline-flex w-fit rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          Open Opportunities
+        </Link>
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+        {actions.slice(0, 6).map((action) => (
+          <div key={action.id} className="rounded-lg bg-white p-3 ring-1 ring-blue-100">
+            <div className="flex flex-wrap gap-2">
+              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${action.priority === 'High' ? 'bg-red-50 text-red-700' : action.priority === 'Medium' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                {action.priority}
+              </span>
+              <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-brand-blue">{action.sourceType}</span>
+              {action.suggestedDueDate && <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-bold text-gray-600">Due {action.suggestedDueDate}</span>}
+            </div>
+            <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{action.accountName} / {action.opportunityName}</p>
+            <p className="mt-1 text-sm font-bold text-navy">{action.title}</p>
+            <p className="mt-1 text-xs leading-5 text-gray-500">{action.reason}</p>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -490,6 +550,51 @@ function isObjectionInPeriod(objection: ObjectionRecord, period: SalesRecapRange
   );
 }
 
+function buildPeriodDealActions({
+  opportunities,
+  stakeholders,
+  objections,
+  activities,
+  period,
+}: {
+  opportunities: CrmLiteOpportunity[];
+  stakeholders: StakeholderRecord[];
+  objections: ObjectionRecord[];
+  activities: SalesActivityRecord[];
+  period: SalesRecapRange;
+}) {
+  const touchedOpportunityIds = new Set(activities.map((activity) => activity.linkedOpportunityId).filter(Boolean));
+  objections.forEach((objection) => {
+    if (objection.opportunityId) touchedOpportunityIds.add(objection.opportunityId);
+  });
+
+  const touchedNames = new Set([
+    ...activities.map((activity) => `${normalize(activity.linkedAccountName || activity.accountName)}::${normalize(activity.linkedOpportunityName || activity.opportunityName)}`),
+    ...objections.map((objection) => `${normalize(objection.accountName)}::${normalize(objection.opportunityName)}`),
+  ]);
+
+  const periodOpportunities = opportunities.filter((opportunity) => {
+    const updatedDate = opportunity.updatedAt.slice(0, 10);
+    const nameKey = `${normalize(opportunity.accountName)}::${normalize(opportunity.opportunityName)}`;
+    return (
+      opportunity.status === 'Active' &&
+      (
+        touchedOpportunityIds.has(opportunity.id) ||
+        touchedNames.has(nameKey) ||
+        (updatedDate >= period.start && updatedDate <= period.end)
+      )
+    );
+  });
+
+  return generatePipelineOpportunityActions({
+    opportunities: periodOpportunities,
+    stakeholders,
+    objections,
+    activities,
+    limit: 6,
+  });
+}
+
 function groupActivitiesByDate(activities: SalesActivityRecord[]) {
   return activities.reduce<Record<string, SalesActivityRecord[]>>((groups, activity) => {
     groups[activity.activityDate] = groups[activity.activityDate] || [];
@@ -500,4 +605,8 @@ function groupActivitiesByDate(activities: SalesActivityRecord[]) {
 
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function normalize(value: string) {
+  return value.trim().toLowerCase();
 }

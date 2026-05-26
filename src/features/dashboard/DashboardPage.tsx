@@ -47,6 +47,7 @@ import {
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { clearSampleDataset, loadSampleDataset } from '../../utils/sampleData';
 import { analyzeMeddicLitePipeline } from '../../utils/meddicLite';
+import { generatePipelineOpportunityActions, type OpportunityRecommendedAction } from '../../utils/opportunityActionPlan';
 
 type DashboardData = {
   activities: SalesActivityRecord[];
@@ -219,6 +220,12 @@ export function DashboardPage() {
               <TodayFocus commandCenter={commandCenter} />
               <ThisWeekSummary commandCenter={commandCenter} />
               <PriorityActionList items={commandCenter.priorityActions} />
+              <CriticalDealActions
+                opportunities={data.opportunities}
+                stakeholders={data.stakeholders}
+                objections={data.objections}
+                activities={data.activities}
+              />
               <OpenObjectionSignals objections={data.objections} />
               <MeddicRiskSignal
                 opportunities={data.opportunities}
@@ -371,6 +378,63 @@ function OpenObjectionSignals({ objections }: { objections: ObjectionRecord[] })
         ))}
       </div>
     </section>
+  );
+}
+
+function CriticalDealActions({
+  opportunities,
+  stakeholders,
+  objections,
+  activities,
+}: {
+  opportunities: CrmLiteOpportunity[];
+  stakeholders: StakeholderRecord[];
+  objections: ObjectionRecord[];
+  activities: SalesActivityRecord[];
+}) {
+  const actions = generatePipelineOpportunityActions({ opportunities, stakeholders, objections, activities, limit: 5 })
+    .filter((action) => action.priority === 'High')
+    .slice(0, 5);
+
+  if (actions.length === 0) return null;
+
+  return (
+    <section className="rounded-lg border border-red-100 bg-red-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-red-700" />
+            <h2 className="text-lg font-bold text-navy">Critical Deal Actions</h2>
+          </div>
+          <p className="mt-1 text-sm text-red-800">
+            Top next-best-actions from MEDDIC gaps, stakeholder risk, objections, stale actions, and competition signals.
+          </p>
+        </div>
+        <Link to="/app/opportunities" className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          Open Opportunities
+        </Link>
+      </div>
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {actions.map((action) => (
+          <CriticalDealActionCard key={action.id} action={action} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CriticalDealActionCard({ action }: { action: OpportunityRecommendedAction }) {
+  return (
+    <article className="rounded-lg bg-white p-3 ring-1 ring-red-100">
+      <div className="flex flex-wrap gap-2">
+        <Badge label={action.priority} tone={action.priority === 'High' ? 'red' : action.priority === 'Medium' ? 'amber' : 'green'} />
+        <Badge label={action.sourceType} tone={action.sourceType === 'Objection' || action.sourceType === 'Competition' ? 'amber' : 'blue'} />
+      </div>
+      <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{action.accountName} / {action.opportunityName}</p>
+      <h3 className="mt-1 text-sm font-bold text-navy">{action.title}</h3>
+      <p className="mt-1 text-xs leading-5 text-gray-500">{action.reason}</p>
+      {action.suggestedDueDate && <p className="mt-2 text-xs font-bold text-red-700">Suggested due: {action.suggestedDueDate}</p>}
+    </article>
   );
 }
 

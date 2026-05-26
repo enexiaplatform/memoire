@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   CheckCircle2,
+  ClipboardList,
+  Copy,
   DollarSign,
   FileText,
   Filter,
@@ -39,6 +41,13 @@ import { loadStakeholders, type StakeholderRecord } from '../../services/stakeho
 import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
 import { analyzeStakeholderCoverage, getStakeholdersForOpportunity } from '../../utils/stakeholderGraph';
 import { getObjectionsForOpportunity, objectionStatusTone } from '../../utils/objectionLedger';
+import {
+  formatOpportunityActionCopy,
+  generateOpportunityActionPlan,
+  generateOpportunityActionsMarkdown,
+  type OpportunityActionPriority,
+  type OpportunityRecommendedAction,
+} from '../../utils/opportunityActionPlan';
 import {
   createPipelineDefenseBrief,
   loadPipelineDefenseBriefStore,
@@ -600,6 +609,7 @@ function OpportunityPanel({
   const update = <Key extends keyof OpportunityFormInput>(key: Key, value: OpportunityFormInput[Key]) => {
     onChange({ ...form, [key]: value });
   };
+  const currentOpportunity = editingOpportunity ? { ...editingOpportunity, ...form } : null;
 
   return (
     <aside className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
@@ -659,14 +669,27 @@ function OpportunityPanel({
 
       {mode === 'edit' && (
         <>
-          {editingOpportunity && <StakeholderMap opportunity={editingOpportunity} stakeholders={stakeholders} />}
-          {editingOpportunity && <OpportunityObjectionLedger opportunity={editingOpportunity} objections={objections} />}
-          {editingOpportunity && (
+          {currentOpportunity && <StakeholderMap opportunity={currentOpportunity} stakeholders={stakeholders} />}
+          {currentOpportunity && <OpportunityObjectionLedger opportunity={currentOpportunity} objections={objections} />}
+          {currentOpportunity && (
             <MeddicLitePanel
-              opportunity={editingOpportunity}
+              opportunity={currentOpportunity}
               stakeholders={stakeholders}
               objections={objections}
               activities={linkedActivities}
+            />
+          )}
+          {currentOpportunity && (
+            <RecommendedActionPlanPanel
+              opportunity={currentOpportunity}
+              stakeholders={stakeholders}
+              objections={objections}
+              activities={linkedActivities}
+              onUseAsNextAction={(action) => onChange({
+                ...form,
+                nextAction: action.title,
+                nextActionDate: action.suggestedDueDate || form.nextActionDate,
+              })}
             />
           )}
           <LinkedActivitiesTimeline activities={linkedActivities} />
@@ -1046,6 +1069,109 @@ function MeddicLitePanel({
   );
 }
 
+function RecommendedActionPlanPanel({
+  opportunity,
+  stakeholders,
+  objections,
+  activities,
+  onUseAsNextAction,
+}: {
+  opportunity: CrmLiteOpportunity;
+  stakeholders: StakeholderRecord[];
+  objections: ObjectionRecord[];
+  activities: SalesActivityRecord[];
+  onUseAsNextAction: (action: OpportunityRecommendedAction) => void;
+}) {
+  const [copyMessage, setCopyMessage] = useState('');
+  const actions = generateOpportunityActionPlan({ opportunity, stakeholders, objections, activities }).slice(0, 5);
+
+  const copyAction = async (action: OpportunityRecommendedAction) => {
+    const text = formatOpportunityActionCopy(action);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyMessage('Copied action.');
+    } catch {
+      setCopyMessage(text);
+    }
+  };
+
+  const copyAll = async () => {
+    const text = generateOpportunityActionsMarkdown(actions);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyMessage('Copied all actions.');
+    } catch {
+      setCopyMessage(text);
+    }
+  };
+
+  return (
+    <section className="mt-5 rounded-lg border border-emerald-100 bg-emerald-50/60 p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-emerald-700" />
+            <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">Recommended Action Plan</p>
+          </div>
+          <h3 className="mt-1 text-base font-bold text-navy">Next best actions for this deal</h3>
+          <p className="mt-1 text-sm leading-6 text-emerald-900/75">
+            Actions are generated from MEDDIC-lite gaps, stakeholder risk, objection debt, stale follow-up, timeline, and competition signals.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={copyAll}
+          className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-50"
+        >
+          <Copy className="h-3.5 w-3.5" />
+          Copy All Actions
+        </button>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {actions.map((action) => (
+          <article key={action.id} className="rounded-lg bg-white p-3 ring-1 ring-emerald-100">
+            <div className="flex flex-wrap gap-2">
+              <Badge label={action.priority} tone={actionPriorityTone(action.priority)} />
+              <Badge label={action.sourceType} tone={action.sourceType === 'Objection' || action.sourceType === 'Competition' ? 'amber' : 'blue'} />
+              {action.suggestedDueDate && <Badge label={`Due ${action.suggestedDueDate}`} tone="gray" />}
+            </div>
+            <h4 className="mt-2 text-sm font-bold text-navy">{action.title}</h4>
+            <p className="mt-1 text-sm leading-6 text-gray-600">{action.reason}</p>
+            {action.relatedGap && <p className="mt-1 text-xs font-semibold text-amber-700">Gap: {action.relatedGap}</p>}
+            {action.relatedStakeholderName && <p className="mt-1 text-xs font-semibold text-gray-500">Stakeholder: {action.relatedStakeholderName}</p>}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => copyAction(action)}
+                className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copy Action
+              </button>
+              <button
+                type="button"
+                onClick={() => onUseAsNextAction(action)}
+                className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-bold text-brand-blue hover:border-brand-blue/40"
+              >
+                Add to Opportunity Next Action
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {copyMessage && (
+        <p className={`mt-3 rounded-lg px-3 py-2 text-xs font-semibold ${
+          copyMessage.startsWith('Copied') ? 'bg-white text-emerald-700 ring-1 ring-emerald-100' : 'whitespace-pre-line bg-white text-gray-600 ring-1 ring-gray-100'
+        }`}>
+          {copyMessage}
+        </p>
+      )}
+    </section>
+  );
+}
+
 function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
@@ -1317,6 +1443,12 @@ function meddicStatusTone(status: MeddicLiteStatus) {
   if (status === 'Strong') return 'green';
   if (status === 'Partial') return 'amber';
   return 'red';
+}
+
+function actionPriorityTone(priority: OpportunityActionPriority) {
+  if (priority === 'High') return 'red';
+  if (priority === 'Medium') return 'amber';
+  return 'green';
 }
 
 function issueTone(severity: 'low' | 'medium' | 'high') {
