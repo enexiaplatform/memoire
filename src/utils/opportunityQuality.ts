@@ -1,6 +1,8 @@
 import type { Interaction, Objection, Opportunity as LegacyOpportunity, SalesAction } from '../types/v31';
 import type { CrmLiteOpportunity, ForecastEvidenceCategory } from '../services/opportunityStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
+import type { ObjectionRecord } from '../services/objectionStore';
+import { getObjectionsForOpportunity } from './objectionLedger';
 
 export type OpportunityQualityStatus = 'Healthy' | 'Needs cleanup' | 'High risk';
 export type OpportunityQualitySeverity = 'low' | 'medium' | 'high';
@@ -169,10 +171,26 @@ export function analyzeOpportunityQuality(opportunity: CrmLiteOpportunity, linke
   };
 }
 
-export function analyzePipelineQuality(opportunities: CrmLiteOpportunity[], activities: SalesActivityRecord[] = []): CrmPipelineQualityAnalysis {
-  const reviews = opportunities.map((opportunity) =>
-    analyzeOpportunityQuality(opportunity, activities.filter((activity) => activity.linkedOpportunityId === opportunity.id))
-  );
+export function analyzePipelineQuality(opportunities: CrmLiteOpportunity[], activities: SalesActivityRecord[] = [], objections: ObjectionRecord[] = []): CrmPipelineQualityAnalysis {
+  const reviews = opportunities.map((opportunity) => {
+    const review = analyzeOpportunityQuality(opportunity, activities.filter((activity) => activity.linkedOpportunityId === opportunity.id));
+    const openLedgerObjections = getObjectionsForOpportunity(objections, opportunity).filter((objection) => objection.status === 'Open');
+    if (openLedgerObjections.length === 0) return review;
+    return {
+      ...review,
+      status: openLedgerObjections.some((objection) => objection.impact === 'High') ? 'High risk' as const : review.status,
+      issues: [
+        ...review.issues,
+        {
+          id: 'ledger-objection-debt',
+          label: 'Open ledger objection',
+          severity: openLedgerObjections.some((objection) => objection.impact === 'High') ? 'high' as const : 'medium' as const,
+          reason: `${openLedgerObjections.length} structured objection${openLedgerObjections.length === 1 ? '' : 's'} still open in the Objection Ledger.`,
+          suggestedAction: 'Resolve required proof or response plan before defending this opportunity.',
+        },
+      ],
+    };
+  });
   const activeOpportunities = opportunities.filter((opportunity) => opportunity.status === 'Active');
   const activeValueByForecastCategory = makeEmptyForecastValueMap();
 
@@ -191,7 +209,10 @@ export function analyzePipelineQuality(opportunities: CrmLiteOpportunity[], acti
       ['Weak but recoverable', 'Hope-based', 'Unsupported'].includes(opportunity.forecastEvidenceCategory)
     ).length,
     missingNextActionCount: opportunities.filter((opportunity) => !opportunity.nextAction.trim()).length,
-    objectionDebtCount: opportunities.filter((opportunity) => Boolean(opportunity.objectionDebt.trim())).length,
+    objectionDebtCount: new Set([
+      ...opportunities.filter((opportunity) => Boolean(opportunity.objectionDebt.trim())).map((opportunity) => opportunity.id),
+      ...objections.filter((objection) => objection.status === 'Open' || objection.status === 'Addressed').map((objection) => objection.opportunityId || `${objection.accountName}|${objection.opportunityName}`),
+    ]).size,
     missingDecisionMakerCount: opportunities.filter((opportunity) => !opportunity.decisionMaker.trim()).length,
     missingClosePeriodCount: opportunities.filter((opportunity) => !opportunity.expectedClosePeriod.trim()).length,
     unsupportedHopeBasedCount: opportunities.filter((opportunity) =>

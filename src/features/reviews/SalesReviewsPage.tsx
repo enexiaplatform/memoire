@@ -11,6 +11,7 @@ import {
   loadSalesActivities,
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
+import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
 import {
   generateMonthlySalesRecap,
   generateSalesRecapMarkdown,
@@ -30,6 +31,7 @@ export function SalesReviewsPage() {
   const [periodType, setPeriodType] = useState<SalesRecapPeriod>('week');
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
+  const [objections, setObjections] = useState<ObjectionRecord[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [recap, setRecap] = useState<SalesActivityRecap | null>(null);
   const [copyMessage, setCopyMessage] = useState('');
@@ -41,10 +43,18 @@ export function SalesReviewsPage() {
     () => filterSalesActivitiesByPeriod(activities, period),
     [activities, period]
   );
+  const periodObjections = useMemo(
+    () => objections.filter((objection) => isObjectionInPeriod(objection, period)),
+    [objections, period]
+  );
   const refreshActivities = useCallback(async () => {
     setLoadingActivities(true);
-    const loaded = await loadSalesActivities(dataUserId);
+    const [loaded, loadedObjections] = await Promise.all([
+      loadSalesActivities(dataUserId),
+      loadObjections(dataUserId),
+    ]);
     setActivities(loaded);
+    setObjections(loadedObjections);
     setLoadingActivities(false);
   }, [dataUserId]);
 
@@ -165,6 +175,31 @@ export function SalesReviewsPage() {
           </span>
         </div>
       </section>
+
+      {periodObjections.length > 0 && (
+        <section className="rounded-lg border border-amber-200 bg-amber-50/70 p-5 shadow-sm">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-sm font-bold text-amber-950">Objection movement in this period</p>
+              <p className="mt-1 text-sm text-amber-800">
+                {periodObjections.filter((item) => item.status === 'Open').length} open, {periodObjections.filter((item) => item.status === 'Resolved').length} resolved, {periodObjections.filter((item) => item.impact === 'High').length} high-impact.
+              </p>
+            </div>
+            <Link to="/app/objections" className="inline-flex w-fit rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+              Open Objection Ledger
+            </Link>
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+            {periodObjections.slice(0, 4).map((objection) => (
+              <div key={objection.id} className="rounded-lg bg-white p-3 ring-1 ring-amber-100">
+                <p className="text-xs font-bold uppercase tracking-wide text-amber-700">{objection.accountName || 'No account'} / {objection.opportunityName || 'No opportunity'}</p>
+                <p className="mt-1 text-sm font-bold text-navy">{objection.objectionText}</p>
+                <p className="mt-1 text-xs font-semibold text-gray-500">{objection.objectionType} | {objection.impact} | {objection.status}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {loadingActivities ? (
         <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500">
@@ -444,6 +479,15 @@ function toDateKey(date: Date) {
 
 function formatShortDate(dateKey: string) {
   return new Date(`${dateKey}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function isObjectionInPeriod(objection: ObjectionRecord, period: SalesRecapRange) {
+  const createdDate = objection.createdAt.slice(0, 10);
+  const resolvedDate = objection.resolvedAt ? objection.resolvedAt.slice(0, 10) : '';
+  return (
+    (createdDate >= period.start && createdDate <= period.end) ||
+    (resolvedDate >= period.start && resolvedDate <= period.end)
+  );
 }
 
 function groupActivitiesByDate(activities: SalesActivityRecord[]) {

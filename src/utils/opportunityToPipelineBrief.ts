@@ -1,6 +1,8 @@
 import type { PipelineDefenseDeal } from '../data/pipelineDefenseBrief';
 import { createPipelineDefenseBrief, type PipelineDefenseBrief } from './pipelineDefenseStorage';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
+import type { ObjectionRecord } from '../services/objectionStore';
+import { getObjectionsForOpportunity, summarizeObjectionsForPipeline } from './objectionLedger';
 
 export type OpportunityBriefMetadata = {
   title?: string;
@@ -9,11 +11,12 @@ export type OpportunityBriefMetadata = {
   scope?: string;
 };
 
-export function mapOpportunityToPipelineDefenseDeal(opportunity: CrmLiteOpportunity): PipelineDefenseDeal {
+export function mapOpportunityToPipelineDefenseDeal(opportunity: CrmLiteOpportunity, objections: ObjectionRecord[] = []): PipelineDefenseDeal {
   const missingContext = splitTextList(opportunity.missingContext);
   const evidence = splitTextList(opportunity.evidence);
   const riskType = deriveRiskTypes(opportunity, missingContext);
-  const objectionDebt = buildObjectionDebt(opportunity);
+  const opportunityObjections = getObjectionsForOpportunity(objections, opportunity);
+  const objectionDebt = buildObjectionDebt(opportunity, opportunityObjections);
 
   return {
     id: `opp-${opportunity.id}`,
@@ -37,13 +40,14 @@ export function mapOpportunityToPipelineDefenseDeal(opportunity: CrmLiteOpportun
 export function generatePipelineDefenseBriefFromOpportunities(
   opportunities: CrmLiteOpportunity[],
   metadata: OpportunityBriefMetadata = {},
+  objections: ObjectionRecord[] = [],
 ): PipelineDefenseBrief {
   return createPipelineDefenseBrief({
     title: metadata.title || `Pipeline Defense Brief - Opportunities - ${formatDateLabel(new Date())}`,
     weekLabel: metadata.weekLabel || getCurrentWeekLabel(),
     salesOwner: metadata.salesOwner || 'Henry',
     scope: metadata.scope || 'Selected opportunities',
-    deals: opportunities.map(mapOpportunityToPipelineDefenseDeal),
+    deals: opportunities.map((opportunity) => mapOpportunityToPipelineDefenseDeal(opportunity, objections)),
   });
 }
 
@@ -93,17 +97,25 @@ function buildPipelineReviewAnswer(opportunity: CrmLiteOpportunity, missingConte
   return `This opportunity should be monitored. It is ${category.toLowerCase()} and needs ${nextAction} before it becomes fully defensible.`;
 }
 
-function buildObjectionDebt(opportunity: CrmLiteOpportunity): PipelineDefenseDeal['objectionDebt'] {
-  const objection = opportunity.objectionDebt || deriveObjectionFromContext(opportunity);
+function buildObjectionDebt(opportunity: CrmLiteOpportunity, objections: ObjectionRecord[] = []): PipelineDefenseDeal['objectionDebt'] {
+  const ledgerSummary = summarizeObjectionsForPipeline(objections);
+  const objection = [opportunity.objectionDebt, ledgerSummary].filter(Boolean).join('\n') || deriveObjectionFromContext(opportunity);
+  const highestImpact = objections.find((item) => item.impact === 'High') || objections[0];
 
   return {
     objection,
-    evidence: opportunity.objectionDebt
-      ? 'Captured in the opportunity objection debt field.'
+    evidence: ledgerSummary
+      ? 'Captured in the structured Objection Ledger.'
+      : opportunity.objectionDebt
+        ? 'Captured in the opportunity objection debt field.'
       : 'No explicit objection debt captured; review remaining context gaps.',
-    requiredAction: opportunity.nextAction || 'Confirm the objection state and required proof with the customer.',
+    requiredAction: highestImpact?.requiredProof || opportunity.nextAction || 'Confirm the objection state and required proof with the customer.',
     owner: 'Henry',
-    status: opportunity.objectionDebt
+    status: objections.some((item) => item.status === 'Open')
+      ? 'Open'
+      : objections.some((item) => item.status === 'Addressed')
+        ? 'Open'
+        : opportunity.objectionDebt
       ? 'Open'
       : opportunity.forecastEvidenceCategory === 'Unsupported'
         ? 'Unsupported'

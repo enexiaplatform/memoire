@@ -21,6 +21,7 @@ import {
 import { loadOpportunities, type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { loadSalesActivities, type SalesActivityRecord } from '../../services/salesActivityStore';
 import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
+import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
 import {
   buildAccountMemory,
   deriveAccountCandidatesFromActivities,
@@ -30,6 +31,7 @@ import {
   type AccountMemory,
 } from '../../utils/accountMemory';
 import { getStakeholdersForAccount } from '../../utils/stakeholderGraph';
+import { getObjectionsForAccount, objectionStatusTone } from '../../utils/objectionLedger';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -42,6 +44,7 @@ export function AccountsPage() {
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
+  const [objections, setObjections] = useState<ObjectionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [segmentFilter, setSegmentFilter] = useState(allFilter);
@@ -57,16 +60,18 @@ export function AccountsPage() {
 
   const refreshAccounts = async () => {
     setLoading(true);
-    const [loadedAccounts, loadedOpportunities, loadedActivities, loadedStakeholders] = await Promise.all([
+    const [loadedAccounts, loadedOpportunities, loadedActivities, loadedStakeholders, loadedObjections] = await Promise.all([
       loadAccounts(dataUserId),
       loadOpportunities(dataUserId),
       loadSalesActivities(dataUserId),
       loadStakeholders(dataUserId),
+      loadObjections(dataUserId),
     ]);
     setAccounts(loadedAccounts);
     setOpportunities(loadedOpportunities);
     setActivities(loadedActivities);
     setStakeholders(loadedStakeholders);
+    setObjections(loadedObjections);
     setLoading(false);
   };
 
@@ -277,6 +282,7 @@ export function AccountsPage() {
           saveState={saveState}
           message={message}
           stakeholders={selectedAccount ? getStakeholdersForAccount(stakeholders, { id: selectedAccount.id, accountName: selectedAccount.accountName }) : []}
+          objections={selectedAccount ? getObjectionsForAccount(objections, { id: selectedAccount.id, accountName: selectedAccount.accountName }) : []}
           onChange={setForm}
           onSave={handleSave}
           onClose={closePanel}
@@ -346,6 +352,7 @@ function AccountDetailPanel({
   form,
   selectedMemory,
   stakeholders,
+  objections,
   saveState,
   message,
   onChange,
@@ -357,6 +364,7 @@ function AccountDetailPanel({
   form: AccountFormInput;
   selectedMemory: AccountMemory | null;
   stakeholders: StakeholderRecord[];
+  objections: ObjectionRecord[];
   saveState: SaveState;
   message: string;
   onChange: (form: AccountFormInput) => void;
@@ -406,7 +414,7 @@ function AccountDetailPanel({
         <TextArea label="Notes" value={form.notes} onChange={(value) => update('notes', value)} />
       </div>
 
-      {selectedMemory && <MemorySections memory={selectedMemory} stakeholders={stakeholders} />}
+      {selectedMemory && <MemorySections memory={selectedMemory} stakeholders={stakeholders} objections={objections} />}
 
       {message && (
         <p className={`mt-4 rounded-lg px-3 py-2 text-sm font-semibold ${
@@ -432,7 +440,7 @@ function AccountDetailPanel({
   );
 }
 
-function MemorySections({ memory, stakeholders }: { memory: AccountMemory; stakeholders: StakeholderRecord[] }) {
+function MemorySections({ memory, stakeholders, objections }: { memory: AccountMemory; stakeholders: StakeholderRecord[]; objections: ObjectionRecord[] }) {
   const allActivities = [...memory.linkedActivities, ...memory.matchingActivities]
     .sort((a, b) => `${b.activityDate}-${b.createdAt}`.localeCompare(`${a.activityDate}-${a.createdAt}`));
   return (
@@ -446,6 +454,38 @@ function MemorySections({ memory, stakeholders }: { memory: AccountMemory; stake
           </ul>
         ) : (
           <p className="mt-2 text-sm text-emerald-700">No major risk signals detected.</p>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Account Objections</p>
+          <Link
+            to={`/app/objections?accountName=${encodeURIComponent(memory.account.accountName)}`}
+            className="inline-flex w-fit rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-bold text-brand-blue hover:bg-blue-50"
+          >
+            Open Objection Ledger
+          </Link>
+        </div>
+        {objections.length === 0 ? (
+          <p className="mt-2 text-sm text-gray-500">No structured objections captured for this account yet.</p>
+        ) : (
+          <div className="mt-3 space-y-2">
+            <p className="text-xs font-semibold text-gray-500">
+              Open {objections.filter((item) => item.status === 'Open').length} | Resolved {objections.filter((item) => item.status === 'Resolved').length} | Top type {mostCommonObjectionType(objections)}
+            </p>
+            {objections.slice(0, 6).map((objection) => (
+              <div key={objection.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
+                <div className="flex flex-wrap gap-2">
+                  <Badge label={objection.objectionType} />
+                  <Badge label={objection.impact} tone={objection.impact === 'High' ? 'red' : objection.impact === 'Medium' ? 'amber' : 'blue'} />
+                  <Badge label={objection.status} tone={objectionStatusTone(objection.status)} />
+                </div>
+                <p className="mt-2 text-sm font-bold text-navy">{objection.objectionText}</p>
+                {objection.requiredProof && <p className="mt-1 text-xs leading-5 text-gray-500">Proof: {objection.requiredProof}</p>}
+              </div>
+            ))}
+          </div>
         )}
       </section>
 
@@ -618,12 +658,13 @@ function Fact({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Badge({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green' | 'amber' | 'red' }) {
+function Badge({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green' | 'amber' | 'red' | 'gray' }) {
   const toneClass = {
     blue: 'border-blue-100 bg-blue-50 text-brand-blue',
     green: 'border-emerald-100 bg-emerald-50 text-emerald-700',
     amber: 'border-amber-100 bg-amber-50 text-amber-700',
     red: 'border-red-100 bg-red-50 text-red-700',
+    gray: 'border-gray-200 bg-gray-50 text-gray-600',
   }[tone];
   return <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${toneClass}`}>{label}</span>;
 }
@@ -663,6 +704,14 @@ function formatMoney(value: number, currency = 'VND') {
 
 function sameName(left: string, right: string) {
   return left.trim().toLowerCase() === right.trim().toLowerCase();
+}
+
+function mostCommonObjectionType(objections: ObjectionRecord[]) {
+  const counts = objections.reduce<Record<string, number>>((acc, objection) => {
+    acc[objection.objectionType] = (acc[objection.objectionType] || 0) + 1;
+    return acc;
+  }, {});
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'None';
 }
 
 function isOlderThan(dateKey: string, days: number) {

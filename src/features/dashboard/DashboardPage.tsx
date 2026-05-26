@@ -20,6 +20,7 @@ import { loadAccounts } from '../../services/accountStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import { loadOpportunities } from '../../services/opportunityStore';
 import { loadSalesActivities, type SalesActivityRecord } from '../../services/salesActivityStore';
+import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
 import { canUsePipelineDefenseCloudStore, loadCloudBriefs } from '../../services/pipelineDefenseCloudStore';
 import {
   loadPipelineDefenseBriefStore,
@@ -50,6 +51,7 @@ type DashboardData = {
   opportunities: CrmLiteOpportunity[];
   accounts: AccountMemoryRecord[];
   briefs: PipelineDefenseBrief[];
+  objections: ObjectionRecord[];
 };
 
 export function DashboardPage() {
@@ -59,6 +61,7 @@ export function DashboardPage() {
     opportunities: [],
     accounts: [],
     briefs: [],
+    objections: [],
   });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -212,6 +215,7 @@ export function DashboardPage() {
               <TodayFocus commandCenter={commandCenter} />
               <ThisWeekSummary commandCenter={commandCenter} />
               <PriorityActionList items={commandCenter.priorityActions} />
+              <OpenObjectionSignals objections={data.objections} />
 
               <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                 <AtRiskOpportunities items={commandCenter.atRiskOpportunities} />
@@ -320,6 +324,42 @@ function PriorityActionList({ items }: { items: CommandActionItem[] }) {
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+function OpenObjectionSignals({ objections }: { objections: ObjectionRecord[] }) {
+  const openHighImpact = objections.filter((objection) => objection.status === 'Open' && objection.impact === 'High');
+  const open = objections.filter((objection) => objection.status === 'Open');
+  if (open.length === 0) return null;
+
+  return (
+    <section className="rounded-lg border border-amber-200 bg-amber-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-700" />
+            <h2 className="text-lg font-bold text-navy">Open Objection Signals</h2>
+          </div>
+          <p className="mt-1 text-sm text-amber-800">
+            {openHighImpact.length > 0
+              ? `${openHighImpact.length} high-impact objection${openHighImpact.length === 1 ? '' : 's'} need attention before review.`
+              : `${open.length} open objection${open.length === 1 ? '' : 's'} captured in the ledger.`}
+          </p>
+        </div>
+        <Link to="/app/objections" className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          Open Objection Ledger
+        </Link>
+      </div>
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {(openHighImpact.length > 0 ? openHighImpact : open).slice(0, 3).map((objection) => (
+          <article key={objection.id} className="rounded-lg bg-white p-3 ring-1 ring-amber-100">
+            <p className="text-xs font-bold uppercase tracking-wide text-amber-700">{objection.accountName || 'No account'} / {objection.opportunityName || 'No opportunity'}</p>
+            <h3 className="mt-1 text-sm font-bold text-navy">{objection.objectionText}</h3>
+            <p className="mt-1 text-xs font-semibold text-gray-500">{objection.objectionType} | {objection.impact} impact</p>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
@@ -735,14 +775,15 @@ async function loadPipelineBriefs(userId?: string | null) {
 }
 
 async function loadDashboardData(userId?: string | null): Promise<DashboardData> {
-  const [activities, opportunities, accounts, briefs] = await Promise.all([
+  const [activities, opportunities, accounts, briefs, objections] = await Promise.all([
     loadSalesActivities(userId),
     loadOpportunities(userId),
     loadAccounts(userId),
     loadPipelineBriefs(userId),
+    loadObjections(userId),
   ]);
 
-  return { activities, opportunities, accounts, briefs };
+  return { activities, opportunities, accounts, briefs, objections };
 }
 
 function syncOnboardingFromData(data: DashboardData) {

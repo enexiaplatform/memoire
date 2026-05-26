@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { BookOpen, CalendarDays, ClipboardList, FileCheck2, GitBranch, LayoutDashboard, MessageCircleQuestion, NotebookPen, Settings, Target, UsersRound } from 'lucide-react';
+import { AlertTriangle, BookOpen, CalendarDays, ClipboardList, FileCheck2, GitBranch, LayoutDashboard, MessageCircleQuestion, NotebookPen, Settings, Target, UsersRound } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 
@@ -12,6 +12,7 @@ const navItems = [
   { to: '/app/accounts', label: 'Accounts', icon: <BookOpen className="h-5 w-5" /> },
   { to: '/app/opportunities', label: 'Opportunities', icon: <Target className="h-5 w-5" /> },
   { to: '/app/stakeholders', label: 'Stakeholders', icon: <UsersRound className="h-5 w-5" /> },
+  { to: '/app/objections', label: 'Objections', icon: <AlertTriangle className="h-5 w-5" /> },
   { to: '/app/pipeline-defense', label: 'Pipeline Defense', icon: <FileCheck2 className="h-5 w-5" /> },
   { to: '/app/ask', label: 'Ask Memoire', icon: <MessageCircleQuestion className="h-5 w-5" /> },
 ];

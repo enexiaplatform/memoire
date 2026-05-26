@@ -35,7 +35,9 @@ import {
 import { analyzePipelineQuality, analyzeOpportunityQuality } from '../../utils/opportunityQuality';
 import { loadSalesActivities, type SalesActivityRecord } from '../../services/salesActivityStore';
 import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
+import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
 import { analyzeStakeholderCoverage, getStakeholdersForOpportunity } from '../../utils/stakeholderGraph';
+import { getObjectionsForOpportunity, objectionStatusTone } from '../../utils/objectionLedger';
 import {
   createPipelineDefenseBrief,
   loadPipelineDefenseBriefStore,
@@ -65,6 +67,7 @@ export function OpportunitiesPage() {
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
+  const [objections, setObjections] = useState<ObjectionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState(allFilter);
@@ -87,14 +90,16 @@ export function OpportunitiesPage() {
 
   const refreshOpportunities = async () => {
     setLoading(true);
-    const [loaded, loadedActivities, loadedStakeholders] = await Promise.all([
+    const [loaded, loadedActivities, loadedStakeholders, loadedObjections] = await Promise.all([
       loadOpportunities(dataUserId),
       loadSalesActivities(dataUserId),
       loadStakeholders(dataUserId),
+      loadObjections(dataUserId),
     ]);
     setOpportunities(loaded);
     setActivities(loadedActivities);
     setStakeholders(loadedStakeholders);
+    setObjections(loadedObjections);
     setLoading(false);
   };
 
@@ -103,7 +108,7 @@ export function OpportunitiesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataUserId]);
 
-  const quality = useMemo(() => analyzePipelineQuality(opportunities, activities), [activities, opportunities]);
+  const quality = useMemo(() => analyzePipelineQuality(opportunities, activities, objections), [activities, objections, opportunities]);
 
   const selectedOpportunities = useMemo(() => {
     const selectedIds = new Set(selectedOpportunityIds);
@@ -236,7 +241,7 @@ export function OpportunitiesPage() {
 
     setBriefCreateState('saving');
     setBriefCreateMessage('Creating Pipeline Defense Brief...');
-    const draftBrief = generatePipelineDefenseBriefFromOpportunities(previewOpportunities, briefMetadata);
+    const draftBrief = generatePipelineDefenseBriefFromOpportunities(previewOpportunities, briefMetadata, objections);
 
     try {
       const createdBrief = dataUserId && canUsePipelineDefenseCloudStore()
@@ -385,6 +390,7 @@ export function OpportunitiesPage() {
           editingOpportunity={editingOpportunity}
           linkedActivities={editingOpportunity ? getLinkedActivities(editingOpportunity, activities) : []}
           stakeholders={editingOpportunity ? getStakeholdersForOpportunity(stakeholders, editingOpportunity) : []}
+          objections={editingOpportunity ? getObjectionsForOpportunity(objections, editingOpportunity) : []}
           onChange={setForm}
           onSave={handleSave}
           onClose={closePanel}
@@ -396,6 +402,7 @@ export function OpportunitiesPage() {
       {isPreviewOpen && (
         <DefenseBriefPreviewModal
           opportunities={previewOpportunities}
+          objections={objections}
           metadata={briefMetadata}
           onMetadataChange={setBriefMetadata}
           createState={briefCreateState}
@@ -554,6 +561,7 @@ function OpportunityPanel({
   editingOpportunity,
   linkedActivities,
   stakeholders,
+  objections,
   onChange,
   onSave,
   onClose,
@@ -567,6 +575,7 @@ function OpportunityPanel({
   editingOpportunity: CrmLiteOpportunity | null;
   linkedActivities: SalesActivityRecord[];
   stakeholders: StakeholderRecord[];
+  objections: ObjectionRecord[];
   onChange: (form: OpportunityFormInput) => void;
   onSave: () => void;
   onClose: () => void;
@@ -648,6 +657,7 @@ function OpportunityPanel({
       {mode === 'edit' && (
         <>
           {editingOpportunity && <StakeholderMap opportunity={editingOpportunity} stakeholders={stakeholders} />}
+          {editingOpportunity && <OpportunityObjectionLedger opportunity={editingOpportunity} objections={objections} />}
           <LinkedActivitiesTimeline activities={linkedActivities} />
         </>
       )}
@@ -697,6 +707,7 @@ function OpportunityPanel({
 
 function DefenseBriefPreviewModal({
   opportunities,
+  objections,
   metadata,
   onMetadataChange,
   createState,
@@ -705,6 +716,7 @@ function DefenseBriefPreviewModal({
   onClose,
 }: {
   opportunities: CrmLiteOpportunity[];
+  objections: ObjectionRecord[];
   metadata: BriefPreviewMetadata;
   onMetadataChange: (metadata: BriefPreviewMetadata) => void;
   createState: SaveState;
@@ -712,7 +724,7 @@ function DefenseBriefPreviewModal({
   onCreate: () => void;
   onClose: () => void;
 }) {
-  const generatedDeals = opportunities.map(mapOpportunityToPipelineDefenseDeal);
+  const generatedDeals = opportunities.map((opportunity) => mapOpportunityToPipelineDefenseDeal(opportunity, objections));
   const updateMetadata = <Key extends keyof BriefPreviewMetadata>(
     key: Key,
     value: BriefPreviewMetadata[Key],
@@ -875,6 +887,57 @@ function StakeholderMap({ opportunity, stakeholders }: { opportunity: CrmLiteOpp
                 {stakeholder.stakeholderRole} | {stakeholder.influenceLevel} influence | {stakeholder.stance}
               </p>
               {stakeholder.notes && <p className="mt-1 line-clamp-2 text-xs leading-5 text-gray-500">{stakeholder.notes}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function OpportunityObjectionLedger({ opportunity, objections }: { opportunity: CrmLiteOpportunity; objections: ObjectionRecord[] }) {
+  const open = objections.filter((objection) => objection.status === 'Open');
+  const addressed = objections.filter((objection) => objection.status === 'Addressed');
+  const resolved = objections.filter((objection) => objection.status === 'Resolved');
+  const warnings = [
+    open.some((objection) => objection.impact === 'High') ? 'High-impact open objection exists.' : '',
+    open.some((objection) => objection.objectionType === 'Competitor') ? 'Competitor objection is still open.' : '',
+    open.some((objection) => ['Compliance / validation', 'Documentation'].includes(objection.objectionType)) ? 'Compliance/documentation objection is still open.' : '',
+  ].filter(Boolean);
+
+  return (
+    <section className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Objection Ledger</p>
+        <Link
+          to={`/app/objections?accountName=${encodeURIComponent(opportunity.accountName)}&opportunityName=${encodeURIComponent(opportunity.opportunityName)}`}
+          className="inline-flex w-fit rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-bold text-brand-blue hover:bg-blue-50"
+        >
+          Open Objection Ledger
+        </Link>
+      </div>
+      {warnings.length > 0 && (
+        <div className="mt-3 rounded-lg border border-red-100 bg-red-50 p-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-red-700">Risk warnings</p>
+          <ul className="mt-2 space-y-1 text-sm leading-6 text-red-800">
+            {warnings.map((warning) => <li key={warning}>- {warning}</li>)}
+          </ul>
+        </div>
+      )}
+      {objections.length === 0 ? (
+        <p className="mt-3 text-sm text-gray-500">No structured objections linked to this opportunity yet.</p>
+      ) : (
+        <div className="mt-3 space-y-2">
+          <p className="text-xs font-semibold text-gray-500">Open {open.length} | Addressed {addressed.length} | Resolved {resolved.length}</p>
+          {objections.slice(0, 6).map((objection) => (
+            <div key={objection.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
+              <div className="flex flex-wrap gap-2">
+                <Badge label={objection.objectionType} tone={objection.objectionType === 'Competitor' ? 'amber' : 'blue'} />
+                <Badge label={objection.impact} tone={objection.impact === 'High' ? 'red' : objection.impact === 'Medium' ? 'amber' : 'gray'} />
+                <Badge label={objection.status} tone={objectionStatusTone(objection.status)} />
+              </div>
+              <p className="mt-2 text-sm font-bold text-navy">{objection.objectionText}</p>
+              {objection.requiredProof && <p className="mt-1 text-xs leading-5 text-gray-500">Proof: {objection.requiredProof}</p>}
             </div>
           ))}
         </div>

@@ -2,6 +2,7 @@ import { ACCOUNT_STORAGE_KEY, type AccountMemoryRecord } from '../services/accou
 import { OPPORTUNITY_STORAGE_KEY, type CrmLiteOpportunity } from '../services/opportunityStore';
 import { SALES_ACTIVITY_STORAGE_KEY, type SalesActivityRecord } from '../services/salesActivityStore';
 import { STAKEHOLDER_STORAGE_KEY, type StakeholderRecord } from '../services/stakeholderStore';
+import { OBJECTION_STORAGE_KEY, type ObjectionRecord } from '../services/objectionStore';
 import { classifySalesActivity } from './salesActivityClassifier';
 import { generatePipelineDefenseBriefFromOpportunities } from './opportunityToPipelineBrief';
 import {
@@ -27,6 +28,7 @@ export type SampleDataset = {
   opportunities: CrmLiteOpportunity[];
   accounts: AccountMemoryRecord[];
   stakeholders: StakeholderRecord[];
+  objections: ObjectionRecord[];
   briefs: PipelineDefenseBrief[];
 };
 
@@ -64,6 +66,7 @@ export function loadSampleDataset(): SampleDataset {
   writeLocalArray(OPPORTUNITY_STORAGE_KEY, dataset.opportunities);
   writeLocalArray(ACCOUNT_STORAGE_KEY, dataset.accounts);
   writeLocalArray(STAKEHOLDER_STORAGE_KEY, dataset.stakeholders);
+  writeLocalArray(OBJECTION_STORAGE_KEY, dataset.objections);
   writeLocalBriefs(dataset.briefs);
   markSampleDataLoaded();
 
@@ -81,6 +84,7 @@ export function clearSampleDataset() {
   removeSampleRecords(OPPORTUNITY_STORAGE_KEY);
   removeSampleRecords(ACCOUNT_STORAGE_KEY);
   removeSampleRecords(STAKEHOLDER_STORAGE_KEY);
+  removeSampleRecords(OBJECTION_STORAGE_KEY);
   removeSampleBriefs();
   clearSampleDataFlag();
 }
@@ -445,13 +449,106 @@ function buildSampleDataset(): SampleDataset {
     }),
   ];
 
+  const objections: ObjectionRecord[] = [
+    sampleObjection({
+      id: 'demo-objection-control-union-lead-time',
+      accountName: 'Control Union',
+      opportunityId: 'demo-opp-control-union-microbiology',
+      opportunityName: 'Microbiology workflow',
+      stakeholderId: 'demo-stakeholder-mr-minh',
+      stakeholderName: 'Mr. Minh',
+      sourceActivityId: 'demo-activity-control-union-lead-time',
+      objectionType: 'Lead time',
+      objectionText: 'Customer is concerned implementation lead time may not meet project timing.',
+      impact: 'Medium',
+      status: 'Open',
+      requiredProof: 'Provide confirmed delivery timeline and local support proof.',
+      responsePlan: 'Send local support proof pack and propose implementation timeline review.',
+      dueDate: nextWeek,
+      tags: ['demo-data', 'lead-time'],
+      createdAt: timestamp,
+    }),
+    sampleObjection({
+      id: 'demo-objection-vhp-validation-docs',
+      accountName: 'VHP',
+      opportunityId: 'demo-opp-vhp-solidfog-phase-2',
+      opportunityName: 'SolidFog EU-GMP Phase 2',
+      stakeholderId: 'demo-stakeholder-dr-linh',
+      stakeholderName: 'Dr. Linh',
+      sourceActivityId: 'demo-activity-vhp-budget',
+      objectionType: 'Compliance / validation',
+      objectionText: 'Validation and IQ/OQ/PQ proof needed before procurement sign-off.',
+      impact: 'Medium',
+      status: 'Addressed',
+      requiredProof: 'Provide validation package and EU-GMP references.',
+      responsePlan: 'Validation pack prepared; procurement checklist is next.',
+      dueDate: friday,
+      tags: ['demo-data', 'validation'],
+      createdAt: timestamp,
+    }),
+    sampleObjection({
+      id: 'demo-objection-tv-pharm-procurement',
+      accountName: 'TV Pharm',
+      opportunityId: 'demo-opp-tv-pharm-tender',
+      opportunityName: 'Tender opportunity',
+      stakeholderId: 'demo-stakeholder-tv-pharm-procurement',
+      stakeholderName: 'TV Pharm procurement contact',
+      sourceActivityId: 'demo-activity-tv-pharm-tender',
+      objectionType: 'Procurement',
+      objectionText: 'Tender timeline and decision committee are still unclear.',
+      impact: 'High',
+      status: 'Open',
+      requiredProof: 'Clarify tender calendar, committee owner, and evaluation criteria.',
+      responsePlan: 'Schedule procurement clarification call before forecast review.',
+      dueDate: nextWeek,
+      tags: ['demo-data', 'procurement', 'tender'],
+      createdAt: timestamp,
+    }),
+    sampleObjection({
+      id: 'demo-objection-bidiphar-local-support',
+      accountName: 'Bidiphar',
+      opportunityId: 'demo-opp-bidiphar-qc-workflow',
+      opportunityName: 'QC workflow',
+      stakeholderId: 'demo-stakeholder-bidiphar-qa',
+      stakeholderName: 'Bidiphar QA manager',
+      sourceActivityId: 'demo-activity-bidiphar-gap',
+      objectionType: 'Local support',
+      objectionText: 'Local support confidence is not established for the QC workflow.',
+      impact: 'Medium',
+      status: 'Open',
+      requiredProof: 'Provide local support owner, response SLA, and reference account.',
+      responsePlan: 'Do not defend until support proof and next action are confirmed.',
+      dueDate: '',
+      tags: ['demo-data', 'local-support'],
+      createdAt: timestamp,
+    }),
+    sampleObjection({
+      id: 'demo-objection-vhp-steris',
+      accountName: 'VHP',
+      opportunityId: 'demo-opp-vhp-solidfog-phase-2',
+      opportunityName: 'SolidFog EU-GMP Phase 2',
+      stakeholderId: '',
+      stakeholderName: '',
+      sourceActivityId: 'demo-activity-vhp-budget',
+      objectionType: 'Competitor',
+      objectionText: 'STERIS remains in the loop as competitor pressure.',
+      impact: 'Medium',
+      status: 'Addressed',
+      requiredProof: 'Prepare differentiator proof against STERIS.',
+      responsePlan: 'Use validation package and local service coverage as differentiators.',
+      dueDate: nextTuesday,
+      tags: ['demo-data', 'competitor'],
+      createdAt: timestamp,
+    }),
+  ];
+
   const brief = {
     ...generatePipelineDefenseBriefFromOpportunities(opportunities.slice(0, 5), {
       title: `Demo Defense Brief - ${today}`,
       weekLabel: 'Demo week',
       salesOwner: 'Demo Sales Owner',
       scope: 'Demo sandbox opportunities',
-    }),
+    }, objections),
     id: 'demo-brief-pipeline-defense',
   } as PipelineDefenseBrief;
 
@@ -460,6 +557,7 @@ function buildSampleDataset(): SampleDataset {
     opportunities,
     accounts,
     stakeholders,
+    objections,
     briefs: [markSampleBrief(brief)],
   };
 }
@@ -510,6 +608,18 @@ function sampleStakeholder(input: Omit<StakeholderRecord, 'accountId' | 'email' 
     accountId: '',
     email: '',
     phone: '',
+    updatedAt: input.createdAt,
+    storageMode: 'local',
+  });
+}
+
+function sampleObjection(input: Omit<ObjectionRecord, 'accountId' | 'userId' | 'resolvedAt' | 'resolutionNote' | 'updatedAt' | 'storageMode'>): ObjectionRecord {
+  return markSampleRecord({
+    ...input,
+    accountId: '',
+    userId: undefined,
+    resolvedAt: input.status === 'Resolved' ? input.createdAt : '',
+    resolutionNote: input.status === 'Resolved' ? input.responsePlan : '',
     updatedAt: input.createdAt,
     storageMode: 'local',
   });

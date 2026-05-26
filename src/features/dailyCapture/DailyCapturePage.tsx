@@ -16,10 +16,12 @@ import {
 import { loadOpportunities, updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { loadAccounts, type AccountMemoryRecord } from '../../services/accountStore';
 import { createStakeholder, loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
+import { createObjection, loadObjections, type ObjectionRecord } from '../../services/objectionStore';
 import { CaptureAiProviderError, getActiveCaptureAiProvider, type CaptureAiSuggestion } from '../../services/captureAiProvider';
 import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
 import { applyOpportunityUpdateSuggestion, suggestOpportunityLinks, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 import { deriveStakeholderCandidateFromCapture } from '../../utils/stakeholderGraph';
+import { buildObjectionFromActivity, detectObjectionCandidatesFromActivity } from '../../utils/objectionLedger';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type AiState = 'idle' | 'loading' | 'ready' | 'error';
@@ -44,7 +46,9 @@ export function DailyCapturePage() {
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
   const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
+  const [objections, setObjections] = useState<ObjectionRecord[]>([]);
   const [stakeholderSuggestionDismissed, setStakeholderSuggestionDismissed] = useState(false);
+  const [objectionSuggestionDismissed, setObjectionSuggestionDismissed] = useState(false);
   const [lastSavedActivity, setLastSavedActivity] = useState<SalesActivityRecord | null>(null);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [saveState, setSaveState] = useState<SaveState>('idle');
@@ -66,16 +70,18 @@ export function DailyCapturePage() {
 
   const refreshActivities = async () => {
     setLoadingActivities(true);
-    const [loaded, loadedOpportunities, loadedAccounts, loadedStakeholders] = await Promise.all([
+    const [loaded, loadedOpportunities, loadedAccounts, loadedStakeholders, loadedObjections] = await Promise.all([
       loadSalesActivities(dataUserId),
       loadOpportunities(dataUserId),
       loadAccounts(dataUserId),
       loadStakeholders(dataUserId),
+      loadObjections(dataUserId),
     ]);
     setActivities(loaded);
     setOpportunities(loadedOpportunities);
     setAccounts(loadedAccounts);
     setStakeholders(loadedStakeholders);
+    setObjections(loadedObjections);
     setLoadingActivities(false);
   };
 
@@ -110,6 +116,7 @@ export function DailyCapturePage() {
     setSaveState(result.warning ? 'error' : 'saved');
     setMessage(result.warning || (result.mode === 'cloud' ? 'Synced to your account.' : 'Saved locally in this browser.'));
     setStakeholderSuggestionDismissed(false);
+    setObjectionSuggestionDismissed(false);
   };
 
   const handleClassifyWithAi = async () => {
@@ -262,11 +269,32 @@ export function DailyCapturePage() {
     setSaveState(result.warning ? 'error' : 'saved');
   };
 
+  const createObjectionFromLastActivity = async () => {
+    if (!lastSavedActivity) return;
+    const activity = lastSavedActivity;
+    const linkedOpportunity = opportunities.find((opportunity) => opportunity.id === activity.linkedOpportunityId);
+    const matchingStakeholder = stakeholders.find((stakeholder) => (
+      stakeholder.name.toLowerCase() === (activity.stakeholderName || activity.contactName || '').toLowerCase() &&
+      (!activity.accountName || stakeholder.accountName.toLowerCase() === activity.accountName.toLowerCase())
+    ));
+    const result = await createObjection(buildObjectionFromActivity(activity, linkedOpportunity, matchingStakeholder), dataUserId);
+    setObjections((current) => [result.objection, ...current.filter((item) => item.id !== result.objection.id)]);
+    setObjectionSuggestionDismissed(true);
+    setMessage(result.warning || 'Objection created from capture.');
+    setSaveState(result.warning ? 'error' : 'saved');
+  };
+
   const stakeholderCandidate = lastSavedActivity ? deriveStakeholderCandidateFromCapture(lastSavedActivity) : null;
+  const objectionCandidate = lastSavedActivity ? detectObjectionCandidatesFromActivity(lastSavedActivity)[0] : null;
   const alreadyHasStakeholderCandidate = stakeholderCandidate ? stakeholders.some((stakeholder) => (
     stakeholder.name.toLowerCase() === stakeholderCandidate.name.toLowerCase() &&
     stakeholder.accountName.toLowerCase() === stakeholderCandidate.accountName.toLowerCase()
   )) : false;
+  const alreadyHasObjectionCandidate = Boolean(objectionCandidate && lastSavedActivity && objections.some((objection) => (
+    objection.sourceActivityId === lastSavedActivity.id ||
+    (objection.objectionText.toLowerCase() === objectionCandidate.objectionText.toLowerCase() &&
+      objection.accountName.toLowerCase() === (lastSavedActivity.linkedAccountName || lastSavedActivity.accountName).toLowerCase())
+  )));
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6">
@@ -411,6 +439,24 @@ export function DailyCapturePage() {
               Create stakeholder
             </button>
             <button type="button" onClick={() => setStakeholderSuggestionDismissed(true)} className="rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-800">
+              Ignore
+            </button>
+          </div>
+        </section>
+      )}
+
+      {objectionCandidate && !alreadyHasObjectionCandidate && !objectionSuggestionDismissed && (
+        <section className="rounded-lg border border-amber-100 bg-amber-50/80 p-4 shadow-sm">
+          <p className="text-sm font-bold text-amber-950">Create objection from this activity?</p>
+          <p className="mt-1 text-sm leading-6 text-amber-800">
+            Memoire detected {objectionCandidate.objectionType.toLowerCase()} risk: {objectionCandidate.objectionText}
+          </p>
+          <p className="mt-1 text-xs font-semibold text-amber-700">Reason: {objectionCandidate.reason}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" onClick={createObjectionFromLastActivity} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+              Create objection
+            </button>
+            <button type="button" onClick={() => setObjectionSuggestionDismissed(true)} className="rounded-full border border-amber-200 bg-white px-4 py-2 text-sm font-bold text-amber-800">
               Ignore
             </button>
           </div>
