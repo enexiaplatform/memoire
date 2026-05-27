@@ -21,6 +21,12 @@ import {
   type OpportunityRecommendedAction,
 } from '../../utils/opportunityActionPlan';
 import {
+  generateExecutionReviewMarkdown,
+  generateWeeklyExecutionReview,
+  type ExecutionDealMovement,
+  type WeeklyExecutionReview,
+} from '../../utils/weeklyExecutionReview';
+import {
   generateMonthlySalesRecap,
   generateSalesRecapMarkdown,
   generateWeeklySalesRecap,
@@ -46,6 +52,7 @@ export function SalesReviewsPage() {
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [recap, setRecap] = useState<SalesActivityRecap | null>(null);
   const [copyMessage, setCopyMessage] = useState('');
+  const [executionCopyMessage, setExecutionCopyMessage] = useState('');
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
@@ -76,6 +83,19 @@ export function SalesReviewsPage() {
     () => analyzePipelineOutcomeLoop({ opportunities, stakeholders, objections, activities: periodActivities, outcomes: actionOutcomes }),
     [actionOutcomes, opportunities, stakeholders, objections, periodActivities]
   );
+  const executionReview = useMemo(
+    () => generateWeeklyExecutionReview({
+      periodType,
+      periodLabel: period.label,
+      period,
+      opportunities,
+      actionOutcomes,
+      stakeholders,
+      objections,
+      activities: periodActivities,
+    }),
+    [periodType, period, opportunities, actionOutcomes, stakeholders, objections, periodActivities]
+  );
   const refreshActivities = useCallback(async () => {
     setLoadingActivities(true);
     const [loaded, loadedObjections, loadedOpportunities, loadedStakeholders] = await Promise.all([
@@ -99,6 +119,7 @@ export function SalesReviewsPage() {
   useEffect(() => {
     setRecap(null);
     setCopyMessage('');
+    setExecutionCopyMessage('');
   }, [periodType, period.start, period.end]);
 
   const generateRecap = () => {
@@ -116,6 +137,16 @@ export function SalesReviewsPage() {
       setCopyMessage('Copied recap.');
     } catch {
       setCopyMessage(markdown);
+    }
+  };
+
+  const copyExecutionReview = async () => {
+    const markdown = generateExecutionReviewMarkdown(executionReview);
+    try {
+      await navigator.clipboard.writeText(markdown);
+      setExecutionCopyMessage('Copied execution review.');
+    } catch {
+      setExecutionCopyMessage(markdown);
     }
   };
 
@@ -245,6 +276,14 @@ export function SalesReviewsPage() {
           unresolvedCriticalActions={actionOutcomeSummary.unresolvedCriticalActions}
         />
       )}
+
+      {executionReview.executionSummary.recommendedActionsCount > 0 || executionReview.periodOutcomes.length > 0 ? (
+        <ExecutionReviewPanel
+          review={executionReview}
+          onCopy={copyExecutionReview}
+          copyMessage={executionCopyMessage}
+        />
+      ) : null}
 
       {loadingActivities ? (
         <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500">
@@ -420,6 +459,106 @@ function ActionOutcomesPanel({
       </div>
     </section>
   );
+}
+
+function ExecutionReviewPanel({
+  review,
+  onCopy,
+  copyMessage,
+}: {
+  review: WeeklyExecutionReview;
+  onCopy: () => void;
+  copyMessage: string;
+}) {
+  const summary = review.executionSummary;
+  const priorityMovements = review.dealMovement.filter((item) => item.movement !== 'Stable / monitor').slice(0, 5);
+
+  return (
+    <section className="rounded-lg border border-purple-100 bg-purple-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-sm font-bold text-purple-950">Execution Review</p>
+          <p className="mt-1 text-sm text-purple-900/80">
+            Weekly learning loop from action outcomes, MEDDIC gaps, stakeholders, objections, and stale deal signals.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {copyMessage && (
+            <span className="text-xs font-bold text-emerald-700">
+              {copyMessage === 'Copied execution review.' ? copyMessage : 'Copy failed - review shown in message.'}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onCopy}
+            className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-white px-3 py-2 text-xs font-bold text-purple-900 hover:bg-purple-50"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            Copy {review.periodType === 'week' ? 'Weekly' : 'Monthly'} Execution Review
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-6">
+        <MetricCard label="Recommended" value={summary.recommendedActionsCount} />
+        <MetricCard label="Completed" value={summary.completedActionsCount} tone={summary.completedActionsCount ? 'green' : 'blue'} />
+        <MetricCard label="Unresolved critical" value={summary.unresolvedCriticalActionsCount} tone={summary.unresolvedCriticalActionsCount ? 'amber' : 'green'} />
+        <MetricCard label="Improved" value={summary.improvedOutcomeCount} tone={summary.improvedOutcomeCount ? 'green' : 'blue'} />
+        <MetricCard label="Unclear" value={summary.unclearOutcomeCount} tone={summary.unclearOutcomeCount ? 'amber' : 'green'} />
+        <MetricCard label="Worsened" value={summary.worsenedOutcomeCount} tone={summary.worsenedOutcomeCount ? 'amber' : 'green'} />
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr]">
+        <div className="rounded-lg bg-white p-4 ring-1 ring-purple-100">
+          <h3 className="text-sm font-bold text-navy">Deal Movement Summary</h3>
+          {priorityMovements.length === 0 ? (
+            <p className="mt-3 text-sm text-gray-500">No urgent deal movement detected for this period.</p>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {priorityMovements.map((item) => (
+                <div key={item.opportunityId} className="rounded-lg bg-gray-50 p-3">
+                  <div className="flex flex-wrap gap-2">
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${movementBadgeClass(item.movement)}`}>
+                      {item.movement}
+                    </span>
+                    <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-gray-600 ring-1 ring-gray-200">{item.meddicCategory}</span>
+                  </div>
+                  <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{item.accountName} / {item.opportunityName}</p>
+                  <p className="mt-1 text-sm leading-6 text-gray-600">{item.reason}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          <MiniLearningPanel title="Execution Quality Signals" items={review.executionQualitySignals} />
+          <MiniLearningPanel title="Personal Sales Learning" items={review.personalSalesLearning} />
+          <MiniLearningPanel title="Next Week Focus" items={review.nextWeekFocus} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MiniLearningPanel({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="rounded-lg bg-white p-4 ring-1 ring-purple-100">
+      <h3 className="text-sm font-bold text-navy">{title}</h3>
+      <ul className="mt-3 space-y-2 text-sm leading-6 text-gray-600">
+        {items.map((item) => (
+          <li key={item}>- {item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function movementBadgeClass(movement: ExecutionDealMovement) {
+  if (movement === 'Improved') return 'bg-emerald-50 text-emerald-700';
+  if (movement === 'Worsened' || movement === 'Consider downgrade') return 'bg-red-50 text-red-700';
+  if (movement === 'Needs rescue' || movement === 'Still unclear') return 'bg-amber-50 text-amber-700';
+  return 'bg-blue-50 text-brand-blue';
 }
 
 function MetricCard({ label, value, tone = 'blue' }: { label: string; value: number; tone?: 'blue' | 'green' | 'amber' }) {

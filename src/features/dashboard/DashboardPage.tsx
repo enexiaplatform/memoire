@@ -50,6 +50,7 @@ import { clearSampleDataset, loadSampleDataset } from '../../utils/sampleData';
 import { analyzeMeddicLitePipeline } from '../../utils/meddicLite';
 import { generatePipelineOpportunityActions, type OpportunityRecommendedAction } from '../../utils/opportunityActionPlan';
 import { analyzePipelineOutcomeLoop } from '../../utils/actionOutcomeLoop';
+import { generateWeeklyExecutionReview, getCurrentExecutionWeekRange } from '../../utils/weeklyExecutionReview';
 
 type DashboardData = {
   activities: SalesActivityRecord[];
@@ -223,6 +224,13 @@ export function DashboardPage() {
             <>
               <TodayFocus commandCenter={commandCenter} />
               <ThisWeekSummary commandCenter={commandCenter} />
+              <WeeklyExecutionHealth
+                opportunities={data.opportunities}
+                stakeholders={data.stakeholders}
+                objections={data.objections}
+                activities={data.activities}
+                actionOutcomes={data.actionOutcomes}
+              />
               <PriorityActionList items={commandCenter.priorityActions} />
               <CriticalDealActions
                 opportunities={data.opportunities}
@@ -315,6 +323,84 @@ function ThisWeekSummary({ commandCenter }: { commandCenter: CommandCenter }) {
         <Metric label="Open actions" value={summary.openNextActions} tone={summary.openNextActions ? 'amber' : 'green'} />
         <Metric label="Objections" value={summary.objectionsCaptured} tone={summary.objectionsCaptured ? 'red' : 'green'} />
         <Metric label="Defense briefs" value={summary.pipelineDefenseBriefsCreated} />
+      </div>
+    </section>
+  );
+}
+
+function WeeklyExecutionHealth({
+  opportunities,
+  stakeholders,
+  objections,
+  activities,
+  actionOutcomes,
+}: {
+  opportunities: CrmLiteOpportunity[];
+  stakeholders: StakeholderRecord[];
+  objections: ObjectionRecord[];
+  activities: SalesActivityRecord[];
+  actionOutcomes: ActionOutcomeRecord[];
+}) {
+  const period = getCurrentExecutionWeekRange();
+  const periodActivities = activities.filter((activity) => activity.activityDate >= period.start && activity.activityDate <= period.end);
+  const review = generateWeeklyExecutionReview({
+    periodType: 'week',
+    periodLabel: period.label,
+    period,
+    opportunities,
+    actionOutcomes,
+    stakeholders,
+    objections,
+    activities: periodActivities,
+  });
+  const summary = review.executionSummary;
+  const dealsNeedingRescue = review.dealMovement.filter((item) => item.movement === 'Needs rescue' || item.movement === 'Consider downgrade');
+
+  if (
+    opportunities.filter((opportunity) => opportunity.status === 'Active').length === 0
+    && summary.completedActionsCount === 0
+    && summary.unresolvedCriticalActionsCount === 0
+  ) {
+    return null;
+  }
+
+  return (
+    <section className="rounded-lg border border-purple-100 bg-purple-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-purple-700" />
+            <h2 className="text-lg font-bold text-navy">Weekly Execution Health</h2>
+          </div>
+          <p className="mt-1 text-sm text-purple-900/75">
+            Deal execution learning for {period.label}: completed actions, unresolved critical work, unclear outcomes, and rescue signals.
+          </p>
+        </div>
+        <Link to="/app/reviews" className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          Open Reviews
+        </Link>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Metric label="Completed actions" value={summary.completedActionsCount} tone={summary.completedActionsCount ? 'green' : 'blue'} />
+        <Metric label="Unresolved critical" value={summary.unresolvedCriticalActionsCount} tone={summary.unresolvedCriticalActionsCount ? 'red' : 'green'} />
+        <Metric label="Unclear outcomes" value={summary.unclearOutcomeCount} tone={summary.unclearOutcomeCount ? 'amber' : 'green'} />
+        <Metric label="Deals needing rescue" value={dealsNeedingRescue.length} tone={dealsNeedingRescue.length ? 'amber' : 'green'} />
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+        {review.executionQualitySignals.slice(0, 2).map((signal) => (
+          <article key={signal} className="rounded-lg bg-white p-3 ring-1 ring-purple-100">
+            <Badge label="Signal" tone="amber" />
+            <p className="mt-2 text-sm leading-6 text-gray-700">{signal}</p>
+          </article>
+        ))}
+        {review.nextWeekFocus.slice(0, 2).map((focus) => (
+          <article key={focus} className="rounded-lg bg-white p-3 ring-1 ring-purple-100">
+            <Badge label="Focus" tone="blue" />
+            <p className="mt-2 text-sm leading-6 text-gray-700">{focus}</p>
+          </article>
+        ))}
       </div>
     </section>
   );

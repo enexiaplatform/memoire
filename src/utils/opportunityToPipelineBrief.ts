@@ -9,6 +9,7 @@ import { getObjectionsForOpportunity, summarizeObjectionsForPipeline } from './o
 import { analyzeMeddicLiteOpportunity, getMeddicLiteDefenseAnswer, getMeddicLiteGapsSummary } from './meddicLite';
 import { generateOpportunityActionPlan, generateOpportunityActionsMarkdown } from './opportunityActionPlan';
 import { formatActionOutcomeForBrief } from './actionOutcomeLoop';
+import { formatExecutionLearningForBrief } from './weeklyExecutionReview';
 
 export type OpportunityBriefMetadata = {
   title?: string;
@@ -34,6 +35,15 @@ export function mapOpportunityToPipelineDefenseDeal(
   const objectionDebt = buildObjectionDebt(opportunity, opportunityObjections, meddicReview);
   const nextDefenseActions = buildNextDefenseActions(actionPlan);
   const lastActionOutcome = formatActionOutcomeForBrief(actionOutcomes, opportunity);
+  const executionLearning = formatExecutionLearningForBrief({
+    opportunity,
+    outcomes: actionOutcomes,
+    stakeholders,
+    objections,
+    activities,
+    meddicReview,
+    recommendedActions: actionPlan,
+  });
 
   return {
     id: `opp-${opportunity.id}`,
@@ -49,21 +59,26 @@ export function mapOpportunityToPipelineDefenseDeal(
     ])).slice(0, 10),
     objectionDebt: {
       ...objectionDebt,
-      requiredAction: [lastActionOutcome, objectionDebt.requiredAction, nextDefenseActions].filter(Boolean).join('\n'),
+      requiredAction: [lastActionOutcome, executionLearning, objectionDebt.requiredAction, nextDefenseActions].filter(Boolean).join('\n'),
     },
     forecastEvidenceCategory: opportunity.forecastEvidenceCategory,
-    recommendedAction: buildRecommendedAction(opportunity, actionPlan, lastActionOutcome),
-    pipelineReviewAnswer: `${buildPipelineReviewAnswer(opportunity, missingContext)} ${getMeddicLiteDefenseAnswer(meddicReview)} ${lastActionOutcome}`.trim(),
+    recommendedAction: buildRecommendedAction(opportunity, actionPlan, lastActionOutcome, executionLearning),
+    pipelineReviewAnswer: `${buildPipelineReviewAnswer(opportunity, missingContext)} ${getMeddicLiteDefenseAnswer(meddicReview)} ${lastActionOutcome} ${executionLearning}`.trim(),
     decisionRecommendation: opportunity.decisionRecommendation,
     sourceType: 'opportunity',
     sourceOpportunityId: opportunity.id,
   };
 }
 
-function buildRecommendedAction(opportunity: CrmLiteOpportunity, actions: ReturnType<typeof generateOpportunityActionPlan>, lastActionOutcome = '') {
+function buildRecommendedAction(
+  opportunity: CrmLiteOpportunity,
+  actions: ReturnType<typeof generateOpportunityActionPlan>,
+  lastActionOutcome = '',
+  executionLearning = '',
+) {
   const base = opportunity.nextAction || actions[0]?.title || 'Clarify the next customer action before defending this opportunity.';
   const nextDefenseActions = buildNextDefenseActions(actions);
-  return [base, lastActionOutcome, nextDefenseActions].filter(Boolean).join('\n');
+  return [base, lastActionOutcome, executionLearning, nextDefenseActions].filter(Boolean).join('\n');
 }
 
 function buildNextDefenseActions(actions: ReturnType<typeof generateOpportunityActionPlan>) {
