@@ -51,6 +51,11 @@ import { analyzeMeddicLitePipeline } from '../../utils/meddicLite';
 import { generatePipelineOpportunityActions, type OpportunityRecommendedAction } from '../../utils/opportunityActionPlan';
 import { analyzePipelineOutcomeLoop } from '../../utils/actionOutcomeLoop';
 import { generateWeeklyExecutionReview, getCurrentExecutionWeekRange } from '../../utils/weeklyExecutionReview';
+import {
+  generateSalesPlaybookPatterns,
+  getTopSalesPlaybookPattern,
+  type SalesPlaybookPattern,
+} from '../../utils/salesPlaybook';
 
 type DashboardData = {
   activities: SalesActivityRecord[];
@@ -231,6 +236,13 @@ export function DashboardPage() {
                 activities={data.activities}
                 actionOutcomes={data.actionOutcomes}
               />
+              <TopSalesPattern
+                opportunities={data.opportunities}
+                stakeholders={data.stakeholders}
+                objections={data.objections}
+                activities={data.activities}
+                actionOutcomes={data.actionOutcomes}
+              />
               <PriorityActionList items={commandCenter.priorityActions} />
               <CriticalDealActions
                 opportunities={data.opportunities}
@@ -402,6 +414,55 @@ function WeeklyExecutionHealth({
           </article>
         ))}
       </div>
+    </section>
+  );
+}
+
+function TopSalesPattern({
+  opportunities,
+  stakeholders,
+  objections,
+  activities,
+  actionOutcomes,
+}: {
+  opportunities: CrmLiteOpportunity[];
+  stakeholders: StakeholderRecord[];
+  objections: ObjectionRecord[];
+  activities: SalesActivityRecord[];
+  actionOutcomes: ActionOutcomeRecord[];
+}) {
+  const patterns = generateSalesPlaybookPatterns({ opportunities, stakeholders, objections, activities, actionOutcomes, limit: 8 });
+  const topPattern = getTopSalesPlaybookPattern(patterns);
+  if (!topPattern) return null;
+
+  return (
+    <section className="rounded-lg border border-indigo-100 bg-indigo-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-indigo-700" />
+            <h2 className="text-lg font-bold text-navy">Top Sales Pattern</h2>
+          </div>
+          <p className="mt-1 text-sm text-indigo-900/75">
+            Highest-priority reusable learning detected from your current pipeline memory.
+          </p>
+        </div>
+        <Link to="/app/playbook" className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          Open Playbook
+        </Link>
+      </div>
+      <article className="mt-4 rounded-lg bg-white p-4 ring-1 ring-indigo-100">
+        <div className="flex flex-wrap gap-2">
+          <Badge label={topPattern.category} tone="blue" />
+          <Badge label={topPattern.severity} tone={playbookSeverityTone(topPattern)} />
+          <Badge label={`${topPattern.frequency}x`} tone="gray" />
+        </div>
+        <h3 className="mt-3 text-base font-bold text-navy">{topPattern.title}</h3>
+        <p className="mt-2 text-sm leading-6 text-gray-600">{topPattern.whyItMatters}</p>
+        <p className="mt-3 rounded-lg bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-900">
+          {topPattern.suggestedPlaybookResponse}
+        </p>
+      </article>
     </section>
   );
 }
@@ -1007,6 +1068,12 @@ function decisionTone(decision: string) {
   if (decision === 'Monitor') return 'blue';
   if (decision === 'Deprioritize') return 'gray';
   return 'red';
+}
+
+function playbookSeverityTone(pattern: SalesPlaybookPattern) {
+  if (pattern.severity === 'High') return 'red';
+  if (pattern.severity === 'Medium') return 'amber';
+  return 'green';
 }
 
 async function loadPipelineBriefs(userId?: string | null) {

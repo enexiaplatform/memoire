@@ -8,6 +8,7 @@ const navItems = [
   { to: '/app/capture', label: 'Capture', icon: <NotebookPen className="h-5 w-5" /> },
   { to: '/app/calendar', label: 'Calendar', icon: <CalendarDays className="h-5 w-5" /> },
   { to: '/app/reviews', label: 'Reviews', icon: <ClipboardList className="h-5 w-5" /> },
+  { to: '/app/playbook', label: 'Playbook', icon: <BookOpen className="h-5 w-5" /> },
   { to: '/app/journey', label: 'Journey', icon: <GitBranch className="h-5 w-5" /> },
   { to: '/app/accounts', label: 'Accounts', icon: <BookOpen className="h-5 w-5" /> },
   { to: '/app/opportunities', label: 'Opportunities', icon: <Target className="h-5 w-5" /> },
