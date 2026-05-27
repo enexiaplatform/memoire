@@ -5,12 +5,14 @@ import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
 import type { ActionOutcomeRecord } from '../services/actionOutcomeStore';
+import type { SalesAssetRecord } from '../services/salesAssetStore';
 import { getObjectionsForOpportunity, summarizeObjectionsForPipeline } from './objectionLedger';
 import { analyzeMeddicLiteOpportunity, getMeddicLiteDefenseAnswer, getMeddicLiteGapsSummary } from './meddicLite';
 import { generateOpportunityActionPlan, generateOpportunityActionsMarkdown } from './opportunityActionPlan';
 import { formatActionOutcomeForBrief } from './actionOutcomeLoop';
 import { formatExecutionLearningForBrief } from './weeklyExecutionReview';
 import { formatRelevantPlaybookPatternForBrief } from './salesPlaybook';
+import { formatRelevantProofAssetsForBrief } from './salesAssetSuggestions';
 
 export type OpportunityBriefMetadata = {
   title?: string;
@@ -25,6 +27,7 @@ export function mapOpportunityToPipelineDefenseDeal(
   stakeholders: StakeholderRecord[] = [],
   activities: SalesActivityRecord[] = [],
   actionOutcomes: ActionOutcomeRecord[] = [],
+  salesAssets: SalesAssetRecord[] = [],
   allOpportunities: CrmLiteOpportunity[] = [opportunity],
 ): PipelineDefenseDeal {
   const missingContext = splitTextList(opportunity.missingContext);
@@ -54,6 +57,11 @@ export function mapOpportunityToPipelineDefenseDeal(
     activities,
     actionOutcomes,
   });
+  const relevantProofAssets = formatRelevantProofAssetsForBrief({
+    opportunity,
+    assets: salesAssets,
+    objections: opportunityObjections,
+  });
 
   return {
     id: `opp-${opportunity.id}`,
@@ -69,11 +77,11 @@ export function mapOpportunityToPipelineDefenseDeal(
     ])).slice(0, 10),
     objectionDebt: {
       ...objectionDebt,
-      requiredAction: [lastActionOutcome, executionLearning, relevantPlaybookPattern, objectionDebt.requiredAction, nextDefenseActions].filter(Boolean).join('\n'),
+      requiredAction: [lastActionOutcome, executionLearning, relevantPlaybookPattern, relevantProofAssets, objectionDebt.requiredAction, nextDefenseActions].filter(Boolean).join('\n'),
     },
     forecastEvidenceCategory: opportunity.forecastEvidenceCategory,
-    recommendedAction: buildRecommendedAction(opportunity, actionPlan, lastActionOutcome, executionLearning, relevantPlaybookPattern),
-    pipelineReviewAnswer: `${buildPipelineReviewAnswer(opportunity, missingContext)} ${getMeddicLiteDefenseAnswer(meddicReview)} ${lastActionOutcome} ${executionLearning} ${relevantPlaybookPattern}`.trim(),
+    recommendedAction: buildRecommendedAction(opportunity, actionPlan, lastActionOutcome, executionLearning, relevantPlaybookPattern, relevantProofAssets),
+    pipelineReviewAnswer: `${buildPipelineReviewAnswer(opportunity, missingContext)} ${getMeddicLiteDefenseAnswer(meddicReview)} ${lastActionOutcome} ${executionLearning} ${relevantPlaybookPattern} ${relevantProofAssets}`.trim(),
     decisionRecommendation: opportunity.decisionRecommendation,
     sourceType: 'opportunity',
     sourceOpportunityId: opportunity.id,
@@ -86,10 +94,11 @@ function buildRecommendedAction(
   lastActionOutcome = '',
   executionLearning = '',
   relevantPlaybookPattern = '',
+  relevantProofAssets = '',
 ) {
   const base = opportunity.nextAction || actions[0]?.title || 'Clarify the next customer action before defending this opportunity.';
   const nextDefenseActions = buildNextDefenseActions(actions);
-  return [base, lastActionOutcome, executionLearning, relevantPlaybookPattern, nextDefenseActions].filter(Boolean).join('\n');
+  return [base, lastActionOutcome, executionLearning, relevantPlaybookPattern, relevantProofAssets, nextDefenseActions].filter(Boolean).join('\n');
 }
 
 function buildNextDefenseActions(actions: ReturnType<typeof generateOpportunityActionPlan>) {
@@ -104,13 +113,14 @@ export function generatePipelineDefenseBriefFromOpportunities(
   stakeholders: StakeholderRecord[] = [],
   activities: SalesActivityRecord[] = [],
   actionOutcomes: ActionOutcomeRecord[] = [],
+  salesAssets: SalesAssetRecord[] = [],
 ): PipelineDefenseBrief {
   return createPipelineDefenseBrief({
     title: metadata.title || `Pipeline Defense Brief - Opportunities - ${formatDateLabel(new Date())}`,
     weekLabel: metadata.weekLabel || getCurrentWeekLabel(),
     salesOwner: metadata.salesOwner || 'Henry',
     scope: metadata.scope || 'Selected opportunities',
-    deals: opportunities.map((opportunity) => mapOpportunityToPipelineDefenseDeal(opportunity, objections, stakeholders, activities, actionOutcomes, opportunities)),
+    deals: opportunities.map((opportunity) => mapOpportunityToPipelineDefenseDeal(opportunity, objections, stakeholders, activities, actionOutcomes, salesAssets, opportunities)),
   });
 }
 

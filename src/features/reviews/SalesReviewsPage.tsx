@@ -15,6 +15,7 @@ import { loadObjections, type ObjectionRecord } from '../../services/objectionSt
 import { loadOpportunities, type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
 import { loadActionOutcomes, type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
+import { loadSalesAssets, type SalesAssetRecord } from '../../services/salesAssetStore';
 import { analyzePipelineOutcomeLoop, getActionOutcomesInPeriod } from '../../utils/actionOutcomeLoop';
 import {
   generatePipelineOpportunityActions,
@@ -30,6 +31,7 @@ import {
   generateSalesPlaybookPatterns,
   type SalesPlaybookPattern,
 } from '../../utils/salesPlaybook';
+import { analyzeAssetNeeds, type SalesAssetNeed } from '../../utils/salesAssetSuggestions';
 import {
   generateMonthlySalesRecap,
   generateSalesRecapMarkdown,
@@ -53,6 +55,7 @@ export function SalesReviewsPage() {
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
   const [actionOutcomes, setActionOutcomes] = useState<ActionOutcomeRecord[]>([]);
+  const [assets, setAssets] = useState<SalesAssetRecord[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [recap, setRecap] = useState<SalesActivityRecap | null>(null);
   const [copyMessage, setCopyMessage] = useState('');
@@ -112,6 +115,10 @@ export function SalesReviewsPage() {
     }),
     [executionReview, opportunities, stakeholders, periodObjections, periodActivities, periodActionOutcomes]
   );
+  const assetNeeds = useMemo(
+    () => analyzeAssetNeeds({ patterns: playbookLearnings, objections: periodObjections, assets, opportunities }),
+    [assets, opportunities, periodObjections, playbookLearnings]
+  );
   const refreshActivities = useCallback(async () => {
     setLoadingActivities(true);
     const [loaded, loadedObjections, loadedOpportunities, loadedStakeholders] = await Promise.all([
@@ -125,6 +132,7 @@ export function SalesReviewsPage() {
     setOpportunities(loadedOpportunities);
     setStakeholders(loadedStakeholders);
     setActionOutcomes(loadActionOutcomes());
+    setAssets(loadSalesAssets());
     setLoadingActivities(false);
   }, [dataUserId]);
 
@@ -303,6 +311,10 @@ export function SalesReviewsPage() {
 
       {playbookLearnings.length > 0 && (
         <SuggestedPlaybookLearningsPanel patterns={playbookLearnings} />
+      )}
+
+      {assetNeeds.length > 0 && (
+        <AssetNeedsPanel needs={assetNeeds} />
       )}
 
       {loadingActivities ? (
@@ -585,6 +597,43 @@ function SuggestedPlaybookLearningsPanel({ patterns }: { patterns: SalesPlaybook
             </div>
             <p className="mt-2 text-sm font-bold text-navy">{pattern.title}</p>
             <p className="mt-1 text-xs leading-5 text-gray-500">{pattern.reusableAction}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AssetNeedsPanel({ needs }: { needs: SalesAssetNeed[] }) {
+  return (
+    <section className="rounded-lg border border-cyan-100 bg-cyan-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-sm font-bold text-cyan-950">Asset Needs</p>
+          <p className="mt-1 text-sm text-cyan-900/75">
+            Repeated proof gaps, objections, and playbook patterns that should become reusable sales assets.
+          </p>
+        </div>
+        <Link to="/app/assets" className="inline-flex w-fit rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          Open Assets
+        </Link>
+      </div>
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+        {needs.slice(0, 5).map((need) => (
+          <article key={need.id} className="rounded-lg bg-white p-3 ring-1 ring-cyan-100">
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-bold text-cyan-700">{need.assetType}</span>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${need.priority === 'High' ? 'bg-red-50 text-red-700' : need.priority === 'Medium' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                {need.priority}
+              </span>
+            </div>
+            <p className="mt-2 text-sm font-bold text-navy">{need.title}</p>
+            <p className="mt-1 text-xs leading-5 text-gray-500">{need.reason}</p>
+            {(need.relatedAccountName || need.relatedOpportunityName) && (
+              <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">
+                {[need.relatedAccountName, need.relatedOpportunityName].filter(Boolean).join(' / ')}
+              </p>
+            )}
           </article>
         ))}
       </div>

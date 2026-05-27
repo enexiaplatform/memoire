@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { BookOpen, Copy, Loader2, Search } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { BookOpen, Copy, FileText, Loader2, Search } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -8,8 +8,10 @@ import { loadActionOutcomes, type ActionOutcomeRecord } from '../../services/act
 import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
 import { loadOpportunities, type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { loadSalesActivities, type SalesActivityRecord } from '../../services/salesActivityStore';
+import { saveSalesAssetDraft } from '../../services/salesAssetStore';
 import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
 import { hasLocalSampleData } from '../../utils/dataMode';
+import { buildSalesAssetDraftFromPattern, generateAssetDraftMarkdown } from '../../utils/salesAssetSuggestions';
 import {
   generatePlaybookPatternMarkdown,
   generateSalesPlaybookPatterns,
@@ -33,6 +35,7 @@ type PlaybookData = {
 
 export function SalesPlaybookPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
+  const navigate = useNavigate();
   const [data, setData] = useState<PlaybookData>({
     opportunities: [],
     activities: [],
@@ -112,6 +115,17 @@ export function SalesPlaybookPage() {
     } catch {
       setCopyMessage(text);
     }
+  };
+
+  const createAssetDraft = (pattern: SalesPlaybookPattern) => {
+    saveSalesAssetDraft(buildSalesAssetDraftFromPattern(pattern));
+    setCopyMessage('Asset draft ready. Opening Assets...');
+    window.setTimeout(() => navigate('/app/assets'), 120);
+  };
+
+  const copyAssetDraft = (pattern: SalesPlaybookPattern) => {
+    const draft = buildSalesAssetDraftFromPattern(pattern);
+    copyText('asset draft', generateAssetDraftMarkdown(draft));
   };
 
   return (
@@ -214,12 +228,19 @@ export function SalesPlaybookPage() {
                     isSelected={selectedPattern?.id === pattern.id}
                     onSelect={() => setSelectedPatternId(pattern.id)}
                     onCopy={(label, text) => copyText(label, text)}
+                    onCreateAssetDraft={() => createAssetDraft(pattern)}
+                    onCopyAssetDraft={() => copyAssetDraft(pattern)}
                   />
                 ))
               )}
             </div>
 
-            <PatternDetailPanel pattern={selectedPattern} onCopy={(label, text) => copyText(label, text)} />
+            <PatternDetailPanel
+              pattern={selectedPattern}
+              onCopy={(label, text) => copyText(label, text)}
+              onCreateAssetDraft={selectedPattern ? () => createAssetDraft(selectedPattern) : undefined}
+              onCopyAssetDraft={selectedPattern ? () => copyAssetDraft(selectedPattern) : undefined}
+            />
           </section>
         </>
       )}
@@ -232,11 +253,15 @@ function PatternCard({
   isSelected,
   onSelect,
   onCopy,
+  onCreateAssetDraft,
+  onCopyAssetDraft,
 }: {
   pattern: SalesPlaybookPattern;
   isSelected: boolean;
   onSelect: () => void;
   onCopy: (label: string, text: string) => void;
+  onCreateAssetDraft: () => void;
+  onCopyAssetDraft: () => void;
 }) {
   return (
     <article className={`rounded-lg border bg-white p-4 shadow-sm ${isSelected ? 'border-brand-blue ring-2 ring-blue-100' : 'border-gray-200'}`}>
@@ -251,6 +276,9 @@ function PatternCard({
         {pattern.evidence[0] && (
           <p className="mt-3 rounded-lg bg-gray-50 p-3 text-sm leading-6 text-gray-600">{pattern.evidence[0]}</p>
         )}
+        <p className="mt-3 text-xs font-bold uppercase tracking-wide text-brand-blue">
+          Suggested Asset Needed: {buildSalesAssetDraftFromPattern(pattern).assetType}
+        </p>
       </button>
       <div className="mt-4 flex flex-wrap gap-2">
         <button
@@ -269,6 +297,22 @@ function PatternCard({
           <Copy className="h-3.5 w-3.5" />
           Copy Summary
         </button>
+        <button
+          type="button"
+          onClick={onCreateAssetDraft}
+          className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-bold text-brand-blue hover:bg-blue-100"
+        >
+          <FileText className="h-3.5 w-3.5" />
+          Create Asset Draft
+        </button>
+        <button
+          type="button"
+          onClick={onCopyAssetDraft}
+          className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+        >
+          <Copy className="h-3.5 w-3.5" />
+          Copy Asset Draft
+        </button>
       </div>
     </article>
   );
@@ -277,9 +321,13 @@ function PatternCard({
 function PatternDetailPanel({
   pattern,
   onCopy,
+  onCreateAssetDraft,
+  onCopyAssetDraft,
 }: {
   pattern: SalesPlaybookPattern | null;
   onCopy: (label: string, text: string) => void;
+  onCreateAssetDraft?: () => void;
+  onCopyAssetDraft?: () => void;
 }) {
   if (!pattern) {
     return (
@@ -306,6 +354,7 @@ function PatternDetailPanel({
       <DetailBlock title="Why it matters" items={[pattern.whyItMatters]} />
       <DetailBlock title="Suggested response" items={[pattern.suggestedPlaybookResponse]} />
       <DetailBlock title="Reusable action" items={[pattern.reusableAction]} />
+      <DetailBlock title="Suggested asset needed" items={[`${buildSalesAssetDraftFromPattern(pattern).assetType}: ${buildSalesAssetDraftFromPattern(pattern).title}`]} />
       {pattern.relatedAccounts.length > 0 && <DetailBlock title="Accounts" items={pattern.relatedAccounts} />}
       {pattern.relatedOpportunities.length > 0 && <DetailBlock title="Opportunities" items={pattern.relatedOpportunities} />}
 
@@ -333,6 +382,22 @@ function PatternDetailPanel({
         >
           <Copy className="h-4 w-4" />
           Copy Pattern Summary
+        </button>
+        <button
+          type="button"
+          onClick={onCreateAssetDraft}
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue"
+        >
+          <FileText className="h-4 w-4" />
+          Create Asset Draft
+        </button>
+        <button
+          type="button"
+          onClick={onCopyAssetDraft}
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700"
+        >
+          <Copy className="h-4 w-4" />
+          Copy Asset Draft
         </button>
       </div>
     </aside>

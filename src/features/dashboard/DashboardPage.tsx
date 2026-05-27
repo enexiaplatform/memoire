@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ClipboardList,
   FileCheck2,
+  FileText,
   NotebookPen,
   Plus,
   Target,
@@ -23,6 +24,7 @@ import { loadSalesActivities, type SalesActivityRecord } from '../../services/sa
 import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
 import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
 import { loadActionOutcomes, type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
+import { loadSalesAssets, type SalesAssetRecord } from '../../services/salesAssetStore';
 import { canUsePipelineDefenseCloudStore, loadCloudBriefs } from '../../services/pipelineDefenseCloudStore';
 import {
   loadPipelineDefenseBriefStore,
@@ -56,6 +58,7 @@ import {
   getTopSalesPlaybookPattern,
   type SalesPlaybookPattern,
 } from '../../utils/salesPlaybook';
+import { summarizeAssetGaps } from '../../utils/salesAssetSuggestions';
 
 type DashboardData = {
   activities: SalesActivityRecord[];
@@ -65,6 +68,7 @@ type DashboardData = {
   objections: ObjectionRecord[];
   stakeholders: StakeholderRecord[];
   actionOutcomes: ActionOutcomeRecord[];
+  assets: SalesAssetRecord[];
 };
 
 export function DashboardPage() {
@@ -77,6 +81,7 @@ export function DashboardPage() {
     objections: [],
     stakeholders: [],
     actionOutcomes: [],
+    assets: [],
   });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -242,6 +247,14 @@ export function DashboardPage() {
                 objections={data.objections}
                 activities={data.activities}
                 actionOutcomes={data.actionOutcomes}
+              />
+              <AssetGaps
+                opportunities={data.opportunities}
+                stakeholders={data.stakeholders}
+                objections={data.objections}
+                activities={data.activities}
+                actionOutcomes={data.actionOutcomes}
+                assets={data.assets}
               />
               <PriorityActionList items={commandCenter.priorityActions} />
               <CriticalDealActions
@@ -463,6 +476,64 @@ function TopSalesPattern({
           {topPattern.suggestedPlaybookResponse}
         </p>
       </article>
+    </section>
+  );
+}
+
+function AssetGaps({
+  opportunities,
+  stakeholders,
+  objections,
+  activities,
+  actionOutcomes,
+  assets,
+}: {
+  opportunities: CrmLiteOpportunity[];
+  stakeholders: StakeholderRecord[];
+  objections: ObjectionRecord[];
+  activities: SalesActivityRecord[];
+  actionOutcomes: ActionOutcomeRecord[];
+  assets: SalesAssetRecord[];
+}) {
+  const patterns = generateSalesPlaybookPatterns({ opportunities, stakeholders, objections, activities, actionOutcomes, limit: 10 });
+  const gapSummary = summarizeAssetGaps({ patterns, objections, assets, opportunities });
+  if (!gapSummary.topMissingAsset && assets.length === 0 && objections.length === 0 && patterns.length === 0) return null;
+
+  return (
+    <section className="rounded-lg border border-cyan-100 bg-cyan-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-cyan-700" />
+            <h2 className="text-lg font-bold text-navy">Asset Gaps</h2>
+          </div>
+          <p className="mt-1 text-sm text-cyan-900/75">
+            Reusable proof, response, and proposal assets that would help current deal risks.
+          </p>
+        </div>
+        <Link to="/app/assets" className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          Open Assets
+        </Link>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[1.2fr_220px]">
+        <article className="rounded-lg bg-white p-4 ring-1 ring-cyan-100">
+          <Badge label={gapSummary.topMissingAsset?.priority || 'Low'} tone={gapSummary.topMissingAsset?.priority === 'High' ? 'red' : gapSummary.topMissingAsset?.priority === 'Medium' ? 'amber' : 'blue'} />
+          <h3 className="mt-3 text-base font-bold text-navy">
+            {gapSummary.topMissingAsset?.title || 'No urgent asset gap detected'}
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-gray-600">
+            {gapSummary.topMissingAsset?.reason || 'Create assets from Playbook patterns as reusable sales proof accumulates.'}
+          </p>
+        </article>
+        <article className="rounded-lg bg-white p-4 ring-1 ring-cyan-100">
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Repeated objections without asset</p>
+          <p className={`mt-2 inline-flex rounded-full px-3 py-1 text-2xl font-black ${gapSummary.repeatedObjectionsWithoutAsset ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+            {gapSummary.repeatedObjectionsWithoutAsset}
+          </p>
+          <p className="mt-3 text-sm leading-6 text-gray-600">{assets.length} saved assets available.</p>
+        </article>
+      </div>
     </section>
   );
 }
@@ -1098,7 +1169,7 @@ async function loadDashboardData(userId?: string | null): Promise<DashboardData>
     loadStakeholders(userId),
   ]);
 
-  return { activities, opportunities, accounts, briefs, objections, stakeholders, actionOutcomes: loadActionOutcomes() };
+  return { activities, opportunities, accounts, briefs, objections, stakeholders, actionOutcomes: loadActionOutcomes(), assets: loadSalesAssets() };
 }
 
 function syncOnboardingFromData(data: DashboardData) {

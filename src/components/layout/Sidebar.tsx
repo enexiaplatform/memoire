@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { AlertTriangle, BookOpen, CalendarDays, ClipboardList, FileCheck2, GitBranch, LayoutDashboard, MessageCircleQuestion, NotebookPen, Settings, Target, UsersRound } from 'lucide-react';
+import { AlertTriangle, BookOpen, CalendarDays, ClipboardList, FileCheck2, FileText, GitBranch, LayoutDashboard, MessageCircleQuestion, NotebookPen, Settings, Target, UsersRound } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 
@@ -9,6 +9,7 @@ const navItems = [
   { to: '/app/calendar', label: 'Calendar', icon: <CalendarDays className="h-5 w-5" /> },
   { to: '/app/reviews', label: 'Reviews', icon: <ClipboardList className="h-5 w-5" /> },
   { to: '/app/playbook', label: 'Playbook', icon: <BookOpen className="h-5 w-5" /> },
+  { to: '/app/assets', label: 'Assets', icon: <FileText className="h-5 w-5" /> },
   { to: '/app/journey', label: 'Journey', icon: <GitBranch className="h-5 w-5" /> },
   { to: '/app/accounts', label: 'Accounts', icon: <BookOpen className="h-5 w-5" /> },
   { to: '/app/opportunities', label: 'Opportunities', icon: <Target className="h-5 w-5" /> },

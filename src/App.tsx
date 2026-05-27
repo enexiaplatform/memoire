@@ -23,6 +23,9 @@ const SalesReviewsPage = lazy(() =>
 const SalesPlaybookPage = lazy(() =>
   import('./features/playbook/SalesPlaybookPage').then((module) => ({ default: module.SalesPlaybookPage })),
 );
+const SalesAssetsPage = lazy(() =>
+  import('./features/assets/SalesAssetsPage').then((module) => ({ default: module.SalesAssetsPage })),
+);
 const JourneyPage = lazy(() => import('./features/v31/JourneyPage').then((module) => ({ default: module.JourneyPage })));
 const AccountsPage = lazy(() => import('./features/accounts/AccountsPage').then((module) => ({ default: module.AccountsPage })));
 const AccountMemoryPage = lazy(() => import('./features/v31/AccountMemoryPage').then((module) => ({ default: module.AccountMemoryPage })));
@@ -63,6 +66,7 @@ function App() {
             <Route path="calendar" element={<SalesActivityCalendarPage />} />
             <Route path="reviews" element={<SalesReviewsPage />} />
             <Route path="playbook" element={<SalesPlaybookPage />} />
+            <Route path="assets" element={<SalesAssetsPage />} />
             <Route path="journey" element={<JourneyPage />} />
             <Route path="accounts" element={<AccountsPage />} />
             <Route path="accounts/:accountId" element={<AccountMemoryPage />} />

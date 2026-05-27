@@ -4,6 +4,7 @@ import { SALES_ACTIVITY_STORAGE_KEY, type SalesActivityRecord } from '../service
 import { STAKEHOLDER_STORAGE_KEY, type StakeholderRecord } from '../services/stakeholderStore';
 import { OBJECTION_STORAGE_KEY, type ObjectionRecord } from '../services/objectionStore';
 import { ACTION_OUTCOME_STORAGE_KEY, type ActionOutcomeRecord } from '../services/actionOutcomeStore';
+import { SALES_ASSET_STORAGE_KEY, type SalesAssetRecord } from '../services/salesAssetStore';
 import { classifySalesActivity } from './salesActivityClassifier';
 import { generatePipelineDefenseBriefFromOpportunities } from './opportunityToPipelineBrief';
 import {
@@ -31,6 +32,7 @@ export type SampleDataset = {
   stakeholders: StakeholderRecord[];
   objections: ObjectionRecord[];
   actionOutcomes: ActionOutcomeRecord[];
+  salesAssets: SalesAssetRecord[];
   briefs: PipelineDefenseBrief[];
 };
 
@@ -70,6 +72,7 @@ export function loadSampleDataset(): SampleDataset {
   writeLocalArray(STAKEHOLDER_STORAGE_KEY, dataset.stakeholders);
   writeLocalArray(OBJECTION_STORAGE_KEY, dataset.objections);
   writeLocalArray(ACTION_OUTCOME_STORAGE_KEY, dataset.actionOutcomes);
+  writeLocalArray(SALES_ASSET_STORAGE_KEY, dataset.salesAssets);
   writeLocalBriefs(dataset.briefs);
   markSampleDataLoaded();
 
@@ -89,6 +92,7 @@ export function clearSampleDataset() {
   removeSampleRecords(STAKEHOLDER_STORAGE_KEY);
   removeSampleRecords(OBJECTION_STORAGE_KEY);
   removeSampleRecords(ACTION_OUTCOME_STORAGE_KEY);
+  removeSampleRecords(SALES_ASSET_STORAGE_KEY);
   removeSampleBriefs();
   clearSampleDataFlag();
 }
@@ -605,13 +609,86 @@ function buildSampleDataset(): SampleDataset {
     }),
   ];
 
+  const salesAssets: SalesAssetRecord[] = [
+    sampleAsset({
+      id: 'demo-asset-iq-oq-pq-proof',
+      title: 'IQ/OQ/PQ documentation proof note',
+      assetType: 'Validation / Documentation Note',
+      summary: 'Reusable validation proof response for pharma customers who need IQ/OQ/PQ confidence.',
+      content: 'Use this when validation documentation is a blocker: confirm the required IQ/OQ/PQ documents, provide the standard validation pack index, and offer a short technical review with QA before procurement sign-off.',
+      tags: ['demo-data', 'validation', 'iq-oq-pq', 'pharma'],
+      relatedAccountName: 'VHP',
+      relatedOpportunityId: 'demo-opp-vhp-solidfog-phase-2',
+      relatedOpportunityName: 'SolidFog EU-GMP Phase 2',
+      relatedObjectionType: 'Compliance / validation',
+      useCase: 'Neutralize validation and compliance proof gaps before procurement review.',
+      createdAt: timestamp,
+    }),
+    sampleAsset({
+      id: 'demo-asset-procurement-justification',
+      title: 'Procurement justification snippet',
+      assetType: 'Procurement Justification',
+      summary: 'Short justification for procurement teams comparing technical fit, risk reduction, and support.',
+      content: 'Position the purchase around validated technical fit, reduced implementation risk, local support availability, and clear service accountability. Confirm the decision committee, evaluation criteria, and approval timeline.',
+      tags: ['demo-data', 'procurement', 'tender'],
+      relatedAccountName: 'TV Pharm',
+      relatedOpportunityId: 'demo-opp-tv-pharm-tender',
+      relatedOpportunityName: 'Tender opportunity',
+      relatedObjectionType: 'Procurement',
+      useCase: 'Use when tender path, committee ownership, or procurement timing is unclear.',
+      createdAt: timestamp,
+    }),
+    sampleAsset({
+      id: 'demo-asset-competitor-response',
+      title: 'STERIS competitor response note',
+      assetType: 'Competitor Response',
+      summary: 'Reusable differentiator response when STERIS remains in the evaluation.',
+      content: 'Anchor the response to the customer criteria: validation proof, local service response, implementation certainty, and total risk reduction. Ask which competitor criterion matters most and prepare proof against that criterion.',
+      tags: ['demo-data', 'competitor', 'steris'],
+      relatedAccountName: 'VHP',
+      relatedOpportunityId: 'demo-opp-vhp-solidfog-phase-2',
+      relatedOpportunityName: 'SolidFog EU-GMP Phase 2',
+      relatedObjectionType: 'Competitor',
+      useCase: 'Use when competitor pressure appears without a clear response plan.',
+      createdAt: timestamp,
+    }),
+    sampleAsset({
+      id: 'demo-asset-lead-time-response',
+      title: 'Lead time objection response',
+      assetType: 'Objection Response',
+      summary: 'Response path for lead time concerns and implementation timing risk.',
+      content: 'Confirm the required go-live date, show the realistic implementation timeline, name local support owner, and propose a checkpoint call to remove schedule uncertainty.',
+      tags: ['demo-data', 'lead-time', 'local-support'],
+      relatedAccountName: 'Control Union',
+      relatedOpportunityId: 'demo-opp-control-union-microbiology',
+      relatedOpportunityName: 'Microbiology workflow',
+      relatedObjectionType: 'Lead time',
+      useCase: 'Use when lead time or local support confidence is blocking next step.',
+      createdAt: timestamp,
+    }),
+    sampleAsset({
+      id: 'demo-asset-validation-compliance-proof',
+      title: 'Validation and compliance proof asset',
+      assetType: 'Proof Asset',
+      summary: 'Compact proof checklist for validation, references, SLA, and compliance concerns.',
+      content: 'Checklist: validation documentation index, local support proof, reference customer, service SLA, timeline owner, and procurement-ready quote assumptions.',
+      tags: ['demo-data', 'proof', 'compliance', 'sla'],
+      relatedAccountName: 'Control Union',
+      relatedOpportunityId: 'demo-opp-control-union-food-safety',
+      relatedOpportunityName: 'Food safety rapid testing',
+      relatedObjectionType: 'Documentation',
+      useCase: 'Use before proposal review when proof gaps repeat across technical buyers.',
+      createdAt: timestamp,
+    }),
+  ];
+
   const brief = {
     ...generatePipelineDefenseBriefFromOpportunities(opportunities.slice(0, 5), {
       title: `Demo Defense Brief - ${today}`,
       weekLabel: 'Demo week',
       salesOwner: 'Demo Sales Owner',
       scope: 'Demo sandbox opportunities',
-    }, objections, stakeholders, activities, actionOutcomes),
+    }, objections, stakeholders, activities, actionOutcomes, salesAssets),
     id: 'demo-brief-pipeline-defense',
   } as PipelineDefenseBrief;
 
@@ -622,6 +699,7 @@ function buildSampleDataset(): SampleDataset {
     stakeholders,
     objections,
     actionOutcomes,
+    salesAssets,
     briefs: [markSampleBrief(brief)],
   };
 }
@@ -693,6 +771,13 @@ function sampleActionOutcome(input: Omit<ActionOutcomeRecord, 'updatedAt' | 'sou
   return markSampleRecord({
     ...input,
     updatedAt: input.completedAt ? `${input.completedAt}T12:00:00.000Z` : input.createdAt,
+  });
+}
+
+function sampleAsset(input: Omit<SalesAssetRecord, 'updatedAt' | 'source' | 'isSample'>): SalesAssetRecord {
+  return markSampleRecord({
+    ...input,
+    updatedAt: input.createdAt,
   });
 }
 

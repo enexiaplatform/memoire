@@ -39,6 +39,7 @@ import { analyzeMeddicLiteOpportunity, type MeddicLiteDealCategory, type MeddicL
 import { loadSalesActivities, type SalesActivityRecord } from '../../services/salesActivityStore';
 import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
 import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
+import { loadSalesAssets, type SalesAssetRecord } from '../../services/salesAssetStore';
 import {
   actionOutcomeTypes,
   createActionOutcomeFromRecommendedAction,
@@ -68,6 +69,11 @@ import {
   generatePipelineDefenseBriefFromOpportunities,
   mapOpportunityToPipelineDefenseDeal,
 } from '../../utils/opportunityToPipelineBrief';
+import {
+  getRelevantSalesAssetsForOpportunity,
+  suggestSalesAssetsForOpportunity,
+} from '../../utils/salesAssetSuggestions';
+import { generateSalesPlaybookPatterns } from '../../utils/salesPlaybook';
 import { getUserDisplayName as getWorkspaceUserDisplayName } from '../../utils/userDisplay';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -88,6 +94,7 @@ export function OpportunitiesPage() {
   const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
   const [objections, setObjections] = useState<ObjectionRecord[]>([]);
   const [actionOutcomes, setActionOutcomes] = useState<ActionOutcomeRecord[]>([]);
+  const [salesAssets, setSalesAssets] = useState<SalesAssetRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState(allFilter);
@@ -121,6 +128,7 @@ export function OpportunitiesPage() {
     setStakeholders(loadedStakeholders);
     setObjections(loadedObjections);
     setActionOutcomes(loadActionOutcomes());
+    setSalesAssets(loadSalesAssets());
     setLoading(false);
   };
 
@@ -262,7 +270,7 @@ export function OpportunitiesPage() {
 
     setBriefCreateState('saving');
     setBriefCreateMessage('Creating Pipeline Defense Brief...');
-    const draftBrief = generatePipelineDefenseBriefFromOpportunities(previewOpportunities, briefMetadata, objections, stakeholders, activities, actionOutcomes);
+    const draftBrief = generatePipelineDefenseBriefFromOpportunities(previewOpportunities, briefMetadata, objections, stakeholders, activities, actionOutcomes, salesAssets);
 
     try {
       const createdBrief = dataUserId && canUsePipelineDefenseCloudStore()
@@ -413,6 +421,8 @@ export function OpportunitiesPage() {
           stakeholders={editingOpportunity ? getStakeholdersForOpportunity(stakeholders, editingOpportunity) : []}
           objections={editingOpportunity ? getObjectionsForOpportunity(objections, editingOpportunity) : []}
           actionOutcomes={editingOpportunity ? actionOutcomes : []}
+          salesAssets={salesAssets}
+          allOpportunities={opportunities}
           onChange={setForm}
           onActionOutcomesChange={setActionOutcomes}
           onSave={handleSave}
@@ -429,6 +439,7 @@ export function OpportunitiesPage() {
           stakeholders={stakeholders}
           activities={activities}
           actionOutcomes={actionOutcomes}
+          salesAssets={salesAssets}
           metadata={briefMetadata}
           onMetadataChange={setBriefMetadata}
           createState={briefCreateState}
@@ -589,6 +600,8 @@ function OpportunityPanel({
   stakeholders,
   objections,
   actionOutcomes,
+  salesAssets,
+  allOpportunities,
   onChange,
   onActionOutcomesChange,
   onSave,
@@ -605,6 +618,8 @@ function OpportunityPanel({
   stakeholders: StakeholderRecord[];
   objections: ObjectionRecord[];
   actionOutcomes: ActionOutcomeRecord[];
+  salesAssets: SalesAssetRecord[];
+  allOpportunities: CrmLiteOpportunity[];
   onChange: (form: OpportunityFormInput) => void;
   onActionOutcomesChange: (outcomes: ActionOutcomeRecord[]) => void;
   onSave: () => void;
@@ -721,6 +736,17 @@ function OpportunityPanel({
               activities={linkedActivities}
             />
           )}
+          {currentOpportunity && (
+            <RelevantSalesAssetsPanel
+              opportunity={currentOpportunity}
+              objections={objections}
+              stakeholders={stakeholders}
+              activities={linkedActivities}
+              actionOutcomes={actionOutcomes}
+              assets={salesAssets}
+              allOpportunities={allOpportunities}
+            />
+          )}
           <LinkedActivitiesTimeline activities={linkedActivities} />
         </>
       )}
@@ -774,6 +800,7 @@ function DefenseBriefPreviewModal({
   stakeholders,
   activities,
   actionOutcomes,
+  salesAssets,
   metadata,
   onMetadataChange,
   createState,
@@ -786,6 +813,7 @@ function DefenseBriefPreviewModal({
   stakeholders: StakeholderRecord[];
   activities: SalesActivityRecord[];
   actionOutcomes: ActionOutcomeRecord[];
+  salesAssets: SalesAssetRecord[];
   metadata: BriefPreviewMetadata;
   onMetadataChange: (metadata: BriefPreviewMetadata) => void;
   createState: SaveState;
@@ -793,7 +821,7 @@ function DefenseBriefPreviewModal({
   onCreate: () => void;
   onClose: () => void;
 }) {
-  const generatedDeals = opportunities.map((opportunity) => mapOpportunityToPipelineDefenseDeal(opportunity, objections, stakeholders, activities, actionOutcomes));
+  const generatedDeals = opportunities.map((opportunity) => mapOpportunityToPipelineDefenseDeal(opportunity, objections, stakeholders, activities, actionOutcomes, salesAssets, opportunities));
   const updateMetadata = <Key extends keyof BriefPreviewMetadata>(
     key: Key,
     value: BriefPreviewMetadata[Key],
@@ -895,6 +923,85 @@ function DefenseBriefPreviewModal({
         </footer>
       </section>
     </div>
+  );
+}
+
+function RelevantSalesAssetsPanel({
+  opportunity,
+  objections,
+  stakeholders,
+  activities,
+  actionOutcomes,
+  assets,
+  allOpportunities,
+}: {
+  opportunity: CrmLiteOpportunity;
+  objections: ObjectionRecord[];
+  stakeholders: StakeholderRecord[];
+  activities: SalesActivityRecord[];
+  actionOutcomes: ActionOutcomeRecord[];
+  assets: SalesAssetRecord[];
+  allOpportunities: CrmLiteOpportunity[];
+}) {
+  const patterns = generateSalesPlaybookPatterns({
+    opportunities: allOpportunities,
+    stakeholders,
+    objections,
+    activities,
+    actionOutcomes,
+    limit: 12,
+  });
+  const relevant = getRelevantSalesAssetsForOpportunity({ opportunity, assets, objections, patterns });
+  const suggested = suggestSalesAssetsForOpportunity({ opportunity, objections, patterns, assets });
+
+  return (
+    <section className="mt-5 rounded-lg border border-cyan-100 bg-cyan-50/60 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-cyan-700" />
+            <p className="text-xs font-bold uppercase tracking-wide text-cyan-700">Relevant Sales Assets</p>
+          </div>
+          <h3 className="mt-1 text-base font-bold text-navy">Proof and snippets for this deal</h3>
+          <p className="mt-1 text-sm leading-6 text-cyan-900/75">
+            Assets are reusable text blocks for objections, proof, proposals, procurement, and pipeline defense.
+          </p>
+        </div>
+        <Link to="/app/assets" className="inline-flex w-fit rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">
+          Open Assets
+        </Link>
+      </div>
+
+      {relevant.length === 0 && suggested.length === 0 ? (
+        <p className="mt-3 rounded-lg bg-white p-3 text-sm text-gray-600 ring-1 ring-cyan-100">
+          No specific asset need detected yet. Create assets from Playbook patterns as repeated proof gaps emerge.
+        </p>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {relevant.slice(0, 4).map((asset) => (
+            <article key={asset.id} className="rounded-lg bg-white p-3 ring-1 ring-cyan-100">
+              <div className="flex flex-wrap gap-2">
+                <Badge label={asset.assetType} tone="blue" />
+                {asset.relatedObjectionType && <Badge label={asset.relatedObjectionType} tone="amber" />}
+              </div>
+              <p className="mt-2 text-sm font-bold text-navy">{asset.title}</p>
+              <p className="mt-1 text-xs leading-5 text-gray-500">{asset.summary || asset.useCase}</p>
+            </article>
+          ))}
+          {suggested.slice(0, relevant.length > 0 ? 2 : 4).map((need) => (
+            <article key={need.id} className="rounded-lg border border-dashed border-cyan-200 bg-white/80 p-3">
+              <div className="flex flex-wrap gap-2">
+                <Badge label="Suggested asset" tone="gray" />
+                <Badge label={need.assetType} tone="blue" />
+                <Badge label={need.priority} tone={need.priority === 'High' ? 'red' : need.priority === 'Medium' ? 'amber' : 'green'} />
+              </div>
+              <p className="mt-2 text-sm font-bold text-navy">{need.title}</p>
+              <p className="mt-1 text-xs leading-5 text-gray-500">{need.reason}</p>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 

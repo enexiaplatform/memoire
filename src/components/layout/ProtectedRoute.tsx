@@ -71,6 +71,7 @@ function isLocalFirstAppRoute(pathname: string) {
     '/app/calendar',
     '/app/reviews',
     '/app/playbook',
+    '/app/assets',
     '/app/opportunities',
     '/app/stakeholders',
     '/app/objections',
