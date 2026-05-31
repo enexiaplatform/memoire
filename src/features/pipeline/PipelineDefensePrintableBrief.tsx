@@ -9,6 +9,7 @@ import type { PipelineDefenseBrief } from '../../utils/pipelineDefenseStorage';
 import type { PipelineDefenseBriefSummary } from '../../utils/exportPipelineDefenseBrief';
 import { analyzePipelineDefenseBriefQuality } from '../../utils/pipelineDefenseBriefQuality';
 import { groupActionItemsByPriority, type ActionPriority, type PipelineDefenseActionItem } from '../../utils/pipelineDefenseActionPlan';
+import { buildShareablePipelineDefenseBrief } from '../../utils/shareablePipelineDefenseBrief';
 
 type PrintableBriefProps = {
   brief: PipelineDefenseBrief | null;
@@ -20,6 +21,7 @@ type PrintableBriefProps = {
 export function PipelineDefensePrintableBrief({ brief, deals, summary, actionItems = [] }: PrintableBriefProps) {
   const qualityAnalysis = analyzePipelineDefenseBriefQuality(brief);
   const groupedActionItems = groupActionItemsByPriority(actionItems);
+  const shareableBrief = buildShareablePipelineDefenseBrief({ brief, deals, actionItems });
 
   return (
     <article className="printable-brief print-only">
@@ -31,9 +33,13 @@ export function PipelineDefensePrintableBrief({ brief, deals, summary, actionIte
           <PrintMeta label="Sales owner" value={brief?.salesOwner || pipelineDefenseBriefMeta.salesOwner} />
           <PrintMeta label="Scope" value={brief?.scope || pipelineDefenseBriefMeta.scope} />
           <PrintMeta label="Pipeline period" value={pipelineDefenseBriefMeta.pipelinePeriod} />
+          <PrintMeta label="Generated" value={formatPrintDate(shareableBrief.generatedAt)} />
           <PrintMeta label="Created" value={formatPrintDate(brief?.createdAt)} />
           <PrintMeta label="Updated" value={formatPrintDate(brief?.updatedAt)} />
         </dl>
+        <p className="print-privacy-note">
+          Confirm workspace data mode before sharing: synced, local-only, sync issue, or demo-local.
+        </p>
       </header>
 
       <section className="print-section print-break-inside-avoid">
@@ -41,6 +47,10 @@ export function PipelineDefensePrintableBrief({ brief, deals, summary, actionIte
         <dl className="print-summary-grid">
           <PrintMetric label="Deals reviewed" value={String(summary.dealsReviewed)} />
           <PrintMetric label="At-risk deals" value={String(summary.atRiskDeals)} />
+          <PrintMetric label="Defendable" value={String(shareableBrief.executiveSummary.defendableDeals)} />
+          <PrintMetric label="Rescue" value={String(shareableBrief.executiveSummary.rescueDeals)} />
+          <PrintMetric label="Downgrade / deprioritize" value={String(shareableBrief.executiveSummary.downgradeDeals)} />
+          <PrintMetric label="Pipeline value captured" value={shareableBrief.executiveSummary.totalPipelineValueLabel} />
           <PrintMetric label="Highest-risk deal" value={formatDealName(summary.highestRiskDeal)} />
           <PrintMetric
             label="Most common missing context"
@@ -48,6 +58,108 @@ export function PipelineDefensePrintableBrief({ brief, deals, summary, actionIte
           />
           <PrintMetric label="Top recommended action" value={summary.topRecommendedAction?.recommendedAction || 'None'} />
         </dl>
+      </section>
+
+      <section className="print-section print-break-inside-avoid">
+        <PrintSectionHeader title="Manager Review Summary" />
+        <p className="print-paragraph">{shareableBrief.managerSummary}</p>
+      </section>
+
+      <section className="print-section">
+        <PrintSectionHeader title="Deal Defense Table" />
+        <div className="print-table-wrap">
+          <table className="print-table">
+            <thead>
+              <tr>
+                <th>Deal</th>
+                <th>Forecast</th>
+                <th>Defense</th>
+                <th>Evidence / gap</th>
+                <th>Next action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shareableBrief.dealRows.map((row) => (
+                <tr key={row.id}>
+                  <td>
+                    <strong>{row.account}</strong>
+                    <br />
+                    {row.opportunity}
+                    <br />
+                    {row.currentStage} / {row.value}
+                  </td>
+                  <td>{row.forecastCategory}</td>
+                  <td>{row.defenseStatus}</td>
+                  <td>
+                    <strong>Evidence:</strong> {row.mainEvidence}
+                    <br />
+                    <strong>Gap:</strong> {row.mainGap}
+                  </td>
+                  <td>{row.nextDefenseAction}</td>
+                </tr>
+              ))}
+              {shareableBrief.dealRows.length === 0 && (
+                <tr>
+                  <td colSpan={5}>No deals available for this review.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="print-section">
+        <PrintSectionHeader title="Deals To Defend / Rescue / Downgrade" />
+        <div className="print-grid-three">
+          <PrintDealGroup title="Defend" deals={shareableBrief.dealsToDefend} />
+          <PrintDealGroup title="Rescue" deals={shareableBrief.dealsToRescue} />
+          <PrintDealGroup title="Downgrade / deprioritize" deals={shareableBrief.dealsToDowngrade} />
+        </div>
+      </section>
+
+      <section className="print-section">
+        <PrintSectionHeader title="Top Missing Proof / MEDDIC Gaps" />
+        {shareableBrief.topMissingProofGaps.length === 0 ? (
+          <p className="print-empty">No repeated proof or MEDDIC gap detected.</p>
+        ) : (
+          <ul>
+            {shareableBrief.topMissingProofGaps.slice(0, 7).map((gap) => (
+              <li key={gap.label}>{gap.label}: {gap.count} deal(s) affected ({gap.accounts.join(', ')})</li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="print-section">
+        <PrintSectionHeader title="Next Defense Actions" />
+        {shareableBrief.nextDefenseActions.length === 0 ? (
+          <p className="print-empty">No next defense actions defined yet.</p>
+        ) : (
+          <div className="print-stack">
+            {shareableBrief.nextDefenseActions.slice(0, 10).map((action) => (
+              <div key={action.id} className="print-card print-break-inside-avoid">
+                <div className="print-card-header">
+                  <div>
+                    <p className="print-card-kicker">{action.account} / {action.opportunity}</p>
+                    <h3>{action.title}</h3>
+                  </div>
+                  <span className="print-pill">{action.priority}</span>
+                </div>
+                <PrintText label="Detail" value={action.detail} />
+                <PrintText label="Source" value={action.source} />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="print-section print-break-inside-avoid">
+        <PrintSectionHeader title="Brief Quality Checklist" />
+        <ul>
+          {shareableBrief.qualityChecklist.map((item) => (
+            <li key={item.id}>{item.status === 'pass' ? 'Pass' : 'Warning'} - {item.label}: {item.detail}</li>
+          ))}
+        </ul>
       </section>
 
       <section className="print-section print-break-inside-avoid">
@@ -256,6 +368,23 @@ function PrintMetric({ label, value }: { label: string; value: string }) {
     <div>
       <dt>{label}</dt>
       <dd>{value}</dd>
+    </div>
+  );
+}
+
+function PrintDealGroup({ title, deals }: { title: string; deals: PipelineDefenseDeal[] }) {
+  return (
+    <div className="print-card print-break-inside-avoid">
+      <h3>{title}</h3>
+      {deals.length === 0 ? (
+        <p>None</p>
+      ) : (
+        <ul>
+          {deals.map((deal) => (
+            <li key={deal.id}>{deal.account || 'Unknown Account'} / {deal.opportunity || 'Unknown Opportunity'}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -60,6 +60,7 @@ import {
 } from '../../utils/salesPlaybook';
 import { summarizeAssetGaps } from '../../utils/salesAssetSuggestions';
 import { buildCaptureNudges, type CaptureNudge } from '../../utils/captureNudges';
+import { buildPipelineReviewDashboardSignal } from '../../utils/shareablePipelineDefenseBrief';
 
 type DashboardData = {
   activities: SalesActivityRecord[];
@@ -242,6 +243,7 @@ export function DashboardPage() {
             <>
               <TodayFocus commandCenter={commandCenter} />
               <ThisWeekSummary commandCenter={commandCenter} />
+              <PreparePipelineReview signal={dashboardInsights.pipelineReviewSignal} />
               <CaptureNudgePanel nudges={dashboardInsights.captureNudges} />
               <WeeklyExecutionHealth
                 review={dashboardInsights.weeklyExecutionReview}
@@ -349,6 +351,7 @@ function buildDashboardInsights(data: DashboardData) {
       objections: data.objections,
       activities: data.activities,
     }),
+    pipelineReviewSignal: buildPipelineReviewDashboardSignal(data.briefs),
   };
 }
 
@@ -411,6 +414,54 @@ function ThisWeekSummary({ commandCenter }: { commandCenter: CommandCenter }) {
         <Metric label="Open actions" value={summary.openNextActions} tone={summary.openNextActions ? 'amber' : 'green'} />
         <Metric label="Objections" value={summary.objectionsCaptured} tone={summary.objectionsCaptured ? 'red' : 'green'} />
         <Metric label="Defense briefs" value={summary.pipelineDefenseBriefsCreated} />
+      </div>
+    </section>
+  );
+}
+
+function PreparePipelineReview({ signal }: { signal: DashboardInsights['pipelineReviewSignal'] }) {
+  if (signal.dealsNeedingReview === 0 && signal.rescueDowngradeCandidates === 0 && signal.briefTitle === 'No defense brief yet') {
+    return (
+      <section className="rounded-lg border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <FileCheck2 className="h-4 w-4 text-brand-blue" />
+              <h2 className="text-lg font-bold text-navy">Prepare Pipeline Review</h2>
+            </div>
+            <p className="mt-1 text-sm text-blue-900/75">{signal.topReason}</p>
+          </div>
+          <Link to={signal.href} className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+            Open Pipeline Defense
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-lg border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <FileCheck2 className="h-4 w-4 text-brand-blue" />
+            <h2 className="text-lg font-bold text-navy">Prepare Pipeline Review</h2>
+          </div>
+          <p className="mt-1 text-sm text-blue-900/75">
+            Manager-ready defense prep from the latest Pipeline Defense Brief: {signal.briefTitle}.
+          </p>
+        </div>
+        <Link to={signal.href} className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          Open Pipeline Defense
+        </Link>
+      </div>
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+        <Metric label="Deals needing review" value={signal.dealsNeedingReview} tone={signal.dealsNeedingReview ? 'amber' : 'green'} />
+        <Metric label="Rescue / downgrade" value={signal.rescueDowngradeCandidates} tone={signal.rescueDowngradeCandidates ? 'red' : 'green'} />
+        <div className="rounded-lg border border-blue-100 bg-white p-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Top reason</p>
+          <p className="mt-2 text-sm leading-6 text-gray-700">{signal.topReason}</p>
+        </div>
       </div>
     </section>
   );

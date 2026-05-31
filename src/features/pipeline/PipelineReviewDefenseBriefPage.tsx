@@ -47,6 +47,11 @@ import {
   type PipelineDefenseActionItem,
 } from '../../utils/pipelineDefenseActionPlan';
 import {
+  buildShareablePipelineDefenseBrief,
+  generateShareReadyPipelineDefenseMarkdown,
+  type ShareablePipelineDefenseBrief,
+} from '../../utils/shareablePipelineDefenseBrief';
+import {
   draftAssistTypes,
   type DraftAssistResult,
   type DraftAssistType,
@@ -146,6 +151,8 @@ export function PipelineReviewDefenseBriefPage() {
   const [actionPlanItems, setActionPlanItems] = useState<PipelineDefenseActionItem[] | null>(null);
   const [doneActionIds, setDoneActionIds] = useState<Set<string>>(() => new Set());
   const [actionPlanCopyStatus, setActionPlanCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const [managerSummaryCopyStatus, setManagerSummaryCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const [shareMarkdownCopyStatus, setShareMarkdownCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [draftAssistDealId, setDraftAssistDealId] = useState<string | null>(null);
   const [draftAssistType, setDraftAssistType] = useState<DraftAssistType>('Deal truth');
   const [draftAssistResult, setDraftAssistResult] = useState<DraftAssistResult | null>(null);
@@ -162,6 +169,8 @@ export function PipelineReviewDefenseBriefPage() {
   const activeBrief = getActivePipelineDefenseBrief(store);
   const deals = activeBrief?.deals || [];
   const summary = buildSummary(deals);
+  const activeActionPlanItems = actionPlanItems || generatePipelineDefenseActionPlan(activeBrief);
+  const shareableBrief = buildShareablePipelineDefenseBrief({ brief: activeBrief, deals, actionItems: activeActionPlanItems });
   const sampleDataActive = hasLocalSampleData();
   const cloudSyncReady = Boolean(user && !sampleDataActive && canUsePipelineDefenseCloudStore() && cloudSyncStatus === 'ready');
 
@@ -608,6 +617,25 @@ export function PipelineReviewDefenseBriefPage() {
     }
   };
 
+  const copyManagerSummary = async () => {
+    try {
+      await navigator.clipboard.writeText(shareableBrief.managerSummary);
+      setManagerSummaryCopyStatus('copied');
+    } catch {
+      setManagerSummaryCopyStatus('failed');
+    }
+  };
+
+  const copyShareReadyMarkdown = async () => {
+    const markdown = generateShareReadyPipelineDefenseMarkdown({ brief: activeBrief, shareable: shareableBrief });
+    try {
+      await navigator.clipboard.writeText(markdown);
+      setShareMarkdownCopyStatus('copied');
+    } catch {
+      setShareMarkdownCopyStatus('failed');
+    }
+  };
+
   const openDraftAssist = (dealId: string) => {
     const provider = getActiveDraftAssistProvider();
     setDraftAssistDealId((currentDealId) => (currentDealId === dealId ? null : dealId));
@@ -1044,6 +1072,14 @@ export function PipelineReviewDefenseBriefPage() {
         <SummaryCard label="Top action this week" value={summary.topRecommendedAction?.decisionRecommendation || 'None'} detail={summary.topRecommendedAction?.recommendedAction || 'Add a deal to review'} tone="blue" />
       </section>
 
+      <ShareableBriefPanel
+        shareableBrief={shareableBrief}
+        managerSummaryCopyStatus={managerSummaryCopyStatus}
+        shareMarkdownCopyStatus={shareMarkdownCopyStatus}
+        onCopyManagerSummary={copyManagerSummary}
+        onCopyShareMarkdown={copyShareReadyMarkdown}
+      />
+
       {isReviewMode && (
         <ReviewModeSummaryStrip deals={deals} qualityAnalysis={briefQualityAnalysis} onReviewQuality={reviewBriefQuality} />
       )}
@@ -1197,9 +1233,226 @@ export function PipelineReviewDefenseBriefPage() {
         </>
       )}
     </div>
-    <PipelineDefensePrintableBrief brief={activeBrief} deals={deals} summary={summary} actionItems={actionPlanItems || []} />
+    <PipelineDefensePrintableBrief brief={activeBrief} deals={deals} summary={summary} actionItems={activeActionPlanItems} />
     </>
   );
+}
+
+function ShareableBriefPanel({
+  shareableBrief,
+  managerSummaryCopyStatus,
+  shareMarkdownCopyStatus,
+  onCopyManagerSummary,
+  onCopyShareMarkdown,
+}: {
+  shareableBrief: ShareablePipelineDefenseBrief;
+  managerSummaryCopyStatus: 'idle' | 'copied' | 'failed';
+  shareMarkdownCopyStatus: 'idle' | 'copied' | 'failed';
+  onCopyManagerSummary: () => void;
+  onCopyShareMarkdown: () => void;
+}) {
+  const summary = shareableBrief.executiveSummary;
+
+  return (
+    <section className="mb-6 rounded-xl border border-brand-blue/20 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <SectionHeader
+          eyebrow="Share-ready brief"
+          title="Manager Review Summary"
+          description="A compact manager-ready view for weekly pipeline review, Markdown sharing, and clean print/PDF output."
+        />
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onCopyManagerSummary}
+            className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
+          >
+            Copy Manager Summary
+          </button>
+          <button
+            type="button"
+            onClick={onCopyShareMarkdown}
+            className="rounded-full border border-brand-blue bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-100"
+          >
+            Copy Share-ready Markdown
+          </button>
+        </div>
+      </div>
+
+      {(managerSummaryCopyStatus === 'copied' || shareMarkdownCopyStatus === 'copied') && (
+        <p className="mb-3 text-sm font-semibold text-emerald-700">Copied to clipboard.</p>
+      )}
+      {(managerSummaryCopyStatus === 'failed' || shareMarkdownCopyStatus === 'failed') && (
+        <p className="mb-3 text-sm font-semibold text-amber-700">Clipboard failed. The summary and export sections remain visible for manual copy.</p>
+      )}
+
+      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+          <p className="text-sm font-bold text-gray-900">Manager summary</p>
+          <p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-700">{shareableBrief.managerSummary}</p>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <MiniMetric label="Total deals" value={String(summary.totalDeals)} />
+            <MiniMetric label="Defendable" value={String(summary.defendableDeals)} tone="green" />
+            <MiniMetric label="Rescue" value={String(summary.rescueDeals)} tone="amber" />
+            <MiniMetric label="Downgrade" value={String(summary.downgradeDeals)} tone="red" />
+          </div>
+          <p className="mt-3 text-xs font-semibold text-gray-500">Pipeline value captured: {summary.totalPipelineValueLabel}</p>
+        </div>
+
+        <div className="rounded-lg border border-gray-200 bg-white">
+          <div className="border-b border-gray-200 p-4">
+            <p className="text-sm font-bold text-gray-900">Deal Defense Table</p>
+            <p className="mt-1 text-xs text-gray-500">Account, forecast posture, main evidence, main gap, and next defense action.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-left text-xs">
+              <thead className="bg-gray-50 text-gray-500">
+                <tr>
+                  <th className="px-3 py-2 font-bold uppercase tracking-wide">Deal</th>
+                  <th className="px-3 py-2 font-bold uppercase tracking-wide">Forecast</th>
+                  <th className="px-3 py-2 font-bold uppercase tracking-wide">Status</th>
+                  <th className="px-3 py-2 font-bold uppercase tracking-wide">Evidence / gap</th>
+                  <th className="px-3 py-2 font-bold uppercase tracking-wide">Next action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white">
+                {shareableBrief.dealRows.map((row) => (
+                  <tr key={row.id}>
+                    <td className="px-3 py-3 align-top">
+                      <p className="font-bold text-gray-900">{row.account}</p>
+                      <p className="mt-1 text-gray-500">{row.opportunity}</p>
+                      <p className="mt-1 text-gray-400">{row.currentStage} · {row.value}</p>
+                    </td>
+                    <td className="px-3 py-3 align-top text-gray-700">{row.forecastCategory}</td>
+                    <td className="px-3 py-3 align-top">
+                      <Badge className={defenseStatusClass(row.defenseStatus)}>{row.defenseStatus}</Badge>
+                    </td>
+                    <td className="px-3 py-3 align-top text-gray-600">
+                      <p><span className="font-bold text-gray-700">Evidence:</span> {row.mainEvidence}</p>
+                      <p className="mt-1"><span className="font-bold text-gray-700">Gap:</span> {row.mainGap}</p>
+                    </td>
+                    <td className="px-3 py-3 align-top text-gray-600">{row.nextDefenseAction}</td>
+                  </tr>
+                ))}
+                {shareableBrief.dealRows.length === 0 && (
+                  <tr>
+                    <td className="px-3 py-4 text-sm text-gray-500" colSpan={5}>No deals available for a share-ready brief.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-3">
+        <DealGroup title="Deals to defend" deals={shareableBrief.dealsToDefend} empty="No defendable deals yet." />
+        <DealGroup title="Deals to rescue" deals={shareableBrief.dealsToRescue} empty="No rescue deals flagged." />
+        <DealGroup title="Downgrade / deprioritize" deals={shareableBrief.dealsToDowngrade} empty="No downgrade candidates flagged." />
+      </div>
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+          <p className="text-sm font-bold text-gray-900">Top Missing Proof / MEDDIC Gaps</p>
+          {shareableBrief.topMissingProofGaps.length === 0 ? (
+            <p className="mt-2 text-sm text-gray-500">No repeated proof or MEDDIC gap detected.</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {shareableBrief.topMissingProofGaps.slice(0, 5).map((gap) => (
+                <li key={gap.label} className="rounded-lg bg-white p-3 text-sm ring-1 ring-gray-100">
+                  <span className="font-bold text-gray-900">{gap.label}</span>
+                  <span className="text-gray-500"> · {gap.count} deal(s): {gap.accounts.join(', ')}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+          <p className="text-sm font-bold text-gray-900">Brief Quality Checklist</p>
+          <div className="mt-3 grid gap-2">
+            {shareableBrief.qualityChecklist.map((item) => (
+              <div key={item.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className={item.status === 'pass' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}>
+                    {item.status === 'pass' ? 'Pass' : 'Warning'}
+                  </Badge>
+                  <p className="text-sm font-bold text-gray-900">{item.label}</p>
+                </div>
+                <p className="mt-1 text-sm text-gray-500">{item.detail}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <p className="text-sm font-bold text-gray-900">Next Defense Actions</p>
+        {shareableBrief.nextDefenseActions.length === 0 ? (
+          <p className="mt-2 text-sm text-gray-500">No next defense actions defined yet.</p>
+        ) : (
+          <div className="mt-3 grid gap-2 md:grid-cols-2">
+            {shareableBrief.nextDefenseActions.slice(0, 6).map((action) => (
+              <article key={action.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
+                <div className="flex flex-wrap gap-2">
+                  <Badge className={action.priority === 'Critical' || action.priority === 'High' ? 'border-red-200 bg-red-50 text-red-700' : 'border-blue-200 bg-blue-50 text-blue-700'}>
+                    {action.priority}
+                  </Badge>
+                  <Badge className="border-gray-200 bg-gray-50 text-gray-600">{action.source}</Badge>
+                </div>
+                <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{action.account} / {action.opportunity}</p>
+                <p className="mt-1 text-sm font-bold text-gray-900">{action.title}</p>
+                <p className="mt-1 text-sm text-gray-500">{action.detail}</p>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function MiniMetric({ label, value, tone = 'default' }: { label: string; value: string; tone?: 'default' | 'green' | 'amber' | 'red' }) {
+  const toneClass = {
+    default: 'bg-blue-50 text-brand-blue',
+    green: 'bg-emerald-50 text-emerald-700',
+    amber: 'bg-amber-50 text-amber-700',
+    red: 'bg-red-50 text-red-700',
+  }[tone];
+
+  return (
+    <div className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
+      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
+      <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-lg font-black ${toneClass}`}>{value}</p>
+    </div>
+  );
+}
+
+function DealGroup({ title, deals, empty }: { title: string; deals: PipelineDefenseDeal[]; empty: string }) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+      <p className="text-sm font-bold text-gray-900">{title}</p>
+      {deals.length === 0 ? (
+        <p className="mt-2 text-sm text-gray-500">{empty}</p>
+      ) : (
+        <ul className="mt-3 space-y-2">
+          {deals.map((deal) => (
+            <li key={deal.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
+              <p className="text-sm font-bold text-gray-900">{deal.account}</p>
+              <p className="mt-1 text-sm text-gray-500">{deal.opportunity}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function defenseStatusClass(status: string) {
+  if (status === 'Defend') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+  if (status === 'Rescue') return 'border-blue-200 bg-blue-50 text-blue-700';
+  if (status === 'Downgrade') return 'border-orange-200 bg-orange-50 text-orange-700';
+  return 'border-indigo-200 bg-indigo-50 text-indigo-700';
 }
 
 function MetaRow({ label, value }: { label: string; value: string }) {
