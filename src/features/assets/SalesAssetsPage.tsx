@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Copy, FileText, Plus, Search, Trash2, X } from 'lucide-react';
+import { Copy, Eye, FileText, PackagePlus, Plus, Search, Trash2, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { hasLocalSampleData } from '../../utils/dataMode';
@@ -17,12 +17,14 @@ import {
   loadSalesAssetDraft,
   loadSalesAssets,
   salesAssetTypes,
+  saveSalesAssets,
   splitCommaList,
   updateSalesAsset,
   type SalesAssetInput,
   type SalesAssetRecord,
   type SalesAssetType,
 } from '../../services/salesAssetStore';
+import { starterAssetPacks, type StarterAssetPack } from '../../utils/starterAssetPacks';
 
 const allFilter = 'All';
 
@@ -36,6 +38,7 @@ export function SalesAssetsPage() {
   const [editingAsset, setEditingAsset] = useState<SalesAssetRecord | null>(null);
   const [form, setForm] = useState<SalesAssetInput>(emptySalesAssetInput);
   const [message, setMessage] = useState('');
+  const [previewPack, setPreviewPack] = useState<StarterAssetPack | null>(null);
   const sampleDataActive = hasLocalSampleData();
 
   useEffect(() => {
@@ -136,6 +139,47 @@ export function SalesAssetsPage() {
     }
   };
 
+  const importStarterPack = (pack: StarterAssetPack) => {
+    const currentAssets = loadSalesAssets();
+    const seen = new Set(currentAssets.map((asset) => starterDuplicateKey(asset.title, asset.assetType)));
+    const now = new Date().toISOString();
+    let skipped = 0;
+
+    const importedAssets: SalesAssetRecord[] = pack.assets.flatMap((asset, index) => {
+      const key = starterDuplicateKey(asset.title, asset.assetType);
+      if (seen.has(key)) {
+        skipped += 1;
+        return [];
+      }
+      seen.add(key);
+
+      return [{
+        id: `starter-${pack.id}-${slugify(asset.title)}-${Date.now()}-${index}`,
+        title: asset.title,
+        assetType: asset.assetType,
+        summary: asset.summary,
+        content: asset.content,
+        tags: [...asset.tags, 'starter-pack', pack.id],
+        relatedObjectionType: asset.relatedObjectionType || '',
+        relatedAccountName: '',
+        relatedOpportunityId: '',
+        relatedOpportunityName: '',
+        relatedPlaybookPatternId: '',
+        relatedPlaybookPatternTitle: pack.name,
+        useCase: asset.useCase,
+        createdAt: now,
+        updatedAt: now,
+        source: 'user',
+        isSample: false,
+      }];
+    });
+
+    saveSalesAssets([...importedAssets, ...currentAssets]);
+    setAssets(loadSalesAssets());
+    setMessage(`Imported ${importedAssets.length} asset${importedAssets.length === 1 ? '' : 's'} from ${pack.name}. Skipped ${skipped} duplicate${skipped === 1 ? '' : 's'}.`);
+    setPreviewPack(pack);
+  };
+
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -151,7 +195,7 @@ export function SalesAssetsPage() {
           modeInfo={sampleDataActive ? undefined : {
             mode: 'local-only',
             label: 'Local only',
-            description: 'Sales assets are saved only in this browser in M.45.',
+            description: 'Sales assets and starter pack imports are saved only in this browser.',
             privacyNote: 'Do not store confidential customer documents here; use concise reusable text only.',
             severity: 'warning',
           }}
@@ -184,6 +228,13 @@ export function SalesAssetsPage() {
           </p>
         )}
       </section>
+
+      <StarterAssetPacksSection
+        packs={starterAssetPacks}
+        previewPack={previewPack}
+        onPreview={setPreviewPack}
+        onImport={importStarterPack}
+      />
 
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
@@ -306,6 +357,102 @@ function AssetCard({
         </button>
       </div>
     </article>
+  );
+}
+
+function StarterAssetPacksSection({
+  packs,
+  previewPack,
+  onPreview,
+  onImport,
+}: {
+  packs: StarterAssetPack[];
+  previewPack: StarterAssetPack | null;
+  onPreview: (pack: StarterAssetPack | null) => void;
+  onImport: (pack: StarterAssetPack) => void;
+}) {
+  return (
+    <section className="rounded-lg border border-indigo-100 bg-indigo-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <PackagePlus className="h-4 w-4 text-indigo-700" />
+            <h2 className="text-lg font-bold text-navy">Starter Asset Packs</h2>
+          </div>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-indigo-900/75">
+            Import practical, industry-specific proof notes, objection responses, proposal snippets, discovery questions, and follow-up scripts. Packs are local and editable after import.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+        {packs.map((pack) => (
+          <article key={pack.id} className="rounded-lg border border-indigo-100 bg-white p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">{pack.industry}</p>
+            <h3 className="mt-2 text-base font-bold text-navy">{pack.name}</h3>
+            <p className="mt-2 line-clamp-3 text-sm leading-6 text-gray-600">{pack.description}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Badge label={`${pack.assets.length} assets`} tone="blue" />
+              <Badge label="Local import" tone="gray" />
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => onPreview(previewPack?.id === pack.id ? null : pack)}
+                className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100"
+              >
+                <Eye className="h-3.5 w-3.5" />
+                {previewPack?.id === pack.id ? 'Hide Preview' : 'Preview'}
+              </button>
+              <button
+                type="button"
+                onClick={() => onImport(pack)}
+                className="inline-flex items-center gap-2 rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white"
+              >
+                <PackagePlus className="h-3.5 w-3.5" />
+                Import Pack
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {previewPack && (
+        <div className="mt-5 rounded-lg border border-indigo-100 bg-white p-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">Pack preview</p>
+              <h3 className="mt-1 text-base font-bold text-navy">{previewPack.name}</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => onImport(previewPack)}
+              className="inline-flex w-fit items-center gap-2 rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white"
+            >
+              <PackagePlus className="h-3.5 w-3.5" />
+              Import This Pack
+            </button>
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+            {previewPack.assets.map((asset) => (
+              <article key={`${asset.assetType}-${asset.title}`} className="rounded-lg bg-gray-50 p-3 ring-1 ring-gray-100">
+                <div className="flex flex-wrap gap-2">
+                  <Badge label={asset.assetType} tone={assetTypeTone(asset.assetType)} />
+                  {asset.relatedObjectionType && <Badge label={asset.relatedObjectionType} tone="amber" />}
+                </div>
+                <h4 className="mt-2 text-sm font-bold text-navy">{asset.title}</h4>
+                <p className="mt-1 text-sm leading-6 text-gray-600">{asset.summary}</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {asset.tags.slice(0, 5).map((tag) => (
+                    <span key={tag} className="rounded-full bg-white px-2 py-1 text-xs font-bold text-gray-500 ring-1 ring-gray-100">{tag}</span>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -508,4 +655,12 @@ function assetTypeTone(assetType: SalesAssetType) {
   if (assetType === 'Objection Response' || assetType === 'Competitor Response') return 'amber';
   if (assetType === 'Validation / Documentation Note' || assetType === 'Compliance Note') return 'green';
   return 'blue';
+}
+
+function starterDuplicateKey(title: string, assetType: SalesAssetType) {
+  return `${assetType.trim().toLowerCase()}::${title.trim().toLowerCase()}`;
+}
+
+function slugify(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 60) || 'asset';
 }
