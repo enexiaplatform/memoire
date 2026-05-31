@@ -36,6 +36,9 @@ const AskMemoirePage = lazy(() => import('./features/v31/AskMemoirePage').then((
 const PipelineReviewDefenseBriefPage = lazy(() =>
   import('./features/pipeline/PipelineReviewDefenseBriefPage').then((module) => ({ default: module.PipelineReviewDefenseBriefPage })),
 );
+const FirstPipelineReviewFlow = lazy(() =>
+  import('./features/onboarding/FirstPipelineReviewFlow').then((module) => ({ default: module.FirstPipelineReviewFlow })),
+);
 
 function App() {
   return (
@@ -71,6 +74,7 @@ function App() {
             <Route path="accounts" element={<AccountsPage />} />
             <Route path="accounts/:accountId" element={<AccountMemoryPage />} />
             <Route path="opportunities" element={<OpportunitiesPage />} />
+            <Route path="onboarding/pipeline-review" element={<FirstPipelineReviewFlow />} />
             <Route path="stakeholders" element={<StakeholdersPage />} />
             <Route path="objections" element={<ObjectionsPage />} />
             <Route path="pipeline-defense" element={<PipelineReviewDefenseBriefPage />} />

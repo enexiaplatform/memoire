@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -85,6 +85,7 @@ import {
   summarizeImportedOpportunityEnrichment,
   type OpportunityCsvImportResult,
 } from '../../utils/opportunityCsvImport';
+import { markFirstPipelineReviewStepComplete } from '../../utils/firstPipelineReviewOnboarding';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type BriefPreviewMetadata = {
@@ -99,6 +100,7 @@ const allFilter = 'All';
 export function OpportunitiesPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
@@ -197,6 +199,22 @@ export function OpportunitiesPage() {
     setCsvTemplateCopyStatus('idle');
   };
 
+  useEffect(() => {
+    markFirstPipelineReviewStepComplete('hasReviewedOpportunities');
+    if (searchParams.get('import') === 'csv') {
+      openCsvImport();
+      setSearchParams({}, { replace: true });
+      return;
+    }
+
+    if (searchParams.get('new') === '1') {
+      openAddPanel();
+      setSearchParams({}, { replace: true });
+    }
+    // Query params are only used as one-shot entry points.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const parseCsvImport = () => {
     const result = parseOpportunityCsv(csvInput, opportunities);
     setCsvImportResult(result);
@@ -246,6 +264,7 @@ export function OpportunitiesPage() {
     setCsvImportResult(parseOpportunityCsv(csvInput, [...imported, ...opportunities]));
     setSaveState(results.some((result) => result.warning) ? 'error' : 'saved');
     setMessage(results.find((result) => result.warning)?.warning || 'CSV import saved. Memoire keeps this as a read-only CRM copy; no CRM is updated.');
+    markFirstPipelineReviewStepComplete('hasImportedOrAddedOpportunities');
   };
 
   const openEditPanel = (opportunity: CrmLiteOpportunity) => {
@@ -285,6 +304,9 @@ export function OpportunitiesPage() {
     setForm(opportunityToForm(result.opportunity));
     setSaveState(result.warning ? 'error' : 'saved');
     setMessage(result.warning || (result.mode === 'cloud' ? 'Synced to your account.' : 'Saved locally in this browser.'));
+    if (panelMode !== 'edit') {
+      markFirstPipelineReviewStepComplete('hasImportedOrAddedOpportunities');
+    }
   };
 
   const handleDelete = async (opportunity: CrmLiteOpportunity) => {
@@ -356,12 +378,14 @@ export function OpportunitiesPage() {
       setSelectedOpportunityIds([]);
       setBriefCreateState('saved');
       setBriefCreateMessage('Brief created. Opening Pipeline Defense...');
+      markFirstPipelineReviewStepComplete('hasGeneratedPipelineDefense');
       window.setTimeout(() => navigate('/app/pipeline-defense'), 150);
     } catch (error) {
       const localBrief = createPipelineDefenseBrief(draftBrief);
       persistCreatedBriefLocally(localBrief);
       setSelectedOpportunityIds([]);
       setBriefCreateState('error');
+      markFirstPipelineReviewStepComplete('hasGeneratedPipelineDefense');
       if (import.meta.env.DEV) {
         console.debug('[Opportunities] defense brief cloud create failed', { message: error instanceof Error ? error.message : 'Unknown error' });
       }
@@ -494,7 +518,7 @@ export function OpportunitiesPage() {
               Loading opportunities...
             </div>
           ) : opportunities.length === 0 ? (
-            <EmptyState onAdd={openAddPanel} />
+            <EmptyState onAdd={openAddPanel} onImport={openCsvImport} />
           ) : visibleOpportunities.length === 0 ? (
             <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
               <p className="text-sm font-semibold text-gray-900">No opportunities match these filters.</p>
@@ -1803,18 +1827,25 @@ function ActionOutcomeHistory({
   );
 }
 
-function EmptyState({ onAdd }: { onAdd: () => void }) {
+function EmptyState({ onAdd, onImport }: { onAdd: () => void; onImport: () => void }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
-      <p className="text-base font-bold text-navy">No opportunities yet.</p>
+      <p className="text-base font-bold text-navy">Import your pipeline or add your first opportunity.</p>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
         Opportunities are the deals you want to track and defend. Add one active deal, then Memoire can help you inspect evidence, risk, next action, and pipeline defense readiness.
       </p>
       <div className="mt-5 flex flex-wrap justify-center gap-2">
+        <button type="button" onClick={onImport} className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          <Upload className="h-4 w-4" />
+          Import CSV
+        </button>
         <button type="button" onClick={onAdd} className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
           <Plus className="h-4 w-4" />
           Add Opportunity
         </button>
+        <Link to="/app/onboarding/pipeline-review" className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
+          Start First Pipeline Review
+        </Link>
         <Link to="/app/capture" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
           Go to Capture
         </Link>

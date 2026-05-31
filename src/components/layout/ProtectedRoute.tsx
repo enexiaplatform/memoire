@@ -73,6 +73,7 @@ function isLocalFirstAppRoute(pathname: string) {
     '/app/playbook',
     '/app/assets',
     '/app/opportunities',
+    '/app/onboarding/pipeline-review',
     '/app/stakeholders',
     '/app/objections',
     '/app/accounts',

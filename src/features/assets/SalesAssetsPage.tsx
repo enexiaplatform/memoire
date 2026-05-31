@@ -372,7 +372,7 @@ function StarterAssetPacksSection({
   onImport: (pack: StarterAssetPack) => void;
 }) {
   return (
-    <section className="rounded-lg border border-indigo-100 bg-indigo-50/70 p-5 shadow-sm">
+    <section id="starter-packs" className="rounded-lg border border-indigo-100 bg-indigo-50/70 p-5 shadow-sm">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -536,10 +536,11 @@ function AssetsEmptyState({ onAdd }: { onAdd: () => void }) {
       </div>
       <h2 className="mt-4 text-xl font-bold text-navy">No sales assets yet.</h2>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">
-        Create a reusable proof note, objection response, proposal snippet, or competitor response. You can also create drafts from Playbook patterns.
+        Import starter asset packs to prepare proof responses, or create a reusable proof note, objection response, proposal snippet, or competitor response.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-2">
         <button type="button" onClick={onAdd} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Create Asset</button>
+        <a href="#starter-packs" className="rounded-full border border-indigo-100 bg-indigo-50 px-4 py-2 text-sm font-bold text-indigo-700">Open Starter Packs</a>
         <Link to="/app/playbook" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">Open Playbook</Link>
       </div>
     </section>

@@ -61,6 +61,14 @@ import {
 import { summarizeAssetGaps } from '../../utils/salesAssetSuggestions';
 import { buildCaptureNudges, type CaptureNudge } from '../../utils/captureNudges';
 import { buildPipelineReviewDashboardSignal } from '../../utils/shareablePipelineDefenseBrief';
+import {
+  buildFirstPipelineReviewMetrics,
+  buildFirstPipelineReviewProgress,
+  getFirstPipelineReviewNextStep,
+  getFirstPipelineReviewProgressPercent,
+  loadFirstPipelineReviewOnboardingState,
+  type FirstPipelineReviewProgressStep,
+} from '../../utils/firstPipelineReviewOnboarding';
 
 type DashboardData = {
   activities: SalesActivityRecord[];
@@ -90,6 +98,7 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [onboarding, setOnboarding] = useState<OnboardingState>(() => loadOnboardingState());
+  const [firstReviewOnboarding, setFirstReviewOnboarding] = useState(() => loadFirstPipelineReviewOnboardingState());
   const [sampleMessage, setSampleMessage] = useState('');
   const [demoSandboxPromptOpen, setDemoSandboxPromptOpen] = useState(false);
 
@@ -107,6 +116,7 @@ export function DashboardPage() {
         setData(nextData);
         setMessage('Command center ready');
         setOnboarding(syncOnboardingFromData(nextData, { includeDataSignals: !hasLocalSampleData() }));
+        setFirstReviewOnboarding(loadFirstPipelineReviewOnboardingState());
       } catch (error) {
         if (!mounted) return;
         if (import.meta.env.DEV) {
@@ -134,6 +144,17 @@ export function DashboardPage() {
     () => buildOnboardingProgress(onboarding, data, sampleDataActive),
     [data, onboarding, sampleDataActive]
   );
+  const firstReviewMetrics = useMemo(() => buildFirstPipelineReviewMetrics({
+    opportunities: data.opportunities,
+    objections: data.objections,
+    assets: data.assets,
+    briefs: data.briefs,
+  }), [data]);
+  const firstReviewProgress = useMemo(() => buildFirstPipelineReviewProgress({
+    state: firstReviewOnboarding,
+    metrics: firstReviewMetrics,
+    includeDataSignals: !sampleDataActive,
+  }), [firstReviewMetrics, firstReviewOnboarding, sampleDataActive]);
 
   useEffect(() => {
     setOnboarding(markOnboardingStepComplete('hasSeenWelcome'));
@@ -232,6 +253,13 @@ export function DashboardPage() {
               isAuthenticated={isAuthenticated}
               onCancel={() => setDemoSandboxPromptOpen(false)}
               onLoad={handleLoadDemoSandbox}
+            />
+          )}
+          {!firstReviewOnboarding.completedAt && (
+            <FirstPipelineReviewCta
+              progress={firstReviewProgress}
+              metrics={firstReviewMetrics}
+              hasSampleData={sampleDataActive}
             />
           )}
           {!commandCenter.hasAnyData ? (
@@ -1017,6 +1045,51 @@ function DashboardEmptyState() {
           <Plus className="h-4 w-4" />
           Add Opportunity
         </Link>
+      </div>
+    </section>
+  );
+}
+
+function FirstPipelineReviewCta({
+  progress,
+  metrics,
+  hasSampleData,
+}: {
+  progress: FirstPipelineReviewProgressStep[];
+  metrics: ReturnType<typeof buildFirstPipelineReviewMetrics>;
+  hasSampleData: boolean;
+}) {
+  const nextStep = getFirstPipelineReviewNextStep(progress);
+  const percent = getFirstPipelineReviewProgressPercent(progress);
+  const hasPipelineData = metrics.totalOpportunities > 0 || hasSampleData;
+
+  return (
+    <section className="rounded-xl border border-blue-100 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <FileCheck2 className="h-4 w-4 text-brand-blue" />
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">First review path</p>
+          </div>
+          <h2 className="mt-2 text-xl font-bold text-navy">Prepare Your First Pipeline Review</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
+            {hasPipelineData
+              ? `You have ${metrics.totalOpportunities} opportunity record${metrics.totalOpportunities === 1 ? '' : 's'}. Next: ${nextStep.title.toLowerCase()}.`
+              : 'Start with a CSV import, demo sandbox, or one manual opportunity, then generate a Pipeline Defense Brief.'}
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 sm:min-w-[240px]">
+          <div className="flex items-center justify-between text-xs font-bold text-gray-500">
+            <span>{percent}% complete</span>
+            <span>{progress.filter((step) => step.done).length}/{progress.length} steps</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+            <div className="h-full rounded-full bg-brand-blue" style={{ width: `${percent}%` }} />
+          </div>
+          <Link to="/app/onboarding/pipeline-review" className="mt-1 inline-flex justify-center rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+            Continue
+          </Link>
+        </div>
       </div>
     </section>
   );

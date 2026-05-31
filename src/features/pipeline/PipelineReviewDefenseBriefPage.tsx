@@ -73,6 +73,7 @@ import {
 } from '../../services/pipelineDefenseCloudStore';
 import { PipelineDefensePrintableBrief } from './PipelineDefensePrintableBrief';
 import { PipelineDefenseReviewDealCard } from './PipelineDefenseReviewDealCard';
+import { markFirstPipelineReviewStepComplete } from '../../utils/firstPipelineReviewOnboarding';
 
 const categoryClasses: Record<ForecastEvidenceCategory, string> = {
   Defensible: 'border-emerald-200 bg-emerald-50 text-emerald-700',
@@ -173,6 +174,12 @@ export function PipelineReviewDefenseBriefPage() {
   const shareableBrief = buildShareablePipelineDefenseBrief({ brief: activeBrief, deals, actionItems: activeActionPlanItems });
   const sampleDataActive = hasLocalSampleData();
   const cloudSyncReady = Boolean(user && !sampleDataActive && canUsePipelineDefenseCloudStore() && cloudSyncStatus === 'ready');
+
+  useEffect(() => {
+    if (!sampleDataActive && activeBrief && deals.length > 0 && !activeBrief.title.toLowerCase().includes('sample pipeline defense brief')) {
+      markFirstPipelineReviewStepComplete('hasGeneratedPipelineDefense');
+    }
+  }, [activeBrief, deals.length, sampleDataActive]);
 
   useEffect(() => {
     if (accountLoading) {
@@ -1155,6 +1162,9 @@ export function PipelineReviewDefenseBriefPage() {
                 </button>
                 <a href="/app/opportunities" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-100">
                   Create from opportunities
+                </a>
+                <a href="/app/onboarding/pipeline-review" className="rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-100">
+                  Start First Pipeline Review
                 </a>
                 <button type="button" onClick={resetDeals} className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">
                   Reset to sample data
