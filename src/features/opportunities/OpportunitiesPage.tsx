@@ -14,6 +14,7 @@ import {
   Search,
   Target,
   Trash2,
+  Upload,
   X,
 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
@@ -76,6 +77,14 @@ import {
 } from '../../utils/salesAssetSuggestions';
 import { generateSalesPlaybookPatterns } from '../../utils/salesPlaybook';
 import { getUserDisplayName as getWorkspaceUserDisplayName } from '../../utils/userDisplay';
+import {
+  OPPORTUNITY_CSV_TEMPLATE,
+  buildImportedOpportunityInput,
+  getImportableCsvRows,
+  parseOpportunityCsv,
+  summarizeImportedOpportunityEnrichment,
+  type OpportunityCsvImportResult,
+} from '../../utils/opportunityCsvImport';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type BriefPreviewMetadata = {
@@ -113,6 +122,12 @@ export function OpportunitiesPage() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [briefCreateState, setBriefCreateState] = useState<SaveState>('idle');
   const [briefCreateMessage, setBriefCreateMessage] = useState('');
+  const [csvImportOpen, setCsvImportOpen] = useState(false);
+  const [csvInput, setCsvInput] = useState('');
+  const [csvImportResult, setCsvImportResult] = useState<OpportunityCsvImportResult | null>(null);
+  const [csvSkipDuplicates, setCsvSkipDuplicates] = useState(true);
+  const [csvImportMessage, setCsvImportMessage] = useState('');
+  const [csvTemplateCopyStatus, setCsvTemplateCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
@@ -139,6 +154,7 @@ export function OpportunitiesPage() {
   }, [dataUserId]);
 
   const quality = useMemo(() => analyzePipelineQuality(opportunities, activities, objections), [activities, objections, opportunities]);
+  const importedEnrichment = useMemo(() => summarizeImportedOpportunityEnrichment(opportunities), [opportunities]);
 
   const selectedOpportunities = useMemo(() => {
     const selectedIds = new Set(selectedOpportunityIds);
@@ -172,6 +188,64 @@ export function OpportunitiesPage() {
     setPanelMode('add');
     setSaveState('idle');
     setMessage('');
+  };
+
+  const openCsvImport = () => {
+    setCsvImportOpen(true);
+    setCsvImportResult(null);
+    setCsvImportMessage('');
+    setCsvTemplateCopyStatus('idle');
+  };
+
+  const parseCsvImport = () => {
+    const result = parseOpportunityCsv(csvInput, opportunities);
+    setCsvImportResult(result);
+    setCsvImportMessage(result.errors[0] || `Parsed ${result.rows.length} opportunity row(s). Review warnings before importing.`);
+  };
+
+  const handleCsvUpload = async (file: File | null) => {
+    if (!file) return;
+    const text = await file.text();
+    setCsvInput(text);
+    setCsvImportResult(null);
+    setCsvImportMessage(`Loaded ${file.name}. Click Parse CSV to preview.`);
+  };
+
+  const copyCsvTemplate = async () => {
+    try {
+      await navigator.clipboard.writeText(OPPORTUNITY_CSV_TEMPLATE);
+      setCsvTemplateCopyStatus('copied');
+    } catch {
+      setCsvTemplateCopyStatus('failed');
+    }
+  };
+
+  const importCsvRows = async () => {
+    if (!csvImportResult) {
+      setCsvImportMessage('Parse CSV before importing.');
+      return;
+    }
+
+    const rows = getImportableCsvRows(csvImportResult.rows, { skipDuplicates: csvSkipDuplicates });
+    if (rows.length === 0) {
+      setCsvImportMessage('No valid new rows to import. Check warnings or duplicate settings.');
+      return;
+    }
+
+    const importBatchId = `csv-${Date.now()}`;
+    const results = await Promise.all(rows.map((row) => (
+      createOpportunity(buildImportedOpportunityInput(row, importBatchId), dataUserId)
+    )));
+    const imported = results.map((result) => result.opportunity);
+    const skipped = csvImportResult.rows.length - rows.length;
+    setOpportunities((current) => [
+      ...imported,
+      ...current.filter((item) => !imported.some((importedItem) => importedItem.id === item.id)),
+    ]);
+    setCsvImportMessage(`Imported ${imported.length} opportunit${imported.length === 1 ? 'y' : 'ies'}. Skipped ${skipped} row(s).`);
+    setCsvImportResult(parseOpportunityCsv(csvInput, [...imported, ...opportunities]));
+    setSaveState(results.some((result) => result.warning) ? 'error' : 'saved');
+    setMessage(results.find((result) => result.warning)?.warning || 'CSV import saved. Memoire keeps this as a read-only CRM copy; no CRM is updated.');
   };
 
   const openEditPanel = (opportunity: CrmLiteOpportunity) => {
@@ -354,6 +428,14 @@ export function OpportunitiesPage() {
             <Plus className="h-4 w-4" />
             Add Opportunity
           </button>
+          <button
+            type="button"
+            onClick={openCsvImport}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-brand-blue bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-100"
+          >
+            <Upload className="h-4 w-4" />
+            Import CSV
+          </button>
 
           <div className="grid flex-1 grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[1.4fr_repeat(4,1fr)]">
             <label className="relative">
@@ -373,7 +455,30 @@ export function OpportunitiesPage() {
         </div>
       </section>
 
+      {csvImportOpen && (
+        <OpportunityCsvImportPanel
+          csvInput={csvInput}
+          result={csvImportResult}
+          skipDuplicates={csvSkipDuplicates}
+          message={csvImportMessage}
+          templateCopyStatus={csvTemplateCopyStatus}
+          onInputChange={(value) => {
+            setCsvInput(value);
+            setCsvImportResult(null);
+            setCsvImportMessage('');
+          }}
+          onFileChange={handleCsvUpload}
+          onParse={parseCsvImport}
+          onImport={importCsvRows}
+          onSkipDuplicatesChange={setCsvSkipDuplicates}
+          onCopyTemplate={copyCsvTemplate}
+          onClose={() => setCsvImportOpen(false)}
+        />
+      )}
+
       <PipelineQualitySummary quality={quality} />
+
+      <ImportedOpportunityEnrichmentSignal summary={importedEnrichment} />
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_420px]">
         <div className="space-y-4">
@@ -497,6 +602,223 @@ function PipelineQualitySummary({ quality }: { quality: ReturnType<typeof analyz
         </div>
       </div>
     </section>
+  );
+}
+
+function OpportunityCsvImportPanel({
+  csvInput,
+  result,
+  skipDuplicates,
+  message,
+  templateCopyStatus,
+  onInputChange,
+  onFileChange,
+  onParse,
+  onImport,
+  onSkipDuplicatesChange,
+  onCopyTemplate,
+  onClose,
+}: {
+  csvInput: string;
+  result: OpportunityCsvImportResult | null;
+  skipDuplicates: boolean;
+  message: string;
+  templateCopyStatus: 'idle' | 'copied' | 'failed';
+  onInputChange: (value: string) => void;
+  onFileChange: (file: File | null) => void;
+  onParse: () => void;
+  onImport: () => void;
+  onSkipDuplicatesChange: (value: boolean) => void;
+  onCopyTemplate: () => void;
+  onClose: () => void;
+}) {
+  const rows = result?.rows || [];
+  const importableRows = getImportableCsvRows(rows, { skipDuplicates });
+  const duplicateCount = rows.filter((row) => row.isDuplicate).length;
+  const invalidCount = rows.filter((row) => !row.isValid).length;
+
+  return (
+    <section className="rounded-lg border border-brand-blue/20 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Read-only CRM import</p>
+          <h2 className="mt-1 text-xl font-bold text-navy">Import Opportunities from CSV</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-gray-500">
+            Memoire imports a read-only copy of your pipeline. It does not write back to your CRM. Use imported opportunities for review, enrichment, and Pipeline Defense Briefs.
+          </p>
+        </div>
+        <button type="button" onClick={onClose} className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">
+          Close
+        </button>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1fr_0.9fr]">
+        <div>
+          <div className="mb-3 flex flex-wrap gap-2">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">
+              <Upload className="h-4 w-4" />
+              Upload CSV
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(event) => onFileChange(event.target.files?.[0] || null)}
+                className="sr-only"
+              />
+            </label>
+            <button type="button" onClick={onCopyTemplate} className="inline-flex items-center gap-2 rounded-full border border-brand-blue bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-100">
+              <Copy className="h-4 w-4" />
+              Copy CSV Template
+            </button>
+            <button type="button" onClick={onParse} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90">
+              Parse CSV
+            </button>
+          </div>
+          {templateCopyStatus === 'copied' && <p className="mb-2 text-sm font-semibold text-emerald-700">CSV template copied.</p>}
+          {templateCopyStatus === 'failed' && <p className="mb-2 text-sm font-semibold text-amber-700">Clipboard failed. You can copy the template from the docs/report.</p>}
+          <textarea
+            value={csvInput}
+            onChange={(event) => onInputChange(event.target.value)}
+            rows={10}
+            placeholder="Paste CSV here. Supported headers include Account Name, Opportunity Name, Stage, Value, Currency, Expected Close Period, Product / Solution, Next Action, Evidence, Missing Context."
+            className="w-full rounded-lg border border-gray-300 bg-gray-50 p-4 font-mono text-xs leading-5 text-gray-800 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+          />
+          {message && (
+            <p className={`mt-3 rounded-lg px-3 py-2 text-sm font-semibold ${
+              result?.errors.length ? 'bg-amber-50 text-amber-800' : 'bg-blue-50 text-blue-800'
+            }`}>
+              {message}
+            </p>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-bold text-gray-900">Import preview</p>
+              <p className="mt-1 text-xs text-gray-500">
+                {rows.length ? `${rows.length} parsed rows, ${importableRows.length} ready to import.` : 'Parse CSV to preview mapped opportunities.'}
+              </p>
+            </div>
+            <label className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
+              <input
+                type="checkbox"
+                checked={skipDuplicates}
+                onChange={(event) => onSkipDuplicatesChange(event.target.checked)}
+                className="h-4 w-4 accent-brand-blue"
+              />
+              Skip duplicates
+            </label>
+          </div>
+
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <ImportMetric label="Ready" value={importableRows.length} tone="green" />
+            <ImportMetric label="Duplicates" value={duplicateCount} tone={duplicateCount ? 'amber' : 'green'} />
+            <ImportMetric label="Invalid" value={invalidCount} tone={invalidCount ? 'red' : 'green'} />
+          </div>
+
+          <div className="mt-4 max-h-[420px] overflow-y-auto rounded-lg border border-gray-200 bg-white">
+            {rows.length === 0 ? (
+              <p className="p-4 text-sm text-gray-500">No preview rows yet.</p>
+            ) : (
+              <table className="min-w-full divide-y divide-gray-200 text-left text-xs">
+                <thead className="bg-gray-50 text-gray-500">
+                  <tr>
+                    <th className="px-3 py-2 font-bold uppercase tracking-wide">Row</th>
+                    <th className="px-3 py-2 font-bold uppercase tracking-wide">Opportunity</th>
+                    <th className="px-3 py-2 font-bold uppercase tracking-wide">Mapped fields</th>
+                    <th className="px-3 py-2 font-bold uppercase tracking-wide">Warnings</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {rows.map((row) => (
+                    <tr key={row.id}>
+                      <td className="px-3 py-3 align-top font-bold text-gray-500">{row.rowNumber}</td>
+                      <td className="px-3 py-3 align-top">
+                        <p className="font-bold text-gray-900">{row.input.accountName || 'Missing account'}</p>
+                        <p className="mt-1 text-gray-500">{row.input.opportunityName || 'Missing opportunity'}</p>
+                      </td>
+                      <td className="px-3 py-3 align-top text-gray-600">
+                        <p>{row.input.stage} · {row.input.currency} {row.input.estimatedValue || 'No value'}</p>
+                        <p className="mt-1">{row.input.expectedClosePeriod || 'No close period'}</p>
+                        <p className="mt-1">{row.input.forecastEvidenceCategory} / {row.input.decisionRecommendation}</p>
+                      </td>
+                      <td className="px-3 py-3 align-top">
+                        {row.warnings.length === 0 ? (
+                          <Badge label="Clean" tone="green" />
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5">
+                            {row.warnings.map((warning) => (
+                              <Badge key={warning} label={warning} tone={row.isValid ? 'amber' : 'red'} />
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={onImport}
+            disabled={importableRows.length === 0}
+            className="mt-4 w-full rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Import {importableRows.length} new opportunit{importableRows.length === 1 ? 'y' : 'ies'}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ImportedOpportunityEnrichmentSignal({
+  summary,
+}: {
+  summary: ReturnType<typeof summarizeImportedOpportunityEnrichment>;
+}) {
+  if (summary.importedCount === 0) return null;
+
+  return (
+    <section className="rounded-lg border border-amber-100 bg-amber-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-amber-700" />
+            <h2 className="text-lg font-bold text-navy">Imported Opportunities Need Enrichment</h2>
+          </div>
+          <p className="mt-1 text-sm leading-6 text-amber-900/75">
+            Imported CRM copies are useful for review, but they often need buyer, champion, process, evidence, and proof context before defense.
+          </p>
+        </div>
+        <Badge label={`${summary.importedCount} imported`} tone="amber" />
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <Metric label="No buyer" value={summary.missingEconomicBuyer} tone={summary.missingEconomicBuyer ? 'amber' : 'green'} />
+        <Metric label="No champion" value={summary.missingChampion} tone={summary.missingChampion ? 'amber' : 'green'} />
+        <Metric label="No process" value={summary.missingDecisionProcess} tone={summary.missingDecisionProcess ? 'amber' : 'green'} />
+        <Metric label="No action" value={summary.missingNextAction} tone={summary.missingNextAction ? 'red' : 'green'} />
+        <Metric label="No evidence" value={summary.missingEvidence} tone={summary.missingEvidence ? 'red' : 'green'} />
+        <Metric label="Proof gaps" value={summary.missingProofAsset} tone={summary.missingProofAsset ? 'amber' : 'green'} />
+      </div>
+    </section>
+  );
+}
+
+function ImportMetric({ label, value, tone }: { label: string; value: number; tone: 'green' | 'amber' | 'red' }) {
+  const toneClass = {
+    green: 'bg-emerald-50 text-emerald-700',
+    amber: 'bg-amber-50 text-amber-700',
+    red: 'bg-red-50 text-red-700',
+  }[tone];
+
+  return (
+    <div className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
+      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
+      <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-lg font-black ${toneClass}`}>{value}</p>
+    </div>
   );
 }
 
