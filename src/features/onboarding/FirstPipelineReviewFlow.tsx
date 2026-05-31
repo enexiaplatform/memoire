@@ -115,7 +115,7 @@ export function FirstPipelineReviewFlow() {
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">First pipeline review</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Prepare your first Pipeline Defense Brief</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-500">
-            A short activation path: bring in pipeline data, review opportunity gaps, then generate a manager-ready defense brief.
+            Your personal pipeline review and sales memory OS. Import your pipeline, capture what happened, find weak deals, and prepare a manager-ready Pipeline Defense Brief.
           </p>
         </div>
         <DataModePill
@@ -134,6 +134,21 @@ export function FirstPipelineReviewFlow() {
           {message}
         </p>
       )}
+
+      <section className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <InfoCard
+          title="Private working copy"
+          body="Memoire does not replace your CRM. It helps you review and defend your pipeline with a private, read-only working copy."
+        />
+        <InfoCard
+          title="No CRM writeback"
+          body="CSV import is for local review and enrichment. Salesforce, HubSpot, Excel, or CRM exports remain separate from Memoire."
+        />
+        <InfoCard
+          title="Manager-ready output"
+          body="The goal is a weekly review pack that separates defensible deals from rescue, monitor, and downgrade candidates."
+        />
+      </section>
 
       <section className="rounded-xl border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -293,6 +308,15 @@ function StepCard({
       {step.id === 'hasGeneratedPipelineDefense' && (
         <p className="mt-3 text-xs font-semibold text-gray-500">Select opportunities, generate a preview, then create the brief.</p>
       )}
+    </article>
+  );
+}
+
+function InfoCard({ title, body }: { title: string; body: string }) {
+  return (
+    <article className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <h2 className="text-sm font-bold text-navy">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-gray-600">{body}</p>
     </article>
   );
 }

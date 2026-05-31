@@ -25,6 +25,7 @@ import {
   type SalesAssetType,
 } from '../../services/salesAssetStore';
 import { starterAssetPacks, type StarterAssetPack } from '../../utils/starterAssetPacks';
+import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
 
 const allFilter = 'All';
 
@@ -177,6 +178,7 @@ export function SalesAssetsPage() {
     saveSalesAssets([...importedAssets, ...currentAssets]);
     setAssets(loadSalesAssets());
     setMessage(`Imported ${importedAssets.length} asset${importedAssets.length === 1 ? '' : 's'} from ${pack.name}. Skipped ${skipped} duplicate${skipped === 1 ? '' : 's'}.`);
+    markTrialActivationChecklistItemComplete('import-starter-asset-pack');
     setPreviewPack(pack);
   };
 

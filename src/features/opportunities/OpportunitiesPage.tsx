@@ -86,6 +86,7 @@ import {
   type OpportunityCsvImportResult,
 } from '../../utils/opportunityCsvImport';
 import { markFirstPipelineReviewStepComplete } from '../../utils/firstPipelineReviewOnboarding';
+import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type BriefPreviewMetadata = {
@@ -265,6 +266,7 @@ export function OpportunitiesPage() {
     setSaveState(results.some((result) => result.warning) ? 'error' : 'saved');
     setMessage(results.find((result) => result.warning)?.warning || 'CSV import saved. Memoire keeps this as a read-only CRM copy; no CRM is updated.');
     markFirstPipelineReviewStepComplete('hasImportedOrAddedOpportunities');
+    markTrialActivationChecklistItemComplete('load-demo-or-import-csv');
   };
 
   const openEditPanel = (opportunity: CrmLiteOpportunity) => {
@@ -379,6 +381,7 @@ export function OpportunitiesPage() {
       setBriefCreateState('saved');
       setBriefCreateMessage('Brief created. Opening Pipeline Defense...');
       markFirstPipelineReviewStepComplete('hasGeneratedPipelineDefense');
+      markTrialActivationChecklistItemComplete('generate-defense-brief');
       window.setTimeout(() => navigate('/app/pipeline-defense'), 150);
     } catch (error) {
       const localBrief = createPipelineDefenseBrief(draftBrief);
@@ -386,6 +389,7 @@ export function OpportunitiesPage() {
       setSelectedOpportunityIds([]);
       setBriefCreateState('error');
       markFirstPipelineReviewStepComplete('hasGeneratedPipelineDefense');
+      markTrialActivationChecklistItemComplete('generate-defense-brief');
       if (import.meta.env.DEV) {
         console.debug('[Opportunities] defense brief cloud create failed', { message: error instanceof Error ? error.message : 'Unknown error' });
       }
@@ -668,7 +672,7 @@ function OpportunityCsvImportPanel({
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Read-only CRM import</p>
           <h2 className="mt-1 text-xl font-bold text-navy">Import Opportunities from CSV</h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-gray-500">
-            Memoire imports a read-only copy of your pipeline. It does not write back to your CRM. Use imported opportunities for review, enrichment, and Pipeline Defense Briefs.
+            Use this if you already manage pipeline in Salesforce, HubSpot, Excel, or another CRM. Memoire imports a local read-only copy for review, enrichment, and Pipeline Defense Briefs. It does not write back to your CRM.
           </p>
         </div>
         <button type="button" onClick={onClose} className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">
@@ -713,6 +717,12 @@ function OpportunityCsvImportPanel({
               {message}
             </p>
           )}
+          <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-3 text-sm leading-6 text-blue-900">
+            <p className="font-bold">How to export from CRM</p>
+            <p className="mt-1">
+              Export a CSV with account, opportunity, stage, value, close period, and next step. Import it here, then enrich missing decision context, stakeholders, objections, and proof locally in Memoire.
+            </p>
+          </div>
         </div>
 
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">

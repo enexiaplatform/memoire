@@ -65,6 +65,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 function isLocalFirstAppRoute(pathname: string) {
   return [
     '/app/dashboard',
+    '/app/demo-guide',
     '/app/today',
     '/app/pipeline-defense',
     '/app/capture',

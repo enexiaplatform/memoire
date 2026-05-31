@@ -74,6 +74,7 @@ import {
 import { PipelineDefensePrintableBrief } from './PipelineDefensePrintableBrief';
 import { PipelineDefenseReviewDealCard } from './PipelineDefenseReviewDealCard';
 import { markFirstPipelineReviewStepComplete } from '../../utils/firstPipelineReviewOnboarding';
+import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
 
 const categoryClasses: Record<ForecastEvidenceCategory, string> = {
   Defensible: 'border-emerald-200 bg-emerald-50 text-emerald-700',
@@ -628,6 +629,7 @@ export function PipelineReviewDefenseBriefPage() {
     try {
       await navigator.clipboard.writeText(shareableBrief.managerSummary);
       setManagerSummaryCopyStatus('copied');
+      markTrialActivationChecklistItemComplete('copy-manager-summary');
     } catch {
       setManagerSummaryCopyStatus('failed');
     }
@@ -756,8 +758,16 @@ export function PipelineReviewDefenseBriefPage() {
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Brief workspace</p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Pipeline Review Defense Brief</h1>
             <p className="mt-2 max-w-3xl text-sm text-gray-500">
-              Prepare Henry's weekly pipeline review: defend the strong deals, rescue the weak ones, and downgrade anything that cannot be supported.
+              The Pipeline Defense Brief is your weekly review pack: defend the strong deals, rescue weak ones, and downgrade anything that cannot be supported with evidence.
             </p>
+            <div className="mt-4 flex flex-wrap gap-2 no-print">
+              <a href="/app/opportunities" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-100">
+                Generate your first Pipeline Defense Brief
+              </a>
+              <a href="/app/demo-guide" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">
+                Run 5-minute demo
+              </a>
+            </div>
             <div className="mt-3 no-print">
               <DataModePill
                 showDescription
