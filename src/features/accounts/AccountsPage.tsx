@@ -32,6 +32,7 @@ import {
 } from '../../utils/accountMemory';
 import { getStakeholdersForAccount } from '../../utils/stakeholderGraph';
 import { getObjectionsForAccount, objectionStatusTone } from '../../utils/objectionLedger';
+import { formatCurrencyAmount as formatMoney } from '../../utils/currency';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -696,10 +697,6 @@ function buildAccountsSummary(memories: AccountMemory[]) {
 
 function parseCommaList(value: string) {
   return value.split(',').map((item) => item.trim()).filter(Boolean);
-}
-
-function formatMoney(value: number, currency = 'VND') {
-  return new Intl.NumberFormat(undefined, { style: 'currency', currency, maximumFractionDigits: currency === 'VND' ? 0 : 2 }).format(value);
 }
 
 function sameName(left: string, right: string) {

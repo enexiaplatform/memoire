@@ -1,14 +1,12 @@
 import { useAuthContext } from '../../auth/authContext';
-import { isDemoMode, isSupabaseConfigured } from '../../lib/demoMode';
+import { isDemoMode } from '../../lib/demoMode';
 import { getDemoWorkspaceState } from '../../features/v31/localStore';
 import { Button } from '../ui/Button';
 import { Link } from 'react-router-dom';
-import { DataModePill } from '../common/DataModePill';
-import { hasLocalSampleData } from '../../utils/dataMode';
 import { getUserDisplayName } from '../../utils/userDisplay';
 
 export function TopNav() {
-  const { user, profile, loading, isAuthenticated, signOut } = useAuthContext();
+  const { user, profile, signOut } = useAuthContext();
   const workspaceLabel = isDemoMode ? getDemoWorkspaceState()?.label || null : null;
   const displayName = getUserDisplayName(user, profile);
 
@@ -25,14 +23,6 @@ export function TopNav() {
         >
           + Capture
         </Link>
-        <DataModePill
-          compact
-          isLoading={loading}
-          isAuthenticated={isAuthenticated}
-          isSupabaseConfigured={isSupabaseConfigured}
-          cloudAvailable={isSupabaseConfigured}
-          hasSampleData={isDemoMode || hasLocalSampleData()}
-        />
         {workspaceLabel && (
           <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">
             {workspaceLabel}

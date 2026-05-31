@@ -26,6 +26,7 @@ export function AskMemoirePage() {
   const [loading, setLoading] = useState(false);
   const [contextLoading, setContextLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState('Ask Memoire uses local rule-based answers when the configured endpoint is unavailable.');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
@@ -163,8 +164,11 @@ export function AskMemoirePage() {
     [scopedMemory]
   );
 
-  const ask = async (nextQuestion = question) => {
-    if (!user || !nextQuestion.trim()) return;
+  const ask = useCallback(async (nextQuestion = question) => {
+    if (!nextQuestion.trim()) {
+      setError('Ask a question or choose a preset first.');
+      return;
+    }
     if (scope === 'account' && !selectedAccountId) {
       setError('Missing context - select an account so Memoire can answer with better context.');
       return;
@@ -177,10 +181,12 @@ export function AskMemoirePage() {
     setQuestion(nextQuestion);
     setLoading(true);
     setError(null);
+    setStatusMessage('');
 
     try {
       const fallbackAnswer = withAnswerCards(answerFromMemory(nextQuestion, contextPacket), nextQuestion, contextPacket);
       if (scope === 'all' && isAttentionQuestion(nextQuestion)) {
+        setStatusMessage('Answered with local rule-based deal memory.');
         setAnswer(answerFromAttention({
           context: contextPacket,
           accounts: scopedMemory.accounts,
@@ -192,14 +198,19 @@ export function AskMemoirePage() {
         return;
       }
       if (isWhatChangedQuestion(nextQuestion)) {
+        setStatusMessage('Answered with local rule-based change detection.');
         setAnswer(answerFromChanges(whatChanged, contextPacket));
         return;
       }
       if (isPatternQuestion(nextQuestion)) {
+        setStatusMessage('Answered with local rule-based pattern detection.');
         setAnswer(answerFromPatterns(salesPatterns, contextPacket));
         return;
       }
-      if (isDemoMode) {
+      if (isDemoMode || !user) {
+        setStatusMessage(user
+          ? 'Demo workspace uses local rule-based answers.'
+          : 'You are in local mode. Ask Memoire is using rule-based fallback; sign in to use configured cloud context.');
         setAnswer(fallbackAnswer);
         return;
       }
@@ -219,10 +230,12 @@ export function AskMemoirePage() {
       });
 
       if (!result.ok) {
+        setStatusMessage('Ask endpoint unavailable - showing a local rule-based answer.');
         setAnswer(fallbackAnswer);
         return;
       }
       const data = await result.json();
+      setStatusMessage('Answered with the configured Ask endpoint.');
       setAnswer(withAnswerCards({
         answer: data.answer || fallbackAnswer.answer,
         contextUsed: data.sources || fallbackAnswer.contextUsed,
@@ -231,12 +244,27 @@ export function AskMemoirePage() {
         suggestedQuestions: data.suggested_questions || fallbackAnswer.suggestedQuestions,
       }, nextQuestion, contextPacket));
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) {
+        console.debug('[Ask Memoire] falling back to local answer', { message: err instanceof Error ? err.message : 'Unknown error' });
+      }
+      setStatusMessage('Ask Memoire could not reach the configured endpoint. Local rules are still available.');
       setAnswer(withAnswerCards(answerFromMemory(nextQuestion, contextPacket), nextQuestion, contextPacket));
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    question,
+    user,
+    scope,
+    selectedAccountId,
+    selectedOpportunityId,
+    contextPacket,
+    scopedMemory,
+    scopedBrokenLoops,
+    scopedMemoryHealth,
+    whatChanged,
+    salesPatterns,
+  ]);
 
   useEffect(() => {
     if (!answer) return;
@@ -251,7 +279,7 @@ export function AskMemoirePage() {
 
     window.addEventListener(ASK_GUIDED_QUESTION_EVENT, handleGuidedQuestion as EventListener);
     return () => window.removeEventListener(ASK_GUIDED_QUESTION_EVENT, handleGuidedQuestion as EventListener);
-  });
+  }, [ask]);
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
@@ -260,6 +288,9 @@ export function AskMemoirePage() {
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Ask why deals may go silent</h1>
         <p className="mt-2 max-w-2xl text-sm text-gray-500">
           Choose a context and ask Memoire about stuck deals, missing follow-ups, unresolved objections, or account context.
+        </p>
+        <p className="mt-2 max-w-2xl text-xs font-semibold text-gray-500">
+          Presets run immediately. If the Ask endpoint is unavailable, Memoire shows a local rule-based answer.
         </p>
       </header>
 
@@ -346,6 +377,7 @@ export function AskMemoirePage() {
               </button>
             ))}
           </div>
+          <p className="mt-2 text-xs text-gray-500">Click a preset to run it, or edit the question below before asking.</p>
           <p className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-gray-400">Action / fix prompts</p>
           <div className="flex flex-wrap gap-2">
             {actionFixPresets.map((preset) => (
@@ -391,15 +423,22 @@ export function AskMemoirePage() {
         {loading ? (
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <Sparkles className="h-4 w-4 animate-pulse" />
-            Querying Ask Memoire...
+            Building answer...
           </div>
         ) : error ? (
           <p className="rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-700">{error}</p>
         ) : answer ? (
           <div className="space-y-5">
-            <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
-              Answer ready
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                Answer ready
+              </span>
+              {statusMessage && (
+                <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-brand-blue">
+                  {statusMessage}
+                </span>
+              )}
+            </div>
             {answer.cards && answer.cards.length > 0 ? (
               <div className="grid gap-4">
                 {answer.cards.map((card, index) => (
@@ -437,7 +476,7 @@ export function AskMemoirePage() {
             )}
           </div>
         ) : (
-          <p className="text-sm text-gray-500">Select All Deals, an Account, or an Opportunity so Memoire can answer with better context.</p>
+          <p className="text-sm text-gray-500">Choose a preset or ask a question. Memoire can answer with local rules when the endpoint is unavailable.</p>
         )}
       </section>
     </div>
@@ -465,7 +504,7 @@ function withAnswerCards(answer: AskMemoireAnswer, question: string, context: As
     contextHref ? { label: 'Open Account', href: contextHref } : null,
     opportunityHref ? { label: 'Open Opportunity', href: opportunityHref } : null,
     contextHref ? { label: 'Draft Follow-up', href: contextHref, note: 'Open Account Memory to draft from context.' } : null,
-    { label: 'Capture Update', href: '/app/today#quick-capture' },
+    { label: 'Capture Update', href: '/app/capture' },
   ].filter(Boolean) as AskMemoireAnswerCard['ctas'];
 
   if (normalized.includes('draft') || normalized.includes('follow-up') || normalized.includes('follow up') || normalized.includes('address this objection') || normalized.includes('ask the customer')) {
@@ -689,7 +728,7 @@ function answerFromAttention({
         item.accountId ? { label: 'Open Account', href: `/app/accounts/${item.accountId}` } : null,
         item.opportunityId ? { label: 'Open Opportunity', href: `/app/opportunities` } : null,
         item.accountId ? { label: 'Draft Follow-up', href: `/app/accounts/${item.accountId}`, note: 'Open Account Memory to draft from context.' } : null,
-        { label: 'Capture Update', href: '/app/today#quick-capture' },
+        { label: 'Capture Update', href: '/app/capture' },
       ].filter(Boolean) as AskMemoireAnswerCard['ctas'],
     })),
   };

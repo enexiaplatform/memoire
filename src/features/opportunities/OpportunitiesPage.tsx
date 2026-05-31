@@ -36,6 +36,7 @@ import {
 } from '../../services/opportunityStore';
 import { analyzePipelineQuality, analyzeOpportunityQuality } from '../../utils/opportunityQuality';
 import { analyzeMeddicLiteOpportunity, type MeddicLiteDealCategory, type MeddicLiteStatus } from '../../utils/meddicLite';
+import { formatCurrencyAmount as formatMoney } from '../../utils/currency';
 import { loadSalesActivities, type SalesActivityRecord } from '../../services/salesActivityStore';
 import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
 import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
@@ -1710,14 +1711,6 @@ function getLinkedActivities(opportunity: CrmLiteOpportunity, activities: SalesA
   return activities
     .filter((activity) => activity.linkStatus === 'Linked' && activity.linkedOpportunityId === opportunity.id)
     .sort((a, b) => `${b.activityDate}-${b.createdAt}`.localeCompare(`${a.activityDate}-${a.createdAt}`));
-}
-
-function formatMoney(value: number, currency = 'VND') {
-  return new Intl.NumberFormat(undefined, {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: currency === 'VND' ? 0 : 2,
-  }).format(value);
 }
 
 function forecastTone(category: string) {

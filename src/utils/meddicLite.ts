@@ -4,6 +4,7 @@ import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
 import { getObjectionsForOpportunity } from './objectionLedger';
 import { getStakeholdersForOpportunity } from './stakeholderGraph';
+import { formatCurrencyAmount } from './currency';
 
 export type MeddicLiteFieldKey =
   | 'metrics'
@@ -147,7 +148,7 @@ function reviewMetrics(opportunity: CrmLiteOpportunity, activities: SalesActivit
   const buyingSignals = dedupe(activities.flatMap((activity) => activity.buyingSignals || []));
   const timelineSignals = dedupe(activities.flatMap((activity) => activity.timelineSignals || []));
   const evidence: string[] = [];
-  if (opportunity.estimatedValue) evidence.push(`Estimated value: ${formatMoney(opportunity.estimatedValue, opportunity.currency)}.`);
+  if (opportunity.estimatedValue) evidence.push(`Estimated value: ${formatCurrencyAmount(opportunity.estimatedValue, opportunity.currency)}.`);
   if (hasStrongSignal(opportunity.evidence)) evidence.push(firstSentence(opportunity.evidence));
   if (buyingSignals.length > 0) evidence.push(`Buying signals: ${buyingSignals.slice(0, 3).join(', ')}.`);
   if (timelineSignals.length > 0) evidence.push(`Timeline signals: ${timelineSignals.slice(0, 2).join(', ')}.`);
@@ -432,10 +433,6 @@ function firstSentence(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return '';
   return trimmed.split(/(?<=[.!?])\s+/)[0] || trimmed;
-}
-
-function formatMoney(value: number, currency: string) {
-  return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value)} ${currency || ''}`.trim();
 }
 
 function normalize(value: string) {

@@ -71,6 +71,8 @@ type DashboardData = {
   assets: SalesAssetRecord[];
 };
 
+type DashboardInsights = ReturnType<typeof buildDashboardInsights>;
+
 export function DashboardPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const [data, setData] = useState<DashboardData>({
@@ -102,7 +104,7 @@ export function DashboardPage() {
         if (!mounted) return;
         setData(nextData);
         setMessage('Command center ready');
-        setOnboarding(syncOnboardingFromData(nextData));
+        setOnboarding(syncOnboardingFromData(nextData, { includeDataSignals: !hasLocalSampleData() }));
       } catch (error) {
         if (!mounted) return;
         if (import.meta.env.DEV) {
@@ -123,8 +125,13 @@ export function DashboardPage() {
     };
   }, [authLoading, isAuthenticated, user?.id, sampleMessage]);
 
+  const sampleDataActive = hasLocalSampleData();
   const commandCenter = useMemo(() => buildTodayCommandCenter(data), [data]);
-  const onboardingProgress = useMemo(() => buildOnboardingProgress(onboarding, data), [data, onboarding]);
+  const dashboardInsights = useMemo(() => buildDashboardInsights(data), [data]);
+  const onboardingProgress = useMemo(
+    () => buildOnboardingProgress(onboarding, data, sampleDataActive),
+    [data, onboarding, sampleDataActive]
+  );
 
   useEffect(() => {
     setOnboarding(markOnboardingStepComplete('hasSeenWelcome'));
@@ -143,7 +150,7 @@ export function DashboardPage() {
     loadSampleDataset();
     const nextData = await loadDashboardData();
     setData(nextData);
-    setOnboarding(syncOnboardingFromData(nextData));
+    setOnboarding(syncOnboardingFromData(nextData, { includeDataSignals: false }));
     setSampleMessage(isAuthenticated
       ? 'Demo sandbox active - sample data is local only and was not saved to your cloud account.'
       : 'Demo sandbox active - sample data is local only.');
@@ -154,7 +161,7 @@ export function DashboardPage() {
     clearSampleDataset();
     const nextData = await loadDashboardData(user?.id);
     setData(nextData);
-    setOnboarding(syncOnboardingFromData(nextData));
+    setOnboarding(syncOnboardingFromData(nextData, { includeDataSignals: true }));
     setSampleMessage('Demo data cleared from this browser. Cloud data was not changed.');
   };
 
@@ -176,7 +183,7 @@ export function DashboardPage() {
             isSupabaseConfigured={isSupabaseConfigured}
             cloudAvailable={isSupabaseConfigured}
             syncError={message.startsWith('Cloud sync issue') ? message : null}
-            hasSampleData={hasLocalSampleData()}
+            hasSampleData={sampleDataActive}
           />
           {message && !message.startsWith('Command center ready') ? (
             <span className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
@@ -196,7 +203,7 @@ export function DashboardPage() {
             <OnboardingWelcomePanel
               progress={onboardingProgress}
               sampleMessage={sampleMessage}
-              isDemoSandboxActive={hasLocalSampleData()}
+              isDemoSandboxActive={sampleDataActive}
               hasExistingData={commandCenter.hasAnyData}
               isAuthenticated={isAuthenticated}
               onDismiss={handleDismissOnboarding}
@@ -205,7 +212,7 @@ export function DashboardPage() {
               onClearDemoSandbox={handleClearDemoSandbox}
             />
           )}
-          {hasLocalSampleData() && (
+          {sampleDataActive && (
             <section className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800 shadow-sm md:flex-row md:items-center md:justify-between">
               <span>Demo sandbox active - sample data is local only. Replace it with real activities when ready.</span>
               <button
@@ -235,42 +242,23 @@ export function DashboardPage() {
               <TodayFocus commandCenter={commandCenter} />
               <ThisWeekSummary commandCenter={commandCenter} />
               <WeeklyExecutionHealth
-                opportunities={data.opportunities}
-                stakeholders={data.stakeholders}
-                objections={data.objections}
-                activities={data.activities}
-                actionOutcomes={data.actionOutcomes}
+                review={dashboardInsights.weeklyExecutionReview}
+                activeOpportunityCount={dashboardInsights.activeOpportunityCount}
               />
-              <TopSalesPattern
-                opportunities={data.opportunities}
-                stakeholders={data.stakeholders}
-                objections={data.objections}
-                activities={data.activities}
-                actionOutcomes={data.actionOutcomes}
-              />
+              <TopSalesPattern pattern={dashboardInsights.topSalesPattern} />
               <AssetGaps
-                opportunities={data.opportunities}
-                stakeholders={data.stakeholders}
-                objections={data.objections}
-                activities={data.activities}
-                actionOutcomes={data.actionOutcomes}
-                assets={data.assets}
+                gapSummary={dashboardInsights.assetGapSummary}
+                assetCount={data.assets.length}
+                objectionCount={data.objections.length}
+                patternCount={dashboardInsights.playbookPatterns.length}
               />
               <PriorityActionList items={commandCenter.priorityActions} />
               <CriticalDealActions
-                opportunities={data.opportunities}
-                stakeholders={data.stakeholders}
-                objections={data.objections}
-                activities={data.activities}
-                actionOutcomes={data.actionOutcomes}
+                actions={dashboardInsights.criticalDealActions}
+                outcomeLoop={dashboardInsights.outcomeLoop}
               />
               <OpenObjectionSignals objections={data.objections} />
-              <MeddicRiskSignal
-                opportunities={data.opportunities}
-                stakeholders={data.stakeholders}
-                objections={data.objections}
-                activities={data.activities}
-              />
+              <MeddicRiskSignal summary={dashboardInsights.meddicSummary} />
 
               <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                 <AtRiskOpportunities items={commandCenter.atRiskOpportunities} />
@@ -287,6 +275,71 @@ export function DashboardPage() {
       )}
     </div>
   );
+}
+
+function buildDashboardInsights(data: DashboardData) {
+  const period = getCurrentExecutionWeekRange();
+  const periodActivities = data.activities.filter((activity) => (
+    activity.activityDate >= period.start && activity.activityDate <= period.end
+  ));
+  const weeklyExecutionReview = generateWeeklyExecutionReview({
+    periodType: 'week',
+    periodLabel: period.label,
+    period,
+    opportunities: data.opportunities,
+    actionOutcomes: data.actionOutcomes,
+    stakeholders: data.stakeholders,
+    objections: data.objections,
+    activities: periodActivities,
+  });
+  const playbookPatterns = generateSalesPlaybookPatterns({
+    opportunities: data.opportunities,
+    stakeholders: data.stakeholders,
+    objections: data.objections,
+    activities: data.activities,
+    actionOutcomes: data.actionOutcomes,
+    limit: 10,
+  });
+  const outcomeLoop = analyzePipelineOutcomeLoop({
+    opportunities: data.opportunities,
+    stakeholders: data.stakeholders,
+    objections: data.objections,
+    activities: data.activities,
+    outcomes: data.actionOutcomes,
+  });
+  const criticalDealActions = generatePipelineOpportunityActions({
+    opportunities: data.opportunities,
+    stakeholders: data.stakeholders,
+    objections: data.objections,
+    activities: data.activities,
+    limit: 8,
+  })
+    .filter((action) => action.priority === 'High')
+    .filter((action) => !outcomeLoop.latestCompletedActions.some((outcome) => (
+      outcome.opportunityId === action.opportunityId && outcome.actionTitle === action.title
+    )))
+    .slice(0, 5);
+
+  return {
+    activeOpportunityCount: data.opportunities.filter((opportunity) => opportunity.status === 'Active').length,
+    weeklyExecutionReview,
+    playbookPatterns,
+    topSalesPattern: getTopSalesPlaybookPattern(playbookPatterns),
+    assetGapSummary: summarizeAssetGaps({
+      patterns: playbookPatterns,
+      objections: data.objections,
+      assets: data.assets,
+      opportunities: data.opportunities,
+    }),
+    outcomeLoop,
+    criticalDealActions,
+    meddicSummary: analyzeMeddicLitePipeline({
+      opportunities: data.opportunities,
+      stakeholders: data.stakeholders,
+      objections: data.objections,
+      activities: data.activities,
+    }),
+  };
 }
 
 function TodayFocus({ commandCenter }: { commandCenter: CommandCenter }) {
@@ -354,35 +407,17 @@ function ThisWeekSummary({ commandCenter }: { commandCenter: CommandCenter }) {
 }
 
 function WeeklyExecutionHealth({
-  opportunities,
-  stakeholders,
-  objections,
-  activities,
-  actionOutcomes,
+  review,
+  activeOpportunityCount,
 }: {
-  opportunities: CrmLiteOpportunity[];
-  stakeholders: StakeholderRecord[];
-  objections: ObjectionRecord[];
-  activities: SalesActivityRecord[];
-  actionOutcomes: ActionOutcomeRecord[];
+  review: DashboardInsights['weeklyExecutionReview'];
+  activeOpportunityCount: number;
 }) {
-  const period = getCurrentExecutionWeekRange();
-  const periodActivities = activities.filter((activity) => activity.activityDate >= period.start && activity.activityDate <= period.end);
-  const review = generateWeeklyExecutionReview({
-    periodType: 'week',
-    periodLabel: period.label,
-    period,
-    opportunities,
-    actionOutcomes,
-    stakeholders,
-    objections,
-    activities: periodActivities,
-  });
   const summary = review.executionSummary;
   const dealsNeedingRescue = review.dealMovement.filter((item) => item.movement === 'Needs rescue' || item.movement === 'Consider downgrade');
 
   if (
-    opportunities.filter((opportunity) => opportunity.status === 'Active').length === 0
+    activeOpportunityCount === 0
     && summary.completedActionsCount === 0
     && summary.unresolvedCriticalActionsCount === 0
   ) {
@@ -398,7 +433,7 @@ function WeeklyExecutionHealth({
             <h2 className="text-lg font-bold text-navy">Weekly Execution Health</h2>
           </div>
           <p className="mt-1 text-sm text-purple-900/75">
-            Deal execution learning for {period.label}: completed actions, unresolved critical work, unclear outcomes, and rescue signals.
+            Deal execution learning for {review.periodLabel}: completed actions, unresolved critical work, unclear outcomes, and rescue signals.
           </p>
         </div>
         <Link to="/app/reviews" className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
@@ -431,22 +466,8 @@ function WeeklyExecutionHealth({
   );
 }
 
-function TopSalesPattern({
-  opportunities,
-  stakeholders,
-  objections,
-  activities,
-  actionOutcomes,
-}: {
-  opportunities: CrmLiteOpportunity[];
-  stakeholders: StakeholderRecord[];
-  objections: ObjectionRecord[];
-  activities: SalesActivityRecord[];
-  actionOutcomes: ActionOutcomeRecord[];
-}) {
-  const patterns = generateSalesPlaybookPatterns({ opportunities, stakeholders, objections, activities, actionOutcomes, limit: 8 });
-  const topPattern = getTopSalesPlaybookPattern(patterns);
-  if (!topPattern) return null;
+function TopSalesPattern({ pattern }: { pattern?: SalesPlaybookPattern }) {
+  if (!pattern) return null;
 
   return (
     <section className="rounded-lg border border-indigo-100 bg-indigo-50/70 p-5 shadow-sm">
@@ -466,14 +487,14 @@ function TopSalesPattern({
       </div>
       <article className="mt-4 rounded-lg bg-white p-4 ring-1 ring-indigo-100">
         <div className="flex flex-wrap gap-2">
-          <Badge label={topPattern.category} tone="blue" />
-          <Badge label={topPattern.severity} tone={playbookSeverityTone(topPattern)} />
-          <Badge label={`${topPattern.frequency}x`} tone="gray" />
+          <Badge label={pattern.category} tone="blue" />
+          <Badge label={pattern.severity} tone={playbookSeverityTone(pattern)} />
+          <Badge label={`${pattern.frequency}x`} tone="gray" />
         </div>
-        <h3 className="mt-3 text-base font-bold text-navy">{topPattern.title}</h3>
-        <p className="mt-2 text-sm leading-6 text-gray-600">{topPattern.whyItMatters}</p>
+        <h3 className="mt-3 text-base font-bold text-navy">{pattern.title}</h3>
+        <p className="mt-2 text-sm leading-6 text-gray-600">{pattern.whyItMatters}</p>
         <p className="mt-3 rounded-lg bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-900">
-          {topPattern.suggestedPlaybookResponse}
+          {pattern.suggestedPlaybookResponse}
         </p>
       </article>
     </section>
@@ -481,23 +502,17 @@ function TopSalesPattern({
 }
 
 function AssetGaps({
-  opportunities,
-  stakeholders,
-  objections,
-  activities,
-  actionOutcomes,
-  assets,
+  gapSummary,
+  assetCount,
+  objectionCount,
+  patternCount,
 }: {
-  opportunities: CrmLiteOpportunity[];
-  stakeholders: StakeholderRecord[];
-  objections: ObjectionRecord[];
-  activities: SalesActivityRecord[];
-  actionOutcomes: ActionOutcomeRecord[];
-  assets: SalesAssetRecord[];
+  gapSummary: DashboardInsights['assetGapSummary'];
+  assetCount: number;
+  objectionCount: number;
+  patternCount: number;
 }) {
-  const patterns = generateSalesPlaybookPatterns({ opportunities, stakeholders, objections, activities, actionOutcomes, limit: 10 });
-  const gapSummary = summarizeAssetGaps({ patterns, objections, assets, opportunities });
-  if (!gapSummary.topMissingAsset && assets.length === 0 && objections.length === 0 && patterns.length === 0) return null;
+  if (!gapSummary.topMissingAsset && assetCount === 0 && objectionCount === 0 && patternCount === 0) return null;
 
   return (
     <section className="rounded-lg border border-cyan-100 bg-cyan-50/70 p-5 shadow-sm">
@@ -531,7 +546,7 @@ function AssetGaps({
           <p className={`mt-2 inline-flex rounded-full px-3 py-1 text-2xl font-black ${gapSummary.repeatedObjectionsWithoutAsset ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
             {gapSummary.repeatedObjectionsWithoutAsset}
           </p>
-          <p className="mt-3 text-sm leading-6 text-gray-600">{assets.length} saved assets available.</p>
+          <p className="mt-3 text-sm leading-6 text-gray-600">{assetCount} saved assets available.</p>
         </article>
       </div>
     </section>
@@ -605,24 +620,12 @@ function OpenObjectionSignals({ objections }: { objections: ObjectionRecord[] })
 }
 
 function CriticalDealActions({
-  opportunities,
-  stakeholders,
-  objections,
-  activities,
-  actionOutcomes,
+  actions,
+  outcomeLoop,
 }: {
-  opportunities: CrmLiteOpportunity[];
-  stakeholders: StakeholderRecord[];
-  objections: ObjectionRecord[];
-  activities: SalesActivityRecord[];
-  actionOutcomes: ActionOutcomeRecord[];
+  actions: OpportunityRecommendedAction[];
+  outcomeLoop: DashboardInsights['outcomeLoop'];
 }) {
-  const outcomeLoop = analyzePipelineOutcomeLoop({ opportunities, stakeholders, objections, activities, outcomes: actionOutcomes });
-  const actions = generatePipelineOpportunityActions({ opportunities, stakeholders, objections, activities, limit: 5 })
-    .filter((action) => action.priority === 'High')
-    .filter((action) => !outcomeLoop.latestCompletedActions.some((outcome) => outcome.opportunityId === action.opportunityId && outcome.actionTitle === action.title))
-    .slice(0, 5);
-
   if (actions.length === 0 && outcomeLoop.latestCompletedActions.length === 0 && outcomeLoop.negativeOrUnclearOutcomes.length === 0) return null;
 
   return (
@@ -692,18 +695,7 @@ function CriticalDealActionCard({ action }: { action: OpportunityRecommendedActi
   );
 }
 
-function MeddicRiskSignal({
-  opportunities,
-  stakeholders,
-  objections,
-  activities,
-}: {
-  opportunities: CrmLiteOpportunity[];
-  stakeholders: StakeholderRecord[];
-  objections: ObjectionRecord[];
-  activities: SalesActivityRecord[];
-}) {
-  const summary = analyzeMeddicLitePipeline({ opportunities, stakeholders, objections, activities });
+function MeddicRiskSignal({ summary }: { summary: DashboardInsights['meddicSummary'] }) {
   const totalRisk = summary.missingChampionCount + summary.missingEconomicBuyerCount + summary.decisionProcessGapCount + summary.unsupportedCount + summary.hopeBasedCount;
   if (summary.totalOpportunities === 0 || totalRisk === 0) return null;
 
@@ -985,6 +977,7 @@ function OnboardingWelcomePanel({
 
       <p className="mt-4 rounded-lg border border-amber-100 bg-white/80 px-3 py-2 text-sm leading-6 text-amber-900">
         Demo sandbox data stays local in this browser{isAuthenticated ? ' and will not be saved to your cloud account' : ''}.
+        {isDemoSandboxActive ? ' The checklist still reflects your real workspace steps, not demo records.' : ''}
         {hasExistingData && !isDemoSandboxActive ? ' You already have workspace data, so Memoire will ask before loading demo records.' : ''}
       </p>
 
@@ -1172,25 +1165,26 @@ async function loadDashboardData(userId?: string | null): Promise<DashboardData>
   return { activities, opportunities, accounts, briefs, objections, stakeholders, actionOutcomes: loadActionOutcomes(), assets: loadSalesAssets() };
 }
 
-function syncOnboardingFromData(data: DashboardData) {
+function syncOnboardingFromData(data: DashboardData, options: { includeDataSignals: boolean }) {
   const current = loadOnboardingState();
   const next = saveOnboardingState({
     ...current,
     hasSeenWelcome: true,
-    hasCompletedFirstCapture: current.hasCompletedFirstCapture || data.activities.length > 0,
-    hasCreatedFirstOpportunity: current.hasCreatedFirstOpportunity || data.opportunities.length > 0,
-    hasCreatedFirstAccount: current.hasCreatedFirstAccount || data.accounts.length > 0,
-    hasGeneratedFirstDefenseBrief: current.hasGeneratedFirstDefenseBrief || data.briefs.some(isUserCreatedBrief),
+    hasCompletedFirstCapture: current.hasCompletedFirstCapture || (options.includeDataSignals && data.activities.length > 0),
+    hasCreatedFirstOpportunity: current.hasCreatedFirstOpportunity || (options.includeDataSignals && data.opportunities.length > 0),
+    hasCreatedFirstAccount: current.hasCreatedFirstAccount || (options.includeDataSignals && data.accounts.length > 0),
+    hasGeneratedFirstDefenseBrief: current.hasGeneratedFirstDefenseBrief || (options.includeDataSignals && data.briefs.some(isUserCreatedBrief)),
   });
 
   return next;
 }
 
-function buildOnboardingProgress(onboarding: OnboardingState, data: DashboardData) {
-  const hasCapture = onboarding.hasCompletedFirstCapture || data.activities.length > 0;
-  const hasOpportunity = onboarding.hasCreatedFirstOpportunity || data.opportunities.length > 0;
-  const hasAccount = onboarding.hasCreatedFirstAccount || data.accounts.length > 0;
-  const hasBrief = onboarding.hasGeneratedFirstDefenseBrief || data.briefs.some(isUserCreatedBrief);
+function buildOnboardingProgress(onboarding: OnboardingState, data: DashboardData, sampleDataActive: boolean) {
+  const shouldUseDataSignals = !sampleDataActive;
+  const hasCapture = onboarding.hasCompletedFirstCapture || (shouldUseDataSignals && data.activities.length > 0);
+  const hasOpportunity = onboarding.hasCreatedFirstOpportunity || (shouldUseDataSignals && data.opportunities.length > 0);
+  const hasAccount = onboarding.hasCreatedFirstAccount || (shouldUseDataSignals && data.accounts.length > 0);
+  const hasBrief = onboarding.hasGeneratedFirstDefenseBrief || (shouldUseDataSignals && data.briefs.some(isUserCreatedBrief));
 
   return [
     {
