@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Bot, CalendarDays, CheckCircle2, Clipboard, Copy, Loader2, Save, Sparkles, Trash2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { AlertTriangle, Bot, CalendarDays, CheckCircle2, Clipboard, Copy, Loader2, NotebookPen, Save, Sparkles, Trash2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -25,6 +26,35 @@ import { buildObjectionFromActivity, detectObjectionCandidatesFromActivity } fro
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type AiState = 'idle' | 'loading' | 'ready' | 'error';
+type CaptureMode = 'note' | 'quick';
+type QuickInteractionType =
+  | 'Customer meeting'
+  | 'Dealer call'
+  | 'Proposal sent'
+  | 'Objection received'
+  | 'Procurement update'
+  | 'Technical discussion'
+  | 'Follow-up'
+  | 'Internal review';
+type QuickSignalType =
+  | 'Buying signal'
+  | 'Risk signal'
+  | 'Objection'
+  | 'Stakeholder update'
+  | 'Timeline update'
+  | 'Competitor signal'
+  | 'Procurement signal'
+  | 'No major change';
+type QuickCaptureForm = {
+  accountName: string;
+  opportunityName: string;
+  interactionType: QuickInteractionType;
+  whatHappened: string;
+  nextAction: string;
+  dueDate: string;
+  signalType: QuickSignalType;
+  activityDate: string;
+};
 
 const activityTypes: SalesActivityType[] = [
   'Customer meeting',
@@ -38,10 +68,103 @@ const activityTypes: SalesActivityType[] = [
   'Other',
 ];
 
+const quickInteractionTypes: QuickInteractionType[] = [
+  'Customer meeting',
+  'Dealer call',
+  'Proposal sent',
+  'Objection received',
+  'Procurement update',
+  'Technical discussion',
+  'Follow-up',
+  'Internal review',
+];
+
+const quickSignalTypes: QuickSignalType[] = [
+  'Buying signal',
+  'Risk signal',
+  'Objection',
+  'Stakeholder update',
+  'Timeline update',
+  'Competitor signal',
+  'Procurement signal',
+  'No major change',
+];
+
+const quickTemplates: {
+  id: string;
+  label: string;
+  interactionType: QuickInteractionType;
+  signalType: QuickSignalType;
+  whatHappenedPrompt: string;
+  nextActionPrompt: string;
+}[] = [
+  {
+    id: 'customer-meeting',
+    label: 'After customer meeting',
+    interactionType: 'Customer meeting',
+    signalType: 'Stakeholder update',
+    whatHappenedPrompt: 'Who joined, what changed, and what signal did you hear?',
+    nextActionPrompt: 'What must you send, confirm, or schedule next?',
+  },
+  {
+    id: 'dealer-call',
+    label: 'After dealer call',
+    interactionType: 'Dealer call',
+    signalType: 'Timeline update',
+    whatHappenedPrompt: 'What did the dealer report about the account, timeline, or blocker?',
+    nextActionPrompt: 'What follow-up should you or the dealer do?',
+  },
+  {
+    id: 'proposal-sent',
+    label: 'After proposal sent',
+    interactionType: 'Proposal sent',
+    signalType: 'Procurement signal',
+    whatHappenedPrompt: 'What proposal or quote was sent, and what decision step is expected?',
+    nextActionPrompt: 'What proof, clarification, or follow-up is needed?',
+  },
+  {
+    id: 'objection-received',
+    label: 'After objection received',
+    interactionType: 'Objection received',
+    signalType: 'Objection',
+    whatHappenedPrompt: 'What objection did they raise, who raised it, and how serious is it?',
+    nextActionPrompt: 'What proof or response must be prepared?',
+  },
+  {
+    id: 'procurement-update',
+    label: 'After procurement update',
+    interactionType: 'Procurement update',
+    signalType: 'Procurement signal',
+    whatHappenedPrompt: 'What changed in procurement, tender, PO, or approval path?',
+    nextActionPrompt: 'What procurement step must be confirmed next?',
+  },
+  {
+    id: 'technical-discussion',
+    label: 'After technical discussion',
+    interactionType: 'Technical discussion',
+    signalType: 'Buying signal',
+    whatHappenedPrompt: 'What technical criteria, validation need, or proof request came up?',
+    nextActionPrompt: 'What technical document, demo, or answer is needed?',
+  },
+  {
+    id: 'internal-review',
+    label: 'After internal pipeline review',
+    interactionType: 'Internal review',
+    signalType: 'Risk signal',
+    whatHappenedPrompt: 'What risk or gap did the review expose?',
+    nextActionPrompt: 'What must be clarified before the next review?',
+  },
+];
+
 export function DailyCapturePage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
+  const [searchParams] = useSearchParams();
+  const searchParamsKey = searchParams.toString();
   const [rawNote, setRawNote] = useState('');
-  const [activityDate, setActivityDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [activityDate, setActivityDate] = useState(() => getQueryDate(searchParams) || todayKey());
+  const [captureMode, setCaptureMode] = useState<CaptureMode>(() => searchParams.get('mode') === 'quick' ? 'quick' : 'note');
+  const [quickTemplateId, setQuickTemplateId] = useState(quickTemplates[0].id);
+  const [quickForm, setQuickForm] = useState<QuickCaptureForm>(() => createInitialQuickCaptureForm(searchParams));
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
@@ -90,6 +213,21 @@ export function DailyCapturePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataUserId]);
 
+  useEffect(() => {
+    const nextMode = searchParams.get('mode') === 'quick' ? 'quick' : 'note';
+    const queryDate = getQueryDate(searchParams);
+    if (nextMode === 'quick') {
+      setCaptureMode('quick');
+      setQuickForm((current) => ({
+        ...current,
+        accountName: searchParams.get('account') || current.accountName,
+        opportunityName: searchParams.get('opportunity') || current.opportunityName,
+        activityDate: queryDate || current.activityDate,
+      }));
+      if (queryDate) setActivityDate(queryDate);
+    }
+  }, [searchParams, searchParamsKey]);
+
   const handleSave = async () => {
     if (rawNote.trim().length < 8 || !preview) {
       setMessage('Capture a short sales activity first.');
@@ -117,6 +255,47 @@ export function DailyCapturePage() {
     setMessage(result.warning || (result.mode === 'cloud' ? 'Synced to your account.' : 'Saved locally in this browser.'));
     setStakeholderSuggestionDismissed(false);
     setObjectionSuggestionDismissed(false);
+  };
+
+  const handleQuickSave = async () => {
+    const prepared = buildQuickCaptureActivity(quickForm);
+    if (!prepared) {
+      setMessage('Add an account and a short update before saving quick capture.');
+      setSaveState('error');
+      return;
+    }
+
+    setSaveState('saving');
+    setMessage('Saving quick capture...');
+    const result = await saveSalesActivity(prepared, dataUserId);
+    setActivities((current) => [result.record, ...current.filter((item) => item.id !== result.record.id)]);
+    setLastSavedActivity(result.record);
+    setQuickForm((current) => ({
+      ...current,
+      whatHappened: '',
+      nextAction: '',
+      dueDate: '',
+      signalType: current.signalType === 'No major change' ? 'No major change' : current.signalType,
+    }));
+    setRawNote('');
+    setStructuredDraft(null);
+    setAiSuggestion(null);
+    setAiMessage('');
+    setAiState('idle');
+    setSaveState(result.warning ? 'error' : 'saved');
+    setMessage(result.warning || (result.mode === 'cloud' ? 'Quick capture synced to your account.' : 'Quick capture saved locally.'));
+    setStakeholderSuggestionDismissed(false);
+    setObjectionSuggestionDismissed(false);
+  };
+
+  const applyQuickTemplate = (templateId: string) => {
+    const template = quickTemplates.find((item) => item.id === templateId) || quickTemplates[0];
+    setQuickTemplateId(template.id);
+    setQuickForm((current) => ({
+      ...current,
+      interactionType: template.interactionType,
+      signalType: template.signalType,
+    }));
   };
 
   const handleClassifyWithAi = async () => {
@@ -316,6 +495,38 @@ export function DailyCapturePage() {
         />
       </header>
 
+      <section className="rounded-lg border border-gray-200 bg-white p-2 shadow-sm">
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setCaptureMode('quick')}
+            className={`rounded-lg px-4 py-3 text-sm font-bold ${captureMode === 'quick' ? 'bg-navy text-white' : 'bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-brand-blue'}`}
+          >
+            Quick Capture
+          </button>
+          <button
+            type="button"
+            onClick={() => setCaptureMode('note')}
+            className={`rounded-lg px-4 py-3 text-sm font-bold ${captureMode === 'note' ? 'bg-navy text-white' : 'bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-brand-blue'}`}
+          >
+            Full Note + AI Assist
+          </button>
+        </div>
+      </section>
+
+      {captureMode === 'quick' && (
+        <QuickCapturePanel
+          form={quickForm}
+          selectedTemplateId={quickTemplateId}
+          saveState={saveState}
+          message={message}
+          onTemplateSelect={applyQuickTemplate}
+          onChange={setQuickForm}
+          onSave={handleQuickSave}
+        />
+      )}
+
+      {captureMode === 'note' && (
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]">
           <label className="block">
@@ -417,6 +628,7 @@ export function DailyCapturePage() {
           </div>
         )}
       </section>
+      )}
 
       {lastSavedActivity && (
         <ActivityOpportunityLinkPanel
@@ -505,6 +717,178 @@ export function DailyCapturePage() {
         )}
       </section>
     </div>
+  );
+}
+
+function QuickCapturePanel({
+  form,
+  selectedTemplateId,
+  saveState,
+  message,
+  onTemplateSelect,
+  onChange,
+  onSave,
+}: {
+  form: QuickCaptureForm;
+  selectedTemplateId: string;
+  saveState: SaveState;
+  message: string;
+  onTemplateSelect: (templateId: string) => void;
+  onChange: (form: QuickCaptureForm) => void;
+  onSave: () => void;
+}) {
+  const template = quickTemplates.find((item) => item.id === selectedTemplateId) || quickTemplates[0];
+  const update = <Key extends keyof QuickCaptureForm>(key: Key, value: QuickCaptureForm[Key]) => {
+    onChange({ ...form, [key]: value });
+  };
+
+  return (
+    <section className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <NotebookPen className="h-4 w-4 text-emerald-700" />
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Quick Capture</p>
+          </div>
+          <h2 className="mt-2 text-xl font-bold text-navy">30-second sales update</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-emerald-900/75">
+            Use this immediately after a meeting, dealer call, proposal, objection, or procurement update. It saves as a normal sales activity.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={saveState === 'saving'}
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-navy px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {saveState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          Save Quick Capture
+        </button>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {quickTemplates.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onTemplateSelect(item.id)}
+            className={`rounded-full border px-3 py-1.5 text-xs font-bold ${
+              selectedTemplateId === item.id
+                ? 'border-emerald-600 bg-emerald-600 text-white'
+                : 'border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50'
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <QuickInput label="Account" value={form.accountName} placeholder="Control Union" onChange={(value) => update('accountName', value)} />
+        <QuickInput label="Opportunity optional" value={form.opportunityName} placeholder="Microbiology workflow" onChange={(value) => update('opportunityName', value)} />
+        <QuickSelect label="Interaction type" value={form.interactionType} options={quickInteractionTypes} onChange={(value) => update('interactionType', value as QuickInteractionType)} />
+        <QuickSelect label="Signal type" value={form.signalType} options={quickSignalTypes} onChange={(value) => update('signalType', value as QuickSignalType)} />
+        <QuickInput label="Activity date" type="date" value={form.activityDate} placeholder="" onChange={(value) => update('activityDate', value)} />
+        <QuickInput label="Due date optional" type="date" value={form.dueDate} placeholder="" onChange={(value) => update('dueDate', value)} />
+        <QuickTextArea
+          label="What happened?"
+          value={form.whatHappened}
+          placeholder={template.whatHappenedPrompt}
+          onChange={(value) => update('whatHappened', value)}
+        />
+        <QuickTextArea
+          label="Next action"
+          value={form.nextAction}
+          placeholder={template.nextActionPrompt}
+          onChange={(value) => update('nextAction', value)}
+        />
+      </div>
+
+      {message && (
+        <p className={`mt-4 rounded-lg px-3 py-2 text-sm font-semibold ${
+          saveState === 'saved' ? 'bg-white text-emerald-700 ring-1 ring-emerald-100' : 'bg-white text-amber-700 ring-1 ring-amber-100'
+        }`}>
+          {message}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function QuickInput({
+  label,
+  value,
+  placeholder,
+  type = 'text',
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  type?: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block rounded-lg bg-white px-3 py-2 ring-1 ring-emerald-100">
+      <span className="text-xs font-bold uppercase tracking-wide text-emerald-700">{label}</span>
+      <input
+        type={type}
+        value={value}
+        placeholder={placeholder}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 w-full bg-transparent text-sm font-semibold text-emerald-950 outline-none placeholder:text-emerald-300"
+      />
+    </label>
+  );
+}
+
+function QuickSelect({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: readonly string[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block rounded-lg bg-white px-3 py-2 ring-1 ring-emerald-100">
+      <span className="text-xs font-bold uppercase tracking-wide text-emerald-700">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 w-full bg-transparent text-sm font-semibold text-emerald-950 outline-none"
+      >
+        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function QuickTextArea({
+  label,
+  value,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block rounded-lg bg-white px-3 py-2 ring-1 ring-emerald-100 md:col-span-2">
+      <span className="text-xs font-bold uppercase tracking-wide text-emerald-700">{label}</span>
+      <textarea
+        value={value}
+        placeholder={placeholder}
+        onChange={(event) => onChange(event.target.value)}
+        rows={3}
+        className="mt-1 w-full resize-y bg-transparent text-sm font-semibold leading-6 text-emerald-950 outline-none placeholder:text-emerald-300"
+      />
+    </label>
   );
 }
 
@@ -881,4 +1265,76 @@ function formatActivitySummary(activity: SalesActivityRecord) {
     activity.nextActions?.length ? `Next actions:\n${activity.nextActions.map((action, index) => `${index + 1}. ${action.title}${action.dueDate ? ` (${action.dueDate})` : ''}`).join('\n')}` : '',
     activity.tags.length > 0 ? `Tags: ${activity.tags.join(', ')}` : '',
   ].filter(Boolean).join('\n');
+}
+
+function createInitialQuickCaptureForm(searchParams: URLSearchParams): QuickCaptureForm {
+  return {
+    accountName: searchParams.get('account') || '',
+    opportunityName: searchParams.get('opportunity') || '',
+    interactionType: 'Customer meeting',
+    whatHappened: '',
+    nextAction: '',
+    dueDate: '',
+    signalType: 'No major change',
+    activityDate: getQueryDate(searchParams) || todayKey(),
+  };
+}
+
+function buildQuickCaptureActivity(form: QuickCaptureForm): ClassifiedSalesActivity | null {
+  const accountName = form.accountName.trim();
+  const whatHappened = form.whatHappened.trim();
+  const nextAction = form.nextAction.trim();
+  if (!accountName || (!whatHappened && !nextAction)) return null;
+
+  const activityType = quickInteractionToActivityType(form.interactionType);
+  const dueDate = /^\d{4}-\d{2}-\d{2}$/.test(form.dueDate) ? form.dueDate : '';
+  const rawNote = [
+    `${form.interactionType} - ${accountName}${form.opportunityName.trim() ? ` / ${form.opportunityName.trim()}` : ''}`,
+    whatHappened ? `What happened: ${whatHappened}` : '',
+    nextAction ? `Next action: ${nextAction}${dueDate ? ` by ${dueDate}` : ''}` : '',
+    form.signalType !== 'No major change' ? `Signal: ${form.signalType}` : '',
+  ].filter(Boolean).join('\n');
+
+  return {
+    accountName,
+    opportunityName: form.opportunityName.trim(),
+    contactName: '',
+    stakeholderName: '',
+    stakeholderRole: '',
+    competitors: form.signalType === 'Competitor signal' ? ['Competitor signal captured'] : [],
+    buyingSignals: form.signalType === 'Buying signal' ? ['Buying signal captured'] : [],
+    risks: ['Risk signal', 'Objection', 'Competitor signal'].includes(form.signalType) ? [form.signalType] : [],
+    timelineSignals: ['Timeline update', 'Procurement signal'].includes(form.signalType) ? [form.signalType] : [],
+    nextActions: nextAction ? [{
+      title: nextAction,
+      ...(dueDate ? { dueDate } : {}),
+      sourceText: nextAction,
+    }] : [],
+    activityType,
+    summary: whatHappened || nextAction,
+    nextAction,
+    dueDate,
+    tags: normalizeTags(['quick-capture', form.interactionType, form.signalType]),
+    rawNote,
+    activityDate: /^\d{4}-\d{2}-\d{2}$/.test(form.activityDate) ? form.activityDate : todayKey(),
+  };
+}
+
+function quickInteractionToActivityType(interactionType: QuickInteractionType): SalesActivityType {
+  if (interactionType === 'Proposal sent') return 'Quote / proposal';
+  if (interactionType === 'Objection received') return 'Objection handling';
+  if (interactionType === 'Procurement update') return 'Tender / procurement';
+  if (interactionType === 'Technical discussion') return 'Demo / technical discussion';
+  if (interactionType === 'Internal review') return 'Internal coordination';
+  if (interactionType === 'Follow-up') return 'Follow-up';
+  return 'Customer meeting';
+}
+
+function getQueryDate(searchParams: URLSearchParams) {
+  const value = searchParams.get('date') || '';
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '';
+}
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
 }

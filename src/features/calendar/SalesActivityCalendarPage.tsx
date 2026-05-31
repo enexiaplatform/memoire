@@ -173,7 +173,13 @@ export function SalesActivityCalendarPage() {
             hasSampleData={sampleDataActive}
           />
           <Link
-            to="/app/capture"
+            to={`/app/capture?mode=quick&date=${range.start}`}
+            className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 hover:border-emerald-300"
+          >
+            Add Meeting Note
+          </Link>
+          <Link
+            to="/app/capture?mode=quick"
             className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
           >
             Capture activity
@@ -537,7 +543,7 @@ function EmptyCalendarState() {
       <p className="text-sm font-bold text-navy">No sales activities captured for this period.</p>
       <p className="mt-2 text-sm leading-6 text-gray-500">Capture activity to populate your sales calendar.</p>
       <Link
-        to="/app/capture"
+        to="/app/capture?mode=quick"
         className="mt-4 inline-flex rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
       >
         Capture activity

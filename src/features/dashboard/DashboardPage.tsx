@@ -59,6 +59,7 @@ import {
   type SalesPlaybookPattern,
 } from '../../utils/salesPlaybook';
 import { summarizeAssetGaps } from '../../utils/salesAssetSuggestions';
+import { buildCaptureNudges, type CaptureNudge } from '../../utils/captureNudges';
 
 type DashboardData = {
   activities: SalesActivityRecord[];
@@ -241,6 +242,7 @@ export function DashboardPage() {
             <>
               <TodayFocus commandCenter={commandCenter} />
               <ThisWeekSummary commandCenter={commandCenter} />
+              <CaptureNudgePanel nudges={dashboardInsights.captureNudges} />
               <WeeklyExecutionHealth
                 review={dashboardInsights.weeklyExecutionReview}
                 activeOpportunityCount={dashboardInsights.activeOpportunityCount}
@@ -333,6 +335,14 @@ function buildDashboardInsights(data: DashboardData) {
     }),
     outcomeLoop,
     criticalDealActions,
+    captureNudges: buildCaptureNudges({
+      opportunities: data.opportunities,
+      activities: data.activities,
+      objections: data.objections,
+      stakeholders: data.stakeholders,
+      actionOutcomes: data.actionOutcomes,
+      limit: 5,
+    }),
     meddicSummary: analyzeMeddicLitePipeline({
       opportunities: data.opportunities,
       stakeholders: data.stakeholders,
@@ -462,6 +472,47 @@ function WeeklyExecutionHealth({
           </article>
         ))}
       </div>
+    </section>
+  );
+}
+
+function CaptureNudgePanel({ nudges }: { nudges: CaptureNudge[] }) {
+  return (
+    <section className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <NotebookPen className="h-4 w-4 text-emerald-700" />
+            <h2 className="text-lg font-bold text-navy">Capture Nudges</h2>
+          </div>
+          <p className="mt-1 text-sm text-emerald-900/75">
+            Fast prompts for sales updates that would improve deal memory today.
+          </p>
+        </div>
+        <Link to="/app/capture?mode=quick" className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          Quick Capture
+        </Link>
+      </div>
+
+      {nudges.length === 0 ? (
+        <p className="mt-4 rounded-lg bg-white p-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-100">
+          No urgent capture nudges right now. Use Quick Capture after the next customer touch.
+        </p>
+      ) : (
+        <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {nudges.map((nudge) => (
+            <Link key={nudge.id} to={nudge.href} className="rounded-lg bg-white p-4 ring-1 ring-emerald-100 hover:ring-emerald-300">
+              <div className="flex flex-wrap gap-2">
+                <Badge label={nudge.priority} tone={nudge.priority === 'High' ? 'red' : nudge.priority === 'Medium' ? 'amber' : 'green'} />
+                <Badge label={nudge.sourceType} tone="blue" />
+              </div>
+              <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{nudge.accountName} / {nudge.opportunityName || 'No opportunity'}</p>
+              <h3 className="mt-1 text-sm font-bold text-navy">{nudge.title}</h3>
+              <p className="mt-1 text-xs leading-5 text-gray-500">{nudge.reason}</p>
+            </Link>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -824,7 +875,7 @@ function AccountsNeedingTouch({ items }: { items: AccountTouchItem[] }) {
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
                   <Link to={item.href} className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700">Open Account</Link>
-                  <Link to="/app/capture" className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">Capture Activity</Link>
+                  <Link to={`/app/capture?mode=quick&account=${encodeURIComponent(item.accountName)}`} className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">Quick Capture</Link>
                 </div>
               </div>
             </article>
@@ -870,7 +921,7 @@ function RecentActivityFeed({ items }: { items: RecentActivityItem[] }) {
 
 function QuickActions() {
   const actions = [
-    { label: 'Capture Activity', href: '/app/capture', icon: <NotebookPen className="h-4 w-4" /> },
+    { label: 'Quick Capture', href: '/app/capture?mode=quick', icon: <NotebookPen className="h-4 w-4" /> },
     { label: 'Add Opportunity', href: '/app/opportunities', icon: <Target className="h-4 w-4" /> },
     { label: 'Add Account', href: '/app/accounts', icon: <BookOpen className="h-4 w-4" /> },
     { label: 'Generate Review', href: '/app/reviews', icon: <ClipboardList className="h-4 w-4" /> },
@@ -907,9 +958,9 @@ function DashboardEmptyState() {
         Memoire will turn activity notes, opportunities, account memory, and defense briefs into a focused daily command center.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-2">
-        <Link to="/app/capture" className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+        <Link to="/app/capture?mode=quick" className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
           <NotebookPen className="h-4 w-4" />
-          Capture Activity
+          Quick Capture
         </Link>
         <Link to="/app/opportunities" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
           <Plus className="h-4 w-4" />

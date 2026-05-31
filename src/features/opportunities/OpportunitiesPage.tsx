@@ -654,12 +654,20 @@ function OpportunityPanel({
             {mode === 'add' ? 'New deal record' : editingOpportunity?.opportunityName}
           </h2>
           {editingOpportunity?.accountName && (
-            <Link
-              to={`/app/accounts?accountName=${encodeURIComponent(editingOpportunity.accountName)}`}
-              className="mt-3 inline-flex rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-bold text-brand-blue hover:border-brand-blue/40"
-            >
-              View Account Memory
-            </Link>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link
+                to={`/app/accounts?accountName=${encodeURIComponent(editingOpportunity.accountName)}`}
+                className="inline-flex rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-bold text-brand-blue hover:border-brand-blue/40"
+              >
+                View Account Memory
+              </Link>
+              <Link
+                to={`/app/capture?mode=quick&account=${encodeURIComponent(editingOpportunity.accountName)}&opportunity=${encodeURIComponent(editingOpportunity.opportunityName)}`}
+                className="inline-flex rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:border-emerald-300"
+              >
+                Capture Update
+              </Link>
+            </div>
           )}
         </div>
         <button type="button" onClick={onClose} className="rounded-full border border-gray-200 p-2 text-gray-500 hover:bg-gray-50">
