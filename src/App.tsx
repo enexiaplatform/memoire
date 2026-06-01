@@ -10,6 +10,9 @@ const VerifyEmailPage = lazy(() => import('./features/auth/VerifyEmailPage').the
 const PricingPage = lazy(() => import('./features/pricing/PricingPage').then((module) => ({ default: module.PricingPage })));
 const DemoEntryPage = lazy(() => import('./features/demo/DemoEntryPage').then((module) => ({ default: module.DemoEntryPage })));
 const DemoGuidePage = lazy(() => import('./features/demo/DemoGuidePage').then((module) => ({ default: module.DemoGuidePage })));
+const ValidationFeedbackPage = lazy(() =>
+  import('./features/validation/ValidationFeedbackPage').then((module) => ({ default: module.ValidationFeedbackPage })),
+);
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage').then((module) => ({ default: module.DashboardPage })));
 const DailyCapturePage = lazy(() =>
@@ -66,6 +69,7 @@ function App() {
             <Route index element={<Navigate to="/app/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="demo-guide" element={<DemoGuidePage />} />
+            <Route path="validation-feedback" element={<ValidationFeedbackPage />} />
             <Route path="today" element={<Navigate to="/app/dashboard" replace />} />
             <Route path="capture" element={<DailyCapturePage />} />
             <Route path="calendar" element={<SalesActivityCalendarPage />} />

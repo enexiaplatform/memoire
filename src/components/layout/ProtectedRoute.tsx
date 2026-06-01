@@ -66,6 +66,7 @@ function isLocalFirstAppRoute(pathname: string) {
   return [
     '/app/dashboard',
     '/app/demo-guide',
+    '/app/validation-feedback',
     '/app/today',
     '/app/pipeline-defense',
     '/app/capture',

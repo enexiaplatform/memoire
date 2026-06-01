@@ -8,6 +8,15 @@ import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { loadSampleDataset } from '../../utils/sampleData';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
+import {
+  createDemoFeedback,
+  defaultDemoFeedbackInput,
+  generateInterviewScriptText,
+  type DemoFeedbackInput,
+  type DemoFeedbackUnderstanding,
+  type DemoFeedbackUsageFrequency,
+  type DemoFeedbackWillingnessToPay,
+} from '../../utils/demoFeedback';
 
 type DemoStep = {
   title: string;
@@ -59,6 +68,11 @@ export function DemoGuidePage() {
   const { isAuthenticated, loading: authLoading } = useAuthContext();
   const [sampleDataActive, setSampleDataActive] = useState(hasLocalSampleData());
   const [message, setMessage] = useState('');
+  const [feedbackForm, setFeedbackForm] = useState<DemoFeedbackInput>(() => ({
+    ...defaultDemoFeedbackInput,
+    context: 'Demo Guide',
+  }));
+  const [feedbackMessage, setFeedbackMessage] = useState('');
 
   const loadDemo = () => {
     if (!sampleDataActive) {
@@ -69,6 +83,31 @@ export function DemoGuidePage() {
     setMessage(isAuthenticated
       ? 'Demo sandbox loaded locally only. It was not saved to your cloud account.'
       : 'Demo sandbox loaded locally in this browser.');
+  };
+
+  const updateFeedbackForm = (patch: Partial<DemoFeedbackInput>) => {
+    setFeedbackForm((current) => ({ ...current, ...patch }));
+  };
+
+  const submitFeedback = () => {
+    createDemoFeedback({
+      ...feedbackForm,
+      context: 'Demo Guide',
+    });
+    setFeedbackMessage('Feedback saved locally. It will not be sent anywhere unless you copy/export it.');
+    setFeedbackForm({
+      ...defaultDemoFeedbackInput,
+      context: 'Demo Guide',
+    });
+  };
+
+  const copyInterviewScript = async () => {
+    try {
+      await navigator.clipboard.writeText(generateInterviewScriptText());
+      setFeedbackMessage('Interview script copied.');
+    } catch {
+      setFeedbackMessage(generateInterviewScriptText());
+    }
   };
 
   return (
@@ -152,7 +191,136 @@ export function DemoGuidePage() {
           Demo data is local-only. Memoire does not connect to Salesforce, HubSpot, Gmail, or Google Calendar in this flow. AI assist is optional only where a server-side provider is configured.
         </p>
       </section>
+
+      <DemoFeedbackForm
+        form={feedbackForm}
+        message={feedbackMessage}
+        onChange={updateFeedbackForm}
+        onSubmit={submitFeedback}
+        onCopyInterviewScript={copyInterviewScript}
+      />
     </div>
+  );
+}
+
+function DemoFeedbackForm({
+  form,
+  message,
+  onChange,
+  onSubmit,
+  onCopyInterviewScript,
+}: {
+  form: DemoFeedbackInput;
+  message: string;
+  onChange: (patch: Partial<DemoFeedbackInput>) => void;
+  onSubmit: () => void;
+  onCopyInterviewScript: () => void;
+}) {
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Demo Feedback</p>
+          <h2 className="mt-2 text-xl font-bold text-navy">Capture validation notes</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
+            Use this after a real user demo. Feedback is saved locally in this browser and can be copied later from the feedback log.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={onCopyInterviewScript} className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
+            Copy Interview Script
+          </button>
+          <Link to="/app/validation-feedback" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
+            Open Feedback Log
+          </Link>
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <TextField label="User persona" value={form.userPersona} placeholder="Sales manager, account executive, distributor sales..." onChange={(value) => onChange({ userPersona: value })} />
+        <TextField label="What did they think Memoire does?" value={form.freeTextFeedback} placeholder="Their 30-second understanding..." onChange={(value) => onChange({ freeTextFeedback: value })} />
+        <SelectField
+          label="Understood in 30 seconds"
+          value={form.understoodIn30Seconds}
+          options={['Yes', 'Partly', 'No']}
+          onChange={(value) => onChange({ understoodIn30Seconds: value as DemoFeedbackUnderstanding })}
+        />
+        <TextField label="Most valuable workflow" value={form.mostValuableWorkflow} placeholder="Pipeline Defense, Capture, Assets, Playbook..." onChange={(value) => onChange({ mostValuableWorkflow: value })} />
+        <SelectField
+          label="Likely usage"
+          value={form.likelyUsageFrequency}
+          options={['Daily', 'Weekly', 'Before pipeline review', 'Rarely', 'Not sure']}
+          onChange={(value) => onChange({ likelyUsageFrequency: value as DemoFeedbackUsageFrequency })}
+        />
+        <SelectField
+          label="Willingness to pay"
+          value={form.willingnessToPay}
+          options={['Yes', 'Maybe', 'No', 'Not asked']}
+          onChange={(value) => onChange({ willingnessToPay: value as DemoFeedbackWillingnessToPay })}
+        />
+        <TextField label="Top adoption blocker" value={form.topAdoptionBlocker} placeholder="Duplicate entry, privacy, CRM sync, habit..." onChange={(value) => onChange({ topAdoptionBlocker: value })} />
+        <TextField label="What should be built next?" value={form.featureRequest} placeholder="Share links, CRM sync, landing/pricing, capture automation..." onChange={(value) => onChange({ featureRequest: value })} />
+      </div>
+
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <button type="button" onClick={onSubmit} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          Save Feedback Locally
+        </button>
+        {message && <p className="text-sm font-semibold text-emerald-700">{message}</p>}
+      </div>
+    </section>
+  );
+}
+
+function TextField({
+  label,
+  value,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="text-sm font-bold text-navy">{label}</span>
+      <textarea
+        value={value}
+        placeholder={placeholder}
+        rows={3}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-2 w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm leading-6 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+      />
+    </label>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="text-sm font-bold text-navy">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
+    </label>
   );
 }
 

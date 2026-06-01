@@ -78,6 +78,7 @@ import {
   type TrialActivationChecklistItem,
   type TrialActivationChecklistItemId,
 } from '../../utils/trialActivationChecklist';
+import { generateInterviewScriptText } from '../../utils/demoFeedback';
 
 type DashboardData = {
   activities: SalesActivityRecord[];
@@ -110,6 +111,7 @@ export function DashboardPage() {
   const [firstReviewOnboarding, setFirstReviewOnboarding] = useState(() => loadFirstPipelineReviewOnboardingState());
   const [trialChecklistState, setTrialChecklistState] = useState(() => loadTrialActivationChecklistState());
   const [sampleMessage, setSampleMessage] = useState('');
+  const [validationMessage, setValidationMessage] = useState('');
   const [demoSandboxPromptOpen, setDemoSandboxPromptOpen] = useState(false);
 
   useEffect(() => {
@@ -216,6 +218,15 @@ export function DashboardPage() {
     setTrialChecklistState(markTrialActivationChecklistItemComplete(id));
   };
 
+  const handleCopyInterviewScript = async () => {
+    try {
+      await navigator.clipboard.writeText(generateInterviewScriptText());
+      setValidationMessage('Interview script copied.');
+    } catch {
+      setValidationMessage('Clipboard failed. Open Feedback Log to copy the interview script manually.');
+    }
+  };
+
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -284,6 +295,7 @@ export function DashboardPage() {
             />
           )}
           <DemoCommercializationCta onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)} />
+          <ValidationCta message={validationMessage} onCopyInterviewScript={handleCopyInterviewScript} />
           <TrialActivationChecklistCard
             items={trialChecklist}
             onMarkDone={handleMarkTrialChecklistItem}
@@ -1055,6 +1067,35 @@ function QuickActions() {
             <ArrowRight className="h-4 w-4" />
           </Link>
         ))}
+      </div>
+    </section>
+  );
+}
+
+function ValidationCta({ message, onCopyInterviewScript }: { message: string; onCopyInterviewScript: () => void }) {
+  return (
+    <section className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Validation mode</p>
+          <h2 className="mt-2 text-xl font-bold text-navy">Validate Memoire with a real user</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-emerald-950">
+            Use the demo, capture feedback locally, and decide the next roadmap bet from real conversations instead of instinct.
+          </p>
+          {message && <p className="mt-2 text-sm font-semibold text-emerald-700">{message}</p>}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/app/demo-guide" className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+            Open Demo Guide
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link to="/app/validation-feedback" className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-bold text-emerald-800">
+            Open Feedback Log
+          </Link>
+          <button type="button" onClick={onCopyInterviewScript} className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-bold text-emerald-800">
+            Copy Interview Script
+          </button>
+        </div>
       </div>
     </section>
   );

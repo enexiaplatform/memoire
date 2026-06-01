@@ -75,6 +75,7 @@ import { PipelineDefensePrintableBrief } from './PipelineDefensePrintableBrief';
 import { PipelineDefenseReviewDealCard } from './PipelineDefenseReviewDealCard';
 import { markFirstPipelineReviewStepComplete } from '../../utils/firstPipelineReviewOnboarding';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
+import { createDemoFeedback, type PipelineBriefUsefulness } from '../../utils/demoFeedback';
 
 const categoryClasses: Record<ForecastEvidenceCategory, string> = {
   Defensible: 'border-emerald-200 bg-emerald-50 text-emerald-700',
@@ -1272,6 +1273,26 @@ function ShareableBriefPanel({
   onCopyShareMarkdown: () => void;
 }) {
   const summary = shareableBrief.executiveSummary;
+  const [briefUsefulness, setBriefUsefulness] = useState<PipelineBriefUsefulness>('Yes, useful');
+  const [briefFeedbackNote, setBriefFeedbackNote] = useState('');
+  const [briefFeedbackMessage, setBriefFeedbackMessage] = useState('');
+
+  const submitBriefFeedback = () => {
+    createDemoFeedback({
+      context: 'Pipeline Defense',
+      userPersona: 'Pipeline review demo user',
+      understoodIn30Seconds: briefUsefulness === 'Yes, useful' ? 'Yes' : briefUsefulness === 'Partly useful' ? 'Partly' : 'No',
+      mostValuableWorkflow: 'Pipeline Defense Brief',
+      likelyUsageFrequency: 'Before pipeline review',
+      willingnessToPay: 'Not asked',
+      topAdoptionBlocker: briefUsefulness === 'Not useful yet' ? 'Brief is not manager-ready yet' : '',
+      featureRequest: briefFeedbackNote,
+      freeTextFeedback: briefFeedbackNote,
+      briefUsefulness,
+    });
+    setBriefFeedbackMessage('Brief feedback saved locally.');
+    setBriefFeedbackNote('');
+  };
 
   return (
     <section className="mb-6 rounded-xl border border-brand-blue/20 bg-white p-5 shadow-sm">
@@ -1305,6 +1326,43 @@ function ShareableBriefPanel({
       {(managerSummaryCopyStatus === 'failed' || shareMarkdownCopyStatus === 'failed') && (
         <p className="mb-3 text-sm font-semibold text-amber-700">Clipboard failed. The summary and export sections remain visible for manual copy.</p>
       )}
+
+      <section className="mb-4 rounded-lg border border-blue-100 bg-blue-50/70 p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-sm font-bold text-blue-950">Was this brief useful for a real pipeline review?</p>
+            <p className="mt-1 text-xs leading-5 text-blue-800">Save a local validation signal after showing this to a real sales user.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(['Yes, useful', 'Partly useful', 'Not useful yet'] as PipelineBriefUsefulness[]).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setBriefUsefulness(option)}
+                className={`rounded-full px-3 py-1.5 text-xs font-bold ${
+                  briefUsefulness === option
+                    ? 'bg-navy text-white'
+                    : 'border border-blue-100 bg-white text-brand-blue'
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
+          <input
+            value={briefFeedbackNote}
+            onChange={(event) => setBriefFeedbackNote(event.target.value)}
+            placeholder="What would make this manager-ready?"
+            className="rounded-lg border border-blue-100 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+          />
+          <button type="button" onClick={submitBriefFeedback} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+            Save feedback
+          </button>
+        </div>
+        {briefFeedbackMessage && <p className="mt-2 text-sm font-semibold text-emerald-700">{briefFeedbackMessage}</p>}
+      </section>
 
       <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
