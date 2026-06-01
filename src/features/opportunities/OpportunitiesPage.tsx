@@ -79,16 +79,30 @@ import { generateSalesPlaybookPatterns } from '../../utils/salesPlaybook';
 import { getUserDisplayName as getWorkspaceUserDisplayName } from '../../utils/userDisplay';
 import {
   OPPORTUNITY_CSV_TEMPLATE,
+  buildCsvMappingReview,
+  buildFieldMapFromReview,
   buildImportedOpportunityInput,
+  deleteCsvMappingProfile,
+  detectCsvMappingProfile,
+  getCsvHeaders,
   getImportableCsvRows,
+  getOpportunityCsvFieldOptions,
+  loadCsvMappingProfiles,
   loadOpportunityImportBatches,
+  markCsvMappingProfileUsed,
   parseOpportunityCsv,
   preparePipelineRefreshPreview,
   recordOpportunityImportBatch,
+  saveCsvMappingProfile,
   summarizeImportedOpportunityEnrichment,
+  suggestCsvMappingSourceType,
+  type CsvMappingProfile,
+  type CsvMappingReviewRow,
+  type CsvMappingSourceType,
   type OpportunityCsvImportMode,
   type OpportunityCsvImportResult,
   type OpportunityImportBatchRecord,
+  type OpportunityCsvField,
   type OpportunityRefreshField,
   type OpportunityRefreshPreviewItem,
   type PipelineRefreshPreview,
@@ -143,6 +157,13 @@ export function OpportunitiesPage() {
   const [csvImportMessage, setCsvImportMessage] = useState('');
   const [csvImportFileName, setCsvImportFileName] = useState('');
   const [importBatchHistory, setImportBatchHistory] = useState<OpportunityImportBatchRecord[]>(() => loadOpportunityImportBatches());
+  const [csvMappingProfiles, setCsvMappingProfiles] = useState<CsvMappingProfile[]>(() => loadCsvMappingProfiles());
+  const [csvDetectedHeaders, setCsvDetectedHeaders] = useState<string[]>([]);
+  const [csvMappingReview, setCsvMappingReview] = useState<CsvMappingReviewRow[]>([]);
+  const [csvSelectedMappingProfileId, setCsvSelectedMappingProfileId] = useState('');
+  const [csvMappingProfileName, setCsvMappingProfileName] = useState('');
+  const [csvMappingSourceType, setCsvMappingSourceType] = useState<CsvMappingSourceType>('Custom');
+  const [csvMappingMessage, setCsvMappingMessage] = useState('');
   const [csvTemplateCopyStatus, setCsvTemplateCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
@@ -213,6 +234,32 @@ export function OpportunitiesPage() {
     setCsvRefreshSelectedFields({});
     setCsvImportMessage('');
     setCsvTemplateCopyStatus('idle');
+    refreshCsvMappingReview(csvInput, csvMappingProfiles);
+  };
+
+  const refreshCsvMappingReview = (text: string, profiles = csvMappingProfiles) => {
+    const headers = getCsvHeaders(text);
+    setCsvDetectedHeaders(headers);
+
+    if (headers.length === 0) {
+      setCsvMappingReview([]);
+      setCsvSelectedMappingProfileId('');
+      setCsvMappingProfileName('');
+      setCsvMappingSourceType('Custom');
+      setCsvMappingMessage('');
+      return;
+    }
+
+    const match = detectCsvMappingProfile(headers, profiles);
+    const sourceType = match?.profile.sourceType || suggestCsvMappingSourceType(headers);
+    const review = buildCsvMappingReview(headers, match?.profile.fieldMap || {}, match?.profile || null);
+    setCsvMappingReview(review);
+    setCsvSelectedMappingProfileId(match?.profile.id || '');
+    setCsvMappingProfileName(match?.profile.name || `${sourceType} mapping`);
+    setCsvMappingSourceType(sourceType);
+    setCsvMappingMessage(match
+      ? `Recognized this CSV format. Use saved mapping: ${match.profile.name}.`
+      : 'Review the suggested mapping before previewing or refreshing.');
   };
 
   useEffect(() => {
@@ -232,7 +279,11 @@ export function OpportunitiesPage() {
   }, []);
 
   const parseCsvImport = () => {
-    const result = parseOpportunityCsv(csvInput, opportunities);
+    if (csvDetectedHeaders.length === 0) {
+      refreshCsvMappingReview(csvInput, csvMappingProfiles);
+    }
+    const fieldMap = buildFieldMapFromReview(csvMappingReview);
+    const result = parseOpportunityCsv(csvInput, opportunities, fieldMap);
     setCsvImportResult(result);
     if (csvMode === 'refresh') {
       const preview = preparePipelineRefreshPreview(result, opportunities);
@@ -255,7 +306,90 @@ export function OpportunitiesPage() {
     setCsvImportResult(null);
     setCsvRefreshPreview(null);
     setCsvRefreshSelectedFields({});
+    refreshCsvMappingReview(text, csvMappingProfiles);
     setCsvImportMessage(`Loaded ${file.name}. Click Parse CSV to preview.`);
+  };
+
+  const handleCsvInputChange = (value: string) => {
+    setCsvInput(value);
+    setCsvImportResult(null);
+    setCsvRefreshPreview(null);
+    setCsvRefreshSelectedFields({});
+    setCsvImportMessage('');
+    refreshCsvMappingReview(value, csvMappingProfiles);
+  };
+
+  const handleCsvMappingChange = (normalizedHeader: string, mappedField: OpportunityCsvField | '') => {
+    setCsvMappingReview((current) => current.map((row) => (
+      row.normalizedHeader === normalizedHeader
+        ? { ...row, mappedField, confidence: mappedField ? 'Auto-detected' : 'Unmapped' }
+        : row
+    )));
+    setCsvSelectedMappingProfileId('');
+    setCsvMappingMessage('Mapping adjusted. Parse again to refresh the preview.');
+  };
+
+  const handleSelectMappingProfile = (profileId: string) => {
+    const profile = csvMappingProfiles.find((item) => item.id === profileId);
+    setCsvSelectedMappingProfileId(profileId);
+    if (!profile) {
+      const sourceType = suggestCsvMappingSourceType(csvDetectedHeaders);
+      setCsvMappingSourceType(sourceType);
+      setCsvMappingReview(buildCsvMappingReview(csvDetectedHeaders));
+      setCsvMappingProfileName(`${sourceType} mapping`);
+      setCsvMappingMessage('Using auto-detected mapping.');
+      return;
+    }
+
+    setCsvMappingSourceType(profile.sourceType);
+    setCsvMappingProfileName(profile.name);
+    setCsvMappingReview(buildCsvMappingReview(csvDetectedHeaders, profile.fieldMap, profile));
+    setCsvMappingMessage(`Using saved mapping: ${profile.name}.`);
+  };
+
+  const handleSaveMappingProfile = () => {
+    if (csvDetectedHeaders.length === 0) {
+      setCsvMappingMessage('Paste or upload a CSV before saving a mapping profile.');
+      return;
+    }
+
+    const fieldMap = buildFieldMapFromReview(csvMappingReview);
+    if (Object.keys(fieldMap).length === 0) {
+      setCsvMappingMessage('Map at least one CSV column before saving.');
+      return;
+    }
+
+    const profile = saveCsvMappingProfile({
+      name: csvMappingProfileName,
+      sourceType: csvMappingSourceType,
+      detectedHeaders: csvDetectedHeaders,
+      fieldMap,
+    });
+    const nextProfiles = loadCsvMappingProfiles();
+    setCsvMappingProfiles(nextProfiles);
+    setCsvSelectedMappingProfileId(profile.id);
+    setCsvMappingProfileName(profile.name);
+    setCsvMappingMessage(`Saved mapping profile: ${profile.name}.`);
+  };
+
+  const handleDeleteMappingProfile = (profileId: string) => {
+    const nextProfiles = deleteCsvMappingProfile(profileId);
+    setCsvMappingProfiles(nextProfiles);
+    if (csvSelectedMappingProfileId === profileId) {
+      setCsvSelectedMappingProfileId('');
+      refreshCsvMappingReview(csvInput, nextProfiles);
+    }
+  };
+
+  const getActiveMappingProfileForBatch = () => {
+    return csvMappingProfiles.find((profile) => profile.id === csvSelectedMappingProfileId);
+  };
+
+  const markActiveMappingProfileUsed = () => {
+    if (!csvSelectedMappingProfileId) return csvMappingProfiles;
+    const nextProfiles = markCsvMappingProfileUsed(csvSelectedMappingProfileId);
+    setCsvMappingProfiles(nextProfiles);
+    return nextProfiles;
   };
 
   const copyCsvTemplate = async () => {
@@ -280,6 +414,8 @@ export function OpportunitiesPage() {
     }
 
     const importBatchId = `csv-${Date.now()}`;
+    const activeMappingProfile = getActiveMappingProfileForBatch();
+    const fieldMap = buildFieldMapFromReview(csvMappingReview);
     const results = await Promise.all(rows.map((row) => (
       createOpportunity(buildImportedOpportunityInput(row, importBatchId), dataUserId)
     )));
@@ -290,11 +426,15 @@ export function OpportunitiesPage() {
       ...current.filter((item) => !imported.some((importedItem) => importedItem.id === item.id)),
     ]);
     setCsvImportMessage(`Imported ${imported.length} opportunit${imported.length === 1 ? 'y' : 'ies'}. Skipped ${skipped} row(s).`);
-    setCsvImportResult(parseOpportunityCsv(csvInput, [...imported, ...opportunities]));
+    setCsvImportResult(parseOpportunityCsv(csvInput, [...imported, ...opportunities], fieldMap));
+    if (activeMappingProfile) markActiveMappingProfileUsed();
     setImportBatchHistory(recordOpportunityImportBatch({
       id: importBatchId,
       mode: 'import',
       fileName: csvImportFileName || undefined,
+      mappingProfileId: activeMappingProfile?.id,
+      mappingProfileName: activeMappingProfile?.name,
+      sourceType: activeMappingProfile?.sourceType || csvMappingSourceType,
       rowCount: csvImportResult.rows.length,
       newCount: imported.length,
       changedCount: 0,
@@ -324,6 +464,8 @@ export function OpportunitiesPage() {
     }
 
     const importBatchId = `csv-refresh-${Date.now()}`;
+    const activeMappingProfile = getActiveMappingProfileForBatch();
+    const fieldMap = buildFieldMapFromReview(csvMappingReview);
     const newRows = csvRefreshPreview.newItems.map((item) => item.row);
     const changedItems = csvRefreshPreview.changedItems
       .filter((item) => item.existingOpportunity && (csvRefreshSelectedFields[item.id] || []).length > 0);
@@ -355,6 +497,9 @@ export function OpportunitiesPage() {
       id: importBatchId,
       mode: 'refresh',
       fileName: csvImportFileName || undefined,
+      mappingProfileId: activeMappingProfile?.id,
+      mappingProfileName: activeMappingProfile?.name,
+      sourceType: activeMappingProfile?.sourceType || csvMappingSourceType,
       rowCount: csvRefreshPreview.summary.rowCount,
       newCount: createResults.length,
       changedCount: updateResults.length,
@@ -368,7 +513,8 @@ export function OpportunitiesPage() {
       ...updateResults.map((result) => result.opportunity),
       ...opportunities,
     ];
-    const nextResult = parseOpportunityCsv(csvInput, nextOpportunities);
+    if (activeMappingProfile) markActiveMappingProfileUsed();
+    const nextResult = parseOpportunityCsv(csvInput, nextOpportunities, fieldMap);
     const nextPreview = preparePipelineRefreshPreview(nextResult, nextOpportunities);
     setCsvImportResult(nextResult);
     setCsvRefreshPreview(nextPreview);
@@ -605,6 +751,13 @@ export function OpportunitiesPage() {
           message={csvImportMessage}
           templateCopyStatus={csvTemplateCopyStatus}
           importBatchHistory={importBatchHistory}
+          mappingProfiles={csvMappingProfiles}
+          detectedHeaders={csvDetectedHeaders}
+          mappingReview={csvMappingReview}
+          selectedMappingProfileId={csvSelectedMappingProfileId}
+          mappingProfileName={csvMappingProfileName}
+          mappingSourceType={csvMappingSourceType}
+          mappingMessage={csvMappingMessage}
           onModeChange={(mode) => {
             setCsvMode(mode);
             setCsvImportResult(null);
@@ -612,18 +765,18 @@ export function OpportunitiesPage() {
             setCsvRefreshSelectedFields({});
             setCsvImportMessage('');
           }}
-          onInputChange={(value) => {
-            setCsvInput(value);
-            setCsvImportResult(null);
-            setCsvRefreshPreview(null);
-            setCsvRefreshSelectedFields({});
-            setCsvImportMessage('');
-          }}
+          onInputChange={handleCsvInputChange}
           onFileChange={handleCsvUpload}
           onParse={parseCsvImport}
           onImport={importCsvRows}
           onRefresh={applyPipelineRefresh}
           onToggleRefreshField={toggleRefreshField}
+          onMappingChange={handleCsvMappingChange}
+          onSelectMappingProfile={handleSelectMappingProfile}
+          onMappingProfileNameChange={setCsvMappingProfileName}
+          onMappingSourceTypeChange={setCsvMappingSourceType}
+          onSaveMappingProfile={handleSaveMappingProfile}
+          onDeleteMappingProfile={handleDeleteMappingProfile}
           onSkipDuplicatesChange={setCsvSkipDuplicates}
           onCopyTemplate={copyCsvTemplate}
           onClose={() => setCsvImportOpen(false)}
@@ -769,6 +922,13 @@ function OpportunityCsvImportPanel({
   message,
   templateCopyStatus,
   importBatchHistory,
+  mappingProfiles,
+  detectedHeaders,
+  mappingReview,
+  selectedMappingProfileId,
+  mappingProfileName,
+  mappingSourceType,
+  mappingMessage,
   onModeChange,
   onInputChange,
   onFileChange,
@@ -776,6 +936,12 @@ function OpportunityCsvImportPanel({
   onImport,
   onRefresh,
   onToggleRefreshField,
+  onMappingChange,
+  onSelectMappingProfile,
+  onMappingProfileNameChange,
+  onMappingSourceTypeChange,
+  onSaveMappingProfile,
+  onDeleteMappingProfile,
   onSkipDuplicatesChange,
   onCopyTemplate,
   onClose,
@@ -789,6 +955,13 @@ function OpportunityCsvImportPanel({
   message: string;
   templateCopyStatus: 'idle' | 'copied' | 'failed';
   importBatchHistory: OpportunityImportBatchRecord[];
+  mappingProfiles: CsvMappingProfile[];
+  detectedHeaders: string[];
+  mappingReview: CsvMappingReviewRow[];
+  selectedMappingProfileId: string;
+  mappingProfileName: string;
+  mappingSourceType: CsvMappingSourceType;
+  mappingMessage: string;
   onModeChange: (mode: OpportunityCsvImportMode) => void;
   onInputChange: (value: string) => void;
   onFileChange: (file: File | null) => void;
@@ -796,6 +969,12 @@ function OpportunityCsvImportPanel({
   onImport: () => void;
   onRefresh: () => void;
   onToggleRefreshField: (itemId: string, field: OpportunityRefreshField) => void;
+  onMappingChange: (normalizedHeader: string, mappedField: OpportunityCsvField | '') => void;
+  onSelectMappingProfile: (profileId: string) => void;
+  onMappingProfileNameChange: (value: string) => void;
+  onMappingSourceTypeChange: (value: CsvMappingSourceType) => void;
+  onSaveMappingProfile: () => void;
+  onDeleteMappingProfile: (profileId: string) => void;
   onSkipDuplicatesChange: (value: boolean) => void;
   onCopyTemplate: () => void;
   onClose: () => void;
@@ -821,6 +1000,8 @@ function OpportunityCsvImportPanel({
           Close
         </button>
       </div>
+
+      <RefreshAssistantPanel />
 
       <div className="mb-4 grid gap-2 rounded-lg border border-blue-100 bg-blue-50 p-2 sm:grid-cols-2">
         <button
@@ -882,7 +1063,22 @@ function OpportunityCsvImportPanel({
               Export a CSV with account, opportunity, stage, value, close period, and next step. Import it once, then use Refresh existing pipeline before weekly review to compare changes without touching CRM data.
             </p>
           </div>
+          <CsvMappingReviewPanel
+            profiles={mappingProfiles}
+            detectedHeaders={detectedHeaders}
+            rows={mappingReview}
+            selectedProfileId={selectedMappingProfileId}
+            profileName={mappingProfileName}
+            sourceType={mappingSourceType}
+            message={mappingMessage}
+            onSelectProfile={onSelectMappingProfile}
+            onMappingChange={onMappingChange}
+            onProfileNameChange={onMappingProfileNameChange}
+            onSourceTypeChange={onMappingSourceTypeChange}
+            onSaveProfile={onSaveMappingProfile}
+          />
           <ImportRefreshHistory records={importBatchHistory} />
+          <SavedCsvMappingProfiles profiles={mappingProfiles} onDelete={onDeleteMappingProfile} />
         </div>
 
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -996,6 +1192,205 @@ function OpportunityCsvImportPanel({
         </div>
       </div>
     </section>
+  );
+}
+
+function RefreshAssistantPanel() {
+  const steps = [
+    'Paste/upload latest CRM or Excel export',
+    'Confirm mapping',
+    'Preview new, changed, and skipped rows',
+    'Apply safe refresh',
+    'Generate Pipeline Defense Brief',
+  ];
+
+  return (
+    <div className="mb-4 rounded-lg border border-emerald-100 bg-emerald-50/70 p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">Refresh Assistant</p>
+          <h3 className="mt-1 text-sm font-bold text-navy">Weekly pipeline refresh workflow</h3>
+          <p className="mt-1 text-sm leading-6 text-emerald-900/75">
+            Memoire updates your private working copy and never writes back to CRM.
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-5 lg:min-w-[680px]">
+          {steps.map((step, index) => (
+            <div key={step} className="rounded-lg bg-white px-3 py-2 text-xs font-bold leading-5 text-emerald-900 ring-1 ring-emerald-100">
+              <span className="mr-1 text-emerald-600">{index + 1}.</span>
+              {step}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CsvMappingReviewPanel({
+  profiles,
+  detectedHeaders,
+  rows,
+  selectedProfileId,
+  profileName,
+  sourceType,
+  message,
+  onSelectProfile,
+  onMappingChange,
+  onProfileNameChange,
+  onSourceTypeChange,
+  onSaveProfile,
+}: {
+  profiles: CsvMappingProfile[];
+  detectedHeaders: string[];
+  rows: CsvMappingReviewRow[];
+  selectedProfileId: string;
+  profileName: string;
+  sourceType: CsvMappingSourceType;
+  message: string;
+  onSelectProfile: (profileId: string) => void;
+  onMappingChange: (normalizedHeader: string, mappedField: OpportunityCsvField | '') => void;
+  onProfileNameChange: (value: string) => void;
+  onSourceTypeChange: (value: CsvMappingSourceType) => void;
+  onSaveProfile: () => void;
+}) {
+  const fieldOptions = getOpportunityCsvFieldOptions();
+
+  return (
+    <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">CSV Mapping Memory</p>
+          <p className="mt-1 text-sm font-bold text-gray-900">
+            {selectedProfileId ? `Recognized this CSV format` : 'Confirm column mapping'}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-gray-500">
+            {message || 'Paste or upload a CSV to review column mapping before import or refresh.'}
+          </p>
+        </div>
+        <select
+          value={selectedProfileId}
+          onChange={(event) => onSelectProfile(event.target.value)}
+          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+        >
+          <option value="">Auto-detect mapping</option>
+          {profiles.map((profile) => (
+            <option key={profile.id} value={profile.id}>Use saved mapping: {profile.name}</option>
+          ))}
+        </select>
+      </div>
+
+      {detectedHeaders.length === 0 ? (
+        <p className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-500">
+          No CSV headers detected yet.
+        </p>
+      ) : (
+        <>
+          <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-gray-100">
+            <table className="min-w-full divide-y divide-gray-100 text-left text-xs">
+              <thead className="bg-gray-50 text-gray-500">
+                <tr>
+                  <th className="px-3 py-2 font-bold uppercase tracking-wide">CSV column</th>
+                  <th className="px-3 py-2 font-bold uppercase tracking-wide">Memoire field</th>
+                  <th className="px-3 py-2 font-bold uppercase tracking-wide">Confidence</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white">
+                {rows.map((row) => (
+                  <tr key={row.normalizedHeader}>
+                    <td className="px-3 py-2 font-semibold text-gray-800">{row.csvColumn}</td>
+                    <td className="px-3 py-2">
+                      <select
+                        value={row.mappedField}
+                        onChange={(event) => onMappingChange(row.normalizedHeader, event.target.value as OpportunityCsvField | '')}
+                        className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-700 outline-none focus:border-brand-blue"
+                      >
+                        <option value="">Unmapped</option>
+                        {fieldOptions.map((field) => (
+                          <option key={field.value} value={field.value}>{field.label}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-3 py-2">
+                      <Badge label={row.confidence} tone={row.confidence === 'Saved' ? 'green' : row.confidence === 'Auto-detected' ? 'blue' : 'gray'} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-3 grid gap-2 md:grid-cols-[1fr_170px_auto]">
+            <input
+              value={profileName}
+              onChange={(event) => onProfileNameChange(event.target.value)}
+              placeholder="Mapping profile name"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+            />
+            <select
+              value={sourceType}
+              onChange={(event) => onSourceTypeChange(event.target.value as CsvMappingSourceType)}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-brand-blue"
+            >
+              {(['Salesforce', 'HubSpot', 'Excel', 'Other CRM', 'Custom'] as CsvMappingSourceType[]).map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={onSaveProfile}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-brand-blue bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-100"
+            >
+              <Save className="h-4 w-4" />
+              Save Mapping
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function SavedCsvMappingProfiles({
+  profiles,
+  onDelete,
+}: {
+  profiles: CsvMappingProfile[];
+  onDelete: (profileId: string) => void;
+}) {
+  if (profiles.length === 0) {
+    return (
+      <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3">
+        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Saved CSV Mapping Profiles</p>
+        <p className="mt-1 text-sm text-gray-500">No saved mappings yet. Save one after confirming your CSV columns.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Saved CSV Mapping Profiles</p>
+      <div className="mt-2 space-y-2">
+        {profiles.slice(0, 5).map((profile) => (
+          <div key={profile.id} className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-gray-900">{profile.name}</p>
+              <p className="mt-0.5 text-xs font-semibold text-gray-500">
+                {profile.sourceType} - last used {formatBatchDate(profile.lastUsedAt)} - {profile.usageCount} use{profile.usageCount === 1 ? '' : 's'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onDelete(profile.id)}
+              className="rounded-full border border-gray-200 bg-white p-2 text-gray-500 hover:border-red-200 hover:text-red-600"
+              aria-label={`Delete ${profile.name}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -1153,6 +1548,11 @@ function ImportRefreshHistory({ records }: { records: OpportunityImportBatchReco
           <div key={record.id} className="rounded-lg bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-600">
             <span className="font-bold text-gray-900">{record.mode === 'refresh' ? 'Refresh' : 'Import'}</span>
             {' '}on {formatBatchDate(record.createdAt)} - {record.rowCount} rows, {record.newCount} new, {record.changedCount} changed, {record.skippedCount} skipped, {record.invalidCount} invalid.
+            {record.mappingProfileName && (
+              <span className="mt-1 block text-gray-500">
+                Mapping: {record.mappingProfileName}{record.sourceType ? ` (${record.sourceType})` : ''}
+              </span>
+            )}
           </div>
         ))}
       </div>

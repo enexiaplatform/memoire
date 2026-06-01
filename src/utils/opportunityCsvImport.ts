@@ -31,6 +31,50 @@ export type OpportunityCsvImportResult = {
 
 export type OpportunityCsvImportMode = 'import' | 'refresh';
 
+export type OpportunityCsvField =
+  | 'accountName'
+  | 'opportunityName'
+  | 'stage'
+  | 'estimatedValue'
+  | 'currency'
+  | 'expectedClosePeriod'
+  | 'productOrSolution'
+  | 'nextAction'
+  | 'evidence'
+  | 'missingContext'
+  | 'forecastEvidenceCategory'
+  | 'status';
+
+export type CsvMappingSourceType = 'Salesforce' | 'HubSpot' | 'Excel' | 'Other CRM' | 'Custom';
+
+export type CsvMappingConfidence = 'Saved' | 'Auto-detected' | 'Unmapped';
+
+export type CsvMappingProfile = {
+  id: string;
+  name: string;
+  sourceType: CsvMappingSourceType;
+  detectedHeaders: string[];
+  fieldMap: Record<string, string>;
+  createdAt: string;
+  updatedAt: string;
+  lastUsedAt: string;
+  usageCount: number;
+};
+
+export type CsvMappingReviewRow = {
+  csvColumn: string;
+  normalizedHeader: string;
+  mappedField: OpportunityCsvField | '';
+  confidence: CsvMappingConfidence;
+};
+
+export type CsvMappingProfileMatch = {
+  profile: CsvMappingProfile;
+  score: number;
+  matchedHeaders: number;
+  totalHeaders: number;
+};
+
 export type OpportunityRefreshStatus =
   | 'new'
   | 'existing-unchanged'
@@ -94,6 +138,9 @@ export type OpportunityImportBatchRecord = {
   mode: OpportunityCsvImportMode;
   createdAt: string;
   fileName?: string;
+  mappingProfileId?: string;
+  mappingProfileName?: string;
+  sourceType?: CsvMappingSourceType;
   rowCount: number;
   newCount: number;
   changedCount: number;
@@ -102,13 +149,33 @@ export type OpportunityImportBatchRecord = {
 };
 
 export const OPPORTUNITY_IMPORT_BATCH_STORAGE_KEY = 'memoire.importBatches.v1';
+export const CSV_MAPPING_PROFILE_STORAGE_KEY = 'memoire.csvMappingProfiles.v1';
 
 export const OPPORTUNITY_CSV_TEMPLATE = [
   'Account Name,Opportunity Name,Stage,Value,Currency,Expected Close Period,Product / Solution,Next Action,Evidence,Missing Context',
   'VHP,SolidFog EU-GMP Phase 2,Technical discussion,120000,VND,Next quarter,SolidFog,Send revised quote by Friday,Budget approved and technical team engaged,Confirm procurement path and economic buyer',
 ].join('\n');
 
-export function parseOpportunityCsv(text: string, existingOpportunities: CrmLiteOpportunity[] = []): OpportunityCsvImportResult {
+export const opportunityCsvFields: { value: OpportunityCsvField; label: string }[] = [
+  { value: 'accountName', label: 'Account name' },
+  { value: 'opportunityName', label: 'Opportunity name' },
+  { value: 'stage', label: 'Stage' },
+  { value: 'estimatedValue', label: 'Value' },
+  { value: 'currency', label: 'Currency' },
+  { value: 'expectedClosePeriod', label: 'Expected close period' },
+  { value: 'productOrSolution', label: 'Product / solution' },
+  { value: 'nextAction', label: 'Next action' },
+  { value: 'evidence', label: 'Evidence' },
+  { value: 'missingContext', label: 'Missing context' },
+  { value: 'forecastEvidenceCategory', label: 'Forecast category' },
+  { value: 'status', label: 'Status' },
+];
+
+export function parseOpportunityCsv(
+  text: string,
+  existingOpportunities: CrmLiteOpportunity[] = [],
+  fieldMap: Record<string, string> = {}
+): OpportunityCsvImportResult {
   const trimmed = text.trim();
   if (!trimmed) {
     return { rows: [], errors: ['Paste or upload a CSV before parsing.'], detectedHeaders: [] };
@@ -131,7 +198,7 @@ export function parseOpportunityCsv(text: string, existingOpportunities: CrmLite
         if (header) acc[header] = cells[cellIndex]?.trim() || '';
         return acc;
       }, {});
-      const input = mapRawRowToOpportunityInput(raw);
+      const input = mapRawRowToOpportunityInput(raw, fieldMap);
       const warnings = buildWarnings(input, raw);
       const key = normalizeDuplicateKey(input.accountName, input.opportunityName);
       const duplicateInExisting = existingKeys.has(key);
@@ -158,6 +225,153 @@ export function parseOpportunityCsv(text: string, existingOpportunities: CrmLite
     errors: rows.length === 0 ? ['No opportunity rows found after the header.'] : [],
     detectedHeaders,
   };
+}
+
+export function getCsvHeaders(text: string) {
+  const parsedRows = parseCsvRows(text.trim());
+  return (parsedRows[0] || []).map((header) => header.trim()).filter(Boolean);
+}
+
+export function buildCsvMappingReview(
+  detectedHeaders: string[],
+  fieldMap: Record<string, string> = {},
+  matchedProfile?: CsvMappingProfile | null
+): CsvMappingReviewRow[] {
+  return detectedHeaders.map((header) => {
+    const normalizedHeader = normalizeHeader(header);
+    const savedField = normalizeCsvField(fieldMap[normalizedHeader] || fieldMap[header]);
+    const autoField = autoDetectCsvField(normalizedHeader);
+    const mappedField = savedField || autoField || '';
+    const confidence: CsvMappingConfidence = savedField && matchedProfile ? 'Saved' : mappedField ? 'Auto-detected' : 'Unmapped';
+
+    return {
+      csvColumn: header,
+      normalizedHeader,
+      mappedField,
+      confidence,
+    };
+  });
+}
+
+export function buildFieldMapFromReview(rows: CsvMappingReviewRow[]) {
+  return rows.reduce<Record<string, string>>((acc, row) => {
+    if (row.mappedField) {
+      acc[row.normalizedHeader] = row.mappedField;
+    }
+    return acc;
+  }, {});
+}
+
+export function getOpportunityCsvFieldOptions() {
+  return opportunityCsvFields;
+}
+
+export function detectCsvMappingProfile(
+  detectedHeaders: string[],
+  profiles: CsvMappingProfile[]
+): CsvMappingProfileMatch | null {
+  const normalizedHeaders = new Set(detectedHeaders.map(normalizeHeader).filter(Boolean));
+  if (normalizedHeaders.size === 0) return null;
+
+  const matches = profiles.map((profile) => {
+    const profileHeaders = new Set(profile.detectedHeaders.map(normalizeHeader).filter(Boolean));
+    const matchedHeaders = Array.from(normalizedHeaders).filter((header) => profileHeaders.has(header)).length;
+    const totalHeaders = Math.max(normalizedHeaders.size, profileHeaders.size, 1);
+    return {
+      profile,
+      matchedHeaders,
+      totalHeaders,
+      score: matchedHeaders / totalHeaders,
+    };
+  }).sort((a, b) => b.score - a.score || b.profile.lastUsedAt.localeCompare(a.profile.lastUsedAt));
+
+  const best = matches[0];
+  return best && best.score >= 0.72 ? best : null;
+}
+
+export function loadCsvMappingProfiles(): CsvMappingProfile[] {
+  if (typeof localStorage === 'undefined') return [];
+  const raw = localStorage.getItem(CSV_MAPPING_PROFILE_STORAGE_KEY);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<CsvMappingProfile>[];
+    return parsed
+      .filter((profile) => profile.id && profile.name)
+      .map<CsvMappingProfile>((profile) => ({
+        id: profile.id || createLocalId('mapping'),
+        name: profile.name || 'CSV mapping',
+        sourceType: normalizeSourceType(profile.sourceType),
+        detectedHeaders: Array.isArray(profile.detectedHeaders) ? profile.detectedHeaders.filter(Boolean) : [],
+        fieldMap: normalizeFieldMap(profile.fieldMap || {}),
+        createdAt: profile.createdAt || new Date().toISOString(),
+        updatedAt: profile.updatedAt || profile.createdAt || new Date().toISOString(),
+        lastUsedAt: profile.lastUsedAt || profile.updatedAt || profile.createdAt || new Date().toISOString(),
+        usageCount: Number(profile.usageCount) || 0,
+      }))
+      .sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt));
+  } catch {
+    return [];
+  }
+}
+
+export function saveCsvMappingProfile(input: {
+  name: string;
+  sourceType: CsvMappingSourceType;
+  detectedHeaders: string[];
+  fieldMap: Record<string, string>;
+}) {
+  const timestamp = new Date().toISOString();
+  const profile: CsvMappingProfile = {
+    id: createLocalId('mapping'),
+    name: input.name.trim() || 'CSV mapping',
+    sourceType: input.sourceType,
+    detectedHeaders: input.detectedHeaders,
+    fieldMap: normalizeFieldMap(input.fieldMap),
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    lastUsedAt: timestamp,
+    usageCount: 1,
+  };
+  const next = [profile, ...loadCsvMappingProfiles()].slice(0, 20);
+  persistCsvMappingProfiles(next);
+  return profile;
+}
+
+export function deleteCsvMappingProfile(profileId: string) {
+  const next = loadCsvMappingProfiles().filter((profile) => profile.id !== profileId);
+  persistCsvMappingProfiles(next);
+  return next;
+}
+
+export function markCsvMappingProfileUsed(profileId: string) {
+  const timestamp = new Date().toISOString();
+  const next = loadCsvMappingProfiles().map((profile) => (
+    profile.id === profileId
+      ? {
+          ...profile,
+          lastUsedAt: timestamp,
+          updatedAt: timestamp,
+          usageCount: profile.usageCount + 1,
+        }
+      : profile
+  ));
+  persistCsvMappingProfiles(next);
+  return next;
+}
+
+export function suggestCsvMappingSourceType(detectedHeaders: string[]): CsvMappingSourceType {
+  const headers = new Set(detectedHeaders.map(normalizeHeader));
+  if (headers.has('opportunityname') && (headers.has('stage') || headers.has('stagename')) && (headers.has('amount') || headers.has('closedate'))) {
+    return 'Salesforce';
+  }
+  if ((headers.has('dealname') || headers.has('deal')) && (headers.has('dealstage') || headers.has('pipeline')) && headers.has('amount')) {
+    return 'HubSpot';
+  }
+  if (headers.has('accountname') || headers.has('opportunityname') || headers.has('expectedcloseperiod')) {
+    return 'Excel';
+  }
+  return 'Custom';
 }
 
 export function getImportableCsvRows(rows: OpportunityCsvPreviewRow[], options: { skipDuplicates: boolean }) {
@@ -284,6 +498,9 @@ export function loadOpportunityImportBatches(): OpportunityImportBatchRecord[] {
         mode: item.mode === 'refresh' ? 'refresh' : 'import',
         createdAt: item.createdAt || new Date().toISOString(),
         fileName: item.fileName,
+        mappingProfileId: item.mappingProfileId,
+        mappingProfileName: item.mappingProfileName,
+        sourceType: normalizeSourceType(item.sourceType),
         rowCount: Number(item.rowCount) || 0,
         newCount: Number(item.newCount) || 0,
         changedCount: Number(item.changedCount) || 0,
@@ -332,17 +549,18 @@ export function isCsvImportedOpportunity(opportunity: CrmLiteOpportunity) {
   return /CSV import: read-only pipeline copy/i.test(opportunity.evidence);
 }
 
-function mapRawRowToOpportunityInput(raw: Record<string, string>): OpportunityFormInput {
-  const accountName = firstValue(raw, ['account', 'accountname', 'company']);
-  const opportunityName = firstValue(raw, ['opportunity', 'opportunityname', 'dealname']);
-  const stageRaw = firstValue(raw, ['stage']);
-  const closePeriod = firstValue(raw, ['closedate', 'expectedcloseperiod']);
-  const product = firstValue(raw, ['product', 'productsolution', 'solution']);
-  const nextAction = firstValue(raw, ['nextstep', 'nextaction']);
-  const forecastRaw = firstValue(raw, ['forecastcategory']);
-  const notes = firstValue(raw, ['notes', 'risk']);
-  const evidence = firstValue(raw, ['evidence']);
-  const missingContext = firstValue(raw, ['missingcontext']);
+function mapRawRowToOpportunityInput(raw: Record<string, string>, fieldMap: Record<string, string> = {}): OpportunityFormInput {
+  const accountName = valueForField(raw, fieldMap, 'accountName');
+  const opportunityName = valueForField(raw, fieldMap, 'opportunityName');
+  const stageRaw = valueForField(raw, fieldMap, 'stage');
+  const closePeriod = valueForField(raw, fieldMap, 'expectedClosePeriod');
+  const product = valueForField(raw, fieldMap, 'productOrSolution');
+  const nextAction = valueForField(raw, fieldMap, 'nextAction');
+  const forecastRaw = valueForField(raw, fieldMap, 'forecastEvidenceCategory');
+  const statusRaw = valueForField(raw, fieldMap, 'status');
+  const notes = firstValue(raw, ['notes', 'risk', 'risks']);
+  const evidence = valueForField(raw, fieldMap, 'evidence');
+  const missingContext = valueForField(raw, fieldMap, 'missingContext');
 
   return {
     ...emptyOpportunityInput,
@@ -358,7 +576,7 @@ function mapRawRowToOpportunityInput(raw: Record<string, string>): OpportunityFo
     missingContext,
     forecastEvidenceCategory: normalizeForecastCategory(forecastRaw),
     decisionRecommendation: inferDecisionRecommendation(forecastRaw, missingContext, notes),
-    status: inferStatus(stageRaw),
+    status: normalizeStatus(statusRaw || inferStatus(stageRaw)),
   };
 }
 
@@ -431,6 +649,69 @@ function firstValue(raw: Record<string, string>, keys: string[]) {
   return keys.map((key) => raw[key]?.trim()).find(Boolean) || '';
 }
 
+const csvFieldAliases: Record<OpportunityCsvField, string[]> = {
+  accountName: ['account', 'accountname', 'company', 'companyname', 'customer', 'customername', 'organization'],
+  opportunityName: ['opportunity', 'opportunityname', 'deal', 'dealname', 'name', 'projectname'],
+  stage: ['stage', 'stagename', 'dealstage', 'opportunitystage', 'pipeline'],
+  estimatedValue: ['value', 'amount', 'estimatedvalue', 'dealvalue', 'opportunityamount', 'expectedrevenue'],
+  currency: ['currency', 'currencycode'],
+  expectedClosePeriod: ['closedate', 'expectedcloseperiod', 'expectedclosedate', 'closeperiod', 'targetclose', 'closingdate'],
+  productOrSolution: ['product', 'productsolution', 'solution', 'productorsolution', 'offering'],
+  nextAction: ['nextstep', 'nextaction', 'nextsteps', 'followup', 'followupaction'],
+  evidence: ['evidence', 'proof', 'qualificationnotes', 'salesnotes'],
+  missingContext: ['missingcontext', 'gap', 'gaps', 'risk', 'risks', 'missinginfo'],
+  forecastEvidenceCategory: ['forecastcategory', 'forecast', 'forecaststage', 'category'],
+  status: ['status', 'dealstatus', 'opportunitystatus'],
+};
+
+function valueForField(raw: Record<string, string>, fieldMap: Record<string, string>, field: OpportunityCsvField) {
+  const normalizedMap = normalizeFieldMap(fieldMap);
+  const mappedValue = Object.entries(normalizedMap)
+    .filter(([, mappedField]) => mappedField === field)
+    .map(([header]) => raw[header]?.trim())
+    .find(Boolean);
+  if (mappedValue) return mappedValue;
+  return firstValue(raw, csvFieldAliases[field]);
+}
+
+function normalizeCsvField(value: unknown): OpportunityCsvField | '' {
+  if (typeof value !== 'string') return '';
+  const match = opportunityCsvFields.find((field) => field.value === value);
+  return match?.value || '';
+}
+
+function autoDetectCsvField(normalizedHeader: string): OpportunityCsvField | '' {
+  const match = opportunityCsvFields.find((field) => csvFieldAliases[field.value].includes(normalizedHeader));
+  return match?.value || '';
+}
+
+function normalizeFieldMap(fieldMap: Record<string, string>) {
+  return Object.entries(fieldMap).reduce<Record<string, string>>((acc, [header, field]) => {
+    const normalizedHeader = normalizeHeader(header);
+    const normalizedField = normalizeCsvField(field);
+    if (normalizedHeader && normalizedField) {
+      acc[normalizedHeader] = normalizedField;
+    }
+    return acc;
+  }, {});
+}
+
+function normalizeSourceType(value: unknown): CsvMappingSourceType {
+  if (value === 'Salesforce' || value === 'HubSpot' || value === 'Excel' || value === 'Other CRM' || value === 'Custom') {
+    return value;
+  }
+  return 'Custom';
+}
+
+function persistCsvMappingProfiles(profiles: CsvMappingProfile[]) {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.setItem(CSV_MAPPING_PROFILE_STORAGE_KEY, JSON.stringify(profiles));
+}
+
+function createLocalId(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 function normalizeStage(value: string): OpportunityStage {
   const normalized = value.trim().toLowerCase();
   const match = opportunityStages.find((stage) => stage.toLowerCase() === normalized);
@@ -475,6 +756,13 @@ function inferStatus(stageRaw: string): OpportunityStatus {
   if (/lost/.test(normalized)) return 'Lost';
   if (/hold/.test(normalized)) return 'On hold';
   return 'Active';
+}
+
+function normalizeStatus(statusRaw: string): OpportunityStatus {
+  const normalized = statusRaw.trim().toLowerCase();
+  const match = opportunityStatuses.find((status) => status.toLowerCase() === normalized);
+  if (match) return match;
+  return inferStatus(statusRaw);
 }
 
 function normalizeValue(value: string) {
