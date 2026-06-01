@@ -29,6 +29,80 @@ export type OpportunityCsvImportResult = {
   detectedHeaders: string[];
 };
 
+export type OpportunityCsvImportMode = 'import' | 'refresh';
+
+export type OpportunityRefreshStatus =
+  | 'new'
+  | 'existing-unchanged'
+  | 'existing-changed'
+  | 'possible-duplicate'
+  | 'invalid';
+
+export type OpportunityRefreshField = keyof Pick<
+  OpportunityFormInput,
+  | 'stage'
+  | 'estimatedValue'
+  | 'currency'
+  | 'expectedClosePeriod'
+  | 'productOrSolution'
+  | 'nextAction'
+  | 'evidence'
+  | 'missingContext'
+  | 'forecastEvidenceCategory'
+  | 'status'
+>;
+
+export type OpportunityFieldChange = {
+  field: OpportunityRefreshField;
+  label: string;
+  currentValue: string;
+  importedValue: string;
+  defaultSelected: boolean;
+  isProtected: boolean;
+};
+
+export type OpportunityRefreshPreviewItem = {
+  id: string;
+  row: OpportunityCsvPreviewRow;
+  status: OpportunityRefreshStatus;
+  existingOpportunity?: CrmLiteOpportunity;
+  possibleDuplicate?: CrmLiteOpportunity;
+  duplicateReason?: string;
+  changes: OpportunityFieldChange[];
+  warnings: string[];
+};
+
+export type PipelineRefreshPreview = {
+  items: OpportunityRefreshPreviewItem[];
+  newItems: OpportunityRefreshPreviewItem[];
+  changedItems: OpportunityRefreshPreviewItem[];
+  unchangedItems: OpportunityRefreshPreviewItem[];
+  duplicateItems: OpportunityRefreshPreviewItem[];
+  invalidItems: OpportunityRefreshPreviewItem[];
+  summary: {
+    rowCount: number;
+    newCount: number;
+    changedCount: number;
+    unchangedCount: number;
+    possibleDuplicateCount: number;
+    invalidCount: number;
+  };
+};
+
+export type OpportunityImportBatchRecord = {
+  id: string;
+  mode: OpportunityCsvImportMode;
+  createdAt: string;
+  fileName?: string;
+  rowCount: number;
+  newCount: number;
+  changedCount: number;
+  skippedCount: number;
+  invalidCount: number;
+};
+
+export const OPPORTUNITY_IMPORT_BATCH_STORAGE_KEY = 'memoire.importBatches.v1';
+
 export const OPPORTUNITY_CSV_TEMPLATE = [
   'Account Name,Opportunity Name,Stage,Value,Currency,Expected Close Period,Product / Solution,Next Action,Evidence,Missing Context',
   'VHP,SolidFog EU-GMP Phase 2,Technical discussion,120000,VND,Next quarter,SolidFog,Send revised quote by Friday,Budget approved and technical team engaged,Confirm procurement path and economic buyer',
@@ -96,6 +170,141 @@ export function buildImportedOpportunityInput(row: OpportunityCsvPreviewRow, imp
     ...row.input,
     evidence: appendNote(row.input.evidence, importNote),
   };
+}
+
+export function preparePipelineRefreshPreview(
+  result: OpportunityCsvImportResult,
+  existingOpportunities: CrmLiteOpportunity[]
+): PipelineRefreshPreview {
+  const items = compareImportedOpportunities(result.rows, existingOpportunities);
+
+  return {
+    items,
+    newItems: items.filter((item) => item.status === 'new'),
+    changedItems: items.filter((item) => item.status === 'existing-changed'),
+    unchangedItems: items.filter((item) => item.status === 'existing-unchanged'),
+    duplicateItems: items.filter((item) => item.status === 'possible-duplicate'),
+    invalidItems: items.filter((item) => item.status === 'invalid'),
+    summary: {
+      rowCount: items.length,
+      newCount: items.filter((item) => item.status === 'new').length,
+      changedCount: items.filter((item) => item.status === 'existing-changed').length,
+      unchangedCount: items.filter((item) => item.status === 'existing-unchanged').length,
+      possibleDuplicateCount: items.filter((item) => item.status === 'possible-duplicate').length,
+      invalidCount: items.filter((item) => item.status === 'invalid').length,
+    },
+  };
+}
+
+export function compareImportedOpportunities(
+  rows: OpportunityCsvPreviewRow[],
+  existingOpportunities: CrmLiteOpportunity[]
+): OpportunityRefreshPreviewItem[] {
+  const existingByKey = new Map(existingOpportunities.map((opportunity) => [makeOpportunityKey(opportunity), opportunity]));
+  const seenImportKeys = new Set<string>();
+
+  return rows.map((row) => {
+    const key = normalizeDuplicateKey(row.input.accountName, row.input.opportunityName);
+    const duplicateInImport = Boolean(key && seenImportKeys.has(key));
+    if (key) seenImportKeys.add(key);
+
+    if (!row.isValid) {
+      return buildRefreshItem(row, 'invalid', undefined, [], row.warnings);
+    }
+
+    const exactMatch = key ? existingByKey.get(key) : undefined;
+    if (exactMatch && duplicateInImport) {
+      return buildRefreshItem(row, 'possible-duplicate', exactMatch, [], [
+        ...row.warnings,
+        'Duplicate row appears more than once in this CSV.',
+      ]);
+    }
+
+    if (exactMatch) {
+      const changes = detectOpportunityChanges(exactMatch, row.input);
+      return buildRefreshItem(
+        row,
+        changes.length ? 'existing-changed' : 'existing-unchanged',
+        exactMatch,
+        changes,
+        row.warnings
+      );
+    }
+
+    const possibleDuplicate = findPossibleDuplicate(row, existingOpportunities);
+    if (possibleDuplicate) {
+      return {
+        ...buildRefreshItem(row, 'possible-duplicate', undefined, [], [
+          ...row.warnings,
+          'Possible duplicate. Review before importing.',
+        ]),
+        possibleDuplicate,
+        duplicateReason: buildPossibleDuplicateReason(row, possibleDuplicate),
+      };
+    }
+
+    return buildRefreshItem(row, 'new', undefined, [], row.warnings);
+  });
+}
+
+export function detectOpportunityChanges(
+  existing: CrmLiteOpportunity,
+  incoming: OpportunityFormInput
+): OpportunityFieldChange[] {
+  return refreshFields
+    .map((fieldConfig) => {
+      const currentValue = fieldToComparableValue(existing[fieldConfig.field]);
+      const importedValue = fieldToComparableValue(incoming[fieldConfig.field]);
+      if (currentValue === importedValue) return null;
+
+      const existingBlank = currentValue.length === 0;
+      return {
+        field: fieldConfig.field,
+        label: fieldConfig.label,
+        currentValue: currentValue || 'Blank',
+        importedValue: importedValue || 'Blank',
+        defaultSelected: fieldConfig.safeBaseField || (existingBlank && !fieldConfig.safeBaseField),
+        isProtected: !fieldConfig.safeBaseField,
+      } satisfies OpportunityFieldChange;
+    })
+    .filter((change): change is OpportunityFieldChange => Boolean(change));
+}
+
+export function loadOpportunityImportBatches(): OpportunityImportBatchRecord[] {
+  if (typeof localStorage === 'undefined') return [];
+  const raw = localStorage.getItem(OPPORTUNITY_IMPORT_BATCH_STORAGE_KEY);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<OpportunityImportBatchRecord>[];
+    return parsed
+      .filter((item) => item.id && item.createdAt)
+      .map<OpportunityImportBatchRecord>((item) => ({
+        id: item.id || `batch-${Date.now()}`,
+        mode: item.mode === 'refresh' ? 'refresh' : 'import',
+        createdAt: item.createdAt || new Date().toISOString(),
+        fileName: item.fileName,
+        rowCount: Number(item.rowCount) || 0,
+        newCount: Number(item.newCount) || 0,
+        changedCount: Number(item.changedCount) || 0,
+        skippedCount: Number(item.skippedCount) || 0,
+        invalidCount: Number(item.invalidCount) || 0,
+      }))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  } catch {
+    return [];
+  }
+}
+
+export function recordOpportunityImportBatch(record: Omit<OpportunityImportBatchRecord, 'createdAt'> & { createdAt?: string }) {
+  if (typeof localStorage === 'undefined') return [];
+  const nextRecord: OpportunityImportBatchRecord = {
+    ...record,
+    createdAt: record.createdAt || new Date().toISOString(),
+  };
+  const next = [nextRecord, ...loadOpportunityImportBatches().filter((item) => item.id !== nextRecord.id)].slice(0, 12);
+  localStorage.setItem(OPPORTUNITY_IMPORT_BATCH_STORAGE_KEY, JSON.stringify(next));
+  return next;
 }
 
 export function summarizeImportedOpportunityEnrichment(opportunities: CrmLiteOpportunity[]) {
@@ -287,6 +496,71 @@ function appendNote(value: string, note: string) {
   return `${left}\n${right}`;
 }
 
+const refreshFields: { field: OpportunityRefreshField; label: string; safeBaseField: boolean }[] = [
+  { field: 'stage', label: 'Stage', safeBaseField: true },
+  { field: 'estimatedValue', label: 'Value', safeBaseField: true },
+  { field: 'currency', label: 'Currency', safeBaseField: true },
+  { field: 'expectedClosePeriod', label: 'Expected close period', safeBaseField: true },
+  { field: 'productOrSolution', label: 'Product / solution', safeBaseField: true },
+  { field: 'nextAction', label: 'Next action', safeBaseField: true },
+  { field: 'evidence', label: 'Evidence', safeBaseField: false },
+  { field: 'missingContext', label: 'Missing context', safeBaseField: false },
+  { field: 'forecastEvidenceCategory', label: 'Forecast category', safeBaseField: false },
+  { field: 'status', label: 'Status', safeBaseField: false },
+];
+
+function buildRefreshItem(
+  row: OpportunityCsvPreviewRow,
+  status: OpportunityRefreshStatus,
+  existingOpportunity: CrmLiteOpportunity | undefined,
+  changes: OpportunityFieldChange[],
+  warnings: string[]
+): OpportunityRefreshPreviewItem {
+  return {
+    id: `${row.id}-${status}`,
+    row,
+    status,
+    existingOpportunity,
+    changes,
+    warnings,
+  };
+}
+
+function findPossibleDuplicate(row: OpportunityCsvPreviewRow, existingOpportunities: CrmLiteOpportunity[]) {
+  const incomingAccount = normalizeText(row.input.accountName);
+  const incomingOpportunity = normalizeText(row.input.opportunityName);
+  const incomingTokens = meaningfulTokens(`${row.input.opportunityName} ${row.input.productOrSolution}`);
+
+  return existingOpportunities.find((opportunity) => {
+    const account = normalizeText(opportunity.accountName);
+    const opportunityName = normalizeText(opportunity.opportunityName);
+    const accountClose = Boolean(incomingAccount && account && (incomingAccount.includes(account) || account.includes(incomingAccount)));
+    const opportunityClose = Boolean(incomingOpportunity && opportunityName && (incomingOpportunity.includes(opportunityName) || opportunityName.includes(incomingOpportunity)));
+    const overlap = tokenOverlap(incomingTokens, meaningfulTokens(`${opportunity.opportunityName} ${opportunity.productOrSolution}`));
+    const sameValue = row.input.estimatedValue !== null && row.input.estimatedValue === opportunity.estimatedValue;
+    const sameClose = Boolean(row.input.expectedClosePeriod && row.input.expectedClosePeriod === opportunity.expectedClosePeriod);
+
+    return (accountClose && (opportunityClose || overlap >= 2)) || (overlap >= 3 && (sameValue || sameClose));
+  });
+}
+
+function buildPossibleDuplicateReason(row: OpportunityCsvPreviewRow, opportunity: CrmLiteOpportunity) {
+  const overlap = tokenOverlap(
+    meaningfulTokens(`${row.input.opportunityName} ${row.input.productOrSolution}`),
+    meaningfulTokens(`${opportunity.opportunityName} ${opportunity.productOrSolution}`)
+  );
+  if (normalizeText(row.input.accountName) === normalizeText(opportunity.accountName)) {
+    return `Same account and ${overlap} meaningful opportunity/product token(s) overlap.`;
+  }
+  return `${overlap} meaningful opportunity/product token(s) overlap.`;
+}
+
+function fieldToComparableValue(value: unknown) {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : '';
+  return String(value).trim();
+}
+
 function makeOpportunityKey(opportunity: CrmLiteOpportunity) {
   return normalizeDuplicateKey(opportunity.accountName, opportunity.opportunityName);
 }
@@ -294,4 +568,20 @@ function makeOpportunityKey(opportunity: CrmLiteOpportunity) {
 function normalizeDuplicateKey(accountName: string, opportunityName: string) {
   if (!accountName.trim() || !opportunityName.trim()) return '';
   return `${accountName}|${opportunityName}`.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function normalizeText(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function meaningfulTokens(value: string) {
+  const stopWords = new Set(['phase', 'project', 'opportunity', 'workflow', 'discussion', 'deal', 'the', 'and', 'for']);
+  return normalizeText(value)
+    .split(' ')
+    .filter((token) => token.length > 2 && !stopWords.has(token));
+}
+
+function tokenOverlap(left: string[], right: string[]) {
+  const rightSet = new Set(right);
+  return Array.from(new Set(left)).filter((token) => rightSet.has(token)).length;
 }

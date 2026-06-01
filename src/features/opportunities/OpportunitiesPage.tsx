@@ -81,9 +81,17 @@ import {
   OPPORTUNITY_CSV_TEMPLATE,
   buildImportedOpportunityInput,
   getImportableCsvRows,
+  loadOpportunityImportBatches,
   parseOpportunityCsv,
+  preparePipelineRefreshPreview,
+  recordOpportunityImportBatch,
   summarizeImportedOpportunityEnrichment,
+  type OpportunityCsvImportMode,
   type OpportunityCsvImportResult,
+  type OpportunityImportBatchRecord,
+  type OpportunityRefreshField,
+  type OpportunityRefreshPreviewItem,
+  type PipelineRefreshPreview,
 } from '../../utils/opportunityCsvImport';
 import { markFirstPipelineReviewStepComplete } from '../../utils/firstPipelineReviewOnboarding';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
@@ -126,10 +134,15 @@ export function OpportunitiesPage() {
   const [briefCreateState, setBriefCreateState] = useState<SaveState>('idle');
   const [briefCreateMessage, setBriefCreateMessage] = useState('');
   const [csvImportOpen, setCsvImportOpen] = useState(false);
+  const [csvMode, setCsvMode] = useState<OpportunityCsvImportMode>('import');
   const [csvInput, setCsvInput] = useState('');
   const [csvImportResult, setCsvImportResult] = useState<OpportunityCsvImportResult | null>(null);
+  const [csvRefreshPreview, setCsvRefreshPreview] = useState<PipelineRefreshPreview | null>(null);
+  const [csvRefreshSelectedFields, setCsvRefreshSelectedFields] = useState<Record<string, OpportunityRefreshField[]>>({});
   const [csvSkipDuplicates, setCsvSkipDuplicates] = useState(true);
   const [csvImportMessage, setCsvImportMessage] = useState('');
+  const [csvImportFileName, setCsvImportFileName] = useState('');
+  const [importBatchHistory, setImportBatchHistory] = useState<OpportunityImportBatchRecord[]>(() => loadOpportunityImportBatches());
   const [csvTemplateCopyStatus, setCsvTemplateCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
@@ -196,6 +209,8 @@ export function OpportunitiesPage() {
   const openCsvImport = () => {
     setCsvImportOpen(true);
     setCsvImportResult(null);
+    setCsvRefreshPreview(null);
+    setCsvRefreshSelectedFields({});
     setCsvImportMessage('');
     setCsvTemplateCopyStatus('idle');
   };
@@ -219,6 +234,16 @@ export function OpportunitiesPage() {
   const parseCsvImport = () => {
     const result = parseOpportunityCsv(csvInput, opportunities);
     setCsvImportResult(result);
+    if (csvMode === 'refresh') {
+      const preview = preparePipelineRefreshPreview(result, opportunities);
+      setCsvRefreshPreview(preview);
+      setCsvRefreshSelectedFields(buildDefaultRefreshSelection(preview));
+      setCsvImportMessage(result.errors[0] || `Compared ${preview.summary.rowCount} row(s): ${preview.summary.newCount} new, ${preview.summary.changedCount} changed, ${preview.summary.unchangedCount} unchanged.`);
+      return;
+    }
+
+    setCsvRefreshPreview(null);
+    setCsvRefreshSelectedFields({});
     setCsvImportMessage(result.errors[0] || `Parsed ${result.rows.length} opportunity row(s). Review warnings before importing.`);
   };
 
@@ -226,7 +251,10 @@ export function OpportunitiesPage() {
     if (!file) return;
     const text = await file.text();
     setCsvInput(text);
+    setCsvImportFileName(file.name);
     setCsvImportResult(null);
+    setCsvRefreshPreview(null);
+    setCsvRefreshSelectedFields({});
     setCsvImportMessage(`Loaded ${file.name}. Click Parse CSV to preview.`);
   };
 
@@ -263,8 +291,91 @@ export function OpportunitiesPage() {
     ]);
     setCsvImportMessage(`Imported ${imported.length} opportunit${imported.length === 1 ? 'y' : 'ies'}. Skipped ${skipped} row(s).`);
     setCsvImportResult(parseOpportunityCsv(csvInput, [...imported, ...opportunities]));
+    setImportBatchHistory(recordOpportunityImportBatch({
+      id: importBatchId,
+      mode: 'import',
+      fileName: csvImportFileName || undefined,
+      rowCount: csvImportResult.rows.length,
+      newCount: imported.length,
+      changedCount: 0,
+      skippedCount: skipped,
+      invalidCount: csvImportResult.rows.filter((row) => !row.isValid).length,
+    }));
     setSaveState(results.some((result) => result.warning) ? 'error' : 'saved');
     setMessage(results.find((result) => result.warning)?.warning || 'CSV import saved. Memoire keeps this as a read-only CRM copy; no CRM is updated.');
+    markFirstPipelineReviewStepComplete('hasImportedOrAddedOpportunities');
+    markTrialActivationChecklistItemComplete('load-demo-or-import-csv');
+  };
+
+  const toggleRefreshField = (itemId: string, field: OpportunityRefreshField) => {
+    setCsvRefreshSelectedFields((current) => {
+      const fields = current[itemId] || [];
+      return {
+        ...current,
+        [itemId]: fields.includes(field) ? fields.filter((item) => item !== field) : [...fields, field],
+      };
+    });
+  };
+
+  const applyPipelineRefresh = async () => {
+    if (!csvImportResult || !csvRefreshPreview) {
+      setCsvImportMessage('Parse CSV in refresh mode before applying changes.');
+      return;
+    }
+
+    const importBatchId = `csv-refresh-${Date.now()}`;
+    const newRows = csvRefreshPreview.newItems.map((item) => item.row);
+    const changedItems = csvRefreshPreview.changedItems
+      .filter((item) => item.existingOpportunity && (csvRefreshSelectedFields[item.id] || []).length > 0);
+
+    if (newRows.length === 0 && changedItems.length === 0) {
+      setCsvImportMessage('No new opportunities or selected field updates to apply.');
+      return;
+    }
+
+    const createResults = await Promise.all(newRows.map((row) => (
+      createOpportunity(buildImportedOpportunityInput(row, importBatchId), dataUserId)
+    )));
+
+    const updateResults = await Promise.all(changedItems.map((item) => {
+      const existing = item.existingOpportunity as CrmLiteOpportunity;
+      const fields = csvRefreshSelectedFields[item.id] || [];
+      const nextInput = fields.reduce<OpportunityFormInput>((draft, field) => ({
+        ...draft,
+        [field]: item.row.input[field],
+      }), opportunityToForm(existing));
+      return updateOpportunity(existing, nextInput, dataUserId);
+    }));
+
+    const warning = [...createResults, ...updateResults].find((result) => result.warning)?.warning;
+    const skippedChanged = csvRefreshPreview.changedItems.length - changedItems.length;
+    const skipped = csvRefreshPreview.unchangedItems.length + csvRefreshPreview.duplicateItems.length + skippedChanged;
+
+    setImportBatchHistory(recordOpportunityImportBatch({
+      id: importBatchId,
+      mode: 'refresh',
+      fileName: csvImportFileName || undefined,
+      rowCount: csvRefreshPreview.summary.rowCount,
+      newCount: createResults.length,
+      changedCount: updateResults.length,
+      skippedCount: skipped,
+      invalidCount: csvRefreshPreview.invalidItems.length,
+    }));
+
+    await refreshOpportunities();
+    const nextOpportunities = [
+      ...createResults.map((result) => result.opportunity),
+      ...updateResults.map((result) => result.opportunity),
+      ...opportunities,
+    ];
+    const nextResult = parseOpportunityCsv(csvInput, nextOpportunities);
+    const nextPreview = preparePipelineRefreshPreview(nextResult, nextOpportunities);
+    setCsvImportResult(nextResult);
+    setCsvRefreshPreview(nextPreview);
+    setCsvRefreshSelectedFields(buildDefaultRefreshSelection(nextPreview));
+    setCsvImportMessage(`Refresh applied: ${createResults.length} new, ${updateResults.length} updated, ${skipped} skipped. Memoire never writes back to CRM.`);
+    setSaveState(warning ? 'error' : 'saved');
+    setMessage(warning || 'Pipeline refresh applied to your private working copy. CRM/source data was not updated.');
     markFirstPipelineReviewStepComplete('hasImportedOrAddedOpportunities');
     markTrialActivationChecklistItemComplete('load-demo-or-import-csv');
   };
@@ -485,19 +596,34 @@ export function OpportunitiesPage() {
 
       {csvImportOpen && (
         <OpportunityCsvImportPanel
+          mode={csvMode}
           csvInput={csvInput}
           result={csvImportResult}
+          refreshPreview={csvRefreshPreview}
+          selectedRefreshFields={csvRefreshSelectedFields}
           skipDuplicates={csvSkipDuplicates}
           message={csvImportMessage}
           templateCopyStatus={csvTemplateCopyStatus}
+          importBatchHistory={importBatchHistory}
+          onModeChange={(mode) => {
+            setCsvMode(mode);
+            setCsvImportResult(null);
+            setCsvRefreshPreview(null);
+            setCsvRefreshSelectedFields({});
+            setCsvImportMessage('');
+          }}
           onInputChange={(value) => {
             setCsvInput(value);
             setCsvImportResult(null);
+            setCsvRefreshPreview(null);
+            setCsvRefreshSelectedFields({});
             setCsvImportMessage('');
           }}
           onFileChange={handleCsvUpload}
           onParse={parseCsvImport}
           onImport={importCsvRows}
+          onRefresh={applyPipelineRefresh}
+          onToggleRefreshField={toggleRefreshField}
           onSkipDuplicatesChange={setCsvSkipDuplicates}
           onCopyTemplate={copyCsvTemplate}
           onClose={() => setCsvImportOpen(false)}
@@ -634,28 +760,42 @@ function PipelineQualitySummary({ quality }: { quality: ReturnType<typeof analyz
 }
 
 function OpportunityCsvImportPanel({
+  mode,
   csvInput,
   result,
+  refreshPreview,
+  selectedRefreshFields,
   skipDuplicates,
   message,
   templateCopyStatus,
+  importBatchHistory,
+  onModeChange,
   onInputChange,
   onFileChange,
   onParse,
   onImport,
+  onRefresh,
+  onToggleRefreshField,
   onSkipDuplicatesChange,
   onCopyTemplate,
   onClose,
 }: {
+  mode: OpportunityCsvImportMode;
   csvInput: string;
   result: OpportunityCsvImportResult | null;
+  refreshPreview: PipelineRefreshPreview | null;
+  selectedRefreshFields: Record<string, OpportunityRefreshField[]>;
   skipDuplicates: boolean;
   message: string;
   templateCopyStatus: 'idle' | 'copied' | 'failed';
+  importBatchHistory: OpportunityImportBatchRecord[];
+  onModeChange: (mode: OpportunityCsvImportMode) => void;
   onInputChange: (value: string) => void;
   onFileChange: (file: File | null) => void;
   onParse: () => void;
   onImport: () => void;
+  onRefresh: () => void;
+  onToggleRefreshField: (itemId: string, field: OpportunityRefreshField) => void;
   onSkipDuplicatesChange: (value: boolean) => void;
   onCopyTemplate: () => void;
   onClose: () => void;
@@ -664,19 +804,38 @@ function OpportunityCsvImportPanel({
   const importableRows = getImportableCsvRows(rows, { skipDuplicates });
   const duplicateCount = rows.filter((row) => row.isDuplicate).length;
   const invalidCount = rows.filter((row) => !row.isValid).length;
+  const selectedRefreshUpdateCount = refreshPreview?.changedItems.filter((item) => (selectedRefreshFields[item.id] || []).length > 0).length || 0;
+  const refreshApplyCount = (refreshPreview?.newItems.length || 0) + selectedRefreshUpdateCount;
 
   return (
     <section className="rounded-lg border border-brand-blue/20 bg-white p-5 shadow-sm">
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Read-only CRM import</p>
-          <h2 className="mt-1 text-xl font-bold text-navy">Import Opportunities from CSV</h2>
+          <h2 className="mt-1 text-xl font-bold text-navy">Import or Refresh Opportunities from CSV</h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-gray-500">
-            Use this if you already manage pipeline in Salesforce, HubSpot, Excel, or another CRM. Memoire imports a local read-only copy for review, enrichment, and Pipeline Defense Briefs. It does not write back to your CRM.
+            Refresh from your CRM/Excel export. Memoire updates your private working copy and never writes back. Use refresh before weekly review to compare what changed and prepare your Pipeline Defense Brief.
           </p>
         </div>
         <button type="button" onClick={onClose} className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">
           Close
+        </button>
+      </div>
+
+      <div className="mb-4 grid gap-2 rounded-lg border border-blue-100 bg-blue-50 p-2 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => onModeChange('import')}
+          className={`rounded-md px-4 py-2 text-sm font-bold ${mode === 'import' ? 'bg-white text-navy shadow-sm' : 'text-blue-800 hover:bg-white/60'}`}
+        >
+          Import new pipeline
+        </button>
+        <button
+          type="button"
+          onClick={() => onModeChange('refresh')}
+          className={`rounded-md px-4 py-2 text-sm font-bold ${mode === 'refresh' ? 'bg-white text-navy shadow-sm' : 'text-blue-800 hover:bg-white/60'}`}
+        >
+          Refresh existing pipeline
         </button>
       </div>
 
@@ -698,7 +857,7 @@ function OpportunityCsvImportPanel({
               Copy CSV Template
             </button>
             <button type="button" onClick={onParse} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90">
-              Parse CSV
+              {mode === 'refresh' ? 'Compare CSV' : 'Parse CSV'}
             </button>
           </div>
           {templateCopyStatus === 'copied' && <p className="mb-2 text-sm font-semibold text-emerald-700">CSV template copied.</p>}
@@ -720,35 +879,48 @@ function OpportunityCsvImportPanel({
           <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-3 text-sm leading-6 text-blue-900">
             <p className="font-bold">How to export from CRM</p>
             <p className="mt-1">
-              Export a CSV with account, opportunity, stage, value, close period, and next step. Import it here, then enrich missing decision context, stakeholders, objections, and proof locally in Memoire.
+              Export a CSV with account, opportunity, stage, value, close period, and next step. Import it once, then use Refresh existing pipeline before weekly review to compare changes without touching CRM data.
             </p>
           </div>
+          <ImportRefreshHistory records={importBatchHistory} />
         </div>
 
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-sm font-bold text-gray-900">Import preview</p>
+              <p className="text-sm font-bold text-gray-900">{mode === 'refresh' ? 'Refresh preview' : 'Import preview'}</p>
               <p className="mt-1 text-xs text-gray-500">
-                {rows.length ? `${rows.length} parsed rows, ${importableRows.length} ready to import.` : 'Parse CSV to preview mapped opportunities.'}
+                {mode === 'refresh' && refreshPreview
+                  ? `${refreshPreview.summary.rowCount} rows compared, ${refreshPreview.summary.newCount} new, ${refreshPreview.summary.changedCount} changed.`
+                  : rows.length ? `${rows.length} parsed rows, ${importableRows.length} ready to import.` : 'Parse CSV to preview mapped opportunities.'}
               </p>
             </div>
-            <label className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
-              <input
-                type="checkbox"
-                checked={skipDuplicates}
-                onChange={(event) => onSkipDuplicatesChange(event.target.checked)}
-                className="h-4 w-4 accent-brand-blue"
-              />
-              Skip duplicates
-            </label>
+            {mode === 'import' && (
+              <label className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={skipDuplicates}
+                  onChange={(event) => onSkipDuplicatesChange(event.target.checked)}
+                  className="h-4 w-4 accent-brand-blue"
+                />
+                Skip duplicates
+              </label>
+            )}
           </div>
 
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <ImportMetric label="Ready" value={importableRows.length} tone="green" />
-            <ImportMetric label="Duplicates" value={duplicateCount} tone={duplicateCount ? 'amber' : 'green'} />
-            <ImportMetric label="Invalid" value={invalidCount} tone={invalidCount ? 'red' : 'green'} />
-          </div>
+          {mode === 'refresh' && refreshPreview ? (
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <ImportMetric label="New" value={refreshPreview.summary.newCount} tone="green" />
+              <ImportMetric label="Changed" value={refreshPreview.summary.changedCount} tone={refreshPreview.summary.changedCount ? 'amber' : 'green'} />
+              <ImportMetric label="Warnings" value={refreshPreview.summary.possibleDuplicateCount + refreshPreview.summary.invalidCount} tone={refreshPreview.summary.possibleDuplicateCount || refreshPreview.summary.invalidCount ? 'red' : 'green'} />
+            </div>
+          ) : (
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <ImportMetric label="Ready" value={importableRows.length} tone="green" />
+              <ImportMetric label="Duplicates" value={duplicateCount} tone={duplicateCount ? 'amber' : 'green'} />
+              <ImportMetric label="Invalid" value={invalidCount} tone={invalidCount ? 'red' : 'green'} />
+            </div>
+          )}
 
           <div className="mt-4 max-h-[420px] overflow-y-auto rounded-lg border border-gray-200 bg-white">
             {rows.length === 0 ? (
@@ -794,17 +966,197 @@ function OpportunityCsvImportPanel({
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={onImport}
-            disabled={importableRows.length === 0}
-            className="mt-4 w-full rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Import {importableRows.length} new opportunit{importableRows.length === 1 ? 'y' : 'ies'}
-          </button>
+          {mode === 'refresh' && (
+            <PipelineRefreshPreviewTable
+              preview={refreshPreview}
+              selectedFields={selectedRefreshFields}
+              onToggleField={onToggleRefreshField}
+            />
+          )}
+
+          {mode === 'refresh' ? (
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={!refreshPreview || refreshApplyCount === 0}
+              className="mt-4 w-full rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Apply refresh ({refreshPreview?.newItems.length || 0} new, {selectedRefreshUpdateCount} update{selectedRefreshUpdateCount === 1 ? '' : 's'})
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onImport}
+              disabled={importableRows.length === 0}
+              className="mt-4 w-full rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Import {importableRows.length} new opportunit{importableRows.length === 1 ? 'y' : 'ies'}
+            </button>
+          )}
         </div>
       </div>
     </section>
+  );
+}
+
+function PipelineRefreshPreviewTable({
+  preview,
+  selectedFields,
+  onToggleField,
+}: {
+  preview: PipelineRefreshPreview | null;
+  selectedFields: Record<string, OpportunityRefreshField[]>;
+  onToggleField: (itemId: string, field: OpportunityRefreshField) => void;
+}) {
+  if (!preview) {
+    return (
+      <div className="mt-4 rounded-lg border border-dashed border-gray-300 bg-white p-4 text-sm text-gray-500">
+        Compare a CSV to see new, changed, unchanged, and warning rows before applying refresh.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 space-y-3">
+      <RefreshGroup
+        title="Changed opportunities"
+        items={preview.changedItems}
+        tone="amber"
+        selectedFields={selectedFields}
+        onToggleField={onToggleField}
+      />
+      <RefreshGroup
+        title="New opportunities"
+        items={preview.newItems}
+        tone="green"
+        selectedFields={selectedFields}
+        onToggleField={onToggleField}
+      />
+      <RefreshGroup
+        title="Unchanged / skipped"
+        items={preview.unchangedItems}
+        tone="gray"
+        selectedFields={selectedFields}
+        onToggleField={onToggleField}
+      />
+      <RefreshGroup
+        title="Invalid / warning rows"
+        items={[...preview.duplicateItems, ...preview.invalidItems]}
+        tone="red"
+        selectedFields={selectedFields}
+        onToggleField={onToggleField}
+      />
+    </div>
+  );
+}
+
+function RefreshGroup({
+  title,
+  items,
+  tone,
+  selectedFields,
+  onToggleField,
+}: {
+  title: string;
+  items: OpportunityRefreshPreviewItem[];
+  tone: 'green' | 'amber' | 'red' | 'gray';
+  selectedFields: Record<string, OpportunityRefreshField[]>;
+  onToggleField: (itemId: string, field: OpportunityRefreshField) => void;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white">
+      <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2">
+        <p className="text-xs font-black uppercase tracking-wide text-gray-500">{title}</p>
+        <Badge label={String(items.length)} tone={tone} />
+      </div>
+      <div className="max-h-72 divide-y divide-gray-100 overflow-y-auto">
+        {items.map((item) => (
+          <div key={item.id} className="p-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-sm font-bold text-gray-900">{item.row.input.accountName || 'Missing account'}</p>
+                <p className="mt-0.5 text-sm text-gray-600">{item.row.input.opportunityName || 'Missing opportunity'}</p>
+                {item.existingOpportunity && (
+                  <p className="mt-1 text-xs font-semibold text-gray-400">Matches existing opportunity.</p>
+                )}
+                {item.possibleDuplicate && (
+                  <p className="mt-1 text-xs font-semibold text-amber-700">
+                    Possible duplicate: {item.possibleDuplicate.accountName} / {item.possibleDuplicate.opportunityName}. {item.duplicateReason}
+                  </p>
+                )}
+              </div>
+              <Badge label={refreshStatusLabel(item.status)} tone={tone} />
+            </div>
+
+            {item.changes.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {item.changes.map((change) => {
+                  const checked = (selectedFields[item.id] || []).includes(change.field);
+                  return (
+                    <label key={change.field} className="block rounded-lg border border-gray-100 bg-gray-50 p-2">
+                      <span className="flex items-start gap-2">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => onToggleField(item.id, change.field)}
+                          className="mt-1 h-4 w-4 accent-brand-blue"
+                        />
+                        <span className="min-w-0">
+                          <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                            {change.label}{change.isProtected ? ' - protected' : ''}
+                          </span>
+                          <span className="mt-1 grid gap-1 text-xs text-gray-600 sm:grid-cols-2">
+                            <span><strong>Current:</strong> {change.currentValue}</span>
+                            <span><strong>Imported:</strong> {change.importedValue}</span>
+                          </span>
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+
+            {item.warnings.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {item.warnings.map((warning) => (
+                  <Badge key={warning} label={warning} tone={item.row.isValid ? 'amber' : 'red'} />
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ImportRefreshHistory({ records }: { records: OpportunityImportBatchRecord[] }) {
+  if (records.length === 0) return null;
+
+  const latest = records[0];
+  return (
+    <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Import / Refresh History</p>
+          <p className="mt-1 text-sm font-semibold text-gray-900">
+            Last {latest.mode === 'refresh' ? 'refresh' : 'import'}: {formatBatchDate(latest.createdAt)}
+          </p>
+        </div>
+        <Badge label={`${records.length} batch${records.length === 1 ? '' : 'es'}`} tone="gray" />
+      </div>
+      <div className="mt-3 space-y-2">
+        {records.slice(0, 3).map((record) => (
+          <div key={record.id} className="rounded-lg bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-600">
+            <span className="font-bold text-gray-900">{record.mode === 'refresh' ? 'Refresh' : 'Import'}</span>
+            {' '}on {formatBatchDate(record.createdAt)} - {record.rowCount} rows, {record.newCount} new, {record.changedCount} changed, {record.skippedCount} skipped, {record.invalidCount} invalid.
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -2010,6 +2362,35 @@ function StatusBadge({ highRisk, cleanup }: { highRisk: number; cleanup: number 
       Pipeline clean
     </span>
   );
+}
+
+function buildDefaultRefreshSelection(preview: PipelineRefreshPreview) {
+  return preview.changedItems.reduce<Record<string, OpportunityRefreshField[]>>((acc, item) => {
+    acc[item.id] = item.changes
+      .filter((change) => change.defaultSelected)
+      .map((change) => change.field);
+    return acc;
+  }, {});
+}
+
+function refreshStatusLabel(status: OpportunityRefreshPreviewItem['status']) {
+  const labels: Record<OpportunityRefreshPreviewItem['status'], string> = {
+    new: 'New opportunity',
+    'existing-unchanged': 'Unchanged',
+    'existing-changed': 'Changed',
+    'possible-duplicate': 'Warning',
+    invalid: 'Invalid',
+  };
+  return labels[status];
+}
+
+function formatBatchDate(value: string) {
+  return new Date(value).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function opportunityToForm(opportunity: CrmLiteOpportunity): OpportunityFormInput {
