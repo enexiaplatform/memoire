@@ -78,6 +78,12 @@ import {
   type TrialActivationChecklistItem,
   type TrialActivationChecklistItemId,
 } from '../../utils/trialActivationChecklist';
+import {
+  buildPipelineReviewHabitProgress,
+  loadPipelineReviewHabitState,
+  PIPELINE_REVIEW_HABIT_UPDATED_EVENT,
+  type PipelineReviewHabitProgress,
+} from '../../utils/pipelineReviewHabit';
 import { generateInterviewScriptText } from '../../utils/demoFeedback';
 
 type DashboardData = {
@@ -110,6 +116,7 @@ export function DashboardPage() {
   const [onboarding, setOnboarding] = useState<OnboardingState>(() => loadOnboardingState());
   const [firstReviewOnboarding, setFirstReviewOnboarding] = useState(() => loadFirstPipelineReviewOnboardingState());
   const [trialChecklistState, setTrialChecklistState] = useState(() => loadTrialActivationChecklistState());
+  const [pipelineReviewHabitState, setPipelineReviewHabitState] = useState(() => loadPipelineReviewHabitState());
   const [sampleMessage, setSampleMessage] = useState('');
   const [validationMessage, setValidationMessage] = useState('');
   const [demoSandboxPromptOpen, setDemoSandboxPromptOpen] = useState(false);
@@ -130,6 +137,7 @@ export function DashboardPage() {
         setOnboarding(syncOnboardingFromData(nextData, { includeDataSignals: !hasLocalSampleData() }));
         setFirstReviewOnboarding(loadFirstPipelineReviewOnboardingState());
         setTrialChecklistState(loadTrialActivationChecklistState());
+        setPipelineReviewHabitState(loadPipelineReviewHabitState());
       } catch (error) {
         if (!mounted) return;
         if (import.meta.env.DEV) {
@@ -176,6 +184,16 @@ export function DashboardPage() {
     sampleDataActive,
     state: trialChecklistState,
   }), [data, sampleDataActive, trialChecklistState]);
+  const pipelineReviewHabitProgress = useMemo(
+    () => buildPipelineReviewHabitProgress(pipelineReviewHabitState),
+    [pipelineReviewHabitState],
+  );
+
+  useEffect(() => {
+    const handleHabitUpdate = () => setPipelineReviewHabitState(loadPipelineReviewHabitState());
+    window.addEventListener(PIPELINE_REVIEW_HABIT_UPDATED_EVENT, handleHabitUpdate);
+    return () => window.removeEventListener(PIPELINE_REVIEW_HABIT_UPDATED_EVENT, handleHabitUpdate);
+  }, []);
 
   useEffect(() => {
     setOnboarding(markOnboardingStepComplete('hasSeenWelcome'));
@@ -296,6 +314,7 @@ export function DashboardPage() {
           )}
           <DemoCommercializationCta onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)} />
           <ValidationCta message={validationMessage} onCopyInterviewScript={handleCopyInterviewScript} />
+          <PipelineReviewHabitCard progress={pipelineReviewHabitProgress} />
           <TrialActivationChecklistCard
             items={trialChecklist}
             onMarkDone={handleMarkTrialChecklistItem}
@@ -1127,6 +1146,77 @@ function DemoCommercializationCta({ onOpenDemoSandbox }: { onOpenDemoSandbox: ()
             Load Demo Sandbox
           </button>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function PipelineReviewHabitCard({ progress }: { progress: PipelineReviewHabitProgress }) {
+  const nextStep = progress.nextStep;
+  const statusTone =
+    progress.readinessStatus === 'Review ready'
+      ? 'green'
+      : progress.readinessStatus === 'Almost ready'
+        ? 'amber'
+        : progress.readinessStatus === 'In progress'
+          ? 'blue'
+          : 'gray';
+
+  return (
+    <section className="rounded-xl border border-blue-100 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-brand-blue" />
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Weekly pipeline habit</p>
+            <Badge label={progress.readinessStatus} tone={statusTone} />
+          </div>
+          <h2 className="mt-2 text-xl font-bold text-navy">This Week&apos;s Pipeline Review</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
+            A lightweight checklist for getting from raw pipeline data to a manager-ready review. It resets automatically each week and stays local to this browser.
+          </p>
+        </div>
+        <div className="min-w-[150px] rounded-lg border border-blue-100 bg-blue-50 p-4 text-center">
+          <p className="text-xs font-bold uppercase tracking-wide text-blue-700">Progress</p>
+          <p className="mt-1 text-3xl font-black text-brand-blue">{progress.progressPercent}%</p>
+          <p className="mt-1 text-xs font-semibold text-blue-800">
+            {progress.completedCount}/{progress.totalCount} steps complete
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+        {progress.steps.map((step) => (
+          <div key={step.id} className={`rounded-lg border p-3 ${
+            step.done ? 'border-emerald-100 bg-emerald-50' : 'border-gray-200 bg-gray-50'
+          }`}>
+            <div className="flex items-start gap-2">
+              <CheckCircle2 className={`mt-0.5 h-4 w-4 ${step.done ? 'text-emerald-600' : 'text-gray-300'}`} />
+              <div>
+                <p className={`text-sm font-bold ${step.done ? 'text-emerald-800' : 'text-navy'}`}>{step.label}</p>
+                <p className="mt-1 text-xs leading-5 text-gray-600">{step.description}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 flex flex-col gap-3 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-bold text-blue-950">
+            {nextStep ? `Next step: ${nextStep.label}` : 'Pipeline review is ready.'}
+          </p>
+          <p className="mt-1 text-sm text-blue-800">
+            {nextStep ? nextStep.description : 'Copy or export the final summary before your manager review.'}
+          </p>
+        </div>
+        <Link
+          to={nextStep?.href || '/app/pipeline-defense'}
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-sm font-bold text-white"
+        >
+          {nextStep?.cta || 'Open Brief'}
+          <ArrowRight className="h-4 w-4" />
+        </Link>
       </div>
     </section>
   );

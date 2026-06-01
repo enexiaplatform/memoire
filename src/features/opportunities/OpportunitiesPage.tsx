@@ -108,6 +108,7 @@ import {
   type PipelineRefreshPreview,
 } from '../../utils/opportunityCsvImport';
 import { markFirstPipelineReviewStepComplete } from '../../utils/firstPipelineReviewOnboarding';
+import { markPipelineReviewHabitStepComplete } from '../../utils/pipelineReviewHabit';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -445,6 +446,7 @@ export function OpportunitiesPage() {
     setMessage(results.find((result) => result.warning)?.warning || 'CSV import saved. Memoire keeps this as a read-only CRM copy; no CRM is updated.');
     markFirstPipelineReviewStepComplete('hasImportedOrAddedOpportunities');
     markTrialActivationChecklistItemComplete('load-demo-or-import-csv');
+    markPipelineReviewHabitStepComplete('refreshedPipelineAt');
   };
 
   const toggleRefreshField = (itemId: string, field: OpportunityRefreshField) => {
@@ -524,6 +526,19 @@ export function OpportunitiesPage() {
     setMessage(warning || 'Pipeline refresh applied to your private working copy. CRM/source data was not updated.');
     markFirstPipelineReviewStepComplete('hasImportedOrAddedOpportunities');
     markTrialActivationChecklistItemComplete('load-demo-or-import-csv');
+    markPipelineReviewHabitStepComplete('refreshedPipelineAt');
+  };
+
+  const markWeakDealsReviewed = () => {
+    markPipelineReviewHabitStepComplete('reviewedWeakDealsAt');
+    setSaveState('saved');
+    setMessage('Weak and risky deals marked as reviewed for this week.');
+  };
+
+  const markMeddicAndProofGapsChecked = () => {
+    markPipelineReviewHabitStepComplete('checkedGapsAt');
+    setSaveState('saved');
+    setMessage('MEDDIC and proof gaps marked as checked for this week.');
   };
 
   const openEditPanel = (opportunity: CrmLiteOpportunity) => {
@@ -639,6 +654,7 @@ export function OpportunitiesPage() {
       setBriefCreateMessage('Brief created. Opening Pipeline Defense...');
       markFirstPipelineReviewStepComplete('hasGeneratedPipelineDefense');
       markTrialActivationChecklistItemComplete('generate-defense-brief');
+      markPipelineReviewHabitStepComplete('generatedBriefAt');
       window.setTimeout(() => navigate('/app/pipeline-defense'), 150);
     } catch (error) {
       const localBrief = createPipelineDefenseBrief(draftBrief);
@@ -647,6 +663,7 @@ export function OpportunitiesPage() {
       setBriefCreateState('error');
       markFirstPipelineReviewStepComplete('hasGeneratedPipelineDefense');
       markTrialActivationChecklistItemComplete('generate-defense-brief');
+      markPipelineReviewHabitStepComplete('generatedBriefAt');
       if (import.meta.env.DEV) {
         console.debug('[Opportunities] defense brief cloud create failed', { message: error instanceof Error ? error.message : 'Unknown error' });
       }
@@ -685,14 +702,32 @@ export function OpportunitiesPage() {
               This is rule-based and creates a new brief. Existing briefs and opportunities are not overwritten.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => openDefenseBriefPreview()}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-sm font-bold text-white"
-          >
-            <FileText className="h-4 w-4" />
-            Generate Defense Brief{selectedOpportunities.length > 0 ? ` (${selectedOpportunities.length})` : ''}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={markWeakDealsReviewed}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-800 hover:bg-blue-50"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Mark weak deals reviewed
+            </button>
+            <button
+              type="button"
+              onClick={markMeddicAndProofGapsChecked}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-800 hover:bg-blue-50"
+            >
+              <ClipboardList className="h-4 w-4" />
+              Mark gaps checked
+            </button>
+            <button
+              type="button"
+              onClick={() => openDefenseBriefPreview()}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-sm font-bold text-white"
+            >
+              <FileText className="h-4 w-4" />
+              Generate Defense Brief{selectedOpportunities.length > 0 ? ` (${selectedOpportunities.length})` : ''}
+            </button>
+          </div>
         </div>
         {briefCreateMessage && !isPreviewOpen && (
           <p className={`mt-3 rounded-lg px-3 py-2 text-sm font-semibold ${
@@ -985,6 +1020,7 @@ function OpportunityCsvImportPanel({
   const invalidCount = rows.filter((row) => !row.isValid).length;
   const selectedRefreshUpdateCount = refreshPreview?.changedItems.filter((item) => (selectedRefreshFields[item.id] || []).length > 0).length || 0;
   const refreshApplyCount = (refreshPreview?.newItems.length || 0) + selectedRefreshUpdateCount;
+  const showWeeklyReviewCta = message.startsWith('Imported') || message.startsWith('Refresh applied');
 
   return (
     <section className="rounded-lg border border-brand-blue/20 bg-white p-5 shadow-sm">
@@ -1051,11 +1087,16 @@ function OpportunityCsvImportPanel({
             className="w-full rounded-lg border border-gray-300 bg-gray-50 p-4 font-mono text-xs leading-5 text-gray-800 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
           />
           {message && (
-            <p className={`mt-3 rounded-lg px-3 py-2 text-sm font-semibold ${
+            <div className={`mt-3 rounded-lg px-3 py-2 text-sm font-semibold ${
               result?.errors.length ? 'bg-amber-50 text-amber-800' : 'bg-blue-50 text-blue-800'
             }`}>
-              {message}
-            </p>
+              <p>{message}</p>
+              {showWeeklyReviewCta && (
+                <Link to="/app/dashboard" className="mt-2 inline-flex text-xs font-bold uppercase tracking-[0.16em] text-brand-blue hover:text-blue-900">
+                  Continue weekly review
+                </Link>
+              )}
+            </div>
           )}
           <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-3 text-sm leading-6 text-blue-900">
             <p className="font-bold">How to export from CRM</p>

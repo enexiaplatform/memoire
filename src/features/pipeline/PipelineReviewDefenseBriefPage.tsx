@@ -74,6 +74,7 @@ import {
 import { PipelineDefensePrintableBrief } from './PipelineDefensePrintableBrief';
 import { PipelineDefenseReviewDealCard } from './PipelineDefenseReviewDealCard';
 import { markFirstPipelineReviewStepComplete } from '../../utils/firstPipelineReviewOnboarding';
+import { markPipelineReviewHabitStepComplete } from '../../utils/pipelineReviewHabit';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
 import { createDemoFeedback, type PipelineBriefUsefulness } from '../../utils/demoFeedback';
 
@@ -631,6 +632,7 @@ export function PipelineReviewDefenseBriefPage() {
       await navigator.clipboard.writeText(shareableBrief.managerSummary);
       setManagerSummaryCopyStatus('copied');
       markTrialActivationChecklistItemComplete('copy-manager-summary');
+      markPipelineReviewHabitStepComplete('copiedManagerSummaryAt');
     } catch {
       setManagerSummaryCopyStatus('failed');
     }
@@ -641,6 +643,7 @@ export function PipelineReviewDefenseBriefPage() {
     try {
       await navigator.clipboard.writeText(markdown);
       setShareMarkdownCopyStatus('copied');
+      markPipelineReviewHabitStepComplete('copiedManagerSummaryAt');
     } catch {
       setShareMarkdownCopyStatus('failed');
     }
@@ -733,6 +736,7 @@ export function PipelineReviewDefenseBriefPage() {
 
   const enterReviewMode = () => {
     setIsReviewMode(true);
+    markPipelineReviewHabitStepComplete('generatedBriefAt');
     setImportOpen(false);
     setEditingDealId(null);
     setMarkdownPreview('');

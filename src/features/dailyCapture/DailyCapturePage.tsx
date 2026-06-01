@@ -23,6 +23,7 @@ import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportuni
 import { applyOpportunityUpdateSuggestion, suggestOpportunityLinks, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 import { deriveStakeholderCandidateFromCapture } from '../../utils/stakeholderGraph';
 import { buildObjectionFromActivity, detectObjectionCandidatesFromActivity } from '../../utils/objectionLedger';
+import { markPipelineReviewHabitStepComplete } from '../../utils/pipelineReviewHabit';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -255,6 +256,7 @@ export function DailyCapturePage() {
     setSaveState(result.warning ? 'error' : 'saved');
     setMessage(result.warning || (result.mode === 'cloud' ? 'Synced to your account.' : 'Saved locally in this browser.'));
     markTrialActivationChecklistItemComplete('capture-update');
+    markPipelineReviewHabitStepComplete('capturedUpdatesAt');
     setStakeholderSuggestionDismissed(false);
     setObjectionSuggestionDismissed(false);
   };
@@ -287,6 +289,7 @@ export function DailyCapturePage() {
     setSaveState(result.warning ? 'error' : 'saved');
     setMessage(result.warning || (result.mode === 'cloud' ? 'Quick capture synced to your account.' : 'Quick capture saved locally.'));
     markTrialActivationChecklistItemComplete('capture-update');
+    markPipelineReviewHabitStepComplete('capturedUpdatesAt');
     setStakeholderSuggestionDismissed(false);
     setObjectionSuggestionDismissed(false);
   };
