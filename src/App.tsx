@@ -40,6 +40,9 @@ const AskMemoirePage = lazy(() => import('./features/v31/AskMemoirePage').then((
 const PipelineReviewDefenseBriefPage = lazy(() =>
   import('./features/pipeline/PipelineReviewDefenseBriefPage').then((module) => ({ default: module.PipelineReviewDefenseBriefPage })),
 );
+const PipelineReviewPackPage = lazy(() =>
+  import('./features/pipeline/PipelineReviewPackPage').then((module) => ({ default: module.PipelineReviewPackPage })),
+);
 const FirstPipelineReviewFlow = lazy(() =>
   import('./features/onboarding/FirstPipelineReviewFlow').then((module) => ({ default: module.FirstPipelineReviewFlow })),
 );
@@ -84,6 +87,7 @@ function App() {
             <Route path="stakeholders" element={<StakeholdersPage />} />
             <Route path="objections" element={<ObjectionsPage />} />
             <Route path="pipeline-defense" element={<PipelineReviewDefenseBriefPage />} />
+            <Route path="pipeline-defense/review-pack/:id" element={<PipelineReviewPackPage />} />
             <Route path="ask" element={<AskMemoirePage />} />
             <Route path="settings" element={<SettingsPage />} />
 

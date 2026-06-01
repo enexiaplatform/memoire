@@ -84,6 +84,11 @@ import {
   PIPELINE_REVIEW_HABIT_UPDATED_EVENT,
   type PipelineReviewHabitProgress,
 } from '../../utils/pipelineReviewHabit';
+import {
+  loadReviewPacks,
+  REVIEW_PACKS_UPDATED_EVENT,
+  type ReviewPackSnapshot,
+} from '../../utils/reviewPacks';
 import { generateInterviewScriptText } from '../../utils/demoFeedback';
 
 type DashboardData = {
@@ -117,6 +122,7 @@ export function DashboardPage() {
   const [firstReviewOnboarding, setFirstReviewOnboarding] = useState(() => loadFirstPipelineReviewOnboardingState());
   const [trialChecklistState, setTrialChecklistState] = useState(() => loadTrialActivationChecklistState());
   const [pipelineReviewHabitState, setPipelineReviewHabitState] = useState(() => loadPipelineReviewHabitState());
+  const [reviewPacks, setReviewPacks] = useState<ReviewPackSnapshot[]>(() => loadReviewPacks());
   const [sampleMessage, setSampleMessage] = useState('');
   const [validationMessage, setValidationMessage] = useState('');
   const [demoSandboxPromptOpen, setDemoSandboxPromptOpen] = useState(false);
@@ -138,6 +144,7 @@ export function DashboardPage() {
         setFirstReviewOnboarding(loadFirstPipelineReviewOnboardingState());
         setTrialChecklistState(loadTrialActivationChecklistState());
         setPipelineReviewHabitState(loadPipelineReviewHabitState());
+        setReviewPacks(loadReviewPacks());
       } catch (error) {
         if (!mounted) return;
         if (import.meta.env.DEV) {
@@ -188,11 +195,20 @@ export function DashboardPage() {
     () => buildPipelineReviewHabitProgress(pipelineReviewHabitState),
     [pipelineReviewHabitState],
   );
+  const latestWeeklyReviewPack = useMemo(() => (
+    reviewPacks.find((pack) => pack.weekId === pipelineReviewHabitProgress.state.currentWeekId) || null
+  ), [pipelineReviewHabitProgress.state.currentWeekId, reviewPacks]);
 
   useEffect(() => {
     const handleHabitUpdate = () => setPipelineReviewHabitState(loadPipelineReviewHabitState());
     window.addEventListener(PIPELINE_REVIEW_HABIT_UPDATED_EVENT, handleHabitUpdate);
     return () => window.removeEventListener(PIPELINE_REVIEW_HABIT_UPDATED_EVENT, handleHabitUpdate);
+  }, []);
+
+  useEffect(() => {
+    const handleReviewPackUpdate = () => setReviewPacks(loadReviewPacks());
+    window.addEventListener(REVIEW_PACKS_UPDATED_EVENT, handleReviewPackUpdate);
+    return () => window.removeEventListener(REVIEW_PACKS_UPDATED_EVENT, handleReviewPackUpdate);
   }, []);
 
   useEffect(() => {
@@ -314,7 +330,7 @@ export function DashboardPage() {
           )}
           <DemoCommercializationCta onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)} />
           <ValidationCta message={validationMessage} onCopyInterviewScript={handleCopyInterviewScript} />
-          <PipelineReviewHabitCard progress={pipelineReviewHabitProgress} />
+          <PipelineReviewHabitCard progress={pipelineReviewHabitProgress} latestReviewPack={latestWeeklyReviewPack} />
           <TrialActivationChecklistCard
             items={trialChecklist}
             onMarkDone={handleMarkTrialChecklistItem}
@@ -1151,7 +1167,13 @@ function DemoCommercializationCta({ onOpenDemoSandbox }: { onOpenDemoSandbox: ()
   );
 }
 
-function PipelineReviewHabitCard({ progress }: { progress: PipelineReviewHabitProgress }) {
+function PipelineReviewHabitCard({
+  progress,
+  latestReviewPack,
+}: {
+  progress: PipelineReviewHabitProgress;
+  latestReviewPack: ReviewPackSnapshot | null;
+}) {
   const nextStep = progress.nextStep;
   const statusTone =
     progress.readinessStatus === 'Review ready'
@@ -1218,6 +1240,35 @@ function PipelineReviewHabitCard({ progress }: { progress: PipelineReviewHabitPr
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
+
+      {latestReviewPack ? (
+        <div className="mt-3 flex flex-col gap-3 rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-bold text-emerald-900">Latest saved review pack</p>
+            <p className="mt-1 text-sm text-emerald-800">
+              {latestReviewPack.title} • {latestReviewPack.dealCount} deals • {latestReviewPack.defendCount} defend / {latestReviewPack.rescueCount} rescue / {latestReviewPack.downgradeCount} downgrade
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link to={`/app/pipeline-defense/review-pack/${latestReviewPack.id}`} className="inline-flex items-center justify-center rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800">
+              Open Latest Review Pack
+            </Link>
+            <Link to="/app/pipeline-defense" className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-100">
+              Save This Week's Pack
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-bold text-navy">No saved pack for this week yet.</p>
+            <p className="mt-1 text-sm text-gray-600">Save a review pack after generating the defense brief so you can reopen what was presented.</p>
+          </div>
+          <Link to="/app/pipeline-defense" className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">
+            Go to Pipeline Defense
+          </Link>
+        </div>
+      )}
     </section>
   );
 }

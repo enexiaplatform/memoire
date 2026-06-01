@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { AlertTriangle, ClipboardCheck, Download, HelpCircle, Printer, RotateCcw, ShieldCheck, Target, Trash2, Upload } from 'lucide-react';
 import {
   createInitialPipelineDefenseDeals,
@@ -74,9 +75,20 @@ import {
 import { PipelineDefensePrintableBrief } from './PipelineDefensePrintableBrief';
 import { PipelineDefenseReviewDealCard } from './PipelineDefenseReviewDealCard';
 import { markFirstPipelineReviewStepComplete } from '../../utils/firstPipelineReviewOnboarding';
-import { markPipelineReviewHabitStepComplete } from '../../utils/pipelineReviewHabit';
+import { getCurrentPipelineReviewWeekId, markPipelineReviewHabitStepComplete } from '../../utils/pipelineReviewHabit';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
 import { createDemoFeedback, type PipelineBriefUsefulness } from '../../utils/demoFeedback';
+import {
+  createReviewPackSnapshot,
+  deleteReviewPack,
+  formatReviewPackDate,
+  generateReviewPackMarkdown,
+  loadReviewPacks,
+  saveReviewPack,
+  updateReviewPack,
+  type ReviewPackSnapshot,
+} from '../../utils/reviewPacks';
+import { ReviewPackReadOnly } from './PipelineReviewPackPage';
 
 const categoryClasses: Record<ForecastEvidenceCategory, string> = {
   Defensible: 'border-emerald-200 bg-emerald-50 text-emerald-700',
@@ -169,12 +181,19 @@ export function PipelineReviewDefenseBriefPage() {
   const [cloudSyncMessage, setCloudSyncMessage] = useState('');
   const [showMigrationPrompt, setShowMigrationPrompt] = useState(false);
   const [migrationBusy, setMigrationBusy] = useState(false);
+  const [reviewPacks, setReviewPacks] = useState<ReviewPackSnapshot[]>(() => loadReviewPacks());
+  const [reviewPackMessage, setReviewPackMessage] = useState('');
+  const [reviewPackCopyStatus, setReviewPackCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const [printableReviewPack, setPrintableReviewPack] = useState<ReviewPackSnapshot | null>(null);
 
   const activeBrief = getActivePipelineDefenseBrief(store);
   const deals = activeBrief?.deals || [];
   const summary = buildSummary(deals);
   const activeActionPlanItems = actionPlanItems || generatePipelineDefenseActionPlan(activeBrief);
   const shareableBrief = buildShareablePipelineDefenseBrief({ brief: activeBrief, deals, actionItems: activeActionPlanItems });
+  const currentWeekReviewPack = reviewPacks.find((pack) => (
+    pack.sourceBriefId === activeBrief?.id && pack.weekId === getCurrentPipelineReviewWeekId()
+  )) || null;
   const sampleDataActive = hasLocalSampleData();
   const cloudSyncReady = Boolean(user && !sampleDataActive && canUsePipelineDefenseCloudStore() && cloudSyncStatus === 'ready');
 
@@ -649,6 +668,78 @@ export function PipelineReviewDefenseBriefPage() {
     }
   };
 
+  const buildCurrentReviewPack = (existing?: ReviewPackSnapshot | null) => createReviewPackSnapshot({
+    brief: activeBrief,
+    shareable: shareableBrief,
+    id: existing?.id,
+    createdAt: existing?.createdAt,
+    qualityChecklistSummary: briefQualityAnalysis
+      ? `${briefQualityAnalysis.status}; ${briefQualityAnalysis.highRiskIssues} high, ${briefQualityAnalysis.mediumRiskIssues} medium, ${briefQualityAnalysis.lowRiskIssues} low issue(s).`
+      : undefined,
+  });
+
+  const saveCurrentReviewPack = () => {
+    if (!activeBrief) {
+      setReviewPackMessage('No active brief to save yet.');
+      return;
+    }
+
+    const pack = buildCurrentReviewPack();
+    setReviewPacks(saveReviewPack(pack));
+    setReviewPackMessage('Review pack saved as a new local snapshot.');
+    markPipelineReviewHabitStepComplete('generatedBriefAt');
+  };
+
+  const updateCurrentReviewPack = () => {
+    if (!currentWeekReviewPack) {
+      saveCurrentReviewPack();
+      return;
+    }
+
+    const pack = buildCurrentReviewPack(currentWeekReviewPack);
+    setReviewPacks(updateReviewPack(currentWeekReviewPack.id, pack));
+    setReviewPackMessage('Saved review pack updated for this week.');
+    markPipelineReviewHabitStepComplete('generatedBriefAt');
+  };
+
+  const copyReviewPackManagerSummary = async (pack: ReviewPackSnapshot) => {
+    try {
+      await navigator.clipboard.writeText(pack.managerSummary);
+      setReviewPackCopyStatus('copied');
+      setReviewPackMessage('Saved pack manager summary copied.');
+      markPipelineReviewHabitStepComplete('copiedManagerSummaryAt');
+    } catch {
+      setReviewPackCopyStatus('failed');
+      setReviewPackMessage('Clipboard failed. Open the saved pack to copy manually.');
+    }
+  };
+
+  const copyReviewPackMarkdown = async (pack: ReviewPackSnapshot) => {
+    try {
+      await navigator.clipboard.writeText(pack.shareReadyMarkdown || generateReviewPackMarkdown(pack));
+      setReviewPackCopyStatus('copied');
+      setReviewPackMessage('Saved review pack Markdown copied.');
+    } catch {
+      setReviewPackCopyStatus('failed');
+      setReviewPackMessage('Clipboard failed. Open the saved pack to copy manually.');
+    }
+  };
+
+  const printReviewPack = (pack: ReviewPackSnapshot) => {
+    setPrintableReviewPack(pack);
+    window.setTimeout(() => {
+      window.print();
+      window.setTimeout(() => setPrintableReviewPack(null), 250);
+    }, 0);
+  };
+
+  const removeReviewPack = (packId: string) => {
+    const confirmed = window.confirm('Delete this saved review pack from this browser?');
+    if (!confirmed) return;
+    setReviewPacks(deleteReviewPack(packId));
+    setReviewPackMessage('Review pack deleted from this browser.');
+  };
+
   const openDraftAssist = (dealId: string) => {
     const provider = getActiveDraftAssistProvider();
     setDraftAssistDealId((currentDealId) => (currentDealId === dealId ? null : dealId));
@@ -748,6 +839,7 @@ export function PipelineReviewDefenseBriefPage() {
   };
 
   const printBrief = () => {
+    setPrintableReviewPack(null);
     setImportOpen(false);
     setMarkdownPreview('');
     setCopyStatus('idle');
@@ -854,6 +946,22 @@ export function PipelineReviewDefenseBriefPage() {
                     <Printer className="h-4 w-4" />
                     Print / Save PDF
                   </button>
+                  {currentWeekReviewPack ? (
+                    <>
+                      <button type="button" onClick={updateCurrentReviewPack} className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-100">
+                        <ClipboardCheck className="h-4 w-4" />
+                        Update saved pack
+                      </button>
+                      <button type="button" onClick={saveCurrentReviewPack} className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">
+                        Save as new pack
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" onClick={saveCurrentReviewPack} className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-100">
+                      <ClipboardCheck className="h-4 w-4" />
+                      Save Review Pack
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={analyzeAllDeals}
@@ -877,6 +985,13 @@ export function PipelineReviewDefenseBriefPage() {
                     Generate This Week's Actions
                   </button>
                 </div>
+                {reviewPackMessage && (
+                  <p className={`mt-3 rounded-lg px-3 py-2 text-sm font-semibold ${
+                    reviewPackCopyStatus === 'failed' ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-700'
+                  }`}>
+                    {reviewPackMessage}
+                  </p>
+                )}
               </div>
 
               {!isReviewMode && (
@@ -1094,6 +1209,15 @@ export function PipelineReviewDefenseBriefPage() {
         <SummaryCard label="Top action this week" value={summary.topRecommendedAction?.decisionRecommendation || 'None'} detail={summary.topRecommendedAction?.recommendedAction || 'Add a deal to review'} tone="blue" />
       </section>
 
+      <ReviewPackHistory
+        packs={reviewPacks}
+        currentPackId={currentWeekReviewPack?.id}
+        onCopyManagerSummary={copyReviewPackManagerSummary}
+        onCopyMarkdown={copyReviewPackMarkdown}
+        onPrint={printReviewPack}
+        onDelete={removeReviewPack}
+      />
+
       <ShareableBriefPanel
         shareableBrief={shareableBrief}
         managerSummaryCopyStatus={managerSummaryCopyStatus}
@@ -1258,8 +1382,95 @@ export function PipelineReviewDefenseBriefPage() {
         </>
       )}
     </div>
-    <PipelineDefensePrintableBrief brief={activeBrief} deals={deals} summary={summary} actionItems={activeActionPlanItems} />
+    {printableReviewPack ? (
+      <div className="print-only">
+        <ReviewPackReadOnly pack={printableReviewPack} />
+      </div>
+    ) : (
+      <PipelineDefensePrintableBrief brief={activeBrief} deals={deals} summary={summary} actionItems={activeActionPlanItems} />
+    )}
     </>
+  );
+}
+
+function ReviewPackHistory({
+  packs,
+  currentPackId,
+  onCopyManagerSummary,
+  onCopyMarkdown,
+  onPrint,
+  onDelete,
+}: {
+  packs: ReviewPackSnapshot[];
+  currentPackId?: string;
+  onCopyManagerSummary: (pack: ReviewPackSnapshot) => void;
+  onCopyMarkdown: (pack: ReviewPackSnapshot) => void;
+  onPrint: (pack: ReviewPackSnapshot) => void;
+  onDelete: (packId: string) => void;
+}) {
+  const latestPack = packs[0];
+  const previousPack = packs[1];
+
+  return (
+    <section className="mb-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <SectionHeader
+          eyebrow="Review pack history"
+          title="Saved Review Packs"
+          description="Local snapshots of what was presented, copied, and exported for pipeline review. These do not create public share links."
+        />
+        {latestPack && previousPack && (
+          <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-900">
+            Previous week: {previousPack.defendCount} defend / {previousPack.rescueCount} rescue / {previousPack.downgradeCount} downgrade
+          </div>
+        )}
+      </div>
+
+      {packs.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-5 text-center">
+          <p className="text-sm font-bold text-navy">No saved review packs yet.</p>
+          <p className="mt-1 text-sm text-gray-500">Save a review pack after generating or entering Review Mode to keep a weekly record.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {packs.slice(0, 8).map((pack) => (
+            <article key={pack.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-bold text-navy">{pack.title}</h3>
+                    {pack.id === currentPackId && (
+                      <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">Current week</span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-sm text-gray-500">
+                    {pack.dealCount} deals • {pack.defendCount} defend / {pack.rescueCount} rescue / {pack.downgradeCount} downgrade • saved {formatReviewPackDate(pack.createdAt)}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold text-gray-400">Week ID: {pack.weekId}</p>
+                </div>
+                <div className="flex flex-wrap gap-2 xl:justify-end">
+                  <Link to={`/app/pipeline-defense/review-pack/${pack.id}`} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90">
+                    Open
+                  </Link>
+                  <button type="button" onClick={() => onCopyManagerSummary(pack)} className="rounded-full border border-brand-blue bg-white px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-50">
+                    Copy Manager Summary
+                  </button>
+                  <button type="button" onClick={() => onCopyMarkdown(pack)} className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">
+                    Copy Markdown
+                  </button>
+                  <button type="button" onClick={() => onPrint(pack)} className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">
+                    Print / Save PDF
+                  </button>
+                  <button type="button" onClick={() => onDelete(pack.id)} className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-100">
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
