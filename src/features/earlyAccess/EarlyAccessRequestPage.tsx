@@ -10,6 +10,7 @@ import {
   earlyAccessSegments,
   generateEarlyAccessRequestSummary,
   interestedWorkflows,
+  loadEarlyAccessRequests,
   pipelineReviewFrequencies,
   pipelineReviewPains,
   saveEarlyAccessRequest,
@@ -21,17 +22,28 @@ export function EarlyAccessRequestPage() {
   const [form, setForm] = useState<EarlyAccessRequestInput>(defaultEarlyAccessRequest);
   const [submitted, setSubmitted] = useState<EarlyAccessRequestRecord | null>(null);
   const [copyMessage, setCopyMessage] = useState('');
+  const [formErrors, setFormErrors] = useState<Partial<Record<keyof EarlyAccessRequestInput, string>>>({});
+  const [localRequestCount, setLocalRequestCount] = useState(() => loadEarlyAccessRequests().length);
 
   const updateField = (field: keyof EarlyAccessRequestInput) => (
     event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
   ) => {
     setForm((current) => ({ ...current, [field]: event.target.value }));
+    setFormErrors((current) => ({ ...current, [field]: '' }));
     setCopyMessage('');
   };
 
   const submitRequest = () => {
+    const nextErrors = validateRequest(form);
+    setFormErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      setCopyMessage('Please fix the highlighted fields before creating the request summary.');
+      return;
+    }
+
     const record = saveEarlyAccessRequest(form);
     setSubmitted(record);
+    setLocalRequestCount(loadEarlyAccessRequests().length);
     setCopyMessage('Your request summary is ready. Copy it or email it to request access.');
   };
 
@@ -84,6 +96,9 @@ export function EarlyAccessRequestPage() {
             <p className="mt-1">
               Your request is saved locally in this browser. After submitting, copy the summary or send the prepared email.
             </p>
+            <p className="mt-2 text-xs font-bold text-slate-500">
+              Saved locally now: {localRequestCount} request{localRequestCount === 1 ? '' : 's'}.
+            </p>
           </div>
         </section>
 
@@ -101,24 +116,28 @@ export function EarlyAccessRequestPage() {
               </div>
 
               <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <TextInput label="Name" value={form.name} onChange={updateField('name')} placeholder="Your name" />
-                <TextInput label="Work email" value={form.workEmail} onChange={updateField('workEmail')} placeholder="name@company.com" type="email" />
+                <TextInput label="Name" value={form.name} onChange={updateField('name')} placeholder="Your name" required error={formErrors.name} />
+                <TextInput label="Work email" value={form.workEmail} onChange={updateField('workEmail')} placeholder="name@company.com" type="email" required error={formErrors.workEmail} />
                 <SelectInput label="Role" value={form.role} onChange={updateField('role')} options={earlyAccessRoles} />
                 <SelectInput label="Segment / industry" value={form.segment} onChange={updateField('segment')} options={earlyAccessSegments} />
-                <TextInput label="Current CRM or pipeline tool" value={form.currentTool} onChange={updateField('currentTool')} placeholder="Salesforce, HubSpot, Excel, Notion..." />
+                <TextInput label="Current CRM or pipeline tool" value={form.currentTool} onChange={updateField('currentTool')} placeholder="Salesforce, HubSpot, Excel, Notion..." required error={formErrors.currentTool} />
                 <SelectInput label="Pipeline review frequency" value={form.pipelineReviewFrequency} onChange={updateField('pipelineReviewFrequency')} options={pipelineReviewFrequencies} />
                 <SelectInput label="Biggest pipeline review pain" value={form.biggestPain} onChange={updateField('biggestPain')} options={pipelineReviewPains} />
                 <SelectInput label="What interested you most?" value={form.interestedMost} onChange={updateField('interestedMost')} options={interestedWorkflows} />
                 <SelectInput label="Budget owner" value={form.budgetOwner} onChange={updateField('budgetOwner')} options={budgetOwners} />
                 <label className="md:col-span-2">
-                  <span className="text-sm font-bold text-navy">Preferred use case</span>
+                  <span className="text-sm font-bold text-navy">Preferred use case <span className="text-red-600">*</span></span>
                   <textarea
                     value={form.preferredUseCase}
                     onChange={updateField('preferredUseCase')}
                     rows={4}
                     placeholder="Example: I want to prepare weekly pipeline reviews from CSV without rebuilding deal stories manually."
-                    className="mt-2 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm leading-6 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10"
+                    aria-invalid={Boolean(formErrors.preferredUseCase)}
+                    className={`mt-2 w-full rounded-lg border bg-slate-50 px-3 py-2 text-sm leading-6 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 ${
+                      formErrors.preferredUseCase ? 'border-red-300' : 'border-slate-300'
+                    }`}
                   />
+                  {formErrors.preferredUseCase && <span className="mt-1 block text-xs font-semibold text-red-600">{formErrors.preferredUseCase}</span>}
                 </label>
               </div>
 
@@ -215,23 +234,31 @@ function TextInput({
   onChange,
   placeholder,
   type = 'text',
+  required = false,
+  error,
 }: {
   label: string;
   value: string;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
   placeholder: string;
   type?: string;
+  required?: boolean;
+  error?: string;
 }) {
   return (
     <label>
-      <span className="text-sm font-bold text-navy">{label}</span>
+      <span className="text-sm font-bold text-navy">{label} {required && <span className="text-red-600">*</span>}</span>
       <input
         type={type}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="mt-2 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10"
+        aria-invalid={Boolean(error)}
+        className={`mt-2 w-full rounded-lg border bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 ${
+          error ? 'border-red-300' : 'border-slate-300'
+        }`}
       />
+      {error && <span className="mt-1 block text-xs font-semibold text-red-600">{error}</span>}
     </label>
   );
 }
@@ -261,4 +288,23 @@ function SelectInput({
       </select>
     </label>
   );
+}
+
+function validateRequest(form: EarlyAccessRequestInput) {
+  const errors: Partial<Record<keyof EarlyAccessRequestInput, string>> = {};
+  if (!form.name.trim()) {
+    errors.name = 'Add your name so we can identify the request.';
+  }
+  if (!form.workEmail.trim()) {
+    errors.workEmail = 'Add a work email for the access follow-up.';
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.workEmail.trim())) {
+    errors.workEmail = 'Use a valid work email address.';
+  }
+  if (!form.currentTool.trim()) {
+    errors.currentTool = 'Tell us what you use today, even if it is Excel or manual notes.';
+  }
+  if (!form.preferredUseCase.trim()) {
+    errors.preferredUseCase = 'Describe the workflow you want to test.';
+  }
+  return errors;
 }

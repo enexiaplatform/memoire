@@ -97,6 +97,11 @@ export function loadEarlyAccessRequests(): EarlyAccessRequestRecord[] {
   }
 }
 
+export function clearEarlyAccessRequests() {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(EARLY_ACCESS_REQUESTS_KEY);
+}
+
 export function saveEarlyAccessRequest(input: EarlyAccessRequestInput): EarlyAccessRequestRecord {
   const record: EarlyAccessRequestRecord = {
     ...input,
@@ -114,6 +119,17 @@ export function saveEarlyAccessRequest(input: EarlyAccessRequestInput): EarlyAcc
   }
 
   return record;
+}
+
+export function generateAllEarlyAccessRequestsSummary(records: EarlyAccessRequestRecord[]) {
+  if (records.length === 0) {
+    return 'No Memoire early access requests are saved in this browser.';
+  }
+
+  return records.map((record, index) => [
+    `Request ${index + 1}`,
+    generateEarlyAccessRequestSummary(record),
+  ].join('\n')).join('\n\n---\n\n');
 }
 
 export function generateEarlyAccessRequestSummary(record: EarlyAccessRequestRecord) {
@@ -136,10 +152,40 @@ export function generateEarlyAccessRequestSummary(record: EarlyAccessRequestReco
   ].join('\n');
 }
 
+export function generateEarlyAccessRequestsCsv(records: EarlyAccessRequestRecord[]) {
+  const headers = [
+    'id',
+    'createdAt',
+    'name',
+    'workEmail',
+    'role',
+    'segment',
+    'currentTool',
+    'pipelineReviewFrequency',
+    'biggestPain',
+    'interestedMost',
+    'preferredUseCase',
+    'budgetOwner',
+  ];
+
+  return [
+    headers.join(','),
+    ...records.map((record) => headers.map((header) => csvCell(String(record[header as keyof EarlyAccessRequestRecord] ?? ''))).join(',')),
+  ].join('\n');
+}
+
+export function generateEarlyAccessRequestsJson(records: EarlyAccessRequestRecord[]) {
+  return JSON.stringify(records, null, 2);
+}
+
 export function buildEarlyAccessMailto(record: EarlyAccessRequestRecord) {
   const subject = encodeURIComponent('Memoire early access request');
   const body = encodeURIComponent(generateEarlyAccessRequestSummary(record));
   return `mailto:${EARLY_ACCESS_CONTACT_EMAIL}?subject=${subject}&body=${body}`;
+}
+
+function csvCell(value: string) {
+  return `"${value.replace(/"/g, '""')}"`;
 }
 
 function createRequestId() {
