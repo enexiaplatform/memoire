@@ -21,7 +21,7 @@ export const demoJourneySteps: DemoJourneyStep[] = [
     cta: 'Open Dashboard',
   },
   {
-    title: 'Open weak opportunity',
+    title: 'Open Opportunities',
     description: 'Inspect a weak recoverable deal with MEDDIC gaps, stakeholders, objections, and recommended actions.',
     href: '/app/opportunities',
     cta: 'Open Opportunities',

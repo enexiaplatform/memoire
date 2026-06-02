@@ -845,6 +845,9 @@ export function PipelineReviewDefenseBriefPage() {
   const enterReviewMode = () => {
     setIsReviewMode(true);
     markPipelineReviewHabitStepComplete('generatedBriefAt');
+    if (sampleDataActive) {
+      markDemoJourneyComplete('Pipeline Defense Review Mode reached');
+    }
     setImportOpen(false);
     setEditingDealId(null);
     setMarkdownPreview('');

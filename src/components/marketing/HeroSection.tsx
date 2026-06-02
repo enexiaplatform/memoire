@@ -17,9 +17,9 @@ export function HeroSection() {
           <Link to="/demo" className="rounded-lg bg-indigo-600 px-8 py-4 text-lg font-medium text-white transition-colors hover:bg-indigo-700">
             Try Interactive Demo
           </Link>
-          <Link to="/signup" className="rounded-lg border border-gray-200 bg-white px-8 py-4 text-lg font-medium text-gray-700 transition-colors hover:border-indigo-200 hover:text-indigo-700">
-            Create Account
-          </Link>
+          <a href="mailto:hello@memoire.app?subject=Memoire early access" className="rounded-lg border border-gray-200 bg-white px-8 py-4 text-lg font-medium text-gray-700 transition-colors hover:border-indigo-200 hover:text-indigo-700">
+            Request Access
+          </a>
         </div>
       </div>
     </section>

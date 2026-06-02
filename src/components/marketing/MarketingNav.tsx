@@ -14,7 +14,7 @@ export function MarketingNav() {
             </Link>
           </div>
           <div className="hidden md:flex items-center space-x-6">
-            <Link to="/demo" className="font-medium text-gray-600 hover:text-gray-900">Demo</Link>
+            <Link to="/demo" className="font-medium text-gray-600 hover:text-gray-900">Try Demo</Link>
             <a href="/#pricing" className="font-medium text-gray-600 hover:text-gray-900">Pricing</a>
             <Link to="/app/dashboard" className="font-medium text-gray-600 hover:text-gray-900">Open App</Link>
             <Link to="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</Link>

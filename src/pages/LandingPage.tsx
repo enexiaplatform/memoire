@@ -205,11 +205,11 @@ export function LandingPage() {
                   href="mailto:hello@memoire.app?subject=Memoire early access"
                   className="inline-flex items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-sm font-bold text-slate-100 transition hover:bg-white/10"
                 >
-                  Join Early Access
+                  Request Access
                 </a>
               </div>
               <p className="mt-5 max-w-2xl text-sm leading-6 text-slate-300">
-                Privacy-first by design: CSV import is a working copy, there is no CRM writeback, and demo data stays local.
+                Privacy-first by design: CSV import is a working copy, there is no CRM writeback, and demo data stays local in this browser.
               </p>
             </div>
 

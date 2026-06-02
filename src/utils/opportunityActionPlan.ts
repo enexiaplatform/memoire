@@ -327,6 +327,7 @@ function createAction(
 ): OpportunityRecommendedAction {
   const action = {
     ...input,
+    id: `${opportunity.id}-${input.id}`,
     opportunityId: opportunity.id,
     accountName: opportunity.accountName || 'No account',
     opportunityName: opportunity.opportunityName || 'Untitled opportunity',

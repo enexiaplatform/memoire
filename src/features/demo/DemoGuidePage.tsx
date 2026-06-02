@@ -41,7 +41,7 @@ export function DemoGuidePage() {
   };
 
   const resetDemo = () => {
-    const confirmed = window.confirm('Reset demo data in this browser? This only removes sample demo records and does not delete cloud data.');
+    const confirmed = window.confirm('Reset demo data in this browser? This only removes records marked as demo/sample and does not delete cloud data or user records.');
     if (!confirmed) return;
     clearSampleDataset();
     setSampleDataActive(false);
@@ -124,7 +124,7 @@ export function DemoGuidePage() {
         <PositioningCard
           icon={<ShieldCheck className="h-5 w-5" />}
           title="Private working copy"
-          body="CSV import stays in your browser by default, has no CRM writeback, and can be reviewed safely before any cloud setup."
+          body="Demo and CSV working copies stay in your browser by default, have no CRM writeback, and can be reviewed safely before any cloud setup."
         />
         <PositioningCard
           icon={<FileCheck2 className="h-5 w-5" />}

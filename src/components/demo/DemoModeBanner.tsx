@@ -19,7 +19,7 @@ export function DemoModeBanner() {
   if (!demoActive) return null;
 
   const resetDemo = () => {
-    const confirmed = window.confirm('Reset demo data in this browser? This only removes sample demo records and does not delete cloud data.');
+    const confirmed = window.confirm('Reset demo data in this browser? This only removes records marked as demo/sample and does not delete cloud data or user records.');
     if (!confirmed) return;
     clearSampleDataset();
     setDemoActive(false);
@@ -27,7 +27,7 @@ export function DemoModeBanner() {
   };
 
   const exitDemo = () => {
-    const confirmed = window.confirm('Exit demo mode and clear sample demo data from this browser? Cloud data will not be changed.');
+    const confirmed = window.confirm('Exit demo mode and clear sample demo data from this browser? Only records marked as demo/sample are removed. Cloud data will not be changed.');
     if (!confirmed) return;
     clearSampleDataset();
     setDemoActive(false);
@@ -38,7 +38,7 @@ export function DemoModeBanner() {
     <section className="no-print border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm shadow-sm">
       <div className="mx-auto flex max-w-7xl flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <p className="font-semibold text-amber-900">
-          Demo mode active - sample data is stored locally in this browser and is not synced to your account.
+          Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
         </p>
         <div className="flex flex-wrap gap-2">
           <Link to="/app/demo-guide" className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100">

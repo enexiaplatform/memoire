@@ -33,27 +33,30 @@ export function DemoEntryPage() {
             <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-200">
               See how a B2B salesperson moves from messy pipeline context to a manager-ready Pipeline Defense Brief in a few minutes.
             </p>
+            <p className="mt-3 inline-flex rounded-full border border-cyan-200/20 bg-cyan-200/10 px-3 py-1.5 text-sm font-bold text-cyan-100">
+              Expected duration: 3-5 minutes
+            </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"
                 onClick={() => setConfirmOpen(true)}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-300 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-950/30 transition hover:bg-cyan-200"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-950/30 transition hover:bg-cyan-200 sm:w-auto"
               >
                 Start Demo
                 <ArrowRight className="h-4 w-4" />
               </button>
               <Link
                 to="/app/demo-guide"
-                className="inline-flex items-center justify-center rounded-lg border border-white/20 bg-white/10 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/15"
+                className="inline-flex w-full items-center justify-center rounded-lg border border-white/20 bg-white/10 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/15 sm:w-auto"
               >
                 View Demo Guide
               </Link>
               <Link
                 to="/"
-                className="inline-flex items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-sm font-bold text-slate-100 transition hover:bg-white/10"
+                className="inline-flex w-full items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-sm font-bold text-slate-100 transition hover:bg-white/10 sm:w-auto"
               >
-                Back to Landing
+                Return to Landing
               </Link>
             </div>
 
@@ -68,7 +71,7 @@ export function DemoEntryPage() {
             <h2 className="text-xl font-bold">What this demo will show</h2>
             <div className="mt-5 grid gap-3">
               <DemoPromise icon={<ShieldCheck className="h-5 w-5" />} title="No CRM connection required" body="The demo uses local sample data. No Salesforce, HubSpot, Gmail, or Calendar integration is involved." />
-              <DemoPromise icon={<Database className="h-5 w-5" />} title="Demo data stays local" body="Sample records are stored only in this browser and are not synced to your account." />
+              <DemoPromise icon={<Database className="h-5 w-5" />} title="Demo data stays local" body="Sample records are stored only in this browser, are not synced to your account, and never write back to CRM." />
               <DemoPromise icon={<FileText className="h-5 w-5" />} title="Pipeline Defense aha moment" body="The path ends with a manager-ready brief, manager summary, and saved review pack." />
               <DemoPromise icon={<RefreshCw className="h-5 w-5" />} title="Reset anytime" body="You can reset demo data later without deleting cloud data or user records." />
             </div>
@@ -84,7 +87,7 @@ export function DemoEntryPage() {
             <div className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
               <p>Demo data is sample data for exploration only.</p>
               <p>It stays local in this browser and will not sync to your account.</p>
-              <p>Memoire will not write back to any CRM.</p>
+              <p>Memoire will not connect to or write back to any CRM in this demo.</p>
             </div>
             <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
               <button

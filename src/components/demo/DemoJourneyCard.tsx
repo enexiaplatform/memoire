@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, ClipboardList } from 'lucide-react';
+import { ArrowRight, CheckCircle2, ClipboardList, FileUp, Home, Mail } from 'lucide-react';
 import {
   DEMO_JOURNEY_UPDATED_EVENT,
   demoJourneySteps,
@@ -31,11 +31,11 @@ export function DemoJourneyCard({ compact = false }: { compact?: boolean }) {
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Demo Journey</p>
             <h2 className="mt-1 text-xl font-bold text-navy">
-              {completion ? 'Demo Complete' : '5-minute path to the Pipeline Defense aha moment'}
+              {completion ? "You've completed the core Memoire workflow." : '5-minute path to the Pipeline Defense aha moment'}
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
               {completion
-                ? "You've seen the core Memoire workflow: turn pipeline data into a manager-ready review brief."
+                ? 'You turned sample pipeline data into a manager-ready Pipeline Defense Brief.'
                 : 'Follow this focused path so a new visitor understands the value before exploring the wider app.'}
             </p>
           </div>
@@ -45,9 +45,18 @@ export function DemoJourneyCard({ compact = false }: { compact?: boolean }) {
             <Link to="/app/onboarding/pipeline-review" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
               Start your first pipeline review
             </Link>
-            <a href="mailto:hello@memoire.app?subject=Memoire early access" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
+            <Link to="/app/opportunities?import=csv" className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
+              <FileUp className="h-4 w-4" />
+              Import CSV
+            </Link>
+            <a href="mailto:hello@memoire.app?subject=Memoire early access" className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
+              <Mail className="h-4 w-4" />
               Request access
             </a>
+            <Link to="/" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
+              <Home className="h-4 w-4" />
+              Return to landing
+            </Link>
           </div>
         )}
       </div>
@@ -67,8 +76,12 @@ export function DemoJourneyCard({ compact = false }: { compact?: boolean }) {
       </div>
 
       {completion && (
-        <div className="mt-5 rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-          Demo completed from: {completion.reason}
+        <div className="mt-5 rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-4 text-sm text-emerald-900">
+          <p className="font-bold">You've completed the core Memoire workflow.</p>
+          <p className="mt-1 leading-6">
+            You turned sample pipeline data into a manager-ready Pipeline Defense Brief. Next: try your own review, import a CSV, or request access.
+          </p>
+          <p className="mt-2 text-xs font-semibold text-emerald-700">Completed from: {completion.reason}</p>
         </div>
       )}
     </section>
