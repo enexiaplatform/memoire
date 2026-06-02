@@ -7,6 +7,7 @@ import { ACTION_OUTCOME_STORAGE_KEY, type ActionOutcomeRecord } from '../service
 import { SALES_ASSET_STORAGE_KEY, type SalesAssetRecord } from '../services/salesAssetStore';
 import { classifySalesActivity } from './salesActivityClassifier';
 import { generatePipelineDefenseBriefFromOpportunities } from './opportunityToPipelineBrief';
+import { clearDemoJourneyCompletion } from './demoJourney';
 import {
   MULTI_BRIEF_STORAGE_KEY,
   loadPipelineDefenseBriefStore,
@@ -16,6 +17,7 @@ import {
 
 export const SAMPLE_DATA_FLAG_KEY = 'memoire.sampleData.loaded';
 export const SAMPLE_DATA_NAMESPACE = 'demo';
+export const SAMPLE_DATA_UPDATED_EVENT = 'memoire:sample-data-updated';
 
 type SampleRecord = {
   id?: string;
@@ -49,6 +51,7 @@ export function markSampleDataLoaded() {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(SAMPLE_DATA_FLAG_KEY, 'true');
+    window.dispatchEvent(new CustomEvent(SAMPLE_DATA_UPDATED_EVENT));
   } catch {
     // Sample flag is best-effort only.
   }
@@ -58,6 +61,7 @@ export function clearSampleDataFlag() {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.removeItem(SAMPLE_DATA_FLAG_KEY);
+    window.dispatchEvent(new CustomEvent(SAMPLE_DATA_UPDATED_EVENT));
   } catch {
     // Ignore localStorage cleanup failures.
   }
@@ -75,6 +79,9 @@ export function loadSampleDataset(): SampleDataset {
   writeLocalArray(SALES_ASSET_STORAGE_KEY, dataset.salesAssets);
   writeLocalBriefs(dataset.briefs);
   markSampleDataLoaded();
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(SAMPLE_DATA_UPDATED_EVENT));
+  }
 
   return {
     ...dataset,
@@ -94,7 +101,11 @@ export function clearSampleDataset() {
   removeSampleRecords(ACTION_OUTCOME_STORAGE_KEY);
   removeSampleRecords(SALES_ASSET_STORAGE_KEY);
   removeSampleBriefs();
+  clearDemoJourneyCompletion();
   clearSampleDataFlag();
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(SAMPLE_DATA_UPDATED_EVENT));
+  }
 }
 
 function buildSampleDataset(): SampleDataset {

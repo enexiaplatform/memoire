@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
+import { DemoJourneyCard } from '../../components/demo/DemoJourneyCard';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import type { AccountMemoryRecord } from '../../services/accountStore';
 import { loadAccounts } from '../../services/accountStore';
@@ -320,6 +321,7 @@ export function DashboardPage() {
               </button>
             </section>
           )}
+          {sampleDataActive && <DemoJourneyCard compact />}
           {demoSandboxPromptOpen && (
             <DemoSandboxPrompt
               hasExistingData={commandCenter.hasAnyData}

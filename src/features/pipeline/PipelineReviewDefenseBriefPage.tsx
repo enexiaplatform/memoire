@@ -60,6 +60,7 @@ import {
 import { getActiveDraftAssistProvider } from '../../services/draftAssistProvider';
 import { AuthButton } from '../../components/auth/AuthButton';
 import { DataModePill } from '../../components/common/DataModePill';
+import { DemoJourneyCard } from '../../components/demo/DemoJourneyCard';
 import { useAuthContext } from '../../auth/authContext';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
@@ -78,6 +79,7 @@ import { markFirstPipelineReviewStepComplete } from '../../utils/firstPipelineRe
 import { getCurrentPipelineReviewWeekId, markPipelineReviewHabitStepComplete } from '../../utils/pipelineReviewHabit';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
 import { createDemoFeedback, type PipelineBriefUsefulness } from '../../utils/demoFeedback';
+import { markDemoJourneyComplete } from '../../utils/demoJourney';
 import {
   createReviewPackSnapshot,
   deleteReviewPack,
@@ -652,6 +654,9 @@ export function PipelineReviewDefenseBriefPage() {
       setManagerSummaryCopyStatus('copied');
       markTrialActivationChecklistItemComplete('copy-manager-summary');
       markPipelineReviewHabitStepComplete('copiedManagerSummaryAt');
+      if (sampleDataActive) {
+        markDemoJourneyComplete('Manager Summary copied from Pipeline Defense');
+      }
     } catch {
       setManagerSummaryCopyStatus('failed');
     }
@@ -663,6 +668,9 @@ export function PipelineReviewDefenseBriefPage() {
       await navigator.clipboard.writeText(markdown);
       setShareMarkdownCopyStatus('copied');
       markPipelineReviewHabitStepComplete('copiedManagerSummaryAt');
+      if (sampleDataActive) {
+        markDemoJourneyComplete('Share-ready Pipeline Defense Markdown copied');
+      }
     } catch {
       setShareMarkdownCopyStatus('failed');
     }
@@ -688,6 +696,9 @@ export function PipelineReviewDefenseBriefPage() {
     setReviewPacks(saveReviewPack(pack));
     setReviewPackMessage('Review pack saved as a new local snapshot.');
     markPipelineReviewHabitStepComplete('generatedBriefAt');
+    if (sampleDataActive) {
+      markDemoJourneyComplete('Review Pack saved from Pipeline Defense');
+    }
   };
 
   const updateCurrentReviewPack = () => {
@@ -700,6 +711,9 @@ export function PipelineReviewDefenseBriefPage() {
     setReviewPacks(updateReviewPack(currentWeekReviewPack.id, pack));
     setReviewPackMessage('Saved review pack updated for this week.');
     markPipelineReviewHabitStepComplete('generatedBriefAt');
+    if (sampleDataActive) {
+      markDemoJourneyComplete('Review Pack updated from Pipeline Defense');
+    }
   };
 
   const copyReviewPackManagerSummary = async (pack: ReviewPackSnapshot) => {
@@ -708,6 +722,9 @@ export function PipelineReviewDefenseBriefPage() {
       setReviewPackCopyStatus('copied');
       setReviewPackMessage('Saved pack manager summary copied.');
       markPipelineReviewHabitStepComplete('copiedManagerSummaryAt');
+      if (sampleDataActive) {
+        markDemoJourneyComplete('Saved Review Pack manager summary copied');
+      }
     } catch {
       setReviewPackCopyStatus('failed');
       setReviewPackMessage('Clipboard failed. Open the saved pack to copy manually.');
@@ -1033,6 +1050,12 @@ export function PipelineReviewDefenseBriefPage() {
           </div>
         </div>
       </header>
+
+      {sampleDataActive && (
+        <div className="mb-6">
+          <DemoJourneyCard compact />
+        </div>
+      )}
 
       {showMigrationPrompt && isAuthenticated && (
         <section className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-5 shadow-sm">

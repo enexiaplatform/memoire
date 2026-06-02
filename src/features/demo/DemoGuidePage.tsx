@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, ClipboardList, FileCheck2, ShieldCheck, Target } from 'lucide-react';
+import { ArrowRight, CheckCircle2, FileCheck2, ShieldCheck, Target } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
+import { DemoJourneyCard } from '../../components/demo/DemoJourneyCard';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
-import { loadSampleDataset } from '../../utils/sampleData';
+import { clearSampleDataset, loadSampleDataset } from '../../utils/sampleData';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
 import {
   createDemoFeedback,
@@ -17,52 +18,6 @@ import {
   type DemoFeedbackUsageFrequency,
   type DemoFeedbackWillingnessToPay,
 } from '../../utils/demoFeedback';
-
-type DemoStep = {
-  title: string;
-  description: string;
-  href: string;
-  cta: string;
-};
-
-const demoSteps: DemoStep[] = [
-  {
-    title: 'Open Demo Sandbox',
-    description: 'Load realistic local-only sample data with healthy, weak, hope-based, and unsupported deals.',
-    href: '/app/dashboard',
-    cta: 'Back to Dashboard',
-  },
-  {
-    title: 'Review Dashboard signals',
-    description: 'See what needs attention today: critical actions, risks, objections, asset gaps, and weekly execution health.',
-    href: '/app/dashboard',
-    cta: 'Open Dashboard',
-  },
-  {
-    title: 'Inspect one weak deal',
-    description: 'Open Opportunities and review MEDDIC gaps, stakeholders, objections, next actions, and sales assets.',
-    href: '/app/opportunities',
-    cta: 'Open Opportunities',
-  },
-  {
-    title: 'Generate Pipeline Defense Brief',
-    description: 'Select one or more opportunities and create a manager-ready review pack without overwriting deal records.',
-    href: '/app/opportunities',
-    cta: 'Generate from Opportunities',
-  },
-  {
-    title: 'Copy Manager Review Summary',
-    description: 'Open Pipeline Defense, copy the manager summary, and show how Memoire prepares the weekly review conversation.',
-    href: '/app/pipeline-defense',
-    cta: 'Open Pipeline Defense',
-  },
-  {
-    title: 'Show career memory vault',
-    description: 'Use Playbook and Assets to show reusable patterns, objection responses, proof notes, and proposal snippets.',
-    href: '/app/playbook',
-    cta: 'Open Playbook',
-  },
-];
 
 export function DemoGuidePage() {
   const { isAuthenticated, loading: authLoading } = useAuthContext();
@@ -83,6 +38,14 @@ export function DemoGuidePage() {
     setMessage(isAuthenticated
       ? 'Demo sandbox loaded locally only. It was not saved to your cloud account.'
       : 'Demo sandbox loaded locally in this browser.');
+  };
+
+  const resetDemo = () => {
+    const confirmed = window.confirm('Reset demo data in this browser? This only removes sample demo records and does not delete cloud data.');
+    if (!confirmed) return;
+    clearSampleDataset();
+    setSampleDataActive(false);
+    setMessage('Demo data cleared from this browser. Cloud data was not changed.');
   };
 
   const updateFeedbackForm = (patch: Partial<DemoFeedbackInput>) => {
@@ -139,6 +102,11 @@ export function DemoGuidePage() {
             Open Dashboard
             <ArrowRight className="h-4 w-4" />
           </Link>
+          {sampleDataActive && (
+            <button type="button" onClick={resetDemo} className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white px-4 py-2 text-sm font-bold text-amber-700">
+              Reset Demo Data
+            </button>
+          )}
         </div>
         {message && (
           <p className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
@@ -165,25 +133,7 @@ export function DemoGuidePage() {
         />
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center gap-2">
-          <ClipboardList className="h-4 w-4 text-brand-blue" />
-          <h2 className="text-lg font-bold text-navy">5-minute walkthrough</h2>
-        </div>
-        <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {demoSteps.map((step, index) => (
-            <article key={step.title} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Step {index + 1}</p>
-              <h3 className="mt-2 text-base font-bold text-navy">{step.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-gray-600">{step.description}</p>
-              <Link to={step.href} className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-brand-blue ring-1 ring-blue-100 hover:bg-blue-50">
-                {step.cta}
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </article>
-          ))}
-        </div>
-      </section>
+      <DemoJourneyCard />
 
       <section className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900 shadow-sm">
         <p className="font-bold">Privacy-first demo note</p>
