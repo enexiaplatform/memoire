@@ -1,29 +1,7 @@
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
-import { useCheckout } from '../billing/useCheckout';
+import { Link, useNavigate } from 'react-router-dom';
 
 export function PricingPage() {
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const { startCheckout, loading } = useCheckout();
-
-  const handleGetStarted = (plan: 'free' | 'personal' | 'team') => {
-    if (!user) {
-      navigate('/signup');
-      return;
-    }
-    
-    if (plan === 'free') {
-      navigate('/app/capture');
-      return;
-    }
-
-    const priceId = plan === 'personal' 
-      ? import.meta.env.VITE_STRIPE_PERSONAL_PRICE_ID 
-      : import.meta.env.VITE_STRIPE_TEAM_PRICE_ID;
-      
-    startCheckout(priceId);
-  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
@@ -31,8 +9,8 @@ export function PricingPage() {
         <div className="text-[20px] font-extrabold tracking-tight brand-gradient-text font-display">Memoire</div>
         <div className="space-x-4">
           <button onClick={() => navigate('/login')} className="text-gray-600 hover:text-gray-900 font-medium text-[15px] font-body">Login</button>
-          <button onClick={() => navigate('/signup')} className="bg-[#1976D2] text-white px-5 py-2 rounded-full font-semibold font-display text-[14px] hover:bg-[#1565C0] active:scale-[0.98] transition-all">
-            Sign up
+          <button onClick={() => navigate('/request-access')} className="bg-[#1976D2] text-white px-5 py-2 rounded-full font-semibold font-display text-[14px] hover:bg-[#1565C0] active:scale-[0.98] transition-all">
+            Request Access
           </button>
         </div>
       </nav>
@@ -40,7 +18,7 @@ export function PricingPage() {
       <main className="flex-1 max-w-5xl mx-auto px-6 py-20 w-full">
         <div className="text-center mb-16">
           <h1 className="text-[40px] font-bold text-navy mb-4 tracking-tight font-display">Your professional memory,<br/>portable across companies.</h1>
-          <p className="text-[18px] font-body text-gray-500">Simple, transparent pricing. No lock-in.</p>
+          <p className="text-[18px] font-body text-gray-500">Early pricing hypothesis. No payment checkout is active.</p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 items-stretch max-w-4xl mx-auto">
@@ -54,10 +32,10 @@ export function PricingPage() {
               <li className="text-gray-400 line-through">AI search</li>
             </ul>
             <button 
-              onClick={() => handleGetStarted('free')}
+              onClick={() => navigate('/request-access')}
               className="w-full py-2.5 px-4 font-semibold font-display rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all active:scale-[0.98] text-[15px]"
             >
-              Get Free
+              Request Access
             </button>
           </div>
 
@@ -77,11 +55,10 @@ export function PricingPage() {
                   <li className="flex items-center gap-2">Full data export <span className="text-[#43A047]">✓</span></li>
                 </ul>
                 <button 
-                  disabled={loading}
-                  onClick={() => handleGetStarted('personal')}
+                  onClick={() => navigate('/request-access')}
                   className="w-full py-2.5 px-4 font-semibold font-display rounded-full brand-gradient text-white hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 text-[15px]"
                 >
-                  {loading ? 'Redirecting...' : 'Get Personal'}
+                  Request Access
                 </button>
               </div>
             </div>
@@ -98,11 +75,10 @@ export function PricingPage() {
               <li className="flex items-center gap-2">Full data export <span className="text-[#43A047]">✓</span></li>
             </ul>
             <button 
-              disabled={loading}
-              onClick={() => handleGetStarted('team')}
+              onClick={() => navigate('/request-access')}
               className="w-full py-2.5 px-4 font-semibold font-display rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all active:scale-[0.98] text-[15px]"
             >
-              {loading ? 'Redirecting...' : 'Get Team'}
+              Request Access
             </button>
           </div>
         </div>
@@ -114,7 +90,15 @@ export function PricingPage() {
             <li>✓ No lock-in, cancel anytime</li>
             <li>✓ Privacy-first — your notes are never used for AI modeling</li>
           </ul>
-          <p className="mt-8 text-[13px] font-body text-gray-400">Questions? hello@memoire.app</p>
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link to="/request-access" className="rounded-full bg-[#1976D2] px-5 py-2 text-[14px] font-semibold text-white hover:bg-[#1565C0]">
+              Request early access
+            </Link>
+            <Link to="/demo" className="rounded-full border border-gray-300 px-5 py-2 text-[14px] font-semibold text-gray-700 hover:bg-gray-50">
+              Try demo first
+            </Link>
+          </div>
+          <p className="mt-5 text-[13px] font-body text-gray-400">Questions? hello@memoire.app</p>
         </div>
       </main>
     </div>

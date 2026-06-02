@@ -53,6 +53,12 @@ export function DemoEntryPage() {
                 View Demo Guide
               </Link>
               <Link
+                to="/request-access"
+                className="inline-flex w-full items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-sm font-bold text-slate-100 transition hover:bg-white/10 sm:w-auto"
+              >
+                Request Access
+              </Link>
+              <Link
                 to="/"
                 className="inline-flex w-full items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-sm font-bold text-slate-100 transition hover:bg-white/10 sm:w-auto"
               >

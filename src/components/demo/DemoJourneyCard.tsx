@@ -49,10 +49,10 @@ export function DemoJourneyCard({ compact = false }: { compact?: boolean }) {
               <FileUp className="h-4 w-4" />
               Import CSV
             </Link>
-            <a href="mailto:hello@memoire.app?subject=Memoire early access" className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
+            <Link to="/request-access" className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
               <Mail className="h-4 w-4" />
               Request access
-            </a>
+            </Link>
             <Link to="/" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
               <Home className="h-4 w-4" />
               Return to landing

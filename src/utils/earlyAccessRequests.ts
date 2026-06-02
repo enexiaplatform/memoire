@@ -1,0 +1,156 @@
+export const EARLY_ACCESS_REQUESTS_KEY = 'memoire.earlyAccessRequests.v1';
+export const EARLY_ACCESS_CONTACT_EMAIL = 'hello@memoire.app';
+
+export const earlyAccessRoles = [
+  'Account Executive / Sales Rep',
+  'Sales Manager',
+  'Founder-led sales',
+  'Business Development',
+  'Other',
+] as const;
+
+export const earlyAccessSegments = [
+  'Pharma / Life Science / Lab',
+  'Industrial / Manufacturing',
+  'B2B SaaS',
+  'Professional Services',
+  'Other B2B',
+] as const;
+
+export const pipelineReviewFrequencies = [
+  'Weekly',
+  'Monthly',
+  'Before forecast calls',
+  'Irregular',
+  'Not sure',
+] as const;
+
+export const pipelineReviewPains = [
+  'Rebuilding deal context before review',
+  'Weak forecast evidence',
+  'Objections/proof gaps',
+  'CRM is too noisy',
+  'Manual Excel/Notion prep',
+  'Duplicate entry',
+  'Manager-ready summary',
+  'Other',
+] as const;
+
+export const interestedWorkflows = [
+  'Pipeline Defense Brief',
+  'CSV import/refresh',
+  'Quick Capture',
+  'MEDDIC-lite gaps',
+  'Playbook / Proof Assets',
+  'Review Pack History',
+  'Private working copy',
+] as const;
+
+export const budgetOwners = [
+  'Personal',
+  'Manager',
+  'Company',
+  'Not sure',
+] as const;
+
+export type EarlyAccessRequestInput = {
+  name: string;
+  workEmail: string;
+  role: string;
+  segment: string;
+  currentTool: string;
+  pipelineReviewFrequency: string;
+  biggestPain: string;
+  interestedMost: string;
+  preferredUseCase: string;
+  budgetOwner: string;
+};
+
+export type EarlyAccessRequestRecord = EarlyAccessRequestInput & {
+  id: string;
+  createdAt: string;
+};
+
+export const defaultEarlyAccessRequest: EarlyAccessRequestInput = {
+  name: '',
+  workEmail: '',
+  role: earlyAccessRoles[0],
+  segment: earlyAccessSegments[0],
+  currentTool: '',
+  pipelineReviewFrequency: pipelineReviewFrequencies[0],
+  biggestPain: pipelineReviewPains[0],
+  interestedMost: interestedWorkflows[0],
+  preferredUseCase: '',
+  budgetOwner: budgetOwners[0],
+};
+
+export function loadEarlyAccessRequests(): EarlyAccessRequestRecord[] {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const raw = window.localStorage.getItem(EARLY_ACCESS_REQUESTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter(isEarlyAccessRequestRecord) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveEarlyAccessRequest(input: EarlyAccessRequestInput): EarlyAccessRequestRecord {
+  const record: EarlyAccessRequestRecord = {
+    ...input,
+    id: createRequestId(),
+    createdAt: new Date().toISOString(),
+  };
+
+  if (typeof window !== 'undefined') {
+    try {
+      const current = loadEarlyAccessRequests();
+      window.localStorage.setItem(EARLY_ACCESS_REQUESTS_KEY, JSON.stringify([record, ...current].slice(0, 50)));
+    } catch {
+      // Keep the generated summary available even if localStorage is unavailable.
+    }
+  }
+
+  return record;
+}
+
+export function generateEarlyAccessRequestSummary(record: EarlyAccessRequestRecord) {
+  return [
+    'Memoire Early Access Request',
+    '',
+    `Name: ${record.name || 'Not provided'}`,
+    `Work email: ${record.workEmail || 'Not provided'}`,
+    `Role: ${record.role}`,
+    `Segment / industry: ${record.segment}`,
+    `Current CRM or pipeline tool: ${record.currentTool || 'Not provided'}`,
+    `Pipeline review frequency: ${record.pipelineReviewFrequency}`,
+    `Biggest pipeline review pain: ${record.biggestPain}`,
+    `Interested workflow: ${record.interestedMost}`,
+    `Preferred use case: ${record.preferredUseCase || 'Not provided'}`,
+    `Budget owner: ${record.budgetOwner}`,
+    `Created at: ${record.createdAt}`,
+    '',
+    'Privacy note: This request does not include confidential customer data.',
+  ].join('\n');
+}
+
+export function buildEarlyAccessMailto(record: EarlyAccessRequestRecord) {
+  const subject = encodeURIComponent('Memoire early access request');
+  const body = encodeURIComponent(generateEarlyAccessRequestSummary(record));
+  return `mailto:${EARLY_ACCESS_CONTACT_EMAIL}?subject=${subject}&body=${body}`;
+}
+
+function createRequestId() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+  return `early-access-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function isEarlyAccessRequestRecord(value: unknown): value is EarlyAccessRequestRecord {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<EarlyAccessRequestRecord>;
+  return Boolean(candidate.id && candidate.createdAt);
+}

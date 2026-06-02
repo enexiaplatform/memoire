@@ -8,9 +8,15 @@ import {
   loadDemoFeedback,
   type DemoFeedbackRecord,
 } from '../../utils/demoFeedback';
+import {
+  generateEarlyAccessRequestSummary,
+  loadEarlyAccessRequests,
+  type EarlyAccessRequestRecord,
+} from '../../utils/earlyAccessRequests';
 
 export function ValidationFeedbackPage() {
   const [feedback] = useState<DemoFeedbackRecord[]>(() => loadDemoFeedback());
+  const [earlyAccessRequests] = useState<EarlyAccessRequestRecord[]>(() => loadEarlyAccessRequests());
   const [copyMessage, setCopyMessage] = useState('');
   const summary = useMemo(() => buildDemoFeedbackSummary(feedback), [feedback]);
 
@@ -64,10 +70,10 @@ export function ValidationFeedbackPage() {
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <SummaryCard label="Feedback entries" value={summary.totalEntries} />
+        <SummaryCard label="Access requests" value={earlyAccessRequests.length} />
         <SummaryCard label="Understood" value={summary.byUnderstanding.Yes || 0} tone="green" />
         <SummaryCard label="Partly / No" value={(summary.byUnderstanding.Partly || 0) + (summary.byUnderstanding.No || 0)} tone="amber" />
         <SummaryCard label="Pay yes/maybe" value={(summary.byWillingnessToPay.Yes || 0) + (summary.byWillingnessToPay.Maybe || 0)} tone="green" />
-        <SummaryCard label="Pipeline review usage" value={(summary.byUsageFrequency['Before pipeline review'] || 0) + (summary.byUsageFrequency.Weekly || 0)} />
       </section>
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[0.9fr_1.1fr]">
@@ -100,6 +106,34 @@ export function ValidationFeedbackPage() {
         <SignalList title="Most valued workflows" items={summary.topValuedWorkflows} empty="No workflow signal yet." />
         <SignalList title="Adoption blockers" items={summary.topAdoptionBlockers} empty="No blocker signal yet." />
         <DistributionList title="Usage frequency" items={summary.byUsageFrequency} />
+      </section>
+
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Early access</p>
+            <h2 className="mt-2 text-xl font-bold text-navy">Local access requests</h2>
+            <p className="mt-1 text-sm leading-6 text-gray-500">
+              Requests are saved only in this browser. Copy summaries before clearing browser data.
+            </p>
+          </div>
+          <Link to="/request-access" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
+            Open Request Form
+          </Link>
+        </div>
+        {earlyAccessRequests.length === 0 ? (
+          <p className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-4 text-sm text-gray-500">No early access requests saved locally yet.</p>
+        ) : (
+          <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {earlyAccessRequests.map((request) => (
+              <EarlyAccessRequestCard
+                key={request.id}
+                request={request}
+                onCopy={() => copyText('early access request', generateEarlyAccessRequestSummary(request))}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -201,6 +235,29 @@ function FeedbackCard({ entry }: { entry: DemoFeedbackRecord }) {
       {entry.featureRequest && <p className="mt-2 text-sm text-gray-700"><span className="font-bold">Build next:</span> {entry.featureRequest}</p>}
       {entry.freeTextFeedback && <p className="mt-2 text-sm leading-6 text-gray-600">{entry.freeTextFeedback}</p>}
       <p className="mt-3 text-xs font-semibold text-gray-400">{entry.createdAt.slice(0, 10)}</p>
+    </article>
+  );
+}
+
+function EarlyAccessRequestCard({ request, onCopy }: { request: EarlyAccessRequestRecord; onCopy: () => void }) {
+  return (
+    <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+      <div className="flex flex-wrap gap-2">
+        <Badge label={request.role} />
+        <Badge label={request.segment} />
+        <Badge label={request.budgetOwner} />
+      </div>
+      <h3 className="mt-3 text-base font-bold text-navy">{request.name || 'Unnamed request'}</h3>
+      <p className="mt-1 text-sm text-gray-600">{request.workEmail || 'No email provided'}</p>
+      <p className="mt-2 text-sm text-gray-700"><span className="font-bold">Pain:</span> {request.biggestPain}</p>
+      <p className="mt-1 text-sm text-gray-700"><span className="font-bold">Interested:</span> {request.interestedMost}</p>
+      {request.currentTool && <p className="mt-1 text-sm text-gray-700"><span className="font-bold">Tool:</span> {request.currentTool}</p>}
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold text-gray-400">{request.createdAt.slice(0, 10)}</p>
+        <button type="button" onClick={onCopy} className="rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-bold text-brand-blue">
+          Copy summary
+        </button>
+      </div>
     </article>
   );
 }

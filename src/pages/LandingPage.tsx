@@ -201,12 +201,12 @@ export function LandingPage() {
                 >
                   Open App
                 </Link>
-                <a
-                  href="mailto:hello@memoire.app?subject=Memoire early access"
+                <Link
+                  to="/request-access"
                   className="inline-flex items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-sm font-bold text-slate-100 transition hover:bg-white/10"
                 >
                   Request Access
-                </a>
+                </Link>
               </div>
               <p className="mt-5 max-w-2xl text-sm leading-6 text-slate-300">
                 Privacy-first by design: CSV import is a working copy, there is no CRM writeback, and demo data stays local in this browser.
@@ -363,6 +363,18 @@ export function LandingPage() {
                 </div>
               ))}
             </div>
+            <div className="mt-8 text-center">
+              <Link
+                to="/request-access"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-700 px-6 py-3 text-sm font-bold text-white transition hover:bg-blue-800"
+              >
+                Request early access
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-500">
+                No payment checkout is active. Tell us your pipeline review use case and what workflow you want to test.
+              </p>
+            </div>
           </div>
         </section>
 
@@ -408,12 +420,12 @@ export function LandingPage() {
               >
                 Start Pipeline Review Flow
               </Link>
-              <a
-                href="mailto:hello@memoire.app?subject=Memoire early access"
+              <Link
+                to="/request-access"
                 className="inline-flex items-center justify-center rounded-lg border border-white/30 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/10"
               >
                 Request Access
-              </a>
+              </Link>
             </div>
           </div>
         </section>
