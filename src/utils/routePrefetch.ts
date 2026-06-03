@@ -1,12 +1,9 @@
 const routePrefetchers: Record<string, () => Promise<unknown>> = {
   '/app/dashboard': () => import('../features/dashboard/DashboardPage'),
-  '/app/capture': () => import('../features/dailyCapture/DailyCapturePage'),
   '/app/calendar': () => import('../features/calendar/SalesActivityCalendarPage'),
   '/app/reviews': () => import('../features/reviews/SalesReviewsPage'),
   '/app/playbook': () => import('../features/playbook/SalesPlaybookPage'),
-  '/app/assets': () => import('../features/assets/SalesAssetsPage'),
   '/app/accounts': () => import('../features/accounts/AccountsPage'),
-  '/app/opportunities': () => import('../features/opportunities/OpportunitiesPage'),
   '/app/stakeholders': () => import('../features/stakeholders/StakeholdersPage'),
   '/app/objections': () => import('../features/objections/ObjectionsPage'),
   '/app/pipeline-defense': () => import('../features/pipeline/PipelineReviewDefenseBriefPage'),
@@ -27,9 +24,6 @@ export function prefetchAppRoute(route: string) {
 export function prefetchPrimaryAppRoutes() {
   const routes = [
     '/app/dashboard',
-    '/app/capture',
-    '/app/opportunities',
-    '/app/assets',
     '/app/pipeline-defense',
     '/app/calendar',
     '/app/reviews',

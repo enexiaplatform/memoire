@@ -2,6 +2,9 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
+import { DailyCapturePage } from './features/dailyCapture/DailyCapturePage';
+import { SalesAssetsPage } from './features/assets/SalesAssetsPage';
+import { OpportunitiesPage } from './features/opportunities/OpportunitiesPage';
 
 const LandingPage = lazy(() => import('./pages/LandingPage').then((module) => ({ default: module.LandingPage })));
 const LoginPage = lazy(() => import('./features/auth/LoginPage').then((module) => ({ default: module.LoginPage })));
@@ -18,9 +21,6 @@ const ValidationFeedbackPage = lazy(() =>
 );
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage').then((module) => ({ default: module.DashboardPage })));
-const DailyCapturePage = lazy(() =>
-  import('./features/dailyCapture/DailyCapturePage').then((module) => ({ default: module.DailyCapturePage })),
-);
 const SalesActivityCalendarPage = lazy(() =>
   import('./features/calendar/SalesActivityCalendarPage').then((module) => ({ default: module.SalesActivityCalendarPage })),
 );
@@ -30,13 +30,9 @@ const SalesReviewsPage = lazy(() =>
 const SalesPlaybookPage = lazy(() =>
   import('./features/playbook/SalesPlaybookPage').then((module) => ({ default: module.SalesPlaybookPage })),
 );
-const SalesAssetsPage = lazy(() =>
-  import('./features/assets/SalesAssetsPage').then((module) => ({ default: module.SalesAssetsPage })),
-);
 const JourneyPage = lazy(() => import('./features/v31/JourneyPage').then((module) => ({ default: module.JourneyPage })));
 const AccountsPage = lazy(() => import('./features/accounts/AccountsPage').then((module) => ({ default: module.AccountsPage })));
 const AccountMemoryPage = lazy(() => import('./features/v31/AccountMemoryPage').then((module) => ({ default: module.AccountMemoryPage })));
-const OpportunitiesPage = lazy(() => import('./features/opportunities/OpportunitiesPage').then((module) => ({ default: module.OpportunitiesPage })));
 const StakeholdersPage = lazy(() => import('./features/stakeholders/StakeholdersPage').then((module) => ({ default: module.StakeholdersPage })));
 const ObjectionsPage = lazy(() => import('./features/objections/ObjectionsPage').then((module) => ({ default: module.ObjectionsPage })));
 const AskMemoirePage = lazy(() => import('./features/v31/AskMemoirePage').then((module) => ({ default: module.AskMemoirePage })));
