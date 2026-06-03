@@ -19,6 +19,28 @@ export const SAMPLE_DATA_FLAG_KEY = 'memoire.sampleData.loaded';
 export const SAMPLE_DATA_NAMESPACE = 'demo';
 export const SAMPLE_DATA_UPDATED_EVENT = 'memoire:sample-data-updated';
 
+const LEGACY_SAMPLE_TERMS = [
+  'VHP',
+  'Control Union',
+  'TV Pharm',
+  'Bidiphar',
+  'SolidFog',
+  'STERIS',
+  'Microbiology workflow',
+  'Tender opportunity',
+  'Food Safety Rapid Testing',
+];
+
+const SAMPLE_ARRAY_STORAGE_KEYS = [
+  SALES_ACTIVITY_STORAGE_KEY,
+  OPPORTUNITY_STORAGE_KEY,
+  ACCOUNT_STORAGE_KEY,
+  STAKEHOLDER_STORAGE_KEY,
+  OBJECTION_STORAGE_KEY,
+  ACTION_OUTCOME_STORAGE_KEY,
+  SALES_ASSET_STORAGE_KEY,
+];
+
 type SampleRecord = {
   id?: string;
   source?: string;
@@ -105,6 +127,21 @@ export function clearSampleDataset() {
   clearSampleDataFlag();
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(SAMPLE_DATA_UPDATED_EVENT));
+  }
+}
+
+export function sanitizeLegacySampleDataset() {
+  if (typeof window === 'undefined' || !isSampleDataLoaded()) return false;
+
+  try {
+    if (!hasLegacySampleTerms()) return false;
+    SAMPLE_ARRAY_STORAGE_KEYS.forEach(removeLegacySampleRecords);
+    removeLegacySampleBriefs();
+    clearDemoJourneyCompletion();
+    loadSampleDataset();
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -840,10 +877,34 @@ function removeSampleRecords(key: string) {
   }
 }
 
+function removeLegacySampleRecords(key: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    const existing = JSON.parse(window.localStorage.getItem(key) || '[]') as SampleRecord[];
+    window.localStorage.setItem(key, JSON.stringify(existing.filter((item) => !containsLegacySampleTerm(item))));
+  } catch {
+    // Keep local data untouched if parsing fails.
+  }
+}
+
 function removeSampleBriefs() {
   if (typeof window === 'undefined') return;
   const currentStore = readRawBriefStore();
   const briefs = currentStore.briefs.filter((brief) => !isSampleRecord(brief as SampleRecord));
+  if (briefs.length === 0) {
+    window.localStorage.removeItem(MULTI_BRIEF_STORAGE_KEY);
+    return;
+  }
+  window.localStorage.setItem(MULTI_BRIEF_STORAGE_KEY, JSON.stringify({
+    activeBriefId: briefs.some((brief) => brief.id === currentStore.activeBriefId) ? currentStore.activeBriefId : briefs[0].id,
+    briefs,
+  }));
+}
+
+function removeLegacySampleBriefs() {
+  if (typeof window === 'undefined') return;
+  const currentStore = readRawBriefStore();
+  const briefs = currentStore.briefs.filter((brief) => !containsLegacySampleTerm(brief));
   if (briefs.length === 0) {
     window.localStorage.removeItem(MULTI_BRIEF_STORAGE_KEY);
     return;
@@ -876,6 +937,20 @@ function isSampleRecord(record: SampleRecord | PipelineDefenseBrief) {
     maybeRecord.tags?.includes('demo-data') ||
     maybeRecord.title?.toLowerCase().includes('demo defense brief')
   );
+}
+
+function hasLegacySampleTerms() {
+  if (typeof window === 'undefined') return false;
+  return [...SAMPLE_ARRAY_STORAGE_KEYS, MULTI_BRIEF_STORAGE_KEY].some((key) => {
+    const value = window.localStorage.getItem(key);
+    return value ? containsLegacySampleTerm(value) : false;
+  });
+}
+
+function containsLegacySampleTerm(value: unknown) {
+  const text = typeof value === 'string' ? value : JSON.stringify(value);
+  const normalized = text.toLowerCase();
+  return LEGACY_SAMPLE_TERMS.some((term) => normalized.includes(term.toLowerCase()));
 }
 
 function addDays(date: Date, days: number) {
