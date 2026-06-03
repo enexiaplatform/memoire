@@ -26,7 +26,7 @@ export function classifyObjectionType(text: string): ObjectionType {
   if (/iq\/oq\/pq|iq|oq|pq|validation|compliance|gmp|eugmp|eu-gmp/.test(lower)) return 'Compliance / validation';
   if (/document|certificate|paperwork|dossier|proof/.test(lower)) return 'Documentation';
   if (/support|service|local support|after-sales|after sales/.test(lower)) return 'Local support';
-  if (/competitor|steris|biom[eé]rieux|vendor|other vendor/.test(lower)) return 'Competitor';
+  if (/competitor|incumbent vendor|competing platform|legacy supplier|vendor|other vendor/.test(lower)) return 'Competitor';
   if (/procurement|tender|bid|purchase process|po\b/.test(lower)) return 'Procurement';
   if (/technical|fit|spec|criteria|workflow|integration/.test(lower)) return 'Technical fit';
   if (/trust|relationship|confidence|risk/.test(lower)) return 'Trust / relationship';
@@ -46,7 +46,7 @@ export function detectObjectionCandidatesFromActivity(activity: SalesActivityRec
   const signalPatterns: Array<{ pattern: RegExp; reason: string }> = [
     { pattern: /worried|concern|lăn tăn|hesitat|block|risk|unclear|not confirmed|still in the loop/i, reason: 'risk or concern language was captured' },
     { pattern: /lead time|delivery|timeline|delay/i, reason: 'lead time or timing concern was captured' },
-    { pattern: /competitor|STERIS|BioM[eé]rieux|other vendor/i, reason: 'competitor pressure was captured' },
+    { pattern: /competitor|Incumbent Vendor|Competing Platform|Legacy Supplier|other vendor/i, reason: 'competitor pressure was captured' },
     { pattern: /procurement|tender|committee|approval path/i, reason: 'procurement uncertainty was captured' },
     { pattern: /validation|documentation|IQ\/OQ\/PQ|proof|compliance/i, reason: 'proof or validation requirement was captured' },
     { pattern: /support|local support|service/i, reason: 'support confidence concern was captured' },

@@ -548,7 +548,7 @@ export function DailyCapturePage() {
                 setSaveState('idle');
                 setMessage('');
               }}
-              placeholder="Example: Met TV Pharm today. Need to clarify tender timeline next week."
+              placeholder="Example: Met Orion Pharma today. Need to clarify tender timeline next week."
               className="mt-2 min-h-[150px] w-full resize-y rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm leading-6 text-gray-900 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
             />
           </label>
@@ -705,7 +705,7 @@ export function DailyCapturePage() {
             <Clipboard className="mx-auto h-6 w-6 text-gray-400" />
             <p className="mt-3 text-sm font-bold text-navy">No activities captured yet.</p>
             <p className="mt-1 text-sm text-gray-500">
-              Try: "Met TV Pharm today. Need to clarify tender timeline next week."
+              Try: "Met Orion Pharma today. Need to clarify tender timeline next week."
             </p>
           </div>
         ) : (
@@ -790,8 +790,8 @@ function QuickCapturePanel({
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
-        <QuickInput label="Account" value={form.accountName} placeholder="Control Union" onChange={(value) => update('accountName', value)} />
-        <QuickInput label="Opportunity optional" value={form.opportunityName} placeholder="Microbiology workflow" onChange={(value) => update('opportunityName', value)} />
+        <QuickInput label="Account" value={form.accountName} placeholder="Northstar Foods" onChange={(value) => update('accountName', value)} />
+        <QuickInput label="Opportunity optional" value={form.opportunityName} placeholder="Lab workflow" onChange={(value) => update('opportunityName', value)} />
         <QuickSelect label="Interaction type" value={form.interactionType} options={quickInteractionTypes} onChange={(value) => update('interactionType', value as QuickInteractionType)} />
         <QuickSelect label="Signal type" value={form.signalType} options={quickSignalTypes} onChange={(value) => update('signalType', value as QuickSignalType)} />
         <QuickInput label="Activity date" type="date" value={form.activityDate} placeholder="" onChange={(value) => update('activityDate', value)} />
@@ -990,7 +990,7 @@ function StructuredPreviewEditor({
       <PreviewInput
         label="Competitors"
         value={(preview.competitors || []).join(', ')}
-        placeholder="STERIS"
+        placeholder="Incumbent Vendor"
         onChange={(value) => onChange('competitors', parseList(value))}
       />
       <PreviewInput

@@ -119,7 +119,7 @@ function rowToBrief(row: PipelineDefenseBriefRow): PipelineDefenseBrief {
     title: row.title,
     weekLabel: row.week_label || 'Current Week',
     salesOwner: row.sales_owner || 'Henry',
-    scope: row.scope || 'BioMedia Vietnam pipeline',
+    scope: row.scope || 'Demo review pipeline',
     deals: Array.isArray(row.deals) ? row.deals : [],
     createdAt: row.created_at,
     updatedAt: row.updated_at,

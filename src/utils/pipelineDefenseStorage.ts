@@ -154,7 +154,7 @@ function migrateLegacyDraft() {
       title: 'Migrated Pipeline Defense Brief',
       weekLabel: 'Current Week',
       salesOwner: 'Henry',
-      scope: 'BioMedia Vietnam pipeline',
+      scope: 'Demo review pipeline',
       deals: parsed.map((item) => normalizeImportedDeal(item as Partial<PipelineDefenseDeal>)),
     });
 
@@ -200,7 +200,7 @@ function sanitizeBrief(value: unknown): PipelineDefenseBrief | null {
     title: typeof maybeBrief.title === 'string' && maybeBrief.title ? maybeBrief.title : 'Pipeline Defense Brief',
     weekLabel: typeof maybeBrief.weekLabel === 'string' && maybeBrief.weekLabel ? maybeBrief.weekLabel : 'Current Week',
     salesOwner: typeof maybeBrief.salesOwner === 'string' && maybeBrief.salesOwner ? maybeBrief.salesOwner : 'Henry',
-    scope: typeof maybeBrief.scope === 'string' && maybeBrief.scope ? maybeBrief.scope : 'BioMedia Vietnam pipeline',
+    scope: typeof maybeBrief.scope === 'string' && maybeBrief.scope ? maybeBrief.scope : 'Demo review pipeline',
     createdAt: typeof maybeBrief.createdAt === 'string' && maybeBrief.createdAt ? maybeBrief.createdAt : now,
     updatedAt: typeof maybeBrief.updatedAt === 'string' && maybeBrief.updatedAt ? maybeBrief.updatedAt : now,
     deals,

@@ -86,7 +86,7 @@ export function buildCaptureAiPrompt(request: CaptureAiRequest) {
     'Rules:',
     '- dueDate must be YYYY-MM-DD or empty.',
     '- If multiple actions are present, put all of them in nextActions and set nextAction/dueDate from the first action.',
-    '- Extract contactName/stakeholderName separately from accountName. Example: "Met with Dr. Linh at VHP" means stakeholderName "Dr. Linh" and accountName "VHP".',
+    '- Extract contactName/stakeholderName separately from accountName. Example: "Met with Dr. Avery at Apex Labs" means stakeholderName "Dr. Avery" and accountName "Apex Labs".',
     '- Extract competitors, buying signals, risks, and timeline signals as arrays.',
     '- suggestedOpportunityId must match a provided opportunity id or be empty.',
     '- tags should be short lowercase labels.',

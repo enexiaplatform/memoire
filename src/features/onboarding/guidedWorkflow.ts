@@ -10,7 +10,7 @@ export const FOLLOWUP_DRAFT_READY_EVENT = 'memoire:onboarding-followup-draft-rea
 export const QUICK_CAPTURE_FOCUS_EVENT = 'memoire:focus-quick-capture';
 
 export const GUIDED_WORKFLOW_SAMPLE_NOTE =
-  'Just called Nam from Control Union. They are reviewing the proposal but are concerned about lead time and local support. Need to send implementation timeline next Tuesday.';
+  'Just called Nam from Northstar Foods. They are reviewing the proposal but are concerned about lead time and local support. Need to send implementation timeline next Tuesday.';
 
 export type GuidedWorkflowStep =
   | 'welcome'

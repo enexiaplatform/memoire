@@ -420,9 +420,9 @@ function hasStrongSignal(value: string) {
 
 function extractCompetitorMentions(value: string) {
   const competitors = new Set<string>();
-  const known = ['STERIS', 'BioMerieux', 'Biomerieux', '3M', 'Thermo Fisher', 'Merck', 'Sartorius'];
+  const known = ['Incumbent Vendor', 'Competing platform', 'Competing platform', '3M', 'Thermo Fisher', 'Merck', 'Sartorius'];
   known.forEach((competitor) => {
-    if (new RegExp(`\\b${escapeRegExp(competitor)}\\b`, 'i').test(value)) competitors.add(competitor === 'Biomerieux' ? 'BioMerieux' : competitor);
+    if (new RegExp(`\\b${escapeRegExp(competitor)}\\b`, 'i').test(value)) competitors.add(competitor === 'Competing platform' ? 'Competing platform' : competitor);
   });
   const genericMatch = value.match(/competitor\s+([A-Z][A-Za-z0-9-]+)/i);
   if (genericMatch?.[1]) competitors.add(genericMatch[1]);

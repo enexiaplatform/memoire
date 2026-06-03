@@ -30,7 +30,7 @@ interface QuickCapturePanelProps {
 const typeOptions: InteractionType[] = ['call', 'email', 'meeting', 'note', 'proposal', 'other'];
 const stageOptions: SalesStage[] = ['new', 'active', 'proposal', 'negotiation', 'won', 'lost', 'paused'];
 const priorityOptions: SalesPriority[] = ['low', 'medium', 'high'];
-const DEMO_EMAIL_THREAD = `Subject: Re: Control Union proposal review
+const DEMO_EMAIL_THREAD = `Subject: Re: Northstar Foods proposal review
 
 Hi Henry,
 Thanks for sending the proposal. We are reviewing internally. Our main concerns are lead time and local support. Could you send a clearer implementation timeline next week?

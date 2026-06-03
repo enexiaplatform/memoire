@@ -233,17 +233,17 @@ export function LandingPage() {
 
                 <div className="mt-5 space-y-3">
                   <PreviewRow
-                    title="VHP / SolidFog EU-GMP Phase 2"
+                    title="Apex Labs / Validation Expansion"
                     tag="Defensible"
                     body="Budget approved, champion active, documentation proof ready."
                   />
                   <PreviewRow
-                    title="Control Union / Microbiology workflow"
+                    title="Northstar Foods / Lab Workflow"
                     tag="Rescue"
                     body="Lead time concern open. Need local support proof this week."
                   />
                   <PreviewRow
-                    title="TV Pharm / Tender opportunity"
+                    title="Orion Pharma / Procurement Review"
                     tag="Hope-based"
                     body="Procurement path and decision criteria still unclear."
                   />
@@ -252,7 +252,7 @@ export function LandingPage() {
                 <div className="mt-5 rounded-lg border border-cyan-400/20 bg-cyan-400/10 p-4">
                   <p className="text-sm font-bold text-cyan-100">Manager summary</p>
                   <p className="mt-2 text-sm leading-6 text-slate-200">
-                    Defend VHP with budget and proof. Rescue Control Union by resolving lead time concern. Downgrade
+                    Defend Apex Labs with budget and proof. Rescue Northstar Foods by resolving lead time concern. Downgrade
                     unsupported deals unless buyer/process evidence is confirmed.
                   </p>
                 </div>

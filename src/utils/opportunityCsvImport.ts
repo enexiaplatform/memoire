@@ -153,7 +153,7 @@ export const CSV_MAPPING_PROFILE_STORAGE_KEY = 'memoire.csvMappingProfiles.v1';
 
 export const OPPORTUNITY_CSV_TEMPLATE = [
   'Account Name,Opportunity Name,Stage,Value,Currency,Expected Close Period,Product / Solution,Next Action,Evidence,Missing Context',
-  'VHP,SolidFog EU-GMP Phase 2,Technical discussion,120000,VND,Next quarter,SolidFog,Send revised quote by Friday,Budget approved and technical team engaged,Confirm procurement path and economic buyer',
+  'Apex Labs,Validation Expansion,Technical discussion,120000,VND,Next quarter,Validation System,Send revised quote by Friday,Budget approved and technical team engaged,Confirm procurement path and economic buyer',
 ].join('\n');
 
 export const opportunityCsvFields: { value: OpportunityCsvField; label: string }[] = [

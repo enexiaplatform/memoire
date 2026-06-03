@@ -78,15 +78,15 @@ export type PipelineDefenseQuestion = {
 export const pipelineDefenseBriefMeta = {
   week: 'Sample review week',
   salesOwner: 'Henry',
-  scope: 'BioMedia Vietnam pipeline',
+  scope: 'Demo review pipeline',
   pipelinePeriod: 'Current quarter / FY review period',
 };
 
 export const pipelineDefenseDeals: PipelineDefenseDeal[] = [
   {
-    id: 'tv-pharm-vhp-solidfog',
-    account: 'TV Pharm',
-    opportunity: 'VHP / SolidFog tender',
+    id: 'orion-apex-validation',
+    account: 'Orion Pharma',
+    opportunity: 'Orion Pharma / Procurement review',
     pipelineContext: 'Tender / procurement opportunity with unclear procurement timing.',
     dealTruth:
       'The opportunity appears real, but the forecast is not defensible until the tender path, decision owner, and next communication date are confirmed.',
@@ -113,12 +113,12 @@ export const pipelineDefenseDeals: PipelineDefenseDeal[] = [
     assumption: 'Exact tender date and decision committee are not verified in this prototype.',
   },
   {
-    id: 'control-union-proposal-review',
-    account: 'Control Union',
+    id: 'northstar-foods-proposal-review',
+    account: 'Northstar Foods',
     opportunity: 'Proposal review',
     pipelineContext: 'Proposal under internal review with explicit customer concerns.',
     dealTruth:
-      'Control Union is engaged, but lead time and local support must be addressed before the proposal can move forward.',
+      'Northstar Foods is engaged, but lead time and local support must be addressed before the proposal can move forward.',
     riskType: ['Unresolved technical / service objection', 'Missing decision maker', 'Missing decision timeline'],
     evidence: [
       'Customer concern: lead time and local support.',
@@ -198,12 +198,12 @@ export const pipelineDefenseDeals: PipelineDefenseDeal[] = [
     decisionRecommendation: 'Monitor',
   },
   {
-    id: 'bidiphar-unclear-next-action',
-    account: 'Bidiphar',
+    id: 'summit-diagnostics-unclear-next-action',
+    account: 'Summit Diagnostics',
     opportunity: 'Unclear technical B2B opportunity',
     pipelineContext: 'Relevant account with unclear current opportunity proof.',
     dealTruth:
-      'Bidiphar cannot be defended without a clearer opportunity state, decision path, or confirmed next customer action.',
+      'Summit Diagnostics cannot be defended without a clearer opportunity state, decision path, or confirmed next customer action.',
     riskType: ['Unclear next action', 'Unsupported forecast evidence', 'Missing opportunity context'],
     evidence: [
       'Account is relevant to the sales scope.',
@@ -273,18 +273,18 @@ export const managerQuestions: PipelineDefenseQuestion[] = [
 
 export const recommendedPipelineActions: PipelineDefenseAction[] = [
   {
-    id: 'action-tv-pharm',
+    id: 'action-orion-pharma',
     type: 'Rescue',
-    account: 'TV Pharm',
-    opportunity: 'VHP / SolidFog tender',
+    account: 'Orion Pharma',
+    opportunity: 'Orion Pharma / Procurement review',
     action: 'Confirm tender timeline, committee owner, and next communication date.',
     whyThisWeek: 'Without this, the forecast remains hope-based.',
     owner: 'Henry',
   },
   {
-    id: 'action-control-union',
+    id: 'action-northstar-foods',
     type: 'Follow-up',
-    account: 'Control Union',
+    account: 'Northstar Foods',
     opportunity: 'Proposal review',
     action: 'Send implementation timeline and ask for decision owner/timing.',
     whyThisWeek: 'The customer raised explicit concerns that can be addressed now.',
@@ -309,9 +309,9 @@ export const recommendedPipelineActions: PipelineDefenseAction[] = [
     owner: 'Henry',
   },
   {
-    id: 'action-bidiphar',
+    id: 'action-summit-diagnostics',
     type: 'Downgrade',
-    account: 'Bidiphar',
+    account: 'Summit Diagnostics',
     opportunity: 'Unclear technical B2B opportunity',
     action: 'Capture current status or remove from active forecast.',
     whyThisWeek: 'The current evidence is unsupported.',

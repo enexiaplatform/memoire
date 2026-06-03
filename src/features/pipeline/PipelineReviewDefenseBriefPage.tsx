@@ -1124,7 +1124,7 @@ export function PipelineReviewDefenseBriefPage() {
                   setImportMessage('');
                 }}
                 rows={12}
-                placeholder="CSV headers: account,opportunity,pipelineContext,dealTruth,riskType,evidence,missingContext,objectionDebt,forecastEvidenceCategory,recommendedAction,pipelineReviewAnswer,decisionRecommendation&#10;&#10;Markdown:&#10;### TV Pharm / Tender Opportunity&#10;Pipeline context: ...&#10;Deal truth: ...&#10;Risk type: ...&#10;Evidence: ..."
+                placeholder="CSV headers: account,opportunity,pipelineContext,dealTruth,riskType,evidence,missingContext,objectionDebt,forecastEvidenceCategory,recommendedAction,pipelineReviewAnswer,decisionRecommendation&#10;&#10;Markdown:&#10;### Orion Pharma / Procurement Review&#10;Pipeline context: ...&#10;Deal truth: ...&#10;Risk type: ...&#10;Evidence: ..."
                 className="w-full rounded-lg border border-gray-300 bg-gray-50 p-4 font-mono text-xs leading-5 text-gray-800 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
               />
               <div className="mt-3 flex flex-wrap items-center gap-3">

@@ -105,7 +105,7 @@ const accountPatterns = [
   /\b(?:from|with|for)\s+([A-Z][A-Za-z0-9&.,' -]{2,60})(?:[.\n;,]|$)/,
 ];
 
-const knownCompetitors = ['STERIS', 'Getinge', 'Belimed', 'Tuttnauer', 'MMM', 'Fedegari', 'Sakura', 'BioMérieux'];
+const knownCompetitors = ['Incumbent Vendor', 'Global Vendor', 'Legacy Supplier', 'Competing Platform', 'Other Vendor'];
 
 export function classifySalesActivity(
   rawNote: string,

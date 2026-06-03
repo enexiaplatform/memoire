@@ -106,7 +106,7 @@ const founderSteps: WorkflowStepConfig[] = [
   {
     step: 'open_account_memory',
     title: 'Open a stuck account',
-    instruction: 'Open Apex Pharma or TV Pharm to inspect why the deal may go silent.',
+    instruction: 'Open Apex Pharma or Orion Pharma to inspect why the deal may go silent.',
     why: 'A stuck-deal alert should be backed by account memory, evidence, and suggested action.',
     primaryLabel: 'Open Account Memory',
   },
