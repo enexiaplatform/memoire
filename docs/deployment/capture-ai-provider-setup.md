@@ -116,7 +116,7 @@ Endpoint test:
 ```bash
 curl -X POST http://localhost:5173/api/capture-ai-classify \
   -H "Content-Type: application/json" \
-  -d "{\"rawNote\":\"Met Control Union, need to send lead time proof this week.\",\"activityDate\":\"2026-05-24\"}"
+  -d "{\"rawNote\":\"Met Northstar Foods, need to send lead time proof this week.\",\"activityDate\":\"2026-05-24\"}"
 ```
 
 Without server AI vars, expect HTTP 503.

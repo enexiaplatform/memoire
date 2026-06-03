@@ -55,13 +55,13 @@ Daily Capture now suggests creating a stakeholder when an activity contains an e
 
 Demo sandbox now includes realistic stakeholders:
 
-- Dr. Linh — VHP — Champion / Technical buyer / Supportive
-- Ms. An — VHP procurement — Procurement / Neutral
-- Mr. Minh — Control Union — Technical buyer / Developing
-- Procurement contact — TV Pharm — Procurement / Unknown
-- QA manager — Bidiphar — User / Neutral
+- Dr. Avery — Apex Labs — Champion / Technical buyer / Supportive
+- Ms. Morgan — Apex Labs procurement — Procurement / Neutral
+- Mr. Taylor — Northstar Foods — Technical buyer / Developing
+- Procurement contact — Orion Pharma — Procurement / Unknown
+- QA manager — Summit Diagnostics — User / Neutral
 
-STERIS remains competitor context, not a stakeholder.
+Incumbent Vendor remains competitor context, not a stakeholder.
 
 ## What remains intentionally not built
 

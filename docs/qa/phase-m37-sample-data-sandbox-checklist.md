@@ -12,10 +12,10 @@
 ## Opportunities
 - Open `/app/opportunities`.
 - Confirm demo opportunities include:
-  - `VHP / SolidFog EU-GMP Phase 2` as `Defensible`
-  - `Control Union / Microbiology workflow` as `Weak but recoverable`
-  - `TV Pharm / Tender opportunity` as `Hope-based`
-  - `Bidiphar / QC workflow` as `Unsupported`
+  - `Apex Labs / Validation Expansion` as `Defensible`
+  - `Northstar Foods / Lab workflow` as `Weak but recoverable`
+  - `Orion Pharma / Procurement review` as `Hope-based`
+  - `Summit Diagnostics / QC workflow` as `Unsupported`
 - Confirm at least 6 total demo opportunities are visible.
 
 ## Dashboard
@@ -26,10 +26,10 @@
 ## Accounts
 - Open `/app/accounts`.
 - Confirm these demo accounts appear:
-  - `VHP`
-  - `Control Union`
-  - `TV Pharm`
-  - `Bidiphar`
+  - `Apex Labs`
+  - `Northstar Foods`
+  - `Orion Pharma`
+  - `Summit Diagnostics`
 
 ## Calendar And Reviews
 - Open `/app/calendar`.

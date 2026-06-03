@@ -90,10 +90,10 @@ No existing briefs are overwritten.
 
 The existing demo sandbox data already contains mixed-quality opportunities:
 
-- VHP / SolidFog EU-GMP Phase 2: defensible
-- Control Union / Microbiology workflow: weak but recoverable
-- TV Pharm / Tender opportunity: hope-based
-- Bidiphar / QC workflow: unsupported
+- Apex Labs / Validation Expansion: defensible
+- Northstar Foods / Lab workflow: weak but recoverable
+- Orion Pharma / Procurement review: hope-based
+- Summit Diagnostics / QC workflow: unsupported
 
 Stakeholder and objection demo data now feed the MEDDIC-lite review without adding new sample storage behavior.
 

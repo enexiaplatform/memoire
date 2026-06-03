@@ -162,7 +162,7 @@ The preview now includes additional email-specific fields:
 
 Manual regression coverage was added/documented for these scenarios:
 
-### 1. Control Union
+### 1. Northstar Foods
 
 Input:
 

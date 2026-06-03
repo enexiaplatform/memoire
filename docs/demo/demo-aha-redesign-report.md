@@ -17,10 +17,10 @@ Updated the interactive demo workspace seed only. Henry Founder Workspace data w
 Demo now includes 5 seeded accounts:
 
 - Apex Pharma: proposal sent, internal review response, no scheduled follow-up after 14+ days.
-- TV Pharm: VHP / SolidFog tender pending, procurement timeline unclear, no confirmed next action.
-- Control Union: proposal review with Nam, lead time and local support objection, next action to send implementation timeline.
+- Orion Pharma: Orion Pharma / Procurement review pending, procurement timeline unclear, no confirmed next action.
+- Northstar Foods: proposal review with Nam, lead time and local support objection, next action to send implementation timeline.
 - Northstar Labs: validation proof / compliance confidence objection with no linked follow-up.
-- STADA Pymepharco: healthy contrast account with recent interaction, known contact, and clear next action.
+- STADA Harbor Pharma: healthy contrast account with recent interaction, known contact, and clear next action.
 
 Seeded objects include accounts, contacts where known, opportunities, interactions/notes, open actions where appropriate, objections/blockers, and one processed sample capture.
 
@@ -48,7 +48,7 @@ Each card uses existing stuck-deal and context signals to show:
 - Suggested fix
 - CTAs such as Open Account, Open Opportunity, Draft Follow-up, or Add Next Action
 
-The seeded demo should surface Apex Pharma, TV Pharm, and Northstar Labs as the clearest top risk examples.
+The seeded demo should surface Apex Pharma, Orion Pharma, and Northstar Labs as the clearest top risk examples.
 
 ## 5. Account Memory demo changes
 

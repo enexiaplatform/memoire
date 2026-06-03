@@ -118,7 +118,7 @@ Added one demo Email Thread example:
 
 Subject:
 
-`Re: Control Union proposal review`
+`Re: Northstar Foods proposal review`
 
 Email body:
 
@@ -132,7 +132,7 @@ Nam
 
 Expected extraction:
 
-- Account: Control Union
+- Account: Northstar Foods
 - Contact: Nam
 - Status: proposal under internal review
 - Concern: lead time and local support

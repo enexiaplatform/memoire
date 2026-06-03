@@ -33,19 +33,19 @@ Note: sample data is intentionally local-only. When signed in, cloud records are
 
 - Open `/app/opportunities`.
 - Add an opportunity:
-  - Account: `Control Union`
-  - Opportunity: `Microbiology workflow`
+  - Account: `Northstar Foods`
+  - Opportunity: `Lab workflow`
   - Stage: `Technical discussion`
   - Forecast evidence: `Weak but recoverable`
   - Decision recommendation: `Rescue`
   - Next action: `Send local support proof`
 - Open `/app/capture`.
-- Capture: `Gặp Control Union, họ còn lăn tăn lead time. Cần gửi proof local support tuần này.`
+- Capture: `Gặp Northstar Foods, họ còn lăn tăn lead time. Cần gửi proof local support tuần này.`
 - Verify the activity classifies into a structured record.
-- Link the activity to `Control Union / Microbiology workflow`.
+- Link the activity to `Northstar Foods / Lab workflow`.
 - Open `/app/accounts`.
-- If Control Union is only a candidate, create account from candidate.
-- Open Control Union account memory.
+- If Northstar Foods is only a candidate, create account from candidate.
+- Open Northstar Foods account memory.
 - Verify the related opportunity appears.
 - Verify the linked activity appears in the timeline.
 - Verify open next action and objection/risk signals appear where applicable.

@@ -119,8 +119,8 @@ Interactive demo prompts now have stronger structured output support:
 - Which deals may go silent?
 - Why may Apex Pharma go silent?
 - What should I fix today?
-- What does Memoire not know about Control Union?
-- Draft a follow-up for TV Pharm
+- What does Memoire not know about Northstar Foods?
+- Draft a follow-up for Orion Pharma
 
 The output is grounded in seeded demo accounts, opportunities, interactions, actions, and objections.
 

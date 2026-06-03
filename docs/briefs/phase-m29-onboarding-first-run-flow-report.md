@@ -85,7 +85,7 @@ This means onboarding progress reflects existing local or cloud data instead of 
 Capture:
 
 - Textarea now includes an example first note:
-  `Met TV Pharm today. Need to clarify tender timeline next week.`
+  `Met Orion Pharma today. Need to clarify tender timeline next week.`
 - Empty recent activity state suggests the same first note pattern.
 
 Opportunities:

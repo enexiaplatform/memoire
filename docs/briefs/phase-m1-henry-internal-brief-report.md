@@ -5,7 +5,7 @@ Date: 2026-05-10
 ## 1. Files Created
 
 - `docs/briefs/pipeline-review-defense-brief-template.md`
-- `docs/briefs/henry-biomedia-pipeline-review-defense-brief-sample.md`
+- `docs/briefs/henry-demo-pipeline-review-defense-brief-sample.md`
 - `docs/briefs/henry-brief-evaluation-checklist.md`
 - `docs/briefs/phase-m1-henry-internal-brief-report.md`
 

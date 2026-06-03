@@ -24,18 +24,18 @@
 The demo sandbox now creates a realistic local-only B2B sales dataset:
 
 Accounts:
-- `VHP`: pharma, high potential, strong relationship.
-- `Control Union`: food/testing, medium potential, developing relationship.
-- `TV Pharm`: pharma, high potential, at-risk relationship.
-- `Bidiphar`: pharma, medium potential, dormant relationship.
+- `Apex Labs`: pharma, high potential, strong relationship.
+- `Northstar Foods`: food/testing, medium potential, developing relationship.
+- `Orion Pharma`: pharma, high potential, at-risk relationship.
+- `Summit Diagnostics`: pharma, medium potential, dormant relationship.
 
 Opportunities:
-- `VHP / SolidFog EU-GMP Phase 2`: defensible, budget approved, decision maker known.
-- `VHP / Vaporized H2O2 service renewal`: weak but recoverable / monitor.
-- `Control Union / Microbiology workflow`: weak but recoverable / rescue.
-- `TV Pharm / Tender opportunity`: hope-based / rescue.
-- `Bidiphar / QC workflow`: unsupported / downgrade.
-- `Control Union / Food safety rapid testing`: weak but recoverable / monitor.
+- `Apex Labs / Validation Expansion`: defensible, budget approved, decision maker known.
+- `Apex Labs / Validated decontamination service renewal`: weak but recoverable / monitor.
+- `Northstar Foods / Lab workflow`: weak but recoverable / rescue.
+- `Orion Pharma / Procurement review`: hope-based / rescue.
+- `Summit Diagnostics / QC workflow`: unsupported / downgrade.
+- `Northstar Foods / Food safety rapid testing`: weak but recoverable / monitor.
 
 Activities:
 - 8 demo activities across multiple dates.

@@ -81,15 +81,15 @@ Current note: the app builds successfully. Lint still reports pre-existing stric
 
 Sample capture:
 
-> Just called Nam at Control Union. They are still reviewing the proposal. Main concerns are lead time and service support. I should follow up next Tuesday and offer a short meeting to clarify.
+> Just called Alex at Northstar Foods. They are still reviewing the proposal. Main concerns are lead time and service support. I should follow up next Tuesday and offer a short meeting to clarify.
 
 Expected structured fields:
 
 - Type: call
-- Account: Control Union
+- Account: Northstar Foods
 - Contact: Nam
 - Opportunity: proposal review or equivalent proposal-related title
-- Interaction summary: Nam / Control Union is still reviewing the proposal
+- Interaction summary: Alex / Northstar Foods is still reviewing the proposal
 - Pain point: lead time and service support
 - Objection / blocker: lead time and service support
 - Next action: follow up next Tuesday and offer a short meeting
@@ -98,22 +98,22 @@ Expected structured fields:
 Expected records after save:
 
 - Raw note remains in `captures`
-- Account memory exists for Control Union
-- Contact exists for Nam and links to Control Union
-- Interaction links to the Control Union account
-- Opportunity links to Control Union when the structured opportunity title is present
+- Account memory exists for Northstar Foods
+- Contact exists for Alex and links to Northstar Foods
+- Interaction links to the Northstar Foods account
+- Opportunity links to Northstar Foods when the structured opportunity title is present
 - Today action is created from the next action
 
 Manual test flow:
 
 - Quick Capture: open `/app/today`, paste the sample capture, click Structure, review/edit the structured output, then save it.
 - Today Actions: confirm the saved follow-up appears as an open action and that due/overdue sections load without errors.
-- Account Memory: open `/app/accounts`, select Control Union, and confirm the account shows contacts, latest interactions, pain points, objections, opportunities, and open actions.
+- Account Memory: open `/app/accounts`, select Northstar Foods, and confirm the account shows contacts, latest interactions, pain points, objections, opportunities, and open actions.
 - Opportunity Basic: open `/app/opportunities` and confirm the proposal opportunity shows account, stage, blocker, next action, last touch, urgency, and confidence. Confirm opportunities without next actions are highlighted.
 - Ask Memoire: open `/app/ask` and try "Who should I follow up today?", "Summarize this account.", and "What happened last time with this customer?"
 
 Dogfood regression check:
 
 - Save the same sample capture twice.
-- Confirm Memoire does not create two clearly duplicate active opportunities for Control Union.
+- Confirm Memoire does not create two clearly duplicate active opportunities for Northstar Foods.
 - Confirm both interactions remain preserved as memory.

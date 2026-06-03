@@ -33,7 +33,7 @@ On load:
    - Title: `Migrated Pipeline Defense Brief`
    - Week label: `Current Week`
    - Sales owner: `Henry`
-   - Scope: `BioMedia Vietnam pipeline`
+   - Scope: `Demo review pipeline`
    - Deals: migrated legacy deals
 4. The migrated brief is saved to the new multi-brief key.
 5. The old key is not deleted.

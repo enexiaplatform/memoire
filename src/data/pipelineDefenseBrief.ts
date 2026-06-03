@@ -141,12 +141,12 @@ export const pipelineDefenseDeals: PipelineDefenseDeal[] = [
     decisionRecommendation: 'Rescue',
   },
   {
-    id: 'samil-evaluation-follow-up',
-    account: 'Samil Pharmaceutical',
+    id: 'cedar-health-evaluation-follow-up',
+    account: 'Cedar Health',
     opportunity: 'Demo or evaluation follow-up',
     pipelineContext: 'Strategic account context with unclear next customer action.',
     dealTruth:
-      'Samil is a meaningful account, but the current forecast needs stronger proof: evaluation criteria, decision participants, and a confirmed next step.',
+      'Cedar Health is a meaningful account, but the current forecast needs stronger proof: evaluation criteria, decision participants, and a confirmed next step.',
     riskType: ['Missing follow-up', 'Missing decision context', 'Missing technical evaluation criteria'],
     evidence: [
       'Strategic account context exists.',
@@ -165,13 +165,13 @@ export const pipelineDefenseDeals: PipelineDefenseDeal[] = [
     recommendedAction:
       'Clarify the evaluation criteria, decision participants, and next technical or commercial milestone.',
     pipelineReviewAnswer:
-      'This deal is weak but recoverable. Samil is relevant, but I need a confirmed next customer action and evaluation criteria before defending the forecast.',
+      'This deal is weak but recoverable. Cedar Health is relevant, but I need a confirmed next customer action and evaluation criteria before defending the forecast.',
     decisionRecommendation: 'Monitor',
     assumption: 'The sample does not include a confirmed current demo date or evaluation owner.',
   },
   {
-    id: 'stada-pymepharco-strategic',
-    account: 'STADA Pymepharco',
+    id: 'harbor-pharma-strategic',
+    account: 'Harbor Pharma',
     opportunity: 'Strategic account opportunity',
     pipelineContext: 'Key account / strategic opportunity with stakeholder and timing risk.',
     dealTruth:
@@ -291,18 +291,18 @@ export const recommendedPipelineActions: PipelineDefenseAction[] = [
     owner: 'Henry',
   },
   {
-    id: 'action-samil',
+    id: 'action-cedar-health',
     type: 'Clarify',
-    account: 'Samil Pharmaceutical',
+    account: 'Cedar Health',
     opportunity: 'Demo or evaluation follow-up',
     action: 'Confirm evaluation criteria and next customer action.',
     whyThisWeek: 'Strategic account status needs customer-confirmed evidence.',
     owner: 'Henry',
   },
   {
-    id: 'action-pymepharco',
+    id: 'action-harbor-pharma',
     type: 'Collect evidence',
-    account: 'STADA Pymepharco',
+    account: 'Harbor Pharma',
     opportunity: 'Strategic account opportunity',
     action: 'Confirm active stakeholder, product scope, and next customer milestone.',
     whyThisWeek: 'Strategic importance alone is not forecast evidence.',

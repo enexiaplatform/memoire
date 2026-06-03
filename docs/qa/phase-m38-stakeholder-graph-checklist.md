@@ -8,9 +8,9 @@
 - Confirm DataModePill shows Demo local.
 - Open `/app/stakeholders`.
 - Confirm sample stakeholders appear:
-  - Dr. Linh
-  - Ms. An
-  - Mr. Minh
+  - Dr. Avery
+  - Ms. Morgan
+  - Mr. Taylor
   - Procurement contact
   - QA manager
 
@@ -18,7 +18,7 @@
 
 - Add a stakeholder:
   - Name: Mr. Quan
-  - Account: TV Pharm
+  - Account: Orion Pharma
   - Role: Economic buyer
   - Influence: High
   - Stance: Neutral
@@ -31,28 +31,28 @@
 ## Account integration
 
 - Open `/app/accounts`.
-- Open VHP account detail.
+- Open Apex Labs account detail.
 - Confirm stakeholder section appears.
-- Confirm Dr. Linh and Ms. An appear under VHP.
+- Confirm Dr. Avery and Ms. Morgan appear under Apex Labs.
 - Click Open Stakeholders.
 - Confirm Stakeholders page opens with account context.
 
 ## Opportunity integration
 
 - Open `/app/opportunities`.
-- Open VHP / SolidFog EU-GMP Phase 2.
+- Open Apex Labs / Validation Expansion.
 - Confirm Stakeholder Map appears.
 - Confirm champion/technical buyer is visible.
-- Open TV Pharm / Tender opportunity.
+- Open Orion Pharma / Procurement review.
 - Confirm stakeholder coverage warnings appear where relevant.
 
 ## Capture integration
 
 - Open `/app/capture`.
 - Capture:
-  `Met with Dr. Linh at VHP today. She supports SolidFog Phase 2 and asked us to follow up with procurement.`
+  `Met with Dr. Avery at Apex Labs today. She supports Validation Expansion and asked us to follow up with procurement.`
 - Save activity.
-- Confirm the app suggests creating a stakeholder from Dr. Linh if not already present.
+- Confirm the app suggests creating a stakeholder from Dr. Avery if not already present.
 - Create or ignore the stakeholder.
 - Confirm no stakeholder is created automatically without confirmation.
 

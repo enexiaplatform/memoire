@@ -381,11 +381,11 @@ export function loadInteractiveDemoWorkspace() {
     created_at: daysAgo(35),
     updated_at: northstarReviewAt,
   };
-  const stadaPymepharco: Account = {
-    id: 'demo-account-stada-pymepharco',
+  const harborPharma: Account = {
+    id: 'demo-account-harbor-pharma',
     user_id: DEMO_USER_ID,
-    name: 'STADA Pymepharco',
-    summary: 'STADA Pymepharco is on track with a recent technical alignment, known contact, and clear next action.',
+    name: 'Harbor Pharma',
+    summary: 'Harbor Pharma is on track with a recent technical alignment, known contact, and clear next action.',
     industry: 'Pharmaceutical manufacturing',
     status: 'active',
     pain_points: ['Validation readiness'],
@@ -395,7 +395,7 @@ export function loadInteractiveDemoWorkspace() {
     updated_at: stadaRecentAt,
   };
 
-  memory.accounts = [apexPharma, tvPharm, controlUnion, northstarLabs, stadaPymepharco];
+  memory.accounts = [apexPharma, tvPharm, controlUnion, northstarLabs, harborPharma];
   memory.contacts = [
     {
       id: 'demo-contact-nam',
@@ -413,7 +413,7 @@ export function loadInteractiveDemoWorkspace() {
     {
       id: 'demo-contact-trinh',
       user_id: DEMO_USER_ID,
-      account_id: stadaPymepharco.id,
+      account_id: harborPharma.id,
       name: 'Trinh',
       role: 'QC Manager',
       email: null,
@@ -496,7 +496,7 @@ export function loadInteractiveDemoWorkspace() {
     {
       id: 'demo-opportunity-stada-alignment',
       user_id: DEMO_USER_ID,
-      account_id: stadaPymepharco.id,
+      account_id: harborPharma.id,
       contact_id: 'demo-contact-trinh',
       title: 'Validation readiness alignment',
       stage: 'active',
@@ -595,7 +595,7 @@ export function loadInteractiveDemoWorkspace() {
     {
       id: 'demo-interaction-stada-recent',
       user_id: DEMO_USER_ID,
-      account_id: stadaPymepharco.id,
+      account_id: harborPharma.id,
       contact_id: 'demo-contact-trinh',
       opportunity_id: 'demo-opportunity-stada-alignment',
       source_capture_id: null,
@@ -628,7 +628,7 @@ export function loadInteractiveDemoWorkspace() {
     {
       id: 'demo-action-stada-checklist',
       user_id: DEMO_USER_ID,
-      account_id: stadaPymepharco.id,
+      account_id: harborPharma.id,
       contact_id: 'demo-contact-trinh',
       opportunity_id: 'demo-opportunity-stada-alignment',
       interaction_id: 'demo-interaction-stada-recent',

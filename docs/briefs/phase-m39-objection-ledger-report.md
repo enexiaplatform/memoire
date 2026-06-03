@@ -88,11 +88,11 @@ Reviews:
 
 Demo sandbox now includes realistic mixed objections:
 
-- Control Union — Lead time concern — Open — Medium
-- VHP — Compliance / validation proof — Addressed — Medium
-- TV Pharm — Procurement/tender uncertainty — Open — High
-- Bidiphar — Local support concern — Open — Medium
-- VHP / STERIS — Competitor pressure — Addressed — Medium
+- Northstar Foods — Lead time concern — Open — Medium
+- Apex Labs — Compliance / validation proof — Addressed — Medium
+- Orion Pharma — Procurement/tender uncertainty — Open — High
+- Summit Diagnostics — Local support concern — Open — Medium
+- Apex Labs / Incumbent Vendor — Competitor pressure — Addressed — Medium
 
 ## What remains intentionally not built
 

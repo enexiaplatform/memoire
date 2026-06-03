@@ -44,11 +44,11 @@ The prototype helps Henry inspect which deals should be defended, rescued, downg
 
 Representative deals:
 
-- TV Pharm / VHP SolidFog tender
-- Control Union / proposal review
-- Samil Pharmaceutical / demo or evaluation follow-up
-- STADA Pymepharco / strategic account opportunity
-- Bidiphar / unclear technical B2B opportunity
+- Orion Pharma / Orion Pharma procurement review
+- Northstar Foods / proposal review
+- Cedar Health Pharmaceutical / demo or evaluation follow-up
+- STADA Harbor Pharma / strategic account opportunity
+- Summit Diagnostics / unclear technical B2B opportunity
 
 Forecast evidence categories:
 

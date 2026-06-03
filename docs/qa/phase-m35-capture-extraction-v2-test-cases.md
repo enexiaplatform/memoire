@@ -1,21 +1,21 @@
 # Phase M.35 Capture Extraction v2 Test Cases
 
-## Primary VHP fixture
+## Primary Apex Labs fixture
 
 Input:
 
 ```text
-Met with Dr. Linh at VHP today. They confirmed budget approval for SolidFog Phase 2 next quarter. Need to send revised quote by Friday and follow up with procurement next Tuesday. Competitor STERIS still in the loop.
+Met with Dr. Avery at Apex Labs today. They confirmed budget approval for Validation Expansion next quarter. Need to send revised quote by Friday and follow up with procurement next Tuesday. Competitor Incumbent Vendor still in the loop.
 ```
 
 Expected extraction:
 
-- `accountName`: `VHP`
-- `contactName` or `stakeholderName`: `Dr. Linh`
+- `accountName`: `Apex Labs`
+- `contactName` or `stakeholderName`: `Dr. Avery`
 - `stakeholderRole`: `Doctor` if captured
-- `opportunityName`: `SolidFog Phase 2`
-- Suggested opportunity: `VHP / SolidFog EU-GMP Phase 2` should rank Medium or High when that opportunity exists
-- `competitors`: `STERIS`
+- `opportunityName`: `Validation Expansion`
+- Suggested opportunity: `Apex Labs / Validation Expansion` should rank Medium or High when that opportunity exists
+- `competitors`: `Incumbent Vendor`
 - `buyingSignals`: `Budget approved`
 - `timelineSignals`: `Next quarter`
 - `risks`: `Competitor still active`
@@ -31,13 +31,13 @@ Expected extraction:
 Input:
 
 ```text
-Follow up with TV Pharm tomorrow about the revised pricing.
+Follow up with Orion Pharma tomorrow about the revised pricing.
 ```
 
 Expected:
 
 - Activity type: `Follow-up`
-- Account may be `TV Pharm`
+- Account may be `Orion Pharma`
 - One next action
 - Due date resolves to tomorrow
 
@@ -46,13 +46,13 @@ Expected:
 Input:
 
 ```text
-Internal sync with application team. Need to prepare validation proof for Control Union.
+Internal sync with application team. Need to prepare validation proof for Northstar Foods.
 ```
 
 Expected:
 
 - Activity type: `Internal coordination`
-- Next action: `Prepare validation proof for Control Union`
+- Next action: `Prepare validation proof for Northstar Foods`
 - No competitor unless explicitly mentioned
 
 ## Competitor without account
@@ -60,12 +60,12 @@ Expected:
 Input:
 
 ```text
-Competitor STERIS is still pushing hard. Need to confirm where we stand.
+Competitor Incumbent Vendor is still pushing hard. Need to confirm where we stand.
 ```
 
 Expected:
 
-- `competitors`: `STERIS`
+- `competitors`: `Incumbent Vendor`
 - `risks`: competitor active signal
 - Account may remain empty
 

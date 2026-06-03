@@ -8,17 +8,17 @@
 - Confirm DataModePill shows Demo local.
 - Open `/app/objections`.
 - Confirm sample objections appear:
-  - Control Union lead time
-  - VHP documentation / validation proof
-  - TV Pharm procurement / tender uncertainty
-  - Bidiphar local support
-  - STERIS competitor pressure
+  - Northstar Foods lead time
+  - Apex Labs documentation / validation proof
+  - Orion Pharma procurement / tender uncertainty
+  - Summit Diagnostics local support
+  - Incumbent Vendor competitor pressure
 
 ## Objection CRUD
 
 - Add objection:
-  - Account: Control Union
-  - Opportunity: Microbiology workflow
+  - Account: Northstar Foods
+  - Opportunity: Lab workflow
   - Type: Lead time
   - Impact: High
   - Status: Open
@@ -32,7 +32,7 @@
 ## Opportunity integration
 
 - Open `/app/opportunities`.
-- Open Control Union / Microbiology workflow.
+- Open Northstar Foods / Lab workflow.
 - Confirm Objection Ledger section appears.
 - Confirm linked objections are visible.
 - Confirm warning appears for high-impact open objection when present.
@@ -40,7 +40,7 @@
 ## Account integration
 
 - Open `/app/accounts`.
-- Open Control Union account detail.
+- Open Northstar Foods account detail.
 - Confirm Account Objections section appears.
 - Confirm open/resolved counts and objection rows display.
 
@@ -48,7 +48,7 @@
 
 - Open `/app/capture`.
 - Capture:
-  `Control Union is still worried about lead time and wants local proof before moving forward.`
+  `Northstar Foods is still worried about lead time and wants local proof before moving forward.`
 - Save activity.
 - Confirm app suggests creating objection.
 - Create objection.
@@ -58,7 +58,7 @@
 ## Pipeline Defense integration
 
 - Open `/app/opportunities`.
-- Generate Pipeline Defense Brief from Control Union opportunity.
+- Generate Pipeline Defense Brief from Northstar Foods opportunity.
 - Open `/app/pipeline-defense`.
 - Confirm generated deal objection debt includes open structured objection context.
 

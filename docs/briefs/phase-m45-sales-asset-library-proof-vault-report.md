@@ -165,7 +165,7 @@ Demo sandbox now includes local-only sample assets:
 
 - IQ/OQ/PQ documentation proof note
 - Procurement justification snippet
-- STERIS competitor response note
+- Incumbent Vendor competitor response note
 - Lead time objection response
 - Validation and compliance proof asset
 

@@ -119,10 +119,10 @@ This helps answer what was done since the last review, what changed, and what re
 
 Demo sandbox now includes action outcome examples:
 
-- VHP action completed with improved outcome
-- Control Union action completed but still unclear
-- Bidiphar action dismissed with downgrade recommendation
-- TV Pharm critical action accepted but unresolved
+- Apex Labs action completed with improved outcome
+- Northstar Foods action completed but still unclear
+- Summit Diagnostics action dismissed with downgrade recommendation
+- Orion Pharma critical action accepted but unresolved
 
 Demo outcomes are local-only and are cleared with demo sandbox data.
 

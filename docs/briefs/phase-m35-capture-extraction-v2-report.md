@@ -30,8 +30,8 @@
 - Existing columns and RLS policies are not changed.
 
 ## Extraction improvements
-- Rule-based extraction now handles contact/account phrases like `Met with Dr. Linh at VHP`.
-- Competitor extraction detects phrases like `Competitor STERIS`.
+- Rule-based extraction now handles contact/account phrases like `Met with Dr. Avery at Apex Labs`.
+- Competitor extraction detects phrases like `Competitor Incumbent Vendor`.
 - Buying signal extraction detects budget approval and similar confirmed evidence.
 - Timeline extraction detects `next quarter`, `this quarter`, `next month`, and similar timeline phrases.
 - Multi-action extraction separates actions like:
@@ -75,13 +75,13 @@
 - `npm run lint`: passes with the 5 known pre-existing hook dependency warnings.
 
 ## Fixture verification
-- Tested the VHP fixture against the production build output.
+- Tested the Apex Labs fixture against the production build output.
 - Extracted:
-  - `accountName`: `VHP`
-  - `opportunityName`: `SolidFog Phase 2`
-  - `contactName` / `stakeholderName`: `Dr. Linh`
+  - `accountName`: `Apex Labs`
+  - `opportunityName`: `Validation Expansion`
+  - `contactName` / `stakeholderName`: `Dr. Avery`
   - `stakeholderRole`: `Doctor`
-  - `competitors`: `STERIS`
+  - `competitors`: `Incumbent Vendor`
   - `buyingSignals`: `Budget approved`
   - `timelineSignals`: `Next quarter`
   - `nextActions`:
