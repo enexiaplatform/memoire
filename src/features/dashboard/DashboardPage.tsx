@@ -329,37 +329,42 @@ export function DashboardPage() {
           ) : (
             <>
               <TodayFocus commandCenter={commandCenter} />
-              <ThisWeekSummary commandCenter={commandCenter} />
-              <PreparePipelineReview signal={dashboardInsights.pipelineReviewSignal} />
-              <CaptureNudgePanel nudges={dashboardInsights.captureNudges} />
-              <WeeklyExecutionHealth
-                review={dashboardInsights.weeklyExecutionReview}
-                activeOpportunityCount={dashboardInsights.activeOpportunityCount}
-              />
-              <TopSalesPattern pattern={dashboardInsights.topSalesPattern} />
-              <AssetGaps
-                gapSummary={dashboardInsights.assetGapSummary}
-                assetCount={data.assets.length}
-                objectionCount={data.objections.length}
-                patternCount={dashboardInsights.playbookPatterns.length}
-              />
-              <PriorityActionList items={commandCenter.priorityActions} />
-              <CriticalDealActions
-                actions={dashboardInsights.criticalDealActions}
-                outcomeLoop={dashboardInsights.outcomeLoop}
-              />
-              <OpenObjectionSignals objections={data.objections} />
-              <MeddicRiskSignal summary={dashboardInsights.meddicSummary} />
-
-              <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-                <AtRiskOpportunities items={commandCenter.atRiskOpportunities} />
-                <AccountsNeedingTouch items={commandCenter.accountsNeedingTouch} />
-              </section>
-
-              <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_360px]">
-                <RecentActivityFeed items={commandCenter.recentActivities} />
-                <QuickActions />
-              </section>
+              <DashboardPrimaryWork commandCenter={commandCenter} signal={dashboardInsights.pipelineReviewSignal} />
+              <details className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <summary className="cursor-pointer text-sm font-bold text-navy">
+                  More dashboard insights
+                </summary>
+                <div className="mt-4 flex flex-col gap-4">
+                  <ThisWeekSummary commandCenter={commandCenter} />
+                  <CaptureNudgePanel nudges={dashboardInsights.captureNudges} />
+                  <WeeklyExecutionHealth
+                    review={dashboardInsights.weeklyExecutionReview}
+                    activeOpportunityCount={dashboardInsights.activeOpportunityCount}
+                  />
+                  <TopSalesPattern pattern={dashboardInsights.topSalesPattern} />
+                  <AssetGaps
+                    gapSummary={dashboardInsights.assetGapSummary}
+                    assetCount={data.assets.length}
+                    objectionCount={data.objections.length}
+                    patternCount={dashboardInsights.playbookPatterns.length}
+                  />
+                  <PriorityActionList items={commandCenter.priorityActions} />
+                  <CriticalDealActions
+                    actions={dashboardInsights.criticalDealActions}
+                    outcomeLoop={dashboardInsights.outcomeLoop}
+                  />
+                  <OpenObjectionSignals objections={data.objections} />
+                  <MeddicRiskSignal summary={dashboardInsights.meddicSummary} />
+                  <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                    <AtRiskOpportunities items={commandCenter.atRiskOpportunities} />
+                    <AccountsNeedingTouch items={commandCenter.accountsNeedingTouch} />
+                  </section>
+                  <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_360px]">
+                    <RecentActivityFeed items={commandCenter.recentActivities} />
+                    <QuickActions />
+                  </section>
+                </div>
+              </details>
             </>
           )}
           <details className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -557,6 +562,73 @@ function StartHerePanel({
   );
 }
 
+function DashboardPrimaryWork({
+  commandCenter,
+  signal,
+}: {
+  commandCenter: CommandCenter;
+  signal: DashboardInsights['pipelineReviewSignal'];
+}) {
+  const actionMap = new Map<string, CommandActionItem>();
+  [...commandCenter.overdueActions, ...commandCenter.todayActions, ...commandCenter.priorityActions].forEach((action) => {
+    if (!actionMap.has(action.id)) actionMap.set(action.id, action);
+  });
+  const topActions = Array.from(actionMap.values()).slice(0, 3);
+
+  return (
+    <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
+      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Next actions</p>
+            <h2 className="mt-1 text-xl font-bold text-navy">Do these first.</h2>
+          </div>
+          <Link to="/app/capture?mode=quick" className="inline-flex w-fit rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+            Capture update
+          </Link>
+        </div>
+
+        {topActions.length === 0 ? (
+          <p className="mt-4 rounded-lg bg-gray-50 p-4 text-sm font-semibold text-gray-600">
+            No urgent action right now. Capture the next customer touch or review your active deals.
+          </p>
+        ) : (
+          <div className="mt-4 divide-y divide-gray-100">
+            {topActions.map((action) => (
+              <Link key={action.id} to={action.href} className="flex flex-col gap-2 py-3 hover:text-brand-blue sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex flex-wrap gap-2">
+                    <PriorityBadge priority={action.priority} />
+                    {action.dueDate && <Badge label={`Due ${action.dueDate}`} tone={action.dueDate < new Date().toISOString().slice(0, 10) ? 'red' : 'blue'} />}
+                  </div>
+                  <h3 className="mt-2 text-sm font-bold text-navy">{action.title}</h3>
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    {action.accountName}{action.opportunityName ? ` / ${action.opportunityName}` : ''}
+                  </p>
+                </div>
+                <ArrowRight className="hidden h-4 w-4 shrink-0 text-gray-400 sm:block" />
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Review prep</p>
+        <h2 className="mt-1 text-xl font-bold text-navy">Prepare Pipeline Review</h2>
+        <p className="mt-2 text-sm leading-6 text-blue-900/75">{signal.topReason}</p>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Metric label="Review" value={signal.dealsNeedingReview} tone={signal.dealsNeedingReview ? 'amber' : 'green'} />
+          <Metric label="Rescue" value={signal.rescueDowngradeCandidates} tone={signal.rescueDowngradeCandidates ? 'red' : 'green'} />
+        </div>
+        <Link to={signal.href} className="mt-4 inline-flex rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          Open Pipeline Defense
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 function TodayFocus({ commandCenter }: { commandCenter: CommandCenter }) {
   return (
     <section>
@@ -616,54 +688,6 @@ function ThisWeekSummary({ commandCenter }: { commandCenter: CommandCenter }) {
         <Metric label="Open actions" value={summary.openNextActions} tone={summary.openNextActions ? 'amber' : 'green'} />
         <Metric label="Objections" value={summary.objectionsCaptured} tone={summary.objectionsCaptured ? 'red' : 'green'} />
         <Metric label="Defense briefs" value={summary.pipelineDefenseBriefsCreated} />
-      </div>
-    </section>
-  );
-}
-
-function PreparePipelineReview({ signal }: { signal: DashboardInsights['pipelineReviewSignal'] }) {
-  if (signal.dealsNeedingReview === 0 && signal.rescueDowngradeCandidates === 0 && signal.briefTitle === 'No defense brief yet') {
-    return (
-      <section className="rounded-lg border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <FileCheck2 className="h-4 w-4 text-brand-blue" />
-              <h2 className="text-lg font-bold text-navy">Prepare Pipeline Review</h2>
-            </div>
-            <p className="mt-1 text-sm text-blue-900/75">{signal.topReason}</p>
-          </div>
-          <Link to={signal.href} className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-            Open Pipeline Defense
-          </Link>
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <section className="rounded-lg border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <FileCheck2 className="h-4 w-4 text-brand-blue" />
-            <h2 className="text-lg font-bold text-navy">Prepare Pipeline Review</h2>
-          </div>
-          <p className="mt-1 text-sm text-blue-900/75">
-            Manager-ready defense prep from the latest Pipeline Defense Brief: {signal.briefTitle}.
-          </p>
-        </div>
-        <Link to={signal.href} className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-          Open Pipeline Defense
-        </Link>
-      </div>
-      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-        <Metric label="Deals needing review" value={signal.dealsNeedingReview} tone={signal.dealsNeedingReview ? 'amber' : 'green'} />
-        <Metric label="Rescue / downgrade" value={signal.rescueDowngradeCandidates} tone={signal.rescueDowngradeCandidates ? 'red' : 'green'} />
-        <div className="rounded-lg border border-blue-100 bg-white p-3">
-          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Top reason</p>
-          <p className="mt-2 text-sm leading-6 text-gray-700">{signal.topReason}</p>
-        </div>
       </div>
     </section>
   );
