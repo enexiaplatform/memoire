@@ -17,11 +17,11 @@ import { hasLocalSampleData } from '../../utils/dataMode';
 import {
   canUseSalesActivityCloudStore,
   deleteSalesActivity,
-  loadSalesActivities,
   updateSalesActivityLink,
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
-import { loadOpportunities, updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
+import { updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
+import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
 import { applyOpportunityUpdateSuggestion, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 import type { SalesActivityType } from '../../utils/salesActivityClassifier';
@@ -76,12 +76,9 @@ export function SalesActivityCalendarPage() {
 
   const refreshActivities = useCallback(async () => {
     setLoadingActivities(true);
-    const [loaded, loadedOpportunities] = await Promise.all([
-      loadSalesActivities(dataUserId),
-      loadOpportunities(dataUserId),
-    ]);
-    setActivities(loaded);
-    setOpportunities(loadedOpportunities);
+    const workspaceData = await loadSalesWorkspaceData(dataUserId);
+    setActivities(workspaceData.activities);
+    setOpportunities(workspaceData.opportunities);
     setLoadingActivities(false);
   }, [dataUserId]);
 

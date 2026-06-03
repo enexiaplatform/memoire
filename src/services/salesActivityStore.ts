@@ -1,5 +1,6 @@
 import { supabaseClient } from '../lib/supabaseClient';
 import type { ClassifiedSalesActivity, SalesActivityType } from '../utils/salesActivityClassifier';
+import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 
 export interface SalesActivityRecord extends ClassifiedSalesActivity {
   id: string;
@@ -84,10 +85,12 @@ export async function saveSalesActivity(
   if (canUseSalesActivityCloudStore(userId)) {
     try {
       const record = await createCloudActivity(activity, userId as string);
+      invalidateWorkspaceDataCache();
       return { record, mode: 'cloud' };
     } catch (error) {
       const record = createLocalActivity(activity);
       saveLocalActivityRecord(record);
+      invalidateWorkspaceDataCache();
       debugSalesActivityStore('cloud save failed; local copy preserved', { message: getErrorMessage(error) });
       return {
         record,
@@ -99,6 +102,7 @@ export async function saveSalesActivity(
 
   const record = createLocalActivity(activity);
   saveLocalActivityRecord(record);
+  invalidateWorkspaceDataCache();
   return { record, mode: 'local' };
 }
 
@@ -111,10 +115,12 @@ export async function deleteSalesActivity(activity: SalesActivityRecord, userId?
       .eq('user_id', userId);
 
     if (error) throw new Error(error.message);
+    invalidateWorkspaceDataCache();
     return;
   }
 
   deleteLocalActivity(activity.id);
+  invalidateWorkspaceDataCache();
 }
 
 export async function updateSalesActivityLink(
@@ -148,10 +154,12 @@ export async function updateSalesActivityLink(
       .single();
 
     if (error) throw new Error(error.message);
+    invalidateWorkspaceDataCache();
     return rowToRecord(data as SalesActivityRow);
   }
 
   saveLocalActivityRecord({ ...updated, storageMode: 'local' });
+  invalidateWorkspaceDataCache();
   return { ...updated, storageMode: 'local' };
 }
 

@@ -1,4 +1,5 @@
 import { supabaseClient } from '../lib/supabaseClient';
+import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 
 export const OBJECTION_STORAGE_KEY = 'memoire.objections.v1';
 
@@ -122,10 +123,12 @@ export async function createObjection(input: ObjectionFormInput, userId?: string
     try {
       const objection = await createCloudObjection(normalized, userId as string);
       saveLocalObjectionRecord({ ...objection, storageMode: 'local' });
+      invalidateWorkspaceDataCache();
       return { objection, mode: 'cloud' };
     } catch (error) {
       const objection = createLocalObjection(normalized, userId || undefined);
       saveLocalObjectionRecord(objection);
+      invalidateWorkspaceDataCache();
       debugObjectionStore('cloud create failed; local copy preserved', { message: getErrorMessage(error) });
       return { objection, mode: 'local', warning: 'Cloud sync issue - your local copy is preserved.' };
     }
@@ -133,6 +136,7 @@ export async function createObjection(input: ObjectionFormInput, userId?: string
 
   const objection = createLocalObjection(normalized, userId || undefined);
   saveLocalObjectionRecord(objection);
+  invalidateWorkspaceDataCache();
   return { objection, mode: 'local' };
 }
 
@@ -142,10 +146,12 @@ export async function updateObjection(objection: ObjectionRecord, input: Objecti
     try {
       const updated = await updateCloudObjection(objection.id, normalized, userId as string);
       saveLocalObjectionRecord({ ...updated, storageMode: 'local' });
+      invalidateWorkspaceDataCache();
       return { objection: updated, mode: 'cloud' };
     } catch (error) {
       const localCopy = { ...objection, ...normalized, updatedAt: new Date().toISOString(), storageMode: 'local' as const };
       saveLocalObjectionRecord(localCopy);
+      invalidateWorkspaceDataCache();
       debugObjectionStore('cloud update failed; local copy preserved', { message: getErrorMessage(error) });
       return { objection: localCopy, mode: 'local', warning: 'Cloud sync issue - your local copy is preserved.' };
     }
@@ -153,6 +159,7 @@ export async function updateObjection(objection: ObjectionRecord, input: Objecti
 
   const updated = { ...objection, ...normalized, updatedAt: new Date().toISOString(), storageMode: 'local' as const };
   saveLocalObjectionRecord(updated);
+  invalidateWorkspaceDataCache();
   return { objection: updated, mode: 'local' };
 }
 
@@ -166,6 +173,7 @@ export async function deleteObjection(objection: ObjectionRecord, userId?: strin
     if (error) throw new Error(error.message);
   }
   deleteLocalObjection(objection.id);
+  invalidateWorkspaceDataCache();
 }
 
 export function objectionToFormInput(objection: ObjectionRecord): ObjectionFormInput {

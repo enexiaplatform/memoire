@@ -12,16 +12,16 @@ import {
   createAccount,
   deleteAccount,
   emptyAccountInput,
-  loadAccounts,
   relationshipStatuses,
   updateAccount,
   type AccountFormInput,
   type AccountMemoryRecord,
 } from '../../services/accountStore';
-import { loadOpportunities, type CrmLiteOpportunity } from '../../services/opportunityStore';
-import { loadSalesActivities, type SalesActivityRecord } from '../../services/salesActivityStore';
-import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
-import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
+import { type CrmLiteOpportunity } from '../../services/opportunityStore';
+import { type SalesActivityRecord } from '../../services/salesActivityStore';
+import { type StakeholderRecord } from '../../services/stakeholderStore';
+import { type ObjectionRecord } from '../../services/objectionStore';
+import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import {
   buildAccountMemory,
   deriveAccountCandidatesFromActivities,
@@ -61,18 +61,12 @@ export function AccountsPage() {
 
   const refreshAccounts = async () => {
     setLoading(true);
-    const [loadedAccounts, loadedOpportunities, loadedActivities, loadedStakeholders, loadedObjections] = await Promise.all([
-      loadAccounts(dataUserId),
-      loadOpportunities(dataUserId),
-      loadSalesActivities(dataUserId),
-      loadStakeholders(dataUserId),
-      loadObjections(dataUserId),
-    ]);
-    setAccounts(loadedAccounts);
-    setOpportunities(loadedOpportunities);
-    setActivities(loadedActivities);
-    setStakeholders(loadedStakeholders);
-    setObjections(loadedObjections);
+    const workspaceData = await loadSalesWorkspaceData(dataUserId);
+    setAccounts(workspaceData.accounts);
+    setOpportunities(workspaceData.opportunities);
+    setActivities(workspaceData.activities);
+    setStakeholders(workspaceData.stakeholders);
+    setObjections(workspaceData.objections);
     setLoading(false);
   };
 

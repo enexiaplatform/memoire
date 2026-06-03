@@ -18,19 +18,14 @@ import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import type { AccountMemoryRecord } from '../../services/accountStore';
-import { loadAccounts } from '../../services/accountStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
-import { loadOpportunities } from '../../services/opportunityStore';
-import { loadSalesActivities, type SalesActivityRecord } from '../../services/salesActivityStore';
-import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
-import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
-import { loadActionOutcomes, type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
-import { loadSalesAssets, type SalesAssetRecord } from '../../services/salesAssetStore';
-import { canUsePipelineDefenseCloudStore, loadCloudBriefs } from '../../services/pipelineDefenseCloudStore';
-import {
-  loadPipelineDefenseBriefStore,
-  type PipelineDefenseBrief,
-} from '../../utils/pipelineDefenseStorage';
+import { type SalesActivityRecord } from '../../services/salesActivityStore';
+import { type ObjectionRecord } from '../../services/objectionStore';
+import { type StakeholderRecord } from '../../services/stakeholderStore';
+import { type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
+import { type SalesAssetRecord } from '../../services/salesAssetStore';
+import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { type PipelineDefenseBrief } from '../../utils/pipelineDefenseStorage';
 import {
   buildTodayCommandCenter,
   type AccountTouchItem,
@@ -1743,29 +1738,8 @@ function playbookSeverityTone(pattern: SalesPlaybookPattern) {
   return 'green';
 }
 
-async function loadPipelineBriefs(userId?: string | null) {
-  if (userId && canUsePipelineDefenseCloudStore()) {
-    try {
-      return await loadCloudBriefs(userId);
-    } catch {
-      return loadPipelineDefenseBriefStore().briefs;
-    }
-  }
-
-  return loadPipelineDefenseBriefStore().briefs;
-}
-
 async function loadDashboardData(userId?: string | null): Promise<DashboardData> {
-  const [activities, opportunities, accounts, briefs, objections, stakeholders] = await Promise.all([
-    loadSalesActivities(userId),
-    loadOpportunities(userId),
-    loadAccounts(userId),
-    loadPipelineBriefs(userId),
-    loadObjections(userId),
-    loadStakeholders(userId),
-  ]);
-
-  return { activities, opportunities, accounts, briefs, objections, stakeholders, actionOutcomes: loadActionOutcomes(), assets: loadSalesAssets() };
+  return loadSalesWorkspaceData(userId);
 }
 
 function syncOnboardingFromData(data: DashboardData, options: { includeDataSignals: boolean }) {

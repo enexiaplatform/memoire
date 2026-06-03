@@ -1,3 +1,5 @@
+import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+
 export const SALES_ASSET_STORAGE_KEY = 'memoire.salesAssets.v1';
 export const SALES_ASSET_DRAFT_STORAGE_KEY = 'memoire.salesAssets.draft.v1';
 
@@ -86,6 +88,7 @@ export function saveSalesAssets(assets: SalesAssetRecord[]) {
   if (typeof window === 'undefined') return false;
   try {
     window.localStorage.setItem(SALES_ASSET_STORAGE_KEY, JSON.stringify(assets.map(sanitizeAsset).filter(Boolean)));
+    invalidateWorkspaceDataCache();
     return true;
   } catch {
     return false;

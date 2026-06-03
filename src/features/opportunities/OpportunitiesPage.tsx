@@ -28,7 +28,6 @@ import {
   deleteOpportunity,
   emptyOpportunityInput,
   forecastEvidenceCategories,
-  loadOpportunities,
   opportunityStages,
   opportunityStatuses,
   updateOpportunity,
@@ -38,10 +37,10 @@ import {
 import { analyzePipelineQuality, analyzeOpportunityQuality } from '../../utils/opportunityQuality';
 import { analyzeMeddicLiteOpportunity, type MeddicLiteDealCategory, type MeddicLiteStatus } from '../../utils/meddicLite';
 import { formatCurrencyAmount as formatMoney } from '../../utils/currency';
-import { loadSalesActivities, type SalesActivityRecord } from '../../services/salesActivityStore';
-import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
-import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
-import { loadSalesAssets, type SalesAssetRecord } from '../../services/salesAssetStore';
+import { type SalesActivityRecord } from '../../services/salesActivityStore';
+import { type StakeholderRecord } from '../../services/stakeholderStore';
+import { type ObjectionRecord } from '../../services/objectionStore';
+import { type SalesAssetRecord } from '../../services/salesAssetStore';
 import {
   actionOutcomeTypes,
   createActionOutcomeFromRecommendedAction,
@@ -50,6 +49,7 @@ import {
   type ActionOutcomeRecord,
   type ActionOutcomeType,
 } from '../../services/actionOutcomeStore';
+import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { analyzeStakeholderCoverage, getStakeholdersForOpportunity } from '../../utils/stakeholderGraph';
 import { getObjectionsForOpportunity, objectionStatusTone } from '../../utils/objectionLedger';
 import { analyzeOpportunityOutcomeLoop } from '../../utils/actionOutcomeLoop';
@@ -171,18 +171,13 @@ export function OpportunitiesPage() {
 
   const refreshOpportunities = async () => {
     setLoading(true);
-    const [loaded, loadedActivities, loadedStakeholders, loadedObjections] = await Promise.all([
-      loadOpportunities(dataUserId),
-      loadSalesActivities(dataUserId),
-      loadStakeholders(dataUserId),
-      loadObjections(dataUserId),
-    ]);
-    setOpportunities(loaded);
-    setActivities(loadedActivities);
-    setStakeholders(loadedStakeholders);
-    setObjections(loadedObjections);
-    setActionOutcomes(loadActionOutcomes());
-    setSalesAssets(loadSalesAssets());
+    const workspaceData = await loadSalesWorkspaceData(dataUserId);
+    setOpportunities(workspaceData.opportunities);
+    setActivities(workspaceData.activities);
+    setStakeholders(workspaceData.stakeholders);
+    setObjections(workspaceData.objections);
+    setActionOutcomes(workspaceData.actionOutcomes);
+    setSalesAssets(workspaceData.assets);
     setLoading(false);
   };
 

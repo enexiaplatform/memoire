@@ -10,7 +10,6 @@ import {
   createObjection,
   deleteObjection,
   emptyObjectionInput,
-  loadObjections,
   objectionImpacts,
   objectionStatuses,
   objectionToFormInput,
@@ -19,6 +18,7 @@ import {
   type ObjectionFormInput,
   type ObjectionRecord,
 } from '../../services/objectionStore';
+import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { analyzeObjectionLedger, objectionStatusTone } from '../../utils/objectionLedger';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -45,8 +45,8 @@ export function ObjectionsPage() {
 
   const refreshObjections = async () => {
     setLoading(true);
-    const loaded = await loadObjections(dataUserId);
-    setObjections(loaded);
+    const workspaceData = await loadSalesWorkspaceData(dataUserId);
+    setObjections(workspaceData.objections);
     setLoading(false);
   };
 

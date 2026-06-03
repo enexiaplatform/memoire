@@ -9,15 +9,15 @@ import { classifySalesActivity, type ClassifiedSalesActivity, type SalesActivity
 import {
   canUseSalesActivityCloudStore,
   deleteSalesActivity,
-  loadSalesActivities,
   saveSalesActivity,
   updateSalesActivityLink,
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
-import { loadOpportunities, updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
-import { loadAccounts, type AccountMemoryRecord } from '../../services/accountStore';
-import { createStakeholder, loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
-import { createObjection, loadObjections, type ObjectionRecord } from '../../services/objectionStore';
+import { updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
+import { type AccountMemoryRecord } from '../../services/accountStore';
+import { createStakeholder, type StakeholderRecord } from '../../services/stakeholderStore';
+import { createObjection, type ObjectionRecord } from '../../services/objectionStore';
+import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { CaptureAiProviderError, getActiveCaptureAiProvider, type CaptureAiSuggestion } from '../../services/captureAiProvider';
 import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
 import { applyOpportunityUpdateSuggestion, suggestOpportunityLinks, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
@@ -195,18 +195,12 @@ export function DailyCapturePage() {
 
   const refreshActivities = async () => {
     setLoadingActivities(true);
-    const [loaded, loadedOpportunities, loadedAccounts, loadedStakeholders, loadedObjections] = await Promise.all([
-      loadSalesActivities(dataUserId),
-      loadOpportunities(dataUserId),
-      loadAccounts(dataUserId),
-      loadStakeholders(dataUserId),
-      loadObjections(dataUserId),
-    ]);
-    setActivities(loaded);
-    setOpportunities(loadedOpportunities);
-    setAccounts(loadedAccounts);
-    setStakeholders(loadedStakeholders);
-    setObjections(loadedObjections);
+    const workspaceData = await loadSalesWorkspaceData(dataUserId);
+    setActivities(workspaceData.activities);
+    setOpportunities(workspaceData.opportunities);
+    setAccounts(workspaceData.accounts);
+    setStakeholders(workspaceData.stakeholders);
+    setObjections(workspaceData.objections);
     setLoadingActivities(false);
   };
 

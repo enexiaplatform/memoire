@@ -8,14 +8,14 @@ import { hasLocalSampleData } from '../../utils/dataMode';
 import {
   canUseSalesActivityCloudStore,
   filterSalesActivitiesByPeriod,
-  loadSalesActivities,
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
-import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
-import { loadOpportunities, type CrmLiteOpportunity } from '../../services/opportunityStore';
-import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
-import { loadActionOutcomes, type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
-import { loadSalesAssets, type SalesAssetRecord } from '../../services/salesAssetStore';
+import { type ObjectionRecord } from '../../services/objectionStore';
+import { type CrmLiteOpportunity } from '../../services/opportunityStore';
+import { type StakeholderRecord } from '../../services/stakeholderStore';
+import { type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
+import { type SalesAssetRecord } from '../../services/salesAssetStore';
+import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { analyzePipelineOutcomeLoop, getActionOutcomesInPeriod } from '../../utils/actionOutcomeLoop';
 import {
   generatePipelineOpportunityActions,
@@ -121,18 +121,13 @@ export function SalesReviewsPage() {
   );
   const refreshActivities = useCallback(async () => {
     setLoadingActivities(true);
-    const [loaded, loadedObjections, loadedOpportunities, loadedStakeholders] = await Promise.all([
-      loadSalesActivities(dataUserId),
-      loadObjections(dataUserId),
-      loadOpportunities(dataUserId),
-      loadStakeholders(dataUserId),
-    ]);
-    setActivities(loaded);
-    setObjections(loadedObjections);
-    setOpportunities(loadedOpportunities);
-    setStakeholders(loadedStakeholders);
-    setActionOutcomes(loadActionOutcomes());
-    setAssets(loadSalesAssets());
+    const workspaceData = await loadSalesWorkspaceData(dataUserId);
+    setActivities(workspaceData.activities);
+    setObjections(workspaceData.objections);
+    setOpportunities(workspaceData.opportunities);
+    setStakeholders(workspaceData.stakeholders);
+    setActionOutcomes(workspaceData.actionOutcomes);
+    setAssets(workspaceData.assets);
     setLoadingActivities(false);
   }, [dataUserId]);
 

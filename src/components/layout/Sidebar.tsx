@@ -2,6 +2,9 @@ import { NavLink } from 'react-router-dom';
 import { AlertTriangle, BookOpen, CalendarDays, ClipboardList, FileCheck2, FileText, GitBranch, LayoutDashboard, MessageCircleQuestion, NotebookPen, Settings, Target, UsersRound } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
+import { prefetchAppRoute } from '../../utils/routePrefetch';
+import { hasLocalSampleData } from '../../utils/dataMode';
+import { loadSalesWorkspaceData } from '../../services/workspaceData';
 
 const navSections = [
   {
@@ -48,6 +51,12 @@ export function Sidebar() {
   const { user, profile } = useAuthContext();
   const displayName = getUserDisplayName(user, profile);
   const initials = getUserInitials(user, profile);
+  const warmNavigationTarget = (route: string) => {
+    prefetchAppRoute(route);
+    loadSalesWorkspaceData(hasLocalSampleData() ? undefined : user?.id).catch(() => {
+      // Destination routes keep their own local/cloud fallback.
+    });
+  };
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-full w-[220px] flex-col border-r border-[#243447] bg-navy shadow-xl">
@@ -68,6 +77,8 @@ export function Sidebar() {
                 <NavLink
                   key={item.to}
                   to={item.to}
+                  onMouseEnter={() => warmNavigationTarget(item.to)}
+                  onFocus={() => warmNavigationTarget(item.to)}
                   className={({ isActive }) =>
                     `relative flex items-center gap-3 px-6 py-2.5 text-[14px] font-medium transition-all ${
                       isActive ? 'bg-white/10 text-white' : 'text-white/55 hover:bg-white/5 hover:text-white/90'

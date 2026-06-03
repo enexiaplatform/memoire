@@ -4,12 +4,13 @@ import { BookOpen, Copy, FileText, Loader2, Search } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
-import { loadActionOutcomes, type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
-import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
-import { loadOpportunities, type CrmLiteOpportunity } from '../../services/opportunityStore';
-import { loadSalesActivities, type SalesActivityRecord } from '../../services/salesActivityStore';
+import { type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
+import { type ObjectionRecord } from '../../services/objectionStore';
+import { type CrmLiteOpportunity } from '../../services/opportunityStore';
+import { type SalesActivityRecord } from '../../services/salesActivityStore';
 import { saveSalesAssetDraft } from '../../services/salesAssetStore';
-import { loadStakeholders, type StakeholderRecord } from '../../services/stakeholderStore';
+import { type StakeholderRecord } from '../../services/stakeholderStore';
+import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { buildSalesAssetDraftFromPattern, generateAssetDraftMarkdown } from '../../utils/salesAssetSuggestions';
 import {
@@ -56,20 +57,15 @@ export function SalesPlaybookPage() {
     let mounted = true;
     async function loadPlaybookData() {
       setLoading(true);
-      const [opportunities, activities, stakeholders, objections] = await Promise.all([
-        loadOpportunities(dataUserId),
-        loadSalesActivities(dataUserId),
-        loadStakeholders(dataUserId),
-        loadObjections(dataUserId),
-      ]);
+      const workspaceData = await loadSalesWorkspaceData(dataUserId);
 
       if (!mounted) return;
       setData({
-        opportunities,
-        activities,
-        stakeholders,
-        objections,
-        actionOutcomes: loadActionOutcomes(),
+        opportunities: workspaceData.opportunities,
+        activities: workspaceData.activities,
+        stakeholders: workspaceData.stakeholders,
+        objections: workspaceData.objections,
+        actionOutcomes: workspaceData.actionOutcomes,
       });
       setLoading(false);
     }

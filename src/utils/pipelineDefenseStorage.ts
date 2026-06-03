@@ -1,4 +1,5 @@
 import { createInitialPipelineDefenseDeals, pipelineDefenseBriefMeta, type PipelineDefenseDeal } from '../data/pipelineDefenseBrief';
+import { invalidateWorkspaceDataCache } from '../services/workspaceDataCache';
 import { normalizeImportedDeal } from './importPipelineDefenseBrief';
 
 export const MULTI_BRIEF_STORAGE_KEY = 'memoire.pipelineDefenseBriefs.v1';
@@ -39,6 +40,7 @@ export function savePipelineDefenseBriefStore(store: PipelineDefenseBriefStore) 
   try {
     if (typeof window === 'undefined' || !window.localStorage) return false;
     window.localStorage.setItem(MULTI_BRIEF_STORAGE_KEY, JSON.stringify(sanitizeStore(store)));
+    invalidateWorkspaceDataCache();
     return true;
   } catch {
     return false;
@@ -49,6 +51,7 @@ export function clearPipelineDefenseBriefStore() {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return false;
     window.localStorage.removeItem(MULTI_BRIEF_STORAGE_KEY);
+    invalidateWorkspaceDataCache();
     return true;
   } catch {
     return false;

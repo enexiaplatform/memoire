@@ -1,4 +1,5 @@
 import { supabaseClient } from '../lib/supabaseClient';
+import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 
 export const ACCOUNT_STORAGE_KEY = 'memoire.accounts.v1';
 
@@ -88,10 +89,12 @@ export async function createAccount(
     try {
       const account = await createCloudAccount(normalized, userId as string);
       saveLocalAccountRecord({ ...account, storageMode: 'local' });
+      invalidateWorkspaceDataCache();
       return { account, mode: 'cloud' };
     } catch (error) {
       const account = createLocalAccount(normalized, userId || undefined);
       saveLocalAccountRecord(account);
+      invalidateWorkspaceDataCache();
       debugAccountStore('cloud create failed; local copy preserved', { message: getErrorMessage(error) });
       return {
         account,
@@ -103,6 +106,7 @@ export async function createAccount(
 
   const account = createLocalAccount(normalized, userId || undefined);
   saveLocalAccountRecord(account);
+  invalidateWorkspaceDataCache();
   return { account, mode: 'local' };
 }
 
@@ -117,6 +121,7 @@ export async function updateAccount(
     try {
       const updated = await updateCloudAccount(account.id, normalized, userId as string);
       saveLocalAccountRecord({ ...updated, storageMode: 'local' });
+      invalidateWorkspaceDataCache();
       return { account: updated, mode: 'cloud' };
     } catch (error) {
       const localCopy = {
@@ -126,6 +131,7 @@ export async function updateAccount(
         storageMode: 'local' as const,
       };
       saveLocalAccountRecord(localCopy);
+      invalidateWorkspaceDataCache();
       debugAccountStore('cloud update failed; local copy preserved', { message: getErrorMessage(error) });
       return {
         account: localCopy,
@@ -142,6 +148,7 @@ export async function updateAccount(
     storageMode: 'local' as const,
   };
   saveLocalAccountRecord(updated);
+  invalidateWorkspaceDataCache();
   return { account: updated, mode: 'local' };
 }
 
@@ -157,6 +164,7 @@ export async function deleteAccount(account: AccountMemoryRecord, userId?: strin
   }
 
   deleteLocalAccount(account.id);
+  invalidateWorkspaceDataCache();
 }
 
 export function accountToFormInput(account: AccountMemoryRecord): AccountFormInput {

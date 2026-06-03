@@ -5,6 +5,7 @@ import { STAKEHOLDER_STORAGE_KEY, type StakeholderRecord } from '../services/sta
 import { OBJECTION_STORAGE_KEY, type ObjectionRecord } from '../services/objectionStore';
 import { ACTION_OUTCOME_STORAGE_KEY, type ActionOutcomeRecord } from '../services/actionOutcomeStore';
 import { SALES_ASSET_STORAGE_KEY, type SalesAssetRecord } from '../services/salesAssetStore';
+import { invalidateWorkspaceDataCache } from '../services/workspaceDataCache';
 import { classifySalesActivity } from './salesActivityClassifier';
 import { generatePipelineDefenseBriefFromOpportunities } from './opportunityToPipelineBrief';
 import { clearDemoJourneyCompletion } from './demoJourney';
@@ -101,6 +102,7 @@ export function loadSampleDataset(): SampleDataset {
   writeLocalArray(SALES_ASSET_STORAGE_KEY, dataset.salesAssets);
   writeLocalBriefs(dataset.briefs);
   markSampleDataLoaded();
+  invalidateWorkspaceDataCache();
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(SAMPLE_DATA_UPDATED_EVENT));
   }
@@ -125,6 +127,7 @@ export function clearSampleDataset() {
   removeSampleBriefs();
   clearDemoJourneyCompletion();
   clearSampleDataFlag();
+  invalidateWorkspaceDataCache();
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(SAMPLE_DATA_UPDATED_EVENT));
   }

@@ -1,4 +1,5 @@
 import type { OpportunityRecommendedAction } from '../utils/opportunityActionPlan';
+import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 
 export const ACTION_OUTCOME_STORAGE_KEY = 'memoire.actionOutcomes.v1';
 
@@ -62,6 +63,7 @@ export function saveActionOutcomes(outcomes: ActionOutcomeRecord[]) {
   if (typeof window === 'undefined') return false;
   try {
     window.localStorage.setItem(ACTION_OUTCOME_STORAGE_KEY, JSON.stringify(outcomes.map(sanitizeOutcome).filter(Boolean)));
+    invalidateWorkspaceDataCache();
     return true;
   } catch {
     return false;

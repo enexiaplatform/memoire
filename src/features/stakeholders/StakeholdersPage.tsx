@@ -5,14 +5,13 @@ import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
-import { loadOpportunities, type CrmLiteOpportunity } from '../../services/opportunityStore';
+import { type CrmLiteOpportunity } from '../../services/opportunityStore';
 import {
   canUseStakeholderCloudStore,
   createStakeholder,
   deleteStakeholder,
   emptyStakeholderInput,
   influenceLevels,
-  loadStakeholders,
   relationshipStrengths,
   stakeholderRoles,
   stakeholderStances,
@@ -21,6 +20,7 @@ import {
   type StakeholderFormInput,
   type StakeholderRecord,
 } from '../../services/stakeholderStore';
+import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { summarizeStakeholderCoverage } from '../../utils/stakeholderGraph';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -47,12 +47,9 @@ export function StakeholdersPage() {
 
   const refreshStakeholders = async () => {
     setLoading(true);
-    const [loadedStakeholders, loadedOpportunities] = await Promise.all([
-      loadStakeholders(dataUserId),
-      loadOpportunities(dataUserId),
-    ]);
-    setStakeholders(loadedStakeholders);
-    setOpportunities(loadedOpportunities);
+    const workspaceData = await loadSalesWorkspaceData(dataUserId);
+    setStakeholders(workspaceData.stakeholders);
+    setOpportunities(workspaceData.opportunities);
     setLoading(false);
   };
 

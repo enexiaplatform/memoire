@@ -1,5 +1,6 @@
 import { supabaseClient } from '../lib/supabaseClient';
 import type { PipelineDefenseBrief, PipelineDefenseBriefStore } from '../utils/pipelineDefenseStorage';
+import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 
 type PipelineDefenseBriefRow = {
   id: string;
@@ -55,6 +56,7 @@ export async function createCloudBrief(brief: PipelineDefenseBrief, userId: stri
 
   if (error) throw new Error(error.message);
   const created = rowToBrief(data as PipelineDefenseBriefRow);
+  invalidateWorkspaceDataCache();
   debugCloudSync('cloud create completed');
   return created;
 }
@@ -73,6 +75,7 @@ export async function updateCloudBrief(brief: PipelineDefenseBrief): Promise<Pip
 
   if (error) throw new Error(error.message);
   const updated = rowToBrief(data as PipelineDefenseBriefRow);
+  invalidateWorkspaceDataCache();
   debugCloudSync('cloud update completed');
   return updated;
 }
@@ -87,6 +90,7 @@ export async function deleteCloudBrief(briefId: string) {
     .eq('id', briefId);
 
   if (error) throw new Error(error.message);
+  invalidateWorkspaceDataCache();
   debugCloudSync('cloud delete completed');
 }
 

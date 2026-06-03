@@ -1,4 +1,5 @@
 import { supabaseClient } from '../lib/supabaseClient';
+import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 
 export const STAKEHOLDER_STORAGE_KEY = 'memoire.stakeholders.v1';
 
@@ -116,16 +117,19 @@ export async function createStakeholder(input: StakeholderFormInput, userId?: st
     try {
       const stakeholder = await createCloudStakeholder(normalized, userId as string);
       saveLocalStakeholderRecord({ ...stakeholder, storageMode: 'local' });
+      invalidateWorkspaceDataCache();
       return { stakeholder, mode: 'cloud' };
     } catch (error) {
       const stakeholder = createLocalStakeholder(normalized, userId || undefined);
       saveLocalStakeholderRecord(stakeholder);
+      invalidateWorkspaceDataCache();
       debugStakeholderStore('cloud create failed; local copy preserved', { message: getErrorMessage(error) });
       return { stakeholder, mode: 'local', warning: 'Cloud sync issue - your local copy is preserved.' };
     }
   }
   const stakeholder = createLocalStakeholder(normalized, userId || undefined);
   saveLocalStakeholderRecord(stakeholder);
+  invalidateWorkspaceDataCache();
   return { stakeholder, mode: 'local' };
 }
 
@@ -135,16 +139,19 @@ export async function updateStakeholder(stakeholder: StakeholderRecord, input: S
     try {
       const updated = await updateCloudStakeholder(stakeholder.id, normalized, userId as string);
       saveLocalStakeholderRecord({ ...updated, storageMode: 'local' });
+      invalidateWorkspaceDataCache();
       return { stakeholder: updated, mode: 'cloud' };
     } catch (error) {
       const localCopy = { ...stakeholder, ...normalized, updatedAt: new Date().toISOString(), storageMode: 'local' as const };
       saveLocalStakeholderRecord(localCopy);
+      invalidateWorkspaceDataCache();
       debugStakeholderStore('cloud update failed; local copy preserved', { message: getErrorMessage(error) });
       return { stakeholder: localCopy, mode: 'local', warning: 'Cloud sync issue - your local copy is preserved.' };
     }
   }
   const updated = { ...stakeholder, ...normalized, updatedAt: new Date().toISOString(), storageMode: 'local' as const };
   saveLocalStakeholderRecord(updated);
+  invalidateWorkspaceDataCache();
   return { stakeholder: updated, mode: 'local' };
 }
 
@@ -158,6 +165,7 @@ export async function deleteStakeholder(stakeholder: StakeholderRecord, userId?:
     if (error) throw new Error(error.message);
   }
   deleteLocalStakeholder(stakeholder.id);
+  invalidateWorkspaceDataCache();
 }
 
 export function stakeholderToFormInput(stakeholder: StakeholderRecord): StakeholderFormInput {
