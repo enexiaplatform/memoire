@@ -20,7 +20,7 @@ import {
   type StakeholderFormInput,
   type StakeholderRecord,
 } from '../../services/stakeholderStore';
-import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { summarizeStakeholderCoverage } from '../../utils/stakeholderGraph';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -46,6 +46,14 @@ export function StakeholdersPage() {
   const [message, setMessage] = useState('');
 
   const refreshStakeholders = async () => {
+    const cachedData = getCachedSalesWorkspaceData(dataUserId);
+    if (cachedData) {
+      setStakeholders(cachedData.stakeholders);
+      setOpportunities(cachedData.opportunities);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     const workspaceData = await loadSalesWorkspaceData(dataUserId);
     setStakeholders(workspaceData.stakeholders);

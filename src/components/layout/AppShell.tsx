@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopNav } from './TopNav';
 import { OnboardingModal } from './OnboardingModal';
@@ -34,7 +34,7 @@ export function AppShell() {
       return;
     }
 
-    const timer = window.setTimeout(warmWorkspaceData, 800);
+    const timer = window.setTimeout(warmWorkspaceData, 1200);
     return () => window.clearTimeout(timer);
   }, [authLoading, user?.id]);
 
@@ -45,10 +45,22 @@ export function AppShell() {
       <main className="flex-1 ml-[220px] pt-16 flex flex-col min-h-screen relative">
         <DemoModeBanner />
         <div className="flex-1">
-          <Outlet />
+          <Suspense fallback={<AppContentLoading />}>
+            <Outlet />
+          </Suspense>
         </div>
       </main>
       <OnboardingModal />
+    </div>
+  );
+}
+
+function AppContentLoading() {
+  return (
+    <div className="mx-auto flex w-full max-w-7xl px-4 py-6 sm:px-6">
+      <div className="w-full rounded-lg border border-gray-200 bg-white p-5 text-sm font-semibold text-gray-500 shadow-sm">
+        Loading this workspace...
+      </div>
     </div>
   );
 }

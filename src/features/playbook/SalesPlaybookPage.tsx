@@ -10,7 +10,7 @@ import { type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { type SalesActivityRecord } from '../../services/salesActivityStore';
 import { saveSalesAssetDraft } from '../../services/salesAssetStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
-import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { buildSalesAssetDraftFromPattern, generateAssetDraftMarkdown } from '../../utils/salesAssetSuggestions';
 import {
@@ -56,6 +56,19 @@ export function SalesPlaybookPage() {
   useEffect(() => {
     let mounted = true;
     async function loadPlaybookData() {
+      const cachedData = getCachedSalesWorkspaceData(dataUserId);
+      if (cachedData) {
+        setData({
+          opportunities: cachedData.opportunities,
+          activities: cachedData.activities,
+          stakeholders: cachedData.stakeholders,
+          objections: cachedData.objections,
+          actionOutcomes: cachedData.actionOutcomes,
+        });
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       const workspaceData = await loadSalesWorkspaceData(dataUserId);
 

@@ -21,7 +21,7 @@ import { type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { type SalesActivityRecord } from '../../services/salesActivityStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
-import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import {
   buildAccountMemory,
   deriveAccountCandidatesFromActivities,
@@ -60,6 +60,17 @@ export function AccountsPage() {
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
   const refreshAccounts = async () => {
+    const cachedData = getCachedSalesWorkspaceData(dataUserId);
+    if (cachedData) {
+      setAccounts(cachedData.accounts);
+      setOpportunities(cachedData.opportunities);
+      setActivities(cachedData.activities);
+      setStakeholders(cachedData.stakeholders);
+      setObjections(cachedData.objections);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     const workspaceData = await loadSalesWorkspaceData(dataUserId);
     setAccounts(workspaceData.accounts);

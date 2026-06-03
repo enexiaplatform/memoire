@@ -24,7 +24,7 @@ import { type ObjectionRecord } from '../../services/objectionStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
 import { type SalesAssetRecord } from '../../services/salesAssetStore';
-import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { type PipelineDefenseBrief } from '../../utils/pipelineDefenseStorage';
 import {
   buildTodayCommandCenter,
@@ -121,16 +121,32 @@ export function DashboardPage() {
   const [sampleMessage, setSampleMessage] = useState('');
   const [validationMessage, setValidationMessage] = useState('');
   const [demoSandboxPromptOpen, setDemoSandboxPromptOpen] = useState(false);
+  const [advancedInsightsOpen, setAdvancedInsightsOpen] = useState(false);
+  const [setupToolsOpen, setSetupToolsOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
 
     async function loadDashboard() {
+      const dataUserId = hasLocalSampleData() ? undefined : user?.id;
+      const cachedData = getCachedSalesWorkspaceData(dataUserId);
+      if (cachedData) {
+        setData(cachedData);
+        setMessage('Command center ready');
+        setOnboarding(syncOnboardingFromData(cachedData, { includeDataSignals: !hasLocalSampleData() }));
+        setFirstReviewOnboarding(loadFirstPipelineReviewOnboardingState());
+        setTrialChecklistState(loadTrialActivationChecklistState());
+        setPipelineReviewHabitState(loadPipelineReviewHabitState());
+        setReviewPacks(loadReviewPacks());
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setMessage('');
 
       try {
-        const nextData = await loadDashboardData(hasLocalSampleData() ? undefined : user?.id);
+        const nextData = await loadDashboardData(dataUserId);
 
         if (!mounted) return;
         setData(nextData);
@@ -162,7 +178,10 @@ export function DashboardPage() {
 
   const sampleDataActive = hasLocalSampleData();
   const commandCenter = useMemo(() => buildTodayCommandCenter(data), [data]);
-  const dashboardInsights = useMemo(() => buildDashboardInsights(data), [data]);
+  const pipelineReviewSignal = useMemo(() => buildPipelineReviewDashboardSignal(data.briefs), [data.briefs]);
+  const dashboardInsights = useMemo(() => (
+    advancedInsightsOpen ? buildDashboardInsights(data) : null
+  ), [advancedInsightsOpen, data]);
   const onboardingProgress = useMemo(
     () => buildOnboardingProgress(onboarding, data, sampleDataActive),
     [data, onboarding, sampleDataActive]
@@ -324,65 +343,75 @@ export function DashboardPage() {
           ) : (
             <>
               <TodayFocus commandCenter={commandCenter} />
-              <DashboardPrimaryWork commandCenter={commandCenter} signal={dashboardInsights.pipelineReviewSignal} />
-              <details className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <DashboardPrimaryWork commandCenter={commandCenter} signal={pipelineReviewSignal} />
+              <details
+                className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+                onToggle={(event) => setAdvancedInsightsOpen(event.currentTarget.open)}
+              >
                 <summary className="cursor-pointer text-sm font-bold text-navy">
                   More dashboard insights
                 </summary>
-                <div className="mt-4 flex flex-col gap-4">
-                  <ThisWeekSummary commandCenter={commandCenter} />
-                  <CaptureNudgePanel nudges={dashboardInsights.captureNudges} />
-                  <WeeklyExecutionHealth
-                    review={dashboardInsights.weeklyExecutionReview}
-                    activeOpportunityCount={dashboardInsights.activeOpportunityCount}
-                  />
-                  <TopSalesPattern pattern={dashboardInsights.topSalesPattern} />
-                  <AssetGaps
-                    gapSummary={dashboardInsights.assetGapSummary}
-                    assetCount={data.assets.length}
-                    objectionCount={data.objections.length}
-                    patternCount={dashboardInsights.playbookPatterns.length}
-                  />
-                  <PriorityActionList items={commandCenter.priorityActions} />
-                  <CriticalDealActions
-                    actions={dashboardInsights.criticalDealActions}
-                    outcomeLoop={dashboardInsights.outcomeLoop}
-                  />
-                  <OpenObjectionSignals objections={data.objections} />
-                  <MeddicRiskSignal summary={dashboardInsights.meddicSummary} />
-                  <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-                    <AtRiskOpportunities items={commandCenter.atRiskOpportunities} />
-                    <AccountsNeedingTouch items={commandCenter.accountsNeedingTouch} />
-                  </section>
-                  <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_360px]">
-                    <RecentActivityFeed items={commandCenter.recentActivities} />
-                    <QuickActions />
-                  </section>
-                </div>
+                {dashboardInsights && (
+                  <div className="mt-4 flex flex-col gap-4">
+                    <ThisWeekSummary commandCenter={commandCenter} />
+                    <CaptureNudgePanel nudges={dashboardInsights.captureNudges} />
+                    <WeeklyExecutionHealth
+                      review={dashboardInsights.weeklyExecutionReview}
+                      activeOpportunityCount={dashboardInsights.activeOpportunityCount}
+                    />
+                    <TopSalesPattern pattern={dashboardInsights.topSalesPattern} />
+                    <AssetGaps
+                      gapSummary={dashboardInsights.assetGapSummary}
+                      assetCount={data.assets.length}
+                      objectionCount={data.objections.length}
+                      patternCount={dashboardInsights.playbookPatterns.length}
+                    />
+                    <PriorityActionList items={commandCenter.priorityActions} />
+                    <CriticalDealActions
+                      actions={dashboardInsights.criticalDealActions}
+                      outcomeLoop={dashboardInsights.outcomeLoop}
+                    />
+                    <OpenObjectionSignals objections={data.objections} />
+                    <MeddicRiskSignal summary={dashboardInsights.meddicSummary} />
+                    <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                      <AtRiskOpportunities items={commandCenter.atRiskOpportunities} />
+                      <AccountsNeedingTouch items={commandCenter.accountsNeedingTouch} />
+                    </section>
+                    <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_360px]">
+                      <RecentActivityFeed items={commandCenter.recentActivities} />
+                      <QuickActions />
+                    </section>
+                  </div>
+                )}
               </details>
             </>
           )}
-          <details className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <details
+            className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+            onToggle={(event) => setSetupToolsOpen(event.currentTarget.open)}
+          >
             <summary className="cursor-pointer text-sm font-bold text-navy">
               More setup and validation tools
             </summary>
-            <div className="mt-4 flex flex-col gap-4">
-              <PipelineReviewHabitCard progress={pipelineReviewHabitProgress} latestReviewPack={latestWeeklyReviewPack} />
-              <TrialActivationChecklistCard
-                items={trialChecklist}
-                onMarkDone={handleMarkTrialChecklistItem}
-                onReset={handleResetTrialChecklist}
-              />
-              {!firstReviewOnboarding.completedAt && (
-                <FirstPipelineReviewCta
-                  progress={firstReviewProgress}
-                  metrics={firstReviewMetrics}
-                  hasSampleData={sampleDataActive}
+            {setupToolsOpen && (
+              <div className="mt-4 flex flex-col gap-4">
+                <PipelineReviewHabitCard progress={pipelineReviewHabitProgress} latestReviewPack={latestWeeklyReviewPack} />
+                <TrialActivationChecklistCard
+                  items={trialChecklist}
+                  onMarkDone={handleMarkTrialChecklistItem}
+                  onReset={handleResetTrialChecklist}
                 />
-              )}
-              <DemoCommercializationCta onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)} />
-              <ValidationCta message={validationMessage} onCopyInterviewScript={handleCopyInterviewScript} />
-            </div>
+                {!firstReviewOnboarding.completedAt && (
+                  <FirstPipelineReviewCta
+                    progress={firstReviewProgress}
+                    metrics={firstReviewMetrics}
+                    hasSampleData={sampleDataActive}
+                  />
+                )}
+                <DemoCommercializationCta onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)} />
+                <ValidationCta message={validationMessage} onCopyInterviewScript={handleCopyInterviewScript} />
+              </div>
+            )}
           </details>
         </>
       )}

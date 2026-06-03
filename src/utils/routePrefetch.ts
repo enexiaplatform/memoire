@@ -25,25 +25,50 @@ export function prefetchAppRoute(route: string) {
 }
 
 export function prefetchPrimaryAppRoutes() {
-  const primaryRoutes = [
+  const routes = [
     '/app/dashboard',
     '/app/capture',
     '/app/opportunities',
+    '/app/assets',
     '/app/pipeline-defense',
     '/app/calendar',
     '/app/reviews',
+    '/app/accounts',
+    '/app/stakeholders',
+    '/app/objections',
+    '/app/playbook',
   ];
 
-  const run = () => primaryRoutes.forEach(prefetchAppRoute);
+  scheduleRoutePrefetch(routes);
+}
 
+function scheduleRoutePrefetch(routes: string[]) {
+  let index = 0;
   const idleCallback = (globalThis as typeof globalThis & {
     requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
   }).requestIdleCallback;
 
-  if (idleCallback) {
-    idleCallback(run, { timeout: 2500 });
-    return;
-  }
+  const runNext = () => {
+    const route = routes[index];
+    if (!route) return;
 
-  globalThis.setTimeout(run, 800);
+    prefetchAppRoute(route);
+    index += 1;
+
+    if (idleCallback) {
+      idleCallback(runNext, { timeout: 2500 });
+      return;
+    }
+
+    globalThis.setTimeout(runNext, 700);
+  };
+
+  globalThis.setTimeout(() => {
+    if (idleCallback) {
+      idleCallback(runNext, { timeout: 2500 });
+      return;
+    }
+
+    runNext();
+  }, 1200);
 }

@@ -18,7 +18,7 @@ import {
   type ObjectionFormInput,
   type ObjectionRecord,
 } from '../../services/objectionStore';
-import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { analyzeObjectionLedger, objectionStatusTone } from '../../utils/objectionLedger';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -44,6 +44,13 @@ export function ObjectionsPage() {
   const [message, setMessage] = useState('');
 
   const refreshObjections = async () => {
+    const cachedData = getCachedSalesWorkspaceData(dataUserId);
+    if (cachedData) {
+      setObjections(cachedData.objections);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     const workspaceData = await loadSalesWorkspaceData(dataUserId);
     setObjections(workspaceData.objections);

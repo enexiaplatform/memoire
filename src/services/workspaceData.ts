@@ -69,6 +69,10 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
   return value;
 }
 
+export function getCachedSalesWorkspaceData(userId?: string | null) {
+  return getCachedWorkspaceValue<SalesWorkspaceData>(`sales-workspace:${userId || 'local'}`);
+}
+
 async function loadPipelineBriefs(userId?: string | null) {
   if (userId && canUsePipelineDefenseCloudStore()) {
     try {

@@ -49,7 +49,7 @@ import {
   type ActionOutcomeRecord,
   type ActionOutcomeType,
 } from '../../services/actionOutcomeStore';
-import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { analyzeStakeholderCoverage, getStakeholdersForOpportunity } from '../../utils/stakeholderGraph';
 import { getObjectionsForOpportunity, objectionStatusTone } from '../../utils/objectionLedger';
 import { analyzeOpportunityOutcomeLoop } from '../../utils/actionOutcomeLoop';
@@ -170,6 +170,18 @@ export function OpportunitiesPage() {
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
   const refreshOpportunities = async () => {
+    const cachedData = getCachedSalesWorkspaceData(dataUserId);
+    if (cachedData) {
+      setOpportunities(cachedData.opportunities);
+      setActivities(cachedData.activities);
+      setStakeholders(cachedData.stakeholders);
+      setObjections(cachedData.objections);
+      setActionOutcomes(cachedData.actionOutcomes);
+      setSalesAssets(cachedData.assets);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     const workspaceData = await loadSalesWorkspaceData(dataUserId);
     setOpportunities(workspaceData.opportunities);

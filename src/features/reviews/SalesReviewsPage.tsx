@@ -15,7 +15,7 @@ import { type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
 import { type SalesAssetRecord } from '../../services/salesAssetStore';
-import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { analyzePipelineOutcomeLoop, getActionOutcomesInPeriod } from '../../utils/actionOutcomeLoop';
 import {
   generatePipelineOpportunityActions,
@@ -120,6 +120,18 @@ export function SalesReviewsPage() {
     [assets, opportunities, periodObjections, playbookLearnings]
   );
   const refreshActivities = useCallback(async () => {
+    const cachedData = getCachedSalesWorkspaceData(dataUserId);
+    if (cachedData) {
+      setActivities(cachedData.activities);
+      setObjections(cachedData.objections);
+      setOpportunities(cachedData.opportunities);
+      setStakeholders(cachedData.stakeholders);
+      setActionOutcomes(cachedData.actionOutcomes);
+      setAssets(cachedData.assets);
+      setLoadingActivities(false);
+      return;
+    }
+
     setLoadingActivities(true);
     const workspaceData = await loadSalesWorkspaceData(dataUserId);
     setActivities(workspaceData.activities);

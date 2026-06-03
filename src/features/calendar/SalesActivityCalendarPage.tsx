@@ -21,7 +21,7 @@ import {
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
 import { updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
-import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
 import { applyOpportunityUpdateSuggestion, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 import type { SalesActivityType } from '../../utils/salesActivityClassifier';
@@ -75,6 +75,14 @@ export function SalesActivityCalendarPage() {
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
   const refreshActivities = useCallback(async () => {
+    const cachedData = getCachedSalesWorkspaceData(dataUserId);
+    if (cachedData) {
+      setActivities(cachedData.activities);
+      setOpportunities(cachedData.opportunities);
+      setLoadingActivities(false);
+      return;
+    }
+
     setLoadingActivities(true);
     const workspaceData = await loadSalesWorkspaceData(dataUserId);
     setActivities(workspaceData.activities);

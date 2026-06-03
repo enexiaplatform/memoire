@@ -17,7 +17,7 @@ import { updateOpportunity, type CrmLiteOpportunity } from '../../services/oppor
 import { type AccountMemoryRecord } from '../../services/accountStore';
 import { createStakeholder, type StakeholderRecord } from '../../services/stakeholderStore';
 import { createObjection, type ObjectionRecord } from '../../services/objectionStore';
-import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { CaptureAiProviderError, getActiveCaptureAiProvider, type CaptureAiSuggestion } from '../../services/captureAiProvider';
 import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
 import { applyOpportunityUpdateSuggestion, suggestOpportunityLinks, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
@@ -194,6 +194,17 @@ export function DailyCapturePage() {
   const preview = structuredDraft || localPreview;
 
   const refreshActivities = async () => {
+    const cachedData = getCachedSalesWorkspaceData(dataUserId);
+    if (cachedData) {
+      setActivities(cachedData.activities);
+      setOpportunities(cachedData.opportunities);
+      setAccounts(cachedData.accounts);
+      setStakeholders(cachedData.stakeholders);
+      setObjections(cachedData.objections);
+      setLoadingActivities(false);
+      return;
+    }
+
     setLoadingActivities(true);
     const workspaceData = await loadSalesWorkspaceData(dataUserId);
     setActivities(workspaceData.activities);
