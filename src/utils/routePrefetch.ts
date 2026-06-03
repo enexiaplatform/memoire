@@ -64,5 +64,5 @@ function scheduleRoutePrefetch(routes: string[]) {
     }
 
     runNext();
-  }, 1200);
+  }, 4500);
 }
