@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
-import { DemoJourneyCard } from '../../components/demo/DemoJourneyCard';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import type { AccountMemoryRecord } from '../../services/accountStore';
 import { loadAccounts } from '../../services/accountStore';
@@ -232,8 +231,8 @@ export function DashboardPage() {
     setData(nextData);
     setOnboarding(syncOnboardingFromData(nextData, { includeDataSignals: false }));
     setSampleMessage(isAuthenticated
-      ? 'Demo sandbox active - sample data is local only and was not saved to your cloud account.'
-      : 'Demo sandbox active - sample data is local only.');
+      ? 'Demo is local only and was not saved to your cloud account.'
+      : 'Demo is local only.');
     setDemoSandboxPromptOpen(false);
   };
 
@@ -267,9 +266,9 @@ export function DashboardPage() {
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Dashboard</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Dashboard</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            Your personal pipeline review and sales memory OS. Import your pipeline, capture what happened, find weak deals, and prepare a manager-ready Pipeline Defense Brief.
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">What should I do next?</h1>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500">
+            Start with one action. Memoire will organize the rest.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -296,7 +295,12 @@ export function DashboardPage() {
         </div>
       ) : (
         <>
-          {!onboarding.dismissedAt && (
+          <StartHerePanel
+            commandCenter={commandCenter}
+            sampleDataActive={sampleDataActive}
+            onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)}
+          />
+          {!onboarding.dismissedAt && !sampleDataActive && (
             <OnboardingWelcomePanel
               progress={onboardingProgress}
               sampleMessage={sampleMessage}
@@ -309,40 +313,12 @@ export function DashboardPage() {
               onClearDemoSandbox={handleClearDemoSandbox}
             />
           )}
-          {sampleDataActive && (
-            <section className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800 shadow-sm md:flex-row md:items-center md:justify-between">
-              <span>Demo sandbox active - sample data is local only. Replace it with real activities when ready.</span>
-              <button
-                type="button"
-                onClick={handleClearDemoSandbox}
-                className="inline-flex w-fit rounded-full border border-amber-300 bg-white px-4 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100"
-              >
-                Clear demo data
-              </button>
-            </section>
-          )}
-          {sampleDataActive && <DemoJourneyCard compact />}
           {demoSandboxPromptOpen && (
             <DemoSandboxPrompt
               hasExistingData={commandCenter.hasAnyData}
               isAuthenticated={isAuthenticated}
               onCancel={() => setDemoSandboxPromptOpen(false)}
               onLoad={handleLoadDemoSandbox}
-            />
-          )}
-          <DemoCommercializationCta onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)} />
-          <ValidationCta message={validationMessage} onCopyInterviewScript={handleCopyInterviewScript} />
-          <PipelineReviewHabitCard progress={pipelineReviewHabitProgress} latestReviewPack={latestWeeklyReviewPack} />
-          <TrialActivationChecklistCard
-            items={trialChecklist}
-            onMarkDone={handleMarkTrialChecklistItem}
-            onReset={handleResetTrialChecklist}
-          />
-          {!firstReviewOnboarding.completedAt && (
-            <FirstPipelineReviewCta
-              progress={firstReviewProgress}
-              metrics={firstReviewMetrics}
-              hasSampleData={sampleDataActive}
             />
           )}
           {!commandCenter.hasAnyData ? (
@@ -386,6 +362,28 @@ export function DashboardPage() {
               </section>
             </>
           )}
+          <details className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <summary className="cursor-pointer text-sm font-bold text-navy">
+              More setup and validation tools
+            </summary>
+            <div className="mt-4 flex flex-col gap-4">
+              <PipelineReviewHabitCard progress={pipelineReviewHabitProgress} latestReviewPack={latestWeeklyReviewPack} />
+              <TrialActivationChecklistCard
+                items={trialChecklist}
+                onMarkDone={handleMarkTrialChecklistItem}
+                onReset={handleResetTrialChecklist}
+              />
+              {!firstReviewOnboarding.completedAt && (
+                <FirstPipelineReviewCta
+                  progress={firstReviewProgress}
+                  metrics={firstReviewMetrics}
+                  hasSampleData={sampleDataActive}
+                />
+              )}
+              <DemoCommercializationCta onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)} />
+              <ValidationCta message={validationMessage} onCopyInterviewScript={handleCopyInterviewScript} />
+            </div>
+          </details>
         </>
       )}
     </div>
@@ -464,6 +462,99 @@ function buildDashboardInsights(data: DashboardData) {
     }),
     pipelineReviewSignal: buildPipelineReviewDashboardSignal(data.briefs),
   };
+}
+
+function StartHerePanel({
+  commandCenter,
+  sampleDataActive,
+  onOpenDemoSandbox,
+}: {
+  commandCenter: CommandCenter;
+  sampleDataActive: boolean;
+  onOpenDemoSandbox: () => void;
+}) {
+  const topAction =
+    commandCenter.overdueActions[0] ||
+    commandCenter.todayActions[0] ||
+    commandCenter.priorityActions[0] ||
+    null;
+  const topRisk = commandCenter.atRiskOpportunities[0] || null;
+
+  if (sampleDataActive) {
+    return (
+      <section className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Start here</p>
+            <h2 className="mt-2 text-2xl font-black text-navy">Explore the demo in this order.</h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link to="/app/opportunities" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+              1. Review pipeline
+            </Link>
+            <Link to="/app/capture?mode=quick" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
+              2. Capture activity
+            </Link>
+            <Link to="/app/pipeline-defense" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
+              3. Open defense brief
+            </Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (!commandCenter.hasAnyData) {
+    return (
+      <section className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Start here</p>
+            <h2 className="mt-2 text-2xl font-black text-navy">Add one real signal.</h2>
+            <p className="mt-1 text-sm text-gray-500">One note or one opportunity is enough for Memoire to start helping.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link to="/app/capture?mode=quick" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+              Capture activity
+            </Link>
+            <Link to="/app/opportunities" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
+              Add opportunity
+            </Link>
+            <button type="button" onClick={onOpenDemoSandbox} className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
+              Try demo first
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Start here</p>
+          <h2 className="mt-2 text-2xl font-black text-navy">
+            {topAction ? topAction.title : topRisk ? `Review ${topRisk.accountName}` : 'Your pipeline is quiet today.'}
+          </h2>
+          <p className="mt-1 max-w-2xl text-sm text-gray-500">
+            {topAction?.reason || topRisk?.reason || 'Capture the next customer touch or prepare your next pipeline review.'}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link to={topAction?.href || topRisk?.href || '/app/capture?mode=quick'} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+            Do this first
+          </Link>
+          <Link to="/app/opportunities" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
+            Review deals
+          </Link>
+          <Link to="/app/pipeline-defense" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
+            Prepare review
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function TodayFocus({ commandCenter }: { commandCenter: CommandCenter }) {
@@ -1424,19 +1515,22 @@ function OnboardingWelcomePanel({
   onOpenDemoSandbox: () => void;
   onClearDemoSandbox: () => void;
 }) {
+  const doneCount = progress.filter((step) => step.done).length;
+  const nextStep = progress.find((step) => !step.done) || progress[progress.length - 1];
+
   return (
-    <section className="rounded-xl border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <section className="rounded-xl border border-blue-100 bg-blue-50/70 p-4 shadow-sm">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Welcome to Memoire</p>
-          <h2 className="mt-2 text-2xl font-bold text-navy">Welcome to Memoire</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-blue-950">
-            Your personal B2B sales operating system for capturing activity, managing opportunities, remembering accounts, and preparing pipeline reviews.
-          </p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Getting started</p>
+          <h2 className="mt-1 text-xl font-bold text-navy">
+            {nextStep?.done ? 'Setup looks ready.' : `Next: ${nextStep?.title}`}
+          </h2>
+          <p className="mt-1 text-sm text-blue-950">{doneCount}/{progress.length} basics complete.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={onOpenDemoSandbox} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-            Open Demo Sandbox
+            Demo Sandbox
           </button>
           {isDemoSandboxActive && (
             <button type="button" onClick={onClearDemoSandbox} className="rounded-full border border-amber-300 bg-white px-4 py-2 text-sm font-bold text-amber-800">
@@ -1446,40 +1540,42 @@ function OnboardingWelcomePanel({
           <button type="button" onClick={onDismiss} className="rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-800">
             Dismiss guide
           </button>
-          <button type="button" onClick={onReset} className="rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-800">
-            Reset guide
-          </button>
         </div>
       </div>
 
       {sampleMessage && (
-        <p className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+        <p className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
           {sampleMessage}
         </p>
       )}
 
-      <p className="mt-4 rounded-lg border border-amber-100 bg-white/80 px-3 py-2 text-sm leading-6 text-amber-900">
+      <p className="mt-3 rounded-lg border border-amber-100 bg-white/80 px-3 py-2 text-sm leading-6 text-amber-900">
         Demo sandbox data stays local in this browser{isAuthenticated ? ' and will not be saved to your cloud account' : ''}.
         {isDemoSandboxActive ? ' The checklist still reflects your real workspace steps, not demo records.' : ''}
         {hasExistingData && !isDemoSandboxActive ? ' You already have workspace data, so Memoire will ask before loading demo records.' : ''}
       </p>
 
-      <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-5">
-        {progress.map((step) => (
-          <article key={step.id} className="rounded-lg border border-blue-100 bg-white p-4">
-            <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-              step.done ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'
-            }`}>
-              {step.done ? 'Done' : 'Not started'}
-            </span>
-            <h3 className="mt-3 text-sm font-bold text-navy">{step.title}</h3>
-            <p className="mt-2 text-sm leading-6 text-gray-600">{step.description}</p>
-            <Link to={step.href} className="mt-4 inline-flex rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-brand-blue hover:bg-blue-100">
-              {step.cta}
-            </Link>
-          </article>
-        ))}
-      </div>
+      <details className="mt-3 rounded-lg border border-blue-100 bg-white px-3 py-2">
+        <summary className="cursor-pointer text-sm font-bold text-brand-blue">Show setup checklist</summary>
+        <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-5">
+          {progress.map((step) => (
+            <article key={step.id} className="rounded-lg border border-blue-100 bg-white p-3">
+              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                step.done ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'
+              }`}>
+                {step.done ? 'Done' : 'Next'}
+              </span>
+              <h3 className="mt-3 text-sm font-bold text-navy">{step.title}</h3>
+              <Link to={step.href} className="mt-3 inline-flex rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-brand-blue hover:bg-blue-100">
+                {step.cta}
+              </Link>
+            </article>
+          ))}
+        </div>
+        <button type="button" onClick={onReset} className="mt-3 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-bold text-blue-800">
+          Reset guide
+        </button>
+      </details>
     </section>
   );
 }
