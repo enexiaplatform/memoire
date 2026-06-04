@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../../auth/authContext';
 import { getUserDisplayName } from '../../utils/userDisplay';
 
 export function AuthButton() {
   const { user, profile, loading, error, isAuthenticated, signInWithGoogle, signOut } = useAuthContext();
   const [actionError, setActionError] = useState('');
+  const navigate = useNavigate();
 
   const displayName = getUserDisplayName(user, profile);
 
@@ -18,6 +20,7 @@ export function AuthButton() {
     setActionError('');
     const result = await signOut();
     if (result.error) setActionError(result.error);
+    if (!result.error) navigate('/', { replace: true });
   };
 
   return (

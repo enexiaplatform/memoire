@@ -36,9 +36,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       return (
         <LoadingFallback
           onRetry={() => window.location.reload()}
-          onSignOut={() => {
-            signOut();
-            window.location.replace('/login');
+          onSignOut={async () => {
+            await signOut();
+            window.location.replace('/');
           }}
           onOpenDemo={openDemo}
         />

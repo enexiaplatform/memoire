@@ -22,9 +22,9 @@ export function RouteLoadingFallback({ onRetry }: { onRetry: () => void }) {
         </button>
         <button
           type="button"
-          onClick={() => {
-            signOut();
-            window.location.replace('/login');
+          onClick={async () => {
+            await signOut();
+            window.location.replace('/');
           }}
           className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700"
         >
