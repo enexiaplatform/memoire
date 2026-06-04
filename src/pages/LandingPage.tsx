@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet-async';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import {
   ArrowRight,
   BadgeCheck,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { MarketingNav } from '../components/marketing/MarketingNav';
 import { Footer } from '../components/marketing/Footer';
+import { useAuthContext } from '../auth/authContext';
 
 const workflowSteps = [
   {
@@ -154,6 +155,12 @@ const faqs = [
 ];
 
 export function LandingPage() {
+  const { loading, isAuthenticated } = useAuthContext();
+
+  if (!loading && isAuthenticated) {
+    return <Navigate to="/app/dashboard" replace />;
+  }
+
   return (
     <div className="min-h-screen bg-white text-slate-950">
       <Helmet>
