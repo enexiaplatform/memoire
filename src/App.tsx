@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
+import { DashboardPage } from './features/dashboard/DashboardPage';
 import { DailyCapturePage } from './features/dailyCapture/DailyCapturePage';
 import { SalesAssetsPage } from './features/assets/SalesAssetsPage';
 import { OpportunitiesPage } from './features/opportunities/OpportunitiesPage';
@@ -20,7 +21,6 @@ const ValidationFeedbackPage = lazy(() =>
   import('./features/validation/ValidationFeedbackPage').then((module) => ({ default: module.ValidationFeedbackPage })),
 );
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })));
-const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage').then((module) => ({ default: module.DashboardPage })));
 const SalesActivityCalendarPage = lazy(() =>
   import('./features/calendar/SalesActivityCalendarPage').then((module) => ({ default: module.SalesActivityCalendarPage })),
 );
