@@ -11,6 +11,7 @@ export type RelationshipStatus = (typeof relationshipStatuses)[number];
 
 export interface AccountMemoryRecord {
   id: string;
+  accountCode?: string;
   userId?: string;
   source?: 'demo' | 'user';
   isSample?: boolean;
@@ -28,10 +29,11 @@ export interface AccountMemoryRecord {
   storageMode: 'local' | 'cloud';
 }
 
-export type AccountFormInput = Omit<AccountMemoryRecord, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'storageMode' | 'source' | 'isSample'>;
+export type AccountFormInput = Omit<AccountMemoryRecord, 'id' | 'accountCode' | 'userId' | 'createdAt' | 'updatedAt' | 'storageMode' | 'source' | 'isSample'>;
 
 type AccountRow = {
   id: string;
+  account_code?: string | null;
   user_id: string;
   account_name?: string | null;
   name?: string | null;
@@ -87,7 +89,9 @@ export async function createAccount(
 
   if (canUseAccountCloudStore(userId)) {
     try {
-      const account = await createCloudAccount(normalized, userId as string);
+      const cloudAccounts = await loadCloudAccounts(userId as string);
+      const accountCode = getNextAccountCode(cloudAccounts);
+      const account = await createCloudAccount(normalized, userId as string, accountCode);
       saveLocalAccountRecord({ ...account, storageMode: 'local' });
       invalidateWorkspaceDataCache();
       return { account, mode: 'cloud' };
@@ -120,6 +124,7 @@ export async function updateAccount(
   if (account.storageMode === 'cloud' && canUseAccountCloudStore(userId)) {
     try {
       const updated = await updateCloudAccount(account.id, normalized, userId as string);
+      updated.accountCode ||= account.accountCode;
       saveLocalAccountRecord({ ...updated, storageMode: 'local' });
       invalidateWorkspaceDataCache();
       return { account: updated, mode: 'cloud' };
@@ -188,10 +193,11 @@ function loadLocalAccounts(): AccountMemoryRecord[] {
 
   try {
     const parsed = JSON.parse(raw) as Partial<AccountMemoryRecord>[];
-    return parsed
+    const accounts = parsed
       .filter((item) => item.id && item.accountName)
       .map<AccountMemoryRecord>((item) => ({
         id: item.id || createId(),
+        accountCode: normalizeAccountCode(item.accountCode),
         userId: item.userId,
         source: normalizeSource(item.source),
         isSample: item.isSample === true,
@@ -209,6 +215,11 @@ function loadLocalAccounts(): AccountMemoryRecord[] {
         storageMode: 'local',
       }))
       .sort(sortNewestFirst);
+    const normalized = ensureAccountCodes(accounts);
+    if (normalized.changed) {
+      localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(normalized.accounts));
+    }
+    return normalized.accounts;
   } catch {
     return [];
   }
@@ -234,13 +245,13 @@ async function loadCloudAccounts(userId: string): Promise<AccountMemoryRecord[]>
     .order('updated_at', { ascending: false });
 
   if (error) throw new Error(error.message);
-  return ((data || []) as AccountRow[]).map(rowToAccount);
+  return ensureAccountCodes(((data || []) as AccountRow[]).map(rowToAccount)).accounts;
 }
 
-async function createCloudAccount(input: AccountFormInput, userId: string) {
+async function createCloudAccount(input: AccountFormInput, userId: string, accountCode: string) {
   const { data, error } = await supabaseClient!
     .from(TABLE_NAME)
-    .insert(accountToInsert(input, userId))
+    .insert(accountToInsert(input, userId, accountCode))
     .select('*')
     .single();
 
@@ -252,10 +263,11 @@ async function createCloudAccount(input: AccountFormInput, userId: string) {
       .single();
 
     if (fallback.error) throw new Error(fallback.error.message);
-    return rowToAccount(fallback.data as AccountRow);
+    return { ...rowToAccount(fallback.data as AccountRow), accountCode };
   }
 
-  return rowToAccount(data as AccountRow);
+  const created = rowToAccount(data as AccountRow);
+  return { ...created, accountCode: created.accountCode || accountCode };
 }
 
 async function updateCloudAccount(accountId: string, input: AccountFormInput, userId: string) {
@@ -288,6 +300,7 @@ function createLocalAccount(input: AccountFormInput, userId?: string): AccountMe
   return {
     ...input,
     id: createId(),
+    accountCode: getNextAccountCode(loadLocalAccounts()),
     userId,
     source: 'user',
     isSample: false,
@@ -300,6 +313,7 @@ function createLocalAccount(input: AccountFormInput, userId?: string): AccountMe
 function rowToAccount(row: AccountRow): AccountMemoryRecord {
   return {
     id: row.id,
+    accountCode: normalizeAccountCode(row.account_code),
     userId: row.user_id,
     source: 'user',
     isSample: false,
@@ -318,10 +332,11 @@ function rowToAccount(row: AccountRow): AccountMemoryRecord {
   };
 }
 
-function accountToInsert(input: AccountFormInput, userId: string) {
+function accountToInsert(input: AccountFormInput, userId: string, accountCode: string) {
   const timestamp = new Date().toISOString();
   return {
     ...accountToRow(input),
+    account_code: accountCode,
     user_id: userId,
     created_at: timestamp,
     updated_at: timestamp,
@@ -329,8 +344,12 @@ function accountToInsert(input: AccountFormInput, userId: string) {
 }
 
 function accountToInsertWithLegacyColumns(input: AccountFormInput, userId: string) {
+  const timestamp = new Date().toISOString();
   return {
-    ...accountToInsert(input, userId),
+    ...accountToRow(input),
+    user_id: userId,
+    created_at: timestamp,
+    updated_at: timestamp,
     name: input.accountName,
     summary: input.notes || null,
     status: 'active',
@@ -390,6 +409,67 @@ function normalizeRelationshipStatus(value: unknown): RelationshipStatus {
 
 function normalizeSource(value: unknown): AccountMemoryRecord['source'] {
   return value === 'demo' ? 'demo' : value === 'user' ? 'user' : undefined;
+}
+
+export function getAccountCode(account: AccountMemoryRecord) {
+  return normalizeAccountCode(account.accountCode) || 'ACC-UNASSIGNED';
+}
+
+function getNextAccountCode(accounts: AccountMemoryRecord[]) {
+  const used = new Set(
+    accounts
+      .map((account) => parseAccountCode(account.accountCode))
+      .filter((value): value is number => value !== null),
+  );
+
+  for (let index = 1; index <= 9999; index += 1) {
+    if (!used.has(index)) return formatAccountCode(index);
+  }
+
+  throw new Error('Account code limit reached.');
+}
+
+function ensureAccountCodes(accounts: AccountMemoryRecord[]) {
+  const used = new Set<number>();
+  let changed = false;
+  const ordered = [...accounts].sort((left, right) =>
+    `${left.createdAt}-${left.id}`.localeCompare(`${right.createdAt}-${right.id}`),
+  );
+
+  ordered.forEach((account) => {
+    const parsed = parseAccountCode(account.accountCode);
+    if (parsed && !used.has(parsed)) {
+      account.accountCode = formatAccountCode(parsed);
+      used.add(parsed);
+      return;
+    }
+
+    let next = 1;
+    while (used.has(next) && next <= 9999) next += 1;
+    if (next > 9999) throw new Error('Account code limit reached.');
+    account.accountCode = formatAccountCode(next);
+    used.add(next);
+    changed = true;
+  });
+
+  return { accounts: [...accounts].sort(sortNewestFirst), changed };
+}
+
+function normalizeAccountCode(value: unknown) {
+  const parsed = parseAccountCode(value);
+  return parsed ? formatAccountCode(parsed) : '';
+}
+
+function parseAccountCode(value: unknown) {
+  if (typeof value !== 'string') return null;
+  const match = /^ACC-(\d{1,4})$/i.exec(value.trim());
+  if (!match) return null;
+  const number = Number(match[1]);
+  return number >= 1 && number <= 9999 ? number : null;
+}
+
+function formatAccountCode(value: number) {
+  return `ACC-${String(value).padStart(4, '0')}`;
 }
 
 function createId() {

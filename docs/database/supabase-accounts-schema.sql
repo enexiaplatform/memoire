@@ -5,6 +5,7 @@
 create table if not exists public.accounts (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
+  account_code text,
   account_name text not null,
   segment text,
   industry text,
@@ -19,6 +20,7 @@ create table if not exists public.accounts (
 );
 
 alter table public.accounts
+  add column if not exists account_code text,
   add column if not exists account_name text,
   add column if not exists segment text,
   add column if not exists location text,
@@ -123,3 +125,7 @@ on public.accounts (user_id, updated_at desc);
 
 create index if not exists accounts_user_account_name_idx
 on public.accounts (user_id, account_name);
+
+create unique index if not exists accounts_user_account_code_unique_idx
+on public.accounts (user_id, account_code)
+where account_code is not null;

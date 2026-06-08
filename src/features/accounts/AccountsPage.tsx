@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, Building2, Filter, Plus, Save, Search, Trash2, X } from 'lucide-react';
+import { ArrowUpDown, Building2, ChevronLeft, ChevronRight, Eye, Filter, Plus, Save, Search, Trash2, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -12,6 +12,7 @@ import {
   createAccount,
   deleteAccount,
   emptyAccountInput,
+  getAccountCode,
   relationshipStatuses,
   updateAccount,
   type AccountFormInput,
@@ -35,8 +36,11 @@ import { getObjectionsForAccount, objectionStatusTone } from '../../utils/object
 import { formatCurrencyAmount as formatMoney } from '../../utils/currency';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+type SortDirection = 'asc' | 'desc';
+type AccountSortKey = 'accountCode' | 'accountName' | 'relationship' | 'potential' | 'activeValue' | 'lastUpdated' | 'health';
 
 const allFilter = 'All';
+const defaultPageSize = 25;
 
 export function AccountsPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
@@ -51,6 +55,11 @@ export function AccountsPage() {
   const [segmentFilter, setSegmentFilter] = useState(allFilter);
   const [potentialFilter, setPotentialFilter] = useState(allFilter);
   const [relationshipFilter, setRelationshipFilter] = useState(allFilter);
+  const [healthFilter, setHealthFilter] = useState(allFilter);
+  const [sortKey, setSortKey] = useState<AccountSortKey>('lastUpdated');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(defaultPageSize);
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [panelMode, setPanelMode] = useState<'closed' | 'add' | 'edit'>('closed');
   const [form, setForm] = useState<AccountFormInput>(emptyAccountInput);
@@ -102,31 +111,63 @@ export function AccountsPage() {
     return [allFilter, ...Array.from(new Set(accounts.map((account) => account.segment).filter(Boolean))).sort()];
   }, [accounts]);
 
-  const visibleMemories = useMemo(() => {
+  const accountRows = useMemo(
+    () => buildAccountMasterRows(memories, stakeholders, objections),
+    [memories, objections, stakeholders],
+  );
+
+  const visibleRows = useMemo(() => {
     const searchText = query.trim().toLowerCase();
-    return memories.filter((memory) => {
-      const account = memory.account;
+    return accountRows.filter((row) => {
+      const account = row.memory.account;
       const searchable = [
+        row.accountCode,
         account.accountName,
         account.segment,
         account.industry,
         account.location,
         account.notes,
         account.tags.join(' '),
+        row.latestActivity?.summary || '',
+        row.latestContact,
       ].join(' ').toLowerCase();
       return (
         (!searchText || searchable.includes(searchText)) &&
         (segmentFilter === allFilter || account.segment === segmentFilter) &&
         (potentialFilter === allFilter || account.accountPotential === potentialFilter) &&
-        (relationshipFilter === allFilter || account.relationshipStatus === relationshipFilter)
+        (relationshipFilter === allFilter || account.relationshipStatus === relationshipFilter) &&
+        (healthFilter === allFilter || row.memory.health === healthFilter)
       );
-    });
-  }, [memories, potentialFilter, query, relationshipFilter, segmentFilter]);
+    }).sort((left, right) => compareAccountRows(left, right, sortKey, sortDirection));
+  }, [accountRows, healthFilter, potentialFilter, query, relationshipFilter, segmentFilter, sortDirection, sortKey]);
+
+  const pageCount = Math.max(1, Math.ceil(visibleRows.length / pageSize));
+  const pagedRows = useMemo(
+    () => visibleRows.slice((page - 1) * pageSize, page * pageSize),
+    [page, pageSize, visibleRows],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [healthFilter, pageSize, potentialFilter, query, relationshipFilter, segmentFilter]);
+
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
 
   const selectedAccount = accounts.find((account) => account.id === selectedAccountId) || null;
   const selectedMemory = selectedAccount ? buildAccountMemory(selectedAccount, opportunities, activities) : null;
 
   const summary = useMemo(() => buildAccountsSummary(memories), [memories]);
+
+  const handleSort = (nextKey: AccountSortKey) => {
+    if (sortKey === nextKey) {
+      setSortDirection((current) => current === 'asc' ? 'desc' : 'asc');
+      return;
+    }
+    setSortKey(nextKey);
+    setSortDirection(nextKey === 'lastUpdated' || nextKey === 'activeValue' ? 'desc' : 'asc');
+  };
 
   const openAddPanel = () => {
     setSelectedAccountId('');
@@ -216,10 +257,10 @@ export function AccountsPage() {
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Accounts</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Account Master</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Accounts</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            Relationship memory for your B2B accounts, aggregated from opportunities and linked sales activities.
+            Your searchable account master, automatically refreshed by opportunities, activities, stakeholders, and objections.
           </p>
         </div>
         <DataModePill
@@ -238,63 +279,70 @@ export function AccountsPage() {
             <Plus className="h-4 w-4" />
             Add Account
           </button>
-          <div className="grid flex-1 grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[1.5fr_repeat(3,1fr)]">
+          <div className="grid flex-1 grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[1.4fr_repeat(4,1fr)]">
             <label className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search account memory..."
+                placeholder="Search code, account, industry, note..."
                 className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
               />
             </label>
             <FilterSelect label="Segment" value={segmentFilter} options={segments} onChange={setSegmentFilter} />
             <FilterSelect label="Potential" value={potentialFilter} options={[allFilter, ...accountPotentials]} onChange={setPotentialFilter} />
             <FilterSelect label="Relationship" value={relationshipFilter} options={[allFilter, ...relationshipStatuses]} onChange={setRelationshipFilter} />
+            <FilterSelect label="Health" value={healthFilter} options={[allFilter, 'Healthy', 'Needs attention', 'At risk', 'Dormant']} onChange={setHealthFilter} />
           </div>
         </div>
       </section>
 
       <AccountMemorySummary summary={summary} />
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_440px]">
-        <div className="space-y-5">
-          {candidates.length > 0 && (
-            <CandidateSection candidates={candidates} onCreate={handleCreateCandidate} />
-          )}
+      <section className="space-y-5">
+        {candidates.length > 0 && (
+          <CandidateSection candidates={candidates} onCreate={handleCreateCandidate} />
+        )}
 
-          {loading ? (
-            <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">Loading account memory...</div>
-          ) : accounts.length === 0 && candidates.length === 0 ? (
-            <EmptyState onAdd={openAddPanel} />
-          ) : visibleMemories.length === 0 ? (
-            <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
-              <p className="text-sm font-semibold text-gray-900">No accounts match these filters.</p>
-              <p className="mt-1 text-sm text-gray-500">Clear search or filters to review all account memory.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              {visibleMemories.map((memory) => (
-                <AccountCard key={memory.account.id} memory={memory} onOpen={() => openEditPanel(memory.account)} />
-              ))}
-            </div>
-          )}
-        </div>
-
-        <AccountDetailPanel
-          mode={panelMode}
-          form={form}
-          selectedMemory={selectedMemory}
-          saveState={saveState}
-          message={message}
-          stakeholders={selectedAccount ? getStakeholdersForAccount(stakeholders, { id: selectedAccount.id, accountName: selectedAccount.accountName }) : []}
-          objections={selectedAccount ? getObjectionsForAccount(objections, { id: selectedAccount.id, accountName: selectedAccount.accountName }) : []}
-          onChange={setForm}
-          onSave={handleSave}
-          onClose={closePanel}
-          onDelete={selectedAccount ? () => handleDelete(selectedAccount) : undefined}
-        />
+        {loading ? (
+          <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">Loading account master...</div>
+        ) : accounts.length === 0 && candidates.length === 0 ? (
+          <EmptyState onAdd={openAddPanel} />
+        ) : visibleRows.length === 0 ? (
+          <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
+            <p className="text-sm font-semibold text-gray-900">No accounts match these filters.</p>
+            <p className="mt-1 text-sm text-gray-500">Clear search or filters to review all account records.</p>
+          </div>
+        ) : (
+          <AccountMasterTable
+            rows={pagedRows}
+            totalRows={visibleRows.length}
+            page={page}
+            pageCount={pageCount}
+            pageSize={pageSize}
+            sortKey={sortKey}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            onOpen={(memory) => openEditPanel(memory.account)}
+          />
+        )}
       </section>
+
+      <AccountDetailPanel
+        mode={panelMode}
+        form={form}
+        selectedMemory={selectedMemory}
+        saveState={saveState}
+        message={message}
+        stakeholders={selectedAccount ? getStakeholdersForAccount(stakeholders, { id: selectedAccount.id, accountName: selectedAccount.accountName }) : []}
+        objections={selectedAccount ? getObjectionsForAccount(objections, { id: selectedAccount.id, accountName: selectedAccount.accountName }) : []}
+        onChange={setForm}
+        onSave={handleSave}
+        onClose={closePanel}
+        onDelete={selectedAccount ? () => handleDelete(selectedAccount) : undefined}
+      />
     </div>
   );
 }
@@ -319,37 +367,199 @@ function AccountMemorySummary({ summary }: { summary: ReturnType<typeof buildAcc
   );
 }
 
-function AccountCard({ memory, onOpen }: { memory: AccountMemory; onOpen: () => void }) {
+type AccountMasterRow = {
+  memory: AccountMemory;
+  accountCode: string;
+  lastUpdatedAt: string;
+  latestActivity: SalesActivityRecord | null;
+  latestContact: string;
+  stakeholderCount: number;
+  openObjectionCount: number;
+};
+
+function AccountMasterTable({
+  rows,
+  totalRows,
+  page,
+  pageCount,
+  pageSize,
+  sortKey,
+  sortDirection,
+  onSort,
+  onPageChange,
+  onPageSizeChange,
+  onOpen,
+}: {
+  rows: AccountMasterRow[];
+  totalRows: number;
+  page: number;
+  pageCount: number;
+  pageSize: number;
+  sortKey: AccountSortKey;
+  sortDirection: SortDirection;
+  onSort: (key: AccountSortKey) => void;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
+  onOpen: (memory: AccountMemory) => void;
+}) {
   return (
-    <article className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
+    <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{memory.account.segment || 'No segment'} / {memory.account.industry || 'No industry'}</p>
-          <h3 className="mt-1 text-lg font-bold text-navy">{memory.account.accountName}</h3>
+          <h2 className="text-base font-bold text-navy">Master Account List</h2>
+          <p className="mt-1 text-xs text-gray-500">{totalRows.toLocaleString()} accounts after filters</p>
         </div>
-        <Badge label={memory.health} tone={memory.health === 'At risk' ? 'red' : memory.health === 'Dormant' ? 'amber' : memory.health === 'Needs attention' ? 'amber' : 'green'} />
+        <label className="flex items-center gap-2 text-xs font-semibold text-gray-500">
+          Rows
+          <select
+            value={pageSize}
+            onChange={(event) => onPageSizeChange(Number(event.target.value))}
+            className="rounded-md border border-gray-200 bg-white px-2 py-1.5 text-sm font-bold text-gray-700"
+          >
+            {[25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+          </select>
+        </label>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Badge label={memory.account.accountPotential} />
-        <Badge label={memory.account.relationshipStatus} tone={memory.account.relationshipStatus === 'At risk' ? 'red' : memory.account.relationshipStatus === 'Strong' ? 'green' : 'blue'} />
+
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
+          <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
+            <tr>
+              <SortableHeader label="Code" sortKey="accountCode" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <SortableHeader label="Account" sortKey="accountName" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <th className="border-b border-gray-200 px-3 py-3">Segment / Industry</th>
+              <SortableHeader label="Relationship" sortKey="relationship" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <SortableHeader label="Potential" sortKey="potential" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <SortableHeader label="Pipeline" sortKey="activeValue" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <SortableHeader label="Last update" sortKey="lastUpdated" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <th className="border-b border-gray-200 px-3 py-3">Latest account memory</th>
+              <SortableHeader label="Health" sortKey="health" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <th className="border-b border-gray-200 px-3 py-3 text-right">Open</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {rows.map((row) => {
+              const { memory } = row;
+              return (
+                <tr
+                  key={memory.account.id}
+                  onClick={() => onOpen(memory)}
+                  className="cursor-pointer bg-white transition hover:bg-blue-50/60"
+                >
+                  <td className="whitespace-nowrap px-3 py-3 font-mono text-xs font-bold text-brand-blue">{row.accountCode}</td>
+                  <td className="px-3 py-3">
+                    <p className="max-w-[220px] truncate font-bold text-navy" title={memory.account.accountName}>{memory.account.accountName}</p>
+                    <p className="mt-1 max-w-[220px] truncate text-xs text-gray-500">{memory.account.location || 'Location not set'}</p>
+                  </td>
+                  <td className="px-3 py-3">
+                    <p className="max-w-[170px] truncate font-semibold text-gray-700">{memory.account.segment || 'Unsegmented'}</p>
+                    <p className="mt-1 max-w-[170px] truncate text-xs text-gray-500">{memory.account.industry || 'Industry not set'}</p>
+                  </td>
+                  <td className="px-3 py-3">
+                    <Badge
+                      label={memory.account.relationshipStatus}
+                      tone={memory.account.relationshipStatus === 'At risk' ? 'red' : memory.account.relationshipStatus === 'Strong' ? 'green' : 'blue'}
+                    />
+                  </td>
+                  <td className="px-3 py-3"><Badge label={memory.account.accountPotential} /></td>
+                  <td className="whitespace-nowrap px-3 py-3">
+                    <p className="font-bold text-gray-800">{formatMoney(memory.estimatedActiveValue)}</p>
+                    <p className="mt-1 text-xs text-gray-500">{memory.activeOpportunityCount} active opps</p>
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-3">
+                    <p className="font-semibold text-gray-700">{formatDate(row.lastUpdatedAt)}</p>
+                    <p className="mt-1 text-xs text-gray-500">{formatRelativeDate(row.lastUpdatedAt)}</p>
+                  </td>
+                  <td className="px-3 py-3">
+                    {row.latestActivity ? (
+                      <>
+                        <p className="max-w-[270px] truncate font-semibold text-gray-800" title={row.latestActivity.summary}>
+                          {row.latestActivity.summary}
+                        </p>
+                        <p className="mt-1 max-w-[270px] truncate text-xs text-gray-500">
+                          {row.latestActivity.activityDate} · {row.latestContact || row.latestActivity.activityType}
+                        </p>
+                      </>
+                    ) : (
+                      <span className="text-xs text-gray-400">No activity captured</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-3">
+                    <Badge label={memory.health} tone={healthTone(memory.health)} />
+                    <p className="mt-1 text-xs text-gray-500">{row.stakeholderCount} contacts · {row.openObjectionCount} open objections</p>
+                  </td>
+                  <td className="px-3 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onOpen(memory);
+                      }}
+                      title="Open account details"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <Fact label="Active opps" value={String(memory.activeOpportunityCount)} />
-        <Fact label="Active value" value={formatMoney(memory.estimatedActiveValue)} />
-        <Fact label="Last activity" value={memory.latestActivityDate || 'None'} />
-        <Fact label="Open actions" value={String(memory.openNextActions.length)} />
-        <Fact label="Objections" value={String(memory.objectionDebt.length)} />
-      </div>
-      {memory.riskSignals.length > 0 && (
-        <p className="mt-4 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
-          <AlertTriangle className="h-4 w-4" />
-          {memory.riskSignals[0]}
+
+      <div className="flex flex-col gap-3 border-t border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs text-gray-500">
+          Showing {totalRows === 0 ? 0 : ((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, totalRows)} of {totalRows.toLocaleString()}
         </p>
-      )}
-      <button type="button" onClick={onOpen} className="mt-4 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-        Open Account Memory
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onPageChange(Math.max(1, page - 1))}
+            disabled={page === 1}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600 disabled:opacity-40"
+            title="Previous page"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <span className="min-w-[90px] text-center text-xs font-bold text-gray-700">Page {page} / {pageCount}</span>
+          <button
+            type="button"
+            onClick={() => onPageChange(Math.min(pageCount, page + 1))}
+            disabled={page === pageCount}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600 disabled:opacity-40"
+            title="Next page"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  activeKey,
+  direction,
+  onSort,
+}: {
+  label: string;
+  sortKey: AccountSortKey;
+  activeKey: AccountSortKey;
+  direction: SortDirection;
+  onSort: (key: AccountSortKey) => void;
+}) {
+  const active = sortKey === activeKey;
+  return (
+    <th className="border-b border-gray-200 px-3 py-3">
+      <button type="button" onClick={() => onSort(sortKey)} className="inline-flex items-center gap-1 hover:text-navy">
+        {label}
+        <ArrowUpDown className={`h-3.5 w-3.5 ${active ? 'text-brand-blue' : 'text-gray-300'}`} />
+        <span className="sr-only">{active ? `Sorted ${direction}` : 'Not sorted'}</span>
       </button>
-    </article>
+    </th>
   );
 }
 
@@ -379,15 +589,7 @@ function AccountDetailPanel({
   onDelete?: () => void;
 }) {
   if (mode === 'closed') {
-    return (
-      <aside className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Account Detail</p>
-        <h2 className="mt-2 text-xl font-bold text-navy">Select or add an account</h2>
-        <p className="mt-2 text-sm leading-6 text-gray-500">
-          Account Memory combines profile fields, opportunities, linked activities, open actions, and risk signals.
-        </p>
-      </aside>
-    );
+    return null;
   }
 
   const update = <Key extends keyof AccountFormInput>(key: Key, value: AccountFormInput[Key]) => {
@@ -395,11 +597,21 @@ function AccountDetailPanel({
   };
 
   return (
-    <aside className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
+    <>
+      <button
+        type="button"
+        aria-label="Close account details"
+        onClick={onClose}
+        className="fixed inset-y-0 left-0 right-0 top-16 z-40 bg-slate-950/25 backdrop-blur-[1px] lg:left-[220px]"
+      />
+      <aside className="fixed bottom-0 right-0 top-16 z-50 w-full overflow-y-auto border-l border-gray-200 bg-white p-5 shadow-2xl sm:max-w-[620px]">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">{mode === 'add' ? 'Add Account' : 'Account Memory'}</p>
           <h2 className="mt-2 text-xl font-bold text-navy">{mode === 'add' ? 'New account' : selectedMemory?.account.accountName}</h2>
+          {selectedMemory && (
+            <p className="mt-1 font-mono text-xs font-bold text-gray-400">{getAccountCode(selectedMemory.account)}</p>
+          )}
         </div>
         <button type="button" onClick={onClose} className="rounded-full border border-gray-200 p-2 text-gray-500 hover:bg-gray-50">
           <X className="h-4 w-4" />
@@ -442,7 +654,8 @@ function AccountDetailPanel({
           </button>
         )}
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
 
@@ -546,8 +759,16 @@ function MemorySections({ memory, stakeholders, objections }: { memory: AccountM
           <div className="mt-3 space-y-2">
             {allActivities.map((activity) => (
               <details key={activity.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
-                <summary className="cursor-pointer text-sm font-bold text-navy">{activity.activityDate} | {activity.activityType}</summary>
+                <summary className="cursor-pointer text-sm font-bold text-navy">
+                  {formatDate(activity.activityDate)} · {activity.activityType}
+                  {getActivityContact(activity) ? ` · ${getActivityContact(activity)}` : ''}
+                </summary>
                 <p className="mt-2 text-sm leading-6 text-gray-700">{activity.summary}</p>
+                {(activity.opportunityName || activity.linkedOpportunityName) && (
+                  <p className="mt-2 text-xs font-semibold text-gray-500">
+                    Opportunity: {activity.linkedOpportunityName || activity.opportunityName}
+                  </p>
+                )}
                 {activity.nextAction && <p className="mt-2 text-xs font-bold text-brand-blue">Next: {activity.nextAction}</p>}
                 <p className="mt-2 whitespace-pre-line text-xs leading-5 text-gray-500">{activity.rawNote}</p>
               </details>
@@ -655,15 +876,6 @@ function Metric({ label, value, tone = 'blue' }: { label: string; value: string 
   );
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg bg-gray-50 p-3">
-      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-gray-800">{value}</p>
-    </div>
-  );
-}
-
 function Badge({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green' | 'amber' | 'red' | 'gray' }) {
   const toneClass = {
     blue: 'border-blue-100 bg-blue-50 text-brand-blue',
@@ -686,6 +898,110 @@ function ListSection({ title, items, empty }: { title: string; items: string[]; 
       )}
     </section>
   );
+}
+
+function buildAccountMasterRows(
+  memories: AccountMemory[],
+  stakeholders: StakeholderRecord[],
+  objections: ObjectionRecord[],
+): AccountMasterRow[] {
+  return memories.map((memory) => {
+    const accountName = normalizeName(memory.account.accountName);
+    const accountStakeholders = stakeholders.filter((stakeholder) =>
+      stakeholder.accountId === memory.account.id || normalizeName(stakeholder.accountName) === accountName
+    );
+    const accountObjections = objections.filter((objection) =>
+      objection.accountId === memory.account.id || normalizeName(objection.accountName) === accountName
+    );
+    const activities = [...memory.linkedActivities, ...memory.matchingActivities]
+      .sort((left, right) => activityTimestamp(right).localeCompare(activityTimestamp(left)));
+    const latestActivity = activities[0] || null;
+    const updateCandidates = [
+      memory.account.updatedAt,
+      ...memory.opportunities.map((opportunity) => opportunity.updatedAt),
+      ...activities.map((activity) => activity.updatedAt || activity.createdAt || activity.activityDate),
+      ...accountStakeholders.map((stakeholder) => stakeholder.updatedAt),
+      ...accountObjections.map((objection) => objection.updatedAt),
+    ].filter(Boolean);
+
+    return {
+      memory,
+      accountCode: getAccountCode(memory.account),
+      lastUpdatedAt: updateCandidates.sort().at(-1) || memory.account.createdAt,
+      latestActivity,
+      latestContact: latestActivity ? getActivityContact(latestActivity) : '',
+      stakeholderCount: accountStakeholders.length,
+      openObjectionCount: accountObjections.filter((objection) => objection.status === 'Open').length,
+    };
+  });
+}
+
+function compareAccountRows(
+  left: AccountMasterRow,
+  right: AccountMasterRow,
+  key: AccountSortKey,
+  direction: SortDirection,
+) {
+  const multiplier = direction === 'asc' ? 1 : -1;
+  const values: Record<AccountSortKey, [string | number, string | number]> = {
+    accountCode: [left.accountCode, right.accountCode],
+    accountName: [left.memory.account.accountName, right.memory.account.accountName],
+    relationship: [left.memory.account.relationshipStatus, right.memory.account.relationshipStatus],
+    potential: [potentialRank(left.memory.account.accountPotential), potentialRank(right.memory.account.accountPotential)],
+    activeValue: [left.memory.estimatedActiveValue, right.memory.estimatedActiveValue],
+    lastUpdated: [left.lastUpdatedAt, right.lastUpdatedAt],
+    health: [healthRank(left.memory.health), healthRank(right.memory.health)],
+  };
+  const [leftValue, rightValue] = values[key];
+  if (typeof leftValue === 'number' && typeof rightValue === 'number') {
+    return (leftValue - rightValue) * multiplier;
+  }
+  return String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true }) * multiplier;
+}
+
+function getActivityContact(activity: SalesActivityRecord) {
+  return activity.contactName || activity.stakeholderName || activity.stakeholderRole || '';
+}
+
+function activityTimestamp(activity: SalesActivityRecord) {
+  return activity.updatedAt || activity.createdAt || `${activity.activityDate}T00:00:00.000Z`;
+}
+
+function formatDate(value: string) {
+  if (!value) return 'Not updated';
+  const date = new Date(value.length === 10 ? `${value}T00:00:00` : value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
+}
+
+function formatRelativeDate(value: string) {
+  if (!value) return '';
+  const date = new Date(value.length === 10 ? `${value}T00:00:00` : value);
+  if (Number.isNaN(date.getTime())) return '';
+  const days = Math.floor((Date.now() - date.getTime()) / 86_400_000);
+  if (days <= 0) return 'Updated today';
+  if (days === 1) return 'Updated yesterday';
+  if (days < 30) return `${days} days ago`;
+  if (days < 365) return `${Math.floor(days / 30)} months ago`;
+  return `${Math.floor(days / 365)} years ago`;
+}
+
+function potentialRank(value: AccountMemoryRecord['accountPotential']) {
+  return { High: 4, Medium: 3, Low: 2, Unknown: 1 }[value];
+}
+
+function healthRank(value: AccountMemory['health']) {
+  return { 'At risk': 4, 'Needs attention': 3, Dormant: 2, Healthy: 1 }[value];
+}
+
+function healthTone(value: AccountMemory['health']): 'green' | 'amber' | 'red' {
+  if (value === 'At risk') return 'red';
+  if (value === 'Needs attention' || value === 'Dormant') return 'amber';
+  return 'green';
+}
+
+function normalizeName(value: string) {
+  return value.trim().toLowerCase();
 }
 
 function buildAccountsSummary(memories: AccountMemory[]) {
