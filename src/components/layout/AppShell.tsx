@@ -30,7 +30,7 @@ export function AppShell() {
 
 function AppContentLoading() {
   return (
-    <div className="mx-auto flex w-full max-w-7xl px-4 py-6 sm:px-6">
+    <div className="flex w-full max-w-none px-4 py-6 sm:px-5 lg:px-6">
       <div className="w-full rounded-lg border border-gray-200 bg-white p-5 text-sm font-semibold text-gray-500 shadow-sm">
         Loading this workspace...
       </div>

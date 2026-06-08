@@ -868,7 +868,7 @@ export function PipelineReviewDefenseBriefPage() {
 
   return (
     <>
-    <div className="no-print mx-auto w-full max-w-7xl px-4 py-6 sm:px-6">
+    <div className="no-print w-full max-w-none px-4 py-5 sm:px-5 lg:px-6">
       <header className="mb-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>

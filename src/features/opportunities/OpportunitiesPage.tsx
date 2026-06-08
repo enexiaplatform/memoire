@@ -2,13 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle,
+  ArrowUpDown,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   Copy,
-  DollarSign,
+  Eye,
   FileText,
   Filter,
-  Pencil,
   Plus,
   Save,
   Search,
@@ -118,8 +120,21 @@ type BriefPreviewMetadata = {
   salesOwner: string;
   scope: string;
 };
+type SortDirection = 'asc' | 'desc';
+type OpportunitySortKey =
+  | 'account'
+  | 'opportunity'
+  | 'stage'
+  | 'value'
+  | 'closePeriod'
+  | 'forecast'
+  | 'recommendation'
+  | 'nextActionDate'
+  | 'quality'
+  | 'updatedAt';
 
 const allFilter = 'All';
+const defaultPageSize = 25;
 
 export function OpportunitiesPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
@@ -137,6 +152,10 @@ export function OpportunitiesPage() {
   const [forecastFilter, setForecastFilter] = useState(allFilter);
   const [recommendationFilter, setRecommendationFilter] = useState(allFilter);
   const [statusFilter, setStatusFilter] = useState(allFilter);
+  const [sortKey, setSortKey] = useState<OpportunitySortKey>('updatedAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(defaultPageSize);
   const [editingOpportunity, setEditingOpportunity] = useState<CrmLiteOpportunity | null>(null);
   const [form, setForm] = useState<OpportunityFormInput>(emptyOpportunityInput);
   const [panelMode, setPanelMode] = useState<'closed' | 'add' | 'edit'>('closed');
@@ -206,9 +225,15 @@ export function OpportunitiesPage() {
     return opportunities.filter((opportunity) => selectedIds.has(opportunity.id));
   }, [opportunities, selectedOpportunityIds]);
 
-  const visibleOpportunities = useMemo(() => {
+  const opportunityRows = useMemo(
+    () => opportunities.map((opportunity) => buildOpportunityMasterRow(opportunity, activities)),
+    [activities, opportunities],
+  );
+
+  const visibleOpportunityRows = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return opportunities.filter((opportunity) => {
+    return opportunityRows.filter((row) => {
+      const { opportunity } = row;
       const searchable = [
         opportunity.accountName,
         opportunity.opportunityName,
@@ -224,8 +249,35 @@ export function OpportunitiesPage() {
         (recommendationFilter === allFilter || opportunity.decisionRecommendation === recommendationFilter) &&
         (statusFilter === allFilter || opportunity.status === statusFilter)
       );
-    });
-  }, [forecastFilter, opportunities, recommendationFilter, search, stageFilter, statusFilter]);
+    }).sort((left, right) => compareOpportunityRows(left, right, sortKey, sortDirection));
+  }, [forecastFilter, opportunityRows, recommendationFilter, search, sortDirection, sortKey, stageFilter, statusFilter]);
+
+  const visibleOpportunities = useMemo(
+    () => visibleOpportunityRows.map((row) => row.opportunity),
+    [visibleOpportunityRows],
+  );
+  const pageCount = Math.max(1, Math.ceil(visibleOpportunityRows.length / pageSize));
+  const pagedRows = useMemo(
+    () => visibleOpportunityRows.slice((page - 1) * pageSize, page * pageSize),
+    [page, pageSize, visibleOpportunityRows],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [forecastFilter, pageSize, recommendationFilter, search, stageFilter, statusFilter]);
+
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
+
+  const handleSort = (nextKey: OpportunitySortKey) => {
+    if (nextKey === sortKey) {
+      setSortDirection((current) => current === 'asc' ? 'desc' : 'asc');
+      return;
+    }
+    setSortKey(nextKey);
+    setSortDirection(['value', 'updatedAt', 'quality'].includes(nextKey) ? 'desc' : 'asc');
+  };
 
   const openAddPanel = () => {
     setEditingOpportunity(null);
@@ -680,13 +732,13 @@ export function OpportunitiesPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6">
+    <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Opportunities</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Opportunity Master</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Opportunities</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            CRM-lite deal workspace for your active B2B pipeline. Track deal quality, forecast evidence, next actions, and objection debt without connecting an external CRM.
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-500">
+            Review pipeline movement, forecast evidence, close timing, next actions, and deal risk in one working table.
           </p>
         </div>
         <DataModePill
@@ -699,32 +751,24 @@ export function OpportunitiesPage() {
         />
       </header>
 
-      <section className="rounded-lg border border-blue-100 bg-blue-50/70 p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-blue-950">
-              Generate a Pipeline Defense Brief from selected opportunities.
-            </p>
-            <p className="mt-1 text-sm text-blue-800">
-              This is rule-based and creates a new brief. Existing briefs and opportunities are not overwritten.
-            </p>
-          </div>
+      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-3 2xl:flex-row 2xl:items-center">
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={markWeakDealsReviewed}
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-800 hover:bg-blue-50"
+              onClick={openAddPanel}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
             >
-              <CheckCircle2 className="h-4 w-4" />
-              Mark weak deals reviewed
+              <Plus className="h-4 w-4" />
+              Add Opportunity
             </button>
             <button
               type="button"
-              onClick={markMeddicAndProofGapsChecked}
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-800 hover:bg-blue-50"
+              onClick={openCsvImport}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-brand-blue bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-100"
             >
-              <ClipboardList className="h-4 w-4" />
-              Mark gaps checked
+              <Upload className="h-4 w-4" />
+              Import / Refresh
             </button>
             <button
               type="button"
@@ -735,36 +779,8 @@ export function OpportunitiesPage() {
               Generate Defense Brief{selectedOpportunities.length > 0 ? ` (${selectedOpportunities.length})` : ''}
             </button>
           </div>
-        </div>
-        {briefCreateMessage && !isPreviewOpen && (
-          <p className={`mt-3 rounded-lg px-3 py-2 text-sm font-semibold ${
-            briefCreateState === 'error' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
-          }`}>
-            {briefCreateMessage}
-          </p>
-        )}
-      </section>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <button
-            type="button"
-            onClick={openAddPanel}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
-          >
-            <Plus className="h-4 w-4" />
-            Add Opportunity
-          </button>
-          <button
-            type="button"
-            onClick={openCsvImport}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-brand-blue bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-100"
-          >
-            <Upload className="h-4 w-4" />
-            Import CSV
-          </button>
-
-          <div className="grid flex-1 grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[1.4fr_repeat(4,1fr)]">
+          <div className="grid flex-1 grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[minmax(260px,1.4fr)_repeat(4,minmax(150px,1fr))]">
             <label className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
@@ -780,6 +796,28 @@ export function OpportunitiesPage() {
             <FilterSelect label="Status" value={statusFilter} onChange={setStatusFilter} options={[allFilter, ...opportunityStatuses]} />
           </div>
         </div>
+        <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3 lg:flex-row lg:items-center lg:justify-between">
+          <p className="text-xs text-gray-500">
+            Select deals in the table to build a new Pipeline Defense Brief. Existing records are never overwritten.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={markWeakDealsReviewed} className="inline-flex items-center gap-2 text-xs font-bold text-blue-700 hover:text-brand-blue">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Mark weak deals reviewed
+            </button>
+            <button type="button" onClick={markMeddicAndProofGapsChecked} className="inline-flex items-center gap-2 text-xs font-bold text-blue-700 hover:text-brand-blue">
+              <ClipboardList className="h-3.5 w-3.5" />
+              Mark gaps checked
+            </button>
+          </div>
+        </div>
+        {briefCreateMessage && !isPreviewOpen && (
+          <p className={`mt-3 rounded-lg px-3 py-2 text-sm font-semibold ${
+            briefCreateState === 'error' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+          }`}>
+            {briefCreateMessage}
+          </p>
+        )}
       </section>
 
       {csvImportOpen && (
@@ -829,63 +867,57 @@ export function OpportunitiesPage() {
 
       <ImportedOpportunityEnrichmentSignal summary={importedEnrichment} />
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_420px]">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold text-navy">Opportunity list</h2>
-              <p className="text-sm text-gray-500">{visibleOpportunities.length} visible of {opportunities.length} total.</p>
-            </div>
+      <section>
+        {loading ? (
+          <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
+            Loading opportunity master...
           </div>
-
-          {loading ? (
-            <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
-              Loading opportunities...
-            </div>
-          ) : opportunities.length === 0 ? (
-            <EmptyState onAdd={openAddPanel} onImport={openCsvImport} />
-          ) : visibleOpportunities.length === 0 ? (
-            <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
-              <p className="text-sm font-semibold text-gray-900">No opportunities match these filters.</p>
-              <p className="mt-1 text-sm text-gray-500">Clear search or filters to review your full pipeline.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {visibleOpportunities.map((opportunity) => (
-                <OpportunityCard
-                  key={opportunity.id}
-                  opportunity={opportunity}
-                  selected={selectedOpportunityIds.includes(opportunity.id)}
-                  linkedActivities={getLinkedActivities(opportunity, activities)}
-                  onToggleSelection={() => toggleOpportunitySelection(opportunity.id)}
-                  onEdit={() => openEditPanel(opportunity)}
-                  onDelete={() => handleDelete(opportunity)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        <OpportunityPanel
-          mode={panelMode}
-          form={form}
-          saveState={saveState}
-          message={message}
-          editingOpportunity={editingOpportunity}
-          linkedActivities={editingOpportunity ? getLinkedActivities(editingOpportunity, activities) : []}
-          stakeholders={editingOpportunity ? getStakeholdersForOpportunity(stakeholders, editingOpportunity) : []}
-          objections={editingOpportunity ? getObjectionsForOpportunity(objections, editingOpportunity) : []}
-          actionOutcomes={editingOpportunity ? actionOutcomes : []}
-          salesAssets={salesAssets}
-          allOpportunities={opportunities}
-          onChange={setForm}
-          onActionOutcomesChange={setActionOutcomes}
-          onSave={handleSave}
-          onClose={closePanel}
-          onDelete={editingOpportunity ? () => handleDelete(editingOpportunity) : undefined}
-          onCreateDefenseBrief={editingOpportunity ? () => openDefenseBriefPreview([editingOpportunity]) : undefined}
-        />
+        ) : opportunities.length === 0 ? (
+          <EmptyState onAdd={openAddPanel} onImport={openCsvImport} />
+        ) : visibleOpportunities.length === 0 ? (
+          <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
+            <p className="text-sm font-semibold text-gray-900">No opportunities match these filters.</p>
+            <p className="mt-1 text-sm text-gray-500">Clear search or filters to review your full pipeline.</p>
+          </div>
+        ) : (
+          <OpportunityMasterTable
+            rows={pagedRows}
+            totalRows={visibleOpportunityRows.length}
+            totalOpportunities={opportunities.length}
+            page={page}
+            pageCount={pageCount}
+            pageSize={pageSize}
+            selectedIds={selectedOpportunityIds}
+            sortKey={sortKey}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            onToggleSelection={toggleOpportunitySelection}
+            onOpen={(opportunity) => openEditPanel(opportunity)}
+          />
+        )}
       </section>
+
+      <OpportunityPanel
+        mode={panelMode}
+        form={form}
+        saveState={saveState}
+        message={message}
+        editingOpportunity={editingOpportunity}
+        linkedActivities={editingOpportunity ? getLinkedActivities(editingOpportunity, activities) : []}
+        stakeholders={editingOpportunity ? getStakeholdersForOpportunity(stakeholders, editingOpportunity) : []}
+        objections={editingOpportunity ? getObjectionsForOpportunity(objections, editingOpportunity) : []}
+        actionOutcomes={editingOpportunity ? actionOutcomes : []}
+        salesAssets={salesAssets}
+        allOpportunities={opportunities}
+        onChange={setForm}
+        onActionOutcomesChange={setActionOutcomes}
+        onSave={handleSave}
+        onClose={closePanel}
+        onDelete={editingOpportunity ? () => handleDelete(editingOpportunity) : undefined}
+        onCreateDefenseBrief={editingOpportunity ? () => openDefenseBriefPreview([editingOpportunity]) : undefined}
+      />
 
       {isPreviewOpen && (
         <DefenseBriefPreviewModal
@@ -1656,94 +1688,217 @@ function ImportMetric({ label, value, tone }: { label: string; value: number; to
   );
 }
 
-function OpportunityCard({
-  opportunity,
-  selected,
-  linkedActivities,
-  onToggleSelection,
-  onEdit,
-  onDelete,
-}: {
+type OpportunityMasterRow = {
   opportunity: CrmLiteOpportunity;
-  selected: boolean;
-  linkedActivities: SalesActivityRecord[];
-  onToggleSelection: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  quality: ReturnType<typeof analyzeOpportunityQuality>;
+  linkedActivityCount: number;
+  lastActivityDate: string;
+  lastUpdatedAt: string;
+};
+
+function OpportunityMasterTable({
+  rows,
+  totalRows,
+  totalOpportunities,
+  page,
+  pageCount,
+  pageSize,
+  selectedIds,
+  sortKey,
+  sortDirection,
+  onSort,
+  onPageChange,
+  onPageSizeChange,
+  onToggleSelection,
+  onOpen,
+}: {
+  rows: OpportunityMasterRow[];
+  totalRows: number;
+  totalOpportunities: number;
+  page: number;
+  pageCount: number;
+  pageSize: number;
+  selectedIds: string[];
+  sortKey: OpportunitySortKey;
+  sortDirection: SortDirection;
+  onSort: (key: OpportunitySortKey) => void;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
+  onToggleSelection: (opportunityId: string) => void;
+  onOpen: (opportunity: CrmLiteOpportunity) => void;
 }) {
-  const quality = analyzeOpportunityQuality(opportunity, linkedActivities);
-
   return (
-    <article className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex min-w-0 gap-3">
-          <label className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-gray-300 bg-white">
-            <input
-              type="checkbox"
-              checked={selected}
-              onChange={onToggleSelection}
-              aria-label={`Select ${opportunity.accountName} / ${opportunity.opportunityName}`}
-              className="h-4 w-4 accent-brand-blue"
-            />
-          </label>
-          <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{opportunity.accountName || 'No account'}</p>
-            <h3 className="mt-1 text-lg font-bold text-navy">{opportunity.opportunityName || 'Untitled opportunity'}</h3>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Badge label={opportunity.stage} />
-              <Badge label={opportunity.status} tone={opportunity.status === 'Active' ? 'blue' : opportunity.status === 'Won' ? 'green' : 'gray'} />
-              <Badge label={opportunity.forecastEvidenceCategory} tone={forecastTone(opportunity.forecastEvidenceCategory)} />
-              <Badge label={opportunity.decisionRecommendation} tone={decisionTone(opportunity.decisionRecommendation)} />
-              <Badge label={quality.status} tone={quality.status === 'High risk' ? 'red' : quality.status === 'Needs cleanup' ? 'amber' : 'green'} />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex shrink-0 gap-2">
-          <button
-            type="button"
-            onClick={onEdit}
-            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-bold text-gray-700 hover:bg-blue-50 hover:text-brand-blue"
-          >
-            <Pencil className="h-4 w-4" />
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            className="inline-flex items-center gap-2 rounded-full border border-red-100 bg-red-50 px-3 py-1.5 text-sm font-bold text-red-700 hover:bg-red-100"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete
-          </button>
-        </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <Fact label="Value" value={opportunity.estimatedValue ? formatMoney(opportunity.estimatedValue, opportunity.currency) : 'Not set'} icon={<DollarSign className="h-3.5 w-3.5" />} />
-        <Fact label="Close period" value={opportunity.expectedClosePeriod || 'Missing'} />
-        <Fact label="Next action" value={opportunity.nextAction || 'Missing'} />
-        <Fact label="Next action date" value={opportunity.nextActionDate || 'Not set'} />
-        <Fact label="Linked activities" value={String(linkedActivities.length)} />
-        <Fact label="Last activity" value={quality.lastLinkedActivityDate || 'No linked activity'} />
-      </div>
-
-      {quality.issues.length > 0 && (
-        <div className="mt-4 rounded-lg border border-amber-100 bg-amber-50/70 p-3">
-          <p className="flex items-center gap-2 text-sm font-bold text-amber-900">
-            <AlertTriangle className="h-4 w-4" />
-            {quality.primaryAction}
+    <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-base font-bold text-navy">Opportunity Master List</h2>
+          <p className="mt-1 text-xs text-gray-500">
+            {totalRows.toLocaleString()} after filters / {totalOpportunities.toLocaleString()} total
+            {selectedIds.length > 0 ? ` / ${selectedIds.length} selected` : ''}
           </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {quality.issues.slice(0, 5).map((issue) => (
-              <span key={issue.id} className={`rounded-full px-2.5 py-1 text-xs font-bold ${issueTone(issue.severity)}`}>
-                {issue.label}
-              </span>
-            ))}
-          </div>
         </div>
-      )}
-    </article>
+        <label className="flex items-center gap-2 text-xs font-semibold text-gray-500">
+          Rows
+          <select
+            value={pageSize}
+            onChange={(event) => onPageSizeChange(Number(event.target.value))}
+            className="rounded-md border border-gray-200 bg-white px-2 py-1.5 text-sm font-bold text-gray-700"
+          >
+            {[25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+          </select>
+        </label>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[1540px] border-collapse text-left text-sm">
+          <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
+            <tr>
+              <th className="w-12 border-b border-gray-200 px-3 py-3 text-center">Pick</th>
+              <OpportunitySortableHeader label="Account" sortKey="account" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <OpportunitySortableHeader label="Opportunity" sortKey="opportunity" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <OpportunitySortableHeader label="Stage" sortKey="stage" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <OpportunitySortableHeader label="Value" sortKey="value" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <OpportunitySortableHeader label="Close" sortKey="closePeriod" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <OpportunitySortableHeader label="Forecast evidence" sortKey="forecast" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <OpportunitySortableHeader label="Review decision" sortKey="recommendation" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <OpportunitySortableHeader label="Next action" sortKey="nextActionDate" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <OpportunitySortableHeader label="Deal quality" sortKey="quality" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <OpportunitySortableHeader label="Last update" sortKey="updatedAt" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <th className="border-b border-gray-200 px-3 py-3 text-right">Open</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {rows.map((row) => {
+              const { opportunity, quality } = row;
+              const selected = selectedIds.includes(opportunity.id);
+              return (
+                <tr
+                  key={opportunity.id}
+                  onClick={() => onOpen(opportunity)}
+                  className={`cursor-pointer transition hover:bg-blue-50/60 ${selected ? 'bg-blue-50/40' : 'bg-white'}`}
+                >
+                  <td className="px-3 py-3 text-center">
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onClick={(event) => event.stopPropagation()}
+                      onChange={() => onToggleSelection(opportunity.id)}
+                      aria-label={`Select ${opportunity.accountName} / ${opportunity.opportunityName}`}
+                      className="h-4 w-4 accent-brand-blue"
+                    />
+                  </td>
+                  <td className="px-3 py-3">
+                    <p className="max-w-[190px] truncate font-bold text-navy" title={opportunity.accountName}>{opportunity.accountName || 'No account'}</p>
+                    <p className="mt-1 max-w-[190px] truncate text-xs text-gray-500">{opportunity.productOrSolution || 'Solution not set'}</p>
+                  </td>
+                  <td className="px-3 py-3">
+                    <p className="max-w-[250px] truncate font-bold text-gray-900" title={opportunity.opportunityName}>{opportunity.opportunityName || 'Untitled opportunity'}</p>
+                    <p className="mt-1 max-w-[250px] truncate text-xs text-gray-500">{opportunity.decisionMaker ? `DM: ${opportunity.decisionMaker}` : 'Decision maker missing'}</p>
+                  </td>
+                  <td className="px-3 py-3">
+                    <Badge label={opportunity.stage} />
+                    <p className="mt-1 text-xs text-gray-500">{opportunity.status}</p>
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-3 font-bold text-gray-800">
+                    {opportunity.estimatedValue ? formatMoney(opportunity.estimatedValue, opportunity.currency) : 'Not set'}
+                  </td>
+                  <td className="px-3 py-3">
+                    <p className="max-w-[150px] truncate font-semibold text-gray-700" title={opportunity.expectedClosePeriod}>
+                      {opportunity.expectedClosePeriod || 'Missing'}
+                    </p>
+                  </td>
+                  <td className="px-3 py-3"><Badge label={opportunity.forecastEvidenceCategory} tone={forecastTone(opportunity.forecastEvidenceCategory)} /></td>
+                  <td className="px-3 py-3"><Badge label={opportunity.decisionRecommendation} tone={decisionTone(opportunity.decisionRecommendation)} /></td>
+                  <td className="px-3 py-3">
+                    <p className="max-w-[250px] truncate font-semibold text-gray-800" title={opportunity.nextAction}>
+                      {opportunity.nextAction || 'No next action'}
+                    </p>
+                    <p className={`mt-1 text-xs font-semibold ${isPastDate(opportunity.nextActionDate) ? 'text-red-600' : 'text-gray-500'}`}>
+                      {opportunity.nextActionDate ? formatOpportunityDate(opportunity.nextActionDate) : 'No due date'}
+                    </p>
+                  </td>
+                  <td className="px-3 py-3">
+                    <Badge label={quality.status} tone={quality.status === 'High risk' ? 'red' : quality.status === 'Needs cleanup' ? 'amber' : 'green'} />
+                    <p className="mt-1 max-w-[190px] truncate text-xs text-gray-500" title={quality.primaryAction}>
+                      {quality.issues.length} gap{quality.issues.length === 1 ? '' : 's'} / {row.linkedActivityCount} activities
+                    </p>
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-3">
+                    <p className="font-semibold text-gray-700">{formatOpportunityDate(row.lastUpdatedAt)}</p>
+                    <p className="mt-1 text-xs text-gray-500">{row.lastActivityDate ? `Last touch ${formatOpportunityDate(row.lastActivityDate)}` : 'No linked touch'}</p>
+                  </td>
+                  <td className="px-3 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onOpen(opportunity);
+                      }}
+                      title="Open opportunity details"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex flex-col gap-3 border-t border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs text-gray-500">
+          Showing {totalRows === 0 ? 0 : ((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, totalRows)} of {totalRows.toLocaleString()}
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onPageChange(Math.max(1, page - 1))}
+            disabled={page === 1}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600 disabled:opacity-40"
+            title="Previous page"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <span className="min-w-[90px] text-center text-xs font-bold text-gray-700">Page {page} / {pageCount}</span>
+          <button
+            type="button"
+            onClick={() => onPageChange(Math.min(pageCount, page + 1))}
+            disabled={page === pageCount}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600 disabled:opacity-40"
+            title="Next page"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OpportunitySortableHeader({
+  label,
+  sortKey,
+  activeKey,
+  direction,
+  onSort,
+}: {
+  label: string;
+  sortKey: OpportunitySortKey;
+  activeKey: OpportunitySortKey;
+  direction: SortDirection;
+  onSort: (key: OpportunitySortKey) => void;
+}) {
+  const active = sortKey === activeKey;
+  return (
+    <th className="border-b border-gray-200 px-3 py-3">
+      <button type="button" onClick={() => onSort(sortKey)} className="inline-flex items-center gap-1 hover:text-navy">
+        {label}
+        <ArrowUpDown className={`h-3.5 w-3.5 ${active ? 'text-brand-blue' : 'text-gray-300'}`} />
+        <span className="sr-only">{active ? `Sorted ${direction}` : 'Not sorted'}</span>
+      </button>
+    </th>
   );
 }
 
@@ -1785,15 +1940,7 @@ function OpportunityPanel({
   onCreateDefenseBrief?: () => void;
 }) {
   if (mode === 'closed') {
-    return (
-      <aside className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Detail Panel</p>
-        <h2 className="mt-2 text-xl font-bold text-navy">Select or add an opportunity</h2>
-        <p className="mt-2 text-sm leading-6 text-gray-500">
-          Edit full deal fields here: buying context, evidence, objections, forecast category, next action, and review recommendation.
-        </p>
-      </aside>
-    );
+    return null;
   }
 
   const update = <Key extends keyof OpportunityFormInput>(key: Key, value: OpportunityFormInput[Key]) => {
@@ -1802,7 +1949,14 @@ function OpportunityPanel({
   const currentOpportunity = editingOpportunity ? { ...editingOpportunity, ...form } : null;
 
   return (
-    <aside className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
+    <>
+      <button
+        type="button"
+        aria-label="Close opportunity details"
+        onClick={onClose}
+        className="fixed inset-y-0 left-0 right-0 top-16 z-40 bg-slate-950/25 backdrop-blur-[1px] lg:left-[220px]"
+      />
+      <aside className="fixed bottom-0 right-0 top-16 z-50 w-full overflow-y-auto border-l border-gray-200 bg-white p-5 shadow-2xl sm:max-w-[760px]">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">{mode === 'add' ? 'Add Opportunity' : 'Edit Opportunity'}</p>
@@ -1955,7 +2109,8 @@ function OpportunityPanel({
           </button>
         )}
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
 
@@ -2841,6 +2996,88 @@ function formatBatchDate(value: string) {
   });
 }
 
+function buildOpportunityMasterRow(
+  opportunity: CrmLiteOpportunity,
+  activities: SalesActivityRecord[],
+): OpportunityMasterRow {
+  const linkedActivities = getLinkedActivities(opportunity, activities);
+  const quality = analyzeOpportunityQuality(opportunity, linkedActivities);
+  const latestActivity = linkedActivities[0];
+  const activityTimestamp = latestActivity
+    ? new Date(latestActivity.createdAt || `${latestActivity.activityDate}T00:00:00`).getTime()
+    : 0;
+  const opportunityTimestamp = new Date(opportunity.updatedAt).getTime();
+  const lastUpdatedAt = activityTimestamp > opportunityTimestamp
+    ? latestActivity.createdAt || latestActivity.activityDate
+    : opportunity.updatedAt;
+
+  return {
+    opportunity,
+    quality,
+    linkedActivityCount: linkedActivities.length,
+    lastActivityDate: latestActivity?.activityDate || '',
+    lastUpdatedAt,
+  };
+}
+
+function compareOpportunityRows(
+  left: OpportunityMasterRow,
+  right: OpportunityMasterRow,
+  sortKey: OpportunitySortKey,
+  direction: SortDirection,
+) {
+  const directionFactor = direction === 'asc' ? 1 : -1;
+  const leftValue = getOpportunitySortValue(left, sortKey);
+  const rightValue = getOpportunitySortValue(right, sortKey);
+  if (typeof leftValue === 'number' && typeof rightValue === 'number') {
+    return (leftValue - rightValue) * directionFactor;
+  }
+  return String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true }) * directionFactor;
+}
+
+function getOpportunitySortValue(row: OpportunityMasterRow, sortKey: OpportunitySortKey) {
+  const { opportunity } = row;
+  switch (sortKey) {
+    case 'account':
+      return opportunity.accountName;
+    case 'opportunity':
+      return opportunity.opportunityName;
+    case 'stage':
+      return opportunityStages.indexOf(opportunity.stage);
+    case 'value':
+      return opportunity.estimatedValue || 0;
+    case 'closePeriod':
+      return opportunity.expectedClosePeriod || 'zzzz';
+    case 'forecast':
+      return forecastEvidenceCategories.indexOf(opportunity.forecastEvidenceCategory);
+    case 'recommendation':
+      return decisionRecommendations.indexOf(opportunity.decisionRecommendation);
+    case 'nextActionDate':
+      return opportunity.nextActionDate || '9999-12-31';
+    case 'quality':
+      return { Healthy: 0, 'Needs cleanup': 1, 'High risk': 2 }[row.quality.status];
+    case 'updatedAt':
+      return new Date(row.lastUpdatedAt).getTime() || 0;
+  }
+}
+
+function formatOpportunityDate(value: string) {
+  if (!value) return 'Not set';
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? new Date(`${value}T00:00:00`)
+    : new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function isPastDate(value: string) {
+  if (!value) return false;
+  const date = new Date(`${value}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return date < today;
+}
+
 function opportunityToForm(opportunity: CrmLiteOpportunity): OpportunityFormInput {
   return {
     accountName: opportunity.accountName,
@@ -2953,12 +3190,4 @@ function outcomeTone(outcomeType?: ActionOutcomeType) {
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function issueTone(severity: 'low' | 'medium' | 'high') {
-  return {
-    low: 'bg-blue-50 text-blue-700',
-    medium: 'bg-amber-100 text-amber-800',
-    high: 'bg-red-100 text-red-700',
-  }[severity];
 }
