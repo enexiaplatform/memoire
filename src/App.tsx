@@ -2,10 +2,6 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
-import { DashboardPage } from './features/dashboard/DashboardPage';
-import { DailyCapturePage } from './features/dailyCapture/DailyCapturePage';
-import { SalesAssetsPage } from './features/assets/SalesAssetsPage';
-import { OpportunitiesPage } from './features/opportunities/OpportunitiesPage';
 
 const LandingPage = lazy(() => import('./pages/LandingPage').then((module) => ({ default: module.LandingPage })));
 const LoginPage = lazy(() => import('./features/auth/LoginPage').then((module) => ({ default: module.LoginPage })));
@@ -19,6 +15,16 @@ const EarlyAccessRequestPage = lazy(() =>
 const DemoGuidePage = lazy(() => import('./features/demo/DemoGuidePage').then((module) => ({ default: module.DemoGuidePage })));
 const ValidationFeedbackPage = lazy(() =>
   import('./features/validation/ValidationFeedbackPage').then((module) => ({ default: module.ValidationFeedbackPage })),
+);
+const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage').then((module) => ({ default: module.DashboardPage })));
+const DailyCapturePage = lazy(() =>
+  import('./features/dailyCapture/DailyCapturePage').then((module) => ({ default: module.DailyCapturePage })),
+);
+const OpportunitiesPage = lazy(() =>
+  import('./features/opportunities/OpportunitiesPage').then((module) => ({ default: module.OpportunitiesPage })),
+);
+const SalesAssetsPage = lazy(() =>
+  import('./features/assets/SalesAssetsPage').then((module) => ({ default: module.SalesAssetsPage })),
 );
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const SalesActivityCalendarPage = lazy(() =>

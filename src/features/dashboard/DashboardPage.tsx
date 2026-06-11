@@ -391,7 +391,7 @@ export function DashboardPage() {
             onToggle={(event) => setSetupToolsOpen(event.currentTarget.open)}
           >
             <summary className="cursor-pointer text-sm font-bold text-navy">
-              More setup and validation tools
+              Review setup
             </summary>
             {setupToolsOpen && (
               <div className="mt-4 flex flex-col gap-4">
@@ -408,8 +408,12 @@ export function DashboardPage() {
                     hasSampleData={sampleDataActive}
                   />
                 )}
-                <DemoCommercializationCta onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)} />
-                <ValidationCta message={validationMessage} onCopyInterviewScript={handleCopyInterviewScript} />
+                {sampleDataActive && (
+                  <>
+                    <DemoCommercializationCta onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)} />
+                    <ValidationCta message={validationMessage} onCopyInterviewScript={handleCopyInterviewScript} />
+                  </>
+                )}
               </div>
             )}
           </details>

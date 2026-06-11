@@ -36,7 +36,7 @@ export function DemoModeBanner() {
 
   return (
     <section className="no-print border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm shadow-sm">
-      <div className="mx-auto flex max-w-7xl flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex w-full max-w-none flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <p className="font-semibold text-amber-900">
           Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
         </p>

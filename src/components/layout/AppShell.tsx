@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopNav } from './TopNav';
 import { OnboardingModal } from './OnboardingModal';
@@ -7,15 +7,17 @@ import { DemoModeBanner } from '../demo/DemoModeBanner';
 import { prefetchPrimaryAppRoutes } from '../../utils/routePrefetch';
 
 export function AppShell() {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
   useEffect(() => {
     prefetchPrimaryAppRoutes();
   }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar />
-      <TopNav />
-      <main className="flex-1 ml-[220px] pt-16 flex flex-col min-h-screen relative">
+      <Sidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+      <TopNav onOpenMenu={() => setMobileNavOpen(true)} />
+      <main className="relative ml-0 flex min-h-screen flex-1 flex-col pt-16 lg:ml-[220px]">
         <DemoModeBanner />
         <div className="flex-1">
           <Suspense fallback={<AppContentLoading />}>
