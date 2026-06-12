@@ -46,7 +46,7 @@ export function FollowUpComposerPanel({ initialContext, onClose }: FollowUpCompo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 px-4 py-6">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-navy/40 px-4 py-6">
       <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl">
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-gray-100 bg-white px-5 py-4">
           <div>

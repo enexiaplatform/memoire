@@ -82,7 +82,7 @@ const standardSteps: WorkflowStepConfig[] = [
     title: 'Draft Follow-up',
     instruction: 'Turn account memory into a follow-up message.',
     why: 'A remembered customer story should become concrete sales action.',
-    primaryLabel: 'I generated a draft',
+    primaryLabel: 'Open draft composer',
   },
   {
     step: 'finish',
@@ -122,7 +122,7 @@ const founderSteps: WorkflowStepConfig[] = [
     title: 'Draft Follow-up',
     instruction: 'Use the account context to draft a follow-up.',
     why: 'A stuck deal should turn into a concrete next action, not just another passive record.',
-    primaryLabel: 'I generated a draft',
+    primaryLabel: 'Open draft composer',
   },
   {
     step: 'ask_account',
@@ -385,7 +385,12 @@ export function OnboardingModal() {
         return;
       }
       case 'draft_followup':
-        if (draftReady) goNext();
+        {
+          const accountId = savedMemory?.accountId || founderAccountId;
+          const query = new URLSearchParams({ compose: 'follow-up' });
+          if (accountId) query.set('accountId', accountId);
+          navigate(`/app/accounts?${query.toString()}`);
+        }
         return;
       case 'journey':
         navigate('/app/journey');
@@ -583,7 +588,7 @@ export function OnboardingModal() {
 
       {currentStep.step === 'draft_followup' && !draftReady && (
         <p className="mt-3 text-xs leading-5 text-gray-500">
-          Use the Draft Follow-up button on Account Memory. If Memoire does not have enough context yet, you can continue and return later.
+          Open the composer, review the account context, then click Generate draft. No email will be sent.
         </p>
       )}
       {currentStep.step === 'ask_account' && (

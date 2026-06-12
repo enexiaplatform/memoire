@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowUpDown, Building2, ChevronLeft, ChevronRight, Eye, Filter, Plus, Save, Search, Trash2, X } from 'lucide-react';
+import { ArrowUpDown, Building2, ChevronLeft, ChevronRight, Eye, Filter, MessageSquareText, Plus, Save, Search, Trash2, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -34,6 +34,8 @@ import {
 import { getStakeholdersForAccount } from '../../utils/stakeholderGraph';
 import { getObjectionsForAccount, objectionStatusTone } from '../../utils/objectionLedger';
 import { formatCurrencyAmount as formatMoney } from '../../utils/currency';
+import { FollowUpComposerPanel } from '../v31/FollowUpComposerPanel';
+import type { FollowUpContext } from '../../types/v31';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type SortDirection = 'asc' | 'desc';
@@ -65,6 +67,7 @@ export function AccountsPage() {
   const [form, setForm] = useState<AccountFormInput>(emptyAccountInput);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [message, setMessage] = useState('');
+  const [followUpContext, setFollowUpContext] = useState<FollowUpContext | null>(null);
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
@@ -210,6 +213,41 @@ export function AccountsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accounts, searchParams]);
 
+  const openFollowUpComposer = (memory: AccountMemory) => {
+    const allActivities = [...memory.linkedActivities, ...memory.matchingActivities]
+      .sort((left, right) => `${right.activityDate}-${right.updatedAt}`.localeCompare(`${left.activityDate}-${left.updatedAt}`));
+    const currentOpportunity = memory.opportunities.find((opportunity) => opportunity.status === 'Active')
+      || memory.opportunities[0];
+    const primaryStakeholder = stakeholders.find((stakeholder) =>
+      sameName(stakeholder.accountName, memory.account.accountName)
+    );
+
+    setFollowUpContext({
+      accountName: memory.account.accountName,
+      contactName: primaryStakeholder?.name || memory.account.keyStakeholders[0] || '',
+      opportunityName: currentOpportunity?.opportunityName || '',
+      lastInteractionSummary: allActivities[0]?.summary || '',
+      objections: memory.objectionDebt,
+      painPoints: allActivities.flatMap((activity) => activity.risks || []).filter(Boolean),
+      nextAction: memory.openNextActions[0] || currentOpportunity?.nextAction || '',
+      goal: memory.objectionDebt.length > 0 ? 'address_objection' : 'follow_up_after_meeting',
+      tone: 'consultative',
+      length: 'medium',
+    });
+  };
+
+  useEffect(() => {
+    if (searchParams.get('compose') !== 'follow-up' || accounts.length === 0) return;
+
+    const account = accounts.find((item) => item.id === searchParams.get('accountId')) || accounts[0];
+    if (!account) return;
+
+    openEditPanel(account, false);
+    openFollowUpComposer(buildAccountMemory(account, opportunities, activities));
+    setSearchParams({ accountId: account.id }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accounts, activities, opportunities, searchParams, setSearchParams, stakeholders]);
+
   const handleSave = async () => {
     if (!form.accountName.trim()) {
       setSaveState('error');
@@ -342,7 +380,14 @@ export function AccountsPage() {
         onSave={handleSave}
         onClose={closePanel}
         onDelete={selectedAccount ? () => handleDelete(selectedAccount) : undefined}
+        onDraftFollowUp={selectedMemory ? () => openFollowUpComposer(selectedMemory) : undefined}
       />
+      {followUpContext && (
+        <FollowUpComposerPanel
+          initialContext={followUpContext}
+          onClose={() => setFollowUpContext(null)}
+        />
+      )}
     </div>
   );
 }
@@ -575,6 +620,7 @@ function AccountDetailPanel({
   onSave,
   onClose,
   onDelete,
+  onDraftFollowUp,
 }: {
   mode: 'closed' | 'add' | 'edit';
   form: AccountFormInput;
@@ -587,6 +633,7 @@ function AccountDetailPanel({
   onSave: () => void;
   onClose: () => void;
   onDelete?: () => void;
+  onDraftFollowUp?: () => void;
 }) {
   if (mode === 'closed') {
     return null;
@@ -643,6 +690,12 @@ function AccountDetailPanel({
       )}
 
       <div className="mt-5 flex flex-wrap gap-2">
+        {onDraftFollowUp && (
+          <button type="button" onClick={onDraftFollowUp} className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-100">
+            <MessageSquareText className="h-4 w-4" />
+            Draft Follow-up
+          </button>
+        )}
         <button type="button" onClick={onSave} disabled={saveState === 'saving'} className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
           <Save className="h-4 w-4" />
           {saveState === 'saving' ? 'Saving...' : 'Save Account'}
