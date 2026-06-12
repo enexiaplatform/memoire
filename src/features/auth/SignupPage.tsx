@@ -23,7 +23,7 @@ export function SignupPage() {
     const { error } = await signUp(email, password, displayName);
     setSubmitting(false);
     if (!error) {
-      navigate('/app/dashboard');
+      navigate('/verify-email');
     }
   };
 
@@ -72,6 +72,7 @@ export function SignupPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            minLength={8}
             helperText="Minimum 8 characters"
           />
 

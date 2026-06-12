@@ -1,7 +1,11 @@
 import OpenAI from 'openai';
+import { getBearerToken, verifyUserToken } from './_auth.js';
+import { enforceRateLimit } from './_rateLimit.js';
 
 interface ApiRequest {
   method?: string;
+  headers?: Record<string, unknown>;
+  socket?: { remoteAddress?: string };
   body?: {
     rawNote?: unknown;
   };
@@ -130,9 +134,15 @@ async function callGroq(rawNote: string) {
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  const user = await verifyUserToken(getBearerToken(req.headers));
+  if (!user) return res.status(401).json({ error: 'Authentication required' });
+  const rateLimit = enforceRateLimit(req, 'structure-capture', user.id, 15);
+  if (!rateLimit.allowed) {
+    return res.status(429).json({ error: 'Too many requests', retryAfterSeconds: rateLimit.retryAfterSeconds });
+  }
 
   const { rawNote } = req.body || {};
-  if (!rawNote || typeof rawNote !== 'string' || rawNote.trim().length < 5) {
+  if (!rawNote || typeof rawNote !== 'string' || rawNote.trim().length < 5 || rawNote.length > 4000) {
     return res.status(400).json({ error: 'rawNote is required' });
   }
 

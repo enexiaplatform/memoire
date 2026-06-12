@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import { getSupabaseServiceRoleKey, getSupabaseUrl } from './_env.js';
+import { verifyUserToken } from './_auth.js';
+import { enforceRateLimit } from './_rateLimit.js';
 
 const supabase = createClient(
     getSupabaseUrl(),
@@ -10,10 +12,13 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 interface ApiRequest {
   method?: string;
+  headers?: Record<string, unknown>;
+  socket?: { remoteAddress?: string };
   body?: {
     captureId?: unknown;
     text?: unknown;
     userId?: unknown;
+    authToken?: unknown;
   };
 }
 
@@ -35,12 +40,19 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 export default async function handler(req: ApiRequest, res: ApiResponse) {
     if (req.method !== 'POST') return res.status(405).end();
 
-  const { captureId, text, userId } = req.body || {};
-    if (!captureId || !text || !userId) {
-          return res.status(400).json({ error: 'captureId, text, userId required' });
+  const { captureId, text, userId, authToken } = req.body || {};
+    if (!captureId || !text || !userId || !authToken) {
+          return res.status(400).json({ error: 'Authentication and capture data required' });
     }
-    if (typeof captureId !== 'string' || typeof text !== 'string' || typeof userId !== 'string') {
+    if (typeof captureId !== 'string' || typeof text !== 'string' || typeof userId !== 'string' || text.length > 8000) {
           return res.status(400).json({ error: 'Invalid request payload' });
+    }
+    if (!await verifyUserToken(authToken, userId)) {
+          return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const rateLimit = enforceRateLimit(req, 'generate-embedding', userId, 20);
+    if (!rateLimit.allowed) {
+          return res.status(429).json({ error: 'Too many requests', retryAfterSeconds: rateLimit.retryAfterSeconds });
     }
 
   try {

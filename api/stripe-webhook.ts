@@ -1,18 +1,25 @@
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export const config = { api: { bodyParser: false } };
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).end();
 
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!stripeSecretKey || !webhookSecret || !supabaseUrl || !serviceRoleKey) {
+    return res.status(503).json({ error: 'Billing is not configured.' });
+  }
+
+  const stripe = new Stripe(stripeSecretKey);
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
   const sig = req.headers['stripe-signature'];
+  if (!sig) return res.status(400).json({ error: 'Missing webhook signature.' });
+
   let event: Stripe.Event;
   let rawBody = '';
 
@@ -22,10 +29,12 @@ export default async function handler(req: any, res: any) {
   });
 
   try {
-    event = stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET!);
-  } catch (err: any) {
-    console.error('Webhook signature verification failed:', err);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
+  } catch (err: unknown) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Webhook signature verification failed:', err);
+    }
+    return res.status(400).json({ error: 'Invalid webhook signature.' });
   }
 
   const getUserId = (obj: any): string | null =>

@@ -1,4 +1,6 @@
 import OpenAI from 'openai';
+import { verifyUserToken } from './_auth.js';
+import { enforceRateLimit } from './_rateLimit.js';
 
 // Groq uses OpenAI-compatible API — no extra package needed
 const groq = new OpenAI({
@@ -12,6 +14,17 @@ export default async function handler(req: any, res: any) {
     const { text, authToken } = req.body;
     if (!text || !authToken) {
         return res.status(400).json({ error: 'text and authToken required' });
+    }
+    if (typeof text !== 'string' || text.length > 4000) {
+        return res.status(400).json({ error: 'Invalid request' });
+    }
+    const user = await verifyUserToken(authToken);
+    if (!user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const rateLimit = enforceRateLimit(req, 'anonymize', user.id, 12);
+    if (!rateLimit.allowed) {
+        return res.status(429).json({ error: 'Too many requests', retryAfterSeconds: rateLimit.retryAfterSeconds });
     }
 
     try {

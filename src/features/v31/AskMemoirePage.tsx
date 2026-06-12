@@ -292,6 +292,10 @@ export function AskMemoirePage() {
         <p className="mt-2 max-w-2xl text-xs font-semibold text-gray-500">
           Presets run immediately. If the Ask endpoint is unavailable, Memoire shows a local rule-based answer.
         </p>
+        <p className="mt-2 max-w-2xl text-xs text-amber-700">
+          Cloud answers may send the selected sales context to your configured AI provider. Do not include
+          confidential customer data unless that provider is approved by your organization.
+        </p>
       </header>
 
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">

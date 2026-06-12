@@ -8,9 +8,9 @@ export function Footer() {
           <Link to="/" className="text-xl font-bold text-gray-900 mb-4 block">
             Memoire
           </Link>
-          <p className="text-gray-500 mb-4">
+          <a href="mailto:hello@memoire.app" className="mb-4 inline-block text-gray-500 hover:text-gray-900">
             hello@memoire.app
-          </p>
+          </a>
         </div>
         
         <div>
@@ -28,6 +28,7 @@ export function Footer() {
           <ul className="space-y-3">
             <li><Link to="/legal/privacy" className="text-gray-600 hover:text-gray-900">Privacy Policy</Link></li>
             <li><Link to="/legal/terms" className="text-gray-600 hover:text-gray-900">Terms of Service</Link></li>
+            <li><Link to="/legal/boundaries" className="text-gray-600 hover:text-gray-900">Product Boundaries</Link></li>
           </ul>
         </div>
       </div>

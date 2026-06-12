@@ -1,106 +1,87 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { ArrowRight, Check } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { MarketingNav } from '../../components/marketing/MarketingNav';
+import { Footer } from '../../components/marketing/Footer';
+
+const plans = [
+  {
+    name: 'Solo',
+    price: '$15-25/month',
+    description: 'Working price range for an individual B2B salesperson.',
+    items: ['Pipeline review workspace', 'Daily capture and account memory', 'CSV pipeline refresh', 'Pipeline Defense Briefs'],
+  },
+  {
+    name: 'Pro',
+    price: '$29-49/month',
+    description: 'Working price range for users who need deeper history and exports.',
+    items: ['Everything in Solo', 'Longer review-pack history', 'Advanced exports', 'Expanded proof assets and playbooks'],
+  },
+  {
+    name: 'Team',
+    price: 'Not available yet',
+    description: 'Team administration and shared workflows are outside the current early-access scope.',
+    items: ['No team checkout today', 'No manager dashboard today', 'No CRM writeback today', 'No enterprise SSO today'],
+  },
+];
 
 export function PricingPage() {
-  const navigate = useNavigate();
-
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
-      <nav className="p-6 flex justify-between items-center bg-white border-b border-gray-200">
-        <div className="text-[20px] font-extrabold tracking-tight brand-gradient-text font-display">Memoire</div>
-        <div className="space-x-4">
-          <button onClick={() => navigate('/login')} className="text-gray-600 hover:text-gray-900 font-medium text-[15px] font-body">Login</button>
-          <button onClick={() => navigate('/request-access')} className="bg-[#1976D2] text-white px-5 py-2 rounded-full font-semibold font-display text-[14px] hover:bg-[#1565C0] active:scale-[0.98] transition-all">
-            Request Access
-          </button>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-slate-50 text-slate-950">
+      <MarketingNav />
+      <main className="px-4 pb-20 pt-28 sm:px-6">
+        <div className="mx-auto max-w-6xl">
+          <header className="mx-auto max-w-3xl text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-700">Early pricing hypothesis</p>
+            <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">Pricing is still being validated.</h1>
+            <p className="mt-5 text-base leading-7 text-slate-600">
+              Memoire is currently request-access only. No payment checkout is active. Early users help validate the
+              workflow, security expectations, and the right individual plan.
+            </p>
+          </header>
 
-      <main className="flex-1 max-w-5xl mx-auto px-6 py-20 w-full">
-        <div className="text-center mb-16">
-          <h1 className="text-[40px] font-bold text-navy mb-4 tracking-tight font-display">Your professional memory,<br/>portable across companies.</h1>
-          <p className="text-[18px] font-body text-gray-500">Early pricing hypothesis. No payment checkout is active.</p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-8 items-stretch max-w-4xl mx-auto">
-          {/* Free */}
-          <div className="bg-white rounded-[16px] shadow-card border-[1.5px] border-gray-200 p-8 flex flex-col">
-            <h3 className="text-[20px] font-semibold font-display text-navy mb-2">Free</h3>
-            <div className="text-[36px] font-bold font-display text-navy mb-6">$0<span className="text-[18px] font-normal text-gray-400">/mo</span></div>
-            <ul className="space-y-4 font-body text-[15px] text-gray-600 mb-8 flex-1">
-              <li>30 captures / month</li>
-              <li>50 entities max</li>
-              <li className="text-gray-400 line-through">AI search</li>
-            </ul>
-            <button 
-              onClick={() => navigate('/request-access')}
-              className="w-full py-2.5 px-4 font-semibold font-display rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all active:scale-[0.98] text-[15px]"
-            >
-              Request Access
-            </button>
-          </div>
-
-          {/* Personal */}
-          <div className="relative transform md:-translate-y-4">
-            <div className="gradient-border-card shadow-elevated h-full">
-              <div className="gradient-border-card-inner p-8 flex flex-col h-full bg-white relative">
-                <div className="absolute top-0 right-8 -translate-y-1/2">
-                  <span className="brand-gradient text-white text-[11px] font-bold font-body uppercase tracking-wider px-3 py-1 rounded-full shadow-sm">★ Popular</span>
-                </div>
-                <h3 className="text-[20px] font-semibold font-display text-navy mb-2">Personal</h3>
-                <div className="text-[36px] font-bold font-display text-navy mb-6">$19<span className="text-[18px] font-normal text-gray-400">/mo</span></div>
-                <ul className="space-y-4 font-body text-[15px] text-gray-600 mb-8 flex-1">
-                  <li className="font-semibold text-navy">Unlimited captures</li>
-                  <li className="font-semibold text-navy">Unlimited entities</li>
-                  <li className="flex items-center gap-2">AI search <span className="text-[#43A047]">✓</span></li>
-                  <li className="flex items-center gap-2">Full data export <span className="text-[#43A047]">✓</span></li>
+          <section className="mt-12 grid gap-5 lg:grid-cols-3">
+            {plans.map((plan) => (
+              <article key={plan.name} className="flex flex-col rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 className="text-xl font-bold">{plan.name}</h2>
+                <p className="mt-3 text-3xl font-extrabold text-blue-700">{plan.price}</p>
+                <p className="mt-3 text-sm leading-6 text-slate-600">{plan.description}</p>
+                <ul className="mt-6 flex-1 space-y-3">
+                  {plan.items.map((item) => (
+                    <li key={item} className="flex gap-2 text-sm leading-6 text-slate-700">
+                      <Check className="mt-1 h-4 w-4 shrink-0 text-emerald-600" />
+                      {item}
+                    </li>
+                  ))}
                 </ul>
-                <button 
-                  onClick={() => navigate('/request-access')}
-                  className="w-full py-2.5 px-4 font-semibold font-display rounded-full brand-gradient text-white hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 text-[15px]"
-                >
-                  Request Access
-                </button>
-              </div>
+              </article>
+            ))}
+          </section>
+
+          <section className="mt-10 rounded-lg border border-blue-200 bg-blue-50 p-6 text-center">
+            <h2 className="text-2xl font-bold">Test your real pipeline-review workflow first.</h2>
+            <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+              Request access without submitting confidential customer data. We will use your workflow context only to
+              evaluate product fit during early access.
+            </p>
+            <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+              <Link
+                to="/request-access"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 py-3 text-sm font-bold text-white hover:bg-blue-800"
+              >
+                Request early access
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/demo"
+                className="inline-flex items-center justify-center rounded-lg border border-blue-200 bg-white px-5 py-3 text-sm font-bold text-blue-700 hover:bg-blue-100"
+              >
+                Try demo first
+              </Link>
             </div>
-          </div>
-
-          {/* Team */}
-          <div className="bg-white rounded-[16px] shadow-card border-[1.5px] border-gray-200 p-8 flex flex-col mt-4 md:mt-0">
-            <h3 className="text-[20px] font-semibold font-display text-navy mb-2">Team</h3>
-            <div className="text-[36px] font-bold font-display text-navy mb-6">$39<span className="text-[18px] font-normal text-gray-400">/mo</span></div>
-            <ul className="space-y-4 font-body text-[15px] text-gray-600 mb-8 flex-1">
-              <li className="font-semibold text-navy">Unlimited captures</li>
-              <li>+ up to 5 seats (coming soon)</li>
-              <li className="flex items-center gap-2">AI search <span className="text-[#43A047]">✓</span></li>
-              <li className="flex items-center gap-2">Full data export <span className="text-[#43A047]">✓</span></li>
-            </ul>
-            <button 
-              onClick={() => navigate('/request-access')}
-              className="w-full py-2.5 px-4 font-semibold font-display rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all active:scale-[0.98] text-[15px]"
-            >
-              Request Access
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-20 border-t border-gray-200 pt-10 text-center max-w-2xl mx-auto">
-          <h4 className="font-semibold font-display text-navy mb-4 text-[16px]">All plans include:</h4>
-          <ul className="space-y-2 font-body text-[14px] text-gray-600 flex flex-col items-center">
-            <li>✓ Your data is always yours — export anytime</li>
-            <li>✓ No lock-in, cancel anytime</li>
-            <li>✓ Privacy-first — your notes are never used for AI modeling</li>
-          </ul>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link to="/request-access" className="rounded-full bg-[#1976D2] px-5 py-2 text-[14px] font-semibold text-white hover:bg-[#1565C0]">
-              Request early access
-            </Link>
-            <Link to="/demo" className="rounded-full border border-gray-300 px-5 py-2 text-[14px] font-semibold text-gray-700 hover:bg-gray-50">
-              Try demo first
-            </Link>
-          </div>
-          <p className="mt-5 text-[13px] font-body text-gray-400">Questions? hello@memoire.app</p>
+          </section>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

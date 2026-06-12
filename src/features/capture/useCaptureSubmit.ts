@@ -111,6 +111,7 @@ export function useCaptureSubmit() {
         });
 
         // Trigger embedding generation — non-blocking fire-and-forget
+        const { data: { session } } = await supabase.auth.getSession();
         fetch('/api/generate-embedding', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -118,6 +119,7 @@ export function useCaptureSubmit() {
             captureId: captureData.id,
             text: rawText,
             userId: userId,
+            authToken: session?.access_token,
           }),
         }).catch(console.error);
       }

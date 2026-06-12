@@ -1,6 +1,8 @@
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { generateEmbedding } from './generate-embedding.js';
+import { verifyUserToken } from './_auth.js';
+import { enforceRateLimit } from './_rateLimit.js';
 
 // Groq uses OpenAI-compatible API — no extra package needed
 const groq = new OpenAI({
@@ -14,6 +16,13 @@ export default async function handler(req: any, res: any) {
   const { query, userId, authToken } = req.body;
     if (!query || !userId || !authToken) {
           return res.status(400).json({ error: 'query, userId, authToken required' });
+    }
+    if (typeof query !== 'string' || query.length > 1000 || !await verifyUserToken(authToken, userId)) {
+          return res.status(401).json({ error: 'Unauthorized or invalid request' });
+    }
+    const rateLimit = enforceRateLimit(req, 'search', userId, 12);
+    if (!rateLimit.allowed) {
+          return res.status(429).json({ error: 'Too many requests', retryAfterSeconds: rateLimit.retryAfterSeconds });
     }
 
   // Use user's auth token to enforce RLS

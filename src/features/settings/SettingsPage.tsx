@@ -1,19 +1,21 @@
 import { useState } from 'react';
-import { BillingPage } from '../billing/BillingPage';
+import type { ReactNode } from 'react';
 import { ExportTab } from './ExportTab';
 import { BoundariesTab } from './BoundariesTab';
 import { REPLAY_GUIDED_WORKFLOW_EVENT } from '../onboarding/guidedWorkflow';
 
 export function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<'billing' | 'export' | 'boundaries'>('billing');
+  const [activeTab, setActiveTab] = useState<'export' | 'boundaries'>('boundaries');
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full max-w-4xl">
       <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-navy">Guided workflow</p>
-            <p className="mt-1 text-sm text-gray-500">Replay the guided workflow when you want to walk through a complete Memory-to-Action flow.</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Replay the guided workflow when you want to walk through a complete Memory-to-Action flow.
+            </p>
           </div>
           <button
             type="button"
@@ -25,44 +27,41 @@ export function SettingsPage() {
         </div>
       </div>
 
-      <div className="flex space-x-6 border-b border-gray-200 mb-8">
-        <button
-          onClick={() => setActiveTab('billing')}
-          className={`pb-4 text-[15px] border-b-[2px] transition-colors ${
-            activeTab === 'billing'
-              ? 'border-brand-blue text-navy font-semibold font-display'
-              : 'border-transparent text-gray-500 hover:text-[#334155] font-medium font-body hover:border-gray-300'
-          }`}
-        >
-          Billing & Subscription
-        </button>
-        <button
-          onClick={() => setActiveTab('boundaries')}
-          className={`pb-4 text-[15px] border-b-[2px] transition-colors ${
-            activeTab === 'boundaries'
-              ? 'border-brand-blue text-navy font-semibold font-display'
-              : 'border-transparent text-gray-500 hover:text-[#334155] font-medium font-body hover:border-gray-300'
-          }`}
-        >
-          Profile Boundaries
-        </button>
-        <button
-          onClick={() => setActiveTab('export')}
-          className={`pb-4 text-[15px] border-b-[2px] transition-colors ${
-            activeTab === 'export'
-              ? 'border-brand-blue text-navy font-semibold font-display'
-              : 'border-transparent text-gray-500 hover:text-[#334155] font-medium font-body hover:border-gray-300'
-          }`}
-        >
-          Export Data
-        </button>
+      <div className="mb-8 flex space-x-6 border-b border-gray-200">
+        <TabButton active={activeTab === 'boundaries'} onClick={() => setActiveTab('boundaries')}>
+          Data & Privacy
+        </TabButton>
+        <TabButton active={activeTab === 'export'} onClick={() => setActiveTab('export')}>
+          Export & Delete
+        </TabButton>
       </div>
 
-      <div>
-        {activeTab === 'billing' && <BillingPage />}
-        {activeTab === 'boundaries' && <BoundariesTab />}
-        {activeTab === 'export' && <ExportTab />}
-      </div>
+      {activeTab === 'boundaries' && <BoundariesTab />}
+      {activeTab === 'export' && <ExportTab />}
     </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`border-b-2 pb-4 text-[15px] transition-colors ${
+        active
+          ? 'border-brand-blue font-semibold text-navy'
+          : 'border-transparent font-medium text-gray-500 hover:border-gray-300 hover:text-slate-700'
+      }`}
+    >
+      {children}
+    </button>
   );
 }

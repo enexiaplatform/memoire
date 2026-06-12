@@ -1,8 +1,12 @@
 import { buildCaptureAiMessages, captureAiActivityTypes } from './_captureAiPrompt';
+import { getBearerToken, verifyUserToken } from './_auth.js';
+import { enforceRateLimit } from './_rateLimit.js';
 
 type ApiRequest = {
   method?: string;
   body?: unknown;
+  headers?: Record<string, unknown>;
+  socket?: { remoteAddress?: string };
 };
 
 type ApiResponse = {
@@ -73,6 +77,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== 'POST') {
     res.setHeader?.('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const user = await verifyUserToken(getBearerToken(req.headers));
+  if (!user) return res.status(401).json({ error: 'Sign in is required for AI Assist.' });
+  const rateLimit = enforceRateLimit(req, 'capture-ai-classify', user.id, 15);
+  if (!rateLimit.allowed) {
+    return res.status(429).json({ error: 'Too many requests', retryAfterSeconds: rateLimit.retryAfterSeconds });
   }
 
   const validation = validateRequestBody(req.body);

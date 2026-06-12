@@ -1,80 +1,74 @@
 import { Link } from 'react-router-dom';
 
+const notItems = [
+  'A professional certification, hiring score, or credit signal',
+  'A replacement for your company CRM or system of record',
+  'An automated sender of customer communication',
+];
+
+const boundaries = [
+  'No CRM writeback, enterprise SSO, team administration, or manager scoring is available today.',
+  'AI-assisted text may be sent to the configured provider only when you explicitly use that feature.',
+  'Local browser data can be lost when browser storage is cleared. Keep exports of business-critical information.',
+];
+
+const rights = [
+  'Export available cloud and browser workspace data from Export & Delete.',
+  'Delete your signed-in account and clear Memoire data stored in this browser.',
+  'Use local mode without signing in, with the limitations of browser-only storage.',
+  'Review the evidence behind rule-based risk and opportunity-quality signals.',
+];
+
 export function BoundariesTab() {
   return (
-    <div className="space-y-8 max-w-2xl animate-in fade-in zoom-in-95 duration-200">
+    <div className="max-w-2xl space-y-8">
       <div>
-        <h2 className="text-xl font-bold font-display text-navy mb-2">Memoire Profile Boundaries</h2>
-        <p className="text-sm text-gray-500 font-body">
-          These boundaries are immutable and dictate how your personal knowledge is protected.
+        <h2 className="text-xl font-bold text-navy">Data and Product Boundaries</h2>
+        <p className="mt-2 text-sm leading-6 text-gray-500">
+          Understand what Memoire stores, what remains local, and where human review is required.
         </p>
       </div>
 
-      <div className="grid gap-6">
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-navy mb-4">Memoire is NOT:</h3>
-          <ul className="space-y-3">
-            <li className="flex items-start gap-3">
-              <span className="text-red-500 font-bold mt-0.5">✗</span>
-              <span className="text-sm text-gray-700">A professional certification</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-red-500 font-bold mt-0.5">✗</span>
-              <span className="text-sm text-gray-700">A skill rating or score</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-red-500 font-bold mt-0.5">✗</span>
-              <span className="text-sm text-gray-700">A hiring or credit signal</span>
-            </li>
-          </ul>
-        </div>
+      <BoundaryCard title="Memoire is not" items={notItems} tone="negative" />
+      <BoundaryCard title="Current product boundaries" items={boundaries} tone="warning" />
+      <BoundaryCard title="Your controls" items={rights} tone="positive" />
 
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-navy mb-4">Memoire WILL NOT:</h3>
-          <ul className="space-y-3">
-            <li className="flex items-start gap-3">
-              <span className="text-red-500 font-bold mt-0.5">✗</span>
-              <span className="text-sm text-gray-700">Share your data with third parties without explicit per-instance consent</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-red-500 font-bold mt-0.5">✗</span>
-              <span className="text-sm text-gray-700">Respond to recruiter / employer / credit-bureau queries</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-red-500 font-bold mt-0.5">✗</span>
-              <span className="text-sm text-gray-700">Generate composite scores visible outside your own account</span>
-            </li>
-          </ul>
-        </div>
-
-        <div className="bg-white border border-brand-blue/30 rounded-xl p-6">
-          <h3 className="text-sm font-bold uppercase tracking-wider brand-gradient-text mb-4">Your rights:</h3>
-          <ul className="space-y-3">
-            <li className="flex items-start gap-3">
-              <span className="text-green-500 font-bold mt-0.5">✓</span>
-              <span className="text-sm text-gray-700">Export all your data anytime (Settings &rarr; Export)</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-green-500 font-bold mt-0.5">✓</span>
-              <span className="text-sm text-gray-700">Delete your account + all data (Settings &rarr; Delete)</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-green-500 font-bold mt-0.5">✓</span>
-              <span className="text-sm text-gray-700">Revoke any consent you've given</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <span className="text-green-500 font-bold mt-0.5">✓</span>
-              <span className="text-sm text-gray-700">Understand the logic behind any Context Health or stuck-deal signal shown in Memoire</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      <div className="pt-4 border-t border-gray-100">
-        <Link to="/legal/boundaries" className="text-sm text-brand-blue hover:text-navy hover:underline transition-colors">
-          View full legal boundaries &rarr;
+      <div className="border-t border-gray-100 pt-4">
+        <Link to="/legal/boundaries" className="text-sm font-bold text-brand-blue hover:text-navy">
+          View full product boundaries
         </Link>
       </div>
     </div>
+  );
+}
+
+function BoundaryCard({
+  title,
+  items,
+  tone,
+}: {
+  title: string;
+  items: string[];
+  tone: 'negative' | 'warning' | 'positive';
+}) {
+  const marker = tone === 'positive' ? 'Yes' : tone === 'warning' ? 'Note' : 'No';
+  const markerClass = tone === 'positive'
+    ? 'text-emerald-700'
+    : tone === 'warning'
+      ? 'text-amber-700'
+      : 'text-red-600';
+
+  return (
+    <section className="rounded-lg border border-gray-200 bg-white p-6">
+      <h3 className="text-sm font-bold uppercase tracking-wider text-navy">{title}</h3>
+      <ul className="mt-4 space-y-3">
+        {items.map((item) => (
+          <li key={item} className="flex items-start gap-3">
+            <span className={`mt-0.5 text-xs font-bold uppercase ${markerClass}`}>{marker}</span>
+            <span className="text-sm leading-6 text-gray-700">{item}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

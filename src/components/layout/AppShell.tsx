@@ -17,7 +17,7 @@ export function AppShell() {
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <TopNav onOpenMenu={() => setMobileNavOpen(true)} />
-      <main className="relative ml-0 flex min-h-screen flex-1 flex-col pt-16 lg:ml-[220px]">
+      <main className="relative ml-0 flex min-h-screen min-w-0 flex-1 flex-col pt-16 lg:ml-[220px]">
         <DemoModeBanner />
         <div className="flex-1">
           <Suspense fallback={<AppContentLoading />}>

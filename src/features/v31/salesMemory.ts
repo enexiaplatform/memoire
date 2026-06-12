@@ -500,9 +500,14 @@ export async function loadInteractionStructureContext(userId: string): Promise<I
 }
 
 export async function structureSalesCapture(rawNote: string, context?: InteractionStructureContext): Promise<StructuredSalesCapture> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error('Sign in is required for cloud AI structuring.');
   const response = await fetch('/api/structure-capture', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    },
     body: JSON.stringify({ rawNote }),
   });
 
@@ -741,6 +746,7 @@ export async function saveStructuredSalesCapture(
     if (error) console.warn('Usage tracking failed:', error);
   });
 
+  const { data: { session } } = await supabase.auth.getSession();
   fetch('/api/generate-embedding', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -748,6 +754,7 @@ export async function saveStructuredSalesCapture(
       captureId: capture.id,
       text: rawNote,
       userId,
+      authToken: session?.access_token,
     }),
   }).catch(console.error);
 

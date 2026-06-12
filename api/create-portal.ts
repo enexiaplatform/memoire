@@ -1,28 +1,17 @@
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+import { verifyUserToken } from './_auth.js';
+import { getSupabaseServiceRoleKey, getSupabaseUrl } from './_env.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).end();
+  if (!process.env.STRIPE_SECRET_KEY) return res.status(503).json({ error: 'Billing is not configured.' });
 
   const { userId, authToken } = req.body;
+  if (!await verifyUserToken(authToken, userId)) return res.status(401).json({ error: 'Unauthorized' });
 
-  // Validate JWT
-  const supabaseUser = createClient(
-    process.env.VITE_SUPABASE_URL!,
-    process.env.VITE_SUPABASE_ANON_KEY!,
-    { global: { headers: { Authorization: `Bearer ${authToken}` } } }
-  );
-  const { data: { user }, error } = await supabaseUser.auth.getUser();
-  if (error || !user || user.id !== userId) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  const supabase = createClient(
-    process.env.VITE_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  const supabase = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey());
   const { data: profile } = await supabase
     .from('user_profiles')
     .select('stripe_customer_id')
@@ -37,7 +26,7 @@ export default async function handler(req: any, res: any) {
 
   const portalSession = await stripe.billingPortal.sessions.create({
     customer: profile.stripe_customer_id,
-    return_url: `${appUrl}/app/settings/billing`,
+    return_url: `${appUrl}/app/settings`,
   });
 
   res.json({ url: portalSession.url });

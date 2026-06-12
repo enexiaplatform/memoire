@@ -184,7 +184,7 @@ export function DailyCapturePage() {
   const [structuredDraft, setStructuredDraft] = useState<ClassifiedSalesActivity | null>(null);
   const [copiedId, setCopiedId] = useState('');
   const aiProvider = useMemo(() => getActiveCaptureAiProvider(), []);
-  const aiConfigured = aiProvider.isConfigured();
+  const aiConfigured = aiProvider.isConfigured() && isAuthenticated;
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
@@ -348,6 +348,8 @@ export function DailyCapturePage() {
       setAiState('error');
       setAiMessage(error instanceof CaptureAiProviderError && error.status === 503
         ? 'AI Assist is not configured on the server. Local rules are still available.'
+        : error instanceof CaptureAiProviderError && error.status === 401
+          ? 'Sign in to use AI Assist. Local rules are still available.'
         : 'AI Assist failed. Local rules are still available.');
     }
   };
@@ -585,7 +587,11 @@ export function DailyCapturePage() {
                 </p>
               </div>
               <p className="mt-2 text-xs leading-5 text-gray-500">
-                {aiConfigured ? 'Optional AI classification. You review before saving.' : 'Using local rules until an AI provider is configured.'}
+                {aiConfigured
+                  ? 'Optional AI classification. You review before saving.'
+                  : isAuthenticated
+                    ? 'Using local rules until an AI provider is configured.'
+                    : 'Using local rules. Sign in to use configured AI Assist.'}
               </p>
               {aiConfigured && (
                 <p className="mt-2 flex gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold leading-5 text-amber-800">

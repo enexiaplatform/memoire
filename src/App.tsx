@@ -12,6 +12,7 @@ const DemoEntryPage = lazy(() => import('./features/demo/DemoEntryPage').then((m
 const EarlyAccessRequestPage = lazy(() =>
   import('./features/earlyAccess/EarlyAccessRequestPage').then((module) => ({ default: module.EarlyAccessRequestPage })),
 );
+const LegalPage = lazy(() => import('./features/legal/LegalPage').then((module) => ({ default: module.LegalPage })));
 const DemoGuidePage = lazy(() => import('./features/demo/DemoGuidePage').then((module) => ({ default: module.DemoGuidePage })));
 const ValidationFeedbackPage = lazy(() =>
   import('./features/validation/ValidationFeedbackPage').then((module) => ({ default: module.ValidationFeedbackPage })),
@@ -65,6 +66,7 @@ function App() {
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/demo" element={<DemoEntryPage />} />
           <Route path="/request-access" element={<EarlyAccessRequestPage />} />
+          <Route path="/legal/:document" element={<LegalPage />} />
 
           {/* Protected app routes */}
           <Route

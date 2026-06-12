@@ -403,7 +403,7 @@ function AccountMasterTable({
   onOpen: (memory: AccountMemory) => void;
 }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+    <section className="min-w-0 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
       <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-base font-bold text-navy">Master Account List</h2>
@@ -421,7 +421,7 @@ function AccountMasterTable({
         </label>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="max-w-full overflow-x-auto">
         <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
           <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
             <tr>

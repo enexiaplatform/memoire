@@ -1,9 +1,12 @@
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { getSupabaseAnonKey, getSupabaseUrl } from './_env.js';
+import { enforceRateLimit } from './_rateLimit.js';
 
 interface ApiRequest {
   method?: string;
+  headers?: Record<string, unknown>;
+  socket?: { remoteAddress?: string };
   body?: {
     question?: unknown;
     userId?: unknown;
@@ -162,6 +165,9 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (typeof question !== 'string' || typeof userId !== 'string' || typeof authToken !== 'string') {
     return res.status(400).json({ error: 'Invalid request payload' });
   }
+  if (question.trim().length < 2 || question.length > 1000) {
+    return res.status(400).json({ error: 'Question must be between 2 and 1000 characters.' });
+  }
   if (typeof scope !== 'string' || !['all', 'account', 'opportunity'].includes(scope)) {
     return res.status(400).json({ error: 'Invalid scope' });
   }
@@ -175,6 +181,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError || authData.user?.id !== userId) {
     return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const rateLimit = enforceRateLimit(req, 'ask-memoire', userId, 12);
+  if (!rateLimit.allowed) {
+    return res.status(429).json({
+      error: 'Too many requests. Please wait before asking again.',
+      retryAfterSeconds: rateLimit.retryAfterSeconds,
+    });
   }
 
   try {

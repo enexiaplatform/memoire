@@ -22,26 +22,37 @@ create table if not exists public.stakeholders (
 
 alter table public.stakeholders enable row level security;
 
+drop policy if exists "Users can select own stakeholders" on public.stakeholders;
+drop policy if exists "Users can insert own stakeholders" on public.stakeholders;
+drop policy if exists "Users can update own stakeholders" on public.stakeholders;
+drop policy if exists "Users can delete own stakeholders" on public.stakeholders;
+
 create policy "Users can select own stakeholders"
   on public.stakeholders
   for select
-  using (auth.uid() = user_id);
+  to authenticated
+  using ((select auth.uid()) = user_id);
 
 create policy "Users can insert own stakeholders"
   on public.stakeholders
   for insert
-  with check (auth.uid() = user_id);
+  to authenticated
+  with check ((select auth.uid()) = user_id);
 
 create policy "Users can update own stakeholders"
   on public.stakeholders
   for update
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
 
 create policy "Users can delete own stakeholders"
   on public.stakeholders
   for delete
-  using (auth.uid() = user_id);
+  to authenticated
+  using ((select auth.uid()) = user_id);
+
+grant select, insert, update, delete on public.stakeholders to authenticated;
 
 create index if not exists stakeholders_user_id_idx on public.stakeholders(user_id);
 create index if not exists stakeholders_account_name_idx on public.stakeholders(user_id, account_name);

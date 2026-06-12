@@ -1,31 +1,23 @@
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { verifyUserToken } from './_auth.js';
+import { getSupabaseServiceRoleKey, getSupabaseUrl } from './_env.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).end();
+  if (!process.env.STRIPE_SECRET_KEY) return res.status(503).json({ error: 'Billing is not configured.' });
 
   const { userId, authToken, priceId } = req.body;
   if (!userId || !authToken || !priceId) {
     return res.status(400).json({ error: 'Missing params' });
   }
+  const allowedPriceIds = [process.env.STRIPE_PERSONAL_PRICE_ID, process.env.STRIPE_TEAM_PRICE_ID].filter(Boolean);
+  if (!allowedPriceIds.includes(priceId)) return res.status(400).json({ error: 'Invalid price.' });
+  const user = await verifyUserToken(authToken, userId);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  // Validate the JWT
-  const supabaseUser = createClient(
-    process.env.VITE_SUPABASE_URL!,
-    process.env.VITE_SUPABASE_ANON_KEY!,
-    { global: { headers: { Authorization: `Bearer ${authToken}` } } }
-  );
-  
-  const { data: { user }, error } = await supabaseUser.auth.getUser();
-  if (error || !user || user.id !== userId) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  const supabase = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey());
 
   // Get or create Stripe customer
   const { data: profile } = await supabase

@@ -1,5 +1,6 @@
 import { captureAiActivityTypes } from '../utils/captureAiPrompt';
 import type { SalesActivityNextAction } from '../utils/salesActivityClassifier';
+import { supabaseClient } from '../lib/supabaseClient';
 
 export type CaptureAiProviderId = 'disabled' | 'openai-compatible';
 
@@ -78,11 +79,16 @@ export const OpenAiCompatibleCaptureAiProvider: CaptureAiProvider = {
     if (!this.isConfigured()) {
       throw new Error('Capture AI provider is not configured.');
     }
+    const { data: { session } } = await supabaseClient?.auth.getSession() || { data: { session: null } };
+    if (!session?.access_token) {
+      throw new CaptureAiProviderError('Sign in is required for AI Assist.', 401);
+    }
 
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
       },
       body: JSON.stringify(request),
     });
