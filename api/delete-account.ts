@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { getSupabaseAnonKey, getSupabaseServiceRoleKey, getSupabaseUrl } from './_env.js';
+import { getSupabaseAnonKey, getSupabaseServiceRoleKey, getSupabaseUrl } from './_env';
 
 interface ApiRequest {
   method?: string;

@@ -1,9 +1,6 @@
 import OpenAI from 'openai';
-
-const groq = new OpenAI({
-  apiKey: process.env.GROQ_API_KEY,
-  baseURL: 'https://api.groq.com/openai/v1',
-});
+import { verifyUserToken } from './_auth';
+import { enforceRateLimit } from './_rateLimit';
 
 const systemPrompt = `You are an AI assistant for Memoire, a professional memory OS for B2B professionals.
 
@@ -64,10 +61,21 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { rawText, existingEntities } = req.body;
+  const { rawText, existingEntities, authToken } = req.body || {};
 
   if (!rawText || typeof rawText !== 'string' || rawText.trim().length === 0) {
     return res.status(400).json({ error: 'rawText is required' });
+  }
+  const user = rawText.length <= 8000 ? await verifyUserToken(authToken) : null;
+  if (!user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  const rateLimit = enforceRateLimit(req, 'claude-extract', user.id, 15);
+  if (!rateLimit.allowed) {
+    return res.status(429).json({ error: 'Too many requests', retryAfterSeconds: rateLimit.retryAfterSeconds });
+  }
+  if (!process.env.GROQ_API_KEY) {
+    return res.status(503).json({ error: 'Extraction provider is not configured' });
   }
 
   const userMessage = `Raw note:\n${rawText.trim()}\n\n${
@@ -77,6 +85,10 @@ export default async function handler(req: any, res: any) {
   }`;
 
   try {
+    const groq = new OpenAI({
+      apiKey: process.env.GROQ_API_KEY,
+      baseURL: 'https://api.groq.com/openai/v1',
+    });
     const completion = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       max_tokens: 1024,

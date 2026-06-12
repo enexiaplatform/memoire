@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
-import { getSupabaseAnonKey, getSupabaseUrl } from './_env.js';
-import { enforceRateLimit } from './_rateLimit.js';
+import { getSupabaseAnonKey, getSupabaseUrl } from './_env';
+import { enforceRateLimit } from './_rateLimit';
 
 interface ApiRequest {
   method?: string;

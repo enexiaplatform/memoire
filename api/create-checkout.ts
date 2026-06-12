@@ -1,7 +1,7 @@
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
-import { verifyUserToken } from './_auth.js';
-import { getSupabaseServiceRoleKey, getSupabaseUrl } from './_env.js';
+import { verifyUserToken } from './_auth';
+import { getSupabaseServiceRoleKey, getSupabaseUrl } from './_env';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).end();

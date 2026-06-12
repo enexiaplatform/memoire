@@ -1,13 +1,8 @@
 import OpenAI from 'openai';
-import { verifyUserToken } from './_auth.js';
-import { enforceRateLimit } from './_rateLimit.js';
+import { verifyUserToken } from './_auth';
+import { enforceRateLimit } from './_rateLimit';
 
 // Groq uses OpenAI-compatible API — no extra package needed
-const groq = new OpenAI({
-    apiKey: process.env.GROQ_API_KEY,
-    baseURL: 'https://api.groq.com/openai/v1',
-});
-
 export default async function handler(req: any, res: any) {
     if (req.method !== 'POST') return res.status(405).end();
 
@@ -26,8 +21,15 @@ export default async function handler(req: any, res: any) {
     if (!rateLimit.allowed) {
         return res.status(429).json({ error: 'Too many requests', retryAfterSeconds: rateLimit.retryAfterSeconds });
     }
+    if (!process.env.GROQ_API_KEY) {
+        return res.status(503).json({ error: 'Anonymization is not configured.' });
+    }
 
     try {
+        const groq = new OpenAI({
+            apiKey: process.env.GROQ_API_KEY,
+            baseURL: 'https://api.groq.com/openai/v1',
+        });
         const systemPrompt = `You are a privacy-preserving rewriter for a personal sales-knowledge tool.
 
 Rewrite the user's note so that it preserves PROFESSIONAL KNOWLEDGE (industry, role, technique, lesson learned) but strips PROPRIETARY CUSTOMER DATA (specific company names, exact revenue figures, contract values, internal codenames, customer PII).

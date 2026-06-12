@@ -1,15 +1,10 @@
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
-import { generateEmbedding } from './generate-embedding.js';
-import { verifyUserToken } from './_auth.js';
-import { enforceRateLimit } from './_rateLimit.js';
+import { generateEmbedding } from './generate-embedding';
+import { verifyUserToken } from './_auth';
+import { enforceRateLimit } from './_rateLimit';
 
 // Groq uses OpenAI-compatible API — no extra package needed
-const groq = new OpenAI({
-    apiKey: process.env.GROQ_API_KEY,
-    baseURL: 'https://api.groq.com/openai/v1',
-});
-
 export default async function handler(req: any, res: any) {
     if (req.method !== 'POST') return res.status(405).end();
 
@@ -24,6 +19,9 @@ export default async function handler(req: any, res: any) {
     if (!rateLimit.allowed) {
           return res.status(429).json({ error: 'Too many requests', retryAfterSeconds: rateLimit.retryAfterSeconds });
     }
+    if (!process.env.OPENAI_API_KEY || !process.env.GROQ_API_KEY) {
+          return res.status(503).json({ error: 'Search providers are not configured' });
+    }
 
   // Use user's auth token to enforce RLS
   const supabase = createClient(
@@ -33,6 +31,10 @@ export default async function handler(req: any, res: any) {
       );
 
   try {
+        const groq = new OpenAI({
+          apiKey: process.env.GROQ_API_KEY,
+          baseURL: 'https://api.groq.com/openai/v1',
+        });
         // Step 1: Embed the query (OpenAI text-embedding-3-small)
       const queryEmbedding = await generateEmbedding(query);
 

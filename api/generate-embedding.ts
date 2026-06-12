@@ -1,14 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
-import { getSupabaseServiceRoleKey, getSupabaseUrl } from './_env.js';
-import { verifyUserToken } from './_auth.js';
-import { enforceRateLimit } from './_rateLimit.js';
-
-const supabase = createClient(
-    getSupabaseUrl(),
-    getSupabaseServiceRoleKey()
-  );
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+import { getSupabaseServiceRoleKey, getSupabaseUrl } from './_env';
+import { verifyUserToken } from './_auth';
+import { enforceRateLimit } from './_rateLimit';
 
 interface ApiRequest {
   method?: string;
@@ -29,6 +23,10 @@ interface ApiResponse {
 }
 
 export async function generateEmbedding(text: string): Promise<number[]> {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('Embedding provider is not configured');
+    }
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const response = await openai.embeddings.create({
           model: 'text-embedding-3-small',
           input: text,
@@ -54,8 +52,15 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     if (!rateLimit.allowed) {
           return res.status(429).json({ error: 'Too many requests', retryAfterSeconds: rateLimit.retryAfterSeconds });
     }
+    if (!process.env.OPENAI_API_KEY) {
+          return res.status(503).json({ error: 'Embedding provider is not configured' });
+    }
 
   try {
+        const supabase = createClient(
+          getSupabaseUrl(),
+          getSupabaseServiceRoleKey(),
+        );
         const embedding = await generateEmbedding(text);
 
       await supabase

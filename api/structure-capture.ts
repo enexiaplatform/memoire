@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
-import { getBearerToken, verifyUserToken } from './_auth.js';
-import { enforceRateLimit } from './_rateLimit.js';
+import { getBearerToken, verifyUserToken } from './_auth';
+import { enforceRateLimit } from './_rateLimit';
 
 interface ApiRequest {
   method?: string;

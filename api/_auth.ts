@@ -1,5 +1,5 @@
 import { createClient, type User } from '@supabase/supabase-js';
-import { getSupabaseAnonKey, getSupabaseUrl } from './_env.js';
+import { getSupabaseAnonKey, getSupabaseUrl } from './_env';
 
 export function getBearerToken(headers: Record<string, unknown> | undefined) {
   const raw = headers?.authorization ?? headers?.Authorization;
