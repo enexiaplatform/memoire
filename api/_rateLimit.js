@@ -1,23 +1,7 @@
-type RateLimitRequest = {
-  headers?: Record<string, unknown>;
-  socket?: { remoteAddress?: string };
-};
-
-type RateLimitEntry = {
-  count: number;
-  resetAt: number;
-};
-
-const buckets = new Map<string, RateLimitEntry>();
+const buckets = new Map();
 const MAX_BUCKETS = 2_000;
 
-export function enforceRateLimit(
-  req: RateLimitRequest,
-  scope: string,
-  identity: string,
-  limit = 12,
-  windowMs = 60_000,
-) {
+export function enforceRateLimit(req, scope, identity, limit = 12, windowMs = 60_000) {
   const now = Date.now();
   const clientAddress = getClientAddress(req);
   const key = `${scope}:${identity || clientAddress}`;
@@ -40,13 +24,13 @@ export function enforceRateLimit(
   return { allowed: true, retryAfterSeconds: 0 };
 }
 
-function getClientAddress(req: RateLimitRequest) {
+function getClientAddress(req) {
   const forwarded = req.headers?.['x-forwarded-for'];
   if (typeof forwarded === 'string') return forwarded.split(',')[0]?.trim() || 'unknown';
   return req.socket?.remoteAddress || 'unknown';
 }
 
-function pruneBuckets(now: number) {
+function pruneBuckets(now) {
   if (buckets.size < MAX_BUCKETS) return;
   for (const [key, entry] of buckets) {
     if (entry.resetAt <= now) buckets.delete(key);
@@ -55,4 +39,3 @@ function pruneBuckets(now: number) {
   const oldestKey = buckets.keys().next().value;
   if (typeof oldestKey === 'string') buckets.delete(oldestKey);
 }
-

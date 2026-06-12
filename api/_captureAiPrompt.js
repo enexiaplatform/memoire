@@ -1,21 +1,3 @@
-type CaptureAiPromptRequest = {
-  rawNote: string;
-  activityDate: string;
-  opportunities?: {
-    id: string;
-    accountName: string;
-    opportunityName: string;
-    stage?: string;
-    productOrSolution?: string;
-  }[];
-  accounts?: {
-    id: string;
-    accountName: string;
-    segment?: string;
-    industry?: string;
-  }[];
-};
-
 export const captureAiActivityTypes = [
   'Customer meeting',
   'Follow-up',
@@ -26,9 +8,9 @@ export const captureAiActivityTypes = [
   'Objection handling',
   'Admin / CRM',
   'Other',
-] as const;
+];
 
-export function buildCaptureAiMessages(request: CaptureAiPromptRequest) {
+export function buildCaptureAiMessages(request) {
   return [
     {
       role: 'system',
@@ -46,7 +28,7 @@ export function buildCaptureAiMessages(request: CaptureAiPromptRequest) {
   ];
 }
 
-function buildCaptureAiPrompt(request: CaptureAiPromptRequest) {
+function buildCaptureAiPrompt(request) {
   return [
     'Classify this sales activity note.',
     '',
@@ -80,14 +62,7 @@ function buildCaptureAiPrompt(request: CaptureAiPromptRequest) {
       summary: '',
       nextAction: '',
       dueDate: '',
-      nextActions: [
-        {
-          title: '',
-          dueDate: '',
-          owner: '',
-          sourceText: '',
-        },
-      ],
+      nextActions: [{ title: '', dueDate: '', owner: '', sourceText: '' }],
       competitors: [''],
       buyingSignals: [''],
       risks: [''],
@@ -101,7 +76,7 @@ function buildCaptureAiPrompt(request: CaptureAiPromptRequest) {
     'Rules:',
     '- dueDate must be YYYY-MM-DD or empty.',
     '- If multiple actions are present, put all of them in nextActions and set nextAction/dueDate from the first action.',
-    '- Extract contactName/stakeholderName separately from accountName. Example: "Met with Dr. Avery at Apex Labs" means stakeholderName "Dr. Avery" and accountName "Apex Labs".',
+    '- Extract contactName/stakeholderName separately from accountName.',
     '- Extract competitors, buying signals, risks, and timeline signals as arrays.',
     '- suggestedOpportunityId must match a provided opportunity id or be empty.',
     '- tags should be short lowercase labels.',

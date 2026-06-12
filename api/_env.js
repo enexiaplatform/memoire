@@ -1,4 +1,4 @@
-export function getRequiredEnv(name: string, fallbackName?: string) {
+export function getRequiredEnv(name, fallbackName) {
   const value = process.env[name] || (fallbackName ? process.env[fallbackName] : undefined);
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}${fallbackName ? ` or ${fallbackName}` : ''}`);

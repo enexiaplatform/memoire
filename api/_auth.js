@@ -1,14 +1,14 @@
-import { createClient, type User } from '@supabase/supabase-js';
-import { getSupabaseAnonKey, getSupabaseUrl } from './_env';
+import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAnonKey, getSupabaseUrl } from './_env.js';
 
-export function getBearerToken(headers: Record<string, unknown> | undefined) {
+export function getBearerToken(headers) {
   const raw = headers?.authorization ?? headers?.Authorization;
   if (typeof raw !== 'string') return '';
   const match = raw.match(/^Bearer\s+(.+)$/i);
   return match?.[1]?.trim() || '';
 }
 
-export async function verifyUserToken(authToken: unknown, expectedUserId?: unknown): Promise<User | null> {
+export async function verifyUserToken(authToken, expectedUserId) {
   if (typeof authToken !== 'string' || !authToken.trim()) return null;
 
   const client = createClient(

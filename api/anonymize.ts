@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
-import { verifyUserToken } from './_auth';
-import { enforceRateLimit } from './_rateLimit';
+import { verifyUserToken } from './_auth.js';
+import { enforceRateLimit } from './_rateLimit.js';
 
 // Groq uses OpenAI-compatible API — no extra package needed
 export default async function handler(req: any, res: any) {

@@ -1,6 +1,6 @@
-import { buildCaptureAiMessages, captureAiActivityTypes } from './_captureAiPrompt';
-import { getBearerToken, verifyUserToken } from './_auth';
-import { enforceRateLimit } from './_rateLimit';
+import { buildCaptureAiMessages, captureAiActivityTypes } from './_captureAiPrompt.js';
+import { getBearerToken, verifyUserToken } from './_auth.js';
+import { enforceRateLimit } from './_rateLimit.js';
 
 type ApiRequest = {
   method?: string;

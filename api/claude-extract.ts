@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
-import { verifyUserToken } from './_auth';
-import { enforceRateLimit } from './_rateLimit';
+import { verifyUserToken } from './_auth.js';
+import { enforceRateLimit } from './_rateLimit.js';
 
 const systemPrompt = `You are an AI assistant for Memoire, a professional memory OS for B2B professionals.
 

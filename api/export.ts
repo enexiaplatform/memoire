@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { verifyUserToken } from './_auth';
-import { getSupabaseAnonKey, getSupabaseUrl } from './_env';
+import { verifyUserToken } from './_auth.js';
+import { getSupabaseAnonKey, getSupabaseUrl } from './_env.js';
 
 interface ApiRequest {
   method?: string;

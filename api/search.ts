@@ -1,8 +1,8 @@
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
-import { generateEmbedding } from './generate-embedding';
-import { verifyUserToken } from './_auth';
-import { enforceRateLimit } from './_rateLimit';
+import { generateEmbedding } from './generate-embedding.js';
+import { verifyUserToken } from './_auth.js';
+import { enforceRateLimit } from './_rateLimit.js';
 
 // Groq uses OpenAI-compatible API — no extra package needed
 export default async function handler(req: any, res: any) {
