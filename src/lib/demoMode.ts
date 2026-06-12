@@ -7,6 +7,8 @@ export const isFounderWorkspaceEnabled = import.meta.env.VITE_ENABLE_FOUNDER_WOR
 export const DEMO_USER_ID = 'local-demo-user';
 export const DEMO_AUTH_KEY = 'memoire_demo_auth';
 export const DEMO_WORKSPACE_KEY = 'memoire_demo_workspace';
+export const DEMO_MODE_CHANGED_EVENT = 'memoire:demo-mode-changed';
+const SAMPLE_DATA_FLAG_KEY = 'memoire.sampleData.loaded';
 
 const runtimeDemoWorkspace =
   typeof window !== 'undefined' &&
@@ -19,6 +21,19 @@ export const isSupabaseConfigured =
   !supabaseAnonKey.includes('placeholder');
 
 export const isDemoMode = runtimeDemoWorkspace || isFounderWorkspaceEnabled || (demoModeEnabled && !isSupabaseConfigured);
+
+export function isDemoWorkspaceActive() {
+  if (typeof window === 'undefined') {
+    return isFounderWorkspaceEnabled || (demoModeEnabled && !isSupabaseConfigured);
+  }
+
+  return (
+    window.localStorage.getItem(DEMO_WORKSPACE_KEY) === 'interactive-demo' ||
+    window.localStorage.getItem(SAMPLE_DATA_FLAG_KEY) === 'true' ||
+    isFounderWorkspaceEnabled ||
+    (demoModeEnabled && !isSupabaseConfigured)
+  );
+}
 
 export const missingSupabaseMessage =
   !supabaseUrl ||
@@ -49,5 +64,6 @@ export function clearDemoWorkspaceMode() {
 
   window.localStorage.removeItem(DEMO_AUTH_KEY);
   window.localStorage.removeItem(DEMO_WORKSPACE_KEY);
+  window.dispatchEvent(new CustomEvent(DEMO_MODE_CHANGED_EVENT));
   return hadDemoWorkspace;
 }

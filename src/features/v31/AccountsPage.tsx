@@ -76,7 +76,7 @@ export function AccountsPage() {
           {visibleAccounts.map((account) => (
             <Link
               key={account.id}
-              to={`/app/accounts/${account.id}`}
+              to={`/app/accounts?accountId=${encodeURIComponent(account.id)}`}
               className="group rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition hover:border-brand-blue/40 hover:shadow-md"
             >
               <div className="flex items-start gap-4">

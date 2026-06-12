@@ -1,16 +1,16 @@
 import { useAuthContext } from '../../auth/authContext';
-import { isDemoMode } from '../../lib/demoMode';
-import { getDemoWorkspaceState } from '../../features/v31/localStore';
 import { Button } from '../ui/Button';
 import { Link, useNavigate } from 'react-router-dom';
 import { getUserDisplayName } from '../../utils/userDisplay';
 import { Menu, Plus } from 'lucide-react';
+import { useDemoWorkspaceMode } from '../../hooks/useDemoWorkspaceMode';
 
 export function TopNav({ onOpenMenu }: { onOpenMenu: () => void }) {
   const { user, profile, signOut } = useAuthContext();
   const navigate = useNavigate();
-  const workspaceLabel = isDemoMode ? getDemoWorkspaceState()?.label || null : null;
-  const displayName = getUserDisplayName(user, profile);
+  const demoActive = useDemoWorkspaceMode();
+  const workspaceLabel = demoActive ? 'Demo local' : null;
+  const displayName = demoActive ? 'Demo workspace' : getUserDisplayName(user, profile);
 
   const handleSignOut = async () => {
     const result = await signOut();

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 
@@ -39,7 +39,6 @@ const SalesPlaybookPage = lazy(() =>
 );
 const JourneyPage = lazy(() => import('./features/v31/JourneyPage').then((module) => ({ default: module.JourneyPage })));
 const AccountsPage = lazy(() => import('./features/accounts/AccountsPage').then((module) => ({ default: module.AccountsPage })));
-const AccountMemoryPage = lazy(() => import('./features/v31/AccountMemoryPage').then((module) => ({ default: module.AccountMemoryPage })));
 const StakeholdersPage = lazy(() => import('./features/stakeholders/StakeholdersPage').then((module) => ({ default: module.StakeholdersPage })));
 const ObjectionsPage = lazy(() => import('./features/objections/ObjectionsPage').then((module) => ({ default: module.ObjectionsPage })));
 const AskMemoirePage = lazy(() => import('./features/v31/AskMemoirePage').then((module) => ({ default: module.AskMemoirePage })));
@@ -55,7 +54,7 @@ const FirstPipelineReviewFlow = lazy(() =>
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Suspense fallback={<RouteLoading />}>
         <Routes>
           {/* Public routes */}
@@ -91,7 +90,7 @@ function App() {
             <Route path="assets" element={<SalesAssetsPage />} />
             <Route path="journey" element={<JourneyPage />} />
             <Route path="accounts" element={<AccountsPage />} />
-            <Route path="accounts/:accountId" element={<AccountMemoryPage />} />
+            <Route path="accounts/:accountId" element={<LegacyAccountRouteRedirect />} />
             <Route path="opportunities" element={<OpportunitiesPage />} />
             <Route path="onboarding/pipeline-review" element={<FirstPipelineReviewFlow />} />
             <Route path="stakeholders" element={<StakeholdersPage />} />
@@ -118,6 +117,11 @@ function App() {
       </Suspense>
     </BrowserRouter>
   );
+}
+
+function LegacyAccountRouteRedirect() {
+  const { accountId = '' } = useParams();
+  return <Navigate to={`/app/accounts?accountId=${encodeURIComponent(accountId)}`} replace />;
 }
 
 function RouteLoading() {

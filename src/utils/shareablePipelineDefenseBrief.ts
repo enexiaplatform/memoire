@@ -422,7 +422,7 @@ function escapeMarkdownCell(value: string) {
 function formatDateTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString(undefined, {
+  return date.toLocaleString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

@@ -122,7 +122,7 @@ function rowToBrief(row: PipelineDefenseBriefRow): PipelineDefenseBrief {
     id: row.id,
     title: row.title,
     weekLabel: row.week_label || 'Current Week',
-    salesOwner: row.sales_owner || 'Henry',
+    salesOwner: row.sales_owner && row.sales_owner !== 'Henry' ? row.sales_owner : 'Sales owner',
     scope: row.scope || 'Demo review pipeline',
     deals: Array.isArray(row.deals) ? row.deals : [],
     createdAt: row.created_at,

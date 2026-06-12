@@ -369,7 +369,7 @@ function StuckDealQueue({
               </div>
               <div className="flex flex-wrap gap-2 md:justify-end">
                 {item.accountId && (
-                  <Link to={`/app/accounts/${item.accountId}`} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-gray-700 ring-1 ring-gray-200 hover:bg-amber-50">
+                  <Link to={`/app/accounts?accountId=${encodeURIComponent(item.accountId)}`} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-gray-700 ring-1 ring-gray-200 hover:bg-amber-50">
                     Open Account
                   </Link>
                 )}
@@ -578,7 +578,7 @@ function priorityClass(priority: BrokenLoop['priority']) {
 }
 
 function loopTarget(loop: BrokenLoop) {
-  if (loop.actionLabel === 'Open Account' && loop.accountId) return `/app/accounts/${loop.accountId}`;
+  if (loop.actionLabel === 'Open Account' && loop.accountId) return `/app/accounts?accountId=${encodeURIComponent(loop.accountId)}`;
   if (loop.actionLabel === 'Open Opportunity') return '/app/opportunities';
   return '/app/today';
 }
@@ -639,7 +639,7 @@ function ActionSection({
               <div className="mt-3 flex flex-wrap gap-2">
                 {action.account_id && (
                   <Link
-                    to={`/app/accounts/${action.account_id}`}
+                    to={`/app/accounts?accountId=${encodeURIComponent(action.account_id || '')}`}
                     className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-gray-700 ring-1 ring-gray-200 hover:bg-blue-50 hover:text-brand-blue"
                   >
                     Open Account

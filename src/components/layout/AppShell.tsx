@@ -4,14 +4,9 @@ import { Sidebar } from './Sidebar';
 import { TopNav } from './TopNav';
 import { OnboardingModal } from './OnboardingModal';
 import { DemoModeBanner } from '../demo/DemoModeBanner';
-import { prefetchPrimaryAppRoutes } from '../../utils/routePrefetch';
 
 export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-
-  useEffect(() => {
-    prefetchPrimaryAppRoutes();
-  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -31,10 +26,25 @@ export function AppShell() {
 }
 
 function AppContentLoading() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setVisible(true), 180);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  if (!visible) return null;
+
   return (
-    <div className="flex w-full max-w-none px-4 py-6 sm:px-5 lg:px-6">
-      <div className="w-full rounded-lg border border-gray-200 bg-white p-5 text-sm font-semibold text-gray-500 shadow-sm">
-        Loading this workspace...
+    <div className="w-full px-4 py-6 sm:px-5 lg:px-6" aria-label="Loading workspace">
+      <div className="space-y-4">
+        <div className="h-7 w-56 animate-pulse rounded bg-gray-200" />
+        <div className="h-28 w-full animate-pulse rounded-lg border border-gray-200 bg-white" />
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="h-36 animate-pulse rounded-lg border border-gray-200 bg-white" />
+          <div className="h-36 animate-pulse rounded-lg border border-gray-200 bg-white" />
+          <div className="h-36 animate-pulse rounded-lg border border-gray-200 bg-white" />
+        </div>
       </div>
     </div>
   );

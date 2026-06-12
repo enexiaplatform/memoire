@@ -218,7 +218,7 @@ function OpportunityCard({
   const isAtRisk = !opportunity.next_action_text;
   const isStale = isOpportunityStale(opportunity);
   const lastTouch = opportunity.last_touch_at
-    ? new Date(opportunity.last_touch_at).toLocaleDateString()
+    ? new Date(opportunity.last_touch_at).toLocaleDateString('en-US')
     : 'No touch logged';
   const value = opportunity.estimated_value
     ? new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(opportunity.estimated_value)

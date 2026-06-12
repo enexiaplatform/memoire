@@ -86,11 +86,11 @@ function endOfDay(value: Date) {
 }
 
 function formatShortDate(value: Date) {
-  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(value);
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(value);
 }
 
 function formatMonth(value: Date) {
-  return new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(value);
+  return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(value);
 }
 
 function detectCategory(rawText: string, structured?: StructuredSalesCapture): SalesActivityCategory {

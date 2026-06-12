@@ -84,7 +84,7 @@ export function generateActionPlanMarkdown(brief: PipelineDefenseBrief | null, i
     '',
     `- Brief: ${brief?.title || 'Pipeline Defense Brief'}`,
     `- Week: ${brief?.weekLabel || 'Current Week'}`,
-    `- Sales owner: ${brief?.salesOwner || 'Henry'}`,
+    `- Sales owner: ${brief?.salesOwner || 'Sales owner'}`,
     '',
   ];
 
@@ -146,7 +146,7 @@ function generateDealActions(deal: PipelineDefenseDeal): PipelineDefenseActionIt
   }
 
   if (!deal.pipelineReviewAnswer.trim()) {
-    actions.push(createAction(deal, 'missing-review-answer', 'Critical', 'Prepare defense answer', `Prepare defense answer for ${deal.account}`, 'Write the answer Henry will use in pipeline review: what is known, what is missing, and what decision should be made.', 'The deal has no clear pipeline review answer.', 'Before pipeline review'));
+    actions.push(createAction(deal, 'missing-review-answer', 'Critical', 'Prepare defense answer', `Prepare defense answer for ${deal.account}`, 'Write the answer you will use in pipeline review: what is known, what is missing, and what decision should be made.', 'The deal has no clear pipeline review answer.', 'Before pipeline review'));
   }
 
   if (!deal.recommendedAction.trim()) {
@@ -212,7 +212,7 @@ function createAction(
     reason,
     priority,
     actionType,
-    suggestedOwner: deal.objectionDebt.owner || 'Henry',
+    suggestedOwner: deal.objectionDebt.owner || 'Sales owner',
     suggestedDueTiming,
   };
 }

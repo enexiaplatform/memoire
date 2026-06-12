@@ -492,7 +492,7 @@ function toDateKey(date: Date) {
 }
 
 function formatShortDate(dateKey: string) {
-  return new Date(`${dateKey}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return new Date(`${dateKey}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function capitalize(value: string) {

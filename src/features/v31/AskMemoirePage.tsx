@@ -3,9 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Bot, ExternalLink, Send, Sparkles } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
-import { isDemoMode } from '../../lib/demoMode';
+import { DEMO_USER_ID } from '../../lib/demoMode';
 import type { Account, AskMemoireAnswer, AskMemoireAnswerCard, AskMemoireContext, Interaction, MemoryChange, Objection, Opportunity, SalesAction, SalesPattern } from '../../types/v31';
-import { readLocalMemory } from './localStore';
 import { actionFixPresets, answerFromMemory, buildAskMemoireContext, presetsForScope } from './askMemoireContext';
 import { detectBrokenLoops, type BrokenLoop } from './brokenLoops';
 import { calculateMemoryHealth } from './memoryHealth';
@@ -14,6 +13,9 @@ import { detectSalesPatterns, salesPatternSeverityLabel } from './salesPatternDe
 import { ASK_ANSWER_READY_EVENT, ASK_GUIDED_QUESTION_EVENT } from '../onboarding/guidedWorkflow';
 import { RouteLoadingFallback } from './RouteLoadingFallback';
 import { useSlowLoadingFallback } from './useSlowLoadingFallback';
+import { hasLocalSampleData } from '../../utils/dataMode';
+import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { adaptWorkspaceToV31 } from './workspaceAdapter';
 
 export function AskMemoirePage() {
   const { user } = useAuth();
@@ -35,37 +37,28 @@ export function AskMemoirePage() {
   const slowContextLoading = useSlowLoadingFallback(contextLoading);
 
   const loadMemory = useCallback(async () => {
-    if (!user) {
-      setContextLoading(false);
-      return;
-    }
     setContextLoading(true);
+    setError(null);
 
-    if (isDemoMode) {
-      const memory = readLocalMemory();
+    try {
+      const sampleDataActive = hasLocalSampleData();
+      const workspace = await loadSalesWorkspaceData(sampleDataActive ? undefined : user?.id);
+      const memory = adaptWorkspaceToV31(workspace, user?.id || DEMO_USER_ID);
       setAccounts(memory.accounts);
       setOpportunities(memory.opportunities);
       setInteractions(memory.interactions);
       setActions(memory.actions);
       setObjections(memory.objections);
+    } catch (loadError) {
+      if (import.meta.env.DEV) {
+        console.debug('[AskMemoire] workspace load failed', {
+          message: loadError instanceof Error ? loadError.message : 'Unknown error',
+        });
+      }
+      setError('Memoire could not load this workspace. Your local data is still preserved.');
+    } finally {
       setContextLoading(false);
-      return;
     }
-
-    const [accountResult, opportunityResult, interactionResult, actionResult, objectionResult] = await Promise.all([
-      supabase.from('accounts').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
-      supabase.from('opportunities').select('*,account:account_id(id,name),contact:contact_id(id,name,role)').eq('user_id', user.id).order('updated_at', { ascending: false }),
-      supabase.from('interactions').select('*').eq('user_id', user.id).order('occurred_at', { ascending: false }).limit(120),
-      supabase.from('actions').select('*,account:account_id(id,name),contact:contact_id(id,name,role),opportunity:opportunity_id(id,title,stage)').eq('user_id', user.id).order('due_date', { ascending: true, nullsFirst: false }).limit(80),
-      supabase.from('objections').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(120),
-    ]);
-
-    if (!accountResult.error) setAccounts((accountResult.data || []) as Account[]);
-    if (!opportunityResult.error) setOpportunities((opportunityResult.data || []) as Opportunity[]);
-    if (!interactionResult.error) setInteractions((interactionResult.data || []) as Interaction[]);
-    if (!actionResult.error) setActions((actionResult.data || []) as SalesAction[]);
-    if (!objectionResult.error) setObjections((objectionResult.data || []) as Objection[]);
-    setContextLoading(false);
   }, [user]);
 
   useEffect(() => {
@@ -207,7 +200,7 @@ export function AskMemoirePage() {
         setAnswer(answerFromPatterns(salesPatterns, contextPacket));
         return;
       }
-      if (isDemoMode || !user) {
+      if (hasLocalSampleData() || !user) {
         setStatusMessage(user
           ? 'Demo workspace uses local rule-based answers.'
           : 'You are in local mode. Ask Memoire is using rule-based fallback; sign in to use configured cloud context.');
@@ -502,7 +495,11 @@ function withAnswerCards(answer: AskMemoireAnswer, question: string, context: As
   const blocker = openObjections[0]?.title || opportunity?.blocker || interactions.find((item) => item.objection)?.objection || '';
   const missingContext = normalizeMissing(answer.missingContext.length > 0 ? answer.missingContext : context.missingContext);
   const nextAction = answer.suggestedNextAction || openAction?.title || opportunity?.next_action_text || '';
-  const contextHref = account?.id ? `/app/accounts/${account.id}` : opportunity?.account_id ? `/app/accounts/${opportunity.account_id}` : undefined;
+  const contextHref = account?.id
+    ? `/app/accounts?accountId=${encodeURIComponent(account.id)}`
+    : opportunity?.account_id
+      ? `/app/accounts?accountId=${encodeURIComponent(opportunity.account_id)}`
+      : undefined;
   const opportunityHref = opportunity?.id ? '/app/opportunities' : undefined;
   const commonCtas = [
     contextHref ? { label: 'Open Account', href: contextHref } : null,
@@ -729,9 +726,9 @@ function answerFromAttention({
         { label: 'Suggested fix', value: item.suggestedNextAction, tone: 'warning' },
       ],
       ctas: [
-        item.accountId ? { label: 'Open Account', href: `/app/accounts/${item.accountId}` } : null,
+        item.accountId ? { label: 'Open Account', href: `/app/accounts?accountId=${encodeURIComponent(item.accountId)}` } : null,
         item.opportunityId ? { label: 'Open Opportunity', href: `/app/opportunities` } : null,
-        item.accountId ? { label: 'Draft Follow-up', href: `/app/accounts/${item.accountId}`, note: 'Open Account Memory to draft from context.' } : null,
+        item.accountId ? { label: 'Draft Follow-up', href: `/app/accounts?accountId=${encodeURIComponent(item.accountId)}`, note: 'Open Account Memory to draft from context.' } : null,
         { label: 'Capture Update', href: '/app/capture' },
       ].filter(Boolean) as AskMemoireAnswerCard['ctas'],
     })),

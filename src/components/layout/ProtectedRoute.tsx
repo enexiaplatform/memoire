@@ -81,6 +81,7 @@ function isLocalFirstAppRoute(pathname: string) {
     '/app/accounts',
     '/app/ask',
     '/app/journey',
+    '/app/settings',
   ].some((route) => pathname === route || pathname.startsWith(`${route}/`));
 }
 

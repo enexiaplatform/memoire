@@ -377,7 +377,7 @@ export function AccountMemoryPage() {
             {timeline.length === 0 ? <EmptyLine text="No timeline yet. Capture an interaction to start the account story." /> : timeline.map((item) => (
               <div key={item.id} className={`border-l-2 pl-4 ${item.tone === 'warning' ? 'border-amber-300' : item.tone === 'action' ? 'border-blue-300' : 'border-brand-blue/30'}`}>
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                  {new Date(item.date).toLocaleDateString()} / {item.label}
+                  {new Date(item.date).toLocaleDateString('en-US')} / {item.label}
                 </p>
                 <p className="mt-1 text-sm font-semibold leading-6 text-gray-800">{item.title}</p>
                 {item.detail && <p className="mt-1 text-xs leading-5 text-gray-500">{item.detail}</p>}
@@ -819,7 +819,7 @@ function Pill({ label, tone = 'gray' }: { label: string; tone?: 'gray' | 'red' }
 }
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleDateString();
+  return new Date(value).toLocaleDateString('en-US');
 }
 
 function EmptyLine({ text }: { text: string }) {

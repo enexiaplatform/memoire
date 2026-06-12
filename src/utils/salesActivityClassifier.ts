@@ -343,7 +343,9 @@ function cleanExtractedPhrase(value: string) {
 function cleanActionTitle(value: string) {
   return cleanSentence(value)
     .replace(/^(need to|to|please|we should|i should)\s+/i, '')
-    .replace(/\s+\b(?:by|on|next|this)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week|month|quarter)\b.*$/i, '')
+    .replace(/\s+\b(?:by|on|before)\s+(?:(?:next|this)\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week|month|quarter)\b.*$/i, '')
+    .replace(/\s+\b(?:next|this)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week|month|quarter)\b.*$/i, '')
+    .replace(/\s+\b(?:by|on|before)\s*$/i, '')
     .trim()
     .replace(/^(send)\s+(.+)$/i, (_, verb: string, object: string) => `${capitalize(verb)} ${object}`)
     .replace(/^(follow up)\s+(.+)$/i, (_, verb: string, object: string) => `${capitalize(verb)} ${object}`)

@@ -32,7 +32,7 @@ const stageOptions: SalesStage[] = ['new', 'active', 'proposal', 'negotiation', 
 const priorityOptions: SalesPriority[] = ['low', 'medium', 'high'];
 const DEMO_EMAIL_THREAD = `Subject: Re: Northstar Foods proposal review
 
-Hi Henry,
+Hi,
 Thanks for sending the proposal. We are reviewing internally. Our main concerns are lead time and local support. Could you send a clearer implementation timeline next week?
 
 Regards,
@@ -312,7 +312,7 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
           <div className="mt-3 flex flex-wrap gap-2">
             {savedMemory.accountId && (
               <Link
-                to={`/app/accounts/${savedMemory.accountId}`}
+                to={`/app/accounts?accountId=${encodeURIComponent(savedMemory.accountId)}`}
                 className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-100"
               >
                 Open Account Memory

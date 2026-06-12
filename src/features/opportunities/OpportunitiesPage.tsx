@@ -1789,7 +1789,9 @@ function OpportunityMasterTable({
                   </td>
                   <td className="px-3 py-3">
                     <p className="max-w-[190px] truncate font-bold text-navy" title={opportunity.accountName}>{opportunity.accountName || 'No account'}</p>
-                    <p className="mt-1 max-w-[190px] truncate text-xs text-gray-500">{opportunity.productOrSolution || 'Solution not set'}</p>
+                    <p className="mt-1 max-w-[190px] truncate text-xs text-gray-500">
+                      {opportunity.productOrSolution || `${opportunity.stage} opportunity`}
+                    </p>
                   </td>
                   <td className="px-3 py-3">
                     <p className="max-w-[250px] truncate font-bold text-gray-900" title={opportunity.opportunityName}>{opportunity.opportunityName || 'Untitled opportunity'}</p>
@@ -2988,7 +2990,7 @@ function refreshStatusLabel(status: OpportunityRefreshPreviewItem['status']) {
 }
 
 function formatBatchDate(value: string) {
-  return new Date(value).toLocaleDateString(undefined, {
+  return new Date(value).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -3067,7 +3069,7 @@ function formatOpportunityDate(value: string) {
     ? new Date(`${value}T00:00:00`)
     : new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function isPastDate(value: string) {
@@ -3120,7 +3122,7 @@ function buildDefaultBriefMetadata(user: Parameters<typeof getWorkspaceUserDispl
   return {
     title: `Pipeline Defense Brief - Opportunities - ${formatDate(now)}`,
     weekLabel: buildCurrentWeekLabel(now),
-    salesOwner: getWorkspaceUserDisplayName(user) || 'Henry',
+    salesOwner: getWorkspaceUserDisplayName(user) || 'Sales owner',
     scope: 'Selected opportunities',
   };
 }
@@ -3137,7 +3139,7 @@ function buildCurrentWeekLabel(date: Date) {
 }
 
 function formatDate(date: Date) {
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

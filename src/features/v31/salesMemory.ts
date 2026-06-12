@@ -194,6 +194,21 @@ function extractAfterKeyword(rawNote: string, keywords: string[]) {
   return rawNote.match(pattern)?.[1]?.trim() || '';
 }
 
+function extractNextActionPhrase(rawNote: string) {
+  const match = rawNote.match(/\b(follow up|follow-up|send|call|schedule|prepare|share|confirm|reply|update|clarify|gửi|gui|gọi|goi|hẹn|hen|chuẩn bị|chuan bi)\b\s+([^.;\n]+)/i);
+  if (!match) return '';
+
+  const verb = match[1].replace(/follow-up/i, 'follow up');
+  const detail = match[2]
+    .replace(/\s+\b(?:by|on|before)\s+(?:(?:next|this)\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week|month|quarter)\b.*$/i, '')
+    .replace(/\s+\b(?:next|this)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week|month|quarter)\b.*$/i, '')
+    .replace(/\s+\b(?:by|on|before)\s*$/i, '')
+    .trim();
+  if (!detail) return '';
+
+  return `${verb.charAt(0).toUpperCase()}${verb.slice(1).toLowerCase()} ${detail}`.trim();
+}
+
 function heuristicInteractionStructure(rawNote: string): StructuredSalesCapture {
   const lowerNote = rawNote.toLowerCase();
   const type: InteractionType = /call|called|spoke|gọi|goi/.test(lowerNote)
@@ -233,22 +248,7 @@ function heuristicInteractionStructure(rawNote: string): StructuredSalesCapture 
     'đối thủ',
     'doi thu',
   ]);
-  const nextAction = extractAfterKeyword(rawNote, [
-    'follow up',
-    'follow',
-    'send',
-    'call',
-    'schedule',
-    'prepare',
-    'gửi',
-    'gui',
-    'gọi',
-    'goi',
-    'hẹn',
-    'hen',
-    'chuẩn bị',
-    'chuan bi',
-  ]);
+  const nextAction = extractNextActionPhrase(rawNote);
   const hasProposal = /proposal|báo giá|bao gia|đề xuất|de xuat/i.test(rawNote);
 
   return normalizeStructuredCapture({

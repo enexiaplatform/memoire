@@ -192,7 +192,7 @@ export function generateReviewPackMarkdown(pack: ReviewPackSnapshot) {
 export function formatReviewPackDate(value?: string) {
   if (!value) return 'Not captured';
   try {
-    return new Intl.DateTimeFormat(undefined, {
+    return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

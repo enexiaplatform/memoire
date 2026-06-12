@@ -205,7 +205,7 @@ function normalizeObjectionDebt(value: RawImportedDeal['objectionDebt']): Pipeli
       objection: normalizeText(value.objection, 'Add unresolved objection or context gap.'),
       evidence: normalizeText(value.evidence, 'Add source evidence.'),
       requiredAction: normalizeText(value.requiredAction, 'Add required proof or action.'),
-      owner: normalizeText(value.owner, 'Henry'),
+      owner: normalizeLegacyOwner(value.owner),
       status: value.status === 'Context gap' || value.status === 'Unsupported' ? value.status : 'Open',
     };
   }
@@ -214,7 +214,7 @@ function normalizeObjectionDebt(value: RawImportedDeal['objectionDebt']): Pipeli
     objection: normalizeText(value, 'Add unresolved objection or context gap.'),
     evidence: 'Add source evidence.',
     requiredAction: 'Add required proof or action.',
-    owner: 'Henry',
+    owner: 'Sales owner',
     status: 'Open',
   };
 }
@@ -236,6 +236,11 @@ function normalizeStringArray(value: string[] | undefined, fallback: string[]) {
 
 function normalizeText(value: string | undefined, fallback: string) {
   return value && value.trim().length > 0 ? value.trim() : fallback;
+}
+
+function normalizeLegacyOwner(value: string | undefined) {
+  const normalized = normalizeText(value, 'Sales owner');
+  return normalized.toLowerCase() === 'henry' ? 'Sales owner' : normalized;
 }
 
 function normalizeOptionalText(value: string | undefined) {

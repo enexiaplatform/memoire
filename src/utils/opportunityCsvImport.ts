@@ -379,7 +379,7 @@ export function getImportableCsvRows(rows: OpportunityCsvPreviewRow[], options: 
 }
 
 export function buildImportedOpportunityInput(row: OpportunityCsvPreviewRow, importBatchId: string): OpportunityFormInput {
-  const importNote = `CSV import: read-only pipeline copy. Batch ${importBatchId}. Imported ${new Date().toLocaleDateString()}.`;
+  const importNote = `CSV import: read-only pipeline copy. Batch ${importBatchId}. Imported ${new Date().toLocaleDateString('en-US')}.`;
   return {
     ...row.input,
     evidence: appendNote(row.input.evidence, importNote),

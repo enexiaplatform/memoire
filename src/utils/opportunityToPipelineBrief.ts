@@ -118,7 +118,7 @@ export function generatePipelineDefenseBriefFromOpportunities(
   return createPipelineDefenseBrief({
     title: metadata.title || `Pipeline Defense Brief - Opportunities - ${formatDateLabel(new Date())}`,
     weekLabel: metadata.weekLabel || getCurrentWeekLabel(),
-    salesOwner: metadata.salesOwner || 'Henry',
+    salesOwner: metadata.salesOwner || 'Sales owner',
     scope: metadata.scope || 'Selected opportunities',
     deals: opportunities.map((opportunity) => mapOpportunityToPipelineDefenseDeal(opportunity, objections, stakeholders, activities, actionOutcomes, salesAssets, opportunities)),
   });
@@ -190,7 +190,7 @@ function buildObjectionDebt(
         ? 'Captured in the opportunity objection debt field.'
       : 'No explicit objection debt captured; review remaining context gaps.',
     requiredAction: highestImpact?.requiredProof || meddicAction || opportunity.nextAction || 'Confirm the objection state and required proof with the customer.',
-    owner: 'Henry',
+    owner: 'Sales owner',
     status: objections.some((item) => item.status === 'Open')
       ? 'Open'
       : objections.some((item) => item.status === 'Addressed')
@@ -267,7 +267,7 @@ function getCurrentWeekLabel() {
 }
 
 function formatDateLabel(date: Date) {
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

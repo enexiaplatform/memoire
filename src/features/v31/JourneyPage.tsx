@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, ArrowRight, CheckCircle2, Circle, Clock3, PauseCircle } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
-import { isDemoMode } from '../../lib/demoMode';
+import { DEMO_USER_ID } from '../../lib/demoMode';
 import { useAuth } from '../../hooks/useAuth';
 import type { Account, Contact, Interaction, MemoryHealth, Objection, Opportunity, SalesAction } from '../../types/v31';
-import { readLocalMemory } from './localStore';
 import { detectBrokenLoops } from './brokenLoops';
 import type { BrokenLoop, CaptureMemory } from './brokenLoops';
 import { calculateMemoryHealth, memoryHealthLabel } from './memoryHealth';
 import { RouteLoadingFallback } from './RouteLoadingFallback';
 import { useSlowLoadingFallback } from './useSlowLoadingFallback';
+import { hasLocalSampleData } from '../../utils/dataMode';
+import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { adaptWorkspaceToV31 } from './workspaceAdapter';
 
 type FlowState = 'Active' | 'Completed' | 'Missing' | 'Later';
 
@@ -81,49 +82,37 @@ export function JourneyPage() {
   const [captures, setCaptures] = useState<CaptureMemory[]>([]);
   const [loading, setLoading] = useState(true);
   const slowLoading = useSlowLoadingFallback(loading);
+  const sampleDataActive = hasLocalSampleData();
 
   const loadJourney = useCallback(async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
     setLoading(true);
-
-    if (isDemoMode) {
-      const memory = readLocalMemory();
+    try {
+      const workspace = await loadSalesWorkspaceData(sampleDataActive ? undefined : user?.id);
+      const memory = adaptWorkspaceToV31(workspace, user?.id || DEMO_USER_ID);
       setAccounts(memory.accounts);
       setContacts(memory.contacts);
       setOpportunities(memory.opportunities);
       setInteractions(memory.interactions);
       setActions(memory.actions);
       setObjections(memory.objections);
-      setCaptures(memory.captures.map((capture) => ({
-        ...capture,
-        structured_data: capture.structured_data as unknown as Record<string, unknown>,
-      })));
+      setCaptures([]);
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.debug('[Journey] workspace load failed', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+      setAccounts([]);
+      setContacts([]);
+      setOpportunities([]);
+      setInteractions([]);
+      setActions([]);
+      setObjections([]);
+      setCaptures([]);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const [accountResult, contactResult, opportunityResult, interactionResult, actionResult, objectionResult, captureResult] = await Promise.all([
-      supabase.from('accounts').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
-      supabase.from('contacts').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
-      supabase.from('opportunities').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
-      supabase.from('interactions').select('*').eq('user_id', user.id).order('occurred_at', { ascending: false }).limit(80),
-      supabase.from('actions').select('*').eq('user_id', user.id).order('due_date', { ascending: true, nullsFirst: false }),
-      supabase.from('objections').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(80),
-      supabase.from('captures').select('id,raw_text,structured_data,status,created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(80),
-    ]);
-
-    if (!accountResult.error) setAccounts((accountResult.data || []) as Account[]);
-    if (!contactResult.error) setContacts((contactResult.data || []) as Contact[]);
-    if (!opportunityResult.error) setOpportunities((opportunityResult.data || []) as Opportunity[]);
-    if (!interactionResult.error) setInteractions((interactionResult.data || []) as Interaction[]);
-    if (!actionResult.error) setActions((actionResult.data || []) as SalesAction[]);
-    if (!objectionResult.error) setObjections((objectionResult.data || []) as Objection[]);
-    if (!captureResult.error) setCaptures((captureResult.data || []) as CaptureMemory[]);
-    setLoading(false);
-  }, [user]);
+  }, [sampleDataActive, user]);
 
   useEffect(() => {
     loadJourney();
@@ -216,7 +205,7 @@ export function JourneyPage() {
       <header className="mb-6">
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Journey</p>
-          {isDemoMode && (
+          {sampleDataActive && (
             <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
               Demo Mode
             </span>
@@ -261,7 +250,7 @@ export function JourneyPage() {
                 Memoire will turn it into account memory, opportunity context, and next action.
               </p>
               <Link
-                to="/app/today"
+                to="/app/capture"
                 className="mt-4 inline-flex rounded-full bg-white px-3 py-1.5 text-xs font-bold text-brand-blue ring-1 ring-blue-100 hover:ring-brand-blue/30"
               >
                 Go to Quick Capture
@@ -361,9 +350,9 @@ function priorityClass(priority: BrokenLoop['priority']) {
 }
 
 function loopTarget(loop: BrokenLoop) {
-  if (loop.actionLabel === 'Open Account' && loop.accountId) return `/app/accounts/${loop.accountId}`;
+  if (loop.actionLabel === 'Open Account' && loop.accountId) return `/app/accounts?accountId=${encodeURIComponent(loop.accountId)}`;
   if (loop.actionLabel === 'Open Opportunity') return '/app/opportunities';
-  return '/app/today';
+  return '/app/capture';
 }
 
 function FlowStepCard({ step, index, state }: { step: FlowStep; index: number; state: FlowState }) {

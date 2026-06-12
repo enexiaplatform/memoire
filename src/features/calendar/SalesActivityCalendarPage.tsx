@@ -484,8 +484,8 @@ function ActivityDetailModal({
           <Fact label="Contact / stakeholder" value={activity.contactName || activity.stakeholderName || 'Not captured'} />
           <Fact label="Next action" value={activity.nextAction || 'No next action captured'} />
           <Fact label="Due date" value={activity.dueDate || 'No due date'} />
-          <Fact label="Created" value={new Date(activity.createdAt).toLocaleString()} />
-          <Fact label="Updated" value={new Date(activity.updatedAt).toLocaleString()} />
+          <Fact label="Created" value={new Date(activity.createdAt).toLocaleString('en-US')} />
+          <Fact label="Updated" value={new Date(activity.updatedAt).toLocaleString('en-US')} />
           <Fact label="Linked opportunity" value={activity.linkStatus === 'Linked' ? `${activity.linkedAccountName} / ${activity.linkedOpportunityName}` : activity.linkStatus} />
         </div>
 
@@ -594,7 +594,7 @@ function getCalendarRange(viewMode: CalendarViewMode, anchorDate: Date) {
     return {
       start: toDateKey(startDate),
       end: toDateKey(endDate),
-      label: new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(anchorDate),
+      label: new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(anchorDate),
     };
   }
 
@@ -632,11 +632,11 @@ function formatPeriodLabel(start: string, end: string) {
 }
 
 function formatShortDate(dateKey: string) {
-  return new Date(`${dateKey}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return new Date(`${dateKey}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function formatDateHeading(dateKey: string) {
-  return new Date(`${dateKey}T00:00:00`).toLocaleDateString(undefined, {
+  return new Date(`${dateKey}T00:00:00`).toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',

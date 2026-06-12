@@ -73,9 +73,15 @@ export type OpportunityFormInput = Omit<CrmLiteOpportunity, 'id' | 'userId' | 'c
 type OpportunityRow = {
   id: string;
   user_id: string;
-  account_name: string;
-  opportunity_name: string;
+  account_id?: string | null;
+  account_name: string | null;
+  opportunity_name: string | null;
   title?: string | null;
+  account?: {
+    id: string;
+    name?: string | null;
+    account_name?: string | null;
+  } | null;
   stage: string | null;
   estimated_value: number | string | null;
   currency: string | null;
@@ -86,10 +92,12 @@ type OpportunityRow = {
   procurement_path: string | null;
   technical_criteria: string | null;
   next_action: string | null;
+  next_action_text?: string | null;
   next_action_date: string | null;
   evidence: string | null;
   missing_context: string | null;
   objection_debt: string | null;
+  blocker?: string | null;
   forecast_evidence_category: string | null;
   decision_recommendation: string | null;
   status: string | null;
@@ -308,7 +316,7 @@ function deleteLocalOpportunity(opportunityId: string) {
 async function loadCloudOpportunities(userId: string): Promise<CrmLiteOpportunity[]> {
   const { data, error } = await supabaseClient!
     .from(TABLE_NAME)
-    .select('*')
+    .select('*,account:account_id(id,name,account_name)')
     .eq('user_id', userId)
     .order('updated_at', { ascending: false });
 
@@ -365,27 +373,31 @@ function createLocalOpportunity(input: OpportunityFormInput, userId?: string): C
 }
 
 function rowToOpportunity(row: OpportunityRow): CrmLiteOpportunity {
+  const linkedAccountName = row.account?.account_name || row.account?.name || '';
+  const storedAccountName = row.account_name?.trim() || '';
+  const opportunityName = row.opportunity_name || row.title || '';
+
   return {
     id: row.id,
     userId: row.user_id,
     source: 'user',
     isSample: false,
-    accountName: row.account_name || '',
-    opportunityName: row.opportunity_name || row.title || '',
+    accountName: isLegacyAccountPlaceholder(storedAccountName) ? linkedAccountName : storedAccountName || linkedAccountName,
+    opportunityName,
     stage: normalizeStage(row.stage),
     estimatedValue: normalizeNumber(row.estimated_value),
     currency: row.currency || 'VND',
     expectedClosePeriod: row.expected_close_period || '',
-    productOrSolution: row.product_or_solution || '',
+    productOrSolution: row.product_or_solution || deriveLegacyProductOrSolution(opportunityName),
     decisionMaker: row.decision_maker || '',
     budgetOwner: row.budget_owner || '',
     procurementPath: row.procurement_path || '',
     technicalCriteria: row.technical_criteria || '',
-    nextAction: row.next_action || '',
+    nextAction: row.next_action || row.next_action_text || '',
     nextActionDate: row.next_action_date || '',
     evidence: row.evidence || '',
     missingContext: row.missing_context || '',
-    objectionDebt: row.objection_debt || '',
+    objectionDebt: row.objection_debt || row.blocker || '',
     forecastEvidenceCategory: normalizeForecastCategory(row.forecast_evidence_category),
     decisionRecommendation: normalizeDecisionRecommendation(row.decision_recommendation),
     status: normalizeStatus(row.status),
@@ -393,6 +405,19 @@ function rowToOpportunity(row: OpportunityRow): CrmLiteOpportunity {
     updatedAt: row.updated_at,
     storageMode: 'cloud',
   };
+}
+
+function isLegacyAccountPlaceholder(value: string) {
+  return !value || /^legacy account$/i.test(value) || /^unknown account$/i.test(value);
+}
+
+function deriveLegacyProductOrSolution(opportunityName: string) {
+  const parts = opportunityName
+    .split('/')
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return parts.length > 1 ? parts.slice(1).join(' / ') : '';
 }
 
 function opportunityToInsert(input: OpportunityFormInput, userId: string) {

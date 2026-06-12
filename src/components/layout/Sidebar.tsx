@@ -4,6 +4,7 @@ import { AlertTriangle, BookOpen, CalendarDays, ChevronDown, ClipboardList, File
 import { useAuthContext } from '../../auth/authContext';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 import { prefetchAppRoute } from '../../utils/routePrefetch';
+import { useDemoWorkspaceMode } from '../../hooks/useDemoWorkspaceMode';
 
 const primarySections = [
   {
@@ -37,8 +38,9 @@ const secondaryItems = [
 export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { user, profile } = useAuthContext();
   const location = useLocation();
-  const displayName = getUserDisplayName(user, profile);
-  const initials = getUserInitials(user, profile);
+  const demoActive = useDemoWorkspaceMode();
+  const displayName = demoActive ? 'Demo workspace' : getUserDisplayName(user, profile);
+  const initials = demoActive ? 'D' : getUserInitials(user, profile);
   const hasActiveSecondaryRoute = secondaryItems.some((item) => location.pathname.startsWith(item.to));
   const [moreOpen, setMoreOpen] = useState(hasActiveSecondaryRoute);
 
@@ -158,7 +160,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           </div>
           <div>
             <div className="max-w-[132px] truncate text-sm font-medium text-white" title={displayName}>{displayName}</div>
-            <div className="text-xs text-white/40">Personal workspace</div>
+            <div className="text-xs text-white/40">{demoActive ? 'Local sample data' : 'Personal workspace'}</div>
           </div>
         </div>
       </div>

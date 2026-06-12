@@ -77,7 +77,7 @@ export type PipelineDefenseQuestion = {
 
 export const pipelineDefenseBriefMeta = {
   week: 'Sample review week',
-  salesOwner: 'Henry',
+  salesOwner: 'Sales owner',
   scope: 'Demo review pipeline',
   pipelinePeriod: 'Current quarter / FY review period',
 };
@@ -101,7 +101,7 @@ export const pipelineDefenseDeals: PipelineDefenseDeal[] = [
       objection: 'Tender / procurement uncertainty',
       evidence: 'Tender pending context',
       requiredAction: 'Confirm evaluation timeline, decision criteria, and next communication date.',
-      owner: 'Henry',
+      owner: 'Sales owner',
       status: 'Open',
     },
     forecastEvidenceCategory: 'Hope-based',
@@ -130,7 +130,7 @@ export const pipelineDefenseDeals: PipelineDefenseDeal[] = [
       objection: 'Lead time and local support',
       evidence: 'Customer concern from proposal review context',
       requiredAction: 'Send implementation timeline and local support clarification.',
-      owner: 'Henry',
+      owner: 'Sales owner',
       status: 'Open',
     },
     forecastEvidenceCategory: 'Weak but recoverable',
@@ -158,7 +158,7 @@ export const pipelineDefenseDeals: PipelineDefenseDeal[] = [
       objection: 'Technical evaluation criteria unclear',
       evidence: 'No explicit criteria in sample',
       requiredAction: 'Ask what proof is required to proceed.',
-      owner: 'Henry',
+      owner: 'Sales owner',
       status: 'Context gap',
     },
     forecastEvidenceCategory: 'Weak but recoverable',
@@ -187,7 +187,7 @@ export const pipelineDefenseDeals: PipelineDefenseDeal[] = [
       objection: 'Stakeholder and timing clarity',
       evidence: 'Strategic account context exists, but no current decision path is visible.',
       requiredAction: 'Convert strategic plan into customer-confirmed next action.',
-      owner: 'Henry',
+      owner: 'Sales owner',
       status: 'Context gap',
     },
     forecastEvidenceCategory: 'Weak but recoverable',
@@ -215,7 +215,7 @@ export const pipelineDefenseDeals: PipelineDefenseDeal[] = [
       objection: 'No clear current opportunity proof',
       evidence: 'No current next action visible',
       requiredAction: 'Capture current account status or downgrade.',
-      owner: 'Henry',
+      owner: 'Sales owner',
       status: 'Unsupported',
     },
     forecastEvidenceCategory: 'Unsupported',
@@ -279,7 +279,7 @@ export const recommendedPipelineActions: PipelineDefenseAction[] = [
     opportunity: 'Orion Pharma / Procurement review',
     action: 'Confirm tender timeline, committee owner, and next communication date.',
     whyThisWeek: 'Without this, the forecast remains hope-based.',
-    owner: 'Henry',
+    owner: 'Sales owner',
   },
   {
     id: 'action-northstar-foods',
@@ -288,7 +288,7 @@ export const recommendedPipelineActions: PipelineDefenseAction[] = [
     opportunity: 'Proposal review',
     action: 'Send implementation timeline and ask for decision owner/timing.',
     whyThisWeek: 'The customer raised explicit concerns that can be addressed now.',
-    owner: 'Henry',
+    owner: 'Sales owner',
   },
   {
     id: 'action-cedar-health',
@@ -297,7 +297,7 @@ export const recommendedPipelineActions: PipelineDefenseAction[] = [
     opportunity: 'Demo or evaluation follow-up',
     action: 'Confirm evaluation criteria and next customer action.',
     whyThisWeek: 'Strategic account status needs customer-confirmed evidence.',
-    owner: 'Henry',
+    owner: 'Sales owner',
   },
   {
     id: 'action-harbor-pharma',
@@ -306,7 +306,7 @@ export const recommendedPipelineActions: PipelineDefenseAction[] = [
     opportunity: 'Strategic account opportunity',
     action: 'Confirm active stakeholder, product scope, and next customer milestone.',
     whyThisWeek: 'Strategic importance alone is not forecast evidence.',
-    owner: 'Henry',
+    owner: 'Sales owner',
   },
   {
     id: 'action-summit-diagnostics',
@@ -315,7 +315,7 @@ export const recommendedPipelineActions: PipelineDefenseAction[] = [
     opportunity: 'Unclear technical B2B opportunity',
     action: 'Capture current status or remove from active forecast.',
     whyThisWeek: 'The current evidence is unsupported.',
-    owner: 'Henry',
+    owner: 'Sales owner',
   },
 ];
 

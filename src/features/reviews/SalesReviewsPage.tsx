@@ -827,7 +827,7 @@ function getRecapRange(periodType: SalesRecapPeriod, anchorDate: Date): SalesRec
     return {
       start: toDateKey(start),
       end: toDateKey(end),
-      label: new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(anchorDate),
+      label: new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(anchorDate),
     };
   }
 
@@ -861,7 +861,7 @@ function toDateKey(date: Date) {
 }
 
 function formatShortDate(dateKey: string) {
-  return new Date(`${dateKey}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return new Date(`${dateKey}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function isObjectionInPeriod(objection: ObjectionRecord, period: SalesRecapRange) {

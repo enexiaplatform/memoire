@@ -148,7 +148,7 @@ function analyzeDealQuality(deal: PipelineDefenseDeal): BriefQualityIssue[] {
   }
 
   if (!deal.pipelineReviewAnswer.trim()) {
-    issues.push(createDealIssue(deal, 'missing-review-answer', 'Missing pipeline review answer', 'high', 'The deal has no clear review answer for Henry to use in pipeline review.', 'Write a concise pipeline review answer explaining defend, rescue, monitor, or downgrade.'));
+    issues.push(createDealIssue(deal, 'missing-review-answer', 'Missing pipeline review answer', 'high', 'The deal has no clear answer for the sales owner to use in pipeline review.', 'Write a concise pipeline review answer explaining defend, rescue, monitor, or downgrade.'));
   }
 
   if (!deal.recommendedAction.trim()) {

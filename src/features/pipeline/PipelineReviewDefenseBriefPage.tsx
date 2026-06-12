@@ -58,7 +58,6 @@ import {
   type DraftAssistType,
 } from '../../utils/pipelineDefenseDraftAssist';
 import { getActiveDraftAssistProvider } from '../../services/draftAssistProvider';
-import { AuthButton } from '../../components/auth/AuthButton';
 import { DataModePill } from '../../components/common/DataModePill';
 import { DemoJourneyCard } from '../../components/demo/DemoJourneyCard';
 import { useAuthContext } from '../../auth/authContext';
@@ -383,7 +382,7 @@ export function PipelineReviewDefenseBriefPage() {
         objection: 'Add unresolved objection or context gap.',
         evidence: 'Add source evidence.',
         requiredAction: 'Add required proof or action.',
-        owner: 'Henry',
+        owner: 'Sales owner',
         status: 'Open',
       },
       forecastEvidenceCategory: 'Unsupported',
@@ -908,7 +907,6 @@ export function PipelineReviewDefenseBriefPage() {
             )}
           </div>
           <div className="flex flex-col gap-4">
-            <AuthButton />
             {isReviewMode ? (
               <div className="grid min-w-[320px] gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">
                 <MetaRow label="Brief" value={activeBrief?.title || 'Pipeline Defense Brief'} />
@@ -1880,7 +1878,7 @@ function IntelligencePanelStatus({
       <SectionHeader
         eyebrow="Intelligence panels"
         title="Review Prep Checks"
-        description="Run deterministic checks when Henry needs risk analysis, readiness review, or weekly actions."
+        description="Run deterministic checks when you need risk analysis, readiness review, or weekly actions."
       />
       {allGenerated ? (
         <p className="text-sm font-semibold text-emerald-700">Risk analysis, review readiness, and weekly actions are generated for the current brief.</p>
@@ -2763,7 +2761,7 @@ function ManagerQuestions() {
       <SectionHeader
         eyebrow="Review prep"
         title="Manager Question List"
-        description="Questions Henry should ask himself, a rep, or the customer before review."
+        description="Questions to ask yourself or the customer before review."
       />
       <div className="grid gap-3">
         {managerQuestions.map((item) => (
@@ -2804,7 +2802,7 @@ function RecommendedActions({ deals }: { deals: PipelineDefenseDeal[] }) {
                 <div key={deal.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                   <p className="font-bold text-gray-900">{deal.account}</p>
                   <p className="mt-1 text-sm text-gray-500">{deal.opportunity}</p>
-                  <p className="mt-2 text-sm text-gray-700">{deal.recommendedAction || 'Add the action Henry should take this week.'}</p>
+                  <p className="mt-2 text-sm text-gray-700">{deal.recommendedAction || 'Add the action the sales owner should take this week.'}</p>
                   <p className="mt-2 text-xs font-medium text-gray-500">Why this week: {deal.pipelineReviewAnswer || 'Pipeline answer is not written yet.'}</p>
                 </div>
               ))}
@@ -2832,7 +2830,7 @@ function DecisionLog({ deals }: { deals: PipelineDefenseDeal[] }) {
       <SectionHeader
         eyebrow="Review decision"
         title="Decision Log"
-        description="What Henry should decide during pipeline review."
+        description="What the sales owner should decide during pipeline review."
       />
       <div className="space-y-3">
         {deals.map((deal) => (

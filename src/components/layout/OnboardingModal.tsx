@@ -239,7 +239,7 @@ export function OnboardingModal() {
         setWorkflow((current) => ({ ...current, currentStep: 'structure' }));
         return;
       }
-      if (accountId) navigate(`/app/accounts/${accountId}`);
+      if (accountId) navigate(`/app/accounts?accountId=${encodeURIComponent(accountId)}`);
       setWorkflow((current) => ({ ...current, currentStep: 'draft_followup' }));
     };
 
@@ -370,7 +370,7 @@ export function OnboardingModal() {
         return;
       case 'open_account_memory': {
         const accountId = savedMemory?.accountId || founderAccountId;
-        if (accountId) navigate(`/app/accounts/${accountId}`);
+        if (accountId) navigate(`/app/accounts?accountId=${encodeURIComponent(accountId)}`);
         goNext();
         return;
       }
