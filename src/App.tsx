@@ -66,6 +66,8 @@ function App() {
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/demo" element={<DemoEntryPage />} />
           <Route path="/request-access" element={<EarlyAccessRequestPage />} />
+          <Route path="/privacy" element={<Navigate to="/legal/privacy" replace />} />
+          <Route path="/terms" element={<Navigate to="/legal/terms" replace />} />
           <Route path="/legal/:document" element={<LegalPage />} />
 
           {/* Protected app routes */}
