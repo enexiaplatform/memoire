@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowUpDown, Building2, ChevronLeft, ChevronRight, Eye, Filter, MessageSquareText, Plus, Save, Search, Trash2, X } from 'lucide-react';
+import { ArrowUpDown, Building2, ChevronLeft, ChevronRight, Database, Eye, Filter, MessageSquareText, Plus, RefreshCw, Save, Search, Trash2, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -22,7 +22,7 @@ import { type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { type SalesActivityRecord } from '../../services/salesActivityStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
-import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
+import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import {
   buildAccountMemory,
   deriveAccountCandidatesFromActivities,
@@ -40,9 +40,20 @@ import type { FollowUpContext } from '../../types/v31';
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type SortDirection = 'asc' | 'desc';
 type AccountSortKey = 'accountCode' | 'accountName' | 'relationship' | 'potential' | 'activeValue' | 'lastUpdated' | 'health';
+type QuickFilter = 'all' | 'imported' | 'keyAccounts' | 'hasTarget' | 'followUpDue' | 'hasStrategy';
 
 const allFilter = 'All';
 const defaultPageSize = 25;
+const founderImportSource = 'founder_core_fy26';
+
+const quickFilterOptions: Array<{ value: QuickFilter; label: string }> = [
+  { value: 'all', label: 'All accounts' },
+  { value: 'imported', label: 'Imported core' },
+  { value: 'keyAccounts', label: 'Key accounts' },
+  { value: 'hasTarget', label: 'Has target' },
+  { value: 'followUpDue', label: 'Follow-up due' },
+  { value: 'hasStrategy', label: 'Has strategy' },
+];
 
 export function AccountsPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
@@ -53,7 +64,11 @@ export function AccountsPage() {
   const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
   const [objections, setObjections] = useState<ObjectionRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastLoadedAt, setLastLoadedAt] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [query, setQuery] = useState('');
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
   const [segmentFilter, setSegmentFilter] = useState(allFilter);
   const [potentialFilter, setPotentialFilter] = useState(allFilter);
   const [relationshipFilter, setRelationshipFilter] = useState(allFilter);
@@ -71,30 +86,29 @@ export function AccountsPage() {
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
-  const refreshAccounts = async () => {
-    const cachedData = getCachedSalesWorkspaceData(dataUserId);
-    if (cachedData) {
-      setAccounts(cachedData.accounts);
-      setOpportunities(cachedData.opportunities);
-      setActivities(cachedData.activities);
-      setStakeholders(cachedData.stakeholders);
-      setObjections(cachedData.objections);
-      setLoading(false);
-      return;
-    }
+  const refreshAccounts = async (force = false) => {
+    setLoadError('');
+    if (accounts.length === 0) setLoading(true);
+    else setRefreshing(true);
 
-    setLoading(true);
-    const workspaceData = await loadSalesWorkspaceData(dataUserId);
-    setAccounts(workspaceData.accounts);
-    setOpportunities(workspaceData.opportunities);
-    setActivities(workspaceData.activities);
-    setStakeholders(workspaceData.stakeholders);
-    setObjections(workspaceData.objections);
-    setLoading(false);
+    try {
+      const workspaceData = await loadSalesWorkspaceData(dataUserId, { force });
+      setAccounts(workspaceData.accounts);
+      setOpportunities(workspaceData.opportunities);
+      setActivities(workspaceData.activities);
+      setStakeholders(workspaceData.stakeholders);
+      setObjections(workspaceData.objections);
+      setLastLoadedAt(new Date().toISOString());
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Could not refresh account data.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
   useEffect(() => {
-    refreshAccounts();
+    refreshAccounts(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataUserId]);
 
@@ -143,13 +157,14 @@ export function AccountsPage() {
       ].join(' ').toLowerCase();
       return (
         (!searchText || searchable.includes(searchText)) &&
+        matchesQuickFilter(account, quickFilter) &&
         (segmentFilter === allFilter || account.segment === segmentFilter) &&
         (potentialFilter === allFilter || account.accountPotential === potentialFilter) &&
         (relationshipFilter === allFilter || account.relationshipStatus === relationshipFilter) &&
         (healthFilter === allFilter || row.memory.health === healthFilter)
       );
     }).sort((left, right) => compareAccountRows(left, right, sortKey, sortDirection));
-  }, [accountRows, healthFilter, potentialFilter, query, relationshipFilter, segmentFilter, sortDirection, sortKey]);
+  }, [accountRows, healthFilter, potentialFilter, query, quickFilter, relationshipFilter, segmentFilter, sortDirection, sortKey]);
 
   const pageCount = Math.max(1, Math.ceil(visibleRows.length / pageSize));
   const pagedRows = useMemo(
@@ -159,7 +174,7 @@ export function AccountsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [healthFilter, pageSize, potentialFilter, query, relationshipFilter, segmentFilter]);
+  }, [healthFilter, pageSize, potentialFilter, query, quickFilter, relationshipFilter, segmentFilter]);
 
   useEffect(() => {
     if (page > pageCount) setPage(pageCount);
@@ -169,6 +184,7 @@ export function AccountsPage() {
   const selectedMemory = selectedAccount ? buildAccountMemory(selectedAccount, opportunities, activities) : null;
 
   const summary = useMemo(() => buildAccountsSummary(memories), [memories]);
+  const importSummary = useMemo(() => buildImportedCoreSummary(accounts), [accounts]);
 
   const handleSort = (nextKey: AccountSortKey) => {
     if (sortKey === nextKey) {
@@ -308,15 +324,32 @@ export function AccountsPage() {
             Your searchable account master, automatically refreshed by opportunities, activities, stakeholders, and objections.
           </p>
         </div>
-        <DataModePill
-          compact
-          isLoading={authLoading}
-          isAuthenticated={isAuthenticated}
-          isSupabaseConfigured={isSupabaseConfigured}
-          cloudAvailable={canUseAccountCloudStore(dataUserId)}
-          hasSampleData={sampleDataActive}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => refreshAccounts(true)}
+            disabled={loading || refreshing}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-60"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Sync
+          </button>
+          <DataModePill
+            compact
+            isLoading={authLoading}
+            isAuthenticated={isAuthenticated}
+            isSupabaseConfigured={isSupabaseConfigured}
+            cloudAvailable={canUseAccountCloudStore(dataUserId)}
+            hasSampleData={sampleDataActive}
+          />
+        </div>
       </header>
+
+      {loadError && (
+        <section className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
+          {loadError}
+        </section>
+      )}
 
       <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -340,7 +373,10 @@ export function AccountsPage() {
             <FilterSelect label="Health" value={healthFilter} options={[allFilter, 'Healthy', 'Needs attention', 'At risk', 'Dormant']} onChange={setHealthFilter} />
           </div>
         </div>
+        <QuickFilterBar value={quickFilter} onChange={setQuickFilter} importSummary={importSummary} />
       </section>
+
+      <ImportedCoreBanner summary={importSummary} lastLoadedAt={lastLoadedAt} refreshing={refreshing} />
 
       <AccountMemorySummary summary={summary} />
 
@@ -419,6 +455,72 @@ function AccountMemorySummary({ summary }: { summary: ReturnType<typeof buildAcc
   );
 }
 
+function QuickFilterBar({
+  value,
+  onChange,
+  importSummary,
+}: {
+  value: QuickFilter;
+  onChange: (value: QuickFilter) => void;
+  importSummary: ImportedCoreSummary;
+}) {
+  return (
+    <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+      {quickFilterOptions.map((option) => {
+        const count = quickFilterCount(option.value, importSummary);
+        const active = option.value === value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onChange(option.value)}
+            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+              active ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <span>{option.label}</span>
+            {typeof count === 'number' && <span className="rounded-full bg-white/80 px-1.5 py-0.5 font-mono text-[11px]">{count.toLocaleString()}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ImportedCoreBanner({
+  summary,
+  lastLoadedAt,
+  refreshing,
+}: {
+  summary: ImportedCoreSummary;
+  lastLoadedAt: string;
+  refreshing: boolean;
+}) {
+  if (summary.importedAccounts === 0) return null;
+
+  return (
+    <section className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex items-start gap-3">
+          <Database className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
+          <div>
+            <p className="text-sm font-bold text-emerald-950">Founder core data is loaded</p>
+            <p className="mt-1 text-sm leading-6 text-emerald-800">
+              {summary.importedAccounts.toLocaleString()} imported accounts, {summary.keyAccounts.toLocaleString()} key accounts, {formatMoney(summary.fy26Target, 'SGD')} FY26 target.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <MiniMetric label="With strategy" value={summary.withStrategy} />
+          <MiniMetric label="Follow-up due" value={summary.followUpDue} tone={summary.followUpDue ? 'amber' : 'green'} />
+          <MiniMetric label="With FY27 target" value={summary.withFy27Target} />
+          <MiniMetric label="Loaded" value={refreshing ? 'Syncing' : formatLoadedAt(lastLoadedAt)} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 type AccountMasterRow = {
   memory: AccountMemory;
   accountCode: string;
@@ -427,6 +529,18 @@ type AccountMasterRow = {
   latestContact: string;
   stakeholderCount: number;
   openObjectionCount: number;
+};
+
+type ImportedCoreSummary = {
+  importedAccounts: number;
+  keyAccounts: number;
+  withTarget: number;
+  withFy26Target: number;
+  withFy27Target: number;
+  withStrategy: number;
+  followUpDue: number;
+  fy26Target: number;
+  fy27Target: number;
 };
 
 function AccountMasterTable({
@@ -974,6 +1088,20 @@ function Metric({ label, value, tone = 'blue' }: { label: string; value: string 
   );
 }
 
+function MiniMetric({ label, value, tone = 'blue' }: { label: string; value: string | number; tone?: 'blue' | 'green' | 'amber' }) {
+  const toneClass = {
+    blue: 'text-brand-blue',
+    green: 'text-emerald-700',
+    amber: 'text-amber-700',
+  }[tone];
+  return (
+    <div className="rounded-lg border border-emerald-100 bg-white px-3 py-2">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-800/70">{label}</p>
+      <p className={`mt-1 text-sm font-black ${toneClass}`}>{typeof value === 'number' ? value.toLocaleString() : value}</p>
+    </div>
+  );
+}
+
 function Badge({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green' | 'amber' | 'red' | 'gray' }) {
   const toneClass = {
     blue: 'border-blue-100 bg-blue-50 text-brand-blue',
@@ -1087,6 +1215,16 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
 }
 
+function formatLoadedAt(value: string) {
+  if (!value) return 'Now';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Now';
+  return new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
 function formatRelativeDate(value: string) {
   if (!value) return '';
   const date = new Date(value.length === 10 ? `${value}T00:00:00` : value);
@@ -1127,6 +1265,72 @@ function buildAccountsSummary(memories: AccountMemory[]) {
     accountsWithObjectionDebt: memories.filter((memory) => memory.objectionDebt.length > 0).length,
     accountsWithNoRecentActivity: memories.filter((memory) => !memory.latestActivityDate || isOlderThan(memory.latestActivityDate, 30)).length,
   };
+}
+
+function buildImportedCoreSummary(accounts: AccountMemoryRecord[]): ImportedCoreSummary {
+  const imported = accounts.filter(isFounderImportedAccount);
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+
+  return {
+    importedAccounts: imported.length,
+    keyAccounts: imported.filter((account) => account.kaFlag === true).length,
+    withTarget: imported.filter((account) => Boolean(account.fy26TargetSgd || account.fy27TargetSgd)).length,
+    withFy26Target: imported.filter((account) => Boolean(account.fy26TargetSgd)).length,
+    withFy27Target: imported.filter((account) => Boolean(account.fy27TargetSgd)).length,
+    withStrategy: imported.filter((account) => Boolean(account.strategy?.trim())).length,
+    followUpDue: imported.filter((account) => isDueDate(account.nextFollowUp, today)).length,
+    fy26Target: imported.reduce((sum, account) => sum + (account.fy26TargetSgd || 0), 0),
+    fy27Target: imported.reduce((sum, account) => sum + (account.fy27TargetSgd || 0), 0),
+  };
+}
+
+function matchesQuickFilter(account: AccountMemoryRecord, quickFilter: QuickFilter) {
+  switch (quickFilter) {
+    case 'imported':
+      return isFounderImportedAccount(account);
+    case 'keyAccounts':
+      return account.kaFlag === true;
+    case 'hasTarget':
+      return Boolean(account.fy26TargetSgd || account.fy27TargetSgd);
+    case 'followUpDue':
+      return isDueDate(account.nextFollowUp);
+    case 'hasStrategy':
+      return Boolean(account.strategy?.trim());
+    case 'all':
+    default:
+      return true;
+  }
+}
+
+function quickFilterCount(filter: QuickFilter, summary: ImportedCoreSummary) {
+  switch (filter) {
+    case 'imported':
+      return summary.importedAccounts;
+    case 'keyAccounts':
+      return summary.keyAccounts;
+    case 'hasTarget':
+      return summary.withTarget;
+    case 'followUpDue':
+      return summary.followUpDue;
+    case 'hasStrategy':
+      return summary.withStrategy;
+    default:
+      return undefined;
+  }
+}
+
+function isFounderImportedAccount(account: AccountMemoryRecord) {
+  return account.sourceSystem === founderImportSource;
+}
+
+function isDueDate(value?: string, compareDate = new Date()) {
+  if (!value) return false;
+  const date = new Date(value.length === 10 ? `${value}T00:00:00` : value);
+  if (Number.isNaN(date.getTime())) return false;
+  const endOfCompareDate = new Date(compareDate);
+  endOfCompareDate.setHours(23, 59, 59, 999);
+  return date <= endOfCompareDate;
 }
 
 function parseCommaList(value: string) {
