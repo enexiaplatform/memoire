@@ -12,6 +12,7 @@ const primarySections = [
     label: 'Workspace',
     items: [
       { to: '/app/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
+      { to: '/app/onboarding/sales-operating-setup', label: 'Sales Setup', icon: <ClipboardList className="h-5 w-5" /> },
       { to: '/app/capture', label: 'Capture', icon: <NotebookPen className="h-5 w-5" /> },
       { to: '/app/opportunities', label: 'Opportunities', icon: <Target className="h-5 w-5" /> },
       { to: '/app/accounts', label: 'Accounts', icon: <BookOpen className="h-5 w-5" /> },
