@@ -1,5 +1,6 @@
 import { supabaseClient } from '../lib/supabaseClient';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { reportWorkspaceSyncError } from './workspaceSyncStatus';
 
 export const ACCOUNT_STORAGE_KEY = 'memoire.accounts.v1';
 
@@ -73,6 +74,7 @@ export async function loadAccounts(userId?: string | null): Promise<AccountMemor
     try {
       return await loadCloudAccounts(userId as string);
     } catch (error) {
+      reportWorkspaceSyncError();
       debugAccountStore('cloud load failed; falling back to local', { message: getErrorMessage(error) });
       return loadLocalAccounts();
     }
@@ -96,6 +98,7 @@ export async function createAccount(
       invalidateWorkspaceDataCache();
       return { account, mode: 'cloud' };
     } catch (error) {
+      reportWorkspaceSyncError();
       const account = createLocalAccount(normalized, userId || undefined);
       saveLocalAccountRecord(account);
       invalidateWorkspaceDataCache();
@@ -129,6 +132,7 @@ export async function updateAccount(
       invalidateWorkspaceDataCache();
       return { account: updated, mode: 'cloud' };
     } catch (error) {
+      reportWorkspaceSyncError();
       const localCopy = {
         ...account,
         ...normalized,

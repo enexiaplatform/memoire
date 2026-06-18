@@ -190,22 +190,6 @@ export function OnboardingModal() {
   const currentStep = steps[currentIndex] || steps[0];
 
   useEffect(() => {
-    if (!user) return;
-    const preference = readPreference(storageKey);
-    const alreadyHandledThisSession = sessionStorage.getItem(sessionKey) === 'true';
-    if (!alreadyHandledThisSession && !preference.guidedWorkflowCompleted && !preference.dontShowGuidedWorkflowAgain) {
-      setMode('welcome');
-      setWorkflow({
-        active: true,
-        currentStep: 'welcome',
-        completed: false,
-        skipped: false,
-        founderMode,
-      });
-    }
-  }, [founderMode, sessionKey, storageKey, user]);
-
-  useEffect(() => {
     const replay = () => startWorkflow();
     window.addEventListener(REPLAY_GUIDED_WORKFLOW_EVENT, replay);
     return () => window.removeEventListener(REPLAY_GUIDED_WORKFLOW_EVENT, replay);

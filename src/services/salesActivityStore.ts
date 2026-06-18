@@ -1,6 +1,7 @@
 import { supabaseClient } from '../lib/supabaseClient';
 import type { ClassifiedSalesActivity, SalesActivityType } from '../utils/salesActivityClassifier';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { reportWorkspaceSyncError } from './workspaceSyncStatus';
 
 export interface SalesActivityRecord extends ClassifiedSalesActivity {
   id: string;
@@ -63,6 +64,7 @@ export async function loadSalesActivities(userId?: string | null): Promise<Sales
     try {
       return await loadCloudActivities(userId as string);
     } catch (error) {
+      reportWorkspaceSyncError();
       debugSalesActivityStore('cloud load failed; falling back to local', { message: getErrorMessage(error) });
       return loadLocalActivities();
     }
@@ -88,6 +90,7 @@ export async function saveSalesActivity(
       invalidateWorkspaceDataCache();
       return { record, mode: 'cloud' };
     } catch (error) {
+      reportWorkspaceSyncError();
       const record = createLocalActivity(activity);
       saveLocalActivityRecord(record);
       invalidateWorkspaceDataCache();

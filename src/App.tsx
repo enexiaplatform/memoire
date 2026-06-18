@@ -2,11 +2,19 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
+import { isFounderWorkspaceEnabled } from './lib/demoMode';
 
 const LandingPage = lazy(() => import('./pages/LandingPage').then((module) => ({ default: module.LandingPage })));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })));
 const LoginPage = lazy(() => import('./features/auth/LoginPage').then((module) => ({ default: module.LoginPage })));
 const SignupPage = lazy(() => import('./features/auth/SignupPage').then((module) => ({ default: module.SignupPage })));
 const VerifyEmailPage = lazy(() => import('./features/auth/VerifyEmailPage').then((module) => ({ default: module.VerifyEmailPage })));
+const ForgotPasswordPage = lazy(() =>
+  import('./features/auth/ForgotPasswordPage').then((module) => ({ default: module.ForgotPasswordPage })),
+);
+const ResetPasswordPage = lazy(() =>
+  import('./features/auth/ResetPasswordPage').then((module) => ({ default: module.ResetPasswordPage })),
+);
 const PricingPage = lazy(() => import('./features/pricing/PricingPage').then((module) => ({ default: module.PricingPage })));
 const DemoEntryPage = lazy(() => import('./features/demo/DemoEntryPage').then((module) => ({ default: module.DemoEntryPage })));
 const EarlyAccessRequestPage = lazy(() =>
@@ -51,6 +59,9 @@ const PipelineReviewPackPage = lazy(() =>
 const FirstPipelineReviewFlow = lazy(() =>
   import('./features/onboarding/FirstPipelineReviewFlow').then((module) => ({ default: module.FirstPipelineReviewFlow })),
 );
+const SalesOperatingSetupPage = lazy(() =>
+  import('./features/onboarding/SalesOperatingSetupPage').then((module) => ({ default: module.SalesOperatingSetupPage })),
+);
 
 function App() {
   return (
@@ -62,6 +73,8 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/demo" element={<DemoEntryPage />} />
           <Route path="/request-access" element={<EarlyAccessRequestPage />} />
@@ -81,7 +94,10 @@ function App() {
             <Route index element={<Navigate to="/app/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="demo-guide" element={<DemoGuidePage />} />
-            <Route path="validation-feedback" element={<ValidationFeedbackPage />} />
+            <Route
+              path="validation-feedback"
+              element={isFounderWorkspaceEnabled ? <ValidationFeedbackPage /> : <Navigate to="/app/dashboard" replace />}
+            />
             <Route path="today" element={<Navigate to="/app/dashboard" replace />} />
             <Route path="capture" element={<DailyCapturePage />} />
             <Route path="calendar" element={<SalesActivityCalendarPage />} />
@@ -93,6 +109,7 @@ function App() {
             <Route path="accounts/:accountId" element={<LegacyAccountRouteRedirect />} />
             <Route path="opportunities" element={<OpportunitiesPage />} />
             <Route path="onboarding/pipeline-review" element={<FirstPipelineReviewFlow />} />
+            <Route path="onboarding/sales-operating-setup" element={<SalesOperatingSetupPage />} />
             <Route path="stakeholders" element={<StakeholdersPage />} />
             <Route path="objections" element={<ObjectionsPage />} />
             <Route path="pipeline-defense" element={<PipelineReviewDefenseBriefPage />} />
@@ -111,8 +128,7 @@ function App() {
             <Route path="search" element={<Navigate to="/app/ask" replace />} />
           </Route>
 
-          {/* Catch-all redirect */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

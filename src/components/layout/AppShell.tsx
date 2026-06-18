@@ -10,9 +10,17 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      <a href="#app-main-content" className="skip-link">
+        Skip to main content
+      </a>
       <Sidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <TopNav onOpenMenu={() => setMobileNavOpen(true)} />
-      <main className="relative ml-0 flex min-h-screen min-w-0 flex-1 flex-col pt-16 lg:ml-[220px]">
+      <main
+        id="app-main-content"
+        tabIndex={-1}
+        aria-label="Memoire workspace"
+        className="relative ml-0 flex min-h-screen min-w-0 flex-1 flex-col pt-16 outline-none lg:ml-[220px]"
+      >
         <DemoModeBanner />
         <div className="flex-1">
           <Suspense fallback={<AppContentLoading />}>

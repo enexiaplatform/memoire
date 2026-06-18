@@ -9,6 +9,7 @@ export const DEMO_AUTH_KEY = 'memoire_demo_auth';
 export const DEMO_WORKSPACE_KEY = 'memoire_demo_workspace';
 export const DEMO_MODE_CHANGED_EVENT = 'memoire:demo-mode-changed';
 const SAMPLE_DATA_FLAG_KEY = 'memoire.sampleData.loaded';
+let demoWorkspaceCleanupPromise: Promise<boolean> | null = null;
 
 const runtimeDemoWorkspace =
   typeof window !== 'undefined' &&
@@ -66,4 +67,31 @@ export function clearDemoWorkspaceMode() {
   window.localStorage.removeItem(DEMO_WORKSPACE_KEY);
   window.dispatchEvent(new CustomEvent(DEMO_MODE_CHANGED_EVENT));
   return hadDemoWorkspace;
+}
+
+export async function clearDemoWorkspaceForAccount() {
+  if (typeof window === 'undefined') return false;
+  if (demoWorkspaceCleanupPromise) return demoWorkspaceCleanupPromise;
+
+  demoWorkspaceCleanupPromise = (async () => {
+    const hadDemoWorkspace = isDemoWorkspaceActive();
+    try {
+      clearDemoWorkspaceMode();
+
+      if (window.localStorage.getItem(SAMPLE_DATA_FLAG_KEY) === 'true') {
+        const { clearSampleDataset } = await import('../utils/sampleData');
+        clearSampleDataset();
+      }
+    } catch {
+      // Demo cleanup must never block a successful account authentication.
+    }
+
+    return hadDemoWorkspace;
+  })().finally(() => {
+    window.setTimeout(() => {
+      demoWorkspaceCleanupPromise = null;
+    }, 0);
+  });
+
+  return demoWorkspaceCleanupPromise;
 }

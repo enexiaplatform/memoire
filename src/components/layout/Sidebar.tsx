@@ -5,6 +5,7 @@ import { useAuthContext } from '../../auth/authContext';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 import { prefetchAppRoute } from '../../utils/routePrefetch';
 import { useDemoWorkspaceMode } from '../../hooks/useDemoWorkspaceMode';
+import { BrandWordmark } from '../brand/BrandWordmark';
 
 const primarySections = [
   {
@@ -48,6 +49,17 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     if (hasActiveSecondaryRoute) setMoreOpen(true);
   }, [hasActiveSecondaryRoute]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [isOpen, onClose]);
+
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     `relative flex items-center gap-3 px-5 py-2.5 text-[14px] font-medium transition-all ${
       isActive ? 'bg-white/10 text-white' : 'text-white/55 hover:bg-white/5 hover:text-white/90'
@@ -67,9 +79,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         isOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
       <div className="flex h-16 items-center justify-between border-b border-[#243447] px-5">
-        <span className="brand-gradient-text text-2xl font-extrabold tracking-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
-          Memoire
-        </span>
+        <BrandWordmark className="text-2xl" />
         <button type="button" onClick={onClose} className="rounded-md p-1.5 text-white/60 hover:bg-white/10 hover:text-white lg:hidden" title="Close navigation">
           <X className="h-5 w-5" />
         </button>

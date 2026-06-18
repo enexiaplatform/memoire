@@ -2,6 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { loadInteractiveDemoWorkspace } from '../../features/v31/localStore';
+import { isDemoWorkspaceActive } from '../../lib/demoMode';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -11,7 +12,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, session, loading, signOut } = useAuth();
   const location = useLocation();
   const [slowLoad, setSlowLoad] = useState(false);
-  const allowsLocalFirstAccess = isLocalFirstAppRoute(location.pathname);
+  const allowsDemoAccess = isDemoWorkspaceActive();
 
   useEffect(() => {
     if (!loading) {
@@ -27,7 +28,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     window.location.replace('/app/dashboard');
   };
 
-  if (allowsLocalFirstAccess) {
+  if (allowsDemoAccess) {
     return <>{children}</>;
   }
 
@@ -60,29 +61,6 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   return <>{children}</>;
-}
-
-function isLocalFirstAppRoute(pathname: string) {
-  return [
-    '/app/dashboard',
-    '/app/demo-guide',
-    '/app/validation-feedback',
-    '/app/today',
-    '/app/pipeline-defense',
-    '/app/capture',
-    '/app/calendar',
-    '/app/reviews',
-    '/app/playbook',
-    '/app/assets',
-    '/app/opportunities',
-    '/app/onboarding/pipeline-review',
-    '/app/stakeholders',
-    '/app/objections',
-    '/app/accounts',
-    '/app/ask',
-    '/app/journey',
-    '/app/settings',
-  ].some((route) => pathname === route || pathname.startsWith(`${route}/`));
 }
 
 function LoadingFallback({

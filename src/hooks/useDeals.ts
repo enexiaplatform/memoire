@@ -1,15 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import type { Deal } from '../types/Deal';
 
 export function useDeals(filters?: { outcome?: string; revenue_band?: string }) {
   const { user } = useAuth();
+  const outcomeFilter = filters?.outcome;
+  const revenueBandFilter = filters?.revenue_band;
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDeals = async () => {
+  const fetchDeals = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     setError(null);
@@ -24,11 +26,11 @@ export function useDeals(filters?: { outcome?: string; revenue_band?: string }) 
         .eq('user_id', user.id)
         .order('close_date', { ascending: false });
 
-      if (filters?.outcome) {
-        query = query.eq('outcome', filters.outcome);
+      if (outcomeFilter) {
+        query = query.eq('outcome', outcomeFilter);
       }
-      if (filters?.revenue_band) {
-        query = query.eq('revenue_band', filters.revenue_band);
+      if (revenueBandFilter) {
+        query = query.eq('revenue_band', revenueBandFilter);
       }
 
       const { data, error: fetchError } = await query;
@@ -41,11 +43,11 @@ export function useDeals(filters?: { outcome?: string; revenue_band?: string }) 
     } finally {
       setLoading(false);
     }
-  };
+  }, [outcomeFilter, revenueBandFilter, user]);
 
   useEffect(() => {
-    fetchDeals();
-  }, [user, filters?.outcome, filters?.revenue_band]);
+    void fetchDeals();
+  }, [fetchDeals]);
 
   return { deals, loading, error, refetch: fetchDeals };
 }
@@ -56,7 +58,7 @@ export function useDeal(dealId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDeal = async () => {
+  const fetchDeal = useCallback(async () => {
     if (!user || !dealId) return;
     setLoading(true);
     setError(null);
@@ -80,11 +82,11 @@ export function useDeal(dealId: string | undefined) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dealId, user]);
 
   useEffect(() => {
-    fetchDeal();
-  }, [user, dealId]);
+    void fetchDeal();
+  }, [fetchDeal]);
 
   return { deal, loading, error, refetch: fetchDeal };
 }

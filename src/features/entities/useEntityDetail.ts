@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import type { EntityWithMeta, RelationshipDetails } from './types';
@@ -12,7 +12,7 @@ export function useEntityDetail(entityId: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDetail = async () => {
+  const fetchDetail = useCallback(async () => {
     if (!user || !entityId) return;
     setLoading(true);
     setError(null);
@@ -86,11 +86,11 @@ export function useEntityDetail(entityId: string) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [entityId, user]);
 
   useEffect(() => {
-    fetchDetail();
-  }, [user, entityId]);
+    void fetchDetail();
+  }, [fetchDetail]);
 
   return { entity, relationships, captures, deals, loading, error, refetch: fetchDetail };
 }

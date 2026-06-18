@@ -1,4 +1,11 @@
 import type { OpportunityRecommendedAction } from '../utils/opportunityActionPlan';
+import {
+  claimLocalCollectionForUser,
+  loadCloudJsonCollection,
+  mergeCloudJsonRecords,
+  syncCloudJsonCollectionForCurrentUser,
+  upsertCloudJsonCollection,
+} from './cloudJsonCollectionStore';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 
 export const ACTION_OUTCOME_STORAGE_KEY = 'memoire.actionOutcomes.v1';
@@ -59,10 +66,28 @@ export function loadActionOutcomes() {
   }
 }
 
+export async function loadActionOutcomesForUser(userId: string) {
+  const local = loadActionOutcomes();
+  const cloud = await loadCloudJsonCollection<ActionOutcomeRecord>('action_outcomes', userId);
+  const recordsToMerge = claimLocalCollectionForUser('action_outcomes', userId) ? local : [];
+  const merged = mergeCloudJsonRecords(recordsToMerge, cloud)
+    .map(sanitizeOutcome)
+    .filter((outcome): outcome is ActionOutcomeRecord => Boolean(outcome));
+  persistActionOutcomes(merged, false);
+  await upsertCloudJsonCollection('action_outcomes', userId, merged);
+  return merged;
+}
+
 export function saveActionOutcomes(outcomes: ActionOutcomeRecord[]) {
+  return persistActionOutcomes(outcomes, true);
+}
+
+function persistActionOutcomes(outcomes: ActionOutcomeRecord[], syncCloud: boolean) {
   if (typeof window === 'undefined') return false;
   try {
-    window.localStorage.setItem(ACTION_OUTCOME_STORAGE_KEY, JSON.stringify(outcomes.map(sanitizeOutcome).filter(Boolean)));
+    const sanitized = outcomes.map(sanitizeOutcome).filter((outcome): outcome is ActionOutcomeRecord => Boolean(outcome));
+    window.localStorage.setItem(ACTION_OUTCOME_STORAGE_KEY, JSON.stringify(sanitized));
+    if (syncCloud) syncCloudJsonCollectionForCurrentUser('action_outcomes', sanitized);
     invalidateWorkspaceDataCache();
     return true;
   } catch {

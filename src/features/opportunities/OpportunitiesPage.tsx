@@ -23,6 +23,7 @@ import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
+import { trackProductEvent, type AnalyticsDataMode } from '../../utils/productAnalytics';
 import {
   canUseOpportunityCloudStore,
   createOpportunity,
@@ -187,6 +188,11 @@ export function OpportunitiesPage() {
   const [csvTemplateCopyStatus, setCsvTemplateCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
+  const getAnalyticsDataMode = (syncIssue = false): AnalyticsDataMode => {
+    if (sampleDataActive) return 'demo-local';
+    if (syncIssue) return 'sync-issue';
+    return dataUserId ? 'cloud-browser' : 'browser-only';
+  };
 
   const refreshOpportunities = async () => {
     const cachedData = getCachedSalesWorkspaceData(dataUserId);
@@ -324,6 +330,9 @@ export function OpportunitiesPage() {
 
   useEffect(() => {
     markFirstPipelineReviewStepComplete('hasReviewedOpportunities');
+  }, []);
+
+  useEffect(() => {
     if (searchParams.get('import') === 'csv') {
       openCsvImport();
       setSearchParams({}, { replace: true });
@@ -336,7 +345,7 @@ export function OpportunitiesPage() {
     }
     // Query params are only used as one-shot entry points.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams.toString()]);
 
   const parseCsvImport = () => {
     if (csvDetectedHeaders.length === 0) {
@@ -506,6 +515,10 @@ export function OpportunitiesPage() {
     markFirstPipelineReviewStepComplete('hasImportedOrAddedOpportunities');
     markTrialActivationChecklistItemComplete('load-demo-or-import-csv');
     markPipelineReviewHabitStepComplete('refreshedPipelineAt');
+    trackProductEvent(
+      'csv_import_completed',
+      getAnalyticsDataMode(results.some((result) => Boolean(result.warning))),
+    );
   };
 
   const toggleRefreshField = (itemId: string, field: OpportunityRefreshField) => {
@@ -586,6 +599,10 @@ export function OpportunitiesPage() {
     markFirstPipelineReviewStepComplete('hasImportedOrAddedOpportunities');
     markTrialActivationChecklistItemComplete('load-demo-or-import-csv');
     markPipelineReviewHabitStepComplete('refreshedPipelineAt');
+    trackProductEvent(
+      'csv_import_completed',
+      getAnalyticsDataMode(Boolean(warning)),
+    );
   };
 
   const markWeakDealsReviewed = () => {
@@ -714,6 +731,7 @@ export function OpportunitiesPage() {
       markFirstPipelineReviewStepComplete('hasGeneratedPipelineDefense');
       markTrialActivationChecklistItemComplete('generate-defense-brief');
       markPipelineReviewHabitStepComplete('generatedBriefAt');
+      trackProductEvent('pipeline_defense_brief_created', getAnalyticsDataMode());
       window.setTimeout(() => navigate('/app/pipeline-defense'), 150);
     } catch (error) {
       const localBrief = createPipelineDefenseBrief(draftBrief);
@@ -723,6 +741,7 @@ export function OpportunitiesPage() {
       markFirstPipelineReviewStepComplete('hasGeneratedPipelineDefense');
       markTrialActivationChecklistItemComplete('generate-defense-brief');
       markPipelineReviewHabitStepComplete('generatedBriefAt');
+      trackProductEvent('pipeline_defense_brief_created', getAnalyticsDataMode(true));
       if (import.meta.env.DEV) {
         console.debug('[Opportunities] defense brief cloud create failed', { message: error instanceof Error ? error.message : 'Unknown error' });
       }

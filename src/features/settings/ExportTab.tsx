@@ -3,6 +3,9 @@ import JSZip from 'jszip';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 
+const SUPPORT_EMAIL = 'hello@memoire.app';
+const SUPPORT_MAILTO = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Memoire early-access support')}`;
+
 export function ExportTab() {
   const { user } = useAuth();
   const [isExporting, setIsExporting] = useState(false);
@@ -18,7 +21,7 @@ export function ExportTab() {
     try {
       const localData = collectLocalMemoireData();
       let cloudData: unknown = null;
-      let cloudWarning = '';
+      const cloudWarning = '';
 
       if (user) {
         const { data: { session } } = await supabase.auth.getSession();
@@ -34,7 +37,12 @@ export function ExportTab() {
         if (response.ok) {
           cloudData = await response.json();
         } else {
-          cloudWarning = 'Cloud export was unavailable. The browser workspace is still included.';
+          const errorBody = await response.json().catch(() => null);
+          const errorMessage =
+            errorBody && typeof errorBody === 'object' && 'error' in errorBody && typeof errorBody.error === 'string'
+              ? errorBody.error
+              : 'Cloud export was unavailable. Please retry before relying on this export.';
+          throw new Error(errorMessage);
         }
       }
 
@@ -124,6 +132,25 @@ export function ExportTab() {
         </div>
         {statusMessage && <p className="mt-4 rounded-lg bg-blue-50 p-3 text-sm font-semibold text-blue-700">{statusMessage}</p>}
         {exportError && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-700">{exportError}</p>}
+      </section>
+
+      <section className="rounded-lg border border-blue-100 bg-blue-50/50 p-6 shadow-sm sm:p-8">
+        <h2 className="text-lg font-bold text-navy">Support package</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
+          For early-access support, include what you were doing, the approximate time, the visible error message,
+          and whether you were signed in or using local/demo mode. Download an export first if support needs
+          workspace evidence for sync, deletion, or data-recovery issues.
+        </p>
+        <a
+          href={SUPPORT_MAILTO}
+          className="mt-4 inline-flex rounded-full bg-white px-4 py-2 text-sm font-bold text-brand-blue ring-1 ring-blue-100 hover:bg-blue-100"
+        >
+          Contact support
+        </a>
+        <p className="mt-3 text-xs leading-5 text-gray-500">
+          Exports may contain customer and pipeline information. Only share an export when you choose to include
+          that data for troubleshooting.
+        </p>
       </section>
 
       <section className="rounded-lg border border-red-200 bg-white p-6 shadow-sm sm:p-8">
@@ -225,5 +252,7 @@ function buildExportReadme(exportedAt: string, signedIn: boolean, warning: strin
     warning ? `Warning: ${warning}` : '',
     '',
     'This archive may contain sensitive customer and pipeline information. Store it securely.',
+    'For support: share this archive only if you choose to include workspace data for troubleshooting.',
+    `Support contact: ${SUPPORT_EMAIL}`,
   ].filter(Boolean).join('\n');
 }

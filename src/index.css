@@ -4,6 +4,22 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --navy: #1B2B3A;
+  --navy-light: #243447;
+  --navy-dark: #0F1C28;
+  --brand-blue: #1976D2;
+  --brand-blue-dark: #1565C0;
+  --page: #F8FAFC;
+  --surface: #FFFFFF;
+  --border: #E5E7EB;
+  --fg1: #0F172A;
+  --fg2: #374151;
+  --fg3: #6B7280;
+  --brand-gradient: linear-gradient(135deg, #43A047, #00ACC1, #1976D2, #3949AB, #7B1FA2, #C2185B, #FF5722);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /* ── Enexia Design System — Global Base ── */
 body {
   font-family: 'Inter', system-ui, sans-serif;
@@ -17,27 +33,54 @@ h1, h2, h3, h4, h5, h6 {
   font-family: 'Outfit', sans-serif;
 }
 
+button {
+  font-family: 'Outfit', sans-serif;
+}
+
 code, pre, .mono {
   font-family: 'JetBrains Mono', monospace;
 }
 
 /* ── Brand gradient utility ── */
 .brand-gradient {
-  background: linear-gradient(135deg, #43A047, #00ACC1, #1976D2, #3949AB, #7B1FA2, #C2185B, #FF5722);
+  background: var(--brand-gradient);
 }
 
 .brand-gradient-text {
-  background: linear-gradient(135deg, #43A047, #00ACC1, #1976D2, #3949AB, #7B1FA2, #C2185B, #FF5722);
+  background: var(--brand-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  display: inline-block;
+  padding-right: 0.08em;
+}
+
+.skip-link {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: 100;
+  transform: translateY(-150%);
+  border-radius: 999px;
+  background: #fff;
+  padding: 0.625rem 1rem;
+  color: var(--navy);
+  font-size: 0.875rem;
+  font-weight: 800;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+  outline: 3px solid rgba(25, 118, 210, 0.35);
+  outline-offset: 3px;
 }
 
 /* ── Gradient border card ── */
 .gradient-border-card {
   padding: 2px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #43A047, #00ACC1, #1976D2, #3949AB, #7B1FA2, #C2185B, #FF5722);
+  background: var(--brand-gradient);
 }
 
 .gradient-border-card-inner {
@@ -48,7 +91,7 @@ code, pre, .mono {
 
 /* ── Micro transitions ── */
 * {
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-timing-function: var(--ease-standard);
 }
 
 .print-only {

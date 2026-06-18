@@ -4,6 +4,14 @@ import {
   type ShareablePipelineDefenseBrief,
 } from './shareablePipelineDefenseBrief';
 import { getCurrentPipelineReviewWeekId } from './pipelineReviewHabit';
+import {
+  claimLocalCollectionForUser,
+  deleteCloudJsonRecordForCurrentUser,
+  loadCloudJsonCollection,
+  mergeCloudJsonRecords,
+  syncCloudJsonCollectionForCurrentUser,
+  upsertCloudJsonCollection,
+} from '../services/cloudJsonCollectionStore';
 
 export const REVIEW_PACK_STORAGE_KEY = 'memoire.reviewPacks.v1';
 export const REVIEW_PACKS_UPDATED_EVENT = 'memoire:review-packs-updated';
@@ -39,6 +47,8 @@ export type ReviewPackSnapshot = {
   nextDefenseActions: string[];
   deals: ReviewPackDealSnapshot[];
   sourceBriefId?: string;
+  source?: 'demo' | 'user';
+  isSample?: boolean;
 };
 
 export function createReviewPackSnapshot(input: {
@@ -48,6 +58,8 @@ export function createReviewPackSnapshot(input: {
   id?: string;
   createdAt?: string;
   weekId?: string;
+  source?: 'demo' | 'user';
+  isSample?: boolean;
 }): ReviewPackSnapshot {
   const now = new Date().toISOString();
   const title = `${input.brief?.title || 'Pipeline Review Pack'} — ${input.brief?.weekLabel || input.weekId || getCurrentPipelineReviewWeekId()}`;
@@ -89,6 +101,8 @@ export function createReviewPackSnapshot(input: {
       nextAction: deal.nextDefenseAction,
     })),
     sourceBriefId: input.brief?.id,
+    source: input.source,
+    isSample: input.isSample,
   };
 }
 
@@ -109,11 +123,32 @@ export function loadReviewPacks(): ReviewPackSnapshot[] {
   }
 }
 
-export function saveReviewPack(pack: ReviewPackSnapshot): ReviewPackSnapshot[] {
-  return persistReviewPacks([pack, ...loadReviewPacks()]);
+export async function loadReviewPacksForUser(userId: string) {
+  const local = loadReviewPacks();
+  const cloud = await loadCloudJsonCollection<ReviewPackSnapshot>('review_packs', userId);
+  const recordsToMerge = claimLocalCollectionForUser('review_packs', userId) ? local.filter(isUserReviewPack) : [];
+  const merged = mergeCloudJsonRecords(recordsToMerge, cloud)
+    .map(sanitizeReviewPack)
+    .filter((pack): pack is ReviewPackSnapshot => Boolean(pack));
+  persistReviewPacks(merged, false);
+  await upsertCloudJsonCollection('review_packs', userId, merged);
+  return merged;
 }
 
-export function updateReviewPack(packId: string, nextPack: ReviewPackSnapshot): ReviewPackSnapshot[] {
+export async function loadReviewPacksForWorkspace(userId?: string | null, sampleDataActive = false) {
+  if (!userId || sampleDataActive) return loadReviewPacks();
+  try {
+    return await loadReviewPacksForUser(userId);
+  } catch {
+    return loadReviewPacks();
+  }
+}
+
+export function saveReviewPack(pack: ReviewPackSnapshot, options: { syncCloud?: boolean } = {}): ReviewPackSnapshot[] {
+  return persistReviewPacks([pack, ...loadReviewPacks()], options.syncCloud);
+}
+
+export function updateReviewPack(packId: string, nextPack: ReviewPackSnapshot, options: { syncCloud?: boolean } = {}): ReviewPackSnapshot[] {
   const packs = loadReviewPacks();
   const existing = packs.find((pack) => pack.id === packId);
   const updatedPack: ReviewPackSnapshot = {
@@ -125,11 +160,13 @@ export function updateReviewPack(packId: string, nextPack: ReviewPackSnapshot): 
   return persistReviewPacks([
     updatedPack,
     ...packs.filter((pack) => pack.id !== packId),
-  ]);
+  ], options.syncCloud);
 }
 
-export function deleteReviewPack(packId: string): ReviewPackSnapshot[] {
-  return persistReviewPacks(loadReviewPacks().filter((pack) => pack.id !== packId));
+export function deleteReviewPack(packId: string, options: { syncCloud?: boolean } = {}): ReviewPackSnapshot[] {
+  const packs = persistReviewPacks(loadReviewPacks().filter((pack) => pack.id !== packId), options.syncCloud);
+  if (options.syncCloud !== false) deleteCloudJsonRecordForCurrentUser('review_packs', packId);
+  return packs;
 }
 
 export function getReviewPackById(packId?: string): ReviewPackSnapshot | null {
@@ -204,7 +241,7 @@ export function formatReviewPackDate(value?: string) {
   }
 }
 
-function persistReviewPacks(packs: ReviewPackSnapshot[]) {
+function persistReviewPacks(packs: ReviewPackSnapshot[], syncCloud = true) {
   const sanitized = packs
     .map(sanitizeReviewPack)
     .filter((pack): pack is ReviewPackSnapshot => Boolean(pack))
@@ -212,6 +249,7 @@ function persistReviewPacks(packs: ReviewPackSnapshot[]) {
 
   if (canUseStorage()) {
     window.localStorage.setItem(REVIEW_PACK_STORAGE_KEY, JSON.stringify(sanitized));
+    if (syncCloud) syncCloudJsonCollectionForCurrentUser('review_packs', sanitized);
     window.dispatchEvent(new CustomEvent(REVIEW_PACKS_UPDATED_EVENT, { detail: sanitized }));
   }
   return sanitized;
@@ -242,6 +280,8 @@ function sanitizeReviewPack(value: unknown): ReviewPackSnapshot | null {
     nextDefenseActions: normalizeStringArray(candidate.nextDefenseActions),
     deals: Array.isArray(candidate.deals) ? candidate.deals.map(sanitizeDeal).filter((deal): deal is ReviewPackDealSnapshot => Boolean(deal)) : [],
     sourceBriefId: typeof candidate.sourceBriefId === 'string' ? candidate.sourceBriefId : undefined,
+    source: candidate.source === 'demo' ? 'demo' : candidate.source === 'user' ? 'user' : undefined,
+    isSample: candidate.isSample === true,
   };
 }
 
@@ -269,6 +309,16 @@ function summarizeQualityChecklist(shareable: ShareablePipelineDefenseBrief) {
 
 function canUseStorage() {
   return typeof window !== 'undefined' && Boolean(window.localStorage);
+}
+
+function isUserReviewPack(pack: ReviewPackSnapshot) {
+  if (pack.source === 'demo' || pack.isSample === true) return false;
+  const sampleText = [
+    pack.id,
+    pack.title,
+    pack.sourceBriefId,
+  ].join(' ').toLowerCase();
+  return !/(^|\s)(demo|sample)(-| |\b)/.test(sampleText);
 }
 
 function normalizeNumber(value: unknown) {

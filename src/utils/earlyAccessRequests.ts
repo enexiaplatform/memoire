@@ -121,6 +121,39 @@ export function saveEarlyAccessRequest(input: EarlyAccessRequestInput): EarlyAcc
   return record;
 }
 
+export async function submitEarlyAccessRequest(input: EarlyAccessRequestInput, consent: boolean, website = '') {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 15_000);
+  try {
+    const response = await fetch('/api/request-access', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        name: input.name,
+        workEmail: input.workEmail,
+        role: input.role,
+        currentTool: input.currentTool,
+        biggestPain: input.biggestPain,
+        preferredUseCase: input.preferredUseCase,
+        consent,
+        website,
+      }),
+    });
+    const payload = await response.json().catch(() => ({})) as { error?: string };
+    if (!response.ok) {
+      throw new Error(payload.error || 'We could not submit your request. Please retry.');
+    }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('The request took too long. Please check your connection and retry.');
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
 export function generateAllEarlyAccessRequestsSummary(records: EarlyAccessRequestRecord[]) {
   if (records.length === 0) {
     return 'No Memoire early access requests are saved in this browser.';
@@ -139,13 +172,9 @@ export function generateEarlyAccessRequestSummary(record: EarlyAccessRequestReco
     `Name: ${record.name || 'Not provided'}`,
     `Work email: ${record.workEmail || 'Not provided'}`,
     `Role: ${record.role}`,
-    `Segment / industry: ${record.segment}`,
     `Current CRM or pipeline tool: ${record.currentTool || 'Not provided'}`,
-    `Pipeline review frequency: ${record.pipelineReviewFrequency}`,
     `Biggest pipeline review pain: ${record.biggestPain}`,
-    `Interested workflow: ${record.interestedMost}`,
     `Preferred use case: ${record.preferredUseCase || 'Not provided'}`,
-    `Budget owner: ${record.budgetOwner}`,
     `Created at: ${record.createdAt}`,
     '',
     'Privacy note: This request does not include confidential customer data.',

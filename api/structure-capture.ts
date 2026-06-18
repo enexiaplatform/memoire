@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { getBearerToken, verifyUserToken } from './_auth.js';
-import { enforceRateLimit } from './_rateLimit.js';
+import { enforceRateLimit, rateLimitExceeded } from './_rateLimit.js';
 
 interface ApiRequest {
   method?: string;
@@ -14,6 +14,7 @@ interface ApiRequest {
 interface ApiResponse {
   status: (code: number) => ApiResponse;
   json: (body: unknown) => void;
+  setHeader?: (name: string, value: string) => void;
 }
 
 interface AnthropicTextBlock {
@@ -138,7 +139,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (!user) return res.status(401).json({ error: 'Authentication required' });
   const rateLimit = enforceRateLimit(req, 'structure-capture', user.id, 15);
   if (!rateLimit.allowed) {
-    return res.status(429).json({ error: 'Too many requests', retryAfterSeconds: rateLimit.retryAfterSeconds });
+    return rateLimitExceeded(res, rateLimit);
   }
 
   const { rawNote } = req.body || {};

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { BrandWordmark } from '../brand/BrandWordmark';
 
 export function MarketingNav() {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,17 +10,17 @@ export function MarketingNav() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex-shrink-0">
-            <Link to="/" className="text-xl font-bold text-gray-900">
-              Memoire
+            <Link to="/" aria-label="Memoire home">
+              <BrandWordmark className="text-2xl" />
             </Link>
           </div>
           <div className="hidden md:flex items-center space-x-6">
             <Link to="/demo" className="font-medium text-gray-600 hover:text-gray-900">Try Demo</Link>
             <a href="/#pricing" className="font-medium text-gray-600 hover:text-gray-900">Pricing</a>
-            <Link to="/app/dashboard" className="font-medium text-gray-600 hover:text-gray-900">Open App</Link>
             <Link to="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</Link>
-            <Link to="/request-access" className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-              Request Access
+            <Link to="/request-access" className="font-medium text-gray-600 hover:text-gray-900">Request Access</Link>
+            <Link to="/signup" className="rounded-full bg-brand-blue px-4 py-2 font-display font-semibold text-white transition-colors hover:bg-brand-blue-dark active:scale-[0.98]">
+              Create Account
             </Link>
           </div>
           <div className="md:hidden flex items-center">
@@ -42,8 +43,8 @@ export function MarketingNav() {
           <Link to="/login" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md">Log in</Link>
           <Link to="/demo" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Try Demo</Link>
           <a href="/#pricing" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Pricing</a>
-          <Link to="/app/dashboard" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Open App</Link>
-          <Link to="/request-access" className="block px-3 py-2 text-base font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-md">Request Access</Link>
+          <Link to="/request-access" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Request Access</Link>
+          <Link to="/signup" className="block rounded-full px-3 py-2 text-base font-semibold text-brand-blue hover:bg-blue-50 hover:text-brand-blue-dark">Create Account</Link>
         </div>
       )}
     </nav>

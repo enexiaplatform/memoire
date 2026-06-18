@@ -4,7 +4,15 @@ Memoire is a Career Knowledge Vault + Daily Sales Action Engine for individual B
 
 Core statement:
 
-> Memoire is a personal sales memory system that turns every customer interaction into action, insight, and lifelong career knowledge.
+> Your CRM tracks deals for the company. Memoire helps you remember context, defend pipeline, prepare follow-ups, and run better deal reviews.
+
+## Launch Status
+
+Memoire is currently an intentional private beta. Public routes explain the product and support demo and access-request flows, while search indexing remains disabled until checkout, onboarding, and launch QA are complete.
+
+## Brand System
+
+The Memoire brand guide and machine-readable tokens live in `docs/brand/`. The canonical identity is the Outfit ExtraBold gradient wordmark, supported by the navy and brand-blue product palette.
 
 ## V1 Scope
 

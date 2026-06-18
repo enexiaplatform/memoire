@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet-async';
-import { Link, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   BadgeCheck,
@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { MarketingNav } from '../components/marketing/MarketingNav';
 import { Footer } from '../components/marketing/Footer';
-import { useAuthContext } from '../auth/authContext';
 
 const workflowSteps = [
   {
@@ -130,7 +129,7 @@ const faqs = [
   {
     question: 'Where is my data stored?',
     answer:
-      'Memoire supports local-first browser storage and account sync where configured. Demo sandbox data stays local in your browser.',
+      'Demo sandbox data stays local in your browser. Signed-in account work uses cloud sync where configured, with local fallback behavior shown inside the app.',
   },
   {
     question: 'Can I use CSV exports from Salesforce, HubSpot, or Excel?',
@@ -155,24 +154,19 @@ const faqs = [
 ];
 
 export function LandingPage() {
-  const { loading, isAuthenticated } = useAuthContext();
-
-  if (!loading && isAuthenticated) {
-    return <Navigate to="/app/dashboard" replace />;
-  }
-
   return (
     <div className="min-h-screen bg-white text-slate-950">
       <Helmet>
-        <title>Memoire - Personal Pipeline Review OS for B2B Sales</title>
+        <title>Memoire - Personal Sales Memory OS for B2B Sellers</title>
         <meta
           name="description"
-          content="Memoire helps B2B salespeople import pipeline, capture deal context, detect weak forecast, and generate manager-ready Pipeline Defense Briefs."
+          content="Your CRM tracks deals for the company. Memoire helps B2B sellers remember context, defend pipeline, prepare follow-ups, and run better deal reviews."
         />
-        <meta property="og:title" content="Memoire - Prepare your pipeline review with evidence." />
+        <meta name="robots" content="noindex, nofollow" />
+        <meta property="og:title" content="Memoire - Personal Sales Memory OS for B2B Sellers" />
         <meta
           property="og:description"
-          content="A personal sales memory OS for pipeline defense, weak deal review, MEDDIC gaps, objections, proof assets, and review packs."
+          content="Remember deal context, defend pipeline, prepare follow-ups, and run better weekly reviews without replacing your CRM."
         />
         <meta property="og:type" content="website" />
       </Helmet>
@@ -186,27 +180,29 @@ export function LandingPage() {
           </div>
           <div className="relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1fr_0.95fr] lg:items-center">
             <div>
-              <p className="text-sm font-bold uppercase tracking-[0.28em] text-cyan-200">Personal pipeline review OS</p>
+              <p className="text-sm font-bold uppercase tracking-[0.28em] text-cyan-200">
+                Personal Sales Memory OS for B2B sellers
+              </p>
               <h1 className="mt-5 max-w-4xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
-                Prepare your pipeline review without rebuilding your deal story from memory.
+                Remember every deal. Defend your pipeline with evidence.
               </h1>
               <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200">
-                Memoire is a personal pipeline review and sales memory OS for B2B salespeople. Import your pipeline,
-                capture deal context, detect weak forecast, and generate a manager-ready Pipeline Defense Brief.
+                Your CRM tracks deals for the company. Memoire helps you remember context, defend pipeline, prepare
+                follow-ups, and run better deal reviews.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
                   to="/demo"
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-300 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-950/30 transition hover:bg-cyan-200"
                 >
-                  Try the Demo
+                  Try Demo
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
-                  to="/app/dashboard"
+                  to="/demo?sample=1"
                   className="inline-flex items-center justify-center rounded-lg border border-white/20 bg-white/10 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/15"
                 >
-                  Open App
+                  Import Sample Pipeline
                 </Link>
                 <Link
                   to="/request-access"
@@ -216,7 +212,7 @@ export function LandingPage() {
                 </Link>
               </div>
               <p className="mt-5 max-w-2xl text-sm leading-6 text-slate-300">
-                Privacy-first by design: CSV import is a working copy, there is no CRM writeback, and demo data stays local in this browser.
+                Private beta. No CRM writeback, no manager surveillance, and demo data stays local in this browser.
               </p>
             </div>
 
@@ -284,7 +280,7 @@ export function LandingPage() {
               {[
                 ['No CRM writeback', 'Review and prepare without changing source CRM records.'],
                 ['Read-only working copy', 'Use CSV imports from CRM, Excel, or private pipeline sheets.'],
-                ['Local-first workflow', 'Work locally when signed out; sync where account mode is configured.'],
+                ['Private demo sandbox', 'Try sample data locally before sign-in; account work syncs where configured.'],
                 ['Private review preparation', 'Build your deal story before walking into forecast review.'],
               ].map(([title, text]) => (
                 <div key={title} className="rounded-lg border border-slate-200 bg-slate-50 p-5">
@@ -371,15 +367,23 @@ export function LandingPage() {
               ))}
             </div>
             <div className="mt-8 text-center">
-              <Link
-                to="/request-access"
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-700 px-6 py-3 text-sm font-bold text-white transition hover:bg-blue-800"
-              >
-                Request early access
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+              <div className="flex flex-col justify-center gap-3 sm:flex-row">
+                <Link
+                  to="/signup"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-700 px-6 py-3 text-sm font-bold text-white transition hover:bg-blue-800"
+                >
+                  Create early-access account
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  to="/request-access"
+                  className="inline-flex items-center justify-center rounded-lg border border-blue-200 bg-white px-6 py-3 text-sm font-bold text-blue-700 transition hover:bg-blue-50"
+                >
+                  Request guided access
+                </Link>
+              </div>
               <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-500">
-                No payment checkout is active. Tell us your pipeline review use case and what workflow you want to test.
+                No payment checkout is active. Create an account directly, or request guided access for workflow support.
               </p>
             </div>
           </div>
@@ -410,8 +414,7 @@ export function LandingPage() {
               Bring a stronger deal story to your next pipeline review.
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-blue-50">
-              Try the demo sandbox, open the app, or request early access if you want to test Memoire with your real
-              pipeline workflow.
+              Try the demo sandbox, create an early-access account, or request guided support for your real pipeline workflow.
             </p>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <Link
@@ -422,16 +425,16 @@ export function LandingPage() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
-                to="/app/onboarding/pipeline-review"
+                to="/signup"
                 className="inline-flex items-center justify-center rounded-lg border border-white/30 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/10"
               >
-                Start Pipeline Review Flow
+                Create Account
               </Link>
               <Link
                 to="/request-access"
                 className="inline-flex items-center justify-center rounded-lg border border-white/30 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/10"
               >
-                Request Access
+                Request Guided Access
               </Link>
             </div>
           </div>

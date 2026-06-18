@@ -1,20 +1,51 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Clipboard, Printer, Trash2 } from 'lucide-react';
+import { useAuthContext } from '../../auth/authContext';
+import { hasLocalSampleData } from '../../utils/dataMode';
 import { markPipelineReviewHabitStepComplete } from '../../utils/pipelineReviewHabit';
 import {
   deleteReviewPack,
   formatReviewPackDate,
   generateReviewPackMarkdown,
   getReviewPackById,
+  loadReviewPacksForWorkspace,
+  REVIEW_PACKS_UPDATED_EVENT,
   type ReviewPackSnapshot,
 } from '../../utils/reviewPacks';
 
 export function PipelineReviewPackPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user, loading: accountLoading } = useAuthContext();
   const [pack, setPack] = useState<ReviewPackSnapshot | null>(() => getReviewPackById(id));
+  const [loadingPack, setLoadingPack] = useState(true);
   const [copyStatus, setCopyStatus] = useState('');
+
+  useEffect(() => {
+    if (accountLoading) return;
+    let cancelled = false;
+    setLoadingPack(true);
+
+    loadReviewPacksForWorkspace(user?.id, hasLocalSampleData())
+      .then((packs) => {
+        if (cancelled) return;
+        setPack(packs.find((item) => item.id === id) || null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingPack(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accountLoading, id, user?.id]);
+
+  useEffect(() => {
+    const handleUpdate = () => setPack(getReviewPackById(id));
+    window.addEventListener(REVIEW_PACKS_UPDATED_EVENT, handleUpdate);
+    return () => window.removeEventListener(REVIEW_PACKS_UPDATED_EVENT, handleUpdate);
+  }, [id]);
 
   const copyManagerSummary = async () => {
     if (!pack) return;
@@ -39,12 +70,32 @@ export function PipelineReviewPackPage() {
 
   const deletePack = () => {
     if (!pack) return;
-    const confirmed = window.confirm('Delete this saved review pack from this browser?');
+    const sampleDataActive = hasLocalSampleData();
+    const confirmed = window.confirm(
+      sampleDataActive
+        ? 'Delete this saved review pack from this browser?'
+        : 'Delete this saved review pack from your workspace?',
+    );
     if (!confirmed) return;
-    deleteReviewPack(pack.id);
+    deleteReviewPack(pack.id, { syncCloud: !sampleDataActive });
     setPack(null);
     navigate('/app/pipeline-defense');
   };
+
+  if (loadingPack) {
+    return (
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-6 sm:px-6">
+        <Link to="/app/pipeline-defense" className="inline-flex w-fit items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">
+          <ArrowLeft className="h-4 w-4" />
+          Back to Pipeline Defense
+        </Link>
+        <section className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+          <h1 className="text-2xl font-bold text-navy">Loading review pack...</h1>
+          <p className="mt-2 text-sm text-gray-500">Checking this browser and your workspace sync.</p>
+        </section>
+      </div>
+    );
+  }
 
   if (!pack) {
     return (
@@ -55,7 +106,7 @@ export function PipelineReviewPackPage() {
         </Link>
         <section className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
           <h1 className="text-2xl font-bold text-navy">Review pack not found</h1>
-          <p className="mt-2 text-sm text-gray-500">This saved snapshot may have been deleted from this browser.</p>
+          <p className="mt-2 text-sm text-gray-500">This saved snapshot may have been deleted from your workspace.</p>
         </section>
       </div>
     );

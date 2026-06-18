@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { Session, User } from '@supabase/supabase-js';
 import type { UserProfile } from '../types';
 import { pipelineSupabaseConfigMessage, supabaseClient } from '../lib/supabaseClient';
-import { clearDemoWorkspaceMode } from '../lib/demoMode';
+import { clearDemoWorkspaceForAccount, clearDemoWorkspaceMode } from '../lib/demoMode';
 import { AuthContext, type AuthContextValue } from './authContext';
 import { getFriendlyAuthErrorMessage, logAuthDebug, logAuthWarning } from './authErrors';
+import { getPasswordPolicyError } from './passwordPolicy';
 
 const PIPELINE_AUTH_REDIRECT_KEY = 'memoire.pipelineDefenseAuthRedirect.v1';
 const DEFAULT_AUTH_ROUTE = '/app/dashboard';
@@ -55,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         applySession(initialSession);
         setError(null);
         logAuthDebug('auth session loaded', { hasSession: Boolean(initialSession) });
-        completePendingCloudWorkspace(initialSession?.user ?? null);
+        void completePendingCloudWorkspace(initialSession?.user ?? null);
       })
       .catch((sessionError: unknown) => {
         if (cancelled || !mountedRef.current) return;
@@ -73,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       setError(null);
       logAuthDebug('auth state changed', { hasSession: Boolean(nextSession) });
-      completePendingCloudWorkspace(nextSession?.user ?? null);
+      void completePendingCloudWorkspace(nextSession?.user ?? null);
     });
 
     return () => {
@@ -143,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setError(message);
           return { error: { message } };
         }
+        await clearDemoWorkspaceForAccount();
         applySession(data.session);
         return { error: null };
       } catch (signInFailure: unknown) {
@@ -162,6 +164,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setLoading(true);
       setError(null);
+      const passwordError = getPasswordPolicyError(password);
+      if (passwordError) {
+        setLoading(false);
+        setError(passwordError);
+        return { error: { message: passwordError } };
+      }
       try {
         const { data, error: signUpError } = await withTimeout(
           supabaseClient.auth.signUp({
@@ -169,6 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             password,
             options: {
               data: { display_name: displayName || '' },
+              emailRedirectTo: `${window.location.origin}/login?verified=1`,
             },
           }),
           'Signup timed out. Please try again.',
@@ -179,6 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setError(message);
           return { error: { message } };
         }
+        await clearDemoWorkspaceForAccount();
         applySession(data.session);
         return { error: null };
       } catch (signUpFailure: unknown) {
@@ -190,19 +200,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (mountedRef.current) setLoading(false);
       }
     },
-    signInWithGoogle: async () => {
+    signInWithGoogle: async (redirectTo?: string) => {
       if (!supabaseClient) {
         setError(pipelineSupabaseConfigMessage);
         return { error: pipelineSupabaseConfigMessage };
       }
 
       setLoading(true);
-      clearDemoWorkspaceMode();
-      setPendingAuthRedirect(getCurrentAuthDestination());
+      const authDestination = getCurrentAuthDestination(redirectTo);
+      setPendingAuthRedirect(authDestination);
       const { error: signInError } = await supabaseClient.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}${getCurrentAuthDestination()}`,
+          redirectTo: `${window.location.origin}${authDestination}`,
         },
       });
       setLoading(false);
@@ -212,6 +222,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: message };
       }
       return { error: null };
+    },
+    requestPasswordReset: async (email: string) => {
+      if (!supabaseClient) return { error: pipelineSupabaseConfigMessage };
+      setError(null);
+      try {
+        const { error: resetError } = await withTimeout(
+          supabaseClient.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}/reset-password`,
+          }),
+          'Password reset request timed out. Please retry.',
+          AUTH_TIMEOUT_MS,
+        );
+        if (resetError) {
+          const message = getFriendlyAuthErrorMessage(resetError, 'Could not send the reset email.');
+          return { error: message };
+        }
+        return { error: null };
+      } catch (resetFailure: unknown) {
+        return {
+          error: getFriendlyAuthErrorMessage(resetFailure, 'Could not send the reset email.'),
+        };
+      }
+    },
+    updatePassword: async (password: string) => {
+      if (!supabaseClient) return { error: pipelineSupabaseConfigMessage };
+      setError(null);
+      const passwordError = getPasswordPolicyError(password);
+      if (passwordError) return { error: passwordError };
+      try {
+        const { error: updateError } = await withTimeout(
+          supabaseClient.auth.updateUser({ password }),
+          'Password update timed out. Please retry.',
+          AUTH_TIMEOUT_MS,
+        );
+        if (updateError) {
+          return { error: getFriendlyAuthErrorMessage(updateError, 'Could not update your password.') };
+        }
+        return { error: null };
+      } catch (updateFailure: unknown) {
+        return {
+          error: getFriendlyAuthErrorMessage(updateFailure, 'Could not update your password.'),
+        };
+      }
+    },
+    resendSignupConfirmation: async (email: string) => {
+      if (!supabaseClient) return { error: pipelineSupabaseConfigMessage };
+      setError(null);
+      try {
+        const { error: resendError } = await withTimeout(
+          supabaseClient.auth.resend({
+            type: 'signup',
+            email,
+            options: {
+              emailRedirectTo: `${window.location.origin}/login?verified=1`,
+            },
+          }),
+          'Verification email request timed out. Please retry.',
+          AUTH_TIMEOUT_MS,
+        );
+        if (resendError) {
+          return { error: getFriendlyAuthErrorMessage(resendError, 'Could not resend the verification email.') };
+        }
+        return { error: null };
+      } catch (resendFailure: unknown) {
+        return {
+          error: getFriendlyAuthErrorMessage(resendFailure, 'Could not resend the verification email.'),
+        };
+      }
     },
     signOut: async () => {
       if (!supabaseClient) {
@@ -308,17 +386,18 @@ function setPendingAuthRedirect(target: string) {
   }
 }
 
-function getCurrentAuthDestination() {
+function getCurrentAuthDestination(requestedDestination?: string) {
   if (typeof window === 'undefined') return DEFAULT_AUTH_ROUTE;
+  if (requestedDestination?.startsWith('/app/')) return requestedDestination;
   const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
   if (currentPath.startsWith('/app/')) return currentPath;
   return DEFAULT_AUTH_ROUTE;
 }
 
-function completePendingCloudWorkspace(user: User | null) {
+async function completePendingCloudWorkspace(user: User | null) {
   if (!user || typeof window === 'undefined') return;
 
-  const clearedDemoWorkspace = clearDemoWorkspaceMode();
+  const clearedDemoWorkspace = await clearDemoWorkspaceForAccount();
 
   let target = '';
   try {
@@ -328,7 +407,7 @@ function completePendingCloudWorkspace(user: User | null) {
   }
 
   if (!target) {
-    if (clearedDemoWorkspace) {
+    if (clearedDemoWorkspace && window.location.pathname.startsWith('/app/')) {
       window.setTimeout(() => {
         window.location.reload();
       }, 0);

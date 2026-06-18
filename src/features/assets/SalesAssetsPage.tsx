@@ -16,6 +16,7 @@ import {
   emptySalesAssetInput,
   loadSalesAssetDraft,
   loadSalesAssets,
+  loadSalesAssetsForUser,
   salesAssetTypes,
   saveSalesAssets,
   splitCommaList,
@@ -26,11 +27,12 @@ import {
 } from '../../services/salesAssetStore';
 import { starterAssetPacks, type StarterAssetPack } from '../../utils/starterAssetPacks';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
+import { reportWorkspaceSyncError } from '../../services/workspaceSyncStatus';
 
 const allFilter = 'All';
 
 export function SalesAssetsPage() {
-  const { loading: authLoading, isAuthenticated } = useAuthContext();
+  const { loading: authLoading, isAuthenticated, user } = useAuthContext();
   const [assets, setAssets] = useState<SalesAssetRecord[]>([]);
   const [search, setSearch] = useState('');
   const [assetTypeFilter, setAssetTypeFilter] = useState<SalesAssetType | typeof allFilter>(allFilter);
@@ -43,8 +45,19 @@ export function SalesAssetsPage() {
   const sampleDataActive = hasLocalSampleData();
 
   useEffect(() => {
-    const loaded = loadSalesAssets();
-    setAssets(loaded);
+    let cancelled = false;
+    const load = async () => {
+      let loaded = loadSalesAssets();
+      if (user && !sampleDataActive) {
+        try {
+          loaded = await loadSalesAssetsForUser(user.id);
+        } catch {
+          reportWorkspaceSyncError();
+        }
+      }
+      if (!cancelled) setAssets(loaded);
+    };
+    void load();
     const draft = loadSalesAssetDraft();
     if (draft) {
       setForm(draft);
@@ -53,7 +66,10 @@ export function SalesAssetsPage() {
       setMessage('Asset draft loaded from Playbook. Review and save when ready.');
       clearSalesAssetDraft();
     }
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [sampleDataActive, user]);
 
   const summary = useMemo(() => summarizeAssets(assets), [assets]);
   const visibleAssets = useMemo(() => {
@@ -119,7 +135,7 @@ export function SalesAssetsPage() {
     setEditingAsset(saved);
     setForm(assetToInput(saved));
     setPanelMode('edit');
-    setMessage('Sales asset saved locally.');
+    setMessage(isAuthenticated && !sampleDataActive ? 'Sales asset saved and syncing to your workspace.' : 'Sales asset saved in this browser.');
   };
 
   const removeAsset = (asset: SalesAssetRecord) => {
@@ -128,7 +144,7 @@ export function SalesAssetsPage() {
     deleteSalesAsset(asset.id);
     setAssets(loadSalesAssets());
     if (editingAsset?.id === asset.id) closePanel();
-    setMessage('Sales asset deleted.');
+    setMessage(isAuthenticated && !sampleDataActive ? 'Sales asset deleted from your workspace.' : 'Sales asset deleted from this browser.');
   };
 
   const copyText = async (label: string, text: string) => {
@@ -194,17 +210,10 @@ export function SalesAssetsPage() {
         </div>
         <DataModePill
           compact
-          modeInfo={sampleDataActive ? undefined : {
-            mode: 'local-only',
-            label: 'Local only',
-            description: 'Sales assets and starter pack imports are saved only in this browser.',
-            privacyNote: 'Do not store confidential customer documents here; use concise reusable text only.',
-            severity: 'warning',
-          }}
           isLoading={authLoading}
           isAuthenticated={isAuthenticated}
-          isSupabaseConfigured={false}
-          cloudAvailable={false}
+          isSupabaseConfigured
+          cloudAvailable
           hasSampleData={sampleDataActive}
         />
       </header>

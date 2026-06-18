@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { verifyUserToken } from './_auth.js';
-import { enforceRateLimit } from './_rateLimit.js';
+import { enforceRateLimit, rateLimitExceeded } from './_rateLimit.js';
 
 // Groq uses OpenAI-compatible API — no extra package needed
 export default async function handler(req: any, res: any) {
@@ -19,7 +19,7 @@ export default async function handler(req: any, res: any) {
     }
     const rateLimit = enforceRateLimit(req, 'anonymize', user.id, 12);
     if (!rateLimit.allowed) {
-        return res.status(429).json({ error: 'Too many requests', retryAfterSeconds: rateLimit.retryAfterSeconds });
+        return rateLimitExceeded(res, rateLimit);
     }
     if (!process.env.GROQ_API_KEY) {
         return res.status(503).json({ error: 'Anonymization is not configured.' });

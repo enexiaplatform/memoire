@@ -15,10 +15,11 @@ export function useCheckout() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      const response = await fetch('/api/create-checkout', {
+      const response = await fetch('/api/billing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'checkout',
           userId: user.id,
           authToken: session?.access_token,
           priceId,
@@ -45,10 +46,11 @@ export function useCheckout() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      const response = await fetch('/api/create-portal', {
+      const response = await fetch('/api/billing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'portal',
           userId: user.id,
           authToken: session?.access_token,
         }),

@@ -20,14 +20,14 @@ export type DataModeInput = {
 const DATA_MODE_COPY: Record<DataMode, DataModeInfo> = {
   synced: {
     mode: 'synced',
-    label: 'Synced',
-    description: 'Saved to your account and available across devices.',
-    privacyNote: 'Use approved handling for sensitive customer, pricing, and tender data.',
+    label: 'Cloud + browser',
+    description: 'Pipeline records, review packs, assets, and action outcomes sync to your account. Lightweight setup preferences may remain in this browser.',
+    privacyNote: 'Cloud records are available across devices. Browser preferences may reset when browser data is cleared.',
     severity: 'success',
   },
   'local-only': {
     mode: 'local-only',
-    label: 'Local only',
+    label: 'Browser only',
     description: 'Saved only in this browser. Sign in to sync across devices.',
     privacyNote: 'Clearing browser data may remove saved Memoire records.',
     severity: 'warning',
@@ -35,13 +35,13 @@ const DATA_MODE_COPY: Record<DataMode, DataModeInfo> = {
   'sync-error': {
     mode: 'sync-error',
     label: 'Sync issue',
-    description: 'Cloud sync is unavailable. Local copy is preserved.',
-    privacyNote: 'Keep working locally and retry sync when the connection is healthy.',
+    description: 'Cloud sync is unavailable. New changes may remain only in this browser.',
+    privacyNote: 'Keep this browser open and retry before switching devices.',
     severity: 'error',
   },
   'demo-local': {
     mode: 'demo-local',
-    label: 'Demo local',
+    label: 'Demo browser',
     description: 'Sample data is stored only in this browser.',
     privacyNote: 'Sample data is local. Replace it with real activities when ready.',
     severity: 'neutral',

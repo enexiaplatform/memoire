@@ -6,7 +6,7 @@ import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import { loadObjections, type ObjectionRecord } from '../../services/objectionStore';
 import { loadOpportunities, type CrmLiteOpportunity } from '../../services/opportunityStore';
-import { loadSalesAssets, type SalesAssetRecord } from '../../services/salesAssetStore';
+import { loadSalesAssets, loadSalesAssetsForUser, type SalesAssetRecord } from '../../services/salesAssetStore';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import {
   buildFirstPipelineReviewMetrics,
@@ -353,7 +353,7 @@ async function loadFirstReviewData(userId?: string | null): Promise<FirstReviewD
   const [opportunities, objections, assets, briefs] = await Promise.all([
     loadOpportunities(userId),
     loadObjections(userId),
-    Promise.resolve(loadSalesAssets()),
+    userId ? loadSalesAssetsForUser(userId) : Promise.resolve(loadSalesAssets()),
     loadPipelineBriefs(userId),
   ]);
 

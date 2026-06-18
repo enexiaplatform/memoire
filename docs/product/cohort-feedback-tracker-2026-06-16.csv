@@ -1,0 +1,11 @@
+participant_id,name,email,role,company_segment,source,qualification_score,primary_pain,active_deals_count,can_use_csv,can_join_feedback_call,invite_status,invite_sent_at,onboarding_call_at,first_login_at,demo_started_at,demo_completed_at,csv_import_completed_at,manual_opportunity_added,pipeline_brief_created_at,review_pack_saved_at,manager_summary_copied,first_review_completed,weekly_usage_intent,willingness_to_pay,price_signal,trust_blocker,product_blocker,strongest_quote,support_notes,decision,next_step
+P01,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+P02,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+P03,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+P04,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+P05,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+P06,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+P07,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+P08,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+P09,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+P10,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,

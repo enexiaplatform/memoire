@@ -1,5 +1,6 @@
 import { supabaseClient } from '../lib/supabaseClient';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { reportWorkspaceSyncError } from './workspaceSyncStatus';
 
 export const OBJECTION_STORAGE_KEY = 'memoire.objections.v1';
 
@@ -110,6 +111,7 @@ export async function loadObjections(userId?: string | null): Promise<ObjectionR
     try {
       return await loadCloudObjections(userId as string);
     } catch (error) {
+      reportWorkspaceSyncError();
       debugObjectionStore('cloud load failed; falling back to local', { message: getErrorMessage(error) });
       return loadLocalObjections();
     }
@@ -126,6 +128,7 @@ export async function createObjection(input: ObjectionFormInput, userId?: string
       invalidateWorkspaceDataCache();
       return { objection, mode: 'cloud' };
     } catch (error) {
+      reportWorkspaceSyncError();
       const objection = createLocalObjection(normalized, userId || undefined);
       saveLocalObjectionRecord(objection);
       invalidateWorkspaceDataCache();
@@ -149,6 +152,7 @@ export async function updateObjection(objection: ObjectionRecord, input: Objecti
       invalidateWorkspaceDataCache();
       return { objection: updated, mode: 'cloud' };
     } catch (error) {
+      reportWorkspaceSyncError();
       const localCopy = { ...objection, ...normalized, updatedAt: new Date().toISOString(), storageMode: 'local' as const };
       saveLocalObjectionRecord(localCopy);
       invalidateWorkspaceDataCache();

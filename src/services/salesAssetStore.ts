@@ -1,4 +1,12 @@
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import {
+  claimLocalCollectionForUser,
+  deleteCloudJsonRecordForCurrentUser,
+  loadCloudJsonCollection,
+  mergeCloudJsonRecords,
+  syncCloudJsonCollectionForCurrentUser,
+  upsertCloudJsonCollection,
+} from './cloudJsonCollectionStore';
 
 export const SALES_ASSET_STORAGE_KEY = 'memoire.salesAssets.v1';
 export const SALES_ASSET_DRAFT_STORAGE_KEY = 'memoire.salesAssets.draft.v1';
@@ -84,10 +92,28 @@ export function loadSalesAssets(): SalesAssetRecord[] {
   }
 }
 
+export async function loadSalesAssetsForUser(userId: string) {
+  const local = loadSalesAssets();
+  const cloud = await loadCloudJsonCollection<SalesAssetRecord>('sales_assets', userId);
+  const recordsToMerge = claimLocalCollectionForUser('sales_assets', userId) ? local : [];
+  const merged = mergeCloudJsonRecords(recordsToMerge, cloud)
+    .map(sanitizeAsset)
+    .filter((asset): asset is SalesAssetRecord => Boolean(asset));
+  persistSalesAssets(merged, false);
+  await upsertCloudJsonCollection('sales_assets', userId, merged);
+  return merged;
+}
+
 export function saveSalesAssets(assets: SalesAssetRecord[]) {
+  return persistSalesAssets(assets, true);
+}
+
+function persistSalesAssets(assets: SalesAssetRecord[], syncCloud: boolean) {
   if (typeof window === 'undefined') return false;
   try {
-    window.localStorage.setItem(SALES_ASSET_STORAGE_KEY, JSON.stringify(assets.map(sanitizeAsset).filter(Boolean)));
+    const sanitized = assets.map(sanitizeAsset).filter((asset): asset is SalesAssetRecord => Boolean(asset));
+    window.localStorage.setItem(SALES_ASSET_STORAGE_KEY, JSON.stringify(sanitized));
+    if (syncCloud) syncCloudJsonCollectionForCurrentUser('sales_assets', sanitized);
     invalidateWorkspaceDataCache();
     return true;
   } catch {
@@ -125,7 +151,9 @@ export function updateSalesAsset(asset: SalesAssetRecord, input: SalesAssetInput
 }
 
 export function deleteSalesAsset(assetId: string) {
-  return saveSalesAssets(loadSalesAssets().filter((item) => item.id !== assetId));
+  const saved = saveSalesAssets(loadSalesAssets().filter((item) => item.id !== assetId));
+  deleteCloudJsonRecordForCurrentUser('sales_assets', assetId);
+  return saved;
 }
 
 export function saveSalesAssetDraft(input: SalesAssetInput) {

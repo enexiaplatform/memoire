@@ -1,5 +1,6 @@
 import { supabaseClient } from '../lib/supabaseClient';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { reportWorkspaceSyncError } from './workspaceSyncStatus';
 
 export const OPPORTUNITY_STORAGE_KEY = 'memoire.opportunities.v1';
 
@@ -138,6 +139,7 @@ export async function loadOpportunities(userId?: string | null): Promise<CrmLite
     try {
       return await loadCloudOpportunities(userId as string);
     } catch (error) {
+      reportWorkspaceSyncError();
       debugOpportunityStore('cloud load failed; falling back to local', { message: getErrorMessage(error) });
       return loadLocalOpportunities();
     }
@@ -159,6 +161,7 @@ export async function createOpportunity(
       invalidateWorkspaceDataCache();
       return { opportunity, mode: 'cloud' };
     } catch (error) {
+      reportWorkspaceSyncError();
       const opportunity = createLocalOpportunity(normalized, userId || undefined);
       saveLocalOpportunityRecord(opportunity);
       invalidateWorkspaceDataCache();
@@ -191,6 +194,7 @@ export async function updateOpportunity(
       invalidateWorkspaceDataCache();
       return { opportunity: updated, mode: 'cloud' };
     } catch (error) {
+      reportWorkspaceSyncError();
       const localCopy = {
         ...opportunity,
         ...normalized,

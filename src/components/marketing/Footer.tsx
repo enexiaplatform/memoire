@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom';
+import { BrandWordmark } from '../brand/BrandWordmark';
 
 export function Footer() {
   return (
     <footer className="bg-white border-t border-gray-100 py-12 px-4">
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
         <div className="md:col-span-2">
-          <Link to="/" className="text-xl font-bold text-gray-900 mb-4 block">
-            Memoire
+          <Link to="/" className="mb-4 block" aria-label="Memoire home">
+            <BrandWordmark className="text-2xl" />
           </Link>
           <a href="mailto:hello@memoire.app" className="mb-4 inline-block text-gray-500 hover:text-gray-900">
             hello@memoire.app
@@ -19,6 +20,7 @@ export function Footer() {
             <li><Link to="/#features" className="text-gray-600 hover:text-gray-900">Features</Link></li>
             <li><Link to="/pricing" className="text-gray-600 hover:text-gray-900">Pricing</Link></li>
             <li><Link to="/request-access" className="text-gray-600 hover:text-gray-900">Request Access</Link></li>
+            <li><Link to="/signup" className="text-gray-600 hover:text-gray-900">Create Account</Link></li>
             <li><Link to="/login" className="text-gray-600 hover:text-gray-900">Log in</Link></li>
           </ul>
         </div>

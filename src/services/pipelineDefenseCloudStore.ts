@@ -1,5 +1,6 @@
 import { supabaseClient } from '../lib/supabaseClient';
 import type { PipelineDefenseBrief, PipelineDefenseBriefStore } from '../utils/pipelineDefenseStorage';
+import { reportClientOperationalEvent } from './clientTelemetry';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 
 type PipelineDefenseBriefRow = {
@@ -31,7 +32,10 @@ export async function loadCloudBriefs(userId: string): Promise<PipelineDefenseBr
     .eq('user_id', userId)
     .order('updated_at', { ascending: false });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    reportPipelineDefenseCloudFailure('load', error);
+    throw new Error(error.message);
+  }
   const briefs = (data || []).map(rowToBrief);
   debugCloudSync('cloud load completed', { count: briefs.length });
   return briefs;
@@ -54,7 +58,10 @@ export async function createCloudBrief(brief: PipelineDefenseBrief, userId: stri
     .select('*')
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    reportPipelineDefenseCloudFailure('create', error);
+    throw new Error(error.message);
+  }
   const created = rowToBrief(data as PipelineDefenseBriefRow);
   invalidateWorkspaceDataCache();
   debugCloudSync('cloud create completed');
@@ -73,7 +80,10 @@ export async function updateCloudBrief(brief: PipelineDefenseBrief): Promise<Pip
     .select('*')
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    reportPipelineDefenseCloudFailure('update', error);
+    throw new Error(error.message);
+  }
   const updated = rowToBrief(data as PipelineDefenseBriefRow);
   invalidateWorkspaceDataCache();
   debugCloudSync('cloud update completed');
@@ -89,7 +99,10 @@ export async function deleteCloudBrief(briefId: string) {
     .delete()
     .eq('id', briefId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    reportPipelineDefenseCloudFailure('delete', error);
+    throw new Error(error.message);
+  }
   invalidateWorkspaceDataCache();
   debugCloudSync('cloud delete completed');
 }
@@ -162,4 +175,18 @@ function debugCloudSync(message: string, context?: Record<string, unknown>) {
   if (import.meta.env.DEV) {
     console.debug(`[PipelineDefenseCloudSync] ${message}`, context || {});
   }
+}
+
+function reportPipelineDefenseCloudFailure(
+  operation: 'load' | 'create' | 'update' | 'delete',
+  error: unknown,
+) {
+  reportClientOperationalEvent({
+    eventName: 'pipeline_defense_cloud_sync_failed',
+    component: 'pipelineDefenseCloudStore',
+    operation,
+    table: TABLE_NAME,
+    severity: 'error',
+    error,
+  });
 }

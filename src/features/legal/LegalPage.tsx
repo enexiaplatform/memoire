@@ -12,7 +12,7 @@ type LegalDocument = {
 const documents: Record<string, LegalDocument> = {
   privacy: {
     title: 'Privacy Policy',
-    updated: 'June 12, 2026',
+    updated: 'June 15, 2026',
     intro: 'This policy explains how Memoire handles account, sales-workspace, local browser, and optional AI data.',
     sections: [
       {
@@ -27,6 +27,13 @@ const documents: Record<string, LegalDocument> = {
         paragraphs: [
           'Local-only and demo records stay in the browser profile where they were created unless you explicitly export or migrate them.',
           'Clearing browser storage, changing browser profiles, or using another device can remove or hide local-only records.',
+        ],
+      },
+      {
+        title: 'Privacy-minimized product analytics',
+        paragraphs: [
+          'Memoire records a small set of product funnel events such as demo started, demo completed, account created, CSV import completed, and review pack saved.',
+          'These events use a random browser identifier and include only the event name, app route, and data mode. They do not include sales notes, customer names, deal content, email addresses, or CRM records.',
         ],
       },
       {
@@ -93,14 +100,14 @@ const documents: Record<string, LegalDocument> = {
   },
   boundaries: {
     title: 'Product and Data Boundaries',
-    updated: 'June 12, 2026',
+    updated: 'June 15, 2026',
     intro: 'Memoire is a personal preparation layer for B2B sales work. It is not an employer scoring or CRM system.',
     sections: [
       {
         title: 'What Memoire is',
         paragraphs: [
           'A personal workspace for capturing sales context, reviewing opportunity quality, preparing pipeline defense, and retaining reusable sales learning.',
-          'A local-first product with optional account sync for supported data when cloud services are configured.',
+          'A hybrid workspace where pipeline records, review packs, reusable sales assets, and action outcomes can sync to your account. Lightweight setup preferences may remain in the current browser.',
         ],
       },
       {
@@ -131,8 +138,8 @@ export function LegalPage() {
     <div className="min-h-screen bg-slate-50 text-slate-950">
       <MarketingNav />
       <main className="px-4 pb-20 pt-28 sm:px-6">
-        <article className="mx-auto max-w-3xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-700">Memoire legal</p>
+        <article className="mx-auto max-w-3xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Memoire legal</p>
           <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{content.title}</h1>
           <p className="mt-2 text-sm text-slate-500">Last updated: {content.updated}</p>
           <p className="mt-6 text-base leading-7 text-slate-700">{content.intro}</p>
@@ -151,7 +158,7 @@ export function LegalPage() {
           </div>
 
           <div className="mt-10 border-t border-slate-200 pt-6">
-            <Link to="/request-access" className="text-sm font-bold text-blue-700 hover:text-blue-800">
+            <Link to="/request-access" className="text-sm font-bold text-brand-blue hover:text-brand-blue-dark">
               Request early access
             </Link>
           </div>

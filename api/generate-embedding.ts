@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import { getSupabaseServiceRoleKey, getSupabaseUrl } from './_env.js';
 import { verifyUserToken } from './_auth.js';
-import { enforceRateLimit } from './_rateLimit.js';
+import { enforceRateLimit, rateLimitExceeded } from './_rateLimit.js';
 
 interface ApiRequest {
   method?: string;
@@ -20,6 +20,7 @@ interface ApiResponse {
   status: (code: number) => ApiResponse;
   json: (body: unknown) => void;
   end: () => void;
+  setHeader?: (name: string, value: string) => void;
 }
 
 export async function generateEmbedding(text: string): Promise<number[]> {
@@ -50,7 +51,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
     const rateLimit = enforceRateLimit(req, 'generate-embedding', userId, 20);
     if (!rateLimit.allowed) {
-          return res.status(429).json({ error: 'Too many requests', retryAfterSeconds: rateLimit.retryAfterSeconds });
+          return rateLimitExceeded(res, rateLimit);
     }
     if (!process.env.OPENAI_API_KEY) {
           return res.status(503).json({ error: 'Embedding provider is not configured' });

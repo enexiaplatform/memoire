@@ -5,7 +5,7 @@ import { ArrowRight, CheckCircle2, FileCheck2, ShieldCheck, Target } from 'lucid
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { DemoJourneyCard } from '../../components/demo/DemoJourneyCard';
-import { isSupabaseConfigured } from '../../lib/demoMode';
+import { isFounderWorkspaceEnabled, isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { clearSampleDataset, loadSampleDataset } from '../../utils/sampleData';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
@@ -142,13 +142,15 @@ export function DemoGuidePage() {
         </p>
       </section>
 
-      <DemoFeedbackForm
-        form={feedbackForm}
-        message={feedbackMessage}
-        onChange={updateFeedbackForm}
-        onSubmit={submitFeedback}
-        onCopyInterviewScript={copyInterviewScript}
-      />
+      {isFounderWorkspaceEnabled && (
+        <DemoFeedbackForm
+          form={feedbackForm}
+          message={feedbackMessage}
+          onChange={updateFeedbackForm}
+          onSubmit={submitFeedback}
+          onCopyInterviewScript={copyInterviewScript}
+        />
+      )}
     </div>
   );
 }

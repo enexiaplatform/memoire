@@ -91,6 +91,7 @@ export function clearSampleDataFlag() {
 }
 
 export function loadSampleDataset(): SampleDataset {
+  clearDemoJourneyCompletion();
   const dataset = buildSampleDataset();
 
   writeLocalArray(SALES_ACTIVITY_STORAGE_KEY, dataset.activities);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import type { EntityWithMeta } from './types';
@@ -9,7 +9,7 @@ export function useEntities() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchEntities = async () => {
+  const fetchEntities = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     setError(null);
@@ -50,11 +50,11 @@ export function useEntities() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
-    fetchEntities();
-  }, [user]);
+    void fetchEntities();
+  }, [fetchEntities]);
 
   return { entities, loading, error, refetch: fetchEntities };
 }

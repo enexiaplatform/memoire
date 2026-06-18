@@ -41,13 +41,16 @@ export function DemoModeBanner() {
           Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
         </p>
         <div className="flex flex-wrap gap-2">
+          <Link to="/signup" className="rounded-full bg-amber-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-950">
+            Create account
+          </Link>
           <Link to="/app/demo-guide" className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100">
-            Continue demo
+            Demo guide
           </Link>
           <button type="button" onClick={resetDemo} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100">
             Reset demo
           </button>
-          <button type="button" onClick={exitDemo} className="rounded-full bg-amber-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-950">
+          <button type="button" onClick={exitDemo} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100">
             Exit demo
           </button>
         </div>

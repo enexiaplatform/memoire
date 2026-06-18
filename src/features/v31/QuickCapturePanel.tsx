@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, Save, Sparkles } from 'lucide-react';
+import { Loader2, Save, ShieldCheck, Sparkles } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import type { FollowUpContext, StructuredSalesCapture, InteractionType, SalesPriority, SalesStage } from '../../types/v31';
 import {
@@ -246,6 +246,18 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
         placeholder={isEmailThread ? 'Paste a customer email thread or selected email messages here...' : 'Paste a quick note after a call, meeting, or customer message...'}
         className="min-h-[120px] w-full resize-y rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm leading-6 text-gray-900 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
       />
+
+      <div className="mt-3 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+        <div className="flex items-start gap-2">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <p>
+            <span className="font-bold">{isEmailThread ? 'Local parsing.' : 'AI-assisted when configured.'}</span>{' '}
+            {isEmailThread
+              ? 'Email thread structuring runs in this browser flow. Review extracted fields before saving to Sales Memory.'
+              : 'Signed-in structuring may send this note to the configured server-side AI endpoint. Review output before saving, and avoid confidential customer data unless that provider is approved.'}
+          </p>
+        </div>
+      </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button

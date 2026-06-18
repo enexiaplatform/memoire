@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
 import { getSupabaseAnonKey, getSupabaseUrl } from './_env.js';
-import { enforceRateLimit } from './_rateLimit.js';
+import { enforceRateLimit, rateLimitExceeded } from './_rateLimit.js';
 
 interface ApiRequest {
   method?: string;
@@ -20,6 +20,7 @@ interface ApiRequest {
 interface ApiResponse {
   status: (code: number) => ApiResponse;
   json: (body: unknown) => void;
+  setHeader?: (name: string, value: string) => void;
 }
 
 interface AnthropicTextBlock {
@@ -184,10 +185,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
   const rateLimit = enforceRateLimit(req, 'ask-memoire', userId, 12);
   if (!rateLimit.allowed) {
-    return res.status(429).json({
-      error: 'Too many requests. Please wait before asking again.',
-      retryAfterSeconds: rateLimit.retryAfterSeconds,
-    });
+    return rateLimitExceeded(res, rateLimit, 'Too many requests. Please wait before asking again.');
   }
 
   try {

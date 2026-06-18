@@ -4,12 +4,17 @@ import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { GoogleAuthButton } from '../../components/auth/GoogleAuthButton';
+import { BrandWordmark } from '../../components/brand/BrandWordmark';
+import { trackProductEvent } from '../../utils/productAnalytics';
+import { PASSWORD_MIN_LENGTH, PASSWORD_POLICY_HELPER } from '../../auth/passwordPolicy';
+import { isSampleDataLoaded } from '../../utils/sampleData';
 
 export function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [startedFromDemo] = useState(() => isSampleDataLoaded());
   const { signUp, error, loading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -23,7 +28,8 @@ export function SignupPage() {
     const { error } = await signUp(email, password, displayName);
     setSubmitting(false);
     if (!error) {
-      navigate('/verify-email');
+      trackProductEvent('signup_completed', 'cloud-browser');
+      navigate('/verify-email', { state: { email } });
     }
   };
 
@@ -32,16 +38,22 @@ export function SignupPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2">
-            <span className="text-[24px] font-extrabold tracking-tight brand-gradient-text font-display">Memoire</span>
+          <Link to="/" className="inline-flex items-center gap-2" aria-label="Memoire home">
+            <BrandWordmark className="text-2xl" />
           </Link>
           <h1 className="text-[24px] font-bold font-display text-navy mt-4 tracking-tight">Create your account</h1>
-          <p className="text-[15px] font-body text-gray-500 mt-1">Start building your professional memory</p>
+          <p className="text-[15px] font-body text-gray-500 mt-1">Start building your personal sales memory</p>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-[16px] shadow-elevated p-10 space-y-5 max-w-[440px] mx-auto">
+        <form onSubmit={handleSubmit} className="mx-auto max-w-[440px] space-y-5 rounded-[16px] bg-white p-6 shadow-elevated sm:p-10">
           <GoogleAuthButton label="Create account with Google" />
+
+          {startedFromDemo && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-800">
+              Your sample demo records will not be copied into this account. Your real workspace starts clean after signup.
+            </div>
+          )}
 
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-gray-200" />
@@ -68,12 +80,12 @@ export function SignupPage() {
           <Input
             label="Password"
             type="password"
-            placeholder="At least 8 characters"
+            placeholder="Create a strong password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            minLength={8}
-            helperText="Minimum 8 characters"
+            minLength={PASSWORD_MIN_LENGTH}
+            helperText={PASSWORD_POLICY_HELPER}
           />
 
           {error && (
@@ -87,7 +99,7 @@ export function SignupPage() {
 
         <p className="text-center text-sm text-gray-500 mt-6">
           Already have an account?{' '}
-          <Link to="/login" className="text-memoire-600 font-medium hover:text-memoire-700">
+          <Link to="/login" className="font-semibold text-brand-blue hover:text-brand-blue-dark">
             Log in
           </Link>
         </p>

@@ -31,19 +31,19 @@ export function PricingPage() {
       <main className="px-4 pb-20 pt-28 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <header className="mx-auto max-w-3xl text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-700">Early pricing hypothesis</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-blue">Early pricing hypothesis</p>
             <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">Pricing is still being validated.</h1>
             <p className="mt-5 text-base leading-7 text-slate-600">
-              Memoire is currently request-access only. No payment checkout is active. Early users help validate the
-              workflow, security expectations, and the right individual plan.
+              Early-access account creation is open, but no payment checkout is active. Early users help validate the
+              workflow, security expectations, and the right individual plan. Guided access is available on request.
             </p>
           </header>
 
           <section className="mt-12 grid gap-5 lg:grid-cols-3">
             {plans.map((plan) => (
-              <article key={plan.name} className="flex flex-col rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+              <article key={plan.name} className="flex flex-col rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-card">
                 <h2 className="text-xl font-bold">{plan.name}</h2>
-                <p className="mt-3 text-3xl font-extrabold text-blue-700">{plan.price}</p>
+                <p className="mt-3 text-3xl font-extrabold text-brand-blue">{plan.price}</p>
                 <p className="mt-3 text-sm leading-6 text-slate-600">{plan.description}</p>
                 <ul className="mt-6 flex-1 space-y-3">
                   {plan.items.map((item) => (
@@ -57,7 +57,7 @@ export function PricingPage() {
             ))}
           </section>
 
-          <section className="mt-10 rounded-lg border border-blue-200 bg-blue-50 p-6 text-center">
+          <section className="mt-10 rounded-xl border border-blue-200 bg-blue-50 p-6 text-center">
             <h2 className="text-2xl font-bold">Test your real pipeline-review workflow first.</h2>
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-600">
               Request access without submitting confidential customer data. We will use your workflow context only to
@@ -65,15 +65,21 @@ export function PricingPage() {
             </p>
             <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
               <Link
-                to="/request-access"
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 py-3 text-sm font-bold text-white hover:bg-blue-800"
+                to="/signup"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-blue px-5 py-3 text-sm font-bold text-white hover:bg-brand-blue-dark active:scale-[0.98]"
               >
-                Request early access
+                Create account
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
+                to="/request-access"
+                className="inline-flex items-center justify-center rounded-full border border-blue-200 bg-white px-5 py-3 text-sm font-bold text-brand-blue hover:bg-blue-100 active:scale-[0.98]"
+              >
+                Request guided access
+              </Link>
+              <Link
                 to="/demo"
-                className="inline-flex items-center justify-center rounded-lg border border-blue-200 bg-white px-5 py-3 text-sm font-bold text-blue-700 hover:bg-blue-100"
+                className="inline-flex items-center justify-center rounded-full border border-blue-200 bg-white px-5 py-3 text-sm font-bold text-brand-blue hover:bg-blue-100 active:scale-[0.98]"
               >
                 Try demo first
               </Link>

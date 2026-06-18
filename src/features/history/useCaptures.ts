@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { subDays } from 'date-fns';
 
@@ -16,15 +16,15 @@ export interface Capture {
   entities: CaptureEntity[];
 }
 
+const PAGE_SIZE = 20;
+
 export function useCaptures(filters: { search: string; entityId: string | null; tag: string | null; dateRange: string }) {
   const [captures, setCaptures] = useState<Capture[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
 
-  const PAGE_SIZE = 20;
-
-  const fetchCaptures = async (currentOffset: number, reset: boolean) => {
+  const fetchCaptures = useCallback(async (currentOffset: number, reset: boolean) => {
     try {
       setLoading(true);
       const { data: userData } = await supabase.auth.getUser();
@@ -100,17 +100,17 @@ export function useCaptures(filters: { search: string; entityId: string | null; 
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters.dateRange, filters.entityId, filters.search, filters.tag]);
 
   useEffect(() => {
     setOffset(0);
-    fetchCaptures(0, true);
-  }, [filters.search, filters.entityId, filters.tag, filters.dateRange]);
+    void fetchCaptures(0, true);
+  }, [fetchCaptures]);
 
   const loadMore = () => {
     const nextOffset = offset + PAGE_SIZE;
     setOffset(nextOffset);
-    fetchCaptures(nextOffset, false);
+    void fetchCaptures(nextOffset, false);
   };
 
   return { captures, loading, hasMore, loadMore };

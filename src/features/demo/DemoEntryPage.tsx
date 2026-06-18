@@ -1,27 +1,44 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, Database, FileText, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { loadSampleDataset } from '../../utils/sampleData';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
+import { BrandWordmark } from '../../components/brand/BrandWordmark';
+import { trackProductEvent } from '../../utils/productAnalytics';
 
 export function DemoEntryPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isAuthenticated } = useAuthContext();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [demoDestination, setDemoDestination] = useState('/app/dashboard?demo=1');
+
+  useEffect(() => {
+    if (searchParams.get('sample') === '1') {
+      setDemoDestination('/app/dashboard?demo=1');
+      setConfirmOpen(true);
+    }
+  }, [searchParams]);
+
+  const openDemoConfirmation = (destination: string) => {
+    setDemoDestination(destination);
+    setConfirmOpen(true);
+  };
 
   const startDemo = () => {
     loadSampleDataset();
     markTrialActivationChecklistItemComplete('load-demo-or-import-csv');
-    navigate('/app/dashboard?demo=1');
+    trackProductEvent('demo_started', 'demo-local');
+    navigate(demoDestination);
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <main className="mx-auto flex min-h-screen max-w-6xl flex-col justify-center px-4 py-12 sm:px-6 lg:px-8">
-        <Link to="/" className="mb-8 inline-flex w-fit text-xl font-extrabold tracking-tight text-white">
-          Memoire
+        <Link to="/" className="mb-8 inline-flex w-fit" aria-label="Memoire home">
+          <BrandWordmark className="text-2xl" />
         </Link>
 
         <section className="grid gap-10 lg:grid-cols-[1fr_0.85fr] lg:items-center">
@@ -40,18 +57,19 @@ export function DemoEntryPage() {
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"
-                onClick={() => setConfirmOpen(true)}
+                onClick={() => openDemoConfirmation('/app/dashboard?demo=1')}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-950/30 transition hover:bg-cyan-200 sm:w-auto"
               >
                 Start Demo
                 <ArrowRight className="h-4 w-4" />
               </button>
-              <Link
-                to="/app/demo-guide"
+              <button
+                type="button"
+                onClick={() => openDemoConfirmation('/app/demo-guide')}
                 className="inline-flex w-full items-center justify-center rounded-lg border border-white/20 bg-white/10 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/15 sm:w-auto"
               >
                 View Demo Guide
-              </Link>
+              </button>
               <Link
                 to="/request-access"
                 className="inline-flex w-full items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-sm font-bold text-slate-100 transition hover:bg-white/10 sm:w-auto"

@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, ClipboardList, FileUp, Home, Mail } from 'lucide-react';
+import { ArrowRight, CheckCircle2, ClipboardList, Home, LogIn, UserPlus } from 'lucide-react';
 import {
   DEMO_JOURNEY_UPDATED_EVENT,
   demoJourneySteps,
-  getDemoJourneyCompletion,
-  type DemoJourneyCompletion,
+  getDemoJourneyProgress,
+  type DemoJourneyProgress,
 } from '../../utils/demoJourney';
 
 export function DemoJourneyCard({ compact = false }: { compact?: boolean }) {
-  const [completion, setCompletion] = useState<DemoJourneyCompletion | null>(() => getDemoJourneyCompletion());
+  const [progress, setProgress] = useState<DemoJourneyProgress>(() => getDemoJourneyProgress());
+  const completion = progress.completion;
+  const completedCount = progress.completedStepIds.length;
+  const progressPercent = Math.round((completedCount / demoJourneySteps.length) * 100);
 
   useEffect(() => {
-    const refresh = () => setCompletion(getDemoJourneyCompletion());
+    const refresh = () => setProgress(getDemoJourneyProgress());
     window.addEventListener(DEMO_JOURNEY_UPDATED_EVENT, refresh);
     window.addEventListener('storage', refresh);
     return () => {
@@ -36,22 +39,22 @@ export function DemoJourneyCard({ compact = false }: { compact?: boolean }) {
             <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
               {completion
                 ? 'You turned sample pipeline data into a manager-ready Pipeline Defense Brief.'
-                : 'Follow this focused path so a new visitor understands the value before exploring the wider app.'}
+                : 'Follow three focused steps to see the value before exploring the wider app.'}
             </p>
           </div>
         </div>
         {completion && (
           <div className="flex flex-wrap gap-2">
-            <Link to="/app/onboarding/pipeline-review" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-              Start your first pipeline review
+            <Link to="/signup" className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+              <UserPlus className="h-4 w-4" />
+              Create account for your pipeline
             </Link>
-            <Link to="/app/opportunities?import=csv" className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
-              <FileUp className="h-4 w-4" />
-              Import CSV
+            <Link to="/login" className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
+              <LogIn className="h-4 w-4" />
+              Log in
             </Link>
             <Link to="/request-access" className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
-              <Mail className="h-4 w-4" />
-              Request access
+              Request guided access
             </Link>
             <Link to="/" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
               <Home className="h-4 w-4" />
@@ -61,10 +64,28 @@ export function DemoJourneyCard({ compact = false }: { compact?: boolean }) {
         )}
       </div>
 
-      <div className={`mt-5 grid gap-3 ${compact ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
+      <div className="mt-5">
+        <div className="flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-wide text-gray-500">
+          <span>{completedCount} of {demoJourneySteps.length} complete</span>
+          <span>{progressPercent}%</span>
+        </div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
+          <div className="h-full rounded-full bg-brand-blue transition-all" style={{ width: `${progressPercent}%` }} />
+        </div>
+      </div>
+
+      <div className={`mt-5 grid gap-3 ${compact ? 'lg:grid-cols-3' : 'lg:grid-cols-3'}`}>
         {demoJourneySteps.map((step, index) => (
-          <article key={step.title} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-            <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Step {index + 1}</p>
+          <article key={step.id} className={`rounded-lg border p-4 ${
+            progress.completedStepIds.includes(step.id)
+              ? 'border-emerald-100 bg-emerald-50'
+              : 'border-gray-100 bg-gray-50'
+          }`}>
+            <p className={`text-xs font-bold uppercase tracking-wide ${
+              progress.completedStepIds.includes(step.id) ? 'text-emerald-700' : 'text-gray-400'
+            }`}>
+              {progress.completedStepIds.includes(step.id) ? 'Complete' : `Step ${index + 1}`}
+            </p>
             <h3 className="mt-2 text-base font-bold text-navy">{step.title}</h3>
             {!compact && <p className="mt-2 text-sm leading-6 text-gray-600">{step.description}</p>}
             <Link to={step.href} className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-brand-blue ring-1 ring-blue-100 hover:bg-blue-50">
@@ -79,7 +100,7 @@ export function DemoJourneyCard({ compact = false }: { compact?: boolean }) {
         <div className="mt-5 rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-4 text-sm text-emerald-900">
           <p className="font-bold">You've completed the core Memoire workflow.</p>
           <p className="mt-1 leading-6">
-            You turned sample pipeline data into a manager-ready Pipeline Defense Brief. Next: try your own review, import a CSV, or request access.
+            You turned sample pipeline data into a manager-ready Pipeline Defense Brief. Create an account before using real pipeline data so your workspace can sync safely.
           </p>
           <p className="mt-2 text-xs font-semibold text-emerald-700">Completed from: {completion.reason}</p>
         </div>

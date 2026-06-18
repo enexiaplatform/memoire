@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { verifyUserToken } from './_auth.js';
-import { enforceRateLimit } from './_rateLimit.js';
+import { enforceRateLimit, rateLimitExceeded } from './_rateLimit.js';
 
 const systemPrompt = `You are an AI assistant for Memoire, a professional memory OS for B2B professionals.
 
@@ -72,7 +72,7 @@ export default async function handler(req: any, res: any) {
   }
   const rateLimit = enforceRateLimit(req, 'claude-extract', user.id, 15);
   if (!rateLimit.allowed) {
-    return res.status(429).json({ error: 'Too many requests', retryAfterSeconds: rateLimit.retryAfterSeconds });
+    return rateLimitExceeded(res, rateLimit);
   }
   if (!process.env.GROQ_API_KEY) {
     return res.status(503).json({ error: 'Extraction provider is not configured' });

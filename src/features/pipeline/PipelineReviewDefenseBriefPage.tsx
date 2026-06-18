@@ -61,7 +61,7 @@ import { getActiveDraftAssistProvider } from '../../services/draftAssistProvider
 import { DataModePill } from '../../components/common/DataModePill';
 import { DemoJourneyCard } from '../../components/demo/DemoJourneyCard';
 import { useAuthContext } from '../../auth/authContext';
-import { isSupabaseConfigured } from '../../lib/demoMode';
+import { isFounderWorkspaceEnabled, isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import {
   canUsePipelineDefenseCloudStore,
@@ -78,13 +78,16 @@ import { markFirstPipelineReviewStepComplete } from '../../utils/firstPipelineRe
 import { getCurrentPipelineReviewWeekId, markPipelineReviewHabitStepComplete } from '../../utils/pipelineReviewHabit';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
 import { createDemoFeedback, type PipelineBriefUsefulness } from '../../utils/demoFeedback';
-import { markDemoJourneyComplete } from '../../utils/demoJourney';
+import { markDemoJourneyComplete, markDemoJourneyStepComplete } from '../../utils/demoJourney';
+import { copyTextToClipboard } from '../../utils/clipboard';
+import { trackProductEvent } from '../../utils/productAnalytics';
 import {
   createReviewPackSnapshot,
   deleteReviewPack,
   formatReviewPackDate,
   generateReviewPackMarkdown,
   loadReviewPacks,
+  loadReviewPacksForWorkspace,
   saveReviewPack,
   updateReviewPack,
   type ReviewPackSnapshot,
@@ -203,6 +206,26 @@ export function PipelineReviewDefenseBriefPage() {
       markFirstPipelineReviewStepComplete('hasGeneratedPipelineDefense');
     }
   }, [activeBrief, deals.length, sampleDataActive]);
+
+  useEffect(() => {
+    if (sampleDataActive) {
+      markDemoJourneyStepComplete('open-defense', 'Pipeline Defense opened');
+    }
+  }, [sampleDataActive]);
+
+  useEffect(() => {
+    if (accountLoading) return;
+    let cancelled = false;
+
+    loadReviewPacksForWorkspace(user?.id, sampleDataActive)
+      .then((packs) => {
+        if (!cancelled) setReviewPacks(packs);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accountLoading, sampleDataActive, user?.id]);
 
   useEffect(() => {
     if (accountLoading) {
@@ -438,12 +461,14 @@ export function PipelineReviewDefenseBriefPage() {
           briefs: [cloudBrief, ...currentStore.briefs],
         }));
         setSaveStatus('Synced to your account');
+        trackProductEvent('pipeline_defense_brief_created', sampleDataActive ? 'demo-local' : 'cloud-browser');
       } catch {
         setStore((currentStore) => ({
           activeBriefId: brief.id,
           briefs: [brief, ...currentStore.briefs],
         }));
         setSaveStatus('Cloud sync issue - your local copy is preserved');
+        trackProductEvent('pipeline_defense_brief_created', 'sync-issue');
       }
       setEditingDealId(null);
       clearAnalysis();
@@ -454,6 +479,7 @@ export function PipelineReviewDefenseBriefPage() {
       activeBriefId: brief.id,
       briefs: [brief, ...currentStore.briefs],
     }));
+    trackProductEvent('pipeline_defense_brief_created', sampleDataActive ? 'demo-local' : 'browser-only');
     setEditingDealId(null);
     clearAnalysis();
   };
@@ -554,7 +580,7 @@ export function PipelineReviewDefenseBriefPage() {
 
   const copyMarkdown = async () => {
     try {
-      await navigator.clipboard.writeText(markdownPreview);
+      if (!await copyTextToClipboard(markdownPreview)) throw new Error('Clipboard unavailable');
       setCopyStatus('copied');
     } catch {
       setCopyStatus('failed');
@@ -640,7 +666,7 @@ export function PipelineReviewDefenseBriefPage() {
   const copyActionPlan = async () => {
     const markdown = generateActionPlanMarkdown(activeBrief, actionPlanItems || []);
     try {
-      await navigator.clipboard.writeText(markdown);
+      if (!await copyTextToClipboard(markdown)) throw new Error('Clipboard unavailable');
       setActionPlanCopyStatus('copied');
     } catch {
       setActionPlanCopyStatus('failed');
@@ -649,7 +675,7 @@ export function PipelineReviewDefenseBriefPage() {
 
   const copyManagerSummary = async () => {
     try {
-      await navigator.clipboard.writeText(shareableBrief.managerSummary);
+      if (!await copyTextToClipboard(shareableBrief.managerSummary)) throw new Error('Clipboard unavailable');
       setManagerSummaryCopyStatus('copied');
       markTrialActivationChecklistItemComplete('copy-manager-summary');
       markPipelineReviewHabitStepComplete('copiedManagerSummaryAt');
@@ -658,13 +684,16 @@ export function PipelineReviewDefenseBriefPage() {
       }
     } catch {
       setManagerSummaryCopyStatus('failed');
+      if (sampleDataActive) {
+        markDemoJourneyComplete('Manager Summary opened for manual copy');
+      }
     }
   };
 
   const copyShareReadyMarkdown = async () => {
     const markdown = generateShareReadyPipelineDefenseMarkdown({ brief: activeBrief, shareable: shareableBrief });
     try {
-      await navigator.clipboard.writeText(markdown);
+      if (!await copyTextToClipboard(markdown)) throw new Error('Clipboard unavailable');
       setShareMarkdownCopyStatus('copied');
       markPipelineReviewHabitStepComplete('copiedManagerSummaryAt');
       if (sampleDataActive) {
@@ -672,6 +701,9 @@ export function PipelineReviewDefenseBriefPage() {
       }
     } catch {
       setShareMarkdownCopyStatus('failed');
+      if (sampleDataActive) {
+        markDemoJourneyComplete('Share-ready brief opened for manual copy');
+      }
     }
   };
 
@@ -680,6 +712,8 @@ export function PipelineReviewDefenseBriefPage() {
     shareable: shareableBrief,
     id: existing?.id,
     createdAt: existing?.createdAt,
+    source: sampleDataActive ? 'demo' : 'user',
+    isSample: sampleDataActive,
     qualityChecklistSummary: briefQualityAnalysis
       ? `${briefQualityAnalysis.status}; ${briefQualityAnalysis.highRiskIssues} high, ${briefQualityAnalysis.mediumRiskIssues} medium, ${briefQualityAnalysis.lowRiskIssues} low issue(s).`
       : undefined,
@@ -692,9 +726,10 @@ export function PipelineReviewDefenseBriefPage() {
     }
 
     const pack = buildCurrentReviewPack();
-    setReviewPacks(saveReviewPack(pack));
-    setReviewPackMessage('Review pack saved as a new local snapshot.');
+    setReviewPacks(saveReviewPack(pack, { syncCloud: !sampleDataActive }));
+    setReviewPackMessage(isAuthenticated && !sampleDataActive ? 'Review pack saved and syncing to your workspace.' : 'Review pack saved in this browser.');
     markPipelineReviewHabitStepComplete('generatedBriefAt');
+    trackProductEvent('review_pack_saved', sampleDataActive ? 'demo-local' : isAuthenticated ? 'cloud-browser' : 'browser-only');
     if (sampleDataActive) {
       markDemoJourneyComplete('Review Pack saved from Pipeline Defense');
     }
@@ -707,7 +742,7 @@ export function PipelineReviewDefenseBriefPage() {
     }
 
     const pack = buildCurrentReviewPack(currentWeekReviewPack);
-    setReviewPacks(updateReviewPack(currentWeekReviewPack.id, pack));
+    setReviewPacks(updateReviewPack(currentWeekReviewPack.id, pack, { syncCloud: !sampleDataActive }));
     setReviewPackMessage('Saved review pack updated for this week.');
     markPipelineReviewHabitStepComplete('generatedBriefAt');
     if (sampleDataActive) {
@@ -717,7 +752,7 @@ export function PipelineReviewDefenseBriefPage() {
 
   const copyReviewPackManagerSummary = async (pack: ReviewPackSnapshot) => {
     try {
-      await navigator.clipboard.writeText(pack.managerSummary);
+      if (!await copyTextToClipboard(pack.managerSummary)) throw new Error('Clipboard unavailable');
       setReviewPackCopyStatus('copied');
       setReviewPackMessage('Saved pack manager summary copied.');
       markPipelineReviewHabitStepComplete('copiedManagerSummaryAt');
@@ -732,7 +767,9 @@ export function PipelineReviewDefenseBriefPage() {
 
   const copyReviewPackMarkdown = async (pack: ReviewPackSnapshot) => {
     try {
-      await navigator.clipboard.writeText(pack.shareReadyMarkdown || generateReviewPackMarkdown(pack));
+      if (!await copyTextToClipboard(pack.shareReadyMarkdown || generateReviewPackMarkdown(pack))) {
+        throw new Error('Clipboard unavailable');
+      }
       setReviewPackCopyStatus('copied');
       setReviewPackMessage('Saved review pack Markdown copied.');
     } catch {
@@ -750,10 +787,18 @@ export function PipelineReviewDefenseBriefPage() {
   };
 
   const removeReviewPack = (packId: string) => {
-    const confirmed = window.confirm('Delete this saved review pack from this browser?');
+    const confirmed = window.confirm(
+      isAuthenticated && !sampleDataActive
+        ? 'Delete this saved review pack from your workspace on all devices?'
+        : 'Delete this saved review pack from this browser?',
+    );
     if (!confirmed) return;
-    setReviewPacks(deleteReviewPack(packId));
-    setReviewPackMessage('Review pack deleted from this browser.');
+    setReviewPacks(deleteReviewPack(packId, { syncCloud: !sampleDataActive }));
+    setReviewPackMessage(
+      isAuthenticated && !sampleDataActive
+        ? 'Review pack removed here and deletion is syncing across devices.'
+        : 'Review pack deleted from this browser.',
+    );
   };
 
   const openDraftAssist = (dealId: string) => {
@@ -805,7 +850,7 @@ export function PipelineReviewDefenseBriefPage() {
   const copyDraft = async () => {
     if (!draftAssistResult) return;
     try {
-      await navigator.clipboard.writeText(draftAssistResult.content);
+      if (!await copyTextToClipboard(draftAssistResult.content)) throw new Error('Clipboard unavailable');
       setDraftAssistCopyStatus('copied');
     } catch {
       setDraftAssistCopyStatus('failed');
@@ -844,9 +889,6 @@ export function PipelineReviewDefenseBriefPage() {
   const enterReviewMode = () => {
     setIsReviewMode(true);
     markPipelineReviewHabitStepComplete('generatedBriefAt');
-    if (sampleDataActive) {
-      markDemoJourneyComplete('Pipeline Defense Review Mode reached');
-    }
     setImportOpen(false);
     setEditingDealId(null);
     setMarkdownPreview('');
@@ -1534,7 +1576,7 @@ function ShareableBriefPanel({
   };
 
   return (
-    <section className="mb-6 rounded-xl border border-brand-blue/20 bg-white p-5 shadow-sm">
+    <section id="manager-summary" className="mb-6 scroll-mt-24 rounded-xl border border-brand-blue/20 bg-white p-5 shadow-sm">
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <SectionHeader
           eyebrow="Share-ready brief"
@@ -1566,7 +1608,7 @@ function ShareableBriefPanel({
         <p className="mb-3 text-sm font-semibold text-amber-700">Clipboard failed. The summary and export sections remain visible for manual copy.</p>
       )}
 
-      <section className="mb-4 rounded-lg border border-blue-100 bg-blue-50/70 p-4">
+      {isFounderWorkspaceEnabled && <section className="mb-4 rounded-lg border border-blue-100 bg-blue-50/70 p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-sm font-bold text-blue-950">Was this brief useful for a real pipeline review?</p>
@@ -1601,7 +1643,7 @@ function ShareableBriefPanel({
           </button>
         </div>
         {briefFeedbackMessage && <p className="mt-2 text-sm font-semibold text-emerald-700">{briefFeedbackMessage}</p>}
-      </section>
+      </section>}
 
       <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">

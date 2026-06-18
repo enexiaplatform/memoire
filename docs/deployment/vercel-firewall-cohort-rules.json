@@ -1,0 +1,149 @@
+{
+  "notes": [
+    "Memoire controlled-cohort firewall payload.",
+    "Apply with Vercel Firewall API or recreate in the Vercel dashboard before inviting the first early-access cohort.",
+    "The first rule is the minimum viable rule for Hobby plans because Hobby allows one rate-limit rule.",
+    "Use projectId and teamId from .vercel/project.json or the Vercel dashboard. Do not commit VERCEL_TOKEN."
+  ],
+  "project": {
+    "projectName": "memoire",
+    "projectIdSource": ".vercel/project.json",
+    "teamIdSource": ".vercel/project.json"
+  },
+  "minimumRequiredPatchActions": [
+    {
+      "action": "firewallEnabled",
+      "value": true
+    },
+    {
+      "action": "managedRules.update",
+      "id": "bot_protection",
+      "value": {
+        "active": true,
+        "action": "challenge"
+      }
+    },
+    {
+      "action": "managedRules.update",
+      "id": "ai_bots",
+      "value": {
+        "active": true,
+        "action": "deny"
+      }
+    },
+    {
+      "action": "rules.insert",
+      "value": {
+        "name": "Memoire cohort - expensive AI endpoint rate limit",
+        "description": "Protect AI and embedding endpoints beyond app-level in-memory limits before a controlled early-access cohort.",
+        "active": true,
+        "conditionGroup": [
+          {
+            "conditions": [
+              {
+                "type": "method",
+                "op": "eq",
+                "value": "POST"
+              },
+              {
+                "type": "path",
+                "op": "re",
+                "value": "^/api/(ask-memoire|search|structure-capture|capture-ai-classify|generate-embedding)$"
+              }
+            ]
+          }
+        ],
+        "action": {
+          "mitigate": {
+            "action": "rate_limit",
+            "rateLimit": {
+              "algo": "fixed_window",
+              "window": 600,
+              "limit": 120,
+              "keys": [
+                "ip"
+              ],
+              "action": "deny"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "optionalProPatchActions": [
+    {
+      "action": "rules.insert",
+      "value": {
+        "name": "Memoire cohort - request access submission rate limit",
+        "description": "Reduce spam on the lead-capture endpoint while preserving privacy-minimized product events.",
+        "active": true,
+        "conditionGroup": [
+          {
+            "conditions": [
+              {
+                "type": "method",
+                "op": "eq",
+                "value": "POST"
+              },
+              {
+                "type": "path",
+                "op": "eq",
+                "value": "/api/request-access"
+              }
+            ]
+          }
+        ],
+        "action": {
+          "mitigate": {
+            "action": "rate_limit",
+            "rateLimit": {
+              "algo": "fixed_window",
+              "window": 600,
+              "limit": 180,
+              "keys": [
+                "ip"
+              ],
+              "action": "deny"
+            }
+          }
+        }
+      }
+    },
+    {
+      "action": "rules.insert",
+      "value": {
+        "name": "Memoire cohort - challenge obvious scripted API clients",
+        "description": "Challenge common scripted user agents on API paths while preserving verified browsers.",
+        "active": true,
+        "conditionGroup": [
+          {
+            "conditions": [
+              {
+                "type": "path",
+                "op": "pre",
+                "value": "/api/"
+              },
+              {
+                "type": "user_agent",
+                "op": "re",
+                "value": "(?i)^(curl|wget|python-requests|httpie|libwww-perl|go-http-client)"
+              }
+            ]
+          }
+        ],
+        "action": {
+          "mitigate": {
+            "action": "challenge"
+          }
+        }
+      }
+    }
+  ],
+  "verification": [
+    "Open Vercel project firewall events and confirm the rules are active.",
+    "Send a normal browser request through the demo and signed-in app; it should not be challenged.",
+    "Use a scripted client against one protected AI endpoint until the limit is exceeded; Vercel should return HTTP 429.",
+    "Confirm application-level rate limits still return app JSON 429s when user-level limits are exceeded.",
+    "Confirm Stripe webhook traffic is not rate-limited by these rules because /api/stripe-webhook is excluded."
+  ]
+}

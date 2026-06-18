@@ -1,16 +1,26 @@
+import { useEffect } from 'react';
 import { useAuthContext } from '../../auth/authContext';
 import { Button } from '../ui/Button';
 import { Link, useNavigate } from 'react-router-dom';
 import { getUserDisplayName } from '../../utils/userDisplay';
 import { Menu, Plus } from 'lucide-react';
 import { useDemoWorkspaceMode } from '../../hooks/useDemoWorkspaceMode';
+import { DataModePill } from '../common/DataModePill';
+import { isSupabaseConfigured } from '../../lib/demoMode';
+import { reportWorkspaceSyncError, useWorkspaceSyncStatus } from '../../services/workspaceSyncStatus';
+import { loadReviewPacksForUser } from '../../utils/reviewPacks';
 
 export function TopNav({ onOpenMenu }: { onOpenMenu: () => void }) {
-  const { user, profile, signOut } = useAuthContext();
+  const { user, profile, signOut, loading, profileError, isAuthenticated } = useAuthContext();
   const navigate = useNavigate();
   const demoActive = useDemoWorkspaceMode();
-  const workspaceLabel = demoActive ? 'Demo local' : null;
+  const syncStatus = useWorkspaceSyncStatus();
   const displayName = demoActive ? 'Demo workspace' : getUserDisplayName(user, profile);
+
+  useEffect(() => {
+    if (!user || demoActive) return;
+    void loadReviewPacksForUser(user.id).catch(() => reportWorkspaceSyncError());
+  }, [demoActive, user]);
 
   const handleSignOut = async () => {
     const result = await signOut();
@@ -33,11 +43,15 @@ export function TopNav({ onOpenMenu }: { onOpenMenu: () => void }) {
           <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">Capture</span>
         </Link>
-        {workspaceLabel && (
-          <span className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">
-            {workspaceLabel}
-          </span>
-        )}
+        <DataModePill
+          compact
+          isLoading={loading || syncStatus.state === 'checking'}
+          isAuthenticated={isAuthenticated}
+          isSupabaseConfigured={isSupabaseConfigured}
+          cloudAvailable={syncStatus.state !== 'error'}
+          syncError={profileError || syncStatus.message}
+          hasSampleData={demoActive}
+        />
         {user && (
           <>
             <span className="hidden max-w-[220px] truncate text-sm text-gray-600 md:inline" title={displayName}>{displayName}</span>

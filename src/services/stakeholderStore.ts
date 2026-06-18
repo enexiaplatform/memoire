@@ -1,5 +1,6 @@
 import { supabaseClient } from '../lib/supabaseClient';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { reportWorkspaceSyncError } from './workspaceSyncStatus';
 
 export const STAKEHOLDER_STORAGE_KEY = 'memoire.stakeholders.v1';
 
@@ -104,6 +105,7 @@ export async function loadStakeholders(userId?: string | null): Promise<Stakehol
     try {
       return await loadCloudStakeholders(userId as string);
     } catch (error) {
+      reportWorkspaceSyncError();
       debugStakeholderStore('cloud load failed; falling back to local', { message: getErrorMessage(error) });
       return loadLocalStakeholders();
     }
@@ -120,6 +122,7 @@ export async function createStakeholder(input: StakeholderFormInput, userId?: st
       invalidateWorkspaceDataCache();
       return { stakeholder, mode: 'cloud' };
     } catch (error) {
+      reportWorkspaceSyncError();
       const stakeholder = createLocalStakeholder(normalized, userId || undefined);
       saveLocalStakeholderRecord(stakeholder);
       invalidateWorkspaceDataCache();
@@ -142,6 +145,7 @@ export async function updateStakeholder(stakeholder: StakeholderRecord, input: S
       invalidateWorkspaceDataCache();
       return { stakeholder: updated, mode: 'cloud' };
     } catch (error) {
+      reportWorkspaceSyncError();
       const localCopy = { ...stakeholder, ...normalized, updatedAt: new Date().toISOString(), storageMode: 'local' as const };
       saveLocalStakeholderRecord(localCopy);
       invalidateWorkspaceDataCache();

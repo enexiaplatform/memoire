@@ -13,10 +13,12 @@ import {
   Plus,
   ShieldCheck,
   Target,
+  Upload,
 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
-import { isSupabaseConfigured } from '../../lib/demoMode';
+import { DemoJourneyCard } from '../../components/demo/DemoJourneyCard';
+import { isFounderWorkspaceEnabled, isSupabaseConfigured } from '../../lib/demoMode';
 import type { AccountMemoryRecord } from '../../services/accountStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import { type SalesActivityRecord } from '../../services/salesActivityStore';
@@ -35,16 +37,8 @@ import {
   type CommandPriority,
   type RecentActivityItem,
 } from '../../utils/salesCommandCenter';
-import {
-  dismissOnboarding,
-  loadOnboardingState,
-  markOnboardingStepComplete,
-  resetOnboarding,
-  saveOnboardingState,
-  type OnboardingState,
-} from '../../utils/onboardingState';
 import { hasLocalSampleData } from '../../utils/dataMode';
-import { clearSampleDataset, loadSampleDataset } from '../../utils/sampleData';
+import { loadSampleDataset } from '../../utils/sampleData';
 import { analyzeMeddicLitePipeline } from '../../utils/meddicLite';
 import { generatePipelineOpportunityActions, type OpportunityRecommendedAction } from '../../utils/opportunityActionPlan';
 import { analyzePipelineOutcomeLoop } from '../../utils/actionOutcomeLoop';
@@ -81,10 +75,17 @@ import {
 } from '../../utils/pipelineReviewHabit';
 import {
   loadReviewPacks,
+  loadReviewPacksForWorkspace,
   REVIEW_PACKS_UPDATED_EVENT,
   type ReviewPackSnapshot,
 } from '../../utils/reviewPacks';
+import {
+  buildSalesOperatingSetupProgress,
+  loadSalesOperatingSetupState,
+  type SalesOperatingSetupProgress,
+} from '../../utils/salesOperatingSetup';
 import { generateInterviewScriptText } from '../../utils/demoFeedback';
+import { markDemoJourneyStepComplete } from '../../utils/demoJourney';
 
 type DashboardData = {
   activities: SalesActivityRecord[];
@@ -113,12 +114,11 @@ export function DashboardPage() {
   });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
-  const [onboarding, setOnboarding] = useState<OnboardingState>(() => loadOnboardingState());
   const [firstReviewOnboarding, setFirstReviewOnboarding] = useState(() => loadFirstPipelineReviewOnboardingState());
   const [trialChecklistState, setTrialChecklistState] = useState(() => loadTrialActivationChecklistState());
+  const [salesOperatingSetup, setSalesOperatingSetup] = useState(() => loadSalesOperatingSetupState());
   const [pipelineReviewHabitState, setPipelineReviewHabitState] = useState(() => loadPipelineReviewHabitState());
   const [reviewPacks, setReviewPacks] = useState<ReviewPackSnapshot[]>(() => loadReviewPacks());
-  const [sampleMessage, setSampleMessage] = useState('');
   const [validationMessage, setValidationMessage] = useState('');
   const [demoSandboxPromptOpen, setDemoSandboxPromptOpen] = useState(false);
   const [advancedInsightsOpen, setAdvancedInsightsOpen] = useState(false);
@@ -128,16 +128,19 @@ export function DashboardPage() {
     let mounted = true;
 
     async function loadDashboard() {
-      const dataUserId = hasLocalSampleData() ? undefined : user?.id;
+      const sampleActive = hasLocalSampleData();
+      const dataUserId = sampleActive ? undefined : user?.id;
       const cachedData = getCachedSalesWorkspaceData(dataUserId);
       if (cachedData) {
+        const nextReviewPacks = await loadReviewPacksForWorkspace(dataUserId, sampleActive);
+        if (!mounted) return;
         setData(cachedData);
         setMessage('Command center ready');
-        setOnboarding(syncOnboardingFromData(cachedData, { includeDataSignals: !hasLocalSampleData() }));
         setFirstReviewOnboarding(loadFirstPipelineReviewOnboardingState());
         setTrialChecklistState(loadTrialActivationChecklistState());
+        setSalesOperatingSetup(loadSalesOperatingSetupState());
         setPipelineReviewHabitState(loadPipelineReviewHabitState());
-        setReviewPacks(loadReviewPacks());
+        setReviewPacks(nextReviewPacks);
         setLoading(false);
         return;
       }
@@ -147,15 +150,16 @@ export function DashboardPage() {
 
       try {
         const nextData = await loadDashboardData(dataUserId);
+        const nextReviewPacks = await loadReviewPacksForWorkspace(dataUserId, sampleActive);
 
         if (!mounted) return;
         setData(nextData);
         setMessage('Command center ready');
-        setOnboarding(syncOnboardingFromData(nextData, { includeDataSignals: !hasLocalSampleData() }));
         setFirstReviewOnboarding(loadFirstPipelineReviewOnboardingState());
         setTrialChecklistState(loadTrialActivationChecklistState());
+        setSalesOperatingSetup(loadSalesOperatingSetupState());
         setPipelineReviewHabitState(loadPipelineReviewHabitState());
-        setReviewPacks(loadReviewPacks());
+        setReviewPacks(nextReviewPacks);
       } catch (error) {
         if (!mounted) return;
         if (import.meta.env.DEV) {
@@ -174,18 +178,20 @@ export function DashboardPage() {
     return () => {
       mounted = false;
     };
-  }, [authLoading, isAuthenticated, user?.id, sampleMessage]);
+  }, [authLoading, isAuthenticated, user?.id]);
 
   const sampleDataActive = hasLocalSampleData();
+
+  useEffect(() => {
+    if (sampleDataActive) {
+      markDemoJourneyStepComplete('review-signals', 'Demo dashboard reviewed');
+    }
+  }, [sampleDataActive]);
   const commandCenter = useMemo(() => buildTodayCommandCenter(data), [data]);
   const pipelineReviewSignal = useMemo(() => buildPipelineReviewDashboardSignal(data.briefs), [data.briefs]);
   const dashboardInsights = useMemo(() => (
     advancedInsightsOpen ? buildDashboardInsights(data) : null
   ), [advancedInsightsOpen, data]);
-  const onboardingProgress = useMemo(
-    () => buildOnboardingProgress(onboarding, data, sampleDataActive),
-    [data, onboarding, sampleDataActive]
-  );
   const firstReviewMetrics = useMemo(() => buildFirstPipelineReviewMetrics({
     opportunities: data.opportunities,
     objections: data.objections,
@@ -205,6 +211,10 @@ export function DashboardPage() {
     sampleDataActive,
     state: trialChecklistState,
   }), [data, sampleDataActive, trialChecklistState]);
+  const salesOperatingSetupProgress = useMemo(
+    () => buildSalesOperatingSetupProgress(salesOperatingSetup),
+    [salesOperatingSetup],
+  );
   const pipelineReviewHabitProgress = useMemo(
     () => buildPipelineReviewHabitProgress(pipelineReviewHabitState),
     [pipelineReviewHabitState],
@@ -225,37 +235,15 @@ export function DashboardPage() {
     return () => window.removeEventListener(REVIEW_PACKS_UPDATED_EVENT, handleReviewPackUpdate);
   }, []);
 
-  useEffect(() => {
-    setOnboarding(markOnboardingStepComplete('hasSeenWelcome'));
-  }, []);
-
-  const handleDismissOnboarding = () => {
-    setOnboarding(dismissOnboarding());
-  };
-
-  const handleResetOnboarding = () => {
-    setSampleMessage('');
-    setOnboarding(resetOnboarding());
-  };
-
   const handleLoadDemoSandbox = async () => {
     loadSampleDataset();
     setTrialChecklistState(markTrialActivationChecklistItemComplete('load-demo-or-import-csv'));
     const nextData = await loadDashboardData();
     setData(nextData);
-    setOnboarding(syncOnboardingFromData(nextData, { includeDataSignals: false }));
-    setSampleMessage(isAuthenticated
+    setMessage(isAuthenticated
       ? 'Demo is local only and was not saved to your cloud account.'
       : 'Demo is local only.');
     setDemoSandboxPromptOpen(false);
-  };
-
-  const handleClearDemoSandbox = async () => {
-    clearSampleDataset();
-    const nextData = await loadDashboardData(user?.id);
-    setData(nextData);
-    setOnboarding(syncOnboardingFromData(nextData, { includeDataSignals: true }));
-    setSampleMessage('Demo data cleared from this browser. Cloud data was not changed.');
   };
 
   const handleResetTrialChecklist = () => {
@@ -309,22 +297,13 @@ export function DashboardPage() {
         </div>
       ) : (
         <>
-          <StartHerePanel
-            commandCenter={commandCenter}
-            sampleDataActive={sampleDataActive}
-            onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)}
-          />
-          {!onboarding.dismissedAt && !sampleDataActive && (
-            <OnboardingWelcomePanel
-              progress={onboardingProgress}
-              sampleMessage={sampleMessage}
-              isDemoSandboxActive={sampleDataActive}
-              hasExistingData={commandCenter.hasAnyData}
-              isAuthenticated={isAuthenticated}
-              onDismiss={handleDismissOnboarding}
-              onReset={handleResetOnboarding}
+          {sampleDataActive ? (
+            <DemoJourneyCard compact />
+          ) : (
+            <StartHerePanel
+              commandCenter={commandCenter}
+              sampleDataActive={sampleDataActive}
               onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)}
-              onClearDemoSandbox={handleClearDemoSandbox}
             />
           )}
           {demoSandboxPromptOpen && (
@@ -395,6 +374,7 @@ export function DashboardPage() {
             </summary>
             {setupToolsOpen && (
               <div className="mt-4 flex flex-col gap-4">
+                <SalesOperatingSetupCta progress={salesOperatingSetupProgress} />
                 <PipelineReviewHabitCard progress={pipelineReviewHabitProgress} latestReviewPack={latestWeeklyReviewPack} />
                 <TrialActivationChecklistCard
                   items={trialChecklist}
@@ -411,7 +391,9 @@ export function DashboardPage() {
                 {sampleDataActive && (
                   <>
                     <DemoCommercializationCta onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)} />
-                    <ValidationCta message={validationMessage} onCopyInterviewScript={handleCopyInterviewScript} />
+                    {isFounderWorkspaceEnabled && (
+                      <ValidationCta message={validationMessage} onCopyInterviewScript={handleCopyInterviewScript} />
+                    )}
                   </>
                 )}
               </div>
@@ -543,19 +525,22 @@ function StartHerePanel({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Start here</p>
-            <h2 className="mt-2 text-2xl font-black text-navy">Add one real signal.</h2>
-            <p className="mt-1 text-sm text-gray-500">One note or one opportunity is enough for Memoire to start helping.</p>
+            <h2 className="mt-2 text-2xl font-black text-navy">Bring in your first deal.</h2>
+            <p className="mt-1 text-sm text-gray-500">Import a CSV, add one opportunity, or explore with demo data before your first review.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link to="/app/capture?mode=quick" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-              Capture activity
+            <Link to="/app/opportunities?import=csv" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+              Import CSV
             </Link>
-            <Link to="/app/opportunities" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
+            <Link to="/app/opportunities?new=1" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
               Add opportunity
             </Link>
             <button type="button" onClick={onOpenDemoSandbox} className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
               Try demo first
             </button>
+            <Link to="/app/onboarding/sales-operating-setup" className="rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700">
+              Set sales context
+            </Link>
           </div>
         </div>
       </section>
@@ -1227,6 +1212,7 @@ function RecentActivityFeed({ items }: { items: RecentActivityItem[] }) {
 function QuickActions() {
   const actions = [
     { label: 'Quick Capture', href: '/app/capture?mode=quick', icon: <NotebookPen className="h-4 w-4" /> },
+    { label: 'Sales Setup', href: '/app/onboarding/sales-operating-setup', icon: <Target className="h-4 w-4" /> },
     { label: 'Add Opportunity', href: '/app/opportunities', icon: <Target className="h-4 w-4" /> },
     { label: 'Add Account', href: '/app/accounts', icon: <BookOpen className="h-4 w-4" /> },
     { label: 'Generate Review', href: '/app/reviews', icon: <ClipboardList className="h-4 w-4" /> },
@@ -1306,6 +1292,40 @@ function DemoCommercializationCta({ onOpenDemoSandbox }: { onOpenDemoSandbox: ()
           <button type="button" onClick={onOpenDemoSandbox} className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
             Load Demo Sandbox
           </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SalesOperatingSetupCta({ progress }: { progress: SalesOperatingSetupProgress }) {
+  const ready = progress.status === 'Ready';
+
+  return (
+    <section className="rounded-xl border border-blue-100 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Target className="h-4 w-4 text-brand-blue" />
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Sales operating context</p>
+            <Badge label={progress.status} tone={ready ? 'green' : progress.status === 'In progress' ? 'amber' : 'gray'} />
+          </div>
+          <h2 className="mt-2 text-xl font-bold text-navy">Set Target, GTM, RTM, Cycle, and Daily Log</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
+            This gives Memoire the operating frame behind pipeline reviews, activity capture, forecast pressure, and next-action prompts.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 sm:min-w-[220px]">
+          <div className="flex items-center justify-between text-xs font-bold text-gray-500">
+            <span>{progress.percent}% ready</span>
+            <span>{progress.completedRequired}/{progress.requiredCount} required</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+            <div className="h-full rounded-full bg-brand-blue" style={{ width: `${progress.percent}%` }} />
+          </div>
+          <Link to="/app/onboarding/sales-operating-setup" className="mt-1 inline-flex justify-center rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+            {ready ? 'Review Setup' : 'Open Setup'}
+          </Link>
         </div>
       </div>
     </section>
@@ -1483,16 +1503,16 @@ function DashboardEmptyState() {
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-brand-blue">
         <CheckCircle2 className="h-6 w-6" />
       </div>
-      <h2 className="mt-4 text-xl font-bold text-navy">Start by capturing one activity or adding one opportunity.</h2>
+      <h2 className="mt-4 text-xl font-bold text-navy">Start by importing a CSV or adding one opportunity.</h2>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">
-        Memoire will turn activity notes, opportunities, account memory, and defense briefs into a focused daily command center.
+        Memoire will turn opportunities, account memory, activity notes, and defense briefs into a focused daily command center.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-2">
-        <Link to="/app/capture?mode=quick" className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-          <NotebookPen className="h-4 w-4" />
-          Quick Capture
+        <Link to="/app/opportunities?import=csv" className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          <Upload className="h-4 w-4" />
+          Import CSV
         </Link>
-        <Link to="/app/opportunities" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
+        <Link to="/app/opportunities?new=1" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
           <Plus className="h-4 w-4" />
           Add Opportunity
         </Link>
@@ -1542,92 +1562,6 @@ function FirstPipelineReviewCta({
           </Link>
         </div>
       </div>
-    </section>
-  );
-}
-
-function OnboardingWelcomePanel({
-  progress,
-  sampleMessage,
-  isDemoSandboxActive,
-  hasExistingData,
-  isAuthenticated,
-  onDismiss,
-  onReset,
-  onOpenDemoSandbox,
-  onClearDemoSandbox,
-}: {
-  progress: ReturnType<typeof buildOnboardingProgress>;
-  sampleMessage: string;
-  isDemoSandboxActive: boolean;
-  hasExistingData: boolean;
-  isAuthenticated: boolean;
-  onDismiss: () => void;
-  onReset: () => void;
-  onOpenDemoSandbox: () => void;
-  onClearDemoSandbox: () => void;
-}) {
-  const doneCount = progress.filter((step) => step.done).length;
-  const nextStep = progress.find((step) => !step.done) || progress[progress.length - 1];
-
-  return (
-    <section className="rounded-xl border border-blue-100 bg-blue-50/70 p-4 shadow-sm">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Getting started</p>
-          <h2 className="mt-1 text-xl font-bold text-navy">
-            {nextStep?.done ? 'Setup looks ready.' : `Next: ${nextStep?.title}`}
-          </h2>
-          <p className="mt-1 text-sm text-blue-950">{doneCount}/{progress.length} basics complete.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={onOpenDemoSandbox} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-            Demo Sandbox
-          </button>
-          {isDemoSandboxActive && (
-            <button type="button" onClick={onClearDemoSandbox} className="rounded-full border border-amber-300 bg-white px-4 py-2 text-sm font-bold text-amber-800">
-              Clear demo data
-            </button>
-          )}
-          <button type="button" onClick={onDismiss} className="rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-800">
-            Dismiss guide
-          </button>
-        </div>
-      </div>
-
-      {sampleMessage && (
-        <p className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
-          {sampleMessage}
-        </p>
-      )}
-
-      <p className="mt-3 rounded-lg border border-amber-100 bg-white/80 px-3 py-2 text-sm leading-6 text-amber-900">
-        Demo sandbox data stays local in this browser{isAuthenticated ? ' and will not be saved to your cloud account' : ''}.
-        {isDemoSandboxActive ? ' The checklist still reflects your real workspace steps, not demo records.' : ''}
-        {hasExistingData && !isDemoSandboxActive ? ' You already have workspace data, so Memoire will ask before loading demo records.' : ''}
-      </p>
-
-      <details className="mt-3 rounded-lg border border-blue-100 bg-white px-3 py-2">
-        <summary className="cursor-pointer text-sm font-bold text-brand-blue">Show setup checklist</summary>
-        <div className="mt-3 grid grid-cols-1 gap-2 lg:grid-cols-5">
-          {progress.map((step) => (
-            <article key={step.id} className="rounded-lg border border-blue-100 bg-white p-3">
-              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                step.done ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'
-              }`}>
-                {step.done ? 'Done' : 'Next'}
-              </span>
-              <h3 className="mt-3 text-sm font-bold text-navy">{step.title}</h3>
-              <Link to={step.href} className="mt-3 inline-flex rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-brand-blue hover:bg-blue-100">
-                {step.cta}
-              </Link>
-            </article>
-          ))}
-        </div>
-        <button type="button" onClick={onReset} className="mt-3 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-bold text-blue-800">
-          Reset guide
-        </button>
-      </details>
     </section>
   );
 }
@@ -1773,73 +1707,4 @@ function playbookSeverityTone(pattern: SalesPlaybookPattern) {
 
 async function loadDashboardData(userId?: string | null): Promise<DashboardData> {
   return loadSalesWorkspaceData(userId);
-}
-
-function syncOnboardingFromData(data: DashboardData, options: { includeDataSignals: boolean }) {
-  const current = loadOnboardingState();
-  const next = saveOnboardingState({
-    ...current,
-    hasSeenWelcome: true,
-    hasCompletedFirstCapture: current.hasCompletedFirstCapture || (options.includeDataSignals && data.activities.length > 0),
-    hasCreatedFirstOpportunity: current.hasCreatedFirstOpportunity || (options.includeDataSignals && data.opportunities.length > 0),
-    hasCreatedFirstAccount: current.hasCreatedFirstAccount || (options.includeDataSignals && data.accounts.length > 0),
-    hasGeneratedFirstDefenseBrief: current.hasGeneratedFirstDefenseBrief || (options.includeDataSignals && data.briefs.some(isUserCreatedBrief)),
-  });
-
-  return next;
-}
-
-function buildOnboardingProgress(onboarding: OnboardingState, data: DashboardData, sampleDataActive: boolean) {
-  const shouldUseDataSignals = !sampleDataActive;
-  const hasCapture = onboarding.hasCompletedFirstCapture || (shouldUseDataSignals && data.activities.length > 0);
-  const hasOpportunity = onboarding.hasCreatedFirstOpportunity || (shouldUseDataSignals && data.opportunities.length > 0);
-  const hasAccount = onboarding.hasCreatedFirstAccount || (shouldUseDataSignals && data.accounts.length > 0);
-  const hasBrief = onboarding.hasGeneratedFirstDefenseBrief || (shouldUseDataSignals && data.briefs.some(isUserCreatedBrief));
-
-  return [
-    {
-      id: 'capture',
-      title: 'Capture your first sales activity',
-      description: 'Write one note from a customer touch, follow-up, demo, or internal sales action.',
-      cta: 'Capture activity',
-      href: '/app/capture',
-      done: hasCapture,
-    },
-    {
-      id: 'opportunity',
-      title: 'Add your first opportunity',
-      description: 'Track one deal you want to defend, rescue, monitor, or downgrade.',
-      cta: 'Add opportunity',
-      href: '/app/opportunities',
-      done: hasOpportunity,
-    },
-    {
-      id: 'account',
-      title: 'Create or confirm an account memory',
-      description: 'Keep relationship context, stakeholders, notes, and linked activity in one account view.',
-      cta: 'Create account',
-      href: '/app/accounts',
-      done: hasAccount,
-    },
-    {
-      id: 'dashboard',
-      title: 'Review your dashboard',
-      description: 'Use the command center to see today actions, overdue work, risk, and recent activity.',
-      cta: 'Review dashboard',
-      href: '/app/dashboard',
-      done: onboarding.hasSeenWelcome,
-    },
-    {
-      id: 'defense',
-      title: 'Generate your first pipeline defense brief',
-      description: 'Select opportunities and create a review-ready defense brief from structured deal data.',
-      cta: 'Generate defense brief',
-      href: '/app/opportunities',
-      done: hasBrief,
-    },
-  ];
-}
-
-function isUserCreatedBrief(brief: PipelineDefenseBrief) {
-  return !brief.title.toLowerCase().includes('sample pipeline defense brief');
 }

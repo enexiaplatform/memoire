@@ -1,6 +1,6 @@
 import { buildCaptureAiMessages, captureAiActivityTypes } from './_captureAiPrompt.js';
 import { getBearerToken, verifyUserToken } from './_auth.js';
-import { enforceRateLimit } from './_rateLimit.js';
+import { enforceRateLimit, rateLimitExceeded } from './_rateLimit.js';
 
 type ApiRequest = {
   method?: string;
@@ -83,7 +83,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (!user) return res.status(401).json({ error: 'Sign in is required for AI Assist.' });
   const rateLimit = enforceRateLimit(req, 'capture-ai-classify', user.id, 15);
   if (!rateLimit.allowed) {
-    return res.status(429).json({ error: 'Too many requests', retryAfterSeconds: rateLimit.retryAfterSeconds });
+    return rateLimitExceeded(res, rateLimit);
   }
 
   const validation = validateRequestBody(req.body);

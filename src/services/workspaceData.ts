@@ -1,10 +1,10 @@
 import { loadAccounts, type AccountMemoryRecord } from './accountStore';
-import { loadActionOutcomes, type ActionOutcomeRecord } from './actionOutcomeStore';
+import { loadActionOutcomes, loadActionOutcomesForUser, type ActionOutcomeRecord } from './actionOutcomeStore';
 import { loadObjections, type ObjectionRecord } from './objectionStore';
 import { loadOpportunities, type CrmLiteOpportunity } from './opportunityStore';
 import { canUsePipelineDefenseCloudStore, loadCloudBriefs } from './pipelineDefenseCloudStore';
 import { loadSalesActivities, type SalesActivityRecord } from './salesActivityStore';
-import { loadSalesAssets, type SalesAssetRecord } from './salesAssetStore';
+import { loadSalesAssets, loadSalesAssetsForUser, type SalesAssetRecord } from './salesAssetStore';
 import { loadStakeholders, type StakeholderRecord } from './stakeholderStore';
 import type { PipelineDefenseBrief } from '../utils/pipelineDefenseStorage';
 import { loadPipelineDefenseBriefStore } from '../utils/pipelineDefenseStorage';
@@ -15,6 +15,12 @@ import {
   setCachedWorkspacePromise,
   setCachedWorkspaceValue,
 } from './workspaceDataCache';
+import {
+  beginWorkspaceSyncCheck,
+  getWorkspaceSyncStatus,
+  reportWorkspaceSyncError,
+  reportWorkspaceSyncReady,
+} from './workspaceSyncStatus';
 
 export type SalesWorkspaceData = {
   activities: SalesActivityRecord[];
@@ -41,6 +47,8 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
     if (pending) return pending;
   }
 
+  if (userId) beginWorkspaceSyncCheck();
+
   const promise = Promise.all([
     loadSalesActivities(userId),
     loadOpportunities(userId),
@@ -48,21 +56,27 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
     loadPipelineBriefs(userId),
     loadObjections(userId),
     loadStakeholders(userId),
-  ]).then(([activities, opportunities, accounts, briefs, objections, stakeholders]) => ({
-    activities,
-    opportunities,
-    accounts,
-    briefs,
-    objections,
-    stakeholders,
-    actionOutcomes: loadActionOutcomes(),
-    assets: loadSalesAssets(),
-  }));
+    userId ? loadActionOutcomesForUser(userId) : Promise.resolve(loadActionOutcomes()),
+    userId ? loadSalesAssetsForUser(userId) : Promise.resolve(loadSalesAssets()),
+  ]).then(([activities, opportunities, accounts, briefs, objections, stakeholders, actionOutcomes, assets]) => {
+    if (userId && getWorkspaceSyncStatus().state !== 'error') reportWorkspaceSyncReady();
+    return {
+      activities,
+      opportunities,
+      accounts,
+      briefs,
+      objections,
+      stakeholders,
+      actionOutcomes,
+      assets,
+    };
+  });
 
   setCachedWorkspacePromise(cacheKey, promise);
 
   const value = await promise.catch((error) => {
     invalidateWorkspaceDataCache();
+    if (userId) reportWorkspaceSyncError();
     throw error;
   });
   setCachedWorkspaceValue(cacheKey, value);
