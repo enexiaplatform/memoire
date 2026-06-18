@@ -64,6 +64,18 @@ export interface CrmLiteOpportunity {
   forecastEvidenceCategory: ForecastEvidenceCategory;
   decisionRecommendation: DecisionRecommendation;
   status: OpportunityStatus;
+  brand?: string;
+  channel?: string;
+  opportunityType?: string;
+  fy26Value?: number | null;
+  fy27Value?: number | null;
+  quarterValues?: Record<string, unknown>;
+  forecastMetadata?: Record<string, unknown>;
+  pipelineProbability?: number | null;
+  isStageInferred?: boolean;
+  sourceStageConfidence?: string;
+  sourceSystem?: string;
+  externalSourceKey?: string;
   createdAt: string;
   updatedAt: string;
   storageMode: 'local' | 'cloud';
@@ -102,6 +114,18 @@ type OpportunityRow = {
   forecast_evidence_category: string | null;
   decision_recommendation: string | null;
   status: string | null;
+  brand?: string | null;
+  channel?: string | null;
+  opportunity_type?: string | null;
+  fy26_value?: number | string | null;
+  fy27_value?: number | string | null;
+  quarter_values?: Record<string, unknown> | null;
+  forecast_metadata?: Record<string, unknown> | null;
+  pipeline_probability?: number | string | null;
+  is_stage_inferred?: boolean | null;
+  source_stage_confidence?: string | null;
+  source_system?: string | null;
+  external_source_key?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -405,6 +429,18 @@ function rowToOpportunity(row: OpportunityRow): CrmLiteOpportunity {
     forecastEvidenceCategory: normalizeForecastCategory(row.forecast_evidence_category),
     decisionRecommendation: normalizeDecisionRecommendation(row.decision_recommendation),
     status: normalizeStatus(row.status),
+    brand: row.brand || '',
+    channel: row.channel || '',
+    opportunityType: row.opportunity_type || '',
+    fy26Value: normalizeNumber(row.fy26_value),
+    fy27Value: normalizeNumber(row.fy27_value),
+    quarterValues: normalizeJsonObject(row.quarter_values),
+    forecastMetadata: normalizeJsonObject(row.forecast_metadata),
+    pipelineProbability: normalizeNumber(row.pipeline_probability),
+    isStageInferred: Boolean(row.is_stage_inferred),
+    sourceStageConfidence: row.source_stage_confidence || '',
+    sourceSystem: row.source_system || '',
+    externalSourceKey: row.external_source_key || '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     storageMode: 'cloud',
@@ -513,6 +549,10 @@ function normalizeNumber(value: unknown) {
   if (value === null || value === undefined || value === '') return null;
   const parsed = typeof value === 'number' ? value : Number(String(value).replace(/,/g, ''));
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeJsonObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
 function createId() {

@@ -12,6 +12,7 @@ import {
   FileText,
   Filter,
   Plus,
+  RefreshCw,
   Save,
   Search,
   Target,
@@ -52,7 +53,7 @@ import {
   type ActionOutcomeRecord,
   type ActionOutcomeType,
 } from '../../services/actionOutcomeStore';
-import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
+import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { analyzeStakeholderCoverage, getStakeholdersForOpportunity } from '../../utils/stakeholderGraph';
 import { getObjectionsForOpportunity, objectionStatusTone } from '../../utils/objectionLedger';
 import { analyzeOpportunityOutcomeLoop } from '../../utils/actionOutcomeLoop';
@@ -127,15 +128,20 @@ type OpportunitySortKey =
   | 'opportunity'
   | 'stage'
   | 'value'
+  | 'fy26'
+  | 'fy27'
+  | 'probability'
   | 'closePeriod'
   | 'forecast'
   | 'recommendation'
   | 'nextActionDate'
   | 'quality'
   | 'updatedAt';
+type OpportunityQuickFilter = 'all' | 'imported' | 'stageInferred' | 'fy26' | 'fy27' | 'needsAction';
 
 const allFilter = 'All';
 const defaultPageSize = 25;
+const founderCoreSourceSystem = 'founder_core_fy26';
 
 export function OpportunitiesPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
@@ -153,6 +159,7 @@ export function OpportunitiesPage() {
   const [forecastFilter, setForecastFilter] = useState(allFilter);
   const [recommendationFilter, setRecommendationFilter] = useState(allFilter);
   const [statusFilter, setStatusFilter] = useState(allFilter);
+  const [quickFilter, setQuickFilter] = useState<OpportunityQuickFilter>('all');
   const [sortKey, setSortKey] = useState<OpportunitySortKey>('updatedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [page, setPage] = useState(1);
@@ -186,6 +193,9 @@ export function OpportunitiesPage() {
   const [csvMappingSourceType, setCsvMappingSourceType] = useState<CsvMappingSourceType>('Custom');
   const [csvMappingMessage, setCsvMappingMessage] = useState('');
   const [csvTemplateCopyStatus, setCsvTemplateCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const [workspaceSyncing, setWorkspaceSyncing] = useState(false);
+  const [workspaceLoadError, setWorkspaceLoadError] = useState('');
+  const [lastWorkspaceRefreshAt, setLastWorkspaceRefreshAt] = useState('');
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
   const getAnalyticsDataMode = (syncIssue = false): AnalyticsDataMode => {
@@ -194,28 +204,26 @@ export function OpportunitiesPage() {
     return dataUserId ? 'cloud-browser' : 'browser-only';
   };
 
-  const refreshOpportunities = async () => {
-    const cachedData = getCachedSalesWorkspaceData(dataUserId);
-    if (cachedData) {
-      setOpportunities(cachedData.opportunities);
-      setActivities(cachedData.activities);
-      setStakeholders(cachedData.stakeholders);
-      setObjections(cachedData.objections);
-      setActionOutcomes(cachedData.actionOutcomes);
-      setSalesAssets(cachedData.assets);
-      setLoading(false);
-      return;
-    }
-
+  const refreshOpportunities = async (options: { force?: boolean } = {}) => {
+    if (options.force) setWorkspaceSyncing(true);
+    setWorkspaceLoadError('');
     setLoading(true);
-    const workspaceData = await loadSalesWorkspaceData(dataUserId);
-    setOpportunities(workspaceData.opportunities);
-    setActivities(workspaceData.activities);
-    setStakeholders(workspaceData.stakeholders);
-    setObjections(workspaceData.objections);
-    setActionOutcomes(workspaceData.actionOutcomes);
-    setSalesAssets(workspaceData.assets);
-    setLoading(false);
+    try {
+      const workspaceData = await loadSalesWorkspaceData(dataUserId, { force: options.force });
+      setOpportunities(workspaceData.opportunities);
+      setActivities(workspaceData.activities);
+      setStakeholders(workspaceData.stakeholders);
+      setObjections(workspaceData.objections);
+      setActionOutcomes(workspaceData.actionOutcomes);
+      setSalesAssets(workspaceData.assets);
+      setLastWorkspaceRefreshAt(new Date().toISOString());
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to load workspace data.';
+      setWorkspaceLoadError(message);
+    } finally {
+      setLoading(false);
+      setWorkspaceSyncing(false);
+    }
   };
 
   useEffect(() => {
@@ -225,6 +233,7 @@ export function OpportunitiesPage() {
 
   const quality = useMemo(() => analyzePipelineQuality(opportunities, activities, objections), [activities, objections, opportunities]);
   const importedEnrichment = useMemo(() => summarizeImportedOpportunityEnrichment(opportunities), [opportunities]);
+  const importedPipelineSummary = useMemo(() => buildImportedPipelineSummary(opportunities), [opportunities]);
 
   const selectedOpportunities = useMemo(() => {
     const selectedIds = new Set(selectedOpportunityIds);
@@ -244,19 +253,24 @@ export function OpportunitiesPage() {
         opportunity.accountName,
         opportunity.opportunityName,
         opportunity.productOrSolution,
+        opportunity.brand,
+        opportunity.channel,
+        opportunity.opportunityType,
+        opportunity.sourceStageConfidence,
         opportunity.nextAction,
         opportunity.evidence,
       ].join(' ').toLowerCase();
 
       return (
         (!query || searchable.includes(query)) &&
+        matchesOpportunityQuickFilter(opportunity, quickFilter) &&
         (stageFilter === allFilter || opportunity.stage === stageFilter) &&
         (forecastFilter === allFilter || opportunity.forecastEvidenceCategory === forecastFilter) &&
         (recommendationFilter === allFilter || opportunity.decisionRecommendation === recommendationFilter) &&
         (statusFilter === allFilter || opportunity.status === statusFilter)
       );
     }).sort((left, right) => compareOpportunityRows(left, right, sortKey, sortDirection));
-  }, [forecastFilter, opportunityRows, recommendationFilter, search, sortDirection, sortKey, stageFilter, statusFilter]);
+  }, [forecastFilter, opportunityRows, quickFilter, recommendationFilter, search, sortDirection, sortKey, stageFilter, statusFilter]);
 
   const visibleOpportunities = useMemo(
     () => visibleOpportunityRows.map((row) => row.opportunity),
@@ -270,7 +284,7 @@ export function OpportunitiesPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [forecastFilter, pageSize, recommendationFilter, search, stageFilter, statusFilter]);
+  }, [forecastFilter, pageSize, quickFilter, recommendationFilter, search, stageFilter, statusFilter]);
 
   useEffect(() => {
     if (page > pageCount) setPage(pageCount);
@@ -282,7 +296,7 @@ export function OpportunitiesPage() {
       return;
     }
     setSortKey(nextKey);
-    setSortDirection(['value', 'updatedAt', 'quality'].includes(nextKey) ? 'desc' : 'asc');
+    setSortDirection(['value', 'fy26', 'fy27', 'probability', 'updatedAt', 'quality'].includes(nextKey) ? 'desc' : 'asc');
   };
 
   const openAddPanel = () => {
@@ -760,14 +774,26 @@ export function OpportunitiesPage() {
             Review pipeline movement, forecast evidence, close timing, next actions, and deal risk in one working table.
           </p>
         </div>
-        <DataModePill
-          compact
-          isLoading={authLoading}
-          isAuthenticated={isAuthenticated}
-          isSupabaseConfigured={isSupabaseConfigured}
-          cloudAvailable={canUseOpportunityCloudStore(dataUserId)}
-          hasSampleData={sampleDataActive}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => refreshOpportunities({ force: true })}
+            disabled={workspaceSyncing}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+            title="Reload opportunities from cloud"
+          >
+            <RefreshCw className={`h-4 w-4 ${workspaceSyncing ? 'animate-spin' : ''}`} />
+            Cloud sync
+          </button>
+          <DataModePill
+            compact
+            isLoading={authLoading}
+            isAuthenticated={isAuthenticated}
+            isSupabaseConfigured={isSupabaseConfigured}
+            cloudAvailable={canUseOpportunityCloudStore(dataUserId)}
+            hasSampleData={sampleDataActive}
+          />
+        </div>
       </header>
 
       <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -805,7 +831,7 @@ export function OpportunitiesPage() {
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search account, opportunity, action..."
+                placeholder="Search account, opportunity, brand, channel..."
                 className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
               />
             </label>
@@ -815,9 +841,33 @@ export function OpportunitiesPage() {
             <FilterSelect label="Status" value={statusFilter} onChange={setStatusFilter} options={[allFilter, ...opportunityStatuses]} />
           </div>
         </div>
+        <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+          {[
+            ['all', 'All pipeline'],
+            ['imported', 'Imported core'],
+            ['stageInferred', 'Stage inferred'],
+            ['fy26', 'FY26 value'],
+            ['fy27', 'FY27 value'],
+            ['needsAction', 'Needs action'],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setQuickFilter(value as OpportunityQuickFilter)}
+              className={`rounded-full px-3 py-1.5 text-xs font-bold ${
+                quickFilter === value
+                  ? 'bg-navy text-white'
+                  : 'border border-gray-200 bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3 lg:flex-row lg:items-center lg:justify-between">
           <p className="text-xs text-gray-500">
             Select deals in the table to build a new Pipeline Defense Brief. Existing records are never overwritten.
+            {lastWorkspaceRefreshAt ? ` Last cloud read: ${formatOpportunityDate(lastWorkspaceRefreshAt)}.` : ''}
           </p>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={markWeakDealsReviewed} className="inline-flex items-center gap-2 text-xs font-bold text-blue-700 hover:text-brand-blue">
@@ -835,6 +885,11 @@ export function OpportunitiesPage() {
             briefCreateState === 'error' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
           }`}>
             {briefCreateMessage}
+          </p>
+        )}
+        {workspaceLoadError && (
+          <p className="mt-3 rounded-lg bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-800">
+            Cloud refresh issue: {workspaceLoadError}
           </p>
         )}
       </section>
@@ -883,6 +938,8 @@ export function OpportunitiesPage() {
       )}
 
       <PipelineQualitySummary quality={quality} />
+
+      <ImportedPipelineForecastPanel summary={importedPipelineSummary} onFilter={setQuickFilter} />
 
       <ImportedOpportunityEnrichmentSignal summary={importedEnrichment} />
 
@@ -1692,6 +1749,114 @@ function ImportedOpportunityEnrichmentSignal({
   );
 }
 
+type ImportedPipelineSummary = {
+  importedCount: number;
+  totalCount: number;
+  fy26Total: number;
+  fy27Total: number;
+  stageInferredCount: number;
+  withBrandCount: number;
+  withChannelCount: number;
+  withProbabilityCount: number;
+  needsActionCount: number;
+  topBrands: ForecastDimensionSummary[];
+  topChannels: ForecastDimensionSummary[];
+};
+
+type ForecastDimensionSummary = {
+  label: string;
+  count: number;
+  fy26Total: number;
+};
+
+function ImportedPipelineForecastPanel({
+  summary,
+  onFilter,
+}: {
+  summary: ImportedPipelineSummary;
+  onFilter: (filter: OpportunityQuickFilter) => void;
+}) {
+  if (summary.importedCount === 0) return null;
+
+  return (
+    <section className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-emerald-700" />
+            <h2 className="text-lg font-bold text-navy">Imported Pipeline Forecast</h2>
+          </div>
+          <p className="mt-1 text-sm leading-6 text-emerald-900/75">
+            Founder core pipeline is available as reviewable forecast data: FY value, brand/channel context, probability, and inferred-stage flags.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onFilter('imported')}
+          className="inline-flex items-center justify-center rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white"
+        >
+          Review imported
+        </button>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
+        <Metric label="Imported" value={summary.importedCount.toLocaleString()} tone="green" />
+        <Metric label="FY26" value={formatMoney(summary.fy26Total, 'VND')} tone="green" />
+        <Metric label="FY27" value={formatMoney(summary.fy27Total, 'VND')} tone="blue" />
+        <Metric label="Stage inferred" value={summary.stageInferredCount.toLocaleString()} tone={summary.stageInferredCount ? 'amber' : 'green'} />
+        <Metric label="With brand" value={summary.withBrandCount.toLocaleString()} tone="blue" />
+        <Metric label="With channel" value={summary.withChannelCount.toLocaleString()} tone="blue" />
+        <Metric label="Probability" value={summary.withProbabilityCount.toLocaleString()} tone="blue" />
+        <Metric label="Needs action" value={summary.needsActionCount.toLocaleString()} tone={summary.needsActionCount ? 'red' : 'green'} />
+      </div>
+      {(summary.topBrands.length > 0 || summary.topChannels.length > 0) && (
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          <ForecastDimensionList title="Top brands by FY26" items={summary.topBrands} />
+          <ForecastDimensionList title="Top channels by FY26" items={summary.topChannels} />
+        </div>
+      )}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button type="button" onClick={() => onFilter('stageInferred')} className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-xs font-bold text-amber-700">
+          Check inferred stages
+        </button>
+        <button type="button" onClick={() => onFilter('fy26')} className="rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-bold text-emerald-700">
+          FY26 pipeline
+        </button>
+        <button type="button" onClick={() => onFilter('needsAction')} className="rounded-full border border-red-200 bg-white px-3 py-1.5 text-xs font-bold text-red-700">
+          Missing next action
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function ForecastDimensionList({ title, items }: { title: string; items: ForecastDimensionSummary[] }) {
+  if (items.length === 0) {
+    return (
+      <div className="rounded-lg border border-emerald-100 bg-white p-3">
+        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{title}</p>
+        <p className="mt-2 text-sm font-semibold text-gray-500">No imported values yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-emerald-100 bg-white p-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{title}</p>
+      <div className="mt-2 space-y-2">
+        {items.map((item) => (
+          <div key={item.label} className="flex items-center justify-between gap-3 rounded-md bg-gray-50 px-3 py-2">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-gray-800" title={item.label}>{item.label}</p>
+              <p className="text-xs font-semibold text-gray-500">{item.count} deal{item.count === 1 ? '' : 's'}</p>
+            </div>
+            <p className="whitespace-nowrap text-sm font-black text-emerald-700">{formatMoney(item.fy26Total, 'VND')}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ImportMetric({ label, value, tone }: { label: string; value: number; tone: 'green' | 'amber' | 'red' }) {
   const toneClass = {
     green: 'bg-emerald-50 text-emerald-700',
@@ -1769,14 +1934,18 @@ function OpportunityMasterTable({
       </div>
 
       <div className="max-w-full overflow-x-auto">
-        <table className="w-full min-w-[1540px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[1920px] border-collapse text-left text-sm">
           <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
             <tr>
               <th className="w-12 border-b border-gray-200 px-3 py-3 text-center">Pick</th>
               <OpportunitySortableHeader label="Account" sortKey="account" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Opportunity" sortKey="opportunity" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <th className="border-b border-gray-200 px-3 py-3">Brand / channel</th>
               <OpportunitySortableHeader label="Stage" sortKey="stage" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Value" sortKey="value" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <OpportunitySortableHeader label="FY26" sortKey="fy26" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <OpportunitySortableHeader label="FY27" sortKey="fy27" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <OpportunitySortableHeader label="Prob." sortKey="probability" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Close" sortKey="closePeriod" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Forecast evidence" sortKey="forecast" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Review decision" sortKey="recommendation" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
@@ -1814,14 +1983,41 @@ function OpportunityMasterTable({
                   </td>
                   <td className="px-3 py-3">
                     <p className="max-w-[250px] truncate font-bold text-gray-900" title={opportunity.opportunityName}>{opportunity.opportunityName || 'Untitled opportunity'}</p>
-                    <p className="mt-1 max-w-[250px] truncate text-xs text-gray-500">{opportunity.decisionMaker ? `DM: ${opportunity.decisionMaker}` : 'Decision maker missing'}</p>
+                    <p className="mt-1 max-w-[250px] truncate text-xs text-gray-500">
+                      {opportunity.opportunityType || (opportunity.decisionMaker ? `DM: ${opportunity.decisionMaker}` : 'Decision maker missing')}
+                    </p>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="flex max-w-[190px] flex-wrap gap-1.5">
+                      {opportunity.brand ? <Badge label={opportunity.brand} tone="green" /> : <Badge label="No brand" tone="gray" />}
+                      {opportunity.channel ? <Badge label={opportunity.channel} tone="blue" /> : null}
+                    </div>
+                    {isFounderImportedOpportunity(opportunity) && (
+                      <p className="mt-1 text-xs font-semibold text-emerald-700">Imported core</p>
+                    )}
                   </td>
                   <td className="px-3 py-3">
                     <Badge label={opportunity.stage} />
-                    <p className="mt-1 text-xs text-gray-500">{opportunity.status}</p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {opportunity.isStageInferred ? 'Inferred stage' : opportunity.status}
+                    </p>
                   </td>
                   <td className="whitespace-nowrap px-3 py-3 font-bold text-gray-800">
                     {opportunity.estimatedValue ? formatMoney(opportunity.estimatedValue, opportunity.currency) : 'Not set'}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-3 font-bold text-emerald-700">
+                    {opportunity.fy26Value ? formatMoney(opportunity.fy26Value, opportunity.currency) : 'Not set'}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-3 font-bold text-gray-800">
+                    {opportunity.fy27Value ? formatMoney(opportunity.fy27Value, opportunity.currency) : 'Not set'}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-3">
+                    <p className="font-bold text-gray-800">
+                      {typeof opportunity.pipelineProbability === 'number' ? `${Math.round(opportunity.pipelineProbability)}%` : 'Not set'}
+                    </p>
+                    {opportunity.sourceStageConfidence && (
+                      <p className="mt-1 text-xs text-gray-500">{opportunity.sourceStageConfidence}</p>
+                    )}
                   </td>
                   <td className="px-3 py-3">
                     <p className="max-w-[150px] truncate font-semibold text-gray-700" title={opportunity.expectedClosePeriod}>
@@ -3041,6 +3237,67 @@ function buildOpportunityMasterRow(
   };
 }
 
+function buildImportedPipelineSummary(opportunities: CrmLiteOpportunity[]): ImportedPipelineSummary {
+  const imported = opportunities.filter(isFounderImportedOpportunity);
+  return {
+    importedCount: imported.length,
+    totalCount: opportunities.length,
+    fy26Total: sumOpportunityValue(imported, 'fy26Value'),
+    fy27Total: sumOpportunityValue(imported, 'fy27Value'),
+    stageInferredCount: imported.filter((opportunity) => opportunity.isStageInferred).length,
+    withBrandCount: imported.filter((opportunity) => Boolean(opportunity.brand?.trim())).length,
+    withChannelCount: imported.filter((opportunity) => Boolean(opportunity.channel?.trim())).length,
+    withProbabilityCount: imported.filter((opportunity) => typeof opportunity.pipelineProbability === 'number').length,
+    needsActionCount: imported.filter((opportunity) => !opportunity.nextAction.trim()).length,
+    topBrands: summarizeForecastDimension(imported, 'brand'),
+    topChannels: summarizeForecastDimension(imported, 'channel'),
+  };
+}
+
+function summarizeForecastDimension(
+  opportunities: CrmLiteOpportunity[],
+  field: 'brand' | 'channel',
+): ForecastDimensionSummary[] {
+  const byLabel = new Map<string, ForecastDimensionSummary>();
+  opportunities.forEach((opportunity) => {
+    const label = opportunity[field]?.trim();
+    if (!label) return;
+    const current = byLabel.get(label) || { label, count: 0, fy26Total: 0 };
+    current.count += 1;
+    current.fy26Total += opportunity.fy26Value || opportunity.estimatedValue || 0;
+    byLabel.set(label, current);
+  });
+
+  return Array.from(byLabel.values())
+    .sort((left, right) => right.fy26Total - left.fy26Total || right.count - left.count || left.label.localeCompare(right.label))
+    .slice(0, 5);
+}
+
+function sumOpportunityValue(opportunities: CrmLiteOpportunity[], field: 'fy26Value' | 'fy27Value') {
+  return opportunities.reduce((total, opportunity) => total + (opportunity[field] || 0), 0);
+}
+
+function isFounderImportedOpportunity(opportunity: CrmLiteOpportunity) {
+  return opportunity.sourceSystem === founderCoreSourceSystem;
+}
+
+function matchesOpportunityQuickFilter(opportunity: CrmLiteOpportunity, filter: OpportunityQuickFilter) {
+  switch (filter) {
+    case 'imported':
+      return isFounderImportedOpportunity(opportunity);
+    case 'stageInferred':
+      return Boolean(opportunity.isStageInferred);
+    case 'fy26':
+      return Boolean(opportunity.fy26Value && opportunity.fy26Value > 0);
+    case 'fy27':
+      return Boolean(opportunity.fy27Value && opportunity.fy27Value > 0);
+    case 'needsAction':
+      return !opportunity.nextAction.trim();
+    case 'all':
+      return true;
+  }
+}
+
 function compareOpportunityRows(
   left: OpportunityMasterRow,
   right: OpportunityMasterRow,
@@ -3067,6 +3324,12 @@ function getOpportunitySortValue(row: OpportunityMasterRow, sortKey: Opportunity
       return opportunityStages.indexOf(opportunity.stage);
     case 'value':
       return opportunity.estimatedValue || 0;
+    case 'fy26':
+      return opportunity.fy26Value || 0;
+    case 'fy27':
+      return opportunity.fy27Value || 0;
+    case 'probability':
+      return opportunity.pipelineProbability || 0;
     case 'closePeriod':
       return opportunity.expectedClosePeriod || 'zzzz';
     case 'forecast':
