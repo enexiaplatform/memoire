@@ -9,6 +9,7 @@
     "typecheck:api": "tsc -p tsconfig.api.json",
     "lint": "eslint .",
     "preview": "vite preview",
+    "import:founder-core": "node scripts/import-founder-core.mjs",
     "verify:commercial": "node scripts/verify-commercial-readiness.mjs",
     "verify:cohort": "node scripts/verify-cohort-release-packet.mjs",
     "verify:ai-rate-limits": "node scripts/verify-ai-rate-limit-coverage.mjs",

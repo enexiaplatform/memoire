@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { AlertTriangle, BookOpen, CalendarDays, ChevronDown, ClipboardList, FileCheck2, FileText, GitBranch, LayoutDashboard, MessageCircleQuestion, NotebookPen, Settings, Target, UsersRound, X } from 'lucide-react';
+import { AlertTriangle, BookOpen, CalendarDays, ChevronDown, ClipboardList, Database, FileCheck2, FileText, GitBranch, LayoutDashboard, MessageCircleQuestion, NotebookPen, Settings, Target, UsersRound, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 import { prefetchAppRoute } from '../../utils/routePrefetch';
 import { useDemoWorkspaceMode } from '../../hooks/useDemoWorkspaceMode';
 import { BrandWordmark } from '../brand/BrandWordmark';
+import { isFounderImportUser } from '../../services/importAuditStore';
 
 const primarySections = [
   {
@@ -43,7 +44,10 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   const demoActive = useDemoWorkspaceMode();
   const displayName = demoActive ? 'Demo workspace' : getUserDisplayName(user, profile);
   const initials = demoActive ? 'D' : getUserInitials(user, profile);
-  const hasActiveSecondaryRoute = secondaryItems.some((item) => location.pathname.startsWith(item.to));
+  const visibleSecondaryItems = isFounderImportUser(user?.email)
+    ? [...secondaryItems, { to: '/app/imports', label: 'Import Review', icon: <Database className="h-5 w-5" /> }]
+    : secondaryItems;
+  const hasActiveSecondaryRoute = visibleSecondaryItems.some((item) => location.pathname.startsWith(item.to));
   const [moreOpen, setMoreOpen] = useState(hasActiveSecondaryRoute);
 
   useEffect(() => {
@@ -126,7 +130,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           </button>
           {moreOpen && (
             <div className="mt-1 space-y-1">
-              {secondaryItems.map((item) => (
+              {visibleSecondaryItems.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}

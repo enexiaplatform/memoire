@@ -25,6 +25,19 @@ export interface AccountMemoryRecord {
   keyStakeholders: string[];
   notes: string;
   tags: string[];
+  territory?: string;
+  stateProvince?: string;
+  kaFlag?: boolean | null;
+  priority?: string;
+  fy26TargetSgd?: number | null;
+  fy27TargetSgd?: number | null;
+  accountMasterStage?: string;
+  strategy?: string;
+  strategyOwner?: string;
+  nextFollowUp?: string;
+  overdueStatus?: string;
+  sourceSystem?: string;
+  externalSourceKey?: string;
   createdAt: string;
   updatedAt: string;
   storageMode: 'local' | 'cloud';
@@ -47,6 +60,19 @@ type AccountRow = {
   notes: string | null;
   tags: string[] | null;
   summary?: string | null;
+  territory?: string | null;
+  state_province?: string | null;
+  ka_flag?: boolean | null;
+  priority?: string | null;
+  fy26_target_sgd?: number | string | null;
+  fy27_target_sgd?: number | string | null;
+  account_master_stage?: string | null;
+  strategy?: string | null;
+  strategy_owner?: string | null;
+  next_follow_up?: string | null;
+  overdue_status?: string | null;
+  source_system?: string | null;
+  external_source_key?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -214,6 +240,19 @@ function loadLocalAccounts(): AccountMemoryRecord[] {
         keyStakeholders: Array.isArray(item.keyStakeholders) ? item.keyStakeholders : [],
         notes: item.notes || '',
         tags: Array.isArray(item.tags) ? item.tags : [],
+        territory: item.territory || '',
+        stateProvince: item.stateProvince || '',
+        kaFlag: item.kaFlag ?? null,
+        priority: item.priority || '',
+        fy26TargetSgd: normalizeNumber(item.fy26TargetSgd),
+        fy27TargetSgd: normalizeNumber(item.fy27TargetSgd),
+        accountMasterStage: item.accountMasterStage || '',
+        strategy: item.strategy || '',
+        strategyOwner: item.strategyOwner || '',
+        nextFollowUp: item.nextFollowUp || '',
+        overdueStatus: item.overdueStatus || '',
+        sourceSystem: item.sourceSystem || '',
+        externalSourceKey: item.externalSourceKey || '',
         createdAt: item.createdAt || new Date().toISOString(),
         updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
         storageMode: 'local',
@@ -330,6 +369,19 @@ function rowToAccount(row: AccountRow): AccountMemoryRecord {
     keyStakeholders: Array.isArray(row.key_stakeholders) ? row.key_stakeholders : [],
     notes: row.notes || row.summary || '',
     tags: Array.isArray(row.tags) ? row.tags : [],
+    territory: row.territory || '',
+    stateProvince: row.state_province || '',
+    kaFlag: row.ka_flag ?? null,
+    priority: row.priority || '',
+    fy26TargetSgd: normalizeNumber(row.fy26_target_sgd),
+    fy27TargetSgd: normalizeNumber(row.fy27_target_sgd),
+    accountMasterStage: row.account_master_stage || '',
+    strategy: row.strategy || '',
+    strategyOwner: row.strategy_owner || '',
+    nextFollowUp: row.next_follow_up || '',
+    overdueStatus: row.overdue_status || '',
+    sourceSystem: row.source_system || '',
+    externalSourceKey: row.external_source_key || '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     storageMode: 'cloud',
@@ -409,6 +461,12 @@ function normalizePotential(value: unknown): AccountPotential {
 
 function normalizeRelationshipStatus(value: unknown): RelationshipStatus {
   return relationshipStatuses.includes(value as RelationshipStatus) ? value as RelationshipStatus : 'New';
+}
+
+function normalizeNumber(value: unknown) {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = typeof value === 'number' ? value : Number(String(value).replace(/,/g, ''));
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function normalizeSource(value: unknown): AccountMemoryRecord['source'] {

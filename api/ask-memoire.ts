@@ -34,8 +34,11 @@ interface AnthropicMessageResponse {
 
 interface OpportunityMemory {
   account_id?: string | null;
+  account_name?: string | null;
   next_action_text?: string | null;
+  next_action?: string | null;
   last_touch_at?: string | null;
+  updated_at?: string | null;
 }
 
 interface AskMemoireResponse {
@@ -156,6 +159,14 @@ async function synthesize(question: string, memory: unknown): Promise<AskMemoire
   return parseAskResponse(text);
 }
 
+function getAccountMemoryName(account: unknown) {
+  if (!account || typeof account !== 'object') return '';
+  const record = account as { account_name?: unknown; name?: unknown };
+  const accountName = typeof record.account_name === 'string' ? record.account_name.trim() : '';
+  const legacyName = typeof record.name === 'string' ? record.name.trim() : '';
+  return accountName || legacyName;
+}
+
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -193,13 +204,31 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const staleDate = new Date();
     staleDate.setDate(staleDate.getDate() - 14);
 
-    let accountsQuery = supabase.from('accounts').select('id,name,summary,pain_points,objections').eq('user_id', userId).limit(20);
+    let accountsQuery = supabase
+      .from('accounts')
+      .select('id,name,account_name,summary,notes,segment,territory,state_province,priority,fy26_target_sgd,fy27_target_sgd,relationship_status,updated_at')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(25);
+
+    if (scope === 'account' && typeof accountId === 'string') {
+      accountsQuery = accountsQuery.eq('id', accountId);
+    }
+
+    const accounts = await accountsQuery;
+    if (accounts.error) throw accounts.error;
+
+    const scopedAccounts = accounts.data || [];
+    const scopedAccountName = scope === 'account'
+      ? getAccountMemoryName(scopedAccounts[0])
+      : '';
+
     let opportunitiesQuery = supabase
-        .from('opportunities')
-        .select('id,account_id,title,stage,estimated_value,blocker,next_action_text,last_touch_at,urgency,confidence,account:account_id(id,name)')
-        .eq('user_id', userId)
-        .order('updated_at', { ascending: false })
-        .limit(30);
+      .from('opportunities')
+      .select('id,account_id,account_name,opportunity_name,title,stage,estimated_value,currency,expected_close_period,product_or_solution,next_action,next_action_text,next_action_date,evidence,missing_context,objection_debt,blocker,forecast_evidence_category,decision_recommendation,status,updated_at,brand,channel,opportunity_type,pipeline_probability,is_stage_inferred')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(40);
     let actionsQuery = supabase
         .from('actions')
         .select('id,title,due_date,status,suggested,account:account_id(id,name),opportunity:opportunity_id(id,title)')
@@ -209,10 +238,28 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         .limit(20);
     let interactionsQuery = supabase
         .from('interactions')
-        .select('id,summary,pain_point,objection,occurred_at,raw_note,account:account_id(id,name),opportunity:opportunity_id(id,title)')
+        .select('id,summary,pain_point,objection,occurred_at,account:account_id(id,name),opportunity:opportunity_id(id,title)')
         .eq('user_id', userId)
         .order('occurred_at', { ascending: false })
         .limit(25);
+    let salesActivitiesQuery = supabase
+        .from('sales_activities')
+        .select('id,activity_date,activity_type,account_name,opportunity_name,contact_name,summary,next_action,due_date,tags,linked_opportunity_name,linked_account_name')
+        .eq('user_id', userId)
+        .order('activity_date', { ascending: false })
+        .limit(30);
+    let stakeholdersQuery = supabase
+        .from('stakeholders')
+        .select('id,account_name,opportunity_name,name,role_title,stakeholder_role,influence_level,relationship_strength,stance,last_interaction_date,tags')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+        .limit(30);
+    const operatingContextQuery = supabase
+        .from('operating_context')
+        .select('id,context_type,title,status,period,owner,value_at_stake,next_action,next_date,summary,updated_at')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+        .limit(20);
     let objectionsQuery = supabase
         .from('objections')
         .select('id,title,detail,category,status,severity,response_angle,account_id,opportunity_id,linked_action_id,last_mentioned_at')
@@ -221,8 +268,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         .limit(25);
 
     if (scope === 'account' && typeof accountId === 'string') {
-      accountsQuery = accountsQuery.eq('id', accountId);
-      opportunitiesQuery = opportunitiesQuery.eq('account_id', accountId);
+      if (scopedAccountName) {
+        opportunitiesQuery = opportunitiesQuery.eq('account_name', scopedAccountName);
+        salesActivitiesQuery = salesActivitiesQuery.eq('account_name', scopedAccountName);
+        stakeholdersQuery = stakeholdersQuery.eq('account_name', scopedAccountName);
+      } else {
+        opportunitiesQuery = opportunitiesQuery.eq('account_id', accountId);
+      }
       actionsQuery = actionsQuery.eq('account_id', accountId);
       interactionsQuery = interactionsQuery.eq('account_id', accountId);
       objectionsQuery = objectionsQuery.eq('account_id', accountId);
@@ -233,42 +285,48 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       actionsQuery = actionsQuery.eq('opportunity_id', opportunityId);
       interactionsQuery = interactionsQuery.eq('opportunity_id', opportunityId);
       objectionsQuery = objectionsQuery.eq('opportunity_id', opportunityId);
+      salesActivitiesQuery = salesActivitiesQuery.eq('linked_opportunity_id', opportunityId);
+      stakeholdersQuery = stakeholdersQuery.eq('opportunity_id', opportunityId);
     } else {
       actionsQuery = actionsQuery.lte('due_date', today);
     }
 
-    const [accounts, opportunities, actions, interactions, objections] = await Promise.all([
-      accountsQuery,
+    const [opportunities, actions, interactions, salesActivities, stakeholders, operatingContext, objections] = await Promise.all([
       opportunitiesQuery,
       actionsQuery,
       interactionsQuery,
+      salesActivitiesQuery,
+      stakeholdersQuery,
+      operatingContextQuery,
       objectionsQuery,
     ]);
 
-    if (accounts.error) throw accounts.error;
     if (opportunities.error) throw opportunities.error;
     if (actions.error) throw actions.error;
     if (interactions.error) throw interactions.error;
+    if (salesActivities.error) throw salesActivities.error;
+    if (stakeholders.error) throw stakeholders.error;
+    if (operatingContext.error) throw operatingContext.error;
     if (objections.error) throw objections.error;
 
-    let scopedAccounts = accounts.data || [];
     if (scope === 'opportunity') {
       const accountIdFromOpportunity = ((opportunities.data || []) as OpportunityMemory[])[0]?.account_id;
       if (accountIdFromOpportunity) {
         const accountResult = await supabase
           .from('accounts')
-          .select('id,name,summary,pain_points,objections')
+          .select('id,name,account_name,summary,notes,segment,territory,state_province,priority,fy26_target_sgd,fy27_target_sgd,relationship_status,updated_at')
           .eq('user_id', userId)
           .eq('id', accountIdFromOpportunity)
           .single();
-        if (!accountResult.error && accountResult.data) scopedAccounts = [accountResult.data];
+        if (!accountResult.error && accountResult.data) scopedAccounts.splice(0, scopedAccounts.length, accountResult.data);
       }
     }
 
     const stuckOpportunities = ((opportunities.data || []) as OpportunityMemory[]).filter((opportunity) => {
-      const noNextAction = !opportunity.next_action_text;
-      const isStale = opportunity.last_touch_at
-        ? new Date(opportunity.last_touch_at) < staleDate
+      const noNextAction = !opportunity.next_action_text && !opportunity.next_action;
+      const lastSignal = opportunity.last_touch_at || opportunity.updated_at;
+      const isStale = lastSignal
+        ? new Date(lastSignal) < staleDate
         : true;
       return noNextAction || isStale;
     });
@@ -280,11 +338,16 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       due_actions: actions.data || [],
       opportunities: opportunities.data || [],
       stuck_opportunities: stuckOpportunities,
-      recent_interactions: interactions.data || [],
+      recent_interactions: [
+        ...(salesActivities.data || []),
+        ...(interactions.data || []),
+      ].slice(0, 35),
+      stakeholders: stakeholders.data || [],
+      operating_context: operatingContext.data || [],
       objections: objections.data || [],
     });
 
-    result.suggested_next_action = (actions.data || [])[0]?.title || ((opportunities.data || []) as OpportunityMemory[])[0]?.next_action_text || undefined;
+    result.suggested_next_action = (actions.data || [])[0]?.title || ((opportunities.data || []) as OpportunityMemory[])[0]?.next_action_text || ((opportunities.data || []) as OpportunityMemory[])[0]?.next_action || undefined;
     result.missing_context = [
       scopedAccounts.length === 0 ? 'Account' : '',
       (interactions.data || []).length === 0 ? 'Recent interaction' : '',

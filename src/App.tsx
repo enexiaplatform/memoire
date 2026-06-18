@@ -62,6 +62,9 @@ const FirstPipelineReviewFlow = lazy(() =>
 const SalesOperatingSetupPage = lazy(() =>
   import('./features/onboarding/SalesOperatingSetupPage').then((module) => ({ default: module.SalesOperatingSetupPage })),
 );
+const FounderImportReviewPage = lazy(() =>
+  import('./features/imports/FounderImportReviewPage').then((module) => ({ default: module.FounderImportReviewPage })),
+);
 
 function App() {
   return (
@@ -115,6 +118,7 @@ function App() {
             <Route path="pipeline-defense" element={<PipelineReviewDefenseBriefPage />} />
             <Route path="pipeline-defense/review-pack/:id" element={<PipelineReviewPackPage />} />
             <Route path="ask" element={<AskMemoirePage />} />
+            <Route path="imports" element={<FounderImportReviewPage />} />
             <Route path="settings" element={<SettingsPage />} />
 
             {/* Legacy V0 routes, downgraded out of the primary V1 surface. */}

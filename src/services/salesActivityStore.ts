@@ -230,8 +230,7 @@ async function loadCloudActivities(userId: string): Promise<SalesActivityRecord[
     .select('*')
     .eq('user_id', userId)
     .order('activity_date', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(50);
+    .order('created_at', { ascending: false });
 
   if (error) throw new Error(error.message);
   return ((data || []) as SalesActivityRow[]).map(rowToRecord);

@@ -29,3 +29,6 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# Local-only confidential import backups and dry-run artifacts
+.memoire-private/

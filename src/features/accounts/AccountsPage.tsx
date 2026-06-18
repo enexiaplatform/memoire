@@ -129,6 +129,13 @@ export function AccountsPage() {
         account.segment,
         account.industry,
         account.location,
+        account.territory,
+        account.stateProvince,
+        account.priority,
+        account.accountMasterStage,
+        account.strategy,
+        account.strategyOwner,
+        account.overdueStatus,
         account.notes,
         account.tags.join(' '),
         row.latestActivity?.summary || '',
@@ -494,11 +501,11 @@ function AccountMasterTable({
                   <td className="whitespace-nowrap px-3 py-3 font-mono text-xs font-bold text-brand-blue">{row.accountCode}</td>
                   <td className="px-3 py-3">
                     <p className="max-w-[220px] truncate font-bold text-navy" title={memory.account.accountName}>{memory.account.accountName}</p>
-                    <p className="mt-1 max-w-[220px] truncate text-xs text-gray-500">{memory.account.location || 'Location not set'}</p>
+                    <p className="mt-1 max-w-[220px] truncate text-xs text-gray-500">{formatAccountLocation(memory.account)}</p>
                   </td>
                   <td className="px-3 py-3">
                     <p className="max-w-[170px] truncate font-semibold text-gray-700">{memory.account.segment || 'Unsegmented'}</p>
-                    <p className="mt-1 max-w-[170px] truncate text-xs text-gray-500">{memory.account.industry || 'Industry not set'}</p>
+                    <p className="mt-1 max-w-[170px] truncate text-xs text-gray-500">{formatAccountPriority(memory.account)}</p>
                   </td>
                   <td className="px-3 py-3">
                     <Badge
@@ -679,6 +686,7 @@ function AccountDetailPanel({
         <TextArea label="Notes" value={form.notes} onChange={(value) => update('notes', value)} />
       </div>
 
+      {selectedMemory && <ImportedAccountMetadata account={selectedMemory.account} />}
       {selectedMemory && <MemorySections memory={selectedMemory} stakeholders={stakeholders} objections={objections} />}
 
       {message && (
@@ -709,6 +717,43 @@ function AccountDetailPanel({
       </div>
       </aside>
     </>
+  );
+}
+
+function ImportedAccountMetadata({ account }: { account: AccountMemoryRecord }) {
+  const metadata = [
+    account.territory || account.stateProvince ? { label: 'Territory', value: [account.territory, account.stateProvince].filter(Boolean).join(' / ') } : null,
+    account.priority ? { label: 'Priority', value: account.priority } : null,
+    account.kaFlag !== null && account.kaFlag !== undefined ? { label: 'KA', value: account.kaFlag ? 'Yes' : 'No' } : null,
+    account.fy26TargetSgd ? { label: 'FY26 target', value: formatMoney(account.fy26TargetSgd, 'SGD') } : null,
+    account.fy27TargetSgd ? { label: 'FY27 target', value: formatMoney(account.fy27TargetSgd, 'SGD') } : null,
+    account.accountMasterStage ? { label: 'Source stage', value: account.accountMasterStage } : null,
+    account.strategyOwner ? { label: 'Owner', value: account.strategyOwner } : null,
+    account.nextFollowUp ? { label: 'Next follow-up', value: formatDate(account.nextFollowUp) } : null,
+    account.overdueStatus ? { label: 'Overdue', value: account.overdueStatus } : null,
+  ].filter((item): item is { label: string; value: string } => Boolean(item && item.value));
+
+  if (metadata.length === 0 && !account.strategy) return null;
+
+  return (
+    <section className="mt-5 rounded-lg border border-blue-100 bg-blue-50/70 p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">Imported account metadata</p>
+      {metadata.length > 0 && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {metadata.map((item) => (
+            <div key={item.label} className="rounded-lg bg-white p-3 ring-1 ring-blue-100">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{item.label}</p>
+              <p className="mt-1 text-sm font-bold text-navy">{item.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      {account.strategy && (
+        <p className="mt-3 whitespace-pre-line rounded-lg bg-white p-3 text-sm leading-6 text-gray-700 ring-1 ring-blue-100">
+          {account.strategy}
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -1014,6 +1059,21 @@ function compareAccountRows(
 
 function getActivityContact(activity: SalesActivityRecord) {
   return activity.contactName || activity.stakeholderName || activity.stakeholderRole || '';
+}
+
+function formatAccountLocation(account: AccountMemoryRecord) {
+  return [account.territory, account.stateProvince].filter(Boolean).join(' / ')
+    || account.location
+    || 'Location not set';
+}
+
+function formatAccountPriority(account: AccountMemoryRecord) {
+  const details = [
+    account.priority ? `Priority ${account.priority}` : '',
+    account.kaFlag ? 'KA' : '',
+    account.fy26TargetSgd ? formatMoney(account.fy26TargetSgd, 'SGD') : '',
+  ].filter(Boolean);
+  return details.join(' | ') || account.industry || 'Industry not set';
 }
 
 function activityTimestamp(activity: SalesActivityRecord) {
