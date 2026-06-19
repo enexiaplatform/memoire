@@ -10,13 +10,21 @@ import {
   filterSalesActivitiesByPeriod,
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
+import { type AccountMemoryRecord } from '../../services/accountStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
 import { type CrmLiteOpportunity } from '../../services/opportunityStore';
+import { type QuoteRecord } from '../../services/quoteStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
 import { type SalesAssetRecord } from '../../services/salesAssetStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { analyzePipelineOutcomeLoop, getActionOutcomesInPeriod } from '../../utils/actionOutcomeLoop';
+import {
+  buildCommercialReviewBrief,
+  type CommercialReviewBrief,
+  type CommercialReviewMetric,
+} from '../../utils/commercialReviewBrief';
+import { type PipelineDefenseBrief } from '../../utils/pipelineDefenseStorage';
 import {
   generatePipelineOpportunityActions,
   type OpportunityRecommendedAction,
@@ -56,10 +64,14 @@ export function SalesReviewsPage() {
   const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
   const [actionOutcomes, setActionOutcomes] = useState<ActionOutcomeRecord[]>([]);
   const [assets, setAssets] = useState<SalesAssetRecord[]>([]);
+  const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
+  const [briefs, setBriefs] = useState<PipelineDefenseBrief[]>([]);
+  const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [recap, setRecap] = useState<SalesActivityRecap | null>(null);
   const [copyMessage, setCopyMessage] = useState('');
   const [executionCopyMessage, setExecutionCopyMessage] = useState('');
+  const [commercialCopyMessage, setCommercialCopyMessage] = useState('');
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
@@ -103,6 +115,18 @@ export function SalesReviewsPage() {
     }),
     [periodType, period, opportunities, actionOutcomes, stakeholders, objections, periodActivities]
   );
+  const commercialReviewBrief = useMemo(
+    () => buildCommercialReviewBrief({
+      periodLabel: period.label,
+      activities,
+      opportunities,
+      accounts,
+      briefs,
+      quotes,
+      executionReview,
+    }),
+    [period.label, activities, opportunities, accounts, briefs, quotes, executionReview]
+  );
   const playbookLearnings = useMemo(
     () => generateSalesPlaybookPatterns({
       opportunities,
@@ -128,6 +152,9 @@ export function SalesReviewsPage() {
       setStakeholders(cachedData.stakeholders);
       setActionOutcomes(cachedData.actionOutcomes);
       setAssets(cachedData.assets);
+      setAccounts(cachedData.accounts);
+      setBriefs(cachedData.briefs);
+      setQuotes(cachedData.quotes);
       setLoadingActivities(false);
       return;
     }
@@ -140,6 +167,9 @@ export function SalesReviewsPage() {
     setStakeholders(workspaceData.stakeholders);
     setActionOutcomes(workspaceData.actionOutcomes);
     setAssets(workspaceData.assets);
+    setAccounts(workspaceData.accounts);
+    setBriefs(workspaceData.briefs);
+    setQuotes(workspaceData.quotes);
     setLoadingActivities(false);
   }, [dataUserId]);
 
@@ -151,6 +181,7 @@ export function SalesReviewsPage() {
     setRecap(null);
     setCopyMessage('');
     setExecutionCopyMessage('');
+    setCommercialCopyMessage('');
   }, [periodType, period.start, period.end]);
 
   const generateRecap = () => {
@@ -181,14 +212,23 @@ export function SalesReviewsPage() {
     }
   };
 
+  const copyCommercialReviewBrief = async () => {
+    try {
+      await navigator.clipboard.writeText(commercialReviewBrief.markdown);
+      setCommercialCopyMessage('Copied commercial brief.');
+    } catch {
+      setCommercialCopyMessage(commercialReviewBrief.markdown);
+    }
+  };
+
   return (
     <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Sales Reviews</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Weekly and monthly recap from your captured activities.</h1>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Sales Reviews</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            Generate a deterministic review from Daily Capture. No Gmail, Google Calendar, CRM, or AI integration is connected.
+            Copy a commercial review brief, then drill into the details only when needed.
           </p>
         </div>
         <DataModePill
@@ -272,6 +312,13 @@ export function SalesReviewsPage() {
         </div>
       </section>
 
+      <CommercialReviewBriefPanel
+        brief={commercialReviewBrief}
+        onCopy={copyCommercialReviewBrief}
+        copyMessage={commercialCopyMessage}
+        loading={loadingActivities}
+      />
+
       {periodObjections.length > 0 && (
         <section className="rounded-lg border border-amber-200 bg-amber-50/70 p-5 shadow-sm">
           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
@@ -339,6 +386,111 @@ export function SalesReviewsPage() {
           <p className="mt-2 text-sm text-gray-500">Generate a recap to see insights, next actions, objections, and follow-ups.</p>
         </div>
       )}
+    </div>
+  );
+}
+
+function CommercialReviewBriefPanel({
+  brief,
+  onCopy,
+  copyMessage,
+  loading,
+}: {
+  brief: CommercialReviewBrief;
+  onCopy: () => void;
+  copyMessage: string;
+  loading: boolean;
+}) {
+  const fallbackMarkdown = copyMessage && copyMessage !== 'Copied commercial brief.' ? copyMessage : '';
+
+  return (
+    <section className="rounded-lg border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-sm font-bold text-blue-950">Commercial Review Brief</p>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-blue-900/75">
+            {brief.summary}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {copyMessage && (
+            <span className="text-xs font-bold text-emerald-700">
+              {copyMessage === 'Copied commercial brief.' ? copyMessage : 'Copy failed - brief shown below.'}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onCopy}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
+            Copy commercial brief
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {brief.metrics.map((metric) => (
+          <CommercialMetricCard key={metric.label} metric={metric} />
+        ))}
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1.2fr_1fr]">
+        <div className="rounded-lg bg-white p-4 ring-1 ring-blue-100">
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">This review needs</p>
+          <p className="mt-2 text-sm font-bold text-navy">{brief.nextActions[0] || 'Pick one commercial action and capture the outcome.'}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link to="/app/pipeline-defense" className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-bold text-brand-blue">Pipeline defense</Link>
+            <Link to="/app/quotes" className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700">Quotes</Link>
+            <Link to="/app/revenue" className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">Revenue</Link>
+          </div>
+        </div>
+
+        <div className="rounded-lg bg-white p-4 ring-1 ring-blue-100">
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Top accounts</p>
+          {brief.topAccounts.length ? (
+            <ul className="mt-2 space-y-2 text-sm leading-5 text-gray-600">
+              {brief.topAccounts.slice(0, 3).map((account) => (
+                <li key={account}>- {account}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-sm text-gray-500">No stale account follow-up detected.</p>
+          )}
+        </div>
+      </div>
+
+      <details className="mt-4 rounded-lg bg-white p-4 ring-1 ring-blue-100">
+        <summary className="cursor-pointer text-sm font-bold text-navy">More signals</summary>
+        <div className="mt-3 grid grid-cols-1 gap-3 text-sm leading-6 text-gray-600 lg:grid-cols-2">
+          <p>{brief.pipelineLine}</p>
+          <p>{brief.quoteLine}</p>
+          <p>{brief.revenueLine}</p>
+          <p>{brief.paymentLine}</p>
+        </div>
+        {fallbackMarkdown && (
+          <pre className="mt-4 max-h-80 overflow-auto rounded-lg bg-gray-950 p-4 text-xs leading-5 text-white">
+            {fallbackMarkdown}
+          </pre>
+        )}
+      </details>
+    </section>
+  );
+}
+
+function CommercialMetricCard({ metric }: { metric: CommercialReviewMetric }) {
+  const toneClass = {
+    blue: 'bg-blue-50 text-brand-blue',
+    green: 'bg-emerald-50 text-emerald-700',
+    amber: 'bg-amber-50 text-amber-700',
+    red: 'bg-red-50 text-red-700',
+  }[metric.tone];
+
+  return (
+    <div className="rounded-lg border border-gray-100 bg-white p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{metric.label}</p>
+      <p className={`mt-2 inline-flex max-w-full rounded-full px-3 py-1 text-sm font-black ${toneClass}`}>{metric.value}</p>
     </div>
   );
 }
