@@ -22,6 +22,7 @@ import { type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { type SalesActivityRecord } from '../../services/salesActivityStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
+import { getQuoteRisk, quoteRiskTone, type QuoteRecord } from '../../services/quoteStore';
 import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import {
   buildAccountMemory,
@@ -63,6 +64,7 @@ export function AccountsPage() {
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
   const [objections, setObjections] = useState<ObjectionRecord[]>([]);
+  const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastLoadedAt, setLastLoadedAt] = useState('');
@@ -98,6 +100,7 @@ export function AccountsPage() {
       setActivities(workspaceData.activities);
       setStakeholders(workspaceData.stakeholders);
       setObjections(workspaceData.objections);
+      setQuotes(workspaceData.quotes);
       setLastLoadedAt(new Date().toISOString());
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : 'Could not refresh account data.');
@@ -182,6 +185,9 @@ export function AccountsPage() {
 
   const selectedAccount = accounts.find((account) => account.id === selectedAccountId) || null;
   const selectedMemory = selectedAccount ? buildAccountMemory(selectedAccount, opportunities, activities) : null;
+  const selectedQuotes = selectedAccount
+    ? quotes.filter((quote) => sameName(quote.accountName, selectedAccount.accountName))
+    : [];
 
   const summary = useMemo(() => buildAccountsSummary(memories), [memories]);
   const importSummary = useMemo(() => buildImportedCoreSummary(accounts), [accounts]);
@@ -419,6 +425,7 @@ export function AccountsPage() {
         message={message}
         stakeholders={selectedAccount ? getStakeholdersForAccount(stakeholders, { id: selectedAccount.id, accountName: selectedAccount.accountName }) : []}
         objections={selectedAccount ? getObjectionsForAccount(objections, { id: selectedAccount.id, accountName: selectedAccount.accountName }) : []}
+        quotes={selectedQuotes}
         onChange={setForm}
         onSave={handleSave}
         onClose={closePanel}
@@ -735,6 +742,7 @@ function AccountDetailPanel({
   selectedMemory,
   stakeholders,
   objections,
+  quotes,
   saveState,
   message,
   onChange,
@@ -748,6 +756,7 @@ function AccountDetailPanel({
   selectedMemory: AccountMemory | null;
   stakeholders: StakeholderRecord[];
   objections: ObjectionRecord[];
+  quotes: QuoteRecord[];
   saveState: SaveState;
   message: string;
   onChange: (form: AccountFormInput) => void;
@@ -801,7 +810,7 @@ function AccountDetailPanel({
       </div>
 
       {selectedMemory && <ImportedAccountMetadata account={selectedMemory.account} />}
-      {selectedMemory && <MemorySections memory={selectedMemory} stakeholders={stakeholders} objections={objections} />}
+      {selectedMemory && <MemorySections memory={selectedMemory} stakeholders={stakeholders} objections={objections} quotes={quotes} />}
 
       {message && (
         <p className={`mt-4 rounded-lg px-3 py-2 text-sm font-semibold ${
@@ -871,7 +880,17 @@ function ImportedAccountMetadata({ account }: { account: AccountMemoryRecord }) 
   );
 }
 
-function MemorySections({ memory, stakeholders, objections }: { memory: AccountMemory; stakeholders: StakeholderRecord[]; objections: ObjectionRecord[] }) {
+function MemorySections({
+  memory,
+  stakeholders,
+  objections,
+  quotes,
+}: {
+  memory: AccountMemory;
+  stakeholders: StakeholderRecord[];
+  objections: ObjectionRecord[];
+  quotes: QuoteRecord[];
+}) {
   const allActivities = [...memory.linkedActivities, ...memory.matchingActivities]
     .sort((a, b) => `${b.activityDate}-${b.createdAt}`.localeCompare(`${a.activityDate}-${a.createdAt}`));
   return (
@@ -887,6 +906,8 @@ function MemorySections({ memory, stakeholders, objections }: { memory: AccountM
           <p className="mt-2 text-sm text-emerald-700">No major risk signals detected.</p>
         )}
       </section>
+
+      <AccountQuotesSection accountName={memory.account.accountName} quotes={quotes} />
 
       <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -992,6 +1013,78 @@ function MemorySections({ memory, stakeholders, objections }: { memory: AccountM
       <ListSection title="Open next actions" items={memory.openNextActions} empty="No open next actions captured." />
       <ListSection title="Objection debt" items={memory.objectionDebt} empty="No objection debt captured." />
     </div>
+  );
+}
+
+function AccountQuotesSection({ accountName, quotes }: { accountName: string; quotes: QuoteRecord[] }) {
+  const activeQuotes = quotes.filter((quote) => quote.status === 'Sent' || quote.status === 'Revised');
+  const acceptedQuotes = quotes.filter((quote) => quote.status === 'Accepted');
+  const actionQuotes = [...quotes]
+    .filter((quote) => ['Sent', 'Revised', 'Accepted'].includes(quote.status))
+    .sort((left, right) => quoteActionRank(right) - quoteActionRank(left) || dateSortValue(left.validUntil) - dateSortValue(right.validUntil));
+  const topQuote = actionQuotes[0] || null;
+  const topRisk = topQuote ? getQuoteRisk(topQuote) : null;
+  const visibleQuotes = actionQuotes.slice(0, 3);
+
+  return (
+    <section className="rounded-lg border border-cyan-100 bg-cyan-50/70 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-cyan-700">Commercial quotes</p>
+          <p className="mt-1 text-sm font-bold text-navy">
+            {topQuote
+              ? `${topQuote.title}: ${topQuote.nextAction || topRisk || 'review quote status'}`
+              : 'No quote action is linked to this account yet.'}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to={`/app/quotes?accountName=${encodeURIComponent(accountName)}`}
+            className="inline-flex w-fit rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white"
+          >
+            View all quotes
+          </Link>
+          <Link
+            to="/app/revenue"
+            className="inline-flex w-fit rounded-full border border-cyan-200 bg-white px-3 py-1.5 text-xs font-bold text-cyan-700"
+          >
+            Revenue view
+          </Link>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <MiniMetric label="Active" value={activeQuotes.length} tone={activeQuotes.length ? 'blue' : 'green'} />
+        <MiniMetric label="Accepted" value={acceptedQuotes.length} tone={acceptedQuotes.length ? 'green' : 'blue'} />
+        <MiniMetric label="At risk" value={quotes.filter((quote) => getQuoteRisk(quote) !== 'None').length} tone={quotes.some((quote) => getQuoteRisk(quote) !== 'None') ? 'amber' : 'green'} />
+      </div>
+
+      {visibleQuotes.length > 0 ? (
+        <div className="mt-3 space-y-2">
+          {visibleQuotes.map((quote) => {
+            const risk = getQuoteRisk(quote);
+            return (
+              <div key={quote.id} className="rounded-lg bg-white p-3 ring-1 ring-cyan-100">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge label={quote.status} tone={quote.status === 'Accepted' ? 'green' : 'blue'} />
+                  {risk !== 'None' && <Badge label={risk} tone={quoteRiskTone(risk)} />}
+                  {quote.validUntil && <Badge label={`Valid until ${formatDate(quote.validUntil)}`} tone={risk === 'Expired' ? 'red' : risk === 'Expiring soon' ? 'amber' : 'gray'} />}
+                </div>
+                <p className="mt-2 text-sm font-bold text-navy">{quote.title}</p>
+                <p className="mt-1 text-xs font-semibold text-gray-500">
+                  {[quote.opportunityName, formatMoney(quote.amount || 0, quote.currency)].filter(Boolean).join(' | ')}
+                </p>
+                {quote.nextAction && <p className="mt-2 text-xs font-bold text-cyan-700">Next: {quote.nextAction}</p>}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="mt-3 rounded-lg bg-white p-3 text-sm text-gray-500 ring-1 ring-cyan-100">
+          Create a quote when this account moves from opportunity to commercial follow-up.
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -1339,6 +1432,22 @@ function parseCommaList(value: string) {
 
 function sameName(left: string, right: string) {
   return left.trim().toLowerCase() === right.trim().toLowerCase();
+}
+
+function quoteActionRank(quote: QuoteRecord) {
+  const risk = getQuoteRisk(quote);
+  if (risk === 'Expired') return 6;
+  if (risk === 'Expiring soon') return 5;
+  if (risk === 'Needs commercial follow-up') return 4;
+  if (risk === 'Margin check') return 3;
+  if (quote.status === 'Accepted') return 2;
+  return 1;
+}
+
+function dateSortValue(dateKey: string) {
+  if (!dateKey) return Number.POSITIVE_INFINITY;
+  const time = new Date(`${dateKey}T00:00:00`).getTime();
+  return Number.isFinite(time) ? time : Number.POSITIVE_INFINITY;
 }
 
 function mostCommonObjectionType(objections: ObjectionRecord[]) {

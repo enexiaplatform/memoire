@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { CalendarDays, Eye, Plus, Search, Trash2, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
@@ -30,11 +30,13 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 export function QuotesPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
+  const [searchParams] = useSearchParams();
+  const requestedAccountName = searchParams.get('accountName') || '';
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
   const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => requestedAccountName);
   const [statusFilter, setStatusFilter] = useState<'All' | QuoteStatus>('All');
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<QuoteRecord | null>(null);
@@ -67,6 +69,10 @@ export function QuotesPage() {
     };
   }, [authLoading, dataUserId]);
 
+  useEffect(() => {
+    if (requestedAccountName) setSearch(requestedAccountName);
+  }, [requestedAccountName]);
+
   const summary = useMemo(() => summarizeQuotes(quotes), [quotes]);
   const visibleQuotes = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -86,7 +92,7 @@ export function QuotesPage() {
 
   const openCreatePanel = () => {
     setEditingQuote(null);
-    setForm({ ...emptyQuoteInput, quoteDate: todayKey() });
+    setForm({ ...emptyQuoteInput, quoteDate: todayKey(), accountName: requestedAccountName });
     setPanelOpen(true);
     setSaveState('idle');
     setMessage('');
