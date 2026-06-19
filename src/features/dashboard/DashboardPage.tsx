@@ -298,6 +298,7 @@ export function DashboardPage() {
           ) : (
             <StartHerePanel
               commandCenter={commandCenter}
+              signal={pipelineReviewSignal}
               sampleDataActive={sampleDataActive}
               onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)}
             />
@@ -479,19 +480,29 @@ function buildDashboardInsights(data: DashboardData) {
 
 function StartHerePanel({
   commandCenter,
+  signal,
   sampleDataActive,
   onOpenDemoSandbox,
 }: {
   commandCenter: CommandCenter;
+  signal: DashboardInsights['pipelineReviewSignal'];
   sampleDataActive: boolean;
   onOpenDemoSandbox: () => void;
 }) {
+  const activeBlock = getActiveTimeblock(commandCenter.dailyTimeblocks);
   const topAction =
+    activeBlock?.actions[0] ||
     commandCenter.overdueActions[0] ||
     commandCenter.todayActions[0] ||
     commandCenter.priorityActions[0] ||
     null;
   const topRisk = commandCenter.atRiskOpportunities[0] || null;
+  const primaryHref = activeBlock?.href || topAction?.href || topRisk?.href || '/app/capture?mode=quick';
+  const primaryLabel = activeBlock?.id === 'pipeline-defense'
+    ? 'Open defense mode'
+    : activeBlock?.id === 'capture-closeout'
+      ? 'Capture update'
+      : 'Do this now';
 
   if (sampleDataActive) {
     return (
@@ -547,26 +558,45 @@ function StartHerePanel({
 
   return (
     <section className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Start here</p>
-          <h2 className="mt-2 text-2xl font-black text-navy">
-            {topAction ? topAction.title : topRisk ? `Review ${topRisk.accountName}` : 'Your pipeline is quiet today.'}
-          </h2>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">
-            {topAction?.reason || topRisk?.reason || 'Capture the next customer touch or prepare your next pipeline review.'}
-          </p>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
+        <div className="flex flex-col justify-between gap-4">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Now</p>
+              {activeBlock && <Badge label={`${activeBlock.startTime}-${activeBlock.endTime}`} tone={activeBlock.priority === 'Critical' ? 'red' : activeBlock.priority === 'High' ? 'amber' : 'blue'} />}
+            </div>
+            <h2 className="mt-2 text-2xl font-black text-navy">
+              {activeBlock?.focus || topAction?.title || (topRisk ? `Review ${topRisk.accountName}` : 'Choose the one deal that must move today.')}
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
+              {activeBlock?.reason || topAction?.reason || topRisk?.reason || 'Capture the next customer touch or prepare your next pipeline review.'}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link to={primaryHref} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+              {primaryLabel}
+            </Link>
+            <Link to="/app/opportunities" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
+              Review deals
+            </Link>
+            <Link to="/app/pipeline-defense" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
+              Pipeline Defense
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link to={topAction?.href || topRisk?.href || '/app/capture?mode=quick'} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-            Do this first
-          </Link>
-          <Link to="/app/opportunities" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
-            Review deals
-          </Link>
-          <Link to="/app/pipeline-defense" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
-            Prepare review
-          </Link>
+
+        <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">Pipeline defense</p>
+          <p className="mt-2 text-sm font-bold text-navy">
+            {signal.dealsNeedingReview > 0
+              ? `${signal.dealsNeedingReview} deal(s) need review`
+              : 'No defense block is urgent'}
+          </p>
+          <p className="mt-1 line-clamp-2 text-xs leading-5 text-blue-900/75">{signal.topReason}</p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Metric label="Review" value={signal.dealsNeedingReview} tone={signal.dealsNeedingReview ? 'amber' : 'green'} />
+            <Metric label="Rescue" value={signal.rescueDowngradeCandidates} tone={signal.rescueDowngradeCandidates ? 'red' : 'green'} />
+          </div>
         </div>
       </div>
     </section>
@@ -641,6 +671,8 @@ function DashboardPrimaryWork({
 }
 
 function DailyOperatingPlan({ blocks }: { blocks: DailyTimeblockItem[] }) {
+  const activeBlockId = getActiveTimeblock(blocks)?.id || '';
+
   return (
     <section className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-5 shadow-sm">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -661,13 +693,18 @@ function DailyOperatingPlan({ blocks }: { blocks: DailyTimeblockItem[] }) {
           <Link
             key={block.id}
             to={block.href}
-            className="flex min-h-[210px] flex-col rounded-lg border border-emerald-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+            className={`flex min-h-[210px] flex-col rounded-lg border bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md ${
+              block.id === activeBlockId ? 'border-emerald-400 ring-2 ring-emerald-200' : 'border-emerald-100'
+            }`}
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
-                  {block.startTime}-{block.endTime}
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
+                    {block.startTime}-{block.endTime}
+                  </p>
+                  {block.id === activeBlockId && <Badge label="Now" tone="green" />}
+                </div>
                 <h3 className="mt-2 text-base font-bold text-navy">{block.title}</h3>
               </div>
               <PriorityBadge priority={block.priority} />
@@ -694,6 +731,26 @@ function DailyOperatingPlan({ blocks }: { blocks: DailyTimeblockItem[] }) {
       </div>
     </section>
   );
+}
+
+function getActiveTimeblock(blocks: DailyTimeblockItem[], date = new Date()) {
+  if (blocks.length === 0) return null;
+  const currentMinutes = date.getHours() * 60 + date.getMinutes();
+  const active = blocks.find((block) => {
+    const start = timeToMinutes(block.startTime);
+    const end = timeToMinutes(block.endTime);
+    return currentMinutes >= start && currentMinutes < end;
+  });
+
+  if (active) return active;
+
+  const upcoming = blocks.find((block) => currentMinutes < timeToMinutes(block.startTime));
+  return upcoming || blocks[blocks.length - 1];
+}
+
+function timeToMinutes(time: string) {
+  const [hours, minutes] = time.split(':').map(Number);
+  return (Number.isFinite(hours) ? hours : 0) * 60 + (Number.isFinite(minutes) ? minutes : 0);
 }
 
 function QuoteFollowUpCard({ quotes }: { quotes: QuoteRecord[] }) {
