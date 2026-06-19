@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -11,6 +11,7 @@ import {
   FileText,
   NotebookPen,
   Plus,
+  RefreshCw,
   ShieldCheck,
   Target,
   Upload,
@@ -26,7 +27,7 @@ import { type ObjectionRecord } from '../../services/objectionStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
 import { type SalesAssetRecord } from '../../services/salesAssetStore';
-import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
+import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { type PipelineDefenseBrief } from '../../utils/pipelineDefenseStorage';
 import {
   buildTodayCommandCenter,
@@ -35,6 +36,7 @@ import {
   type CommandActionItem,
   type CommandCenter,
   type CommandPriority,
+  type DailyTimeblockItem,
   type RecentActivityItem,
 } from '../../utils/salesCommandCenter';
 import { hasLocalSampleData } from '../../utils/dataMode';
@@ -99,6 +101,7 @@ type DashboardData = {
 };
 
 type DashboardInsights = ReturnType<typeof buildDashboardInsights>;
+type DashboardLoadOptions = { force?: boolean };
 
 export function DashboardPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
@@ -123,64 +126,43 @@ export function DashboardPage() {
   const [demoSandboxPromptOpen, setDemoSandboxPromptOpen] = useState(false);
   const [advancedInsightsOpen, setAdvancedInsightsOpen] = useState(false);
   const [setupToolsOpen, setSetupToolsOpen] = useState(false);
+  const [workspaceSyncing, setWorkspaceSyncing] = useState(false);
+  const sampleDataActive = hasLocalSampleData();
+
+  const refreshDashboard = useCallback(async (options: DashboardLoadOptions = {}) => {
+    const sampleActive = hasLocalSampleData();
+    const dataUserId = sampleActive ? undefined : user?.id;
+    if (options.force) setWorkspaceSyncing(true);
+    if (!options.force) setLoading(true);
+    setMessage(options.force ? 'Refreshing cloud workspace...' : '');
+
+    try {
+      const nextData = await loadDashboardData(dataUserId, options);
+      const nextReviewPacks = await loadReviewPacksForWorkspace(dataUserId, sampleActive);
+
+      setData(nextData);
+      setMessage('Command center ready');
+      setFirstReviewOnboarding(loadFirstPipelineReviewOnboardingState());
+      setTrialChecklistState(loadTrialActivationChecklistState());
+      setSalesOperatingSetup(loadSalesOperatingSetupState());
+      setPipelineReviewHabitState(loadPipelineReviewHabitState());
+      setReviewPacks(nextReviewPacks);
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.debug('[Dashboard] load failed', { message: error instanceof Error ? error.message : 'Unknown error' });
+      }
+      setMessage('Cloud sync issue - your local copy is preserved.');
+    } finally {
+      setLoading(false);
+      setWorkspaceSyncing(false);
+    }
+  }, [user?.id]);
 
   useEffect(() => {
-    let mounted = true;
-
-    async function loadDashboard() {
-      const sampleActive = hasLocalSampleData();
-      const dataUserId = sampleActive ? undefined : user?.id;
-      const cachedData = getCachedSalesWorkspaceData(dataUserId);
-      if (cachedData) {
-        const nextReviewPacks = await loadReviewPacksForWorkspace(dataUserId, sampleActive);
-        if (!mounted) return;
-        setData(cachedData);
-        setMessage('Command center ready');
-        setFirstReviewOnboarding(loadFirstPipelineReviewOnboardingState());
-        setTrialChecklistState(loadTrialActivationChecklistState());
-        setSalesOperatingSetup(loadSalesOperatingSetupState());
-        setPipelineReviewHabitState(loadPipelineReviewHabitState());
-        setReviewPacks(nextReviewPacks);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      setMessage('');
-
-      try {
-        const nextData = await loadDashboardData(dataUserId);
-        const nextReviewPacks = await loadReviewPacksForWorkspace(dataUserId, sampleActive);
-
-        if (!mounted) return;
-        setData(nextData);
-        setMessage('Command center ready');
-        setFirstReviewOnboarding(loadFirstPipelineReviewOnboardingState());
-        setTrialChecklistState(loadTrialActivationChecklistState());
-        setSalesOperatingSetup(loadSalesOperatingSetupState());
-        setPipelineReviewHabitState(loadPipelineReviewHabitState());
-        setReviewPacks(nextReviewPacks);
-      } catch (error) {
-        if (!mounted) return;
-        if (import.meta.env.DEV) {
-          console.debug('[Dashboard] load failed', { message: error instanceof Error ? error.message : 'Unknown error' });
-        }
-        setMessage('Cloud sync issue - your local copy is preserved.');
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
-
     if (!authLoading) {
-      loadDashboard();
+      refreshDashboard();
     }
-
-    return () => {
-      mounted = false;
-    };
-  }, [authLoading, isAuthenticated, user?.id]);
-
-  const sampleDataActive = hasLocalSampleData();
+  }, [authLoading, isAuthenticated, refreshDashboard]);
 
   useEffect(() => {
     if (sampleDataActive) {
@@ -274,6 +256,16 @@ export function DashboardPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => refreshDashboard({ force: true })}
+            disabled={workspaceSyncing}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+            title="Reload dashboard from cloud"
+          >
+            <RefreshCw className={`h-4 w-4 ${workspaceSyncing ? 'animate-spin' : ''}`} />
+            Cloud sync
+          </button>
           <DataModePill
             compact
             isLoading={authLoading || loading}
@@ -321,6 +313,7 @@ export function DashboardPage() {
             </section>
           ) : (
             <>
+              <DailyOperatingPlan blocks={commandCenter.dailyTimeblocks} />
               <TodayFocus commandCenter={commandCenter} />
               <DashboardPrimaryWork commandCenter={commandCenter} signal={pipelineReviewSignal} />
               <details
@@ -637,6 +630,62 @@ function DashboardPrimaryWork({
         <Link to={signal.href} className="mt-4 inline-flex rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
           Open Pipeline Defense
         </Link>
+      </div>
+    </section>
+  );
+}
+
+function DailyOperatingPlan({ blocks }: { blocks: DailyTimeblockItem[] }) {
+  return (
+    <section className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Daily operating plan</p>
+          <h2 className="mt-1 text-xl font-bold text-navy">Timeblock the day around execution and Pipeline Defense.</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-emerald-900/75">
+            Memoire turns account memory, next actions, and forecast risk into a simple daily operating rhythm.
+          </p>
+        </div>
+        <Link to="/app/pipeline-defense" className="inline-flex w-fit rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          Open defense mode
+        </Link>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-4">
+        {blocks.map((block) => (
+          <Link
+            key={block.id}
+            to={block.href}
+            className="flex min-h-[210px] flex-col rounded-lg border border-emerald-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
+                  {block.startTime}-{block.endTime}
+                </p>
+                <h3 className="mt-2 text-base font-bold text-navy">{block.title}</h3>
+              </div>
+              <PriorityBadge priority={block.priority} />
+            </div>
+            <p className="mt-3 text-sm font-semibold leading-6 text-gray-800">{block.focus}</p>
+            <p className="mt-2 line-clamp-3 text-xs leading-5 text-gray-500">{block.reason}</p>
+            <div className="mt-auto pt-3">
+              {block.actions.length > 0 ? (
+                <div className="space-y-1.5">
+                  {block.actions.slice(0, 2).map((action) => (
+                    <p key={action.id} className="truncate rounded-md bg-gray-50 px-2.5 py-1.5 text-xs font-semibold text-gray-600" title={action.title}>
+                      {action.title}
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded-md bg-gray-50 px-2.5 py-1.5 text-xs font-semibold text-gray-600">
+                  No queued action. Use this block to create evidence.
+                </p>
+              )}
+            </div>
+          </Link>
+        ))}
       </div>
     </section>
   );
@@ -1705,6 +1754,6 @@ function playbookSeverityTone(pattern: SalesPlaybookPattern) {
   return 'green';
 }
 
-async function loadDashboardData(userId?: string | null): Promise<DashboardData> {
-  return loadSalesWorkspaceData(userId);
+async function loadDashboardData(userId?: string | null, options: DashboardLoadOptions = {}): Promise<DashboardData> {
+  return loadSalesWorkspaceData(userId, options);
 }

@@ -18,6 +18,18 @@ export type CommandActionItem = {
   href: string;
 };
 
+export type DailyTimeblockItem = {
+  id: string;
+  startTime: string;
+  endTime: string;
+  title: string;
+  focus: string;
+  reason: string;
+  priority: CommandPriority;
+  href: string;
+  actions: CommandActionItem[];
+};
+
 export type AtRiskOpportunityItem = {
   id: string;
   accountName: string;
@@ -53,6 +65,7 @@ export type CommandCenter = {
   todayActions: CommandActionItem[];
   overdueActions: CommandActionItem[];
   priorityActions: CommandActionItem[];
+  dailyTimeblocks: DailyTimeblockItem[];
   atRiskOpportunities: AtRiskOpportunityItem[];
   accountsNeedingTouch: AccountTouchItem[];
   recentActivities: RecentActivityItem[];
@@ -85,11 +98,20 @@ export function buildTodayCommandCenter({
   const recentActivities = getRecentActivitySummary(activities);
   const pipelineReadiness = getPipelineReviewReadiness(opportunities, briefs);
   const riskActions = atRiskOpportunities.slice(0, 8).map(riskToAction);
+  const priorityActions = dedupeActions([...overdueActions, ...todayActions, ...riskActions]).slice(0, 16);
 
   return {
     todayActions,
     overdueActions,
-    priorityActions: dedupeActions([...overdueActions, ...todayActions, ...riskActions]).slice(0, 16),
+    priorityActions,
+    dailyTimeblocks: buildDailyTimeblocks({
+      todayActions,
+      overdueActions,
+      priorityActions,
+      riskActions,
+      atRiskOpportunities,
+      accountsNeedingTouch,
+    }),
     atRiskOpportunities,
     accountsNeedingTouch,
     recentActivities,
@@ -103,6 +125,93 @@ export function buildTodayCommandCenter({
     },
     hasAnyData: activities.length > 0 || opportunities.length > 0 || accounts.length > 0 || briefs.some(isUserCreatedBrief),
   };
+}
+
+function buildDailyTimeblocks({
+  todayActions,
+  overdueActions,
+  priorityActions,
+  riskActions,
+  atRiskOpportunities,
+  accountsNeedingTouch,
+}: {
+  todayActions: CommandActionItem[];
+  overdueActions: CommandActionItem[];
+  priorityActions: CommandActionItem[];
+  riskActions: CommandActionItem[];
+  atRiskOpportunities: AtRiskOpportunityItem[];
+  accountsNeedingTouch: AccountTouchItem[];
+}): DailyTimeblockItem[] {
+  const executionActions = dedupeActions([...overdueActions, ...todayActions]).slice(0, 5);
+  const defenseActions = dedupeActions(riskActions).slice(0, 4);
+  const accountTouchActions = accountsNeedingTouch.slice(0, 3).map((account): CommandActionItem => ({
+    id: `touch-${account.id}`,
+    title: `Touch ${account.accountName}`,
+    accountName: account.accountName,
+    source: 'Activity',
+    priority: account.activeOpportunityCount > 0 ? 'High' : 'Medium',
+    reason: account.reason,
+    href: account.href,
+  }));
+
+  return [
+    {
+      id: 'morning-triage',
+      startTime: '08:30',
+      endTime: '09:00',
+      title: 'Triage today',
+      focus: executionActions[0]?.title || priorityActions[0]?.title || 'Choose the one deal that must move today.',
+      reason: overdueActions.length
+        ? `${overdueActions.length} overdue action${overdueActions.length === 1 ? '' : 's'} need a decision before new work starts.`
+        : todayActions.length
+          ? `${todayActions.length} action${todayActions.length === 1 ? '' : 's'} are due today.`
+          : 'No due action is blocking the day, so start by selecting the highest-leverage deal.',
+      priority: overdueActions.length ? 'Critical' : todayActions.length ? 'High' : 'Medium',
+      href: executionActions[0]?.href || '/app/opportunities',
+      actions: executionActions.slice(0, 3),
+    },
+    {
+      id: 'pipeline-defense',
+      startTime: '09:00',
+      endTime: '10:30',
+      title: 'Pipeline Defense',
+      focus: atRiskOpportunities[0]
+        ? `Defend or rescue ${atRiskOpportunities[0].opportunityName}`
+        : 'Prepare the next manager-ready pipeline answer.',
+      reason: atRiskOpportunities.length
+        ? `${atRiskOpportunities.length} active opportunit${atRiskOpportunities.length === 1 ? 'y has' : 'ies have'} weak evidence, missing context, or rescue/downgrade signals.`
+        : 'Pipeline risk is quiet; keep review evidence current before the next manager conversation.',
+      priority: atRiskOpportunities.length ? 'High' : 'Low',
+      href: '/app/pipeline-defense',
+      actions: defenseActions,
+    },
+    {
+      id: 'customer-execution',
+      startTime: '13:30',
+      endTime: '15:30',
+      title: 'Customer execution',
+      focus: executionActions[0]?.accountName
+        ? `Move ${executionActions[0].accountName}`
+        : accountTouchActions[0]?.title || 'Create one customer touch that creates evidence.',
+      reason: executionActions.length
+        ? 'Use this block for calls, emails, proof follow-up, procurement clarification, or next-step confirmation.'
+        : 'No dated action is queued, so use the block to prevent quiet accounts from drifting.',
+      priority: executionActions.some((action) => action.priority === 'Critical') ? 'Critical' : executionActions.length ? 'High' : 'Medium',
+      href: executionActions[0]?.href || accountTouchActions[0]?.href || '/app/accounts',
+      actions: executionActions.length ? executionActions.slice(0, 4) : accountTouchActions,
+    },
+    {
+      id: 'capture-closeout',
+      startTime: '16:30',
+      endTime: '17:00',
+      title: 'Capture closeout',
+      focus: 'Write what changed and update tomorrow’s next action.',
+      reason: 'Memoire becomes useful when the day ends with clean activity memory, next action dates, and review evidence.',
+      priority: 'Medium',
+      href: '/app/capture?mode=quick',
+      actions: priorityActions.slice(0, 3),
+    },
+  ];
 }
 
 export function getTodayActions(opportunities: CrmLiteOpportunity[], activities: SalesActivityRecord[]) {
