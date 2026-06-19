@@ -57,6 +57,7 @@ export function RevenueViewPage() {
       item.status,
     ].join(' ').toLowerCase().includes(query));
   }, [revenue.actionItems, search]);
+  const stuckRevenue = revenue.pendingPo + revenue.pendingPayment;
 
   return (
     <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
@@ -65,12 +66,12 @@ export function RevenueViewPage() {
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Commercial</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Revenue View</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            See likely money, stuck money, risk, and the next commercial action.
+            See stuck money, risk, and the next commercial action.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link to={revenue.topAction?.href || '/app/quotes'} className="inline-flex items-center justify-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-            Review commercial risk
+            {revenue.topAction ? 'Do revenue action' : 'Create quote'}
             <ArrowRight className="h-4 w-4" />
           </Link>
           <button
@@ -102,17 +103,6 @@ export function RevenueViewPage() {
         <RevenueEmptyState />
       ) : (
         <>
-          <section className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
-            <RevenueMetric label="Won" value={formatMoney(revenue.won, 'VND')} tone={revenue.won ? 'green' : 'blue'} />
-            <RevenueMetric label="Active pipeline" value={formatMoney(revenue.activePipeline, 'VND')} tone="blue" />
-            <RevenueMetric label="Quoted" value={formatMoney(revenue.quoted, 'VND')} tone={revenue.quoted ? 'blue' : 'green'} />
-            <RevenueMetric label="Pending PO" value={formatMoney(revenue.pendingPo, 'VND')} tone={revenue.pendingPo ? 'amber' : 'green'} />
-            <RevenueMetric label="Pending payment" value={formatMoney(revenue.pendingPayment, 'VND')} tone={revenue.pendingPayment ? 'amber' : 'green'} />
-            <RevenueMetric label="At risk" value={formatMoney(revenue.atRiskRevenue, 'VND')} tone={revenue.atRiskRevenue ? 'red' : 'green'} />
-            <RevenueMetric label="Expiring quotes" value={revenue.expiringQuotes} tone={revenue.expiringQuotes ? 'amber' : 'green'} />
-            <RevenueMetric label="Overdue" value={revenue.overdueFollowUps} tone={revenue.overdueFollowUps ? 'red' : 'green'} />
-          </section>
-
           <section className="rounded-xl border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -125,12 +115,29 @@ export function RevenueViewPage() {
                     ? `${revenue.topAction.accountName}: ${revenue.topAction.nextAction}`
                     : 'No commercial risk is blocking today.'}
                 </p>
+                {revenue.topAction && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Badge label={revenue.topAction.risk} tone={riskTone(revenue.topAction.risk)} />
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-blue-900">
+                      {formatMoney(revenue.topAction.amount, revenue.topAction.currency)}
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="flex flex-wrap gap-2">
-                <Link to="/app/quotes" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Open quotes</Link>
+                <Link to={revenue.topAction?.href || '/app/quotes'} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+                  {revenue.topAction ? 'Open action' : 'Create quote'}
+                </Link>
                 <Link to="/app/opportunities" className="rounded-full border border-blue-100 bg-white px-4 py-2 text-sm font-bold text-brand-blue">Review pipeline</Link>
               </div>
             </div>
+          </section>
+
+          <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <RevenueMetric label="Active pipeline" value={formatMoney(revenue.activePipeline, 'VND')} tone="blue" />
+            <RevenueMetric label="Stuck money" value={formatMoney(stuckRevenue, 'VND')} tone={stuckRevenue ? 'amber' : 'green'} />
+            <RevenueMetric label="At risk" value={formatMoney(revenue.atRiskRevenue, 'VND')} tone={revenue.atRiskRevenue ? 'red' : 'green'} />
+            <RevenueMetric label="Overdue" value={revenue.overdueFollowUps} tone={revenue.overdueFollowUps ? 'red' : 'green'} />
           </section>
 
           <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -153,10 +160,14 @@ export function RevenueViewPage() {
           </section>
 
           <details className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <summary className="cursor-pointer text-sm font-bold text-navy">Details</summary>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-500">
-              Revenue View is not accounting. It combines pipeline and quote signals so you can see what money is likely, stuck, or at risk.
-            </p>
+            <summary className="cursor-pointer text-sm font-bold text-navy">More money signals</summary>
+            <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+              <RevenueMetric label="Won" value={formatMoney(revenue.won, 'VND')} tone={revenue.won ? 'green' : 'blue'} />
+              <RevenueMetric label="Quoted" value={formatMoney(revenue.quoted, 'VND')} tone={revenue.quoted ? 'blue' : 'green'} />
+              <RevenueMetric label="Pending PO" value={formatMoney(revenue.pendingPo, 'VND')} tone={revenue.pendingPo ? 'amber' : 'green'} />
+              <RevenueMetric label="Pending payment" value={formatMoney(revenue.pendingPayment, 'VND')} tone={revenue.pendingPayment ? 'amber' : 'green'} />
+              <RevenueMetric label="Expiring quotes" value={revenue.expiringQuotes} tone={revenue.expiringQuotes ? 'amber' : 'green'} />
+            </div>
           </details>
         </>
       )}
