@@ -151,6 +151,12 @@ export function QuotesPage() {
     setSaveState('idle');
   };
 
+  const viewQuoteInList = (quote: QuoteRecord) => {
+    setSearch(quote.quoteId || quote.title);
+    setStatusFilter('All');
+    closePanel();
+  };
+
   const saveQuote = () => {
     if (!form.title.trim() || !form.accountName.trim()) {
       setSaveState('error');
@@ -290,6 +296,7 @@ export function QuotesPage() {
           onOpportunityChange={handleOpportunityChange}
           onSave={saveQuote}
           onCreateAnother={openCreatePanel}
+          onViewQuote={viewQuoteInList}
           onClose={closePanel}
           onDelete={editingQuote ? () => removeQuote(editingQuote) : undefined}
         />
@@ -369,6 +376,7 @@ function QuotePanel({
   onOpportunityChange,
   onSave,
   onCreateAnother,
+  onViewQuote,
   onClose,
   onDelete,
 }: {
@@ -382,6 +390,7 @@ function QuotePanel({
   onOpportunityChange: (opportunityId: string) => void;
   onSave: () => void;
   onCreateAnother: () => void;
+  onViewQuote: (quote: QuoteRecord) => void;
   onClose: () => void;
   onDelete?: () => void;
 }) {
@@ -451,9 +460,22 @@ function QuotePanel({
           </FormSection>
 
           {message && (
-            <p className={`rounded-lg px-3 py-2 text-sm font-semibold ${saveState === 'error' ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
-              {message}
-            </p>
+            <div className={`rounded-lg px-3 py-2 text-sm font-semibold ${saveState === 'error' ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
+              <p>{message}</p>
+              {saveState === 'saved' && editingQuote && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" onClick={() => onViewQuote(editingQuote)} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">
+                    View quote
+                  </button>
+                  <button type="button" onClick={onCreateAnother} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-gray-700 ring-1 ring-emerald-100">
+                    Create another
+                  </button>
+                  <Link to="/app/revenue" className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-brand-blue ring-1 ring-emerald-100">
+                    Open revenue view
+                  </Link>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
@@ -467,11 +489,6 @@ function QuotePanel({
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            {saveState === 'saved' && (
-              <button type="button" onClick={onCreateAnother} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
-                Create another
-              </button>
-            )}
             <button type="button" onClick={onSave} disabled={saveState === 'saving'} className="rounded-full bg-navy px-5 py-2 text-sm font-bold text-white disabled:opacity-60">
               {saveState === 'saving' ? 'Saving...' : 'Save quote'}
             </button>
