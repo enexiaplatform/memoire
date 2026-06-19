@@ -164,6 +164,26 @@ const packageJson = read('package.json');
 requireIncludes(packageJson, '"verify:commercial-operating-loop"', 'package.json missing verify:commercial-operating-loop script');
 requireIncludes(packageJson, 'npm run verify:commercial-operating-loop', 'npm run check does not include operating-loop verifier');
 
+const appRoutes = read('src/App.tsx');
+requireIncludes(appRoutes, 'path="weekly-brief" element={<SalesReviewsPage />}',
+  'App route missing /app/weekly-brief Commercial Review Brief entry point');
+requireIncludes(appRoutes, 'path="reviews" element={<SalesReviewsPage />}',
+  'Legacy /app/reviews route should remain available');
+
+const sidebar = read('src/components/layout/Sidebar.tsx');
+requireIncludes(sidebar, "to: '/app/weekly-brief', label: 'Weekly Brief'",
+  'Sidebar missing Weekly Brief review entry');
+
+const salesReviewsPage = read('src/features/reviews/SalesReviewsPage.tsx');
+for (const marker of [
+  'Commercial Review Brief',
+  'Copy weekly brief',
+  'Copy commercial brief',
+  'Generate activity recap',
+]) {
+  requireIncludes(salesReviewsPage, marker, `Weekly Brief page missing marker: ${marker}`);
+}
+
 if (failures.length > 0) {
   console.error('Commercial operating-loop contract verification failed:');
   for (const failure of failures) console.error(`- ${failure}`);

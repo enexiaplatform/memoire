@@ -5,6 +5,7 @@ const routePrefetchers: Record<string, () => Promise<unknown>> = {
   '/app/quotes': () => import('../features/quotes/QuotesPage'),
   '/app/revenue': () => import('../features/revenue/RevenueViewPage'),
   '/app/calendar': () => import('../features/calendar/SalesActivityCalendarPage'),
+  '/app/weekly-brief': () => import('../features/reviews/SalesReviewsPage'),
   '/app/reviews': () => import('../features/reviews/SalesReviewsPage'),
   '/app/playbook': () => import('../features/playbook/SalesPlaybookPage'),
   '/app/assets': () => import('../features/assets/SalesAssetsPage'),
@@ -34,6 +35,7 @@ export function prefetchPrimaryAppRoutes() {
     '/app/revenue',
     '/app/accounts',
     '/app/pipeline-defense',
+    '/app/weekly-brief',
   ];
 
   scheduleRoutePrefetch(routes);

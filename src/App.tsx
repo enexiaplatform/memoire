@@ -106,6 +106,7 @@ function App() {
             <Route path="today" element={<Navigate to="/app/dashboard" replace />} />
             <Route path="capture" element={<DailyCapturePage />} />
             <Route path="calendar" element={<SalesActivityCalendarPage />} />
+            <Route path="weekly-brief" element={<SalesReviewsPage />} />
             <Route path="reviews" element={<SalesReviewsPage />} />
             <Route path="playbook" element={<SalesPlaybookPage />} />
             <Route path="assets" element={<SalesAssetsPage />} />

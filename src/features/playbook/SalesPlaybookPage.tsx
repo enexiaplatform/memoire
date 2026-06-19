@@ -222,7 +222,7 @@ export function SalesPlaybookPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-bold text-gray-500">{visiblePatterns.length} visible patterns</p>
-                <Link to="/app/reviews" className="text-sm font-bold text-brand-blue">Open Reviews</Link>
+                <Link to="/app/weekly-brief" className="text-sm font-bold text-brand-blue">Open Weekly Brief</Link>
               </div>
               {visiblePatterns.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center">

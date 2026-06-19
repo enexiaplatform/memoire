@@ -29,7 +29,7 @@ const primarySections = [
     label: 'Review',
     items: [
       { to: '/app/pipeline-defense', label: 'Pipeline Defense', icon: <FileCheck2 className="h-5 w-5" /> },
-      { to: '/app/reviews', label: 'Reviews', icon: <ClipboardList className="h-5 w-5" /> },
+      { to: '/app/weekly-brief', label: 'Weekly Brief', icon: <ClipboardList className="h-5 w-5" /> },
     ],
   },
 ];

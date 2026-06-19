@@ -734,9 +734,14 @@ function DashboardPrimaryWork({
           <Metric label="Review" value={signal.dealsNeedingReview} tone={signal.dealsNeedingReview ? 'amber' : 'green'} />
           <Metric label="Rescue" value={signal.rescueDowngradeCandidates} tone={signal.rescueDowngradeCandidates ? 'red' : 'green'} />
         </div>
-        <Link to={signal.href} className="mt-4 inline-flex rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-          Open Pipeline Defense
-        </Link>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link to={signal.href} className="inline-flex rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+            Open Pipeline Defense
+          </Link>
+          <Link to="/app/weekly-brief" className="inline-flex rounded-full border border-blue-100 bg-white px-4 py-2 text-sm font-bold text-brand-blue">
+            Weekly Brief
+          </Link>
+        </div>
       </div>
     </section>
   );
@@ -1015,8 +1020,8 @@ function WeeklyExecutionHealth({
             Deal execution learning for {review.periodLabel}: completed actions, unresolved critical work, unclear outcomes, and rescue signals.
           </p>
         </div>
-        <Link to="/app/reviews" className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-          Open Reviews
+        <Link to="/app/weekly-brief" className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          Open Weekly Brief
         </Link>
       </div>
 
@@ -1494,7 +1499,7 @@ function QuickActions() {
     { label: 'Sales Setup', href: '/app/onboarding/sales-operating-setup', icon: <Target className="h-4 w-4" /> },
     { label: 'Add Opportunity', href: '/app/opportunities', icon: <Target className="h-4 w-4" /> },
     { label: 'Add Account', href: '/app/accounts', icon: <BookOpen className="h-4 w-4" /> },
-    { label: 'Generate Review', href: '/app/reviews', icon: <ClipboardList className="h-4 w-4" /> },
+    { label: 'Weekly Brief', href: '/app/weekly-brief', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Open Pipeline Defense', href: '/app/pipeline-defense', icon: <FileCheck2 className="h-4 w-4" /> },
   ];
 

@@ -225,20 +225,31 @@ export function SalesReviewsPage() {
     <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Sales Reviews</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Sales Reviews</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Weekly Brief</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Commercial Review Brief</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            Copy a commercial review brief, then drill into the details only when needed.
+            Copy the weekly commercial summary, then drill into pipeline, quotes, and revenue only where needed.
           </p>
         </div>
-        <DataModePill
-          compact
-          isLoading={authLoading}
-          isAuthenticated={isAuthenticated}
-          isSupabaseConfigured={isSupabaseConfigured}
-          cloudAvailable={canUseSalesActivityCloudStore(dataUserId)}
-          hasSampleData={sampleDataActive}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={copyCommercialReviewBrief}
+            disabled={loadingActivities}
+            className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+          >
+            {loadingActivities ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
+            Copy weekly brief
+          </button>
+          <DataModePill
+            compact
+            isLoading={authLoading}
+            isAuthenticated={isAuthenticated}
+            isSupabaseConfigured={isSupabaseConfigured}
+            cloudAvailable={canUseSalesActivityCloudStore(dataUserId)}
+            hasSampleData={sampleDataActive}
+          />
+        </div>
       </header>
 
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
@@ -294,10 +305,10 @@ export function SalesReviewsPage() {
             type="button"
             onClick={generateRecap}
             disabled={loadingActivities}
-            className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
           >
             {loadingActivities ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Generate {periodType === 'week' ? 'Weekly' : 'Monthly'} Recap
+            Generate activity recap
           </button>
           <button
             type="button"
