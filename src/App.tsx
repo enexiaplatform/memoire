@@ -35,6 +35,7 @@ const OpportunitiesPage = lazy(() =>
 const SalesAssetsPage = lazy(() =>
   import('./features/assets/SalesAssetsPage').then((module) => ({ default: module.SalesAssetsPage })),
 );
+const QuotesPage = lazy(() => import('./features/quotes/QuotesPage').then((module) => ({ default: module.QuotesPage })));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const SalesActivityCalendarPage = lazy(() =>
   import('./features/calendar/SalesActivityCalendarPage').then((module) => ({ default: module.SalesActivityCalendarPage })),
@@ -111,6 +112,7 @@ function App() {
             <Route path="accounts" element={<AccountsPage />} />
             <Route path="accounts/:accountId" element={<LegacyAccountRouteRedirect />} />
             <Route path="opportunities" element={<OpportunitiesPage />} />
+            <Route path="quotes" element={<QuotesPage />} />
             <Route path="onboarding/pipeline-review" element={<FirstPipelineReviewFlow />} />
             <Route path="onboarding/sales-operating-setup" element={<SalesOperatingSetupPage />} />
             <Route path="stakeholders" element={<StakeholdersPage />} />

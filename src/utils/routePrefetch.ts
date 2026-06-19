@@ -2,6 +2,7 @@ const routePrefetchers: Record<string, () => Promise<unknown>> = {
   '/app/dashboard': () => import('../features/dashboard/DashboardPage'),
   '/app/capture': () => import('../features/dailyCapture/DailyCapturePage'),
   '/app/opportunities': () => import('../features/opportunities/OpportunitiesPage'),
+  '/app/quotes': () => import('../features/quotes/QuotesPage'),
   '/app/calendar': () => import('../features/calendar/SalesActivityCalendarPage'),
   '/app/reviews': () => import('../features/reviews/SalesReviewsPage'),
   '/app/playbook': () => import('../features/playbook/SalesPlaybookPage'),
@@ -28,6 +29,7 @@ export function prefetchPrimaryAppRoutes() {
   const routes = [
     '/app/capture',
     '/app/opportunities',
+    '/app/quotes',
     '/app/accounts',
     '/app/pipeline-defense',
   ];

@@ -2,7 +2,7 @@ import { supabaseClient } from '../lib/supabaseClient';
 import { reportClientOperationalEvent } from './clientTelemetry';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus';
 
-export type CloudJsonCollectionTable = 'review_packs' | 'sales_assets' | 'action_outcomes';
+export type CloudJsonCollectionTable = 'review_packs' | 'sales_assets' | 'action_outcomes' | 'quotes';
 
 export type CloudJsonRecord = {
   id: string;

@@ -12,6 +12,7 @@ import {
   NotebookPen,
   Plus,
   RefreshCw,
+  ReceiptText,
   ShieldCheck,
   Target,
   Upload,
@@ -24,6 +25,7 @@ import type { AccountMemoryRecord } from '../../services/accountStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import { type SalesActivityRecord } from '../../services/salesActivityStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
+import { getQuoteRisk, quoteRiskTone, summarizeQuotes, type QuoteRecord } from '../../services/quoteStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
 import { type SalesAssetRecord } from '../../services/salesAssetStore';
@@ -98,6 +100,7 @@ type DashboardData = {
   stakeholders: StakeholderRecord[];
   actionOutcomes: ActionOutcomeRecord[];
   assets: SalesAssetRecord[];
+  quotes: QuoteRecord[];
 };
 
 type DashboardInsights = ReturnType<typeof buildDashboardInsights>;
@@ -114,6 +117,7 @@ export function DashboardPage() {
     stakeholders: [],
     actionOutcomes: [],
     assets: [],
+    quotes: [],
   });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -315,6 +319,7 @@ export function DashboardPage() {
             <>
               <DailyOperatingPlan blocks={commandCenter.dailyTimeblocks} />
               <TodayFocus commandCenter={commandCenter} />
+              <QuoteFollowUpCard quotes={data.quotes} />
               <DashboardPrimaryWork commandCenter={commandCenter} signal={pipelineReviewSignal} />
               <details
                 className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
@@ -687,6 +692,60 @@ function DailyOperatingPlan({ blocks }: { blocks: DailyTimeblockItem[] }) {
           </Link>
         ))}
       </div>
+    </section>
+  );
+}
+
+function QuoteFollowUpCard({ quotes }: { quotes: QuoteRecord[] }) {
+  const summary = summarizeQuotes(quotes);
+  const topQuote = summary.topActionQuote;
+  const risk = topQuote ? getQuoteRisk(topQuote) : null;
+
+  if (quotes.length === 0) {
+    return (
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <ReceiptText className="h-4 w-4 text-brand-blue" />
+              <h2 className="text-lg font-bold text-navy">Quote follow-ups</h2>
+            </div>
+            <p className="mt-1 text-sm text-gray-500">Create one quote to track expiry, PO risk, and payment terms.</p>
+          </div>
+          <Link to="/app/quotes" className="inline-flex w-fit rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+            Create quote
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-xl border border-cyan-100 bg-cyan-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <ReceiptText className="h-4 w-4 text-cyan-700" />
+            <h2 className="text-lg font-bold text-navy">Quote follow-ups</h2>
+          </div>
+          <p className="mt-1 text-sm text-cyan-900/75">
+            {topQuote ? `${topQuote.accountName}: ${topQuote.nextAction || risk || 'review quote status'}` : 'No quote follow-up is blocking today.'}
+          </p>
+        </div>
+        <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
+          <Metric label="Expiring" value={summary.expiringSoon} tone={summary.expiringSoon ? 'amber' : 'green'} />
+          <Metric label="Pending PO" value={summary.pendingPo} tone={summary.pendingPo ? 'blue' : 'green'} />
+          <Metric label="Sent" value={summary.sentQuotes} tone={summary.sentQuotes ? 'blue' : 'green'} />
+        </div>
+        <Link to="/app/quotes" className="inline-flex w-fit shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          Open quotes
+        </Link>
+      </div>
+      {topQuote && risk && risk !== 'None' && (
+        <div className="mt-3">
+          <Badge label={risk} tone={quoteRiskTone(risk)} />
+        </div>
+      )}
     </section>
   );
 }
