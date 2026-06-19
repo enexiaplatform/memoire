@@ -743,22 +743,54 @@ function DashboardPrimaryWork({
 }
 
 function DailyOperatingPlan({ blocks }: { blocks: DailyTimeblockItem[] }) {
-  const activeBlockId = getActiveTimeblock(blocks)?.id || '';
+  const activeBlock = getActiveTimeblock(blocks);
+  const activeBlockId = activeBlock?.id || '';
+  const firstAction = activeBlock?.actions[0];
 
   return (
     <section className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-5 shadow-sm">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Daily operating plan</p>
-          <h2 className="mt-1 text-xl font-bold text-navy">Timeblock the day around execution and Pipeline Defense.</h2>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Today's timeblocks</p>
+          <h2 className="mt-1 text-xl font-bold text-navy">Work the current block first.</h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-emerald-900/75">
-            Memoire turns account memory, next actions, and forecast risk into a simple daily operating rhythm.
+            Memoire turns account memory, next actions, and forecast risk into one calm daily rhythm.
           </p>
         </div>
         <Link to="/app/pipeline-defense" className="inline-flex w-fit rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
           Open defense mode
         </Link>
       </div>
+
+      {activeBlock && (
+        <Link
+          to={activeBlock.href}
+          className="mt-4 grid gap-3 rounded-xl border border-emerald-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 hover:shadow-md lg:grid-cols-[1fr_auto]"
+        >
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge label="Do now" tone={activeBlock.priority === 'Critical' ? 'red' : activeBlock.priority === 'High' ? 'amber' : 'green'} />
+              <span className="text-xs font-black uppercase tracking-wide text-emerald-700">
+                {activeBlock.startTime}-{activeBlock.endTime}
+              </span>
+              <PriorityBadge priority={activeBlock.priority} />
+            </div>
+            <h3 className="mt-2 truncate text-lg font-black text-navy">{activeBlock.focus}</h3>
+            <p className="mt-1 line-clamp-2 text-sm leading-6 text-gray-500">
+              {firstAction?.reason || activeBlock.reason}
+            </p>
+            <p className="mt-2 truncate text-xs font-bold uppercase tracking-wide text-emerald-700">
+              {firstAction ? firstAction.title : 'Create one evidence-producing action.'}
+            </p>
+          </div>
+          <div className="flex items-center justify-between gap-3 lg:justify-end">
+            <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800">
+              {activeBlock.title}
+            </span>
+            <ArrowRight className="h-5 w-5 text-emerald-700" />
+          </div>
+        </Link>
+      )}
 
       <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-4">
         {blocks.map((block) => (
