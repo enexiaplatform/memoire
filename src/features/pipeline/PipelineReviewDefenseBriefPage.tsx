@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ClipboardCheck, Download, HelpCircle, Printer, RotateCcw, ShieldCheck, Target, Trash2, Upload } from 'lucide-react';
+import { AlertTriangle, Banknote, ClipboardCheck, Download, HelpCircle, Printer, ReceiptText, RotateCcw, ShieldCheck, Target, Trash2, Upload } from 'lucide-react';
 import {
   createInitialPipelineDefenseDeals,
   decisionRecommendations,
@@ -1094,6 +1094,8 @@ export function PipelineReviewDefenseBriefPage() {
         </div>
       </header>
 
+      <CommercialHandoffStrip summary={summary} hasSavedPack={Boolean(currentWeekReviewPack)} />
+
       {sampleDataActive && (
         <div className="mb-6">
           <DemoJourneyCard compact />
@@ -1538,6 +1540,83 @@ function ReviewPackHistory({
       )}
     </section>
   );
+}
+
+function CommercialHandoffStrip({
+  summary,
+  hasSavedPack,
+}: {
+  summary: ReturnType<typeof buildSummary>;
+  hasSavedPack: boolean;
+}) {
+  const topAction = summary.topRecommendedAction?.recommendedAction?.trim()
+    || summary.highestRiskDeal?.recommendedAction?.trim()
+    || 'Choose one deal to defend, rescue, or downgrade.';
+
+  const handoffs = [
+    {
+      href: '/app/weekly-brief',
+      icon: <ClipboardCheck className="h-4 w-4" />,
+      label: 'Weekly Brief',
+      value: hasSavedPack ? 'Pack saved' : `${summary.atRiskDeals} at risk`,
+      helper: 'Copy the commercial summary for review.',
+      tone: 'blue',
+    },
+    {
+      href: '/app/quotes',
+      icon: <ReceiptText className="h-4 w-4" />,
+      label: 'Quotes',
+      value: 'Quote follow-up',
+      helper: 'Check expiring quotes and pending PO next.',
+      tone: 'amber',
+    },
+    {
+      href: '/app/revenue',
+      icon: <Banknote className="h-4 w-4" />,
+      label: 'Revenue',
+      value: 'Money at risk',
+      helper: 'See stuck pipeline, PO, and payment work.',
+      tone: 'green',
+    },
+  ] as const;
+
+  return (
+    <section className="mb-6 rounded-xl border border-cyan-100 bg-cyan-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-700">Commercial handoff</p>
+          <h2 className="mt-1 text-xl font-bold text-navy">After defense, move the money loop.</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-cyan-900/75">{topAction}</p>
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 xl:min-w-[560px]">
+          {handoffs.map((item) => (
+            <Link
+              key={item.href}
+              to={item.href}
+              className="rounded-lg border border-white bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-md"
+            >
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full ${handoffToneClass(item.tone)}`}>
+                  {item.icon}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-navy">{item.label}</p>
+                  <p className="truncate text-xs font-bold uppercase tracking-wide text-gray-400">{item.value}</p>
+                </div>
+              </div>
+              <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-500">{item.helper}</p>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function handoffToneClass(tone: 'blue' | 'amber' | 'green') {
+  if (tone === 'amber') return 'bg-amber-50 text-amber-700';
+  if (tone === 'green') return 'bg-emerald-50 text-emerald-700';
+  return 'bg-blue-50 text-brand-blue';
 }
 
 function ShareableBriefPanel({

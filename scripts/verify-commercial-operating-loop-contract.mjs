@@ -184,6 +184,17 @@ for (const marker of [
   requireIncludes(salesReviewsPage, marker, `Weekly Brief page missing marker: ${marker}`);
 }
 
+const pipelineDefensePage = read('src/features/pipeline/PipelineReviewDefenseBriefPage.tsx');
+for (const marker of [
+  'Commercial handoff',
+  'After defense, move the money loop.',
+  '/app/weekly-brief',
+  '/app/quotes',
+  '/app/revenue',
+]) {
+  requireIncludes(pipelineDefensePage, marker, `Pipeline Defense commercial handoff missing marker: ${marker}`);
+}
+
 if (failures.length > 0) {
   console.error('Commercial operating-loop contract verification failed:');
   for (const failure of failures) console.error(`- ${failure}`);
