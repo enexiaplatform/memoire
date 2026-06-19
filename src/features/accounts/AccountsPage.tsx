@@ -42,6 +42,14 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type SortDirection = 'asc' | 'desc';
 type AccountSortKey = 'accountCode' | 'accountName' | 'relationship' | 'potential' | 'activeValue' | 'lastUpdated' | 'health';
 type QuickFilter = 'all' | 'imported' | 'keyAccounts' | 'hasTarget' | 'followUpDue' | 'hasStrategy';
+type AccountNextAction = {
+  title: string;
+  reason: string;
+  cta: string;
+  href: string;
+  tone: 'blue' | 'green' | 'amber' | 'red';
+  badge: string;
+};
 
 const allFilter = 'All';
 const defaultPageSize = 25;
@@ -795,6 +803,18 @@ function AccountDetailPanel({
         </button>
       </div>
 
+      {selectedMemory && (
+        <AccountNextActionCard
+          action={buildAccountNextAction({
+            memory: selectedMemory,
+            quotes,
+            stakeholders,
+            objections,
+          })}
+          onDraftFollowUp={onDraftFollowUp}
+        />
+      )}
+
       <div className="mt-5 space-y-4">
         <Field label="Account name" value={form.accountName} onChange={(value) => update('accountName', value)} required />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -841,6 +861,139 @@ function AccountDetailPanel({
       </aside>
     </>
   );
+}
+
+function AccountNextActionCard({
+  action,
+  onDraftFollowUp,
+}: {
+  action: AccountNextAction;
+  onDraftFollowUp?: () => void;
+}) {
+  return (
+    <section className={`mt-5 rounded-lg border p-4 ${accountActionToneClass(action.tone)}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs font-bold uppercase tracking-wide">Account next action</p>
+            <Badge label={action.badge} tone={action.tone} />
+          </div>
+          <h3 className="mt-2 text-base font-bold text-navy">{action.title}</h3>
+          <p className="mt-1 text-sm leading-6 text-gray-600">{action.reason}</p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          {onDraftFollowUp && (
+            <button
+              type="button"
+              onClick={onDraftFollowUp}
+              className="inline-flex w-fit rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-bold text-brand-blue hover:bg-blue-50"
+            >
+              Draft follow-up
+            </button>
+          )}
+          <Link to={action.href} className="inline-flex w-fit rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">
+            {action.cta}
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function buildAccountNextAction({
+  memory,
+  quotes,
+  stakeholders,
+  objections,
+}: {
+  memory: AccountMemory;
+  quotes: QuoteRecord[];
+  stakeholders: StakeholderRecord[];
+  objections: ObjectionRecord[];
+}): AccountNextAction {
+  const accountName = memory.account.accountName;
+  const actionQuotes = [...quotes]
+    .filter((quote) => ['Sent', 'Revised', 'Accepted'].includes(quote.status))
+    .sort((left, right) => quoteActionRank(right) - quoteActionRank(left) || dateSortValue(left.validUntil) - dateSortValue(right.validUntil));
+  const riskyQuote = actionQuotes.find((quote) => getQuoteRisk(quote) !== 'None');
+  if (riskyQuote) {
+    const risk = getQuoteRisk(riskyQuote);
+    const tone = quoteRiskTone(risk);
+    return {
+      title: riskyQuote.nextAction || `Review ${riskyQuote.title}`,
+      reason: `${risk}: ${formatMoney(riskyQuote.amount || 0, riskyQuote.currency)} needs commercial follow-up.`,
+      cta: 'Open quotes',
+      href: `/app/quotes?accountName=${encodeURIComponent(accountName)}`,
+      tone: tone === 'gray' ? 'blue' : tone,
+      badge: risk,
+    };
+  }
+
+  const nextAction = memory.openNextActions[0];
+  if (nextAction) {
+    return {
+      title: nextAction,
+      reason: memory.activeOpportunityCount > 0
+        ? `${memory.activeOpportunityCount} active opportunit${memory.activeOpportunityCount === 1 ? 'y' : 'ies'} depend on this account touch.`
+        : 'This account has a captured next step ready to execute.',
+      cta: 'Open capture',
+      href: `/app/capture?mode=quick&account=${encodeURIComponent(accountName)}`,
+      tone: 'blue',
+      badge: 'Follow up',
+    };
+  }
+
+  const openObjection = objections.find((objection) => objection.status === 'Open');
+  if (openObjection) {
+    return {
+      title: openObjection.requiredProof || openObjection.objectionText,
+      reason: `${openObjection.impact} impact objection is still open.`,
+      cta: 'Open objections',
+      href: `/app/objections?accountName=${encodeURIComponent(accountName)}`,
+      tone: openObjection.impact === 'High' ? 'red' : 'amber',
+      badge: 'Objection',
+    };
+  }
+
+  if (memory.activeOpportunityCount > 0 && stakeholders.length === 0) {
+    return {
+      title: 'Map the buyer or main contact',
+      reason: 'Active pipeline exists, but no stakeholder is linked to this account.',
+      cta: 'Open stakeholders',
+      href: `/app/stakeholders?accountName=${encodeURIComponent(accountName)}`,
+      tone: 'amber',
+      badge: 'Missing contact',
+    };
+  }
+
+  if (memory.health === 'Dormant' || memory.health === 'Needs attention') {
+    return {
+      title: 'Capture a fresh account touch',
+      reason: memory.riskSignals[0] || 'Account memory needs a recent customer signal.',
+      cta: 'Open capture',
+      href: `/app/capture?mode=quick&account=${encodeURIComponent(accountName)}`,
+      tone: 'amber',
+      badge: memory.health,
+    };
+  }
+
+  return {
+    title: 'Keep account memory current',
+    reason: 'No urgent quote, objection, or follow-up risk is blocking this account.',
+    cta: 'Open capture',
+    href: `/app/capture?mode=quick&account=${encodeURIComponent(accountName)}`,
+    tone: 'green',
+    badge: 'Clear',
+  };
+}
+
+function accountActionToneClass(tone: AccountNextAction['tone']) {
+  return {
+    blue: 'border-blue-100 bg-blue-50/70',
+    green: 'border-emerald-100 bg-emerald-50/70',
+    amber: 'border-amber-100 bg-amber-50/70',
+    red: 'border-red-100 bg-red-50/70',
+  }[tone];
 }
 
 function ImportedAccountMetadata({ account }: { account: AccountMemoryRecord }) {
