@@ -41,6 +41,8 @@ import {
   type DailyTimeblockItem,
   type RecentActivityItem,
 } from '../../utils/salesCommandCenter';
+import { buildRevenueView, type RevenueActionItem, type RevenueViewSummary } from '../../utils/revenueView';
+import { formatCurrencyAmount } from '../../utils/currency';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { loadSampleDataset } from '../../utils/sampleData';
 import { analyzeMeddicLitePipeline } from '../../utils/meddicLite';
@@ -105,6 +107,16 @@ type DashboardData = {
 
 type DashboardInsights = ReturnType<typeof buildDashboardInsights>;
 type DashboardLoadOptions = { force?: boolean };
+type DashboardCommercialAction = {
+  title: string;
+  accountName: string;
+  label: string;
+  reason: string;
+  href: string;
+  priority: CommandPriority;
+  amountLabel: string;
+  source: RevenueActionItem['source'];
+};
 
 export function DashboardPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
@@ -175,6 +187,11 @@ export function DashboardPage() {
   }, [sampleDataActive]);
   const commandCenter = useMemo(() => buildTodayCommandCenter(data), [data]);
   const pipelineReviewSignal = useMemo(() => buildPipelineReviewDashboardSignal(data.briefs), [data.briefs]);
+  const revenueView = useMemo(() => buildRevenueView({
+    opportunities: data.opportunities,
+    quotes: data.quotes,
+  }), [data.opportunities, data.quotes]);
+  const commercialAction = useMemo(() => buildDashboardCommercialAction(revenueView), [revenueView]);
   const dashboardInsights = useMemo(() => (
     advancedInsightsOpen ? buildDashboardInsights(data) : null
   ), [advancedInsightsOpen, data]);
@@ -299,6 +316,7 @@ export function DashboardPage() {
             <StartHerePanel
               commandCenter={commandCenter}
               signal={pipelineReviewSignal}
+              commercialAction={commercialAction}
               sampleDataActive={sampleDataActive}
               onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)}
             />
@@ -320,7 +338,7 @@ export function DashboardPage() {
             <>
               <DailyOperatingPlan blocks={commandCenter.dailyTimeblocks} />
               <TodayFocus commandCenter={commandCenter} />
-              <QuoteFollowUpCard quotes={data.quotes} />
+              <QuoteFollowUpCard quotes={data.quotes} revenueView={revenueView} />
               <DashboardPrimaryWork commandCenter={commandCenter} signal={pipelineReviewSignal} />
               <details
                 className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
@@ -478,27 +496,75 @@ function buildDashboardInsights(data: DashboardData) {
   };
 }
 
+function buildDashboardCommercialAction(revenueView: RevenueViewSummary): DashboardCommercialAction | null {
+  const topAction = revenueView.topAction;
+  if (topAction) {
+    const amountLabel = formatCurrencyAmount(topAction.amount, topAction.currency);
+    return {
+      title: topAction.nextAction || `Review ${topAction.label}`,
+      accountName: topAction.accountName,
+      label: topAction.label,
+      reason: `${topAction.risk}: ${amountLabel} needs a commercial decision.`,
+      href: topAction.href,
+      priority: revenueRiskPriority(topAction.risk),
+      amountLabel,
+      source: topAction.source,
+    };
+  }
+
+  if (revenueView.pendingPo > 0) {
+    const amountLabel = formatCurrencyAmount(revenueView.pendingPo, 'VND');
+    return {
+      title: 'Confirm pending PO owners',
+      accountName: 'Commercial desk',
+      label: 'Pending PO',
+      reason: `${amountLabel} is accepted but still waiting for PO confirmation.`,
+      href: '/app/revenue',
+      priority: 'High',
+      amountLabel,
+      source: 'Quote',
+    };
+  }
+
+  return null;
+}
+
+function revenueRiskPriority(risk: RevenueActionItem['risk']): CommandPriority {
+  if (risk === 'Quote expired' || risk === 'Quote expiring' || risk === 'Payment term missing') return 'Critical';
+  if (risk === 'Waiting on PO' || risk === 'Weak pipeline') return 'High';
+  return 'Medium';
+}
+
 function StartHerePanel({
   commandCenter,
   signal,
+  commercialAction,
   sampleDataActive,
   onOpenDemoSandbox,
 }: {
   commandCenter: CommandCenter;
   signal: DashboardInsights['pipelineReviewSignal'];
+  commercialAction: DashboardCommercialAction | null;
   sampleDataActive: boolean;
   onOpenDemoSandbox: () => void;
 }) {
   const activeBlock = getActiveTimeblock(commandCenter.dailyTimeblocks);
+  const urgentCommercialAction = commercialAction?.priority === 'Critical' ? commercialAction : null;
   const topAction =
+    urgentCommercialAction ||
     activeBlock?.actions[0] ||
+    commercialAction ||
     commandCenter.overdueActions[0] ||
     commandCenter.todayActions[0] ||
     commandCenter.priorityActions[0] ||
     null;
+  const topActionIsCommercial = Boolean(topAction && commercialAction && topAction === commercialAction);
+  const selectedCommercialAction = topActionIsCommercial ? commercialAction : null;
   const topRisk = commandCenter.atRiskOpportunities[0] || null;
-  const primaryHref = activeBlock?.href || topAction?.href || topRisk?.href || '/app/capture?mode=quick';
-  const primaryLabel = activeBlock?.id === 'pipeline-defense'
+  const primaryHref = topAction?.href || activeBlock?.href || topRisk?.href || '/app/capture?mode=quick';
+  const primaryLabel = topActionIsCommercial
+    ? 'Review commercial risk'
+    : activeBlock?.id === 'pipeline-defense'
     ? 'Open defense mode'
     : activeBlock?.id === 'capture-closeout'
       ? 'Capture update'
@@ -564,13 +630,19 @@ function StartHerePanel({
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Now</p>
               {activeBlock && <Badge label={`${activeBlock.startTime}-${activeBlock.endTime}`} tone={activeBlock.priority === 'Critical' ? 'red' : activeBlock.priority === 'High' ? 'amber' : 'blue'} />}
+              {selectedCommercialAction && <Badge label="Commercial risk" tone={selectedCommercialAction.priority === 'Critical' ? 'red' : 'amber'} />}
             </div>
             <h2 className="mt-2 text-2xl font-black text-navy">
-              {activeBlock?.focus || topAction?.title || (topRisk ? `Review ${topRisk.accountName}` : 'Choose the one deal that must move today.')}
+              {selectedCommercialAction ? selectedCommercialAction.title : activeBlock?.focus || topAction?.title || (topRisk ? `Review ${topRisk.accountName}` : 'Choose the one deal that must move today.')}
             </h2>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
-              {activeBlock?.reason || topAction?.reason || topRisk?.reason || 'Capture the next customer touch or prepare your next pipeline review.'}
+              {selectedCommercialAction ? selectedCommercialAction.reason : activeBlock?.reason || topAction?.reason || topRisk?.reason || 'Capture the next customer touch or prepare your next pipeline review.'}
             </p>
+            {selectedCommercialAction && (
+              <p className="mt-2 text-xs font-bold uppercase tracking-wide text-cyan-700">
+                {selectedCommercialAction.accountName} / {selectedCommercialAction.label} / {selectedCommercialAction.amountLabel}
+              </p>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             <Link to={primaryHref} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
@@ -753,10 +825,11 @@ function timeToMinutes(time: string) {
   return (Number.isFinite(hours) ? hours : 0) * 60 + (Number.isFinite(minutes) ? minutes : 0);
 }
 
-function QuoteFollowUpCard({ quotes }: { quotes: QuoteRecord[] }) {
+function QuoteFollowUpCard({ quotes, revenueView }: { quotes: QuoteRecord[]; revenueView: RevenueViewSummary }) {
   const summary = summarizeQuotes(quotes);
   const topQuote = summary.topActionQuote;
   const risk = topQuote ? getQuoteRisk(topQuote) : null;
+  const atRiskLabel = formatCurrencyAmount(revenueView.atRiskRevenue, revenueView.topAction?.currency || 'VND');
 
   if (quotes.length === 0) {
     return (
@@ -783,16 +856,20 @@ function QuoteFollowUpCard({ quotes }: { quotes: QuoteRecord[] }) {
         <div>
           <div className="flex items-center gap-2">
             <ReceiptText className="h-4 w-4 text-cyan-700" />
-            <h2 className="text-lg font-bold text-navy">Quote follow-ups</h2>
+            <h2 className="text-lg font-bold text-navy">Commercial follow-ups</h2>
           </div>
           <p className="mt-1 text-sm text-cyan-900/75">
-            {topQuote ? `${topQuote.accountName}: ${topQuote.nextAction || risk || 'review quote status'}` : 'No quote follow-up is blocking today.'}
+            {revenueView.topAction
+              ? `${revenueView.topAction.accountName}: ${revenueView.topAction.nextAction}`
+              : topQuote
+                ? `${topQuote.accountName}: ${topQuote.nextAction || risk || 'review quote status'}`
+                : 'No quote follow-up is blocking today.'}
           </p>
         </div>
         <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
-          <Metric label="Expiring" value={summary.expiringSoon} tone={summary.expiringSoon ? 'amber' : 'green'} />
+          <Metric label="At risk" value={atRiskLabel} tone={revenueView.atRiskRevenue ? 'amber' : 'green'} />
           <Metric label="Pending PO" value={summary.pendingPo} tone={summary.pendingPo ? 'blue' : 'green'} />
-          <Metric label="Sent" value={summary.sentQuotes} tone={summary.sentQuotes ? 'blue' : 'green'} />
+          <Metric label="Expiring" value={summary.expiringSoon} tone={summary.expiringSoon ? 'amber' : 'green'} />
         </div>
         <div className="flex flex-wrap gap-2">
           <Link to="/app/quotes" className="inline-flex w-fit shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
