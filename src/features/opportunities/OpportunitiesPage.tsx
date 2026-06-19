@@ -45,6 +45,7 @@ import { type SalesActivityRecord } from '../../services/salesActivityStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
 import { type SalesAssetRecord } from '../../services/salesAssetStore';
+import { getQuoteRisk, quoteRiskTone, type QuoteRecord } from '../../services/quoteStore';
 import {
   actionOutcomeTypes,
   createActionOutcomeFromRecommendedAction,
@@ -153,6 +154,7 @@ export function OpportunitiesPage() {
   const [objections, setObjections] = useState<ObjectionRecord[]>([]);
   const [actionOutcomes, setActionOutcomes] = useState<ActionOutcomeRecord[]>([]);
   const [salesAssets, setSalesAssets] = useState<SalesAssetRecord[]>([]);
+  const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState(allFilter);
@@ -216,6 +218,7 @@ export function OpportunitiesPage() {
       setObjections(workspaceData.objections);
       setActionOutcomes(workspaceData.actionOutcomes);
       setSalesAssets(workspaceData.assets);
+      setQuotes(workspaceData.quotes);
       setLastWorkspaceRefreshAt(new Date().toISOString());
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to load workspace data.';
@@ -241,8 +244,8 @@ export function OpportunitiesPage() {
   }, [opportunities, selectedOpportunityIds]);
 
   const opportunityRows = useMemo(
-    () => opportunities.map((opportunity) => buildOpportunityMasterRow(opportunity, activities)),
-    [activities, opportunities],
+    () => opportunities.map((opportunity) => buildOpportunityMasterRow(opportunity, activities, quotes)),
+    [activities, opportunities, quotes],
   );
 
   const visibleOpportunityRows = useMemo(() => {
@@ -987,6 +990,7 @@ export function OpportunitiesPage() {
         actionOutcomes={editingOpportunity ? actionOutcomes : []}
         salesAssets={salesAssets}
         allOpportunities={opportunities}
+        quotes={editingOpportunity ? getQuotesForOpportunity(quotes, editingOpportunity) : []}
         onChange={setForm}
         onActionOutcomesChange={setActionOutcomes}
         onSave={handleSave}
@@ -1875,9 +1879,21 @@ function ImportMetric({ label, value, tone }: { label: string; value: number; to
 type OpportunityMasterRow = {
   opportunity: CrmLiteOpportunity;
   quality: ReturnType<typeof analyzeOpportunityQuality>;
+  commercial: OpportunityCommercialSummary;
   linkedActivityCount: number;
   lastActivityDate: string;
   lastUpdatedAt: string;
+};
+
+type OpportunityCommercialSummary = {
+  quotes: QuoteRecord[];
+  activeQuotes: number;
+  acceptedQuotes: number;
+  atRiskQuotes: number;
+  quotedValue: number;
+  topQuote: QuoteRecord | null;
+  topRisk: ReturnType<typeof getQuoteRisk> | null;
+  label: string;
 };
 
 function OpportunityMasterTable({
@@ -1934,7 +1950,7 @@ function OpportunityMasterTable({
       </div>
 
       <div className="max-w-full overflow-x-auto">
-        <table className="w-full min-w-[1920px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[2040px] border-collapse text-left text-sm">
           <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
             <tr>
               <th className="w-12 border-b border-gray-200 px-3 py-3 text-center">Pick</th>
@@ -1949,6 +1965,7 @@ function OpportunityMasterTable({
               <OpportunitySortableHeader label="Close" sortKey="closePeriod" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Forecast evidence" sortKey="forecast" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Review decision" sortKey="recommendation" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <th className="border-b border-gray-200 px-3 py-3">Commercial</th>
               <OpportunitySortableHeader label="Next action" sortKey="nextActionDate" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Deal quality" sortKey="quality" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Last update" sortKey="updatedAt" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
@@ -1957,7 +1974,7 @@ function OpportunityMasterTable({
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.map((row) => {
-              const { opportunity, quality } = row;
+              const { opportunity, quality, commercial } = row;
               const selected = selectedIds.includes(opportunity.id);
               return (
                 <tr
@@ -2026,6 +2043,9 @@ function OpportunityMasterTable({
                   </td>
                   <td className="px-3 py-3"><Badge label={opportunity.forecastEvidenceCategory} tone={forecastTone(opportunity.forecastEvidenceCategory)} /></td>
                   <td className="px-3 py-3"><Badge label={opportunity.decisionRecommendation} tone={decisionTone(opportunity.decisionRecommendation)} /></td>
+                  <td className="px-3 py-3">
+                    <OpportunityCommercialCell opportunity={opportunity} commercial={commercial} />
+                  </td>
                   <td className="px-3 py-3">
                     <p className="max-w-[250px] truncate font-semibold text-gray-800" title={opportunity.nextAction}>
                       {opportunity.nextAction || 'No next action'}
@@ -2119,6 +2139,39 @@ function OpportunitySortableHeader({
   );
 }
 
+function OpportunityCommercialCell({
+  opportunity,
+  commercial,
+}: {
+  opportunity: CrmLiteOpportunity;
+  commercial: OpportunityCommercialSummary;
+}) {
+  const href = buildQuoteLink(opportunity);
+
+  return (
+    <div className="min-w-[170px]">
+      <div className="flex flex-wrap gap-1.5">
+        <Badge label={commercial.label} tone={commercialTone(commercial)} />
+        {commercial.topRisk && commercial.topRisk !== 'None' && (
+          <Badge label={commercial.topRisk} tone={quoteRiskTone(commercial.topRisk)} />
+        )}
+      </div>
+      <p className="mt-1 text-xs font-semibold text-gray-500">
+        {commercial.quotes.length > 0
+          ? `${commercial.quotes.length} quote${commercial.quotes.length === 1 ? '' : 's'} / ${formatMoney(commercial.quotedValue, opportunity.currency)}`
+          : 'No quote linked'}
+      </p>
+      <Link
+        to={href}
+        onClick={(event) => event.stopPropagation()}
+        className="mt-1 inline-flex text-xs font-bold text-brand-blue hover:text-blue-900"
+      >
+        {commercial.quotes.length > 0 ? 'Open quotes' : 'Create quote'}
+      </Link>
+    </div>
+  );
+}
+
 function OpportunityPanel({
   mode,
   form,
@@ -2131,6 +2184,7 @@ function OpportunityPanel({
   actionOutcomes,
   salesAssets,
   allOpportunities,
+  quotes,
   onChange,
   onActionOutcomesChange,
   onSave,
@@ -2149,6 +2203,7 @@ function OpportunityPanel({
   actionOutcomes: ActionOutcomeRecord[];
   salesAssets: SalesAssetRecord[];
   allOpportunities: CrmLiteOpportunity[];
+  quotes: QuoteRecord[];
   onChange: (form: OpportunityFormInput) => void;
   onActionOutcomesChange: (outcomes: ActionOutcomeRecord[]) => void;
   onSave: () => void;
@@ -2239,6 +2294,7 @@ function OpportunityPanel({
       {mode === 'edit' && (
         <>
           {currentOpportunity && <StakeholderMap opportunity={currentOpportunity} stakeholders={stakeholders} />}
+          {currentOpportunity && <OpportunityCommercialPanel opportunity={currentOpportunity} quotes={quotes} />}
           {currentOpportunity && <OpportunityObjectionLedger opportunity={currentOpportunity} objections={objections} />}
           {currentOpportunity && (
             <MeddicLitePanel
@@ -2328,6 +2384,66 @@ function OpportunityPanel({
       </div>
       </aside>
     </>
+  );
+}
+
+function OpportunityCommercialPanel({
+  opportunity,
+  quotes,
+}: {
+  opportunity: CrmLiteOpportunity;
+  quotes: QuoteRecord[];
+}) {
+  const commercial = buildOpportunityCommercialSummary(opportunity, quotes);
+  const href = buildQuoteLink(opportunity);
+  const topQuote = commercial.topQuote;
+
+  return (
+    <section className="mt-5 rounded-lg border border-cyan-100 bg-cyan-50/70 p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-cyan-700">Commercial status</p>
+          <p className="mt-1 text-sm font-bold text-navy">
+            {topQuote
+              ? `${topQuote.title}: ${topQuote.nextAction || commercial.topRisk || 'review quote status'}`
+              : 'No quote is linked to this opportunity yet.'}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link to={href} className="inline-flex rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">
+            {quotes.length ? 'Open quotes' : 'Create quote'}
+          </Link>
+          <Link to="/app/revenue" className="inline-flex rounded-full border border-cyan-200 bg-white px-3 py-1.5 text-xs font-bold text-cyan-700">
+            Revenue view
+          </Link>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+        <Metric label="Quotes" value={commercial.quotes.length} tone={commercial.quotes.length ? 'blue' : 'green'} />
+        <Metric label="Active" value={commercial.activeQuotes} tone={commercial.activeQuotes ? 'blue' : 'green'} />
+        <Metric label="Pending PO" value={commercial.acceptedQuotes} tone={commercial.acceptedQuotes ? 'amber' : 'green'} />
+        <Metric label="At risk" value={commercial.atRiskQuotes} tone={commercial.atRiskQuotes ? 'red' : 'green'} />
+      </div>
+
+      {topQuote ? (
+        <div className="mt-3 rounded-lg bg-white p-3 ring-1 ring-cyan-100">
+          <div className="flex flex-wrap gap-2">
+            <Badge label={topQuote.status} tone={topQuote.status === 'Accepted' ? 'green' : 'blue'} />
+            {commercial.topRisk && commercial.topRisk !== 'None' && <Badge label={commercial.topRisk} tone={quoteRiskTone(commercial.topRisk)} />}
+            {topQuote.validUntil && <Badge label={`Valid until ${formatOpportunityDate(topQuote.validUntil)}`} tone={commercial.topRisk === 'Expired' ? 'red' : commercial.topRisk === 'Expiring soon' ? 'amber' : 'gray'} />}
+          </div>
+          <p className="mt-2 text-xs font-semibold text-gray-500">
+            {formatMoney(topQuote.amount || 0, topQuote.currency)}
+            {topQuote.paymentTerm ? ` | ${topQuote.paymentTerm}` : ''}
+          </p>
+        </div>
+      ) : (
+        <p className="mt-3 rounded-lg bg-white p-3 text-sm text-gray-500 ring-1 ring-cyan-100">
+          Create a quote when this deal moves from pipeline defense to commercial follow-up.
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -3216,6 +3332,7 @@ function formatBatchDate(value: string) {
 function buildOpportunityMasterRow(
   opportunity: CrmLiteOpportunity,
   activities: SalesActivityRecord[],
+  quotes: QuoteRecord[],
 ): OpportunityMasterRow {
   const linkedActivities = getLinkedActivities(opportunity, activities);
   const quality = analyzeOpportunityQuality(opportunity, linkedActivities);
@@ -3231,10 +3348,89 @@ function buildOpportunityMasterRow(
   return {
     opportunity,
     quality,
+    commercial: buildOpportunityCommercialSummary(opportunity, quotes),
     linkedActivityCount: linkedActivities.length,
     lastActivityDate: latestActivity?.activityDate || '',
     lastUpdatedAt,
   };
+}
+
+function buildOpportunityCommercialSummary(
+  opportunity: CrmLiteOpportunity,
+  quotes: QuoteRecord[],
+): OpportunityCommercialSummary {
+  const opportunityQuotes = getQuotesForOpportunity(quotes, opportunity);
+  const actionQuotes = [...opportunityQuotes]
+    .filter((quote) => ['Sent', 'Revised', 'Accepted'].includes(quote.status))
+    .sort((left, right) => quoteActionRank(right) - quoteActionRank(left) || quoteDateSortValue(left.validUntil) - quoteDateSortValue(right.validUntil));
+  const topQuote = actionQuotes[0] || opportunityQuotes[0] || null;
+  const topRisk = topQuote ? getQuoteRisk(topQuote) : null;
+  const activeQuotes = opportunityQuotes.filter((quote) => quote.status === 'Sent' || quote.status === 'Revised').length;
+  const acceptedQuotes = opportunityQuotes.filter((quote) => quote.status === 'Accepted').length;
+  const atRiskQuotes = opportunityQuotes.filter((quote) => getQuoteRisk(quote) !== 'None').length;
+
+  return {
+    quotes: opportunityQuotes,
+    activeQuotes,
+    acceptedQuotes,
+    atRiskQuotes,
+    quotedValue: opportunityQuotes.reduce((total, quote) => total + (quote.amount || 0), 0),
+    topQuote,
+    topRisk,
+    label: acceptedQuotes > 0
+      ? 'Pending PO'
+      : activeQuotes > 0
+        ? 'Quoted'
+        : 'No quote',
+  };
+}
+
+function getQuotesForOpportunity(quotes: QuoteRecord[], opportunity: CrmLiteOpportunity) {
+  const opportunityName = normalizeText(opportunity.opportunityName);
+  const accountName = normalizeText(opportunity.accountName);
+  return quotes.filter((quote) => (
+    quote.opportunityId === opportunity.id ||
+    (
+      accountName &&
+      normalizeText(quote.accountName) === accountName &&
+      normalizeText(quote.opportunityName) === opportunityName
+    )
+  ));
+}
+
+function buildQuoteLink(opportunity: CrmLiteOpportunity) {
+  const params = new URLSearchParams();
+  if (opportunity.accountName) params.set('accountName', opportunity.accountName);
+  if (opportunity.id) params.set('opportunityId', opportunity.id);
+  if (opportunity.opportunityName) params.set('opportunityName', opportunity.opportunityName);
+  return `/app/quotes?${params.toString()}`;
+}
+
+function commercialTone(commercial: OpportunityCommercialSummary): 'blue' | 'green' | 'amber' | 'red' | 'gray' {
+  if (commercial.atRiskQuotes > 0) return 'red';
+  if (commercial.acceptedQuotes > 0) return 'amber';
+  if (commercial.activeQuotes > 0) return 'blue';
+  return 'gray';
+}
+
+function quoteActionRank(quote: QuoteRecord) {
+  const risk = getQuoteRisk(quote);
+  if (risk === 'Expired') return 6;
+  if (risk === 'Expiring soon') return 5;
+  if (risk === 'Needs commercial follow-up') return 4;
+  if (risk === 'Margin check') return 3;
+  if (quote.status === 'Accepted') return 2;
+  return 1;
+}
+
+function quoteDateSortValue(dateKey: string) {
+  if (!dateKey) return Number.POSITIVE_INFINITY;
+  const time = new Date(`${dateKey}T00:00:00`).getTime();
+  return Number.isFinite(time) ? time : Number.POSITIVE_INFINITY;
+}
+
+function normalizeText(value?: string) {
+  return (value || '').trim().toLowerCase();
 }
 
 function buildImportedPipelineSummary(opportunities: CrmLiteOpportunity[]): ImportedPipelineSummary {

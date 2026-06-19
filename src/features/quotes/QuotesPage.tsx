@@ -32,11 +32,14 @@ export function QuotesPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const [searchParams] = useSearchParams();
   const requestedAccountName = searchParams.get('accountName') || '';
+  const requestedOpportunityId = searchParams.get('opportunityId') || '';
+  const requestedOpportunityName = searchParams.get('opportunityName') || '';
+  const requestedSearch = requestedOpportunityName || requestedAccountName;
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
   const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState(() => requestedAccountName);
+  const [search, setSearch] = useState(() => requestedSearch);
   const [statusFilter, setStatusFilter] = useState<'All' | QuoteStatus>('All');
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<QuoteRecord | null>(null);
@@ -70,8 +73,8 @@ export function QuotesPage() {
   }, [authLoading, dataUserId]);
 
   useEffect(() => {
-    if (requestedAccountName) setSearch(requestedAccountName);
-  }, [requestedAccountName]);
+    if (requestedSearch) setSearch(requestedSearch);
+  }, [requestedSearch]);
 
   const summary = useMemo(() => summarizeQuotes(quotes), [quotes]);
   const visibleQuotes = useMemo(() => {
@@ -92,7 +95,13 @@ export function QuotesPage() {
 
   const openCreatePanel = () => {
     setEditingQuote(null);
-    setForm({ ...emptyQuoteInput, quoteDate: todayKey(), accountName: requestedAccountName });
+    setForm({
+      ...emptyQuoteInput,
+      quoteDate: todayKey(),
+      accountName: requestedAccountName,
+      opportunityId: requestedOpportunityId,
+      opportunityName: requestedOpportunityName,
+    });
     setPanelOpen(true);
     setSaveState('idle');
     setMessage('');
