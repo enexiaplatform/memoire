@@ -2146,7 +2146,7 @@ function OpportunityCommercialCell({
   opportunity: CrmLiteOpportunity;
   commercial: OpportunityCommercialSummary;
 }) {
-  const href = buildQuoteLink(opportunity);
+  const href = buildQuoteLink(opportunity, commercial.quotes.length === 0);
 
   return (
     <div className="min-w-[170px]">
@@ -2395,7 +2395,7 @@ function OpportunityCommercialPanel({
   quotes: QuoteRecord[];
 }) {
   const commercial = buildOpportunityCommercialSummary(opportunity, quotes);
-  const href = buildQuoteLink(opportunity);
+  const href = buildQuoteLink(opportunity, quotes.length === 0);
   const topQuote = commercial.topQuote;
 
   return (
@@ -3398,11 +3398,12 @@ function getQuotesForOpportunity(quotes: QuoteRecord[], opportunity: CrmLiteOppo
   ));
 }
 
-function buildQuoteLink(opportunity: CrmLiteOpportunity) {
+function buildQuoteLink(opportunity: CrmLiteOpportunity, create = false) {
   const params = new URLSearchParams();
   if (opportunity.accountName) params.set('accountName', opportunity.accountName);
   if (opportunity.id) params.set('opportunityId', opportunity.id);
   if (opportunity.opportunityName) params.set('opportunityName', opportunity.opportunityName);
+  if (create) params.set('create', '1');
   return `/app/quotes?${params.toString()}`;
 }
 

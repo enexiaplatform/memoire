@@ -30,11 +30,12 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 export function QuotesPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const requestedAccountName = searchParams.get('accountName') || '';
   const requestedOpportunityId = searchParams.get('opportunityId') || '';
   const requestedOpportunityName = searchParams.get('opportunityName') || '';
   const requestedSearch = requestedOpportunityName || requestedAccountName;
+  const createRequested = searchParams.get('create') === '1';
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
   const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
@@ -106,6 +107,34 @@ export function QuotesPage() {
     setSaveState('idle');
     setMessage('');
   };
+
+  useEffect(() => {
+    if (!createRequested || authLoading) return;
+
+    setEditingQuote(null);
+    setForm({
+      ...emptyQuoteInput,
+      quoteDate: todayKey(),
+      accountName: requestedAccountName,
+      opportunityId: requestedOpportunityId,
+      opportunityName: requestedOpportunityName,
+    });
+    setPanelOpen(true);
+    setSaveState('idle');
+    setMessage('');
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('create');
+    setSearchParams(nextParams, { replace: true });
+  }, [
+    authLoading,
+    createRequested,
+    requestedAccountName,
+    requestedOpportunityId,
+    requestedOpportunityName,
+    searchParams,
+    setSearchParams,
+  ]);
 
   const openEditPanel = (quote: QuoteRecord) => {
     setEditingQuote(quote);
