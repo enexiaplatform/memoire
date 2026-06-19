@@ -12,25 +12,30 @@ const primarySections = [
   {
     label: 'Workspace',
     items: [
-      { to: '/app/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
-      { to: '/app/onboarding/sales-operating-setup', label: 'Sales Setup', icon: <ClipboardList className="h-5 w-5" /> },
+      { to: '/app/dashboard', label: 'Today', icon: <LayoutDashboard className="h-5 w-5" /> },
       { to: '/app/capture', label: 'Capture', icon: <NotebookPen className="h-5 w-5" /> },
       { to: '/app/opportunities', label: 'Opportunities', icon: <Target className="h-5 w-5" /> },
+      { to: '/app/accounts', label: 'Accounts', icon: <BookOpen className="h-5 w-5" /> },
+    ],
+  },
+  {
+    label: 'Commercial',
+    items: [
       { to: '/app/quotes', label: 'Quotes', icon: <ReceiptText className="h-5 w-5" /> },
       { to: '/app/revenue', label: 'Revenue', icon: <Banknote className="h-5 w-5" /> },
-      { to: '/app/accounts', label: 'Accounts', icon: <BookOpen className="h-5 w-5" /> },
     ],
   },
   {
     label: 'Review',
     items: [
-      { to: '/app/reviews', label: 'Reviews', icon: <ClipboardList className="h-5 w-5" /> },
       { to: '/app/pipeline-defense', label: 'Pipeline Defense', icon: <FileCheck2 className="h-5 w-5" /> },
+      { to: '/app/reviews', label: 'Reviews', icon: <ClipboardList className="h-5 w-5" /> },
     ],
   },
 ];
 
 const secondaryItems = [
+  { to: '/app/onboarding/sales-operating-setup', label: 'Sales Setup', icon: <ClipboardList className="h-5 w-5" /> },
   { to: '/app/calendar', label: 'Calendar', icon: <CalendarDays className="h-5 w-5" /> },
   { to: '/app/stakeholders', label: 'Stakeholders', icon: <UsersRound className="h-5 w-5" /> },
   { to: '/app/objections', label: 'Objections', icon: <AlertTriangle className="h-5 w-5" /> },
