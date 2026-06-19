@@ -139,6 +139,14 @@ type OpportunitySortKey =
   | 'quality'
   | 'updatedAt';
 type OpportunityQuickFilter = 'all' | 'imported' | 'stageInferred' | 'fy26' | 'fy27' | 'needsAction';
+type OpportunityNextAction = {
+  title: string;
+  reason: string;
+  cta: string;
+  href: string;
+  tone: 'blue' | 'green' | 'amber' | 'red';
+  badge: string;
+};
 
 const allFilter = 'All';
 const defaultPageSize = 25;
@@ -2257,6 +2265,10 @@ function OpportunityPanel({
         </button>
       </div>
 
+      {currentOpportunity && (
+        <OpportunityNextActionCard action={buildOpportunityNextAction(currentOpportunity, quotes)} />
+      )}
+
       <div className="mt-5 space-y-4">
         <Field label="Account" value={form.accountName} onChange={(value) => update('accountName', value)} required />
         <Field label="Opportunity" value={form.opportunityName} onChange={(value) => update('opportunityName', value)} required />
@@ -2385,6 +2397,106 @@ function OpportunityPanel({
       </aside>
     </>
   );
+}
+
+function OpportunityNextActionCard({ action }: { action: OpportunityNextAction }) {
+  return (
+    <section className={`mt-5 rounded-lg border p-4 ${opportunityActionToneClass(action.tone)}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs font-bold uppercase tracking-wide">Deal next action</p>
+            <Badge label={action.badge} tone={action.tone} />
+          </div>
+          <h3 className="mt-2 text-base font-bold text-navy">{action.title}</h3>
+          <p className="mt-1 text-sm leading-6 text-gray-600">{action.reason}</p>
+        </div>
+        <Link to={action.href} className="inline-flex w-fit shrink-0 rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">
+          {action.cta}
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+function buildOpportunityNextAction(opportunity: CrmLiteOpportunity, quotes: QuoteRecord[]): OpportunityNextAction {
+  const commercial = buildOpportunityCommercialSummary(opportunity, quotes);
+  if (commercial.topQuote && commercial.topRisk && commercial.topRisk !== 'None') {
+    const tone = quoteRiskTone(commercial.topRisk);
+    return {
+      title: commercial.topQuote.nextAction || `Review ${commercial.topQuote.title}`,
+      reason: `${commercial.topRisk}: ${formatMoney(commercial.topQuote.amount || 0, commercial.topQuote.currency)} needs commercial follow-up.`,
+      cta: 'Open quotes',
+      href: buildQuoteLink(opportunity),
+      tone: tone === 'gray' ? 'blue' : tone,
+      badge: commercial.topRisk,
+    };
+  }
+
+  if (shouldCreateQuoteForOpportunity(opportunity, commercial)) {
+    return {
+      title: 'Create quote for this deal',
+      reason: 'The opportunity has active value but no quote linked yet.',
+      cta: 'Create quote',
+      href: buildQuoteLink(opportunity, true),
+      tone: 'amber',
+      badge: 'No quote',
+    };
+  }
+
+  if (
+    opportunity.forecastEvidenceCategory === 'Unsupported' ||
+    opportunity.forecastEvidenceCategory === 'Hope-based' ||
+    ['Rescue', 'Downgrade', 'Deprioritize'].includes(opportunity.decisionRecommendation)
+  ) {
+    return {
+      title: 'Prepare a defense answer',
+      reason: 'This deal has weak evidence, missing context, or a rescue/downgrade signal.',
+      cta: 'Pipeline defense',
+      href: '/app/pipeline-defense',
+      tone: 'red',
+      badge: 'Defense',
+    };
+  }
+
+  if (opportunity.nextAction.trim()) {
+    return {
+      title: opportunity.nextAction,
+      reason: opportunity.nextActionDate
+        ? `Next action is dated ${formatOpportunityDate(opportunity.nextActionDate)}.`
+        : 'This deal has a next action ready to execute.',
+      cta: 'Capture update',
+      href: `/app/capture?mode=quick&account=${encodeURIComponent(opportunity.accountName)}&opportunity=${encodeURIComponent(opportunity.opportunityName)}`,
+      tone: 'blue',
+      badge: 'Follow up',
+    };
+  }
+
+  return {
+    title: 'Define the next customer-confirmed step',
+    reason: 'This opportunity needs a concrete next action before it can move cleanly.',
+    cta: 'Capture update',
+    href: `/app/capture?mode=quick&account=${encodeURIComponent(opportunity.accountName)}&opportunity=${encodeURIComponent(opportunity.opportunityName)}`,
+    tone: 'amber',
+    badge: 'No action',
+  };
+}
+
+function shouldCreateQuoteForOpportunity(opportunity: CrmLiteOpportunity, commercial: OpportunityCommercialSummary) {
+  if (commercial.quotes.length > 0) return false;
+  if (opportunity.status !== 'Active') return false;
+  const hasValue = Boolean(opportunity.estimatedValue || opportunity.fy26Value || opportunity.fy27Value);
+  const stageText = `${opportunity.stage} ${opportunity.expectedClosePeriod}`.toLowerCase();
+  return hasValue || /proposal|quote|negotiat|procure|commercial|commit/.test(stageText);
+}
+
+function opportunityActionToneClass(tone: OpportunityNextAction['tone']) {
+  return {
+    blue: 'border-blue-100 bg-blue-50/70',
+    green: 'border-emerald-100 bg-emerald-50/70',
+    amber: 'border-amber-100 bg-amber-50/70',
+    red: 'border-red-100 bg-red-50/70',
+  }[tone];
 }
 
 function OpportunityCommercialPanel({
