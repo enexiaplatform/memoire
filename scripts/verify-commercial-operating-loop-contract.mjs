@@ -195,6 +195,17 @@ for (const marker of [
   requireIncludes(pipelineDefensePage, marker, `Pipeline Defense commercial handoff missing marker: ${marker}`);
 }
 
+const accountsPage = read('src/features/accounts/AccountsPage.tsx');
+for (const marker of [
+  'AccountCommercialLoop',
+  'Commercial loop',
+  'Opportunity to revenue',
+  'More account context',
+  'Edit account details',
+]) {
+  requireIncludes(accountsPage, marker, `Customer Workspace 2.0 missing marker: ${marker}`);
+}
+
 if (failures.length > 0) {
   console.error('Commercial operating-loop contract verification failed:');
   for (const failure of failures) console.error(`- ${failure}`);

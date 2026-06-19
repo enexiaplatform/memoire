@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowUpDown, Building2, ChevronLeft, ChevronRight, Database, Eye, Filter, MessageSquareText, Plus, RefreshCw, Save, Search, Trash2, X } from 'lucide-react';
+import { ArrowUpDown, Building2, ChevronDown, ChevronLeft, ChevronRight, Database, Eye, Filter, Plus, RefreshCw, Save, Search, Trash2, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -815,51 +815,134 @@ function AccountDetailPanel({
         />
       )}
 
-      <div className="mt-5 space-y-4">
-        <Field label="Account name" value={form.accountName} onChange={(value) => update('accountName', value)} required />
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <Field label="Segment" value={form.segment} onChange={(value) => update('segment', value)} />
-          <Field label="Industry" value={form.industry} onChange={(value) => update('industry', value)} />
-          <Field label="Location" value={form.location} onChange={(value) => update('location', value)} />
-          <SelectField label="Potential" value={form.accountPotential} options={accountPotentials} onChange={(value) => update('accountPotential', value)} />
-          <SelectField label="Relationship" value={form.relationshipStatus} options={relationshipStatuses} onChange={(value) => update('relationshipStatus', value)} />
-        </div>
-        <Field label="Key stakeholders" value={form.keyStakeholders.join(', ')} onChange={(value) => update('keyStakeholders', parseCommaList(value))} />
-        <Field label="Tags" value={form.tags.join(', ')} onChange={(value) => update('tags', parseCommaList(value))} />
-        <TextArea label="Notes" value={form.notes} onChange={(value) => update('notes', value)} />
-      </div>
+      {selectedMemory && <AccountCommercialLoop memory={selectedMemory} quotes={quotes} />}
 
-      {selectedMemory && <ImportedAccountMetadata account={selectedMemory.account} />}
-      {selectedMemory && <MemorySections memory={selectedMemory} stakeholders={stakeholders} objections={objections} quotes={quotes} />}
-
-      {message && (
-        <p className={`mt-4 rounded-lg px-3 py-2 text-sm font-semibold ${
-          saveState === 'saved' ? 'bg-emerald-50 text-emerald-700' : saveState === 'error' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'
-        }`}>
-          {message}
-        </p>
-      )}
-
-      <div className="mt-5 flex flex-wrap gap-2">
-        {onDraftFollowUp && (
-          <button type="button" onClick={onDraftFollowUp} className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-100">
-            <MessageSquareText className="h-4 w-4" />
-            Draft Follow-up
-          </button>
-        )}
-        <button type="button" onClick={onSave} disabled={saveState === 'saving'} className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
-          <Save className="h-4 w-4" />
-          {saveState === 'saving' ? 'Saving...' : 'Save Account'}
-        </button>
-        {onDelete && (
-          <button type="button" onClick={onDelete} className="inline-flex items-center gap-2 rounded-full border border-red-100 bg-red-50 px-4 py-2 text-sm font-bold text-red-700">
-            <Trash2 className="h-4 w-4" />
-            Delete
-          </button>
-        )}
-      </div>
+      {mode === 'add' ? (
+        <>
+          <AccountEditFields form={form} update={update} />
+          <AccountSaveMessage message={message} saveState={saveState} />
+          <AccountSaveActions saveState={saveState} onSave={onSave} />
+        </>
+      ) : selectedMemory ? (
+        <>
+          <MemorySections memory={selectedMemory} stakeholders={stakeholders} objections={objections} quotes={quotes} />
+          <details className="group mt-5 rounded-lg border border-gray-200 bg-gray-50">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-navy">
+              Edit account details
+              <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="border-t border-gray-200 bg-white p-4">
+              <AccountEditFields form={form} update={update} />
+              <ImportedAccountMetadata account={selectedMemory.account} />
+              <AccountSaveMessage message={message} saveState={saveState} />
+              <AccountSaveActions saveState={saveState} onSave={onSave} onDelete={onDelete} />
+            </div>
+          </details>
+        </>
+      ) : null}
       </aside>
     </>
+  );
+}
+
+function AccountEditFields({
+  form,
+  update,
+}: {
+  form: AccountFormInput;
+  update: <Key extends keyof AccountFormInput>(key: Key, value: AccountFormInput[Key]) => void;
+}) {
+  return (
+    <div className="mt-5 space-y-4 first:mt-0">
+      <Field label="Account name" value={form.accountName} onChange={(value) => update('accountName', value)} required />
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <Field label="Segment" value={form.segment} onChange={(value) => update('segment', value)} />
+        <Field label="Industry" value={form.industry} onChange={(value) => update('industry', value)} />
+        <Field label="Location" value={form.location} onChange={(value) => update('location', value)} />
+        <SelectField label="Potential" value={form.accountPotential} options={accountPotentials} onChange={(value) => update('accountPotential', value)} />
+        <SelectField label="Relationship" value={form.relationshipStatus} options={relationshipStatuses} onChange={(value) => update('relationshipStatus', value)} />
+      </div>
+      <Field label="Key stakeholders" value={form.keyStakeholders.join(', ')} onChange={(value) => update('keyStakeholders', parseCommaList(value))} />
+      <Field label="Tags" value={form.tags.join(', ')} onChange={(value) => update('tags', parseCommaList(value))} />
+      <TextArea label="Notes" value={form.notes} onChange={(value) => update('notes', value)} />
+    </div>
+  );
+}
+
+function AccountSaveMessage({ message, saveState }: { message: string; saveState: SaveState }) {
+  if (!message) return null;
+  return (
+    <p className={`mt-4 rounded-lg px-3 py-2 text-sm font-semibold ${
+      saveState === 'saved' ? 'bg-emerald-50 text-emerald-700' : saveState === 'error' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'
+    }`}>
+      {message}
+    </p>
+  );
+}
+
+function AccountSaveActions({
+  saveState,
+  onSave,
+  onDelete,
+}: {
+  saveState: SaveState;
+  onSave: () => void;
+  onDelete?: () => void;
+}) {
+  return (
+    <div className="mt-5 flex flex-wrap gap-2">
+      <button type="button" onClick={onSave} disabled={saveState === 'saving'} className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
+        <Save className="h-4 w-4" />
+        {saveState === 'saving' ? 'Saving...' : 'Save Account'}
+      </button>
+      {onDelete && (
+        <button type="button" onClick={onDelete} className="inline-flex items-center gap-2 rounded-full border border-red-100 bg-red-50 px-4 py-2 text-sm font-bold text-red-700">
+          <Trash2 className="h-4 w-4" />
+          Delete
+        </button>
+      )}
+    </div>
+  );
+}
+
+function AccountCommercialLoop({ memory, quotes }: { memory: AccountMemory; quotes: QuoteRecord[] }) {
+  const activeQuotes = quotes.filter((quote) => quote.status === 'Sent' || quote.status === 'Revised');
+  const pendingPoQuotes = quotes.filter((quote) => quote.status === 'Accepted');
+  const riskyQuotes = quotes.filter((quote) => getQuoteRisk(quote) !== 'None');
+  const steps = [
+    { label: 'Opportunity', value: memory.activeOpportunityCount, hint: 'active' },
+    { label: 'Quote', value: activeQuotes.length, hint: 'sent / revised' },
+    { label: 'PO', value: pendingPoQuotes.length, hint: 'accepted' },
+    { label: 'Won', value: memory.wonCount, hint: 'closed' },
+  ];
+
+  return (
+    <section className="mt-4 overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Commercial loop</p>
+          <p className="mt-1 text-sm font-bold text-navy">Opportunity to revenue</p>
+        </div>
+        <Badge
+          label={riskyQuotes.length ? `${riskyQuotes.length} quote risk${riskyQuotes.length === 1 ? '' : 's'}` : 'Flow clear'}
+          tone={riskyQuotes.length ? 'amber' : 'green'}
+        />
+      </div>
+      <div className="grid grid-cols-2 divide-x divide-y divide-gray-100 sm:grid-cols-4 sm:divide-y-0">
+        {steps.map((step) => (
+          <div key={step.label} className="min-h-[76px] px-4 py-3">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{step.label}</p>
+            <p className="mt-1 text-lg font-black text-navy">{step.value}</p>
+            <p className="text-xs text-gray-500">{step.hint}</p>
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-gray-100 px-4 py-3 text-xs font-bold">
+        <Link to="/app/opportunities" className="text-brand-blue hover:underline">Open opportunities</Link>
+        <Link to={`/app/quotes?accountName=${encodeURIComponent(memory.account.accountName)}`} className="text-brand-blue hover:underline">Open quotes</Link>
+        <Link to="/app/revenue" className="text-brand-blue hover:underline">Open revenue</Link>
+      </div>
+    </section>
   );
 }
 
@@ -1048,19 +1131,28 @@ function MemorySections({
     .sort((a, b) => `${b.activityDate}-${b.createdAt}`.localeCompare(`${a.activityDate}-${a.createdAt}`));
   return (
     <div className="mt-5 space-y-4">
-      <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Account health / risk signals</p>
-        <p className="mt-2 text-sm font-bold text-navy">{memory.health}</p>
-        {memory.riskSignals.length > 0 ? (
-          <ul className="mt-2 space-y-1 text-sm leading-6 text-gray-700">
-            {memory.riskSignals.map((signal) => <li key={signal}>- {signal}</li>)}
-          </ul>
-        ) : (
-          <p className="mt-2 text-sm text-emerald-700">No major risk signals detected.</p>
-        )}
-      </section>
-
       <AccountQuotesSection accountName={memory.account.accountName} quotes={quotes} />
+
+      <details className="group rounded-lg border border-gray-200 bg-gray-50">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-navy">
+          More account context
+          <span className="flex items-center gap-2 text-xs font-semibold text-gray-500">
+            {stakeholders.length} contacts | {allActivities.length} activities
+            <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+          </span>
+        </summary>
+        <div className="space-y-4 border-t border-gray-200 p-4">
+          <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Account health / risk signals</p>
+            <p className="mt-2 text-sm font-bold text-navy">{memory.health}</p>
+            {memory.riskSignals.length > 0 ? (
+              <ul className="mt-2 space-y-1 text-sm leading-6 text-gray-700">
+                {memory.riskSignals.map((signal) => <li key={signal}>- {signal}</li>)}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-emerald-700">No major risk signals detected.</p>
+            )}
+          </section>
 
       <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1163,8 +1255,10 @@ function MemorySections({
         )}
       </section>
 
-      <ListSection title="Open next actions" items={memory.openNextActions} empty="No open next actions captured." />
-      <ListSection title="Objection debt" items={memory.objectionDebt} empty="No objection debt captured." />
+          <ListSection title="Open next actions" items={memory.openNextActions} empty="No open next actions captured." />
+          <ListSection title="Objection debt" items={memory.objectionDebt} empty="No objection debt captured." />
+        </div>
+      </details>
     </div>
   );
 }
