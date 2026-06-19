@@ -737,9 +737,14 @@ function QuoteFollowUpCard({ quotes }: { quotes: QuoteRecord[] }) {
           <Metric label="Pending PO" value={summary.pendingPo} tone={summary.pendingPo ? 'blue' : 'green'} />
           <Metric label="Sent" value={summary.sentQuotes} tone={summary.sentQuotes ? 'blue' : 'green'} />
         </div>
-        <Link to="/app/quotes" className="inline-flex w-fit shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-          Open quotes
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/app/quotes" className="inline-flex w-fit shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+            Open quotes
+          </Link>
+          <Link to="/app/revenue" className="inline-flex w-fit shrink-0 rounded-full border border-cyan-200 bg-white px-4 py-2 text-sm font-bold text-cyan-700">
+            Open revenue view
+          </Link>
+        </div>
       </div>
       {topQuote && risk && risk !== 'None' && (
         <div className="mt-3">

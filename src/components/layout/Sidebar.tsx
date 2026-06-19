@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { AlertTriangle, BookOpen, CalendarDays, ChevronDown, ClipboardList, Database, FileCheck2, FileText, GitBranch, LayoutDashboard, MessageCircleQuestion, NotebookPen, ReceiptText, Settings, Target, UsersRound, X } from 'lucide-react';
+import { AlertTriangle, Banknote, BookOpen, CalendarDays, ChevronDown, ClipboardList, Database, FileCheck2, FileText, GitBranch, LayoutDashboard, MessageCircleQuestion, NotebookPen, ReceiptText, Settings, Target, UsersRound, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 import { prefetchAppRoute } from '../../utils/routePrefetch';
@@ -17,6 +17,7 @@ const primarySections = [
       { to: '/app/capture', label: 'Capture', icon: <NotebookPen className="h-5 w-5" /> },
       { to: '/app/opportunities', label: 'Opportunities', icon: <Target className="h-5 w-5" /> },
       { to: '/app/quotes', label: 'Quotes', icon: <ReceiptText className="h-5 w-5" /> },
+      { to: '/app/revenue', label: 'Revenue', icon: <Banknote className="h-5 w-5" /> },
       { to: '/app/accounts', label: 'Accounts', icon: <BookOpen className="h-5 w-5" /> },
     ],
   },
