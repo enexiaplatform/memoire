@@ -880,7 +880,7 @@ function DailyOperatingPlan({
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Today's timeblocks</p>
           <h2 className="mt-1 text-xl font-bold text-navy">Work the current block first.</h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-emerald-900/75">
-            Memoire turns account memory, next actions, and forecast risk into one calm daily rhythm.
+            Memoire turns sales-flow checkpoints, account memory, and forecast risk into one calm daily rhythm.
           </p>
         </div>
         <Link to="/app/pipeline-defense" className="inline-flex w-fit rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">

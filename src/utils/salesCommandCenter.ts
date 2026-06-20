@@ -5,9 +5,10 @@ import { formatCompactCurrencyAmount } from './currency.ts';
 import type { DailyExecutionDecision } from './dailyExecution';
 import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
 import type { RevenueActionItem, RevenueRiskKind } from './revenueView';
+import { buildOpportunitySalesFlowGuidance } from './salesFlowGuidance.ts';
 
 export type CommandPriority = 'Critical' | 'High' | 'Medium' | 'Low';
-export type CommandActionSource = 'Activity' | 'Opportunity' | 'Pipeline Defense' | 'Quote';
+export type CommandActionSource = 'Activity' | 'Opportunity' | 'Sales Flow' | 'Pipeline Defense' | 'Quote';
 
 export type CommandActionItem = {
   id: string;
@@ -119,6 +120,7 @@ export function buildTodayCommandCenter({
   const recentActivities = getRecentActivitySummary(activities);
   const pipelineReadiness = getPipelineReviewReadiness(opportunities, briefs);
   const rawRiskActions = atRiskOpportunities.slice(0, 8).map(riskToAction);
+  const rawSalesFlowActions = buildSalesFlowCommandActions(opportunities);
   const rawCommercialActions = buildCommercialCommandActions(commercialActions);
   const rawAccountTouchActions = accountsNeedingTouch.map(accountTouchToAction);
   const decisionMap = new Map(executionDecisions.map((decision) => [decision.actionId, decision.status]));
@@ -127,12 +129,14 @@ export function buildTodayCommandCenter({
   const todayActions = activeActions(rawTodayActions);
   const overdueActions = activeActions(rawOverdueActions);
   const riskActions = activeActions(rawRiskActions);
+  const salesFlowActions = activeActions(rawSalesFlowActions);
   const commercialCommandActions = activeActions(rawCommercialActions);
   const accountTouchActions = activeActions(rawAccountTouchActions).slice(0, 3);
   const rawCommandActions = dedupeActions([
     ...rawCommercialActions,
     ...rawOverdueActions,
     ...rawTodayActions,
+    ...rawSalesFlowActions,
     ...rawRiskActions,
     ...rawAccountTouchActions,
   ]);
@@ -151,10 +155,11 @@ export function buildTodayCommandCenter({
     })
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
   const priorityActions = sortActions(dedupeActions([
-    ...commercialCommandActions,
     ...overdueActions,
     ...todayActions,
     ...riskActions,
+    ...salesFlowActions,
+    ...commercialCommandActions,
   ])).slice(0, 16);
 
   return {
@@ -166,6 +171,7 @@ export function buildTodayCommandCenter({
       overdueActions,
       priorityActions,
       riskActions,
+      salesFlowActions,
       commercialActions: commercialCommandActions,
       deferredActions,
       atRiskOpportunities,
@@ -196,6 +202,7 @@ function buildDailyTimeblocks({
   overdueActions,
   priorityActions,
   riskActions,
+  salesFlowActions,
   commercialActions,
   deferredActions,
   atRiskOpportunities,
@@ -205,6 +212,7 @@ function buildDailyTimeblocks({
   overdueActions: CommandActionItem[];
   priorityActions: CommandActionItem[];
   riskActions: CommandActionItem[];
+  salesFlowActions: CommandActionItem[];
   commercialActions: CommandActionItem[];
   deferredActions: CommandActionItem[];
   atRiskOpportunities: AtRiskOpportunityItem[];
@@ -215,15 +223,17 @@ function buildDailyTimeblocks({
     ...criticalCommercialActions,
     ...overdueActions,
     ...todayActions,
+    ...salesFlowActions,
   ])).slice(0, 5);
   const defenseActions = sortActions(dedupeActions([
-    ...criticalCommercialActions.slice(0, 1),
     ...riskActions,
+    ...salesFlowActions,
   ])).slice(0, 4);
   const customerExecutionActions = sortActions(dedupeActions([
-    ...commercialActions,
     ...overdueActions,
     ...todayActions,
+    ...salesFlowActions,
+    ...commercialActions,
   ])).slice(0, 5);
   const triageActions = executionActions.length ? executionActions : priorityActions.slice(0, 3);
   const closeoutActions = dedupeActions([...deferredActions, ...priorityActions]).slice(0, 3);
@@ -246,12 +256,12 @@ function buildDailyTimeblocks({
       startTime: '09:00',
       endTime: '10:30',
       title: 'Pipeline Defense',
-      focus: defenseActions[0]?.source === 'Quote'
+      focus: defenseActions[0]?.source === 'Sales Flow'
         ? defenseActions[0].title
         : atRiskOpportunities[0]
         ? `Defend or rescue ${atRiskOpportunities[0].opportunityName}`
         : 'Prepare the next manager-ready pipeline answer.',
-      reason: defenseActions[0]?.source === 'Quote'
+      reason: defenseActions[0]?.source === 'Sales Flow'
         ? defenseActions[0].reason
         : atRiskOpportunities.length
         ? `${atRiskOpportunities.length} active opportunit${atRiskOpportunities.length === 1 ? 'y has' : 'ies have'} weak evidence, missing context, or rescue/downgrade signals.`
@@ -265,12 +275,16 @@ function buildDailyTimeblocks({
       startTime: '13:30',
       endTime: '15:30',
       title: 'Customer execution',
-      focus: customerExecutionActions[0]?.source === 'Quote'
+      focus: customerExecutionActions[0]?.source === 'Sales Flow'
+        ? customerExecutionActions[0].title
+        : customerExecutionActions[0]?.source === 'Quote'
         ? customerExecutionActions[0].title
         : customerExecutionActions[0]?.accountName
         ? `Move ${customerExecutionActions[0].accountName}`
         : accountTouchActions[0]?.title || 'Create one customer touch that creates evidence.',
-      reason: customerExecutionActions[0]?.source === 'Quote'
+      reason: customerExecutionActions[0]?.source === 'Sales Flow'
+        ? customerExecutionActions[0].reason
+        : customerExecutionActions[0]?.source === 'Quote'
         ? customerExecutionActions[0].reason
         : customerExecutionActions.length
         ? 'Use this block for calls, emails, proof follow-up, procurement clarification, or next-step confirmation.'
@@ -293,6 +307,32 @@ function buildDailyTimeblocks({
       actions: closeoutActions,
     },
   ];
+}
+
+export function buildSalesFlowCommandActions(opportunities: CrmLiteOpportunity[]): CommandActionItem[] {
+  return opportunities
+    .filter((opportunity) => opportunity.status === 'Active')
+    .map((opportunity): CommandActionItem => {
+      const guidance = buildOpportunitySalesFlowGuidance(opportunity);
+      const priority: CommandPriority = guidance.missingCheckpoints.length >= 3
+        || opportunity.forecastEvidenceCategory === 'Unsupported'
+        ? 'High'
+        : guidance.missingCheckpoints.length > 0
+        ? 'Medium'
+        : 'Low';
+
+      return {
+        id: `sales-flow-${opportunity.id}-${guidance.step.id}`,
+        title: guidance.suggestedAction,
+        accountName: opportunity.accountName,
+        opportunityName: opportunity.opportunityName,
+        source: 'Sales Flow',
+        priority,
+        reason: `${guidance.step.label} checkpoint: ${guidance.reason}`,
+        href: `/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}`,
+      };
+    })
+    .sort((left, right) => priorityRank(right.priority) - priorityRank(left.priority));
 }
 
 function accountTouchToAction(account: AccountTouchItem): CommandActionItem {

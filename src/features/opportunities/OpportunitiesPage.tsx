@@ -11,6 +11,7 @@ import {
   Eye,
   FileText,
   Filter,
+  GitBranch,
   Plus,
   RefreshCw,
   Save,
@@ -115,6 +116,11 @@ import {
 import { markFirstPipelineReviewStepComplete } from '../../utils/firstPipelineReviewOnboarding';
 import { markPipelineReviewHabitStepComplete } from '../../utils/pipelineReviewHabit';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
+import {
+  buildOpportunitySalesFlowGuidance,
+  salesFlowSteps,
+  type OpportunitySalesFlowGuidance,
+} from '../../utils/salesFlowGuidance';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type BriefPreviewMetadata = {
@@ -139,15 +145,6 @@ type OpportunitySortKey =
   | 'quality'
   | 'updatedAt';
 type OpportunityQuickFilter = 'all' | 'imported' | 'stageInferred' | 'fy26' | 'fy27' | 'needsAction';
-type OpportunityNextAction = {
-  title: string;
-  reason: string;
-  cta: string;
-  href: string;
-  tone: 'blue' | 'green' | 'amber' | 'red';
-  badge: string;
-};
-
 const allFilter = 'All';
 const defaultPageSize = 25;
 const founderCoreSourceSystem = 'founder_core_fy26';
@@ -367,10 +364,24 @@ export function OpportunitiesPage() {
     if (searchParams.get('new') === '1') {
       openAddPanel();
       setSearchParams({}, { replace: true });
+      return;
+    }
+
+    const opportunityId = searchParams.get('opportunityId');
+    if (opportunityId && !loading) {
+      const opportunity = opportunities.find((item) => item.id === opportunityId);
+      if (opportunity) {
+        setEditingOpportunity(opportunity);
+        setForm(opportunityToForm(opportunity));
+        setPanelMode('edit');
+        setSaveState('idle');
+        setMessage('');
+      }
+      setSearchParams({}, { replace: true });
     }
     // Query params are only used as one-shot entry points.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams.toString()]);
+  }, [searchParams.toString(), loading, opportunities]);
 
   const parseCsvImport = () => {
     if (csvDetectedHeaders.length === 0) {
@@ -1973,7 +1984,7 @@ function OpportunityMasterTable({
               <OpportunitySortableHeader label="Close" sortKey="closePeriod" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Forecast evidence" sortKey="forecast" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Review decision" sortKey="recommendation" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <th className="border-b border-gray-200 px-3 py-3">Commercial</th>
+              <th className="border-b border-gray-200 px-3 py-3">Sales flow</th>
               <OpportunitySortableHeader label="Next action" sortKey="nextActionDate" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Deal quality" sortKey="quality" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Last update" sortKey="updatedAt" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
@@ -1982,7 +1993,7 @@ function OpportunityMasterTable({
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.map((row) => {
-              const { opportunity, quality, commercial } = row;
+              const { opportunity, quality } = row;
               const selected = selectedIds.includes(opportunity.id);
               return (
                 <tr
@@ -2052,7 +2063,7 @@ function OpportunityMasterTable({
                   <td className="px-3 py-3"><Badge label={opportunity.forecastEvidenceCategory} tone={forecastTone(opportunity.forecastEvidenceCategory)} /></td>
                   <td className="px-3 py-3"><Badge label={opportunity.decisionRecommendation} tone={decisionTone(opportunity.decisionRecommendation)} /></td>
                   <td className="px-3 py-3">
-                    <OpportunityCommercialCell opportunity={opportunity} commercial={commercial} />
+                    <OpportunitySalesFlowCell opportunity={opportunity} />
                   </td>
                   <td className="px-3 py-3">
                     <p className="max-w-[250px] truncate font-semibold text-gray-800" title={opportunity.nextAction}>
@@ -2147,39 +2158,6 @@ function OpportunitySortableHeader({
   );
 }
 
-function OpportunityCommercialCell({
-  opportunity,
-  commercial,
-}: {
-  opportunity: CrmLiteOpportunity;
-  commercial: OpportunityCommercialSummary;
-}) {
-  const href = buildQuoteLink(opportunity, commercial.quotes.length === 0);
-
-  return (
-    <div className="min-w-[170px]">
-      <div className="flex flex-wrap gap-1.5">
-        <Badge label={commercial.label} tone={commercialTone(commercial)} />
-        {commercial.topRisk && commercial.topRisk !== 'None' && (
-          <Badge label={commercial.topRisk} tone={quoteRiskTone(commercial.topRisk)} />
-        )}
-      </div>
-      <p className="mt-1 text-xs font-semibold text-gray-500">
-        {commercial.quotes.length > 0
-          ? `${commercial.quotes.length} quote${commercial.quotes.length === 1 ? '' : 's'} / ${formatMoney(commercial.quotedValue, opportunity.currency)}`
-          : 'No quote linked'}
-      </p>
-      <Link
-        to={href}
-        onClick={(event) => event.stopPropagation()}
-        className="mt-1 inline-flex text-xs font-bold text-brand-blue hover:text-blue-900"
-      >
-        {commercial.quotes.length > 0 ? 'Open quotes' : 'Create quote'}
-      </Link>
-    </div>
-  );
-}
-
 function OpportunityPanel({
   mode,
   form,
@@ -2266,7 +2244,10 @@ function OpportunityPanel({
       </div>
 
       {currentOpportunity && (
-        <OpportunityNextActionCard action={buildOpportunityNextAction(currentOpportunity, quotes)} />
+        <OpportunitySalesFlowCard
+          guidance={buildOpportunitySalesFlowGuidance(currentOpportunity)}
+          onUseAsNextAction={(action) => onChange({ ...form, nextAction: action })}
+        />
       )}
 
       <div className="mt-5 space-y-4">
@@ -2399,104 +2380,85 @@ function OpportunityPanel({
   );
 }
 
-function OpportunityNextActionCard({ action }: { action: OpportunityNextAction }) {
+function OpportunitySalesFlowCard({
+  guidance,
+  onUseAsNextAction,
+}: {
+  guidance: OpportunitySalesFlowGuidance;
+  onUseAsNextAction: (action: string) => void;
+}) {
+  const tone = salesFlowTone(guidance.status);
   return (
-    <section className={`mt-5 rounded-lg border p-4 ${opportunityActionToneClass(action.tone)}`}>
+    <section className={`mt-5 rounded-lg border p-4 ${opportunityActionToneClass(tone)}`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-xs font-bold uppercase tracking-wide">Deal next action</p>
-            <Badge label={action.badge} tone={action.tone} />
+            <GitBranch className="h-4 w-4 text-brand-blue" />
+            <p className="text-xs font-bold uppercase tracking-wide">Sales flow checkpoint</p>
+            <Badge label={guidance.step.label} tone="blue" />
+            <Badge label={guidance.status} tone={tone} />
           </div>
-          <h3 className="mt-2 text-base font-bold text-navy">{action.title}</h3>
-          <p className="mt-1 text-sm leading-6 text-gray-600">{action.reason}</p>
+          <h3 className="mt-2 text-base font-bold text-navy">{guidance.suggestedAction}</h3>
+          <p className="mt-1 text-sm leading-6 text-gray-600">{guidance.reason}</p>
+          <div className="mt-3 flex gap-1" aria-label={`Sales flow progress: ${guidance.step.label}`}>
+            {salesFlowSteps.map((step, index) => (
+              <span
+                key={step.id}
+                className={`h-1.5 min-w-0 flex-1 rounded-full ${index <= guidance.stepIndex ? 'bg-brand-blue' : 'bg-gray-200'}`}
+                title={step.label}
+              />
+            ))}
+          </div>
         </div>
-        <Link to={action.href} className="inline-flex w-fit shrink-0 rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">
-          {action.cta}
-        </Link>
+        {guidance.status === 'Needs action' && (
+          <button
+            type="button"
+            onClick={() => onUseAsNextAction(guidance.suggestedAction)}
+            className="inline-flex w-fit shrink-0 rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white"
+          >
+            Use next action
+          </button>
+        )}
       </div>
     </section>
   );
 }
 
-function buildOpportunityNextAction(opportunity: CrmLiteOpportunity, quotes: QuoteRecord[]): OpportunityNextAction {
-  const commercial = buildOpportunityCommercialSummary(opportunity, quotes);
-  if (commercial.topQuote && commercial.topRisk && commercial.topRisk !== 'None') {
-    const tone = quoteRiskTone(commercial.topRisk);
-    return {
-      title: commercial.topQuote.nextAction || `Review ${commercial.topQuote.title}`,
-      reason: `${commercial.topRisk}: ${formatMoney(commercial.topQuote.amount || 0, commercial.topQuote.currency)} needs commercial follow-up.`,
-      cta: 'Open quotes',
-      href: buildQuoteLink(opportunity),
-      tone: tone === 'gray' ? 'blue' : tone,
-      badge: commercial.topRisk,
-    };
-  }
-
-  if (shouldCreateQuoteForOpportunity(opportunity, commercial)) {
-    return {
-      title: 'Create quote for this deal',
-      reason: 'The opportunity has active value but no quote linked yet.',
-      cta: 'Create quote',
-      href: buildQuoteLink(opportunity, true),
-      tone: 'amber',
-      badge: 'No quote',
-    };
-  }
-
-  if (
-    opportunity.forecastEvidenceCategory === 'Unsupported' ||
-    opportunity.forecastEvidenceCategory === 'Hope-based' ||
-    ['Rescue', 'Downgrade', 'Deprioritize'].includes(opportunity.decisionRecommendation)
-  ) {
-    return {
-      title: 'Prepare a defense answer',
-      reason: 'This deal has weak evidence, missing context, or a rescue/downgrade signal.',
-      cta: 'Pipeline defense',
-      href: '/app/pipeline-defense',
-      tone: 'red',
-      badge: 'Defense',
-    };
-  }
-
-  if (opportunity.nextAction.trim()) {
-    return {
-      title: opportunity.nextAction,
-      reason: opportunity.nextActionDate
-        ? `Next action is dated ${formatOpportunityDate(opportunity.nextActionDate)}.`
-        : 'This deal has a next action ready to execute.',
-      cta: 'Capture update',
-      href: `/app/capture?mode=quick&account=${encodeURIComponent(opportunity.accountName)}&opportunity=${encodeURIComponent(opportunity.opportunityName)}`,
-      tone: 'blue',
-      badge: 'Follow up',
-    };
-  }
-
-  return {
-    title: 'Define the next customer-confirmed step',
-    reason: 'This opportunity needs a concrete next action before it can move cleanly.',
-    cta: 'Capture update',
-    href: `/app/capture?mode=quick&account=${encodeURIComponent(opportunity.accountName)}&opportunity=${encodeURIComponent(opportunity.opportunityName)}`,
-    tone: 'amber',
-    badge: 'No action',
-  };
-}
-
-function shouldCreateQuoteForOpportunity(opportunity: CrmLiteOpportunity, commercial: OpportunityCommercialSummary) {
-  if (commercial.quotes.length > 0) return false;
-  if (opportunity.status !== 'Active') return false;
-  const hasValue = Boolean(opportunity.estimatedValue || opportunity.fy26Value || opportunity.fy27Value);
-  const stageText = `${opportunity.stage} ${opportunity.expectedClosePeriod}`.toLowerCase();
-  return hasValue || /proposal|quote|negotiat|procure|commercial|commit/.test(stageText);
-}
-
-function opportunityActionToneClass(tone: OpportunityNextAction['tone']) {
+function opportunityActionToneClass(tone: 'blue' | 'green' | 'amber' | 'red') {
   return {
     blue: 'border-blue-100 bg-blue-50/70',
     green: 'border-emerald-100 bg-emerald-50/70',
     amber: 'border-amber-100 bg-amber-50/70',
     red: 'border-red-100 bg-red-50/70',
   }[tone];
+}
+
+function salesFlowTone(status: OpportunitySalesFlowGuidance['status']): 'blue' | 'green' | 'amber' | 'red' {
+  if (status === 'Completed') return 'green';
+  if (status === 'Closed') return 'red';
+  if (status === 'Paused') return 'amber';
+  if (status === 'Ready to advance') return 'green';
+  return 'amber';
+}
+
+function OpportunitySalesFlowCell({ opportunity }: { opportunity: CrmLiteOpportunity }) {
+  const guidance = buildOpportunitySalesFlowGuidance(opportunity);
+  return (
+    <div className="min-w-[190px]">
+      <div className="flex flex-wrap gap-1.5">
+        <Badge label={guidance.step.label} tone="blue" />
+        <Badge label={guidance.status} tone={salesFlowTone(guidance.status)} />
+      </div>
+      <p className="mt-1 max-w-[220px] truncate text-xs font-semibold text-gray-700" title={guidance.suggestedAction}>
+        {guidance.suggestedAction}
+      </p>
+      <p className="mt-1 text-xs text-gray-500">
+        {guidance.missingCheckpoints.length > 0
+          ? `${guidance.missingCheckpoints.length} checkpoint gap${guidance.missingCheckpoints.length === 1 ? '' : 's'}`
+          : `Next: ${guidance.nextStepLabel}`}
+      </p>
+    </div>
+  );
 }
 
 function OpportunityCommercialPanel({
@@ -3517,13 +3479,6 @@ function buildQuoteLink(opportunity: CrmLiteOpportunity, create = false) {
   if (opportunity.opportunityName) params.set('opportunityName', opportunity.opportunityName);
   if (create) params.set('create', '1');
   return `/app/quotes?${params.toString()}`;
-}
-
-function commercialTone(commercial: OpportunityCommercialSummary): 'blue' | 'green' | 'amber' | 'red' | 'gray' {
-  if (commercial.atRiskQuotes > 0) return 'red';
-  if (commercial.acceptedQuotes > 0) return 'amber';
-  if (commercial.activeQuotes > 0) return 'blue';
-  return 'gray';
 }
 
 function quoteActionRank(quote: QuoteRecord) {

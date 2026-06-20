@@ -42,12 +42,17 @@ const commandCenter = buildTodayCommandCenter({
 });
 
 assert.equal(commandCenter.hasAnyData, true);
-for (const blockId of ['morning-triage', 'pipeline-defense', 'customer-execution']) {
+for (const blockId of ['morning-triage', 'customer-execution']) {
   const block = commandCenter.dailyTimeblocks.find((item) => item.id === blockId);
   assert.equal(block?.actions[0]?.source, 'Quote', `${blockId} should surface the overdue payment first`);
   assert.equal(block?.priority, 'Critical', `${blockId} should become critical`);
   assert.equal(block?.href, '/app/quotes', `${blockId} should open the quote workspace`);
 }
+assert.equal(
+  commandCenter.dailyTimeblocks.find((item) => item.id === 'pipeline-defense')?.actions.length,
+  0,
+  'commercial follow-up should not replace deal defense',
+);
 
 const waitingPoCenter = buildTodayCommandCenter({
   activities: [],
