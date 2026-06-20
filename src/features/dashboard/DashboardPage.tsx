@@ -530,8 +530,8 @@ function buildDashboardCommercialAction(revenueView: RevenueViewSummary): Dashbo
 }
 
 function revenueRiskPriority(risk: RevenueActionItem['risk']): CommandPriority {
-  if (risk === 'Quote expired' || risk === 'Quote expiring' || risk === 'Payment term missing') return 'Critical';
-  if (risk === 'Waiting on PO' || risk === 'Weak pipeline') return 'High';
+  if (risk === 'Quote expired' || risk === 'Quote expiring' || risk === 'Payment term missing' || risk === 'Delivery overdue' || risk === 'Payment overdue') return 'Critical';
+  if (risk === 'Waiting on PO' || risk === 'Waiting on delivery' || risk === 'Waiting on payment' || risk === 'Weak pipeline') return 'High';
   return 'Medium';
 }
 

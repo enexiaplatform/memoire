@@ -9,11 +9,15 @@ import type { AccountMemoryRecord } from '../../services/accountStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import {
   createQuote,
+  deliveryStatuses,
   deleteQuote,
   emptyQuoteInput,
+  getQuoteCommercialStage,
   getQuoteRisk,
   loadQuotes,
   loadQuotesForUser,
+  paymentStatuses,
+  purchaseOrderStatuses,
   quoteRiskTone,
   quoteStatuses,
   summarizeQuotes,
@@ -21,6 +25,9 @@ import {
   type QuoteInput,
   type QuoteRecord,
   type QuoteStatus,
+  type DeliveryStatus,
+  type PaymentStatus,
+  type PurchaseOrderStatus,
 } from '../../services/quoteStore';
 import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { hasLocalSampleData } from '../../utils/dataMode';
@@ -204,7 +211,7 @@ export function QuotesPage() {
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Commercial</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Quotes</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            Track sent quotes, expiry, PO risk, and payment terms.
+            Track expiry, PO, delivery, payment, and the next commercial action.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -280,7 +287,7 @@ export function QuotesPage() {
       <details className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <summary className="cursor-pointer text-sm font-bold text-navy">Why this matters</summary>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-500">
-          Quotes are the bridge from pipeline to commercial money. Keep expiry, PO follow-up, margin checks, and payment terms visible.
+          Quotes bridge pipeline to commercial money. Keep expiry, PO, delivery, payment, and margin risk visible.
         </p>
       </details>
 
@@ -343,6 +350,7 @@ function QuoteTable({ quotes, onOpen }: { quotes: QuoteRecord[]; onOpen: (quote:
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1.5">
                       <Badge label={quote.status} tone={statusTone(quote.status)} />
+                      {quote.status === 'Accepted' && <Badge label={commercialStageLabel(quote)} tone={commercialStageTone(quote)} />}
                       {risk !== 'None' && <Badge label={risk} tone={quoteRiskTone(risk)} />}
                     </div>
                   </td>
@@ -414,6 +422,22 @@ function QuotePanel({
             <div className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2">
               <Badge label={risk} tone={quoteRiskTone(risk)} />
             </div>
+          )}
+
+          {form.status === 'Accepted' && (
+            <FormSection title="Commercial progress">
+              <SelectInput label="PO" value={form.poStatus} onChange={(value) => onChange('poStatus', value as PurchaseOrderStatus)}>
+                {purchaseOrderStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+              </SelectInput>
+              <SelectInput label="Delivery" value={form.deliveryStatus} onChange={(value) => onChange('deliveryStatus', value as DeliveryStatus)}>
+                {deliveryStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+              </SelectInput>
+              <DateInput label="Expected delivery" value={form.expectedDeliveryDate} onChange={(value) => onChange('expectedDeliveryDate', value)} />
+              <SelectInput label="Payment" value={form.paymentStatus} onChange={(value) => onChange('paymentStatus', value as PaymentStatus)}>
+                {paymentStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+              </SelectInput>
+              <DateInput label="Payment due" value={form.paymentDueDate} onChange={(value) => onChange('paymentDueDate', value)} />
+            </FormSection>
           )}
 
           <FormSection title="Quote basics">
@@ -507,7 +531,7 @@ function QuoteEmptyState({ onCreate }: { onCreate: () => void }) {
       </div>
       <h2 className="mt-4 text-xl font-bold text-navy">Create your first quote.</h2>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">
-        Start with one sent or draft quote so Memoire can track expiry, PO risk, and follow-up.
+        Start with one sent or draft quote so Memoire can track the path from quote to paid.
       </p>
       <button type="button" onClick={onCreate} className="mt-5 inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
         <Plus className="h-4 w-4" />
@@ -602,11 +626,28 @@ function toneClass(tone: 'blue' | 'green' | 'amber' | 'red') {
 
 function quoteSortRank(quote: QuoteRecord) {
   const risk = getQuoteRisk(quote);
-  if (risk === 'Expired') return 5;
-  if (risk === 'Expiring soon') return 4;
+  if (risk === 'Payment overdue') return 8;
+  if (risk === 'Delivery overdue') return 7;
+  if (risk === 'Expired') return 6;
+  if (risk === 'Expiring soon') return 5;
+  if (risk === 'PO follow-up') return 4;
   if (risk === 'Needs commercial follow-up') return 3;
   if (quote.status === 'Sent' || quote.status === 'Revised') return 2;
   return 1;
+}
+
+function commercialStageLabel(quote: QuoteRecord) {
+  const stage = getQuoteCommercialStage(quote);
+  if (stage === 'Pending PO') return 'Awaiting PO';
+  if (stage === 'Pending delivery') return quote.deliveryStatus === 'Scheduled' ? 'Delivery scheduled' : 'Awaiting delivery';
+  if (stage === 'Pending payment') return quote.paymentStatus === 'Due' ? 'Payment due' : 'Awaiting payment';
+  return stage;
+}
+
+function commercialStageTone(quote: QuoteRecord): 'green' | 'amber' | 'blue' {
+  if (quote.paymentStatus === 'Paid') return 'green';
+  if (quote.deliveryStatus === 'Delivered') return 'amber';
+  return 'blue';
 }
 
 function quoteToInput(quote: QuoteRecord): QuoteInput {

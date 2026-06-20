@@ -57,7 +57,7 @@ export function RevenueViewPage() {
       item.status,
     ].join(' ').toLowerCase().includes(query));
   }, [revenue.actionItems, search]);
-  const stuckRevenue = revenue.pendingPo + revenue.pendingPayment;
+  const stuckRevenue = revenue.pendingPo + revenue.pendingDelivery + revenue.pendingPayment;
 
   return (
     <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
@@ -161,11 +161,13 @@ export function RevenueViewPage() {
 
           <details className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <summary className="cursor-pointer text-sm font-bold text-navy">More money signals</summary>
-            <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+            <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-7">
               <RevenueMetric label="Won" value={formatMoney(revenue.won, 'VND')} tone={revenue.won ? 'green' : 'blue'} />
               <RevenueMetric label="Quoted" value={formatMoney(revenue.quoted, 'VND')} tone={revenue.quoted ? 'blue' : 'green'} />
               <RevenueMetric label="Pending PO" value={formatMoney(revenue.pendingPo, 'VND')} tone={revenue.pendingPo ? 'amber' : 'green'} />
+              <RevenueMetric label="Pending delivery" value={formatMoney(revenue.pendingDelivery, 'VND')} tone={revenue.pendingDelivery ? 'amber' : 'green'} />
               <RevenueMetric label="Pending payment" value={formatMoney(revenue.pendingPayment, 'VND')} tone={revenue.pendingPayment ? 'amber' : 'green'} />
+              <RevenueMetric label="Paid" value={formatMoney(revenue.paid, 'VND')} tone="green" />
               <RevenueMetric label="Expiring quotes" value={revenue.expiringQuotes} tone={revenue.expiringQuotes ? 'amber' : 'green'} />
             </div>
           </details>
@@ -261,8 +263,8 @@ function Badge({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green
 }
 
 function riskTone(risk: RevenueRiskKind): 'blue' | 'green' | 'amber' | 'red' | 'gray' {
-  if (risk === 'Quote expired' || risk === 'Payment term missing') return 'red';
-  if (risk === 'Quote expiring' || risk === 'Waiting on PO') return 'amber';
+  if (risk === 'Quote expired' || risk === 'Payment term missing' || risk === 'Delivery overdue' || risk === 'Payment overdue') return 'red';
+  if (risk === 'Quote expiring' || risk === 'Waiting on PO' || risk === 'Waiting on delivery' || risk === 'Waiting on payment') return 'amber';
   if (risk === 'Weak pipeline') return 'blue';
   return 'gray';
 }

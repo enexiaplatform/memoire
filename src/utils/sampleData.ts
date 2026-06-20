@@ -5,6 +5,7 @@ import { STAKEHOLDER_STORAGE_KEY, type StakeholderRecord } from '../services/sta
 import { OBJECTION_STORAGE_KEY, type ObjectionRecord } from '../services/objectionStore';
 import { ACTION_OUTCOME_STORAGE_KEY, type ActionOutcomeRecord } from '../services/actionOutcomeStore';
 import { SALES_ASSET_STORAGE_KEY, type SalesAssetRecord } from '../services/salesAssetStore';
+import { QUOTE_STORAGE_KEY, type QuoteRecord } from '../services/quoteStore';
 import { invalidateWorkspaceDataCache } from '../services/workspaceDataCache';
 import { classifySalesActivity } from './salesActivityClassifier';
 import { generatePipelineDefenseBriefFromOpportunities } from './opportunityToPipelineBrief';
@@ -40,6 +41,7 @@ const SAMPLE_ARRAY_STORAGE_KEYS = [
   OBJECTION_STORAGE_KEY,
   ACTION_OUTCOME_STORAGE_KEY,
   SALES_ASSET_STORAGE_KEY,
+  QUOTE_STORAGE_KEY,
 ];
 
 type SampleRecord = {
@@ -58,6 +60,7 @@ export type SampleDataset = {
   objections: ObjectionRecord[];
   actionOutcomes: ActionOutcomeRecord[];
   salesAssets: SalesAssetRecord[];
+  quotes: QuoteRecord[];
   briefs: PipelineDefenseBrief[];
 };
 
@@ -101,6 +104,7 @@ export function loadSampleDataset(): SampleDataset {
   writeLocalArray(OBJECTION_STORAGE_KEY, dataset.objections);
   writeLocalArray(ACTION_OUTCOME_STORAGE_KEY, dataset.actionOutcomes);
   writeLocalArray(SALES_ASSET_STORAGE_KEY, dataset.salesAssets);
+  writeLocalArray(QUOTE_STORAGE_KEY, dataset.quotes);
   writeLocalBriefs(dataset.briefs);
   markSampleDataLoaded();
   invalidateWorkspaceDataCache();
@@ -125,6 +129,7 @@ export function clearSampleDataset() {
   removeSampleRecords(OBJECTION_STORAGE_KEY);
   removeSampleRecords(ACTION_OUTCOME_STORAGE_KEY);
   removeSampleRecords(SALES_ASSET_STORAGE_KEY);
+  removeSampleRecords(QUOTE_STORAGE_KEY);
   removeSampleBriefs();
   clearDemoJourneyCompletion();
   clearSampleDataFlag();
@@ -734,6 +739,105 @@ function buildSampleDataset(): SampleDataset {
     }),
   ];
 
+  const quotes: QuoteRecord[] = [
+    sampleQuote({
+      id: 'demo-quote-apex-validation',
+      quoteId: 'Q-DEMO-APEX-01',
+      accountName: 'Apex Labs',
+      opportunityId: 'demo-opp-apex-validation-expansion',
+      opportunityName: 'Validation Expansion',
+      title: 'Validation expansion revised quote',
+      quoteDate: twoDaysAgo,
+      validUntil: friday,
+      amount: 2400000000,
+      currency: 'VND',
+      grossMarginEstimate: 34,
+      discount: 8,
+      paymentTerm: '30 days after delivery',
+      status: 'Revised',
+      poStatus: 'Pending',
+      deliveryStatus: 'Not scheduled',
+      expectedDeliveryDate: '',
+      paymentStatus: 'Not due',
+      paymentDueDate: '',
+      nextAction: 'Confirm revised quote approval before expiry.',
+      notes: 'Procurement owner is confirmed; final PO date remains open.',
+      createdAt: timestamp,
+    }),
+    sampleQuote({
+      id: 'demo-quote-orion-procurement',
+      quoteId: 'Q-DEMO-ORION-01',
+      accountName: 'Orion Pharma',
+      opportunityId: 'demo-opp-orion-pharma-tender',
+      opportunityName: 'Procurement review',
+      title: 'Sterility workflow commercial offer',
+      quoteDate: sixDaysAgo,
+      validUntil: nextWeek,
+      amount: 900000000,
+      currency: 'VND',
+      grossMarginEstimate: 29,
+      discount: 12,
+      paymentTerm: '50% with PO, 50% after delivery',
+      status: 'Accepted',
+      poStatus: 'Pending',
+      deliveryStatus: 'Not scheduled',
+      expectedDeliveryDate: '',
+      paymentStatus: 'Not due',
+      paymentDueDate: '',
+      nextAction: 'Confirm PO owner and issue date.',
+      notes: 'Commercial acceptance received; formal PO still outstanding.',
+      createdAt: timestamp,
+    }),
+    sampleQuote({
+      id: 'demo-quote-northstar-lab',
+      quoteId: 'Q-DEMO-NORTHSTAR-01',
+      accountName: 'Northstar Foods',
+      opportunityId: 'demo-opp-northstar-foods-lab',
+      opportunityName: 'Lab workflow',
+      title: 'Lab workflow implementation',
+      quoteDate: sixDaysAgo,
+      validUntil: nextWeek,
+      amount: 450000000,
+      currency: 'VND',
+      grossMarginEstimate: 31,
+      discount: 5,
+      paymentTerm: '30 days after delivery',
+      status: 'Accepted',
+      poStatus: 'Received',
+      deliveryStatus: 'Scheduled',
+      expectedDeliveryDate: nextWeek,
+      paymentStatus: 'Not due',
+      paymentDueDate: '',
+      nextAction: 'Confirm installation slot with the lab manager.',
+      notes: 'PO received and delivery planning is active.',
+      createdAt: timestamp,
+    }),
+    sampleQuote({
+      id: 'demo-quote-summit-qc',
+      quoteId: 'Q-DEMO-SUMMIT-01',
+      accountName: 'Summit Diagnostics',
+      opportunityId: 'demo-opp-summit-diagnostics-qc-workflow',
+      opportunityName: 'QC workflow',
+      title: 'QC workflow delivery',
+      quoteDate: sixDaysAgo,
+      validUntil: nextWeek,
+      amount: 650000000,
+      currency: 'VND',
+      grossMarginEstimate: 32,
+      discount: 6,
+      paymentTerm: 'Due on delivery',
+      status: 'Accepted',
+      poStatus: 'Received',
+      deliveryStatus: 'Delivered',
+      expectedDeliveryDate: twoDaysAgo,
+      paymentStatus: 'Due',
+      paymentDueDate: yesterday,
+      nextAction: 'Confirm payment release date with finance.',
+      notes: 'Delivery completed; payment release is overdue.',
+      createdAt: timestamp,
+    }),
+  ];
+
   const brief = {
     ...generatePipelineDefenseBriefFromOpportunities(opportunities.slice(0, 5), {
       title: `Demo Defense Brief - ${today}`,
@@ -752,6 +856,7 @@ function buildSampleDataset(): SampleDataset {
     objections,
     actionOutcomes,
     salesAssets,
+    quotes,
     briefs: [markSampleBrief(brief)],
   };
 }
@@ -827,6 +932,13 @@ function sampleActionOutcome(input: Omit<ActionOutcomeRecord, 'updatedAt' | 'sou
 }
 
 function sampleAsset(input: Omit<SalesAssetRecord, 'updatedAt' | 'source' | 'isSample'>): SalesAssetRecord {
+  return markSampleRecord({
+    ...input,
+    updatedAt: input.createdAt,
+  });
+}
+
+function sampleQuote(input: Omit<QuoteRecord, 'updatedAt' | 'source' | 'isSample'>): QuoteRecord {
   return markSampleRecord({
     ...input,
     updatedAt: input.createdAt,

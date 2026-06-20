@@ -206,6 +206,30 @@ for (const marker of [
   requireIncludes(accountsPage, marker, `Customer Workspace 2.0 missing marker: ${marker}`);
 }
 
+const quoteStore = read('src/services/quoteStore.ts');
+for (const marker of [
+  'PurchaseOrderStatus',
+  'DeliveryStatus',
+  'PaymentStatus',
+  'getCommercialCheckpointRisk',
+  'getQuoteCommercialStage',
+]) {
+  requireIncludes(quoteStore, marker, `Commercial fulfillment quote model missing marker: ${marker}`);
+}
+
+const quotesPage = read('src/features/quotes/QuotesPage.tsx');
+for (const marker of ['Commercial progress', 'Expected delivery', 'Payment due']) {
+  requireIncludes(quotesPage, marker, `Quote Tracker fulfillment UI missing marker: ${marker}`);
+}
+
+const revenueView = read('src/utils/revenueView.ts');
+for (const marker of ['pendingDelivery', "'Waiting on delivery'", "'Payment overdue'", 'quotedOpportunityIds']) {
+  requireIncludes(revenueView, marker, `Revenue View fulfillment logic missing marker: ${marker}`);
+}
+
+requireIncludes(packageJson, 'npm run verify:commercial-fulfillment',
+  'npm run check does not include commercial fulfillment verification');
+
 if (failures.length > 0) {
   console.error('Commercial operating-loop contract verification failed:');
   for (const failure of failures) console.error(`- ${failure}`);

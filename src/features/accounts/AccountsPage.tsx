@@ -22,7 +22,7 @@ import { type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { type SalesActivityRecord } from '../../services/salesActivityStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
-import { getQuoteRisk, quoteRiskTone, type QuoteRecord } from '../../services/quoteStore';
+import { getQuoteCommercialStage, getQuoteRisk, quoteRiskTone, type QuoteRecord } from '../../services/quoteStore';
 import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import {
   buildAccountMemory,
@@ -907,13 +907,18 @@ function AccountSaveActions({
 
 function AccountCommercialLoop({ memory, quotes }: { memory: AccountMemory; quotes: QuoteRecord[] }) {
   const activeQuotes = quotes.filter((quote) => quote.status === 'Sent' || quote.status === 'Revised');
-  const pendingPoQuotes = quotes.filter((quote) => quote.status === 'Accepted');
+  const pendingPoQuotes = quotes.filter((quote) => getQuoteCommercialStage(quote) === 'Pending PO');
+  const pendingDeliveryQuotes = quotes.filter((quote) => getQuoteCommercialStage(quote) === 'Pending delivery');
+  const pendingPaymentQuotes = quotes.filter((quote) => getQuoteCommercialStage(quote) === 'Pending payment');
+  const paidQuotes = quotes.filter((quote) => getQuoteCommercialStage(quote) === 'Paid');
   const riskyQuotes = quotes.filter((quote) => getQuoteRisk(quote) !== 'None');
   const steps = [
     { label: 'Opportunity', value: memory.activeOpportunityCount, hint: 'active' },
     { label: 'Quote', value: activeQuotes.length, hint: 'sent / revised' },
-    { label: 'PO', value: pendingPoQuotes.length, hint: 'accepted' },
-    { label: 'Won', value: memory.wonCount, hint: 'closed' },
+    { label: 'PO', value: pendingPoQuotes.length, hint: 'waiting' },
+    { label: 'Delivery', value: pendingDeliveryQuotes.length, hint: 'in progress' },
+    { label: 'Payment', value: pendingPaymentQuotes.length, hint: 'waiting' },
+    { label: 'Paid', value: paidQuotes.length, hint: 'complete' },
   ];
 
   return (
@@ -928,7 +933,7 @@ function AccountCommercialLoop({ memory, quotes }: { memory: AccountMemory; quot
           tone={riskyQuotes.length ? 'amber' : 'green'}
         />
       </div>
-      <div className="grid grid-cols-2 divide-x divide-y divide-gray-100 sm:grid-cols-4 sm:divide-y-0">
+      <div className="grid grid-cols-2 divide-x divide-y divide-gray-100 sm:grid-cols-3 xl:grid-cols-6 xl:divide-y-0">
         {steps.map((step) => (
           <div key={step.label} className="min-h-[76px] px-4 py-3">
             <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{step.label}</p>

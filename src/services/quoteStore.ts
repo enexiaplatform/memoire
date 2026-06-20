@@ -7,11 +7,28 @@ import {
   upsertCloudJsonCollection,
 } from './cloudJsonCollectionStore';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import {
+  getCommercialCheckpointRisk,
+} from '../utils/commercialFulfillment';
+
+export { getQuoteCommercialStage } from '../utils/commercialFulfillment';
+export type { CommercialStage } from '../utils/commercialFulfillment';
 
 export const QUOTE_STORAGE_KEY = 'memoire.quotes.v1';
 
 export type QuoteStatus = 'Draft' | 'Sent' | 'Revised' | 'Accepted' | 'Rejected' | 'Expired';
-export type QuoteRisk = 'None' | 'Expiring soon' | 'Expired' | 'Needs commercial follow-up' | 'Margin check';
+export type PurchaseOrderStatus = 'Pending' | 'Received';
+export type DeliveryStatus = 'Not scheduled' | 'Scheduled' | 'Delivered';
+export type PaymentStatus = 'Not due' | 'Due' | 'Paid';
+export type QuoteRisk =
+  | 'None'
+  | 'Expiring soon'
+  | 'Expired'
+  | 'PO follow-up'
+  | 'Delivery overdue'
+  | 'Payment overdue'
+  | 'Needs commercial follow-up'
+  | 'Margin check';
 
 export type QuoteRecord = {
   id: string;
@@ -28,6 +45,11 @@ export type QuoteRecord = {
   discount: number | null;
   paymentTerm: string;
   status: QuoteStatus;
+  poStatus: PurchaseOrderStatus;
+  deliveryStatus: DeliveryStatus;
+  expectedDeliveryDate: string;
+  paymentStatus: PaymentStatus;
+  paymentDueDate: string;
   nextAction: string;
   notes: string;
   createdAt: string;
@@ -53,6 +75,9 @@ export type QuoteSummary = {
 };
 
 export const quoteStatuses: QuoteStatus[] = ['Draft', 'Sent', 'Revised', 'Accepted', 'Rejected', 'Expired'];
+export const purchaseOrderStatuses: PurchaseOrderStatus[] = ['Pending', 'Received'];
+export const deliveryStatuses: DeliveryStatus[] = ['Not scheduled', 'Scheduled', 'Delivered'];
+export const paymentStatuses: PaymentStatus[] = ['Not due', 'Due', 'Paid'];
 
 export const emptyQuoteInput: QuoteInput = {
   quoteId: '',
@@ -68,6 +93,11 @@ export const emptyQuoteInput: QuoteInput = {
   discount: null,
   paymentTerm: '',
   status: 'Draft',
+  poStatus: 'Pending',
+  deliveryStatus: 'Not scheduled',
+  expectedDeliveryDate: '',
+  paymentStatus: 'Not due',
+  paymentDueDate: '',
   nextAction: '',
   notes: '',
   source: 'user',
@@ -163,7 +193,7 @@ export function summarizeQuotes(quotes: QuoteRecord[]): QuoteSummary {
     total: quotes.length,
     sentQuotes: quotes.filter((quote) => quote.status === 'Sent' || quote.status === 'Revised').length,
     expiringSoon: quotes.filter((quote) => getQuoteRisk(quote) === 'Expiring soon').length,
-    pendingPo: quotes.filter((quote) => quote.status === 'Accepted').length,
+    pendingPo: quotes.filter((quote) => quote.status === 'Accepted' && quote.poStatus === 'Pending').length,
     acceptedValue: quotes
       .filter((quote) => quote.status === 'Accepted')
       .reduce((total, quote) => total + (quote.amount || 0), 0),
@@ -175,6 +205,8 @@ export function getQuoteRisk(quote: QuoteRecord): QuoteRisk {
   const activeQuote = quote.status === 'Sent' || quote.status === 'Revised';
   if (activeQuote && quote.validUntil && daysUntil(quote.validUntil) < 0) return 'Expired';
   if (activeQuote && quote.validUntil && daysUntil(quote.validUntil) <= 7) return 'Expiring soon';
+  const checkpointRisk = getCommercialCheckpointRisk(quote);
+  if (checkpointRisk) return checkpointRisk;
   if (quote.status === 'Accepted' && (!quote.paymentTerm.trim() || !quote.nextAction.trim())) return 'Needs commercial follow-up';
   if ((quote.discount !== null && quote.discount >= 20) || (quote.grossMarginEstimate !== null && quote.grossMarginEstimate < 25)) return 'Margin check';
   return 'None';
@@ -185,8 +217,8 @@ export function quoteNeedsAction(quote: QuoteRecord) {
 }
 
 export function quoteRiskTone(risk: QuoteRisk): 'green' | 'amber' | 'red' | 'blue' | 'gray' {
-  if (risk === 'Expired') return 'red';
-  if (risk === 'Expiring soon' || risk === 'Margin check') return 'amber';
+  if (risk === 'Expired' || risk === 'Delivery overdue' || risk === 'Payment overdue') return 'red';
+  if (risk === 'Expiring soon' || risk === 'Margin check' || risk === 'PO follow-up') return 'amber';
   if (risk === 'Needs commercial follow-up') return 'blue';
   return 'green';
 }
@@ -212,6 +244,11 @@ function sanitizeQuote(raw: Partial<QuoteRecord> | null): QuoteRecord | null {
     discount: normalizeNumber(raw.discount),
     paymentTerm: String(raw.paymentTerm || '').trim(),
     status: isQuoteStatus(raw.status) ? raw.status : 'Draft',
+    poStatus: isPurchaseOrderStatus(raw.poStatus) ? raw.poStatus : 'Pending',
+    deliveryStatus: isDeliveryStatus(raw.deliveryStatus) ? raw.deliveryStatus : 'Not scheduled',
+    expectedDeliveryDate: normalizeDate(raw.expectedDeliveryDate),
+    paymentStatus: isPaymentStatus(raw.paymentStatus) ? raw.paymentStatus : 'Not due',
+    paymentDueDate: normalizeDate(raw.paymentDueDate),
     nextAction: String(raw.nextAction || '').trim(),
     notes: String(raw.notes || '').trim(),
     createdAt: raw.createdAt || now,
@@ -223,6 +260,18 @@ function sanitizeQuote(raw: Partial<QuoteRecord> | null): QuoteRecord | null {
 
 function isQuoteStatus(value: unknown): value is QuoteStatus {
   return quoteStatuses.includes(value as QuoteStatus);
+}
+
+function isPurchaseOrderStatus(value: unknown): value is PurchaseOrderStatus {
+  return purchaseOrderStatuses.includes(value as PurchaseOrderStatus);
+}
+
+function isDeliveryStatus(value: unknown): value is DeliveryStatus {
+  return deliveryStatuses.includes(value as DeliveryStatus);
+}
+
+function isPaymentStatus(value: unknown): value is PaymentStatus {
+  return paymentStatuses.includes(value as PaymentStatus);
 }
 
 function normalizeDate(value: unknown) {
@@ -248,8 +297,11 @@ function dateSortValue(dateKey: string) {
 
 function quoteRiskRank(risk: QuoteRisk) {
   return {
-    Expired: 5,
-    'Expiring soon': 4,
+    Expired: 9,
+    'Payment overdue': 8,
+    'Delivery overdue': 7,
+    'Expiring soon': 6,
+    'PO follow-up': 4,
     'Needs commercial follow-up': 3,
     'Margin check': 2,
     None: 1,

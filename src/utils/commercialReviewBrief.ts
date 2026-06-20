@@ -71,8 +71,8 @@ export function buildCommercialReviewBrief(input: {
     ? `${formatMoney(revenue.atRiskRevenue, revenue.topAction.currency)} at risk. Top action: ${revenue.topAction.accountName} - ${revenue.topAction.nextAction}`
     : 'No commercial revenue risk is blocking this review.';
   const paymentLine = revenue.pendingPayment > 0
-    ? `${formatMoney(revenue.pendingPayment, 'VND')} needs payment-term or payment follow-up.`
-    : 'No payment follow-up gap detected.';
+    ? `${formatMoney(revenue.pendingPayment, 'VND')} is delivered and still waiting for payment.`
+    : 'No delivered revenue is waiting for payment.';
 
   const summary = [
     pipeline.dealsNeedingReview > 0 ? `${pipeline.dealsNeedingReview} pipeline item(s) need defense.` : 'Pipeline defense is under control.',
@@ -186,7 +186,9 @@ function generateCommercialReviewMarkdown(input: {
     '## Revenue Risk',
     `- ${input.revenueLine}`,
     `- Pending PO: ${formatMoney(input.revenue.pendingPo, 'VND')}`,
+    `- Pending delivery: ${formatMoney(input.revenue.pendingDelivery, 'VND')}`,
     `- Pending payment: ${formatMoney(input.revenue.pendingPayment, 'VND')}`,
+    `- Paid: ${formatMoney(input.revenue.paid, 'VND')}`,
     '',
     '## Payment Risk',
     `- ${input.paymentLine}`,
