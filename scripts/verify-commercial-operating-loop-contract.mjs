@@ -219,12 +219,12 @@ for (const marker of [
 }
 
 const quotesPage = read('src/features/quotes/QuotesPage.tsx');
-for (const marker of ['Commercial progress', 'Expected delivery', 'Payment due']) {
+for (const marker of ['Commercial progress', 'Expected delivery', 'Payment due', 'requestedQuoteId']) {
   requireIncludes(quotesPage, marker, `Quote Tracker fulfillment UI missing marker: ${marker}`);
 }
 
 const revenueView = read('src/utils/revenueView.ts');
-for (const marker of ['pendingDelivery', "'Waiting on delivery'", "'Payment overdue'", 'quotedOpportunityIds']) {
+for (const marker of ['pendingDelivery', "'Waiting on delivery'", "'Payment overdue'", 'quotedOpportunityIds', 'getQuoteWorkspaceHref(quote)']) {
   requireIncludes(revenueView, marker, `Revenue View fulfillment logic missing marker: ${marker}`);
 }
 

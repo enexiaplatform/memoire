@@ -32,6 +32,7 @@ import {
   advanceQuoteCommercialProgress,
   getNextCommercialProgressAction,
   getQuoteRisk,
+  getQuoteWorkspaceHref,
   quoteRiskTone,
   summarizeQuotes,
   type QuoteRecord,
@@ -1143,7 +1144,7 @@ function QuoteFollowUpCard({
                 {progressAction.label}
               </button>
               <Link
-                to={`/app/quotes?accountName=${encodeURIComponent(focusQuote.accountName)}`}
+                to={getQuoteWorkspaceHref(focusQuote)}
                 className="inline-flex w-fit shrink-0 rounded-full border border-cyan-200 bg-white px-4 py-2 text-sm font-bold text-cyan-700"
               >
                 Open quote
@@ -1151,8 +1152,8 @@ function QuoteFollowUpCard({
             </>
           ) : (
             <>
-              <Link to="/app/quotes" className="inline-flex w-fit shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-                Open quotes
+              <Link to={focusQuote ? getQuoteWorkspaceHref(focusQuote) : '/app/quotes'} className="inline-flex w-fit shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+                {focusQuote ? 'Open quote' : 'Open quotes'}
               </Link>
               <Link to="/app/revenue" className="inline-flex w-fit shrink-0 rounded-full border border-cyan-200 bg-white px-4 py-2 text-sm font-bold text-cyan-700">
                 Open revenue view

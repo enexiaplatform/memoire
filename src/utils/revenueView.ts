@@ -2,6 +2,7 @@ import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import {
   getQuoteCommercialStage,
   getQuoteRisk,
+  getQuoteWorkspaceHref,
   type CommercialStage,
   type QuoteRecord,
   type QuoteRisk,
@@ -104,7 +105,7 @@ function buildQuoteRevenueRisks(quotes: QuoteRecord[]): RevenueActionItem[] {
       status: stage,
       risk: mappedRisk,
       nextAction: quote.nextAction || defaultQuoteAction(risk, stage),
-      href: '/app/quotes',
+      href: getQuoteWorkspaceHref(quote),
       source: 'Quote' as const,
     }];
   });

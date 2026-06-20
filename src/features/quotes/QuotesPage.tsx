@@ -41,6 +41,7 @@ export function QuotesPage() {
   const requestedAccountName = searchParams.get('accountName') || '';
   const requestedOpportunityId = searchParams.get('opportunityId') || '';
   const requestedOpportunityName = searchParams.get('opportunityName') || '';
+  const requestedQuoteId = searchParams.get('quoteId') || '';
   const requestedSearch = requestedOpportunityName || requestedAccountName;
   const createRequested = searchParams.get('create') === '1';
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
@@ -150,6 +151,26 @@ export function QuotesPage() {
     setSaveState('idle');
     setMessage('');
   };
+
+  useEffect(() => {
+    if (!requestedQuoteId || loading) return;
+
+    const quote = quotes.find((item) => item.id === requestedQuoteId);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('quoteId');
+    setSearchParams(nextParams, { replace: true });
+
+    if (!quote) {
+      setMessage('Quote not found. Review the current quote list.');
+      return;
+    }
+
+    setEditingQuote(quote);
+    setForm(quoteToInput(quote));
+    setPanelOpen(true);
+    setSaveState('idle');
+    setMessage('');
+  }, [loading, quotes, requestedQuoteId, searchParams, setSearchParams]);
 
   const closePanel = () => {
     setPanelOpen(false);

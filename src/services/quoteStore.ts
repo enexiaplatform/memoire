@@ -12,7 +12,7 @@ import {
   getNextCommercialProgressAction,
 } from '../utils/commercialFulfillment';
 
-export { getNextCommercialProgressAction, getQuoteCommercialStage } from '../utils/commercialFulfillment';
+export { getNextCommercialProgressAction, getQuoteCommercialStage, getQuoteWorkspaceHref } from '../utils/commercialFulfillment';
 export type { CommercialProgressAction, CommercialStage } from '../utils/commercialFulfillment';
 
 export const QUOTE_STORAGE_KEY = 'memoire.quotes.v1';

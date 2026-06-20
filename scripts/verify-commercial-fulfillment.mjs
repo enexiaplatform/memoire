@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   getCommercialCheckpointRisk,
   getNextCommercialProgressAction,
+  getQuoteWorkspaceHref,
   getQuoteCommercialStage,
 } from '../src/utils/commercialFulfillment.ts';
 import { formatCompactCurrencyAmount } from '../src/utils/currency.ts';
@@ -32,5 +33,6 @@ assert.equal(getNextCommercialProgressAction({ ...base, poStatus: 'Received', de
 assert.equal(getNextCommercialProgressAction({ ...base, poStatus: 'Received', deliveryStatus: 'Delivered', paymentStatus: 'Paid' }), null);
 assert.equal(formatCompactCurrencyAmount(4_400_000_000, 'VND').endsWith(' VND'), true);
 assert.equal(formatCompactCurrencyAmount(4_400_000_000, 'VND').length < '4,400,000,000 VND'.length, true);
+assert.equal(getQuoteWorkspaceHref({ id: 'quote/a&b' }), '/app/quotes?quoteId=quote%2Fa%26b');
 
 console.log('Commercial fulfillment verification passed.');

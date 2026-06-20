@@ -66,6 +66,10 @@ export function getNextCommercialProgressAction(quote: CommercialProgress): Comm
   return null;
 }
 
+export function getQuoteWorkspaceHref(quote: { id: string }) {
+  return `/app/quotes?quoteId=${encodeURIComponent(quote.id)}`;
+}
+
 function isPast(dateKey: string, today: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(dateKey) && dateKey < today;
 }
