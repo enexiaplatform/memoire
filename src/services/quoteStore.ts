@@ -9,10 +9,11 @@ import {
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import {
   getCommercialCheckpointRisk,
+  getNextCommercialProgressAction,
 } from '../utils/commercialFulfillment';
 
-export { getQuoteCommercialStage } from '../utils/commercialFulfillment';
-export type { CommercialStage } from '../utils/commercialFulfillment';
+export { getNextCommercialProgressAction, getQuoteCommercialStage } from '../utils/commercialFulfillment';
+export type { CommercialProgressAction, CommercialStage } from '../utils/commercialFulfillment';
 
 export const QUOTE_STORAGE_KEY = 'memoire.quotes.v1';
 
@@ -178,6 +179,37 @@ export function updateQuote(quote: QuoteRecord, input: QuoteInput) {
   return updated;
 }
 
+export function advanceQuoteCommercialProgress(quote: QuoteRecord) {
+  const action = getNextCommercialProgressAction(quote);
+  if (!action) return null;
+
+  const { id, createdAt, updatedAt, ...input } = quote;
+  void id;
+  void createdAt;
+  void updatedAt;
+
+  if (action.kind === 'receive-po') {
+    return updateQuote(quote, {
+      ...input,
+      poStatus: 'Received',
+      nextAction: action.nextAction,
+    });
+  }
+  if (action.kind === 'mark-delivered') {
+    return updateQuote(quote, {
+      ...input,
+      deliveryStatus: 'Delivered',
+      paymentStatus: quote.paymentStatus === 'Paid' ? 'Paid' : 'Due',
+      nextAction: action.nextAction,
+    });
+  }
+  return updateQuote(quote, {
+    ...input,
+    paymentStatus: 'Paid',
+    nextAction: action.nextAction,
+  });
+}
+
 export function deleteQuote(quoteId: string) {
   const saved = saveQuotes(loadQuotes().filter((item) => item.id !== quoteId));
   deleteCloudJsonRecordForCurrentUser('quotes', quoteId);
@@ -207,6 +239,7 @@ export function getQuoteRisk(quote: QuoteRecord): QuoteRisk {
   if (activeQuote && quote.validUntil && daysUntil(quote.validUntil) <= 7) return 'Expiring soon';
   const checkpointRisk = getCommercialCheckpointRisk(quote);
   if (checkpointRisk) return checkpointRisk;
+  if (quote.status === 'Accepted' && quote.paymentStatus === 'Paid') return 'None';
   if (quote.status === 'Accepted' && (!quote.paymentTerm.trim() || !quote.nextAction.trim())) return 'Needs commercial follow-up';
   if ((quote.discount !== null && quote.discount >= 20) || (quote.grossMarginEstimate !== null && quote.grossMarginEstimate < 25)) return 'Margin check';
   return 'None';

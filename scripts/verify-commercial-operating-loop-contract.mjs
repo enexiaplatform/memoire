@@ -212,6 +212,7 @@ for (const marker of [
   'DeliveryStatus',
   'PaymentStatus',
   'getCommercialCheckpointRisk',
+  'getNextCommercialProgressAction',
   'getQuoteCommercialStage',
 ]) {
   requireIncludes(quoteStore, marker, `Commercial fulfillment quote model missing marker: ${marker}`);
@@ -229,6 +230,11 @@ for (const marker of ['pendingDelivery', "'Waiting on delivery'", "'Payment over
 
 requireIncludes(packageJson, 'npm run verify:commercial-fulfillment',
   'npm run check does not include commercial fulfillment verification');
+
+const dashboardPage = read('src/features/dashboard/DashboardPage.tsx');
+for (const marker of ['advanceQuoteCommercialProgress', 'commercialProgressMessage', 'onAdvanceQuote']) {
+  requireIncludes(dashboardPage, marker, `Today quick commercial checkpoint missing marker: ${marker}`);
+}
 
 if (failures.length > 0) {
   console.error('Commercial operating-loop contract verification failed:');

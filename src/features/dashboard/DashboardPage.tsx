@@ -25,7 +25,14 @@ import type { AccountMemoryRecord } from '../../services/accountStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import { type SalesActivityRecord } from '../../services/salesActivityStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
-import { getQuoteRisk, quoteRiskTone, summarizeQuotes, type QuoteRecord } from '../../services/quoteStore';
+import {
+  advanceQuoteCommercialProgress,
+  getNextCommercialProgressAction,
+  getQuoteRisk,
+  quoteRiskTone,
+  summarizeQuotes,
+  type QuoteRecord,
+} from '../../services/quoteStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
 import { type SalesAssetRecord } from '../../services/salesAssetStore';
@@ -42,7 +49,7 @@ import {
   type RecentActivityItem,
 } from '../../utils/salesCommandCenter';
 import { buildRevenueView, type RevenueActionItem, type RevenueViewSummary } from '../../utils/revenueView';
-import { formatCurrencyAmount } from '../../utils/currency';
+import { formatCompactCurrencyAmount, formatCurrencyAmount } from '../../utils/currency';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { loadSampleDataset } from '../../utils/sampleData';
 import { analyzeMeddicLitePipeline } from '../../utils/meddicLite';
@@ -143,6 +150,7 @@ export function DashboardPage() {
   const [advancedInsightsOpen, setAdvancedInsightsOpen] = useState(false);
   const [setupToolsOpen, setSetupToolsOpen] = useState(false);
   const [workspaceSyncing, setWorkspaceSyncing] = useState(false);
+  const [commercialProgressMessage, setCommercialProgressMessage] = useState('');
   const sampleDataActive = hasLocalSampleData();
 
   const refreshDashboard = useCallback(async (options: DashboardLoadOptions = {}) => {
@@ -257,6 +265,17 @@ export function DashboardPage() {
     setTrialChecklistState(markTrialActivationChecklistItemComplete(id));
   };
 
+  const handleAdvanceQuote = (quote: QuoteRecord) => {
+    const action = getNextCommercialProgressAction(quote);
+    const updated = advanceQuoteCommercialProgress(quote);
+    if (!action || !updated) return;
+    setData((current) => ({
+      ...current,
+      quotes: current.quotes.map((item) => (item.id === updated.id ? updated : item)),
+    }));
+    setCommercialProgressMessage(`${quote.accountName}: ${action.successMessage}.`);
+  };
+
   const handleCopyInterviewScript = async () => {
     try {
       await navigator.clipboard.writeText(generateInterviewScriptText());
@@ -338,7 +357,12 @@ export function DashboardPage() {
             <>
               <DailyOperatingPlan blocks={commandCenter.dailyTimeblocks} />
               <TodayFocus commandCenter={commandCenter} />
-              <QuoteFollowUpCard quotes={data.quotes} revenueView={revenueView} />
+              <QuoteFollowUpCard
+                quotes={data.quotes}
+                revenueView={revenueView}
+                progressMessage={commercialProgressMessage}
+                onAdvanceQuote={handleAdvanceQuote}
+              />
               <DashboardPrimaryWork commandCenter={commandCenter} signal={pipelineReviewSignal} />
               <details
                 className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
@@ -862,11 +886,26 @@ function timeToMinutes(time: string) {
   return (Number.isFinite(hours) ? hours : 0) * 60 + (Number.isFinite(minutes) ? minutes : 0);
 }
 
-function QuoteFollowUpCard({ quotes, revenueView }: { quotes: QuoteRecord[]; revenueView: RevenueViewSummary }) {
+function QuoteFollowUpCard({
+  quotes,
+  revenueView,
+  progressMessage,
+  onAdvanceQuote,
+}: {
+  quotes: QuoteRecord[];
+  revenueView: RevenueViewSummary;
+  progressMessage: string;
+  onAdvanceQuote: (quote: QuoteRecord) => void;
+}) {
   const summary = summarizeQuotes(quotes);
   const topQuote = summary.topActionQuote;
-  const risk = topQuote ? getQuoteRisk(topQuote) : null;
-  const atRiskLabel = formatCurrencyAmount(revenueView.atRiskRevenue, revenueView.topAction?.currency || 'VND');
+  const revenueQuote = revenueView.topAction?.source === 'Quote'
+    ? quotes.find((quote) => `quote-${quote.id}` === revenueView.topAction?.id) || null
+    : null;
+  const focusQuote = revenueQuote || topQuote;
+  const progressAction = focusQuote ? getNextCommercialProgressAction(focusQuote) : null;
+  const risk = focusQuote ? getQuoteRisk(focusQuote) : null;
+  const atRiskLabel = formatCompactCurrencyAmount(revenueView.atRiskRevenue, revenueView.topAction?.currency || 'VND');
 
   if (quotes.length === 0) {
     return (
@@ -909,17 +948,44 @@ function QuoteFollowUpCard({ quotes, revenueView }: { quotes: QuoteRecord[]; rev
           <Metric label="Expiring" value={summary.expiringSoon} tone={summary.expiringSoon ? 'amber' : 'green'} />
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link to="/app/quotes" className="inline-flex w-fit shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-            Open quotes
-          </Link>
-          <Link to="/app/revenue" className="inline-flex w-fit shrink-0 rounded-full border border-cyan-200 bg-white px-4 py-2 text-sm font-bold text-cyan-700">
-            Open revenue view
-          </Link>
+          {focusQuote && progressAction ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onAdvanceQuote(focusQuote)}
+                className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                {progressAction.label}
+              </button>
+              <Link
+                to={`/app/quotes?accountName=${encodeURIComponent(focusQuote.accountName)}`}
+                className="inline-flex w-fit shrink-0 rounded-full border border-cyan-200 bg-white px-4 py-2 text-sm font-bold text-cyan-700"
+              >
+                Open quote
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link to="/app/quotes" className="inline-flex w-fit shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+                Open quotes
+              </Link>
+              <Link to="/app/revenue" className="inline-flex w-fit shrink-0 rounded-full border border-cyan-200 bg-white px-4 py-2 text-sm font-bold text-cyan-700">
+                Open revenue view
+              </Link>
+            </>
+          )}
         </div>
       </div>
-      {topQuote && risk && risk !== 'None' && (
+      {focusQuote && risk && risk !== 'None' && (
         <div className="mt-3">
           <Badge label={risk} tone={quoteRiskTone(risk)} />
+        </div>
+      )}
+      {progressMessage && (
+        <div role="status" className="mt-3 inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm font-bold text-emerald-700">
+          <CheckCircle2 className="h-4 w-4" />
+          {progressMessage}
         </div>
       )}
     </section>
