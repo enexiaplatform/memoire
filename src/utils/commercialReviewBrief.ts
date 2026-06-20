@@ -43,6 +43,7 @@ export function buildCommercialReviewBrief(input: {
     opportunities: input.opportunities,
     accounts: input.accounts,
     briefs: input.briefs,
+    commercialActions: revenue.actionItems,
   });
   const pipeline = buildPipelineReviewDashboardSignal(input.briefs);
   const quoteSummary = summarizeQuotes(input.quotes);
