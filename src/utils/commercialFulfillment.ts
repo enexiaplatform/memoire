@@ -1,7 +1,7 @@
 export type CommercialStage = 'Draft' | 'Quoted' | 'Pending PO' | 'Pending delivery' | 'Pending payment' | 'Paid' | 'Closed';
 export type CommercialCheckpointRisk = 'PO follow-up' | 'Delivery overdue' | 'Payment overdue' | null;
 export type CommercialProgressAction = {
-  kind: 'receive-po' | 'mark-delivered' | 'mark-paid';
+  kind: 'receive-po' | 'schedule-delivery' | 'mark-delivered' | 'mark-paid';
   label: string;
   successMessage: string;
   nextAction: string;
@@ -47,6 +47,14 @@ export function getNextCommercialProgressAction(quote: CommercialProgress): Comm
       nextAction: 'Confirm delivery date and owner.',
     };
   }
+  if (stage === 'Pending delivery' && quote.deliveryStatus === 'Not scheduled') {
+    return {
+      kind: 'schedule-delivery',
+      label: 'Schedule delivery',
+      successMessage: 'Delivery scheduled',
+      nextAction: 'Confirm delivery completion and handover.',
+    };
+  }
   if (stage === 'Pending delivery' && quote.deliveryStatus === 'Scheduled') {
     return {
       kind: 'mark-delivered',
@@ -66,10 +74,31 @@ export function getNextCommercialProgressAction(quote: CommercialProgress): Comm
   return null;
 }
 
+export function buildDeliveryScheduleUpdate(quote: CommercialProgress) {
+  const action = getNextCommercialProgressAction(quote);
+  if (action?.kind !== 'schedule-delivery' || !isDateKey(quote.expectedDeliveryDate)) return null;
+  return {
+    deliveryStatus: 'Scheduled' as const,
+    expectedDeliveryDate: quote.expectedDeliveryDate,
+    nextAction: action.nextAction,
+  };
+}
+
+export function requiresExpectedDeliveryDate(quote: CommercialProgress) {
+  return quote.status === 'Accepted'
+    && quote.poStatus === 'Received'
+    && quote.deliveryStatus !== 'Delivered'
+    && !isDateKey(quote.expectedDeliveryDate);
+}
+
 export function getQuoteWorkspaceHref(quote: { id: string }) {
   return `/app/quotes?quoteId=${encodeURIComponent(quote.id)}`;
 }
 
 function isPast(dateKey: string, today: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(dateKey) && dateKey < today;
+  return isDateKey(dateKey) && dateKey < today;
+}
+
+function isDateKey(dateKey: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateKey);
 }

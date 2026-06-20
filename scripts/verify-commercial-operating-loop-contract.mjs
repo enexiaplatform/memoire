@@ -219,7 +219,7 @@ for (const marker of [
 }
 
 const quotesPage = read('src/features/quotes/QuotesPage.tsx');
-for (const marker of ['Commercial progress', 'Expected delivery', 'Payment due', 'requestedQuoteId']) {
+for (const marker of ['Commercial progress', 'Expected delivery', 'Payment due', 'requestedQuoteId', 'Schedule delivery']) {
   requireIncludes(quotesPage, marker, `Quote Tracker fulfillment UI missing marker: ${marker}`);
 }
 

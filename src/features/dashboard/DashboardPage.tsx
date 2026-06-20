@@ -1135,20 +1135,32 @@ function QuoteFollowUpCard({
         <div className="flex flex-wrap gap-2">
           {focusQuote && progressAction ? (
             <>
-              <button
-                type="button"
-                onClick={() => onAdvanceQuote(focusQuote)}
-                className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                {progressAction.label}
-              </button>
-              <Link
-                to={getQuoteWorkspaceHref(focusQuote)}
-                className="inline-flex w-fit shrink-0 rounded-full border border-cyan-200 bg-white px-4 py-2 text-sm font-bold text-cyan-700"
-              >
-                Open quote
-              </Link>
+              {progressAction.kind === 'schedule-delivery' ? (
+                <Link
+                  to={getQuoteWorkspaceHref(focusQuote)}
+                  className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
+                >
+                  <CalendarDays className="h-4 w-4" />
+                  {progressAction.label}
+                </Link>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onAdvanceQuote(focusQuote)}
+                    className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    {progressAction.label}
+                  </button>
+                  <Link
+                    to={getQuoteWorkspaceHref(focusQuote)}
+                    className="inline-flex w-fit shrink-0 rounded-full border border-cyan-200 bg-white px-4 py-2 text-sm font-bold text-cyan-700"
+                  >
+                    Open quote
+                  </Link>
+                </>
+              )}
             </>
           ) : (
             <>

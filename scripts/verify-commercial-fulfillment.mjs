@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import {
+  buildDeliveryScheduleUpdate,
   getCommercialCheckpointRisk,
   getNextCommercialProgressAction,
   getQuoteWorkspaceHref,
   getQuoteCommercialStage,
+  requiresExpectedDeliveryDate,
 } from '../src/utils/commercialFulfillment.ts';
 import { formatCompactCurrencyAmount } from '../src/utils/currency.ts';
 
@@ -27,12 +29,21 @@ assert.equal(getCommercialCheckpointRisk({ ...base, poStatus: 'Received', delive
 assert.equal(getCommercialCheckpointRisk({ ...base, poStatus: 'Received', deliveryStatus: 'Delivered', paymentStatus: 'Paid', paymentDueDate: '2026-06-19' }, '2026-06-20'), null);
 
 assert.equal(getNextCommercialProgressAction(base)?.kind, 'receive-po');
-assert.equal(getNextCommercialProgressAction({ ...base, poStatus: 'Received', deliveryStatus: 'Not scheduled' }), null);
+assert.equal(getNextCommercialProgressAction({ ...base, poStatus: 'Received', deliveryStatus: 'Not scheduled' })?.kind, 'schedule-delivery');
 assert.equal(getNextCommercialProgressAction({ ...base, poStatus: 'Received', deliveryStatus: 'Scheduled' })?.kind, 'mark-delivered');
 assert.equal(getNextCommercialProgressAction({ ...base, poStatus: 'Received', deliveryStatus: 'Delivered' })?.kind, 'mark-paid');
 assert.equal(getNextCommercialProgressAction({ ...base, poStatus: 'Received', deliveryStatus: 'Delivered', paymentStatus: 'Paid' }), null);
 assert.equal(formatCompactCurrencyAmount(4_400_000_000, 'VND').endsWith(' VND'), true);
 assert.equal(formatCompactCurrencyAmount(4_400_000_000, 'VND').length < '4,400,000,000 VND'.length, true);
 assert.equal(getQuoteWorkspaceHref({ id: 'quote/a&b' }), '/app/quotes?quoteId=quote%2Fa%26b');
+assert.equal(buildDeliveryScheduleUpdate({ ...base, poStatus: 'Received' }), null);
+assert.deepEqual(buildDeliveryScheduleUpdate({ ...base, poStatus: 'Received', expectedDeliveryDate: '2026-06-28' }), {
+  deliveryStatus: 'Scheduled',
+  expectedDeliveryDate: '2026-06-28',
+  nextAction: 'Confirm delivery completion and handover.',
+});
+assert.equal(requiresExpectedDeliveryDate({ ...base, poStatus: 'Received' }), true);
+assert.equal(requiresExpectedDeliveryDate({ ...base, poStatus: 'Received', deliveryStatus: 'Scheduled' }), true);
+assert.equal(requiresExpectedDeliveryDate({ ...base, poStatus: 'Received', deliveryStatus: 'Scheduled', expectedDeliveryDate: '2026-06-28' }), false);
 
 console.log('Commercial fulfillment verification passed.');

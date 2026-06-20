@@ -8,18 +8,21 @@ import { isSupabaseConfigured } from '../../lib/demoMode';
 import type { AccountMemoryRecord } from '../../services/accountStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import {
+  buildDeliveryScheduleUpdate,
   createQuote,
   deliveryStatuses,
   deleteQuote,
   emptyQuoteInput,
   getQuoteCommercialStage,
   getQuoteRisk,
+  getNextCommercialProgressAction,
   loadQuotes,
   loadQuotesForUser,
   paymentStatuses,
   purchaseOrderStatuses,
   quoteRiskTone,
   quoteStatuses,
+  requiresExpectedDeliveryDate,
   summarizeQuotes,
   updateQuote,
   type QuoteInput,
@@ -192,15 +195,24 @@ export function QuotesPage() {
       return;
     }
 
+    const deliverySchedule = buildDeliveryScheduleUpdate(form);
+    if (requiresExpectedDeliveryDate(form)) {
+      setSaveState('error');
+      setMessage('Add the expected delivery date.');
+      return;
+    }
+
     setSaveState('saving');
-    const saved = editingQuote ? updateQuote(editingQuote, form) : createQuote(form);
+    const preparedForm = deliverySchedule ? { ...form, ...deliverySchedule } : form;
+    const saved = editingQuote ? updateQuote(editingQuote, preparedForm) : createQuote(preparedForm);
     setQuotes([
       saved,
       ...quotes.filter((quote) => quote.id !== saved.id),
     ]);
     setSaveState('saved');
-    setMessage(editingQuote ? 'Quote updated.' : 'Quote created.');
+    setMessage(deliverySchedule ? 'Delivery scheduled.' : editingQuote ? 'Quote updated.' : 'Quote created.');
     setEditingQuote(saved);
+    setForm(quoteToInput(saved));
   };
 
   const removeQuote = (quote: QuoteRecord) => {
@@ -424,6 +436,9 @@ function QuotePanel({
   onDelete?: () => void;
 }) {
   const risk = editingQuote ? getQuoteRisk({ ...editingQuote, ...form, id: editingQuote.id, createdAt: editingQuote.createdAt, updatedAt: editingQuote.updatedAt }) : null;
+  const progressAction = getNextCommercialProgressAction(form);
+  const deliverySchedulingRequired = progressAction?.kind === 'schedule-delivery';
+  const deliveryDateMissing = requiresExpectedDeliveryDate(form);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-navy/30">
@@ -447,6 +462,12 @@ function QuotePanel({
 
           {form.status === 'Accepted' && (
             <FormSection title="Commercial progress">
+              {deliveryDateMissing && (
+                <div className="flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-bold text-brand-blue md:col-span-2">
+                  <CalendarDays className="h-4 w-4 shrink-0" />
+                  Set the expected delivery date to continue.
+                </div>
+              )}
               <SelectInput label="PO" value={form.poStatus} onChange={(value) => onChange('poStatus', value as PurchaseOrderStatus)}>
                 {purchaseOrderStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
               </SelectInput>
@@ -535,7 +556,7 @@ function QuotePanel({
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={onSave} disabled={saveState === 'saving'} className="rounded-full bg-navy px-5 py-2 text-sm font-bold text-white disabled:opacity-60">
-              {saveState === 'saving' ? 'Saving...' : 'Save quote'}
+              {saveState === 'saving' ? 'Saving...' : deliverySchedulingRequired ? 'Schedule delivery' : 'Save quote'}
             </button>
           </div>
         </div>
