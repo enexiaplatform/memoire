@@ -10,6 +10,7 @@ import { invalidateWorkspaceDataCache } from '../services/workspaceDataCache';
 import { classifySalesActivity } from './salesActivityClassifier';
 import { generatePipelineDefenseBriefFromOpportunities } from './opportunityToPipelineBrief';
 import { clearDemoJourneyCompletion } from './demoJourney';
+import { clearDailyExecutionState } from './dailyExecution';
 import {
   MULTI_BRIEF_STORAGE_KEY,
   loadPipelineDefenseBriefStore,
@@ -132,6 +133,7 @@ export function clearSampleDataset() {
   removeSampleRecords(QUOTE_STORAGE_KEY);
   removeSampleBriefs();
   clearDemoJourneyCompletion();
+  clearDailyExecutionState('demo');
   clearSampleDataFlag();
   invalidateWorkspaceDataCache();
   if (typeof window !== 'undefined') {

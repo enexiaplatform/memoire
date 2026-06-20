@@ -6,6 +6,7 @@ import {
   BookOpen,
   CalendarDays,
   CheckCircle2,
+  Clock3,
   ClipboardList,
   FileCheck2,
   FileText,
@@ -13,6 +14,7 @@ import {
   Plus,
   RefreshCw,
   ReceiptText,
+  RotateCcw,
   ShieldCheck,
   Target,
   Upload,
@@ -99,6 +101,12 @@ import {
 } from '../../utils/salesOperatingSetup';
 import { generateInterviewScriptText } from '../../utils/demoFeedback';
 import { markDemoJourneyStepComplete } from '../../utils/demoJourney';
+import {
+  clearDailyExecutionDecision,
+  loadDailyExecutionState,
+  saveDailyExecutionDecision,
+  type DailyExecutionStatus,
+} from '../../utils/dailyExecution';
 
 type DashboardData = {
   activities: SalesActivityRecord[];
@@ -127,6 +135,8 @@ type DashboardCommercialAction = {
 
 export function DashboardPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
+  const sampleDataActive = hasLocalSampleData();
+  const dailyExecutionScope = sampleDataActive ? 'demo' : user?.id ? `user-${user.id}` : 'guest';
   const [data, setData] = useState<DashboardData>({
     activities: [],
     opportunities: [],
@@ -151,7 +161,9 @@ export function DashboardPage() {
   const [setupToolsOpen, setSetupToolsOpen] = useState(false);
   const [workspaceSyncing, setWorkspaceSyncing] = useState(false);
   const [commercialProgressMessage, setCommercialProgressMessage] = useState('');
-  const sampleDataActive = hasLocalSampleData();
+  const [dailyExecutionState, setDailyExecutionState] = useState(() => loadDailyExecutionState(dailyExecutionScope));
+  const [dailyExecutionMessage, setDailyExecutionMessage] = useState('');
+  const [lastDailyExecutionActionId, setLastDailyExecutionActionId] = useState('');
 
   const refreshDashboard = useCallback(async (options: DashboardLoadOptions = {}) => {
     const sampleActive = hasLocalSampleData();
@@ -193,6 +205,11 @@ export function DashboardPage() {
       markDemoJourneyStepComplete('review-signals', 'Demo dashboard reviewed');
     }
   }, [sampleDataActive]);
+  useEffect(() => {
+    setDailyExecutionState(loadDailyExecutionState(dailyExecutionScope));
+    setDailyExecutionMessage('');
+    setLastDailyExecutionActionId('');
+  }, [dailyExecutionScope]);
   const revenueView = useMemo(() => buildRevenueView({
     opportunities: data.opportunities,
     quotes: data.quotes,
@@ -200,9 +217,20 @@ export function DashboardPage() {
   const commandCenter = useMemo(() => buildTodayCommandCenter({
     ...data,
     commercialActions: revenueView.actionItems,
-  }), [data, revenueView.actionItems]);
+    executionDecisions: dailyExecutionState.decisions,
+  }), [dailyExecutionState.decisions, data, revenueView.actionItems]);
   const pipelineReviewSignal = useMemo(() => buildPipelineReviewDashboardSignal(data.briefs), [data.briefs]);
-  const commercialAction = useMemo(() => buildDashboardCommercialAction(revenueView), [revenueView]);
+  const decidedActionIds = useMemo(() => (
+    new Set(dailyExecutionState.decisions.map((decision) => decision.actionId))
+  ), [dailyExecutionState.decisions]);
+  const commercialAction = useMemo(() => (
+    buildDashboardCommercialAction(revenueView, decidedActionIds)
+  ), [decidedActionIds, revenueView]);
+  const activeRevenueAction = useMemo(() => (
+    revenueView.actionItems.find((action) => (
+      action.source === 'Quote' && !decidedActionIds.has(`commercial-${action.id}`)
+    )) || null
+  ), [decidedActionIds, revenueView.actionItems]);
   const dashboardInsights = useMemo(() => (
     advancedInsightsOpen ? buildDashboardInsights(data) : null
   ), [advancedInsightsOpen, data]);
@@ -266,6 +294,25 @@ export function DashboardPage() {
 
   const handleMarkTrialChecklistItem = (id: TrialActivationChecklistItemId) => {
     setTrialChecklistState(markTrialActivationChecklistItemComplete(id));
+  };
+
+  const handleDailyExecutionDecision = (action: CommandActionItem, status: DailyExecutionStatus) => {
+    setDailyExecutionState((current) => (
+      saveDailyExecutionDecision(dailyExecutionScope, current, action.id, status)
+    ));
+    setLastDailyExecutionActionId(action.id);
+    setDailyExecutionMessage(status === 'Done'
+      ? `${action.title} completed for today. Next action is ready.`
+      : `${action.title} moved to the 16:30 closeout.`);
+  };
+
+  const handleUndoDailyExecution = () => {
+    if (!lastDailyExecutionActionId) return;
+    setDailyExecutionState((current) => (
+      clearDailyExecutionDecision(dailyExecutionScope, current, lastDailyExecutionActionId)
+    ));
+    setDailyExecutionMessage('Action restored to today.');
+    setLastDailyExecutionActionId('');
   };
 
   const handleAdvanceQuote = (quote: QuoteRecord) => {
@@ -358,11 +405,18 @@ export function DashboardPage() {
             </section>
           ) : (
             <>
-              <DailyOperatingPlan blocks={commandCenter.dailyTimeblocks} />
+              <DailyOperatingPlan
+                blocks={commandCenter.dailyTimeblocks}
+                message={dailyExecutionMessage}
+                canUndo={Boolean(lastDailyExecutionActionId)}
+                onDecision={handleDailyExecutionDecision}
+                onUndo={handleUndoDailyExecution}
+              />
               <TodayFocus commandCenter={commandCenter} />
               <QuoteFollowUpCard
                 quotes={data.quotes}
                 revenueView={revenueView}
+                activeTopAction={activeRevenueAction}
                 progressMessage={commercialProgressMessage}
                 onAdvanceQuote={handleAdvanceQuote}
               />
@@ -523,8 +577,13 @@ function buildDashboardInsights(data: DashboardData) {
   };
 }
 
-function buildDashboardCommercialAction(revenueView: RevenueViewSummary): DashboardCommercialAction | null {
-  const topAction = revenueView.topAction;
+function buildDashboardCommercialAction(
+  revenueView: RevenueViewSummary,
+  decidedActionIds: Set<string> = new Set(),
+): DashboardCommercialAction | null {
+  const topAction = revenueView.actionItems.find((action) => (
+    !decidedActionIds.has(`commercial-${action.id}`)
+  )) || null;
   if (topAction) {
     const amountLabel = formatCurrencyAmount(topAction.amount, topAction.currency);
     return {
@@ -539,7 +598,7 @@ function buildDashboardCommercialAction(revenueView: RevenueViewSummary): Dashbo
     };
   }
 
-  if (revenueView.pendingPo > 0) {
+  if (revenueView.pendingPo > 0 && decidedActionIds.size === 0) {
     const amountLabel = formatCurrencyAmount(revenueView.pendingPo, 'VND');
     return {
       title: 'Confirm pending PO owners',
@@ -775,16 +834,31 @@ function DashboardPrimaryWork({
   );
 }
 
-function DailyOperatingPlan({ blocks }: { blocks: DailyTimeblockItem[] }) {
+function DailyOperatingPlan({
+  blocks,
+  message,
+  canUndo,
+  onDecision,
+  onUndo,
+}: {
+  blocks: DailyTimeblockItem[];
+  message: string;
+  canUndo: boolean;
+  onDecision: (action: CommandActionItem, status: DailyExecutionStatus) => void;
+  onUndo: () => void;
+}) {
   const activeBlock = getActiveTimeblock(blocks);
   const activeBlockId = activeBlock?.id || '';
   const firstAction = activeBlock?.actions[0];
-  const criticalCommercialAction = firstAction?.source === 'Quote' && firstAction.priority === 'Critical'
+  const overridingAction = firstAction && (
+    firstAction.executionStatus === 'Deferred' ||
+    (firstAction.source === 'Quote' && firstAction.priority === 'Critical')
+  )
     ? firstAction
     : null;
-  const activeHref = criticalCommercialAction?.href || activeBlock?.href || '/app/dashboard';
-  const activeFocus = criticalCommercialAction?.title || activeBlock?.focus || '';
-  const activePriority = criticalCommercialAction?.priority || activeBlock?.priority || 'Medium';
+  const activeHref = overridingAction?.href || activeBlock?.href || '/app/dashboard';
+  const activeFocus = overridingAction?.title || activeBlock?.focus || '';
+  const activePriority = overridingAction?.priority || activeBlock?.priority || 'Medium';
 
   return (
     <section className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-5 shadow-sm">
@@ -802,13 +876,10 @@ function DailyOperatingPlan({ blocks }: { blocks: DailyTimeblockItem[] }) {
       </div>
 
       {activeBlock && (
-        <Link
-          to={activeHref}
-          className="mt-4 grid gap-3 rounded-xl border border-emerald-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 hover:shadow-md lg:grid-cols-[1fr_auto]"
-        >
-          <div className="min-w-0">
+        <div className="mt-4 grid gap-4 rounded-xl border border-emerald-200 bg-white p-4 shadow-sm lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <Link to={activeHref} className="min-w-0 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge label="Do now" tone={activePriority === 'Critical' ? 'red' : activePriority === 'High' ? 'amber' : 'green'} />
+              <Badge label={firstAction?.executionStatus === 'Deferred' ? 'Later' : 'Do now'} tone={activePriority === 'Critical' ? 'red' : activePriority === 'High' ? 'amber' : 'green'} />
               <span className="text-xs font-black uppercase tracking-wide text-emerald-700">
                 {activeBlock.startTime}-{activeBlock.endTime}
               </span>
@@ -823,14 +894,59 @@ function DailyOperatingPlan({ blocks }: { blocks: DailyTimeblockItem[] }) {
                 {firstAction ? firstAction.title : 'Create one evidence-producing action.'}
               </p>
             )}
-          </div>
-          <div className="flex items-center justify-between gap-3 lg:justify-end">
+          </Link>
+          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800">
               {activeBlock.title}
             </span>
-            <ArrowRight className="h-5 w-5 text-emerald-700" />
+            {firstAction && (
+              <button
+                type="button"
+                onClick={() => onDecision(firstAction, 'Done')}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800"
+                title="Complete this action for today"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Done
+              </button>
+            )}
+            {firstAction && firstAction.executionStatus !== 'Deferred' && (
+              <button
+                type="button"
+                onClick={() => onDecision(firstAction, 'Deferred')}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50"
+                title="Move this action to the 16:30 closeout"
+              >
+                <Clock3 className="h-4 w-4" />
+                Later
+              </button>
+            )}
+            <Link
+              to={activeHref}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+              title="Open action"
+              aria-label={`Open ${activeFocus}`}
+            >
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
-        </Link>
+        </div>
+      )}
+
+      {message && (
+        <div role="status" className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-900">
+          <span>{message}</span>
+          {canUndo && (
+            <button
+              type="button"
+              onClick={onUndo}
+              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 font-bold text-emerald-800 hover:bg-emerald-50"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Undo
+            </button>
+          )}
+        </div>
       )}
 
       <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-4">
@@ -907,20 +1023,21 @@ function timeToMinutes(time: string) {
 function QuoteFollowUpCard({
   quotes,
   revenueView,
+  activeTopAction,
   progressMessage,
   onAdvanceQuote,
 }: {
   quotes: QuoteRecord[];
   revenueView: RevenueViewSummary;
+  activeTopAction: RevenueActionItem | null;
   progressMessage: string;
   onAdvanceQuote: (quote: QuoteRecord) => void;
 }) {
   const summary = summarizeQuotes(quotes);
-  const topQuote = summary.topActionQuote;
-  const revenueQuote = revenueView.topAction?.source === 'Quote'
-    ? quotes.find((quote) => `quote-${quote.id}` === revenueView.topAction?.id) || null
+  const revenueQuote = activeTopAction?.source === 'Quote'
+    ? quotes.find((quote) => `quote-${quote.id}` === activeTopAction.id) || null
     : null;
-  const focusQuote = revenueQuote || topQuote;
+  const focusQuote = revenueQuote;
   const progressAction = focusQuote ? getNextCommercialProgressAction(focusQuote) : null;
   const risk = focusQuote ? getQuoteRisk(focusQuote) : null;
   const atRiskLabel = formatCompactCurrencyAmount(revenueView.atRiskRevenue, revenueView.topAction?.currency || 'VND');
@@ -953,11 +1070,9 @@ function QuoteFollowUpCard({
             <h2 className="text-lg font-bold text-navy">Commercial follow-ups</h2>
           </div>
           <p className="mt-1 text-sm text-cyan-900/75">
-            {revenueView.topAction
-              ? `${revenueView.topAction.accountName}: ${revenueView.topAction.nextAction}`
-              : topQuote
-                ? `${topQuote.accountName}: ${topQuote.nextAction || risk || 'review quote status'}`
-                : 'No quote follow-up is blocking today.'}
+            {activeTopAction
+              ? `${activeTopAction.accountName}: ${activeTopAction.nextAction}`
+              : 'No quote follow-up is blocking today.'}
           </p>
         </div>
         <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
