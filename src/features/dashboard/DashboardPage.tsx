@@ -6,6 +6,7 @@ import {
   BookOpen,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   Clock3,
   ClipboardList,
   FileCheck2,
@@ -46,6 +47,7 @@ import {
   type AtRiskOpportunityItem,
   type CommandActionItem,
   type CommandCenter,
+  type CommandExecutionSummary,
   type CommandPriority,
   type DailyTimeblockItem,
   type RecentActivityItem,
@@ -306,13 +308,17 @@ export function DashboardPage() {
       : `${action.title} moved to the 16:30 closeout.`);
   };
 
-  const handleUndoDailyExecution = () => {
-    if (!lastDailyExecutionActionId) return;
+  const handleRestoreDailyExecution = (actionId: string) => {
     setDailyExecutionState((current) => (
-      clearDailyExecutionDecision(dailyExecutionScope, current, lastDailyExecutionActionId)
+      clearDailyExecutionDecision(dailyExecutionScope, current, actionId)
     ));
     setDailyExecutionMessage('Action restored to today.');
     setLastDailyExecutionActionId('');
+  };
+
+  const handleUndoDailyExecution = () => {
+    if (!lastDailyExecutionActionId) return;
+    handleRestoreDailyExecution(lastDailyExecutionActionId);
   };
 
   const handleAdvanceQuote = (quote: QuoteRecord) => {
@@ -409,7 +415,9 @@ export function DashboardPage() {
                 blocks={commandCenter.dailyTimeblocks}
                 message={dailyExecutionMessage}
                 canUndo={Boolean(lastDailyExecutionActionId)}
+                execution={commandCenter.dailyExecution}
                 onDecision={handleDailyExecutionDecision}
+                onRestore={handleRestoreDailyExecution}
                 onUndo={handleUndoDailyExecution}
               />
               <TodayFocus commandCenter={commandCenter} />
@@ -838,13 +846,17 @@ function DailyOperatingPlan({
   blocks,
   message,
   canUndo,
+  execution,
   onDecision,
+  onRestore,
   onUndo,
 }: {
   blocks: DailyTimeblockItem[];
   message: string;
   canUndo: boolean;
+  execution: CommandExecutionSummary;
   onDecision: (action: CommandActionItem, status: DailyExecutionStatus) => void;
+  onRestore: (actionId: string) => void;
   onUndo: () => void;
 }) {
   const activeBlock = getActiveTimeblock(blocks);
@@ -947,6 +959,45 @@ function DailyOperatingPlan({
             </button>
           )}
         </div>
+      )}
+
+      {execution.items.length > 0 && (
+        <details className="group mt-3 rounded-lg border border-emerald-200 bg-white">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-700" />
+              <span className="shrink-0 text-xs font-bold text-navy">Today progress</span>
+              <span className="truncate text-xs text-gray-500">
+                {execution.doneCount} done · {execution.deferredCount} later
+              </span>
+            </div>
+            <ChevronDown className="h-4 w-4 shrink-0 text-gray-400 transition group-open:rotate-180" />
+          </summary>
+          <div className="space-y-2 border-t border-emerald-100 px-3 py-2">
+            {execution.items.map((item) => (
+              <div key={item.action.id} className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Badge
+                    label={item.status === 'Done' ? 'Done' : 'Later'}
+                    tone={item.status === 'Done' ? 'green' : 'amber'}
+                  />
+                  <p className="truncate text-xs font-semibold text-gray-700" title={item.action.title}>
+                    {item.action.title}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onRestore(item.action.id)}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-emerald-700 hover:bg-emerald-50"
+                  title={`Restore ${item.action.title}`}
+                  aria-label={`Restore ${item.action.title}`}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </details>
       )}
 
       <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-4">

@@ -65,6 +65,18 @@ export type RecentActivityItem = {
   linkedOpportunityName: string;
 };
 
+export type CommandExecutionDecisionItem = {
+  action: CommandActionItem;
+  status: DailyExecutionDecision['status'];
+  updatedAt: string;
+};
+
+export type CommandExecutionSummary = {
+  doneCount: number;
+  deferredCount: number;
+  items: CommandExecutionDecisionItem[];
+};
+
 export type CommandCenter = {
   todayActions: CommandActionItem[];
   overdueActions: CommandActionItem[];
@@ -73,6 +85,7 @@ export type CommandCenter = {
   atRiskOpportunities: AtRiskOpportunityItem[];
   accountsNeedingTouch: AccountTouchItem[];
   recentActivities: RecentActivityItem[];
+  dailyExecution: CommandExecutionSummary;
   thisWeekSummary: {
     activitiesThisWeek: number;
     accountsTouchedThisWeek: number;
@@ -116,15 +129,27 @@ export function buildTodayCommandCenter({
   const riskActions = activeActions(rawRiskActions);
   const commercialCommandActions = activeActions(rawCommercialActions);
   const accountTouchActions = activeActions(rawAccountTouchActions).slice(0, 3);
-  const deferredActions = dedupeActions([
+  const rawCommandActions = dedupeActions([
     ...rawCommercialActions,
     ...rawOverdueActions,
     ...rawTodayActions,
     ...rawRiskActions,
     ...rawAccountTouchActions,
-  ])
+  ]);
+  const deferredActions = rawCommandActions
     .filter((action) => decisionMap.get(action.id) === 'Deferred')
     .map((action): CommandActionItem => ({ ...action, executionStatus: 'Deferred' }));
+  const executionItems = executionDecisions
+    .flatMap((decision): CommandExecutionDecisionItem[] => {
+      const action = rawCommandActions.find((candidate) => candidate.id === decision.actionId);
+      if (!action) return [];
+      return [{
+        action: decision.status === 'Deferred' ? { ...action, executionStatus: 'Deferred' } : action,
+        status: decision.status,
+        updatedAt: decision.updatedAt,
+      }];
+    })
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
   const priorityActions = sortActions(dedupeActions([
     ...commercialCommandActions,
     ...overdueActions,
@@ -149,6 +174,11 @@ export function buildTodayCommandCenter({
     atRiskOpportunities,
     accountsNeedingTouch,
     recentActivities,
+    dailyExecution: {
+      doneCount: executionItems.filter((item) => item.status === 'Done').length,
+      deferredCount: executionItems.filter((item) => item.status === 'Deferred').length,
+      items: executionItems,
+    },
     thisWeekSummary: {
       activitiesThisWeek: getActivitiesThisWeek(activities).length,
       accountsTouchedThisWeek: countAccountsTouchedThisWeek(activities),

@@ -60,6 +60,10 @@ assert.equal(initial.dailyTimeblocks.find((block) => block.id === 'customer-exec
 
 const afterDone = commandCenter(doneState.decisions);
 assert.equal(afterDone.priorityActions.some((action) => action.id === actionId), false);
+assert.equal(afterDone.dailyExecution.doneCount, 1);
+assert.equal(afterDone.dailyExecution.deferredCount, 0);
+assert.equal(afterDone.dailyExecution.items[0]?.action.title, 'Confirm payment date.');
+assert.equal(afterDone.dailyExecution.items[0]?.status, 'Done');
 assert.equal(
   afterDone.dailyTimeblocks.find((block) => block.id === 'customer-execution')?.actions[0]?.id,
   'commercial-quote-expiring',
@@ -72,6 +76,9 @@ assert.equal(
 const deferredState = applyDailyExecutionDecision(emptyState, actionId, 'Deferred', now);
 const afterDeferred = commandCenter(deferredState.decisions);
 const closeout = afterDeferred.dailyTimeblocks.find((block) => block.id === 'capture-closeout');
+assert.equal(afterDeferred.dailyExecution.doneCount, 0);
+assert.equal(afterDeferred.dailyExecution.deferredCount, 1);
+assert.equal(afterDeferred.dailyExecution.items[0]?.action.executionStatus, 'Deferred');
 assert.equal(closeout?.actions[0]?.id, actionId);
 assert.equal(closeout?.actions[0]?.executionStatus, 'Deferred');
 assert.equal(closeout?.href, '/app/quotes');
