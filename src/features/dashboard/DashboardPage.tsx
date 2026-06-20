@@ -26,6 +26,7 @@ import { DemoJourneyCard } from '../../components/demo/DemoJourneyCard';
 import { isFounderWorkspaceEnabled, isSupabaseConfigured } from '../../lib/demoMode';
 import type { AccountMemoryRecord } from '../../services/accountStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
+import type { OperatingContextRecord } from '../../services/operatingContextStore';
 import { type SalesActivityRecord } from '../../services/salesActivityStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
 import {
@@ -121,6 +122,7 @@ type DashboardData = {
   actionOutcomes: ActionOutcomeRecord[];
   assets: SalesAssetRecord[];
   quotes: QuoteRecord[];
+  operatingContext: OperatingContextRecord[];
 };
 
 type DashboardInsights = ReturnType<typeof buildDashboardInsights>;
@@ -150,6 +152,7 @@ export function DashboardPage() {
     actionOutcomes: [],
     assets: [],
     quotes: [],
+    operatingContext: [],
   });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -422,13 +425,6 @@ export function DashboardPage() {
                 onUndo={handleUndoDailyExecution}
               />
               <TodayFocus commandCenter={commandCenter} />
-              <QuoteFollowUpCard
-                quotes={data.quotes}
-                revenueView={revenueView}
-                activeTopAction={activeRevenueAction}
-                progressMessage={commercialProgressMessage}
-                onAdvanceQuote={handleAdvanceQuote}
-              />
               <DashboardPrimaryWork commandCenter={commandCenter} signal={pipelineReviewSignal} />
               <details
                 className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
@@ -439,6 +435,13 @@ export function DashboardPage() {
                 </summary>
                 {dashboardInsights && (
                   <div className="mt-4 flex flex-col gap-4">
+                    <QuoteFollowUpCard
+                      quotes={data.quotes}
+                      revenueView={revenueView}
+                      activeTopAction={activeRevenueAction}
+                      progressMessage={commercialProgressMessage}
+                      onAdvanceQuote={handleAdvanceQuote}
+                    />
                     <ThisWeekSummary commandCenter={commandCenter} />
                     <CaptureNudgePanel nudges={dashboardInsights.captureNudges} />
                     <WeeklyExecutionHealth
@@ -1195,7 +1198,7 @@ function TodayFocus({ commandCenter }: { commandCenter: CommandCenter }) {
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-navy">Today Focus</h2>
-          <p className="text-sm text-gray-500">Start with time-sensitive actions, risk, and accounts that need a touch.</p>
+          <p className="text-sm text-gray-500">Start with must-win work, time-sensitive actions, and deals that need defense.</p>
         </div>
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -1221,11 +1224,11 @@ function TodayFocus({ commandCenter }: { commandCenter: CommandCenter }) {
           helper={commandCenter.atRiskOpportunities[0]?.reason || 'Pipeline risk is quiet.'}
         />
         <FocusCard
-          title="Accounts needing touch"
-          value={commandCenter.accountsNeedingTouch.length}
-          href="/app/accounts"
-          tone={commandCenter.accountsNeedingTouch.length ? 'amber' : 'green'}
-          helper={commandCenter.accountsNeedingTouch[0]?.accountName || 'No stale account touch needed.'}
+          title="Operating priorities"
+          value={commandCenter.operatingActions.length}
+          href="/app/operating-system"
+          tone={commandCenter.operatingActions.some((action) => action.priority === 'Critical' || action.priority === 'High') ? 'amber' : 'green'}
+          helper={commandCenter.operatingActions[0]?.title || 'No must-win action is waiting.'}
         />
       </div>
     </section>

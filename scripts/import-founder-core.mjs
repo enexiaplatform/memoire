@@ -119,7 +119,7 @@ function parseArgs(args) {
     throw new Error('At least one workbook path is required. Run with --help for usage.');
   }
   if (options.targetEmail.toLowerCase() !== TARGET_EMAIL) {
-    throw new Error(`Refusing to import into any user except ${TARGET_EMAIL}.`);
+    throw new Error('Refusing to import into any user except the fixed founder account.');
   }
 
   return options;
@@ -174,7 +174,7 @@ Usage:
 Commit requirements:
   SUPABASE_URL or VITE_SUPABASE_URL
   SUPABASE_SERVICE_ROLE_KEY
-  Target email fixed to ${TARGET_EMAIL}
+  Target account is fixed server-side.
 
 Out of scope:
   Pricing workbooks are rejected by this importer.`);
@@ -1007,13 +1007,13 @@ function countBy(items, getKey) {
 
 function printSummary(summary, options) {
   if (options.json) {
-    console.log(JSON.stringify(summary, null, 2));
+    console.log(safeJson(summary));
     return;
   }
 
   console.log('[founder-import] safe summary');
   console.log(`mode: ${summary.dryRun ? 'dry-run' : 'commit'}`);
-  console.log(`target: ${summary.targetEmail}`);
+  console.log('target user: resolved server-side');
   console.log(`scope: ${summary.scope}`);
   console.log(`source files: ${summary.sourceFiles.join(', ') || 'none'}`);
   console.log(`accounts: ${summary.counts.accounts}`);
@@ -1027,7 +1027,6 @@ function printSummary(summary, options) {
   }
   if (summary.commit) {
     console.log(`batch: ${summary.commit.batchId}`);
-    console.log(`backup: ${summary.commit.backupPath}`);
     console.log(`committed rows: ${JSON.stringify(summary.commit.committedRows)}`);
   }
 }
@@ -1108,12 +1107,12 @@ async function verifyImport(options) {
 
 function printPreflightSummary(result, options) {
   if (options.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(safeJson(result));
     return;
   }
 
   console.log('[founder-import] preflight summary');
-  console.log(`target: ${result.targetEmail}`);
+  console.log('target user: resolved server-side');
   console.log(`supabase url present: ${result.env.supabaseUrlPresent}`);
   console.log(`service role present: ${result.env.serviceRolePresent}`);
   if (result.expected) {
@@ -1138,12 +1137,12 @@ function printPreflightSummary(result, options) {
 
 function printVerifySummary(result, options) {
   if (options.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(safeJson(result));
     return;
   }
 
   console.log('[founder-import] verify summary');
-  console.log(`target: ${result.targetEmail}`);
+  console.log('target user: resolved server-side');
   console.log(`verified: ${result.verified}`);
   console.log(`actual counts: ${JSON.stringify(result.actualCounts)}`);
   if (result.expected) {
@@ -1328,12 +1327,12 @@ async function rollbackImport(options) {
 
 function printRollbackSummary(result, options) {
   if (options.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(safeJson(result));
     return;
   }
 
   console.log('[founder-import] rollback summary');
-  console.log(`target: ${result.targetEmail}`);
+  console.log('target user: resolved server-side');
   console.log(`batch: ${result.batchId}`);
   console.log(`rolled back rows: ${JSON.stringify(result.rolledBackRows)}`);
 }
@@ -1442,6 +1441,27 @@ function isUuid(value) {
 }
 
 function safeError(error) {
-  if (error instanceof Error) return error.message;
+  if (error instanceof Error) {
+    return error.message
+      .replaceAll(TARGET_EMAIL, '[founder account]')
+      .replace(/[A-Za-z]:\\[^\r\n]+/g, '[local path redacted]');
+  }
   return 'Unknown import error.';
+}
+
+function safeJson(value) {
+  return JSON.stringify(sanitizeLogValue(value), null, 2);
+}
+
+function sanitizeLogValue(value) {
+  if (Array.isArray(value)) return value.map(sanitizeLogValue);
+  if (!value || typeof value !== 'object') {
+    return typeof value === 'string' ? value.replaceAll(TARGET_EMAIL, '[founder account]') : value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => !['targetEmail', 'target_email', 'userId', 'user_id', 'backupPath'].includes(key))
+      .map(([key, nested]) => [key, sanitizeLogValue(nested)]),
+  );
 }

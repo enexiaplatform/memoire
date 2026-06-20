@@ -26,6 +26,9 @@ const ValidationFeedbackPage = lazy(() =>
   import('./features/validation/ValidationFeedbackPage').then((module) => ({ default: module.ValidationFeedbackPage })),
 );
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage').then((module) => ({ default: module.DashboardPage })));
+const OperatingSystemPage = lazy(() =>
+  import('./features/operatingSystem/OperatingSystemPage').then((module) => ({ default: module.OperatingSystemPage })),
+);
 const DailyCapturePage = lazy(() =>
   import('./features/dailyCapture/DailyCapturePage').then((module) => ({ default: module.DailyCapturePage })),
 );
@@ -98,6 +101,7 @@ function App() {
           >
             <Route index element={<Navigate to="/app/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="operating-system" element={<OperatingSystemPage />} />
             <Route path="demo-guide" element={<DemoGuidePage />} />
             <Route
               path="validation-feedback"

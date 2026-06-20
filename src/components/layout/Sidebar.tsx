@@ -13,6 +13,7 @@ const primarySections = [
     label: 'Workspace',
     items: [
       { to: '/app/dashboard', label: 'Today', icon: <LayoutDashboard className="h-5 w-5" /> },
+      { to: '/app/operating-system', label: 'Operating System', icon: <GitBranch className="h-5 w-5" /> },
       { to: '/app/capture', label: 'Capture', icon: <NotebookPen className="h-5 w-5" /> },
       { to: '/app/opportunities', label: 'Opportunities', icon: <Target className="h-5 w-5" /> },
       { to: '/app/accounts', label: 'Accounts', icon: <BookOpen className="h-5 w-5" /> },

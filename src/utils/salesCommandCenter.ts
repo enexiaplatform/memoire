@@ -1,5 +1,6 @@
 import type { AccountMemoryRecord } from '../services/accountStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
+import type { OperatingContextRecord } from '../services/operatingContextStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import { formatCompactCurrencyAmount } from './currency.ts';
 import type { DailyExecutionDecision } from './dailyExecution';
@@ -8,7 +9,7 @@ import type { RevenueActionItem, RevenueRiskKind } from './revenueView';
 import { buildOpportunitySalesFlowGuidance } from './salesFlowGuidance.ts';
 
 export type CommandPriority = 'Critical' | 'High' | 'Medium' | 'Low';
-export type CommandActionSource = 'Activity' | 'Opportunity' | 'Sales Flow' | 'Pipeline Defense' | 'Quote';
+export type CommandActionSource = 'Activity' | 'Opportunity' | 'Operating System' | 'Sales Flow' | 'Pipeline Defense' | 'Quote';
 
 export type CommandActionItem = {
   id: string;
@@ -82,6 +83,7 @@ export type CommandCenter = {
   todayActions: CommandActionItem[];
   overdueActions: CommandActionItem[];
   priorityActions: CommandActionItem[];
+  operatingActions: CommandActionItem[];
   dailyTimeblocks: DailyTimeblockItem[];
   atRiskOpportunities: AtRiskOpportunityItem[];
   accountsNeedingTouch: AccountTouchItem[];
@@ -104,6 +106,7 @@ export function buildTodayCommandCenter({
   accounts,
   briefs,
   commercialActions = [],
+  operatingContext = [],
   executionDecisions = [],
 }: {
   activities: SalesActivityRecord[];
@@ -111,6 +114,7 @@ export function buildTodayCommandCenter({
   accounts: AccountMemoryRecord[];
   briefs: PipelineDefenseBrief[];
   commercialActions?: RevenueActionItem[];
+  operatingContext?: OperatingContextRecord[];
   executionDecisions?: DailyExecutionDecision[];
 }): CommandCenter {
   const rawTodayActions = getTodayActions(opportunities, activities);
@@ -121,6 +125,7 @@ export function buildTodayCommandCenter({
   const pipelineReadiness = getPipelineReviewReadiness(opportunities, briefs);
   const rawRiskActions = atRiskOpportunities.slice(0, 8).map(riskToAction);
   const rawSalesFlowActions = buildSalesFlowCommandActions(opportunities);
+  const rawOperatingActions = buildOperatingContextCommandActions(operatingContext);
   const rawCommercialActions = buildCommercialCommandActions(commercialActions);
   const rawAccountTouchActions = accountsNeedingTouch.map(accountTouchToAction);
   const decisionMap = new Map(executionDecisions.map((decision) => [decision.actionId, decision.status]));
@@ -130,6 +135,7 @@ export function buildTodayCommandCenter({
   const overdueActions = activeActions(rawOverdueActions);
   const riskActions = activeActions(rawRiskActions);
   const salesFlowActions = activeActions(rawSalesFlowActions);
+  const operatingActions = activeActions(rawOperatingActions);
   const commercialCommandActions = activeActions(rawCommercialActions);
   const accountTouchActions = activeActions(rawAccountTouchActions).slice(0, 3);
   const rawCommandActions = dedupeActions([
@@ -137,6 +143,7 @@ export function buildTodayCommandCenter({
     ...rawOverdueActions,
     ...rawTodayActions,
     ...rawSalesFlowActions,
+    ...rawOperatingActions,
     ...rawRiskActions,
     ...rawAccountTouchActions,
   ]);
@@ -158,6 +165,7 @@ export function buildTodayCommandCenter({
     ...overdueActions,
     ...todayActions,
     ...riskActions,
+    ...operatingActions,
     ...salesFlowActions,
     ...commercialCommandActions,
   ])).slice(0, 16);
@@ -166,11 +174,13 @@ export function buildTodayCommandCenter({
     todayActions,
     overdueActions,
     priorityActions,
+    operatingActions,
     dailyTimeblocks: buildDailyTimeblocks({
       todayActions,
       overdueActions,
       priorityActions,
       riskActions,
+      operatingActions,
       salesFlowActions,
       commercialActions: commercialCommandActions,
       deferredActions,
@@ -193,7 +203,7 @@ export function buildTodayCommandCenter({
       objectionsCaptured: countObjections(opportunities, activities),
       pipelineDefenseBriefsCreated: pipelineReadiness.briefsCreatedThisWeek,
     },
-    hasAnyData: activities.length > 0 || opportunities.length > 0 || accounts.length > 0 || rawCommercialActions.length > 0 || briefs.some(isUserCreatedBrief),
+    hasAnyData: activities.length > 0 || opportunities.length > 0 || accounts.length > 0 || operatingContext.length > 0 || rawCommercialActions.length > 0 || briefs.some(isUserCreatedBrief),
   };
 }
 
@@ -202,6 +212,7 @@ function buildDailyTimeblocks({
   overdueActions,
   priorityActions,
   riskActions,
+  operatingActions,
   salesFlowActions,
   commercialActions,
   deferredActions,
@@ -212,6 +223,7 @@ function buildDailyTimeblocks({
   overdueActions: CommandActionItem[];
   priorityActions: CommandActionItem[];
   riskActions: CommandActionItem[];
+  operatingActions: CommandActionItem[];
   salesFlowActions: CommandActionItem[];
   commercialActions: CommandActionItem[];
   deferredActions: CommandActionItem[];
@@ -223,6 +235,7 @@ function buildDailyTimeblocks({
     ...criticalCommercialActions,
     ...overdueActions,
     ...todayActions,
+    ...operatingActions,
     ...salesFlowActions,
   ])).slice(0, 5);
   const defenseActions = sortActions(dedupeActions([
@@ -233,6 +246,7 @@ function buildDailyTimeblocks({
     ...overdueActions,
     ...todayActions,
     ...salesFlowActions,
+    ...operatingActions,
     ...commercialActions,
   ])).slice(0, 5);
   const triageActions = executionActions.length ? executionActions : priorityActions.slice(0, 3);
@@ -245,8 +259,8 @@ function buildDailyTimeblocks({
       startTime: '08:30',
       endTime: '09:00',
       title: 'Triage today',
-      focus: triageActions[0]?.title || 'Choose the one deal that must move today.',
-      reason: triageActions[0]?.reason || 'No due action is blocking the day, so start by selecting the highest-leverage deal.',
+      focus: triageActions[0]?.title || 'Choose the one priority that must move today.',
+      reason: triageActions[0]?.reason || 'No due action is blocking the day, so start with the highest-leverage initiative or deal.',
       priority: triageActions[0]?.priority || (overdueActions.length ? 'Critical' : todayActions.length ? 'High' : 'Medium'),
       href: triageActions[0]?.href || '/app/opportunities',
       actions: triageActions,
@@ -277,12 +291,16 @@ function buildDailyTimeblocks({
       title: 'Customer execution',
       focus: customerExecutionActions[0]?.source === 'Sales Flow'
         ? customerExecutionActions[0].title
+        : customerExecutionActions[0]?.source === 'Operating System'
+        ? customerExecutionActions[0].title
         : customerExecutionActions[0]?.source === 'Quote'
         ? customerExecutionActions[0].title
         : customerExecutionActions[0]?.accountName
         ? `Move ${customerExecutionActions[0].accountName}`
         : accountTouchActions[0]?.title || 'Create one customer touch that creates evidence.',
       reason: customerExecutionActions[0]?.source === 'Sales Flow'
+        ? customerExecutionActions[0].reason
+        : customerExecutionActions[0]?.source === 'Operating System'
         ? customerExecutionActions[0].reason
         : customerExecutionActions[0]?.source === 'Quote'
         ? customerExecutionActions[0].reason
@@ -333,6 +351,41 @@ export function buildSalesFlowCommandActions(opportunities: CrmLiteOpportunity[]
       };
     })
     .sort((left, right) => priorityRank(right.priority) - priorityRank(left.priority));
+}
+
+export function buildOperatingContextCommandActions(records: OperatingContextRecord[]): CommandActionItem[] {
+  const today = todayKey();
+  return records
+    .filter((record) => !isOperatingContextClosed(record))
+    .map((record): CommandActionItem => {
+      const overdue = Boolean(record.nextDate && record.nextDate < today);
+      const dueToday = record.nextDate === today;
+      const missingAction = !record.nextAction.trim();
+      const blocked = /block|risk|late|stuck/i.test(record.status);
+      const priority: CommandPriority = overdue
+        ? 'Critical'
+        : dueToday || missingAction || blocked
+        ? 'High'
+        : record.contextType === 'initiative'
+        ? 'Medium'
+        : 'Low';
+
+      return {
+        id: `operating-${record.id}`,
+        title: record.nextAction || `Define the next milestone for ${record.title}`,
+        accountName: record.title,
+        source: 'Operating System',
+        dueDate: record.nextDate || undefined,
+        priority,
+        reason: `${record.contextType === 'initiative' ? 'Must-win initiative' : 'Account play'}${record.period ? ` / ${record.period}` : ''}${record.status ? ` / ${record.status}` : ''}.`,
+        href: `/app/operating-system?contextId=${encodeURIComponent(record.id)}`,
+      };
+    })
+    .sort((left, right) => priorityRank(right.priority) - priorityRank(left.priority) || (left.dueDate || '9999-12-31').localeCompare(right.dueDate || '9999-12-31'));
+}
+
+function isOperatingContextClosed(record: OperatingContextRecord) {
+  return /complete|completed|done|closed|cancel|lost/i.test(record.status);
 }
 
 function accountTouchToAction(account: AccountTouchItem): CommandActionItem {
