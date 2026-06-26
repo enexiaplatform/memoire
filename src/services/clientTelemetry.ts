@@ -10,8 +10,6 @@ type ClientOperationalEvent = {
 export function reportClientOperationalEvent(event: ClientOperationalEvent) {
   if (typeof window === 'undefined') return;
 
-  if (!import.meta.env.VITE_CLIENT_LOG_ENDPOINT) return;
-
   const body = JSON.stringify({
     eventName: event.eventName,
     route: window.location.pathname,
@@ -23,7 +21,7 @@ export function reportClientOperationalEvent(event: ClientOperationalEvent) {
     error: event.error instanceof Error ? event.error.message : String(event.error || ''),
   });
 
-  void fetch(import.meta.env.VITE_CLIENT_LOG_ENDPOINT, {
+  void fetch('/api/client-log', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body,
