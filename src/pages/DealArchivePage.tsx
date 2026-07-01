@@ -154,7 +154,7 @@ export function DealArchivePage() {
           <Briefcase className="w-12 h-12 text-gray-300 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-navy font-display mb-2">No deals yet</h2>
           <p className="text-gray-500 max-w-sm mx-auto mb-8">
-            Your career sales record starts here. Add your first deal — won, lost, or in progress.
+            Your private sales memory starts here. Add your first deal - won, lost, or in progress.
           </p>
           <Button 
             className="brand-gradient text-white font-bold px-8 py-3 rounded-full"

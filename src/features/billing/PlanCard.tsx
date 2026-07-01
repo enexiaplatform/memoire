@@ -1,6 +1,6 @@
+import { useNavigate } from 'react-router-dom';
 import { usePlanLimits } from '../../hooks/usePlanLimits';
 import { useCheckout } from './useCheckout';
-import { useNavigate } from 'react-router-dom';
 
 export function PlanCard() {
   const { currentTier, loading } = usePlanLimits();
@@ -10,25 +10,27 @@ export function PlanCard() {
   if (loading) return null;
 
   const planDetails = {
-    free: { name: 'Free Plan', price: '$0/mo', description: '30 captures/month · 50 entities max' },
-    personal: { name: 'Personal Plan', price: '$19/month', description: 'Status: Active' },
-    team: { name: 'Team Plan', price: '$39/month', description: 'Status: Active' },
+    free: { name: 'Starter Plan', price: 'Early access', description: 'Demo and controlled-cohort limits apply' },
+    personal: { name: 'Personal Plan', price: 'Active', description: 'Controlled access is active' },
+    team: { name: 'Team Plan', price: 'Inactive', description: 'Team billing is not enabled' },
   };
 
   const { name, price, description } = planDetails[currentTier];
 
   return (
     <div className="space-y-6">
-      <h3 className="text-[15px] font-semibold font-display text-navy border-b border-gray-200 pb-2 uppercase tracking-wider">Current plan</h3>
-      
-      <div className="bg-white rounded-[12px] p-5 shadow-card">
-        <div className="flex justify-between items-start mb-2">
+      <h3 className="border-b border-gray-200 pb-2 font-display text-[15px] font-semibold uppercase tracking-wider text-navy">
+        Current plan
+      </h3>
+
+      <div className="rounded-[12px] bg-white p-5 shadow-card">
+        <div className="mb-2 flex items-start justify-between">
           <div>
-            <h4 className="font-bold font-display text-navy text-[16px]">{name}</h4>
-            <p className="text-[14px] font-body text-gray-500 mt-1">{description}</p>
+            <h4 className="font-display text-[16px] font-bold text-navy">{name}</h4>
+            <p className="mt-1 font-body text-[14px] text-gray-500">{description}</p>
           </div>
           <div className="text-right">
-            <span className="font-bold font-display text-navy text-[16px]">{price}</span>
+            <span className="font-display text-[16px] font-bold text-navy">{price}</span>
           </div>
         </div>
       </div>
@@ -36,17 +38,17 @@ export function PlanCard() {
       {currentTier === 'free' ? (
         <button
           onClick={() => navigate('/pricing')}
-          className="px-5 py-2.5 bg-brand-blue text-white text-[15px] font-semibold font-display rounded-full hover:bg-brand-blue-dark transition-all active:scale-[0.98]"
+          className="rounded-full bg-brand-blue px-5 py-2.5 font-display text-[15px] font-semibold text-white transition-all hover:bg-brand-blue-dark active:scale-[0.98]"
         >
-          Upgrade to Personal — $19/month →
+          See access options
         </button>
       ) : (
         <button
           onClick={openPortal}
           disabled={portalLoading}
-          className="text-sm font-medium text-memoire-600 hover:text-memoire-700 transition"
+          className="text-sm font-medium text-memoire-600 transition hover:text-memoire-700"
         >
-          {portalLoading ? 'Opening portal...' : 'Manage billing →'}
+          {portalLoading ? 'Opening billing portal...' : 'Manage billing -&gt;'}
         </button>
       )}
     </div>

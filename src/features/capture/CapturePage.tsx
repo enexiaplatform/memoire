@@ -15,7 +15,7 @@ export function CapturePage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showHistoryMobile, setShowHistoryMobile] = useState(false);
-  const [showUpgradeSuccess, setShowUpgradeSuccess] = useState(false);
+  const [showAccessNotice, setShowAccessNotice] = useState(false);
   
   // Track anonymization state from input component
   const [anonymizationData, setAnonymizationData] = useState<{ state: 'original' | 'anonymized' | 'mixed', originalText?: string }>({ state: 'original' });
@@ -26,9 +26,9 @@ export function CapturePage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('upgrade') === 'success') {
-      setShowUpgradeSuccess(true);
+      setShowAccessNotice(true);
       window.history.replaceState({}, '', '/app/capture');
-      setTimeout(() => setShowUpgradeSuccess(false), 5000);
+      setTimeout(() => setShowAccessNotice(false), 5000);
     }
   }, []);
 
@@ -65,9 +65,9 @@ export function CapturePage() {
       setRawText('');
       setExtraction(null);
       setAnonymizationData({ state: 'original' });
-      showToast('Captured ✓', 'success');
+      showToast('Captured', 'success');
     } else {
-      showToast('Save failed — please try again', 'error');
+      showToast('Save failed - please try again', 'error');
     }
   };
 
@@ -92,10 +92,10 @@ export function CapturePage() {
           </button>
         </div>
 
-        {showUpgradeSuccess && (
+        {showAccessNotice && (
           <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-6 flex justify-between items-center animate-in fade-in slide-in-from-top-4">
-            <p className="text-green-800 text-sm font-medium">🎉 Welcome to Memoire Personal. All limits removed — capture everything.</p>
-            <button onClick={() => setShowUpgradeSuccess(false)} className="text-green-600 hover:text-green-800 font-bold px-2">&times;</button>
+            <p className="text-green-800 text-sm font-medium">Access settings updated. You can continue capturing sales memory.</p>
+            <button onClick={() => setShowAccessNotice(false)} className="text-green-600 hover:text-green-800 font-bold px-2">&times;</button>
           </div>
         )}
 

@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { startOfDay, differenceInDays, format } from 'date-fns';
+import { FileText, Search, X } from 'lucide-react';
 import { useCaptures } from './useCaptures';
 import type { Capture } from './useCaptures';
 import { CaptureCard } from './CaptureCard';
 import { HistoryFilters } from './HistoryFilters';
-import { startOfDay, differenceInDays, format } from 'date-fns';
-import { Link } from 'react-router-dom';
 
 function getDateGroupLabel(dateStr: string): string {
   const date = new Date(dateStr);
@@ -27,52 +28,50 @@ export function HistoryPage() {
 
   const [searchInput, setSearchInput] = useState('');
 
-  // Debounce search
   useEffect(() => {
-    const t = setTimeout(() => {
-      setFilters(prev => ({ ...prev, search: searchInput }));
+    const timer = window.setTimeout(() => {
+      setFilters((prev) => ({ ...prev, search: searchInput }));
     }, 300);
-    return () => clearTimeout(t);
+    return () => window.clearTimeout(timer);
   }, [searchInput]);
 
   const { captures, loading, hasMore, loadMore } = useCaptures(filters);
 
-  // Group by date
   const groupedCaptures = useMemo(() => {
     const groups: Record<string, Capture[]> = {};
-    captures.forEach(c => {
-      const label = getDateGroupLabel(c.created_at);
+    captures.forEach((capture) => {
+      const label = getDateGroupLabel(capture.created_at);
       if (!groups[label]) groups[label] = [];
-      groups[label].push(c);
+      groups[label].push(capture);
     });
     return groups;
   }, [captures]);
 
   return (
-    <div className="max-w-3xl mx-auto pb-24">
-      <div className="flex items-center justify-between mb-8">
+    <div className="mx-auto max-w-3xl pb-24">
+      <div className="mb-8 flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">History</h1>
       </div>
 
       <div className="relative mb-6">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <span className="text-gray-400">🔍</span>
+        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+          <Search className="h-4 w-4 text-gray-400" />
         </div>
         <input
           type="text"
           value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
+          onChange={(event) => setSearchInput(event.target.value)}
           placeholder="Search captures..."
-          className="block w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm transition-colors shadow-sm"
+          className="block w-full rounded-xl border border-gray-200 bg-white py-3 pl-10 pr-10 text-sm leading-5 shadow-sm transition-colors placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         {searchInput && (
-          <button 
+          <button
+            type="button"
             onClick={() => setSearchInput('')}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+            aria-label="Clear search"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="h-5 w-5" />
           </button>
         )}
       </div>
@@ -80,24 +79,30 @@ export function HistoryPage() {
       <HistoryFilters filters={filters} setFilters={setFilters} />
 
       {!loading && captures.length === 0 ? (
-        <div className="text-center py-20 bg-white border border-gray-100 rounded-2xl shadow-sm mt-8">
-          <div className="text-4xl mb-4">📝</div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+        <div className="mt-8 rounded-2xl border border-gray-100 bg-white py-20 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-50 text-gray-400">
+            <FileText className="h-5 w-5" />
+          </div>
+          <h3 className="mb-2 text-lg font-semibold text-gray-900">
             {filters.search ? `No captures match "${filters.search}"` : 'Nothing captured yet.'}
           </h3>
-          <p className="text-gray-500 mb-6 max-w-sm mx-auto">
-            {filters.search 
+          <p className="mx-auto mb-6 max-w-sm text-gray-500">
+            {filters.search
               ? 'Try a different word or clear search.'
               : 'Start by writing your first note about a meeting, call, or insight from today.'}
           </p>
           {!filters.search ? (
-            <Link to="/app/capture" className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-sm">
-              Capture something &rarr;
+            <Link
+              to="/app/capture"
+              className="inline-flex items-center justify-center rounded-lg border border-transparent bg-indigo-600 px-6 py-3 text-base font-medium text-white shadow-sm transition-colors hover:bg-indigo-700"
+            >
+              Capture something -&gt;
             </Link>
           ) : (
             <button
+              type="button"
               onClick={() => setSearchInput('')}
-              className="text-indigo-600 font-medium hover:text-indigo-800"
+              className="font-medium text-indigo-600 hover:text-indigo-800"
             >
               Clear search
             </button>
@@ -107,15 +112,15 @@ export function HistoryPage() {
         <div className="space-y-8">
           {Object.entries(groupedCaptures).map(([label, groupCaptures]) => (
             <div key={label}>
-              <div className="flex items-center gap-4 mb-4">
-                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">{label}</h3>
-                <div className="flex-1 h-px bg-gray-100"></div>
+              <div className="mb-4 flex items-center gap-4">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-400">{label}</h3>
+                <div className="h-px flex-1 bg-gray-100" />
               </div>
               <div>
-                {groupCaptures.map(capture => (
-                  <CaptureCard 
-                    key={capture.id} 
-                    capture={capture} 
+                {groupCaptures.map((capture) => (
+                  <CaptureCard
+                    key={capture.id}
+                    capture={capture}
                     onEntityClick={(id) => setFilters({ ...filters, entityId: id })}
                     onTagClick={(tag) => setFilters({ ...filters, tag })}
                   />
@@ -125,23 +130,26 @@ export function HistoryPage() {
           ))}
 
           {hasMore && captures.length > 0 && (
-            <div className="text-center pt-4">
+            <div className="pt-4 text-center">
               <button
+                type="button"
                 onClick={loadMore}
-                className="px-6 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="rounded-lg border border-gray-300 bg-white px-6 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                 disabled={loading}
               >
-                {loading ? 'Loading...' : 'Load more'}
+                {loading ? 'Loading more captures...' : 'Load more'}
               </button>
             </div>
           )}
         </div>
       )}
 
-      <footer className="mt-12 pt-4 border-t border-gray-100 text-center pb-8">
+      <footer className="mt-12 border-t border-gray-100 pt-4 pb-8 text-center">
         <p className="text-[12px] text-gray-500">
-          Personal knowledge tool — not a hiring signal.{' '}
-          <Link to="/app/settings" className="hover:text-navy hover:underline transition-colors">View boundaries &rarr;</Link>
+          Personal sales memory - not a CRM replacement or public scoring system.{' '}
+          <Link to="/app/settings" className="transition-colors hover:text-navy hover:underline">
+            View boundaries -&gt;
+          </Link>
         </p>
       </footer>
     </div>

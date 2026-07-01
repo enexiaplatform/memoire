@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AlertTriangle, X } from 'lucide-react';
 import { usePlanLimits, PLAN_LIMITS } from '../../hooks/usePlanLimits';
 
 export function PaywallBanner() {
@@ -15,32 +16,33 @@ export function PaywallBanner() {
   const remaining = limit - capturesThisMonth;
 
   return (
-    <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-6 rounded-r-md relative">
+    <div className="relative mb-6 rounded-r-md border-l-4 border-amber-400 bg-amber-50 p-4">
       <div className="flex items-start">
         <div className="flex-shrink-0">
-          <span className="text-amber-400 text-lg">⚠️</span>
+          <AlertTriangle className="h-5 w-5 text-amber-500" />
         </div>
-        <div className="ml-3 flex-1 flex items-center justify-between">
+        <div className="ml-3 flex flex-1 items-center justify-between">
           <div>
-            <p className="text-sm text-amber-700 font-medium">
+            <p className="text-sm font-medium text-amber-700">
               {remaining} {remaining === 1 ? 'capture' : 'captures'} remaining this month.
             </p>
-            <p className="text-sm text-amber-600 mt-1">
-              Upgrade to Personal for unlimited captures.
+            <p className="mt-1 text-sm text-amber-600">
+              Request early access when you are ready to keep more sales memory.
             </p>
           </div>
-          <div className="ml-4 flex-shrink-0 flex gap-2">
+          <div className="ml-4 flex flex-shrink-0 gap-2">
             <button
               onClick={() => navigate('/pricing')}
-              className="px-3 py-1.5 text-sm font-medium rounded bg-amber-100 text-amber-800 hover:bg-amber-200"
+              className="rounded bg-amber-100 px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-200"
             >
-              Upgrade — $19/mo →
+              See access options
             </button>
             <button
               onClick={() => setDismissed(true)}
-              className="text-amber-500 hover:text-amber-700 p-1"
+              className="p-1 text-amber-500 hover:text-amber-700"
+              aria-label="Dismiss capture limit notice"
             >
-              &times;
+              <X className="h-4 w-4" />
             </button>
           </div>
         </div>

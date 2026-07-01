@@ -975,7 +975,7 @@ export function DailyCapturePage() {
               <p className="mt-2 text-xs leading-5 text-gray-500">
                 {aiConfigured
                   ? 'AI parses pasted emails by default. Confirm or correct every field before saving.'
-                  : 'AI unavailable â€” using local fallback. Please review before saving.'}
+                  : 'AI unavailable — using local fallback. Please review before saving.'}
               </p>
               <button
                 type="button"

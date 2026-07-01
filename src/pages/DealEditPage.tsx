@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDeal, useDealMutations } from '../hooks/useDeals';
 import { useEntities } from '../features/entities/useEntities';
-import { ArrowLeft, Save, X, Plus } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Save, X, Plus } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { REVENUE_BANDS, DEAL_OUTCOMES } from '../types/Deal';
 import type { RevenueBand, DealOutcome, DealPrivacy } from '../types/Deal';
@@ -12,9 +12,9 @@ export function DealEditPage() {
   const navigate = useNavigate();
   const isEdit = !!id;
 
-  const { deal, loading: dealLoading } = useDeal(id);
+  const { deal, loading: dealLoading, error: dealLoadError } = useDeal(id);
   const { createDeal, updateDeal } = useDealMutations();
-  const { entities, loading: entitiesLoading } = useEntities();
+  const { entities, loading: entitiesLoading, error: entitiesLoadError } = useEntities();
 
   const [formData, setFormData] = useState({
     company_anonymized: '',
@@ -33,6 +33,7 @@ export function DealEditPage() {
 
   const [newCategory, setNewCategory] = useState('');
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
     if (deal && isEdit) {
@@ -56,18 +57,20 @@ export function DealEditPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    setSaveError('');
     
     try {
       if (isEdit) {
-        await updateDeal(id!, { ...formData, revenue_band: formData.revenue_band as RevenueBand });
+        const { error } = await updateDeal(id!, { ...formData, revenue_band: formData.revenue_band as RevenueBand });
+        if (error) throw error;
       } else {
         const { error } = await createDeal({ ...formData, revenue_band: formData.revenue_band as RevenueBand });
         if (error) throw error;
       }
-      navigate(isEdit ? `/app/deals/${id}` : '/app/deals');
+      navigate('/app/opportunities');
     } catch (err) {
       console.error(err);
-      alert('Failed to save deal');
+      setSaveError('Memoire could not save this record. Please retry before leaving this page.');
     } finally {
       setSaving(false);
     }
@@ -84,7 +87,17 @@ export function DealEditPage() {
     setFormData({ ...formData, product_categories: formData.product_categories.filter(c => c !== cat) });
   };
 
-  if ((dealLoading && isEdit) || entitiesLoading) return <div className="p-8 text-center animate-pulse">Loading...</div>;
+  if ((dealLoading && isEdit) || entitiesLoading) {
+    return (
+      <div className="mx-auto flex min-h-[420px] max-w-4xl items-center justify-center px-4 py-8">
+        <div className="rounded-lg border border-gray-200 bg-white px-5 py-4 text-center shadow-sm">
+          <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-brand-blue border-t-transparent" />
+          <p className="mt-3 text-sm font-semibold text-gray-700">Loading deal workspace...</p>
+          <p className="mt-1 text-xs text-gray-500">Memoire is loading contacts and saved deal context.</p>
+        </div>
+      </div>
+    );
+  }
 
   const contacts = entities.filter(e => e.entity_type === 'contact');
 
@@ -98,6 +111,12 @@ export function DealEditPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
+        {(dealLoadError || entitiesLoadError || saveError) && (
+          <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <AlertTriangle className="mt-0.5 h-4 w-4 flex-none" />
+            <p className="leading-6">{saveError || dealLoadError || entitiesLoadError}</p>
+          </div>
+        )}
         <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
@@ -255,7 +274,7 @@ export function DealEditPage() {
             className="px-8 py-2 brand-gradient text-white rounded-xl font-bold shadow-lg"
           >
             <Save className="w-4 h-4 mr-2 inline" />
-            {isEdit ? 'Update Record' : 'Archives & Save'}
+            {isEdit ? 'Update Record' : 'Save Record'}
           </Button>
         </div>
       </form>

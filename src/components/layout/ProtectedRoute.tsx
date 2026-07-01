@@ -47,10 +47,11 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     }
 
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-memoire-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-gray-500">Loading...</p>
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-memoire-600 border-t-transparent" />
+          <p className="text-sm font-semibold text-gray-600">Restoring your workspace...</p>
+          <p className="max-w-xs text-xs leading-5 text-gray-400">Memoire is checking your session and loading your sales memory.</p>
         </div>
       </div>
     );
