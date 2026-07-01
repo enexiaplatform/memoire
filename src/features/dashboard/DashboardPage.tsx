@@ -1900,7 +1900,7 @@ function CriticalDealActions({
           </p>
         </div>
         <Link to="/app/opportunities" className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-          Open Opportunities
+          Open opportunities
         </Link>
       </div>
       <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-3">
@@ -2027,7 +2027,7 @@ function AtRiskOpportunities({ items }: { items: AtRiskOpportunityItem[] }) {
         <h2 className="text-lg font-bold text-navy">At-Risk Opportunities</h2>
       </div>
       {items.length === 0 ? (
-        <EmptyPanel title="No at-risk opportunities detected." helper="Keep opportunity evidence and next actions current." href="/app/opportunities" cta="Open Opportunities" />
+        <EmptyPanel title="No at-risk opportunities detected." helper="Keep opportunity evidence and next actions current." href="/app/opportunities" cta="Open opportunities" />
       ) : (
         <div className="mt-4 space-y-3">
           {items.slice(0, 6).map((item) => (

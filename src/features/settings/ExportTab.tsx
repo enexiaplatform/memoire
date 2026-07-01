@@ -63,7 +63,7 @@ export function ExportTab() {
 
       setStatusMessage(cloudWarning || 'Workspace export downloaded.');
     } catch (error) {
-      setExportError(error instanceof Error ? error.message : 'Could not generate workspace export.');
+      setExportError(error instanceof Error ? error.message : 'Memoire could not generate the workspace export.');
     } finally {
       setIsExporting(false);
     }

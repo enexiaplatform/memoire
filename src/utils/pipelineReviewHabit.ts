@@ -53,7 +53,7 @@ const STEP_DEFINITIONS: Array<Omit<PipelineReviewHabitStep, 'done' | 'completedA
     label: 'Refresh pipeline',
     description: 'Import or refresh this week\'s opportunity data.',
     href: '/app/opportunities',
-    cta: 'Open Opportunities',
+    cta: 'Open opportunities',
   },
   {
     id: 'capturedUpdatesAt',

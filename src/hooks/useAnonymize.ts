@@ -14,7 +14,7 @@ export function useAnonymize() {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
 
-      if (!token) throw new Error('Not authenticated');
+      if (!token) throw new Error('Sign in again before anonymizing this note.');
 
       const response = await fetch('/api/anonymize', {
         method: 'POST',
@@ -23,7 +23,7 @@ export function useAnonymize() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to anonymize');
+        throw new Error('Memoire could not anonymize this note. Please retry.');
       }
 
       const raw = await response.json();
@@ -31,7 +31,7 @@ export function useAnonymize() {
       return raw as AnonymizationSuggestion;
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Anonymization error');
+      setError(err.message || 'Memoire could not anonymize this note. Please retry.');
       setIsAnonymizing(false);
       return null;
     }

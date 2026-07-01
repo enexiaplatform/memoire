@@ -245,7 +245,7 @@ export function OpportunitiesPage() {
       setQuotes(workspaceData.quotes);
       setLastWorkspaceRefreshAt(new Date().toISOString());
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to load workspace data.';
+      const message = error instanceof Error ? error.message : 'Memoire could not load opportunity memory.';
       setWorkspaceLoadError(message);
     } finally {
       setLoading(false);

@@ -464,7 +464,7 @@ function PlaybookEmptyState() {
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-2">
         <Link to="/app/capture" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Capture Activity</Link>
-        <Link to="/app/opportunities" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">Open Opportunities</Link>
+        <Link to="/app/opportunities" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">Open opportunities</Link>
       </div>
     </section>
   );

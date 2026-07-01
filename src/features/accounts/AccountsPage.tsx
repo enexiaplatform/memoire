@@ -133,7 +133,7 @@ export function AccountsPage() {
       setQuotes(workspaceData.quotes);
       setLastLoadedAt(new Date().toISOString());
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : 'Could not refresh account data.');
+      setLoadError(error instanceof Error ? error.message : 'Memoire could not refresh account memory.');
     } finally {
       setLoading(false);
       setRefreshing(false);

@@ -595,7 +595,7 @@ function RecommendedDealActionsPanel({ actions }: { actions: OpportunityRecommen
           </p>
         </div>
         <Link to="/app/opportunities" className="inline-flex w-fit rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-          Open Opportunities
+          Open opportunities
         </Link>
       </div>
       <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
@@ -677,7 +677,7 @@ function ActionOutcomesPanel({
           </p>
         </div>
         <Link to="/app/opportunities" className="inline-flex w-fit rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-          Open Opportunities
+          Open opportunities
         </Link>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
