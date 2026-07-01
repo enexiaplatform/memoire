@@ -1,18 +1,16 @@
 import { useNavigate } from 'react-router-dom';
 import { usePlanLimits } from '../../hooks/usePlanLimits';
-import { useCheckout } from './useCheckout';
 
 export function PlanCard() {
   const { currentTier, loading } = usePlanLimits();
-  const { openPortal, loading: portalLoading } = useCheckout();
   const navigate = useNavigate();
 
   if (loading) return null;
 
   const planDetails = {
-    free: { name: 'Starter Plan', price: 'Early access', description: 'Demo and controlled-cohort limits apply' },
-    personal: { name: 'Personal Plan', price: 'Active', description: 'Controlled access is active' },
-    team: { name: 'Team Plan', price: 'Inactive', description: 'Team billing is not enabled' },
+    free: { name: 'Starter access', price: 'Early access', description: 'Demo and controlled-cohort limits apply' },
+    personal: { name: 'Cohort access', price: 'Active', description: 'Controlled access is active' },
+    team: { name: 'Team access', price: 'Inactive', description: 'Team billing is not enabled' },
   };
 
   const { name, price, description } = planDetails[currentTier];
@@ -43,13 +41,9 @@ export function PlanCard() {
           See access options
         </button>
       ) : (
-        <button
-          onClick={openPortal}
-          disabled={portalLoading}
-          className="text-sm font-medium text-memoire-600 transition hover:text-memoire-700"
-        >
-          {portalLoading ? 'Opening billing portal...' : 'Manage billing -&gt;'}
-        </button>
+        <p className="text-sm font-medium text-gray-500">
+          Billing management is not enabled during the controlled cohort.
+        </p>
       )}
     </div>
   );

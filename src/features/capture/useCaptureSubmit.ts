@@ -16,7 +16,7 @@ export function useCaptureSubmit() {
     anonymizationData?: { state: AnonymizationState; originalText?: string; }
   ): Promise<boolean> => {
     if (!user) {
-      setError('User not authenticated');
+      setError('Sign in again before saving this capture.');
       return false;
     }
 
@@ -24,7 +24,7 @@ export function useCaptureSubmit() {
     setError(null);
 
     try {
-      // Step 1 — Upsert entities
+      // Step 1 - Upsert entities
       const userId = user.id;
       const entityIdMap: Record<string, string> = {}; // Maps tempId to real UUID
       const finalEntityIds: string[] = [];
@@ -54,7 +54,7 @@ export function useCaptureSubmit() {
         }
       }
 
-      // Step 2 — Insert relationships
+      // Step 2 - Insert relationships
       if (extraction.relationships.length > 0) {
         const relationshipsToInsert = extraction.relationships
           .map((rel) => {
@@ -80,7 +80,7 @@ export function useCaptureSubmit() {
         }
       }
 
-      // Step 3 — Insert capture
+      // Step 3 - Insert capture
       const { data: captureData, error: captureError } = await supabase
         .from('captures')
         .insert({
@@ -98,7 +98,7 @@ export function useCaptureSubmit() {
 
       if (captureError) throw captureError;
 
-      // Step 4 — Log activity
+      // Step 4 - Log activity
       if (captureData) {
         await supabase.from('activity_log').insert({
           user_id: userId,
@@ -110,7 +110,7 @@ export function useCaptureSubmit() {
           },
         });
 
-        // Trigger embedding generation — non-blocking fire-and-forget
+        // Trigger embedding generation as non-blocking fire-and-forget work.
         const { data: { session } } = await supabase.auth.getSession();
         fetch('/api/generate-embedding', {
           method: 'POST',
@@ -128,7 +128,7 @@ export function useCaptureSubmit() {
       return true;
     } catch (e: any) {
       console.error('Save flow failed:', e);
-      setError(e.message || 'Save failed — please try again');
+      setError(e.message || 'Memoire could not save this capture. Please retry.');
       setIsSaving(false);
       return false;
     }

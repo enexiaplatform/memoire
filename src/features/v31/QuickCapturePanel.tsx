@@ -177,7 +177,7 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
       onSaved?.();
     } catch (err) {
       console.error(err);
-      setMessage('Error - please try again');
+      setMessage('Memoire could not save this capture. Please retry.');
       setSaveStatus('error');
     } finally {
       setSaving(false);

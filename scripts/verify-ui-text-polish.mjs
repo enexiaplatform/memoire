@@ -20,6 +20,8 @@ const discouragedVisibleText = [
   { pattern: /Loading\.\.\./g, label: 'generic loading copy; use contextual loading text' },
   { pattern: /Upgrade to Personal/g, label: 'paid upgrade copy before checkout is enabled' },
   { pattern: /Memoire Personal/g, label: 'old paid-plan copy before pricing decision' },
+  { pattern: /Personal Plan/g, label: 'old paid-plan label before pricing decision' },
+  { pattern: /Team Plan/g, label: 'old paid-team label before team billing is enabled' },
   { pattern: /All limits removed/g, label: 'paid-upgrade success copy before checkout is enabled' },
   { pattern: /\$19/g, label: 'fixed paid price copy before pricing decision' },
   { pattern: /hiring signal/g, label: 'old career-record boundary copy; use current trust boundary language' },
