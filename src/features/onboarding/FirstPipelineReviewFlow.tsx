@@ -239,7 +239,7 @@ export function FirstPipelineReviewFlow() {
             </div>
             <div className="flex flex-wrap gap-2">
               <Link to="/app/pipeline-defense" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Go to Pipeline Defense</Link>
-              <Link to="/app/dashboard" className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-bold text-emerald-800">Continue to Dashboard</Link>
+              <Link to="/app/today" className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-bold text-emerald-800">Continue to Today</Link>
             </div>
           </div>
         </section>

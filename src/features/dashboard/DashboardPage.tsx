@@ -12,13 +12,11 @@ import {
   FileCheck2,
   FileText,
   NotebookPen,
-  Plus,
   RefreshCw,
   ReceiptText,
   RotateCcw,
   ShieldCheck,
   Target,
-  Upload,
 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
@@ -40,6 +38,17 @@ import {
 } from '../../services/quoteStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
+import { type OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore';
+import {
+  clearAllNudges,
+  clearDismissedNudges,
+  dismissNudge,
+  loadNudges,
+  loadNudgesForUser,
+  markNudgeDone,
+  snoozeNudge,
+  type NudgeRecord,
+} from '../../services/nudgeStore';
 import { type SalesAssetRecord } from '../../services/salesAssetStore';
 import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { type PipelineDefenseBrief } from '../../utils/pipelineDefenseStorage';
@@ -55,8 +64,9 @@ import {
   type RecentActivityItem,
 } from '../../utils/salesCommandCenter';
 import { buildRevenueView, type RevenueActionItem, type RevenueViewSummary } from '../../utils/revenueView';
-import { formatCompactCurrencyAmount, formatCurrencyAmount } from '../../utils/currency';
+import { formatBaseCurrencyAmount, formatCurrencyAmount } from '../../utils/money';
 import { hasLocalSampleData } from '../../utils/dataMode';
+import { formatSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue } from '../../utils/safeDate.ts';
 import { loadSampleDataset } from '../../utils/sampleData';
 import { analyzeMeddicLitePipeline } from '../../utils/meddicLite';
 import { generatePipelineOpportunityActions, type OpportunityRecommendedAction } from '../../utils/opportunityActionPlan';
@@ -111,6 +121,14 @@ import {
   saveDailyExecutionDecision,
   type DailyExecutionStatus,
 } from '../../utils/dailyExecution';
+import { buildUnifiedTodayCommandCenter, type TodayCommandAction } from '../../utils/todayCommandCenter.ts';
+import { loadAccountHygienePreferences } from '../../utils/accountHygiene.ts';
+import {
+  buildProactiveNudges,
+  formatNudgeDueDate,
+  formatNudgeMoney,
+  type ProactiveNudgeCenter,
+} from '../../utils/proactiveNudges.ts';
 
 type DashboardData = {
   activities: SalesActivityRecord[];
@@ -123,6 +141,7 @@ type DashboardData = {
   assets: SalesAssetRecord[];
   quotes: QuoteRecord[];
   operatingContext: OperatingContextRecord[];
+  opportunityOutcomes: OpportunityOutcomeRecord[];
 };
 
 type DashboardInsights = ReturnType<typeof buildDashboardInsights>;
@@ -138,7 +157,7 @@ type DashboardCommercialAction = {
   source: RevenueActionItem['source'];
 };
 
-export function DashboardPage() {
+export function TodayPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const sampleDataActive = hasLocalSampleData();
   const dailyExecutionScope = sampleDataActive ? 'demo' : user?.id ? `user-${user.id}` : 'guest';
@@ -153,6 +172,7 @@ export function DashboardPage() {
     assets: [],
     quotes: [],
     operatingContext: [],
+    opportunityOutcomes: [],
   });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -170,6 +190,8 @@ export function DashboardPage() {
   const [dailyExecutionState, setDailyExecutionState] = useState(() => loadDailyExecutionState(dailyExecutionScope));
   const [dailyExecutionMessage, setDailyExecutionMessage] = useState('');
   const [lastDailyExecutionActionId, setLastDailyExecutionActionId] = useState('');
+  const [nudgeState, setNudgeState] = useState<NudgeRecord[]>(() => loadNudges());
+  const [nudgeMessage, setNudgeMessage] = useState('');
 
   const refreshDashboard = useCallback(async (options: DashboardLoadOptions = {}) => {
     const sampleActive = hasLocalSampleData();
@@ -208,9 +230,27 @@ export function DashboardPage() {
 
   useEffect(() => {
     if (sampleDataActive) {
-      markDemoJourneyStepComplete('review-signals', 'Demo dashboard reviewed');
+      markDemoJourneyStepComplete('review-today', 'Today daily command center reviewed');
     }
   }, [sampleDataActive]);
+  useEffect(() => {
+    let cancelled = false;
+    if (authLoading) return;
+    if (!user || sampleDataActive) {
+      setNudgeState(loadNudges());
+      return;
+    }
+    loadNudgesForUser(user.id)
+      .then((records) => {
+        if (!cancelled) setNudgeState(records);
+      })
+      .catch(() => {
+        if (!cancelled) setNudgeState(loadNudges(user.id));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, sampleDataActive, user]);
   useEffect(() => {
     setDailyExecutionState(loadDailyExecutionState(dailyExecutionScope));
     setDailyExecutionMessage('');
@@ -220,12 +260,38 @@ export function DashboardPage() {
     opportunities: data.opportunities,
     quotes: data.quotes,
   }), [data.opportunities, data.quotes]);
+  const accountHygienePreferences = useMemo(() => loadAccountHygienePreferences(user?.id), [user?.id]);
   const commandCenter = useMemo(() => buildTodayCommandCenter({
     ...data,
     commercialActions: revenueView.actionItems,
     executionDecisions: dailyExecutionState.decisions,
   }), [dailyExecutionState.decisions, data, revenueView.actionItems]);
   const pipelineReviewSignal = useMemo(() => buildPipelineReviewDashboardSignal(data.briefs), [data.briefs]);
+  const todayCenter = useMemo(() => buildUnifiedTodayCommandCenter({
+    briefs: data.briefs,
+    revenueActions: revenueView.actionItems,
+    opportunities: data.opportunities,
+    activities: data.activities,
+    stakeholders: data.stakeholders,
+    objections: data.objections,
+    accounts: data.accounts,
+    quotes: data.quotes,
+    accountPreferences: accountHygienePreferences,
+    opportunityOutcomes: data.opportunityOutcomes,
+  }), [accountHygienePreferences, data.accounts, data.activities, data.briefs, data.objections, data.opportunities, data.opportunityOutcomes, data.quotes, data.stakeholders, revenueView.actionItems]);
+  const proactiveNudges = useMemo(() => buildProactiveNudges({
+    briefs: data.briefs,
+    revenueActions: revenueView.actionItems,
+    opportunities: data.opportunities,
+    activities: data.activities,
+    objections: data.objections,
+    accounts: data.accounts,
+    stakeholders: data.stakeholders,
+    quotes: data.quotes,
+    accountPreferences: accountHygienePreferences,
+    opportunityOutcomes: data.opportunityOutcomes,
+    persistedNudges: nudgeState,
+  }), [accountHygienePreferences, data.accounts, data.activities, data.briefs, data.objections, data.opportunities, data.opportunityOutcomes, data.quotes, data.stakeholders, nudgeState, revenueView.actionItems]);
   const decidedActionIds = useMemo(() => (
     new Set(dailyExecutionState.decisions.map((decision) => decision.actionId))
   ), [dailyExecutionState.decisions]);
@@ -312,6 +378,33 @@ export function DashboardPage() {
       : `${action.title} moved to the 16:30 closeout.`);
   };
 
+  const persistNudgeState = (record: NudgeRecord, messageText: string) => {
+    setNudgeState((current) => [record, ...current.filter((item) => item.id !== record.id)]);
+    setNudgeMessage(messageText);
+  };
+
+  const nudgeUserId = sampleDataActive ? undefined : user?.id;
+  const handleMarkNudgeDone = (nudge: NudgeRecord) => {
+    persistNudgeState(markNudgeDone(nudge, nudgeUserId), 'Nudge marked done.');
+  };
+  const handleDismissNudge = (nudge: NudgeRecord) => {
+    persistNudgeState(dismissNudge(nudge, nudgeUserId), 'Nudge dismissed.');
+  };
+  const handleSnoozeNudgeTomorrow = (nudge: NudgeRecord) => {
+    persistNudgeState(snoozeNudge(nudge, addDaysKey(1), nudgeUserId), 'Nudge snoozed until tomorrow.');
+  };
+  const handleSnoozeNudgeNextWeek = (nudge: NudgeRecord) => {
+    persistNudgeState(snoozeNudge(nudge, addDaysKey(7), nudgeUserId), 'Nudge snoozed until next week.');
+  };
+  const handleClearDismissedNudges = () => {
+    setNudgeState(clearDismissedNudges(nudgeUserId));
+    setNudgeMessage('Dismissed local nudges cleared.');
+  };
+  const handleClearAllNudgeState = () => {
+    setNudgeState(clearAllNudges(nudgeUserId));
+    setNudgeMessage('All local nudge state cleared. Active risks can reappear if still relevant.');
+  };
+
   const handleRestoreDailyExecution = (actionId: string) => {
     setDailyExecutionState((current) => (
       clearDailyExecutionDecision(dailyExecutionScope, current, actionId)
@@ -349,10 +442,10 @@ export function DashboardPage() {
     <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Dashboard</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">What should I do next?</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Personal Pipeline Defense OS</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Will your forecast survive review?</h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500">
-            Start with one action. Memoire will organize the rest.
+            Memoire works beside your CRM to prepare manager-ready answers, rescue exposed deals, and de-risk the forecast before your manager asks.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -385,21 +478,11 @@ export function DashboardPage() {
 
       {loading ? (
         <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
-          Loading dashboard...
+          Loading Today...
         </div>
       ) : (
         <>
-          {sampleDataActive ? (
-            <DemoJourneyCard compact />
-          ) : (
-            <StartHerePanel
-              commandCenter={commandCenter}
-              signal={pipelineReviewSignal}
-              commercialAction={commercialAction}
-              sampleDataActive={sampleDataActive}
-              onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)}
-            />
-          )}
+          <ForecastDefenseReadiness center={todayCenter} />
           {demoSandboxPromptOpen && (
             <DemoSandboxPrompt
               hasExistingData={commandCenter.hasAnyData}
@@ -408,33 +491,52 @@ export function DashboardPage() {
               onLoad={handleLoadDemoSandbox}
             />
           )}
-          {!commandCenter.hasAnyData ? (
-            <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_360px]">
-              <DashboardEmptyState />
-              <QuickActions />
-            </section>
+          {!todayCenter.hasMeaningfulData ? (
+            <TodayCommandEmptyState />
           ) : (
             <>
-              <DailyOperatingPlan
-                blocks={commandCenter.dailyTimeblocks}
-                message={dailyExecutionMessage}
-                canUndo={Boolean(lastDailyExecutionActionId)}
-                execution={commandCenter.dailyExecution}
-                onDecision={handleDailyExecutionDecision}
-                onRestore={handleRestoreDailyExecution}
-                onUndo={handleUndoDailyExecution}
+              <TodayTopThreeActions actions={todayCenter.topActions} />
+              <ProactiveNudgesPanel
+                center={proactiveNudges}
+                message={nudgeMessage}
+                onMarkDone={handleMarkNudgeDone}
+                onDismiss={handleDismissNudge}
+                onSnoozeTomorrow={handleSnoozeNudgeTomorrow}
+                onSnoozeNextWeek={handleSnoozeNudgeNextWeek}
+                onClearDismissed={handleClearDismissedNudges}
+                onClearAll={handleClearAllNudgeState}
               />
-              <TodayFocus commandCenter={commandCenter} />
-              <DashboardPrimaryWork commandCenter={commandCenter} signal={pipelineReviewSignal} />
+              <TodayPipelineReadiness center={todayCenter} />
+              <TodayCommercialRisk items={todayCenter.commercialRiskItems} />
+              <TodayCaptureInbox items={todayCenter.captureInbox} />
+              {sampleDataActive && <DemoJourneyCard compact />}
               <details
                 className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
                 onToggle={(event) => setAdvancedInsightsOpen(event.currentTarget.open)}
               >
                 <summary className="cursor-pointer text-sm font-bold text-navy">
-                  More dashboard insights
+                  Supporting execution detail
                 </summary>
                 {dashboardInsights && (
                   <div className="mt-4 flex flex-col gap-4">
+                    <StartHerePanel
+                      commandCenter={commandCenter}
+                      signal={pipelineReviewSignal}
+                      commercialAction={commercialAction}
+                      sampleDataActive={sampleDataActive}
+                      onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)}
+                    />
+                    <DailyOperatingPlan
+                      blocks={commandCenter.dailyTimeblocks}
+                      message={dailyExecutionMessage}
+                      canUndo={Boolean(lastDailyExecutionActionId)}
+                      execution={commandCenter.dailyExecution}
+                      onDecision={handleDailyExecutionDecision}
+                      onRestore={handleRestoreDailyExecution}
+                      onUndo={handleUndoDailyExecution}
+                    />
+                    <TodayFocus commandCenter={commandCenter} />
+                    <DashboardPrimaryWork commandCenter={commandCenter} signal={pipelineReviewSignal} />
                     <QuoteFollowUpCard
                       quotes={data.quotes}
                       revenueView={revenueView}
@@ -515,11 +617,11 @@ export function DashboardPage() {
   );
 }
 
+export const DashboardPage = TodayPage;
+
 function buildDashboardInsights(data: DashboardData) {
   const period = getCurrentExecutionWeekRange();
-  const periodActivities = data.activities.filter((activity) => (
-    activity.activityDate >= period.start && activity.activityDate <= period.end
-  ));
+  const periodActivities = data.activities.filter((activity) => isBusinessDateInRange(activity.activityDate, period.start, period.end));
   const weeklyExecutionReview = generateWeeklyExecutionReview({
     periodType: 'week',
     periodLabel: period.label,
@@ -536,6 +638,7 @@ function buildDashboardInsights(data: DashboardData) {
     objections: data.objections,
     activities: data.activities,
     actionOutcomes: data.actionOutcomes,
+    opportunityOutcomes: data.opportunityOutcomes,
     limit: 10,
   });
   const outcomeLoop = analyzePipelineOutcomeLoop({
@@ -611,7 +714,7 @@ function buildDashboardCommercialAction(
   }
 
   if (revenueView.pendingPo > 0 && decidedActionIds.size === 0) {
-    const amountLabel = formatCurrencyAmount(revenueView.pendingPo, 'VND');
+    const amountLabel = formatBaseCurrencyAmount(revenueView.pendingPo);
     return {
       title: 'Confirm pending PO owners',
       accountName: 'Commercial desk',
@@ -632,6 +735,271 @@ function revenueRiskPriority(risk: RevenueActionItem['risk']): CommandPriority {
   if (risk === 'Quote expiring' || risk === 'Payment term missing') return 'High';
   if (risk === 'Waiting on PO' || risk === 'Waiting on delivery' || risk === 'Waiting on payment' || risk === 'Weak pipeline') return 'High';
   return 'Medium';
+}
+
+function ForecastDefenseReadiness({ center }: { center: ReturnType<typeof buildUnifiedTodayCommandCenter> }) {
+  return (
+    <section className="rounded-2xl border border-brand-blue/20 bg-gradient-to-br from-blue-50 via-white to-emerald-50 p-5 shadow-sm">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Forecast-defense readiness</p>
+          <h2 className="mt-2 text-2xl font-black text-navy">Know what you can defend before review starts.</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-600">
+            The score reflects whether each deal has a manager-ready position, evidence, money, date, objection context, and next action.
+          </p>
+        </div>
+        <Link to="/app/pipeline-defense" className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2.5 text-sm font-bold text-white">
+          Prepare pipeline review
+        </Link>
+      </div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <Metric label="Review readiness" value={`${center.readinessScore}%`} tone={center.readinessScore >= 75 ? 'green' : center.readinessScore >= 45 ? 'amber' : 'red'} />
+        <Metric label="Defendable deals" value={center.defendableDeals} tone={center.defendableDeals ? 'green' : 'blue'} />
+        <Metric label="Rescue deals" value={center.rescueDeals} tone={center.rescueDeals ? 'amber' : 'green'} />
+        <Metric label="Downgrade candidates" value={center.downgradeCandidates} tone={center.downgradeCandidates ? 'red' : 'green'} />
+        <Metric label="Overdue actions" value={center.overdueActions} tone={center.overdueActions ? 'red' : 'green'} />
+        <Metric label="Evidence gaps" value={center.missingEvidenceGaps.length} tone={center.missingEvidenceGaps.length ? 'amber' : 'green'} />
+      </div>
+      <div className="mt-4 rounded-xl border border-amber-100 bg-white/80 p-4">
+        <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Top 3 missing evidence gaps</p>
+        {center.missingEvidenceGaps.length > 0 ? (
+          <ol className="mt-2 grid gap-2 text-sm font-semibold text-gray-700 md:grid-cols-3">
+            {center.missingEvidenceGaps.slice(0, 3).map((gap, index) => <li key={gap.label}>{index + 1}. {gap.label} ({gap.count})</li>)}
+          </ol>
+        ) : (
+          <p className="mt-2 text-sm font-semibold text-emerald-700">No material evidence gap detected in the active brief.</p>
+        )}
+      </div>
+      {center.importedAccountsHidden > 0 && (
+        <p className="mt-3 text-xs font-semibold text-gray-500">{center.importedAccountsHidden.toLocaleString()} imported accounts are available in search but hidden from active work.</p>
+      )}
+      {(center.learningNudge || center.learningLowDataMessage) && (
+        <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/80 p-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-indigo-700">Personal learning from outcomes</p>
+          <p className="mt-1 text-sm font-semibold leading-6 text-indigo-950">
+            {center.learningNudge || center.learningLowDataMessage}
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function TodayTopThreeActions({ actions }: { actions: TodayCommandAction[] }) {
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Top 3 Today Actions</p>
+          <h2 className="mt-1 text-xl font-bold text-navy">Do these before your manager asks.</h2>
+        </div>
+        <span className="text-xs font-semibold text-gray-500">Ranked across defense, revenue, opportunities, and capture</span>
+      </div>
+      {actions.length === 0 ? (
+        <p className="mt-4 rounded-lg bg-gray-50 p-4 text-sm font-semibold text-gray-600">No urgent action found. Capture a sales update to refresh Today.</p>
+      ) : (
+        <div className="mt-4 grid gap-3 lg:grid-cols-3">
+          {actions.map((action, index) => (
+            <article key={action.id} className="flex flex-col justify-between rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-navy px-2.5 py-1 text-xs font-black text-white">#{index + 1}</span>
+                  <PriorityBadge priority={action.urgency} />
+                  <Badge label={action.source} tone="blue" />
+                </div>
+                <h3 className="mt-3 text-base font-bold text-navy">{action.title}</h3>
+                <p className="mt-1 text-xs font-bold uppercase tracking-wide text-gray-400">{action.accountName} / {action.opportunityName}</p>
+                <p className="mt-3 text-sm leading-6 text-gray-600">{action.reason}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Badge label={`Due: ${action.dueDateLabel}`} tone={action.urgency === 'Critical' ? 'red' : 'blue'} />
+                  {action.moneyLabel && <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-gray-700 ring-1 ring-gray-200">{action.moneyLabel}</span>}
+                </div>
+              </div>
+              <Link to={action.href} className="mt-4 inline-flex w-fit items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Open action <ArrowRight className="h-4 w-4" /></Link>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ProactiveNudgesPanel({
+  center,
+  message,
+  onMarkDone,
+  onDismiss,
+  onSnoozeTomorrow,
+  onSnoozeNextWeek,
+  onClearDismissed,
+  onClearAll,
+}: {
+  center: ProactiveNudgeCenter;
+  message: string;
+  onMarkDone: (nudge: NudgeRecord) => void;
+  onDismiss: (nudge: NudgeRecord) => void;
+  onSnoozeTomorrow: (nudge: NudgeRecord) => void;
+  onSnoozeNextWeek: (nudge: NudgeRecord) => void;
+  onClearDismissed: () => void;
+  onClearAll: () => void;
+}) {
+  return (
+    <section className="rounded-xl border border-indigo-100 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Proactive Nudges</p>
+          <h2 className="mt-1 text-xl font-bold text-navy">Memoire is watching the few things that can embarrass you in review.</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
+            Capped at five active in-app nudges. You can mark done, dismiss, or snooze without changing the underlying CRM data.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={onClearDismissed} className="rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-bold text-gray-600">
+            Clear dismissed local nudges
+          </button>
+          <button type="button" onClick={onClearAll} className="rounded-full border border-red-100 bg-red-50 px-3 py-2 text-xs font-bold text-red-700">
+            Clear all local nudge state
+          </button>
+        </div>
+      </div>
+      {message && <p className="mt-3 rounded-lg bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-800">{message}</p>}
+      {center.todayNudges.length === 0 ? (
+        <p className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm font-semibold text-gray-600">
+          No active proactive nudge right now. Capture updates and Pipeline Defense will refresh the signal.
+        </p>
+      ) : (
+        <div className="mt-4 grid gap-3 xl:grid-cols-2">
+          {center.todayNudges.map((nudge) => (
+            <article key={nudge.id} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <NudgeUrgencyBadge urgency={nudge.urgency} />
+                    <Badge label={nudge.source} tone={nudge.source === 'outcome-learning' ? 'purple' : 'blue'} />
+                  </div>
+                  <h3 className="mt-3 text-base font-bold text-navy">{nudge.title}</h3>
+                  <p className="mt-1 text-xs font-bold uppercase tracking-wide text-gray-400">
+                    {nudge.accountName || 'Needs confirmation'}{nudge.opportunityName ? ` / ${nudge.opportunityName}` : ''}
+                  </p>
+                </div>
+                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-gray-600 ring-1 ring-gray-200">
+                  {formatNudgeDueDate(nudge)}
+                </span>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-gray-600">{nudge.reason}</p>
+              <p className="mt-2 text-sm font-semibold text-navy">Recommended: {nudge.recommendedAction}</p>
+              {formatNudgeMoney(nudge) && (
+                <p className="mt-2 text-xs font-bold text-gray-500">{formatNudgeMoney(nudge)}</p>
+              )}
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button type="button" onClick={() => onMarkDone(nudge)} className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white">
+                  Mark done
+                </button>
+                <button type="button" onClick={() => onDismiss(nudge)} className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-600">
+                  Dismiss
+                </button>
+                <button type="button" onClick={() => onSnoozeTomorrow(nudge)} className="rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700">
+                  Snooze tomorrow
+                </button>
+                <button type="button" onClick={() => onSnoozeNextWeek(nudge)} className="rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700">
+                  Snooze next week
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+      {center.hiddenImportedAccountCount > 0 && (
+        <p className="mt-3 text-xs font-semibold text-gray-500">
+          {center.hiddenImportedAccountCount.toLocaleString()} imported accounts are still searchable but do not create urgent nudges.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function NudgeUrgencyBadge({ urgency }: { urgency: NudgeRecord['urgency'] }) {
+  const label = urgency.charAt(0).toUpperCase() + urgency.slice(1);
+  const tone = urgency === 'critical' ? 'red' : urgency === 'high' ? 'amber' : urgency === 'medium' ? 'blue' : 'gray';
+  return <Badge label={label} tone={tone} />;
+}
+
+function TodayPipelineReadiness({ center }: { center: ReturnType<typeof buildUnifiedTodayCommandCenter> }) {
+  const visibleCategories = ['Defend now', 'Rescue before review', 'Downgrade / de-risk', 'Missing evidence'];
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Pipeline Review Readiness</p><h2 className="mt-1 text-xl font-bold text-navy">The forecast position, without the theatre.</h2></div>
+        <Link to="/app/pipeline-defense" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Open Pipeline Defense</Link>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {center.pipelineReadiness.groups.filter((group) => visibleCategories.includes(group.category)).map((group) => (
+          <div key={group.category} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+            <p className="text-sm font-bold text-navy">{group.category}</p>
+            <p className="mt-1 text-2xl font-black text-navy">{group.items.length}</p>
+            <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-500">{group.items[0]?.pipelineReviewAnswer || 'No deal in this category.'}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TodayCommercialRisk({ items }: { items: RevenueActionItem[] }) {
+  const stuckMoney = items.reduce((total, item) => total + item.baseAmount, 0);
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Commercial Risk</p><h2 className="mt-1 text-xl font-bold text-navy">Stuck money and follow-ups.</h2><p className="mt-1 text-sm text-gray-500">Detail only—Today owns the priority order.</p></div>
+        <Link to="/app/revenue" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">Commercial risk detail</Link>
+      </div>
+      <p className="mt-4 text-lg font-black text-navy">{formatBaseCurrencyAmount(stuckMoney)}</p>
+      <div className="mt-3 divide-y divide-gray-100">
+        {items.length === 0 ? <p className="py-3 text-sm text-gray-500">No commercial risk needs follow-up.</p> : items.slice(0, 4).map((item) => (
+          <Link key={item.id} to={item.href} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div><p className="text-sm font-bold text-navy">{item.nextAction}</p><p className="mt-1 text-xs text-gray-500">{item.accountName || 'Needs confirmation'} / {item.label || 'Needs confirmation'} · {item.risk}</p></div>
+            <span className="text-xs font-bold text-gray-700">{formatCurrencyAmount(item.amount, item.currency)}</span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TodayCaptureInbox({ items }: { items: ReturnType<typeof buildUnifiedTodayCommandCenter>['captureInbox'] }) {
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Capture Inbox</p><h2 className="mt-1 text-xl font-bold text-navy">Turn recent notes into linked evidence.</h2></div>
+        <Link to="/app/capture" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Capture a sales update</Link>
+      </div>
+      <div className="mt-3 divide-y divide-gray-100">
+        {items.length === 0 ? <p className="py-3 text-sm text-gray-500">No capture needs linking or confirmation.</p> : items.slice(0, 5).map((item) => (
+          <Link key={item.id} to={item.href} className="block py-3">
+            <div className="flex flex-wrap items-center gap-2"><Badge label={item.reason} tone="amber" /><span className="text-xs font-semibold text-gray-400">{item.activityDateLabel}</span></div>
+            <p className="mt-2 text-sm font-bold text-navy">{item.summary}</p>
+            <p className="mt-1 text-xs text-gray-500">{item.accountName} / {item.opportunityName}</p>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TodayCommandEmptyState() {
+  return (
+    <section className="rounded-xl border border-dashed border-blue-200 bg-white p-6 shadow-sm">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Start Today</p>
+      <h2 className="mt-2 text-2xl font-black text-navy">Give Memoire one real signal.</h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">Today ignores empty imported account volume. Add an activity, active opportunity, or defense brief to create meaningful priorities.</p>
+      <div className="mt-5 flex flex-wrap gap-2">
+        <Link to="/app/capture" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Capture a sales update</Link>
+        <Link to="/app/opportunities" className="rounded-full border border-gray-200 px-4 py-2 text-sm font-bold text-gray-700">Create or review an opportunity</Link>
+        <Link to="/app/pipeline-defense" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">Prepare first pipeline defense brief</Link>
+        <Link to="/app/opportunities?import=csv" className="rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700">Import or connect data later</Link>
+      </div>
+    </section>
+  );
 }
 
 function StartHerePanel({
@@ -667,14 +1035,14 @@ function StartHerePanel({
     ? 'Open defense mode'
     : activeBlock?.id === 'capture-closeout'
       ? 'Capture update'
-      : 'Do this now';
+      : 'Open supporting detail';
 
   if (sampleDataActive) {
     return (
       <section className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Start here</p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Supporting demo path</p>
             <h2 className="mt-2 text-2xl font-black text-navy">Explore the demo in this order.</h2>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -698,7 +1066,7 @@ function StartHerePanel({
       <section className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Start here</p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Supporting setup</p>
             <h2 className="mt-2 text-2xl font-black text-navy">Bring in your first deal.</h2>
             <p className="mt-1 text-sm text-gray-500">Import a CSV, add one opportunity, or explore with demo data before your first review.</p>
           </div>
@@ -727,12 +1095,12 @@ function StartHerePanel({
         <div className="flex flex-col justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Now</p>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Supporting context</p>
               {activeBlock && <Badge label={`${activeBlock.startTime}-${activeBlock.endTime}`} tone={activeBlock.priority === 'Critical' ? 'red' : activeBlock.priority === 'High' ? 'amber' : 'blue'} />}
               {selectedCommercialAction && <Badge label="Commercial risk" tone={selectedCommercialAction.priority === 'Critical' ? 'red' : 'amber'} />}
             </div>
             <h2 className="mt-2 text-2xl font-black text-navy">
-              {selectedCommercialAction ? selectedCommercialAction.title : activeBlock?.focus || topAction?.title || (topRisk ? `Review ${topRisk.accountName}` : 'Choose the one deal that must move today.')}
+              {selectedCommercialAction ? selectedCommercialAction.title : activeBlock?.focus || topAction?.title || (topRisk ? `Review ${topRisk.accountName}` : 'No additional supporting signal.')}
             </h2>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
               {selectedCommercialAction ? selectedCommercialAction.reason : activeBlock?.reason || topAction?.reason || topRisk?.reason || 'Capture the next customer touch or prepare your next pipeline review.'}
@@ -792,8 +1160,8 @@ function DashboardPrimaryWork({
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Next actions</p>
-            <h2 className="mt-1 text-xl font-bold text-navy">Do these first.</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Supporting action signals</p>
+            <h2 className="mt-1 text-xl font-bold text-navy">Reference only—Today owns the rank.</h2>
           </div>
           <Link to="/app/capture?mode=quick" className="inline-flex w-fit rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
             Capture update
@@ -811,7 +1179,7 @@ function DashboardPrimaryWork({
                 <div>
                   <div className="flex flex-wrap gap-2">
                     <PriorityBadge priority={action.priority} />
-                    {action.dueDate && <Badge label={`Due ${action.dueDate}`} tone={action.dueDate < new Date().toISOString().slice(0, 10) ? 'red' : 'blue'} />}
+                    {action.dueDate && <Badge label={`Due ${formatSafeBusinessDate(action.dueDate)}`} tone={isBusinessDateOverdue(action.dueDate) ? 'red' : 'blue'} />}
                   </div>
                   <h3 className="mt-2 text-sm font-bold text-navy">{action.title}</h3>
                   <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
@@ -826,8 +1194,8 @@ function DashboardPrimaryWork({
       </div>
 
       <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Review prep</p>
-        <h2 className="mt-1 text-xl font-bold text-navy">Prepare Pipeline Review</h2>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Defense drill-down</p>
+        <h2 className="mt-1 text-xl font-bold text-navy">Open the supporting brief</h2>
         <p className="mt-2 text-sm leading-6 text-blue-900/75">{signal.topReason}</p>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <Metric label="Review" value={signal.dealsNeedingReview} tone={signal.dealsNeedingReview ? 'amber' : 'green'} />
@@ -872,7 +1240,7 @@ function DailyOperatingPlan({
   )
     ? firstAction
     : null;
-  const activeHref = overridingAction?.href || activeBlock?.href || '/app/dashboard';
+  const activeHref = overridingAction?.href || activeBlock?.href || '/app/today';
   const activeFocus = overridingAction?.title || activeBlock?.focus || '';
   const activePriority = overridingAction?.priority || activeBlock?.priority || 'Medium';
 
@@ -1095,7 +1463,7 @@ function QuoteFollowUpCard({
   const focusQuote = revenueQuote;
   const progressAction = focusQuote ? getNextCommercialProgressAction(focusQuote) : null;
   const risk = focusQuote ? getQuoteRisk(focusQuote) : null;
-  const atRiskLabel = formatCompactCurrencyAmount(revenueView.atRiskRevenue, revenueView.topAction?.currency || 'VND');
+  const atRiskLabel = formatBaseCurrencyAmount(revenueView.atRiskRevenue, true);
 
   if (quotes.length === 0) {
     return (
@@ -1634,7 +2002,7 @@ function ActionItem({ item }: { item: CommandActionItem }) {
           <div className="flex flex-wrap gap-2">
             <PriorityBadge priority={item.priority} />
             <Badge label={item.source} />
-            {item.dueDate && <Badge label={`Due ${item.dueDate}`} tone={item.dueDate < new Date().toISOString().slice(0, 10) ? 'red' : 'blue'} />}
+            {item.dueDate && <Badge label={`Due ${formatSafeBusinessDate(item.dueDate)}`} tone={isBusinessDateOverdue(item.dueDate) ? 'red' : 'blue'} />}
           </div>
           <h3 className="mt-2 text-base font-bold text-navy">{item.title}</h3>
           <p className="mt-1 text-sm leading-6 text-gray-600">{item.reason}</p>
@@ -2047,30 +2415,6 @@ function TrialActivationChecklistCard({
   );
 }
 
-function DashboardEmptyState() {
-  return (
-    <section className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-brand-blue">
-        <CheckCircle2 className="h-6 w-6" />
-      </div>
-      <h2 className="mt-4 text-xl font-bold text-navy">Start by importing a CSV or adding one opportunity.</h2>
-      <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">
-        Memoire will turn opportunities, account memory, activity notes, and defense briefs into a focused daily command center.
-      </p>
-      <div className="mt-6 flex flex-wrap justify-center gap-2">
-        <Link to="/app/opportunities?import=csv" className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-          <Upload className="h-4 w-4" />
-          Import CSV
-        </Link>
-        <Link to="/app/opportunities?new=1" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
-          <Plus className="h-4 w-4" />
-          Add Opportunity
-        </Link>
-      </div>
-    </section>
-  );
-}
-
 function FirstPipelineReviewCta({
   progress,
   metrics,
@@ -2210,13 +2554,14 @@ function EmptyPanel({ title, helper, href, cta }: { title: string; helper: strin
   );
 }
 
-function Badge({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green' | 'amber' | 'red' | 'gray' }) {
+function Badge({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green' | 'amber' | 'red' | 'gray' | 'purple' }) {
   const toneMap = {
     blue: 'border-blue-100 bg-blue-50 text-brand-blue',
     green: 'border-emerald-100 bg-emerald-50 text-emerald-700',
     amber: 'border-amber-100 bg-amber-50 text-amber-700',
     red: 'border-red-100 bg-red-50 text-red-700',
     gray: 'border-gray-200 bg-gray-50 text-gray-600',
+    purple: 'border-indigo-100 bg-indigo-50 text-indigo-700',
   }[tone];
 
   return <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${toneMap}`}>{label}</span>;
@@ -2225,6 +2570,12 @@ function Badge({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green
 function PriorityBadge({ priority }: { priority: CommandPriority }) {
   const tone = priority === 'Critical' ? 'red' : priority === 'High' ? 'amber' : priority === 'Medium' ? 'blue' : 'green';
   return <Badge label={priority} tone={tone} />;
+}
+
+function addDaysKey(days: number) {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
 }
 
 function toneClass(tone: 'blue' | 'green' | 'amber' | 'red') {

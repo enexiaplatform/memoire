@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Banknote, ClipboardCheck, Download, HelpCircle, Printer, ReceiptText, RotateCcw, ShieldCheck, Target, Trash2, Upload } from 'lucide-react';
+import { AlertTriangle, Banknote, ClipboardCheck, Copy, Download, HelpCircle, Printer, ReceiptText, RotateCcw, ShieldCheck, Target, Trash2, Upload } from 'lucide-react';
 import {
   createInitialPipelineDefenseDeals,
   decisionRecommendations,
@@ -93,6 +93,10 @@ import {
   type ReviewPackSnapshot,
 } from '../../utils/reviewPacks';
 import { ReviewPackReadOnly } from './PipelineReviewPackPage';
+import { buildPipelineDefenseCenter, type ManagerReadyDealBrief } from '../../utils/pipelineDefenseCenter';
+import { loadOpportunityOutcomes, loadOpportunityOutcomesForUser, type OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore';
+import { loadNudges, loadNudgesForUser, type NudgeRecord } from '../../services/nudgeStore';
+import { buildProactiveNudges, formatNudgeDueDate, formatNudgeMoney } from '../../utils/proactiveNudges.ts';
 
 const categoryClasses: Record<ForecastEvidenceCategory, string> = {
   Defensible: 'border-emerald-200 bg-emerald-50 text-emerald-700',
@@ -189,10 +193,21 @@ export function PipelineReviewDefenseBriefPage() {
   const [reviewPackMessage, setReviewPackMessage] = useState('');
   const [reviewPackCopyStatus, setReviewPackCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [printableReviewPack, setPrintableReviewPack] = useState<ReviewPackSnapshot | null>(null);
+  const [dealBriefCopyStatus, setDealBriefCopyStatus] = useState<Record<string, 'copied' | 'failed'>>({});
+  const [opportunityOutcomes, setOpportunityOutcomes] = useState<OpportunityOutcomeRecord[]>(() => loadOpportunityOutcomes());
+  const [nudgeState, setNudgeState] = useState<NudgeRecord[]>(() => loadNudges());
 
   const activeBrief = getActivePipelineDefenseBrief(store);
   const deals = activeBrief?.deals || [];
   const summary = buildSummary(deals);
+  const defenseCenter = buildPipelineDefenseCenter(deals, undefined, opportunityOutcomes);
+  const proactiveNudges = buildProactiveNudges({
+    briefs: activeBrief ? [activeBrief] : [],
+    opportunityOutcomes,
+    persistedNudges: nudgeState,
+  });
+  const todayTopNudgeIds = new Set(proactiveNudges.todayNudges.slice(0, 3).map((nudge) => nudge.id));
+  const pipelineNudgesByDeal = buildPipelineNudgesByDeal(deals, proactiveNudges.allActiveNudges, todayTopNudgeIds);
   const activeActionPlanItems = actionPlanItems || generatePipelineDefenseActionPlan(activeBrief);
   const shareableBrief = buildShareablePipelineDefenseBrief({ brief: activeBrief, deals, actionItems: activeActionPlanItems });
   const currentWeekReviewPack = reviewPacks.find((pack) => (
@@ -212,6 +227,44 @@ export function PipelineReviewDefenseBriefPage() {
       markDemoJourneyStepComplete('open-defense', 'Pipeline Defense opened');
     }
   }, [sampleDataActive]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (accountLoading) return;
+    if (!user || sampleDataActive) {
+      setOpportunityOutcomes(loadOpportunityOutcomes());
+      return;
+    }
+    loadOpportunityOutcomesForUser(user.id)
+      .then((records) => {
+        if (!cancelled) setOpportunityOutcomes(records);
+      })
+      .catch(() => {
+        if (!cancelled) setOpportunityOutcomes(loadOpportunityOutcomes());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accountLoading, sampleDataActive, user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (accountLoading) return;
+    if (!user || sampleDataActive) {
+      setNudgeState(loadNudges());
+      return;
+    }
+    loadNudgesForUser(user.id)
+      .then((records) => {
+        if (!cancelled) setNudgeState(records);
+      })
+      .catch(() => {
+        if (!cancelled) setNudgeState(loadNudges(user.id));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accountLoading, sampleDataActive, user]);
 
   useEffect(() => {
     if (accountLoading) return;
@@ -690,6 +743,11 @@ export function PipelineReviewDefenseBriefPage() {
     }
   };
 
+  const copyDealManagerBrief = async (item: ManagerReadyDealBrief) => {
+    const copied = await copyTextToClipboard(item.copyText);
+    setDealBriefCopyStatus((current) => ({ ...current, [item.deal.id]: copied ? 'copied' : 'failed' }));
+  };
+
   const copyShareReadyMarkdown = async () => {
     const markdown = generateShareReadyPipelineDefenseMarkdown({ brief: activeBrief, shareable: shareableBrief });
     try {
@@ -913,15 +971,21 @@ export function PipelineReviewDefenseBriefPage() {
       <header className="mb-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Brief workspace</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Pipeline Review Defense Brief</h1>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Personal Pipeline Defense OS</p>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Never enter a pipeline review unprepared.</h1>
             <p className="mt-2 max-w-3xl text-sm text-gray-500">
-              The Pipeline Defense Brief is your weekly review pack: defend the strong deals, rescue weak ones, and downgrade anything that cannot be supported with evidence.
+              Memoire works beside your company CRM—not in place of it—to prepare, defend, rescue, or downgrade every forecast with manager-ready review answers.
             </p>
+            <div className="mt-4 grid max-w-3xl gap-2 sm:grid-cols-2">
+              {['What can I defend?', 'What must I rescue?', 'What must I downgrade?', 'What evidence is missing?'].map((question) => (
+                <div key={question} className="rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2 text-sm font-bold text-blue-950">{question}</div>
+              ))}
+            </div>
             <div className="mt-4 flex flex-wrap gap-2 no-print">
-              <a href="/app/opportunities" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-100">
-                Generate your first Pipeline Defense Brief
-              </a>
+              <button type="button" onClick={enterReviewMode} disabled={deals.length === 0} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90 disabled:opacity-50">
+                Prepare pipeline review
+              </button>
+              <a href="#manager-summary" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-100">Generate manager brief</a>
               <a href="/app/demo-guide" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">
                 Run 5-minute demo
               </a>
@@ -1270,12 +1334,19 @@ export function PipelineReviewDefenseBriefPage() {
       )}
 
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <SummaryCard label="Deals reviewed" value={String(summary.dealsReviewed)} detail="Current editable review set" />
-        <SummaryCard label="At-risk deals" value={String(summary.atRiskDeals)} detail="Not marked Defensible" tone="amber" />
-        <SummaryCard label="Highest-risk deal" value={summary.highestRiskDeal?.account || 'None'} detail={summary.highestRiskDeal?.opportunity || 'No active deal'} tone="red" />
-        <SummaryCard label="Most common missing context" value={summary.commonMissingContext?.label || 'None'} detail={`${summary.commonMissingContext?.count || 0} deals affected`} />
-        <SummaryCard label="Top action this week" value={summary.topRecommendedAction?.decisionRecommendation || 'None'} detail={summary.topRecommendedAction?.recommendedAction || 'Add a deal to review'} tone="blue" />
+        <SummaryCard label="Review readiness" value={`${defenseCenter.readinessScore}%`} detail="Manager-answer completeness" tone="blue" />
+        <SummaryCard label="Defend now" value={String(defenseCenter.defendableDeals)} detail="Evidence supports the position" />
+        <SummaryCard label="Rescue" value={String(defenseCenter.rescueDeals)} detail="Action required before review" tone="amber" />
+        <SummaryCard label="Downgrade" value={String(defenseCenter.downgradeCandidates)} detail="De-risk the forecast" tone="red" />
+        <SummaryCard label="Top missing evidence" value={defenseCenter.topMissingEvidenceGaps[0]?.label || 'None'} detail={`${defenseCenter.topMissingEvidenceGaps[0]?.count || 0} deals affected`} />
       </section>
+
+      <DefenseCategoryBoard
+        groups={defenseCenter.groups}
+        nudgesByDeal={pipelineNudgesByDeal}
+        copyStatus={dealBriefCopyStatus}
+        onCopy={copyDealManagerBrief}
+      />
 
       <ReviewPackHistory
         packs={reviewPacks}
@@ -1458,6 +1529,187 @@ export function PipelineReviewDefenseBriefPage() {
       <PipelineDefensePrintableBrief brief={activeBrief} deals={deals} summary={summary} actionItems={activeActionPlanItems} />
     )}
     </>
+  );
+}
+
+function DefenseCategoryBoard({
+  groups,
+  nudgesByDeal,
+  copyStatus,
+  onCopy,
+}: {
+  groups: ReturnType<typeof buildPipelineDefenseCenter>['groups'];
+  nudgesByDeal: Record<string, NudgeRecord[]>;
+  copyStatus: Record<string, 'copied' | 'failed'>;
+  onCopy: (item: ManagerReadyDealBrief) => void;
+}) {
+  return (
+    <section className="mb-6 rounded-xl border border-brand-blue/20 bg-slate-50 p-5 shadow-sm">
+      <SectionHeader
+        eyebrow="Forecast defense decisions"
+        title="One deal. One primary decision. One manager-ready answer."
+        description="Every opportunity appears once below so review preparation stays focused: defend, rescue, downgrade, or close the evidence gap."
+      />
+      <div className="mt-5 space-y-5">
+        {groups.map((group) => (
+          <div key={group.category}>
+            <div className="mb-2 flex items-center gap-2">
+              <h3 className="text-sm font-black text-navy">{group.category}</h3>
+              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-gray-500 ring-1 ring-gray-200">{group.items.length}</span>
+            </div>
+            {group.items.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-gray-200 bg-white px-4 py-3 text-sm text-gray-500">No deals in this category.</p>
+            ) : (
+              <div className="grid gap-4 xl:grid-cols-2">
+                {group.items.map((item) => (
+                  <ManagerReadyDealCard
+                    key={item.deal.id}
+                    item={item}
+                    nudges={nudgesByDeal[item.deal.id] || nudgesByDeal[item.deal.sourceOpportunityId || ''] || []}
+                    copyStatus={copyStatus[item.deal.id]}
+                    onCopy={() => onCopy(item)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ManagerReadyDealCard({
+  item,
+  nudges,
+  copyStatus,
+  onCopy,
+}: {
+  item: ManagerReadyDealBrief;
+  nudges: NudgeRecord[];
+  copyStatus?: 'copied' | 'failed';
+  onCopy: () => void;
+}) {
+  return (
+    <article className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{item.account}</p>
+          <h4 className="mt-1 text-lg font-bold text-navy">{item.opportunity}</h4>
+          <p className="mt-1 text-sm font-semibold text-brand-blue">{item.forecastPosition} · {item.decision}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {item.needsConfirmation && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 ring-1 ring-amber-200">Needs confirmation</span>}
+          <button type="button" onClick={onCopy} className="inline-flex items-center gap-2 rounded-full bg-navy px-3 py-2 text-xs font-bold text-white">
+            <Copy className="h-3.5 w-3.5" /> Copy manager brief
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <ManagerBriefFact label="Money" value={item.moneyLabel} />
+        <ManagerBriefFact label="Due date" value={item.dueDateLabel} />
+        <ManagerBriefFact label="Evidence supporting forecast" value={item.evidence.join('; ') || 'Missing evidence — no customer proof captured'} />
+        <ManagerBriefFact label="Missing MEDDIC context" value={item.missingContext.join('; ') || 'No explicit MEDDIC gap captured'} />
+        <ManagerBriefFact label="Objection debt" value={item.objectionDebt} />
+        <ManagerBriefFact label="Next action" value={item.nextAction} />
+      </div>
+      <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50/70 p-3">
+        <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">Pipeline review answer</p>
+        <p className="mt-1 text-sm leading-6 text-blue-950">{item.pipelineReviewAnswer}</p>
+      </div>
+      {item.learningWarning && (
+        <div className="mt-3 rounded-lg border border-indigo-100 bg-indigo-50/80 p-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-indigo-700">Outcome learning risk signal</p>
+          <p className="mt-1 text-sm leading-6 text-indigo-950">{item.learningWarning.warning}</p>
+        </div>
+      )}
+      {nudges.length > 0 && (
+        <div className="mt-3 rounded-lg border border-amber-100 bg-amber-50/80 p-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Proactive nudge</p>
+          <div className="mt-2 space-y-2">
+            {nudges.slice(0, 2).map((nudge) => (
+              <div key={nudge.id} className="rounded-md bg-white/80 p-2 text-sm leading-5 text-amber-950">
+                <p className="font-bold">{nudge.title} · {nudge.urgency}</p>
+                <p>{nudge.reason}</p>
+                <p className="mt-1 font-semibold">Recommended: {nudge.recommendedAction}</p>
+                <p className="mt-1 text-xs font-bold text-amber-700">
+                  Due: {formatNudgeDueDate(nudge)}{formatNudgeMoney(nudge) ? ` · ${formatNudgeMoney(nudge)}` : ''}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Link
+          to={buildOutcomeCaptureHref(item)}
+          className="rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100"
+        >
+          Record outcome retro
+        </Link>
+      </div>
+      {copyStatus === 'copied' && <p className="mt-2 text-sm font-semibold text-emerald-700">Manager brief copied.</p>}
+      {copyStatus === 'failed' && (
+        <div className="mt-3">
+          <p className="mb-2 text-sm font-semibold text-amber-700">Clipboard unavailable. Copy the manager brief below.</p>
+          <textarea readOnly value={item.copyText} rows={8} className="w-full rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-gray-800" />
+        </div>
+      )}
+    </article>
+  );
+}
+
+function buildOutcomeCaptureHref(item: ManagerReadyDealBrief) {
+  const params = new URLSearchParams();
+  if (item.deal.sourceOpportunityId) params.set('opportunityId', item.deal.sourceOpportunityId);
+  if (item.account && item.account !== 'Needs confirmation') params.set('account', item.account);
+  if (item.opportunity && item.opportunity !== 'Needs confirmation') params.set('opportunity', item.opportunity);
+  params.set('outcome', '1');
+  return `/app/opportunities?${params.toString()}`;
+}
+
+function buildPipelineNudgesByDeal(
+  deals: PipelineDefenseDeal[],
+  nudges: NudgeRecord[],
+  excludedNudgeIds: Set<string>,
+) {
+  const byDeal: Record<string, NudgeRecord[]> = {};
+  deals.forEach((deal) => {
+    const ids = [deal.id, deal.sourceOpportunityId].filter(Boolean) as string[];
+    const account = normalizeDealName(deal.account);
+    const opportunity = normalizeDealName(deal.opportunity);
+    const relevant = nudges
+      .filter((nudge) => !excludedNudgeIds.has(nudge.id))
+      .filter((nudge) => (
+        ids.includes(nudge.entityId || '') ||
+        (account && normalizeDealName(nudge.accountName || '') === account) ||
+        (opportunity && normalizeDealName(nudge.opportunityName || '') === opportunity)
+      ))
+      .filter((nudge) => (
+        nudge.source === 'pipeline-defense' ||
+        nudge.source === 'opportunity' ||
+        nudge.source === 'outcome-learning' ||
+        nudge.source === 'objection'
+      ))
+      .slice(0, 3);
+    ids.forEach((id) => {
+      byDeal[id] = relevant;
+    });
+  });
+  return byDeal;
+}
+
+function normalizeDealName(value = '') {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function ManagerBriefFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-gray-50 p-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
+      <p className="mt-1 text-sm leading-5 text-gray-700">{value}</p>
+    </div>
   );
 }
 

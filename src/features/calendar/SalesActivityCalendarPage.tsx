@@ -25,6 +25,7 @@ import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../servi
 import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
 import { applyOpportunityUpdateSuggestion, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 import type { SalesActivityType } from '../../utils/salesActivityClassifier';
+import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, isValidBusinessDate } from '../../utils/safeDate.ts';
 
 type CalendarViewMode = 'day' | 'week' | 'month';
 
@@ -97,7 +98,7 @@ export function SalesActivityCalendarPage() {
   const range = useMemo(() => getCalendarRange(viewMode, anchorDate), [anchorDate, viewMode]);
   const visibleActivities = useMemo(() => {
     return activities
-      .filter((activity) => activity.activityDate >= range.start && activity.activityDate <= range.end)
+      .filter((activity) => isBusinessDateInRange(activity.activityDate, range.start, range.end))
       .sort(sortByDateAscending);
   }, [activities, range.end, range.start]);
   const groupedActivities = useMemo(() => groupActivitiesByDate(visibleActivities), [visibleActivities]);
@@ -412,7 +413,7 @@ function ActivityCard({
           <Fact label="Opportunity" value={activity.opportunityName || 'Not captured'} />
           <Fact label="Linked" value={activity.linkStatus === 'Linked' ? `${activity.linkedAccountName} / ${activity.linkedOpportunityName}` : activity.linkStatus} />
           <Fact label="Next action" value={activity.nextAction || 'No next action captured'} />
-          <Fact label="Due date" value={activity.dueDate || 'No due date'} />
+          <Fact label="Due date" value={formatSafeBusinessDate(activity.dueDate)} />
         </div>
       </button>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -469,7 +470,7 @@ function ActivityDetailModal({
             {activity.activityType}
           </span>
           <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-600">
-            {activity.activityDate}
+            {formatSafeBusinessDate(activity.activityDate)}
           </span>
           <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
             activity.storageMode === 'cloud' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
@@ -483,7 +484,7 @@ function ActivityDetailModal({
           <Fact label="Opportunity" value={activity.opportunityName || 'Not captured'} />
           <Fact label="Contact / stakeholder" value={activity.contactName || activity.stakeholderName || 'Not captured'} />
           <Fact label="Next action" value={activity.nextAction || 'No next action captured'} />
-          <Fact label="Due date" value={activity.dueDate || 'No due date'} />
+          <Fact label="Due date" value={formatSafeBusinessDate(activity.dueDate)} />
           <Fact label="Created" value={new Date(activity.createdAt).toLocaleString('en-US')} />
           <Fact label="Updated" value={new Date(activity.updatedAt).toLocaleString('en-US')} />
           <Fact label="Linked opportunity" value={activity.linkStatus === 'Linked' ? `${activity.linkedAccountName} / ${activity.linkedOpportunityName}` : activity.linkStatus} />
@@ -666,7 +667,7 @@ function groupActivitiesByDate(activities: SalesActivityRecord[]) {
 function buildActivitySummary(activities: SalesActivityRecord[]): ActivitySummary {
   const accountCounts = countBy(activities.map(getActivityAccountName).filter(Boolean));
   const typeCounts = countBy(activities.map((activity) => activity.activityType));
-  const activeDays = new Set(activities.map((activity) => activity.activityDate)).size;
+  const activeDays = new Set(activities.map((activity) => activity.activityDate).filter(isValidBusinessDate)).size;
   const today = new Date().toISOString().slice(0, 10);
 
   return {
@@ -677,7 +678,7 @@ function buildActivitySummary(activities: SalesActivityRecord[]): ActivitySummar
     objectionsCaptured: activities.filter((activity) => activity.activityType === 'Objection handling').length,
     internalCoordinationItems: activities.filter((activity) => activity.activityType === 'Internal coordination').length,
     activitiesWithNextActions: activities.filter((activity) => Boolean(activity.nextAction)).length,
-    overdueDueDates: activities.filter((activity) => activity.dueDate && activity.dueDate < today).length,
+    overdueDueDates: activities.filter((activity) => isBusinessDateOverdue(activity.dueDate, today)).length,
     activeDays,
     topActivityType: topCount(typeCounts),
     mostTouchedAccount: topCount(accountCounts),
@@ -697,24 +698,24 @@ function topCount(counts: Record<string, number>) {
 }
 
 function sortByDateAscending(a: SalesActivityRecord, b: SalesActivityRecord) {
-  return `${a.activityDate}-${a.createdAt}`.localeCompare(`${b.activityDate}-${b.createdAt}`);
+  return compareSafeBusinessDate(a.activityDate, b.activityDate) || a.createdAt.localeCompare(b.createdAt);
 }
 
 function formatActivitySummary(activity: SalesActivityRecord) {
   return [
     `Activity: ${activity.activityType}`,
-    `Date: ${activity.activityDate}`,
+    `Date: ${formatSafeBusinessDate(activity.activityDate)}`,
     getActivityAccountName(activity) ? `Account: ${getActivityAccountName(activity)}` : '',
     getActivityOpportunityName(activity) ? `Opportunity: ${getActivityOpportunityName(activity)}` : '',
     `Summary: ${activity.summary}`,
     activity.nextAction ? `Next action: ${activity.nextAction}` : '',
-    activity.dueDate ? `Due: ${activity.dueDate}` : '',
+    activity.dueDate ? `Due: ${formatSafeBusinessDate(activity.dueDate)}` : '',
     activity.contactName || activity.stakeholderName ? `Contact: ${activity.contactName || activity.stakeholderName}` : '',
     activity.competitors?.length ? `Competitors: ${activity.competitors.join(', ')}` : '',
     activity.buyingSignals?.length ? `Buying signals: ${activity.buyingSignals.join(', ')}` : '',
     activity.risks?.length ? `Risks: ${activity.risks.join(', ')}` : '',
     activity.timelineSignals?.length ? `Timeline: ${activity.timelineSignals.join(', ')}` : '',
-    activity.nextActions?.length ? `Next actions:\n${activity.nextActions.map((action, index) => `${index + 1}. ${action.title}${action.dueDate ? ` (${action.dueDate})` : ''}`).join('\n')}` : '',
+    activity.nextActions?.length ? `Next actions:\n${activity.nextActions.map((action, index) => `${index + 1}. ${action.title}${action.dueDate ? ` (${formatSafeBusinessDate(action.dueDate)})` : ''}`).join('\n')}` : '',
     activity.tags.length > 0 ? `Tags: ${activity.tags.join(', ')}` : '',
   ].filter(Boolean).join('\n');
 }
@@ -750,7 +751,7 @@ function ActivityExtractionDetail({ activity }: { activity: SalesActivityRecord 
           <ul className="mt-2 space-y-2 text-sm font-semibold text-gray-800">
             {activity.nextActions.map((action, index) => (
               <li key={`${action.title}-${index}`} className="rounded-md bg-white px-3 py-2 ring-1 ring-gray-100">
-                {index + 1}. {action.title}{action.dueDate ? ` | Due ${action.dueDate}` : ''}
+                {index + 1}. {action.title}{action.dueDate ? ` | Due ${formatSafeBusinessDate(action.dueDate)}` : ''}
               </li>
             ))}
           </ul>

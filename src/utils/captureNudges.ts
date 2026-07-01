@@ -1,8 +1,10 @@
 import type { ActionOutcomeRecord } from '../services/actionOutcomeStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
+import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate } from './safeDate.ts';
 import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
+import { normalizeMeddicRole } from './meddicStakeholderMap.ts';
 
 export type CaptureNudge = {
   id: string;
@@ -45,13 +47,13 @@ export function buildCaptureNudges(input: {
     });
 
   activeOpportunities
-    .filter((opportunity) => opportunity.nextActionDate && opportunity.nextActionDate < today)
+    .filter((opportunity) => isBusinessDateOverdue(opportunity.nextActionDate, today))
     .slice(0, 3)
     .forEach((opportunity) => {
       nudges.push(makeNudge({
         id: `stale-${opportunity.id}`,
         title: 'Capture what happened with the stale next action',
-        reason: opportunity.nextAction || `Next action was due ${opportunity.nextActionDate}.`,
+        reason: opportunity.nextAction || `Next action was due ${formatSafeBusinessDate(opportunity.nextActionDate)}.`,
         accountName: opportunity.accountName,
         opportunityName: opportunity.opportunityName,
         sourceType: 'Stale Next Action',
@@ -124,8 +126,8 @@ function hasStakeholderGap(opportunity: CrmLiteOpportunity, stakeholders: Stakeh
       (!stakeholder.opportunityName || normalize(stakeholder.opportunityName) === normalize(opportunity.opportunityName))
     )
   ));
-  const hasChampion = related.some((stakeholder) => stakeholder.stakeholderRole === 'Champion');
-  const hasEconomicBuyer = related.some((stakeholder) => stakeholder.stakeholderRole === 'Economic buyer' || stakeholder.stakeholderRole === 'Decision maker');
+  const hasChampion = related.some((stakeholder) => normalizeMeddicRole(stakeholder.stakeholderRole) === 'Champion');
+  const hasEconomicBuyer = related.some((stakeholder) => normalizeMeddicRole(stakeholder.stakeholderRole) === 'Economic Buyer' || normalizeMeddicRole(stakeholder.stakeholderRole) === 'Decision Committee');
   return !hasChampion || !hasEconomicBuyer;
 }
 
@@ -138,7 +140,8 @@ function daysSinceLastActivity(opportunity: CrmLiteOpportunity, activities: Sale
         (!activity.opportunityName || normalize(activity.opportunityName || activity.linkedOpportunityName) === normalize(opportunity.opportunityName))
       )
     ))
-    .sort((a, b) => b.activityDate.localeCompare(a.activityDate));
+    .filter((activity) => isValidBusinessDate(activity.activityDate))
+    .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate));
   if (related.length === 0) return 999;
   const latest = new Date(`${related[0].activityDate}T00:00:00`).getTime();
   const now = new Date(`${todayKey()}T00:00:00`).getTime();

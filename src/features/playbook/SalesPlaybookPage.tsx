@@ -5,6 +5,7 @@ import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import { type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
+import { type OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
 import { type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { type SalesActivityRecord } from '../../services/salesActivityStore';
@@ -32,6 +33,7 @@ type PlaybookData = {
   stakeholders: StakeholderRecord[];
   objections: ObjectionRecord[];
   actionOutcomes: ActionOutcomeRecord[];
+  opportunityOutcomes: OpportunityOutcomeRecord[];
 };
 
 export function SalesPlaybookPage() {
@@ -43,6 +45,7 @@ export function SalesPlaybookPage() {
     stakeholders: [],
     objections: [],
     actionOutcomes: [],
+    opportunityOutcomes: [],
   });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -64,6 +67,7 @@ export function SalesPlaybookPage() {
           stakeholders: cachedData.stakeholders,
           objections: cachedData.objections,
           actionOutcomes: cachedData.actionOutcomes,
+          opportunityOutcomes: cachedData.opportunityOutcomes,
         });
         setLoading(false);
         return;
@@ -79,6 +83,7 @@ export function SalesPlaybookPage() {
         stakeholders: workspaceData.stakeholders,
         objections: workspaceData.objections,
         actionOutcomes: workspaceData.actionOutcomes,
+        opportunityOutcomes: workspaceData.opportunityOutcomes,
       });
       setLoading(false);
     }

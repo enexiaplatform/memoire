@@ -79,9 +79,9 @@ export function DemoGuidePage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">5-minute demo guide</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Run the Memoire demo</h1>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Run the Pipeline Defense proof path</h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-blue-950">
-              Your personal pipeline review and sales memory OS. Import your pipeline, capture what happened, find weak deals, and prepare a manager-ready Pipeline Defense Brief.
+              Memoire is a Personal Pipeline Defense OS used beside CRM, spreadsheets, and private notes. The demo proves one promise: capture messy sales evidence, let Today expose urgent risks, and copy manager-ready Pipeline Defense answers before Monday review or your next solo sales check-in.
             </p>
           </div>
           <DataModePill
@@ -98,8 +98,8 @@ export function DemoGuidePage() {
             <CheckCircle2 className="h-4 w-4" />
             {sampleDataActive ? 'Demo Sandbox Loaded' : 'Load Demo Sandbox'}
           </button>
-          <Link to="/app/dashboard" className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-brand-blue">
-            Open Dashboard
+          <Link to="/app/today" className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-brand-blue">
+            Open Today
             <ArrowRight className="h-4 w-4" />
           </Link>
           {sampleDataActive && (
@@ -118,8 +118,8 @@ export function DemoGuidePage() {
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <PositioningCard
           icon={<Target className="h-5 w-5" />}
-          title="Not a CRM replacement"
-          body="Your CRM tracks records for the company. Memoire helps you think, remember, and prepare as an individual salesperson."
+          title="Beside CRM"
+          body="Your CRM, spreadsheet, or notes track the record. Memoire helps you think, remember, and prepare as the person responsible for follow-up."
         />
         <PositioningCard
           icon={<ShieldCheck className="h-5 w-5" />}
@@ -129,16 +129,68 @@ export function DemoGuidePage() {
         <PositioningCard
           icon={<FileCheck2 className="h-5 w-5" />}
           title="Review-ready output"
-          body="The demo ends with a Pipeline Defense Brief and Manager Summary that a sales rep can bring into weekly review."
+          body="The demo ends with a Pipeline Defense Brief and Manager Summary that a sales rep, founder, consultant, or solo operator can use for review."
         />
       </section>
 
       <DemoJourneyCard />
 
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <DemoScriptCard
+          title="What to show first"
+          items={[
+            'Open Today, the daily command center.',
+            'Point to Top 3 actions, Top 3 Today Actions, and Proactive Nudges.',
+            'Explain: “This is what I must fix before my manager asks.”',
+            'Then use Paste Email / Thread mode in Capture and confirm the structured draft.',
+          ]}
+        />
+        <DemoScriptCard
+          title="What pain this proves"
+          items={[
+            'Messy notes and emails are where real deal evidence lives.',
+            'CRM fields do not tell the seller what they can defend in review.',
+            'Missing Champion, Economic Buyer, Procurement, objections, or due dates become review risk.',
+            'The seller needs a manager-ready answer, not another dashboard to interpret.',
+          ]}
+        />
+        <DemoScriptCard
+          title="Exact talk track"
+          items={[
+            '“Imagine it is Monday morning and I have pipeline review in 30 minutes.”',
+            '“I am not replacing CRM. I am preparing beside CRM.”',
+            '“First I check Today: what can embarrass me, what can I defend, and what needs action?”',
+            '“Now I paste the customer email. Memoire extracts evidence, but I confirm the fields before saving.”',
+            '“Pipeline Defense turns that into a copyable answer: defend, rescue, downgrade, missing evidence, next action. Now I click Copy manager brief.”',
+            '“If prior outcomes show a pattern, Memoire warns me cautiously instead of pretending it knows the future.”',
+          ]}
+        />
+        <DemoScriptCard
+          title="What not to show"
+          items={[
+            'Do not present Memoire as the system of record.',
+            'Do not start with Accounts, Quotes, imports, settings, or broad reporting.',
+            'Do not imply Gmail, Calendar, Zalo, or CRM sync exists in this milestone.',
+            'Do not present Memoire as invoicing, inventory, ecommerce, marketplace, or project-delivery management.',
+            'Do not over-explain every tab. Stay on Today → Capture → Pipeline Defense.',
+          ]}
+        />
+        <DemoScriptCard
+          title="Demo success criteria"
+          items={[
+            'User can repeat the promise: “Never enter a pipeline review unprepared.”',
+            'User understands Today = daily command center.',
+            'User sees Capture = evidence input for messy notes/emails.',
+            'User sees Pipeline Defense = review artifact with copyable manager brief.',
+            'User notices MEDDIC Stakeholder Map and Outcome Learning as proof, not extra CRM modules.',
+          ]}
+        />
+      </section>
+
       <section className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900 shadow-sm">
         <p className="font-bold">Privacy-first demo note</p>
-        <p className="mt-1">
-          Demo data is local-only. Memoire does not connect to Salesforce, HubSpot, Gmail, or Google Calendar in this flow. AI assist is optional only where a server-side provider is configured.
+          <p className="mt-1">
+          Demo data is local-only. Memoire does not connect to Salesforce, HubSpot, Gmail, Google Calendar, Zalo, or CRM sync in this flow. AI assist is optional only where a server-side provider is configured.
         </p>
       </section>
 
@@ -189,7 +241,7 @@ function DemoFeedbackForm({
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <TextField label="User persona" value={form.userPersona} placeholder="Sales manager, account executive, distributor sales..." onChange={(value) => onChange({ userPersona: value })} />
+        <TextField label="User persona" value={form.userPersona} placeholder="Account executive, founder-led sales, consultant, agency owner..." onChange={(value) => onChange({ userPersona: value })} />
         <TextField label="What did they think Memoire does?" value={form.freeTextFeedback} placeholder="Their 30-second understanding..." onChange={(value) => onChange({ freeTextFeedback: value })} />
         <SelectField
           label="Understood in 30 seconds"
@@ -282,6 +334,22 @@ function PositioningCard({ icon, title, body }: { icon: ReactNode; title: string
       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-brand-blue">{icon}</div>
       <h2 className="mt-4 text-base font-bold text-navy">{title}</h2>
       <p className="mt-2 text-sm leading-6 text-gray-600">{body}</p>
+    </article>
+  );
+}
+
+function DemoScriptCard({ title, items }: { title: string; items: string[] }) {
+  return (
+    <article className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <h2 className="text-base font-bold text-navy">{title}</h2>
+      <ul className="mt-3 space-y-2">
+        {items.map((item) => (
+          <li key={item} className="flex gap-2 text-sm leading-6 text-gray-600">
+            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-blue" />
+            {item}
+          </li>
+        ))}
+      </ul>
     </article>
   );
 }

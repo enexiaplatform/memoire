@@ -1,6 +1,9 @@
 import { captureAiActivityTypes } from '../utils/captureAiPrompt';
 import type { SalesActivityNextAction } from '../utils/salesActivityClassifier';
 import { supabaseClient } from '../lib/supabaseClient';
+import { sanitizeBusinessDate } from '../utils/safeDate.ts';
+import { resolveCaptureEntities } from '../utils/captureEntityResolution.ts';
+import type { CaptureAccountAlias, CaptureCorrectionEvent } from './captureCorrectionMemoryStore';
 
 export type CaptureAiProviderId = 'disabled' | 'openai-compatible';
 
@@ -20,6 +23,8 @@ export type CaptureAiRequest = {
     segment?: string;
     industry?: string;
   }[];
+  corrections?: CaptureCorrectionEvent[];
+  aliases?: CaptureAccountAlias[];
 };
 
 export type CaptureAiSuggestion = {
@@ -90,7 +95,12 @@ export const OpenAiCompatibleCaptureAiProvider: CaptureAiProvider = {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify(request),
+      body: JSON.stringify({
+        rawNote: request.rawNote,
+        activityDate: request.activityDate,
+        opportunities: request.opportunities,
+        accounts: request.accounts,
+      }),
     });
 
     if (!response.ok) {
@@ -121,14 +131,26 @@ function normalizeSuggestion(value: unknown, request: CaptureAiRequest): Capture
     : '';
   const nextActions = normalizeNextActions(suggestion.nextActions);
   const firstAction = nextActions[0];
+  const entities = resolveCaptureEntities({
+    rawNote: request.rawNote,
+    accountName: cleanString(suggestion.accountName),
+    contactName: cleanString(suggestion.contactName) || cleanString(suggestion.stakeholderName),
+    opportunityName: cleanString(suggestion.opportunityName),
+    suggestedOpportunityId,
+    accounts: request.accounts,
+    opportunities: request.opportunities,
+    corrections: request.corrections,
+    aliases: request.aliases,
+  });
 
+  const stakeholderRole = cleanString(suggestion.stakeholderRole);
   return {
     activityType,
-    accountName: cleanString(suggestion.accountName),
-    opportunityName: cleanString(suggestion.opportunityName),
-    contactName: cleanString(suggestion.contactName),
-    stakeholderName: cleanString(suggestion.stakeholderName),
-    stakeholderRole: cleanString(suggestion.stakeholderRole),
+    accountName: entities.accountName,
+    opportunityName: entities.opportunityName,
+    contactName: entities.contactName,
+    stakeholderName: entities.contactName,
+    stakeholderRole: hasExplicitStakeholderRoleEvidence(request.rawNote, stakeholderRole) ? stakeholderRole : '',
     summary: cleanString(suggestion.summary) || request.rawNote.trim().slice(0, 180),
     nextAction: cleanString(suggestion.nextAction) || firstAction?.title || '',
     dueDate: normalizeDate(suggestion.dueDate) || firstAction?.dueDate || '',
@@ -138,19 +160,28 @@ function normalizeSuggestion(value: unknown, request: CaptureAiRequest): Capture
     risks: normalizeProperList(suggestion.risks),
     timelineSignals: normalizeProperList(suggestion.timelineSignals),
     tags: normalizeTags(suggestion.tags),
-    suggestedOpportunityId,
-    confidence,
+    suggestedOpportunityId: entities.suggestedOpportunityId,
+    confidence: entities.needsConfirmation ? 'Low' : confidence,
     reasoning: normalizeReasoning(suggestion.reasoning),
   };
+}
+
+function hasExplicitStakeholderRoleEvidence(rawNote: string, role: string) {
+  if (!role) return false;
+  return new RegExp(`\\b${escapeRegExp(role)}\\b`, 'i').test(rawNote)
+    || /\b(champion|economic buyer|technical buyer|procurement|budget owner|decision maker|coach|blocker|user)\b/i.test(rawNote);
 }
 
 function cleanString(value: unknown) {
   return typeof value === 'string' ? value.trim().slice(0, 240) : '';
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function normalizeDate(value: unknown) {
-  const date = cleanString(value);
-  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '';
+  return sanitizeBusinessDate(cleanString(value));
 }
 
 function normalizeTags(value: unknown) {

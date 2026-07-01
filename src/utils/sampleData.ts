@@ -9,6 +9,7 @@ import { QUOTE_STORAGE_KEY, type QuoteRecord } from '../services/quoteStore';
 import { invalidateWorkspaceDataCache } from '../services/workspaceDataCache';
 import { classifySalesActivity } from './salesActivityClassifier';
 import { generatePipelineDefenseBriefFromOpportunities } from './opportunityToPipelineBrief';
+import { buildEmailThreadIngestion, buildIngestionSourceTags, composeIngestionParserText } from './ingestionSource.ts';
 import { clearDemoJourneyCompletion } from './demoJourney';
 import { clearDailyExecutionState } from './dailyExecution';
 import {
@@ -156,7 +157,7 @@ export function sanitizeLegacySampleDataset() {
   }
 }
 
-function buildSampleDataset(): SampleDataset {
+export function buildSampleDataset(): SampleDataset {
   const now = new Date();
   const timestamp = now.toISOString();
   const today = toDateKey(now);
@@ -279,28 +280,6 @@ function buildSampleDataset(): SampleDataset {
       status: 'Active',
       createdAt: timestamp,
     }),
-    sampleOpportunity({
-      id: 'demo-opp-northstar-foods-food-safety',
-      accountName: 'Northstar Foods',
-      opportunityName: 'Food safety rapid testing',
-      stage: 'Demo',
-      estimatedValue: 320000000,
-      expectedClosePeriod: 'Next quarter',
-      productOrSolution: 'Rapid testing workflow',
-      decisionMaker: 'Operations lead',
-      budgetOwner: '',
-      procurementPath: 'Demo feedback before budget request',
-      technicalCriteria: 'Throughput, validation evidence, reagent availability',
-      nextAction: 'Schedule technical demo feedback call',
-      nextActionDate: nextTuesday,
-      evidence: 'Demo completed with technical team; operations lead requested validation references.',
-      missingContext: 'Budget owner',
-      objectionDebt: '',
-      forecastEvidenceCategory: 'Weak but recoverable',
-      decisionRecommendation: 'Monitor',
-      status: 'Active',
-      createdAt: timestamp,
-    }),
   ];
 
   const accounts: AccountMemoryRecord[] = [
@@ -377,9 +356,12 @@ function buildSampleDataset(): SampleDataset {
       linkedAccountName: 'Northstar Foods',
       createdAt: timestamp,
     }),
-    sampleActivity({
-      id: 'demo-activity-orion-pharma-tender',
-      note: 'Followed up with Orion Pharma procurement. Tender timeline still unclear and committee owner not confirmed. Need to clarify procurement path next week.',
+    sampleEmailThreadActivity({
+      id: 'demo-activity-orion-pharma-tender-email',
+      subject: 'Orion Pharma tender review follow-up',
+      sender: 'Ms. Linh <procurement@orion.example>',
+      recipients: 'seller@example.com',
+      body: 'Thanks for the sterility workflow commercial offer. Tender decision is expected end of July, but the committee owner is not confirmed yet. Please send differentiator evidence and clarify procurement path by next Friday.',
       activityDate: twoDaysAgo,
       linkedOpportunityId: 'demo-opp-orion-pharma-tender',
       linkedOpportunityName: 'Procurement review',
@@ -402,15 +384,6 @@ function buildSampleDataset(): SampleDataset {
       linkedOpportunityId: 'demo-opp-apex-service-renewal',
       linkedOpportunityName: 'Validated decontamination service renewal',
       linkedAccountName: 'Apex Labs',
-      createdAt: timestamp,
-    }),
-    sampleActivity({
-      id: 'demo-activity-northstar-foods-demo',
-      note: 'Completed technical demo with Northstar Foods operations team for food safety rapid testing. Need to send validation references before next Tuesday.',
-      activityDate: twoDaysAgo,
-      linkedOpportunityId: 'demo-opp-northstar-foods-food-safety',
-      linkedOpportunityName: 'Food safety rapid testing',
-      linkedAccountName: 'Northstar Foods',
       createdAt: timestamp,
     }),
     sampleActivity({
@@ -473,7 +446,7 @@ function buildSampleDataset(): SampleDataset {
       opportunityName: 'Lab workflow',
       name: 'Mr. Taylor',
       roleTitle: 'Lab manager',
-      stakeholderRole: 'Technical buyer',
+      stakeholderRole: 'Technical Buyer',
       influenceLevel: 'High',
       relationshipStrength: 'Developing',
       stance: 'Neutral',
@@ -725,20 +698,6 @@ function buildSampleDataset(): SampleDataset {
       useCase: 'Use when lead time or local support confidence is blocking next step.',
       createdAt: timestamp,
     }),
-    sampleAsset({
-      id: 'demo-asset-validation-compliance-proof',
-      title: 'Validation and compliance proof asset',
-      assetType: 'Proof Asset',
-      summary: 'Compact proof checklist for validation, references, SLA, and compliance concerns.',
-      content: 'Checklist: validation documentation index, local support proof, reference customer, service SLA, timeline owner, and procurement-ready quote assumptions.',
-      tags: ['demo-data', 'proof', 'compliance', 'sla'],
-      relatedAccountName: 'Northstar Foods',
-      relatedOpportunityId: 'demo-opp-northstar-foods-food-safety',
-      relatedOpportunityName: 'Food safety rapid testing',
-      relatedObjectionType: 'Documentation',
-      useCase: 'Use before proposal review when proof gaps repeat across technical buyers.',
-      createdAt: timestamp,
-    }),
   ];
 
   const quotes: QuoteRecord[] = [
@@ -876,6 +835,65 @@ function sampleActivity(input: {
   return markSampleRecord({
     ...classified,
     id: input.id,
+    linkedOpportunityId: input.linkedOpportunityId,
+    linkedOpportunityName: input.linkedOpportunityName,
+    linkedAccountName: input.linkedAccountName,
+    linkStatus: 'Linked',
+    createdAt: input.createdAt,
+    updatedAt: input.createdAt,
+    storageMode: 'local',
+  });
+}
+
+function sampleEmailThreadActivity(input: {
+  id: string;
+  subject: string;
+  sender: string;
+  recipients: string;
+  body: string;
+  activityDate: string;
+  linkedOpportunityId: string;
+  linkedOpportunityName: string;
+  linkedAccountName: string;
+  createdAt: string;
+}): SalesActivityRecord {
+  const sourceItem = buildEmailThreadIngestion({
+    sourceType: 'pasted-email',
+    subject: input.subject,
+    sender: input.sender,
+    recipients: input.recipients,
+    body: input.body,
+    sourceDate: input.activityDate,
+    accountHint: input.linkedAccountName,
+    opportunityHint: input.linkedOpportunityName,
+  });
+  const parserText = composeIngestionParserText(sourceItem, {
+    accountHint: input.linkedAccountName,
+    opportunityHint: input.linkedOpportunityName,
+  });
+  const classified = classifySalesActivity(parserText, input.activityDate, {
+    accounts: [{ id: `account-${input.linkedAccountName}`, accountName: input.linkedAccountName }],
+    opportunities: [{
+      id: input.linkedOpportunityId,
+      accountName: input.linkedAccountName,
+      opportunityName: input.linkedOpportunityName,
+      productOrSolution: '',
+      stage: 'Procurement',
+    }],
+    source: sourceItem,
+  });
+
+  return markSampleRecord({
+    ...classified,
+    id: input.id,
+    accountName: input.linkedAccountName,
+    opportunityName: input.linkedOpportunityName,
+    sourceType: sourceItem.sourceType,
+    sourceLabel: sourceItem.sourceLabel,
+    sourceTimestamp: sourceItem.sourceTimestamp,
+    sourceHash: sourceItem.safeHash,
+    originalExcerpt: sourceItem.originalExcerpt,
+    tags: Array.from(new Set([...classified.tags, ...buildIngestionSourceTags(sourceItem), 'demo-pasted-email'])),
     linkedOpportunityId: input.linkedOpportunityId,
     linkedOpportunityName: input.linkedOpportunityName,
     linkedAccountName: input.linkedAccountName,

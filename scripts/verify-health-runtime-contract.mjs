@@ -1,21 +1,122 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import ts from 'typescript';
+import { evaluateProductionReadiness } from './lib/production-readiness-runtime.mjs';
 
-const failures = [];
-const originalEnv = { ...process.env };
+const completeEnv = {
+  SUPABASE_URL: 'https://project.supabase.co',
+  VITE_SUPABASE_ANON_KEY: 'anon-secret-value',
+  SUPABASE_SERVICE_ROLE_KEY: 'service-role-secret-value',
+  VITE_APP_URL: 'https://app.memoire.test',
+  ANTHROPIC_API_KEY: 'anthropic-secret-value',
+  OPENAI_API_KEY: 'openai-secret-value',
+  VITE_ENABLE_DEMO_MODE: 'false',
+  VITE_ENABLE_FOUNDER_WORKSPACE: 'false',
+  BILLING_CHECKOUT_ENABLED: 'false',
+};
 
-function fail(message) {
-  failures.push(message);
+const healthy = evaluateProductionReadiness(completeEnv);
+assert.equal(healthy.ok, true, 'complete env should be production-ready');
+assert.equal(healthy.service, 'memoire');
+assert.equal(healthy.summary.requiredFailed, 0);
+assert.ok(healthy.authRedirects.requiredUrls.includes('https://app.memoire.test/login?verified=1'));
+assert.ok(healthy.authRedirects.requiredUrls.includes('https://app.memoire.test/reset-password'));
+assert.ok(healthy.authRedirects.requiredUrls.includes('https://app.memoire.test/app/today'));
+
+const checkNames = new Set(healthy.checks.map((check) => check.name));
+for (const name of [
+  'supabase_url', 'supabase_anon_key', 'supabase_service_role', 'app_url', 'app_url_valid',
+  'ai_generation_provider', 'openai_embeddings', 'app_url_https', 'app_url_not_localhost',
+  'demo_mode_disabled', 'founder_workspace_disabled', 'capture_ai_provider', 'stripe_secret',
+  'stripe_webhook_secret', 'billing_checkout_disabled',
+]) assert.ok(checkNames.has(name), `readiness result missing check ${name}`);
+
+const serialized = JSON.stringify(healthy);
+for (const secret of [completeEnv.VITE_SUPABASE_ANON_KEY, completeEnv.SUPABASE_SERVICE_ROLE_KEY, completeEnv.ANTHROPIC_API_KEY, completeEnv.OPENAI_API_KEY]) {
+  assert.ok(!serialized.includes(secret), 'readiness result must not expose secret values');
 }
 
-function assert(condition, message) {
-  if (!condition) fail(message);
+const missing = evaluateProductionReadiness({ ...completeEnv, SUPABASE_SERVICE_ROLE_KEY: '', OPENAI_API_KEY: '' });
+assert.equal(missing.ok, false);
+assert.equal(missing.summary.requiredFailed, 2);
+
+const invalidUrl = evaluateProductionReadiness({ ...completeEnv, VITE_APP_URL: 'not a url' });
+assert.equal(invalidUrl.ok, false);
+assert.equal(invalidUrl.authRedirects.appUrlConfigured, false);
+assert.deepEqual(invalidUrl.authRedirects.requiredUrls, []);
+
+const vercel = JSON.parse(readFileSync('vercel.json', 'utf8'));
+const apiHeaders = vercel.headers?.find((entry) => entry.source === '/api/(.*)')?.headers || [];
+assert.ok(apiHeaders.some((header) => header.key === 'Cache-Control' && header.value === 'no-store'), 'API runtime must retain no-store cache policy');
+
+const healthHandler = await loadHealthHandler();
+
+const originalEnv = process.env;
+process.env = { ...completeEnv };
+try {
+  const getRes = await invokeHealth(healthHandler, 'GET');
+  assert.equal(getRes.statusCode, 200, 'GET /api/health should return HTTP 200 for complete env');
+  assert.equal(getRes.headers['Cache-Control'], 'no-store', 'GET /api/health should set no-store');
+  assert.equal(getRes.body?.ok, true, 'GET /api/health should return ok: true for complete env');
+  assert.equal(getRes.body?.summary?.requiredFailed, 0, 'GET /api/health should report zero required failures for complete env');
+  assert.ok(getRes.body?.authRedirects?.requiredUrls?.includes('https://app.memoire.test/app/today'), 'GET /api/health should include app auth redirect URL');
+
+  const headRes = await invokeHealth(healthHandler, 'HEAD');
+  assert.equal(headRes.statusCode, 200, 'HEAD /api/health should return HTTP 200 for complete env');
+  assert.equal(headRes.headers['Cache-Control'], 'no-store', 'HEAD /api/health should set no-store');
+  assert.equal(headRes.ended, true, 'HEAD /api/health should end without JSON body');
+  assert.equal(headRes.body, undefined, 'HEAD /api/health should not return JSON body');
+
+  process.env = { ...completeEnv, SUPABASE_SERVICE_ROLE_KEY: '', OPENAI_API_KEY: '' };
+  const unhealthyRes = await invokeHealth(healthHandler, 'GET');
+  assert.equal(unhealthyRes.statusCode, 503, 'GET /api/health should return HTTP 503 when required env is missing');
+  assert.equal(unhealthyRes.body?.ok, false, 'GET /api/health should return ok: false when required env is missing');
+
+  const methodRes = await invokeHealth(healthHandler, 'POST');
+  assert.equal(methodRes.statusCode, 405, 'unsupported /api/health methods should return HTTP 405');
+  assert.equal(methodRes.headers.Allow, 'GET, HEAD', 'unsupported /api/health methods should set Allow');
+  assert.equal(methodRes.body?.error, 'Method not allowed', 'unsupported /api/health methods should return method error');
+} finally {
+  process.env = originalEnv;
 }
 
-function makeRes() {
-  return {
+console.log('Health/readiness runtime contract verification passed.');
+
+async function loadHealthHandler() {
+  const sourcePath = resolve('api/health.ts');
+  const runtimePath = resolve('scripts/lib/production-readiness-runtime.mjs');
+  const source = readFileSync(sourcePath, 'utf8').replace(
+    "from '../scripts/lib/production-readiness-runtime.mjs'",
+    `from '${pathToFileURL(runtimePath).href}'`,
+  );
+  const compiled = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.ES2022,
+      target: ts.ScriptTarget.ES2022,
+      esModuleInterop: true,
+    },
+    fileName: sourcePath,
+  }).outputText;
+
+  const tempDir = join(tmpdir(), `memoire-health-runtime-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  mkdirSync(tempDir, { recursive: true });
+  const tempFile = join(tempDir, 'health.mjs');
+  writeFileSync(tempFile, compiled);
+
+  try {
+    const module = await import(pathToFileURL(tempFile).href);
+    assert.equal(typeof module.default, 'function', 'api/health.ts should export a default handler');
+    return module.default;
+  } finally {
+    rmSync(dirname(tempFile), { recursive: true, force: true });
+  }
+}
+
+async function invokeHealth(handler, method) {
+  const res = {
     headers: {},
     statusCode: undefined,
     body: undefined,
@@ -36,159 +137,7 @@ function makeRes() {
       return this;
     },
   };
+
+  await handler({ method }, res);
+  return res;
 }
-
-function setEnv(values) {
-  process.env = { ...originalEnv };
-  for (const [key, value] of Object.entries(values)) {
-    if (value === undefined) delete process.env[key];
-    else process.env[key] = value;
-  }
-}
-
-async function loadHealthHandler() {
-  const source = await import('node:fs').then((fs) => fs.readFileSync('api/health.ts', 'utf8'));
-  const transpiled = ts.transpileModule(source, {
-    compilerOptions: {
-      module: ts.ModuleKind.ES2022,
-      target: ts.ScriptTarget.ES2022,
-    },
-  });
-  const dir = mkdtempSync(join(tmpdir(), 'memoire-health-contract-'));
-  const file = join(dir, `health-${Date.now()}.mjs`);
-  writeFileSync(file, transpiled.outputText, 'utf8');
-  const mod = await import(`file:///${file.replaceAll('\\', '/')}`);
-  return {
-    handler: mod.default,
-    cleanup() {
-      rmSync(dir, { recursive: true, force: true });
-    },
-  };
-}
-
-function checkNames(body, expectedNames) {
-  const names = new Set(body.checks.map((check) => check.name));
-  for (const name of expectedNames) assert(names.has(name), `health response missing check ${name}`);
-}
-
-let cleanup = () => {};
-
-try {
-  const loaded = await loadHealthHandler();
-  const handler = loaded.handler;
-  cleanup = loaded.cleanup;
-
-  const secretValues = {
-    SUPABASE_URL: 'https://project.supabase.co',
-    VITE_SUPABASE_ANON_KEY: 'anon-secret-value',
-    SUPABASE_SERVICE_ROLE_KEY: 'service-role-secret-value',
-    VITE_APP_URL: 'https://app.memoire.test',
-    ANTHROPIC_API_KEY: 'anthropic-secret-value',
-    OPENAI_API_KEY: 'openai-secret-value',
-    VITE_ENABLE_DEMO_MODE: 'false',
-    VITE_ENABLE_FOUNDER_WORKSPACE: 'false',
-    BILLING_CHECKOUT_ENABLED: 'false',
-  };
-
-  setEnv(secretValues);
-  const getRes = makeRes();
-  handler({ method: 'GET' }, getRes);
-
-  assert(getRes.statusCode === 200, 'complete env GET should return HTTP 200');
-  assert(getRes.headers['Cache-Control'] === 'no-store', 'GET should set Cache-Control: no-store');
-  assert(getRes.body?.ok === true, 'complete env GET should return ok true');
-  assert(getRes.body?.service === 'memoire', 'GET should identify service as memoire');
-  assert(getRes.body?.summary?.requiredFailed === 0, 'complete env should have zero required failures');
-  assert(Array.isArray(getRes.body?.checks), 'GET should include checks array');
-  assert(getRes.body?.authRedirects?.appUrlConfigured === true, 'GET should mark app URL configured');
-  assert(
-    getRes.body?.authRedirects?.requiredUrls?.includes('https://app.memoire.test/login?verified=1'),
-    'GET should include verification redirect URL',
-  );
-  assert(
-    getRes.body?.authRedirects?.requiredUrls?.includes('https://app.memoire.test/reset-password'),
-    'GET should include password reset redirect URL',
-  );
-  assert(
-    getRes.body?.authRedirects?.requiredUrls?.includes('https://app.memoire.test/app/dashboard'),
-    'GET should include app dashboard redirect URL',
-  );
-  checkNames(getRes.body, [
-    'supabase_url',
-    'supabase_anon_key',
-    'supabase_service_role',
-    'app_url',
-    'app_url_valid',
-    'ai_generation_provider',
-    'openai_embeddings',
-    'app_url_https',
-    'app_url_not_localhost',
-    'demo_mode_disabled',
-    'founder_workspace_disabled',
-    'capture_ai_provider',
-    'stripe_secret',
-    'stripe_webhook_secret',
-    'billing_checkout_disabled',
-  ]);
-
-  const serializedHealthyBody = JSON.stringify(getRes.body);
-  for (const secret of [
-    secretValues.VITE_SUPABASE_ANON_KEY,
-    secretValues.SUPABASE_SERVICE_ROLE_KEY,
-    secretValues.ANTHROPIC_API_KEY,
-    secretValues.OPENAI_API_KEY,
-  ]) {
-    assert(!serializedHealthyBody.includes(secret), `health response should not expose secret value ${secret}`);
-  }
-
-  const headRes = makeRes();
-  handler({ method: 'HEAD' }, headRes);
-  assert(headRes.statusCode === 200, 'complete env HEAD should return HTTP 200');
-  assert(headRes.ended === true, 'HEAD should end the response');
-  assert(headRes.body === undefined, 'HEAD should not include a JSON body');
-  assert(headRes.headers['Cache-Control'] === 'no-store', 'HEAD should set Cache-Control: no-store');
-
-  const methodRes = makeRes();
-  handler({ method: 'POST' }, methodRes);
-  assert(methodRes.statusCode === 405, 'unsupported method should return HTTP 405');
-  assert(methodRes.headers.Allow === 'GET, HEAD', 'unsupported method should set Allow: GET, HEAD');
-  assert(methodRes.ended === true, 'unsupported method should end the response');
-
-  setEnv({
-    ...secretValues,
-    SUPABASE_SERVICE_ROLE_KEY: undefined,
-    OPENAI_API_KEY: undefined,
-  });
-  const missingEnvRes = makeRes();
-  handler({ method: 'GET' }, missingEnvRes);
-  assert(missingEnvRes.statusCode === 503, 'missing required env should return HTTP 503');
-  assert(missingEnvRes.body?.ok === false, 'missing required env should return ok false');
-  assert(missingEnvRes.body?.summary?.requiredFailed === 2, 'missing env should report two required failures');
-  const failedChecks = new Set(missingEnvRes.body?.checks?.filter((check) => !check.ok).map((check) => check.name));
-  assert(failedChecks.has('supabase_service_role'), 'missing env should fail supabase_service_role check');
-  assert(failedChecks.has('openai_embeddings'), 'missing env should fail openai_embeddings check');
-
-  setEnv({
-    ...secretValues,
-    VITE_APP_URL: 'not a url',
-  });
-  const invalidUrlRes = makeRes();
-  handler({ method: 'GET' }, invalidUrlRes);
-  assert(invalidUrlRes.statusCode === 503, 'invalid app URL should return HTTP 503');
-  assert(invalidUrlRes.body?.authRedirects?.appUrlConfigured === false, 'invalid app URL should not be treated as configured redirects');
-  assert(invalidUrlRes.body?.authRedirects?.requiredUrls?.length === 0, 'invalid app URL should not produce required redirect URLs');
-  const invalidUrlChecks = new Map(invalidUrlRes.body?.checks?.map((check) => [check.name, check]));
-  assert(invalidUrlChecks.get('app_url')?.ok === true, 'invalid but present app URL should pass configured check');
-  assert(invalidUrlChecks.get('app_url_valid')?.ok === false, 'invalid app URL should fail valid check');
-} finally {
-  cleanup();
-  process.env = originalEnv;
-}
-
-if (failures.length > 0) {
-  console.error('Health runtime contract verification failed:');
-  for (const failure of failures) console.error(`- ${failure}`);
-  process.exit(1);
-}
-
-console.log('Health runtime contract verification passed.');

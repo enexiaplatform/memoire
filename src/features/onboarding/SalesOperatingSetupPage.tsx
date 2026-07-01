@@ -353,7 +353,7 @@ export function SalesOperatingSetupPage() {
               Daily Capture
               <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link to="/app/dashboard" className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
+            <Link to="/app/today" className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
               Dashboard
             </Link>
           </div>

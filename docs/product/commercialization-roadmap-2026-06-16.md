@@ -12,6 +12,8 @@ Each future full work session should advance roughly 5-10 percent of this roadma
 
 Memoire is a personal B2B sales memory and pipeline-review workspace for individual sales professionals.
 
+As of 2026-07-01, the target-user language can broaden to include solo operators who sell without a sales team: founder-led sellers, consultants, freelancers, agency owners, and creators selling client work, partnerships, workshops, sponsorships, or services. This is a positioning expansion, not a product-scope expansion. The canonical note is `docs/product/solo-operator-persona-expansion-2026-07-01.md`.
+
 The strongest current wedge is:
 
 1. Try a focused demo.
@@ -23,6 +25,8 @@ The strongest current wedge is:
 The V1 product flow remains:
 
 Quick Capture -> Structure -> Today Actions -> Account Memory -> Ask Memoire
+
+The wedge remains personal sales memory and stuck-deal prevention. Memoire should not expand into invoicing, inventory, ecommerce, marketplace operations, delivery/project management, team CRM, or general task management for this persona.
 
 Current commercial status:
 
@@ -244,6 +248,9 @@ Status:
 - Added controlled-cohort release evidence packet: `docs/product/cohort-release-evidence-packet-2026-06-17.md`.
 - Added `npm run verify:cohort` and included it in `npm run check` so the A1-A10 packet stays complete, defaults to HOLD, keeps noindex active, and keeps checkout inactive before cohort invite.
 - Added `docs/product/cohort-support-contract-coverage-2026-06-17.md` and `npm run verify:support-cohort`; `npm run check` now verifies cohort qualification, outreach templates, feedback tracker fields, support runbook, in-app support package guidance, and weekly A9/C5 support review fields.
+- 2026-07-01 controlled-cohort gate refresh added `docs/qa/controlled-cohort-gate-evidence-2026-07-01.md` and updated the cohort release packet with current static/local evidence. `verify:commercial`, `verify:cohort`, `verify:production-readiness`, `verify:health-runtime`, `verify:ai-rate-limits`, `verify:rate-limit-runtime`, `verify:data-isolation`, `verify:data-isolation-runtime`, `verify:auth-recovery`, `verify:trust-boundary`, `verify:lead-ops`, `verify:lead-ops-runtime`, `verify:support-cohort`, `verify:activation-workflow`, `verify:cloud-json-runtime`, `verify:commercial-operating-loop`, and `npm run build` passed locally. Cohort invite remains HOLD because production/protected-preview, two-account, demo-isolation, auth, monitoring, support-owner, and signed-in activation evidence is still missing.
+- Later on 2026-07-01, `api/health.ts` was added and `npm run verify:health-runtime` was strengthened to invoke the real handler locally for GET, HEAD, 503, 405, `no-store`, and auth redirect output. `npm run typecheck:api`, `npm run verify:health-runtime`, and `npm run verify:production-readiness` passed after the change.
+- The same 2026-07-01 follow-up added `api/client-log.ts` and strengthened `npm run verify:production-readiness` to invoke the real client-log handler locally for allowlisted operational events, arbitrary-event rejection, sanitized server-log JSON, quiet rate limiting, and `Memoire client operational event` log marker. `npm run typecheck:api`, `npm run verify:production-readiness`, and `npm run verify:accessibility-failure-state` passed after the change.
 - Cohort invite remains blocked until Session 3 infrastructure evidence and Session 4 two-account QA evidence are complete or explicitly accepted as risks.
 
 ### Session 8: Core Workflow Reliability Pass
@@ -288,6 +295,7 @@ Work:
 - Synthesize cohort feedback and willingness-to-pay evidence.
 - Decide initial package, price, trial model, refund policy, and plan limits.
 - Update pricing page and product boundaries to match the selected offer.
+- Validate whether the "Solo" package should say "individual salesperson" or "one person managing their own sales follow-up and pipeline memory" based on founder-led and solo-operator cohort evidence.
 
 Exit criteria:
 
@@ -407,6 +415,7 @@ P1 before paid checkout:
 - Confirm first-run activation path with real account data.
 - Confirm deployed AI disclosure appears near AI-assisted features and matches configured provider behavior.
 - Decide one paid early-access offer.
+- Confirm whether founder-led sellers, consultants, freelancers, agency owners, or creators belong in the first paid offer, using `docs/product/solo-operator-persona-expansion-2026-07-01.md` as the scope boundary.
 - Fill the billing support runbook with selected offer, price ID, owners, refund/trial policy, and one test support case.
 - Run billing payment QA in Stripe test mode using `docs/qa/billing-payment-qa-2026-06-17.md`.
 - Keep `BILLING_CHECKOUT_ENABLED=false` until B1-B6 pass.
@@ -443,7 +452,7 @@ At the end of each future session:
 
 ## Next Best Session
 
-Session 8 reliability can continue with signed-in workflow QA, or Session 3/4 operational gates can run through `docs/product/cohort-release-evidence-packet-2026-06-17.md` to unlock the controlled cohort. Session 9 pricing should wait for cohort evidence.
+Session 3/4 operational gates should run next through `docs/product/cohort-release-evidence-packet-2026-06-17.md` and `docs/qa/controlled-cohort-gate-evidence-2026-07-01.md` to unlock the controlled cohort. Session 8 reliability can continue only where it directly supports signed-in activation QA. Session 9 pricing should wait for cohort evidence.
 
 The first concrete reliability question:
 

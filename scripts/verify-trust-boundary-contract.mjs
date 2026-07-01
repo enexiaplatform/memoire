@@ -71,11 +71,11 @@ for (const marker of [
 
 const dailyCapture = read('src/features/dailyCapture/DailyCapturePage.tsx');
 for (const marker of [
-  'AI Assist unavailable - using local rules.',
-  'AI suggestion ready. Review it before accepting.',
-  'Optional AI classification. You review before saving.',
-  'Using local rules until an AI provider is configured.',
-  'Using local rules. Sign in to use configured AI Assist.',
+  'AI unavailable — using local fallback. Please review before saving.',
+  'AI parsed. Review the fields before saving.',
+  'AI parses Full Notes automatically. Confirm or correct every field before saving.',
+  'Local fallback preview',
+  'Needs confirmation',
   'AI Assist sends this note to your configured server-side AI endpoint.',
   'Do not use it for confidential customer data unless your provider is approved.',
 ]) {

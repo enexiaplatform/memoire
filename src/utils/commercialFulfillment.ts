@@ -96,9 +96,10 @@ export function getQuoteWorkspaceHref(quote: { id: string }) {
 }
 
 function isPast(dateKey: string, today: string) {
-  return isDateKey(dateKey) && dateKey < today;
+  return isBusinessDateOverdue(dateKey, today);
 }
 
 function isDateKey(dateKey: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(dateKey);
+  return isValidBusinessDate(dateKey);
 }
+import { isBusinessDateOverdue, isValidBusinessDate } from './safeDate.ts';

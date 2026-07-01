@@ -2,13 +2,13 @@ import { supabaseClient } from '../lib/supabaseClient';
 import { reportClientOperationalEvent } from './clientTelemetry';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus';
 
-export type CloudJsonCollectionTable = 'review_packs' | 'sales_assets' | 'action_outcomes' | 'quotes';
+export type CloudJsonCollectionTable = 'review_packs' | 'sales_assets' | 'action_outcomes' | 'opportunity_outcomes' | 'quotes' | 'nudges';
 
 export type CloudJsonRecord = {
   id: string;
   createdAt?: string;
   updatedAt?: string;
-  source?: 'demo' | 'user';
+  source?: string;
   isSample?: boolean;
   __deleted?: boolean;
 };

@@ -1,4 +1,5 @@
 import type { SalesActivityRecord } from '../services/salesActivityStore';
+import { sanitizeBusinessDate } from './safeDate.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
 import {
@@ -88,7 +89,7 @@ export function buildObjectionFromActivity(
     status: 'Open',
     requiredProof: candidate?.requiredProof || inferRequiredProof(activity.rawNote, type),
     responsePlan: activity.nextAction || '',
-    dueDate: activity.dueDate || '',
+    dueDate: sanitizeBusinessDate(activity.dueDate),
     tags: ['from-capture', normalizeTag(type)],
   };
 }

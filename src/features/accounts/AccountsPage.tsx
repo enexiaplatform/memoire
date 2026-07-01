@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowUpDown, Building2, ChevronDown, ChevronLeft, ChevronRight, Database, Eye, Filter, Plus, RefreshCw, Save, Search, Trash2, X } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowUpDown, Building2, ChevronDown, ChevronLeft, ChevronRight, Database, Eye, Filter, Plus, RefreshCw, Save, Search, Star, Trash2, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -34,14 +34,30 @@ import {
 } from '../../utils/accountMemory';
 import { getStakeholdersForAccount } from '../../utils/stakeholderGraph';
 import { getObjectionsForAccount, objectionStatusTone } from '../../utils/objectionLedger';
-import { formatCurrencyAmount as formatMoney } from '../../utils/currency';
+import {
+  formatBaseCurrencyAmount as formatBaseMoney,
+  formatCurrencyAmount as formatMoney,
+  sumMoneyInBase,
+} from '../../utils/money';
+import { compareSafeBusinessDate, formatSafeBusinessDate } from '../../utils/safeDate.ts';
 import { FollowUpComposerPanel } from '../v31/FollowUpComposerPanel';
 import type { FollowUpContext } from '../../types/v31';
+import {
+  accountEngagementStatuses,
+  classifyAccountEngagement,
+  isDefaultAccountStatus,
+  loadAccountHygienePreferences,
+  setAccountArchived,
+  setAccountStrategic,
+  type AccountEngagementStatus,
+  type AccountHygienePreference,
+} from '../../utils/accountHygiene.ts';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type SortDirection = 'asc' | 'desc';
 type AccountSortKey = 'accountCode' | 'accountName' | 'relationship' | 'potential' | 'activeValue' | 'lastUpdated' | 'health';
 type QuickFilter = 'all' | 'imported' | 'keyAccounts' | 'hasTarget' | 'followUpDue' | 'hasStrategy';
+type HygieneFilter = 'Active work' | AccountEngagementStatus | 'All';
 type AccountNextAction = {
   title: string;
   reason: string;
@@ -79,6 +95,8 @@ export function AccountsPage() {
   const [loadError, setLoadError] = useState('');
   const [query, setQuery] = useState('');
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
+  const [hygieneFilter, setHygieneFilter] = useState<HygieneFilter>('Active work');
+  const [hygienePreferences, setHygienePreferences] = useState<AccountHygienePreference[]>([]);
   const [segmentFilter, setSegmentFilter] = useState(allFilter);
   const [potentialFilter, setPotentialFilter] = useState(allFilter);
   const [relationshipFilter, setRelationshipFilter] = useState(allFilter);
@@ -95,6 +113,10 @@ export function AccountsPage() {
   const [followUpContext, setFollowUpContext] = useState<FollowUpContext | null>(null);
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
+
+  useEffect(() => {
+    setHygienePreferences(loadAccountHygienePreferences(user?.id));
+  }, [user?.id]);
 
   const refreshAccounts = async (force = false) => {
     setLoadError('');
@@ -140,8 +162,8 @@ export function AccountsPage() {
   }, [accounts]);
 
   const accountRows = useMemo(
-    () => buildAccountMasterRows(memories, stakeholders, objections),
-    [memories, objections, stakeholders],
+    () => buildAccountMasterRows(memories, stakeholders, objections, quotes, hygienePreferences),
+    [hygienePreferences, memories, objections, quotes, stakeholders],
   );
 
   const visibleRows = useMemo(() => {
@@ -166,8 +188,13 @@ export function AccountsPage() {
         row.latestActivity?.summary || '',
         row.latestContact,
       ].join(' ').toLowerCase();
+      if (searchText) return searchable.includes(searchText);
       return (
-        (!searchText || searchable.includes(searchText)) &&
+        (hygieneFilter === 'All'
+          ? true
+          : hygieneFilter === 'Active work'
+            ? isDefaultAccountStatus(row.hygiene.status)
+            : row.hygiene.status === hygieneFilter) &&
         matchesQuickFilter(account, quickFilter) &&
         (segmentFilter === allFilter || account.segment === segmentFilter) &&
         (potentialFilter === allFilter || account.accountPotential === potentialFilter) &&
@@ -175,7 +202,7 @@ export function AccountsPage() {
         (healthFilter === allFilter || row.memory.health === healthFilter)
       );
     }).sort((left, right) => compareAccountRows(left, right, sortKey, sortDirection));
-  }, [accountRows, healthFilter, potentialFilter, query, quickFilter, relationshipFilter, segmentFilter, sortDirection, sortKey]);
+  }, [accountRows, healthFilter, hygieneFilter, potentialFilter, query, quickFilter, relationshipFilter, segmentFilter, sortDirection, sortKey]);
 
   const pageCount = Math.max(1, Math.ceil(visibleRows.length / pageSize));
   const pagedRows = useMemo(
@@ -185,7 +212,7 @@ export function AccountsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [healthFilter, pageSize, potentialFilter, query, quickFilter, relationshipFilter, segmentFilter]);
+  }, [healthFilter, hygieneFilter, pageSize, potentialFilter, query, quickFilter, relationshipFilter, segmentFilter]);
 
   useEffect(() => {
     if (page > pageCount) setPage(pageCount);
@@ -196,9 +223,19 @@ export function AccountsPage() {
   const selectedQuotes = selectedAccount
     ? quotes.filter((quote) => sameName(quote.accountName, selectedAccount.accountName))
     : [];
+  const selectedHygiene = selectedAccount
+    ? classifyAccountEngagement({
+      account: selectedAccount,
+      opportunities,
+      activities,
+      objections,
+      quotes,
+      preference: hygienePreferences.find((item) => item.accountId === selectedAccount.id),
+    })
+    : null;
 
-  const summary = useMemo(() => buildAccountsSummary(memories), [memories]);
-  const importSummary = useMemo(() => buildImportedCoreSummary(accounts), [accounts]);
+  const summary = useMemo(() => buildAccountsSummary(accountRows), [accountRows]);
+  const importSummary = useMemo(() => buildImportedCoreSummary(accountRows), [accountRows]);
 
   const handleSort = (nextKey: AccountSortKey) => {
     if (sortKey === nextKey) {
@@ -252,7 +289,7 @@ export function AccountsPage() {
 
   const openFollowUpComposer = (memory: AccountMemory) => {
     const allActivities = [...memory.linkedActivities, ...memory.matchingActivities]
-      .sort((left, right) => `${right.activityDate}-${right.updatedAt}`.localeCompare(`${left.activityDate}-${left.updatedAt}`));
+      .sort((left, right) => compareSafeBusinessDate(right.activityDate, left.activityDate) || right.updatedAt.localeCompare(left.updatedAt));
     const currentOpportunity = memory.opportunities.find((opportunity) => opportunity.status === 'Active')
       || memory.opportunities[0];
     const primaryStakeholder = stakeholders.find((stakeholder) =>
@@ -316,6 +353,18 @@ export function AccountsPage() {
     closePanel();
   };
 
+  const handleArchive = (account: AccountMemoryRecord, archived: boolean) => {
+    setHygienePreferences(setAccountArchived(account.id, archived, user?.id));
+    setMessage(archived ? 'Account archived. It remains searchable.' : 'Account restored to account views.');
+    setSaveState('saved');
+  };
+
+  const handleMarkStrategic = (account: AccountMemoryRecord) => {
+    setHygienePreferences(setAccountStrategic(account.id, true, user?.id));
+    setMessage('Account marked strategic.');
+    setSaveState('saved');
+  };
+
   const handleCreateCandidate = async (candidate: AccountCandidate) => {
     const result = await createAccount({
       ...emptyAccountInput,
@@ -335,7 +384,7 @@ export function AccountsPage() {
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Account Master</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Accounts</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            Your searchable account master, automatically refreshed by opportunities, activities, stakeholders, and objections.
+            Search every account while active work stays focused on memory, evidence, and real next actions.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -387,6 +436,7 @@ export function AccountsPage() {
             <FilterSelect label="Health" value={healthFilter} options={[allFilter, 'Healthy', 'Needs attention', 'At risk', 'Dormant']} onChange={setHealthFilter} />
           </div>
         </div>
+        <AccountHygieneTabs value={hygieneFilter} rows={accountRows} onChange={setHygieneFilter} />
         <QuickFilterBar value={quickFilter} onChange={setQuickFilter} importSummary={importSummary} />
       </section>
 
@@ -434,11 +484,15 @@ export function AccountsPage() {
         stakeholders={selectedAccount ? getStakeholdersForAccount(stakeholders, { id: selectedAccount.id, accountName: selectedAccount.accountName }) : []}
         objections={selectedAccount ? getObjectionsForAccount(objections, { id: selectedAccount.id, accountName: selectedAccount.accountName }) : []}
         quotes={selectedQuotes}
+        hygieneStatus={selectedHygiene?.status || null}
         onChange={setForm}
         onSave={handleSave}
         onClose={closePanel}
-        onDelete={selectedAccount ? () => handleDelete(selectedAccount) : undefined}
+        onDelete={selectedAccount && selectedHygiene?.status !== 'Imported only' && selectedHygiene?.status !== 'Archived' ? () => handleDelete(selectedAccount) : undefined}
         onDraftFollowUp={selectedMemory ? () => openFollowUpComposer(selectedMemory) : undefined}
+        onArchive={selectedAccount ? () => handleArchive(selectedAccount, true) : undefined}
+        onUnarchive={selectedAccount ? () => handleArchive(selectedAccount, false) : undefined}
+        onMarkStrategic={selectedAccount ? () => handleMarkStrategic(selectedAccount) : undefined}
       />
       {followUpContext && (
         <FollowUpComposerPanel
@@ -458,15 +512,48 @@ function AccountMemorySummary({ summary }: { summary: ReturnType<typeof buildAcc
         <h2 className="text-lg font-bold text-navy">Account Memory Summary</h2>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-7">
-        <Metric label="Total" value={summary.totalAccounts} />
+        <Metric label="Total searchable" value={summary.totalAccounts} />
         <Metric label="Active" value={summary.activeAccounts} tone="green" />
-        <Metric label="Dormant" value={summary.dormantAccounts} tone={summary.dormantAccounts ? 'amber' : 'green'} />
-        <Metric label="High potential" value={summary.highPotentialAccounts} />
-        <Metric label="Next actions" value={summary.accountsWithOpenNextActions} />
-        <Metric label="Objections" value={summary.accountsWithObjectionDebt} tone={summary.accountsWithObjectionDebt ? 'red' : 'green'} />
-        <Metric label="No recent activity" value={summary.accountsWithNoRecentActivity} tone={summary.accountsWithNoRecentActivity ? 'amber' : 'green'} />
+        <Metric label="Needs follow-up" value={summary.followUpAccounts} tone={summary.followUpAccounts ? 'amber' : 'green'} />
+        <Metric label="Strategic" value={summary.strategicAccounts} />
+        <Metric label="Dormant" value={summary.dormantAccounts} />
+        <Metric label="Imported only" value={summary.importedOnlyAccounts} />
+        <Metric label="Archived" value={summary.archivedAccounts} />
       </div>
     </section>
+  );
+}
+
+function AccountHygieneTabs({
+  value,
+  rows,
+  onChange,
+}: {
+  value: HygieneFilter;
+  rows: AccountMasterRow[];
+  onChange: (value: HygieneFilter) => void;
+}) {
+  const options: HygieneFilter[] = ['Active work', ...accountEngagementStatuses, 'All'];
+  return (
+    <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-3" aria-label="Account engagement filters">
+      {options.map((option) => {
+        const count = option === 'All'
+          ? rows.length
+          : option === 'Active work'
+            ? rows.filter((row) => isDefaultAccountStatus(row.hygiene.status)).length
+            : rows.filter((row) => row.hygiene.status === option).length;
+        return (
+          <button
+            key={option}
+            type="button"
+            onClick={() => onChange(option)}
+            className={`rounded-full border px-3 py-1.5 text-xs font-bold ${value === option ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-gray-200 bg-white text-gray-600'}`}
+          >
+            {option} <span className="ml-1 text-[10px] opacity-70">{count}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -521,7 +608,7 @@ function ImportedCoreBanner({
           <div>
             <p className="text-sm font-bold text-emerald-950">Founder core data is loaded</p>
             <p className="mt-1 text-sm leading-6 text-emerald-800">
-              {summary.importedAccounts.toLocaleString()} imported accounts, {summary.keyAccounts.toLocaleString()} key accounts, {formatMoney(summary.fy26Target, 'SGD')} FY26 target.
+              {summary.importedAccounts.toLocaleString()} imported accounts, {summary.keyAccounts.toLocaleString()} key accounts, {formatBaseMoney(summary.fy26Target)} FY26 target.
             </p>
           </div>
         </div>
@@ -544,6 +631,7 @@ type AccountMasterRow = {
   latestContact: string;
   stakeholderCount: number;
   openObjectionCount: number;
+  hygiene: ReturnType<typeof classifyAccountEngagement>;
 };
 
 type ImportedCoreSummary = {
@@ -614,7 +702,7 @@ function AccountMasterTable({
               <SortableHeader label="Pipeline" sortKey="activeValue" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <SortableHeader label="Last update" sortKey="lastUpdated" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <th className="border-b border-gray-200 px-3 py-3">Latest account memory</th>
-              <SortableHeader label="Health" sortKey="health" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <th className="border-b border-gray-200 px-3 py-3">Engagement</th>
               <th className="border-b border-gray-200 px-3 py-3 text-right">Open</th>
             </tr>
           </thead>
@@ -644,8 +732,11 @@ function AccountMasterTable({
                   </td>
                   <td className="px-3 py-3"><Badge label={memory.account.accountPotential} /></td>
                   <td className="whitespace-nowrap px-3 py-3">
-                    <p className="font-bold text-gray-800">{formatMoney(memory.estimatedActiveValue)}</p>
-                    <p className="mt-1 text-xs text-gray-500">{memory.activeOpportunityCount} active opps</p>
+                    {row.hygiene.status === 'Imported only' || row.hygiene.status === 'Archived' ? (
+                      <p className="text-xs font-semibold text-gray-400">No pipeline evidence</p>
+                    ) : (
+                      <><p className="font-bold text-gray-800">{formatBaseMoney(memory.estimatedActiveValue)}</p><p className="mt-1 text-xs text-gray-500">{memory.activeOpportunityCount} active opps</p></>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">
                     <p className="font-semibold text-gray-700">{formatDate(row.lastUpdatedAt)}</p>
@@ -658,7 +749,7 @@ function AccountMasterTable({
                           {row.latestActivity.summary}
                         </p>
                         <p className="mt-1 max-w-[270px] truncate text-xs text-gray-500">
-                          {row.latestActivity.activityDate} · {row.latestContact || row.latestActivity.activityType}
+                          {formatSafeBusinessDate(row.latestActivity.activityDate)} · {row.latestContact || row.latestActivity.activityType}
                         </p>
                       </>
                     ) : (
@@ -666,7 +757,7 @@ function AccountMasterTable({
                     )}
                   </td>
                   <td className="px-3 py-3">
-                    <Badge label={memory.health} tone={healthTone(memory.health)} />
+                    <Badge label={row.hygiene.status} tone={row.hygiene.status === 'Needs follow-up' ? 'amber' : row.hygiene.status === 'Active' || row.hygiene.status === 'Strategic' ? 'green' : 'gray'} />
                     <p className="mt-1 text-xs text-gray-500">{row.stakeholderCount} contacts · {row.openObjectionCount} open objections</p>
                   </td>
                   <td className="px-3 py-3 text-right">
@@ -751,6 +842,7 @@ function AccountDetailPanel({
   stakeholders,
   objections,
   quotes,
+  hygieneStatus,
   saveState,
   message,
   onChange,
@@ -758,6 +850,9 @@ function AccountDetailPanel({
   onClose,
   onDelete,
   onDraftFollowUp,
+  onArchive,
+  onUnarchive,
+  onMarkStrategic,
 }: {
   mode: 'closed' | 'add' | 'edit';
   form: AccountFormInput;
@@ -765,6 +860,7 @@ function AccountDetailPanel({
   stakeholders: StakeholderRecord[];
   objections: ObjectionRecord[];
   quotes: QuoteRecord[];
+  hygieneStatus: AccountEngagementStatus | null;
   saveState: SaveState;
   message: string;
   onChange: (form: AccountFormInput) => void;
@@ -772,6 +868,9 @@ function AccountDetailPanel({
   onClose: () => void;
   onDelete?: () => void;
   onDraftFollowUp?: () => void;
+  onArchive?: () => void;
+  onUnarchive?: () => void;
+  onMarkStrategic?: () => void;
 }) {
   if (mode === 'closed') {
     return null;
@@ -804,6 +903,15 @@ function AccountDetailPanel({
       </div>
 
       {selectedMemory && (
+        <AccountHygieneControls
+          status={hygieneStatus || 'Imported only'}
+          onArchive={onArchive}
+          onUnarchive={onUnarchive}
+          onMarkStrategic={onMarkStrategic}
+        />
+      )}
+
+      {selectedMemory && hygieneStatus !== 'Imported only' && hygieneStatus !== 'Archived' && (
         <AccountNextActionCard
           action={buildAccountNextAction({
             memory: selectedMemory,
@@ -815,7 +923,7 @@ function AccountDetailPanel({
         />
       )}
 
-      {selectedMemory && <AccountCommercialLoop memory={selectedMemory} quotes={quotes} />}
+      {selectedMemory && hygieneStatus !== 'Imported only' && hygieneStatus !== 'Archived' && <AccountCommercialLoop memory={selectedMemory} quotes={quotes} />}
 
       {mode === 'add' ? (
         <>
@@ -825,7 +933,17 @@ function AccountDetailPanel({
         </>
       ) : selectedMemory ? (
         <>
-          <MemorySections memory={selectedMemory} stakeholders={stakeholders} objections={objections} quotes={quotes} />
+          {hygieneStatus === 'Imported only' || hygieneStatus === 'Archived' ? (
+            <ImportedOnlyAccountState
+              accountName={selectedMemory.account.accountName}
+              archived={hygieneStatus === 'Archived'}
+              onArchive={onArchive}
+              onUnarchive={onUnarchive}
+              onMarkStrategic={onMarkStrategic}
+            />
+          ) : (
+            <MemorySections memory={selectedMemory} stakeholders={stakeholders} objections={objections} quotes={quotes} />
+          )}
           <details className="group mt-5 rounded-lg border border-gray-200 bg-gray-50">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-navy">
               Edit account details
@@ -842,6 +960,62 @@ function AccountDetailPanel({
       ) : null}
       </aside>
     </>
+  );
+}
+
+function AccountHygieneControls({
+  status,
+  onArchive,
+  onUnarchive,
+  onMarkStrategic,
+}: {
+  status: AccountEngagementStatus;
+  onArchive?: () => void;
+  onUnarchive?: () => void;
+  onMarkStrategic?: () => void;
+}) {
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+      <Badge label={status} tone={status === 'Needs follow-up' ? 'amber' : status === 'Active' || status === 'Strategic' ? 'green' : 'gray'} />
+      {status !== 'Strategic' && status !== 'Archived' && onMarkStrategic && (
+        <button type="button" onClick={onMarkStrategic} className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-bold text-brand-blue"><Star className="h-3.5 w-3.5" /> Mark strategic</button>
+      )}
+      {status === 'Archived' && onUnarchive ? (
+        <button type="button" onClick={onUnarchive} className="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-white px-3 py-1.5 text-xs font-bold text-emerald-700"><ArchiveRestore className="h-3.5 w-3.5" /> Unarchive account</button>
+      ) : onArchive ? (
+        <button type="button" onClick={onArchive} className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-600"><Archive className="h-3.5 w-3.5" /> Archive account</button>
+      ) : null}
+    </div>
+  );
+}
+
+function ImportedOnlyAccountState({
+  accountName,
+  archived,
+  onArchive,
+  onUnarchive,
+  onMarkStrategic,
+}: {
+  accountName: string;
+  archived: boolean;
+  onArchive?: () => void;
+  onUnarchive?: () => void;
+  onMarkStrategic?: () => void;
+}) {
+  return (
+    <section className="mt-4 rounded-xl border border-blue-100 bg-blue-50/60 p-5">
+      <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">{archived ? 'Archived account' : 'Imported account'}</p>
+      <h3 className="mt-2 text-lg font-bold text-navy">{archived ? 'Archived — hidden from active work' : 'Imported account — no sales memory yet'}</h3>
+      <p className="mt-2 text-sm leading-6 text-blue-900/70">This record remains searchable. It will not create follow-up urgency until real sales evidence or an explicit action is captured.</p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Link to={`/app/capture?mode=quick&account=${encodeURIComponent(accountName)}`} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Capture update</Link>
+        <Link to={`/app/opportunities?new=1&account=${encodeURIComponent(accountName)}`} className="rounded-full border border-blue-100 bg-white px-4 py-2 text-sm font-bold text-brand-blue">Create opportunity</Link>
+        {!archived && onMarkStrategic && <button type="button" onClick={onMarkStrategic} className="rounded-full border border-blue-100 bg-white px-4 py-2 text-sm font-bold text-brand-blue">Mark strategic</button>}
+        {archived && onUnarchive
+          ? <button type="button" onClick={onUnarchive} className="rounded-full border border-emerald-100 bg-white px-4 py-2 text-sm font-bold text-emerald-700">Unarchive account</button>
+          : onArchive && <button type="button" onClick={onArchive} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-600">Archive</button>}
+      </div>
+    </section>
   );
 }
 
@@ -1002,7 +1176,7 @@ function buildAccountNextAction({
   const accountName = memory.account.accountName;
   const actionQuotes = [...quotes]
     .filter((quote) => ['Sent', 'Revised', 'Accepted'].includes(quote.status))
-    .sort((left, right) => quoteActionRank(right) - quoteActionRank(left) || dateSortValue(left.validUntil) - dateSortValue(right.validUntil));
+    .sort((left, right) => quoteActionRank(right) - quoteActionRank(left) || compareSafeBusinessDate(left.validUntil, right.validUntil));
   const riskyQuote = actionQuotes.find((quote) => getQuoteRisk(quote) !== 'None');
   if (riskyQuote) {
     const risk = getQuoteRisk(riskyQuote);
@@ -1073,6 +1247,7 @@ function buildAccountNextAction({
     tone: 'green',
     badge: 'Clear',
   };
+
 }
 
 function accountActionToneClass(tone: AccountNextAction['tone']) {
@@ -1133,7 +1308,7 @@ function MemorySections({
   quotes: QuoteRecord[];
 }) {
   const allActivities = [...memory.linkedActivities, ...memory.matchingActivities]
-    .sort((a, b) => `${b.activityDate}-${b.createdAt}`.localeCompare(`${a.activityDate}-${a.createdAt}`));
+    .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate) || b.createdAt.localeCompare(a.createdAt));
   return (
     <div className="mt-5 space-y-4">
       <AccountQuotesSection accountName={memory.account.accountName} quotes={quotes} />
@@ -1273,7 +1448,7 @@ function AccountQuotesSection({ accountName, quotes }: { accountName: string; qu
   const acceptedQuotes = quotes.filter((quote) => quote.status === 'Accepted');
   const actionQuotes = [...quotes]
     .filter((quote) => ['Sent', 'Revised', 'Accepted'].includes(quote.status))
-    .sort((left, right) => quoteActionRank(right) - quoteActionRank(left) || dateSortValue(left.validUntil) - dateSortValue(right.validUntil));
+    .sort((left, right) => quoteActionRank(right) - quoteActionRank(left) || compareSafeBusinessDate(left.validUntil, right.validUntil));
   const topQuote = actionQuotes[0] || null;
   const topRisk = topQuote ? getQuoteRisk(topQuote) : null;
   const visibleQuotes = actionQuotes.slice(0, 3);
@@ -1475,6 +1650,8 @@ function buildAccountMasterRows(
   memories: AccountMemory[],
   stakeholders: StakeholderRecord[],
   objections: ObjectionRecord[],
+  quotes: QuoteRecord[],
+  preferences: AccountHygienePreference[],
 ): AccountMasterRow[] {
   return memories.map((memory) => {
     const accountName = normalizeName(memory.account.accountName);
@@ -1503,6 +1680,14 @@ function buildAccountMasterRows(
       latestContact: latestActivity ? getActivityContact(latestActivity) : '',
       stakeholderCount: accountStakeholders.length,
       openObjectionCount: accountObjections.filter((objection) => objection.status === 'Open').length,
+      hygiene: classifyAccountEngagement({
+        account: memory.account,
+        opportunities: memory.opportunities,
+        activities,
+        objections: accountObjections,
+        quotes,
+        preference: preferences.find((item) => item.accountId === memory.account.id),
+      }),
     };
   });
 }
@@ -1555,6 +1740,7 @@ function activityTimestamp(activity: SalesActivityRecord) {
 
 function formatDate(value: string) {
   if (!value) return 'Not updated';
+  if (value.length === 10) return formatSafeBusinessDate(value);
   const date = new Date(value.length === 10 ? `${value}T00:00:00` : value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
@@ -1590,43 +1776,35 @@ function healthRank(value: AccountMemory['health']) {
   return { 'At risk': 4, 'Needs attention': 3, Dormant: 2, Healthy: 1 }[value];
 }
 
-function healthTone(value: AccountMemory['health']): 'green' | 'amber' | 'red' {
-  if (value === 'At risk') return 'red';
-  if (value === 'Needs attention' || value === 'Dormant') return 'amber';
-  return 'green';
-}
-
 function normalizeName(value: string) {
   return value.trim().toLowerCase();
 }
 
-function buildAccountsSummary(memories: AccountMemory[]) {
+function buildAccountsSummary(rows: AccountMasterRow[]) {
   return {
-    totalAccounts: memories.length,
-    activeAccounts: memories.filter((memory) => memory.account.relationshipStatus === 'Active' || memory.activeOpportunityCount > 0).length,
-    dormantAccounts: memories.filter((memory) => memory.health === 'Dormant').length,
-    highPotentialAccounts: memories.filter((memory) => memory.account.accountPotential === 'High').length,
-    accountsWithOpenNextActions: memories.filter((memory) => memory.openNextActions.length > 0).length,
-    accountsWithObjectionDebt: memories.filter((memory) => memory.objectionDebt.length > 0).length,
-    accountsWithNoRecentActivity: memories.filter((memory) => !memory.latestActivityDate || isOlderThan(memory.latestActivityDate, 30)).length,
+    totalAccounts: rows.length,
+    activeAccounts: rows.filter((row) => row.hygiene.status === 'Active').length,
+    followUpAccounts: rows.filter((row) => row.hygiene.status === 'Needs follow-up').length,
+    strategicAccounts: rows.filter((row) => row.hygiene.status === 'Strategic').length,
+    dormantAccounts: rows.filter((row) => row.hygiene.status === 'Dormant').length,
+    importedOnlyAccounts: rows.filter((row) => row.hygiene.status === 'Imported only').length,
+    archivedAccounts: rows.filter((row) => row.hygiene.status === 'Archived').length,
   };
 }
 
-function buildImportedCoreSummary(accounts: AccountMemoryRecord[]): ImportedCoreSummary {
-  const imported = accounts.filter(isFounderImportedAccount);
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
+function buildImportedCoreSummary(rows: AccountMasterRow[]): ImportedCoreSummary {
+  const imported = rows.filter((row) => isFounderImportedAccount(row.memory.account));
 
   return {
     importedAccounts: imported.length,
-    keyAccounts: imported.filter((account) => account.kaFlag === true).length,
-    withTarget: imported.filter((account) => Boolean(account.fy26TargetSgd || account.fy27TargetSgd)).length,
-    withFy26Target: imported.filter((account) => Boolean(account.fy26TargetSgd)).length,
-    withFy27Target: imported.filter((account) => Boolean(account.fy27TargetSgd)).length,
-    withStrategy: imported.filter((account) => Boolean(account.strategy?.trim())).length,
-    followUpDue: imported.filter((account) => isDueDate(account.nextFollowUp, today)).length,
-    fy26Target: imported.reduce((sum, account) => sum + (account.fy26TargetSgd || 0), 0),
-    fy27Target: imported.reduce((sum, account) => sum + (account.fy27TargetSgd || 0), 0),
+    keyAccounts: imported.filter((row) => row.memory.account.kaFlag === true).length,
+    withTarget: imported.filter((row) => Boolean(row.memory.account.fy26TargetSgd || row.memory.account.fy27TargetSgd)).length,
+    withFy26Target: imported.filter((row) => Boolean(row.memory.account.fy26TargetSgd)).length,
+    withFy27Target: imported.filter((row) => Boolean(row.memory.account.fy27TargetSgd)).length,
+    withStrategy: imported.filter((row) => Boolean(row.memory.account.strategy?.trim())).length,
+    followUpDue: imported.filter((row) => row.hygiene.followUpDue).length,
+    fy26Target: sumMoneyInBase(imported.map((row) => ({ amount: row.memory.account.fy26TargetSgd, currency: 'SGD' }))),
+    fy27Target: sumMoneyInBase(imported.map((row) => ({ amount: row.memory.account.fy27TargetSgd, currency: 'SGD' }))),
   };
 }
 
@@ -1696,12 +1874,6 @@ function quoteActionRank(quote: QuoteRecord) {
   return 1;
 }
 
-function dateSortValue(dateKey: string) {
-  if (!dateKey) return Number.POSITIVE_INFINITY;
-  const time = new Date(`${dateKey}T00:00:00`).getTime();
-  return Number.isFinite(time) ? time : Number.POSITIVE_INFINITY;
-}
-
 function mostCommonObjectionType(objections: ObjectionRecord[]) {
   const counts = objections.reduce<Record<string, number>>((acc, objection) => {
     acc[objection.objectionType] = (acc[objection.objectionType] || 0) + 1;
@@ -1710,6 +1882,3 @@ function mostCommonObjectionType(objections: ObjectionRecord[]) {
   return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'None';
 }
 
-function isOlderThan(dateKey: string, days: number) {
-  return Math.floor((Date.now() - new Date(`${dateKey}T00:00:00`).getTime()) / 86_400_000) > days;
-}

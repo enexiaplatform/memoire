@@ -5,6 +5,7 @@ import {
   type ForecastEvidenceCategory,
   type PipelineDefenseDeal,
 } from '../data/pipelineDefenseBrief';
+import { sanitizeBusinessDate } from './safeDate.ts';
 
 export type ImportFormat = 'csv' | 'markdown' | 'unknown';
 
@@ -136,6 +137,10 @@ export function normalizeImportedDeal(rawDeal: RawImportedDeal): PipelineDefense
     recommendedAction: normalizeText(rawDeal.recommendedAction, 'Clarify the deal truth before defending this opportunity.'),
     pipelineReviewAnswer: normalizeText(rawDeal.pipelineReviewAnswer, 'This deal needs clearer evidence before it can be defended in review.'),
     decisionRecommendation: normalizeDecisionRecommendation(rawDeal.decisionRecommendation),
+    estimatedValue: normalizeOptionalNumber(rawDeal.estimatedValue),
+    currency: normalizeOptionalText(rawDeal.currency),
+    nextActionDate: sanitizeBusinessDate(rawDeal.nextActionDate),
+    lastSignalDate: sanitizeBusinessDate(rawDeal.lastSignalDate),
     sourceType: rawDeal.sourceType === 'opportunity' ? 'opportunity' : undefined,
     sourceOpportunityId: normalizeOptionalText(rawDeal.sourceOpportunityId),
   };
@@ -245,6 +250,11 @@ function normalizeLegacyOwner(value: string | undefined) {
 
 function normalizeOptionalText(value: string | undefined) {
   return value && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function normalizeOptionalNumber(value: number | null | undefined) {
+  const numeric = Number(value);
+  return value !== null && value !== undefined && Number.isFinite(numeric) ? numeric : null;
 }
 
 function normalizeKey(value: string) {

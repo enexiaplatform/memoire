@@ -1,6 +1,7 @@
 import { supabaseClient } from '../lib/supabaseClient';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus';
+import { sanitizeBusinessDate } from '../utils/safeDate.ts';
 
 export const OBJECTION_STORAGE_KEY = 'memoire.objections.v1';
 
@@ -229,7 +230,7 @@ function loadLocalObjections(): ObjectionRecord[] {
         requiredProof: item.requiredProof || '',
         responsePlan: item.responsePlan || '',
         resolutionNote: item.resolutionNote || '',
-        dueDate: item.dueDate || '',
+        dueDate: sanitizeBusinessDate(item.dueDate),
         resolvedAt: item.resolvedAt || '',
         tags: normalizeTags(item.tags),
         createdAt: item.createdAt || new Date().toISOString(),
@@ -319,7 +320,7 @@ function rowToObjection(row: ObjectionRow): ObjectionRecord {
     requiredProof: row.required_proof || '',
     responsePlan: row.response_plan || '',
     resolutionNote: row.resolution_note || '',
-    dueDate: row.due_date || '',
+    dueDate: sanitizeBusinessDate(row.due_date),
     resolvedAt: row.resolved_at || '',
     tags: normalizeTags(row.tags),
     createdAt: row.created_at,
@@ -353,7 +354,7 @@ function objectionToRow(input: ObjectionFormInput) {
     required_proof: input.requiredProof || null,
     response_plan: input.responsePlan || null,
     resolution_note: input.resolutionNote || null,
-    due_date: input.dueDate || null,
+    due_date: sanitizeBusinessDate(input.dueDate) || null,
     resolved_at: input.resolvedAt || null,
     tags: normalizeTags(input.tags),
   };
@@ -373,6 +374,7 @@ function normalizeObjectionInput(input: ObjectionFormInput): ObjectionFormInput 
     requiredProof: input.requiredProof.trim(),
     responsePlan: input.responsePlan.trim(),
     resolutionNote: input.resolutionNote.trim(),
+    dueDate: sanitizeBusinessDate(input.dueDate),
     tags: normalizeTags(input.tags),
   };
 }

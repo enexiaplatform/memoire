@@ -19,7 +19,7 @@ export function SignupPage() {
   const navigate = useNavigate();
 
   if (!loading && isAuthenticated) {
-    return <Navigate to="/app/dashboard" replace />;
+    return <Navigate to="/app/today" replace />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

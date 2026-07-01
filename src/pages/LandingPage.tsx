@@ -16,24 +16,24 @@ import { Footer } from '../components/marketing/Footer';
 
 const workflowSteps = [
   {
-    title: 'Import or refresh pipeline',
-    text: 'Bring in a CSV export from CRM, Excel, or your private working sheet without writing back to the source system.',
+    title: 'Capture messy evidence',
+    text: 'Paste a note, email thread, meeting recap, or quick update so Memoire can extract structured sales evidence.',
   },
   {
-    title: 'Capture deal updates',
-    text: 'Record what happened after meetings, procurement calls, demos, follow-ups, and customer objections.',
+    title: 'Open Today',
+    text: 'See the daily command center: top actions, proactive nudges, missing evidence, and deals that may embarrass you in review.',
   },
   {
-    title: 'Review weak deals',
-    text: 'Spot missing proof, objection debt, stakeholder gaps, stale actions, and MEDDIC-lite risks before review.',
+    title: 'Prepare Pipeline Defense',
+    text: 'Sort deals into defend, rescue, downgrade, or monitor decisions before your manager asks.',
   },
   {
-    title: 'Generate Pipeline Defense',
-    text: 'Turn deal evidence into a manager-ready brief with defensible answers and next defense actions.',
+    title: 'Copy manager-ready answers',
+    text: 'Turn messy notes and emails into concise review answers with proof, gaps, next action, and due date.',
   },
   {
-    title: 'Save Review Packs',
-    text: 'Keep weekly review pack history as your personal sales memory, not another company reporting table.',
+    title: 'Learn from outcomes',
+    text: 'Use win/loss and action outcomes as a personal coaching loop for future forecast decisions.',
   },
 ];
 
@@ -44,18 +44,18 @@ const featureCards = [
     icon: FileText,
   },
   {
-    title: 'CSV Refresh / Mapping Memory',
-    text: 'Refresh a CRM or Excel export as a read-only working copy while preserving your import mapping.',
+    title: 'Today command center',
+    text: 'Start each day with the top risks, overdue evidence, and next actions that matter before review.',
     icon: RefreshCw,
   },
   {
-    title: 'Quick Capture',
-    text: 'Capture messy B2B sales notes and extract accounts, stakeholders, next actions, signals, and risks.',
+    title: 'Capture evidence input',
+    text: 'Capture messy B2B sales notes, pasted emails, threads, and recaps into reviewed structured evidence.',
     icon: Sparkles,
   },
   {
-    title: 'MEDDIC-lite Review',
-    text: 'Check whether a deal has buyer, champion, decision process, pain, competition, and proof.',
+    title: 'MEDDIC Stakeholder Map',
+    text: 'Check whether a deal has real stakeholder evidence, not guessed Champion or Economic Buyer labels.',
     icon: ClipboardCheck,
   },
   {
@@ -64,8 +64,8 @@ const featureCards = [
     icon: ShieldCheck,
   },
   {
-    title: 'Sales Playbook',
-    text: 'Detect repeated sales patterns and turn them into reusable responses and personal learning.',
+    title: 'Outcome Learning',
+    text: 'Detect cautious win/loss and action-outcome patterns that can coach the next review.',
     icon: BadgeCheck,
   },
   {
@@ -74,14 +74,16 @@ const featureCards = [
     icon: LockKeyhole,
   },
   {
-    title: 'Review Pack History',
-    text: 'Save lightweight weekly packs with manager summaries, deal snapshots, and proof gaps.',
+    title: 'Proactive Nudges',
+    text: 'Surface reminders and risk signals before stale actions, missing roles, or weak evidence surprise you.',
     icon: FolderClock,
   },
 ];
 
 const bestFor = [
   'B2B salespeople with weekly or monthly pipeline reviews',
+  'Founder-led sellers and solo operators who own their own follow-up',
+  'Consultants, freelancers, agencies, and creators selling client work or partnerships',
   'Pharma, life science, lab, industrial, and complex technical sales',
   'Reps who use CRM plus Excel, Notion, private notes, or memory',
   'Sellers who must defend forecast with evidence, not hope',
@@ -91,14 +93,15 @@ const bestFor = [
 const notIdealFor = [
   'Enterprise teams requiring SSO, admin controls, and formal security review today',
   'Teams needing full Salesforce or HubSpot native sync right now',
-  'Users looking for a CRM replacement or manager forecasting dashboard',
+  'Users looking for Memoire to become the system of record or a manager forecasting dashboard',
+  'Operators needing invoicing, inventory, ecommerce, marketplace, or delivery/project management',
 ];
 
 const pricingPlans = [
   {
     name: 'Solo',
     price: '$15-25/month',
-    description: 'For individual salespeople preparing pipeline reviews.',
+    description: 'For one person managing their own sales follow-up and pipeline memory.',
     items: ['Pipeline review workspace', 'Capture and calendar', 'CSV refresh', 'Defense brief', 'Playbook and assets'],
   },
   {
@@ -144,7 +147,12 @@ const faqs = [
   {
     question: 'Who is Memoire for?',
     answer:
-      'Memoire is for B2B salespeople who manage complex deals and need to walk into review with evidence, next actions, objections, stakeholders, and proof ready.',
+      'Memoire is for people who sell without a sales team: B2B salespeople, founder-led sellers, consultants, freelancers, agency owners, and creators managing meaningful client, buyer, or partnership follow-up.',
+  },
+  {
+    question: 'Is Memoire for C2B or C2C selling?',
+    answer:
+      'Only when there is a real sales-memory loop: client context, proposal or partnership follow-up, objections, stakeholders, and next actions. Memoire is not built for ecommerce, inventory, marketplace listings, or simple one-off transactions.',
   },
   {
     question: 'What is the Pipeline Defense Brief?',
@@ -157,16 +165,16 @@ export function LandingPage() {
   return (
     <div className="min-h-screen bg-white text-slate-950">
       <Helmet>
-        <title>Memoire - Personal Sales Memory OS for B2B Sellers</title>
+        <title>Memoire - Personal Pipeline Defense OS for B2B and Solo Operators</title>
         <meta
           name="description"
-          content="Your CRM tracks deals for the company. Memoire helps B2B sellers remember context, defend pipeline, prepare follow-ups, and run better deal reviews."
+          content="Memoire is a Personal Pipeline Defense OS used beside CRM, spreadsheets, and notes to help B2B and solo operators capture messy evidence, prepare reviews, and defend, rescue, or downgrade pipeline."
         />
         <meta name="robots" content="noindex, nofollow" />
-        <meta property="og:title" content="Memoire - Personal Sales Memory OS for B2B Sellers" />
+        <meta property="og:title" content="Memoire - Personal Pipeline Defense OS for B2B and Solo Operators" />
         <meta
           property="og:description"
-          content="Remember deal context, defend pipeline, prepare follow-ups, and run better weekly reviews without replacing your CRM."
+          content="Never enter a pipeline review unprepared. Capture messy notes and emails, find risks in Today, and copy manager-ready Pipeline Defense answers."
         />
         <meta property="og:type" content="website" />
       </Helmet>
@@ -181,14 +189,14 @@ export function LandingPage() {
           <div className="relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1fr_0.95fr] lg:items-center">
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.28em] text-cyan-200">
-                Personal Sales Memory OS for B2B sellers
+                Personal Pipeline Defense OS for people who sell without a sales team
               </p>
               <h1 className="mt-5 max-w-4xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
-                Remember every deal. Defend your pipeline with evidence.
+                Never enter a pipeline review unprepared.
               </h1>
               <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200">
-                Your CRM tracks deals for the company. Memoire helps you remember context, defend pipeline, prepare
-                follow-ups, and run better deal reviews.
+                Memoire works beside your CRM, spreadsheet, or notes, not instead of them. Capture messy notes and emails, let Today expose the urgent risks,
+                and turn Pipeline Defense into manager-ready answers to defend, rescue, or downgrade your forecast.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
@@ -202,7 +210,7 @@ export function LandingPage() {
                   to="/demo?sample=1"
                   className="inline-flex items-center justify-center rounded-lg border border-white/20 bg-white/10 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/15"
                 >
-                  Import Sample Pipeline
+                  Load Proof Path Demo
                 </Link>
                 <Link
                   to="/request-access"
@@ -212,7 +220,7 @@ export function LandingPage() {
                 </Link>
               </div>
               <p className="mt-5 max-w-2xl text-sm leading-6 text-slate-300">
-                Private beta. No CRM writeback, no manager surveillance, and demo data stays local in this browser.
+                Private beta. Built for B2B reps, founder-led sellers, consultants, freelancers, agencies, and creators with real follow-up loops. No CRM writeback, no manager surveillance, and demo data stays local in this browser.
               </p>
             </div>
 
@@ -272,14 +280,14 @@ export function LandingPage() {
                 Your CRM tracks records for the company. Memoire helps you prepare as the salesperson.
               </h2>
               <p className="mt-4 text-base leading-7 text-slate-600">
-                CRM fields show the official pipeline. Memoire gives you a private working layer for evidence,
+                CRM fields, spreadsheets, and private notes show the official record. Memoire gives you a private working layer for evidence,
                 objections, proof gaps, stakeholders, and review answers.
               </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               {[
                 ['No CRM writeback', 'Review and prepare without changing source CRM records.'],
-                ['Read-only working copy', 'Use CSV imports from CRM, Excel, or private pipeline sheets.'],
+                ['Read-only working copy', 'Use CSV imports from CRM, Excel, Notion, or private pipeline sheets.'],
                 ['Private demo sandbox', 'Try sample data locally before sign-in; account work syncs where configured.'],
                 ['Private review preparation', 'Build your deal story before walking into forecast review.'],
               ].map(([title, text]) => (
@@ -296,8 +304,8 @@ export function LandingPage() {
           <div className="mx-auto max-w-6xl">
             <SectionHeader
               eyebrow="Core workflow"
-              title="From CRM export to manager-ready defense brief."
-              text="Memoire is built for the weekly rhythm of B2B pipeline review, not for replacing the system of record."
+              title="From messy evidence to manager-ready review answers."
+              text="Memoire is built for the weekly rhythm of pipeline defense and solo sales follow-up, not for replacing the system of record."
             />
             <div className="mt-10 grid gap-4 md:grid-cols-5">
               {workflowSteps.map((step, index) => (
@@ -318,7 +326,7 @@ export function LandingPage() {
             <SectionHeader
               eyebrow="What Memoire helps you do"
               title="Make weak forecast visible before your manager does."
-              text="The product combines pipeline quality, sales memory, objections, stakeholders, proof assets, and review history."
+              text="Capture is evidence input. Today is the daily command center. Pipeline Defense is the review artifact. Outcome Learning is the personal coaching loop."
             />
             <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {featureCards.map((feature) => {

@@ -1,6 +1,8 @@
 import { pipelineDefenseBriefMeta, type PipelineDefenseDeal } from '../data/pipelineDefenseBrief';
 import type { PipelineDefenseActionItem } from './pipelineDefenseActionPlan';
 import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
+import { formatBaseCurrencyAmount, formatCurrencyAmount, sumMoneyInBase } from './money.ts';
+import { buildPipelineDefenseCenter } from './pipelineDefenseCenter.ts';
 
 export type ShareableDefenseStatus = 'Defend' | 'Rescue' | 'Downgrade' | 'Monitor';
 
@@ -193,12 +195,18 @@ export function buildPipelineReviewDashboardSignal(briefs: PipelineDefenseBrief[
       briefTitle: 'No defense brief yet',
       dealsNeedingReview: 0,
       rescueDowngradeCandidates: 0,
+      readinessScore: 0,
+      defendableDeals: 0,
+      rescueDeals: 0,
+      downgradeCandidates: 0,
+      topMissingEvidenceGaps: ['No Pipeline Defense Brief prepared yet'],
       topReason: 'Create a Pipeline Defense Brief from selected opportunities before review.',
       href: '/app/pipeline-defense',
     };
   }
 
   const shareable = buildShareablePipelineDefenseBrief({ brief: latestBrief, deals: latestBrief.deals });
+  const center = buildPipelineDefenseCenter(latestBrief.deals);
   const dealsNeedingReview = latestBrief.deals.filter((deal) => (
     deal.forecastEvidenceCategory !== 'Defensible'
     || deal.decisionRecommendation !== 'Defend'
@@ -211,6 +219,11 @@ export function buildPipelineReviewDashboardSignal(briefs: PipelineDefenseBrief[
     briefTitle: latestBrief.title,
     dealsNeedingReview,
     rescueDowngradeCandidates,
+    readinessScore: center.readinessScore,
+    defendableDeals: center.defendableDeals,
+    rescueDeals: center.rescueDeals,
+    downgradeCandidates: center.downgradeCandidates,
+    topMissingEvidenceGaps: center.topMissingEvidenceGaps.map((gap) => `${gap.label} (${gap.count})`),
     topReason: shareable.topMissingProofGaps[0]
       ? `${shareable.topMissingProofGaps[0].label} affects ${shareable.topMissingProofGaps[0].count} deal(s).`
       : 'Pipeline review brief is ready for final manager review.',
@@ -341,15 +354,17 @@ function countMatchingGaps(deals: PipelineDefenseDeal[], pattern: RegExp) {
 }
 
 function buildTotalPipelineValueLabel(deals: PipelineDefenseDeal[]) {
-  const valueLabels = deals.map(extractValueLabel).filter((value) => value !== 'Not captured');
-  if (valueLabels.length === 0) return 'Not captured';
-  return valueLabels.join(', ');
+  const values = deals
+    .filter((deal) => deal.estimatedValue !== null && deal.estimatedValue !== undefined && deal.currency)
+    .map((deal) => ({ amount: deal.estimatedValue, currency: deal.currency }));
+  if (values.length === 0) return 'Not captured';
+  return formatBaseCurrencyAmount(sumMoneyInBase(values));
 }
 
 function extractValueLabel(deal: PipelineDefenseDeal) {
-  const combined = [deal.pipelineContext, deal.dealTruth, deal.recommendedAction].join(' ');
-  const match = combined.match(/(?:value|deal size|estimated value|amount)\s*[:=-]?\s*([A-Z]{3}?\s?[\d,.]+(?:\s?(?:m|mn|million|b|bn|billion))?|\$[\d,.]+(?:\s?(?:m|mn|million))?)/i);
-  return match?.[1]?.trim() || 'Not captured';
+  return deal.estimatedValue !== null && deal.estimatedValue !== undefined && deal.currency
+    ? formatCurrencyAmount(deal.estimatedValue, deal.currency)
+    : 'Not captured';
 }
 
 function extractStageLabel(deal: PipelineDefenseDeal) {

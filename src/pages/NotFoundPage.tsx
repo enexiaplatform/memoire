@@ -23,7 +23,7 @@ export function NotFoundPage() {
             Return home
           </Link>
           <Link
-            to={isAuthenticated ? '/app/dashboard' : '/demo'}
+            to={isAuthenticated ? '/app/today' : '/demo'}
             className="inline-flex items-center justify-center gap-2 rounded-full bg-navy px-5 py-3 text-sm font-bold text-white hover:bg-navy/90"
           >
             <LayoutDashboard className="h-4 w-4" />

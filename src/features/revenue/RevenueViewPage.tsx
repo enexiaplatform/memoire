@@ -8,7 +8,7 @@ import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { QuoteRecord } from '../../services/quoteStore';
 import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { hasLocalSampleData } from '../../utils/dataMode';
-import { formatCurrencyAmount as formatMoney } from '../../utils/currency';
+import { formatBaseCurrencyAmount as formatBaseMoney, formatCurrencyAmount as formatMoney } from '../../utils/money';
 import { buildRevenueView, type RevenueActionItem, type RevenueRiskKind } from '../../utils/revenueView';
 
 type RevenueData = {
@@ -63,15 +63,15 @@ export function RevenueViewPage() {
     <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Commercial</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Revenue View</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Supporting drill-down</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Commercial risk detail</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            See stuck money, risk, and the next commercial action.
+            Inspect stuck money, quote, delivery, and payment follow-ups. Today owns the priority order.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link to={revenue.topAction?.href || '/app/quotes'} className="inline-flex items-center justify-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-            {revenue.topAction ? 'Do revenue action' : 'Create quote'}
+          <Link to="/app/today" className="inline-flex items-center justify-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+            Return to Today
             <ArrowRight className="h-4 w-4" />
           </Link>
           <button
@@ -108,7 +108,7 @@ export function RevenueViewPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <Banknote className="h-4 w-4 text-brand-blue" />
-                  <h2 className="text-lg font-bold text-navy">What needs action?</h2>
+                  <h2 className="text-lg font-bold text-navy">Commercial risk detail</h2>
                 </div>
                 <p className="mt-1 text-sm text-blue-900/75">
                   {revenue.topAction
@@ -134,9 +134,9 @@ export function RevenueViewPage() {
           </section>
 
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <RevenueMetric label="Active pipeline" value={formatMoney(revenue.activePipeline, 'VND')} tone="blue" />
-            <RevenueMetric label="Stuck money" value={formatMoney(stuckRevenue, 'VND')} tone={stuckRevenue ? 'amber' : 'green'} />
-            <RevenueMetric label="At risk" value={formatMoney(revenue.atRiskRevenue, 'VND')} tone={revenue.atRiskRevenue ? 'red' : 'green'} />
+            <RevenueMetric label="Active pipeline" value={formatBaseMoney(revenue.activePipeline)} tone="blue" />
+            <RevenueMetric label="Stuck money" value={formatBaseMoney(stuckRevenue)} tone={stuckRevenue ? 'amber' : 'green'} />
+            <RevenueMetric label="At risk" value={formatBaseMoney(revenue.atRiskRevenue)} tone={revenue.atRiskRevenue ? 'red' : 'green'} />
             <RevenueMetric label="Overdue" value={revenue.overdueFollowUps} tone={revenue.overdueFollowUps ? 'red' : 'green'} />
           </section>
 
@@ -162,12 +162,12 @@ export function RevenueViewPage() {
           <details className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <summary className="cursor-pointer text-sm font-bold text-navy">More money signals</summary>
             <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-7">
-              <RevenueMetric label="Won" value={formatMoney(revenue.won, 'VND')} tone={revenue.won ? 'green' : 'blue'} />
-              <RevenueMetric label="Quoted" value={formatMoney(revenue.quoted, 'VND')} tone={revenue.quoted ? 'blue' : 'green'} />
-              <RevenueMetric label="Pending PO" value={formatMoney(revenue.pendingPo, 'VND')} tone={revenue.pendingPo ? 'amber' : 'green'} />
-              <RevenueMetric label="Pending delivery" value={formatMoney(revenue.pendingDelivery, 'VND')} tone={revenue.pendingDelivery ? 'amber' : 'green'} />
-              <RevenueMetric label="Pending payment" value={formatMoney(revenue.pendingPayment, 'VND')} tone={revenue.pendingPayment ? 'amber' : 'green'} />
-              <RevenueMetric label="Paid" value={formatMoney(revenue.paid, 'VND')} tone="green" />
+              <RevenueMetric label="Won" value={formatBaseMoney(revenue.won)} tone={revenue.won ? 'green' : 'blue'} />
+              <RevenueMetric label="Quoted" value={formatBaseMoney(revenue.quoted)} tone={revenue.quoted ? 'blue' : 'green'} />
+              <RevenueMetric label="Pending PO" value={formatBaseMoney(revenue.pendingPo)} tone={revenue.pendingPo ? 'amber' : 'green'} />
+              <RevenueMetric label="Pending delivery" value={formatBaseMoney(revenue.pendingDelivery)} tone={revenue.pendingDelivery ? 'amber' : 'green'} />
+              <RevenueMetric label="Pending payment" value={formatBaseMoney(revenue.pendingPayment)} tone={revenue.pendingPayment ? 'amber' : 'green'} />
+              <RevenueMetric label="Paid" value={formatBaseMoney(revenue.paid)} tone="green" />
               <RevenueMetric label="Expiring quotes" value={revenue.expiringQuotes} tone={revenue.expiringQuotes ? 'amber' : 'green'} />
             </div>
           </details>

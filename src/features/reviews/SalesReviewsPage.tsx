@@ -16,6 +16,7 @@ import { type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { type QuoteRecord } from '../../services/quoteStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
+import { type OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore';
 import { type SalesAssetRecord } from '../../services/salesAssetStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { analyzePipelineOutcomeLoop, getActionOutcomesInPeriod } from '../../utils/actionOutcomeLoop';
@@ -40,6 +41,8 @@ import {
   type SalesPlaybookPattern,
 } from '../../utils/salesPlaybook';
 import { analyzeAssetNeeds, type SalesAssetNeed } from '../../utils/salesAssetSuggestions';
+import { formatSafeBusinessDate, isValidBusinessDate } from '../../utils/safeDate.ts';
+import { analyzePersonalSalesLearning, type PersonalSalesLearningAnalysis } from '../../utils/personalSalesLearning.ts';
 import {
   generateMonthlySalesRecap,
   generateSalesRecapMarkdown,
@@ -63,6 +66,7 @@ export function SalesReviewsPage() {
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
   const [actionOutcomes, setActionOutcomes] = useState<ActionOutcomeRecord[]>([]);
+  const [opportunityOutcomes, setOpportunityOutcomes] = useState<OpportunityOutcomeRecord[]>([]);
   const [assets, setAssets] = useState<SalesAssetRecord[]>([]);
   const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
   const [briefs, setBriefs] = useState<PipelineDefenseBrief[]>([]);
@@ -134,10 +138,15 @@ export function SalesReviewsPage() {
       objections: periodObjections,
       activities: periodActivities,
       actionOutcomes: periodActionOutcomes,
+      opportunityOutcomes,
       executionReview,
       limit: 5,
     }),
-    [executionReview, opportunities, stakeholders, periodObjections, periodActivities, periodActionOutcomes]
+    [executionReview, opportunities, stakeholders, periodObjections, periodActivities, periodActionOutcomes, opportunityOutcomes]
+  );
+  const personalLearning = useMemo(
+    () => analyzePersonalSalesLearning({ outcomes: opportunityOutcomes, opportunities, limit: 5 }),
+    [opportunities, opportunityOutcomes],
   );
   const assetNeeds = useMemo(
     () => analyzeAssetNeeds({ patterns: playbookLearnings, objections: periodObjections, assets, opportunities }),
@@ -151,6 +160,7 @@ export function SalesReviewsPage() {
       setOpportunities(cachedData.opportunities);
       setStakeholders(cachedData.stakeholders);
       setActionOutcomes(cachedData.actionOutcomes);
+      setOpportunityOutcomes(cachedData.opportunityOutcomes);
       setAssets(cachedData.assets);
       setAccounts(cachedData.accounts);
       setBriefs(cachedData.briefs);
@@ -166,6 +176,7 @@ export function SalesReviewsPage() {
     setOpportunities(workspaceData.opportunities);
     setStakeholders(workspaceData.stakeholders);
     setActionOutcomes(workspaceData.actionOutcomes);
+    setOpportunityOutcomes(workspaceData.opportunityOutcomes);
     setAssets(workspaceData.assets);
     setAccounts(workspaceData.accounts);
     setBriefs(workspaceData.briefs);
@@ -226,9 +237,9 @@ export function SalesReviewsPage() {
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Weekly Brief</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Commercial Review Brief</h1>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Review summary</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            Copy the weekly commercial summary, then drill into pipeline, quotes, and revenue only where needed.
+            Summarize the week for review and sharing. Today remains the daily command center.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -377,6 +388,8 @@ export function SalesReviewsPage() {
       {playbookLearnings.length > 0 && (
         <SuggestedPlaybookLearningsPanel patterns={playbookLearnings} />
       )}
+
+      <PersonalOutcomeLearningPanel learning={personalLearning} />
 
       {assetNeeds.length > 0 && (
         <AssetNeedsPanel needs={assetNeeds} />
@@ -593,7 +606,7 @@ function RecommendedDealActionsPanel({ actions }: { actions: OpportunityRecommen
                 {action.priority}
               </span>
               <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-brand-blue">{action.sourceType}</span>
-              {action.suggestedDueDate && <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-bold text-gray-600">Due {action.suggestedDueDate}</span>}
+              {action.suggestedDueDate && <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-bold text-gray-600">Due {formatSafeBusinessDate(action.suggestedDueDate)}</span>}
             </div>
             <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{action.accountName} / {action.opportunityName}</p>
             <p className="mt-1 text-sm font-bold text-navy">{action.title}</p>
@@ -602,6 +615,43 @@ function RecommendedDealActionsPanel({ actions }: { actions: OpportunityRecommen
         ))}
       </div>
     </section>
+  );
+}
+
+function PersonalOutcomeLearningPanel({ learning }: { learning: PersonalSalesLearningAnalysis }) {
+  return (
+    <section className="rounded-lg border border-indigo-100 bg-indigo-50/70 p-5 shadow-sm">
+      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-sm font-bold text-indigo-950">Personal learning from outcomes</p>
+          <p className="mt-1 text-sm leading-6 text-indigo-900/75">
+            Closed-loop learning from wins, losses, delays, and no-decision retros. Pattern language stays cautious until enough outcomes exist.
+          </p>
+        </div>
+        <Link to="/app/opportunities" className="inline-flex w-fit rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          Record outcome
+        </Link>
+      </div>
+      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <LearningFact label="Recurring pattern" value={learning.weeklyBriefSection.recurringPattern} />
+        <LearningFact label="Behavior change" value={learning.weeklyBriefSection.suggestedBehaviorChange} />
+        <LearningFact label="Apply to" value={learning.weeklyBriefSection.dealToApplyItTo} />
+      </div>
+      {learning.weeklyBriefSection.lowDataMessage && (
+        <p className="mt-3 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-indigo-800 ring-1 ring-indigo-100">
+          {learning.weeklyBriefSection.lowDataMessage}. Individual retro notes are still visible after each outcome is recorded.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function LearningFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-white p-4 ring-1 ring-indigo-100">
+      <p className="text-xs font-bold uppercase tracking-wide text-indigo-700">{label}</p>
+      <p className="mt-2 text-sm font-semibold leading-6 text-gray-700">{value}</p>
+    </div>
   );
 }
 
@@ -909,7 +959,7 @@ function NextActionsPanel({ actions }: { actions: SalesActivityRecap['openNextAc
       items={actions.map((item) => ({
         id: item.activityId,
         title: item.nextAction,
-        detail: [item.accountName, item.opportunityName || 'Unlinked', item.dueDate ? `Due ${item.dueDate}` : ''].filter(Boolean).join(' | '),
+        detail: [item.accountName, item.opportunityName || 'Unlinked', item.dueDate ? `Due ${formatSafeBusinessDate(item.dueDate)}` : ''].filter(Boolean).join(' | '),
       }))}
     />
   );
@@ -1083,6 +1133,7 @@ function buildPeriodDealActions({
 
 function groupActivitiesByDate(activities: SalesActivityRecord[]) {
   return activities.reduce<Record<string, SalesActivityRecord[]>>((groups, activity) => {
+    if (!isValidBusinessDate(activity.activityDate)) return groups;
     groups[activity.activityDate] = groups[activity.activityDate] || [];
     groups[activity.activityDate].push(activity);
     return groups;

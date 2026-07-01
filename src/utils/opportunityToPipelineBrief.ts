@@ -1,18 +1,20 @@
-import type { PipelineDefenseDeal } from '../data/pipelineDefenseBrief';
-import { createPipelineDefenseBrief, type PipelineDefenseBrief } from './pipelineDefenseStorage';
-import type { CrmLiteOpportunity } from '../services/opportunityStore';
-import type { ObjectionRecord } from '../services/objectionStore';
-import type { SalesActivityRecord } from '../services/salesActivityStore';
-import type { StakeholderRecord } from '../services/stakeholderStore';
-import type { ActionOutcomeRecord } from '../services/actionOutcomeStore';
-import type { SalesAssetRecord } from '../services/salesAssetStore';
-import { getObjectionsForOpportunity, summarizeObjectionsForPipeline } from './objectionLedger';
-import { analyzeMeddicLiteOpportunity, getMeddicLiteDefenseAnswer, getMeddicLiteGapsSummary } from './meddicLite';
-import { generateOpportunityActionPlan, generateOpportunityActionsMarkdown } from './opportunityActionPlan';
-import { formatActionOutcomeForBrief } from './actionOutcomeLoop';
-import { formatExecutionLearningForBrief } from './weeklyExecutionReview';
-import { formatRelevantPlaybookPatternForBrief } from './salesPlaybook';
-import { formatRelevantProofAssetsForBrief } from './salesAssetSuggestions';
+import type { PipelineDefenseDeal } from '../data/pipelineDefenseBrief.ts';
+import { createPipelineDefenseBrief, type PipelineDefenseBrief } from './pipelineDefenseStorage.ts';
+import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
+import type { ObjectionRecord } from '../services/objectionStore.ts';
+import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
+import type { StakeholderRecord } from '../services/stakeholderStore.ts';
+import type { ActionOutcomeRecord } from '../services/actionOutcomeStore.ts';
+import type { SalesAssetRecord } from '../services/salesAssetStore.ts';
+import { getObjectionsForOpportunity, summarizeObjectionsForPipeline } from './objectionLedger.ts';
+import { analyzeMeddicLiteOpportunity, getMeddicLiteDefenseAnswer, getMeddicLiteGapsSummary } from './meddicLite.ts';
+import { buildMeddicStakeholderMap } from './meddicStakeholderMap.ts';
+import { generateOpportunityActionPlan, generateOpportunityActionsMarkdown } from './opportunityActionPlan.ts';
+import { formatActionOutcomeForBrief } from './actionOutcomeLoop.ts';
+import { formatExecutionLearningForBrief } from './weeklyExecutionReview.ts';
+import { formatRelevantPlaybookPatternForBrief } from './salesPlaybook.ts';
+import { formatRelevantProofAssetsForBrief } from './salesAssetSuggestions.ts';
+import { compareSafeBusinessDate, sanitizeBusinessDate } from './safeDate.ts';
 
 export type OpportunityBriefMetadata = {
   title?: string;
@@ -35,8 +37,11 @@ export function mapOpportunityToPipelineDefenseDeal(
   const riskType = deriveRiskTypes(opportunity, missingContext);
   const opportunityObjections = getObjectionsForOpportunity(objections, opportunity);
   const meddicReview = analyzeMeddicLiteOpportunity({ opportunity, stakeholders, objections, activities });
+  const stakeholderMap = buildMeddicStakeholderMap({ opportunity, stakeholders, objections, activities });
   const actionPlan = generateOpportunityActionPlan({ opportunity, meddicReview, stakeholders, objections, activities });
   const meddicGaps = meddicReview.gaps.map((gap) => `MEDDIC-lite: ${gap}`);
+  const stakeholderGaps = stakeholderMap.missingRoles.map((gap) => `MEDDIC stakeholder map: ${gap.role} missing - ${gap.reason}`);
+  const stakeholderEvidence = stakeholderMap.briefStatusLines.map((line) => `MEDDIC stakeholder map: ${line}`);
   const objectionDebt = buildObjectionDebt(opportunity, opportunityObjections, meddicReview);
   const nextDefenseActions = buildNextDefenseActions(actionPlan);
   const lastActionOutcome = formatActionOutcomeForBrief(actionOutcomes, opportunity);
@@ -70,10 +75,11 @@ export function mapOpportunityToPipelineDefenseDeal(
     pipelineContext: buildPipelineContext(opportunity),
     dealTruth: buildDealTruth(opportunity, missingContext, meddicReview.category),
     riskType: Array.from(new Set([...riskType, ...meddicGaps.slice(0, 4)])).slice(0, 10),
-    evidence: evidence.length > 0 ? evidence : ['No concrete customer evidence has been captured on the opportunity yet.'],
+    evidence: [...(evidence.length > 0 ? evidence : ['No concrete customer evidence has been captured on the opportunity yet.']), ...stakeholderEvidence].slice(0, 12),
     missingContext: Array.from(new Set([
       ...(missingContext.length > 0 ? missingContext : deriveDefaultMissingContext(opportunity)),
       ...meddicGaps,
+      ...stakeholderGaps,
     ])).slice(0, 10),
     objectionDebt: {
       ...objectionDebt,
@@ -81,11 +87,34 @@ export function mapOpportunityToPipelineDefenseDeal(
     },
     forecastEvidenceCategory: opportunity.forecastEvidenceCategory,
     recommendedAction: buildRecommendedAction(opportunity, actionPlan, lastActionOutcome, executionLearning, relevantPlaybookPattern, relevantProofAssets),
-    pipelineReviewAnswer: `${buildPipelineReviewAnswer(opportunity, missingContext)} ${getMeddicLiteDefenseAnswer(meddicReview)} ${lastActionOutcome} ${executionLearning} ${relevantPlaybookPattern} ${relevantProofAssets}`.trim(),
+    pipelineReviewAnswer: `${buildPipelineReviewAnswer(opportunity, missingContext)} ${getMeddicLiteDefenseAnswer(meddicReview)} ${formatStakeholderMapForBrief(stakeholderMap)} ${lastActionOutcome} ${executionLearning} ${relevantPlaybookPattern} ${relevantProofAssets}`.trim(),
     decisionRecommendation: opportunity.decisionRecommendation,
+    estimatedValue: opportunity.estimatedValue,
+    currency: opportunity.currency,
+    nextActionDate: sanitizeBusinessDate(opportunity.nextActionDate),
+    lastSignalDate: findLatestSignalDate(opportunity, activities),
     sourceType: 'opportunity',
     sourceOpportunityId: opportunity.id,
   };
+}
+
+function formatStakeholderMapForBrief(map: ReturnType<typeof buildMeddicStakeholderMap>) {
+  if (map.items.length === 0) {
+    return 'Stakeholder map is empty. Add Champion, Economic Buyer, Technical Buyer, or Procurement owner to make the forecast defensible.';
+  }
+  return `Stakeholder evidence: ${map.briefStatusLines.slice(0, 5).join(' ')}`;
+}
+
+function findLatestSignalDate(opportunity: CrmLiteOpportunity, activities: SalesActivityRecord[]) {
+  return activities
+    .filter((activity) => (
+      activity.linkedOpportunityId === opportunity.id
+      || activity.opportunityName === opportunity.opportunityName
+      || activity.accountName === opportunity.accountName
+    ))
+    .map((activity) => sanitizeBusinessDate(activity.activityDate))
+    .filter(Boolean)
+    .sort((left, right) => compareSafeBusinessDate(right, left))[0] || '';
 }
 
 function buildRecommendedAction(
@@ -157,18 +186,18 @@ function buildPipelineReviewAnswer(opportunity: CrmLiteOpportunity, missingConte
   const gap = missingContext[0] || (opportunity.objectionDebt ? 'the unresolved objection' : 'the remaining forecast evidence');
 
   if (recommendation === 'Defend' && category === 'Defensible') {
-    return `I can defend this opportunity based on the current evidence. This week I will still ${nextAction} to keep the forecast grounded.`;
+    return `I can defend this deal on current evidence, with one caveat: I still need to ${nextAction} this week to keep the forecast grounded.`;
   }
 
   if (recommendation === 'Downgrade' || category === 'Unsupported') {
-    return `I should not over-forecast this opportunity. It needs downgrade or clarification until ${gap} is resolved and a customer-confirmed next step exists.`;
+    return `I should downgrade or de-risk this deal until ${gap} is resolved and a customer-confirmed next step exists. I do not have enough evidence to defend it in review.`;
   }
 
   if (recommendation === 'Rescue' || opportunity.objectionDebt) {
-    return `This opportunity needs rescue before review. The immediate action is to ${nextAction}, because ${gap} is still not resolved.`;
+    return `I can rescue this deal only if I ${nextAction} before review. Evidence is still incomplete because ${gap} is not resolved.`;
   }
 
-  return `This opportunity should be monitored. It is ${category.toLowerCase()} and needs ${nextAction} before it becomes fully defensible.`;
+  return `I should monitor this deal for now. It is ${category.toLowerCase()} and needs ${nextAction} before I call it defensible.`;
 }
 
 function buildObjectionDebt(

@@ -11,6 +11,8 @@ import {
   getCommercialCheckpointRisk,
   getNextCommercialProgressAction,
 } from '../utils/commercialFulfillment';
+import { sumMoneyInBase } from '../utils/money';
+import { compareSafeBusinessDate, isValidBusinessDate, sanitizeBusinessDate } from '../utils/safeDate.ts';
 
 export { buildDeliveryScheduleUpdate, getNextCommercialProgressAction, getQuoteCommercialStage, getQuoteWorkspaceHref, requiresExpectedDeliveryDate } from '../utils/commercialFulfillment';
 export type { CommercialProgressAction, CommercialStage } from '../utils/commercialFulfillment';
@@ -220,16 +222,14 @@ export function deleteQuote(quoteId: string) {
 export function summarizeQuotes(quotes: QuoteRecord[]): QuoteSummary {
   const actionable = quotes
     .filter((quote) => ['Sent', 'Revised', 'Accepted'].includes(quote.status))
-    .sort((a, b) => quoteRiskRank(getQuoteRisk(b)) - quoteRiskRank(getQuoteRisk(a)) || dateSortValue(a.validUntil) - dateSortValue(b.validUntil));
+    .sort((a, b) => quoteRiskRank(getQuoteRisk(b)) - quoteRiskRank(getQuoteRisk(a)) || compareSafeBusinessDate(a.validUntil, b.validUntil));
 
   return {
     total: quotes.length,
     sentQuotes: quotes.filter((quote) => quote.status === 'Sent' || quote.status === 'Revised').length,
     expiringSoon: quotes.filter((quote) => getQuoteRisk(quote) === 'Expiring soon').length,
     pendingPo: quotes.filter((quote) => quote.status === 'Accepted' && quote.poStatus === 'Pending').length,
-    acceptedValue: quotes
-      .filter((quote) => quote.status === 'Accepted')
-      .reduce((total, quote) => total + (quote.amount || 0), 0),
+    acceptedValue: sumMoneyInBase(quotes.filter((quote) => quote.status === 'Accepted')),
     topActionQuote: actionable[0] || null,
   };
 }
@@ -270,8 +270,8 @@ function sanitizeQuote(raw: Partial<QuoteRecord> | null): QuoteRecord | null {
     opportunityId: String(raw.opportunityId || '').trim(),
     opportunityName: String(raw.opportunityName || '').trim(),
     title,
-    quoteDate: normalizeDate(raw.quoteDate) || todayKey(),
-    validUntil: normalizeDate(raw.validUntil),
+    quoteDate: sanitizeBusinessDate(raw.quoteDate) || todayKey(),
+    validUntil: sanitizeBusinessDate(raw.validUntil),
     amount: normalizeNumber(raw.amount),
     currency: String(raw.currency || 'VND').trim().toUpperCase(),
     grossMarginEstimate: normalizeNumber(raw.grossMarginEstimate),
@@ -280,9 +280,9 @@ function sanitizeQuote(raw: Partial<QuoteRecord> | null): QuoteRecord | null {
     status: isQuoteStatus(raw.status) ? raw.status : 'Draft',
     poStatus: isPurchaseOrderStatus(raw.poStatus) ? raw.poStatus : 'Pending',
     deliveryStatus: isDeliveryStatus(raw.deliveryStatus) ? raw.deliveryStatus : 'Not scheduled',
-    expectedDeliveryDate: normalizeDate(raw.expectedDeliveryDate),
+    expectedDeliveryDate: sanitizeBusinessDate(raw.expectedDeliveryDate),
     paymentStatus: isPaymentStatus(raw.paymentStatus) ? raw.paymentStatus : 'Not due',
-    paymentDueDate: normalizeDate(raw.paymentDueDate),
+    paymentDueDate: sanitizeBusinessDate(raw.paymentDueDate),
     nextAction: String(raw.nextAction || '').trim(),
     notes: String(raw.notes || '').trim(),
     createdAt: raw.createdAt || now,
@@ -308,11 +308,6 @@ function isPaymentStatus(value: unknown): value is PaymentStatus {
   return paymentStatuses.includes(value as PaymentStatus);
 }
 
-function normalizeDate(value: unknown) {
-  const text = String(value || '').trim();
-  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : '';
-}
-
 function normalizeNumber(value: unknown) {
   if (value === null || value === undefined || value === '') return null;
   const parsed = typeof value === 'number' ? value : Number(String(value).replace(/,/g, ''));
@@ -320,13 +315,10 @@ function normalizeNumber(value: unknown) {
 }
 
 function daysUntil(dateKey: string) {
+  if (!isValidBusinessDate(dateKey)) return Number.POSITIVE_INFINITY;
   const target = new Date(`${dateKey}T00:00:00`);
   const today = new Date(`${todayKey()}T00:00:00`);
   return Math.floor((target.getTime() - today.getTime()) / 86_400_000);
-}
-
-function dateSortValue(dateKey: string) {
-  return dateKey ? new Date(`${dateKey}T00:00:00`).getTime() : Number.MAX_SAFE_INTEGER;
 }
 
 function quoteRiskRank(risk: QuoteRisk) {

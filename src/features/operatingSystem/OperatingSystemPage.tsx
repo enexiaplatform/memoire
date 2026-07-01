@@ -14,7 +14,8 @@ import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
-import { formatCompactCurrencyAmount } from '../../utils/currency';
+import { formatCompactCurrencyAmount } from '../../utils/money';
+import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate } from '../../utils/safeDate.ts';
 import {
   createOperatingContext,
   deleteOperatingContext,
@@ -69,7 +70,7 @@ export function OperatingSystemPage() {
     return true;
   }), [filter, records]);
   const focusRecord = useMemo(() => [...activeRecords].sort(operatingPrioritySort)[0] || null, [activeRecords]);
-  const dueCount = activeRecords.filter((record) => record.nextDate && record.nextDate <= todayKey()).length;
+  const dueCount = activeRecords.filter((record) => isValidBusinessDate(record.nextDate) && (isBusinessDateOverdue(record.nextDate) || record.nextDate === todayKey())).length;
   const missingActionCount = activeRecords.filter((record) => !record.nextAction.trim()).length;
 
   const openAdd = () => {
@@ -141,10 +142,10 @@ export function OperatingSystemPage() {
     <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Operating System</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Move the must-win work.</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Supporting drill-down</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Operating context detail</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            Turn targets, initiatives, and account plays into the next action for today.
+            Maintain initiatives and account plays that support Today. Today remains the single ranked action queue.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -238,7 +239,7 @@ function OperatingFocus({ record, onOpen }: { record: OperatingContextRecord; on
           <div className="flex flex-wrap items-center gap-2">
             <Badge label="Do next" tone="green" />
             <Badge label={record.contextType === 'initiative' ? 'Initiative' : 'Account play'} tone="blue" />
-            {record.nextDate && <Badge label={`Due ${record.nextDate}`} tone={record.nextDate <= todayKey() ? 'red' : 'gray'} />}
+            {record.nextDate && <Badge label={`Due ${formatSafeBusinessDate(record.nextDate)}`} tone={isBusinessDateOverdue(record.nextDate) || record.nextDate === todayKey() ? 'red' : 'gray'} />}
           </div>
           <h2 className="mt-3 text-xl font-bold text-navy">{action}</h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-emerald-900/75">{record.title}{record.summary ? ` / ${record.summary}` : ''}</p>
@@ -265,7 +266,7 @@ function OperatingRow({ record, onOpen }: { record: OperatingContextRecord; onOp
       </div>
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-gray-800" title={record.nextAction}>{record.nextAction || 'Define next milestone'}</p>
-        <p className="mt-1 text-xs text-gray-500">{record.nextDate ? `Due ${record.nextDate}` : 'No due date'}{record.owner ? ` / ${record.owner}` : ''}</p>
+        <p className="mt-1 text-xs text-gray-500">{record.nextDate ? `Due ${formatSafeBusinessDate(record.nextDate)}` : 'No due date'}{record.owner ? ` / ${record.owner}` : ''}</p>
       </div>
       <div>
         <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Value at stake</p>
@@ -479,13 +480,13 @@ function payloadDetails(payload: Record<string, unknown>) {
 function operatingPrioritySort(left: OperatingContextRecord, right: OperatingContextRecord) {
   const today = todayKey();
   const score = (record: OperatingContextRecord) => {
-    if (record.nextDate && record.nextDate < today) return 5;
-    if (record.nextDate === today) return 4;
+    if (isBusinessDateOverdue(record.nextDate, today)) return 5;
+    if (isValidBusinessDate(record.nextDate) && record.nextDate === today) return 4;
     if (!record.nextAction.trim()) return 3;
     if (/block|risk|late/i.test(record.status)) return 3;
     return record.contextType === 'initiative' ? 2 : 1;
   };
-  return score(right) - score(left) || (left.nextDate || '9999-12-31').localeCompare(right.nextDate || '9999-12-31');
+  return score(right) - score(left) || compareSafeBusinessDate(left.nextDate, right.nextDate);
 }
 
 function todayKey() {

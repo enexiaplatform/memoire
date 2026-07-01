@@ -8,7 +8,7 @@ import { getFriendlyAuthErrorMessage, logAuthDebug, logAuthWarning } from './aut
 import { getPasswordPolicyError } from './passwordPolicy';
 
 const PIPELINE_AUTH_REDIRECT_KEY = 'memoire.pipelineDefenseAuthRedirect.v1';
-const DEFAULT_AUTH_ROUTE = '/app/dashboard';
+const DEFAULT_AUTH_ROUTE = '/app/today';
 const PROFILE_TIMEOUT_MS = 5000;
 const AUTH_TIMEOUT_MS = 9000;
 

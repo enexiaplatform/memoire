@@ -34,7 +34,8 @@ import {
 } from '../../services/quoteStore';
 import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { hasLocalSampleData } from '../../utils/dataMode';
-import { formatCurrencyAmount as formatMoney } from '../../utils/currency';
+import { formatBaseCurrencyAmount as formatBaseMoney, formatCurrencyAmount as formatMoney } from '../../utils/money';
+import { formatSafeBusinessDate } from '../../utils/safeDate.ts';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -271,7 +272,7 @@ export function QuotesPage() {
         <QuoteMetric label="Sent quotes" value={summary.sentQuotes} tone={summary.sentQuotes ? 'blue' : 'green'} />
         <QuoteMetric label="Expiring soon" value={summary.expiringSoon} tone={summary.expiringSoon ? 'amber' : 'green'} />
         <QuoteMetric label="Pending PO" value={summary.pendingPo} tone={summary.pendingPo ? 'blue' : 'green'} />
-        <QuoteMetric label="Accepted value" value={formatMoney(summary.acceptedValue, 'VND')} tone={summary.acceptedValue ? 'green' : 'blue'} />
+        <QuoteMetric label="Accepted value" value={formatBaseMoney(summary.acceptedValue)} tone={summary.acceptedValue ? 'green' : 'blue'} />
       </section>
 
       <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -387,7 +388,7 @@ function QuoteTable({ quotes, onOpen }: { quotes: QuoteRecord[]; onOpen: (quote:
                       {risk !== 'None' && <Badge label={risk} tone={quoteRiskTone(risk)} />}
                     </div>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 font-semibold text-gray-700">{quote.validUntil || 'Not set'}</td>
+                  <td className="whitespace-nowrap px-4 py-3 font-semibold text-gray-700">{formatSafeBusinessDate(quote.validUntil)}</td>
                   <td className="px-4 py-3">
                     <p className="max-w-[220px] truncate text-gray-700" title={quote.nextAction}>{quote.nextAction || 'No next action'}</p>
                   </td>

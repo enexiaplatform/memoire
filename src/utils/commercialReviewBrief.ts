@@ -2,7 +2,7 @@ import type { AccountMemoryRecord } from '../services/accountStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import { getQuoteRisk, summarizeQuotes, type QuoteRecord } from '../services/quoteStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
-import { formatCurrencyAmount as formatMoney } from './currency';
+import { formatBaseCurrencyAmount as formatBaseMoney } from './money';
 import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
 import { buildPipelineReviewDashboardSignal } from './shareablePipelineDefenseBrief';
 import { buildRevenueView, type RevenueViewSummary } from './revenueView';
@@ -69,10 +69,10 @@ export function buildCommercialReviewBrief(input: {
     ? `${quoteSummary.topActionQuote.accountName}: ${quoteSummary.topActionQuote.title} needs ${quoteSummary.topActionQuote.nextAction || getQuoteRisk(quoteSummary.topActionQuote).toLowerCase()}.`
     : 'No quote follow-up is blocking this review.';
   const revenueLine = revenue.topAction
-    ? `${formatMoney(revenue.atRiskRevenue, revenue.topAction.currency)} at risk. Top action: ${revenue.topAction.accountName} - ${revenue.topAction.nextAction}`
+    ? `${formatBaseMoney(revenue.atRiskRevenue)} at risk. Top action: ${revenue.topAction.accountName} - ${revenue.topAction.nextAction}`
     : 'No commercial revenue risk is blocking this review.';
   const paymentLine = revenue.pendingPayment > 0
-    ? `${formatMoney(revenue.pendingPayment, 'VND')} is delivered and still waiting for payment.`
+    ? `${formatBaseMoney(revenue.pendingPayment)} is delivered and still waiting for payment.`
     : 'No delivered revenue is waiting for payment.';
 
   const summary = [
@@ -94,12 +94,12 @@ export function buildCommercialReviewBrief(input: {
     },
     {
       label: 'At-risk money',
-      value: formatMoney(revenue.atRiskRevenue, revenue.topAction?.currency || 'VND'),
+      value: formatBaseMoney(revenue.atRiskRevenue),
       tone: revenue.atRiskRevenue ? 'red' : 'green',
     },
     {
       label: 'Pending PO',
-      value: formatMoney(revenue.pendingPo, 'VND'),
+      value: formatBaseMoney(revenue.pendingPo),
       tone: revenue.pendingPo ? 'amber' : 'green',
     },
   ];
@@ -186,10 +186,10 @@ function generateCommercialReviewMarkdown(input: {
     '',
     '## Revenue Risk',
     `- ${input.revenueLine}`,
-    `- Pending PO: ${formatMoney(input.revenue.pendingPo, 'VND')}`,
-    `- Pending delivery: ${formatMoney(input.revenue.pendingDelivery, 'VND')}`,
-    `- Pending payment: ${formatMoney(input.revenue.pendingPayment, 'VND')}`,
-    `- Paid: ${formatMoney(input.revenue.paid, 'VND')}`,
+    `- Pending PO: ${formatBaseMoney(input.revenue.pendingPo)}`,
+    `- Pending delivery: ${formatBaseMoney(input.revenue.pendingDelivery)}`,
+    `- Pending payment: ${formatBaseMoney(input.revenue.pendingPayment)}`,
+    `- Paid: ${formatBaseMoney(input.revenue.paid)}`,
     '',
     '## Payment Risk',
     `- ${input.paymentLine}`,

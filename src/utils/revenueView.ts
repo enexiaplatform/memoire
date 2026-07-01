@@ -7,6 +7,8 @@ import {
   type QuoteRecord,
   type QuoteRisk,
 } from '../services/quoteStore';
+import { BASE_CURRENCY, convertMoney, sumMoneyInBase } from './money';
+import { isBusinessDateOverdue } from './safeDate.ts';
 
 export type RevenueRiskKind =
   | 'Weak pipeline'
@@ -26,9 +28,11 @@ export type RevenueActionItem = {
   label: string;
   amount: number;
   currency: string;
+  baseAmount: number;
   status: string;
   risk: RevenueRiskKind;
   nextAction: string;
+  dueDate?: string;
   href: string;
   source: 'Opportunity' | 'Quote';
 };
@@ -71,7 +75,7 @@ export function buildRevenueView({
   );
   const pipelineRisks = buildPipelineRevenueRisks(opportunities, quotedOpportunityIds);
   const actionItems = [...quoteRisks, ...pipelineRisks]
-    .sort((left, right) => riskRank(right.risk) - riskRank(left.risk) || right.amount - left.amount)
+    .sort((left, right) => riskRank(right.risk) - riskRank(left.risk) || right.baseAmount - left.baseAmount)
     .slice(0, 12);
 
   return {
@@ -82,7 +86,7 @@ export function buildRevenueView({
     pendingDelivery,
     pendingPayment,
     paid,
-    atRiskRevenue: actionItems.reduce((total, item) => total + item.amount, 0),
+    atRiskRevenue: sumMoneyInBase(actionItems),
     expiringQuotes: quotes.filter((quote) => getQuoteRisk(quote) === 'Expiring soon').length,
     overdueFollowUps: countOverdueFollowUps(opportunities, quotes),
     topAction: actionItems[0] || null,
@@ -96,15 +100,18 @@ function buildQuoteRevenueRisks(quotes: QuoteRecord[]): RevenueActionItem[] {
     const stage = getQuoteCommercialStage(quote);
     const mappedRisk = mapQuoteRisk(risk, stage, quote);
     if (!mappedRisk) return [];
+    const amount = quote.amount || 0;
     return [{
       id: `quote-${quote.id}`,
       accountName: quote.accountName,
       label: quote.title,
-      amount: quote.amount || 0,
+      amount,
       currency: quote.currency,
+      baseAmount: convertMoney(amount, quote.currency) || 0,
       status: stage,
       risk: mappedRisk,
       nextAction: quote.nextAction || defaultQuoteAction(risk, stage),
+      dueDate: getRevenueRiskDueDate(mappedRisk, quote),
       href: getQuoteWorkspaceHref(quote),
       source: 'Quote' as const,
     }];
@@ -121,18 +128,31 @@ function buildPipelineRevenueRisks(opportunities: CrmLiteOpportunity[], quotedOp
       ['Rescue', 'Downgrade', 'Deprioritize'].includes(opportunity.decisionRecommendation) ||
       !opportunity.nextAction.trim()
     ))
-    .map((opportunity) => ({
-      id: `opportunity-${opportunity.id}`,
-      accountName: opportunity.accountName || 'No account',
-      label: opportunity.opportunityName || 'Untitled opportunity',
-      amount: opportunity.estimatedValue || opportunity.fy26Value || 0,
-      currency: opportunity.currency || 'VND',
-      status: opportunity.decisionRecommendation,
-      risk: 'Weak pipeline' as const,
-      nextAction: opportunity.nextAction || 'Define the next customer-confirmed action.',
-      href: '/app/opportunities',
-      source: 'Opportunity' as const,
-    }));
+    .map((opportunity) => {
+      const amount = opportunity.estimatedValue || opportunity.fy26Value || 0;
+      const currency = opportunity.currency || BASE_CURRENCY;
+      return {
+        id: `opportunity-${opportunity.id}`,
+        accountName: opportunity.accountName || 'No account',
+        label: opportunity.opportunityName || 'Untitled opportunity',
+        amount,
+        currency,
+        baseAmount: convertMoney(amount, currency) || 0,
+        status: opportunity.decisionRecommendation,
+        risk: 'Weak pipeline' as const,
+        nextAction: opportunity.nextAction || 'Define the next customer-confirmed action.',
+        dueDate: opportunity.nextActionDate,
+        href: '/app/opportunities',
+        source: 'Opportunity' as const,
+      };
+    });
+}
+
+function getRevenueRiskDueDate(risk: RevenueRiskKind, quote: QuoteRecord) {
+  if (risk === 'Quote expired' || risk === 'Quote expiring') return quote.validUntil;
+  if (risk === 'Delivery overdue' || risk === 'Waiting on delivery') return quote.expectedDeliveryDate;
+  if (risk === 'Payment overdue' || risk === 'Waiting on payment') return quote.paymentDueDate;
+  return '';
 }
 
 function mapQuoteRisk(risk: QuoteRisk, stage: CommercialStage, quote: QuoteRecord): RevenueRiskKind | null {
@@ -164,7 +184,7 @@ function defaultQuoteAction(risk: QuoteRisk, stage: CommercialStage) {
 
 function countOverdueFollowUps(opportunities: CrmLiteOpportunity[], quotes: QuoteRecord[]) {
   const today = todayKey();
-  return opportunities.filter((opportunity) => opportunity.nextActionDate && opportunity.nextActionDate < today).length
+  return opportunities.filter((opportunity) => isBusinessDateOverdue(opportunity.nextActionDate, today)).length
     + quotes.filter((quote) => {
       const risk = getQuoteRisk(quote);
       return risk === 'Expired' || risk === 'Delivery overdue' || risk === 'Payment overdue';
@@ -172,11 +192,14 @@ function countOverdueFollowUps(opportunities: CrmLiteOpportunity[], quotes: Quot
 }
 
 function sumOpportunities(opportunities: CrmLiteOpportunity[]) {
-  return opportunities.reduce((total, opportunity) => total + (opportunity.estimatedValue || opportunity.fy26Value || 0), 0);
+  return sumMoneyInBase(opportunities.map((opportunity) => ({
+    amount: opportunity.estimatedValue || opportunity.fy26Value || 0,
+    currency: opportunity.currency,
+  })));
 }
 
 function sumQuotes(quotes: QuoteRecord[]) {
-  return quotes.reduce((total, quote) => total + (quote.amount || 0), 0);
+  return sumMoneyInBase(quotes);
 }
 
 function riskRank(risk: RevenueRiskKind) {

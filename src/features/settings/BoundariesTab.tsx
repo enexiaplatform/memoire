@@ -4,6 +4,7 @@ const notItems = [
   'A professional certification, hiring score, or credit signal',
   'A replacement for your company CRM or system of record',
   'An automated sender of customer communication',
+  'An invoicing, inventory, ecommerce, marketplace, or project-delivery management system',
 ];
 
 const boundaries = [

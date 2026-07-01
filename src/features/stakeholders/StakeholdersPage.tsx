@@ -22,6 +22,11 @@ import {
 } from '../../services/stakeholderStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { summarizeStakeholderCoverage } from '../../utils/stakeholderGraph';
+import {
+  getStakeholderNextActionFromNotes,
+  setStakeholderNextActionInNotes,
+  stripStakeholderNextActionFromNotes,
+} from '../../utils/meddicStakeholderMap.ts';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 const allFilter = 'All';
@@ -280,6 +285,19 @@ function StakeholderPanel({
   const update = <Key extends keyof StakeholderFormInput>(key: Key, value: StakeholderFormInput[Key]) => {
     onChange({ ...form, [key]: value });
   };
+  const roleConfirmed = form.tags.includes('role-confirmed');
+  const stakeholderNextAction = getStakeholderNextActionFromNotes(form.notes);
+  const updateRoleConfirmed = (confirmed: boolean) => {
+    const tags = new Set(form.tags.filter((tag) => tag !== 'role-confirmed' && tag !== 'role-inferred'));
+    if (confirmed) tags.add('role-confirmed');
+    update('tags', Array.from(tags));
+  };
+  const updateEvidenceNote = (value: string) => {
+    update('notes', setStakeholderNextActionInNotes(value, stakeholderNextAction));
+  };
+  const updateStakeholderNextAction = (value: string) => {
+    update('notes', setStakeholderNextActionInNotes(form.notes, value));
+  };
 
   return (
     <aside className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
@@ -300,12 +318,17 @@ function StakeholderPanel({
           <SelectField label="Influence" value={form.influenceLevel} options={influenceLevels} onChange={(value) => update('influenceLevel', value)} />
           <SelectField label="Relationship" value={form.relationshipStrength} options={relationshipStrengths} onChange={(value) => update('relationshipStrength', value)} />
           <SelectField label="Stance" value={form.stance} options={stakeholderStances} onChange={(value) => update('stance', value)} />
+          <label className="flex items-center gap-2 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800">
+            <input type="checkbox" checked={roleConfirmed} onChange={(event) => updateRoleConfirmed(event.target.checked)} />
+            Role confirmed by evidence
+          </label>
+          <Field label="Stakeholder next action" value={stakeholderNextAction} onChange={updateStakeholderNextAction} />
           <Field label="Email" value={form.email} onChange={(value) => update('email', value)} />
           <Field label="Phone" value={form.phone} onChange={(value) => update('phone', value)} />
           <Field label="Last interaction" type="date" value={form.lastInteractionDate} onChange={(value) => update('lastInteractionDate', value)} />
           <Field label="Tags" value={form.tags.join(', ')} onChange={(value) => update('tags', parseCommaList(value))} />
         </div>
-        <TextArea label="Notes" value={form.notes} onChange={(value) => update('notes', value)} />
+        <TextArea label="Evidence note" value={stripStakeholderNextActionFromNotes(form.notes)} onChange={updateEvidenceNote} />
       </div>
       {message && <p className={`mt-4 rounded-lg px-3 py-2 text-sm font-semibold ${saveState === 'saved' ? 'bg-emerald-50 text-emerald-700' : saveState === 'error' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>{message}</p>}
       <div className="mt-5 flex flex-wrap gap-2">

@@ -2,6 +2,12 @@ import { supabaseClient } from '../lib/supabaseClient';
 import type { ClassifiedSalesActivity, SalesActivityType } from '../utils/salesActivityClassifier';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus';
+import { compareSafeBusinessDate, isBusinessDateInRange, sanitizeBusinessDate } from '../utils/safeDate.ts';
+import {
+  buildIngestionSourceTags,
+  parseIngestionSourceTags,
+  type IngestionSourceType,
+} from '../utils/ingestionSource.ts';
 
 export interface SalesActivityRecord extends ClassifiedSalesActivity {
   id: string;
@@ -77,7 +83,7 @@ export function filterSalesActivitiesByPeriod(
   activities: SalesActivityRecord[],
   period: { start: string; end: string }
 ) {
-  return activities.filter((activity) => activity.activityDate >= period.start && activity.activityDate <= period.end);
+  return activities.filter((activity) => isBusinessDateInRange(activity.activityDate, period.start, period.end));
 }
 
 export async function saveSalesActivity(
@@ -174,8 +180,10 @@ function loadLocalActivities(): SalesActivityRecord[] {
   try {
     const parsed = JSON.parse(raw) as Partial<SalesActivityRecord>[];
     return parsed
-      .filter((item) => item.id && item.rawNote && item.activityDate)
-      .map<SalesActivityRecord>((item) => ({
+      .filter((item) => item.id && item.rawNote)
+      .map<SalesActivityRecord>((item) => {
+        const sourceMetadata = parseActivitySourceMetadata(item);
+        return ({
         id: item.id || createId(),
         userId: item.userId,
         source: normalizeSource(item.source),
@@ -193,18 +201,24 @@ function loadLocalActivities(): SalesActivityRecord[] {
         activityType: item.activityType || 'Other',
         summary: item.summary || item.rawNote || '',
         nextAction: item.nextAction || '',
-        dueDate: item.dueDate || '',
+        dueDate: sanitizeBusinessDate(item.dueDate),
         tags: Array.isArray(item.tags) ? item.tags : [],
+        sourceType: sourceMetadata.sourceType,
+        sourceLabel: sourceMetadata.sourceLabel,
+        sourceTimestamp: sourceMetadata.sourceTimestamp,
+        sourceHash: sourceMetadata.sourceHash,
+        originalExcerpt: sourceMetadata.originalExcerpt,
         linkedOpportunityId: item.linkedOpportunityId || '',
         linkedOpportunityName: item.linkedOpportunityName || '',
         linkedAccountName: item.linkedAccountName || '',
         linkStatus: normalizeLinkStatus(item.linkStatus),
         rawNote: item.rawNote || '',
-        activityDate: item.activityDate || new Date().toISOString().slice(0, 10),
+        activityDate: sanitizeBusinessDate(item.activityDate),
         createdAt: item.createdAt || new Date().toISOString(),
         updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
         storageMode: 'local',
-      }))
+      });
+      })
       .sort(sortNewestFirst);
   } catch {
     return [];
@@ -249,8 +263,13 @@ async function createCloudActivity(activity: ClassifiedSalesActivity, userId: st
 
 function createLocalActivity(activity: ClassifiedSalesActivity): SalesActivityRecord {
   const timestamp = new Date().toISOString();
+  const tags = mergeActivitySourceTags(activity.tags, activity);
   return {
     ...activity,
+    activityDate: sanitizeBusinessDate(activity.activityDate),
+    dueDate: sanitizeBusinessDate(activity.dueDate),
+    nextActions: normalizeNextActions(activity.nextActions),
+    tags,
     id: createId(),
     source: 'user',
     isSample: false,
@@ -265,12 +284,14 @@ function createLocalActivity(activity: ClassifiedSalesActivity): SalesActivityRe
 }
 
 function rowToRecord(row: SalesActivityRow): SalesActivityRecord {
+  const tags = Array.isArray(row.tags) ? row.tags : [];
+  const sourceMetadata = parseIngestionSourceTags(tags);
   return {
     id: row.id,
     userId: row.user_id,
     source: 'user',
     isSample: false,
-    activityDate: row.activity_date,
+    activityDate: sanitizeBusinessDate(row.activity_date),
     rawNote: row.raw_note,
     activityType: row.activity_type || 'Other',
     accountName: row.account_name || '',
@@ -285,8 +306,11 @@ function rowToRecord(row: SalesActivityRow): SalesActivityRecord {
     nextActions: normalizeNextActions(row.next_actions),
     summary: row.summary || row.raw_note,
     nextAction: row.next_action || '',
-    dueDate: row.due_date || '',
-    tags: Array.isArray(row.tags) ? row.tags : [],
+    dueDate: sanitizeBusinessDate(row.due_date),
+    tags,
+    sourceType: sourceMetadata.sourceType,
+    sourceLabel: sourceMetadata.sourceLabel,
+    sourceHash: sourceMetadata.sourceHash,
     linkedOpportunityId: row.linked_opportunity_id || '',
     linkedOpportunityName: row.linked_opportunity_name || '',
     linkedAccountName: row.linked_account_name || '',
@@ -301,7 +325,7 @@ function activityToInsert(activity: ClassifiedSalesActivity, userId: string) {
   const timestamp = new Date().toISOString();
   return {
     user_id: userId,
-    activity_date: activity.activityDate,
+    activity_date: sanitizeBusinessDate(activity.activityDate) || null,
     raw_note: activity.rawNote,
     activity_type: activity.activityType,
     account_name: activity.accountName || null,
@@ -316,8 +340,8 @@ function activityToInsert(activity: ClassifiedSalesActivity, userId: string) {
     next_actions: normalizeNextActions(activity.nextActions),
     summary: activity.summary,
     next_action: activity.nextAction || null,
-    due_date: activity.dueDate || null,
-    tags: activity.tags,
+    due_date: sanitizeBusinessDate(activity.dueDate) || null,
+    tags: mergeActivitySourceTags(activity.tags, activity),
     linked_opportunity_id: null,
     linked_opportunity_name: null,
     linked_account_name: null,
@@ -327,12 +351,42 @@ function activityToInsert(activity: ClassifiedSalesActivity, userId: string) {
   };
 }
 
+function mergeActivitySourceTags(tags: string[], activity: Partial<ClassifiedSalesActivity>) {
+  const baseTags = Array.isArray(tags) ? tags : [];
+  if (!activity.sourceType || !activity.sourceLabel || !activity.sourceHash) return baseTags;
+  const sourceTags = buildIngestionSourceTags({
+    sourceType: activity.sourceType,
+    sourceLabel: activity.sourceLabel,
+    safeHash: activity.sourceHash,
+  });
+  return Array.from(new Set([
+    ...baseTags.filter((tag) => !tag.startsWith('source:') && !tag.startsWith('source-label:') && !tag.startsWith('source-hash:')),
+    ...sourceTags,
+  ]));
+}
+
+function parseActivitySourceMetadata(item: Partial<SalesActivityRecord | ClassifiedSalesActivity>) {
+  const fromTags = parseIngestionSourceTags(item.tags);
+  return {
+    sourceType: normalizeIngestionSourceType(item.sourceType) || fromTags.sourceType,
+    sourceLabel: item.sourceLabel || fromTags.sourceLabel || '',
+    sourceTimestamp: sanitizeBusinessDate(item.sourceTimestamp),
+    sourceHash: item.sourceHash || fromTags.sourceHash || '',
+    originalExcerpt: item.originalExcerpt || '',
+  };
+}
+
+function normalizeIngestionSourceType(value: unknown): IngestionSourceType | undefined {
+  const parsed = parseIngestionSourceTags([`source:${String(value || '')}`]).sourceType;
+  return parsed;
+}
+
 function createId() {
   return crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function sortNewestFirst(a: SalesActivityRecord, b: SalesActivityRecord) {
-  return `${b.activityDate}-${b.createdAt}`.localeCompare(`${a.activityDate}-${a.createdAt}`);
+  return compareSafeBusinessDate(b.activityDate, a.activityDate) || b.createdAt.localeCompare(a.createdAt);
 }
 
 function normalizeLinkStatus(value: unknown): SalesActivityRecord['linkStatus'] {
@@ -357,7 +411,7 @@ function normalizeNextActions(value: unknown): ClassifiedSalesActivity['nextActi
       const action = typeof item === 'object' && item !== null ? item as Record<string, unknown> : {};
       const title = typeof action.title === 'string' ? action.title.trim() : '';
       if (!title) return null;
-      const dueDate = typeof action.dueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(action.dueDate) ? action.dueDate : '';
+      const dueDate = sanitizeBusinessDate(action.dueDate);
       const owner = typeof action.owner === 'string' ? action.owner.trim() : '';
       const sourceText = typeof action.sourceText === 'string' ? action.sourceText.trim() : '';
       return {

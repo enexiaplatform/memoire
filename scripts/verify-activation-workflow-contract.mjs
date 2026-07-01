@@ -58,11 +58,12 @@ for (const marker of [
   "'import-starter-asset-pack'",
   "'generate-defense-brief'",
   "'copy-manager-summary'",
-  'href: input.sampleDataActive ? \'/app/dashboard\' : \'/app/opportunities?import=csv\'',
-  "cta: input.sampleDataActive ? 'Demo loaded' : 'Import CSV'",
-  'title: \'Generate Pipeline Defense Brief\'',
-  'description: \'Create a manager-ready weekly review pack from selected opportunities.\'',
-  'title: \'Copy Manager Summary\'',
+  'title: \'Capture first evidence\'',
+  'href: \'/app/capture?mode=email\'',
+  'title: \'Review Today command center\'',
+  'title: \'Prepare Pipeline Defense Brief\'',
+  'description: \'Open the review artifact and check defend, rescue, downgrade, MEDDIC, and missing evidence.\'',
+  'title: \'Copy manager-ready answer\'',
   'href: \'/app/pipeline-defense\'',
 ]) {
   requireIncludes(trialChecklist, marker, `trial activation checklist missing marker: ${marker}`);

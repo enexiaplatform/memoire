@@ -1,6 +1,7 @@
 import type { ActionOutcomeRecord } from '../services/actionOutcomeStore';
 import { getActionOutcomesForOpportunity } from '../services/actionOutcomeStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
+import { isBusinessDateOverdue } from './safeDate.ts';
 import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
@@ -273,7 +274,7 @@ function classifyDealMovement(
   const unresolvedCritical = context.recommendedActions
     .filter((action) => action.priority === 'High')
     .filter((action) => !hasClosedOutcomeForAction(action, context.outcomes));
-  const staleNextAction = Boolean(context.opportunity.nextActionDate && context.opportunity.nextActionDate < todayKey());
+  const staleNextAction = isBusinessDateOverdue(context.opportunity.nextActionDate, todayKey());
   const decisionProcessWeak = fieldStatus(context.meddicReview, 'decisionProcess') !== 'Strong';
   const missingBuyerOrChampion = fieldStatus(context.meddicReview, 'economicBuyer') === 'Missing' || fieldStatus(context.meddicReview, 'champion') === 'Missing';
 

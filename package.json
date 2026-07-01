@@ -33,7 +33,19 @@
     "verify:sales-flow-execution": "node scripts/verify-sales-flow-execution.mjs",
     "verify:operating-system-execution": "node scripts/verify-operating-system-execution.mjs",
     "verify:commercial-operating-loop": "node scripts/verify-commercial-operating-loop-contract.mjs",
-    "check": "npm run build && npm run typecheck:api && npm run lint && npm run verify:commercial && npm run verify:cohort && npm run verify:ai-rate-limits && npm run verify:rate-limit-runtime && npm run verify:production-readiness && npm run verify:health-runtime && npm run verify:data-isolation && npm run verify:data-isolation-runtime && npm run verify:lead-ops && npm run verify:lead-ops-runtime && npm run verify:auth-recovery && npm run verify:trust-boundary && npm run verify:support-cohort && npm run verify:activation-workflow && npm run verify:cloud-json-runtime && npm run verify:billing-paid-readiness && npm run verify:accessibility-failure-state && npm run verify:commercial-fulfillment && npm run verify:daily-commercial-priority && npm run verify:daily-execution-loop && npm run verify:sales-flow-execution && npm run verify:operating-system-execution && npm run verify:commercial-operating-loop"
+    "verify:money-model": "node scripts/verify-money-model.mjs",
+    "verify:safe-date": "node scripts/verify-safe-date-and-capture.mjs",
+    "verify:ai-capture": "node scripts/verify-ai-capture-entity-resolution.mjs",
+    "verify:capture-memory": "node scripts/verify-capture-correction-memory.mjs",
+    "verify:pipeline-defense-center": "node scripts/verify-pipeline-defense-center.mjs",
+    "verify:today-command-center": "node scripts/verify-today-command-center.mjs",
+    "verify:account-hygiene": "node scripts/verify-account-hygiene.mjs",
+    "verify:win-loss-learning": "node scripts/verify-win-loss-learning.mjs",
+    "verify:proactive-nudges": "node scripts/verify-proactive-nudges.mjs",
+    "verify:meddic-stakeholder-map": "node scripts/verify-meddic-stakeholder-map.mjs",
+    "verify:ingestion-foundation": "node scripts/verify-ingestion-foundation.mjs",
+    "verify:product-positioning-demo-path": "node scripts/verify-product-positioning-demo-path.mjs",
+    "check": "npm run build && npm run typecheck:api && npm run lint && npm run verify:money-model && npm run verify:safe-date && npm run verify:ai-capture && npm run verify:capture-memory && npm run verify:pipeline-defense-center && npm run verify:today-command-center && npm run verify:account-hygiene && npm run verify:win-loss-learning && npm run verify:proactive-nudges && npm run verify:meddic-stakeholder-map && npm run verify:ingestion-foundation && npm run verify:product-positioning-demo-path && npm run verify:commercial && npm run verify:cohort && npm run verify:ai-rate-limits && npm run verify:rate-limit-runtime && npm run verify:production-readiness && npm run verify:health-runtime && npm run verify:data-isolation && npm run verify:data-isolation-runtime && npm run verify:lead-ops && npm run verify:lead-ops-runtime && npm run verify:auth-recovery && npm run verify:trust-boundary && npm run verify:support-cohort && npm run verify:activation-workflow && npm run verify:cloud-json-runtime && npm run verify:billing-paid-readiness && npm run verify:accessibility-failure-state && npm run verify:commercial-fulfillment && npm run verify:daily-commercial-priority && npm run verify:daily-execution-loop && npm run verify:sales-flow-execution && npm run verify:operating-system-execution && npm run verify:commercial-operating-loop"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.3",

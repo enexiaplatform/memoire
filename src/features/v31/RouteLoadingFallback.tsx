@@ -6,7 +6,7 @@ export function RouteLoadingFallback({ onRetry }: { onRetry: () => void }) {
 
   const openDemo = () => {
     loadInteractiveDemoWorkspace();
-    window.location.replace('/app/dashboard');
+    window.location.replace('/app/today');
   };
 
   return (

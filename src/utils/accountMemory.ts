@@ -1,6 +1,8 @@
 import type { AccountMemoryRecord } from '../services/accountStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
+import { sumMoneyInBase } from './money';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
+import { compareSafeBusinessDate, isValidBusinessDate } from './safeDate.ts';
 
 export type AccountCandidate = {
   accountName: string;
@@ -53,7 +55,7 @@ export function buildAccountMemory(
       .map((activity) => activity.summary),
   ]);
   const activeOpportunities = accountOpportunities.filter((opportunity) => opportunity.status === 'Active');
-  const latestActivityDate = allActivities.map((activity) => activity.activityDate).sort().at(-1) || '';
+  const latestActivityDate = allActivities.map((activity) => activity.activityDate).filter(isValidBusinessDate).sort(compareSafeBusinessDate).at(-1) || '';
   const memoryWithoutHealth = {
     account,
     opportunities: accountOpportunities,
@@ -62,7 +64,10 @@ export function buildAccountMemory(
     openNextActions,
     objectionDebt,
     latestActivityDate,
-    estimatedActiveValue: activeOpportunities.reduce((sum, opportunity) => sum + (opportunity.estimatedValue || 0), 0),
+    estimatedActiveValue: sumMoneyInBase(activeOpportunities.map((opportunity) => ({
+      amount: opportunity.estimatedValue,
+      currency: opportunity.currency,
+    }))),
     activeOpportunityCount: activeOpportunities.length,
     wonCount: accountOpportunities.filter((opportunity) => opportunity.status === 'Won').length,
     lostCount: accountOpportunities.filter((opportunity) => opportunity.status === 'Lost').length,

@@ -1,5 +1,9 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { AccountMemoryRecord } from '../services/accountStore';
+import type { CaptureAccountAlias, CaptureCorrectionEvent } from '../services/captureCorrectionMemoryStore';
+import type { IngestionSourceType } from './ingestionSource.ts';
+import { sanitizeBusinessDate } from './safeDate.ts';
+import { resolveCaptureEntities } from './captureEntityResolution.ts';
 
 export type SalesActivityType =
   | 'Customer meeting'
@@ -37,11 +41,25 @@ export interface ClassifiedSalesActivity {
   tags: string[];
   rawNote: string;
   activityDate: string;
+  sourceType?: IngestionSourceType;
+  sourceLabel?: string;
+  sourceTimestamp?: string;
+  sourceHash?: string;
+  originalExcerpt?: string;
 }
 
 export type CaptureExtractionContext = {
   accounts?: Pick<AccountMemoryRecord, 'id' | 'accountName'>[];
   opportunities?: Pick<CrmLiteOpportunity, 'id' | 'accountName' | 'opportunityName' | 'productOrSolution' | 'stage'>[];
+  corrections?: CaptureCorrectionEvent[];
+  aliases?: CaptureAccountAlias[];
+  source?: {
+    sourceType: IngestionSourceType;
+    sourceLabel: string;
+    sourceTimestamp?: string;
+    safeHash?: string;
+    originalExcerpt?: string;
+  };
 };
 
 const activityRules: { type: SalesActivityType; tags: string[]; pattern: RegExp }[] = [
@@ -100,6 +118,7 @@ const opportunityPatterns = [
 
 const accountPatterns = [
   /\b(?:account|customer|client|company)\s*[:-]\s*([^.\n;]+)/i,
+  /\b(?:met|visited|called)\s+([A-Z][A-Za-z0-9&.' -]{2,60}?)\s+(?:today|yesterday|this\s+(?:morning|afternoon|week)|on\s+\d)/i,
   /\b(?:met|meeting|spoke|call|called)\s+with\s+(?:Dr\.?|Mr\.?|Ms\.?|Mrs\.?)?\s*[A-Z][A-Za-z.' -]{1,60}\s+at\s+([A-Z][A-Z0-9&.-]{1,20})(?:\b|[.\n;,])/i,
   /\bat\s+([A-Z][A-Z0-9&.-]{1,20})(?:\b|[.\n;,])/,
   /\b(?:from|with|for)\s+([A-Z][A-Za-z0-9&.,' -]{2,60})(?:[.\n;,]|$)/,
@@ -113,7 +132,10 @@ export function classifySalesActivity(
   context: CaptureExtractionContext = {}
 ): ClassifiedSalesActivity {
   const cleanedNote = rawNote.trim();
-  const matchedRule = activityRules.find((rule) => rule.pattern.test(cleanedNote));
+  const meetingRule = activityRules.find((rule) => rule.type === 'Customer meeting');
+  const matchedRule = meetingRule?.pattern.test(cleanedNote)
+    ? meetingRule
+    : activityRules.find((rule) => rule.pattern.test(cleanedNote));
   const activityType = matchedRule?.type || 'Other';
   const entities = extractB2BEntities(cleanedNote, context);
   const nextActions = extractNextActions(cleanedNote, activityDate);
@@ -150,6 +172,13 @@ export function classifySalesActivity(
     tags,
     rawNote: cleanedNote,
     activityDate,
+    ...(context.source ? {
+      sourceType: context.source.sourceType,
+      sourceLabel: context.source.sourceLabel,
+      sourceTimestamp: context.source.sourceTimestamp,
+      sourceHash: context.source.safeHash,
+      originalExcerpt: context.source.originalExcerpt,
+    } : {}),
   };
 }
 
@@ -157,13 +186,23 @@ export function extractB2BEntities(rawNote: string, context: CaptureExtractionCo
   const contact = extractContact(rawNote);
   const accountSuggestion = suggestAccountAndContact(rawNote, context.accounts, context.opportunities);
   const opportunitySuggestion = suggestOpportunityFromNote(rawNote, context.opportunities);
-  const opportunityName = opportunitySuggestion?.opportunityName || extractFirstMatch(rawNote, opportunityPatterns);
+  const resolution = resolveCaptureEntities({
+    rawNote,
+    accountName: accountSuggestion.accountName || extractFirstMatch(rawNote, accountPatterns),
+    contactName: accountSuggestion.contactName || contact.name,
+    opportunityName: opportunitySuggestion?.opportunityName || extractFirstMatch(rawNote, opportunityPatterns),
+    suggestedOpportunityId: opportunitySuggestion?.id,
+    accounts: context.accounts,
+    opportunities: context.opportunities,
+    corrections: context.corrections,
+    aliases: context.aliases,
+  });
 
   return {
-    accountName: accountSuggestion.accountName || extractFirstMatch(rawNote, accountPatterns),
-    opportunityName,
-    contactName: accountSuggestion.contactName || contact.name,
-    stakeholderName: accountSuggestion.contactName || contact.name,
+    accountName: resolution.accountName,
+    opportunityName: resolution.opportunityName,
+    contactName: resolution.contactName,
+    stakeholderName: resolution.contactName,
     stakeholderRole: contact.role,
   };
 }
@@ -210,6 +249,9 @@ export function extractBuyingSignals(rawNote: string) {
   if (/\bbudget\s+(?:approval|approved|confirmed|secured)\b/i.test(rawNote)) signals.push('Budget approved');
   if (/\b(?:confirmed|approved)\s+(?:budget|funding)\b/i.test(rawNote)) signals.push('Budget approved');
   if (/\bpo\b|purchase order/i.test(rawNote)) signals.push('Purchase order signal');
+  if (/\bpayment\b/i.test(rawNote)) signals.push('Payment signal');
+  if (/\bdelivery\b/i.test(rawNote)) signals.push('Delivery signal');
+  if (/\bquote|quotation|commercial offer\b/i.test(rawNote)) signals.push('Quote/commercial signal');
   if (/\bdecision maker (?:confirmed|identified)\b/i.test(rawNote)) signals.push('Decision maker identified');
   if (/\bconfirmed next step\b|next step confirmed/i.test(rawNote)) signals.push('Next step confirmed');
   if (/\bprocurement (?:approved|confirmed|engaged)\b/i.test(rawNote)) signals.push('Procurement engaged');
@@ -218,6 +260,8 @@ export function extractBuyingSignals(rawNote: string) {
 
 export function extractTimelineSignals(rawNote: string) {
   const signals: string[] = [];
+  const tenderDecision = rawNote.match(/\b(tender decision (?:is )?expected\s+[^.\n;]+)/i)?.[1];
+  if (tenderDecision) signals.push(cleanSentence(tenderDecision).replace(/^./, (character) => character.toUpperCase()));
   if (/\bnext quarter\b/i.test(rawNote)) signals.push('Next quarter');
   if (/\bthis quarter\b/i.test(rawNote)) signals.push('This quarter');
   if (/\bnext month\b/i.test(rawNote)) signals.push('Next month');
@@ -278,15 +322,15 @@ export function extractDueDate(rawNote: string, activityDate: string) {
   if (weekdayMatch) return upcomingWeekday(anchor, weekdayMatch[1]);
 
   const isoDate = rawNote.match(/\b(20\d{2}-\d{2}-\d{2})\b/)?.[1];
-  if (isoDate) return isoDate;
+  if (isoDate) return sanitizeBusinessDate(isoDate);
 
   const slashDate = rawNote.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
   if (slashDate) {
     const month = Number(slashDate[1]);
     const day = Number(slashDate[2]);
     const year = slashDate[3] ? normalizeYear(slashDate[3]) : anchor.getFullYear();
-    const parsed = new Date(Date.UTC(year, month - 1, day));
-    if (Number.isFinite(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+    const candidate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return sanitizeBusinessDate(candidate);
   }
 
   return '';
@@ -297,11 +341,12 @@ function todayDate() {
 }
 
 function summarize(rawNote: string, activityType: SalesActivityType, accountName: string) {
-  const protectedNote = rawNote.replace(/\bDr\.\s+/g, 'Dr<dot> ');
+  const noteForSummary = rawNote.match(/\bBody excerpt:\s*([\s\S]+)/i)?.[1]?.trim() || rawNote;
+  const protectedNote = noteForSummary.replace(/\b(Ms|Mr|Mrs|Dr)\.\s+/gi, '$1<dot> ');
   const firstSentence = protectedNote
     .split(/\n|(?<=[.!?])\s+/)
     .map((line) => line.trim())
-    .find(Boolean)?.replace(/Dr<dot>/g, 'Dr.') || rawNote;
+    .find(Boolean)?.replace(/\b(Ms|Mr|Mrs|Dr)<dot>/gi, '$1.') || noteForSummary;
   const compact = firstSentence.replace(/\s+/g, ' ').trim();
   const summary = compact.length > 180 ? `${compact.slice(0, 177)}...` : compact;
   if (summary) return summary;
@@ -317,7 +362,7 @@ function extractFirstMatch(rawNote: string, patterns: RegExp[]) {
 }
 
 function extractContact(rawNote: string) {
-  const match = rawNote.match(/\b(?:met|meeting|spoke|call|called)\s+with\s+((?:Dr\.?|Mr\.?|Ms\.?|Mrs\.?)\s+[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,2})(?:\s+at\b|\s+from\b|[.,;]|$)/i);
+  const match = rawNote.match(/\b(?:with|call(?:ed)?|met)\s+((?:Dr\.?|Mr\.?|Ms\.?|Mrs\.?)\s+[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,2})(?:\s+at\b|\s+from\b|[.,;]|$)/i);
   const name = match?.[1]?.trim() || '';
   const role = name.match(/^(Dr\.?|Doctor)\b/i) ? 'Doctor' : '';
   return { name, role };
@@ -394,7 +439,8 @@ function formatDate(date: Date) {
 }
 
 function parseDateKey(dateKey: string) {
-  const [year, month, day] = dateKey.split('-').map(Number);
+  const safeDate = sanitizeBusinessDate(dateKey) || todayDate();
+  const [year, month, day] = safeDate.split('-').map(Number);
   return new Date(Date.UTC(year, month - 1, day));
 }
 
@@ -418,6 +464,7 @@ function buildTags(
   if (extracted.timelineSignals.length) tags.add('timeline');
   if (extracted.risks.length || /\b(no response|waiting|unclear|blocked|risk|concern)\b/i.test(rawNote)) tags.add('risk-signal');
   if (/\b(decision maker|budget owner|timeline|criteria|procurement path)\b/i.test(rawNote)) tags.add('decision-context');
+  if (/\b(po|purchase order|payment|delivery|quote|quotation|commercial offer)\b/i.test(rawNote)) tags.add('commercial-signal');
   return Array.from(tags);
 }
 

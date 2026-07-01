@@ -98,56 +98,45 @@ export function buildTrialActivationChecklist(input: {
   const state = input.state || loadTrialActivationChecklistState();
   const manual = state.manualCompleted;
   const hasCsvImport = input.opportunities.some(isCsvImportedOpportunity);
-  const hasStarterPackAsset = input.assets.some((asset) => (
-    asset.tags.includes('starter-pack') || asset.id.startsWith('starter-')
-  ));
   const hasUserBrief = input.briefs.some((brief) => !brief.isSample && brief.deals.length > 0);
 
   return [
     {
+      id: 'capture-update',
+      title: 'Capture first evidence',
+      description: 'Paste a sales email/thread or note so Memoire can extract reviewed sales evidence.',
+      href: '/app/capture?mode=email',
+      cta: 'Open Capture',
+      done: Boolean(manual['capture-update'] || input.activities.length > 0),
+    },
+    {
       id: 'load-demo-or-import-csv',
-      title: 'Load demo or import CSV',
-      description: 'Start with the demo sandbox or bring in a read-only pipeline copy from CRM/Excel.',
-      href: input.sampleDataActive ? '/app/dashboard' : '/app/opportunities?import=csv',
-      cta: input.sampleDataActive ? 'Demo loaded' : 'Import CSV',
+      title: 'Load proof-path demo',
+      description: 'Use the local demo sandbox if you do not have real evidence ready yet.',
+      href: input.sampleDataActive ? '/app/today' : '/demo',
+      cta: input.sampleDataActive ? 'Demo loaded' : 'Load demo',
       done: Boolean(manual['load-demo-or-import-csv'] || input.sampleDataActive || hasCsvImport),
     },
     {
       id: 'review-opportunity',
-      title: 'Review one opportunity',
-      description: 'Open a deal and inspect MEDDIC gaps, stakeholders, objections, and next actions.',
-      href: '/app/opportunities',
-      cta: 'Open Opportunities',
+      title: 'Review Today command center',
+      description: 'See Top 3 actions, proactive nudges, capture inbox, and forecast-defense readiness.',
+      href: '/app/today',
+      cta: 'Open Today',
       done: Boolean(manual['review-opportunity'] || input.opportunities.length > 0),
     },
     {
-      id: 'capture-update',
-      title: 'Capture one update',
-      description: 'Write one customer update so Memoire can remember signals, risks, and next actions.',
-      href: '/app/capture?mode=quick',
-      cta: 'Quick Capture',
-      done: Boolean(manual['capture-update'] || input.activities.length > 0),
-    },
-    {
-      id: 'import-starter-asset-pack',
-      title: 'Import one starter asset pack',
-      description: 'Add reusable proof, objection, or compliance snippets for review prep.',
-      href: '/app/assets#starter-packs',
-      cta: 'Open Assets',
-      done: Boolean(manual['import-starter-asset-pack'] || hasStarterPackAsset),
-    },
-    {
       id: 'generate-defense-brief',
-      title: 'Generate Pipeline Defense Brief',
-      description: 'Create a manager-ready weekly review pack from selected opportunities.',
-      href: '/app/opportunities',
-      cta: 'Generate Brief',
+      title: 'Prepare Pipeline Defense Brief',
+      description: 'Open the review artifact and check defend, rescue, downgrade, MEDDIC, and missing evidence.',
+      href: '/app/pipeline-defense',
+      cta: 'Open Pipeline Defense',
       done: Boolean(manual['generate-defense-brief'] || hasUserBrief),
     },
     {
       id: 'copy-manager-summary',
-      title: 'Copy Manager Summary',
-      description: 'Copy the short manager-facing summary from Pipeline Defense for your review.',
+      title: 'Copy manager-ready answer',
+      description: 'Copy a concise manager brief with evidence, missing context, next action, and due date.',
       href: '/app/pipeline-defense',
       cta: 'Open Brief',
       done: Boolean(manual['copy-manager-summary']),

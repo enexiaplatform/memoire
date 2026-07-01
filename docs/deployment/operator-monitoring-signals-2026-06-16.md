@@ -21,6 +21,7 @@ The endpoint:
 - Accepts only allowlisted operational events.
 - Rate limits repeated submissions.
 - Returns `202` for accepted logs.
+- Returns `400` for unknown event names or malformed payloads.
 - Writes sanitized JSON to server logs.
 - Does not accept arbitrary payloads or customer records.
 
@@ -63,7 +64,7 @@ Before cohort invite, run:
 npm run verify:production-readiness
 ```
 
-This confirms `/api/client-log` still accepts only the allowlisted operational events, rate limits repeated submissions, sanitizes logged fields, and emits the `Memoire client operational event` marker that operators search in deployment logs.
+This confirms `/api/client-log` still exists, accepts only the allowlisted operational events, rate limits repeated submissions, sanitizes logged fields, rejects arbitrary event names, and emits the `Memoire client operational event` marker that operators search in deployment logs.
 
 ## Daily Cohort Review
 

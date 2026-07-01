@@ -25,7 +25,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   const openDemo = () => {
     loadInteractiveDemoWorkspace();
-    window.location.replace('/app/dashboard');
+    window.location.replace('/app/today');
   };
 
   if (allowsDemoAccess) {

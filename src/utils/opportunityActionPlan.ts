@@ -1,6 +1,7 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
+import { formatSafeBusinessDate, isBusinessDateOverdue, sanitizeBusinessDate } from './safeDate.ts';
 import type { StakeholderRecord } from '../services/stakeholderStore';
 import { getObjectionsForOpportunity } from './objectionLedger';
 import {
@@ -224,7 +225,7 @@ function addObjectionActions(actions: OpportunityRecommendedAction[], opportunit
         sourceType: objection.objectionType === 'Competitor' ? 'Competition' : 'Objection',
         relatedObjectionId: objection.id,
         relatedStakeholderName: objection.stakeholderName || undefined,
-        suggestedDueDate: objection.dueDate || addDays(objection.impact === 'High' ? 2 : 5),
+        suggestedDueDate: sanitizeBusinessDate(objection.dueDate) || addDays(objection.impact === 'High' ? 2 : 5),
       }));
     });
 
@@ -246,24 +247,24 @@ function addStaleNextAction(
   activities: SalesActivityRecord[],
 ) {
   const today = todayKey();
-  if (opportunity.nextActionDate && opportunity.nextActionDate < today) {
+  if (isBusinessDateOverdue(opportunity.nextActionDate, today)) {
     actions.push(createAction(opportunity, {
       id: 'follow-up-stale-next-action',
       title: `Follow up on stale next action`,
       priority: 'High',
-      reason: `Opportunity next action was due ${opportunity.nextActionDate}: ${opportunity.nextAction || 'No action text captured'}.`,
+      reason: `Opportunity next action was due ${formatSafeBusinessDate(opportunity.nextActionDate)}: ${opportunity.nextAction || 'No action text captured'}.`,
       sourceType: 'Stale Next Action',
       suggestedDueDate: today,
     }));
   }
 
-  const staleActivity = activities.find((activity) => activity.nextAction && activity.dueDate && activity.dueDate < today);
+  const staleActivity = activities.find((activity) => activity.nextAction && isBusinessDateOverdue(activity.dueDate, today));
   if (staleActivity) {
     actions.push(createAction(opportunity, {
       id: `follow-up-stale-activity-${staleActivity.id}`,
       title: `Close loop on captured follow-up`,
       priority: 'High',
-      reason: `Activity next action was due ${staleActivity.dueDate}: ${staleActivity.nextAction}.`,
+      reason: `Activity next action was due ${formatSafeBusinessDate(staleActivity.dueDate)}: ${staleActivity.nextAction}.`,
       sourceType: 'Stale Next Action',
       suggestedDueDate: today,
     }));

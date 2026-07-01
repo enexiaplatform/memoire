@@ -6,7 +6,7 @@ export function HowItWorksSection() {
       <div className="max-w-7xl mx-auto">
         <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-6">Turn scattered context into follow-up action.</h2>
         <p className="mx-auto mb-12 max-w-2xl text-center text-lg leading-relaxed text-gray-600">
-          Memoire connects account context, unresolved objections, and next actions so long-cycle deals do not quietly stall.
+          Memoire connects account or client context, unresolved objections, and next actions so long-cycle deals do not quietly stall.
         </p>
 
         <div className="mb-12 flex flex-wrap justify-center gap-2">

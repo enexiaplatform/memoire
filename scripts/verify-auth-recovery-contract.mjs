@@ -24,6 +24,7 @@ for (const route of [
   'path="/forgot-password"',
   'path="/reset-password"',
   'path="dashboard"',
+  'path="today"',
 ]) {
   requireIncludes(app, route, `app route missing ${route}`);
 }
@@ -33,7 +34,7 @@ for (const marker of [
   "emailRedirectTo: `${window.location.origin}/login?verified=1`",
   "redirectTo: `${window.location.origin}/reset-password`",
   "redirectTo: `${window.location.origin}${authDestination}`",
-  'const DEFAULT_AUTH_ROUTE = \'/app/dashboard\'',
+  'const DEFAULT_AUTH_ROUTE = \'/app/today\'',
   "requestedDestination?.startsWith('/app/')",
   "currentPath.startsWith('/app/')",
   'setPendingAuthRedirect(authDestination)',
@@ -53,7 +54,7 @@ for (const marker of [
   'Email verified. You can sign in now.',
   '<GoogleAuthButton label="Continue with Google" redirectTo={destination} />',
   'to="/forgot-password"',
-  "path.startsWith('/app/') ? path : '/app/dashboard'",
+  "path.startsWith('/app/') ? path : '/app/today'",
 ]) {
   requireIncludes(loginPage, marker, `login page missing marker: ${marker}`);
 }
@@ -110,16 +111,16 @@ for (const marker of [
   requireIncludes(googleButton, marker, `Google auth button missing marker: ${marker}`);
 }
 
-const health = read('api/health.ts');
+const health = read('scripts/lib/production-readiness-runtime.mjs');
 for (const marker of [
-  "const AUTH_REDIRECT_PATHS = ['/login?verified=1', '/reset-password', '/app/dashboard']",
+  "const AUTH_REDIRECT_PATHS = ['/login?verified=1', '/reset-password', '/app/today']",
   'requiredUrls',
   'Set Supabase Auth Site URL to VITE_APP_URL.',
   'Allow email verification redirect to /login?verified=1.',
   'Allow password recovery redirect to /reset-password.',
-  'Allow OAuth app return path to /app/dashboard or the protected /app/* route under test.',
+  'Allow OAuth app return path to /app/today or the protected /app/* route under test.',
 ]) {
-  requireIncludes(health, marker, `health auth redirect contract missing marker: ${marker}`);
+  requireIncludes(health, marker, `readiness auth redirect contract missing marker: ${marker}`);
 }
 
 const qaDoc = read('docs/qa/auth-recovery-production-qa-2026-06-17.md');

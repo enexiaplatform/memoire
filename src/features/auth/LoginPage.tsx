@@ -124,5 +124,5 @@ function getAuthDestination(state: unknown) {
     };
   } | null)?.from;
   const path = `${from?.pathname || ''}${from?.search || ''}${from?.hash || ''}`;
-  return path.startsWith('/app/') ? path : '/app/dashboard';
+  return path.startsWith('/app/') ? path : '/app/today';
 }

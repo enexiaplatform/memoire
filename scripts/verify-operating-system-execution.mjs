@@ -62,7 +62,7 @@ assert.equal(commandCenter.dailyTimeblocks.find((block) => block.id === 'morning
 assert.equal(commandCenter.dailyTimeblocks.find((block) => block.id === 'pipeline-defense')?.actions.length, 0);
 
 const dashboard = readFileSync('src/features/dashboard/DashboardPage.tsx', 'utf8');
-assert.ok(dashboard.indexOf('<QuoteFollowUpCard') > dashboard.indexOf('More dashboard insights'), 'quote follow-up should be progressive disclosure');
+assert.ok(dashboard.indexOf('<QuoteFollowUpCard') > dashboard.indexOf('Supporting execution detail'), 'quote follow-up should be progressive disclosure');
 assert.match(dashboard, /title="Operating priorities"/);
 
 const app = readFileSync('src/App.tsx', 'utf8');

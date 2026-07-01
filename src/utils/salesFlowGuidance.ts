@@ -1,4 +1,5 @@
 import type { CrmLiteOpportunity, OpportunityStage } from '../services/opportunityStore';
+import { sanitizeBusinessDate } from './safeDate.ts';
 
 export type SalesFlowCheckpointStatus = 'Needs action' | 'Ready to advance' | 'Completed' | 'Paused' | 'Closed';
 
@@ -70,6 +71,7 @@ export function buildOpportunitySalesFlowGuidance(opportunity: CrmLiteOpportunit
 function getMissingCheckpoints(opportunity: CrmLiteOpportunity, stepId: string) {
   const missing: string[] = [];
   const hasValue = Boolean(opportunity.estimatedValue || opportunity.fy26Value || opportunity.fy27Value);
+  const nextActionDate = sanitizeBusinessDate(opportunity.nextActionDate);
   const require = (value: unknown, label: string) => {
     if (typeof value === 'string' ? !value.trim() : !value) missing.push(label);
   };
@@ -79,7 +81,7 @@ function getMissingCheckpoints(opportunity: CrmLiteOpportunity, stepId: string) 
   if (stepId === 'lead') {
     require(opportunity.accountName, 'target account');
     require(opportunity.nextAction, 'discovery action');
-    require(opportunity.nextActionDate, 'action date');
+    require(nextActionDate, 'action date');
   }
 
   if (stepId === 'discovery') {
@@ -98,33 +100,33 @@ function getMissingCheckpoints(opportunity: CrmLiteOpportunity, stepId: string) 
   if (stepId === 'validation') {
     require(opportunity.technicalCriteria, 'validation criteria');
     require(opportunity.evidence, 'validation proof');
-    require(opportunity.nextActionDate, 'validation milestone date');
+    require(nextActionDate, 'validation milestone date');
   }
 
   if (stepId === 'proposal') {
     if (!hasValue) missing.push('proposal value');
     require(opportunity.decisionMaker, 'approval owner');
     require(opportunity.budgetOwner, 'budget owner');
-    require(opportunity.nextActionDate, 'approval milestone date');
+    require(nextActionDate, 'approval milestone date');
   }
 
   if (stepId === 'negotiation') {
     if (opportunity.objectionDebt.trim()) missing.push('open objection resolution');
     require(opportunity.decisionMaker, 'final decision owner');
     require(opportunity.procurementPath, 'procurement route');
-    require(opportunity.nextActionDate, 'decision date');
+    require(nextActionDate, 'decision date');
   }
 
   if (stepId === 'procurement') {
     require(opportunity.procurementPath, 'procurement steps and owner');
     require(opportunity.budgetOwner, 'commercial approval owner');
     require(opportunity.expectedClosePeriod, 'expected PO timing');
-    require(opportunity.nextActionDate, 'next procurement checkpoint');
+    require(nextActionDate, 'next procurement checkpoint');
   }
 
   if (stepId === 'handoff') {
     require(opportunity.nextAction, 'delivery or payment handoff');
-    require(opportunity.nextActionDate, 'handoff date');
+    require(nextActionDate, 'handoff date');
   }
 
   return missing;

@@ -75,7 +75,7 @@ for (const marker of [
   'Retry',
   'Sign out',
   'Open Demo Workspace',
-  "window.location.replace('/app/dashboard')",
+  "window.location.replace('/app/today')",
 ]) {
   requireIncludes(protectedRoute, marker, `ProtectedRoute slow fallback marker missing: ${marker}`);
 }
@@ -87,7 +87,7 @@ for (const marker of [
   'Retry',
   'Sign out',
   'Open Demo Workspace',
-  "window.location.replace('/app/dashboard')",
+  "window.location.replace('/app/today')",
 ]) {
   requireIncludes(routeFallback, marker, `RouteLoadingFallback marker missing: ${marker}`);
 }
@@ -115,7 +115,9 @@ for (const marker of [
 const clientTelemetry = read('src/services/clientTelemetry.ts');
 for (const marker of [
   'export function reportClientOperationalEvent',
-  "fetch('/api/client-log'",
+  'if (!import.meta.env.VITE_CLIENT_LOG_ENDPOINT) return',
+  'fetch(import.meta.env.VITE_CLIENT_LOG_ENDPOINT',
+  '.catch(() => undefined)',
   'cloud_json_sync_failed',
   'pipeline_defense_cloud_sync_failed',
 ]) {
@@ -143,8 +145,8 @@ for (const marker of [
 for (const [file, marker] of [
   ['src/features/v31/AskMemoirePage.tsx', 'Ask endpoint unavailable - showing a local rule-based answer.'],
   ['src/features/v31/AskMemoirePage.tsx', 'Ask Memoire could not reach the configured endpoint. Local rules are still available.'],
-  ['src/features/dailyCapture/DailyCapturePage.tsx', 'AI Assist failed. Local rules are still available.'],
-  ['src/features/dailyCapture/DailyCapturePage.tsx', 'AI Assist is not configured on the server. Local rules are still available.'],
+  ['src/features/dailyCapture/DailyCapturePage.tsx', 'AI unavailable — using local fallback. Please review before saving.'],
+  ['src/features/dailyCapture/DailyCapturePage.tsx', "setAiState('error')"],
 ]) {
   requireIncludes(read(file), marker, `${file} missing AI failure fallback marker: ${marker}`);
 }

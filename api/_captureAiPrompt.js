@@ -15,7 +15,7 @@ export function buildCaptureAiMessages(request) {
     {
       role: 'system',
       content: [
-        'You classify B2B sales activity notes into structured CRM-lite fields.',
+        'You turn B2B sales notes into structured evidence for a Personal Pipeline Defense OS.',
         'Return strict JSON only. Do not include markdown, prose, code fences, or extra keys.',
         'Be conservative. If a field is not clearly present, return an empty string.',
         'Use only the allowed activity types and confidence values.',
@@ -77,6 +77,9 @@ function buildCaptureAiPrompt(request) {
     '- dueDate must be YYYY-MM-DD or empty.',
     '- If multiple actions are present, put all of them in nextActions and set nextAction/dueDate from the first action.',
     '- Extract contactName/stakeholderName separately from accountName.',
+    '- Account is an organization. A person or honorific name (Ms., Mr., Mrs., Dr.) must never be accountName.',
+    '- opportunityName must match a provided opportunity or explicit opportunity/project/deal wording in the note. Otherwise leave it empty. Never infer an opportunity from a product, quote, tender, or contact name.',
+    '- A timeline statement such as "Tender decision expected end of July" belongs in timelineSignals, not nextAction or nextActions.',
     '- Extract competitors, buying signals, risks, and timeline signals as arrays.',
     '- suggestedOpportunityId must match a provided opportunity id or be empty.',
     '- tags should be short lowercase labels.',

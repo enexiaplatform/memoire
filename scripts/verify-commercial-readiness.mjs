@@ -28,8 +28,8 @@ const checks = [
     assert: (text) => text.includes("Checkout is not enabled."),
   },
   {
-    name: 'health endpoint exposes checkout disabled status',
-    file: 'api/health.ts',
+    name: 'readiness runtime exposes checkout disabled status',
+    file: 'scripts/lib/production-readiness-runtime.mjs',
     assert: (text) => text.includes('billing_checkout_disabled') && text.includes('BILLING_CHECKOUT_ENABLED'),
   },
   {

@@ -1,6 +1,7 @@
 import { supabaseClient } from '../lib/supabaseClient';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus';
+import { sanitizeBusinessDate } from '../utils/safeDate.ts';
 
 export const OPPORTUNITY_STORAGE_KEY = 'memoire.opportunities.v1';
 
@@ -312,7 +313,7 @@ function loadLocalOpportunities(): CrmLiteOpportunity[] {
         procurementPath: item.procurementPath || '',
         technicalCriteria: item.technicalCriteria || '',
         nextAction: item.nextAction || '',
-        nextActionDate: item.nextActionDate || '',
+        nextActionDate: sanitizeBusinessDate(item.nextActionDate),
         evidence: item.evidence || '',
         missingContext: item.missingContext || '',
         objectionDebt: item.objectionDebt || '',
@@ -422,7 +423,7 @@ function rowToOpportunity(row: OpportunityRow): CrmLiteOpportunity {
     procurementPath: row.procurement_path || '',
     technicalCriteria: row.technical_criteria || '',
     nextAction: row.next_action || row.next_action_text || '',
-    nextActionDate: row.next_action_date || '',
+    nextActionDate: sanitizeBusinessDate(row.next_action_date),
     evidence: row.evidence || '',
     missingContext: row.missing_context || '',
     objectionDebt: row.objection_debt || row.blocker || '',
@@ -500,7 +501,7 @@ function opportunityToRow(input: OpportunityFormInput) {
     procurement_path: input.procurementPath || null,
     technical_criteria: input.technicalCriteria || null,
     next_action: input.nextAction || null,
-    next_action_date: input.nextActionDate || null,
+    next_action_date: sanitizeBusinessDate(input.nextActionDate) || null,
     evidence: input.evidence || null,
     missing_context: input.missingContext || null,
     objection_debt: input.objectionDebt || null,
@@ -522,6 +523,7 @@ function normalizeOpportunityInput(input: OpportunityFormInput): OpportunityForm
     forecastEvidenceCategory: normalizeForecastCategory(input.forecastEvidenceCategory),
     decisionRecommendation: normalizeDecisionRecommendation(input.decisionRecommendation),
     status: normalizeStatus(input.status),
+    nextActionDate: sanitizeBusinessDate(input.nextActionDate),
   };
 }
 

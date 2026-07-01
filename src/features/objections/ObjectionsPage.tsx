@@ -20,6 +20,7 @@ import {
 } from '../../services/objectionStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { analyzeObjectionLedger, objectionStatusTone } from '../../utils/objectionLedger';
+import { formatSafeBusinessDate } from '../../utils/safeDate.ts';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 const allFilter = 'All';
@@ -239,7 +240,7 @@ function ObjectionCard({ objection, onOpen }: { objection: ObjectionRecord; onOp
       </div>
       <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
         <Fact label="Required proof" value={objection.requiredProof || 'Not captured'} />
-        <Fact label="Due date" value={objection.dueDate || 'Not captured'} />
+        <Fact label="Due date" value={formatSafeBusinessDate(objection.dueDate)} />
         <Fact label="Response plan" value={objection.responsePlan || 'Not captured'} />
       </div>
       <button type="button" onClick={onOpen} className="mt-4 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Open Objection</button>

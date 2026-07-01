@@ -33,11 +33,11 @@ interface WorkflowStepConfig {
 const standardSteps: WorkflowStepConfig[] = [
   {
     step: 'capture',
-    title: 'Capture',
-    instruction: 'Start by capturing what happened with a customer.',
-    why: 'Raw notes become usable Sales Memory only after Memoire has the interaction.',
+    title: 'Capture first evidence',
+    instruction: 'Start by capturing a messy customer note or pasted email/thread.',
+    why: 'Capture is the evidence input: raw seller context becomes review-ready only after you confirm the structured fields.',
     route: '/app/capture',
-    primaryLabel: 'Use sample note',
+    primaryLabel: 'Use sample evidence',
   },
   {
     step: 'structure',
@@ -65,10 +65,11 @@ const standardSteps: WorkflowStepConfig[] = [
   },
   {
     step: 'open_account_memory',
-    title: 'Open Account Memory',
-    instruction: 'This is Living Account Memory: account story, last interaction, blockers, and next action.',
-    why: 'Before a follow-up, you can recall the customer context without rebuilding it from memory.',
-    primaryLabel: 'Open Account Memory',
+    title: 'Review Today',
+    instruction: 'Open Today to see the daily command center: Top 3 actions, proactive nudges, and capture inbox.',
+    why: 'Today tells you what can go silent before your next review, client check-in, or follow-up window.',
+    route: '/app/today',
+    primaryLabel: 'Open Today',
   },
   {
     step: 'ask_account',
@@ -86,11 +87,11 @@ const standardSteps: WorkflowStepConfig[] = [
   },
   {
     step: 'finish',
-    title: 'Finish',
-    instruction: 'You completed your first Memory-to-Action flow.',
-    why: 'One customer interaction became Account Memory, blocker context, Next Action, askable knowledge, and a follow-up draft.',
-    route: '/app/dashboard',
-    primaryLabel: 'Go to Dashboard',
+    title: 'Prepare Pipeline Defense',
+    instruction: 'Open Pipeline Defense and copy the review-ready deal answer.',
+    why: 'The core artifact is a concise defend, rescue, downgrade, or monitor answer with evidence and missing context.',
+    route: '/app/pipeline-defense',
+    primaryLabel: 'Open Pipeline Defense',
   },
 ];
 
@@ -100,7 +101,7 @@ const founderSteps: WorkflowStepConfig[] = [
     title: 'Start with deals that may go silent',
     instruction: 'Start from the Stuck Deal Queue before adding any new note.',
     why: 'Memoire should show value immediately by surfacing unresolved objections, missing follow-ups, and weak context.',
-    route: '/app/dashboard',
+    route: '/app/today',
     primaryLabel: 'Open Apex Pharma',
   },
   {
@@ -136,7 +137,7 @@ const founderSteps: WorkflowStepConfig[] = [
     title: 'Quick Capture as the second act',
     instruction: 'Now see how a new customer interaction becomes part of this queue.',
     why: 'Capture matters after the user understands the value of the stuck-deal queue.',
-    route: '/app/dashboard',
+    route: '/app/today',
     primaryLabel: 'Show Quick Capture',
   },
   {
@@ -145,7 +146,7 @@ const founderSteps: WorkflowStepConfig[] = [
     instruction: 'You saw how Memoire catches deals before they go silent.',
     why: 'The demo value comes first: stuck deal, evidence, suggested fix, follow-up, and then capture.',
     route: '/app/capture',
-    primaryLabel: 'Go to Dashboard',
+    primaryLabel: 'Go to Today',
   },
 ];
 
@@ -289,7 +290,7 @@ export function OnboardingModal() {
     setWorkflow((current) => ({ ...current, active: false, completed: true }));
   }
 
-  function finish(destination: '/app/dashboard' | '/app/journey' = '/app/dashboard') {
+  function finish(destination: '/app/today' | '/app/journey' = '/app/today') {
     sessionStorage.setItem(sessionKey, 'true');
     writePreference(storageKey, {
       ...preference,
@@ -353,6 +354,11 @@ export function OnboardingModal() {
         if (savedMemory) goNext();
         return;
       case 'open_account_memory': {
+        if (!founderMode) {
+          navigate('/app/today');
+          goNext();
+          return;
+        }
         const accountId = savedMemory?.accountId || founderAccountId;
         if (accountId) navigate(`/app/accounts?accountId=${encodeURIComponent(accountId)}`);
         goNext();
@@ -381,7 +387,7 @@ export function OnboardingModal() {
         goNext();
         return;
       case 'finish':
-        finish('/app/dashboard');
+        finish('/app/today');
         return;
       default:
         goNext();
@@ -399,7 +405,7 @@ export function OnboardingModal() {
                 {founderMode ? 'Demo Workspace is loaded.' : 'Welcome to Memoire'}
               </h2>
               <p className="mt-1 text-sm font-semibold text-gray-700">
-                {founderMode ? 'Walk through a real Memory-to-Action flow.' : 'Create your first Memory-to-Action flow.'}
+                {founderMode ? 'Walk through the Pipeline Defense proof path.' : 'Capture evidence, review Today, and prepare your first review-ready deal story.'}
               </p>
             </div>
             <button
@@ -415,15 +421,15 @@ export function OnboardingModal() {
           <div className="space-y-4">
             <p className="text-sm leading-6 text-gray-600">
               {founderMode
-                ? "Let's walk through a demo account with built-in stuck-deal signals."
-                : "Memoire turns customer interactions into account memory, next actions, and askable sales context. Let's walk through one complete workflow."}
+                ? "Let's walk through a seller getting ready for Monday pipeline review or a solo sales check-in."
+                : "Memoire is a Personal Pipeline Defense OS used beside CRM, spreadsheets, and notes. Let's walk through Capture → Today → Pipeline Defense."}
             </p>
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Workflow</p>
               <p className="mt-2 text-sm font-semibold text-navy">
                 {founderMode
-                  ? 'Stuck Deal Queue - Account Memory - Follow-up - Ask - Capture'
-                  : 'Capture - Structure - Memory - Action - Ask - Follow-up - Today'}
+                  ? 'Today - Capture - Pipeline Defense - MEDDIC - Outcome Learning'
+                  : 'Capture first evidence - Review Today - Prepare Pipeline Defense Brief'}
               </p>
             </div>
           </div>
@@ -582,8 +588,8 @@ export function OnboardingModal() {
       )}
       {currentStep.step === 'finish' && (
         <div className="mt-3 flex gap-2">
-          <Link to="/app/dashboard" onClick={() => finish('/app/dashboard')} className="text-xs font-bold text-brand-blue">
-            Go to Dashboard
+          <Link to="/app/today" onClick={() => finish('/app/today')} className="text-xs font-bold text-brand-blue">
+            Go to Today
           </Link>
         </div>
       )}

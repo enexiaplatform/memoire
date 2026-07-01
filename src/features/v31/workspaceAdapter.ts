@@ -15,6 +15,7 @@ import type { SalesWorkspaceData } from '../../services/workspaceData';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { SalesActivityRecord } from '../../services/salesActivityStore';
 import type { ObjectionRecord } from '../../services/objectionStore';
+import { compareSafeBusinessDate, sanitizeBusinessDate } from '../../utils/safeDate.ts';
 
 export type V31WorkspaceMemory = {
   accounts: Account[];
@@ -150,7 +151,7 @@ export function adaptWorkspaceToV31(workspace: SalesWorkspaceData, userId: strin
       opportunity_id: opportunityId,
       interaction_id: activity.id,
       title: action.title,
-      due_date: action.dueDate || null,
+      due_date: sanitizeBusinessDate(action.dueDate) || null,
       status: 'open',
       suggested: false,
       source: 'capture',
@@ -177,7 +178,7 @@ export function adaptWorkspaceToV31(workspace: SalesWorkspaceData, userId: strin
         opportunity_id: opportunity.id,
         interaction_id: null,
         title: opportunity.nextAction,
-        due_date: opportunity.nextActionDate || null,
+        due_date: sanitizeBusinessDate(opportunity.nextActionDate) || null,
         status: 'open',
         suggested: false,
         source: 'manual',
@@ -247,7 +248,7 @@ function getLatestActivityForOpportunity(activities: SalesActivityRecord[], oppo
         && sameName(activity.linkedOpportunityName || activity.opportunityName, opportunity.opportunityName)
       )
     ))
-    .sort((left, right) => `${right.activityDate}-${right.updatedAt}`.localeCompare(`${left.activityDate}-${left.updatedAt}`))[0];
+    .sort((left, right) => compareSafeBusinessDate(right.activityDate, left.activityDate) || right.updatedAt.localeCompare(left.updatedAt))[0];
 }
 
 function toLegacyStage(stage: CrmLiteOpportunity['stage']): SalesStage {
@@ -305,7 +306,8 @@ function toObjectionSeverity(impact: ObjectionRecord['impact']): ObjectionSeveri
 }
 
 function toTimestamp(dateKey: string, fallback: string) {
-  return dateKey ? `${dateKey}T12:00:00.000Z` : fallback;
+  const safeDate = sanitizeBusinessDate(dateKey);
+  return safeDate ? `${safeDate}T12:00:00.000Z` : fallback;
 }
 
 function normalize(value: string) {

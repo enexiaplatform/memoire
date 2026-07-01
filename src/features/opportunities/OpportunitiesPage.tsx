@@ -41,7 +41,12 @@ import {
 } from '../../services/opportunityStore';
 import { analyzePipelineQuality, analyzeOpportunityQuality } from '../../utils/opportunityQuality';
 import { analyzeMeddicLiteOpportunity, type MeddicLiteDealCategory, type MeddicLiteStatus } from '../../utils/meddicLite';
-import { formatCurrencyAmount as formatMoney } from '../../utils/currency';
+import {
+  formatBaseCurrencyAmount as formatBaseMoney,
+  formatCurrencyAmount as formatMoney,
+  sumMoneyInBase,
+} from '../../utils/money';
+import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, sanitizeBusinessDate } from '../../utils/safeDate.ts';
 import { type SalesActivityRecord } from '../../services/salesActivityStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
@@ -55,8 +60,20 @@ import {
   type ActionOutcomeRecord,
   type ActionOutcomeType,
 } from '../../services/actionOutcomeStore';
+import {
+  buildOpportunityOutcomeDraft,
+  createOpportunityOutcomeFromOpportunity,
+  getOpportunityOutcomesForOpportunity,
+  opportunityOutcomeReasonCategories,
+  opportunityOutcomes as opportunityOutcomeOptions,
+  opportunityOutcomeToOpportunityStage,
+  opportunityOutcomeToOpportunityStatus,
+  type OpportunityOutcomeDraft,
+  type OpportunityOutcomeRecord,
+} from '../../services/opportunityOutcomeStore';
 import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { analyzeStakeholderCoverage, getStakeholdersForOpportunity } from '../../utils/stakeholderGraph';
+import { buildMeddicStakeholderMap, formatMeddicStakeholderDate } from '../../utils/meddicStakeholderMap.ts';
 import { getObjectionsForOpportunity, objectionStatusTone } from '../../utils/objectionLedger';
 import { analyzeOpportunityOutcomeLoop } from '../../utils/actionOutcomeLoop';
 import {
@@ -158,6 +175,7 @@ export function OpportunitiesPage() {
   const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
   const [objections, setObjections] = useState<ObjectionRecord[]>([]);
   const [actionOutcomes, setActionOutcomes] = useState<ActionOutcomeRecord[]>([]);
+  const [opportunityOutcomes, setOpportunityOutcomes] = useState<OpportunityOutcomeRecord[]>([]);
   const [salesAssets, setSalesAssets] = useState<SalesAssetRecord[]>([]);
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -222,6 +240,7 @@ export function OpportunitiesPage() {
       setStakeholders(workspaceData.stakeholders);
       setObjections(workspaceData.objections);
       setActionOutcomes(workspaceData.actionOutcomes);
+      setOpportunityOutcomes(workspaceData.opportunityOutcomes);
       setSalesAssets(workspaceData.assets);
       setQuotes(workspaceData.quotes);
       setLastWorkspaceRefreshAt(new Date().toISOString());
@@ -377,6 +396,26 @@ export function OpportunitiesPage() {
         setSaveState('idle');
         setMessage('');
       }
+      setSearchParams({}, { replace: true });
+      return;
+    }
+
+    if (searchParams.get('outcome') === '1' && !loading) {
+      const account = searchParams.get('account') || '';
+      const opportunityName = searchParams.get('opportunity') || '';
+      const opportunity = opportunities.find((item) => (
+        normalizeText(item.accountName) === normalizeText(account) &&
+        normalizeText(item.opportunityName) === normalizeText(opportunityName)
+      ));
+      if (opportunity) {
+        setEditingOpportunity(opportunity);
+        setForm(opportunityToForm(opportunity));
+        setPanelMode('edit');
+      } else {
+        setSearch([account, opportunityName].filter(Boolean).join(' '));
+      }
+      setSaveState('idle');
+      setMessage(opportunity ? 'Outcome retro ready. Mark Won, Lost, Delayed, or No decision below.' : 'Search opened. Pick the opportunity to record an outcome retro.');
       setSearchParams({}, { replace: true });
     }
     // Query params are only used as one-shot entry points.
@@ -695,6 +734,32 @@ export function OpportunitiesPage() {
     }
   };
 
+  const handleSaveOpportunityOutcome = async (opportunity: CrmLiteOpportunity, draft: OpportunityOutcomeDraft) => {
+    const outcomeRecord = createOpportunityOutcomeFromOpportunity(opportunity, draft, dataUserId);
+    setOpportunityOutcomes((current) => [
+      outcomeRecord,
+      ...current.filter((item) => item.id !== outcomeRecord.id),
+    ]);
+
+    const nextForm: OpportunityFormInput = {
+      ...opportunityToForm(opportunity),
+      status: opportunityOutcomeToOpportunityStatus(draft.outcome),
+      stage: opportunityOutcomeToOpportunityStage(draft.outcome, opportunity.stage),
+      estimatedValue: draft.finalAmount,
+      currency: draft.currency,
+    };
+    const result = await updateOpportunity(opportunity, nextForm, dataUserId);
+
+    setOpportunities((current) => [
+      result.opportunity,
+      ...current.filter((item) => item.id !== result.opportunity.id),
+    ]);
+    setEditingOpportunity(result.opportunity);
+    setForm(opportunityToForm(result.opportunity));
+    setSaveState(result.warning ? 'error' : 'saved');
+    setMessage(result.warning || `Outcome recorded: ${draft.outcome}. Forecast snapshot preserved for learning.`);
+  };
+
   const handleDelete = async (opportunity: CrmLiteOpportunity) => {
     const confirmed = window.confirm(`Delete ${opportunity.accountName} / ${opportunity.opportunityName}?`);
     if (!confirmed) return;
@@ -1007,11 +1072,13 @@ export function OpportunitiesPage() {
         stakeholders={editingOpportunity ? getStakeholdersForOpportunity(stakeholders, editingOpportunity) : []}
         objections={editingOpportunity ? getObjectionsForOpportunity(objections, editingOpportunity) : []}
         actionOutcomes={editingOpportunity ? actionOutcomes : []}
+        opportunityOutcomes={editingOpportunity ? opportunityOutcomes : []}
         salesAssets={salesAssets}
         allOpportunities={opportunities}
         quotes={editingOpportunity ? getQuotesForOpportunity(quotes, editingOpportunity) : []}
         onChange={setForm}
         onActionOutcomesChange={setActionOutcomes}
+        onSaveOpportunityOutcome={handleSaveOpportunityOutcome}
         onSave={handleSave}
         onClose={closePanel}
         onDelete={editingOpportunity ? () => handleDelete(editingOpportunity) : undefined}
@@ -1057,7 +1124,7 @@ function PipelineQualitySummary({ quality }: { quality: ReturnType<typeof analyz
       <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-8">
         <Metric label="Total" value={quality.totalOpportunities} />
         <Metric label="Active" value={quality.activeOpportunities} />
-        <Metric label="Active value" value={formatMoney(quality.estimatedActiveValue)} />
+        <Metric label="Active value" value={formatBaseMoney(quality.estimatedActiveValue)} />
         <Metric label="Defensible" value={quality.defensibleDeals} tone="green" />
         <Metric label="Weak / Hope" value={quality.weakHopeUnsupportedDeals} tone={quality.weakHopeUnsupportedDeals ? 'amber' : 'green'} />
         <Metric label="No action" value={quality.missingNextActionCount} tone={quality.missingNextActionCount ? 'red' : 'green'} />
@@ -1230,7 +1297,7 @@ function OpportunityCsvImportPanel({
             }`}>
               <p>{message}</p>
               {showWeeklyReviewCta && (
-                <Link to="/app/dashboard" className="mt-2 inline-flex text-xs font-bold uppercase tracking-[0.16em] text-brand-blue hover:text-blue-900">
+                <Link to="/app/today" className="mt-2 inline-flex text-xs font-bold uppercase tracking-[0.16em] text-brand-blue hover:text-blue-900">
                   Continue weekly review
                 </Link>
               )}
@@ -1823,8 +1890,8 @@ function ImportedPipelineForecastPanel({
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
         <Metric label="Imported" value={summary.importedCount.toLocaleString()} tone="green" />
-        <Metric label="FY26" value={formatMoney(summary.fy26Total, 'VND')} tone="green" />
-        <Metric label="FY27" value={formatMoney(summary.fy27Total, 'VND')} tone="blue" />
+        <Metric label="FY26" value={formatBaseMoney(summary.fy26Total)} tone="green" />
+        <Metric label="FY27" value={formatBaseMoney(summary.fy27Total)} tone="blue" />
         <Metric label="Stage inferred" value={summary.stageInferredCount.toLocaleString()} tone={summary.stageInferredCount ? 'amber' : 'green'} />
         <Metric label="With brand" value={summary.withBrandCount.toLocaleString()} tone="blue" />
         <Metric label="With channel" value={summary.withChannelCount.toLocaleString()} tone="blue" />
@@ -1872,7 +1939,7 @@ function ForecastDimensionList({ title, items }: { title: string; items: Forecas
               <p className="truncate text-sm font-bold text-gray-800" title={item.label}>{item.label}</p>
               <p className="text-xs font-semibold text-gray-500">{item.count} deal{item.count === 1 ? '' : 's'}</p>
             </div>
-            <p className="whitespace-nowrap text-sm font-black text-emerald-700">{formatMoney(item.fy26Total, 'VND')}</p>
+            <p className="whitespace-nowrap text-sm font-black text-emerald-700">{formatBaseMoney(item.fy26Total)}</p>
           </div>
         ))}
       </div>
@@ -2070,7 +2137,7 @@ function OpportunityMasterTable({
                       {opportunity.nextAction || 'No next action'}
                     </p>
                     <p className={`mt-1 text-xs font-semibold ${isPastDate(opportunity.nextActionDate) ? 'text-red-600' : 'text-gray-500'}`}>
-                      {opportunity.nextActionDate ? formatOpportunityDate(opportunity.nextActionDate) : 'No due date'}
+                      {formatSafeBusinessDate(opportunity.nextActionDate)}
                     </p>
                   </td>
                   <td className="px-3 py-3">
@@ -2168,11 +2235,13 @@ function OpportunityPanel({
   stakeholders,
   objections,
   actionOutcomes,
+  opportunityOutcomes,
   salesAssets,
   allOpportunities,
   quotes,
   onChange,
   onActionOutcomesChange,
+  onSaveOpportunityOutcome,
   onSave,
   onClose,
   onDelete,
@@ -2187,11 +2256,13 @@ function OpportunityPanel({
   stakeholders: StakeholderRecord[];
   objections: ObjectionRecord[];
   actionOutcomes: ActionOutcomeRecord[];
+  opportunityOutcomes: OpportunityOutcomeRecord[];
   salesAssets: SalesAssetRecord[];
   allOpportunities: CrmLiteOpportunity[];
   quotes: QuoteRecord[];
   onChange: (form: OpportunityFormInput) => void;
   onActionOutcomesChange: (outcomes: ActionOutcomeRecord[]) => void;
+  onSaveOpportunityOutcome: (opportunity: CrmLiteOpportunity, draft: OpportunityOutcomeDraft) => void;
   onSave: () => void;
   onClose: () => void;
   onDelete?: () => void;
@@ -2286,7 +2357,14 @@ function OpportunityPanel({
 
       {mode === 'edit' && (
         <>
-          {currentOpportunity && <StakeholderMap opportunity={currentOpportunity} stakeholders={stakeholders} />}
+          {currentOpportunity && (
+            <StakeholderMap
+              opportunity={currentOpportunity}
+              stakeholders={stakeholders}
+              objections={objections}
+              activities={linkedActivities}
+            />
+          )}
           {currentOpportunity && <OpportunityCommercialPanel opportunity={currentOpportunity} quotes={quotes} />}
           {currentOpportunity && <OpportunityObjectionLedger opportunity={currentOpportunity} objections={objections} />}
           {currentOpportunity && (
@@ -2310,6 +2388,13 @@ function OpportunityPanel({
                 nextAction: action.title,
                 nextActionDate: action.suggestedDueDate || form.nextActionDate,
               })}
+            />
+          )}
+          {currentOpportunity && (
+            <OpportunityOutcomeRetroPanel
+              opportunity={currentOpportunity}
+              outcomes={getOpportunityOutcomesForOpportunity(opportunityOutcomes, currentOpportunity)}
+              onSaveOutcome={(draft) => onSaveOpportunityOutcome(currentOpportunity, draft)}
             />
           )}
           {currentOpportunity && (
@@ -2743,7 +2828,7 @@ function LinkedActivitiesTimeline({ activities }: { activities: SalesActivityRec
           {activities.map((activity) => (
             <details key={activity.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
               <summary className="cursor-pointer text-sm font-bold text-navy">
-                {activity.activityDate} | {activity.activityType}
+                {formatSafeBusinessDate(activity.activityDate)} | {activity.activityType}
               </summary>
               <p className="mt-2 text-sm leading-6 text-gray-700">{activity.summary}</p>
               {activity.nextAction && (
@@ -2758,19 +2843,52 @@ function LinkedActivitiesTimeline({ activities }: { activities: SalesActivityRec
   );
 }
 
-function StakeholderMap({ opportunity, stakeholders }: { opportunity: CrmLiteOpportunity; stakeholders: StakeholderRecord[] }) {
+function StakeholderMap({
+  opportunity,
+  stakeholders,
+  objections,
+  activities,
+}: {
+  opportunity: CrmLiteOpportunity;
+  stakeholders: StakeholderRecord[];
+  objections: ObjectionRecord[];
+  activities: SalesActivityRecord[];
+}) {
   const coverage = analyzeStakeholderCoverage(stakeholders, opportunity);
+  const meddicMap = buildMeddicStakeholderMap({ opportunity, stakeholders, objections, activities });
   return (
     <section className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Stakeholder Map</p>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">MEDDIC Stakeholder Map</p>
+          <p className="mt-1 text-sm text-gray-500">Turn missing champion, buyer, procurement, and blocker signals into manager-ready evidence.</p>
+        </div>
         <Link
           to={`/app/stakeholders?accountName=${encodeURIComponent(opportunity.accountName)}&opportunityName=${encodeURIComponent(opportunity.opportunityName)}`}
           className="inline-flex w-fit rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-bold text-brand-blue hover:bg-blue-50"
         >
-          Open Stakeholders
+          Add stakeholder
         </Link>
       </div>
+      {meddicMap.items.length === 0 && (
+        <div className="mt-3 rounded-lg border border-dashed border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-bold text-amber-950">Stakeholder map is empty.</p>
+          <p className="mt-1 text-sm leading-6 text-amber-800">
+            Add Champion, Economic Buyer, Technical Buyer, or Procurement owner to make your forecast defensible.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link to={`/app/stakeholders?accountName=${encodeURIComponent(opportunity.accountName)}&opportunityName=${encodeURIComponent(opportunity.opportunityName)}`} className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">
+              Add stakeholder
+            </Link>
+            <Link to={`/app/capture?mode=quick&account=${encodeURIComponent(opportunity.accountName)}&opportunity=${encodeURIComponent(opportunity.opportunityName)}`} className="rounded-full border border-emerald-100 bg-white px-3 py-1.5 text-xs font-bold text-emerald-700">
+              Capture meeting note
+            </Link>
+            <span className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-xs font-bold text-amber-700">
+              Mark role missing
+            </span>
+          </div>
+        </div>
+      )}
       {coverage.warnings.length > 0 && (
         <div className="mt-3 rounded-lg border border-amber-100 bg-amber-50 p-3">
           <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Coverage warnings</p>
@@ -2779,19 +2897,63 @@ function StakeholderMap({ opportunity, stakeholders }: { opportunity: CrmLiteOpp
           </ul>
         </div>
       )}
-      {stakeholders.length === 0 ? (
-        <p className="mt-3 text-sm text-gray-500">No stakeholders mapped to this opportunity/account yet.</p>
-      ) : (
-        <div className="mt-3 space-y-2">
-          {stakeholders.slice(0, 6).map((stakeholder) => (
-            <div key={stakeholder.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
-              <p className="text-sm font-bold text-navy">{stakeholder.name}</p>
-              <p className="mt-1 text-xs font-semibold text-gray-500">
-                {stakeholder.stakeholderRole} | {stakeholder.influenceLevel} influence | {stakeholder.stance}
-              </p>
-              {stakeholder.notes && <p className="mt-1 line-clamp-2 text-xs leading-5 text-gray-500">{stakeholder.notes}</p>}
+      {meddicMap.missingRoles.length > 0 && (
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {meddicMap.missingRoles.map((missing) => (
+            <div key={missing.role} className="rounded-lg border border-orange-100 bg-white p-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-orange-700">Missing evidence</p>
+              <p className="mt-1 text-sm font-bold text-navy">{missing.role}</p>
+              <p className="mt-1 text-xs leading-5 text-gray-500">{missing.reason}</p>
             </div>
           ))}
+        </div>
+      )}
+      {meddicMap.items.length === 0 ? (
+        <p className="mt-3 text-sm text-gray-500">No stakeholders mapped to this opportunity/account yet.</p>
+      ) : (
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {meddicMap.items.slice(0, 8).map((stakeholder) => (
+            <div key={stakeholder.stakeholderId || stakeholder.name} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-bold text-navy">{stakeholder.name}</p>
+                <Badge label={stakeholder.role} tone={stakeholder.role === 'Blocker' ? 'red' : stakeholder.role === 'Champion' ? 'green' : 'blue'} />
+                <Badge label={stakeholder.confidence} tone={stakeholder.confidence === 'confirmed' ? 'green' : stakeholder.confidence === 'inferred' ? 'amber' : 'gray'} />
+              </div>
+              <p className="mt-1 text-xs font-semibold text-gray-500">
+                {stakeholder.influenceLevel} influence | {stakeholder.relationshipStrength} relationship | {stakeholder.stance}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">Last: {formatMeddicStakeholderDate(stakeholder.lastInteractionDate)}</p>
+              {stakeholder.evidenceNote && <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-500">{stakeholder.evidenceNote}</p>}
+              {stakeholder.openObjection && <p className="mt-2 rounded-md bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">Objection: {stakeholder.openObjection}</p>}
+              {stakeholder.nextAction && <p className="mt-2 rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-brand-blue">Next: {stakeholder.nextAction}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+      {(meddicMap.relationshipRisks.length > 0 || meddicMap.stakeholderNextActions.length > 0) && (
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          <div className="rounded-lg border border-red-100 bg-white p-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-red-700">Relationship risk</p>
+            {meddicMap.relationshipRisks.length === 0 ? (
+              <p className="mt-1 text-sm text-gray-500">No stakeholder relationship risk detected.</p>
+            ) : (
+              <ul className="mt-2 space-y-1 text-xs leading-5 text-gray-600">
+                {meddicMap.relationshipRisks.map((risk) => <li key={risk}>- {risk}</li>)}
+              </ul>
+            )}
+          </div>
+          <div className="rounded-lg border border-blue-100 bg-white p-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">Stakeholder next action</p>
+            {meddicMap.stakeholderNextActions.length === 0 ? (
+              <p className="mt-1 text-sm text-gray-500">No stakeholder-specific next action captured.</p>
+            ) : (
+              <ul className="mt-2 space-y-1 text-xs leading-5 text-gray-600">
+                {meddicMap.stakeholderNextActions.slice(0, 3).map((action) => (
+                  <li key={`${action.stakeholderName}-${action.action}`}>- {action.stakeholderName}: {action.action}{action.dueDate ? ` (${formatSafeBusinessDate(action.dueDate)})` : ''}</li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       )}
     </section>
@@ -3148,6 +3310,100 @@ function RecommendedActionPlanPanel({
   );
 }
 
+function OpportunityOutcomeRetroPanel({
+  opportunity,
+  outcomes,
+  onSaveOutcome,
+}: {
+  opportunity: CrmLiteOpportunity;
+  outcomes: OpportunityOutcomeRecord[];
+  onSaveOutcome: (draft: OpportunityOutcomeDraft) => void;
+}) {
+  const [draft, setDraft] = useState<OpportunityOutcomeDraft>(() => buildOpportunityOutcomeDraft(opportunity));
+  const [open, setOpen] = useState(outcomes.length === 0);
+
+  useEffect(() => {
+    setDraft(buildOpportunityOutcomeDraft(opportunity));
+  }, [opportunity]);
+
+  const update = <Key extends keyof OpportunityOutcomeDraft>(key: Key, value: OpportunityOutcomeDraft[Key]) => {
+    setDraft((current) => ({ ...current, [key]: value }));
+  };
+
+  return (
+    <section className="mt-5 rounded-lg border border-indigo-100 bg-indigo-50/70 p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-700">Closed-loop learning</p>
+          <h3 className="mt-1 text-base font-bold text-navy">Record win/loss/delay retro</h3>
+          <p className="mt-1 text-sm leading-6 text-indigo-900/75">
+            Mark the outcome and capture what Memoire should learn. This is not a heavy CRM close process.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((current) => !current)}
+          className="rounded-full border border-indigo-200 bg-white px-3 py-1.5 text-xs font-bold text-indigo-700"
+        >
+          {open ? 'Hide retro form' : 'Mark outcome'}
+        </button>
+      </div>
+
+      {open && (
+        <div className="mt-4 grid gap-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <SelectField label="Outcome" value={draft.outcome} options={opportunityOutcomeOptions} onChange={(value) => update('outcome', value)} />
+            <Field label="Outcome date" type="date" value={draft.outcomeDate} onChange={(value) => update('outcomeDate', value)} />
+            <Field
+              label="Final amount"
+              type="number"
+              value={draft.finalAmount?.toString() || ''}
+              onChange={(value) => update('finalAmount', value ? Number(value) : null)}
+            />
+            <Field label="Currency" value={draft.currency} onChange={(value) => update('currency', value)} />
+            <SelectField label="Reason category" value={draft.reasonCategory} options={opportunityOutcomeReasonCategories} onChange={(value) => update('reasonCategory', value)} />
+            <Field label="Which stakeholder mattered?" value={draft.decisiveStakeholder || ''} onChange={(value) => update('decisiveStakeholder', value)} />
+          </div>
+          <TextArea label="Why did this happen?" value={draft.reasonText} onChange={(value) => update('reasonText', value)} />
+          <TextArea label="Which objection mattered?" value={draft.objectionThatMattered || ''} onChange={(value) => update('objectionThatMattered', value)} />
+          <TextArea label="What evidence was missing?" value={draft.evidenceThatWasMissing || ''} onChange={(value) => update('evidenceThatWasMissing', value)} />
+          <TextArea label="What should I do differently next time?" value={draft.lessonLearned || ''} onChange={(value) => update('lessonLearned', value)} />
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onSaveOutcome(draft)}
+              className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Save outcome retro
+            </button>
+            <p className="text-xs font-semibold text-indigo-800">
+              Previous forecast snapshot: {opportunity.forecastEvidenceCategory} / {opportunity.decisionRecommendation} / {opportunity.stage}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {outcomes.length > 0 && (
+        <div className="mt-4 space-y-2">
+          <p className="text-xs font-bold uppercase tracking-wide text-indigo-700">Recent retros</p>
+          {outcomes.slice(0, 3).map((outcome) => (
+            <div key={outcome.id} className="rounded-lg bg-white p-3 text-sm ring-1 ring-indigo-100">
+              <div className="flex flex-wrap gap-2">
+                <Badge label={outcome.outcome} tone={outcome.outcome === 'Won' ? 'green' : outcome.outcome === 'Lost' ? 'red' : 'amber'} />
+                <Badge label={formatSafeBusinessDate(outcome.outcomeDate)} tone="gray" />
+                <Badge label={outcome.reasonCategory} tone="blue" />
+              </div>
+              <p className="mt-2 font-semibold text-navy">{outcome.reasonText || 'Retro note not captured yet.'}</p>
+              {outcome.lessonLearned && <p className="mt-1 text-gray-600">Lesson: {outcome.lessonLearned}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function ActionOutcomeHistory({
   opportunity,
   actionOutcomes,
@@ -3436,7 +3692,7 @@ function buildOpportunityCommercialSummary(
   const opportunityQuotes = getQuotesForOpportunity(quotes, opportunity);
   const actionQuotes = [...opportunityQuotes]
     .filter((quote) => ['Sent', 'Revised', 'Accepted'].includes(quote.status))
-    .sort((left, right) => quoteActionRank(right) - quoteActionRank(left) || quoteDateSortValue(left.validUntil) - quoteDateSortValue(right.validUntil));
+    .sort((left, right) => quoteActionRank(right) - quoteActionRank(left) || compareSafeBusinessDate(left.validUntil, right.validUntil));
   const topQuote = actionQuotes[0] || opportunityQuotes[0] || null;
   const topRisk = topQuote ? getQuoteRisk(topQuote) : null;
   const activeQuotes = opportunityQuotes.filter((quote) => quote.status === 'Sent' || quote.status === 'Revised').length;
@@ -3448,7 +3704,7 @@ function buildOpportunityCommercialSummary(
     activeQuotes,
     acceptedQuotes,
     atRiskQuotes,
-    quotedValue: opportunityQuotes.reduce((total, quote) => total + (quote.amount || 0), 0),
+    quotedValue: sumMoneyInBase(opportunityQuotes),
     topQuote,
     topRisk,
     label: acceptedQuotes > 0
@@ -3491,12 +3747,6 @@ function quoteActionRank(quote: QuoteRecord) {
   return 1;
 }
 
-function quoteDateSortValue(dateKey: string) {
-  if (!dateKey) return Number.POSITIVE_INFINITY;
-  const time = new Date(`${dateKey}T00:00:00`).getTime();
-  return Number.isFinite(time) ? time : Number.POSITIVE_INFINITY;
-}
-
 function normalizeText(value?: string) {
   return (value || '').trim().toLowerCase();
 }
@@ -3528,7 +3778,10 @@ function summarizeForecastDimension(
     if (!label) return;
     const current = byLabel.get(label) || { label, count: 0, fy26Total: 0 };
     current.count += 1;
-    current.fy26Total += opportunity.fy26Value || opportunity.estimatedValue || 0;
+    current.fy26Total += sumMoneyInBase([{
+      amount: opportunity.fy26Value || opportunity.estimatedValue || 0,
+      currency: opportunity.currency,
+    }]);
     byLabel.set(label, current);
   });
 
@@ -3538,7 +3791,10 @@ function summarizeForecastDimension(
 }
 
 function sumOpportunityValue(opportunities: CrmLiteOpportunity[], field: 'fy26Value' | 'fy27Value') {
-  return opportunities.reduce((total, opportunity) => total + (opportunity[field] || 0), 0);
+  return sumMoneyInBase(opportunities.map((opportunity) => ({
+    amount: opportunity[field],
+    currency: opportunity.currency,
+  })));
 }
 
 function isFounderImportedOpportunity(opportunity: CrmLiteOpportunity) {
@@ -3601,7 +3857,7 @@ function getOpportunitySortValue(row: OpportunityMasterRow, sortKey: Opportunity
     case 'recommendation':
       return decisionRecommendations.indexOf(opportunity.decisionRecommendation);
     case 'nextActionDate':
-      return opportunity.nextActionDate || '9999-12-31';
+      return sanitizeBusinessDate(opportunity.nextActionDate) || '9999-12-31';
     case 'quality':
       return { Healthy: 0, 'Needs cleanup': 1, 'High risk': 2 }[row.quality.status];
     case 'updatedAt':
@@ -3611,19 +3867,14 @@ function getOpportunitySortValue(row: OpportunityMasterRow, sortKey: Opportunity
 
 function formatOpportunityDate(value: string) {
   if (!value) return 'Not set';
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
-    ? new Date(`${value}T00:00:00`)
-    : new Date(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return formatSafeBusinessDate(value);
+  const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function isPastDate(value: string) {
-  if (!value) return false;
-  const date = new Date(`${value}T00:00:00`);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return date < today;
+  return isBusinessDateOverdue(value);
 }
 
 function opportunityToForm(opportunity: CrmLiteOpportunity): OpportunityFormInput {
@@ -3695,7 +3946,7 @@ function formatDate(date: Date) {
 function getLinkedActivities(opportunity: CrmLiteOpportunity, activities: SalesActivityRecord[]) {
   return activities
     .filter((activity) => activity.linkStatus === 'Linked' && activity.linkedOpportunityId === opportunity.id)
-    .sort((a, b) => `${b.activityDate}-${b.createdAt}`.localeCompare(`${a.activityDate}-${a.createdAt}`));
+    .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate) || b.createdAt.localeCompare(a.createdAt));
 }
 
 function forecastTone(category: string) {

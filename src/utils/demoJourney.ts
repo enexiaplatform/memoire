@@ -4,7 +4,7 @@ export const DEMO_JOURNEY_PROGRESS_KEY = 'memoire.demoJourney.progress';
 export const DEMO_JOURNEY_COMPLETED_KEY = 'memoire.demoJourney.completed';
 export const DEMO_JOURNEY_UPDATED_EVENT = 'memoire:demo-journey-updated';
 
-export type DemoJourneyStepId = 'review-signals' | 'open-defense' | 'finish-review-pack';
+export type DemoJourneyStepId = 'review-today' | 'paste-evidence' | 'open-defense' | 'finish-review-pack';
 
 export type DemoJourneyCompletion = {
   completedAt: string;
@@ -26,16 +26,23 @@ export type DemoJourneyStep = {
 
 export const demoJourneySteps: DemoJourneyStep[] = [
   {
-    id: 'review-signals',
-    title: 'Review pipeline signals',
-    description: 'See which sample deals are defensible, weak, stale, or missing evidence before weekly review.',
-    href: '/app/dashboard',
-    cta: 'Review signals',
+    id: 'review-today',
+    title: 'Open Today',
+    description: 'See Top 3 actions, proactive nudges, overdue follow-ups, and missing evidence before Monday pipeline review.',
+    href: '/app/today',
+    cta: 'Open Today',
+  },
+  {
+    id: 'paste-evidence',
+    title: 'Paste sales evidence',
+    description: 'Use Capture as evidence input: paste a note or email thread, then confirm account, contact, opportunity, next action, and due date.',
+    href: '/app/capture?mode=email',
+    cta: 'Paste email/thread',
   },
   {
     id: 'open-defense',
     title: 'Open Pipeline Defense',
-    description: 'Review the manager-ready Defend, Rescue, and Downgrade recommendation built from the sample pipeline.',
+    description: 'Review defend, rescue, downgrade, missing evidence, MEDDIC gaps, and outcome learning risk signals.',
     href: '/app/pipeline-defense',
     cta: 'Open Pipeline Defense',
   },

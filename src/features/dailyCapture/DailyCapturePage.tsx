@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertTriangle, Bot, CalendarDays, CheckCircle2, Clipboard, Copy, Loader2, NotebookPen, Save, Sparkles, Trash2 } from 'lucide-react';
+import { AlertTriangle, Bot, CalendarDays, Clipboard, Copy, Loader2, Mail, NotebookPen, Save, Sparkles, Trash2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -18,17 +18,38 @@ import { type AccountMemoryRecord } from '../../services/accountStore';
 import { createStakeholder, type StakeholderRecord } from '../../services/stakeholderStore';
 import { createObjection, type ObjectionRecord } from '../../services/objectionStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
-import { CaptureAiProviderError, getActiveCaptureAiProvider, type CaptureAiSuggestion } from '../../services/captureAiProvider';
+import { getActiveCaptureAiProvider, type CaptureAiSuggestion } from '../../services/captureAiProvider';
 import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
 import { applyOpportunityUpdateSuggestion, suggestOpportunityLinks, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 import { deriveStakeholderCandidateFromCapture } from '../../utils/stakeholderGraph';
 import { buildObjectionFromActivity, detectObjectionCandidatesFromActivity } from '../../utils/objectionLedger';
 import { markPipelineReviewHabitStepComplete } from '../../utils/pipelineReviewHabit';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
+import { markDemoJourneyStepComplete } from '../../utils/demoJourney';
+import { formatSafeBusinessDate, isValidBusinessDate, sanitizeBusinessDate } from '../../utils/safeDate.ts';
+import {
+  buildEmailThreadIngestion,
+  buildIngestionSourceTags,
+  composeIngestionParserText,
+  type IngestedSourceItem,
+} from '../../utils/ingestionSource.ts';
+import {
+  addCaptureAccountAlias,
+  buildCaptureCorrectionEvents,
+  clearLocalCaptureCorrectionMemory,
+  deleteCaptureAccountAlias,
+  deleteCaptureCorrection,
+  loadCaptureAccountAliases,
+  loadCaptureCorrections,
+  recordCaptureCorrections,
+  type CaptureAccountAlias,
+  type CaptureCorrectionEvent,
+} from '../../services/captureCorrectionMemoryStore';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type AiState = 'idle' | 'loading' | 'ready' | 'error';
-type CaptureMode = 'note' | 'quick';
+type ParseSource = 'local' | 'ai';
+type CaptureMode = 'note' | 'quick' | 'email';
 type QuickInteractionType =
   | 'Customer meeting'
   | 'Dealer call'
@@ -56,6 +77,16 @@ type QuickCaptureForm = {
   dueDate: string;
   signalType: QuickSignalType;
   activityDate: string;
+};
+type EmailThreadCaptureForm = {
+  sourceType: 'pasted-email' | 'pasted-thread';
+  subject: string;
+  sender: string;
+  recipients: string;
+  body: string;
+  sourceDate: string;
+  accountHint: string;
+  opportunityHint: string;
 };
 
 const activityTypes: SalesActivityType[] = [
@@ -164,9 +195,15 @@ export function DailyCapturePage() {
   const searchParamsKey = searchParams.toString();
   const [rawNote, setRawNote] = useState('');
   const [activityDate, setActivityDate] = useState(() => getQueryDate(searchParams) || todayKey());
-  const [captureMode, setCaptureMode] = useState<CaptureMode>(() => searchParams.get('mode') === 'quick' ? 'quick' : 'note');
+  const [captureMode, setCaptureMode] = useState<CaptureMode>(() => {
+    const mode = searchParams.get('mode');
+    if (mode === 'quick') return 'quick';
+    if (mode === 'email') return 'email';
+    return 'note';
+  });
   const [quickTemplateId, setQuickTemplateId] = useState(quickTemplates[0].id);
   const [quickForm, setQuickForm] = useState<QuickCaptureForm>(() => createInitialQuickCaptureForm(searchParams));
+  const [emailForm, setEmailForm] = useState<EmailThreadCaptureForm>(() => createInitialEmailThreadCaptureForm(searchParams));
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
@@ -182,16 +219,136 @@ export function DailyCapturePage() {
   const [aiMessage, setAiMessage] = useState('');
   const [aiSuggestion, setAiSuggestion] = useState<CaptureAiSuggestion | null>(null);
   const [structuredDraft, setStructuredDraft] = useState<ClassifiedSalesActivity | null>(null);
+  const [originalParsedDraft, setOriginalParsedDraft] = useState<ClassifiedSalesActivity | null>(null);
+  const [captureCorrections, setCaptureCorrections] = useState<CaptureCorrectionEvent[]>([]);
+  const [accountAliases, setAccountAliases] = useState<CaptureAccountAlias[]>([]);
+  const [newAlias, setNewAlias] = useState('');
+  const [newAliasAccount, setNewAliasAccount] = useState('');
+  const [parseSource, setParseSource] = useState<ParseSource>('local');
+  const aiRequestVersion = useRef(0);
   const [copiedId, setCopiedId] = useState('');
   const aiProvider = useMemo(() => getActiveCaptureAiProvider(), []);
   const aiConfigured = aiProvider.isConfigured() && isAuthenticated;
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
+  useEffect(() => {
+    setCaptureCorrections(loadCaptureCorrections(user?.id));
+    setAccountAliases(loadCaptureAccountAliases(user?.id));
+  }, [user?.id]);
+
+  const emailSourceItem = useMemo(() => {
+    if (emailForm.body.trim().length < 8) return null;
+    return buildEmailThreadIngestion({
+      sourceType: emailForm.sourceType,
+      subject: emailForm.subject,
+      sender: emailForm.sender,
+      recipients: emailForm.recipients,
+      body: emailForm.body,
+      sourceDate: emailForm.sourceDate,
+      accountHint: emailForm.accountHint,
+      opportunityHint: emailForm.opportunityHint,
+      userId: user?.id,
+    });
+  }, [emailForm, user?.id]);
+  const activeSourceItem: IngestedSourceItem | null = captureMode === 'email' ? emailSourceItem : null;
+  const activeActivityDate = captureMode === 'email'
+    ? sanitizeBusinessDate(emailForm.sourceDate) || activityDate
+    : activityDate;
+  const activeCaptureText = captureMode === 'email' && emailSourceItem
+    ? composeIngestionParserText(emailSourceItem, {
+      accountHint: emailForm.accountHint,
+      opportunityHint: emailForm.opportunityHint,
+    })
+    : rawNote.trim();
+
   const localPreview = useMemo(() => {
-    return rawNote.trim().length >= 8 ? classifySalesActivity(rawNote, activityDate, { accounts, opportunities }) : null;
-  }, [accounts, activityDate, opportunities, rawNote]);
+    return captureMode !== 'quick' && activeCaptureText.trim().length >= 8
+      ? classifySalesActivity(activeCaptureText, activeActivityDate, {
+        accounts,
+        opportunities,
+        corrections: captureCorrections,
+        aliases: accountAliases,
+        ...(activeSourceItem ? { source: activeSourceItem } : {}),
+      })
+      : null;
+  }, [accountAliases, accounts, activeActivityDate, activeCaptureText, activeSourceItem, captureCorrections, captureMode, opportunities]);
   const preview = structuredDraft || localPreview;
+  const needsConfirmation = parseSource === 'local' || aiSuggestion?.confidence === 'Low' || !preview?.accountName;
+
+  const runAiClassification = useCallback(async () => {
+    const note = activeCaptureText.trim();
+    if (!aiConfigured || note.length < 8 || !isValidBusinessDate(activeActivityDate)) {
+      setParseSource('local');
+      setAiState('error');
+      setAiMessage('AI unavailable — using local fallback. Please review before saving.');
+      return false;
+    }
+
+    const requestVersion = ++aiRequestVersion.current;
+    setAiState('loading');
+    setAiMessage('AI is parsing this note...');
+    try {
+      const suggestion = await aiProvider.classifyCapture({
+        rawNote: note,
+        activityDate: activeActivityDate,
+        opportunities: opportunities.map((opportunity) => ({
+          id: opportunity.id,
+          accountName: opportunity.accountName,
+          opportunityName: opportunity.opportunityName,
+          stage: opportunity.stage,
+          productOrSolution: opportunity.productOrSolution,
+        })),
+        accounts: accounts.map((account) => ({
+          id: account.id,
+          accountName: account.accountName,
+          segment: account.segment,
+          industry: account.industry,
+        })),
+        corrections: captureCorrections,
+        aliases: accountAliases,
+      });
+      if (requestVersion !== aiRequestVersion.current) return false;
+
+      setAiSuggestion(suggestion);
+      const parsedDraft = withCaptureSourceMetadata(
+        aiSuggestionToClassified(suggestion, note, activeActivityDate, 'ai'),
+        activeSourceItem,
+      );
+      setStructuredDraft(parsedDraft);
+      setOriginalParsedDraft(cloneClassifiedDraft(parsedDraft));
+      setParseSource('ai');
+      setAiState('ready');
+      setAiMessage(suggestion.confidence === 'Low'
+        ? 'AI parsed — needs confirmation. Review the fields before saving.'
+        : 'AI parsed. Review the fields before saving.');
+      return true;
+    } catch {
+      if (requestVersion !== aiRequestVersion.current) return false;
+      setAiSuggestion(null);
+      setStructuredDraft(null);
+      setOriginalParsedDraft(null);
+      setParseSource('local');
+      setAiState('error');
+      setAiMessage('AI unavailable — using local fallback. Please review before saving.');
+      return false;
+    }
+  }, [accountAliases, accounts, activeActivityDate, activeCaptureText, activeSourceItem, aiConfigured, aiProvider, captureCorrections, opportunities]);
+
+  useEffect(() => {
+    if ((captureMode !== 'note' && captureMode !== 'email') || activeCaptureText.trim().length < 8) return;
+    if (!aiConfigured) {
+      setParseSource('local');
+      setAiMessage('AI unavailable — using local fallback. Please review before saving.');
+      return;
+    }
+
+    const timer = window.setTimeout(() => void runAiClassification(), 650);
+    return () => {
+      window.clearTimeout(timer);
+      aiRequestVersion.current += 1;
+    };
+  }, [activeCaptureText, aiConfigured, captureMode, runAiClassification]);
 
   const refreshActivities = async () => {
     const cachedData = getCachedSalesWorkspaceData(dataUserId);
@@ -221,7 +378,8 @@ export function DailyCapturePage() {
   }, [dataUserId]);
 
   useEffect(() => {
-    const nextMode = searchParams.get('mode') === 'quick' ? 'quick' : 'note';
+    const mode = searchParams.get('mode');
+    const nextMode: CaptureMode = mode === 'quick' ? 'quick' : mode === 'email' ? 'email' : 'note';
     const queryDate = getQueryDate(searchParams);
     if (nextMode === 'quick') {
       setCaptureMode('quick');
@@ -232,12 +390,40 @@ export function DailyCapturePage() {
         activityDate: queryDate || current.activityDate,
       }));
       if (queryDate) setActivityDate(queryDate);
+    } else if (nextMode === 'email') {
+      setCaptureMode('email');
+      setEmailForm((current) => ({
+        ...current,
+        sourceDate: queryDate || current.sourceDate,
+        accountHint: searchParams.get('account') || current.accountHint,
+        opportunityHint: searchParams.get('opportunity') || current.opportunityHint,
+      }));
+      if (queryDate) setActivityDate(queryDate);
     }
   }, [searchParams, searchParamsKey]);
 
   const handleSave = async () => {
-    if (rawNote.trim().length < 8 || !preview) {
+    const captureText = activeCaptureText.trim();
+    if (captureText.length < 8 || !preview) {
       setMessage('Capture a short sales activity first.');
+      setSaveState('error');
+      return;
+    }
+    if (aiConfigured && parseSource !== 'ai' && aiState !== 'error') {
+      if (aiState === 'loading') {
+        setMessage('AI is still parsing. Review the AI parsed draft when it appears.');
+        setSaveState('error');
+        return;
+      }
+      const parsed = await runAiClassification();
+      setMessage(parsed
+        ? 'AI parsed. Confirm or correct the structured fields, then save again.'
+        : 'AI unavailable — using local fallback. Please review before saving.');
+      setSaveState('error');
+      return;
+    }
+    if (!isValidBusinessDate(activeActivityDate) || (preview.dueDate && !isValidBusinessDate(preview.dueDate)) || preview.nextActions?.some((action) => action.dueDate && !isValidBusinessDate(action.dueDate))) {
+      setMessage('Needs date correction before this activity can be saved.');
       setSaveState('error');
       return;
     }
@@ -245,28 +431,50 @@ export function DailyCapturePage() {
     setSaveState('saving');
     setMessage('Saving activity...');
     const classified: ClassifiedSalesActivity = {
-      ...preview,
-      rawNote: rawNote.trim(),
-      activityDate,
-      tags: normalizeTags(preview.tags),
+      ...withCaptureSourceMetadata(preview, activeSourceItem),
+      rawNote: captureText,
+      activityDate: activeActivityDate,
+      tags: mergeSourceTags(normalizeTags([parseSource === 'ai' ? 'ai-parsed' : 'local-fallback', ...preview.tags]), activeSourceItem),
     };
+    const corrections = buildCaptureCorrectionEvents({
+      original: originalParsedDraft || localPreview || classified,
+      corrected: classified,
+      source: parseSource === 'ai' ? 'ai' : 'local-fallback',
+      rawNote: captureText,
+      userId: user?.id,
+    });
     const result = await saveSalesActivity(classified, dataUserId);
+    const memory = recordCaptureCorrections(corrections, user?.id);
+    setCaptureCorrections(memory.corrections);
+    setAccountAliases(memory.aliases);
     setActivities((current) => [result.record, ...current.filter((item) => item.id !== result.record.id)]);
     setLastSavedActivity(result.record);
     setRawNote('');
+    setEmailForm(createInitialEmailThreadCaptureForm(searchParams));
     setStructuredDraft(null);
+    setOriginalParsedDraft(null);
+    setOriginalParsedDraft(null);
     setAiSuggestion(null);
     setAiMessage('');
     setAiState('idle');
+    setParseSource('local');
     setSaveState(result.warning ? 'error' : 'saved');
     setMessage(result.warning || (result.mode === 'cloud' ? 'Synced to your account.' : 'Saved locally in this browser.'));
     markTrialActivationChecklistItemComplete('capture-update');
     markPipelineReviewHabitStepComplete('capturedUpdatesAt');
+    if (activeSourceItem?.sourceType === 'pasted-email' || activeSourceItem?.sourceType === 'pasted-thread') {
+      markDemoJourneyStepComplete('paste-evidence', 'Pasted email/thread evidence captured');
+    }
     setStakeholderSuggestionDismissed(false);
     setObjectionSuggestionDismissed(false);
   };
 
   const handleQuickSave = async () => {
+    if (!isValidBusinessDate(quickForm.activityDate) || (quickForm.dueDate && !isValidBusinessDate(quickForm.dueDate))) {
+      setMessage('Needs date correction before this activity can be saved.');
+      setSaveState('error');
+      return;
+    }
     const prepared = buildQuickCaptureActivity(quickForm);
     if (!prepared) {
       setMessage('Add an account and a short update before saving quick capture.');
@@ -309,67 +517,48 @@ export function DailyCapturePage() {
     }));
   };
 
-  const handleClassifyWithAi = async () => {
-    if (!aiConfigured) {
-      setAiState('error');
-      setAiMessage('AI Assist unavailable - using local rules.');
-      return;
-    }
-    if (rawNote.trim().length < 8) {
-      setAiState('error');
-      setAiMessage('Capture a short sales activity first.');
-      return;
-    }
-
-    setAiState('loading');
-    setAiMessage('Classifying with AI Assist...');
-    try {
-      const suggestion = await aiProvider.classifyCapture({
-        rawNote: rawNote.trim(),
-        activityDate,
-        opportunities: opportunities.map((opportunity) => ({
-          id: opportunity.id,
-          accountName: opportunity.accountName,
-          opportunityName: opportunity.opportunityName,
-          stage: opportunity.stage,
-          productOrSolution: opportunity.productOrSolution,
-        })),
-        accounts: accounts.map((account) => ({
-          id: account.id,
-          accountName: account.accountName,
-          segment: account.segment,
-          industry: account.industry,
-        })),
-      });
-      setAiSuggestion(suggestion);
-      setAiState('ready');
-      setAiMessage('AI suggestion ready. Review it before accepting.');
-    } catch (error) {
-      setAiState('error');
-      setAiMessage(error instanceof CaptureAiProviderError && error.status === 503
-        ? 'AI Assist is not configured on the server. Local rules are still available.'
-        : error instanceof CaptureAiProviderError && error.status === 401
-          ? 'Sign in to use AI Assist. Local rules are still available.'
-        : 'AI Assist failed. Local rules are still available.');
-    }
+  const resetParserState = () => {
+    aiRequestVersion.current += 1;
+    setStructuredDraft(null);
+    setOriginalParsedDraft(null);
+    setAiSuggestion(null);
+    setAiState('idle');
+    setParseSource('local');
+    setAiMessage('');
+    setSaveState('idle');
+    setMessage('');
   };
 
-  const acceptAiSuggestion = () => {
-    if (!aiSuggestion) return;
-    setStructuredDraft(aiSuggestionToClassified(aiSuggestion, rawNote, activityDate));
-    setAiMessage('AI suggestion applied to the editable structured preview.');
+  const updateEmailForm = (patch: Partial<EmailThreadCaptureForm>) => {
+    setEmailForm((current) => ({ ...current, ...patch }));
+    resetParserState();
   };
 
   const updateDraft = <Key extends keyof ClassifiedSalesActivity>(key: Key, value: ClassifiedSalesActivity[Key]) => {
     if (!preview) return;
+    if (!originalParsedDraft) setOriginalParsedDraft(cloneClassifiedDraft(preview));
     setStructuredDraft({
       ...preview,
-      rawNote: rawNote.trim(),
-      activityDate,
+      rawNote: activeCaptureText.trim(),
+      activityDate: activeActivityDate,
       [key]: value,
     });
     setSaveState('idle');
     setMessage('');
+  };
+
+  const handleAddAlias = () => {
+    const next = addCaptureAccountAlias({
+      alias: newAlias,
+      canonicalAccountName: newAliasAccount,
+      source: 'manual',
+      userId: user?.id,
+    });
+    setAccountAliases(next);
+    if (next.some((item) => item.alias.toLowerCase() === newAlias.trim().toLowerCase())) {
+      setNewAlias('');
+      setNewAliasAccount('');
+    }
   };
 
   const handleDelete = async (activity: SalesActivityRecord) => {
@@ -452,7 +641,7 @@ export function DailyCapturePage() {
       email: '',
       phone: '',
       notes: candidate.notes,
-      tags: ['from-capture'],
+      tags: ['from-capture', 'role-needs-confirmation'],
       lastInteractionDate: candidate.lastInteractionDate,
     }, dataUserId);
     setStakeholders((current) => [result.stakeholder, ...current.filter((item) => item.id !== result.stakeholder.id)]);
@@ -509,7 +698,7 @@ export function DailyCapturePage() {
       </header>
 
       <section className="rounded-lg border border-gray-200 bg-white p-2 shadow-sm">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
           <button
             type="button"
             onClick={() => setCaptureMode('quick')}
@@ -523,6 +712,13 @@ export function DailyCapturePage() {
             className={`rounded-lg px-4 py-3 text-sm font-bold ${captureMode === 'note' ? 'bg-navy text-white' : 'bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-brand-blue'}`}
           >
             Full Note + AI Assist
+          </button>
+          <button
+            type="button"
+            onClick={() => setCaptureMode('email')}
+            className={`rounded-lg px-4 py-3 text-sm font-bold ${captureMode === 'email' ? 'bg-navy text-white' : 'bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-brand-blue'}`}
+          >
+            Paste Email / Thread
           </button>
         </div>
       </section>
@@ -547,10 +743,13 @@ export function DailyCapturePage() {
             <textarea
               value={rawNote}
               onChange={(event) => {
+                aiRequestVersion.current += 1;
                 setRawNote(event.target.value);
                 setStructuredDraft(null);
+                setOriginalParsedDraft(null);
                 setAiSuggestion(null);
                 setAiState('idle');
+                setParseSource('local');
                 setAiMessage('');
                 setSaveState('idle');
                 setMessage('');
@@ -566,14 +765,22 @@ export function DailyCapturePage() {
               <input
                 type="date"
                 value={activityDate}
-                onChange={(event) => setActivityDate(event.target.value)}
+                onChange={(event) => {
+                  aiRequestVersion.current += 1;
+                  setActivityDate(event.target.value);
+                  setStructuredDraft(null);
+                  setOriginalParsedDraft(null);
+                  setAiSuggestion(null);
+                  setAiState('idle');
+                  setParseSource('local');
+                }}
                 className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
               />
             </label>
             <button
               type="button"
               onClick={handleSave}
-              disabled={saveState === 'saving'}
+              disabled={saveState === 'saving' || (aiConfigured && aiState === 'loading')}
               className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-navy px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saveState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -583,15 +790,15 @@ export function DailyCapturePage() {
               <div className="flex items-center gap-2">
                 <Bot className="h-4 w-4 text-brand-blue" />
                 <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                  {aiConfigured ? `AI Assist: ${aiProvider.label}` : 'AI Assist unavailable'}
+                  {aiConfigured ? `AI default: ${aiProvider.label}` : 'Local fallback'}
                 </p>
               </div>
               <p className="mt-2 text-xs leading-5 text-gray-500">
                 {aiConfigured
-                  ? 'Optional AI classification. You review before saving.'
+                  ? 'AI parses Full Notes automatically. Confirm or correct every field before saving.'
                   : isAuthenticated
-                    ? 'Using local rules until an AI provider is configured.'
-                    : 'Using local rules. Sign in to use configured AI Assist.'}
+                    ? 'AI unavailable — using local fallback. Please review before saving.'
+                    : 'AI unavailable — using local fallback. Please review before saving.'}
               </p>
               {aiConfigured && (
                 <p className="mt-2 flex gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold leading-5 text-amber-800">
@@ -601,12 +808,12 @@ export function DailyCapturePage() {
               )}
               <button
                 type="button"
-                onClick={handleClassifyWithAi}
+                onClick={() => void runAiClassification()}
                 disabled={!aiConfigured || aiState === 'loading' || rawNote.trim().length < 8}
                 className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-2 text-xs font-bold text-brand-blue disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {aiState === 'loading' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                {aiState === 'loading' ? 'Classifying...' : 'Classify with AI'}
+                {aiState === 'loading' ? 'AI parsing...' : aiState === 'ready' ? 'Re-run AI parse' : 'Try AI parse'}
               </button>
             </div>
             {message && (
@@ -626,19 +833,196 @@ export function DailyCapturePage() {
           </div>
         </div>
 
-        {aiSuggestion && (
-          <AiSuggestionPanel suggestion={aiSuggestion} onAccept={acceptAiSuggestion} />
+        {preview && (
+          <div className="mt-5 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">Confirm and correct</p>
+                <p className="mt-1 text-xs text-blue-800">This reviewed structured draft is exactly what Save Activity will store.</p>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs font-bold">
+                <span className={`rounded-full px-2.5 py-1 ${parseSource === 'ai' ? 'bg-violet-100 text-violet-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {parseSource === 'ai' ? 'AI parsed' : 'Local fallback preview'}
+                </span>
+                {needsConfirmation && <span className="rounded-full bg-white px-2.5 py-1 text-amber-700 ring-1 ring-amber-200">Needs confirmation</span>}
+              </div>
+            </div>
+            <StructuredPreviewEditor preview={preview} parseSource={parseSource} onChange={updateDraft} />
+            {opportunities.length > 0 && (
+              <PreviewOpportunitySuggestions preview={previewToRecord(preview)} opportunities={opportunities} />
+            )}
+          </div>
         )}
+      </section>
+      )}
+
+      {captureMode === 'email' && (
+      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex items-start gap-3 rounded-lg border border-blue-100 bg-blue-50/60 p-3">
+          <Mail className="mt-0.5 h-4 w-4 shrink-0 text-brand-blue" />
+          <div>
+            <p className="text-sm font-bold text-blue-950">Paste Email / Thread</p>
+            <p className="mt-1 text-xs leading-5 text-blue-800">
+              Memoire keeps source metadata, parses only a safe excerpt, and routes this through the same AI-first confirm-and-correct flow. Calendar ingestion coming later; no Gmail, Calendar, Zalo, or CRM sync is added here.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_260px]">
+          <div className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-bold text-navy">Subject optional</span>
+                <input
+                  type="text"
+                  value={emailForm.subject}
+                  onChange={(event) => updateEmailForm({ subject: event.target.value })}
+                  placeholder="e.g. Pymepharco DCM comparison quote"
+                  className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm font-bold text-navy">Sender optional</span>
+                <input
+                  type="text"
+                  value={emailForm.sender}
+                  onChange={(event) => updateEmailForm({ sender: event.target.value })}
+                  placeholder="e.g. Ms. Nhu <nhu@pymepharco.vn>"
+                  className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm font-bold text-navy">Recipients optional</span>
+                <input
+                  type="text"
+                  value={emailForm.recipients}
+                  onChange={(event) => updateEmailForm({ recipients: event.target.value })}
+                  placeholder="To / Cc copied from thread"
+                  className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm font-bold text-navy">Source date optional</span>
+                <input
+                  type="date"
+                  value={emailForm.sourceDate}
+                  onChange={(event) => {
+                    updateEmailForm({ sourceDate: event.target.value });
+                    if (sanitizeBusinessDate(event.target.value)) setActivityDate(event.target.value);
+                  }}
+                  className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm font-bold text-navy">Account hint optional</span>
+                <input
+                  type="text"
+                  value={emailForm.accountHint}
+                  onChange={(event) => updateEmailForm({ accountHint: event.target.value })}
+                  placeholder="Only if the thread is ambiguous"
+                  className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm font-bold text-navy">Opportunity hint optional</span>
+                <input
+                  type="text"
+                  value={emailForm.opportunityHint}
+                  onChange={(event) => updateEmailForm({ opportunityHint: event.target.value })}
+                  placeholder="Existing deal/project only"
+                  className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                />
+              </label>
+            </div>
+            <label className="block">
+              <span className="text-sm font-bold text-navy">Email/thread body</span>
+              <textarea
+                value={emailForm.body}
+                onChange={(event) => updateEmailForm({ body: event.target.value })}
+                placeholder="Paste the email or copied thread here. Memoire will extract account, contacts, next action, due date, timeline, risk, buying signal, and commercial evidence without inventing opportunity names."
+                className="mt-2 min-h-[190px] w-full resize-y rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm leading-6 text-gray-900 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+              />
+            </label>
+          </div>
+
+          <div className="space-y-4">
+            <label className="block">
+              <span className="text-sm font-bold text-navy">Source type</span>
+              <select
+                value={emailForm.sourceType}
+                onChange={(event) => updateEmailForm({ sourceType: event.target.value as EmailThreadCaptureForm['sourceType'] })}
+                className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+              >
+                <option value="pasted-email">Pasted email</option>
+                <option value="pasted-thread">Pasted thread</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saveState === 'saving' || (aiConfigured && aiState === 'loading')}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-navy px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saveState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save Reviewed Evidence
+            </button>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+              <div className="flex items-center gap-2">
+                <Bot className="h-4 w-4 text-brand-blue" />
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                  {aiConfigured ? `AI default: ${aiProvider.label}` : 'Local fallback'}
+                </p>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-gray-500">
+                {aiConfigured
+                  ? 'AI parses pasted emails by default. Confirm or correct every field before saving.'
+                  : 'AI unavailable â€” using local fallback. Please review before saving.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => void runAiClassification()}
+                disabled={!aiConfigured || aiState === 'loading' || activeCaptureText.trim().length < 8}
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-2 text-xs font-bold text-brand-blue disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {aiState === 'loading' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                {aiState === 'loading' ? 'AI parsing...' : aiState === 'ready' ? 'Re-run AI parse' : 'Try AI parse'}
+              </button>
+            </div>
+            <div className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs font-semibold leading-5 text-amber-800">
+              Long thread guard: saved cards use structured evidence plus source excerpt/hash, not the full raw thread.
+            </div>
+            {message && (
+              <p className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                saveState === 'saved' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+              }`}>
+                {message}
+              </p>
+            )}
+            {aiMessage && (
+              <p className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                aiState === 'ready' ? 'bg-blue-50 text-blue-700' : aiState === 'error' ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-600'
+              }`}>
+                {aiMessage}
+              </p>
+            )}
+          </div>
+        </div>
 
         {preview && (
           <div className="mt-5 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">Structured preview</p>
-              <p className="text-xs font-semibold text-blue-700">
-                {structuredDraft ? 'Editable draft' : 'Local rules preview'}
-              </p>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">Confirm and correct</p>
+                <p className="mt-1 text-xs text-blue-800">This reviewed structured draft is exactly what Save Reviewed Evidence will store.</p>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs font-bold">
+                <span className={`rounded-full px-2.5 py-1 ${parseSource === 'ai' ? 'bg-violet-100 text-violet-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {parseSource === 'ai' ? 'AI parsed' : 'Local fallback preview'}
+                </span>
+                <span className="rounded-full bg-white px-2.5 py-1 text-blue-700 ring-1 ring-blue-200">{emailSourceItem?.sourceLabel || 'Source aware'}</span>
+                {needsConfirmation && <span className="rounded-full bg-white px-2.5 py-1 text-amber-700 ring-1 ring-amber-200">Needs confirmation</span>}
+              </div>
             </div>
-            <StructuredPreviewEditor preview={preview} onChange={updateDraft} />
+            <StructuredPreviewEditor preview={preview} parseSource={parseSource} onChange={updateDraft} />
             {opportunities.length > 0 && (
               <PreviewOpportunitySuggestions preview={previewToRecord(preview)} opportunities={opportunities} />
             )}
@@ -662,6 +1046,7 @@ export function DailyCapturePage() {
           <p className="text-sm font-bold text-blue-950">Create stakeholder from {stakeholderCandidate.name}?</p>
           <p className="mt-1 text-sm leading-6 text-blue-800">
             Memoire detected this person in the capture and can add them to {stakeholderCandidate.accountName || 'this account'} for stakeholder mapping.
+            Role starts as Unknown — Memoire will not auto-assign Champion or Economic Buyer unless explicit evidence is confirmed.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button type="button" onClick={createStakeholderFromLastActivity} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
@@ -691,6 +1076,62 @@ export function DailyCapturePage() {
           </div>
         </section>
       )}
+
+      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-navy">Capture Learning Memory</h2>
+            <p className="mt-1 text-sm text-gray-500">Local suggestions learned from fields you corrected before saving.</p>
+          </div>
+          {(captureCorrections.length > 0 || accountAliases.length > 0) && (
+            <button
+              type="button"
+              onClick={() => {
+                clearLocalCaptureCorrectionMemory(user?.id);
+                setCaptureCorrections([]);
+                setAccountAliases([]);
+              }}
+              className="rounded-full border border-red-200 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-50"
+            >
+              Clear all local memory
+            </button>
+          )}
+        </div>
+
+        <div className="mt-4 grid gap-5 lg:grid-cols-2">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Account aliases</p>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+              <input value={newAlias} onChange={(event) => setNewAlias(event.target.value)} placeholder="Alias, e.g. PME" className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+              <input value={newAliasAccount} onChange={(event) => setNewAliasAccount(event.target.value)} placeholder="Canonical account" className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+              <button type="button" onClick={handleAddAlias} disabled={!newAlias.trim() || !newAliasAccount.trim()} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Add</button>
+            </div>
+            <div className="mt-3 space-y-2">
+              {accountAliases.length === 0 ? <p className="text-sm text-gray-500">No aliases learned yet.</p> : accountAliases.slice(0, 10).map((alias) => (
+                <div key={alias.id} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm">
+                  <span><strong>{alias.alias}</strong> → {alias.canonicalAccountName}</span>
+                  <button type="button" onClick={() => setAccountAliases(deleteCaptureAccountAlias(alias.id, user?.id))} className="text-xs font-bold text-red-700">Delete</button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Recent corrections</p>
+            <div className="mt-2 space-y-2">
+              {captureCorrections.length === 0 ? <p className="text-sm text-gray-500">No corrections recorded yet.</p> : captureCorrections.slice(0, 10).map((correction) => (
+                <div key={correction.id} className="rounded-lg bg-gray-50 px-3 py-2 text-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <p><strong>{correction.fieldName}</strong>: {correction.originalValue || 'Blank'} → {correction.correctedValue || 'Blank'}</p>
+                    <button type="button" onClick={() => setCaptureCorrections(deleteCaptureCorrection(correction.id, user?.id))} className="shrink-0 text-xs font-bold text-red-700">Delete</button>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">{correction.source} · {new Date(correction.createdAt).toLocaleDateString()}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -909,64 +1350,21 @@ function QuickTextArea({
   );
 }
 
-function AiSuggestionPanel({ suggestion, onAccept }: { suggestion: CaptureAiSuggestion; onAccept: () => void }) {
-  return (
-    <section className="mt-5 rounded-lg border border-violet-100 bg-violet-50/70 p-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-violet-700">AI suggestion</p>
-          <h3 className="mt-1 text-base font-bold text-violet-950">{suggestion.summary}</h3>
-          <p className="mt-2 text-sm font-semibold text-violet-800">
-            {suggestion.activityType} | {suggestion.confidence} confidence
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onAccept}
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-violet-700 px-4 py-2 text-sm font-bold text-white"
-        >
-          <CheckCircle2 className="h-4 w-4" />
-          Accept suggestion
-        </button>
-      </div>
-      <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
-        <AiFact label="Account" value={suggestion.accountName || 'Not captured'} />
-        <AiFact label="Opportunity" value={suggestion.opportunityName || 'Not captured'} />
-        <AiFact label="Contact" value={suggestion.contactName || suggestion.stakeholderName || 'Not captured'} />
-        <AiFact label="Next action" value={suggestion.nextAction || 'Not captured'} />
-        <AiFact label="Due date" value={suggestion.dueDate || 'Not captured'} />
-        <AiFact label="Buying signals" value={suggestion.buyingSignals?.length ? suggestion.buyingSignals.join(', ') : 'None'} />
-        <AiFact label="Competitors" value={suggestion.competitors?.length ? suggestion.competitors.join(', ') : 'None'} />
-        <AiFact label="Timeline" value={suggestion.timelineSignals?.length ? suggestion.timelineSignals.join(', ') : 'None'} />
-        <AiFact label="Tags" value={suggestion.tags.length ? suggestion.tags.join(', ') : 'None'} />
-      </div>
-      {suggestion.reasoning.length > 0 && (
-        <ul className="mt-3 space-y-1 text-sm leading-6 text-violet-900">
-          {suggestion.reasoning.map((reason) => <li key={reason}>- {reason}</li>)}
-        </ul>
-      )}
-    </section>
-  );
-}
-
-function AiFact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-violet-100">
-      <p className="text-xs font-bold uppercase tracking-wide text-violet-500">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-violet-950">{value}</p>
-    </div>
-  );
-}
-
 function StructuredPreviewEditor({
   preview,
+  parseSource,
   onChange,
 }: {
   preview: ClassifiedSalesActivity;
+  parseSource: ParseSource;
   onChange: <Key extends keyof ClassifiedSalesActivity>(key: Key, value: ClassifiedSalesActivity[Key]) => void;
 }) {
   return (
     <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-blue-100">
+        <span className="text-xs font-bold uppercase tracking-wide text-blue-500">Source</span>
+        <p className="mt-1 text-sm font-semibold text-blue-950">{parseSource === 'ai' ? 'AI parsed' : 'Local fallback'}</p>
+      </div>
       <label className="block rounded-lg bg-white px-3 py-2 ring-1 ring-blue-100">
         <span className="text-xs font-bold uppercase tracking-wide text-blue-500">Type</span>
         <select
@@ -992,7 +1390,7 @@ function StructuredPreviewEditor({
             {preview.nextActions.map((action, index) => (
               <div key={`${action.title}-${index}`} className="rounded-md bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-950">
                 {index + 1}. {action.title}
-                {action.dueDate ? <span className="text-blue-700"> | Due {action.dueDate}</span> : null}
+                {action.dueDate ? <span className="text-blue-700"> | Due {formatSafeBusinessDate(action.dueDate)}</span> : null}
               </div>
             ))}
           </div>
@@ -1005,19 +1403,19 @@ function StructuredPreviewEditor({
         onChange={(value) => onChange('competitors', parseList(value))}
       />
       <PreviewInput
-        label="Buying signals"
+        label="Buying signal"
         value={(preview.buyingSignals || []).join(', ')}
         placeholder="Budget approved"
         onChange={(value) => onChange('buyingSignals', parseList(value))}
       />
       <PreviewInput
-        label="Risks"
+        label="Risk / objection"
         value={(preview.risks || []).join(', ')}
         placeholder="Competitor still active"
         onChange={(value) => onChange('risks', parseList(value))}
       />
       <PreviewInput
-        label="Timeline signals"
+        label="Timeline signal"
         value={(preview.timelineSignals || []).join(', ')}
         placeholder="Next quarter"
         onChange={(value) => onChange('timelineSignals', parseList(value))}
@@ -1091,7 +1489,7 @@ function ActivityCard({
             </span>
             <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2.5 py-1 text-xs font-bold text-gray-600">
               <CalendarDays className="h-3.5 w-3.5" />
-              {activity.activityDate}
+              {formatSafeBusinessDate(activity.activityDate)}
             </span>
             <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
               activity.storageMode === 'cloud' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
@@ -1110,7 +1508,7 @@ function ActivityCard({
             <ActivityFact label="Opportunity" value={activity.opportunityName || 'Not captured'} />
             <ActivityFact label="Contact" value={activity.contactName || activity.stakeholderName || 'Not captured'} />
             <ActivityFact label="Next action" value={activity.nextAction || 'Not captured'} />
-            <ActivityFact label="Due date" value={activity.dueDate || 'Not captured'} />
+            <ActivityFact label="Due date" value={formatSafeBusinessDate(activity.dueDate)} />
           </div>
           <ActivitySignals activity={activity} />
           {activity.tags.length > 0 && (
@@ -1182,7 +1580,8 @@ function previewToRecord(preview: ReturnType<typeof classifySalesActivity>): Sal
 function aiSuggestionToClassified(
   suggestion: CaptureAiSuggestion,
   rawNote: string,
-  activityDate: string
+  activityDate: string,
+  source: ParseSource,
 ): ClassifiedSalesActivity {
   return {
     accountName: suggestion.accountName || '',
@@ -1192,7 +1591,7 @@ function aiSuggestionToClassified(
       : 'Other',
     summary: suggestion.summary || rawNote.trim().slice(0, 180),
     nextAction: suggestion.nextAction || '',
-    dueDate: suggestion.dueDate || '',
+    dueDate: sanitizeBusinessDate(suggestion.dueDate),
     contactName: suggestion.contactName || '',
     stakeholderName: suggestion.stakeholderName || suggestion.contactName || '',
     stakeholderRole: suggestion.stakeholderRole || '',
@@ -1201,9 +1600,21 @@ function aiSuggestionToClassified(
     risks: suggestion.risks || [],
     timelineSignals: suggestion.timelineSignals || [],
     nextActions: suggestion.nextActions || [],
-    tags: normalizeTags(suggestion.tags),
+    tags: normalizeTags([source === 'ai' ? 'ai-parsed' : 'local-fallback', ...suggestion.tags]),
     rawNote: rawNote.trim(),
     activityDate,
+  };
+}
+
+function cloneClassifiedDraft(draft: ClassifiedSalesActivity): ClassifiedSalesActivity {
+  return {
+    ...draft,
+    tags: [...draft.tags],
+    competitors: [...(draft.competitors || [])],
+    buyingSignals: [...(draft.buyingSignals || [])],
+    risks: [...(draft.risks || [])],
+    timelineSignals: [...(draft.timelineSignals || [])],
+    nextActions: (draft.nextActions || []).map((action) => ({ ...action })),
   };
 }
 
@@ -1246,7 +1657,7 @@ function ActivitySignals({ activity }: { activity: SalesActivityRecord }) {
           <ul className="mt-1 space-y-1 text-sm font-semibold text-gray-800">
             {activity.nextActions.map((action, index) => (
               <li key={`${action.title}-${index}`}>
-                {index + 1}. {action.title}{action.dueDate ? ` | Due ${action.dueDate}` : ''}
+                {index + 1}. {action.title}{action.dueDate ? ` | Due ${formatSafeBusinessDate(action.dueDate)}` : ''}
               </li>
             ))}
           </ul>
@@ -1269,17 +1680,17 @@ function ActivitySignals({ activity }: { activity: SalesActivityRecord }) {
 function formatActivitySummary(activity: SalesActivityRecord) {
   return [
     `Activity: ${activity.activityType}`,
-    `Date: ${activity.activityDate}`,
+    `Date: ${formatSafeBusinessDate(activity.activityDate)}`,
     activity.accountName ? `Account: ${activity.accountName}` : '',
     activity.opportunityName ? `Opportunity: ${activity.opportunityName}` : '',
     `Summary: ${activity.summary}`,
     activity.nextAction ? `Next action: ${activity.nextAction}` : '',
-    activity.dueDate ? `Due: ${activity.dueDate}` : '',
+    activity.dueDate ? `Due: ${formatSafeBusinessDate(activity.dueDate)}` : '',
     activity.contactName || activity.stakeholderName ? `Contact: ${activity.contactName || activity.stakeholderName}` : '',
     activity.competitors?.length ? `Competitors: ${activity.competitors.join(', ')}` : '',
     activity.buyingSignals?.length ? `Buying signals: ${activity.buyingSignals.join(', ')}` : '',
     activity.timelineSignals?.length ? `Timeline: ${activity.timelineSignals.join(', ')}` : '',
-    activity.nextActions?.length ? `Next actions:\n${activity.nextActions.map((action, index) => `${index + 1}. ${action.title}${action.dueDate ? ` (${action.dueDate})` : ''}`).join('\n')}` : '',
+    activity.nextActions?.length ? `Next actions:\n${activity.nextActions.map((action, index) => `${index + 1}. ${action.title}${action.dueDate ? ` (${formatSafeBusinessDate(action.dueDate)})` : ''}`).join('\n')}` : '',
     activity.tags.length > 0 ? `Tags: ${activity.tags.join(', ')}` : '',
   ].filter(Boolean).join('\n');
 }
@@ -1297,14 +1708,48 @@ function createInitialQuickCaptureForm(searchParams: URLSearchParams): QuickCapt
   };
 }
 
+function createInitialEmailThreadCaptureForm(searchParams: URLSearchParams): EmailThreadCaptureForm {
+  return {
+    sourceType: 'pasted-email',
+    subject: '',
+    sender: '',
+    recipients: '',
+    body: '',
+    sourceDate: getQueryDate(searchParams) || '',
+    accountHint: searchParams.get('account') || '',
+    opportunityHint: searchParams.get('opportunity') || '',
+  };
+}
+
+function withCaptureSourceMetadata(activity: ClassifiedSalesActivity, sourceItem: IngestedSourceItem | null): ClassifiedSalesActivity {
+  if (!sourceItem) return activity;
+  return {
+    ...activity,
+    sourceType: sourceItem.sourceType,
+    sourceLabel: sourceItem.sourceLabel,
+    sourceTimestamp: sourceItem.sourceTimestamp,
+    sourceHash: sourceItem.safeHash,
+    originalExcerpt: sourceItem.originalExcerpt,
+    tags: mergeSourceTags(activity.tags, sourceItem),
+  };
+}
+
+function mergeSourceTags(tags: string[], sourceItem: IngestedSourceItem | null) {
+  if (!sourceItem) return tags;
+  return Array.from(new Set([
+    ...tags.filter((tag) => !tag.startsWith('source:') && !tag.startsWith('source-label:') && !tag.startsWith('source-hash:')),
+    ...buildIngestionSourceTags(sourceItem),
+  ]));
+}
+
 function buildQuickCaptureActivity(form: QuickCaptureForm): ClassifiedSalesActivity | null {
   const accountName = form.accountName.trim();
   const whatHappened = form.whatHappened.trim();
   const nextAction = form.nextAction.trim();
-  if (!accountName || (!whatHappened && !nextAction)) return null;
+  if (!accountName || (!whatHappened && !nextAction) || !isValidBusinessDate(form.activityDate)) return null;
 
   const activityType = quickInteractionToActivityType(form.interactionType);
-  const dueDate = /^\d{4}-\d{2}-\d{2}$/.test(form.dueDate) ? form.dueDate : '';
+  const dueDate = sanitizeBusinessDate(form.dueDate);
   const rawNote = [
     `${form.interactionType} - ${accountName}${form.opportunityName.trim() ? ` / ${form.opportunityName.trim()}` : ''}`,
     whatHappened ? `What happened: ${whatHappened}` : '',
@@ -1333,7 +1778,12 @@ function buildQuickCaptureActivity(form: QuickCaptureForm): ClassifiedSalesActiv
     dueDate,
     tags: normalizeTags(['quick-capture', form.interactionType, form.signalType]),
     rawNote,
-    activityDate: /^\d{4}-\d{2}-\d{2}$/.test(form.activityDate) ? form.activityDate : todayKey(),
+    activityDate: sanitizeBusinessDate(form.activityDate),
+    sourceType: 'quick-capture',
+    sourceLabel: `Quick capture: ${form.interactionType}`,
+    sourceTimestamp: sanitizeBusinessDate(form.activityDate),
+    sourceHash: '',
+    originalExcerpt: rawNote.slice(0, 600),
   };
 }
 
@@ -1349,7 +1799,7 @@ function quickInteractionToActivityType(interactionType: QuickInteractionType): 
 
 function getQueryDate(searchParams: URLSearchParams) {
   const value = searchParams.get('date') || '';
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '';
+  return sanitizeBusinessDate(value);
 }
 
 function todayKey() {

@@ -48,6 +48,10 @@ export type PipelineDefenseDeal = {
   recommendedAction: string;
   pipelineReviewAnswer: string;
   decisionRecommendation: DecisionRecommendation;
+  estimatedValue?: number | null;
+  currency?: string;
+  nextActionDate?: string;
+  lastSignalDate?: string;
   assumption?: string;
   sourceType?: 'opportunity';
   sourceOpportunityId?: string;

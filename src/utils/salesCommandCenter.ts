@@ -2,11 +2,12 @@ import type { AccountMemoryRecord } from '../services/accountStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { OperatingContextRecord } from '../services/operatingContextStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
-import { formatCompactCurrencyAmount } from './currency.ts';
+import { formatCompactCurrencyAmount } from './money.ts';
 import type { DailyExecutionDecision } from './dailyExecution';
 import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
 import type { RevenueActionItem, RevenueRiskKind } from './revenueView';
 import { buildOpportunitySalesFlowGuidance } from './salesFlowGuidance.ts';
+import { compareSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, isValidBusinessDate } from './safeDate.ts';
 
 export type CommandPriority = 'Critical' | 'High' | 'Medium' | 'Low';
 export type CommandActionSource = 'Activity' | 'Opportunity' | 'Operating System' | 'Sales Flow' | 'Pipeline Defense' | 'Quote';
@@ -358,8 +359,8 @@ export function buildOperatingContextCommandActions(records: OperatingContextRec
   return records
     .filter((record) => !isOperatingContextClosed(record))
     .map((record): CommandActionItem => {
-      const overdue = Boolean(record.nextDate && record.nextDate < today);
-      const dueToday = record.nextDate === today;
+      const overdue = isBusinessDateOverdue(record.nextDate, today);
+      const dueToday = isValidBusinessDate(record.nextDate) && record.nextDate === today;
       const missingAction = !record.nextAction.trim();
       const blocked = /block|risk|late|stuck/i.test(record.status);
       const priority: CommandPriority = overdue
@@ -381,7 +382,7 @@ export function buildOperatingContextCommandActions(records: OperatingContextRec
         href: `/app/operating-system?contextId=${encodeURIComponent(record.id)}`,
       };
     })
-    .sort((left, right) => priorityRank(right.priority) - priorityRank(left.priority) || (left.dueDate || '9999-12-31').localeCompare(right.dueDate || '9999-12-31'));
+    .sort((left, right) => priorityRank(right.priority) - priorityRank(left.priority) || compareSafeBusinessDate(left.dueDate, right.dueDate));
 }
 
 function isOperatingContextClosed(record: OperatingContextRecord) {
@@ -425,7 +426,7 @@ export function commercialRiskPriority(risk: RevenueRiskKind): CommandPriority {
 export function getTodayActions(opportunities: CrmLiteOpportunity[], activities: SalesActivityRecord[]) {
   const today = todayKey();
   const opportunityActions = opportunities
-    .filter((opportunity) => opportunity.status === 'Active' && opportunity.nextAction && opportunity.nextActionDate === today)
+    .filter((opportunity) => opportunity.status === 'Active' && opportunity.nextAction && isValidBusinessDate(opportunity.nextActionDate) && opportunity.nextActionDate === today)
     .map((opportunity): CommandActionItem => ({
       id: `today-opportunity-${opportunity.id}`,
       title: opportunity.nextAction,
@@ -439,7 +440,7 @@ export function getTodayActions(opportunities: CrmLiteOpportunity[], activities:
     }));
 
   const activityActions = activities
-    .filter((activity) => activity.nextAction && activity.dueDate === today)
+    .filter((activity) => activity.nextAction && isValidBusinessDate(activity.dueDate) && activity.dueDate === today)
     .map((activity): CommandActionItem => ({
       id: `today-activity-${activity.id}`,
       title: activity.nextAction,
@@ -458,7 +459,7 @@ export function getTodayActions(opportunities: CrmLiteOpportunity[], activities:
 export function getOverdueActions(opportunities: CrmLiteOpportunity[], activities: SalesActivityRecord[]) {
   const today = todayKey();
   const opportunityActions = opportunities
-    .filter((opportunity) => opportunity.status === 'Active' && opportunity.nextAction && opportunity.nextActionDate && opportunity.nextActionDate < today)
+    .filter((opportunity) => opportunity.status === 'Active' && opportunity.nextAction && isBusinessDateOverdue(opportunity.nextActionDate, today))
     .map((opportunity): CommandActionItem => ({
       id: `overdue-opportunity-${opportunity.id}`,
       title: opportunity.nextAction,
@@ -472,7 +473,7 @@ export function getOverdueActions(opportunities: CrmLiteOpportunity[], activitie
     }));
 
   const activityActions = activities
-    .filter((activity) => activity.nextAction && activity.dueDate && activity.dueDate < today)
+    .filter((activity) => activity.nextAction && isBusinessDateOverdue(activity.dueDate, today))
     .map((activity): CommandActionItem => ({
       id: `overdue-activity-${activity.id}`,
       title: activity.nextAction,
@@ -528,7 +529,7 @@ export function getAccountsNeedingTouch(
         opportunity.status === 'Active' && normalizeName(opportunity.accountName) === normalizedName
       );
       const relatedActivities = activities.filter((activity) => normalizeName(activity.linkedAccountName || activity.accountName) === normalizedName);
-      const lastActivityDate = relatedActivities.map((activity) => activity.activityDate).sort().at(-1) || '';
+      const lastActivityDate = relatedActivities.map((activity) => activity.activityDate).filter(isValidBusinessDate).sort(compareSafeBusinessDate).at(-1) || '';
       const reasons: string[] = [];
 
       if (relatedOpportunities.length > 0 && (!lastActivityDate || daysSince(lastActivityDate) > 14)) {
@@ -558,7 +559,7 @@ export function getAccountsNeedingTouch(
 
 export function getRecentActivitySummary(activities: SalesActivityRecord[]): RecentActivityItem[] {
   return [...activities]
-    .sort((a, b) => `${b.activityDate}-${b.createdAt}`.localeCompare(`${a.activityDate}-${a.createdAt}`))
+    .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate) || b.createdAt.localeCompare(a.createdAt))
     .slice(0, 10)
     .map((activity) => ({
       id: activity.id,
@@ -622,7 +623,7 @@ function countOpportunitiesWithMovement(opportunities: CrmLiteOpportunity[], act
   });
 
   activities.forEach((activity) => {
-    if (activity.activityDate >= week.start && activity.activityDate <= week.end && activity.linkedOpportunityId) {
+    if (isBusinessDateInRange(activity.activityDate, week.start, week.end) && activity.linkedOpportunityId) {
       movedIds.add(activity.linkedOpportunityId);
     }
   });
@@ -642,7 +643,7 @@ function countObjections(opportunities: CrmLiteOpportunity[], activities: SalesA
 
 function getActivitiesThisWeek(activities: SalesActivityRecord[]) {
   const week = currentWeekRange();
-  return activities.filter((activity) => activity.activityDate >= week.start && activity.activityDate <= week.end);
+  return activities.filter((activity) => isBusinessDateInRange(activity.activityDate, week.start, week.end));
 }
 
 function getOpportunityPriority(opportunity: CrmLiteOpportunity, overdue = false): CommandPriority {
@@ -654,7 +655,7 @@ function getOpportunityPriority(opportunity: CrmLiteOpportunity, overdue = false
 }
 
 function sortActions(actions: CommandActionItem[]) {
-  return actions.sort((a, b) => priorityRank(b.priority) - priorityRank(a.priority) || (a.dueDate || '').localeCompare(b.dueDate || ''));
+  return actions.sort((a, b) => priorityRank(b.priority) - priorityRank(a.priority) || compareSafeBusinessDate(a.dueDate, b.dueDate));
 }
 
 function dedupeActions(actions: CommandActionItem[]) {

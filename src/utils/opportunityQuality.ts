@@ -3,6 +3,8 @@ import type { CrmLiteOpportunity, ForecastEvidenceCategory } from '../services/o
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { ObjectionRecord } from '../services/objectionStore';
 import { getObjectionsForOpportunity } from './objectionLedger';
+import { sumMoneyInBase } from './money';
+import { compareSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate } from './safeDate.ts';
 
 export type OpportunityQualityStatus = 'Healthy' | 'Needs cleanup' | 'High risk';
 export type OpportunityQualitySeverity = 'low' | 'medium' | 'high';
@@ -47,7 +49,11 @@ export interface CrmPipelineQualityAnalysis {
 export function analyzeOpportunityQuality(opportunity: CrmLiteOpportunity, linkedActivities: SalesActivityRecord[] = []): OpportunityQualityReview {
   const issues: OpportunityQualityIssue[] = [];
   const evidenceText = `${opportunity.evidence} ${opportunity.missingContext}`.toLowerCase();
-  const lastLinkedActivityDate = linkedActivities.map((activity) => activity.activityDate).sort().at(-1) || '';
+  const lastLinkedActivityDate = linkedActivities
+    .map((activity) => activity.activityDate)
+    .filter(isValidBusinessDate)
+    .sort(compareSafeBusinessDate)
+    .at(-1) || '';
 
   if (!opportunity.nextAction.trim()) {
     issues.push({
@@ -119,7 +125,7 @@ export function analyzeOpportunityQuality(opportunity: CrmLiteOpportunity, linke
     });
   }
 
-  if (opportunity.nextActionDate && opportunity.status === 'Active' && new Date(opportunity.nextActionDate) < startOfToday()) {
+  if (opportunity.status === 'Active' && isBusinessDateOverdue(opportunity.nextActionDate)) {
     issues.push({
       id: 'stale-next-action',
       label: 'Past-due next action',
@@ -195,7 +201,10 @@ export function analyzePipelineQuality(opportunities: CrmLiteOpportunity[], acti
   const activeValueByForecastCategory = makeEmptyForecastValueMap();
 
   activeOpportunities.forEach((opportunity) => {
-    activeValueByForecastCategory[opportunity.forecastEvidenceCategory] += opportunity.estimatedValue || 0;
+    activeValueByForecastCategory[opportunity.forecastEvidenceCategory] += sumMoneyInBase([{
+      amount: opportunity.estimatedValue,
+      currency: opportunity.currency,
+    }]);
   });
 
   const cleanupActions = getCrmPipelineCleanupActions(opportunities, reviews);
@@ -203,7 +212,10 @@ export function analyzePipelineQuality(opportunities: CrmLiteOpportunity[], acti
   return {
     totalOpportunities: opportunities.length,
     activeOpportunities: activeOpportunities.length,
-    estimatedActiveValue: activeOpportunities.reduce((sum, opportunity) => sum + (opportunity.estimatedValue || 0), 0),
+    estimatedActiveValue: sumMoneyInBase(activeOpportunities.map((opportunity) => ({
+      amount: opportunity.estimatedValue,
+      currency: opportunity.currency,
+    }))),
     defensibleDeals: opportunities.filter((opportunity) => opportunity.forecastEvidenceCategory === 'Defensible').length,
     weakHopeUnsupportedDeals: opportunities.filter((opportunity) =>
       ['Weak but recoverable', 'Hope-based', 'Unsupported'].includes(opportunity.forecastEvidenceCategory)
@@ -440,12 +452,6 @@ function makeEmptyForecastValueMap(): Record<ForecastEvidenceCategory, number> {
     'Hope-based': 0,
     Unsupported: 0,
   };
-}
-
-function startOfToday() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return today;
 }
 
 function daysSince(dateKey: string) {

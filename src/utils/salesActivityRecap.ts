@@ -1,4 +1,5 @@
 import type { SalesActivityRecord } from '../services/salesActivityStore';
+import { formatSafeBusinessDate, isValidBusinessDate, sanitizeBusinessDate } from './safeDate.ts';
 
 export type SalesRecapPeriod = 'week' | 'month';
 
@@ -75,7 +76,7 @@ export function getOpenNextActions(activities: SalesActivityRecord[]) {
       accountName: getActivityAccountName(activity) || undefined,
       opportunityName: getActivityOpportunityName(activity) || undefined,
       nextAction: action.title,
-      dueDate: action.dueDate || activity.dueDate || undefined,
+      dueDate: sanitizeBusinessDate(action.dueDate || activity.dueDate) || undefined,
     }));
   });
 }
@@ -126,7 +127,7 @@ export function generateSalesRecapMarkdown(recap: SalesActivityRecap) {
     .join('\n') || '- No activity types captured';
 
   const openActions = recap.openNextActions
-    .map((item) => `- ${item.accountName || 'Unknown account'}: ${item.nextAction}${item.dueDate ? ` (due ${item.dueDate})` : ''}`)
+    .map((item) => `- ${item.accountName || 'Unknown account'}: ${item.nextAction}${item.dueDate ? ` (due ${formatSafeBusinessDate(item.dueDate)})` : ''}`)
     .join('\n') || '- No open next actions captured';
 
   const objections = recap.objectionsCaptured
@@ -180,7 +181,7 @@ function generateSalesRecap(
   const openNextActions = getOpenNextActions(activities);
   const objectionsCaptured = getObjectionActivities(activities);
   const followUpsCaptured = getFollowUpActivities(activities);
-  const activeDays = new Set(activities.map((activity) => activity.activityDate)).size;
+  const activeDays = new Set(activities.map((activity) => activity.activityDate).filter(isValidBusinessDate)).size;
   const insights = buildInsights(activities, periodType, {
     accountsTouched,
     activityTypeBreakdown,

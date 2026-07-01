@@ -8,10 +8,10 @@ export function HeroSection() {
           Catch deals before they go silent.
         </h1>
         <p className="max-w-[680px] mx-auto text-lg md:text-xl text-gray-600 mb-10 leading-relaxed">
-          Memoire helps technical B2B salespeople turn scattered customer context into stuck-deal alerts, account memory, and next actions.
+          Memoire helps people who sell without a sales team turn scattered customer context into stuck-deal alerts, account memory, and next actions.
         </p>
         <p className="mx-auto mb-8 max-w-xl text-sm font-semibold text-indigo-700">
-          Your CRM tracks the deal. Memoire remembers what needs follow-up.
+          Your CRM, spreadsheet, or notes track the record. Memoire remembers what needs follow-up.
         </p>
         <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link to="/demo" className="rounded-lg bg-indigo-600 px-8 py-4 text-lg font-medium text-white transition-colors hover:bg-indigo-700">

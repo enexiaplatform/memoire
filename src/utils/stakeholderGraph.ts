@@ -1,6 +1,7 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord, StakeholderRole } from '../services/stakeholderStore';
+import { normalizeMeddicRole } from './meddicStakeholderMap.ts';
 
 export type StakeholderCoverage = {
   missingChampion: boolean;
@@ -23,21 +24,21 @@ export type StakeholderCandidate = {
   notes: string;
 };
 
-const strategicRoles: StakeholderRole[] = ['Champion', 'Economic buyer', 'Technical buyer', 'Procurement', 'Decision maker'];
+const strategicRoles: StakeholderRole[] = ['Champion', 'Economic Buyer', 'Technical Buyer', 'Procurement', 'Decision Committee'];
 
 export function analyzeStakeholderCoverage(stakeholders: StakeholderRecord[], opportunity?: CrmLiteOpportunity | null): StakeholderCoverage {
   const relevant = opportunity ? getStakeholdersForOpportunity(stakeholders, opportunity) : stakeholders;
-  const hasRole = (role: StakeholderRole) => relevant.some((stakeholder) => stakeholder.stakeholderRole === role);
-  const blockerExists = relevant.some((stakeholder) => stakeholder.stakeholderRole === 'Blocker' || stakeholder.stance === 'Resistant');
+  const hasRole = (role: string) => relevant.some((stakeholder) => normalizeMeddicRole(stakeholder.stakeholderRole) === normalizeMeddicRole(role));
+  const blockerExists = relevant.some((stakeholder) => normalizeMeddicRole(stakeholder.stakeholderRole) === 'Blocker' || stakeholder.stance === 'Resistant');
   const allNeutralOrUnknown = relevant.length > 0 && relevant.every((stakeholder) => stakeholder.stance === 'Neutral' || stakeholder.stance === 'Unknown');
 
   const coverage = {
     missingChampion: !hasRole('Champion'),
-    missingEconomicBuyer: !hasRole('Economic buyer'),
+    missingEconomicBuyer: !hasRole('Economic Buyer'),
     missingProcurement: !hasRole('Procurement'),
-    missingTechnicalBuyer: !hasRole('Technical buyer'),
+    missingTechnicalBuyer: !hasRole('Technical Buyer'),
     blockerExists,
-    decisionMakerUnknown: !opportunity?.decisionMaker && !hasRole('Decision maker'),
+    decisionMakerUnknown: !opportunity?.decisionMaker && !hasRole('Economic Buyer') && !hasRole('Decision Committee'),
     allNeutralOrUnknown,
     warnings: [] as string[],
   };
@@ -114,12 +115,12 @@ export function summarizeStakeholderCoverage(stakeholders: StakeholderRecord[], 
   return {
     totalStakeholders: stakeholders.length,
     champions: stakeholders.filter((stakeholder) => stakeholder.stakeholderRole === 'Champion').length,
-    economicBuyers: stakeholders.filter((stakeholder) => stakeholder.stakeholderRole === 'Economic buyer').length,
-    blockers: stakeholders.filter((stakeholder) => stakeholder.stakeholderRole === 'Blocker' || stakeholder.stance === 'Resistant').length,
+    economicBuyers: stakeholders.filter((stakeholder) => normalizeMeddicRole(stakeholder.stakeholderRole) === 'Economic Buyer').length,
+    blockers: stakeholders.filter((stakeholder) => normalizeMeddicRole(stakeholder.stakeholderRole) === 'Blocker' || stakeholder.stance === 'Resistant').length,
     highInfluence: stakeholders.filter((stakeholder) => stakeholder.influenceLevel === 'High').length,
     accountsWithMissingChampion,
     opportunitiesWithStakeholderRisk,
-    strategicMapped: stakeholders.filter((stakeholder) => strategicRoles.includes(stakeholder.stakeholderRole)).length,
+    strategicMapped: stakeholders.filter((stakeholder) => strategicRoles.includes(normalizeMeddicRole(stakeholder.stakeholderRole) as StakeholderRole)).length,
   };
 }
 

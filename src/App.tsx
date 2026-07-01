@@ -25,7 +25,7 @@ const DemoGuidePage = lazy(() => import('./features/demo/DemoGuidePage').then((m
 const ValidationFeedbackPage = lazy(() =>
   import('./features/validation/ValidationFeedbackPage').then((module) => ({ default: module.ValidationFeedbackPage })),
 );
-const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage').then((module) => ({ default: module.DashboardPage })));
+const TodayPage = lazy(() => import('./features/dashboard/DashboardPage').then((module) => ({ default: module.TodayPage })));
 const OperatingSystemPage = lazy(() =>
   import('./features/operatingSystem/OperatingSystemPage').then((module) => ({ default: module.OperatingSystemPage })),
 );
@@ -99,15 +99,15 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Navigate to="/app/dashboard" replace />} />
-            <Route path="dashboard" element={<DashboardPage />} />
+            <Route index element={<Navigate to="/app/today" replace />} />
+            <Route path="today" element={<TodayPage />} />
+            <Route path="dashboard" element={<Navigate to="/app/today" replace />} />
             <Route path="operating-system" element={<OperatingSystemPage />} />
             <Route path="demo-guide" element={<DemoGuidePage />} />
             <Route
               path="validation-feedback"
-              element={isFounderWorkspaceEnabled ? <ValidationFeedbackPage /> : <Navigate to="/app/dashboard" replace />}
+              element={isFounderWorkspaceEnabled ? <ValidationFeedbackPage /> : <Navigate to="/app/today" replace />}
             />
-            <Route path="today" element={<Navigate to="/app/dashboard" replace />} />
             <Route path="capture" element={<DailyCapturePage />} />
             <Route path="calendar" element={<SalesActivityCalendarPage />} />
             <Route path="weekly-brief" element={<SalesReviewsPage />} />
@@ -131,7 +131,7 @@ function App() {
             <Route path="settings" element={<SettingsPage />} />
 
             {/* Legacy V0 routes, downgraded out of the primary V1 surface. */}
-            <Route path="history" element={<Navigate to="/app/dashboard" replace />} />
+            <Route path="history" element={<Navigate to="/app/today" replace />} />
             <Route path="entities" element={<Navigate to="/app/accounts" replace />} />
             <Route path="entities/:entityId" element={<Navigate to="/app/accounts" replace />} />
             <Route path="deals" element={<Navigate to="/app/opportunities" replace />} />

@@ -69,7 +69,7 @@ export function FounderImportReviewPage() {
   const warningCounts = getWarningCounts(selectedBatch);
 
   if (!authLoading && !isFounder) {
-    return <Navigate to="/app/dashboard" replace />;
+    return <Navigate to="/app/today" replace />;
   }
 
   return (

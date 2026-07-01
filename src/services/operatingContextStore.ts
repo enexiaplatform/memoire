@@ -1,6 +1,7 @@
 import { supabaseClient } from '../lib/supabaseClient';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus';
+import { sanitizeBusinessDate } from '../utils/safeDate.ts';
 
 export const OPERATING_CONTEXT_STORAGE_KEY = 'memoire.operatingContext.v1';
 export const operatingContextTypes = ['initiative', 'play'] as const;
@@ -212,7 +213,7 @@ function rowToOperatingContext(row: OperatingContextRow): OperatingContextRecord
     owner: row.owner || '',
     valueAtStake: normalizeNumber(row.value_at_stake),
     nextAction: row.next_action || '',
-    nextDate: normalizeDate(row.next_date),
+    nextDate: sanitizeBusinessDate(row.next_date),
     summary: row.summary || '',
     payload: isObject(row.payload) ? row.payload : {},
     sourceSystem: row.source_system || '',
@@ -232,7 +233,7 @@ function inputToRow(input: OperatingContextFormInput) {
     owner: input.owner || null,
     value_at_stake: input.valueAtStake,
     next_action: input.nextAction || null,
-    next_date: input.nextDate || null,
+    next_date: sanitizeBusinessDate(input.nextDate) || null,
     summary: input.summary || null,
     payload: input.payload,
   };
@@ -247,7 +248,7 @@ function normalizeInput(input: OperatingContextFormInput): OperatingContextFormI
     owner: input.owner.trim(),
     valueAtStake: normalizeNumber(input.valueAtStake),
     nextAction: input.nextAction.trim(),
-    nextDate: normalizeDate(input.nextDate),
+    nextDate: sanitizeBusinessDate(input.nextDate),
     summary: input.summary.trim(),
     payload: isObject(input.payload) ? input.payload : {},
   };
@@ -286,7 +287,7 @@ function loadLocalOperatingContext(userId: string): OperatingContextRecord[] {
     if (!raw) return [];
     const records = JSON.parse(raw) as OperatingContextRecord[];
     return Array.isArray(records)
-      ? records.map((record) => ({ ...record, storageMode: 'local' as const })).sort(sortNewestFirst)
+      ? records.map((record) => ({ ...record, nextDate: sanitizeBusinessDate(record.nextDate), storageMode: 'local' as const })).sort(sortNewestFirst)
       : [];
   } catch {
     return [];
@@ -313,11 +314,6 @@ function normalizeNumber(value: unknown) {
   if (value === null || value === undefined || value === '') return null;
   const parsed = typeof value === 'number' ? value : Number(String(value).replace(/,/g, ''));
   return Number.isFinite(parsed) ? parsed : null;
-}
-
-function normalizeDate(value: unknown) {
-  if (typeof value !== 'string') return '';
-  return /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : '';
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

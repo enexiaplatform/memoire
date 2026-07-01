@@ -5,6 +5,9 @@ export const earlyAccessRoles = [
   'Account Executive / Sales Rep',
   'Sales Manager',
   'Founder-led sales',
+  'Consultant / Freelancer',
+  'Agency owner',
+  'Creator / Partnerships',
   'Business Development',
   'Other',
 ] as const;
@@ -14,6 +17,8 @@ export const earlyAccessSegments = [
   'Industrial / Manufacturing',
   'B2B SaaS',
   'Professional Services',
+  'Agency / Consulting',
+  'Creator / Partnerships',
   'Other B2B',
 ] as const;
 
@@ -27,6 +32,7 @@ export const pipelineReviewFrequencies = [
 
 export const pipelineReviewPains = [
   'Rebuilding deal context before review',
+  'Remembering client or partner follow-ups alone',
   'Weak forecast evidence',
   'Objections/proof gaps',
   'CRM is too noisy',
@@ -172,7 +178,7 @@ export function generateEarlyAccessRequestSummary(record: EarlyAccessRequestReco
     `Name: ${record.name || 'Not provided'}`,
     `Work email: ${record.workEmail || 'Not provided'}`,
     `Role: ${record.role}`,
-    `Current CRM or pipeline tool: ${record.currentTool || 'Not provided'}`,
+    `Current CRM, spreadsheet, notes, or pipeline tool: ${record.currentTool || 'Not provided'}`,
     `Biggest pipeline review pain: ${record.biggestPain}`,
     `Preferred use case: ${record.preferredUseCase || 'Not provided'}`,
     `Created at: ${record.createdAt}`,

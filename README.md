@@ -1,10 +1,10 @@
 # Memoire
 
-Memoire is a Career Knowledge Vault + Daily Sales Action Engine for individual B2B sales professionals.
+Memoire is a Career Knowledge Vault + Daily Sales Action Engine for people who sell without a sales team: individual B2B sellers, founder-led sellers, consultants, freelancers, agency owners, and solo operators managing their own client or customer pipeline.
 
 Core statement:
 
-> Your CRM tracks deals for the company. Memoire helps you remember context, defend pipeline, prepare follow-ups, and run better deal reviews.
+> Your CRM, spreadsheet, or notes track the record. Memoire helps you remember context, catch deals before they go silent, prepare follow-ups, and build review-ready deal stories.
 
 ## Launch Status
 
@@ -28,7 +28,7 @@ The V1 screens are:
 - Ask Memoire
 - Settings / Export
 
-V1 intentionally does not include manager dashboards, team workspaces, CRM integrations, advanced analytics, email/calendar sync, proposal generation, or complex automation.
+V1 intentionally does not include manager dashboards, team workspaces, CRM integrations, advanced analytics, email/calendar sync, proposal generation, complex automation, invoicing, inventory, ecommerce, marketplace, or project-delivery management.
 
 ## V1 Data Model
 

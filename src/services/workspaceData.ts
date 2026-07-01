@@ -1,6 +1,7 @@
 import { loadAccounts, type AccountMemoryRecord } from './accountStore';
 import { loadActionOutcomes, loadActionOutcomesForUser, type ActionOutcomeRecord } from './actionOutcomeStore';
 import { loadObjections, type ObjectionRecord } from './objectionStore';
+import { loadOpportunityOutcomes, loadOpportunityOutcomesForUser, type OpportunityOutcomeRecord } from './opportunityOutcomeStore';
 import { loadOpportunities, type CrmLiteOpportunity } from './opportunityStore';
 import { loadOperatingContext, type OperatingContextRecord } from './operatingContextStore';
 import { canUsePipelineDefenseCloudStore, loadCloudBriefs } from './pipelineDefenseCloudStore';
@@ -35,6 +36,7 @@ export type SalesWorkspaceData = {
   assets: SalesAssetRecord[];
   quotes: QuoteRecord[];
   operatingContext: OperatingContextRecord[];
+  opportunityOutcomes: OpportunityOutcomeRecord[];
 };
 
 type LoadOptions = {
@@ -64,7 +66,8 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
     userId ? loadSalesAssetsForUser(userId) : Promise.resolve(loadSalesAssets()),
     userId ? loadQuotesForUser(userId) : Promise.resolve(loadQuotes()),
     loadOperatingContext(userId),
-  ]).then(([activities, opportunities, accounts, briefs, objections, stakeholders, actionOutcomes, assets, quotes, operatingContext]) => {
+    userId ? loadOpportunityOutcomesForUser(userId) : Promise.resolve(loadOpportunityOutcomes()),
+  ]).then(([activities, opportunities, accounts, briefs, objections, stakeholders, actionOutcomes, assets, quotes, operatingContext, opportunityOutcomes]) => {
     if (userId && getWorkspaceSyncStatus().state !== 'error') reportWorkspaceSyncReady();
     return {
       activities,
@@ -77,6 +80,7 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
       assets,
       quotes,
       operatingContext,
+      opportunityOutcomes,
     };
   });
 

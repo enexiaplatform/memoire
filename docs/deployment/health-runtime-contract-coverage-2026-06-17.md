@@ -6,7 +6,7 @@ Roadmap slice: A1 production readiness, A6 auth redirect readiness, and A7 monit
 
 ## What This Verifies
 
-`scripts/verify-health-runtime-contract.mjs` transpiles `api/health.ts` locally, invokes the handler with mock requests, and verifies the runtime response contract.
+`scripts/verify-health-runtime-contract.mjs` transpiles `api/health.ts` locally, invokes the real handler with mock requests, and verifies the runtime response contract.
 
 The verifier confirms:
 
@@ -16,7 +16,7 @@ The verifier confirms:
 - `HEAD` responses return the same readiness status without a JSON body.
 - Unsupported methods return HTTP `405` and `Allow: GET, HEAD`.
 - The response includes `service: "memoire"`, summary counts, auth redirects, and the full checks array.
-- Auth redirect URLs are derived from `VITE_APP_URL` for `/login?verified=1`, `/reset-password`, and `/app/dashboard`.
+- Auth redirect URLs are derived from `VITE_APP_URL` for `/login?verified=1`, `/reset-password`, and `/app/today`.
 - Invalid `VITE_APP_URL` fails the `app_url_valid` check and does not generate redirect URLs.
 - Secret environment values are not returned in the response body.
 

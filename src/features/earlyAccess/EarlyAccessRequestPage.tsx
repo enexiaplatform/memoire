@@ -99,7 +99,7 @@ export function EarlyAccessRequestPage() {
             Request access to Memoire.
           </h1>
           <p className="mt-4 text-sm leading-6 text-blue-950">
-            Memoire is in early access. Tell us how you prepare pipeline reviews today and what workflow you want to try.
+            Memoire is in early access. Tell us how you manage sales follow-up, pipeline reviews, or client/partner deal memory today and what workflow you want to try.
           </p>
           <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
             <div className="flex items-start gap-3">
@@ -134,7 +134,7 @@ export function EarlyAccessRequestPage() {
                 <TextInput label="Name" value={form.name} onChange={updateField('name')} placeholder="Your name" required error={formErrors.name} />
                 <TextInput label="Work email" value={form.workEmail} onChange={updateField('workEmail')} placeholder="name@company.com" type="email" required error={formErrors.workEmail} />
                 <SelectInput label="Role" value={form.role} onChange={updateField('role')} options={earlyAccessRoles} />
-                <TextInput label="Current CRM or pipeline tool" value={form.currentTool} onChange={updateField('currentTool')} placeholder="Salesforce, HubSpot, Excel, Notion..." required error={formErrors.currentTool} />
+                <TextInput label="Current CRM, spreadsheet, notes, or pipeline tool" value={form.currentTool} onChange={updateField('currentTool')} placeholder="Salesforce, HubSpot, Excel, Notion, private notes..." required error={formErrors.currentTool} />
                 <div className="md:col-span-2">
                   <SelectInput label="Biggest pipeline review pain" value={form.biggestPain} onChange={updateField('biggestPain')} options={pipelineReviewPains} />
                 </div>
@@ -144,7 +144,7 @@ export function EarlyAccessRequestPage() {
                     value={form.preferredUseCase}
                     onChange={updateField('preferredUseCase')}
                     rows={4}
-                    placeholder="Example: I want to prepare weekly pipeline reviews from CSV without rebuilding deal stories manually."
+                    placeholder="Example: I want to remember client follow-ups and prepare review-ready deal stories without rebuilding context manually."
                     aria-invalid={Boolean(formErrors.preferredUseCase)}
                     className={`mt-2 w-full rounded-lg border bg-slate-50 px-3 py-2 text-sm leading-6 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10 ${
                       formErrors.preferredUseCase ? 'border-red-300' : 'border-slate-300'

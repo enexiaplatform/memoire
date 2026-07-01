@@ -3,8 +3,9 @@ import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
 import { getObjectionsForOpportunity } from './objectionLedger';
+import { normalizeMeddicRole } from './meddicStakeholderMap.ts';
 import { getStakeholdersForOpportunity } from './stakeholderGraph';
-import { formatCurrencyAmount } from './currency';
+import { formatCurrencyAmount } from './money';
 
 export type MeddicLiteFieldKey =
   | 'metrics'
@@ -173,7 +174,7 @@ function reviewMetrics(opportunity: CrmLiteOpportunity, activities: SalesActivit
 }
 
 function reviewEconomicBuyer(opportunity: CrmLiteOpportunity, stakeholders: StakeholderRecord[]): MeddicLiteFieldReview {
-  const buyers = stakeholders.filter((stakeholder) => stakeholder.stakeholderRole === 'Economic buyer' || stakeholder.stakeholderRole === 'Decision maker');
+  const buyers = stakeholders.filter((stakeholder) => normalizeMeddicRole(stakeholder.stakeholderRole) === 'Economic Buyer' || normalizeMeddicRole(stakeholder.stakeholderRole) === 'Decision Committee');
   const evidence = [
     ...buyers.map((buyer) => `${buyer.name} mapped as ${buyer.stakeholderRole}.`),
     opportunity.budgetOwner ? `Budget owner: ${opportunity.budgetOwner}.` : '',
@@ -278,7 +279,7 @@ function reviewIdentifyPain(
 }
 
 function reviewChampion(stakeholders: StakeholderRecord[]): MeddicLiteFieldReview {
-  const champions = stakeholders.filter((stakeholder) => stakeholder.stakeholderRole === 'Champion');
+  const champions = stakeholders.filter((stakeholder) => normalizeMeddicRole(stakeholder.stakeholderRole) === 'Champion');
   const supportive = stakeholders.filter((stakeholder) => stakeholder.stance === 'Supportive');
   const evidence = [
     ...champions.map((champion) => `${champion.name} mapped as Champion.`),

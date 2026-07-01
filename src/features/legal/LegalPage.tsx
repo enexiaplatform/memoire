@@ -101,7 +101,7 @@ const documents: Record<string, LegalDocument> = {
   boundaries: {
     title: 'Product and Data Boundaries',
     updated: 'June 15, 2026',
-    intro: 'Memoire is a personal preparation layer for B2B sales work. It is not an employer scoring or CRM system.',
+    intro: 'Memoire is a personal preparation layer for B2B and solo sales work. It is not an employer scoring, CRM, invoicing, inventory, ecommerce, marketplace, or project-delivery system.',
     sections: [
       {
         title: 'What Memoire is',
@@ -115,6 +115,7 @@ const documents: Record<string, LegalDocument> = {
         paragraphs: [
           'Memoire is not a professional certification, hiring score, credit signal, legal record, or replacement for your company CRM.',
           'Memoire does not currently provide enterprise SSO, team administration, or native CRM writeback.',
+          'Memoire does not manage invoices, inventory, ecommerce listings, marketplace fulfillment, or client project delivery.',
         ],
       },
       {

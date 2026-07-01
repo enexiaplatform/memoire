@@ -1,13 +1,16 @@
 import type { ActionOutcomeRecord } from '../services/actionOutcomeStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
+import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore';
 import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
 import { analyzeMeddicLiteOpportunity, type MeddicLiteFieldKey } from './meddicLite';
 import { getObjectionsForOpportunity } from './objectionLedger';
 import { generateOpportunityActionPlan } from './opportunityActionPlan';
+import { analyzePersonalSalesLearning } from './personalSalesLearning.ts';
 import { getStakeholdersForOpportunity } from './stakeholderGraph';
 import type { WeeklyExecutionReview } from './weeklyExecutionReview';
+import { isBusinessDateOverdue } from './safeDate.ts';
 
 export type SalesPlaybookPatternCategory =
   | 'Objection Pattern'
@@ -69,6 +72,7 @@ export function generateSalesPlaybookPatterns(input: {
   objections?: ObjectionRecord[];
   activities?: SalesActivityRecord[];
   actionOutcomes?: ActionOutcomeRecord[];
+  opportunityOutcomes?: OpportunityOutcomeRecord[];
   executionReview?: WeeklyExecutionReview;
   limit?: number;
 }): SalesPlaybookPattern[] {
@@ -77,6 +81,7 @@ export function generateSalesPlaybookPatterns(input: {
   const objections = input.objections || [];
   const activities = input.activities || [];
   const actionOutcomes = input.actionOutcomes || [];
+  const opportunityOutcomes = input.opportunityOutcomes || [];
   const detectedAt = new Date().toISOString();
   const patterns: SalesPlaybookPattern[] = [];
   const contexts = opportunities.map((opportunity) => buildOpportunityContext(opportunity, stakeholders, objections, activities));
@@ -90,10 +95,37 @@ export function generateSalesPlaybookPatterns(input: {
   patterns.push(...buildFollowUpRiskPatterns(opportunities, activities, detectedAt));
   patterns.push(...buildCompetitorRiskPatterns(objections, activities, contexts, detectedAt));
   patterns.push(...buildProcurementRiskPatterns(contexts, objections, detectedAt));
+  patterns.push(...buildOutcomeLearningPatterns(opportunityOutcomes, opportunities, detectedAt));
 
   return mergeDuplicatePatterns(patterns)
     .sort((a, b) => severityRank(b.severity) - severityRank(a.severity) || b.frequency - a.frequency || a.title.localeCompare(b.title))
     .slice(0, input.limit || 24);
+}
+
+function buildOutcomeLearningPatterns(
+  opportunityOutcomes: OpportunityOutcomeRecord[],
+  opportunities: CrmLiteOpportunity[],
+  detectedAt: string,
+): SalesPlaybookPattern[] {
+  const learning = analyzePersonalSalesLearning({ outcomes: opportunityOutcomes, opportunities, limit: 6 });
+  return learning.insights.map((insight): SalesPlaybookPattern => ({
+    id: `outcome-${insight.id}`,
+    title: insight.title,
+    category: insight.type === 'Recurring win signal' || insight.type === 'Win pocket' ? 'Winning Move' : 'Repeated Mistake',
+    severity: !learning.hasEnoughData ? 'Low' : insight.type === 'Forecast overconfidence' || insight.frequency >= 3 ? 'High' : 'Medium',
+    frequency: insight.frequency,
+    evidence: [
+      ...(!learning.hasEnoughData ? [learning.lowDataMessage] : []),
+      ...insight.evidence,
+    ].slice(0, 5),
+    whyItMatters: insight.pattern,
+    suggestedPlaybookResponse: insight.suggestedBehaviorChange,
+    reusableAction: insight.suggestedBehaviorChange,
+    relatedAccounts: insight.relatedAccounts,
+    relatedOpportunities: insight.relatedOpportunities,
+    relatedObjectionTypes: insight.type === 'Objection pattern' ? [insight.title] : [],
+    detectedAt,
+  }));
 }
 
 export function summarizeSalesPlaybook(patterns: SalesPlaybookPattern[]): SalesPlaybookSummary {
@@ -426,8 +458,8 @@ function buildRepeatedMistakePatterns(actionOutcomes: ActionOutcomeRecord[], exe
 
 function buildFollowUpRiskPatterns(opportunities: CrmLiteOpportunity[], activities: SalesActivityRecord[], detectedAt: string): SalesPlaybookPattern[] {
   const today = todayKey();
-  const staleOpportunities = opportunities.filter((opportunity) => opportunity.status === 'Active' && ((!opportunity.nextAction.trim()) || (opportunity.nextActionDate && opportunity.nextActionDate < today)));
-  const staleActivities = activities.filter((activity) => activity.nextAction && activity.dueDate && activity.dueDate < today);
+  const staleOpportunities = opportunities.filter((opportunity) => opportunity.status === 'Active' && ((!opportunity.nextAction.trim()) || isBusinessDateOverdue(opportunity.nextActionDate, today)));
+  const staleActivities = activities.filter((activity) => activity.nextAction && isBusinessDateOverdue(activity.dueDate, today));
   if (staleOpportunities.length === 0 && staleActivities.length === 0) return [];
 
   return [{

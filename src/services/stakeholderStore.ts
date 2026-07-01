@@ -6,14 +6,13 @@ export const STAKEHOLDER_STORAGE_KEY = 'memoire.stakeholders.v1';
 
 export const stakeholderRoles = [
   'Champion',
-  'Economic buyer',
-  'Technical buyer',
-  'User',
+  'Economic Buyer',
+  'Technical Buyer',
   'Procurement',
-  'Decision maker',
-  'Influencer',
+  'User',
+  'Coach',
   'Blocker',
-  'Legal / QA / Compliance',
+  'Decision Committee',
   'Unknown',
 ] as const;
 
@@ -366,6 +365,9 @@ function normalizeStakeholderInput(input: StakeholderFormInput): StakeholderForm
 }
 
 function normalizeRole(value: unknown): StakeholderRole {
+  if (value === 'Economic buyer' || value === 'Decision maker') return 'Economic Buyer';
+  if (value === 'Technical buyer' || value === 'Legal / QA / Compliance') return 'Technical Buyer';
+  if (value === 'Influencer') return 'Coach';
   return stakeholderRoles.includes(value as StakeholderRole) ? value as StakeholderRole : 'Unknown';
 }
 

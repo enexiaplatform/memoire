@@ -7,7 +7,7 @@ const plans = [
   {
     name: 'Solo',
     price: '$15-25/month',
-    description: 'Working price range for an individual B2B salesperson.',
+    description: 'Working price range for one person managing their own sales follow-up and pipeline memory.',
     items: ['Pipeline review workspace', 'Daily capture and account memory', 'CSV pipeline refresh', 'Pipeline Defense Briefs'],
   },
   {
@@ -35,7 +35,7 @@ export function PricingPage() {
             <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">Pricing is still being validated.</h1>
             <p className="mt-5 text-base leading-7 text-slate-600">
               Early-access account creation is open, but no payment checkout is active. Early users help validate the
-              workflow, security expectations, and the right individual plan. Guided access is available on request.
+              workflow, security expectations, and the right individual plan for B2B reps, founder-led sellers, and solo operators. Guided access is available on request.
             </p>
           </header>
 
@@ -60,7 +60,7 @@ export function PricingPage() {
           <section className="mt-10 rounded-xl border border-blue-200 bg-blue-50 p-6 text-center">
             <h2 className="text-2xl font-bold">Test your real pipeline-review workflow first.</h2>
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-              Request access without submitting confidential customer data. We will use your workflow context only to
+              Request access without submitting confidential customer data. We will use your sales workflow context only to
               evaluate product fit during early access.
             </p>
             <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">

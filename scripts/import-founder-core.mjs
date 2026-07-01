@@ -844,8 +844,8 @@ function normalizeRelationshipStatus(stage, activityCount, overdueStatus) {
 function inferStakeholderRole(title) {
   const text = asText(title).toLowerCase();
   if (/procurement|purchasing|buyer/.test(text)) return 'Procurement';
-  if (/director|head|chief|owner|ceo|cfo|coo|gm|general manager/.test(text)) return 'Decision maker';
-  if (/technical|engineer|qa|qc|lab|scientist/.test(text)) return 'Technical buyer';
+  if (/director|head|chief|owner|ceo|cfo|coo|gm|general manager/.test(text)) return 'Economic Buyer';
+  if (/technical|engineer|qa|qc|lab|scientist/.test(text)) return 'Technical Buyer';
   if (/doctor|user|operator|specialist/.test(text)) return 'User';
   return 'Unknown';
 }
