@@ -28,7 +28,7 @@ export function AuthButton() {
       <div className="flex flex-wrap items-center gap-2">
         {loading ? (
           <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-bold text-gray-600">
-            Loading account...
+            Restoring account...
           </span>
         ) : isAuthenticated ? (
           <>

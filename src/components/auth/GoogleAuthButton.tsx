@@ -25,7 +25,7 @@ export function GoogleAuthButton({
         disabled={loading}
         className="flex w-full items-center justify-center rounded-full border border-gray-300 bg-white px-4 py-3 font-display text-sm font-bold text-gray-800 transition-colors hover:border-brand-blue hover:bg-blue-50/50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {loading ? 'Loading account...' : label}
+        {loading ? 'Opening secure sign-in...' : label}
       </button>
       {(actionError || error) && (
         <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700">

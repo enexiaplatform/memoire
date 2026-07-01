@@ -39,7 +39,7 @@ export function useDeals(filters?: { outcome?: string; revenue_band?: string }) 
       setDeals(data || []);
     } catch (err: any) {
       console.error(err);
-      setError('Failed to load deals.');
+      setError('Memoire could not load deal records.');
     } finally {
       setLoading(false);
     }
@@ -78,7 +78,7 @@ export function useDeal(dealId: string | undefined) {
       setDeal(data);
     } catch (err: any) {
       console.error(err);
-      setError('Failed to load deal.');
+      setError('Memoire could not load this deal record.');
     } finally {
       setLoading(false);
     }
@@ -95,7 +95,7 @@ export function useDealMutations() {
   const { user } = useAuth();
 
   const createDeal = async (deal: Partial<Deal>) => {
-    if (!user) return { data: null, error: 'User not authenticated' };
+    if (!user) return { data: null, error: 'Sign in again before saving this deal.' };
     const { data, error } = await supabase
       .from('deals')
       .insert({ ...deal, user_id: user.id })
@@ -105,7 +105,7 @@ export function useDealMutations() {
   };
 
   const updateDeal = async (id: string, updates: Partial<Deal>) => {
-    if (!user) return { error: 'User not authenticated' };
+    if (!user) return { error: 'Sign in again before saving this deal.' };
     const { error } = await supabase
       .from('deals')
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -115,7 +115,7 @@ export function useDealMutations() {
   };
 
   const deleteDeal = async (id: string) => {
-    if (!user) return { error: 'User not authenticated' };
+    if (!user) return { error: 'Sign in again before deleting this deal.' };
     const { error } = await supabase
       .from('deals')
       .delete()
