@@ -1,11 +1,12 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = process.cwd();
 const files = execFileSync('git', ['ls-files', 'src'], { cwd: root, encoding: 'utf8' })
   .split(/\r?\n/)
-  .filter((file) => /\.(ts|tsx|js|jsx|css)$/.test(file));
+  .filter((file) => /\.(ts|tsx|js|jsx|css)$/.test(file))
+  .filter((file) => existsSync(resolve(root, file)));
 
 const mojibakePatterns = [
   { pattern: /\u00e2[\u20ac\u0160\u0161\u0152\u0090-\u009d][^\s'"`<)]*/g, label: 'mojibake smart punctuation or symbol' },
@@ -16,6 +17,7 @@ const mojibakePatterns = [
 
 const discouragedVisibleText = [
   { pattern: /Open dashboard/g, label: 'deprecated dashboard CTA; use Open Today' },
+  { pattern: /Open Opportunities/g, label: 'legacy title-case opportunities CTA; use Open opportunities' },
   { pattern: /\balert\s*\(/g, label: 'browser alert popup; use inline UI state' },
   { pattern: /Loading\.\.\./g, label: 'generic loading copy; use contextual loading text' },
   { pattern: /Not authenticated/g, label: 'technical auth copy; use sign-in recovery language' },
