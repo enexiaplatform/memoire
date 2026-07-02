@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Copy, RefreshCw, X } from 'lucide-react';
 import type { FollowUpContext, FollowUpDraft, FollowUpGoal, FollowUpLength, FollowUpTone } from '../../types/v31';
 import {
@@ -21,6 +21,14 @@ export function FollowUpComposerPanel({ initialContext, onClose }: FollowUpCompo
   const [copyMessage, setCopyMessage] = useState('');
   const [draftStatus, setDraftStatus] = useState('');
   const missingFields = useMemo(() => getMissingFollowUpContext(context), [context]);
+
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [onClose]);
 
   const updateContext = <K extends keyof FollowUpContext>(field: K, value: FollowUpContext[K]) => {
     setContext((current) => ({ ...current, [field]: value }));
@@ -47,7 +55,7 @@ export function FollowUpComposerPanel({ initialContext, onClose }: FollowUpCompo
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-navy/40 px-4 py-6">
-      <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl">
+      <section role="dialog" aria-modal="true" aria-label="Follow-up Composer" className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-xl">
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-gray-100 bg-white px-5 py-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Follow-up Composer</p>

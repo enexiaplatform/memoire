@@ -139,3 +139,19 @@ Do not add:
 - Ecommerce or marketplace features.
 - Team workspace or manager dashboards as a prerequisite for this persona.
 
+## 2026-07-02 Founder Decision: Individual-Client Long-Cycle Selling Included
+
+The founder confirmed the target includes solo entrepreneurs selling to individual clients (C2B and long-cycle C2C), not only business buyers. The alignment test is behavioral, not the market label: the deal must have a follow-up loop long enough for silence to be a real risk.
+
+- Included: solo entrepreneurs and solo businesses selling high-value, long-cycle work to businesses or individual clients (freelance projects, sponsorships, advisory, personal brokerage/high-ticket services).
+- Still excluded: quick transactional selling with no meaningful follow-up loop (same-day C2C, marketplace order flow) — this remains outside the wedge and the public "not ideal" copy now states it.
+- Public copy still avoids the literal "C2B/C2C" labels and describes the behavior instead.
+
+Instrumentation shipped 2026-07-02:
+
+- Request Access role options now include "Solo entrepreneur / Solo operator".
+- Request Access segment options now include "High-value sales to individual clients".
+- Landing audience bullets include solo entrepreneurs selling to businesses or individual clients; "not ideal" list names quick transactional selling.
+
+Cohort Wave 1 should report how many intake requests select these options and whether that segment activates without the manager-review framing before any packaging or demo-pack changes are made for it.
+

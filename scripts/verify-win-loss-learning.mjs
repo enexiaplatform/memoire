@@ -202,6 +202,6 @@ assert.ok(playbook.includes('buildOutcomeLearningPatterns'));
 assert.ok(playbook.includes('analyzePersonalSalesLearning'));
 
 const sidebar = readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
-assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 18, 'A new CRM navigation item was added.');
+assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 12, 'A new CRM navigation item was added.');
 
 console.log('Win/loss closed-loop learning regression verified.');

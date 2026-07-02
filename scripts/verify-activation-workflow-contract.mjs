@@ -185,6 +185,11 @@ const packet = read('docs/product/cohort-release-evidence-packet-2026-06-17.md')
 requireIncludes(packet, 'scripts/verify-activation-workflow-contract.mjs', 'cohort packet does not reference activation workflow verifier');
 requireIncludes(packet, 'scripts/verify-cloud-json-runtime-contract.mjs', 'cohort packet does not reference cloud JSON runtime verifier');
 
+const sidebarNav = read('src/components/layout/Sidebar.tsx');
+requireIncludes(sidebarNav, 'function hasFirstSavedBrief()', 'Sidebar progressive disclosure missing first-saved-brief check');
+requireIncludes(sidebarNav, 'Review & Learn unlocks after your first saved brief.', 'Sidebar missing locked Review & Learn hint');
+requireIncludes(sidebarNav, 'reviewTierUnlocked || demoActive || hasActiveSecondaryRoute || isFounderImportUser(user?.email)', 'Sidebar Review & Learn unlock conditions changed unexpectedly');
+
 if (failures.length > 0) {
   console.error('Activation workflow contract verification failed:');
   for (const failure of failures) console.error(`- ${failure}`);

@@ -505,7 +505,7 @@ function AssetPanel({
           <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">{mode === 'add' ? 'New Asset' : 'Edit Asset'}</p>
           <h2 className="mt-1 text-xl font-bold text-navy">{asset?.title || 'Reusable sales asset'}</h2>
         </div>
-        <button type="button" onClick={onClose} className="rounded-full border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-50">
+        <button type="button" onClick={onClose} aria-label="Close" className="rounded-full border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-50">
           <X className="h-4 w-4" />
         </button>
       </div>

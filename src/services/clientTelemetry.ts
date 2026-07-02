@@ -1,5 +1,5 @@
 type ClientOperationalEvent = {
-  eventName: 'cloud_json_sync_failed' | 'pipeline_defense_cloud_sync_failed';
+  eventName: 'cloud_json_sync_failed' | 'pipeline_defense_cloud_sync_failed' | 'client_render_error';
   component: string;
   operation: string;
   table?: string;

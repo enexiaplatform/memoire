@@ -8,6 +8,10 @@ This is the operating roadmap for moving Memoire from private beta into real com
 
 Each future full work session should advance roughly 5-10 percent of this roadmap. The default planning unit is 12 sessions, or about 8.3 percent per session. A session is complete only when it leaves behind a concrete artifact: code, QA evidence, deployment evidence, customer feedback synthesis, pricing decision, or an updated roadmap note.
 
+## Strategy Baseline
+
+The consolidated product strategy, information-architecture plan, value model, and go-to-market phasing live in `docs/product/product-strategy-gtm-2026-07-02.md`. Read it alongside this roadmap when planning IA, pricing, or GTM sessions.
+
 ## Current Product Truth
 
 Memoire is a personal B2B sales memory and pipeline-review workspace for individual sales professionals.

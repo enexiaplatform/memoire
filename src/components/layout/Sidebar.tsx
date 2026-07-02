@@ -1,12 +1,22 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { AlertTriangle, Banknote, BookOpen, CalendarDays, ChevronDown, ClipboardList, Database, FileCheck2, FileText, GitBranch, LayoutDashboard, MessageCircleQuestion, NotebookPen, ReceiptText, Settings, Target, UsersRound, X } from 'lucide-react';
+import { AlertTriangle, BookOpen, ChevronDown, ClipboardList, Database, FileCheck2, FileText, LayoutDashboard, MessageCircleQuestion, NotebookPen, Settings, Target, UsersRound, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 import { prefetchAppRoute } from '../../utils/routePrefetch';
 import { useDemoWorkspaceMode } from '../../hooks/useDemoWorkspaceMode';
 import { BrandWordmark } from '../brand/BrandWordmark';
 import { isFounderImportUser } from '../../services/importAuditStore';
+import { loadPipelineDefenseBriefStore } from '../../utils/pipelineDefenseStorage';
+import { loadReviewPacks } from '../../utils/reviewPacks';
+
+function hasFirstSavedBrief() {
+  try {
+    return loadPipelineDefenseBriefStore().briefs.length > 0 || loadReviewPacks().length > 0;
+  } catch {
+    return false;
+  }
+}
 
 const primarySections = [{
   label: 'Pipeline Defense OS',
@@ -16,22 +26,16 @@ const primarySections = [{
     { to: '/app/pipeline-defense', label: 'Pipeline Defense', icon: <FileCheck2 className="h-5 w-5" /> },
     { to: '/app/opportunities', label: 'Opportunities', icon: <Target className="h-5 w-5" /> },
     { to: '/app/accounts', label: 'Accounts', icon: <BookOpen className="h-5 w-5" /> },
+    { to: '/app/ask', label: 'Ask Memoire', icon: <MessageCircleQuestion className="h-5 w-5" /> },
   ],
 }];
 
 const secondaryItems = [
-  { to: '/app/operating-system', label: 'Operating System', icon: <GitBranch className="h-5 w-5" /> },
-  { to: '/app/revenue', label: 'Revenue', icon: <Banknote className="h-5 w-5" /> },
   { to: '/app/weekly-brief', label: 'Weekly Brief', icon: <ClipboardList className="h-5 w-5" /> },
-  { to: '/app/quotes', label: 'Quotes', icon: <ReceiptText className="h-5 w-5" /> },
-  { to: '/app/onboarding/sales-operating-setup', label: 'Sales Setup', icon: <ClipboardList className="h-5 w-5" /> },
-  { to: '/app/calendar', label: 'Calendar', icon: <CalendarDays className="h-5 w-5" /> },
   { to: '/app/stakeholders', label: 'Stakeholders', icon: <UsersRound className="h-5 w-5" /> },
   { to: '/app/objections', label: 'Objections', icon: <AlertTriangle className="h-5 w-5" /> },
   { to: '/app/playbook', label: 'Playbook', icon: <BookOpen className="h-5 w-5" /> },
   { to: '/app/assets', label: 'Assets', icon: <FileText className="h-5 w-5" /> },
-  { to: '/app/ask', label: 'Ask Memoire', icon: <MessageCircleQuestion className="h-5 w-5" /> },
-  { to: '/app/journey', label: 'Journey', icon: <GitBranch className="h-5 w-5" /> },
 ];
 
 export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
@@ -45,10 +49,17 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     : secondaryItems;
   const hasActiveSecondaryRoute = visibleSecondaryItems.some((item) => location.pathname.startsWith(item.to));
   const [moreOpen, setMoreOpen] = useState(hasActiveSecondaryRoute);
+  const [reviewTierUnlocked, setReviewTierUnlocked] = useState(() => hasFirstSavedBrief());
 
   useEffect(() => {
     if (hasActiveSecondaryRoute) setMoreOpen(true);
   }, [hasActiveSecondaryRoute]);
+
+  useEffect(() => {
+    if (!reviewTierUnlocked) setReviewTierUnlocked(hasFirstSavedBrief());
+  }, [location.pathname, reviewTierUnlocked]);
+
+  const showReviewTier = reviewTierUnlocked || demoActive || hasActiveSecondaryRoute || isFounderImportUser(user?.email);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -116,15 +127,22 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         ))}
 
         <div className="mx-3 mt-2 border-t border-white/10 pt-3">
+          {!showReviewTier && (
+            <p className="px-2 py-2 text-[11px] leading-4 text-white/30">
+              Review & Learn unlocks after your first saved brief.
+            </p>
+          )}
+          {showReviewTier && (
           <button
             type="button"
             onClick={() => setMoreOpen((current) => !current)}
             className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-white/40 hover:bg-white/5 hover:text-white/70"
           >
-            More tools
+            Review & Learn
             <ChevronDown className={`h-4 w-4 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
           </button>
-          {moreOpen && (
+          )}
+          {showReviewTier && moreOpen && (
             <div className="mt-1 space-y-1">
               {visibleSecondaryItems.map((item) => (
                 <NavLink

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import {
@@ -452,9 +453,10 @@ function ActivityDetailModal({
   onIgnore: () => void;
   onUnlink: () => void;
 }) {
+  useEscapeToClose(onClose);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 px-4 py-8">
-      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-5 shadow-xl">
+      <div role="dialog" aria-modal="true" aria-label="Activity detail" className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-5 shadow-xl">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Activity detail</p>

@@ -40,6 +40,8 @@ import {
   type OpportunityFormInput,
 } from '../../services/opportunityStore';
 import { analyzePipelineQuality, analyzeOpportunityQuality } from '../../utils/opportunityQuality';
+import { classifyOpportunitySilence, type OpportunitySilenceState } from '../../utils/proactiveNudges';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { analyzeMeddicLiteOpportunity, type MeddicLiteDealCategory, type MeddicLiteStatus } from '../../utils/meddicLite';
 import {
   formatBaseCurrencyAmount as formatBaseMoney,
@@ -161,7 +163,7 @@ type OpportunitySortKey =
   | 'nextActionDate'
   | 'quality'
   | 'updatedAt';
-type OpportunityQuickFilter = 'all' | 'imported' | 'stageInferred' | 'fy26' | 'fy27' | 'needsAction';
+type OpportunityQuickFilter = 'all' | 'imported' | 'stageInferred' | 'fy26' | 'fy27' | 'needsAction' | 'goingSilent';
 const allFilter = 'All';
 const defaultPageSize = 25;
 const founderCoreSourceSystem = 'founder_core_fy26';
@@ -272,6 +274,11 @@ export function OpportunitiesPage() {
     [activities, opportunities, quotes],
   );
 
+  const goingSilentCount = useMemo(
+    () => opportunityRows.filter((row) => row.silence.status === 'silent' || row.silence.status === 'at-risk').length,
+    [opportunityRows],
+  );
+
   const visibleOpportunityRows = useMemo(() => {
     const query = search.trim().toLowerCase();
     return opportunityRows.filter((row) => {
@@ -290,7 +297,7 @@ export function OpportunitiesPage() {
 
       return (
         (!query || searchable.includes(query)) &&
-        matchesOpportunityQuickFilter(opportunity, quickFilter) &&
+        matchesOpportunityQuickFilter(row, quickFilter) &&
         (stageFilter === allFilter || opportunity.stage === stageFilter) &&
         (forecastFilter === allFilter || opportunity.forecastEvidenceCategory === forecastFilter) &&
         (recommendationFilter === allFilter || opportunity.decisionRecommendation === recommendationFilter) &&
@@ -936,6 +943,7 @@ export function OpportunitiesPage() {
             ['fy26', 'FY26 value'],
             ['fy27', 'FY27 value'],
             ['needsAction', 'Needs action'],
+            ['goingSilent', goingSilentCount > 0 ? `Going silent (${goingSilentCount})` : 'Going silent'],
           ].map(([value, label]) => (
             <button
               key={value}
@@ -1969,6 +1977,7 @@ type OpportunityMasterRow = {
   linkedActivityCount: number;
   lastActivityDate: string;
   lastUpdatedAt: string;
+  silence: OpportunitySilenceState;
 };
 
 type OpportunityCommercialSummary = {
@@ -2039,8 +2048,8 @@ function OpportunityMasterTable({
         <table className="w-full min-w-[2040px] border-collapse text-left text-sm">
           <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
             <tr>
-              <th className="w-12 border-b border-gray-200 px-3 py-3 text-center">Pick</th>
-              <OpportunitySortableHeader label="Account" sortKey="account" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <th className="sticky left-0 z-20 w-12 border-b border-gray-200 bg-gray-50 px-3 py-3 text-center">Pick</th>
+              <OpportunitySortableHeader label="Account" sortKey="account" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="sticky left-12 z-20 border-r border-gray-200 bg-gray-50" />
               <OpportunitySortableHeader label="Opportunity" sortKey="opportunity" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <th className="border-b border-gray-200 px-3 py-3">Brand / channel</th>
               <OpportunitySortableHeader label="Stage" sortKey="stage" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
@@ -2066,9 +2075,9 @@ function OpportunityMasterTable({
                 <tr
                   key={opportunity.id}
                   onClick={() => onOpen(opportunity)}
-                  className={`cursor-pointer transition hover:bg-blue-50/60 ${selected ? 'bg-blue-50/40' : 'bg-white'}`}
+                  className={`group cursor-pointer transition hover:bg-blue-50/60 ${selected ? 'bg-blue-50/40' : 'bg-white'}`}
                 >
-                  <td className="px-3 py-3 text-center">
+                  <td className={`sticky left-0 z-10 px-3 py-3 text-center group-hover:bg-blue-50 ${selected ? 'bg-blue-50' : 'bg-white'}`}>
                     <input
                       type="checkbox"
                       checked={selected}
@@ -2078,7 +2087,7 @@ function OpportunityMasterTable({
                       className="h-4 w-4 accent-brand-blue"
                     />
                   </td>
-                  <td className="px-3 py-3">
+                  <td className={`sticky left-12 z-10 border-r border-gray-100 px-3 py-3 group-hover:bg-blue-50 ${selected ? 'bg-blue-50' : 'bg-white'}`}>
                     <p className="max-w-[190px] truncate font-bold text-navy" title={opportunity.accountName}>{opportunity.accountName || 'No account'}</p>
                     <p className="mt-1 max-w-[190px] truncate text-xs text-gray-500">
                       {opportunity.productOrSolution || `${opportunity.stage} opportunity`}
@@ -2148,7 +2157,11 @@ function OpportunityMasterTable({
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">
                     <p className="font-semibold text-gray-700">{formatOpportunityDate(row.lastUpdatedAt)}</p>
-                    <p className="mt-1 text-xs text-gray-500">{row.lastActivityDate ? `Last touch ${formatOpportunityDate(row.lastActivityDate)}` : 'No linked touch'}</p>
+                    <p className={`mt-1 text-xs ${row.silence.status === 'silent' ? 'font-bold text-red-600' : row.silence.status === 'at-risk' ? 'font-bold text-amber-600' : 'text-gray-500'}`}>
+                      {row.silence.status === 'silent' || row.silence.status === 'at-risk'
+                        ? `Quiet ${row.silence.daysQuiet}d - no next action`
+                        : row.lastActivityDate ? `Last touch ${formatOpportunityDate(row.lastActivityDate)}` : 'No linked touch'}
+                    </p>
                   </td>
                   <td className="px-3 py-3 text-right">
                     <button
@@ -2206,16 +2219,18 @@ function OpportunitySortableHeader({
   activeKey,
   direction,
   onSort,
+  className = '',
 }: {
   label: string;
   sortKey: OpportunitySortKey;
   activeKey: OpportunitySortKey;
   direction: SortDirection;
   onSort: (key: OpportunitySortKey) => void;
+  className?: string;
 }) {
   const active = sortKey === activeKey;
   return (
-    <th className="border-b border-gray-200 px-3 py-3">
+    <th className={`border-b border-gray-200 px-3 py-3 ${className}`}>
       <button type="button" onClick={() => onSort(sortKey)} className="inline-flex items-center gap-1 hover:text-navy">
         {label}
         <ArrowUpDown className={`h-3.5 w-3.5 ${active ? 'text-brand-blue' : 'text-gray-300'}`} />
@@ -2309,7 +2324,7 @@ function OpportunityPanel({
             </div>
           )}
         </div>
-        <button type="button" onClick={onClose} className="rounded-full border border-gray-200 p-2 text-gray-500 hover:bg-gray-50">
+        <button type="button" onClick={onClose} aria-label="Close" className="rounded-full border border-gray-200 p-2 text-gray-500 hover:bg-gray-50">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -2641,9 +2656,11 @@ function DefenseBriefPreviewModal({
     onMetadataChange({ ...metadata, [key]: value });
   };
 
+  useEscapeToClose(onClose);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/60 p-4">
-      <section className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+      <section role="dialog" aria-modal="true" aria-label="Pipeline Defense Brief preview" className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
         <header className="flex items-start justify-between gap-4 border-b border-gray-200 p-5">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Pipeline Defense Preview</p>
@@ -2652,7 +2669,7 @@ function DefenseBriefPreviewModal({
               Review the generated draft before creating a new Pipeline Defense Brief. This will not overwrite existing briefs.
             </p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-full border border-gray-200 p-2 text-gray-500 hover:bg-gray-50">
+          <button type="button" onClick={onClose} aria-label="Close" className="rounded-full border border-gray-200 p-2 text-gray-500 hover:bg-gray-50">
             <X className="h-4 w-4" />
           </button>
         </header>
@@ -3682,6 +3699,7 @@ function buildOpportunityMasterRow(
     linkedActivityCount: linkedActivities.length,
     lastActivityDate: latestActivity?.activityDate || '',
     lastUpdatedAt,
+    silence: classifyOpportunitySilence(opportunity, activities),
   };
 }
 
@@ -3801,7 +3819,8 @@ function isFounderImportedOpportunity(opportunity: CrmLiteOpportunity) {
   return opportunity.sourceSystem === founderCoreSourceSystem;
 }
 
-function matchesOpportunityQuickFilter(opportunity: CrmLiteOpportunity, filter: OpportunityQuickFilter) {
+function matchesOpportunityQuickFilter(row: OpportunityMasterRow, filter: OpportunityQuickFilter) {
+  const { opportunity } = row;
   switch (filter) {
     case 'imported':
       return isFounderImportedOpportunity(opportunity);
@@ -3813,6 +3832,8 @@ function matchesOpportunityQuickFilter(opportunity: CrmLiteOpportunity, filter: 
       return Boolean(opportunity.fy27Value && opportunity.fy27Value > 0);
     case 'needsAction':
       return !opportunity.nextAction.trim();
+    case 'goingSilent':
+      return row.silence.status === 'silent' || row.silence.status === 'at-risk';
     case 'all':
       return true;
   }

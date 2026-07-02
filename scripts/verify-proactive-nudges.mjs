@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   buildProactiveNudges,
+  classifyOpportunitySilence,
   formatNudgeDueDate,
   formatNudgeMoney,
 } from '../src/utils/proactiveNudges.ts';
@@ -242,6 +243,90 @@ assert.equal(center.todayNudges.filter((nudge) => nudge.entityId === 'imported-a
 assert.equal(center.hiddenImportedAccountCount, 1);
 assert.equal(center.allActiveNudges.some((nudge) => nudge.accountName === importedOnlyAccount.accountName && nudge.urgency !== 'low'), false, 'imported-only account must not create urgent work');
 
+const silentOpportunity = {
+  ...overdueOpportunity,
+  id: 'opp-silent',
+  accountName: 'Strategic Pharma',
+  opportunityName: 'Silent renewal',
+  nextAction: 'Reconfirm renewal scope',
+  nextActionDate: '',
+  forecastEvidenceCategory: 'Defensible',
+  decisionRecommendation: 'Defend',
+  createdAt: '2026-04-01T00:00:00.000Z',
+};
+const warmingOpportunity = {
+  ...silentOpportunity,
+  id: 'opp-warming',
+  accountName: 'Fresh Pharma',
+  opportunityName: 'Fresh intro',
+  nextAction: '',
+  createdAt: '2026-06-22T00:00:00.000Z',
+};
+const recentTouchOpportunity = {
+  ...silentOpportunity,
+  id: 'opp-recent-touch',
+  accountName: 'Active Pharma',
+  opportunityName: 'Active expansion',
+};
+const plannedOpportunity = {
+  ...silentOpportunity,
+  id: 'opp-planned',
+  accountName: 'Planned Pharma',
+  opportunityName: 'Planned rollout',
+  nextActionDate: '2026-07-08',
+};
+const recentTouchActivity = {
+  ...oldActivity,
+  id: 'activity-recent-touch',
+  accountName: 'Active Pharma',
+  activityDate: '2026-06-28',
+};
+
+const silenceCenter = buildProactiveNudges({
+  opportunities: [silentOpportunity, warmingOpportunity, recentTouchOpportunity, plannedOpportunity],
+  activities: [oldActivity, recentTouchActivity],
+  today,
+  limit: 20,
+});
+const goingSilent = silenceCenter.allActiveNudges.find((nudge) => nudge.title === 'Deal going silent');
+assert.ok(goingSilent, 'active deal with no scheduled next action and no touch for 14+ days should create a going-silent nudge');
+assert.equal(goingSilent.entityId, 'opp-silent');
+assert.equal(goingSilent.urgency, 'critical');
+assert.ok(goingSilent.reason.includes('No customer touch since'), 'going-silent reason should name the last touch date');
+assert.ok(goingSilent.recommendedAction.includes('Reconfirm renewal scope'), 'going-silent nudge should reuse the planned next action');
+const warmingSilence = silenceCenter.allActiveNudges.find((nudge) => nudge.entityId === 'opp-warming');
+assert.ok(warmingSilence, 'untouched opportunity older than 7 days should create a silence-risk nudge');
+assert.equal(warmingSilence.title, 'Silence risk');
+assert.equal(warmingSilence.urgency, 'high');
+assert.ok(warmingSilence.reason.includes('created on'), 'silence-risk reason should fall back to the created date when no touch exists');
+assert.equal(
+  silenceCenter.allActiveNudges.some((nudge) => nudge.entityId === 'opp-recent-touch' && (nudge.title === 'Silence risk' || nudge.title === 'Deal going silent')),
+  false,
+  'a deal touched within 7 days must not be flagged as silent',
+);
+assert.equal(
+  silenceCenter.allActiveNudges.some((nudge) => nudge.entityId === 'opp-planned' && (nudge.title === 'Silence risk' || nudge.title === 'Deal going silent')),
+  false,
+  'a deal with a scheduled next action must not be flagged as silent',
+);
+assert.equal(
+  center.allActiveNudges.some((nudge) => nudge.entityId === overdueOpportunity.id && (nudge.title === 'Silence risk' || nudge.title === 'Deal going silent')),
+  false,
+  'an overdue next action already has its own nudge and must not double-fire as silence',
+);
+
+assert.equal(classifyOpportunitySilence(silentOpportunity, [oldActivity], today).status, 'silent');
+assert.equal(classifyOpportunitySilence(silentOpportunity, [oldActivity], today).lastTouchDate, oldActivity.activityDate);
+assert.equal(classifyOpportunitySilence(warmingOpportunity, [], today).status, 'at-risk');
+assert.equal(classifyOpportunitySilence(recentTouchOpportunity, [recentTouchActivity], today).status, 'quiet-ok');
+assert.equal(classifyOpportunitySilence(plannedOpportunity, [], today).status, 'planned');
+assert.equal(classifyOpportunitySilence({ ...silentOpportunity, status: 'Won' }, [oldActivity], today).status, 'inactive');
+
+const opportunitiesUi = readFileSync('src/features/opportunities/OpportunitiesPage.tsx', 'utf8');
+for (const marker of ['classifyOpportunitySilence', "'goingSilent'", 'Going silent', 'Quiet ${row.silence.daysQuiet}d']) {
+  assert.ok(opportunitiesUi.includes(marker), `Opportunities silence rollup missing ${marker}`);
+}
+
 const duplicateKeys = new Set();
 for (const nudge of center.allActiveNudges) {
   const key = `${nudge.source}|${nudge.entityType}|${nudge.entityId}|${nudge.reason.toLowerCase()}`;
@@ -295,6 +380,6 @@ const pipelineUi = readFileSync('src/features/pipeline/PipelineReviewDefenseBrie
 assert.ok(pipelineUi.includes('Proactive nudge'), 'Pipeline Defense should show per-opportunity proactive nudges');
 
 const sidebar = readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
-assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 18, 'A new CRM navigation item was added.');
+assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 12, 'A new CRM navigation item was added.');
 
 console.log('Proactive nudge engine regression verified.');

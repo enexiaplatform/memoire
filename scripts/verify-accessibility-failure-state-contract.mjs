@@ -50,7 +50,7 @@ for (const marker of [
   'aria-label="Close navigation"',
   'title="Close navigation"',
   'onFocus={() => prefetchAppRoute(item.to)}',
-  'More tools',
+  'Review & Learn',
 ]) {
   requireIncludes(sidebar, marker, `Sidebar accessibility marker missing: ${marker}`);
 }
@@ -120,9 +120,29 @@ for (const marker of [
   '.catch(() => undefined)',
   'cloud_json_sync_failed',
   'pipeline_defense_cloud_sync_failed',
+  'client_render_error',
 ]) {
   requireIncludes(clientTelemetry, marker, `client telemetry marker missing: ${marker}`);
 }
+
+const appErrorBoundary = read('src/components/common/AppErrorBoundary.tsx');
+for (const marker of [
+  'static getDerivedStateFromError',
+  'componentDidCatch',
+  "eventName: 'client_render_error'",
+  'role="alert"',
+  'Reload page',
+  'Go to Today',
+  'A newer version of Memoire is available',
+]) {
+  requireIncludes(appErrorBoundary, marker, `app error boundary marker missing: ${marker}`);
+}
+
+const appRoot = read('src/App.tsx');
+requireIncludes(appRoot, '<AppErrorBoundary>', 'App root should wrap routes in AppErrorBoundary');
+
+const clientLogApi = read('api/client-log.ts');
+requireIncludes(clientLogApi, "'client_render_error'", 'client-log API should allowlist client_render_error');
 
 const cloudJsonStore = read('src/services/cloudJsonCollectionStore.ts');
 for (const marker of [

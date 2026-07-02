@@ -328,11 +328,19 @@ export function SalesReviewsPage() {
           >
             Refresh activities
           </button>
+          <Link
+            to="/app/calendar"
+            className="rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50"
+          >
+            Open activity calendar
+          </Link>
           <span className="text-sm font-semibold text-gray-500">
             {periodActivities.length} activities in this period
           </span>
         </div>
       </section>
+
+      <ActivityTimelinePanel activities={periodActivities} periodLabel={period.label} />
 
       <CommercialReviewBriefPanel
         brief={commercialReviewBrief}
@@ -411,6 +419,60 @@ export function SalesReviewsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function ActivityTimelinePanel({ activities, periodLabel }: { activities: SalesActivityRecord[]; periodLabel: string }) {
+  if (activities.length === 0) return null;
+  const groups = new Map<string, SalesActivityRecord[]>();
+  [...activities]
+    .filter((activity) => isValidBusinessDate(activity.activityDate))
+    .sort((left, right) => right.activityDate.localeCompare(left.activityDate) || right.createdAt.localeCompare(left.createdAt))
+    .forEach((activity) => {
+      const day = groups.get(activity.activityDate) || [];
+      day.push(activity);
+      groups.set(activity.activityDate, day);
+    });
+  if (groups.size === 0) return null;
+
+  return (
+    <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-sm font-bold text-navy">Activity timeline</p>
+          <p className="mt-1 text-sm text-gray-500">Every recorded customer touch in {periodLabel}, grouped by day.</p>
+        </div>
+        <Link to="/app/calendar" className="text-sm font-bold text-brand-blue hover:underline">
+          Open full calendar
+        </Link>
+      </div>
+      <div className="mt-4 space-y-4">
+        {[...groups.entries()].map(([date, dayActivities]) => (
+          <div key={date}>
+            <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{formatSafeBusinessDate(date)}</p>
+            <ul className="mt-2 space-y-2">
+              {dayActivities.map((activity) => (
+                <li key={activity.id} className="flex flex-col gap-1 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-gray-800" title={activity.summary || activity.rawNote}>
+                      {activity.summary || activity.rawNote || 'Activity recorded'}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      {[activity.activityType, activity.linkedAccountName || activity.accountName].filter(Boolean).join(' · ') || 'Unlinked activity'}
+                    </p>
+                  </div>
+                  {activity.nextAction ? (
+                    <p className="shrink-0 text-xs font-semibold text-brand-blue" title={activity.nextAction}>
+                      Next: {activity.nextAction.length > 44 ? `${activity.nextAction.slice(0, 44)}…` : activity.nextAction}
+                    </p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

@@ -19,6 +19,7 @@ import {
   Target,
 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { DataModePill } from '../../components/common/DataModePill';
 import { DemoJourneyCard } from '../../components/demo/DemoJourneyCard';
 import { isFounderWorkspaceEnabled, isSupabaseConfigured } from '../../lib/demoMode';
@@ -2471,9 +2472,10 @@ function DemoSandboxPrompt({
   onCancel: () => void;
   onLoad: () => void;
 }) {
+  useEscapeToClose(onCancel);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/30 px-4">
-      <section className="w-full max-w-xl rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
+      <section role="dialog" aria-modal="true" aria-label="Load demo sandbox" className="w-full max-w-xl rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Demo sandbox</p>
         <h2 className="mt-2 text-2xl font-bold text-navy">Load realistic sample data?</h2>
         <p className="mt-3 text-sm leading-6 text-gray-600">

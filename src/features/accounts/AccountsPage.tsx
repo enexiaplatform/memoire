@@ -897,7 +897,7 @@ function AccountDetailPanel({
             <p className="mt-1 font-mono text-xs font-bold text-gray-400">{getAccountCode(selectedMemory.account)}</p>
           )}
         </div>
-        <button type="button" onClick={onClose} className="rounded-full border border-gray-200 p-2 text-gray-500 hover:bg-gray-50">
+        <button type="button" onClick={onClose} aria-label="Close" className="rounded-full border border-gray-200 p-2 text-gray-500 hover:bg-gray-50">
           <X className="h-4 w-4" />
         </button>
       </div>

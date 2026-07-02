@@ -394,6 +394,13 @@ export function AskMemoirePage() {
           <textarea
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !loading) {
+                event.preventDefault();
+                void ask();
+              }
+            }}
+            aria-label="Ask Memoire a question"
             placeholder="Ask about stuck deals, missing follow-ups, or selected account context..."
             className="min-h-[88px] flex-1 resize-y rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
           />
@@ -407,6 +414,7 @@ export function AskMemoirePage() {
             Ask
           </button>
         </div>
+        <p className="mt-2 text-xs text-gray-400">Press Ctrl+Enter (Cmd+Enter on Mac) to ask.</p>
       </section>
 
       <section className="mt-5 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">

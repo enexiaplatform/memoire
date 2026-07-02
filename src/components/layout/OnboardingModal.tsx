@@ -245,6 +245,18 @@ export function OnboardingModal() {
     if (location.pathname !== currentStep.route) navigate(currentStep.route);
   }, [currentStep.route, location.pathname, mode, navigate, workflow.active]);
 
+  const welcomeOverlayVisible = workflow.active && Boolean(user) && (mode === 'welcome' || workflow.currentStep === 'welcome');
+
+  useEffect(() => {
+    if (!welcomeOverlayVisible) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') skip();
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [welcomeOverlayVisible]);
+
   if (!workflow.active || !user) return null;
 
   const preference = readPreference(storageKey);
@@ -397,7 +409,7 @@ export function OnboardingModal() {
   if (mode === 'welcome' || workflow.currentStep === 'welcome') {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/70 p-4 backdrop-blur-sm">
-        <div className="w-full max-w-xl rounded-lg bg-white p-6 shadow-2xl">
+        <div role="dialog" aria-modal="true" aria-label="Guided workflow welcome" className="w-full max-w-xl rounded-lg bg-white p-6 shadow-2xl">
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Guided Workflow</p>

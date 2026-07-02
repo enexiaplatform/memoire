@@ -163,8 +163,8 @@ export function buildSampleDataset(): SampleDataset {
   const today = toDateKey(now);
   const yesterday = toDateKey(addDays(now, -1));
   const twoDaysAgo = toDateKey(addDays(now, -2));
-  const fourDaysAgo = toDateKey(addDays(now, -4));
   const sixDaysAgo = toDateKey(addDays(now, -6));
+  const sixteenDaysAgo = toDateKey(addDays(now, -16));
   const nextTuesday = toDateKey(nextWeekday(now, 2));
   const friday = toDateKey(nextWeekday(now, 5));
   const nextWeek = toDateKey(addDays(now, 7));
@@ -371,7 +371,7 @@ export function buildSampleDataset(): SampleDataset {
     sampleActivity({
       id: 'demo-activity-summit-diagnostics-gap',
       note: 'Reviewed Summit Diagnostics QC workflow. No confirmed decision maker, close period, or next action. Should downgrade until real evidence appears.',
-      activityDate: fourDaysAgo,
+      activityDate: sixteenDaysAgo,
       linkedOpportunityId: 'demo-opp-summit-diagnostics-qc-workflow',
       linkedOpportunityName: 'QC workflow',
       linkedAccountName: 'Summit Diagnostics',
@@ -484,7 +484,7 @@ export function buildSampleDataset(): SampleDataset {
       stance: 'Neutral',
       notes: 'No confirmed decision process or next step captured.',
       tags: ['demo-data', 'user'],
-      lastInteractionDate: fourDaysAgo,
+      lastInteractionDate: sixteenDaysAgo,
       createdAt: timestamp,
     }),
   ];
@@ -622,8 +622,8 @@ export function buildSampleDataset(): SampleDataset {
       status: 'Dismissed',
       outcomeType: 'Downgrade recommended',
       outcomeNote: 'No confirmed buyer or next action. Keep out of defended forecast until customer re-engages.',
-      completedAt: fourDaysAgo,
-      createdAt: fourDaysAgo,
+      completedAt: sixteenDaysAgo,
+      createdAt: sixteenDaysAgo,
     }),
     sampleActionOutcome({
       id: 'demo-outcome-orion-pharma-tender',

@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { CalendarDays, Eye, Plus, Search, Trash2, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import type { AccountMemoryRecord } from '../../services/accountStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
@@ -441,9 +442,11 @@ function QuotePanel({
   const deliverySchedulingRequired = progressAction?.kind === 'schedule-delivery';
   const deliveryDateMissing = requiresExpectedDeliveryDate(form);
 
+  useEscapeToClose(onClose);
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-navy/30">
-      <aside className="flex h-full w-full max-w-2xl flex-col overflow-y-auto bg-white shadow-xl">
+      <aside role="dialog" aria-modal="true" aria-label={editingQuote ? 'Edit quote' : 'Create quote'} className="flex h-full w-full max-w-2xl flex-col overflow-y-auto bg-white shadow-xl">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-5 py-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Quote Tracker</p>

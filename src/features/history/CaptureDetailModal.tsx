@@ -28,7 +28,7 @@ export function CaptureDetailModal({ capture, onClose }: CaptureDetailModalProps
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col relative" onClick={e => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label="Capture detail" className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col relative" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900">
             {format(new Date(capture.created_at), 'MMMM d, yyyy \\a\\t h:mm a')}

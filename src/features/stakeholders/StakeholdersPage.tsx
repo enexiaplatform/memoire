@@ -306,7 +306,7 @@ function StakeholderPanel({
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">{mode === 'add' ? 'Add Stakeholder' : 'Stakeholder Detail'}</p>
           <h2 className="mt-2 text-xl font-bold text-navy">{mode === 'add' ? 'New stakeholder' : form.name}</h2>
         </div>
-        <button type="button" onClick={onClose} className="rounded-full border border-gray-200 p-2 text-gray-500 hover:bg-gray-50"><X className="h-4 w-4" /></button>
+        <button type="button" onClick={onClose} aria-label="Close" className="rounded-full border border-gray-200 p-2 text-gray-500 hover:bg-gray-50"><X className="h-4 w-4" /></button>
       </div>
       <div className="mt-5 space-y-4">
         <Field label="Name" value={form.name} onChange={(value) => update('name', value)} required />

@@ -8,6 +8,7 @@ export const earlyAccessRoles = [
   'Consultant / Freelancer',
   'Agency owner',
   'Creator / Partnerships',
+  'Solo entrepreneur / Solo operator',
   'Business Development',
   'Other',
 ] as const;
@@ -19,6 +20,7 @@ export const earlyAccessSegments = [
   'Professional Services',
   'Agency / Consulting',
   'Creator / Partnerships',
+  'High-value sales to individual clients',
   'Other B2B',
 ] as const;
 

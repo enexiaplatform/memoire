@@ -1,9 +1,10 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
-import { AppShell } from './components/layout/AppShell';
+import { AppErrorBoundary } from './components/common/AppErrorBoundary';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { isFounderWorkspaceEnabled } from './lib/demoMode';
 
+const AppShell = lazy(() => import('./components/layout/AppShell').then((module) => ({ default: module.AppShell })));
 const LandingPage = lazy(() => import('./pages/LandingPage').then((module) => ({ default: module.LandingPage })));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })));
 const LoginPage = lazy(() => import('./features/auth/LoginPage').then((module) => ({ default: module.LoginPage })));
@@ -74,6 +75,7 @@ const FounderImportReviewPage = lazy(() =>
 function App() {
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <AppErrorBoundary>
       <Suspense fallback={<RouteLoading />}>
         <Routes>
           {/* Public routes */}
@@ -144,6 +146,7 @@ function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
+      </AppErrorBoundary>
     </BrowserRouter>
   );
 }

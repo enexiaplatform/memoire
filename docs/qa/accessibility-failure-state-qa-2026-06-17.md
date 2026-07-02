@@ -24,6 +24,28 @@ What changed:
 - The app `main` landmark has a stable `id`, label, and focus target.
 - Mobile navigation can be closed with `Escape` when open.
 
+## 2026-07-02 Modal Accessibility Hardening
+
+Updated:
+
+- `src/components/ui/Modal.tsx` — the shared Modal now sets `role="dialog"`, `aria-modal`, and an accessible label, moves focus into the dialog on open, traps `Tab`/`Shift+Tab` inside it, and restores focus to the previously focused element on close.
+- `src/hooks/useEscapeToClose.ts` — new shared hook: closes a mounted modal/drawer on `Escape`.
+- Ad-hoc overlays upgraded with `role="dialog"`, `aria-modal`, an accessible label, and Escape-to-close: Follow-up Composer (C6-09), guided-workflow welcome overlay (C6-10, Escape maps to Skip), demo-entry confirm dialog, dashboard demo sandbox prompt, Pipeline Defense Brief preview (Opportunities), quote create/edit drawer (Quotes), activity detail modal (Calendar). `CaptureDetailModal` already closed on Escape and now exposes the dialog role.
+
+This narrows C6-09/C6-10 to verification-only. The full C6 manual matrix on protected production or preview is still required.
+
+Verified 2026-07-02: `npm run check` and `npm run build` pass; runtime smoke confirms the demo-entry confirm dialog exposes `role="dialog"` with label "Start demo sandbox" and closes on `Escape` with no console errors.
+
+## 2026-07-02 App-Level Error Boundary
+
+Previously no React error boundary existed anywhere: any render error produced a permanent white screen. Added:
+
+- `src/components/common/AppErrorBoundary.tsx` — class boundary wrapping all routes in `src/App.tsx`. The fallback is a branded `role="alert"` card with "Reload page" and "Go to Today" actions and reassurance that saved data is unaffected. Stale-deploy chunk-load failures (`Failed to fetch dynamically imported module` and variants) get dedicated copy: "A newer version of Memoire is available."
+- Render errors report to serverless logs through the existing `reportClientOperationalEvent` path; `client_render_error` was added to the `api/client-log.ts` allowlist and the telemetry event union.
+- Contract coverage added to `verify-accessibility-failure-state-contract.mjs`: boundary lifecycle markers, fallback copy, App wiring, and API allowlist.
+
+Verified: `npm run check` passes (including the production-readiness client-log runtime contract) and the app renders normally with the boundary in place, no console errors.
+
 ## QA Scope
 
 Run this against the protected production or preview deployment before broader public selling.

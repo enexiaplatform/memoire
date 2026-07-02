@@ -61,7 +61,7 @@ navOrder.forEach((route, index) => {
   assert.ok(location >= 0, `Sidebar missing ${route}`);
   if (index > 0) assert.ok(location > sidebar.indexOf(`to: '${navOrder[index - 1]}'`), `Sidebar order incorrect for ${route}`);
 });
-assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 18, 'A new CRM navigation item was added.');
+assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 12, 'A new CRM navigation item was added.');
 
 const todayPage = readFileSync('src/features/dashboard/DashboardPage.tsx', 'utf8');
 const sections = ['Forecast-defense readiness', 'Top 3 Today Actions', 'Pipeline Review Readiness', 'Commercial Risk', 'Capture Inbox'];

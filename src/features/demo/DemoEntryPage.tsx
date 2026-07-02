@@ -22,6 +22,15 @@ export function DemoEntryPage() {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    if (!confirmOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setConfirmOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [confirmOpen]);
+
   const openDemoConfirmation = (destination: string) => {
     setDemoDestination(destination);
     setConfirmOpen(true);
@@ -105,7 +114,7 @@ export function DemoEntryPage() {
 
       {confirmOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4">
-          <div className="w-full max-w-lg rounded-xl border border-slate-700 bg-white p-6 text-slate-950 shadow-2xl">
+          <div role="dialog" aria-modal="true" aria-label="Start demo sandbox" className="w-full max-w-lg rounded-xl border border-slate-700 bg-white p-6 text-slate-950 shadow-2xl">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-700">Start demo sandbox</p>
             <h2 className="mt-2 text-2xl font-bold">Load sample pipeline data?</h2>
             <div className="mt-4 space-y-3 text-sm leading-6 text-slate-600">

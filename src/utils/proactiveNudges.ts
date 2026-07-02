@@ -50,6 +50,7 @@ export function buildProactiveNudges(input: ProactiveNudgeInput): ProactiveNudge
   const generated = [
     ...buildRevenueNudges(input.revenueActions || [], today),
     ...buildOpportunityNudges(input.opportunities || [], today),
+    ...buildSilenceRiskNudges(input, today),
     ...buildMeddicStakeholderNudges(input, today),
     ...buildPipelineDefenseNudges(input.briefs || [], today),
     ...buildObjectionNudges(input.objections || []),
@@ -316,6 +317,81 @@ function buildOpportunityNudges(opportunities: CrmLiteOpportunity[], today: stri
 
     return nudges;
   });
+}
+
+const SILENCE_WARNING_DAYS = 7;
+const SILENCE_CRITICAL_DAYS = 14;
+
+export type OpportunitySilenceState = {
+  status: 'silent' | 'at-risk' | 'quiet-ok' | 'planned' | 'inactive';
+  daysQuiet: number | null;
+  lastTouchDate: string;
+};
+
+export function classifyOpportunitySilence(
+  opportunity: CrmLiteOpportunity,
+  activities: SalesActivityRecord[],
+  today = new Date().toISOString().slice(0, 10),
+): OpportunitySilenceState {
+  if (opportunity.status !== 'Active') return { status: 'inactive', daysQuiet: null, lastTouchDate: '' };
+  const lastTouch = findLastTouchDate(opportunity, activities);
+  if (isValidBusinessDate(opportunity.nextActionDate)) return { status: 'planned', daysQuiet: null, lastTouchDate: lastTouch };
+  const quietSince = lastTouch || sanitizeBusinessDate(opportunity.createdAt.slice(0, 10));
+  const daysQuiet = daysBetweenBusinessDates(quietSince, sanitizeBusinessDate(today));
+  if (daysQuiet === null) return { status: 'quiet-ok', daysQuiet: null, lastTouchDate: lastTouch };
+  if (daysQuiet >= SILENCE_CRITICAL_DAYS) return { status: 'silent', daysQuiet, lastTouchDate: lastTouch };
+  if (daysQuiet >= SILENCE_WARNING_DAYS) return { status: 'at-risk', daysQuiet, lastTouchDate: lastTouch };
+  return { status: 'quiet-ok', daysQuiet, lastTouchDate: lastTouch };
+}
+
+function buildSilenceRiskNudges(input: ProactiveNudgeInput, today: string) {
+  const activities = input.activities || [];
+  return (input.opportunities || []).flatMap((opportunity) => {
+    const silence = classifyOpportunitySilence(opportunity, activities, today);
+    if (silence.status !== 'silent' && silence.status !== 'at-risk') return [];
+    const lastTouch = silence.lastTouchDate;
+    const quietSince = lastTouch || sanitizeBusinessDate(opportunity.createdAt.slice(0, 10));
+    const critical = silence.status === 'silent';
+    const accountName = opportunity.accountName || 'Needs confirmation';
+    const opportunityName = opportunity.opportunityName || 'Needs confirmation';
+    const amount = opportunity.estimatedValue ?? opportunity.fy26Value ?? undefined;
+    return [createNudge({
+      source: 'opportunity',
+      entityType: 'opportunity',
+      entityId: opportunity.id,
+      accountName,
+      opportunityName,
+      title: critical ? 'Deal going silent' : 'Silence risk',
+      reason: lastTouch
+        ? `No customer touch since ${formatSafeBusinessDate(lastTouch)} and no next action is scheduled for ${accountName} / ${opportunityName}.`
+        : `No customer touch recorded since this opportunity was created on ${formatSafeBusinessDate(quietSince)}, and no next action is scheduled.`,
+      recommendedAction: opportunity.nextAction
+        ? `Put a date on the planned next action: ${opportunity.nextAction}`
+        : 'Book the next customer touch or send the follow-up now, before this deal goes quiet.',
+      urgency: critical ? 'critical' : 'high',
+      moneyAmount: amount,
+      moneyCurrency: opportunity.currency,
+      today,
+    })];
+  });
+}
+
+function findLastTouchDate(opportunity: CrmLiteOpportunity, activities: SalesActivityRecord[]) {
+  const normalize = (value?: string) => (value || '').trim().toLowerCase();
+  const accountKey = normalize(opportunity.accountName);
+  return activities
+    .filter((activity) => activity.linkedOpportunityId === opportunity.id
+      || (accountKey !== '' && (normalize(activity.accountName) === accountKey || normalize(activity.linkedAccountName) === accountKey)))
+    .map((activity) => activity.activityDate)
+    .filter(isValidBusinessDate)
+    .sort(compareSafeBusinessDate)
+    .at(-1) || '';
+}
+
+function daysBetweenBusinessDates(start: string, end: string) {
+  if (!isValidBusinessDate(start) || !isValidBusinessDate(end)) return null;
+  const elapsed = Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`);
+  return Math.floor(elapsed / 86_400_000);
 }
 
 function buildPipelineDefenseNudges(briefs: PipelineDefenseBrief[], today: string) {

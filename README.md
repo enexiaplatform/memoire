@@ -83,7 +83,7 @@ npm run build
 npm run lint
 ```
 
-Current note: the app builds successfully. Lint still reports pre-existing strict TypeScript/React rule violations in legacy modules that are now hidden from the V1 navigation.
+Current note: the app builds successfully and `npm run lint` passes clean. The full contract suite runs with `npm run check`.
 
 ## V1 QA Checklist
 

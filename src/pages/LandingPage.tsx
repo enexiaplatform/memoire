@@ -84,6 +84,7 @@ const bestFor = [
   'B2B salespeople with weekly or monthly pipeline reviews',
   'Founder-led sellers and solo operators who own their own follow-up',
   'Consultants, freelancers, agencies, and creators selling client work or partnerships',
+  'Solo entrepreneurs selling high-value, long-cycle work to businesses or individual clients',
   'Pharma, life science, lab, industrial, and complex technical sales',
   'Reps who use CRM plus Excel, Notion, private notes, or memory',
   'Sellers who must defend forecast with evidence, not hope',
@@ -95,6 +96,7 @@ const notIdealFor = [
   'Teams needing full Salesforce or HubSpot native sync right now',
   'Users looking for Memoire to become the system of record or a manager forecasting dashboard',
   'Operators needing invoicing, inventory, ecommerce, marketplace, or delivery/project management',
+  'Quick transactional selling with no meaningful follow-up loop',
 ];
 
 const pricingPlans = [
