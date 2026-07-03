@@ -42,6 +42,9 @@ import {
 import { analyzePipelineQuality, analyzeOpportunityQuality } from '../../utils/opportunityQuality';
 import { classifyOpportunitySilence, type OpportunitySilenceState } from '../../utils/proactiveNudges';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
+import { FollowUpComposerPanel } from '../v31/FollowUpComposerPanel';
+import { buildReviveFollowUpContext } from '../../utils/followUpFromOpportunity';
+import type { FollowUpContext } from '../../types/v31';
 import { analyzeMeddicLiteOpportunity, type MeddicLiteDealCategory, type MeddicLiteStatus } from '../../utils/meddicLite';
 import {
   formatBaseCurrencyAmount as formatBaseMoney,
@@ -192,6 +195,7 @@ export function OpportunitiesPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
   const [editingOpportunity, setEditingOpportunity] = useState<CrmLiteOpportunity | null>(null);
+  const [followUpContext, setFollowUpContext] = useState<FollowUpContext | null>(null);
   const [form, setForm] = useState<OpportunityFormInput>(emptyOpportunityInput);
   const [panelMode, setPanelMode] = useState<'closed' | 'add' | 'edit'>('closed');
   const [saveState, setSaveState] = useState<SaveState>('idle');
@@ -1066,9 +1070,17 @@ export function OpportunitiesPage() {
             onPageSizeChange={setPageSize}
             onToggleSelection={toggleOpportunitySelection}
             onOpen={(opportunity) => openEditPanel(opportunity)}
+            onDraftFollowUp={(opportunity) => setFollowUpContext(buildReviveFollowUpContext(opportunity, activities))}
           />
         )}
       </section>
+
+      {followUpContext && (
+        <FollowUpComposerPanel
+          initialContext={followUpContext}
+          onClose={() => setFollowUpContext(null)}
+        />
+      )}
 
       <OpportunityPanel
         mode={panelMode}
@@ -2006,6 +2018,7 @@ function OpportunityMasterTable({
   onPageSizeChange,
   onToggleSelection,
   onOpen,
+  onDraftFollowUp,
 }: {
   rows: OpportunityMasterRow[];
   totalRows: number;
@@ -2021,6 +2034,7 @@ function OpportunityMasterTable({
   onPageSizeChange: (size: number) => void;
   onToggleSelection: (opportunityId: string) => void;
   onOpen: (opportunity: CrmLiteOpportunity) => void;
+  onDraftFollowUp: (opportunity: CrmLiteOpportunity) => void;
 }) {
   return (
     <section className="min-w-0 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
@@ -2162,6 +2176,18 @@ function OpportunityMasterTable({
                         ? `Quiet ${row.silence.daysQuiet}d - no next action`
                         : row.lastActivityDate ? `Last touch ${formatOpportunityDate(row.lastActivityDate)}` : 'No linked touch'}
                     </p>
+                    {(row.silence.status === 'silent' || row.silence.status === 'at-risk') && (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onDraftFollowUp(opportunity);
+                        }}
+                        className="mt-1.5 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-bold text-brand-blue hover:border-brand-blue/40"
+                      >
+                        Draft follow-up
+                      </button>
+                    )}
                   </td>
                   <td className="px-3 py-3 text-right">
                     <button

@@ -53,6 +53,7 @@ import {
 import { type SalesAssetRecord } from '../../services/salesAssetStore';
 import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { FollowUpComposerPanel } from '../v31/FollowUpComposerPanel';
+import { buildReviveFollowUpContext } from '../../utils/followUpFromOpportunity';
 import type { FollowUpContext } from '../../types/v31';
 import { type PipelineDefenseBrief } from '../../utils/pipelineDefenseStorage';
 import {
@@ -394,20 +395,14 @@ export function TodayPage() {
   const handleDraftFollowUp = (nudge: NudgeRecord) => {
     const opportunity = data.opportunities.find((item) => item.id === nudge.entityId)
       || data.opportunities.find((item) => item.opportunityName === nudge.opportunityName && item.accountName === nudge.accountName);
-    const accountName = opportunity?.accountName || nudge.accountName || '';
-    const normalize = (value?: string) => (value || '').trim().toLowerCase();
-    const relatedActivities = data.activities
-      .filter((activity) => (opportunity && activity.linkedOpportunityId === opportunity.id)
-        || (accountName !== '' && (normalize(activity.accountName) === normalize(accountName) || normalize(activity.linkedAccountName) === normalize(accountName))))
-      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+    if (opportunity) {
+      setFollowUpContext(buildReviveFollowUpContext(opportunity, data.activities));
+      return;
+    }
     setFollowUpContext({
-      accountName: accountName || 'Needs confirmation',
-      contactName: opportunity?.decisionMaker || '',
-      opportunityName: opportunity?.opportunityName || nudge.opportunityName || '',
-      lastInteractionSummary: relatedActivities[0]?.summary || '',
-      objections: [],
-      painPoints: relatedActivities.flatMap((activity) => activity.risks || []).filter(Boolean),
-      nextAction: opportunity?.nextAction || nudge.recommendedAction,
+      accountName: nudge.accountName || 'Needs confirmation',
+      opportunityName: nudge.opportunityName || '',
+      nextAction: nudge.recommendedAction,
       goal: 'revive_stale_deal',
       tone: 'consultative',
       length: 'medium',

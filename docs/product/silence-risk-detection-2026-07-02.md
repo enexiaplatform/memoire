@@ -56,6 +56,8 @@ Silence detection now closes the loop from signal to action. Opportunity-sourced
 
 Verified end-to-end in the demo sandbox: the Summit Diagnostics "Deal going silent" card opens the composer with the right account and preset goal, generates a draft, and closes on Escape — no console errors; `npm run check` passes.
 
+The same action ships on the Opportunities master table: quiet rows (red/amber "Quiet Nd" cells) show a "Draft follow-up" button that opens the composer without triggering the row's detail panel. Context building is shared through `src/utils/followUpFromOpportunity.ts` (`buildReviveFollowUpContext`), so Today and Opportunities stay consistent. Verified in the demo sandbox: the Summit Diagnostics quiet row opens the prefilled composer (revive_stale_deal / consultative / medium) and Escape closes it, no console errors.
+
 ## Follow-ups
 
 - Threshold tuning (7/14 days) should be revisited with cohort evidence; long-cycle consultants may want wider windows.
