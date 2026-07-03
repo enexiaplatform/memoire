@@ -1050,7 +1050,7 @@ export function OpportunitiesPage() {
 
       <PipelineQualitySummary quality={quality} />
 
-      <PipelineShapeCharts opportunities={opportunities} />
+      <PipelineShapeCharts opportunities={opportunities} onSelectStage={setStageFilter} />
 
       <ImportedPipelineForecastPanel summary={importedPipelineSummary} onFilter={setQuickFilter} />
 
@@ -1155,7 +1155,13 @@ export function OpportunitiesPage() {
   );
 }
 
-function PipelineShapeCharts({ opportunities }: { opportunities: CrmLiteOpportunity[] }) {
+function PipelineShapeCharts({
+  opportunities,
+  onSelectStage,
+}: {
+  opportunities: CrmLiteOpportunity[];
+  onSelectStage: (stage: string) => void;
+}) {
   const funnel = useMemo(() => buildStageFunnel(opportunities), [opportunities]);
   const horizon = useMemo(() => buildRevenueHorizon(opportunities), [opportunities]);
   if (funnel.length === 0) return null;
@@ -1167,7 +1173,8 @@ function PipelineShapeCharts({ opportunities }: { opportunities: CrmLiteOpportun
         <h2 className="mt-1 text-lg font-bold text-navy">Where your deals sit</h2>
         <div className="mt-4">
           <FunnelBars
-            ariaLabel="Active pipeline value by stage"
+            ariaLabel="Active pipeline value by stage - select a stage to filter the table"
+            onSelect={onSelectStage}
             rows={funnel.map((row) => ({
               label: row.stage,
               value: row.valueBase,
@@ -1176,7 +1183,7 @@ function PipelineShapeCharts({ opportunities }: { opportunities: CrmLiteOpportun
             }))}
           />
         </div>
-        <p className="mt-3 text-xs font-semibold text-gray-400">Active deals only. (Base: VND)</p>
+        <p className="mt-3 text-xs font-semibold text-gray-400">Active deals only. Click a stage to filter the table. (Base: VND)</p>
       </div>
       {horizon.length > 0 && (
         <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">

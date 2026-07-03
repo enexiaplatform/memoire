@@ -39,7 +39,7 @@ Sample dataset gained one Won (Northstar Foods, line audit, 480M, ~25 days ago) 
 
 ## Glance-to-action wiring (added later on 2026-07-03)
 
-The Today pipeline-health card now carries a "Rescue the quiet deals" CTA (shown only when quiet money > 0) that deep-links to `/app/opportunities?filter=goingSilent`. OpportunitiesPage accepts a `filter` URL param (validated against the quick-filter set, then cleared from the URL) so any surface can link straight into a filtered pipeline view. Verified in the demo sandbox: the CTA lands on Opportunities with the "Going silent" chip active and the table filtered to the one quiet deal; no console errors.
+The Today pipeline-health card now carries a "Rescue the quiet deals" CTA (shown only when quiet money > 0) that deep-links to `/app/opportunities?filter=goingSilent`. OpportunitiesPage accepts a `filter` URL param (validated against the quick-filter set, then cleared from the URL) so any surface can link straight into a filtered pipeline view. Verified in the demo sandbox: the CTA lands on Opportunities with the "Going silent" chip active and the table filtered to the one quiet deal; no console errors. The stage funnel is interactive the same way: clicking a stage row sets the table's Stage filter (FunnelBars accepts an optional onSelect, rows become buttons with a hover state and the hint copy says so). Verified: clicking Negotiation filters the table to the one Negotiation deal and syncs the Stage select; no console errors.
 
 ## Deliberately not added
 
