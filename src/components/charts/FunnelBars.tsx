@@ -25,19 +25,27 @@ export function FunnelBars({
   return (
     <div role={onSelect ? 'group' : 'img'} aria-label={ariaLabel} className="space-y-2">
       {rows.map((row) => {
+        const valueLabel = (
+          <>
+            {row.valueText}
+            {row.countText && <span className="ml-1 font-semibold text-gray-400">{row.countText}</span>}
+          </>
+        );
+        // Mobile: label + value on one line, full-width bar underneath.
+        // sm and up: label | bar | value in three columns.
         const content = (
           <>
-            <span className="w-32 shrink-0 truncate text-left text-xs font-semibold text-gray-600" title={row.label}>{row.label}</span>
-            <div className="relative h-5 flex-1 overflow-hidden rounded bg-gray-100">
+            <div className="flex w-full items-baseline justify-between gap-2 sm:w-32 sm:shrink-0 sm:justify-start">
+              <span className="truncate text-left text-xs font-semibold text-gray-600" title={row.label}>{row.label}</span>
+              <span className="shrink-0 text-right text-xs font-bold text-navy sm:hidden">{valueLabel}</span>
+            </div>
+            <div className="relative h-5 w-full overflow-hidden rounded bg-gray-100 sm:flex-1">
               <div
                 className="h-full rounded"
                 style={{ width: `${Math.max((row.value / max) * 100, row.value > 0 ? 3 : 0)}%`, backgroundColor: color }}
               />
             </div>
-            <span className="w-36 shrink-0 text-right text-xs font-bold text-navy">
-              {row.valueText}
-              {row.countText && <span className="ml-1 font-semibold text-gray-400">{row.countText}</span>}
-            </span>
+            <span className="hidden w-36 shrink-0 text-right text-xs font-bold text-navy sm:block">{valueLabel}</span>
           </>
         );
         if (onSelect) {
@@ -46,7 +54,7 @@ export function FunnelBars({
               key={row.label}
               type="button"
               onClick={() => onSelect(row.label)}
-              className="flex w-full items-center gap-3 rounded px-1 py-0.5 hover:bg-blue-50/60"
+              className="flex w-full flex-col gap-1 rounded px-1 py-0.5 hover:bg-blue-50/60 sm:flex-row sm:items-center sm:gap-3"
               title={`Filter to ${row.label}`}
             >
               {content}
@@ -54,7 +62,7 @@ export function FunnelBars({
           );
         }
         return (
-          <div key={row.label} className="flex items-center gap-3">
+          <div key={row.label} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
             {content}
           </div>
         );

@@ -41,6 +41,10 @@ Sample dataset gained one Won (Northstar Foods, line audit, 480M, ~25 days ago) 
 
 The Today pipeline-health card now carries a "Rescue the quiet deals" CTA (shown only when quiet money > 0) that deep-links to `/app/opportunities?filter=goingSilent`. OpportunitiesPage accepts a `filter` URL param (validated against the quick-filter set, then cleared from the URL) so any surface can link straight into a filtered pipeline view. Verified in the demo sandbox: the CTA lands on Opportunities with the "Going silent" chip active and the table filtered to the one quiet deal; no console errors. The stage funnel is interactive the same way: clicking a stage row sets the table's Stage filter (FunnelBars accepts an optional onSelect, rows become buttons with a hover state and the hint copy says so). Verified: clicking Negotiation filters the table to the one Negotiation deal and syncs the Stage select; no console errors.
 
+## Mobile pass (added later on 2026-07-03)
+
+All chart surfaces were verified on a 375px viewport: Today health strip and revenue chart, Weekly Brief sparkline and win/loss - all fit with no horizontal page overflow. One real bug found and fixed: the funnel's fixed-width label (128px) and value (144px) columns consumed the whole row on mobile, squeezing the bar track to 0px. FunnelBars now stacks on small screens - label + value on one line, full-width bar underneath - and keeps the three-column layout from `sm:` up. Verified at 375px (bar track 293px, fill visible, value inline) and desktop (three columns restored, mobile value hidden).
+
 ## Deliberately not added
 
 Dashboards-for-their-own-sake: no filters on charts, no drill-down analytics, no date-range pickers, no export. Each chart answers one operating question; anything deeper belongs to cohort-evidence decisions per the GTM strategy.
