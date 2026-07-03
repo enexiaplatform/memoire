@@ -54,8 +54,6 @@ The shared 429 contract is used by:
 - `/api/structure-capture`
 - `/api/capture-ai-classify`
 - `/api/generate-embedding`
-- `/api/claude-extract`
-- `/api/anonymize`
 - `/api/request-access`
 
 Privacy-minimized product funnel events intentionally keep accepting with `202` after their quiet limit so analytics failures do not interrupt the user journey.
@@ -82,3 +80,5 @@ Automated static verification:
 This is not distributed protection. In-memory app rate limits can reset across serverless instances and deployments.
 
 A2 remains open until Vercel Firewall, deployment protection, or equivalent distributed controls are applied and evidenced on production or protected preview.
+
+> 2026-07-03: `/api/claude-extract` and `/api/anonymize` were removed. They were only called by unrouted legacy capture components, and the Vercel Hobby plan caps deployments at 12 serverless functions; removing them restored deployability.
