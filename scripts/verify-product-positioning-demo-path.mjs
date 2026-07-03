@@ -67,9 +67,11 @@ assert.equal(checklist.includes('Open Opportunities'), false, 'First-run checkli
 
 const sampleOpportunityCount = (sampleData.match(/sampleOpportunity\(\{/g) || []).length;
 const sampleAccountCount = (sampleData.match(/sampleAccount\(\{/g) || []).length;
-assert.equal(sampleOpportunityCount >= 3 && sampleOpportunityCount <= 5, true, 'Demo sample data should have 3-5 meaningful opportunities');
+assert.equal(sampleOpportunityCount >= 3 && sampleOpportunityCount <= 7, true, 'Demo sample data should have 3-5 active opportunities plus at most one won and one lost outcome');
 assert.ok(sampleData.includes("decisionRecommendation: 'Defend'"), 'Demo needs a defendable deal');
 assert.ok(sampleData.includes("decisionRecommendation: 'Rescue'"), 'Demo needs a rescue deal');
+assert.ok(sampleData.includes("status: 'Won'"), 'Demo needs one won outcome so win/loss review surfaces have data');
+assert.ok(sampleData.includes("status: 'Lost'"), 'Demo needs one lost outcome so win/loss review surfaces have data');
 assert.ok(sampleData.includes("decisionRecommendation: 'Downgrade'"), 'Demo needs a downgrade/de-risk candidate');
 assert.ok(/budget owner|Economic Buyer|procurement|decision committee|Champion/i.test(sampleData), 'Demo needs missing MEDDIC evidence');
 assert.ok(sampleData.includes('sampleEmailThreadActivity') && sampleData.includes("sourceType: 'pasted-email'") && sampleData.includes('demo-pasted-email'), 'Demo needs a pasted email/thread example');

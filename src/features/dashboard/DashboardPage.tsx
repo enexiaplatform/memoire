@@ -68,7 +68,10 @@ import {
   type RecentActivityItem,
 } from '../../utils/salesCommandCenter';
 import { buildRevenueView, type RevenueActionItem, type RevenueViewSummary } from '../../utils/revenueView';
-import { formatBaseCurrencyAmount, formatCurrencyAmount } from '../../utils/money';
+import { formatBaseCurrencyAmount, formatCompactCurrencyAmount, formatCurrencyAmount } from '../../utils/money';
+import { buildPipelineHealthSummary, buildRevenueHorizon } from '../../utils/pipelineInsights';
+import { SegmentBar } from '../../components/charts/SegmentBar';
+import { MiniBarChart } from '../../components/charts/MiniBarChart';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { formatSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue } from '../../utils/safeDate.ts';
 import { loadSampleDataset } from '../../utils/sampleData';
@@ -534,6 +537,7 @@ export function TodayPage() {
           ) : (
             <>
               <TodayTopThreeActions actions={todayCenter.topActions} />
+              <PipelineGlanceSection opportunities={data.opportunities} activities={data.activities} />
               <ProactiveNudgesPanel
                 center={proactiveNudges}
                 message={nudgeMessage}
@@ -774,6 +778,70 @@ function revenueRiskPriority(risk: RevenueActionItem['risk']): CommandPriority {
   if (risk === 'Quote expiring' || risk === 'Payment term missing') return 'High';
   if (risk === 'Waiting on PO' || risk === 'Waiting on delivery' || risk === 'Waiting on payment' || risk === 'Weak pipeline') return 'High';
   return 'Medium';
+}
+
+function PipelineGlanceSection({
+  opportunities,
+  activities,
+}: {
+  opportunities: CrmLiteOpportunity[];
+  activities: SalesActivityRecord[];
+}) {
+  const health = useMemo(() => buildPipelineHealthSummary(opportunities, activities), [activities, opportunities]);
+  const horizon = useMemo(() => buildRevenueHorizon(opportunities), [opportunities]);
+  if (health.activeCount === 0) return null;
+
+  return (
+    <section className="grid gap-4 xl:grid-cols-2">
+      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Pipeline health</p>
+        <h2 className="mt-1 text-xl font-bold text-navy">
+          {health.quietValueBase > 0
+            ? `${formatCompactCurrencyAmount(health.quietValueBase, 'VND')} is going quiet`
+            : 'Every active deal has a heartbeat'}
+        </h2>
+        <div className="mt-4">
+          <SegmentBar
+            ariaLabel={`Pipeline health: ${health.buckets.healthy.count} healthy, ${health.buckets.atRisk.count} at risk, ${health.buckets.silent.count} silent`}
+            segments={[
+              { label: 'Healthy', value: health.buckets.healthy.count, color: '#2E7D32', detail: formatCompactCurrencyAmount(health.buckets.healthy.valueBase, 'VND') },
+              { label: 'At risk', value: health.buckets.atRisk.count, color: '#F59E0B', detail: formatCompactCurrencyAmount(health.buckets.atRisk.valueBase, 'VND') },
+              { label: 'Silent', value: health.buckets.silent.count, color: '#DC2626', detail: formatCompactCurrencyAmount(health.buckets.silent.valueBase, 'VND') },
+            ]}
+          />
+        </div>
+        {health.concentration && health.concentration.topAccountShare >= 40 && (
+          <p className="mt-3 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+            Concentration risk: {health.concentration.topAccountName} holds {health.concentration.topAccountShare}% of your active pipeline value.
+          </p>
+        )}
+        <p className="mt-3 text-xs font-semibold text-gray-400">
+          {health.activeCount} active deals / {formatCompactCurrencyAmount(health.activeValueBase, 'VND')} total (Base: VND)
+        </p>
+      </div>
+      {horizon.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Expected revenue</p>
+          <h2 className="mt-1 text-xl font-bold text-navy">When the money lands</h2>
+          <div className="mt-4">
+            <MiniBarChart
+              ariaLabel="Expected revenue by close horizon: weighted by probability against full value"
+              items={horizon.map((bucket) => ({
+                label: bucket.label,
+                value: bucket.weightedValueBase,
+                secondaryValue: bucket.rawValueBase,
+                valueText: `weighted ${formatCompactCurrencyAmount(bucket.weightedValueBase, 'VND')}`,
+                secondaryText: `full ${formatCompactCurrencyAmount(bucket.rawValueBase, 'VND')} (${bucket.count} deals)`,
+              }))}
+            />
+          </div>
+          <p className="mt-3 text-xs font-semibold text-gray-400">
+            Solid bar: value weighted by probability. Pale bar: full value. (Base: VND)
+          </p>
+        </div>
+      )}
+    </section>
+  );
 }
 
 function ForecastDefenseReadiness({ center }: { center: ReturnType<typeof buildUnifiedTodayCommandCenter> }) {

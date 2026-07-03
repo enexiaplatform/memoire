@@ -42,6 +42,9 @@ import {
 } from '../../utils/salesPlaybook';
 import { analyzeAssetNeeds, type SalesAssetNeed } from '../../utils/salesAssetSuggestions';
 import { formatSafeBusinessDate, isValidBusinessDate } from '../../utils/safeDate.ts';
+import { buildWeeklyTouchSeries, buildWinLossByQuarter } from '../../utils/pipelineInsights';
+import { Sparkline } from '../../components/charts/Sparkline';
+import { MiniBarChart } from '../../components/charts/MiniBarChart';
 import { analyzePersonalSalesLearning, type PersonalSalesLearningAnalysis } from '../../utils/personalSalesLearning.ts';
 import {
   generateMonthlySalesRecap,
@@ -340,6 +343,8 @@ export function SalesReviewsPage() {
         </div>
       </section>
 
+      <ExecutionRhythmCharts activities={activities} opportunities={opportunities} />
+
       <ActivityTimelinePanel activities={periodActivities} periodLabel={period.label} />
 
       <CommercialReviewBriefPanel
@@ -419,6 +424,73 @@ export function SalesReviewsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function ExecutionRhythmCharts({
+  activities,
+  opportunities,
+}: {
+  activities: SalesActivityRecord[];
+  opportunities: CrmLiteOpportunity[];
+}) {
+  const touchSeries = useMemo(() => buildWeeklyTouchSeries(activities), [activities]);
+  const winLoss = useMemo(() => buildWinLossByQuarter(opportunities), [opportunities]);
+  const hasTouches = touchSeries.some((point) => point.count > 0);
+  const hasOutcomes = winLoss.some((quarter) => quarter.won > 0 || quarter.lost > 0);
+  if (!hasTouches && !hasOutcomes) return null;
+
+  const thisWeek = touchSeries[touchSeries.length - 1]?.count ?? 0;
+  const previousWeeks = touchSeries.slice(0, -1);
+  const weeklyAverage = previousWeeks.length > 0
+    ? previousWeeks.reduce((sum, point) => sum + point.count, 0) / previousWeeks.length
+    : 0;
+
+  return (
+    <section className="grid gap-4 xl:grid-cols-2">
+      {hasTouches && (
+        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Follow-up rhythm</p>
+          <h2 className="mt-1 text-lg font-bold text-navy">
+            {thisWeek} customer touch{thisWeek === 1 ? '' : 'es'} this week
+            {weeklyAverage > 0 && thisWeek < weeklyAverage ? ' - below your usual pace' : ''}
+          </h2>
+          <div className="mt-4">
+            <Sparkline
+              ariaLabel={`Customer touches per week over the last ${touchSeries.length} weeks`}
+              points={touchSeries.map((point) => ({ label: point.weekLabel, value: point.count }))}
+            />
+          </div>
+          <p className="mt-3 text-xs font-semibold text-gray-400">Recorded customer touches per week (week starting date).</p>
+        </div>
+      )}
+      {hasOutcomes && (
+        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Win / loss</p>
+          <h2 className="mt-1 text-lg font-bold text-navy">How the last quarters closed</h2>
+          <div className="mt-4 grid grid-cols-2 gap-4">
+            <div>
+              <MiniBarChart
+                ariaLabel="Deals won per quarter"
+                color="#2E7D32"
+                height={80}
+                items={winLoss.map((quarter) => ({ label: quarter.label, value: quarter.won, valueText: `${quarter.won} won` }))}
+              />
+              <p className="mt-1 text-center text-xs font-bold text-emerald-700">Won</p>
+            </div>
+            <div>
+              <MiniBarChart
+                ariaLabel="Deals lost per quarter"
+                color="#DC2626"
+                height={80}
+                items={winLoss.map((quarter) => ({ label: quarter.label, value: quarter.lost, valueText: `${quarter.lost} lost` }))}
+              />
+              <p className="mt-1 text-center text-xs font-bold text-red-700">Lost</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 

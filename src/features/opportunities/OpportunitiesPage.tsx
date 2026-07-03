@@ -48,9 +48,13 @@ import type { FollowUpContext } from '../../types/v31';
 import { analyzeMeddicLiteOpportunity, type MeddicLiteDealCategory, type MeddicLiteStatus } from '../../utils/meddicLite';
 import {
   formatBaseCurrencyAmount as formatBaseMoney,
+  formatCompactCurrencyAmount,
   formatCurrencyAmount as formatMoney,
   sumMoneyInBase,
 } from '../../utils/money';
+import { buildRevenueHorizon, buildStageFunnel } from '../../utils/pipelineInsights';
+import { FunnelBars } from '../../components/charts/FunnelBars';
+import { MiniBarChart } from '../../components/charts/MiniBarChart';
 import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, sanitizeBusinessDate } from '../../utils/safeDate.ts';
 import { type SalesActivityRecord } from '../../services/salesActivityStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
@@ -1039,6 +1043,8 @@ export function OpportunitiesPage() {
 
       <PipelineQualitySummary quality={quality} />
 
+      <PipelineShapeCharts opportunities={opportunities} />
+
       <ImportedPipelineForecastPanel summary={importedPipelineSummary} onFilter={setQuickFilter} />
 
       <ImportedOpportunityEnrichmentSignal summary={importedEnrichment} />
@@ -1139,6 +1145,54 @@ export function OpportunitiesPage() {
         />
       )}
     </div>
+  );
+}
+
+function PipelineShapeCharts({ opportunities }: { opportunities: CrmLiteOpportunity[] }) {
+  const funnel = useMemo(() => buildStageFunnel(opportunities), [opportunities]);
+  const horizon = useMemo(() => buildRevenueHorizon(opportunities), [opportunities]);
+  if (funnel.length === 0) return null;
+
+  return (
+    <section className="grid gap-4 xl:grid-cols-2">
+      <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Pipeline shape</p>
+        <h2 className="mt-1 text-lg font-bold text-navy">Where your deals sit</h2>
+        <div className="mt-4">
+          <FunnelBars
+            ariaLabel="Active pipeline value by stage"
+            rows={funnel.map((row) => ({
+              label: row.stage,
+              value: row.valueBase,
+              valueText: formatCompactCurrencyAmount(row.valueBase, 'VND'),
+              countText: `x${row.count}`,
+            }))}
+          />
+        </div>
+        <p className="mt-3 text-xs font-semibold text-gray-400">Active deals only. (Base: VND)</p>
+      </div>
+      {horizon.length > 0 && (
+        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Close horizon</p>
+          <h2 className="mt-1 text-lg font-bold text-navy">When the money lands</h2>
+          <div className="mt-4">
+            <MiniBarChart
+              ariaLabel="Expected revenue by close horizon"
+              items={horizon.map((bucket) => ({
+                label: bucket.label,
+                value: bucket.weightedValueBase,
+                secondaryValue: bucket.rawValueBase,
+                valueText: `weighted ${formatCompactCurrencyAmount(bucket.weightedValueBase, 'VND')}`,
+                secondaryText: `full ${formatCompactCurrencyAmount(bucket.rawValueBase, 'VND')} (${bucket.count} deals)`,
+              }))}
+            />
+          </div>
+          <p className="mt-3 text-xs font-semibold text-gray-400">
+            Solid bar: weighted by probability. Pale bar: full value. (Base: VND)
+          </p>
+        </div>
+      )}
+    </section>
   );
 }
 
