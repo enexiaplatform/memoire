@@ -494,6 +494,7 @@ export function QuickCapturePanel({ compact = false, onSaved }: QuickCapturePane
         <FollowUpComposerPanel
           initialContext={followUpContext}
           onClose={() => setFollowUpContext(null)}
+          onActivityLogged={onSaved}
         />
       )}
     </section>

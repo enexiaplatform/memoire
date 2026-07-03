@@ -498,6 +498,7 @@ export function AccountsPage() {
         <FollowUpComposerPanel
           initialContext={followUpContext}
           onClose={() => setFollowUpContext(null)}
+          onActivityLogged={() => { void refreshAccounts(true); }}
         />
       )}
     </div>
