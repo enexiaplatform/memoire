@@ -1079,6 +1079,7 @@ export function OpportunitiesPage() {
         <FollowUpComposerPanel
           initialContext={followUpContext}
           onClose={() => setFollowUpContext(null)}
+          onActivityLogged={() => { void refreshOpportunities(); }}
         />
       )}
 

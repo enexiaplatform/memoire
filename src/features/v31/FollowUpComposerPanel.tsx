@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Copy, RefreshCw, X } from 'lucide-react';
+import { CheckCircle2, Copy, RefreshCw, X } from 'lucide-react';
 import type { FollowUpContext, FollowUpDraft, FollowUpGoal, FollowUpLength, FollowUpTone } from '../../types/v31';
 import {
   followUpGoals,
@@ -9,17 +9,24 @@ import {
   getMissingFollowUpContext,
 } from './followUpComposer';
 import { FOLLOWUP_DRAFT_READY_EVENT } from '../onboarding/guidedWorkflow';
+import { useAuthContext } from '../../auth/authContext';
+import { saveSalesActivity } from '../../services/salesActivityStore';
+import { hasLocalSampleData } from '../../utils/dataMode';
 
 interface FollowUpComposerPanelProps {
   initialContext: FollowUpContext;
   onClose: () => void;
+  onActivityLogged?: () => void;
 }
 
-export function FollowUpComposerPanel({ initialContext, onClose }: FollowUpComposerPanelProps) {
+export function FollowUpComposerPanel({ initialContext, onClose, onActivityLogged }: FollowUpComposerPanelProps) {
+  const { user } = useAuthContext();
   const [context, setContext] = useState<FollowUpContext>(initialContext);
   const [draft, setDraft] = useState<FollowUpDraft | null>(null);
   const [copyMessage, setCopyMessage] = useState('');
   const [draftStatus, setDraftStatus] = useState('');
+  const [logState, setLogState] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [logMessage, setLogMessage] = useState('');
   const missingFields = useMemo(() => getMissingFollowUpContext(context), [context]);
 
   useEffect(() => {
@@ -51,6 +58,32 @@ export function FollowUpComposerPanel({ initialContext, onClose }: FollowUpCompo
     const text = `Subject: ${draft.subject}\n\n${draft.body}`;
     await navigator.clipboard.writeText(text);
     setCopyMessage('Copied.');
+  };
+
+  const logAsSentActivity = async () => {
+    if (!draft || logState === 'saving' || logState === 'saved') return;
+    setLogState('saving');
+    setLogMessage('');
+    try {
+      const result = await saveSalesActivity({
+        accountName: context.accountName,
+        opportunityName: context.opportunityName || '',
+        contactName: context.contactName || undefined,
+        activityType: 'Follow-up',
+        summary: `Follow-up sent: ${draft.subject}`,
+        nextAction: context.nextAction || '',
+        dueDate: '',
+        tags: ['follow-up'],
+        rawNote: `Subject: ${draft.subject}\n\n${draft.body}`,
+        activityDate: new Date().toISOString().slice(0, 10),
+      }, hasLocalSampleData() ? undefined : user?.id);
+      setLogState('saved');
+      setLogMessage(result.warning || 'Logged as a customer touch - silence tracking updated.');
+      onActivityLogged?.();
+    } catch {
+      setLogState('idle');
+      setLogMessage('Could not log the activity. Your draft is still here - try again.');
+    }
   };
 
   return (
@@ -125,8 +158,22 @@ export function FollowUpComposerPanel({ initialContext, onClose }: FollowUpCompo
                     <Copy className="h-3.5 w-3.5" />
                     Copy
                   </button>
+                  <button
+                    type="button"
+                    onClick={logAsSentActivity}
+                    disabled={logState !== 'idle'}
+                    className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {logState === 'saved' ? 'Logged' : logState === 'saving' ? 'Logging...' : 'Log as sent'}
+                  </button>
                 </div>
               </div>
+              {logMessage && (
+                <p className={`mb-3 rounded-lg px-3 py-2 text-xs font-semibold ${logState === 'saved' ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>
+                  {logMessage}
+                </p>
+              )}
               <TextField label="Subject" value={draft.subject} onChange={(value) => setDraft((current) => current ? { ...current, subject: value } : current)} />
               <div className="mt-3">
                 <TextAreaField label="Message body" value={draft.body} onChange={(value) => setDraft((current) => current ? { ...current, body: value } : current)} large />

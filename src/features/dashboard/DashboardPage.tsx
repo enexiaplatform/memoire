@@ -516,6 +516,7 @@ export function TodayPage() {
             <FollowUpComposerPanel
               initialContext={followUpContext}
               onClose={() => setFollowUpContext(null)}
+              onActivityLogged={() => { void refreshDashboard(); }}
             />
           )}
           {!todayCenter.hasMeaningfulData ? (

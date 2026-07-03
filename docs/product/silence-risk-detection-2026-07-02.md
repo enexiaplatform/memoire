@@ -58,6 +58,12 @@ Verified end-to-end in the demo sandbox: the Summit Diagnostics "Deal going sile
 
 The same action ships on the Opportunities master table: quiet rows (red/amber "Quiet Nd" cells) show a "Draft follow-up" button that opens the composer without triggering the row's detail panel. Context building is shared through `src/utils/followUpFromOpportunity.ts` (`buildReviveFollowUpContext`), so Today and Opportunities stay consistent. Verified in the demo sandbox: the Summit Diagnostics quiet row opens the prefilled composer (revive_stale_deal / consultative / medium) and Escape closes it, no console errors.
 
+## Loop closure: Log as sent (added 2026-07-03)
+
+The composer previously ended at Copy, which leaked the loop: a deal stayed flagged "quiet" even after the user sent the follow-up, until they manually captured a note. The Generated Draft header now has a **"Log as sent"** action that saves a `Follow-up` sales activity (account, opportunity, contact, subject as summary, full draft as raw note, today's date) through the standard `saveSalesActivity` path (cloud when signed in, local otherwise, sample-aware). Hosts pass `onActivityLogged` so Today and Opportunities refresh immediately - the quiet flag and the "Going silent" chip clear the moment the touch is logged.
+
+Verified end-to-end in the demo sandbox on `/app/opportunities`: quiet rows 1 -> 0 after Draft follow-up -> Generate -> Log as sent -> close; the confirmation "Logged as a customer touch - silence tracking updated." appears; no console errors; `npm run check` passes.
+
 ## Follow-ups
 
 - Threshold tuning (7/14 days) should be revisited with cohort evidence; long-cycle consultants may want wider windows.
