@@ -402,6 +402,13 @@ export function OpportunitiesPage() {
       return;
     }
 
+    const requestedFilter = searchParams.get('filter');
+    if (requestedFilter && ['all', 'imported', 'stageInferred', 'fy26', 'fy27', 'needsAction', 'goingSilent'].includes(requestedFilter)) {
+      setQuickFilter(requestedFilter as OpportunityQuickFilter);
+      setSearchParams({}, { replace: true });
+      return;
+    }
+
     const opportunityId = searchParams.get('opportunityId');
     if (opportunityId && !loading) {
       const opportunity = opportunities.find((item) => item.id === opportunityId);

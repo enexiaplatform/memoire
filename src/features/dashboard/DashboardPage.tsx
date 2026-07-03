@@ -815,9 +815,19 @@ function PipelineGlanceSection({
             Concentration risk: {health.concentration.topAccountName} holds {health.concentration.topAccountShare}% of your active pipeline value.
           </p>
         )}
-        <p className="mt-3 text-xs font-semibold text-gray-400">
-          {health.activeCount} active deals / {formatCompactCurrencyAmount(health.activeValueBase, 'VND')} total (Base: VND)
-        </p>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-semibold text-gray-400">
+            {health.activeCount} active deals / {formatCompactCurrencyAmount(health.activeValueBase, 'VND')} total (Base: VND)
+          </p>
+          {health.quietValueBase > 0 && (
+            <Link
+              to="/app/opportunities?filter=goingSilent"
+              className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white hover:bg-navy/90"
+            >
+              Rescue the quiet deals
+            </Link>
+          )}
+        </div>
       </div>
       {horizon.length > 0 && (
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">

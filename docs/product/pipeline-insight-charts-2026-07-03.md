@@ -37,6 +37,10 @@ Sample dataset gained one Won (Northstar Foods, line audit, 480M, ~25 days ago) 
 - `npm run check` passed (lint, build, all contract scripts).
 - Demo-sandbox runtime: Today renders the health strip (4 healthy / 1 silent - 650M VND quiet) and revenue chart; Opportunities renders the funnel (Discovery 650M x1, Proposal 970M x2, Negotiation 2.4B x1, Procurement 900M x1) and horizon chart; Weekly Brief renders the touch sparkline and won/lost quarters. No console errors.
 
+## Glance-to-action wiring (added later on 2026-07-03)
+
+The Today pipeline-health card now carries a "Rescue the quiet deals" CTA (shown only when quiet money > 0) that deep-links to `/app/opportunities?filter=goingSilent`. OpportunitiesPage accepts a `filter` URL param (validated against the quick-filter set, then cleared from the URL) so any surface can link straight into a filtered pipeline view. Verified in the demo sandbox: the CTA lands on Opportunities with the "Going silent" chip active and the table filtered to the one quiet deal; no console errors.
+
 ## Deliberately not added
 
 Dashboards-for-their-own-sake: no filters on charts, no drill-down analytics, no date-range pickers, no export. Each chart answers one operating question; anything deeper belongs to cohort-evidence decisions per the GTM strategy.
