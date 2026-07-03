@@ -24,7 +24,7 @@ import { DataModePill } from '../../components/common/DataModePill';
 import { DemoJourneyCard } from '../../components/demo/DemoJourneyCard';
 import { isFounderWorkspaceEnabled, isSupabaseConfigured } from '../../lib/demoMode';
 import type { AccountMemoryRecord } from '../../services/accountStore';
-import type { CrmLiteOpportunity } from '../../services/opportunityStore';
+import { opportunityToFormInput, updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { OperatingContextRecord } from '../../services/operatingContextStore';
 import { type SalesActivityRecord } from '../../services/salesActivityStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
@@ -197,6 +197,7 @@ export function TodayPage() {
   const [nudgeState, setNudgeState] = useState<NudgeRecord[]>(() => loadNudges());
   const [nudgeMessage, setNudgeMessage] = useState('');
   const [followUpContext, setFollowUpContext] = useState<FollowUpContext | null>(null);
+  const [followUpOpportunity, setFollowUpOpportunity] = useState<CrmLiteOpportunity | null>(null);
 
   const refreshDashboard = useCallback(async (options: DashboardLoadOptions = {}) => {
     const sampleActive = hasLocalSampleData();
@@ -395,6 +396,7 @@ export function TodayPage() {
   const handleDraftFollowUp = (nudge: NudgeRecord) => {
     const opportunity = data.opportunities.find((item) => item.id === nudge.entityId)
       || data.opportunities.find((item) => item.opportunityName === nudge.opportunityName && item.accountName === nudge.accountName);
+    setFollowUpOpportunity(opportunity || null);
     if (opportunity) {
       setFollowUpContext(buildReviveFollowUpContext(opportunity, data.activities));
       return;
@@ -515,8 +517,16 @@ export function TodayPage() {
           {followUpContext && (
             <FollowUpComposerPanel
               initialContext={followUpContext}
-              onClose={() => setFollowUpContext(null)}
+              onClose={() => { setFollowUpContext(null); setFollowUpOpportunity(null); }}
               onActivityLogged={() => { void refreshDashboard(); }}
+              onScheduleNextAction={followUpOpportunity ? async (nextAction, nextActionDate) => {
+                await updateOpportunity(followUpOpportunity, {
+                  ...opportunityToFormInput(followUpOpportunity),
+                  nextAction,
+                  nextActionDate,
+                }, nudgeUserId);
+                void refreshDashboard();
+              } : undefined}
             />
           )}
           {!todayCenter.hasMeaningfulData ? (

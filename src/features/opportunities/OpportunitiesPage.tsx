@@ -196,6 +196,7 @@ export function OpportunitiesPage() {
   const [pageSize, setPageSize] = useState(defaultPageSize);
   const [editingOpportunity, setEditingOpportunity] = useState<CrmLiteOpportunity | null>(null);
   const [followUpContext, setFollowUpContext] = useState<FollowUpContext | null>(null);
+  const [followUpOpportunity, setFollowUpOpportunity] = useState<CrmLiteOpportunity | null>(null);
   const [form, setForm] = useState<OpportunityFormInput>(emptyOpportunityInput);
   const [panelMode, setPanelMode] = useState<'closed' | 'add' | 'edit'>('closed');
   const [saveState, setSaveState] = useState<SaveState>('idle');
@@ -1070,7 +1071,10 @@ export function OpportunitiesPage() {
             onPageSizeChange={setPageSize}
             onToggleSelection={toggleOpportunitySelection}
             onOpen={(opportunity) => openEditPanel(opportunity)}
-            onDraftFollowUp={(opportunity) => setFollowUpContext(buildReviveFollowUpContext(opportunity, activities))}
+            onDraftFollowUp={(opportunity) => {
+              setFollowUpOpportunity(opportunity);
+              setFollowUpContext(buildReviveFollowUpContext(opportunity, activities));
+            }}
           />
         )}
       </section>
@@ -1078,8 +1082,20 @@ export function OpportunitiesPage() {
       {followUpContext && (
         <FollowUpComposerPanel
           initialContext={followUpContext}
-          onClose={() => setFollowUpContext(null)}
+          onClose={() => { setFollowUpContext(null); setFollowUpOpportunity(null); }}
           onActivityLogged={() => { void refreshOpportunities(); }}
+          onScheduleNextAction={followUpOpportunity ? async (nextAction, nextActionDate) => {
+            const nextForm: OpportunityFormInput = {
+              ...opportunityToForm(followUpOpportunity),
+              nextAction,
+              nextActionDate,
+            };
+            const result = await updateOpportunity(followUpOpportunity, nextForm, dataUserId);
+            setOpportunities((current) => [
+              result.opportunity,
+              ...current.filter((item) => item.id !== result.opportunity.id),
+            ]);
+          } : undefined}
         />
       )}
 

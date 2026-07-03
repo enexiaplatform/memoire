@@ -17,9 +17,16 @@ interface FollowUpComposerPanelProps {
   initialContext: FollowUpContext;
   onClose: () => void;
   onActivityLogged?: () => void;
+  onScheduleNextAction?: (nextAction: string, nextActionDate: string) => Promise<void>;
 }
 
-export function FollowUpComposerPanel({ initialContext, onClose, onActivityLogged }: FollowUpComposerPanelProps) {
+function defaultNextTouchDate() {
+  const date = new Date();
+  date.setDate(date.getDate() + 7);
+  return date.toISOString().slice(0, 10);
+}
+
+export function FollowUpComposerPanel({ initialContext, onClose, onActivityLogged, onScheduleNextAction }: FollowUpComposerPanelProps) {
   const { user } = useAuthContext();
   const [context, setContext] = useState<FollowUpContext>(initialContext);
   const [draft, setDraft] = useState<FollowUpDraft | null>(null);
@@ -27,6 +34,9 @@ export function FollowUpComposerPanel({ initialContext, onClose, onActivityLogge
   const [draftStatus, setDraftStatus] = useState('');
   const [logState, setLogState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [logMessage, setLogMessage] = useState('');
+  const [nextTouchText, setNextTouchText] = useState(initialContext.nextAction || 'Follow up on the sent email');
+  const [nextTouchDate, setNextTouchDate] = useState(defaultNextTouchDate);
+  const [scheduleState, setScheduleState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const missingFields = useMemo(() => getMissingFollowUpContext(context), [context]);
 
   useEffect(() => {
@@ -173,6 +183,52 @@ export function FollowUpComposerPanel({ initialContext, onClose, onActivityLogge
                 <p className={`mb-3 rounded-lg px-3 py-2 text-xs font-semibold ${logState === 'saved' ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>
                   {logMessage}
                 </p>
+              )}
+              {logState === 'saved' && onScheduleNextAction && (
+                <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50/60 p-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">Book the next touch</p>
+                  {scheduleState === 'saved' ? (
+                    <p className="mt-2 text-xs font-semibold text-emerald-800">Next action scheduled - this deal stays on your radar.</p>
+                  ) : (
+                    <>
+                      <p className="mt-1 text-xs text-gray-600">A sent follow-up without a scheduled next action goes quiet again in 7 days.</p>
+                      <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <input
+                          value={nextTouchText}
+                          onChange={(event) => setNextTouchText(event.target.value)}
+                          aria-label="Next action"
+                          className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-xs outline-none focus:border-brand-blue"
+                        />
+                        <input
+                          type="date"
+                          value={nextTouchDate}
+                          onChange={(event) => setNextTouchDate(event.target.value)}
+                          aria-label="Next action date"
+                          className="rounded-lg border border-gray-300 px-3 py-2 text-xs outline-none focus:border-brand-blue"
+                        />
+                        <button
+                          type="button"
+                          disabled={scheduleState === 'saving' || !nextTouchText.trim() || !nextTouchDate}
+                          onClick={async () => {
+                            setScheduleState('saving');
+                            try {
+                              await onScheduleNextAction(nextTouchText.trim(), nextTouchDate);
+                              setScheduleState('saved');
+                            } catch {
+                              setScheduleState('error');
+                            }
+                          }}
+                          className="rounded-full bg-brand-blue px-3 py-2 text-xs font-bold text-white disabled:opacity-60"
+                        >
+                          {scheduleState === 'saving' ? 'Scheduling...' : 'Schedule'}
+                        </button>
+                      </div>
+                      {scheduleState === 'error' && (
+                        <p className="mt-2 text-xs font-semibold text-amber-800">Could not schedule - try again.</p>
+                      )}
+                    </>
+                  )}
+                </div>
               )}
               <TextField label="Subject" value={draft.subject} onChange={(value) => setDraft((current) => current ? { ...current, subject: value } : current)} />
               <div className="mt-3">

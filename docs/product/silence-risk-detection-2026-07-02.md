@@ -64,6 +64,12 @@ The composer previously ended at Copy, which leaked the loop: a deal stayed flag
 
 Verified end-to-end in the demo sandbox on `/app/opportunities`: quiet rows 1 -> 0 after Draft follow-up -> Generate -> Log as sent -> close; the confirmation "Logged as a customer touch - silence tracking updated." appears; no console errors; `npm run check` passes.
 
+## Cadence closure: Book the next touch (added 2026-07-03)
+
+After "Log as sent", the deal had a fresh touch but still no scheduled next action, so it would go quiet again in 7 days by design. The composer now shows a "Book the next touch" step once the activity is logged (only on hosts that know the source opportunity - Today nudges and the Opportunities table): a prefilled next-action text, a date defaulting to +7 days, and a Schedule button that updates the opportunity's nextAction/nextActionDate through the standard updateOpportunity path. The warning copy states the stake plainly: "A sent follow-up without a scheduled next action goes quiet again in 7 days."
+
+Verified end-to-end in the demo sandbox: Draft follow-up -> Generate -> Log as sent -> Schedule; the confirmation "Next action scheduled - this deal stays on your radar." appears, and the Summit Diagnostics row leaves the quiet state with the new next action visible. No console errors; `npm run check` passes.
+
 ## Follow-ups
 
 - Threshold tuning (7/14 days) should be revisited with cohort evidence; long-cycle consultants may want wider windows.
