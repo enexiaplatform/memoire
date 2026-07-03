@@ -52,6 +52,8 @@ import {
 } from '../../services/nudgeStore';
 import { type SalesAssetRecord } from '../../services/salesAssetStore';
 import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { FollowUpComposerPanel } from '../v31/FollowUpComposerPanel';
+import type { FollowUpContext } from '../../types/v31';
 import { type PipelineDefenseBrief } from '../../utils/pipelineDefenseStorage';
 import {
   buildTodayCommandCenter,
@@ -193,6 +195,7 @@ export function TodayPage() {
   const [lastDailyExecutionActionId, setLastDailyExecutionActionId] = useState('');
   const [nudgeState, setNudgeState] = useState<NudgeRecord[]>(() => loadNudges());
   const [nudgeMessage, setNudgeMessage] = useState('');
+  const [followUpContext, setFollowUpContext] = useState<FollowUpContext | null>(null);
 
   const refreshDashboard = useCallback(async (options: DashboardLoadOptions = {}) => {
     const sampleActive = hasLocalSampleData();
@@ -388,6 +391,28 @@ export function TodayPage() {
   const handleMarkNudgeDone = (nudge: NudgeRecord) => {
     persistNudgeState(markNudgeDone(nudge, nudgeUserId), 'Nudge marked done.');
   };
+  const handleDraftFollowUp = (nudge: NudgeRecord) => {
+    const opportunity = data.opportunities.find((item) => item.id === nudge.entityId)
+      || data.opportunities.find((item) => item.opportunityName === nudge.opportunityName && item.accountName === nudge.accountName);
+    const accountName = opportunity?.accountName || nudge.accountName || '';
+    const normalize = (value?: string) => (value || '').trim().toLowerCase();
+    const relatedActivities = data.activities
+      .filter((activity) => (opportunity && activity.linkedOpportunityId === opportunity.id)
+        || (accountName !== '' && (normalize(activity.accountName) === normalize(accountName) || normalize(activity.linkedAccountName) === normalize(accountName))))
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+    setFollowUpContext({
+      accountName: accountName || 'Needs confirmation',
+      contactName: opportunity?.decisionMaker || '',
+      opportunityName: opportunity?.opportunityName || nudge.opportunityName || '',
+      lastInteractionSummary: relatedActivities[0]?.summary || '',
+      objections: [],
+      painPoints: relatedActivities.flatMap((activity) => activity.risks || []).filter(Boolean),
+      nextAction: opportunity?.nextAction || nudge.recommendedAction,
+      goal: 'revive_stale_deal',
+      tone: 'consultative',
+      length: 'medium',
+    });
+  };
   const handleDismissNudge = (nudge: NudgeRecord) => {
     persistNudgeState(dismissNudge(nudge, nudgeUserId), 'Nudge dismissed.');
   };
@@ -492,6 +517,12 @@ export function TodayPage() {
               onLoad={handleLoadDemoSandbox}
             />
           )}
+          {followUpContext && (
+            <FollowUpComposerPanel
+              initialContext={followUpContext}
+              onClose={() => setFollowUpContext(null)}
+            />
+          )}
           {!todayCenter.hasMeaningfulData ? (
             <TodayCommandEmptyState />
           ) : (
@@ -500,6 +531,7 @@ export function TodayPage() {
               <ProactiveNudgesPanel
                 center={proactiveNudges}
                 message={nudgeMessage}
+                onDraftFollowUp={handleDraftFollowUp}
                 onMarkDone={handleMarkNudgeDone}
                 onDismiss={handleDismissNudge}
                 onSnoozeTomorrow={handleSnoozeNudgeTomorrow}
@@ -828,6 +860,7 @@ function TodayTopThreeActions({ actions }: { actions: TodayCommandAction[] }) {
 function ProactiveNudgesPanel({
   center,
   message,
+  onDraftFollowUp,
   onMarkDone,
   onDismiss,
   onSnoozeTomorrow,
@@ -837,6 +870,7 @@ function ProactiveNudgesPanel({
 }: {
   center: ProactiveNudgeCenter;
   message: string;
+  onDraftFollowUp: (nudge: NudgeRecord) => void;
   onMarkDone: (nudge: NudgeRecord) => void;
   onDismiss: (nudge: NudgeRecord) => void;
   onSnoozeTomorrow: (nudge: NudgeRecord) => void;
@@ -893,6 +927,11 @@ function ProactiveNudgesPanel({
                 <p className="mt-2 text-xs font-bold text-gray-500">{formatNudgeMoney(nudge)}</p>
               )}
               <div className="mt-4 flex flex-wrap gap-2">
+                {nudge.entityType === 'opportunity' && (
+                  <button type="button" onClick={() => onDraftFollowUp(nudge)} className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">
+                    Draft follow-up
+                  </button>
+                )}
                 <button type="button" onClick={() => onMarkDone(nudge)} className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white">
                   Mark done
                 </button>

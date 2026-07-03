@@ -46,6 +46,16 @@ The silence classifier was extracted as a shared export `classifyOpportunitySile
 - Contract coverage extended in `scripts/verify-proactive-nudges.mjs`: classifier state assertions (silent / at-risk / quiet-ok / planned / inactive) plus UI markers for the chip and quiet cell.
 - Verified: `npm run check` and `npm run build` passed; runtime smoke on the demo sandbox shows "Going silent (1)", the Summit Diagnostics row marked "Quiet 16d - no next action", and the chip filtering the table to that single row with no console errors.
 
+## Detection-to-action loop (added 2026-07-03)
+
+Silence detection now closes the loop from signal to action. Opportunity-sourced nudge cards on Today (including "Deal going silent" / "Silence risk") carry a primary **"Draft follow-up"** button that opens the Follow-up Composer prefilled from the flagged deal:
+
+- Account, opportunity, and decision-maker resolved from the nudge's linked opportunity (by `entityId`, with a name-match fallback).
+- Last interaction summary and pain points pulled from the deal's most recent activities (linked by opportunity id or account name).
+- Goal preset to `revive_stale_deal`, tone `consultative`, length `medium`.
+
+Verified end-to-end in the demo sandbox: the Summit Diagnostics "Deal going silent" card opens the composer with the right account and preset goal, generates a draft, and closes on Escape — no console errors; `npm run check` passes.
+
 ## Follow-ups
 
 - Threshold tuning (7/14 days) should be revisited with cohort evidence; long-cycle consultants may want wider windows.

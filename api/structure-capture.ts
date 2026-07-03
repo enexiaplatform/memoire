@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { getBearerToken, verifyUserToken } from './_auth.js';
 import { enforceRateLimit, rateLimitExceeded } from './_rateLimit.js';
+import { getPlanContext, planLimitExceeded } from './_plan.js';
 
 interface ApiRequest {
   method?: string;
@@ -140,6 +141,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   const rateLimit = enforceRateLimit(req, 'structure-capture', user.id, 15);
   if (!rateLimit.allowed) {
     return rateLimitExceeded(res, rateLimit);
+  }
+  const plan = await getPlanContext(getBearerToken(req.headers), user.id);
+  if (!plan.captureAllowed) {
+    return planLimitExceeded(res, 'Monthly capture limit reached. Upgrade to keep capturing.');
   }
 
   const { rawNote } = req.body || {};

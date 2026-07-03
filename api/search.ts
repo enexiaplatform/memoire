@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { generateEmbedding } from './generate-embedding.js';
 import { verifyUserToken } from './_auth.js';
 import { enforceRateLimit, rateLimitExceeded } from './_rateLimit.js';
+import { getPlanContext, planLimitExceeded } from './_plan.js';
 
 // Groq uses OpenAI-compatible API — no extra package needed
 export default async function handler(req: any, res: any) {
@@ -18,6 +19,10 @@ export default async function handler(req: any, res: any) {
     const rateLimit = enforceRateLimit(req, 'search', userId, 12);
     if (!rateLimit.allowed) {
           return rateLimitExceeded(res, rateLimit);
+    }
+    const plan = await getPlanContext(authToken, userId);
+    if (!plan.aiSearchAllowed) {
+          return planLimitExceeded(res, 'AI search requires a paid plan.');
     }
     if (!process.env.OPENAI_API_KEY || !process.env.GROQ_API_KEY) {
           return res.status(503).json({ error: 'Search providers are not configured' });
