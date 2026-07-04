@@ -28,7 +28,7 @@ export function getQuoteCommercialStage(quote: CommercialProgress): CommercialSt
 
 export function getCommercialCheckpointRisk(
   quote: CommercialProgress,
-  today = new Date().toISOString().slice(0, 10),
+  today = todayDateKey(),
 ): CommercialCheckpointRisk {
   if (quote.status !== 'Accepted') return null;
   if (quote.paymentStatus !== 'Paid' && isPast(quote.paymentDueDate, today)) return 'Payment overdue';
@@ -102,4 +102,4 @@ function isPast(dateKey: string, today: string) {
 function isDateKey(dateKey: string) {
   return isValidBusinessDate(dateKey);
 }
-import { isBusinessDateOverdue, isValidBusinessDate } from './safeDate.ts';
+import { isBusinessDateOverdue, isValidBusinessDate, todayDateKey } from './safeDate.ts';

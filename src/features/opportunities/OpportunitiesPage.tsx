@@ -56,7 +56,7 @@ import { buildRevenueHorizon, buildStageFunnel } from '../../utils/pipelineInsig
 import { FunnelBars } from '../../components/charts/FunnelBars';
 import { MiniBarChart } from '../../components/charts/MiniBarChart';
 import { SkeletonScreen, SkeletonTable } from '../../components/common/Skeleton';
-import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, sanitizeBusinessDate } from '../../utils/safeDate.ts';
+import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, sanitizeBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
 import { type SalesActivityRecord } from '../../services/salesActivityStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
@@ -4121,5 +4121,5 @@ function outcomeTone(outcomeType?: ActionOutcomeType) {
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return todayDateKey();
 }

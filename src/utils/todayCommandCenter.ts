@@ -9,7 +9,7 @@ import type { RevenueActionItem } from './revenueView';
 import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
 import { buildPipelineDefenseCenter, type ManagerReadyDealBrief } from './pipelineDefenseCenter.ts';
 import { convertMoney, formatBaseCurrencyAmount, formatCurrencyAmount } from './money.ts';
-import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate, sanitizeBusinessDate } from './safeDate.ts';
+import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 import { classifyAccountEngagement, type AccountHygienePreference } from './accountHygiene.ts';
 import { analyzePersonalSalesLearning } from './personalSalesLearning.ts';
 import { normalizeMeddicRole } from './meddicStakeholderMap.ts';
@@ -55,7 +55,7 @@ export function buildUnifiedTodayCommandCenter(input: {
   opportunityOutcomes?: OpportunityOutcomeRecord[];
   today?: string;
 }) {
-  const today = isValidBusinessDate(input.today) ? input.today : new Date().toISOString().slice(0, 10);
+  const today = isValidBusinessDate(input.today) ? input.today : todayDateKey();
   const latestBrief = [...input.briefs].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
   const pipelineReadiness = buildPipelineDefenseCenter(latestBrief?.deals || [], today, input.opportunityOutcomes || []);
   const personalLearning = analyzePersonalSalesLearning({

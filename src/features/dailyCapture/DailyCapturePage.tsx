@@ -26,7 +26,7 @@ import { buildObjectionFromActivity, detectObjectionCandidatesFromActivity } fro
 import { markPipelineReviewHabitStepComplete } from '../../utils/pipelineReviewHabit';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
 import { markDemoJourneyStepComplete } from '../../utils/demoJourney';
-import { formatSafeBusinessDate, isValidBusinessDate, sanitizeBusinessDate } from '../../utils/safeDate.ts';
+import { formatSafeBusinessDate, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
 import {
   buildEmailThreadIngestion,
   buildIngestionSourceTags,
@@ -1803,5 +1803,5 @@ function getQueryDate(searchParams: URLSearchParams) {
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return todayDateKey();
 }

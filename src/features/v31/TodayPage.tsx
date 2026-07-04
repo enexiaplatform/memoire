@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { todayDateKey } from '../../utils/safeDate.ts';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Send, Target } from 'lucide-react';
@@ -30,7 +31,7 @@ export function TodayPage() {
   const [loading, setLoading] = useState(true);
   const slowLoading = useSlowLoadingFallback(loading);
 
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const today = useMemo(() => todayDateKey(), []);
 
   const loadToday = useCallback(async () => {
     if (!user) return;

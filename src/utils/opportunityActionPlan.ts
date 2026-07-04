@@ -1,7 +1,7 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
-import { formatSafeBusinessDate, isBusinessDateOverdue, sanitizeBusinessDate } from './safeDate.ts';
+import { formatSafeBusinessDate, isBusinessDateOverdue, sanitizeBusinessDate, todayDateKey, toLocalDateKey } from './safeDate.ts';
 import type { StakeholderRecord } from '../services/stakeholderStore';
 import { getObjectionsForOpportunity } from './objectionLedger';
 import {
@@ -391,13 +391,13 @@ function sourceRank(sourceType: OpportunityActionSourceType) {
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return todayDateKey();
 }
 
 function addDays(days: number) {
   const date = new Date();
   date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
+  return toLocalDateKey(date);
 }
 
 function normalize(value: string) {

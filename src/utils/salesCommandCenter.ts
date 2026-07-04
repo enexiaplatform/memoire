@@ -7,7 +7,7 @@ import type { DailyExecutionDecision } from './dailyExecution';
 import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
 import type { RevenueActionItem, RevenueRiskKind } from './revenueView';
 import { buildOpportunitySalesFlowGuidance } from './salesFlowGuidance.ts';
-import { compareSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, isValidBusinessDate } from './safeDate.ts';
+import { compareSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, isValidBusinessDate, todayDateKey, toLocalDateKey } from './safeDate.ts';
 
 export type CommandPriority = 'Critical' | 'High' | 'Medium' | 'Low';
 export type CommandActionSource = 'Activity' | 'Opportunity' | 'Operating System' | 'Sales Flow' | 'Pipeline Defense' | 'Quote';
@@ -699,7 +699,7 @@ function daysSince(dateKey: string) {
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return todayDateKey();
 }
 
 function currentWeekRange() {
@@ -712,8 +712,8 @@ function currentWeekRange() {
   end.setDate(start.getDate() + 6);
 
   return {
-    start: start.toISOString().slice(0, 10),
-    end: end.toISOString().slice(0, 10),
+    start: toLocalDateKey(start),
+    end: toLocalDateKey(end),
   };
 }
 

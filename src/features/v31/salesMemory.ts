@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { toLocalDateKey } from '../../utils/safeDate.ts';
 import { isDemoMode } from '../../lib/demoMode';
 import type { Account, Contact, StructuredSalesCapture, SalesStage, SalesPriority, InteractionType } from '../../types/v31';
 import { readLocalMemory, saveLocalStructuredCapture } from './localStore';
@@ -106,19 +107,19 @@ function resolveRelativeFollowUpDate(rawNote: string, currentValue: string) {
   const lowerNote = rawNote.toLowerCase();
   const today = new Date();
   if (/\btoday\b|hôm nay|hom nay/.test(lowerNote)) {
-    return today.toISOString().slice(0, 10);
+    return toLocalDateKey(today);
   }
 
   if (/\btomorrow\b|ngày mai|ngay mai/.test(lowerNote)) {
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
-    return tomorrow.toISOString().slice(0, 10);
+    return toLocalDateKey(tomorrow);
   }
 
   if (/\bnext week\b|tuần sau|tuan sau/.test(lowerNote)) {
     const nextWeek = new Date(today);
     nextWeek.setDate(today.getDate() + 7);
-    return nextWeek.toISOString().slice(0, 10);
+    return toLocalDateKey(nextWeek);
   }
 
   const matchedDay = dayNames.find((day) => lowerNote.includes(`next ${day}`));
@@ -137,7 +138,7 @@ function resolveRelativeFollowUpDate(rawNote: string, currentValue: string) {
       .findIndex((month) => explicitDate[1].toLowerCase().startsWith(month));
     const year = explicitDate[3] ? Number(explicitDate[3]) : today.getFullYear();
     const parsed = new Date(Date.UTC(year, monthIndex, Number(explicitDate[2])));
-    if (Number.isFinite(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+    if (Number.isFinite(parsed.getTime())) return toLocalDateKey(parsed);
   }
 
   return '';
@@ -186,7 +187,7 @@ function nextWeekday(today: Date, targetDayIndex: number) {
   const daysUntilTarget = (targetDayIndex - today.getDay() + 7) % 7 || 7;
   const targetDate = new Date(today);
   targetDate.setDate(today.getDate() + daysUntilTarget);
-  return targetDate.toISOString().slice(0, 10);
+  return toLocalDateKey(targetDate);
 }
 
 function extractAfterKeyword(rawNote: string, keywords: string[]) {

@@ -41,7 +41,7 @@ import {
   type SalesPlaybookPattern,
 } from '../../utils/salesPlaybook';
 import { analyzeAssetNeeds, type SalesAssetNeed } from '../../utils/salesAssetSuggestions';
-import { formatSafeBusinessDate, isValidBusinessDate } from '../../utils/safeDate.ts';
+import { formatSafeBusinessDate, isValidBusinessDate, toLocalDateKey } from '../../utils/safeDate.ts';
 import { buildWeeklyTouchSeries, buildWinLossByQuarter } from '../../utils/pipelineInsights';
 import { Sparkline } from '../../components/charts/Sparkline';
 import { MiniBarChart } from '../../components/charts/MiniBarChart';
@@ -1204,7 +1204,7 @@ function startOfWeek(date: Date) {
 }
 
 function toDateKey(date: Date) {
-  return date.toISOString().slice(0, 10);
+  return toLocalDateKey(date);
 }
 
 function formatShortDate(dateKey: string) {

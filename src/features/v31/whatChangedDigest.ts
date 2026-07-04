@@ -1,4 +1,5 @@
 import type { Account, Interaction, MemoryChange, MemoryHealth, Objection, Opportunity, SalesAction } from '../../types/v31';
+import { todayDateKey } from '../../utils/safeDate.ts';
 import type { BrokenLoop } from './brokenLoops';
 
 interface WhatChangedDigestInput {
@@ -172,7 +173,7 @@ export function formatMemoryChangeSeverity(severity: MemoryChange['severity']) {
 }
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return todayDateKey();
 }
 
 function isRecent(value: string | null | undefined, cutoff: Date) {

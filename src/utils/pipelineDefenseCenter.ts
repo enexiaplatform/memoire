@@ -2,7 +2,7 @@ import type { PipelineDefenseDeal } from '../data/pipelineDefenseBrief';
 import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore';
 import { convertMoney, formatBaseCurrencyAmount, formatCurrencyAmount } from './money.ts';
 import { analyzePersonalSalesLearning, type PersonalSalesLearningWarning } from './personalSalesLearning.ts';
-import { formatSafeBusinessDate, isValidBusinessDate } from './safeDate.ts';
+import { formatSafeBusinessDate, isValidBusinessDate, todayDateKey } from './safeDate.ts';
 
 export const PIPELINE_DEFENSE_CATEGORIES = [
   'Defend now',
@@ -36,7 +36,7 @@ export type ManagerReadyDealBrief = {
 
 export function buildPipelineDefenseCenter(
   deals: PipelineDefenseDeal[],
-  today = new Date().toISOString().slice(0, 10),
+  today = todayDateKey(),
   opportunityOutcomes: OpportunityOutcomeRecord[] = [],
 ) {
   const learning = analyzePersonalSalesLearning({ outcomes: opportunityOutcomes, deals });
@@ -67,7 +67,7 @@ export function buildPipelineDefenseCenter(
 
 export function buildManagerReadyDealBrief(
   deal: PipelineDefenseDeal,
-  today = new Date().toISOString().slice(0, 10),
+  today = todayDateKey(),
   learningWarning?: PersonalSalesLearningWarning,
 ): ManagerReadyDealBrief {
   const account = deal.account.trim() || 'Needs confirmation';

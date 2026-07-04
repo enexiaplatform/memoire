@@ -2,7 +2,7 @@ import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { AccountMemoryRecord } from '../services/accountStore';
 import type { CaptureAccountAlias, CaptureCorrectionEvent } from '../services/captureCorrectionMemoryStore';
 import type { IngestionSourceType } from './ingestionSource.ts';
-import { sanitizeBusinessDate } from './safeDate.ts';
+import { sanitizeBusinessDate, todayDateKey, toLocalDateKey } from './safeDate.ts';
 import { resolveCaptureEntities } from './captureEntityResolution.ts';
 
 export type SalesActivityType =
@@ -337,7 +337,7 @@ export function extractDueDate(rawNote: string, activityDate: string) {
 }
 
 function todayDate() {
-  return new Date().toISOString().slice(0, 10);
+  return todayDateKey();
 }
 
 function summarize(rawNote: string, activityType: SalesActivityType, accountName: string) {
@@ -435,7 +435,7 @@ function upcomingWeekday(date: Date, weekday: string) {
 }
 
 function formatDate(date: Date) {
-  return date.toISOString().slice(0, 10);
+  return toLocalDateKey(date);
 }
 
 function parseDateKey(dateKey: string) {

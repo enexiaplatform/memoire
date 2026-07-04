@@ -1,4 +1,5 @@
 import type { OpportunityRecommendedAction } from '../utils/opportunityActionPlan';
+import { todayDateKey } from '../utils/safeDate.ts';
 import {
   claimLocalCollectionForUser,
   loadCloudJsonCollection,
@@ -219,5 +220,5 @@ function slugify(value: string) {
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return todayDateKey();
 }

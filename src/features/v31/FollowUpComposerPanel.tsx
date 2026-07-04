@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { toLocalDateKey } from '../../utils/safeDate.ts';
 import { CheckCircle2, Copy, RefreshCw, X } from 'lucide-react';
 import type { FollowUpContext, FollowUpDraft, FollowUpGoal, FollowUpLength, FollowUpTone } from '../../types/v31';
 import {
@@ -23,7 +24,7 @@ interface FollowUpComposerPanelProps {
 function defaultNextTouchDate() {
   const date = new Date();
   date.setDate(date.getDate() + 7);
-  return date.toISOString().slice(0, 10);
+  return toLocalDateKey(date);
 }
 
 export function FollowUpComposerPanel({ initialContext, onClose, onActivityLogged, onScheduleNextAction }: FollowUpComposerPanelProps) {
@@ -85,7 +86,7 @@ export function FollowUpComposerPanel({ initialContext, onClose, onActivityLogge
         dueDate: '',
         tags: ['follow-up'],
         rawNote: `Subject: ${draft.subject}\n\n${draft.body}`,
-        activityDate: new Date().toISOString().slice(0, 10),
+        activityDate: toLocalDateKey(new Date()),
       }, hasLocalSampleData() ? undefined : user?.id);
       setLogState('saved');
       setLogMessage(result.warning || 'Logged as a customer touch - silence tracking updated.');

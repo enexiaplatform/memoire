@@ -10,7 +10,7 @@ import { generateOpportunityActionPlan } from './opportunityActionPlan';
 import { analyzePersonalSalesLearning } from './personalSalesLearning.ts';
 import { getStakeholdersForOpportunity } from './stakeholderGraph';
 import type { WeeklyExecutionReview } from './weeklyExecutionReview';
-import { isBusinessDateOverdue } from './safeDate.ts';
+import { isBusinessDateOverdue, todayDateKey } from './safeDate.ts';
 
 export type SalesPlaybookPatternCategory =
   | 'Objection Pattern'
@@ -631,5 +631,5 @@ function slugify(value: string) {
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return todayDateKey();
 }

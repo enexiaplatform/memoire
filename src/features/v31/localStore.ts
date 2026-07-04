@@ -1,4 +1,5 @@
 import type { Account, Contact, Interaction, Objection, Opportunity, SalesAction, StructuredSalesCapture } from '../../types/v31';
+import { toLocalDateKey } from '../../utils/safeDate.ts';
 import { DEMO_AUTH_KEY, DEMO_USER_ID, DEMO_WORKSPACE_KEY } from '../../lib/demoMode';
 
 interface LocalCapture {
@@ -319,7 +320,7 @@ export function getFounderWorkspaceState() {
 
 export function loadInteractiveDemoWorkspace() {
   const timestamp = new Date().toISOString();
-  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const tomorrow = toLocalDateKey(new Date(Date.now() + 24 * 60 * 60 * 1000));
   const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
   const proposalSentAt = daysAgo(18);
   const internalReviewAt = daysAgo(15);

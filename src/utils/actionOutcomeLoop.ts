@@ -1,4 +1,5 @@
 import type { ActionOutcomeRecord } from '../services/actionOutcomeStore';
+import { todayDateKey } from './safeDate.ts';
 import { actionOutcomeMatchesAction, getActionOutcomesForOpportunity } from '../services/actionOutcomeStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { ObjectionRecord } from '../services/objectionStore';
@@ -151,5 +152,5 @@ function byUpdatedDesc(a: ActionOutcomeRecord, b: ActionOutcomeRecord) {
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return todayDateKey();
 }

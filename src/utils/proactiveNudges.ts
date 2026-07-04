@@ -13,13 +13,7 @@ import { buildMeddicStakeholderMap } from './meddicStakeholderMap.ts';
 import { formatBaseCurrencyAmount, formatCurrencyAmount, convertMoney } from './money.ts';
 import { analyzePersonalSalesLearning } from './personalSalesLearning.ts';
 import { buildManagerReadyDealBrief } from './pipelineDefenseCenter.ts';
-import {
-  compareSafeBusinessDate,
-  formatSafeBusinessDate,
-  isBusinessDateOverdue,
-  isValidBusinessDate,
-  sanitizeBusinessDate,
-} from './safeDate.ts';
+import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 
 export type ProactiveNudgeInput = {
   briefs?: PipelineDefenseBrief[];
@@ -45,7 +39,7 @@ export type ProactiveNudgeCenter = {
 };
 
 export function buildProactiveNudges(input: ProactiveNudgeInput): ProactiveNudgeCenter {
-  const today = sanitizeBusinessDate(input.today) || new Date().toISOString().slice(0, 10);
+  const today = sanitizeBusinessDate(input.today) || todayDateKey();
   const persistedById = new Map((input.persistedNudges || []).map((nudge) => [nudge.id, nudge]));
   const generated = [
     ...buildRevenueNudges(input.revenueActions || [], today),
@@ -198,7 +192,7 @@ export function formatNudgeMoney(nudge: Pick<NudgeRecord, 'moneyAmount' | 'money
   return `${formatCurrencyAmount(nudge.moneyAmount, nudge.moneyCurrency)} · ${formatBaseCurrencyAmount(baseAmount, true)}`;
 }
 
-export function isNudgeActiveToday(nudge: NudgeRecord, today = new Date().toISOString().slice(0, 10)) {
+export function isNudgeActiveToday(nudge: NudgeRecord, today = todayDateKey()) {
   return isActiveForToday(nudge, today);
 }
 
@@ -331,7 +325,7 @@ export type OpportunitySilenceState = {
 export function classifyOpportunitySilence(
   opportunity: CrmLiteOpportunity,
   activities: SalesActivityRecord[],
-  today = new Date().toISOString().slice(0, 10),
+  today = todayDateKey(),
 ): OpportunitySilenceState {
   if (opportunity.status !== 'Active') return { status: 'inactive', daysQuiet: null, lastTouchDate: '' };
   const lastTouch = findLastTouchDate(opportunity, activities);
@@ -469,7 +463,7 @@ function buildObjectionNudges(objections: ObjectionRecord[]) {
       recommendedAction: objection.responsePlan || objection.requiredProof || 'Define response proof and owner.',
       urgency: objection.impact === 'High' ? 'high' : 'medium',
       dueDate: objection.dueDate,
-      today: new Date().toISOString().slice(0, 10),
+      today: todayDateKey(),
     });
   });
 }

@@ -1,4 +1,5 @@
 import type { Account, Interaction, Objection, Opportunity, SalesAction } from '../../types/v31';
+import { todayDateKey } from '../../utils/safeDate.ts';
 
 export type BrokenLoopPriority = 'P0' | 'P1' | 'P2';
 export type BrokenLoopActionLabel = 'Create Action' | 'Open Account' | 'Open Opportunity' | 'Review Capture';
@@ -49,7 +50,7 @@ export function detectBrokenLoops({
   captures = [],
   staleDays = 14,
 }: BrokenLoopInput): BrokenLoop[] {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayDateKey();
   const staleCutoff = new Date();
   staleCutoff.setDate(staleCutoff.getDate() - staleDays);
 

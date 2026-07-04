@@ -12,7 +12,7 @@ import {
   getNextCommercialProgressAction,
 } from '../utils/commercialFulfillment';
 import { sumMoneyInBase } from '../utils/money';
-import { compareSafeBusinessDate, isValidBusinessDate, sanitizeBusinessDate } from '../utils/safeDate.ts';
+import { compareSafeBusinessDate, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from '../utils/safeDate.ts';
 
 export { buildDeliveryScheduleUpdate, getNextCommercialProgressAction, getQuoteCommercialStage, getQuoteWorkspaceHref, requiresExpectedDeliveryDate } from '../utils/commercialFulfillment';
 export type { CommercialProgressAction, CommercialStage } from '../utils/commercialFulfillment';
@@ -335,7 +335,7 @@ function quoteRiskRank(risk: QuoteRisk) {
 }
 
 function createReadableQuoteId() {
-  return `Q-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+  return `Q-${todayDateKey().replace(/-/g, '')}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 }
 
 function createQuoteRecordId(seed: string) {
@@ -347,5 +347,5 @@ function slugify(value: string) {
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return todayDateKey();
 }

@@ -3,7 +3,7 @@ import { opportunityStages } from '../services/opportunityStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import { sumMoneyInBase } from './money';
 import { classifyOpportunitySilence } from './proactiveNudges';
-import { isValidBusinessDate } from './safeDate';
+import { isValidBusinessDate, toLocalDateKey } from './safeDate';
 
 export interface PipelineHealthSummary {
   activeCount: number;
@@ -158,8 +158,8 @@ export function buildWeeklyTouchSeries(activities: SalesActivityRecord[], weeks 
     start.setDate(start.getDate() - index * 7);
     const end = new Date(start);
     end.setDate(end.getDate() + 7);
-    const startKey = start.toISOString().slice(0, 10);
-    const endKey = end.toISOString().slice(0, 10);
+    const startKey = toLocalDateKey(start);
+    const endKey = toLocalDateKey(end);
     const count = activities.filter((activity) => {
       const date = activity.activityDate;
       return isValidBusinessDate(date) && date >= startKey && date < endKey;
@@ -185,8 +185,8 @@ export function buildWinLossByQuarter(opportunities: CrmLiteOpportunity[], quart
     const quarter = Math.floor(reference.getMonth() / 3);
     const start = new Date(reference.getFullYear(), quarter * 3, 1);
     const end = new Date(reference.getFullYear(), quarter * 3 + 3, 1);
-    const startKey = start.toISOString().slice(0, 10);
-    const endKey = end.toISOString().slice(0, 10);
+    const startKey = toLocalDateKey(start);
+    const endKey = toLocalDateKey(end);
     const inQuarter = opportunities.filter((opportunity) => {
       if (opportunity.status !== 'Won' && opportunity.status !== 'Lost') return false;
       const closedAt = (opportunity.updatedAt || opportunity.createdAt || '').slice(0, 10);

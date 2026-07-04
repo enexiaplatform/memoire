@@ -2,6 +2,24 @@ export const MIN_BUSINESS_DATE = '2000-01-01';
 export const NO_DUE_DATE_LABEL = 'No due date';
 export const DATE_CORRECTION_LABEL = 'Needs date correction';
 
+/**
+ * Today's date as YYYY-MM-DD in the user's LOCAL timezone. Use this instead of
+ * `new Date().toISOString().slice(0, 10)`, which returns the UTC date and is a
+ * day off for a large part of the day in non-UTC zones (e.g. UTC+7 before 7am
+ * local reads as yesterday). "Today" for a seller means their local today.
+ */
+export function todayDateKey(reference: Date = new Date()) {
+  const year = reference.getFullYear();
+  const month = String(reference.getMonth() + 1).padStart(2, '0');
+  const day = String(reference.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/** Local date key for an arbitrary Date (local calendar day, not UTC). */
+export function toLocalDateKey(date: Date) {
+  return todayDateKey(date);
+}
+
 export function isValidBusinessDate(date: unknown): date is string {
   if (typeof date !== 'string') return false;
   const value = date.trim();
@@ -39,7 +57,7 @@ export function compareSafeBusinessDate(dateA: unknown, dateB: unknown) {
   return left.localeCompare(right);
 }
 
-export function isBusinessDateOverdue(date: unknown, today = new Date().toISOString().slice(0, 10)) {
+export function isBusinessDateOverdue(date: unknown, today = todayDateKey()) {
   return isValidBusinessDate(date) && isValidBusinessDate(today) && compareSafeBusinessDate(date, today) < 0;
 }
 

@@ -1,7 +1,7 @@
 import type { ActionOutcomeRecord } from '../services/actionOutcomeStore';
 import { getActionOutcomesForOpportunity } from '../services/actionOutcomeStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
-import { isBusinessDateOverdue } from './safeDate.ts';
+import { isBusinessDateOverdue, toLocalDateKey, todayDateKey } from './safeDate.ts';
 import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
@@ -485,11 +485,11 @@ function dedupe<T>(items: T[]) {
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return todayDateKey();
 }
 
 function toDateKey(date: Date) {
-  return date.toISOString().slice(0, 10);
+  return toLocalDateKey(date);
 }
 
 function formatShortDate(dateKey: string) {

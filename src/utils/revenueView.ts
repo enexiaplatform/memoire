@@ -8,7 +8,7 @@ import {
   type QuoteRisk,
 } from '../services/quoteStore';
 import { BASE_CURRENCY, convertMoney, sumMoneyInBase } from './money';
-import { isBusinessDateOverdue } from './safeDate.ts';
+import { isBusinessDateOverdue, todayDateKey } from './safeDate.ts';
 
 export type RevenueRiskKind =
   | 'Weak pipeline'
@@ -218,5 +218,5 @@ function riskRank(risk: RevenueRiskKind) {
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return todayDateKey();
 }

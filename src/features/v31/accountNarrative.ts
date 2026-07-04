@@ -1,4 +1,5 @@
 import type { Account, AccountNarrative, Contact, Interaction, Opportunity, SalesAction } from '../../types/v31';
+import { todayDateKey } from '../../utils/safeDate.ts';
 
 interface AccountNarrativeInput {
   account: Account;
@@ -89,7 +90,7 @@ export function buildAccountTimeline(interactions: Interaction[], actions: Sales
       label: action.status === 'open' ? 'open action' : action.status,
       title: action.title,
       detail: action.due_date ? `Due ${action.due_date}` : 'No due date',
-      tone: action.due_date && action.due_date < new Date().toISOString().slice(0, 10) ? 'warning' as const : 'action' as const,
+      tone: action.due_date && action.due_date < todayDateKey() ? 'warning' as const : 'action' as const,
     })),
   ].sort((a, b) => b.date.localeCompare(a.date));
 }

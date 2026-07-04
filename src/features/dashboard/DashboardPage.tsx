@@ -74,7 +74,7 @@ import { buildPipelineHealthSummary, buildRevenueHorizon } from '../../utils/pip
 import { SegmentBar } from '../../components/charts/SegmentBar';
 import { MiniBarChart } from '../../components/charts/MiniBarChart';
 import { hasLocalSampleData } from '../../utils/dataMode';
-import { formatSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue } from '../../utils/safeDate.ts';
+import { formatSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, toLocalDateKey } from '../../utils/safeDate.ts';
 import { loadSampleDataset } from '../../utils/sampleData';
 import { analyzeMeddicLitePipeline } from '../../utils/meddicLite';
 import { generatePipelineOpportunityActions, type OpportunityRecommendedAction } from '../../utils/opportunityActionPlan';
@@ -2707,8 +2707,8 @@ function PriorityBadge({ priority }: { priority: CommandPriority }) {
 
 function addDaysKey(days: number) {
   const date = new Date();
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
+  date.setDate(date.getDate() + days);
+  return toLocalDateKey(date);
 }
 
 function toneClass(tone: 'blue' | 'green' | 'amber' | 'red') {

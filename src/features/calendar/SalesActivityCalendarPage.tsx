@@ -26,7 +26,7 @@ import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../servi
 import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
 import { applyOpportunityUpdateSuggestion, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 import type { SalesActivityType } from '../../utils/salesActivityClassifier';
-import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, isValidBusinessDate } from '../../utils/safeDate.ts';
+import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, isValidBusinessDate, toLocalDateKey, todayDateKey } from '../../utils/safeDate.ts';
 
 type CalendarViewMode = 'day' | 'week' | 'month';
 
@@ -626,7 +626,7 @@ function startOfWeek(date: Date) {
 }
 
 function toDateKey(date: Date) {
-  return date.toISOString().slice(0, 10);
+  return toLocalDateKey(date);
 }
 
 function formatPeriodLabel(start: string, end: string) {
@@ -670,7 +670,7 @@ function buildActivitySummary(activities: SalesActivityRecord[]): ActivitySummar
   const accountCounts = countBy(activities.map(getActivityAccountName).filter(Boolean));
   const typeCounts = countBy(activities.map((activity) => activity.activityType));
   const activeDays = new Set(activities.map((activity) => activity.activityDate).filter(isValidBusinessDate)).size;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayDateKey();
 
   return {
     totalActivities: activities.length,

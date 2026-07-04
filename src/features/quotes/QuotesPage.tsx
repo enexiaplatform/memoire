@@ -36,7 +36,7 @@ import {
 import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { formatBaseCurrencyAmount as formatBaseMoney, formatCurrencyAmount as formatMoney } from '../../utils/money';
-import { formatSafeBusinessDate } from '../../utils/safeDate.ts';
+import { formatSafeBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -705,5 +705,5 @@ function quoteToInput(quote: QuoteRecord): QuoteInput {
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return todayDateKey();
 }

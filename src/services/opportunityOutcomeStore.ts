@@ -5,6 +5,7 @@ import type {
   OpportunityStage,
   OpportunityStatus,
 } from './opportunityStore.ts';
+import { todayDateKey } from '../utils/safeDate.ts';
 import {
   claimLocalCollectionForUser,
   loadCloudJsonCollection,
@@ -83,7 +84,7 @@ export type OpportunityOutcomeDraft = Pick<
 export function buildOpportunityOutcomeDraft(opportunity: CrmLiteOpportunity, patch: Partial<OpportunityOutcomeDraft> = {}): OpportunityOutcomeDraft {
   return {
     outcome: patch.outcome || 'Won',
-    outcomeDate: sanitizeBusinessDate(patch.outcomeDate) || new Date().toISOString().slice(0, 10),
+    outcomeDate: sanitizeBusinessDate(patch.outcomeDate) || todayDateKey(),
     finalAmount: typeof patch.finalAmount === 'number' ? patch.finalAmount : opportunity.estimatedValue,
     currency: patch.currency || opportunity.currency || 'VND',
     reasonCategory: patch.reasonCategory || 'Other',

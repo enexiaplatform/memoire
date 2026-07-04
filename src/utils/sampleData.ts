@@ -1,4 +1,5 @@
 import { ACCOUNT_STORAGE_KEY, type AccountMemoryRecord } from '../services/accountStore';
+import { toLocalDateKey } from './safeDate.ts';
 import { OPPORTUNITY_STORAGE_KEY, type CrmLiteOpportunity } from '../services/opportunityStore';
 import { SALES_ACTIVITY_STORAGE_KEY, type SalesActivityRecord } from '../services/salesActivityStore';
 import { STAKEHOLDER_STORAGE_KEY, type StakeholderRecord } from '../services/stakeholderStore';
@@ -1150,5 +1151,5 @@ function nextWeekday(date: Date, targetDay: number) {
 }
 
 function toDateKey(date: Date) {
-  return date.toISOString().slice(0, 10);
+  return toLocalDateKey(date);
 }

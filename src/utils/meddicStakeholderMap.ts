@@ -8,7 +8,7 @@ import type {
   StakeholderRole,
   StakeholderStance,
 } from '../services/stakeholderStore.ts';
-import { formatSafeBusinessDate, isBusinessDateOverdue, sanitizeBusinessDate } from './safeDate.ts';
+import { formatSafeBusinessDate, isBusinessDateOverdue, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 
 export const meddicStakeholderRoles = [
   'Champion',
@@ -76,7 +76,7 @@ export function buildMeddicStakeholderMap(input: {
   today?: string;
 }): MeddicStakeholderMap {
   const opportunity = input.opportunity;
-  const today = sanitizeBusinessDate(input.today) || new Date().toISOString().slice(0, 10);
+  const today = sanitizeBusinessDate(input.today) || todayDateKey();
   const relatedStakeholders = (input.stakeholders || []).filter((stakeholder) => matchesOpportunity(stakeholder, opportunity));
   const relatedObjections = (input.objections || []).filter((objection) => matchesOpportunity(objection, opportunity));
   const relatedActivities = (input.activities || []).filter((activity) => matchesActivity(activity, opportunity));

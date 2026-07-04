@@ -3,7 +3,7 @@ import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { ObjectionRecord } from '../services/objectionStore';
 import type { QuoteRecord } from '../services/quoteStore';
-import { isBusinessDateOverdue, isValidBusinessDate } from './safeDate.ts';
+import { isBusinessDateOverdue, isValidBusinessDate, todayDateKey } from './safeDate.ts';
 
 export const ACCOUNT_HYGIENE_PREFERENCES_KEY = 'memoire.accountHygiene.v1';
 export const accountEngagementStatuses = ['Active', 'Strategic', 'Needs follow-up', 'Dormant', 'Imported only', 'Archived'] as const;
@@ -123,7 +123,7 @@ function matching<T extends { accountName: string; accountId?: string }>(items: 
   return items.filter((item) => item.accountId === account.id || normalize(item.accountName) === normalize(account.accountName));
 }
 
-function isRecent(value: string, today = new Date().toISOString().slice(0, 10)) {
+function isRecent(value: string, today = todayDateKey()) {
   if (!isValidBusinessDate(value) || !isValidBusinessDate(today)) return false;
   const days = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${value}T00:00:00Z`)) / 86_400_000;
   return days >= 0 && days <= 30;
