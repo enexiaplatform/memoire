@@ -22,6 +22,7 @@ import { useAuthContext } from '../../auth/authContext';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { DataModePill } from '../../components/common/DataModePill';
 import { DemoJourneyCard } from '../../components/demo/DemoJourneyCard';
+import { SkeletonScreen, SkeletonCard } from '../../components/common/Skeleton';
 import { isFounderWorkspaceEnabled, isSupabaseConfigured } from '../../lib/demoMode';
 import type { AccountMemoryRecord } from '../../services/accountStore';
 import { opportunityToFormInput, updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
@@ -503,9 +504,16 @@ export function TodayPage() {
       </header>
 
       {loading ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
-          Loading Today...
-        </div>
+        <SkeletonScreen label="Loading your Today command center">
+          <div className="space-y-4">
+            <SkeletonCard lines={2} />
+            <div className="grid gap-4 xl:grid-cols-2">
+              <SkeletonCard lines={3} />
+              <SkeletonCard lines={3} />
+            </div>
+            <SkeletonCard lines={4} />
+          </div>
+        </SkeletonScreen>
       ) : (
         <>
           <ForecastDefenseReadiness center={todayCenter} />

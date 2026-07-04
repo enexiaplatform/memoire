@@ -55,6 +55,7 @@ import {
 import { buildRevenueHorizon, buildStageFunnel } from '../../utils/pipelineInsights';
 import { FunnelBars } from '../../components/charts/FunnelBars';
 import { MiniBarChart } from '../../components/charts/MiniBarChart';
+import { SkeletonScreen, SkeletonTable } from '../../components/common/Skeleton';
 import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, sanitizeBusinessDate } from '../../utils/safeDate.ts';
 import { type SalesActivityRecord } from '../../services/salesActivityStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
@@ -1058,9 +1059,9 @@ export function OpportunitiesPage() {
 
       <section>
         {loading ? (
-          <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
-            Loading opportunity master...
-          </div>
+          <SkeletonScreen label="Loading your opportunity master">
+            <SkeletonTable rows={8} columns={6} />
+          </SkeletonScreen>
         ) : opportunities.length === 0 ? (
           <EmptyState onAdd={openAddPanel} onImport={openCsvImport} />
         ) : visibleOpportunities.length === 0 ? (
