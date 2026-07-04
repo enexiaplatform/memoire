@@ -471,7 +471,7 @@ export function TodayPage() {
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Personal Pipeline Defense OS</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Will your forecast survive review?</h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500">
-            Memoire works beside your CRM to prepare manager-ready answers, rescue exposed deals, and de-risk the forecast before your manager asks.
+            Memoire works beside your CRM to prepare review-ready answers, rescue exposed deals, and de-risk the forecast before anyone has to ask.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -908,7 +908,7 @@ function TodayTopThreeActions({ actions }: { actions: TodayCommandAction[] }) {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Top 3 Today Actions</p>
-          <h2 className="mt-1 text-xl font-bold text-navy">Do these before your manager asks.</h2>
+          <h2 className="mt-1 text-xl font-bold text-navy">Do these before the deals go quiet.</h2>
         </div>
         <span className="text-xs font-semibold text-gray-500">Ranked across defense, revenue, opportunities, and capture</span>
       </div>
@@ -2436,7 +2436,7 @@ function PipelineReviewHabitCard({
             {nextStep ? `Next step: ${nextStep.label}` : 'Pipeline review is ready.'}
           </p>
           <p className="mt-1 text-sm text-blue-800">
-            {nextStep ? nextStep.description : 'Copy or export the final summary before your manager review.'}
+            {nextStep ? nextStep.description : 'Copy or export the final summary before your pipeline review.'}
           </p>
         </div>
         <Link

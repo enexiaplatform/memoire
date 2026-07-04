@@ -155,3 +155,18 @@ Instrumentation shipped 2026-07-02:
 
 Cohort Wave 1 should report how many intake requests select these options and whether that segment activates without the manager-review framing before any packaging or demo-pack changes are made for it.
 
+
+## Dual-audience copy pass (2026-07-04)
+
+Six surface strings framed the product's tension exclusively around "before your manager asks" - a counterpart solo operators do not have. Reworded to keep the loss-aversion stake while working for both personas:
+
+- Today hero: "prepare review-ready answers ... before anyone has to ask" (was "manager-ready ... before your manager asks").
+- Today top-3 headline: "Do these before the deals go quiet." (was "before your manager asks").
+- First-review next step: "before your pipeline review" (was "before your manager review").
+- Demo guide talk track: "This is what I must fix before it costs me the deal."
+- Landing Pipeline Defense card: "before the review, and before the deal goes cold."
+- Landing section title: "Make weak forecast visible before reality does." (was "before your manager does").
+
+Internal identifiers (copy-manager-summary, buildManagerReadyDealBrief, managerSummary) are unchanged - contracts pin those, and the manager-ready artifact itself remains a valid use case for employed sellers.
+
+Verified: npm run check passes; runtime confirms the new copy on the landing page and Today (demo mode) with the old phrasing gone; no console errors.

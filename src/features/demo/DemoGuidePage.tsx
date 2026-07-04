@@ -141,7 +141,7 @@ export function DemoGuidePage() {
           items={[
             'Open Today, the daily command center.',
             'Point to Top 3 actions, Top 3 Today Actions, and Proactive Nudges.',
-            'Explain: “This is what I must fix before my manager asks.”',
+            'Explain: “This is what I must fix before it costs me the deal.”',
             'Then use Paste Email / Thread mode in Capture and confirm the structured draft.',
           ]}
         />

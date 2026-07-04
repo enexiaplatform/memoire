@@ -25,7 +25,7 @@ const workflowSteps = [
   },
   {
     title: 'Prepare Pipeline Defense',
-    text: 'Sort deals into defend, rescue, downgrade, or monitor decisions before your manager asks.',
+    text: 'Sort deals into defend, rescue, downgrade, or monitor decisions - before the review, and before the deal goes cold.',
   },
   {
     title: 'Copy manager-ready answers',
@@ -327,7 +327,7 @@ export function LandingPage() {
           <div className="mx-auto max-w-6xl">
             <SectionHeader
               eyebrow="What Memoire helps you do"
-              title="Make weak forecast visible before your manager does."
+              title="Make weak forecast visible before reality does."
               text="Capture is evidence input. Today is the daily command center. Pipeline Defense is the review artifact. Outcome Learning is the personal coaching loop."
             />
             <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
