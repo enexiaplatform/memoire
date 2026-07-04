@@ -45,6 +45,7 @@ import { formatSafeBusinessDate, isValidBusinessDate, toLocalDateKey } from '../
 import { buildWeeklyTouchSeries, buildWinLossByQuarter } from '../../utils/pipelineInsights';
 import { Sparkline } from '../../components/charts/Sparkline';
 import { MiniBarChart } from '../../components/charts/MiniBarChart';
+import { SkeletonScreen, SkeletonCard } from '../../components/common/Skeleton';
 import { analyzePersonalSalesLearning, type PersonalSalesLearningAnalysis } from '../../utils/personalSalesLearning.ts';
 import {
   generateMonthlySalesRecap,
@@ -409,10 +410,12 @@ export function SalesReviewsPage() {
       )}
 
       {loadingActivities ? (
-        <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading activities...
-        </div>
+        <SkeletonScreen label="Loading your activity review">
+          <div className="grid gap-4 xl:grid-cols-2">
+            <SkeletonCard lines={4} />
+            <SkeletonCard lines={4} />
+          </div>
+        </SkeletonScreen>
       ) : periodActivities.length === 0 ? (
         <EmptyReviewsState />
       ) : recap ? (

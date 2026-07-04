@@ -41,6 +41,7 @@ import {
 } from '../../utils/money';
 import { compareSafeBusinessDate, formatSafeBusinessDate } from '../../utils/safeDate.ts';
 import { FollowUpComposerPanel } from '../v31/FollowUpComposerPanel';
+import { SkeletonScreen, SkeletonTable } from '../../components/common/Skeleton';
 import type { FollowUpContext } from '../../types/v31';
 import {
   accountEngagementStatuses,
@@ -450,7 +451,9 @@ export function AccountsPage() {
         )}
 
         {loading ? (
-          <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">Loading account master...</div>
+          <SkeletonScreen label="Loading your account master">
+            <SkeletonTable rows={6} columns={4} />
+          </SkeletonScreen>
         ) : accounts.length === 0 && candidates.length === 0 ? (
           <EmptyState onAdd={openAddPanel} />
         ) : visibleRows.length === 0 ? (

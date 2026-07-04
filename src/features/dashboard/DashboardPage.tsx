@@ -52,7 +52,7 @@ import {
   type NudgeRecord,
 } from '../../services/nudgeStore';
 import { type SalesAssetRecord } from '../../services/salesAssetStore';
-import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { FollowUpComposerPanel } from '../v31/FollowUpComposerPanel';
 import { buildReviveFollowUpContext } from '../../utils/followUpFromOpportunity';
 import type { FollowUpContext } from '../../types/v31';
@@ -182,7 +182,7 @@ export function TodayPage() {
     operatingContext: [],
     opportunityOutcomes: [],
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !getCachedSalesWorkspaceData(sampleDataActive ? undefined : user?.id));
   const [message, setMessage] = useState('');
   const [firstReviewOnboarding, setFirstReviewOnboarding] = useState(() => loadFirstPipelineReviewOnboardingState());
   const [trialChecklistState, setTrialChecklistState] = useState(() => loadTrialActivationChecklistState());
@@ -206,6 +206,25 @@ export function TodayPage() {
   const refreshDashboard = useCallback(async (options: DashboardLoadOptions = {}) => {
     const sampleActive = hasLocalSampleData();
     const dataUserId = sampleActive ? undefined : user?.id;
+
+    // Cache-first: render an already-loaded workspace instantly instead of
+    // flashing the skeleton every time the seller returns to Today. Review
+    // packs still refresh in the background.
+    if (!options.force) {
+      const cachedData = getCachedSalesWorkspaceData(dataUserId);
+      if (cachedData) {
+        setData(cachedData);
+        setFirstReviewOnboarding(loadFirstPipelineReviewOnboardingState());
+        setTrialChecklistState(loadTrialActivationChecklistState());
+        setSalesOperatingSetup(loadSalesOperatingSetupState());
+        setPipelineReviewHabitState(loadPipelineReviewHabitState());
+        setLoading(false);
+        setMessage('Command center ready');
+        void loadReviewPacksForWorkspace(dataUserId, sampleActive).then(setReviewPacks).catch(() => undefined);
+        return;
+      }
+    }
+
     if (options.force) setWorkspaceSyncing(true);
     if (!options.force) setLoading(true);
     setMessage(options.force ? 'Refreshing cloud workspace...' : '');

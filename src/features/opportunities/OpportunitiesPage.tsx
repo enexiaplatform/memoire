@@ -81,7 +81,7 @@ import {
   type OpportunityOutcomeDraft,
   type OpportunityOutcomeRecord,
 } from '../../services/opportunityOutcomeStore';
-import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { analyzeStakeholderCoverage, getStakeholdersForOpportunity } from '../../utils/stakeholderGraph';
 import { buildMeddicStakeholderMap, formatMeddicStakeholderDate } from '../../utils/meddicStakeholderMap.ts';
 import { getObjectionsForOpportunity, objectionStatusTone } from '../../utils/objectionLedger';
@@ -188,7 +188,7 @@ export function OpportunitiesPage() {
   const [opportunityOutcomes, setOpportunityOutcomes] = useState<OpportunityOutcomeRecord[]>([]);
   const [salesAssets, setSalesAssets] = useState<SalesAssetRecord[]>([]);
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !getCachedSalesWorkspaceData(hasLocalSampleData() ? undefined : user?.id));
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState(allFilter);
   const [forecastFilter, setForecastFilter] = useState(allFilter);
@@ -241,20 +241,35 @@ export function OpportunitiesPage() {
     return dataUserId ? 'cloud-browser' : 'browser-only';
   };
 
+  const applyWorkspaceData = (workspaceData: Awaited<ReturnType<typeof loadSalesWorkspaceData>>) => {
+    setOpportunities(workspaceData.opportunities);
+    setActivities(workspaceData.activities);
+    setStakeholders(workspaceData.stakeholders);
+    setObjections(workspaceData.objections);
+    setActionOutcomes(workspaceData.actionOutcomes);
+    setOpportunityOutcomes(workspaceData.opportunityOutcomes);
+    setSalesAssets(workspaceData.assets);
+    setQuotes(workspaceData.quotes);
+  };
+
   const refreshOpportunities = async (options: { force?: boolean } = {}) => {
-    if (options.force) setWorkspaceSyncing(true);
     setWorkspaceLoadError('');
+    // Cache-first: if the workspace is already loaded, render instantly instead
+    // of flashing the skeleton on every navigation back to this screen.
+    if (!options.force) {
+      const cachedData = getCachedSalesWorkspaceData(dataUserId);
+      if (cachedData) {
+        applyWorkspaceData(cachedData);
+        setLastWorkspaceRefreshAt(new Date().toISOString());
+        setLoading(false);
+        return;
+      }
+    }
+    if (options.force) setWorkspaceSyncing(true);
     setLoading(true);
     try {
       const workspaceData = await loadSalesWorkspaceData(dataUserId, { force: options.force });
-      setOpportunities(workspaceData.opportunities);
-      setActivities(workspaceData.activities);
-      setStakeholders(workspaceData.stakeholders);
-      setObjections(workspaceData.objections);
-      setActionOutcomes(workspaceData.actionOutcomes);
-      setOpportunityOutcomes(workspaceData.opportunityOutcomes);
-      setSalesAssets(workspaceData.assets);
-      setQuotes(workspaceData.quotes);
+      applyWorkspaceData(workspaceData);
       setLastWorkspaceRefreshAt(new Date().toISOString());
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Memoire could not load opportunity memory.';
