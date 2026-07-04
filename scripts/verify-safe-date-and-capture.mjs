@@ -8,6 +8,7 @@ import {
   sanitizeBusinessDate,
   todayDateKey,
   toLocalDateKey,
+  timestampToLocalDateKey,
 } from '../src/utils/safeDate.ts';
 
 assert.equal(isValidBusinessDate('2000-01-01'), true);
@@ -35,6 +36,17 @@ assert.match(todayDateKey(), /^\d{4}-\d{2}-\d{2}$/);
   const d = new Date(2026, 2, 10, 23, 30, 0);
   assert.equal(toLocalDateKey(d), '2026-03-10', 'toLocalDateKey must use local Y/M/D');
   assert.equal(toLocalDateKey(new Date(2026, 0, 1, 0, 15, 0)), '2026-01-01');
+}
+{
+  // timestampToLocalDateKey: date-only keys pass through; ISO timestamps convert
+  // to the local calendar day; junk yields empty.
+  assert.equal(timestampToLocalDateKey('2026-06-18'), '2026-06-18');
+  assert.equal(timestampToLocalDateKey(''), '');
+  assert.equal(timestampToLocalDateKey(undefined), '');
+  assert.equal(timestampToLocalDateKey('not-a-date'), '');
+  const localKeyOfInstant = toLocalDateKey(new Date('2026-06-18T09:00:00.000Z'));
+  assert.equal(timestampToLocalDateKey('2026-06-18T09:00:00.000Z'), localKeyOfInstant);
+  assert.match(timestampToLocalDateKey(new Date().toISOString()), /^\d{4}-\d{2}-\d{2}$/);
 }
 assert.equal(extractDueDate('Send quote by 02/31/2026', '2026-02-01'), '');
 

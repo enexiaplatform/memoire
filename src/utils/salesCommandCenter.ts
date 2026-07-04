@@ -7,7 +7,7 @@ import type { DailyExecutionDecision } from './dailyExecution';
 import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
 import type { RevenueActionItem, RevenueRiskKind } from './revenueView';
 import { buildOpportunitySalesFlowGuidance } from './salesFlowGuidance.ts';
-import { compareSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, isValidBusinessDate, todayDateKey, toLocalDateKey } from './safeDate.ts';
+import { compareSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, isValidBusinessDate, todayDateKey, toLocalDateKey, timestampToLocalDateKey } from './safeDate.ts';
 
 export type CommandPriority = 'Critical' | 'High' | 'Medium' | 'Low';
 export type CommandActionSource = 'Activity' | 'Opportunity' | 'Operating System' | 'Sales Flow' | 'Pipeline Defense' | 'Quote';
@@ -574,7 +574,7 @@ export function getRecentActivitySummary(activities: SalesActivityRecord[]): Rec
 export function getPipelineReviewReadiness(opportunities: CrmLiteOpportunity[], briefs: PipelineDefenseBrief[]) {
   const week = currentWeekRange();
   const activeAtRisk = getAtRiskOpportunities(opportunities).length;
-  const briefsCreatedThisWeek = briefs.filter((brief) => brief.createdAt.slice(0, 10) >= week.start && brief.createdAt.slice(0, 10) <= week.end).length;
+  const briefsCreatedThisWeek = briefs.filter((brief) => timestampToLocalDateKey(brief.createdAt) >= week.start && timestampToLocalDateKey(brief.createdAt) <= week.end).length;
 
   return {
     activeAtRisk,
@@ -618,7 +618,7 @@ function countOpportunitiesWithMovement(opportunities: CrmLiteOpportunity[], act
   const movedIds = new Set<string>();
 
   opportunities.forEach((opportunity) => {
-    const updatedDate = opportunity.updatedAt.slice(0, 10);
+    const updatedDate = timestampToLocalDateKey(opportunity.updatedAt);
     if (updatedDate >= week.start && updatedDate <= week.end) movedIds.add(opportunity.id);
   });
 

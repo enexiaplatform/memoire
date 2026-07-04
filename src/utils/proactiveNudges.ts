@@ -13,7 +13,7 @@ import { buildMeddicStakeholderMap } from './meddicStakeholderMap.ts';
 import { formatBaseCurrencyAmount, formatCurrencyAmount, convertMoney } from './money.ts';
 import { analyzePersonalSalesLearning } from './personalSalesLearning.ts';
 import { buildManagerReadyDealBrief } from './pipelineDefenseCenter.ts';
-import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
+import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate, sanitizeBusinessDate, todayDateKey, timestampToLocalDateKey } from './safeDate.ts';
 
 export type ProactiveNudgeInput = {
   briefs?: PipelineDefenseBrief[];
@@ -330,7 +330,7 @@ export function classifyOpportunitySilence(
   if (opportunity.status !== 'Active') return { status: 'inactive', daysQuiet: null, lastTouchDate: '' };
   const lastTouch = findLastTouchDate(opportunity, activities);
   if (isValidBusinessDate(opportunity.nextActionDate)) return { status: 'planned', daysQuiet: null, lastTouchDate: lastTouch };
-  const quietSince = lastTouch || sanitizeBusinessDate(opportunity.createdAt.slice(0, 10));
+  const quietSince = lastTouch || sanitizeBusinessDate(timestampToLocalDateKey(opportunity.createdAt));
   const daysQuiet = daysBetweenBusinessDates(quietSince, sanitizeBusinessDate(today));
   if (daysQuiet === null) return { status: 'quiet-ok', daysQuiet: null, lastTouchDate: lastTouch };
   if (daysQuiet >= SILENCE_CRITICAL_DAYS) return { status: 'silent', daysQuiet, lastTouchDate: lastTouch };
@@ -344,7 +344,7 @@ function buildSilenceRiskNudges(input: ProactiveNudgeInput, today: string) {
     const silence = classifyOpportunitySilence(opportunity, activities, today);
     if (silence.status !== 'silent' && silence.status !== 'at-risk') return [];
     const lastTouch = silence.lastTouchDate;
-    const quietSince = lastTouch || sanitizeBusinessDate(opportunity.createdAt.slice(0, 10));
+    const quietSince = lastTouch || sanitizeBusinessDate(timestampToLocalDateKey(opportunity.createdAt));
     const critical = silence.status === 'silent';
     const accountName = opportunity.accountName || 'Needs confirmation';
     const opportunityName = opportunity.opportunityName || 'Needs confirmation';

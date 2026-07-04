@@ -39,3 +39,20 @@ suffixes) were left as-is.
 - Demo-sandbox runtime: silence classifier still fires ("Quiet 16d - no next
   action"), Today health strip shows 4 healthy / 1 silent, Opportunities renders
   7 rows, no console errors.
+
+## Follow-up: timestamp-to-local day math (same day)
+
+A second, subtler slice of the same bug: several day/period comparisons sliced the
+UTC date component off a stored ISO timestamp (`createdAt`/`updatedAt`/`occurred_at`)
+with `.slice(0, 10)` and compared it against a now-LOCAL `today`/week range - mixing a
+UTC timestamp-date with a local calendar day, off by one at midnight boundaries.
+
+Added `timestampToLocalDateKey(value)` to safeDate.ts: passes through YYYY-MM-DD keys
+unchanged, converts ISO timestamps to their local calendar day, and returns '' for junk.
+Applied to the silence `quietSince` fallback (proactiveNudges - the core day-count), the
+action-outcome loop grouping, weekly command-center brief/opportunity membership, the
+review page objection/opportunity period checks, and the Today interaction-today count.
+
+Verified: contract assertions added (pass-through, ISO conversion, junk -> ''); `npm run
+check` passes; demo runtime still shows "Quiet 16d" and health 4 healthy/1 silent, no
+console errors.

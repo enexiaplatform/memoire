@@ -41,7 +41,7 @@ import {
   type SalesPlaybookPattern,
 } from '../../utils/salesPlaybook';
 import { analyzeAssetNeeds, type SalesAssetNeed } from '../../utils/salesAssetSuggestions';
-import { formatSafeBusinessDate, isValidBusinessDate, toLocalDateKey } from '../../utils/safeDate.ts';
+import { formatSafeBusinessDate, isValidBusinessDate, toLocalDateKey, timestampToLocalDateKey } from '../../utils/safeDate.ts';
 import { buildWeeklyTouchSeries, buildWinLossByQuarter } from '../../utils/pipelineInsights';
 import { Sparkline } from '../../components/charts/Sparkline';
 import { MiniBarChart } from '../../components/charts/MiniBarChart';
@@ -1215,7 +1215,7 @@ function formatShortDate(dateKey: string) {
 }
 
 function isObjectionInPeriod(objection: ObjectionRecord, period: SalesRecapRange) {
-  const createdDate = objection.createdAt.slice(0, 10);
+  const createdDate = timestampToLocalDateKey(objection.createdAt);
   const resolvedDate = objection.resolvedAt ? objection.resolvedAt.slice(0, 10) : '';
   return (
     (createdDate >= period.start && createdDate <= period.end) ||
@@ -1247,7 +1247,7 @@ function buildPeriodDealActions({
   ]);
 
   const periodOpportunities = opportunities.filter((opportunity) => {
-    const updatedDate = opportunity.updatedAt.slice(0, 10);
+    const updatedDate = timestampToLocalDateKey(opportunity.updatedAt);
     const nameKey = `${normalize(opportunity.accountName)}::${normalize(opportunity.opportunityName)}`;
     return (
       opportunity.status === 'Active' &&

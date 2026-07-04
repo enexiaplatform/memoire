@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { todayDateKey } from '../../utils/safeDate.ts';
+import { todayDateKey, timestampToLocalDateKey } from '../../utils/safeDate.ts';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Send, Target } from 'lucide-react';
@@ -124,7 +124,7 @@ export function TodayPage() {
   const dueActions = actions.filter((action) => action.due_date === today);
   const dueOrOverdueActions = [...overdueActions, ...dueActions];
   const topRevenueActions = prioritizeActions(actions, today).slice(0, 5);
-  const interactionsToday = interactions.filter((interaction) => interaction.occurred_at.slice(0, 10) === today);
+  const interactionsToday = interactions.filter((interaction) => timestampToLocalDateKey(interaction.occurred_at) === today);
   const brokenLoops = useMemo(
     () => detectBrokenLoops({ accounts, opportunities, interactions, actions, objections, captures }),
     [accounts, actions, captures, interactions, objections, opportunities]

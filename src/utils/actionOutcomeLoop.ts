@@ -1,5 +1,5 @@
 import type { ActionOutcomeRecord } from '../services/actionOutcomeStore';
-import { todayDateKey } from './safeDate.ts';
+import { todayDateKey, timestampToLocalDateKey } from './safeDate.ts';
 import { actionOutcomeMatchesAction, getActionOutcomesForOpportunity } from '../services/actionOutcomeStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { ObjectionRecord } from '../services/objectionStore';
@@ -117,14 +117,14 @@ export function analyzePipelineOutcomeLoop(input: {
 export function getActionOutcomesInPeriod(outcomes: ActionOutcomeRecord[], period: { start: string; end: string }) {
   return outcomes.filter((outcome) => {
     const completed = outcome.completedAt || '';
-    const updated = outcome.updatedAt.slice(0, 10);
-    const created = outcome.createdAt.slice(0, 10);
+    const updated = timestampToLocalDateKey(outcome.updatedAt);
+    const created = timestampToLocalDateKey(outcome.createdAt);
     return isInRange(completed, period) || isInRange(updated, period) || isInRange(created, period);
   });
 }
 
 export function summarizeActionOutcome(outcome: ActionOutcomeRecord) {
-  const date = outcome.completedAt || outcome.updatedAt.slice(0, 10);
+  const date = outcome.completedAt || timestampToLocalDateKey(outcome.updatedAt);
   const note = outcome.outcomeNote ? ` ${outcome.outcomeNote}` : '';
   return `${date}: ${outcome.actionTitle} - ${outcome.outcomeType}.${note}`.trim();
 }

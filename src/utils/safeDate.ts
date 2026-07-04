@@ -20,6 +20,21 @@ export function toLocalDateKey(date: Date) {
   return todayDateKey(date);
 }
 
+/**
+ * Convert a stored value to a LOCAL date key for day-math against `todayDateKey()`.
+ * If the value is already a YYYY-MM-DD date key it is returned unchanged; an ISO
+ * timestamp (e.g. createdAt/updatedAt) is converted to its local calendar day so
+ * it never mixes a UTC timestamp-date with a local "today".
+ */
+export function timestampToLocalDateKey(value: unknown) {
+  if (typeof value !== 'string' || !value.trim()) return '';
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return toLocalDateKey(parsed);
+}
+
 export function isValidBusinessDate(date: unknown): date is string {
   if (typeof date !== 'string') return false;
   const value = date.trim();
