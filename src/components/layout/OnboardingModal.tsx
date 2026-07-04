@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle2, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -190,11 +190,17 @@ export function OnboardingModal() {
   const currentIndex = Math.max(0, steps.findIndex((step) => step.step === workflow.currentStep));
   const currentStep = steps[currentIndex] || steps[0];
 
+  // Keep a ref to the latest startWorkflow so the replay listener subscribes
+  // once instead of re-binding on every render (the effect had no dep array).
+  // Assigned here, before the early `return null`, so replay works even while
+  // the modal is inactive (startWorkflow is a hoisted function declaration).
+  const startWorkflowRef = useRef<() => void>(() => undefined);
+  startWorkflowRef.current = startWorkflow;
   useEffect(() => {
-    const replay = () => startWorkflow();
+    const replay = () => startWorkflowRef.current();
     window.addEventListener(REPLAY_GUIDED_WORKFLOW_EVENT, replay);
     return () => window.removeEventListener(REPLAY_GUIDED_WORKFLOW_EVENT, replay);
-  });
+  }, []);
 
   useEffect(() => {
     const onStructured = () => {
