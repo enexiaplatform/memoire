@@ -64,7 +64,8 @@ for (const redirectPath of ['/login?verified=1', '/reset-password', '/app/today'
 }
 
 for (const marker of [
-  "evaluateProductionReadiness(process.env)",
+  "evaluateProductionReadiness(process.env, { requestHost })",
+  "x-forwarded-host",
   "'Cache-Control'",
   "'no-store'",
   "'GET'",

@@ -26,6 +26,25 @@ assert.ok(healthy.authRedirects.requiredUrls.includes('https://app.memoire.test/
 assert.ok(healthy.authRedirects.requiredUrls.includes('https://app.memoire.test/reset-password'));
 assert.ok(healthy.authRedirects.requiredUrls.includes('https://app.memoire.test/app/today'));
 
+// The serving host must match VITE_APP_URL, or auth emails send users to a
+// domain this deployment does not own.
+const hostMatch = evaluateProductionReadiness(completeEnv, { requestHost: 'app.memoire.test' });
+assert.equal(hostMatch.checks.find((check) => check.name === 'app_url_matches_request_host').ok, true, 'matching host should pass');
+assert.equal(hostMatch.authRedirects.requestHost, 'app.memoire.test');
+assert.equal(hostMatch.authRedirects.appUrlHost, 'app.memoire.test');
+
+const hostMismatch = evaluateProductionReadiness(completeEnv, { requestHost: 'someone-elses-domain.vercel.app' });
+const mismatchCheck = hostMismatch.checks.find((check) => check.name === 'app_url_matches_request_host');
+assert.equal(mismatchCheck.ok, false, 'mismatched host must fail the check');
+assert.equal(mismatchCheck.severity, 'warning');
+assert.ok(hostMismatch.summary.warnings >= 1, 'host mismatch should count as a warning');
+
+const hostUnknown = evaluateProductionReadiness(completeEnv, {});
+assert.equal(hostUnknown.checks.find((check) => check.name === 'app_url_matches_request_host').ok, true, 'missing request host should not fail the check');
+
+const hostWithPort = evaluateProductionReadiness(completeEnv, { requestHost: 'APP.MEMOIRE.TEST:443' });
+assert.equal(hostWithPort.checks.find((check) => check.name === 'app_url_matches_request_host').ok, true, 'host with port and case should normalize');
+
 const checkNames = new Set(healthy.checks.map((check) => check.name));
 for (const name of [
   'supabase_url', 'supabase_anon_key', 'supabase_service_role', 'app_url', 'app_url_valid',

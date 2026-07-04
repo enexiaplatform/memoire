@@ -1,7 +1,9 @@
 export const AUTH_REDIRECT_PATHS = ['/login?verified=1', '/reset-password', '/app/today'];
 
-export function evaluateProductionReadiness(env = process.env) {
+export function evaluateProductionReadiness(env = process.env, options = {}) {
   const appUrl = parseAppUrl(env.VITE_APP_URL);
+  const requestHost = normalizeHost(options.requestHost);
+  const appUrlHost = appUrl ? appUrl.hostname.toLowerCase() : null;
   const checks = [
     required('supabase_url', hasEnv(env, 'SUPABASE_URL') || hasEnv(env, 'VITE_SUPABASE_URL')),
     required('supabase_anon_key', hasEnv(env, 'VITE_SUPABASE_ANON_KEY')),
@@ -12,6 +14,9 @@ export function evaluateProductionReadiness(env = process.env) {
     required('openai_embeddings', hasEnv(env, 'OPENAI_API_KEY')),
     warning('app_url_https', appUrl?.protocol === 'https:'),
     warning('app_url_not_localhost', Boolean(appUrl && !['localhost', '127.0.0.1'].includes(appUrl.hostname))),
+    // Catches VITE_APP_URL pointing at a domain this deployment does not
+    // serve - auth emails would send users to a stranger's site.
+    warning('app_url_matches_request_host', !requestHost || !appUrlHost || requestHost === appUrlHost),
     warning('demo_mode_disabled', env.VITE_ENABLE_DEMO_MODE !== 'true'),
     warning('founder_workspace_disabled', env.VITE_ENABLE_FOUNDER_WORKSPACE !== 'true'),
     optional('capture_ai_provider', captureAiProviderIsCompleteOrUnset(env)),
@@ -31,6 +36,8 @@ export function evaluateProductionReadiness(env = process.env) {
     },
     authRedirects: {
       appUrlConfigured: Boolean(appUrl),
+      appUrlHost,
+      requestHost,
       requiredPaths: AUTH_REDIRECT_PATHS,
       requiredUrls: appUrl ? AUTH_REDIRECT_PATHS.map((path) => new URL(path, appUrl).toString()) : [],
       supabaseChecklist: [
@@ -57,6 +64,11 @@ function parseAppUrl(value) {
   } catch {
     return null;
   }
+}
+
+function normalizeHost(value) {
+  if (!value || typeof value !== 'string') return null;
+  return value.split(':')[0].trim().toLowerCase() || null;
 }
 
 function hasEnv(env, key) {

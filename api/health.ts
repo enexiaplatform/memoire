@@ -2,6 +2,7 @@ import { evaluateProductionReadiness } from '../scripts/lib/production-readiness
 
 type ApiRequest = {
   method?: string;
+  headers?: Record<string, string | string[] | undefined>;
 };
 
 type ApiResponse = {
@@ -19,7 +20,9 @@ export default function handler(req: ApiRequest, res: ApiResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const readiness = evaluateProductionReadiness(process.env);
+  const forwardedHost = req.headers?.['x-forwarded-host'] ?? req.headers?.host;
+  const requestHost = Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost;
+  const readiness = evaluateProductionReadiness(process.env, { requestHost });
   const statusCode = readiness.ok ? 200 : 503;
 
   if (req.method === 'HEAD') {
