@@ -5,13 +5,41 @@ import { ExportTab } from './ExportTab';
 import { BoundariesTab } from './BoundariesTab';
 import { REPLAY_GUIDED_WORKFLOW_EVENT } from '../onboarding/guidedWorkflow';
 import { buildSalesOperatingSetupProgress, loadSalesOperatingSetupState } from '../../utils/salesOperatingSetup';
+import { SUPPORTED_CURRENCIES, getReportingCurrency, setReportingCurrency } from '../../utils/money';
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'export' | 'boundaries'>('boundaries');
+  const [reportingCurrency, setReportingCurrencyState] = useState(() => getReportingCurrency());
   const salesOperatingSetupProgress = buildSalesOperatingSetupProgress(loadSalesOperatingSetupState());
 
   return (
     <div className="w-full max-w-4xl">
+      <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-navy">Reporting currency</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Totals and charts are shown in this currency. Each deal keeps its own currency; amounts are converted for reporting.
+            </p>
+          </div>
+          <label className="flex items-center gap-2">
+            <span className="sr-only">Reporting currency</span>
+            <select
+              value={reportingCurrency}
+              onChange={(event) => {
+                setReportingCurrency(event.target.value);
+                setReportingCurrencyState(getReportingCurrency());
+              }}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+            >
+              {SUPPORTED_CURRENCIES.map((currency) => (
+                <option key={currency} value={currency}>{currency}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+
       <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>

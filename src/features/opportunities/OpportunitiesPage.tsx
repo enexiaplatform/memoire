@@ -48,8 +48,9 @@ import type { FollowUpContext } from '../../types/v31';
 import { analyzeMeddicLiteOpportunity, type MeddicLiteDealCategory, type MeddicLiteStatus } from '../../utils/meddicLite';
 import {
   formatBaseCurrencyAmount as formatBaseMoney,
-  formatCompactCurrencyAmount,
+  formatCompactBaseAmount,
   formatCurrencyAmount as formatMoney,
+  getReportingCurrency,
   sumMoneyInBase,
 } from '../../utils/money';
 import { buildRevenueHorizon, buildStageFunnel } from '../../utils/pipelineInsights';
@@ -360,7 +361,7 @@ export function OpportunitiesPage() {
 
   const openAddPanel = () => {
     setEditingOpportunity(null);
-    setForm(emptyOpportunityInput);
+    setForm({ ...emptyOpportunityInput, currency: getReportingCurrency() });
     setPanelMode('add');
     setSaveState('idle');
     setMessage('');
@@ -1194,12 +1195,12 @@ function PipelineShapeCharts({
             rows={funnel.map((row) => ({
               label: row.stage,
               value: row.valueBase,
-              valueText: formatCompactCurrencyAmount(row.valueBase, 'VND'),
+              valueText: formatCompactBaseAmount(row.valueBase),
               countText: `x${row.count}`,
             }))}
           />
         </div>
-        <p className="mt-3 text-xs font-semibold text-gray-400">Active deals only. Click a stage to filter the table. (Base: VND)</p>
+        <p className="mt-3 text-xs font-semibold text-gray-400">Active deals only. Click a stage to filter the table. (Base: {getReportingCurrency()})</p>
       </div>
       {horizon.length > 0 && (
         <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
@@ -1212,13 +1213,13 @@ function PipelineShapeCharts({
                 label: bucket.label,
                 value: bucket.weightedValueBase,
                 secondaryValue: bucket.rawValueBase,
-                valueText: `weighted ${formatCompactCurrencyAmount(bucket.weightedValueBase, 'VND')}`,
-                secondaryText: `full ${formatCompactCurrencyAmount(bucket.rawValueBase, 'VND')} (${bucket.count} deals)`,
+                valueText: `weighted ${formatCompactBaseAmount(bucket.weightedValueBase)}`,
+                secondaryText: `full ${formatCompactBaseAmount(bucket.rawValueBase)} (${bucket.count} deals)`,
               }))}
             />
           </div>
           <p className="mt-3 text-xs font-semibold text-gray-400">
-            Solid bar: weighted by probability. Pale bar: full value. (Base: VND)
+            Solid bar: weighted by probability. Pale bar: full value. (Base: {getReportingCurrency()})
           </p>
         </div>
       )}

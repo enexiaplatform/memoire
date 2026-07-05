@@ -46,8 +46,43 @@ export function sumMoney(values: MoneyValue[], toCurrency: SupportedCurrency = B
   }, 0);
 }
 
+const REPORTING_CURRENCY_KEY = 'memoire_reporting_currency';
+export const REPORTING_CURRENCY_CHANGED_EVENT = 'memoire:reporting-currency-changed';
+
+/**
+ * The user-selectable currency that aggregates and charts are reported in.
+ * BASE_CURRENCY (VND) stays the exchange-rate anchor; this is display-only and
+ * defaults to VND. Safe in non-browser contexts (contract scripts): no
+ * localStorage means the default.
+ */
+export function getReportingCurrency(): SupportedCurrency {
+  try {
+    if (typeof localStorage === 'undefined') return BASE_CURRENCY;
+    const stored = normalizeCurrency(localStorage.getItem(REPORTING_CURRENCY_KEY));
+    return isSupportedCurrency(stored) ? (stored as SupportedCurrency) : BASE_CURRENCY;
+  } catch {
+    return BASE_CURRENCY;
+  }
+}
+
+export function setReportingCurrency(currency: string) {
+  const normalized = normalizeCurrency(currency);
+  if (!isSupportedCurrency(normalized)) return;
+  try {
+    localStorage.setItem(REPORTING_CURRENCY_KEY, normalized);
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event(REPORTING_CURRENCY_CHANGED_EVENT));
+  } catch {
+    // ignore storage failures
+  }
+}
+
 export function sumMoneyInBase(values: MoneyValue[]) {
-  return sumMoney(values, BASE_CURRENCY);
+  return sumMoney(values, getReportingCurrency());
+}
+
+/** Compact aggregate formatter in the user's reporting currency. */
+export function formatCompactBaseAmount(value?: number | null) {
+  return formatCompactCurrencyAmount(value, getReportingCurrency());
 }
 
 /** Item-level formatter: always preserves the supplied currency code. */
@@ -73,10 +108,11 @@ export function formatCompactCurrencyAmount(value?: number | null, currency: str
 
 /** Aggregate formatter: makes the reporting basis explicit in every money card. */
 export function formatBaseCurrencyAmount(value?: number | null, compact = false) {
+  const currency = getReportingCurrency();
   const formatted = compact
-    ? formatCompactCurrencyAmount(value, BASE_CURRENCY)
-    : formatCurrencyAmount(value, BASE_CURRENCY);
-  return `${formatted} (Base: ${BASE_CURRENCY})`;
+    ? formatCompactCurrencyAmount(value, currency)
+    : formatCurrencyAmount(value, currency);
+  return `${formatted} (Base: ${currency})`;
 }
 
 function normalizeCurrency(currency?: string | null) {

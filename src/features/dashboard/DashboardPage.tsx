@@ -69,7 +69,7 @@ import {
   type RecentActivityItem,
 } from '../../utils/salesCommandCenter';
 import { buildRevenueView, type RevenueActionItem, type RevenueViewSummary } from '../../utils/revenueView';
-import { formatBaseCurrencyAmount, formatCompactCurrencyAmount, formatCurrencyAmount } from '../../utils/money';
+import { formatBaseCurrencyAmount, formatCompactBaseAmount, formatCurrencyAmount, getReportingCurrency } from '../../utils/money';
 import { buildPipelineHealthSummary, buildRevenueHorizon } from '../../utils/pipelineInsights';
 import { SegmentBar } from '../../components/charts/SegmentBar';
 import { MiniBarChart } from '../../components/charts/MiniBarChart';
@@ -824,16 +824,16 @@ function PipelineGlanceSection({
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Pipeline health</p>
         <h2 className="mt-1 text-xl font-bold text-navy">
           {health.quietValueBase > 0
-            ? `${formatCompactCurrencyAmount(health.quietValueBase, 'VND')} is going quiet`
+            ? `${formatCompactBaseAmount(health.quietValueBase)} is going quiet`
             : 'Every active deal has a heartbeat'}
         </h2>
         <div className="mt-4">
           <SegmentBar
             ariaLabel={`Pipeline health: ${health.buckets.healthy.count} healthy, ${health.buckets.atRisk.count} at risk, ${health.buckets.silent.count} silent`}
             segments={[
-              { label: 'Healthy', value: health.buckets.healthy.count, color: '#2E7D32', detail: formatCompactCurrencyAmount(health.buckets.healthy.valueBase, 'VND') },
-              { label: 'At risk', value: health.buckets.atRisk.count, color: '#F59E0B', detail: formatCompactCurrencyAmount(health.buckets.atRisk.valueBase, 'VND') },
-              { label: 'Silent', value: health.buckets.silent.count, color: '#DC2626', detail: formatCompactCurrencyAmount(health.buckets.silent.valueBase, 'VND') },
+              { label: 'Healthy', value: health.buckets.healthy.count, color: '#2E7D32', detail: formatCompactBaseAmount(health.buckets.healthy.valueBase) },
+              { label: 'At risk', value: health.buckets.atRisk.count, color: '#F59E0B', detail: formatCompactBaseAmount(health.buckets.atRisk.valueBase) },
+              { label: 'Silent', value: health.buckets.silent.count, color: '#DC2626', detail: formatCompactBaseAmount(health.buckets.silent.valueBase) },
             ]}
           />
         </div>
@@ -844,7 +844,7 @@ function PipelineGlanceSection({
         )}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-semibold text-gray-400">
-            {health.activeCount} active deals / {formatCompactCurrencyAmount(health.activeValueBase, 'VND')} total (Base: VND)
+            {health.activeCount} active deals / {formatCompactBaseAmount(health.activeValueBase)} total (Base: {getReportingCurrency()})
           </p>
           {health.quietValueBase > 0 && (
             <Link
@@ -867,13 +867,13 @@ function PipelineGlanceSection({
                 label: bucket.label,
                 value: bucket.weightedValueBase,
                 secondaryValue: bucket.rawValueBase,
-                valueText: `weighted ${formatCompactCurrencyAmount(bucket.weightedValueBase, 'VND')}`,
-                secondaryText: `full ${formatCompactCurrencyAmount(bucket.rawValueBase, 'VND')} (${bucket.count} deals)`,
+                valueText: `weighted ${formatCompactBaseAmount(bucket.weightedValueBase)}`,
+                secondaryText: `full ${formatCompactBaseAmount(bucket.rawValueBase)} (${bucket.count} deals)`,
               }))}
             />
           </div>
           <p className="mt-3 text-xs font-semibold text-gray-400">
-            Solid bar: value weighted by probability. Pale bar: full value. (Base: VND)
+            Solid bar: value weighted by probability. Pale bar: full value. (Base: {getReportingCurrency()})
           </p>
         </div>
       )}
