@@ -280,7 +280,8 @@ export function AskMemoirePage() {
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Ask Memoire</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Ask why deals may go silent</h1>
         <p className="mt-2 max-w-2xl text-sm text-gray-500">
-          Choose a context and ask Memoire about stuck deals, missing follow-ups, unresolved objections, or account context.
+          Memoire answers from the sales activity you have captured - so capture a few updates first for the richest answers.
+          Choose a context and ask about stuck deals, missing follow-ups, unresolved objections, or account context.
         </p>
         <p className="mt-2 max-w-2xl text-xs font-semibold text-gray-500">
           Presets run immediately. If the Ask endpoint is unavailable, Memoire shows a local rule-based answer.
