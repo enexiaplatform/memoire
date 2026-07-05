@@ -754,7 +754,7 @@ export function DailyCapturePage() {
                 setSaveState('idle');
                 setMessage('');
               }}
-              placeholder="Example: Met Orion Pharma today. Need to clarify tender timeline next week."
+              placeholder="Example: Met the buyer today. Need to clarify the tender timeline next week."
               className="mt-2 min-h-[150px] w-full resize-y rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm leading-6 text-gray-900 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
             />
           </label>
@@ -876,7 +876,7 @@ export function DailyCapturePage() {
                   type="text"
                   value={emailForm.subject}
                   onChange={(event) => updateEmailForm({ subject: event.target.value })}
-                  placeholder="e.g. Pymepharco DCM comparison quote"
+                  placeholder="e.g. Q2 renewal quote"
                   className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
                 />
               </label>
@@ -886,7 +886,7 @@ export function DailyCapturePage() {
                   type="text"
                   value={emailForm.sender}
                   onChange={(event) => updateEmailForm({ sender: event.target.value })}
-                  placeholder="e.g. Ms. Nhu <nhu@pymepharco.vn>"
+                  placeholder="e.g. Jane Buyer <jane@example.com>"
                   className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
                 />
               </label>
@@ -1242,8 +1242,8 @@ function QuickCapturePanel({
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
-        <QuickInput label="Account" value={form.accountName} placeholder="Northstar Foods" onChange={(value) => update('accountName', value)} />
-        <QuickInput label="Opportunity optional" value={form.opportunityName} placeholder="Lab workflow" onChange={(value) => update('opportunityName', value)} />
+        <QuickInput label="Account" value={form.accountName} placeholder="Your customer's company" onChange={(value) => update('accountName', value)} />
+        <QuickInput label="Opportunity optional" value={form.opportunityName} placeholder="Deal or project name" onChange={(value) => update('opportunityName', value)} />
         <QuickSelect label="Interaction type" value={form.interactionType} options={quickInteractionTypes} onChange={(value) => update('interactionType', value as QuickInteractionType)} />
         <QuickSelect label="Signal type" value={form.signalType} options={quickSignalTypes} onChange={(value) => update('signalType', value as QuickSignalType)} />
         <QuickInput label="Activity date" type="date" value={form.activityDate} placeholder="" onChange={(value) => update('activityDate', value)} />
