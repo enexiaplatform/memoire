@@ -10,6 +10,8 @@ import { isFounderImportUser } from '../../services/importAuditStore';
 import { loadPipelineDefenseBriefStore } from '../../utils/pipelineDefenseStorage';
 import { loadReviewPacks } from '../../utils/reviewPacks';
 
+const REVIEW_TIER_COLLAPSED_KEY = 'memoire_review_tier_collapsed';
+
 function hasFirstSavedBrief() {
   try {
     return loadPipelineDefenseBriefStore().briefs.length > 0 || loadReviewPacks().length > 0;
@@ -48,7 +50,15 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     ? [...secondaryItems, { to: '/app/imports', label: 'Import Review', icon: <Database className="h-5 w-5" /> }]
     : secondaryItems;
   const hasActiveSecondaryRoute = visibleSecondaryItems.some((item) => location.pathname.startsWith(item.to));
-  const [moreOpen, setMoreOpen] = useState(hasActiveSecondaryRoute);
+  // Review & Learn is expanded by default; collapse is remembered per user choice.
+  const [moreOpen, setMoreOpen] = useState(() => {
+    if (hasActiveSecondaryRoute) return true;
+    try {
+      return localStorage.getItem(REVIEW_TIER_COLLAPSED_KEY) !== 'true';
+    } catch {
+      return true;
+    }
+  });
   const [reviewTierUnlocked, setReviewTierUnlocked] = useState(() => hasFirstSavedBrief());
 
   useEffect(() => {
@@ -135,7 +145,15 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           {showReviewTier && (
           <button
             type="button"
-            onClick={() => setMoreOpen((current) => !current)}
+            onClick={() => setMoreOpen((current) => {
+              const next = !current;
+              try {
+                localStorage.setItem(REVIEW_TIER_COLLAPSED_KEY, next ? 'false' : 'true');
+              } catch {
+                // ignore storage failures - state still toggles for this session
+              }
+              return next;
+            })}
             className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-white/40 hover:bg-white/5 hover:text-white/70"
           >
             Review & Learn

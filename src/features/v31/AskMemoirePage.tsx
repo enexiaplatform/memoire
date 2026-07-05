@@ -450,8 +450,23 @@ export function AskMemoirePage() {
                   <AnswerCard key={`${card.kind}-${card.title}-${index}`} card={card} />
                 ))}
               </div>
-            ) : (
+            ) : answer.answer && answer.answer.trim() ? (
               <p className="whitespace-pre-line text-sm leading-7 text-gray-800">{answer.answer}</p>
+            ) : (
+              <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4">
+                <p className="text-sm font-bold text-navy">Memoire doesn't have enough sales memory to answer this yet.</p>
+                <p className="mt-1 text-sm text-gray-600">
+                  Answers are built from your captured activity. Capture a customer note or add an opportunity, then ask again.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link to="/app/capture" className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white hover:bg-navy/90">
+                    Capture a sales update
+                  </Link>
+                  <Link to="/app/opportunities?new=1" className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">
+                    Add an opportunity
+                  </Link>
+                </div>
+              </div>
             )}
             {answer.cards && answer.cards.length > 0 && answer.answer && (
               <details className="rounded-lg border border-gray-100 bg-gray-50 p-3">
