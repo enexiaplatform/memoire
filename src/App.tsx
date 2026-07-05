@@ -68,6 +68,9 @@ const FirstPipelineReviewFlow = lazy(() =>
 const SalesOperatingSetupPage = lazy(() =>
   import('./features/onboarding/SalesOperatingSetupPage').then((module) => ({ default: module.SalesOperatingSetupPage })),
 );
+const QuickStartSetupPage = lazy(() =>
+  import('./features/onboarding/QuickStartSetupPage').then((module) => ({ default: module.QuickStartSetupPage })),
+);
 const FounderImportReviewPage = lazy(() =>
   import('./features/imports/FounderImportReviewPage').then((module) => ({ default: module.FounderImportReviewPage })),
 );
@@ -124,6 +127,7 @@ function App() {
             <Route path="revenue" element={<RevenueViewPage />} />
             <Route path="onboarding/pipeline-review" element={<FirstPipelineReviewFlow />} />
             <Route path="onboarding/sales-operating-setup" element={<SalesOperatingSetupPage />} />
+            <Route path="onboarding/quick-start" element={<QuickStartSetupPage />} />
             <Route path="stakeholders" element={<StakeholdersPage />} />
             <Route path="objections" element={<ObjectionsPage />} />
             <Route path="pipeline-defense" element={<PipelineReviewDefenseBriefPage />} />

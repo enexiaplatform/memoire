@@ -1143,6 +1143,13 @@ function TodayCommandEmptyState() {
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Start Today</p>
       <h2 className="mt-2 text-2xl font-black text-navy">Give Memoire one real signal.</h2>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">Today ignores empty imported account volume. Add an activity, active opportunity, or defense brief to create meaningful priorities.</p>
+      <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 p-3">
+        <p className="text-sm font-bold text-navy">New here? Set up Memoire in a minute.</p>
+        <p className="mt-0.5 text-xs text-gray-600">Answer a few quick questions and Memoire tailors a basic setup for how you sell.</p>
+        <Link to="/app/onboarding/quick-start" className="mt-2 inline-flex rounded-full bg-brand-blue px-4 py-2 text-sm font-bold text-white hover:bg-brand-blue-dark">
+          Start quick setup
+        </Link>
+      </div>
       <div className="mt-5 flex flex-wrap gap-2">
         <Link to="/app/capture" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Capture a sales update</Link>
         <Link to="/app/opportunities" className="rounded-full border border-gray-200 px-4 py-2 text-sm font-bold text-gray-700">Create or review an opportunity</Link>

@@ -14,6 +14,23 @@ export function SettingsPage() {
 
   return (
     <div className="w-full max-w-4xl">
+      <div className="mb-6 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-navy">Quick setup</p>
+            <p className="mt-1 text-sm text-blue-900">
+              Answer a few questions to tailor a basic setup for how you sell.
+            </p>
+          </div>
+          <Link
+            to="/app/onboarding/quick-start"
+            className="rounded-lg bg-brand-blue px-3 py-2 text-sm font-semibold text-white hover:bg-brand-blue-dark"
+          >
+            Open quick setup
+          </Link>
+        </div>
+      </div>
+
       <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
