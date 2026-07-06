@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle, Bot, CalendarDays, Clipboard, Copy, Loader2, Mail, NotebookPen, Save, Sparkles, Trash2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
@@ -231,6 +231,17 @@ export function DailyCapturePage() {
   const aiConfigured = aiProvider.isConfigured() && isAuthenticated;
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
+
+  // Suggestions so Capture attaches touches to an existing account instead of a
+  // slightly different typed name (which would fragment into a new candidate).
+  const accountNameSuggestions = useMemo(
+    () => Array.from(new Set(accounts.map((account) => account.accountName).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    [accounts],
+  );
+  const opportunityNameSuggestions = useMemo(
+    () => Array.from(new Set(opportunities.map((opportunity) => opportunity.opportunityName).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    [opportunities],
+  );
 
   useEffect(() => {
     setCaptureCorrections(loadCaptureCorrections(user?.id));
@@ -732,6 +743,8 @@ export function DailyCapturePage() {
           onTemplateSelect={applyQuickTemplate}
           onChange={setQuickForm}
           onSave={handleQuickSave}
+          accountSuggestions={accountNameSuggestions}
+          opportunitySuggestions={opportunityNameSuggestions}
         />
       )}
 
@@ -847,7 +860,7 @@ export function DailyCapturePage() {
                 {needsConfirmation && <span className="rounded-full bg-white px-2.5 py-1 text-amber-700 ring-1 ring-amber-200">Needs confirmation</span>}
               </div>
             </div>
-            <StructuredPreviewEditor preview={preview} parseSource={parseSource} onChange={updateDraft} />
+            <StructuredPreviewEditor preview={preview} parseSource={parseSource} onChange={updateDraft} accountSuggestions={accountNameSuggestions} opportunitySuggestions={opportunityNameSuggestions} />
             {opportunities.length > 0 && (
               <PreviewOpportunitySuggestions preview={previewToRecord(preview)} opportunities={opportunities} />
             )}
@@ -919,8 +932,15 @@ export function DailyCapturePage() {
                   value={emailForm.accountHint}
                   onChange={(event) => updateEmailForm({ accountHint: event.target.value })}
                   placeholder="Only if the thread is ambiguous"
+                  list="capture-account-hint-list"
+                  autoComplete="off"
                   className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
                 />
+                {accountNameSuggestions.length > 0 && (
+                  <datalist id="capture-account-hint-list">
+                    {accountNameSuggestions.map((option) => <option key={option} value={option} />)}
+                  </datalist>
+                )}
               </label>
               <label className="block">
                 <span className="text-sm font-bold text-navy">Opportunity hint optional</span>
@@ -1022,7 +1042,7 @@ export function DailyCapturePage() {
                 {needsConfirmation && <span className="rounded-full bg-white px-2.5 py-1 text-amber-700 ring-1 ring-amber-200">Needs confirmation</span>}
               </div>
             </div>
-            <StructuredPreviewEditor preview={preview} parseSource={parseSource} onChange={updateDraft} />
+            <StructuredPreviewEditor preview={preview} parseSource={parseSource} onChange={updateDraft} accountSuggestions={accountNameSuggestions} opportunitySuggestions={opportunityNameSuggestions} />
             {opportunities.length > 0 && (
               <PreviewOpportunitySuggestions preview={previewToRecord(preview)} opportunities={opportunities} />
             )}
@@ -1186,6 +1206,8 @@ function QuickCapturePanel({
   onTemplateSelect,
   onChange,
   onSave,
+  accountSuggestions,
+  opportunitySuggestions,
 }: {
   form: QuickCaptureForm;
   selectedTemplateId: string;
@@ -1194,6 +1216,8 @@ function QuickCapturePanel({
   onTemplateSelect: (templateId: string) => void;
   onChange: (form: QuickCaptureForm) => void;
   onSave: () => void;
+  accountSuggestions?: string[];
+  opportunitySuggestions?: string[];
 }) {
   const template = quickTemplates.find((item) => item.id === selectedTemplateId) || quickTemplates[0];
   const update = <Key extends keyof QuickCaptureForm>(key: Key, value: QuickCaptureForm[Key]) => {
@@ -1242,8 +1266,8 @@ function QuickCapturePanel({
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
-        <QuickInput label="Account" value={form.accountName} placeholder="Your customer's company" onChange={(value) => update('accountName', value)} />
-        <QuickInput label="Opportunity optional" value={form.opportunityName} placeholder="Deal or project name" onChange={(value) => update('opportunityName', value)} />
+        <QuickInput label="Account" value={form.accountName} placeholder="Your customer's company" onChange={(value) => update('accountName', value)} suggestions={accountSuggestions} />
+        <QuickInput label="Opportunity optional" value={form.opportunityName} placeholder="Deal or project name" onChange={(value) => update('opportunityName', value)} suggestions={opportunitySuggestions} />
         <QuickSelect label="Interaction type" value={form.interactionType} options={quickInteractionTypes} onChange={(value) => update('interactionType', value as QuickInteractionType)} />
         <QuickSelect label="Signal type" value={form.signalType} options={quickSignalTypes} onChange={(value) => update('signalType', value as QuickSignalType)} />
         <QuickInput label="Activity date" type="date" value={form.activityDate} placeholder="" onChange={(value) => update('activityDate', value)} />
@@ -1279,13 +1303,17 @@ function QuickInput({
   placeholder,
   type = 'text',
   onChange,
+  suggestions,
 }: {
   label: string;
   value: string;
   placeholder: string;
   type?: string;
   onChange: (value: string) => void;
+  suggestions?: string[];
 }) {
+  const listId = useId();
+  const hasSuggestions = Boolean(suggestions && suggestions.length);
   return (
     <label className="block rounded-lg bg-white px-3 py-2 ring-1 ring-emerald-100">
       <span className="text-xs font-bold uppercase tracking-wide text-emerald-700">{label}</span>
@@ -1294,8 +1322,15 @@ function QuickInput({
         value={value}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
+        list={hasSuggestions ? listId : undefined}
+        autoComplete="off"
         className="mt-1 w-full bg-transparent text-sm font-semibold text-emerald-950 outline-none placeholder:text-emerald-300"
       />
+      {hasSuggestions && (
+        <datalist id={listId}>
+          {suggestions!.map((option) => <option key={option} value={option} />)}
+        </datalist>
+      )}
     </label>
   );
 }
@@ -1354,10 +1389,14 @@ function StructuredPreviewEditor({
   preview,
   parseSource,
   onChange,
+  accountSuggestions,
+  opportunitySuggestions,
 }: {
   preview: ClassifiedSalesActivity;
   parseSource: ParseSource;
   onChange: <Key extends keyof ClassifiedSalesActivity>(key: Key, value: ClassifiedSalesActivity[Key]) => void;
+  accountSuggestions?: string[];
+  opportunitySuggestions?: string[];
 }) {
   return (
     <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -1375,8 +1414,8 @@ function StructuredPreviewEditor({
           {activityTypes.map((type) => <option key={type} value={type}>{type}</option>)}
         </select>
       </label>
-      <PreviewInput label="Account" value={preview.accountName} placeholder="Not captured" onChange={(value) => onChange('accountName', value)} />
-      <PreviewInput label="Opportunity" value={preview.opportunityName} placeholder="Not captured" onChange={(value) => onChange('opportunityName', value)} />
+      <PreviewInput label="Account" value={preview.accountName} placeholder="Not captured" onChange={(value) => onChange('accountName', value)} suggestions={accountSuggestions} />
+      <PreviewInput label="Opportunity" value={preview.opportunityName} placeholder="Not captured" onChange={(value) => onChange('opportunityName', value)} suggestions={opportunitySuggestions} />
       <PreviewInput label="Contact" value={preview.contactName || ''} placeholder="Not captured" onChange={(value) => onChange('contactName', value)} />
       <PreviewInput label="Stakeholder" value={preview.stakeholderName || ''} placeholder="Not captured" onChange={(value) => onChange('stakeholderName', value)} />
       <PreviewInput label="Stakeholder role" value={preview.stakeholderRole || ''} placeholder="Optional role" onChange={(value) => onChange('stakeholderRole', value)} />
@@ -1435,12 +1474,16 @@ function PreviewInput({
   value,
   placeholder,
   onChange,
+  suggestions,
 }: {
   label: string;
   value: string;
   placeholder: string;
   onChange: (value: string) => void;
+  suggestions?: string[];
 }) {
+  const listId = useId();
+  const hasSuggestions = Boolean(suggestions && suggestions.length);
   return (
     <label className="block rounded-lg bg-white px-3 py-2 ring-1 ring-blue-100">
       <span className="text-xs font-bold uppercase tracking-wide text-blue-500">{label}</span>
@@ -1448,8 +1491,15 @@ function PreviewInput({
         value={value}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
+        list={hasSuggestions ? listId : undefined}
+        autoComplete="off"
         className="mt-1 w-full bg-transparent text-sm font-semibold text-blue-950 outline-none placeholder:text-blue-300"
       />
+      {hasSuggestions && (
+        <datalist id={listId}>
+          {suggestions!.map((option) => <option key={option} value={option} />)}
+        </datalist>
+      )}
     </label>
   );
 }

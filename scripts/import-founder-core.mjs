@@ -257,6 +257,10 @@ function parseAccountMaster(workbook, plan) {
     const strategy = asText(get(row, 'Strategy'));
     const priority = asText(get(row, 'Priority'));
     const inStage = asText(get(row, 'In-stage')) || asText(get(row, 'In stage'));
+    // KA_Flag in the master is a category label (e.g. Top5_KA, Growth_Target),
+    // not a yes/no. Any non-empty, non-negative label marks a key account.
+    const kaFlagRaw = asText(get(row, 'KA_Flag'));
+    const isKeyAccount = boolValue(kaFlagRaw) || (Boolean(kaFlagRaw) && !/^(no|false|0|n|none|-)$/i.test(kaFlagRaw.trim()));
     const activityCount = asNumber(get(row, 'Activity_Count'));
     const summaryParts = [
       strategy ? `Strategy: ${strategy}` : '',
@@ -276,7 +280,7 @@ function parseAccountMaster(workbook, plan) {
       relationship_status: normalizeRelationshipStatus(inStage, activityCount, asText(get(row, 'Overdue_Status'))),
       key_stakeholders: contactsByAccount.get(normalizeIdentity(accountId)) || [],
       notes: summaryParts.join('\n') || null,
-      tags: compactTags(['founder-import', 'account-master', asText(get(row, 'Segment')), territory, boolValue(get(row, 'KA_Flag')) ? 'key-account' : '']),
+      tags: compactTags(['founder-import', 'account-master', asText(get(row, 'Segment')), territory, isKeyAccount ? 'key-account' : '', kaFlagRaw || '']),
       status: 'active',
       pain_points: [],
       objections: [],
@@ -289,7 +293,7 @@ function parseAccountMaster(workbook, plan) {
       import_batch_id: null,
       territory: territory || null,
       state_province: stateProvince || null,
-      ka_flag: boolValue(get(row, 'KA_Flag')),
+      ka_flag: isKeyAccount,
       priority: priority || null,
       fy26_target_sgd: asNumber(get(row, 'FY26_Target_SGD')),
       fy27_target_sgd: asNumber(get(row, 'FY27_Target_SGD')),
@@ -697,8 +701,12 @@ function parseSheetXml(xml, sharedStrings, styles) {
     const rowNumber = Number(rowAttrs.r || fallbackRow);
     fallbackRow = rowNumber + 1;
     const values = [];
-    for (const cellMatch of rowMatch[2].matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>|<c\b([^>]*)\/>/g)) {
-      const attrText = cellMatch[1] || cellMatch[3] || '';
+    // A self-closing empty cell (<c r="I3"/>) must not be read as an opening tag.
+    // The prior `<c ...>...</c>|<c .../>` pattern let `[^>]*` swallow the trailing
+    // "/" so an empty cell consumed the next cell's value, shifting every column
+    // after a blank one. This unified pattern distinguishes the two forms.
+    for (const cellMatch of rowMatch[2].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+      const attrText = cellMatch[1] || '';
       const cellXml = cellMatch[2] || '';
       const attrs = parseAttrs(attrText);
       const columnIndex = columnIndexFromRef(attrs.r);
@@ -1392,11 +1400,23 @@ function stampRowResults(rows, userId, batchId) {
 
 async function upsertRows(supabase, table, rows, onConflict) {
   if (!rows.length) return 0;
-  for (const chunk of chunks(rows, CHUNK_SIZE)) {
+  // Postgres rejects an upsert whose batch contains two rows with the same
+  // conflict key ("cannot affect row a second time"). Source masters can carry
+  // duplicate-keyed rows (e.g. the same contact listed twice, or an identical
+  // deal line). Collapse them to the last occurrence - the same last-write-wins
+  // result a row-by-row upsert would produce - so no meaningful data is lost.
+  const conflictKeys = onConflict.split(',').map((key) => key.trim());
+  const byKey = new Map();
+  for (const row of rows) {
+    const key = conflictKeys.map((column) => String(row[column] ?? '')).join(' ');
+    byKey.set(key, row);
+  }
+  const deduped = [...byKey.values()];
+  for (const chunk of chunks(deduped, CHUNK_SIZE)) {
     const { error } = await supabase.from(table).upsert(chunk, { onConflict });
     if (error) throw error;
   }
-  return rows.length;
+  return deduped.length;
 }
 
 async function insertRowResults(supabase, rows) {
