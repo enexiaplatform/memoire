@@ -56,6 +56,8 @@ import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../servi
 import { FollowUpComposerPanel } from '../v31/FollowUpComposerPanel';
 import { FollowUpImpactPanel } from './FollowUpImpactPanel';
 import { buildFollowUpImpact } from '../../utils/followUpImpact';
+import { MorningBriefCard } from './MorningBriefCard';
+import { buildMorningBrief } from '../../utils/morningBrief';
 import { buildReviveFollowUpContext } from '../../utils/followUpFromOpportunity';
 import type { FollowUpContext } from '../../types/v31';
 import { type PipelineDefenseBrief } from '../../utils/pipelineDefenseStorage';
@@ -339,6 +341,11 @@ export function TodayPage() {
     opportunities: data.opportunities,
     opportunityOutcomes: data.opportunityOutcomes,
   }), [data.activities, data.opportunities, data.opportunityOutcomes]);
+  const morningBrief = useMemo(() => buildMorningBrief({
+    nudges: proactiveNudges.todayNudges,
+    activities: data.activities,
+    waitingFollowUps: followUpImpact.dealsWaiting,
+  }), [data.activities, followUpImpact.dealsWaiting, proactiveNudges.todayNudges]);
   const dashboardInsights = useMemo(() => (
     advancedInsightsOpen ? buildDashboardInsights(data) : null
   ), [advancedInsightsOpen, data]);
@@ -570,6 +577,7 @@ export function TodayPage() {
             <TodayCommandEmptyState />
           ) : (
             <>
+              <MorningBriefCard brief={morningBrief} />
               <TodayTopThreeActions actions={todayCenter.topActions} />
               <PipelineGlanceSection opportunities={data.opportunities} activities={data.activities} />
               <ProactiveNudgesPanel

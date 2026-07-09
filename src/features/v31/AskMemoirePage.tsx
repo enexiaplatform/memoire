@@ -23,7 +23,8 @@ export function AskMemoirePage() {
   const [scope, setScope] = useState<AskMemoireContext['scope']>((searchParams.get('scope') as AskMemoireContext['scope']) || 'all');
   const [selectedAccountId, setSelectedAccountId] = useState(searchParams.get('accountId') || '');
   const [selectedOpportunityId, setSelectedOpportunityId] = useState(searchParams.get('opportunityId') || '');
-  const [question, setQuestion] = useState('What should I do next?');
+  const [question, setQuestion] = useState(() => searchParams.get('question')?.trim() || 'What should I do next?');
+  const [urlQuestionConsumed, setUrlQuestionConsumed] = useState(false);
   const [answer, setAnswer] = useState<AskMemoireAnswer | null>(null);
   const [loading, setLoading] = useState(false);
   const [contextLoading, setContextLoading] = useState(true);
@@ -273,6 +274,16 @@ export function AskMemoirePage() {
     window.addEventListener(ASK_GUIDED_QUESTION_EVENT, handleGuidedQuestion as EventListener);
     return () => window.removeEventListener(ASK_GUIDED_QUESTION_EVENT, handleGuidedQuestion as EventListener);
   }, [ask]);
+
+  // Deep-linked questions (e.g. from the Today morning brief) run once the
+  // workspace context has loaded, so the answer uses real memory.
+  useEffect(() => {
+    if (contextLoading || urlQuestionConsumed) return;
+    const urlQuestion = searchParams.get('question')?.trim();
+    if (!urlQuestion) return;
+    setUrlQuestionConsumed(true);
+    void ask(urlQuestion);
+  }, [ask, contextLoading, searchParams, urlQuestionConsumed]);
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
