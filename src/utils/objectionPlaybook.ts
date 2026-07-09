@@ -92,6 +92,22 @@ export function formatObjectionResolutionRate(insight: Pick<ObjectionPlaybookIns
   return `${insight.resolved} of ${insight.total} resolved`;
 }
 
+/** Copy-ready markdown so proven responses can be pasted into a follow-up draft. */
+export function generateObjectionPlaybookMarkdown(playbook: ObjectionPlaybook) {
+  const lines: string[] = ['# What worked against objections', ''];
+  playbook.insights.forEach((insight) => {
+    lines.push(`## ${insight.objectionType} (${formatObjectionResolutionRate(insight)}${insight.dealsLostTo > 0 ? `, cost ${insight.dealsLostTo} ${insight.dealsLostTo === 1 ? 'deal' : 'deals'}` : ''})`);
+    if (insight.provenResponses.length > 0) {
+      insight.provenResponses.forEach((response) => lines.push(`- ${response}`));
+    } else {
+      lines.push('- No resolution notes captured yet.');
+    }
+    if (insight.accounts.length > 0) lines.push(`- Seen at: ${insight.accounts.join(', ')}`);
+    lines.push('');
+  });
+  return lines.join('\n').trimEnd();
+}
+
 function buildHeadline(insights: ObjectionPlaybookInsight[], totalObjections: number) {
   if (totalObjections === 0) return 'Capture objections as they come up and Memoire will learn what works for you.';
   const costly = insights.find((insight) => insight.dealsLostTo > 0);

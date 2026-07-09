@@ -5,7 +5,15 @@ import { followUpImpactStatusLabel } from '../../utils/followUpImpact';
 import { formatBaseCurrencyAmount, formatCurrencyAmount } from '../../utils/money';
 import { formatSafeBusinessDate } from '../../utils/safeDate';
 
-export function FollowUpImpactPanel({ impact, periodLabel }: { impact: FollowUpImpactSummary; periodLabel?: string }) {
+export function FollowUpImpactPanel({
+  impact,
+  periodLabel,
+  onDraftFollowUp,
+}: {
+  impact: FollowUpImpactSummary;
+  periodLabel?: string;
+  onDraftFollowUp?: (event: FollowUpImpactEvent) => void;
+}) {
   if (impact.followUpsSent === 0) return null;
   const backInMotion = impact.dealsRevived + impact.dealsWon + impact.dealsProtected;
   const windowText = periodLabel || `the last ${impact.windowDays} days`;
@@ -37,7 +45,7 @@ export function FollowUpImpactPanel({ impact, periodLabel }: { impact: FollowUpI
       {impact.events.length > 0 && (
         <div className="mt-4 space-y-2">
           {impact.events.map((event) => (
-            <ImpactEventRow key={`${event.opportunityId}-${event.followUpDate}`} event={event} />
+            <ImpactEventRow key={`${event.opportunityId}-${event.followUpDate}`} event={event} onDraftFollowUp={onDraftFollowUp} />
           ))}
         </div>
       )}
@@ -59,7 +67,13 @@ function ImpactStat({ label, value, highlight = false }: { label: string; value:
   );
 }
 
-function ImpactEventRow({ event }: { event: FollowUpImpactEvent }) {
+function ImpactEventRow({
+  event,
+  onDraftFollowUp,
+}: {
+  event: FollowUpImpactEvent;
+  onDraftFollowUp?: (event: FollowUpImpactEvent) => void;
+}) {
   return (
     <div className="flex flex-col gap-1 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
@@ -78,6 +92,15 @@ function ImpactEventRow({ event }: { event: FollowUpImpactEvent }) {
         <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusChipClass(event.status)}`}>
           {followUpImpactStatusLabel(event.status)}
         </span>
+        {onDraftFollowUp && event.status === 'waiting' && (
+          <button
+            type="button"
+            onClick={() => onDraftFollowUp(event)}
+            className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white hover:bg-navy/90"
+          >
+            Draft follow-up
+          </button>
+        )}
       </div>
     </div>
   );

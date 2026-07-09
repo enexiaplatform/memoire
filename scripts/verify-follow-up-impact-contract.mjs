@@ -225,6 +225,9 @@ const panel = readFileSync(new URL('../src/features/dashboard/FollowUpImpactPane
 for (const marker of ['Saved from silence', 'Quiet deals contacted', 'Deals back in motion', 'Value back in motion', 'followUpsSent === 0']) {
   assert.ok(panel.includes(marker), `FollowUpImpactPanel missing marker: ${marker}`);
 }
+// Waiting deals must be actionable from the panel, and only waiting deals.
+assert.ok(panel.includes("event.status === 'waiting'"), 'Draft follow-up must be limited to waiting deals');
+assert.ok(panel.includes('onDraftFollowUp'), 'FollowUpImpactPanel missing onDraftFollowUp wiring');
 const dashboard = readFileSync(new URL('../src/features/dashboard/DashboardPage.tsx', import.meta.url), 'utf8');
 for (const marker of ['FollowUpImpactPanel', 'buildFollowUpImpact']) {
   assert.ok(dashboard.includes(marker), `DashboardPage missing marker: ${marker}`);

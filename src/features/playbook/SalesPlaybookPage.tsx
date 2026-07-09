@@ -17,6 +17,7 @@ import { buildSalesAssetDraftFromPattern, generateAssetDraftMarkdown } from '../
 import {
   buildObjectionPlaybook,
   formatObjectionResolutionRate,
+  generateObjectionPlaybookMarkdown,
   type ObjectionPlaybookInsight,
 } from '../../utils/objectionPlaybook';
 import {
@@ -181,7 +182,10 @@ export function SalesPlaybookPage() {
       ) : (
         <>
           {!objectionPlaybook.needsMoreData && objectionPlaybook.insights.length > 0 && (
-            <ObjectionLearningSection playbook={objectionPlaybook} />
+            <ObjectionLearningSection
+              playbook={objectionPlaybook}
+              onCopy={() => copyText('objection playbook', generateObjectionPlaybookMarkdown(objectionPlaybook))}
+            />
           )}
           <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -497,15 +501,31 @@ function toneClass(tone: 'blue' | 'green' | 'amber' | 'red') {
   }[tone];
 }
 
-function ObjectionLearningSection({ playbook }: { playbook: ReturnType<typeof buildObjectionPlaybook> }) {
+function ObjectionLearningSection({
+  playbook,
+  onCopy,
+}: {
+  playbook: ReturnType<typeof buildObjectionPlaybook>;
+  onCopy: () => void;
+}) {
   return (
     <section className="rounded-lg border border-blue-100 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-bold text-navy">What worked against objections</h2>
-        <p className="text-sm text-gray-600">{playbook.headline}</p>
-        <p className="text-xs text-gray-500">
-          Built from your own resolved objections and deal outcomes. The longer you capture, the sharper this gets.
-        </p>
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-lg font-bold text-navy">What worked against objections</h2>
+          <p className="text-sm text-gray-600">{playbook.headline}</p>
+          <p className="text-xs text-gray-500">
+            Built from your own resolved objections and deal outcomes. The longer you capture, the sharper this gets.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onCopy}
+          className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-2 text-xs font-bold text-brand-blue hover:bg-blue-50"
+        >
+          <Copy className="h-3.5 w-3.5" />
+          Copy proven responses
+        </button>
       </div>
       <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
         {playbook.insights.slice(0, 6).map((insight) => (

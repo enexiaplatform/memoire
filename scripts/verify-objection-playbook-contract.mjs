@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { buildObjectionPlaybook, formatObjectionResolutionRate } from '../src/utils/objectionPlaybook.ts';
+import {
+  buildObjectionPlaybook,
+  formatObjectionResolutionRate,
+  generateObjectionPlaybookMarkdown,
+} from '../src/utils/objectionPlaybook.ts';
 
 function makeObjection(patch = {}) {
   return {
@@ -110,9 +114,26 @@ function makeLostOutcome(patch = {}) {
   assert.equal(price.dealsLostTo, 0);
 }
 
-// 5. UI contract: the learning section ships on the Playbook page.
+// 5. Copy-ready markdown carries the proven responses and loss cost.
+{
+  const playbook = buildObjectionPlaybook({
+    objections: [
+      makeObjection({ status: 'Resolved', resolutionNote: 'Showed 3-year TCO comparison; buyer accepted.' }),
+      makeObjection({ status: 'Open' }),
+      makeObjection({ objectionType: 'Competitor' }),
+    ],
+    opportunityOutcomes: [makeLostOutcome()],
+  });
+  const markdown = generateObjectionPlaybookMarkdown(playbook);
+  assert.ok(markdown.startsWith('# What worked against objections'));
+  assert.ok(markdown.includes('## Price (1 of 2 resolved, cost 1 deal)'));
+  assert.ok(markdown.includes('- Showed 3-year TCO comparison; buyer accepted.'));
+  assert.ok(markdown.includes('- No resolution notes captured yet.'), 'types without notes must stay honest in the export');
+}
+
+// 6. UI contract: the learning section ships on the Playbook page with copy export.
 const playbookPage = readFileSync(new URL('../src/features/playbook/SalesPlaybookPage.tsx', import.meta.url), 'utf8');
-for (const marker of ['ObjectionLearningSection', 'What worked against objections', 'buildObjectionPlaybook', 'Your proven responses']) {
+for (const marker of ['ObjectionLearningSection', 'What worked against objections', 'buildObjectionPlaybook', 'Your proven responses', 'generateObjectionPlaybookMarkdown', 'Copy proven responses']) {
   assert.ok(playbookPage.includes(marker), `SalesPlaybookPage missing marker: ${marker}`);
 }
 

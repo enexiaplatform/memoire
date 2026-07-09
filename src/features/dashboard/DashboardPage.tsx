@@ -447,6 +447,22 @@ export function TodayPage() {
       length: 'medium',
     });
   };
+  const handleDraftFollowUpFromImpact = (event: { opportunityId: string; accountName: string; opportunityName: string }) => {
+    const opportunity = data.opportunities.find((item) => item.id === event.opportunityId);
+    setFollowUpOpportunity(opportunity || null);
+    if (opportunity) {
+      setFollowUpContext(buildReviveFollowUpContext(opportunity, data.activities));
+      return;
+    }
+    setFollowUpContext({
+      accountName: event.accountName,
+      opportunityName: event.opportunityName,
+      nextAction: 'Send the next follow-up before this deal goes quiet again',
+      goal: 'revive_stale_deal',
+      tone: 'consultative',
+      length: 'medium',
+    });
+  };
   const handleDismissNudge = (nudge: NudgeRecord) => {
     persistNudgeState(dismissNudge(nudge, nudgeUserId), 'Nudge dismissed.');
   };
@@ -591,7 +607,7 @@ export function TodayPage() {
                 onClearDismissed={handleClearDismissedNudges}
                 onClearAll={handleClearAllNudgeState}
               />
-              <FollowUpImpactPanel impact={followUpImpact} />
+              <FollowUpImpactPanel impact={followUpImpact} onDraftFollowUp={handleDraftFollowUpFromImpact} />
               <TodayPipelineReadiness center={todayCenter} />
               <TodayCommercialRisk items={todayCenter.commercialRiskItems} />
               <TodayCaptureInbox items={todayCenter.captureInbox} />
