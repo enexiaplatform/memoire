@@ -201,7 +201,26 @@ assert.equal(followUpImpactStatusLabel('waiting'), 'Waiting on reply');
 assert.equal(followUpImpactStatusLabel('protected'), 'Next touch booked');
 assert.equal(FOLLOW_UP_QUIET_THRESHOLD_DAYS, 7, 'quiet threshold must match the silence classifier warning window');
 
-// 9. UI contract: the panel is wired into Today and only claims motion, not wins.
+// 9. Share-ready Pipeline Defense markdown carries the silence-rescue evidence.
+// (Marker checks: the shareable-brief module chain uses extensionless imports
+// that Node's type stripping cannot resolve outside the Vite build.)
+{
+  const shareableSource = readFileSync(new URL('../src/utils/shareablePipelineDefenseBrief.ts', import.meta.url), 'utf8');
+  for (const marker of [
+    'followUpImpact?: FollowUpImpactSummary | null',
+    'Saved From Silence (Last ${impact.windowDays} Days)',
+    'if (!impact || impact.followUpsSent === 0) return [];',
+    'Deals back in motion:',
+  ]) {
+    assert.ok(shareableSource.includes(marker), `shareablePipelineDefenseBrief missing marker: ${marker}`);
+  }
+  const defensePage = readFileSync(new URL('../src/features/pipeline/PipelineReviewDefenseBriefPage.tsx', import.meta.url), 'utf8');
+  for (const marker of ['buildFollowUpImpact', 'followUpImpact })']) {
+    assert.ok(defensePage.includes(marker), `PipelineReviewDefenseBriefPage missing marker: ${marker}`);
+  }
+}
+
+// 10. UI contract: the panel is wired into Today and only claims motion, not wins.
 const panel = readFileSync(new URL('../src/features/dashboard/FollowUpImpactPanel.tsx', import.meta.url), 'utf8');
 for (const marker of ['Saved from silence', 'Quiet deals contacted', 'Deals back in motion', 'Value back in motion', 'followUpsSent === 0']) {
   assert.ok(panel.includes(marker), `FollowUpImpactPanel missing marker: ${marker}`);

@@ -1,6 +1,8 @@
 import { pipelineDefenseBriefMeta, type PipelineDefenseDeal } from '../data/pipelineDefenseBrief';
 import type { PipelineDefenseActionItem } from './pipelineDefenseActionPlan';
 import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
+import type { FollowUpImpactSummary } from './followUpImpact.ts';
+import { followUpImpactStatusLabel } from './followUpImpact.ts';
 import { formatBaseCurrencyAmount, formatCurrencyAmount, sumMoneyInBase } from './money.ts';
 import { buildPipelineDefenseCenter } from './pipelineDefenseCenter.ts';
 
@@ -123,6 +125,7 @@ export function generateManagerReviewSummary(brief: Omit<ShareablePipelineDefens
 export function generateShareReadyPipelineDefenseMarkdown(input: {
   brief?: PipelineDefenseBrief | null;
   shareable: ShareablePipelineDefenseBrief;
+  followUpImpact?: FollowUpImpactSummary | null;
 }) {
   const brief = input.brief;
   const shareable = input.shareable;
@@ -153,6 +156,7 @@ export function generateShareReadyPipelineDefenseMarkdown(input: {
     '',
     shareable.managerSummary,
     '',
+    ...formatFollowUpImpactSection(input.followUpImpact),
     '## Deal Defense Table',
     '',
     '| Account | Opportunity | Value | Stage | Forecast | Defense status | Main evidence | Main gap | Next defense action |',
@@ -186,6 +190,23 @@ export function generateShareReadyPipelineDefenseMarkdown(input: {
     ...shareable.qualityChecklist.map((item) => `- ${item.status === 'pass' ? '[OK]' : '[Warning]'} ${item.label}: ${item.detail}`),
     '',
   ].join('\n');
+}
+
+function formatFollowUpImpactSection(impact?: FollowUpImpactSummary | null) {
+  if (!impact || impact.followUpsSent === 0) return [];
+  const backInMotion = impact.dealsRevived + impact.dealsWon + impact.dealsProtected;
+  return [
+    `## Saved From Silence (Last ${impact.windowDays} Days)`,
+    '',
+    `- Follow-ups sent: ${impact.followUpsSent}`,
+    `- Quiet deals contacted: ${impact.quietDealsContacted}`,
+    `- Deals back in motion: ${backInMotion} (${impact.dealsRevived} revived, ${impact.dealsWon} won, ${impact.dealsProtected} next touch booked)`,
+    `- Value back in motion: ${formatBaseCurrencyAmount(impact.valueBackInMotionBase, true)}`,
+    ...impact.events.slice(0, 4).map((event) => (
+      `- ${event.accountName} / ${event.opportunityName}: ${followUpImpactStatusLabel(event.status)} - ${event.evidence}`
+    )),
+    '',
+  ];
 }
 
 export function buildPipelineReviewDashboardSignal(briefs: PipelineDefenseBrief[]) {

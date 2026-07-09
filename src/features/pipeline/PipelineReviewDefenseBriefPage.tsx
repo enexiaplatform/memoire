@@ -97,6 +97,8 @@ import { buildPipelineDefenseCenter, type ManagerReadyDealBrief } from '../../ut
 import { loadOpportunityOutcomes, loadOpportunityOutcomesForUser, type OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore';
 import { loadNudges, loadNudgesForUser, type NudgeRecord } from '../../services/nudgeStore';
 import { buildProactiveNudges, formatNudgeDueDate, formatNudgeMoney } from '../../utils/proactiveNudges.ts';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
+import { buildFollowUpImpact, type FollowUpImpactSummary } from '../../utils/followUpImpact';
 
 const categoryClasses: Record<ForecastEvidenceCategory, string> = {
   Defensible: 'border-emerald-200 bg-emerald-50 text-emerald-700',
@@ -196,6 +198,7 @@ export function PipelineReviewDefenseBriefPage() {
   const [dealBriefCopyStatus, setDealBriefCopyStatus] = useState<Record<string, 'copied' | 'failed'>>({});
   const [opportunityOutcomes, setOpportunityOutcomes] = useState<OpportunityOutcomeRecord[]>(() => loadOpportunityOutcomes());
   const [nudgeState, setNudgeState] = useState<NudgeRecord[]>(() => loadNudges());
+  const [followUpImpact, setFollowUpImpact] = useState<FollowUpImpactSummary | null>(null);
 
   const activeBrief = getActivePipelineDefenseBrief(store);
   const deals = activeBrief?.deals || [];
@@ -275,6 +278,34 @@ export function PipelineReviewDefenseBriefPage() {
         if (!cancelled) setReviewPacks(packs);
       });
 
+    return () => {
+      cancelled = true;
+    };
+  }, [accountLoading, sampleDataActive, user?.id]);
+
+  // Silence-rescue evidence for the share-ready markdown: what the seller's
+  // follow-ups actually recovered in the last 30 days.
+  useEffect(() => {
+    if (accountLoading) return;
+    let cancelled = false;
+    const dataUserId = sampleDataActive ? undefined : user?.id;
+    const applyWorkspace = (workspace: { activities: Parameters<typeof buildFollowUpImpact>[0]['activities']; opportunities: Parameters<typeof buildFollowUpImpact>[0]['opportunities']; opportunityOutcomes: Parameters<typeof buildFollowUpImpact>[0]['opportunityOutcomes'] }) => {
+      if (cancelled) return;
+      setFollowUpImpact(buildFollowUpImpact({
+        activities: workspace.activities,
+        opportunities: workspace.opportunities,
+        opportunityOutcomes: workspace.opportunityOutcomes,
+      }));
+    };
+
+    const cached = getCachedSalesWorkspaceData(dataUserId);
+    if (cached) {
+      applyWorkspace(cached);
+      return () => {
+        cancelled = true;
+      };
+    }
+    loadSalesWorkspaceData(dataUserId).then(applyWorkspace).catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -749,7 +780,7 @@ export function PipelineReviewDefenseBriefPage() {
   };
 
   const copyShareReadyMarkdown = async () => {
-    const markdown = generateShareReadyPipelineDefenseMarkdown({ brief: activeBrief, shareable: shareableBrief });
+    const markdown = generateShareReadyPipelineDefenseMarkdown({ brief: activeBrief, shareable: shareableBrief, followUpImpact });
     try {
       if (!await copyTextToClipboard(markdown)) throw new Error('Clipboard unavailable');
       setShareMarkdownCopyStatus('copied');
