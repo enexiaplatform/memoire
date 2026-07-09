@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle, Bot, CalendarDays, Clipboard, Copy, Loader2, Mail, Mic, MicOff, NotebookPen, Save, Sparkles, Trash2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
@@ -1258,6 +1258,12 @@ function QuickCapturePanel({
   const update = <Key extends keyof QuickCaptureForm>(key: Key, value: QuickCaptureForm[Key]) => {
     onChange({ ...form, [key]: value });
   };
+  const dictation = useSpeechDictation((chunk) => {
+    onChange({
+      ...form,
+      whatHappened: form.whatHappened.trim() ? `${form.whatHappened.trimEnd()} ${chunk}` : chunk,
+    });
+  });
 
   return (
     <section className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-5 shadow-sm">
@@ -1312,6 +1318,25 @@ function QuickCapturePanel({
           value={form.whatHappened}
           placeholder={template.whatHappenedPrompt}
           onChange={(value) => update('whatHappened', value)}
+          trailing={dictation.supported ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                if (dictation.listening) dictation.stop();
+                else dictation.start();
+              }}
+              aria-label={dictation.listening ? 'Stop dictation' : 'Dictate update'}
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ring-1 ${
+                dictation.listening
+                  ? 'bg-red-50 text-red-700 ring-red-200'
+                  : 'bg-white text-emerald-800 ring-emerald-200 hover:bg-emerald-50'
+              }`}
+            >
+              {dictation.listening ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+              {dictation.listening ? 'Stop' : 'Dictate'}
+            </button>
+          ) : undefined}
         />
         <QuickTextArea
           label="Next action"
@@ -1400,15 +1425,20 @@ function QuickTextArea({
   value,
   placeholder,
   onChange,
+  trailing,
 }: {
   label: string;
   value: string;
   placeholder: string;
   onChange: (value: string) => void;
+  trailing?: ReactNode;
 }) {
   return (
     <label className="block rounded-lg bg-white px-3 py-2 ring-1 ring-emerald-100 md:col-span-2">
-      <span className="text-xs font-bold uppercase tracking-wide text-emerald-700">{label}</span>
+      <span className="flex items-center justify-between gap-2">
+        <span className="text-xs font-bold uppercase tracking-wide text-emerald-700">{label}</span>
+        {trailing}
+      </span>
       <textarea
         value={value}
         placeholder={placeholder}
