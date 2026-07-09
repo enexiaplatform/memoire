@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Banknote, ClipboardCheck, Copy, Download, HelpCircle, Printer, ReceiptText, RotateCcw, ShieldCheck, Target, Trash2, Upload } from 'lucide-react';
 import {
@@ -98,7 +98,11 @@ import { loadOpportunityOutcomes, loadOpportunityOutcomesForUser, type Opportuni
 import { loadNudges, loadNudgesForUser, type NudgeRecord } from '../../services/nudgeStore';
 import { buildProactiveNudges, formatNudgeDueDate, formatNudgeMoney } from '../../utils/proactiveNudges.ts';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
-import { buildFollowUpImpact, type FollowUpImpactSummary } from '../../utils/followUpImpact';
+import { buildFollowUpImpact } from '../../utils/followUpImpact';
+import type { SalesActivityRecord } from '../../services/salesActivityStore';
+import type { CrmLiteOpportunity as WorkspaceOpportunity } from '../../services/opportunityStore';
+import { buildForecastCalibration } from '../../utils/forecastCalibration';
+import { ForecastCalibrationPanel } from './ForecastCalibrationPanel';
 
 const categoryClasses: Record<ForecastEvidenceCategory, string> = {
   Defensible: 'border-emerald-200 bg-emerald-50 text-emerald-700',
@@ -198,7 +202,10 @@ export function PipelineReviewDefenseBriefPage() {
   const [dealBriefCopyStatus, setDealBriefCopyStatus] = useState<Record<string, 'copied' | 'failed'>>({});
   const [opportunityOutcomes, setOpportunityOutcomes] = useState<OpportunityOutcomeRecord[]>(() => loadOpportunityOutcomes());
   const [nudgeState, setNudgeState] = useState<NudgeRecord[]>(() => loadNudges());
-  const [followUpImpact, setFollowUpImpact] = useState<FollowUpImpactSummary | null>(null);
+  const [workspaceSnapshot, setWorkspaceSnapshot] = useState<{
+    activities: SalesActivityRecord[];
+    opportunities: WorkspaceOpportunity[];
+  } | null>(null);
 
   const activeBrief = getActivePipelineDefenseBrief(store);
   const deals = activeBrief?.deals || [];
@@ -283,19 +290,15 @@ export function PipelineReviewDefenseBriefPage() {
     };
   }, [accountLoading, sampleDataActive, user?.id]);
 
-  // Silence-rescue evidence for the share-ready markdown: what the seller's
-  // follow-ups actually recovered in the last 30 days.
+  // Workspace snapshot backs the silence-rescue markdown section and the
+  // personal forecast calibration panel.
   useEffect(() => {
     if (accountLoading) return;
     let cancelled = false;
     const dataUserId = sampleDataActive ? undefined : user?.id;
-    const applyWorkspace = (workspace: { activities: Parameters<typeof buildFollowUpImpact>[0]['activities']; opportunities: Parameters<typeof buildFollowUpImpact>[0]['opportunities']; opportunityOutcomes: Parameters<typeof buildFollowUpImpact>[0]['opportunityOutcomes'] }) => {
+    const applyWorkspace = (workspace: { activities: SalesActivityRecord[]; opportunities: WorkspaceOpportunity[] }) => {
       if (cancelled) return;
-      setFollowUpImpact(buildFollowUpImpact({
-        activities: workspace.activities,
-        opportunities: workspace.opportunities,
-        opportunityOutcomes: workspace.opportunityOutcomes,
-      }));
+      setWorkspaceSnapshot({ activities: workspace.activities, opportunities: workspace.opportunities });
     };
 
     const cached = getCachedSalesWorkspaceData(dataUserId);
@@ -310,6 +313,20 @@ export function PipelineReviewDefenseBriefPage() {
       cancelled = true;
     };
   }, [accountLoading, sampleDataActive, user?.id]);
+
+  const followUpImpact = useMemo(() => (workspaceSnapshot
+    ? buildFollowUpImpact({
+      activities: workspaceSnapshot.activities,
+      opportunities: workspaceSnapshot.opportunities,
+      opportunityOutcomes,
+    })
+    : null), [opportunityOutcomes, workspaceSnapshot]);
+  const forecastCalibration = useMemo(() => (workspaceSnapshot
+    ? buildForecastCalibration({
+      outcomes: opportunityOutcomes,
+      opportunities: workspaceSnapshot.opportunities,
+    })
+    : null), [opportunityOutcomes, workspaceSnapshot]);
 
   useEffect(() => {
     if (accountLoading) {
@@ -1371,6 +1388,12 @@ export function PipelineReviewDefenseBriefPage() {
         <SummaryCard label="Downgrade" value={String(defenseCenter.downgradeCandidates)} detail="De-risk the forecast" tone="red" />
         <SummaryCard label="Top missing evidence" value={defenseCenter.topMissingEvidenceGaps[0]?.label || 'None'} detail={`${defenseCenter.topMissingEvidenceGaps[0]?.count || 0} deals affected`} />
       </section>
+
+      {forecastCalibration && (
+        <div className="mb-6">
+          <ForecastCalibrationPanel calibration={forecastCalibration} />
+        </div>
+      )}
 
       <DefenseCategoryBoard
         groups={defenseCenter.groups}
