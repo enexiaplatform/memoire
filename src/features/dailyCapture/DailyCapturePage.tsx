@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertTriangle, Bot, CalendarDays, Clipboard, Copy, Loader2, Mail, NotebookPen, Save, Sparkles, Trash2 } from 'lucide-react';
+import { AlertTriangle, Bot, CalendarDays, Clipboard, Copy, Loader2, Mail, Mic, MicOff, NotebookPen, Save, Sparkles, Trash2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
+import { useSpeechDictation } from '../../hooks/useSpeechDictation';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
@@ -231,6 +232,22 @@ export function DailyCapturePage() {
   const aiConfigured = aiProvider.isConfigured() && isAuthenticated;
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
+
+  const resetNoteDerivedState = useCallback(() => {
+    aiRequestVersion.current += 1;
+    setStructuredDraft(null);
+    setOriginalParsedDraft(null);
+    setAiSuggestion(null);
+    setAiState('idle');
+    setParseSource('local');
+    setAiMessage('');
+    setSaveState('idle');
+    setMessage('');
+  }, []);
+  const dictation = useSpeechDictation(useCallback((chunk: string) => {
+    resetNoteDerivedState();
+    setRawNote((current) => (current.trim() ? `${current.trimEnd()} ${chunk}` : chunk));
+  }, [resetNoteDerivedState]));
 
   // Suggestions so Capture attaches touches to an existing account instead of a
   // slightly different typed name (which would fragment into a new candidate).
@@ -752,24 +769,42 @@ export function DailyCapturePage() {
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]">
           <label className="block">
-            <span className="text-sm font-bold text-navy">Activity note</span>
+            <span className="flex items-center justify-between gap-2">
+              <span className="text-sm font-bold text-navy">Activity note</span>
+              {dictation.supported && (
+                <button
+                  type="button"
+                  onClick={() => (dictation.listening ? dictation.stop() : dictation.start())}
+                  aria-label={dictation.listening ? 'Stop dictation' : 'Dictate note'}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ring-1 transition-colors ${
+                    dictation.listening
+                      ? 'bg-red-50 text-red-700 ring-red-200 hover:bg-red-100'
+                      : 'bg-white text-gray-700 ring-gray-200 hover:bg-blue-50 hover:text-brand-blue'
+                  }`}
+                >
+                  {dictation.listening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                  {dictation.listening ? 'Stop dictation' : 'Dictate'}
+                </button>
+              )}
+            </span>
             <textarea
               value={rawNote}
               onChange={(event) => {
-                aiRequestVersion.current += 1;
+                resetNoteDerivedState();
                 setRawNote(event.target.value);
-                setStructuredDraft(null);
-                setOriginalParsedDraft(null);
-                setAiSuggestion(null);
-                setAiState('idle');
-                setParseSource('local');
-                setAiMessage('');
-                setSaveState('idle');
-                setMessage('');
               }}
               placeholder="Example: Met the buyer today. Need to clarify the tender timeline next week."
               className="mt-2 min-h-[150px] w-full resize-y rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm leading-6 text-gray-900 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
             />
+            {dictation.listening && (
+              <span className="mt-2 flex items-center gap-2 text-xs font-semibold text-red-700">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" aria-hidden />
+                Listening... speak your note. Audio stays in your browser's speech service.
+              </span>
+            )}
+            {dictation.error && (
+              <span className="mt-2 block text-xs font-semibold text-amber-800">{dictation.error}</span>
+            )}
           </label>
 
           <div className="space-y-4">
