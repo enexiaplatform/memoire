@@ -5,9 +5,10 @@ import { followUpImpactStatusLabel } from '../../utils/followUpImpact';
 import { formatBaseCurrencyAmount, formatCurrencyAmount } from '../../utils/money';
 import { formatSafeBusinessDate } from '../../utils/safeDate';
 
-export function FollowUpImpactPanel({ impact }: { impact: FollowUpImpactSummary }) {
+export function FollowUpImpactPanel({ impact, periodLabel }: { impact: FollowUpImpactSummary; periodLabel?: string }) {
   if (impact.followUpsSent === 0) return null;
   const backInMotion = impact.dealsRevived + impact.dealsWon + impact.dealsProtected;
+  const windowText = periodLabel || `the last ${impact.windowDays} days`;
 
   return (
     <section className="rounded-xl border border-emerald-200 bg-white p-4 shadow-sm">
@@ -18,7 +19,7 @@ export function FollowUpImpactPanel({ impact }: { impact: FollowUpImpactSummary 
           </span>
           <div>
             <h2 className="text-base font-bold text-navy">Saved from silence</h2>
-            <p className="text-xs text-gray-500">What your follow-ups actually changed in the last {impact.windowDays} days.</p>
+            <p className="text-xs text-gray-500">What your follow-ups actually changed in {windowText}.</p>
           </div>
         </div>
         <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">

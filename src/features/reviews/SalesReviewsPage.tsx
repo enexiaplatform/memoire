@@ -10,6 +10,8 @@ import {
   filterSalesActivitiesByPeriod,
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
+import { FollowUpImpactPanel } from '../dashboard/FollowUpImpactPanel';
+import { buildFollowUpImpact } from '../../utils/followUpImpact';
 import { type AccountMemoryRecord } from '../../services/accountStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
 import { type CrmLiteOpportunity } from '../../services/opportunityStore';
@@ -106,6 +108,15 @@ export function SalesReviewsPage() {
     () => getActionOutcomesInPeriod(actionOutcomes, period),
     [actionOutcomes, period]
   );
+  // Full activity history goes in (not periodActivities): quiet gaps before the
+  // period and replies after a follow-up both matter for honest attribution.
+  const periodFollowUpImpact = useMemo(() => buildFollowUpImpact({
+    activities,
+    opportunities,
+    opportunityOutcomes,
+    today: period.end,
+    windowDays: Math.max(1, Math.round((Date.parse(`${period.end}T00:00:00Z`) - Date.parse(`${period.start}T00:00:00Z`)) / 86_400_000)),
+  }), [activities, opportunities, opportunityOutcomes, period]);
   const actionOutcomeSummary = useMemo(
     () => analyzePipelineOutcomeLoop({ opportunities, stakeholders, objections, activities: periodActivities, outcomes: actionOutcomes }),
     [actionOutcomes, opportunities, stakeholders, objections, periodActivities]
@@ -345,6 +356,8 @@ export function SalesReviewsPage() {
       </section>
 
       <ExecutionRhythmCharts activities={activities} opportunities={opportunities} />
+
+      <FollowUpImpactPanel impact={periodFollowUpImpact} periodLabel={period.label} />
 
       <ActivityTimelinePanel activities={periodActivities} periodLabel={period.label} />
 

@@ -229,5 +229,25 @@ const dashboard = readFileSync(new URL('../src/features/dashboard/DashboardPage.
 for (const marker of ['FollowUpImpactPanel', 'buildFollowUpImpact']) {
   assert.ok(dashboard.includes(marker), `DashboardPage missing marker: ${marker}`);
 }
+const reviewsPage = readFileSync(new URL('../src/features/reviews/SalesReviewsPage.tsx', import.meta.url), 'utf8');
+for (const marker of ['FollowUpImpactPanel', 'periodFollowUpImpact', 'periodLabel={period.label}']) {
+  assert.ok(reviewsPage.includes(marker), `SalesReviewsPage missing marker: ${marker}`);
+}
+
+// 11. Custom review windows: follow-ups are scoped to the selected period.
+{
+  const impact = buildFollowUpImpact({
+    today: '2026-07-05',
+    windowDays: 7,
+    opportunities: [makeOpportunity()],
+    activities: [
+      makeActivity({ id: 'touch-old', activityDate: '2026-06-01' }),
+      makeActivity({ id: 'fu-in-window', activityType: 'Follow-up', activityDate: '2026-07-01' }),
+      makeActivity({ id: 'fu-before-window', activityType: 'Follow-up', activityDate: '2026-06-20' }),
+    ],
+  });
+  assert.equal(impact.followUpsSent, 1, 'only follow-ups inside the review window count');
+  assert.equal(impact.windowDays, 7);
+}
 
 console.log('Follow-up impact contract verified.');
