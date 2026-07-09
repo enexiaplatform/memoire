@@ -165,6 +165,7 @@ export function buildSampleDataset(): SampleDataset {
   const yesterday = toDateKey(addDays(now, -1));
   const twoDaysAgo = toDateKey(addDays(now, -2));
   const sixDaysAgo = toDateKey(addDays(now, -6));
+  const nineDaysAgo = toDateKey(addDays(now, -9));
   const sixteenDaysAgo = toDateKey(addDays(now, -16));
   const nextTuesday = toDateKey(nextWeekday(now, 2));
   const friday = toDateKey(nextWeekday(now, 5));
@@ -424,6 +425,20 @@ export function buildSampleDataset(): SampleDataset {
       linkedAccountName: 'Summit Diagnostics',
       createdAt: timestamp,
     }),
+    {
+      // Saved-from-silence proof: this deal sat quiet for over two weeks, the
+      // logged follow-up revived it, and it closed Won - the demo's ROI story.
+      ...sampleActivity({
+        id: 'demo-activity-northstar-line-audit-followup',
+        note: 'Sent follow-up to Lan Pham after two quiet weeks on the line audit service. Shared audit scope options for both lines and asked for the PO decision date.',
+        activityDate: nineDaysAgo,
+        linkedOpportunityId: 'demo-opp-northstar-line-audit-won',
+        linkedOpportunityName: 'Line audit service',
+        linkedAccountName: 'Northstar Foods',
+        createdAt: timestamp,
+      }),
+      activityType: 'Follow-up' as const,
+    },
     sampleActivity({
       id: 'demo-activity-apex-service',
       note: 'Sent service renewal proposal to Apex Labs engineering manager. They requested updated SLA and weekend coverage note by Friday.',
@@ -566,9 +581,9 @@ export function buildSampleDataset(): SampleDataset {
       objectionType: 'Compliance / validation',
       objectionText: 'Validation and IQ/OQ/PQ proof needed before procurement sign-off.',
       impact: 'Medium',
-      status: 'Addressed',
+      status: 'Resolved',
       requiredProof: 'Provide validation package and validation references.',
-      responsePlan: 'Validation pack prepared; procurement checklist is next.',
+      responsePlan: 'Shared the full IQ/OQ/PQ validation pack plus two pharma references; QA signed off the same week.',
       dueDate: friday,
       tags: ['demo-data', 'validation'],
       createdAt: timestamp,
@@ -620,9 +635,9 @@ export function buildSampleDataset(): SampleDataset {
       objectionType: 'Competitor',
       objectionText: 'Incumbent Vendor remains in the loop as competitor pressure.',
       impact: 'Medium',
-      status: 'Addressed',
+      status: 'Resolved',
       requiredProof: 'Prepare differentiator proof against Incumbent Vendor.',
-      responsePlan: 'Use validation package and local service coverage as differentiators.',
+      responsePlan: 'Won the comparison on validation package plus local service coverage; incumbent dropped off the shortlist.',
       dueDate: nextTuesday,
       tags: ['demo-data', 'competitor'],
       createdAt: timestamp,
