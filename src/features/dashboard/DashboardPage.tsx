@@ -54,6 +54,8 @@ import {
 import { type SalesAssetRecord } from '../../services/salesAssetStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { FollowUpComposerPanel } from '../v31/FollowUpComposerPanel';
+import { FollowUpImpactPanel } from './FollowUpImpactPanel';
+import { buildFollowUpImpact } from '../../utils/followUpImpact';
 import { buildReviveFollowUpContext } from '../../utils/followUpFromOpportunity';
 import type { FollowUpContext } from '../../types/v31';
 import { type PipelineDefenseBrief } from '../../utils/pipelineDefenseStorage';
@@ -332,6 +334,11 @@ export function TodayPage() {
       action.source === 'Quote' && !decidedActionIds.has(`commercial-${action.id}`)
     )) || null
   ), [decidedActionIds, revenueView.actionItems]);
+  const followUpImpact = useMemo(() => buildFollowUpImpact({
+    activities: data.activities,
+    opportunities: data.opportunities,
+    opportunityOutcomes: data.opportunityOutcomes,
+  }), [data.activities, data.opportunities, data.opportunityOutcomes]);
   const dashboardInsights = useMemo(() => (
     advancedInsightsOpen ? buildDashboardInsights(data) : null
   ), [advancedInsightsOpen, data]);
@@ -576,6 +583,7 @@ export function TodayPage() {
                 onClearDismissed={handleClearDismissedNudges}
                 onClearAll={handleClearAllNudgeState}
               />
+              <FollowUpImpactPanel impact={followUpImpact} />
               <TodayPipelineReadiness center={todayCenter} />
               <TodayCommercialRisk items={todayCenter.commercialRiskItems} />
               <TodayCaptureInbox items={todayCenter.captureInbox} />
