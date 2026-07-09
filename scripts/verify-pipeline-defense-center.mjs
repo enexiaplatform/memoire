@@ -62,7 +62,7 @@ assert.ok(centerSource.includes('formatBaseCurrencyAmount'));
 assert.ok(centerSource.includes('formatSafeBusinessDate'));
 
 const page = readFileSync('src/features/pipeline/PipelineReviewDefenseBriefPage.tsx', 'utf8');
-for (const marker of ['Personal Pipeline Defense OS', 'What can I defend?', 'What must I rescue?', 'What must I downgrade?', 'What evidence is missing?', 'Copy manager brief', 'Pipeline review answer']) {
+for (const marker of ['Personal Business Activity OS', 'What can I defend?', 'What must I rescue?', 'What must I downgrade?', 'What evidence is missing?', 'Copy manager brief', 'Pipeline review answer']) {
   assert.ok(page.includes(marker), `Pipeline Defense center missing: ${marker}`);
 }
 
@@ -72,7 +72,7 @@ for (const marker of ['Forecast-defense readiness', 'Review readiness', 'Defenda
 }
 
 const sidebar = readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
-assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 12, 'A new CRM navigation item was added.');
+assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 14, 'A new CRM navigation item was added.');
 assert.equal((sidebar.match(/to: '\/app\/pipeline-defense'/g) || []).length, 1);
 
 console.log('Pipeline Defense center regression verified.');

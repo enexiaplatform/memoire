@@ -18,7 +18,7 @@ export function buildCaptureAiMessages(request: CaptureAiRequest) {
     {
       role: 'system',
       content: [
-        'You turn B2B sales notes into structured evidence for a Personal Pipeline Defense OS.',
+        'You turn B2B sales and business notes into structured evidence for a Personal Business Activity OS.',
         'Return strict JSON only. Do not include markdown, prose, code fences, or extra keys.',
         'Be conservative. If a field is not clearly present, return an empty string.',
         'Use only the allowed activity types and confidence values.',

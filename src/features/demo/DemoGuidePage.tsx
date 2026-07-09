@@ -81,7 +81,7 @@ export function DemoGuidePage() {
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">5-minute demo guide</p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Run the Pipeline Defense proof path</h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-blue-950">
-              Memoire is a Personal Pipeline Defense OS used beside CRM, spreadsheets, and private notes. The demo proves one promise: capture messy sales evidence, let Today expose urgent risks, and copy manager-ready Pipeline Defense answers before Monday review or your next solo sales check-in.
+              Memoire is a Personal Business Activity OS used beside CRM, spreadsheets, and private notes. The demo proves one promise: capture messy sales evidence, let Today expose urgent risks, and copy manager-ready Pipeline Defense answers before Monday review or your next solo sales check-in.
             </p>
           </div>
           <DataModePill

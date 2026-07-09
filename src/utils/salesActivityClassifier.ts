@@ -14,6 +14,12 @@ export type SalesActivityType =
   | 'Internal coordination'
   | 'Objection handling'
   | 'Admin / CRM'
+  | 'Payment / invoice'
+  | 'Delivery / fulfillment'
+  | 'Partnership'
+  | 'Marketing / content'
+  | 'Product / build'
+  | 'Learning / research'
   | 'Other';
 
 export type SalesActivityNextAction = {
@@ -63,6 +69,39 @@ export type CaptureExtractionContext = {
 };
 
 const activityRules: { type: SalesActivityType; tags: string[]; pattern: RegExp }[] = [
+  // Whole-business activity types (Business Activity OS): money, delivery,
+  // partnership, marketing, product, and learning work all land in the same
+  // ledger. Order matters - more specific commercial states match first.
+  {
+    type: 'Payment / invoice',
+    tags: ['payment', 'money'],
+    pattern: /\b(payment received|paid|invoice|invoiced|payment due|payment term|deposit|remittance|bank transfer|overdue payment|collect payment)\b/i,
+  },
+  {
+    type: 'Delivery / fulfillment',
+    tags: ['delivery', 'fulfillment'],
+    pattern: /\b(delivered|delivery|shipment|shipped|installation|installed|fulfillment|handover|go-live|kickoff completed|onboarding session)\b/i,
+  },
+  {
+    type: 'Partnership',
+    tags: ['partnership'],
+    pattern: /\b(partnership|partner call|co-sell|referral|alliance|distributor agreement|reseller)\b/i,
+  },
+  {
+    type: 'Marketing / content',
+    tags: ['marketing', 'content'],
+    pattern: /\b(published|content|post|linkedin|newsletter|campaign|outreach batch|webinar|case study published)\b/i,
+  },
+  {
+    type: 'Product / build',
+    tags: ['product', 'build'],
+    pattern: /\b(shipped feature|built|prototype|product update|release|bugfix|saas|deployed)\b/i,
+  },
+  {
+    type: 'Learning / research',
+    tags: ['learning', 'research'],
+    pattern: /\b(research|researched|market study|learning|course|experiment result|interviewed|customer discovery|market learning)\b/i,
+  },
   {
     type: 'Tender / procurement',
     tags: ['procurement', 'tender'],
@@ -132,10 +171,23 @@ export function classifySalesActivity(
   context: CaptureExtractionContext = {}
 ): ClassifiedSalesActivity {
   const cleanedNote = rawNote.trim();
+  // Specific whole-business states (payment, delivery, partnership, content,
+  // build, learning) win before the generic meeting shortcut - "partner call"
+  // is a Partnership record, not a customer meeting.
+  const specificBusinessTypes = new Set<SalesActivityType>([
+    'Payment / invoice',
+    'Delivery / fulfillment',
+    'Partnership',
+    'Marketing / content',
+    'Product / build',
+    'Learning / research',
+  ]);
+  const businessRule = activityRules.find((rule) => specificBusinessTypes.has(rule.type) && rule.pattern.test(cleanedNote));
   const meetingRule = activityRules.find((rule) => rule.type === 'Customer meeting');
-  const matchedRule = meetingRule?.pattern.test(cleanedNote)
-    ? meetingRule
-    : activityRules.find((rule) => rule.pattern.test(cleanedNote));
+  const matchedRule = businessRule
+    || (meetingRule?.pattern.test(cleanedNote)
+      ? meetingRule
+      : activityRules.find((rule) => rule.pattern.test(cleanedNote)));
   const activityType = matchedRule?.type || 'Other';
   const entities = extractB2BEntities(cleanedNote, context);
   const nextActions = extractNextActions(cleanedNote, activityDate);

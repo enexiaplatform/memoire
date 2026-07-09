@@ -114,6 +114,7 @@ function App() {
               element={isFounderWorkspaceEnabled ? <ValidationFeedbackPage /> : <Navigate to="/app/today" replace />}
             />
             <Route path="capture" element={<DailyCapturePage />} />
+            <Route path="activity" element={<SalesActivityCalendarPage />} />
             <Route path="calendar" element={<SalesActivityCalendarPage />} />
             <Route path="weekly-brief" element={<SalesReviewsPage />} />
             <Route path="reviews" element={<SalesReviewsPage />} />

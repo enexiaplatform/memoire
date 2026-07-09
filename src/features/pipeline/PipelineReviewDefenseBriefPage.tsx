@@ -1019,7 +1019,7 @@ export function PipelineReviewDefenseBriefPage() {
       <header className="mb-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Personal Pipeline Defense OS</p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Personal Business Activity OS</p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Never enter a pipeline review unprepared.</h1>
             <p className="mt-2 max-w-3xl text-sm text-gray-500">
               Memoire works beside your company CRM—not in place of it—to prepare, defend, rescue, or downgrade every forecast with manager-ready review answers.

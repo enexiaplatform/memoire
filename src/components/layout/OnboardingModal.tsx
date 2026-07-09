@@ -440,7 +440,7 @@ export function OnboardingModal() {
             <p className="text-sm leading-6 text-gray-600">
               {founderMode
                 ? "Let's walk through a seller getting ready for Monday pipeline review or a solo sales check-in."
-                : "Memoire is a Personal Pipeline Defense OS used beside CRM, spreadsheets, and notes. Let's walk through Capture → Today → Pipeline Defense."}
+                : "Memoire is a Personal Business Activity OS used beside CRM, spreadsheets, and notes. Let's walk through Capture → Today → Pipeline Defense."}
             </p>
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Workflow</p>

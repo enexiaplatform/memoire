@@ -462,6 +462,33 @@ export function buildSampleDataset(): SampleDataset {
       linkedAccountName: 'Apex Labs',
       createdAt: timestamp,
     }),
+    {
+      // Ledger proof: money and marketing activity live in the same timeline
+      // as sales touches (Business Activity OS).
+      ...sampleActivity({
+        id: 'demo-activity-northstar-payment-received',
+        note: 'Payment received from Northstar Foods for the line audit PO - first invoice paid in full. Confirm the audit kickoff report is delivered next week.',
+        activityDate: twoDaysAgo,
+        linkedOpportunityId: 'demo-opp-northstar-line-audit-won',
+        linkedOpportunityName: 'Line audit service',
+        linkedAccountName: 'Northstar Foods',
+        createdAt: timestamp,
+      }),
+      activityType: 'Payment / invoice' as const,
+    },
+    {
+      ...sampleActivity({
+        id: 'demo-activity-content-lab-validation-post',
+        note: 'Published a LinkedIn case note on lab validation workflows. Two lab managers commented - follow up with both this week.',
+        activityDate: yesterday,
+        linkedOpportunityId: '',
+        linkedOpportunityName: '',
+        linkedAccountName: '',
+        createdAt: timestamp,
+      }),
+      activityType: 'Marketing / content' as const,
+      linkStatus: 'Ignored' as const,
+    },
     sampleActivity({
       id: 'demo-activity-orion-pharma-competitor',
       note: 'Orion Pharma mentioned a competing platform during procurement discussion. Need to collect differentiator evidence before procurement meeting.',

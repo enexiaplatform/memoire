@@ -57,7 +57,7 @@ export function DemoEntryPage() {
               Try the 5-minute Pipeline Defense proof path.
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-200">
-              Memoire is a Personal Pipeline Defense OS used beside CRM, spreadsheets, and private notes. See how a B2B or founder-led seller goes from messy notes and pasted email to Today risks, a manager-ready Pipeline Defense Brief, MEDDIC gaps, and outcome learning.
+              Memoire is a Personal Business Activity OS used beside CRM, spreadsheets, and private notes. See how a B2B or founder-led seller goes from messy notes and pasted email to Today risks, a manager-ready Pipeline Defense Brief, MEDDIC gaps, and outcome learning.
             </p>
             <p className="mt-3 inline-flex rounded-full border border-cyan-200/20 bg-cyan-200/10 px-3 py-1.5 text-sm font-bold text-cyan-100">
               Expected duration: 3-5 minutes

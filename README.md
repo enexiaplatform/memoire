@@ -1,10 +1,10 @@
 # Memoire
 
-Memoire is a Career Knowledge Vault + Daily Sales Action Engine for people who sell without a sales team: individual B2B sellers, founder-led sellers, consultants, freelancers, agency owners, and solo operators managing their own client or customer pipeline.
+Memoire is a personal Business Activity OS for B2B sellers and solo operators: individual B2B sellers, founder-led sellers, consultants, freelancers, and agency owners running their own commercial motion. It captures every commercial activity - meetings, quotes, deliveries, payments, content, experiments - into one business memory with money state, silence alerts, and next actions.
 
 Core statement:
 
-> Your CRM, spreadsheet, or notes track the record. Memoire helps you remember context, catch deals before they go silent, prepare follow-ups, and build review-ready deal stories.
+> Your CRM, spreadsheet, or notes track records for the company. Memoire remembers your whole commercial story and never lets anything go silent - deals, quotes, payments, or follow-ups. Strategy: docs/product/pivot-business-activity-os-2026-07-09.md.
 
 ## Launch Status
 

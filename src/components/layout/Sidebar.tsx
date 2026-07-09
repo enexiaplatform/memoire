@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { AlertTriangle, BookOpen, ChevronDown, ClipboardList, Database, FileCheck2, FileText, LayoutDashboard, MessageCircleQuestion, NotebookPen, Settings, Target, UsersRound, X } from 'lucide-react';
+import { AlertTriangle, Banknote, BookOpen, CalendarDays, ChevronDown, ClipboardList, Database, FileCheck2, FileText, LayoutDashboard, MessageCircleQuestion, NotebookPen, Settings, Target, UsersRound, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 import { prefetchAppRoute } from '../../utils/routePrefetch';
@@ -21,10 +21,11 @@ function hasFirstSavedBrief() {
 }
 
 const primarySections = [{
-  label: 'Pipeline Defense OS',
+  label: 'Business Activity OS',
   items: [
     { to: '/app/today', label: 'Today', icon: <LayoutDashboard className="h-5 w-5" /> },
     { to: '/app/capture', label: 'Capture', icon: <NotebookPen className="h-5 w-5" /> },
+    { to: '/app/activity', label: 'Activity', icon: <CalendarDays className="h-5 w-5" /> },
     { to: '/app/pipeline-defense', label: 'Pipeline Defense', icon: <FileCheck2 className="h-5 w-5" /> },
     { to: '/app/opportunities', label: 'Opportunities', icon: <Target className="h-5 w-5" /> },
     { to: '/app/accounts', label: 'Accounts', icon: <BookOpen className="h-5 w-5" /> },
@@ -34,6 +35,7 @@ const primarySections = [{
 
 const secondaryItems = [
   { to: '/app/weekly-brief', label: 'Weekly Brief', icon: <ClipboardList className="h-5 w-5" /> },
+  { to: '/app/revenue', label: 'Money', icon: <Banknote className="h-5 w-5" /> },
   { to: '/app/stakeholders', label: 'Stakeholders', icon: <UsersRound className="h-5 w-5" /> },
   { to: '/app/objections', label: 'Objections', icon: <AlertTriangle className="h-5 w-5" /> },
   { to: '/app/playbook', label: 'Playbook', icon: <BookOpen className="h-5 w-5" /> },

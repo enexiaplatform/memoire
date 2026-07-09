@@ -176,6 +176,6 @@ for (const marker of ['Champion missing on rescue deal', 'Economic buyer unknown
 }
 
 const sidebar = readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
-assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 12, 'A new CRM navigation item was added.');
+assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 14, 'A new CRM navigation item was added.');
 
 console.log('MEDDIC stakeholder map regression verified.');

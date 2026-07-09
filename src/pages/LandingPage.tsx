@@ -167,13 +167,13 @@ export function LandingPage() {
   return (
     <div className="min-h-screen bg-white text-slate-950">
       <Helmet>
-        <title>Memoire - Personal Pipeline Defense OS for B2B and Solo Operators</title>
+        <title>Memoire - Personal Business Activity OS for B2B and Solo Operators</title>
         <meta
           name="description"
-          content="Memoire is a Personal Pipeline Defense OS used beside CRM, spreadsheets, and notes to help B2B and solo operators capture messy evidence, prepare reviews, and defend, rescue, or downgrade pipeline."
+          content="Memoire is a Personal Business Activity OS used beside CRM, spreadsheets, and notes: capture every commercial activity, see where the money sits, prepare reviews, and never let anything go silent."
         />
         <meta name="robots" content="noindex, nofollow" />
-        <meta property="og:title" content="Memoire - Personal Pipeline Defense OS for B2B and Solo Operators" />
+        <meta property="og:title" content="Memoire - Personal Business Activity OS for B2B and Solo Operators" />
         <meta
           property="og:description"
           content="Never enter a pipeline review unprepared. Capture messy notes and emails, find risks in Today, and copy manager-ready Pipeline Defense answers."
@@ -191,13 +191,14 @@ export function LandingPage() {
           <div className="relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1fr_0.95fr] lg:items-center">
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.28em] text-cyan-200">
-                Personal Pipeline Defense OS for people who sell without a sales team
+                Personal Business Activity OS for people who sell and run their own business
               </p>
               <h1 className="mt-5 max-w-4xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
-                Never enter a pipeline review unprepared.
+                Nothing in your business goes silent.
               </h1>
               <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200">
-                Memoire works beside your CRM, spreadsheet, or notes, not instead of them. Capture messy notes and emails, let Today expose the urgent risks,
+                Memoire works beside your CRM, spreadsheet, or notes, not instead of them. Capture every commercial activity - meetings, quotes, deliveries, payments -
+                see where the money sits, and never enter a pipeline review unprepared: capture messy notes and emails, let Today expose the urgent risks,
                 and turn Pipeline Defense into manager-ready answers to defend, rescue, or downgrade your forecast.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">

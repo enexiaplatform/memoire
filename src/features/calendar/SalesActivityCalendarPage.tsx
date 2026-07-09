@@ -23,6 +23,7 @@ import {
 } from '../../services/salesActivityStore';
 import { updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
+import { businessDomains, businessDomainTone, classifyBusinessDomain, type BusinessDomain } from '../../utils/businessDomain';
 import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
 import { applyOpportunityUpdateSuggestion, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 import type { SalesActivityType } from '../../utils/salesActivityClassifier';
@@ -60,12 +61,19 @@ const activityTypeTone: Record<SalesActivityType, string> = {
   'Internal coordination': 'border-slate-100 bg-slate-50 text-slate-700',
   'Objection handling': 'border-amber-100 bg-amber-50 text-amber-700',
   'Admin / CRM': 'border-gray-200 bg-gray-50 text-gray-700',
+  'Payment / invoice': 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  'Delivery / fulfillment': 'border-violet-200 bg-violet-50 text-violet-800',
+  Partnership: 'border-blue-200 bg-blue-50 text-blue-800',
+  'Marketing / content': 'border-pink-100 bg-pink-50 text-pink-700',
+  'Product / build': 'border-indigo-200 bg-indigo-50 text-indigo-800',
+  'Learning / research': 'border-amber-200 bg-amber-50 text-amber-800',
   Other: 'border-gray-200 bg-white text-gray-700',
 };
 
 export function SalesActivityCalendarPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const [viewMode, setViewMode] = useState<CalendarViewMode>('week');
+  const [domainFilter, setDomainFilter] = useState<BusinessDomain | 'All'>('All');
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
@@ -97,11 +105,24 @@ export function SalesActivityCalendarPage() {
   }, [refreshActivities]);
 
   const range = useMemo(() => getCalendarRange(viewMode, anchorDate), [anchorDate, viewMode]);
-  const visibleActivities = useMemo(() => {
+  const periodActivities = useMemo(() => {
     return activities
       .filter((activity) => isBusinessDateInRange(activity.activityDate, range.start, range.end))
       .sort(sortByDateAscending);
   }, [activities, range.end, range.start]);
+  const domainCounts = useMemo(() => {
+    const counts = new Map<BusinessDomain, number>();
+    periodActivities.forEach((activity) => {
+      const domain = classifyBusinessDomain(activity);
+      counts.set(domain, (counts.get(domain) || 0) + 1);
+    });
+    return counts;
+  }, [periodActivities]);
+  const visibleActivities = useMemo(() => (
+    domainFilter === 'All'
+      ? periodActivities
+      : periodActivities.filter((activity) => classifyBusinessDomain(activity) === domainFilter)
+  ), [domainFilter, periodActivities]);
   const groupedActivities = useMemo(() => groupActivitiesByDate(visibleActivities), [visibleActivities]);
   const summary = useMemo(() => buildActivitySummary(visibleActivities), [visibleActivities]);
   const dateKeys = useMemo(() => getDateKeysForRange(range.start, range.end), [range.end, range.start]);
@@ -164,10 +185,11 @@ export function SalesActivityCalendarPage() {
     <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Sales Activity Calendar</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Review sales activity by day, week, and month.</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Activity Ledger</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Everything that happened in your business, in one timeline.</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            Uses the activities captured in Daily Capture. No Google Calendar, Gmail, CRM sync, or AI integration is connected.
+            Sales, money, delivery, marketing, product, and learning activity - all captured through Capture, classified by business domain.
+            No Google Calendar, Gmail, CRM sync, or AI integration is connected.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -250,10 +272,37 @@ export function SalesActivityCalendarPage() {
       </section>
 
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setDomainFilter('All')}
+            className={`rounded-full border px-3 py-1.5 text-xs font-bold ${
+              domainFilter === 'All' ? 'border-navy bg-navy text-white' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            All ({periodActivities.length})
+          </button>
+          {businessDomains.map((domain) => {
+            const count = domainCounts.get(domain) || 0;
+            if (count === 0 && domainFilter !== domain) return null;
+            return (
+              <button
+                key={domain}
+                type="button"
+                onClick={() => setDomainFilter(domainFilter === domain ? 'All' : domain)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-bold ${
+                  domainFilter === domain ? 'border-navy bg-navy text-white' : businessDomainTone(domain)
+                }`}
+              >
+                {domain} ({count})
+              </button>
+            );
+          })}
+        </div>
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-bold text-navy">Activities</h2>
-            <p className="mt-1 text-sm text-gray-500">Grouped by activity date.</p>
+            <p className="mt-1 text-sm text-gray-500">Grouped by activity date. Filter by business domain above.</p>
           </div>
           <button
             type="button"
@@ -398,8 +447,13 @@ function ActivityCard({
       <button type="button" onClick={onOpen} className="block w-full text-left">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${activityTypeTone[activity.activityType]}`}>
-              {activity.activityType}
+            <span className="flex flex-wrap items-center gap-1.5">
+              <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${activityTypeTone[activity.activityType]}`}>
+                {activity.activityType}
+              </span>
+              <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${businessDomainTone(classifyBusinessDomain(activity))}`}>
+                {classifyBusinessDomain(activity)}
+              </span>
             </span>
             <h4 className="mt-2 text-sm font-bold text-navy">{activity.summary}</h4>
           </div>

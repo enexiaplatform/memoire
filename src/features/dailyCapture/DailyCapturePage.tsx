@@ -59,7 +59,13 @@ type QuickInteractionType =
   | 'Procurement update'
   | 'Technical discussion'
   | 'Follow-up'
-  | 'Internal review';
+  | 'Internal review'
+  | 'Payment / invoice update'
+  | 'Delivery update'
+  | 'Partnership discussion'
+  | 'Content published'
+  | 'Experiment / learning'
+  | 'Business decision';
 type QuickSignalType =
   | 'Buying signal'
   | 'Risk signal'
@@ -111,6 +117,12 @@ const quickInteractionTypes: QuickInteractionType[] = [
   'Technical discussion',
   'Follow-up',
   'Internal review',
+  'Payment / invoice update',
+  'Delivery update',
+  'Partnership discussion',
+  'Content published',
+  'Experiment / learning',
+  'Business decision',
 ];
 
 const quickSignalTypes: QuickSignalType[] = [
@@ -187,6 +199,48 @@ const quickTemplates: {
     signalType: 'Risk signal',
     whatHappenedPrompt: 'What risk or gap did the review expose?',
     nextActionPrompt: 'What must be clarified before the next review?',
+  },
+  // Whole-business templates (Business Activity OS): money, delivery,
+  // partnership, marketing, and learning activity land in the same ledger.
+  {
+    id: 'payment-update',
+    label: 'Payment / invoice update',
+    interactionType: 'Payment / invoice update',
+    signalType: 'Timeline update',
+    whatHappenedPrompt: 'What changed on the invoice, payment, or PO - amount, status, or date?',
+    nextActionPrompt: 'What must you send, chase, or confirm to keep the money moving?',
+  },
+  {
+    id: 'delivery-update',
+    label: 'Delivery / fulfillment update',
+    interactionType: 'Delivery update',
+    signalType: 'Timeline update',
+    whatHappenedPrompt: 'What was delivered, installed, or scheduled - and did the customer confirm?',
+    nextActionPrompt: 'What delivery step or customer confirmation comes next?',
+  },
+  {
+    id: 'partnership-discussion',
+    label: 'After partnership discussion',
+    interactionType: 'Partnership discussion',
+    signalType: 'Stakeholder update',
+    whatHappenedPrompt: 'Who did you talk to, and what commercial opportunity or referral came up?',
+    nextActionPrompt: 'What must you send or agree to move the partnership forward?',
+  },
+  {
+    id: 'content-published',
+    label: 'Content published',
+    interactionType: 'Content published',
+    signalType: 'No major change',
+    whatHappenedPrompt: 'What did you publish, where, and which offer or audience does it serve?',
+    nextActionPrompt: 'What follow-up or measurement comes next?',
+  },
+  {
+    id: 'experiment-learning',
+    label: 'Experiment / learning result',
+    interactionType: 'Experiment / learning',
+    signalType: 'No major change',
+    whatHappenedPrompt: 'What did you test or learn, and what did the result say about the business?',
+    nextActionPrompt: 'What decision or next experiment follows from this?',
   },
 ];
 
@@ -1903,6 +1957,12 @@ function buildQuickCaptureActivity(form: QuickCaptureForm): ClassifiedSalesActiv
 }
 
 function quickInteractionToActivityType(interactionType: QuickInteractionType): SalesActivityType {
+  if (interactionType === 'Payment / invoice update') return 'Payment / invoice';
+  if (interactionType === 'Delivery update') return 'Delivery / fulfillment';
+  if (interactionType === 'Partnership discussion') return 'Partnership';
+  if (interactionType === 'Content published') return 'Marketing / content';
+  if (interactionType === 'Experiment / learning') return 'Learning / research';
+  if (interactionType === 'Business decision') return 'Internal coordination';
   if (interactionType === 'Proposal sent') return 'Quote / proposal';
   if (interactionType === 'Objection received') return 'Objection handling';
   if (interactionType === 'Procurement update') return 'Tender / procurement';
