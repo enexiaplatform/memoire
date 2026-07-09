@@ -5,6 +5,7 @@ import { SALES_ACTIVITY_STORAGE_KEY, type SalesActivityRecord } from '../service
 import { STAKEHOLDER_STORAGE_KEY, type StakeholderRecord } from '../services/stakeholderStore';
 import { OBJECTION_STORAGE_KEY, type ObjectionRecord } from '../services/objectionStore';
 import { ACTION_OUTCOME_STORAGE_KEY, type ActionOutcomeRecord } from '../services/actionOutcomeStore';
+import { OPPORTUNITY_OUTCOME_STORAGE_KEY, type OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore';
 import { SALES_ASSET_STORAGE_KEY, type SalesAssetRecord } from '../services/salesAssetStore';
 import { QUOTE_STORAGE_KEY, type QuoteRecord } from '../services/quoteStore';
 import { invalidateWorkspaceDataCache } from '../services/workspaceDataCache';
@@ -43,6 +44,7 @@ const SAMPLE_ARRAY_STORAGE_KEYS = [
   STAKEHOLDER_STORAGE_KEY,
   OBJECTION_STORAGE_KEY,
   ACTION_OUTCOME_STORAGE_KEY,
+  OPPORTUNITY_OUTCOME_STORAGE_KEY,
   SALES_ASSET_STORAGE_KEY,
   QUOTE_STORAGE_KEY,
 ];
@@ -62,6 +64,7 @@ export type SampleDataset = {
   stakeholders: StakeholderRecord[];
   objections: ObjectionRecord[];
   actionOutcomes: ActionOutcomeRecord[];
+  opportunityOutcomes: OpportunityOutcomeRecord[];
   salesAssets: SalesAssetRecord[];
   quotes: QuoteRecord[];
   briefs: PipelineDefenseBrief[];
@@ -106,6 +109,7 @@ export function loadSampleDataset(): SampleDataset {
   writeLocalArray(STAKEHOLDER_STORAGE_KEY, dataset.stakeholders);
   writeLocalArray(OBJECTION_STORAGE_KEY, dataset.objections);
   writeLocalArray(ACTION_OUTCOME_STORAGE_KEY, dataset.actionOutcomes);
+  writeLocalArray(OPPORTUNITY_OUTCOME_STORAGE_KEY, dataset.opportunityOutcomes);
   writeLocalArray(SALES_ASSET_STORAGE_KEY, dataset.salesAssets);
   writeLocalArray(QUOTE_STORAGE_KEY, dataset.quotes);
   writeLocalBriefs(dataset.briefs);
@@ -131,6 +135,7 @@ export function clearSampleDataset() {
   removeSampleRecords(STAKEHOLDER_STORAGE_KEY);
   removeSampleRecords(OBJECTION_STORAGE_KEY);
   removeSampleRecords(ACTION_OUTCOME_STORAGE_KEY);
+  removeSampleRecords(OPPORTUNITY_OUTCOME_STORAGE_KEY);
   removeSampleRecords(SALES_ASSET_STORAGE_KEY);
   removeSampleRecords(QUOTE_STORAGE_KEY);
   removeSampleBriefs();
@@ -871,6 +876,73 @@ export function buildSampleDataset(): SampleDataset {
     id: 'demo-brief-pipeline-defense',
   } as PipelineDefenseBrief;
 
+  // Closed-outcome history powers the demo's forecast calibration ("your
+  // Defensible deals win 67%") and outcome learning. Two of the deals exist
+  // above (Won line audit, Lost LIMS expansion); the other two are retired
+  // deals that only live in outcome history, as they would for a real seller.
+  const opportunityOutcomes: OpportunityOutcomeRecord[] = [
+    sampleOpportunityOutcome({
+      id: 'demo-outcome-northstar-line-audit-won',
+      opportunityId: 'demo-opp-northstar-line-audit-won',
+      accountName: 'Northstar Foods',
+      opportunityName: 'Line audit service',
+      outcome: 'Won',
+      outcomeDate: sixDaysAgo,
+      finalAmount: 480000000,
+      forecastEvidenceCategoryBeforeOutcome: 'Defensible',
+      decisionRecommendationBeforeOutcome: 'Defend',
+      stageBeforeOutcome: 'Negotiation',
+      reasonCategory: 'Relationship',
+      reasonText: 'Ops director committed after the revive follow-up; audit scope was already agreed.',
+      decisiveStakeholder: 'Lan Pham (Ops Director)',
+      lessonLearned: 'A direct follow-up after two quiet weeks reopened and closed the deal.',
+    }),
+    sampleOpportunityOutcome({
+      id: 'demo-outcome-northstar-water-lab-won',
+      opportunityId: 'demo-opp-northstar-water-lab-closed',
+      accountName: 'Northstar Foods',
+      opportunityName: 'Water lab starter package',
+      outcome: 'Won',
+      outcomeDate: toDateKey(addDays(now, -45)),
+      finalAmount: 260000000,
+      forecastEvidenceCategoryBeforeOutcome: 'Defensible',
+      decisionRecommendationBeforeOutcome: 'Defend',
+      stageBeforeOutcome: 'Procurement',
+      reasonCategory: 'Technical fit',
+      reasonText: 'Method validation matched their lab workflow out of the box.',
+    }),
+    sampleOpportunityOutcome({
+      id: 'demo-outcome-apex-spare-parts-lost',
+      opportunityId: 'demo-opp-apex-spare-parts-closed',
+      accountName: 'Apex Labs',
+      opportunityName: 'Spare parts annual contract',
+      outcome: 'Lost',
+      outcomeDate: toDateKey(addDays(now, -30)),
+      finalAmount: null,
+      forecastEvidenceCategoryBeforeOutcome: 'Defensible',
+      decisionRecommendationBeforeOutcome: 'Defend',
+      stageBeforeOutcome: 'Proposal',
+      reasonCategory: 'Price',
+      objectionThatMattered: 'Incumbent undercut list price by 18 percent.',
+      lessonLearned: 'Defensible label was based on relationship, not on a confirmed budget owner.',
+    }),
+    sampleOpportunityOutcome({
+      id: 'demo-outcome-orion-lims-lost',
+      opportunityId: 'demo-opp-orion-lims-expansion-lost',
+      accountName: 'Orion Pharma',
+      opportunityName: 'LIMS expansion',
+      outcome: 'Lost',
+      outcomeDate: toDateKey(addDays(now, -60)),
+      finalAmount: null,
+      forecastEvidenceCategoryBeforeOutcome: 'Hope-based',
+      decisionRecommendationBeforeOutcome: 'Downgrade',
+      stageBeforeOutcome: 'Proposal',
+      reasonCategory: 'Technical fit',
+      objectionThatMattered: 'Integration cost with legacy instruments surfaced too late.',
+      evidenceThatWasMissing: 'No confirmed integration assessment before the RFP deadline.',
+    }),
+  ];
+
   return {
     activities,
     opportunities,
@@ -878,6 +950,7 @@ export function buildSampleDataset(): SampleDataset {
     stakeholders,
     objections,
     actionOutcomes,
+    opportunityOutcomes,
     salesAssets,
     quotes,
     briefs: [markSampleBrief(brief)],
@@ -1024,6 +1097,20 @@ function sampleQuote(input: Omit<QuoteRecord, 'updatedAt' | 'source' | 'isSample
   return markSampleRecord({
     ...input,
     updatedAt: input.createdAt,
+  });
+}
+
+function sampleOpportunityOutcome(input: Omit<OpportunityOutcomeRecord, 'currency' | 'reasonText' | 'createdAt' | 'updatedAt' | 'storageMode'> & {
+  reasonText?: string;
+}): OpportunityOutcomeRecord {
+  const timestamp = `${input.outcomeDate}T00:00:00.000Z`;
+  return markSampleRecord({
+    ...input,
+    currency: 'VND',
+    reasonText: input.reasonText || '',
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    storageMode: 'local' as const,
   });
 }
 

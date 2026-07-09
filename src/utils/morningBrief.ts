@@ -48,10 +48,10 @@ export function buildMorningBrief(input: MorningBriefInput): MorningBrief {
     focus.push(`${input.waitingFollowUps} sent ${input.waitingFollowUps === 1 ? 'follow-up is' : 'follow-ups are'} still waiting on a reply.`);
   }
 
-  return { headline, focus: focus.slice(0, 3), questions: buildQuestions(nudges) };
+  return { headline, focus: focus.slice(0, 3), questions: buildQuestions(nudges, input.waitingFollowUps || 0) };
 }
 
-function buildQuestions(nudges: NudgeRecord[]): MorningBriefQuestion[] {
+function buildQuestions(nudges: NudgeRecord[], waitingFollowUps: number): MorningBriefQuestion[] {
   const questions: MorningBriefQuestion[] = [];
 
   const silenceNudge = nudges.find((nudge) => /silent|silence/i.test(nudge.title));
@@ -67,6 +67,10 @@ function buildQuestions(nudges: NudgeRecord[]): MorningBriefQuestion[] {
   const objectionNudge = nudges.find((nudge) => nudge.source === 'objection');
   if (objectionNudge) {
     questions.push(askQuestion('Which unresolved objections are blocking my pipeline right now?'));
+  }
+
+  if (waitingFollowUps > 0) {
+    questions.push(askQuestion('Did my follow-ups work?'));
   }
 
   questions.push(askQuestion('What should I do first today?'));

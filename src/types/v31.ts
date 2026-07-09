@@ -236,7 +236,7 @@ export interface AskMemoireAnswer {
 }
 
 export interface AskMemoireAnswerCard {
-  kind: 'stuck_deal' | 'account' | 'opportunity' | 'follow_up';
+  kind: 'stuck_deal' | 'account' | 'opportunity' | 'follow_up' | 'insight';
   title: string;
   fields: {
     label: string;

@@ -14,8 +14,17 @@ import { ASK_ANSWER_READY_EVENT, ASK_GUIDED_QUESTION_EVENT } from '../onboarding
 import { RouteLoadingFallback } from './RouteLoadingFallback';
 import { useSlowLoadingFallback } from './useSlowLoadingFallback';
 import { hasLocalSampleData } from '../../utils/dataMode';
-import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { loadSalesWorkspaceData, type SalesWorkspaceData } from '../../services/workspaceData';
 import { adaptWorkspaceToV31 } from './workspaceAdapter';
+import { buildFollowUpImpact } from '../../utils/followUpImpact';
+import { buildObjectionPlaybook } from '../../utils/objectionPlaybook';
+import { buildForecastCalibration } from '../../utils/forecastCalibration';
+import {
+  answerFromFollowUpImpact,
+  answerFromForecastCalibration,
+  answerFromObjectionPlaybook,
+  detectInsightQuestion,
+} from './askMemoireInsightAnswers';
 
 export function AskMemoirePage() {
   const { user } = useAuth();
@@ -35,6 +44,7 @@ export function AskMemoirePage() {
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [actions, setActions] = useState<SalesAction[]>([]);
   const [objections, setObjections] = useState<Objection[]>([]);
+  const [rawWorkspace, setRawWorkspace] = useState<SalesWorkspaceData | null>(null);
   const slowContextLoading = useSlowLoadingFallback(contextLoading);
 
   const loadMemory = useCallback(async () => {
@@ -45,6 +55,7 @@ export function AskMemoirePage() {
       const sampleDataActive = hasLocalSampleData();
       const workspace = await loadSalesWorkspaceData(sampleDataActive ? undefined : user?.id);
       const memory = adaptWorkspaceToV31(workspace, user?.id || DEMO_USER_ID);
+      setRawWorkspace(workspace);
       setAccounts(memory.accounts);
       setOpportunities(memory.opportunities);
       setInteractions(memory.interactions);
@@ -201,6 +212,30 @@ export function AskMemoirePage() {
         setAnswer(answerFromPatterns(salesPatterns, contextPacket));
         return;
       }
+      // Questions about the seller's own measured history are deterministic:
+      // answer from the computed data layers, never from the AI endpoint.
+      const insightKind = rawWorkspace ? detectInsightQuestion(nextQuestion) : null;
+      if (insightKind && rawWorkspace) {
+        setStatusMessage('Answered from your measured history (no AI involved).');
+        if (insightKind === 'follow_up_impact') {
+          setAnswer(answerFromFollowUpImpact(buildFollowUpImpact({
+            activities: rawWorkspace.activities,
+            opportunities: rawWorkspace.opportunities,
+            opportunityOutcomes: rawWorkspace.opportunityOutcomes,
+          })));
+        } else if (insightKind === 'objection_playbook') {
+          setAnswer(answerFromObjectionPlaybook(buildObjectionPlaybook({
+            objections: rawWorkspace.objections,
+            opportunityOutcomes: rawWorkspace.opportunityOutcomes,
+          })));
+        } else {
+          setAnswer(answerFromForecastCalibration(buildForecastCalibration({
+            outcomes: rawWorkspace.opportunityOutcomes,
+            opportunities: rawWorkspace.opportunities,
+          })));
+        }
+        return;
+      }
       if (hasLocalSampleData() || !user) {
         setStatusMessage(user
           ? 'Demo workspace uses local rule-based answers.'
@@ -258,6 +293,7 @@ export function AskMemoirePage() {
     scopedMemoryHealth,
     whatChanged,
     salesPatterns,
+    rawWorkspace,
   ]);
 
   useEffect(() => {
@@ -819,6 +855,7 @@ function AnswerCard({ card }: { card: AskMemoireAnswerCard }) {
     account: 'border-blue-100 bg-blue-50/30',
     opportunity: 'border-violet-100 bg-violet-50/30',
     follow_up: 'border-emerald-100 bg-emerald-50/30',
+    insight: 'border-blue-100 bg-blue-50/30',
   }[card.kind];
 
   return (
