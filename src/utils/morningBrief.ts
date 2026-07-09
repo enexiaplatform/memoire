@@ -56,7 +56,12 @@ function buildQuestions(nudges: NudgeRecord[]): MorningBriefQuestion[] {
 
   const silenceNudge = nudges.find((nudge) => /silent|silence/i.test(nudge.title));
   if (silenceNudge?.accountName) {
-    questions.push(askQuestion(`Why is ${silenceNudge.accountName} going quiet and what should I send?`));
+    // Scope the question to the flagged deal when possible so Ask Memoire
+    // answers from that deal's memory instead of the whole workspace.
+    const scoped = silenceNudge.entityType === 'opportunity' && silenceNudge.entityId
+      ? { scope: 'opportunity', opportunityId: silenceNudge.entityId }
+      : undefined;
+    questions.push(askQuestion(`Why is ${silenceNudge.accountName} going quiet and what should I send?`, scoped));
   }
 
   const objectionNudge = nudges.find((nudge) => nudge.source === 'objection');
@@ -72,8 +77,13 @@ function buildQuestions(nudges: NudgeRecord[]): MorningBriefQuestion[] {
   return dedupeQuestions(questions).slice(0, 3);
 }
 
-function askQuestion(label: string): MorningBriefQuestion {
-  return { label, href: `/app/ask?question=${encodeURIComponent(label)}` };
+function askQuestion(label: string, scoped?: { scope: string; opportunityId: string }): MorningBriefQuestion {
+  const params = new URLSearchParams({ question: label });
+  if (scoped) {
+    params.set('scope', scoped.scope);
+    params.set('opportunityId', scoped.opportunityId);
+  }
+  return { label, href: `/app/ask?${params.toString()}` };
 }
 
 function dedupeQuestions(questions: MorningBriefQuestion[]) {

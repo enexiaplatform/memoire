@@ -67,6 +67,10 @@ function makeActivity(patch = {}) {
   const silenceQuestion = brief.questions.find((question) => question.label.includes('Summit Diagnostics'));
   assert.ok(silenceQuestion, 'silence nudge must produce a deep-linked question');
   assert.ok(silenceQuestion.href.startsWith('/app/ask?question='), 'questions must deep-link into Ask Memoire');
+  const silenceParams = new URL(`http://memoire.test${silenceQuestion.href}`).searchParams;
+  assert.equal(silenceParams.get('scope'), 'opportunity', 'silence question must scope to the flagged deal');
+  assert.equal(silenceParams.get('opportunityId'), 'opp-1');
+  assert.equal(silenceParams.get('question'), silenceQuestion.label);
   assert.ok(brief.questions.some((question) => question.label.includes('objections')));
   assert.ok(brief.questions.length <= 3);
 }
@@ -80,11 +84,25 @@ function makeActivity(patch = {}) {
   assert.ok(brief.questions.every((question) => question.href.startsWith('/app/ask?question=')));
 }
 
-// 3. Question labels are URL-encoded into hrefs.
+// 3. Question labels survive the URL round-trip, including special characters.
 {
   const brief = buildMorningBrief({ today, nudges: [makeNudge({ accountName: 'A & B Co' })], activities: [] });
   const encoded = brief.questions.find((question) => question.label.includes('A & B Co'));
-  assert.ok(encoded && encoded.href.includes(encodeURIComponent('A & B Co')), 'account names must be URL-encoded');
+  assert.ok(encoded, 'special-character account names must still produce a question');
+  const roundTrip = new URL(`http://memoire.test${encoded.href}`).searchParams.get('question');
+  assert.equal(roundTrip, encoded.label, 'question must decode back to the exact label');
+}
+
+// 3b. Account-level silence nudges fall back to an unscoped question.
+{
+  const brief = buildMorningBrief({
+    today,
+    nudges: [makeNudge({ entityType: 'account', entityId: 'acc-1' })],
+    activities: [],
+  });
+  const question = brief.questions.find((item) => item.label.includes('Summit Diagnostics'));
+  const params = new URL(`http://memoire.test${question.href}`).searchParams;
+  assert.equal(params.get('scope'), null, 'non-opportunity nudges must not force a scope');
 }
 
 // 4. UI contract: card rendered on Today; Ask Memoire consumes ?question= once context loads.
