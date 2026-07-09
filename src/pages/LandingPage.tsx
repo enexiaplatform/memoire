@@ -33,7 +33,7 @@ const workflowSteps = [
   },
   {
     title: 'Learn from outcomes',
-    text: 'Use win/loss and action outcomes as a personal coaching loop for future forecast decisions.',
+    text: 'Log win/loss outcomes and Memoire measures what your follow-ups revived and how often your "Defensible" calls actually win.',
   },
 ];
 
@@ -65,7 +65,7 @@ const featureCards = [
   },
   {
     title: 'Outcome Learning',
-    text: 'Detect cautious win/loss and action-outcome patterns that can coach the next review.',
+    text: 'Your own win-rate per forecast label, deals revived by follow-ups, and objection responses that worked - history, not prediction.',
     icon: BadgeCheck,
   },
   {

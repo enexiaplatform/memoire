@@ -60,7 +60,7 @@ export function answerFromFollowUpImpact(impact: FollowUpImpactSummary): AskMemo
       ],
       ctas: [
         { label: 'Open Today', href: '/app/today', note: 'The Saved from silence panel lives on Today.' },
-        { label: 'Open Opportunities', href: '/app/opportunities' },
+        { label: 'Open opportunities', href: '/app/opportunities' },
       ],
     }],
   };
