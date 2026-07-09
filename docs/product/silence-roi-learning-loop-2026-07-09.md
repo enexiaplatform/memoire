@@ -36,6 +36,13 @@ The silence loop (detect -> draft -> log as sent -> book next touch) was complet
 - New Northstar Foods "Line audit service" story: 16 quiet days -> logged follow-up (9 days back) -> deal Won. The public demo's Saved from silence panel shows "Won after follow-up" with 480M VND back in motion next to Summit Diagnostics "Waiting on reply" - the before/after of the wedge in one panel.
 - Two Apex Labs objections flip to Resolved with real resolution notes so the objection playbook renders proven responses out of the box.
 
+## Evidence-to-action pass (added later on 2026-07-09)
+
+- Saved from silence panel also renders on the Weekly Brief, scoped to the selected review period (week/month, past periods included); full activity history feeds attribution so pre-period quiet gaps stay honest.
+- Waiting-on-reply deals in the Today panel carry a Draft follow-up button that opens the composer prefilled from the flagged deal - the ROI panel is a working queue, not a scoreboard.
+- Objection playbook gains "Copy proven responses" (`generateObjectionPlaybookMarkdown`) so resolved-objection language pastes straight into a follow-up draft.
+- Morning Brief silence questions now deep-link with `scope=opportunity&opportunityId=...` (ids survive the v31 adapter), so Ask Memoire answers from that deal's memory. Runtime smoke confirmed the Ask page shows "Current context: QC workflow" for the demo's flagged deal.
+
 ## Explicitly not built
 
 Forward-to-Memoire inbound email (needs server-side email infrastructure; conflicts with the current trust boundary "no inbox access" stance - founder decision required). No CRM sync, no team features, no new navigation entries: all five changes land inside existing 5+1 surfaces.
