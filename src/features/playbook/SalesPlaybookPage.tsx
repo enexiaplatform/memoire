@@ -15,6 +15,11 @@ import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../servi
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { buildSalesAssetDraftFromPattern, generateAssetDraftMarkdown } from '../../utils/salesAssetSuggestions';
 import {
+  buildObjectionPlaybook,
+  formatObjectionResolutionRate,
+  type ObjectionPlaybookInsight,
+} from '../../utils/objectionPlaybook';
+import {
   generatePlaybookPatternMarkdown,
   generateSalesPlaybookPatterns,
   playbookPatternCategories,
@@ -99,6 +104,10 @@ export function SalesPlaybookPage() {
 
   const patterns = useMemo(() => generateSalesPlaybookPatterns(data), [data]);
   const summary = useMemo(() => summarizeSalesPlaybook(patterns), [patterns]);
+  const objectionPlaybook = useMemo(() => buildObjectionPlaybook({
+    objections: data.objections,
+    opportunityOutcomes: data.opportunityOutcomes,
+  }), [data.objections, data.opportunityOutcomes]);
   const visiblePatterns = useMemo(() => {
     const query = search.trim().toLowerCase();
     return patterns.filter((pattern) => {
@@ -171,6 +180,9 @@ export function SalesPlaybookPage() {
         <PlaybookEmptyState />
       ) : (
         <>
+          {!objectionPlaybook.needsMoreData && objectionPlaybook.insights.length > 0 && (
+            <ObjectionLearningSection playbook={objectionPlaybook} />
+          )}
           <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
@@ -483,4 +495,63 @@ function toneClass(tone: 'blue' | 'green' | 'amber' | 'red') {
     amber: 'bg-amber-50 text-amber-700',
     red: 'bg-red-50 text-red-700',
   }[tone];
+}
+
+function ObjectionLearningSection({ playbook }: { playbook: ReturnType<typeof buildObjectionPlaybook> }) {
+  return (
+    <section className="rounded-lg border border-blue-100 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-lg font-bold text-navy">What worked against objections</h2>
+        <p className="text-sm text-gray-600">{playbook.headline}</p>
+        <p className="text-xs text-gray-500">
+          Built from your own resolved objections and deal outcomes. The longer you capture, the sharper this gets.
+        </p>
+      </div>
+      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+        {playbook.insights.slice(0, 6).map((insight) => (
+          <ObjectionInsightCard key={insight.objectionType} insight={insight} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ObjectionInsightCard({ insight }: { insight: ObjectionPlaybookInsight }) {
+  const rateTone = insight.resolutionRate >= 0.6 ? 'green' : insight.open > 0 ? 'amber' : 'blue';
+  return (
+    <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-bold text-gray-900">{insight.objectionType}</p>
+        <div className="flex items-center gap-2">
+          {insight.dealsLostTo > 0 && (
+            <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">
+              Cost {insight.dealsLostTo} {insight.dealsLostTo === 1 ? 'deal' : 'deals'}
+            </span>
+          )}
+          <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${toneClass(rateTone)}`}>
+            {formatObjectionResolutionRate(insight)}
+          </span>
+        </div>
+      </div>
+      {insight.provenResponses.length > 0 ? (
+        <div className="mt-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Your proven responses</p>
+          <ul className="mt-1 space-y-1 text-xs leading-5 text-gray-700">
+            {insight.provenResponses.map((response) => (
+              <li key={response}>- {response}</li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p className="mt-3 text-xs leading-5 text-gray-500">
+          {insight.open > 0
+            ? `${insight.open} still open. When one resolves, log what worked - it becomes reusable here.`
+            : 'No resolution notes yet. Log what worked when you resolve one.'}
+        </p>
+      )}
+      {insight.accounts.length > 0 && (
+        <p className="mt-2 text-xs text-gray-500">Seen at: {insight.accounts.join(', ')}</p>
+      )}
+    </article>
+  );
 }
