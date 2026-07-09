@@ -43,7 +43,7 @@ export function FollowUpImpactPanel({ impact }: { impact: FollowUpImpactSummary 
 
       <p className="mt-3 text-xs text-gray-500">
         Deals still waiting on a reply stay in the silence queue.{' '}
-        <Link to="/app/opportunities" className="font-bold text-brand-blue hover:underline">Open Opportunities</Link>
+        <Link to="/app/opportunities" className="font-bold text-brand-blue hover:underline">Open opportunities</Link>
       </p>
     </section>
   );
