@@ -199,6 +199,35 @@ assert.equal(classifyInitiativeHealth(makeContext({ status: 'Completed' }), [], 
   }
 }
 
+// === Customer-signal digest: rolled up from captured extractions only ===
+{
+  const review = buildWeeklyBusinessReview({
+    opportunities: [],
+    quotes: [],
+    operatingContexts: [],
+    activities: [
+      makeActivity({ activityDate: '2026-07-08', buyingSignals: ['Budget approved for next quarter'], risks: ['Lead time concern'], competitors: ['Incumbent Vendor'] }),
+      makeActivity({ activityDate: '2026-07-07', buyingSignals: ['budget approved for next quarter'], timelineSignals: ['Tender decision end of July'] }),
+      makeActivity({ activityDate: '2026-06-01', buyingSignals: ['Out-of-period signal'] }),
+    ],
+    opportunityOutcomes: [],
+    period: { start: '2026-07-06', end: '2026-07-12' },
+    today,
+  });
+  assert.equal(review.signals.buying.length, 1, 'case-insensitive dedupe must collapse repeats');
+  assert.equal(review.signals.buying[0].text, 'Budget approved for next quarter');
+  assert.equal(review.signals.risks.length, 1);
+  assert.equal(review.signals.timeline.length, 1);
+  assert.equal(review.signals.competitors.length, 1);
+  assert.equal(review.signals.total, 4, 'out-of-period signals must not count');
+}
+{
+  const panel = readFileSync(new URL('../src/features/reviews/WeeklyBusinessReviewPanel.tsx', import.meta.url), 'utf8');
+  for (const marker of ['Customer signals this period', 'nothing inferred', 'SignalGroup']) {
+    assert.ok(panel.includes(marker), `WeeklyBusinessReviewPanel missing signal marker: ${marker}`);
+  }
+}
+
 // === Phase 3: Ask Memoire business-state detection ===
 assert.equal(detectInsightQuestion('Where is the money?'), 'money_state');
 assert.equal(detectInsightQuestion('What am I owed right now?'), 'money_state');

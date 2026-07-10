@@ -98,6 +98,21 @@ export function WeeklyBusinessReviewPanel({ review, periodLabel }: { review: Wee
         </article>
 
         <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+          <h3 className="text-sm font-bold text-navy">Customer signals this period</h3>
+          <p className="mt-1 text-xs text-gray-500">Rolled up from what you captured - nothing inferred.</p>
+          {review.signals.total === 0 ? (
+            <p className="mt-3 text-sm text-gray-500">No signals captured in this period. Signals appear when captures mention buying intent, risks, timelines, or competitors.</p>
+          ) : (
+            <div className="mt-3 space-y-2 text-xs leading-5">
+              <SignalGroup label="Buying signals" tone="text-emerald-800 bg-emerald-50" items={review.signals.buying} />
+              <SignalGroup label="Risks" tone="text-red-800 bg-red-50" items={review.signals.risks} />
+              <SignalGroup label="Timeline" tone="text-blue-900 bg-blue-50" items={review.signals.timeline} />
+              <SignalGroup label="Competitors" tone="text-amber-900 bg-amber-50" items={review.signals.competitors} />
+            </div>
+          )}
+        </article>
+
+        <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
           <h3 className="text-sm font-bold text-navy">Commitments</h3>
           <p className="mt-1 text-xs text-gray-500">Promised next actions vs what the ledger shows. Current promises only - honest, not reconstructed.</p>
           {review.commitments.length === 0 ? (
@@ -148,4 +163,19 @@ function commitmentTone(status: 'kept' | 'missed' | 'upcoming') {
     missed: 'bg-red-50 text-red-700',
     upcoming: 'bg-blue-50 text-brand-blue',
   }[status];
+}
+
+
+function SignalGroup({ label, tone, items }: { label: string; tone: string; items: { text: string; accountName: string }[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div className={`rounded-lg px-3 py-2 ${tone}`}>
+      <p className="font-bold">{label}</p>
+      {items.map((item) => (
+        <p key={`${item.text}-${item.accountName}`} className="mt-0.5">
+          {item.text}{item.accountName ? ` - ${item.accountName}` : ''}
+        </p>
+      ))}
+    </div>
+  );
 }

@@ -24,6 +24,20 @@ export type NextWeekPriority = {
   href: string;
 };
 
+export type SignalDigestItem = {
+  text: string;
+  accountName: string;
+  date: string;
+};
+
+export type SignalDigest = {
+  buying: SignalDigestItem[];
+  risks: SignalDigestItem[];
+  timeline: SignalDigestItem[];
+  competitors: SignalDigestItem[];
+  total: number;
+};
+
 export type CommitmentStatus = 'kept' | 'missed' | 'upcoming';
 
 export type CommitmentItem = {
@@ -44,6 +58,7 @@ export type WeeklyBusinessReview = {
   wonValueLabel: string;
   stalledInitiatives: StalledInitiativeItem[];
   commitments: CommitmentItem[];
+  signals: SignalDigest;
   nextWeekPriorities: NextWeekPriority[];
 };
 
@@ -92,6 +107,7 @@ export function buildWeeklyBusinessReview(input: WeeklyBusinessReviewInput): Wee
     }));
 
   const commitments = buildCommitmentLedger(input, today);
+  const signals = buildSignalDigest(input);
 
   return {
     moneyFlow,
@@ -104,7 +120,54 @@ export function buildWeeklyBusinessReview(input: WeeklyBusinessReviewInput): Wee
     ),
     stalledInitiatives,
     commitments,
+    signals,
     nextWeekPriorities: buildNextWeekPriorities(input, moneyFlow, stalledInitiatives, today),
+  };
+}
+
+/**
+ * Customer-signal digest: the buying signals, risks, timeline signals, and
+ * competitor mentions that capture already extracted per activity, rolled up
+ * for the review period. Pure read-model - nothing here is inferred beyond
+ * what the seller captured.
+ */
+function buildSignalDigest(input: WeeklyBusinessReviewInput): SignalDigest {
+  const periodActivities = input.activities.filter((activity) => (
+    isBusinessDateInRange(activity.activityDate, input.period.start, input.period.end)
+  ));
+
+  const collect = (getSignals: (activity: SalesActivityRecord) => string[] | undefined) => {
+    const seen = new Set<string>();
+    const items: SignalDigestItem[] = [];
+    [...periodActivities]
+      .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate))
+      .forEach((activity) => {
+        (getSignals(activity) || []).forEach((text) => {
+          const cleaned = text.trim();
+          const key = cleaned.toLowerCase();
+          if (!cleaned || seen.has(key)) return;
+          seen.add(key);
+          items.push({
+            text: cleaned,
+            accountName: activity.accountName || activity.linkedAccountName || '',
+            date: activity.activityDate,
+          });
+        });
+      });
+    return items.slice(0, 5);
+  };
+
+  const buying = collect((activity) => activity.buyingSignals);
+  const risks = collect((activity) => activity.risks);
+  const timeline = collect((activity) => activity.timelineSignals);
+  const competitors = collect((activity) => activity.competitors);
+
+  return {
+    buying,
+    risks,
+    timeline,
+    competitors,
+    total: buying.length + risks.length + timeline.length + competitors.length,
   };
 }
 
