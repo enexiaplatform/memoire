@@ -25,6 +25,7 @@ import { updateOpportunity, type CrmLiteOpportunity } from '../../services/oppor
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { businessDomains, businessDomainTone, classifyBusinessDomain, type BusinessDomain } from '../../utils/businessDomain';
 import { buildCommercialJourneySnapshot, formatJourneyCommitment } from '../../utils/commercialJourney';
+import { buildActivityStateTrail, type ActivityTrailChipKind } from '../../utils/activityStateTrail';
 import { type QuoteRecord } from '../../services/quoteStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
 import { trackProductEvent } from '../../utils/productAnalytics';
@@ -487,6 +488,7 @@ function ActivityCard({
           <Fact label="Next action" value={activity.nextAction || 'No next action captured'} />
           <Fact label="Due date" value={formatSafeBusinessDate(activity.dueDate)} />
         </div>
+        <ActivityStateTrail activity={activity} />
       </button>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <TagList tags={activity.tags} />
@@ -500,6 +502,31 @@ function ActivityCard({
         </button>
       </div>
     </article>
+  );
+}
+
+const trailChipTone: Record<ActivityTrailChipKind, string> = {
+  buying: 'bg-emerald-50 text-emerald-800',
+  risk: 'bg-red-50 text-red-800',
+  timeline: 'bg-blue-50 text-blue-900',
+  competitor: 'bg-amber-50 text-amber-900',
+};
+
+function ActivityStateTrail({ activity }: { activity: SalesActivityRecord }) {
+  const chips = buildActivityStateTrail(activity);
+  if (chips.length === 0) return null;
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {chips.map((chip) => (
+        <span
+          key={chip.kind}
+          title={chip.items.join('; ')}
+          className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${trailChipTone[chip.kind]}`}
+        >
+          {chip.label}
+        </span>
+      ))}
+    </div>
   );
 }
 

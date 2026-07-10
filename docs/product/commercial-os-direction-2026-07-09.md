@@ -23,7 +23,7 @@ Not a full CRM (no territories, hierarchies, comp, enterprise workflow). Not pro
 
 | Direction item | State | Evidence / gap |
 |---|---|---|
-| 7.1 Unified Activity Ledger | SHIPPED | `/app/activity`, business domains, dual badges. Gap: per-activity state-change + outcome trail display |
+| 7.1 Unified Activity Ledger | SHIPPED (2026-07-10) | `/app/activity`, business domains, dual badges + per-activity state trail chips (`activityStateTrail`): captured buying signals, risks, timeline signals, competitors on each ledger card - never inferred |
 | 7.2 Context linking | MOSTLY SHIPPED | linking + suggestions + correction memory exist. Gap: activity <-> initiative linking |
 | 7.3 Commercial state & journey | SHIPPED 2026-07-09 | `buildCommercialJourneySnapshot`: position from money flow or stage, last touch, quiet days, commitment, blocker, risk - in the ledger detail |
 | 7.4 Today as action surface | SHIPPED | cockpit (5 questions) + capped nudges; analysis lives in Review/detail pages |
@@ -35,7 +35,7 @@ Not a full CRM (no territories, hierarchies, comp, enterprise workflow). Not pro
 
 ## Stage sequencing (with owners of remaining gaps)
 
-- **Stage 1 - Commercial Activity Foundation:** complete as of 2026-07-09 (ledger, taxonomy, linking, state-change suggestions, cockpit). Remaining polish: per-activity state trail in ledger cards.
+- **Stage 1 - Commercial Activity Foundation:** complete as of 2026-07-10 (ledger, taxonomy, linking, state-change suggestions, cockpit, per-activity state trail chips on ledger cards).
 - **Stage 2 - Commercial Operating Loop: COMPLETE (shipped 2026-07-09, one push per step).** (a) initiative depth on `payload` + related activities (`initiativeExperiment`, 80811fe), (b) commitments ledger in the Weekly Review (60dbf45), (c) workspace lenses - emphasis re-weighting only, one data model (ebcccb0), (d) commercial journey read-model surfaced in the Activity Ledger detail (`commercialJourney`, ca5d183).
 - **Stage 3 - Commercial Intelligence:** gated on Stage 2 usage data (funnel events shipped). GTM signals, route health, learning briefs - grown from real activities, never a blank canvas, weak data stated as weak.
 
