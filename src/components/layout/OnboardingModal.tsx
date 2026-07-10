@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle2, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { getDemoWorkspaceState, readLocalMemory } from '../../features/v31/localStore';
+import { getWorkspaceLens, onboardingEmphasisForLens } from '../../utils/workspaceLens';
 import {
   CAPTURE_SAVED_EVENT,
   CAPTURE_STRUCTURED_EVENT,
@@ -412,6 +413,10 @@ export function OnboardingModal() {
     }
   }
 
+  // Onboarding emphasis follows the workspace lens (direction 7.7): copy
+  // only - the guided steps and the data model are identical for every lens.
+  const lensEmphasis = onboardingEmphasisForLens(getWorkspaceLens());
+
   if (mode === 'welcome' || workflow.currentStep === 'welcome') {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/70 p-4 backdrop-blur-sm">
@@ -440,14 +445,14 @@ export function OnboardingModal() {
             <p className="text-sm leading-6 text-gray-600">
               {founderMode
                 ? "Let's walk through a seller getting ready for Monday pipeline review or a solo sales check-in."
-                : "Memoire is a Personal Business Activity OS used beside CRM, spreadsheets, and notes. Let's walk through Capture → Today → Pipeline Defense."}
+                : lensEmphasis.intro}
             </p>
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Workflow</p>
               <p className="mt-2 text-sm font-semibold text-navy">
                 {founderMode
                   ? 'Today - Capture - Pipeline Defense - MEDDIC - Outcome Learning'
-                  : 'Capture first evidence - Review Today - Prepare Pipeline Defense Brief'}
+                  : lensEmphasis.workflowLine}
               </p>
             </div>
           </div>

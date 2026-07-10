@@ -3,19 +3,29 @@ import { Banknote, Copy, Flag, Trophy } from 'lucide-react';
 import type { WeeklyBusinessReview } from '../../utils/weeklyBusinessReview';
 import { formatBaseCurrencyAmount, formatCurrencyAmount } from '../../utils/money';
 import { formatOutcomeRetro } from '../../utils/personalSalesLearning';
+import { getWorkspaceLens, orderReviewSectionsForLens } from '../../utils/workspaceLens';
 
 export function WeeklyBusinessReviewPanel({
   review,
   periodLabel,
   copyMessage,
   onCopyLearningBrief,
+  onCopyRevenueRiskBrief,
+  onCopyFollowUpBrief,
 }: {
   review: WeeklyBusinessReview;
   periodLabel: string;
   copyMessage?: string;
   onCopyLearningBrief?: () => void;
+  onCopyRevenueRiskBrief?: () => void;
+  onCopyFollowUpBrief?: () => void;
 }) {
   const activeLanes = review.moneyFlow.lanes.filter((lane) => lane.threads > 0);
+  const briefButtons = [
+    onCopyLearningBrief && { label: 'Copy Learning Brief', onClick: onCopyLearningBrief },
+    onCopyRevenueRiskBrief && { label: 'Copy Revenue Risk Brief', onClick: onCopyRevenueRiskBrief },
+    onCopyFollowUpBrief && { label: 'Copy Follow-up Brief', onClick: onCopyFollowUpBrief },
+  ].filter((button): button is { label: string; onClick: () => void } => Boolean(button));
 
   return (
     <section className="rounded-lg border border-blue-100 bg-white p-5 shadow-sm">
@@ -26,22 +36,43 @@ export function WeeklyBusinessReviewPanel({
             Where the money sits, what closed, which initiative stalled, and what next week must move.
           </p>
         </div>
-        {onCopyLearningBrief && (
-          <div className="flex shrink-0 items-center gap-2">
-            {copyMessage && <span className="text-xs font-semibold text-emerald-700">{copyMessage}</span>}
-            <button
-              type="button"
-              onClick={onCopyLearningBrief}
-              className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-2 text-xs font-bold text-brand-blue hover:bg-blue-50"
-            >
-              <Copy className="h-3.5 w-3.5" />
-              Copy Learning Brief
-            </button>
+        {briefButtons.length > 0 && (
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {copyMessage && <span className="w-full text-right text-xs font-semibold text-emerald-700 sm:w-auto">{copyMessage}</span>}
+            {briefButtons.map((button) => (
+              <button
+                key={button.label}
+                type="button"
+                onClick={button.onClick}
+                className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-2 text-xs font-bold text-brand-blue hover:bg-blue-50"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                {button.label}
+              </button>
+            ))}
           </div>
         )}
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+        {orderReviewSectionsForLens(reviewSections(review, activeLanes), getWorkspaceLens()).map((section) => (
+          <div key={section.id} className="contents">{section.node}</div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The review's six sections as an ordered list so the workspace lens can
+ * re-weight emphasis (direction 7.7). Reorder-only: every section always
+ * renders; the lens never adds or hides one.
+ */
+function reviewSections(review: WeeklyBusinessReview, activeLanes: WeeklyBusinessReview['moneyFlow']['lanes']) {
+  return [
+    {
+      id: 'money',
+      node: (
         <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
           <div className="flex items-center gap-2">
             <Banknote className="h-4 w-4 text-emerald-700" />
@@ -69,7 +100,11 @@ export function WeeklyBusinessReviewPanel({
             </p>
           )}
         </article>
-
+      ),
+    },
+    {
+      id: 'outcomes',
+      node: (
         <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
           <div className="flex items-center gap-2">
             <Trophy className="h-4 w-4 text-amber-600" />
@@ -101,7 +136,11 @@ export function WeeklyBusinessReviewPanel({
             </div>
           )}
         </article>
-
+      ),
+    },
+    {
+      id: 'initiatives',
+      node: (
         <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
           <div className="flex items-center gap-2">
             <Flag className="h-4 w-4 text-violet-700" />
@@ -121,7 +160,11 @@ export function WeeklyBusinessReviewPanel({
             </div>
           )}
         </article>
-
+      ),
+    },
+    {
+      id: 'signals',
+      node: (
         <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
           <h3 className="text-sm font-bold text-navy">Customer signals this period</h3>
           <p className="mt-1 text-xs text-gray-500">Rolled up from what you captured - nothing inferred.</p>
@@ -136,7 +179,11 @@ export function WeeklyBusinessReviewPanel({
             </div>
           )}
         </article>
-
+      ),
+    },
+    {
+      id: 'commitments',
+      node: (
         <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
           <h3 className="text-sm font-bold text-navy">Commitments</h3>
           <p className="mt-1 text-xs text-gray-500">Promised next actions vs what the ledger shows. Current promises only - honest, not reconstructed.</p>
@@ -155,7 +202,11 @@ export function WeeklyBusinessReviewPanel({
             </div>
           )}
         </article>
-
+      ),
+    },
+    {
+      id: 'priorities',
+      node: (
         <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
           <h3 className="text-sm font-bold text-navy">Next week's priorities</h3>
           {review.nextWeekPriorities.length === 0 ? (
@@ -173,9 +224,9 @@ export function WeeklyBusinessReviewPanel({
             </ol>
           )}
         </article>
-      </div>
-    </section>
-  );
+      ),
+    },
+  ];
 }
 
 function commitmentLabel(status: 'kept' | 'missed' | 'upcoming') {

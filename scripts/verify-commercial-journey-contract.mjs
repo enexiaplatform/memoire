@@ -102,9 +102,67 @@ function makeQuote(patch = {}) {
   assert.equal(snapshot.blocker, '');
 }
 
-// 5. UI contract: the ledger's detail modal shows where the deal stands.
+// 5. Solo journey head (direction 7.3): the same derived state in the solo
+// operator's language. Money in motion speaks first; the stage speaks before.
+{
+  const paidQuote = makeQuote({ status: 'Accepted', poStatus: 'Received', deliveryStatus: 'Delivered', paymentStatus: 'Paid', paymentDueDate: '' });
+  const quoted = buildCommercialJourneySnapshot({
+    opportunity: makeOpportunity(), quotes: [makeQuote({ status: 'Sent', poStatus: 'None', deliveryStatus: 'Pending', paymentStatus: 'Not requested', paymentDueDate: '' })],
+    activities: [makeActivity()], objections: [], today,
+  });
+  assert.equal(quoted.soloPosition, 'Offer', 'a live quote is the solo Offer');
+
+  const noQuoteLead = buildCommercialJourneySnapshot({
+    opportunity: makeOpportunity({ stage: 'Lead' }), quotes: [], activities: [], objections: [], today,
+  });
+  assert.equal(noQuoteLead.soloPosition, 'Audience');
+  assert.equal(noQuoteLead.retentionStatus, null, 'retention must stay null before money lands');
+
+  const conversation = buildCommercialJourneySnapshot({
+    opportunity: makeOpportunity({ stage: 'Discovery' }), quotes: [], activities: [], objections: [], today,
+  });
+  assert.equal(conversation.soloPosition, 'Conversation');
+
+  const pendingPayment = buildCommercialJourneySnapshot({
+    opportunity: makeOpportunity(), quotes: [makeQuote()], activities: [makeActivity()], objections: [], today,
+  });
+  assert.equal(pendingPayment.soloPosition, 'Payment');
+  assert.equal(pendingPayment.retentionStatus, null);
+
+  // 6. Retention is honest: paid + quiet says so, paid + fresh touch says
+  // so, a dated next action reads as planned, and no history says so plainly.
+  const paidQuiet = buildCommercialJourneySnapshot({
+    opportunity: makeOpportunity({ nextAction: '', nextActionDate: '' }), quotes: [paidQuote],
+    activities: [makeActivity({ activityDate: '2026-06-20' })], objections: [], today,
+  });
+  assert.equal(paidQuiet.soloPosition, 'Retention');
+  assert.ok(paidQuiet.retentionStatus.includes('quiet 19d'), 'quiet retention must name the quiet days');
+  assert.ok(paidQuiet.retentionStatus.includes('book a retention touch'));
+
+  const paidFresh = buildCommercialJourneySnapshot({
+    opportunity: makeOpportunity({ nextAction: '', nextActionDate: '' }), quotes: [paidQuote],
+    activities: [makeActivity({ activityDate: '2026-07-08' })], objections: [], today,
+  });
+  assert.ok(paidFresh.retentionStatus.includes('last touch 1d ago'), 'fresh retention must read as healthy');
+
+  const paidPlanned = buildCommercialJourneySnapshot({
+    opportunity: makeOpportunity(), quotes: [paidQuote],
+    activities: [makeActivity({ activityDate: '2026-06-20' })], objections: [], today,
+  });
+  assert.equal(paidPlanned.retentionStatus, 'Paid - next touch planned.', 'a dated next action must read as a plan, not silence');
+
+  const paidNoTouch = buildCommercialJourneySnapshot({
+    opportunity: makeOpportunity({ nextAction: '', nextActionDate: '', createdAt: '' }), quotes: [paidQuote],
+    activities: [], objections: [], today,
+  });
+  assert.ok(paidNoTouch.retentionStatus.includes('no touch captured since'), 'paid with no touches must say so plainly');
+}
+
+// 7. UI contract: the ledger's detail modal shows where the deal stands,
+// speaks the solo journey's language under the solo lens, and surfaces
+// retention when money has landed.
 const ledger = readFileSync(new URL('../src/features/calendar/SalesActivityCalendarPage.tsx', import.meta.url), 'utf8');
-for (const marker of ['buildCommercialJourneySnapshot', 'Where this deal stands', 'Next commitment', 'formatJourneyCommitment']) {
+for (const marker of ['buildCommercialJourneySnapshot', 'Where this deal stands', 'Next commitment', 'formatJourneyCommitment', 'soloPosition', 'retentionStatus', 'getWorkspaceLens']) {
   assert.ok(ledger.includes(marker), `Activity Ledger missing journey marker: ${marker}`);
 }
 

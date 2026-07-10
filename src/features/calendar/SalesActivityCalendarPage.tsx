@@ -25,6 +25,7 @@ import { updateOpportunity, type CrmLiteOpportunity } from '../../services/oppor
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { businessDomains, businessDomainTone, classifyBusinessDomain, type BusinessDomain } from '../../utils/businessDomain';
 import { buildCommercialJourneySnapshot, formatJourneyCommitment } from '../../utils/commercialJourney';
+import { getWorkspaceLens } from '../../utils/workspaceLens';
 import { buildActivityStateTrail, type ActivityTrailChipKind } from '../../utils/activityStateTrail';
 import { type QuoteRecord } from '../../services/quoteStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
@@ -605,7 +606,10 @@ function ActivityDetailModal({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-bold text-navy">Where this deal stands</p>
               <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-brand-blue ring-1 ring-blue-100">
-                {journey.position}{journey.positionSource === 'money-flow' ? ' (money flow)' : ''}
+                {/* The solo lens speaks the solo journey's language (direction 7.3); same derived state either way. */}
+                {getWorkspaceLens() === 'solo'
+                  ? journey.soloPosition
+                  : `${journey.position}${journey.positionSource === 'money-flow' ? ' (money flow)' : ''}`}
               </span>
             </div>
             <div className="mt-3 grid grid-cols-1 gap-2 text-xs leading-5 sm:grid-cols-2">
@@ -615,6 +619,7 @@ function ActivityDetailModal({
               <Fact label="Risk" value={journey.riskStatus} />
               <Fact label="Blocker" value={journey.blocker || 'None open'} />
               <Fact label="Evidence" value={journey.evidence || 'Not captured yet'} />
+              {journey.retentionStatus && <Fact label="Retention" value={journey.retentionStatus} />}
             </div>
           </section>
         )}

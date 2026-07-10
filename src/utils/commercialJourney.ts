@@ -6,9 +6,15 @@ import { buildMoneyFlow } from './moneyFlow.ts';
 import { classifyOpportunitySilence } from './proactiveNudges.ts';
 import { compareSafeBusinessDate, formatSafeBusinessDate, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 
+export const soloJourneyStages = ['Audience', 'Conversation', 'Offer', 'Sale', 'Fulfillment', 'Payment', 'Retention'] as const;
+
+export type SoloJourneyStage = (typeof soloJourneyStages)[number];
+
 export type CommercialJourneySnapshot = {
   position: string;
   positionSource: 'money-flow' | 'stage';
+  soloPosition: SoloJourneyStage;
+  retentionStatus: string | null;
   lastTouch: { date: string; summary: string } | null;
   daysQuiet: number | null;
   evidence: string;
@@ -57,9 +63,18 @@ export function buildCommercialJourneySnapshot(input: JourneyInput): CommercialJ
       && (objection.opportunityId === opportunity.id || normalize(objection.accountName) === accountKey))
     .sort((a, b) => (a.impact === 'High' ? -1 : 1) - (b.impact === 'High' ? -1 : 1))[0] || null;
 
+  const soloPosition = deriveSoloPosition(moneyThread?.stage || null, opportunity.stage);
+  const retentionStatus = buildRetentionStatus(
+    soloPosition,
+    silence.daysQuiet,
+    isValidBusinessDate(opportunity.nextActionDate),
+  );
+
   return {
     position: moneyThread ? moneyThread.stage : opportunity.stage,
     positionSource: moneyThread ? 'money-flow' : 'stage',
+    soloPosition,
+    retentionStatus,
     lastTouch: lastTouchActivity
       ? { date: lastTouchActivity.activityDate, summary: lastTouchActivity.summary }
       : null,
@@ -74,6 +89,57 @@ export function buildCommercialJourneySnapshot(input: JourneyInput): CommercialJ
       : 'No quote yet',
     riskStatus: buildRiskStatus(silence.status, silence.daysQuiet, opportunity),
   };
+}
+
+/**
+ * The solo-business journey head (direction 7.3): the same derived state
+ * rendered in the solo operator's language - Audience -> Conversation ->
+ * Offer -> Sale -> Fulfillment -> Payment -> Retention. Once money is in
+ * motion the money-flow stage speaks; before that the sales stage does.
+ * Derived only - no second pipeline is stored.
+ */
+function deriveSoloPosition(moneyStage: string | null, opportunityStage: string): SoloJourneyStage {
+  if (moneyStage && moneyStage !== 'Opportunity') {
+    const byMoney: Record<string, SoloJourneyStage> = {
+      Quoted: 'Offer',
+      'Pending PO': 'Sale',
+      'Pending delivery': 'Fulfillment',
+      'Pending payment': 'Payment',
+      Paid: 'Retention',
+    };
+    return byMoney[moneyStage] || 'Offer';
+  }
+  const byStage: Record<string, SoloJourneyStage> = {
+    Lead: 'Audience',
+    Discovery: 'Conversation',
+    Qualification: 'Conversation',
+    'Technical discussion': 'Conversation',
+    Demo: 'Conversation',
+    Proposal: 'Offer',
+    Negotiation: 'Offer',
+    Procurement: 'Sale',
+    Won: 'Sale',
+  };
+  return byStage[opportunityStage] || 'Conversation';
+}
+
+/**
+ * Retention is a read-model over captured touches after the money landed:
+ * quiet days past the payment say plainly whether the relationship is
+ * being kept warm. Null unless the thread has actually been paid. A dated
+ * next action counts as a plan (the silence classifier reports no quiet
+ * days for planned deals), so the line says "planned" instead of guessing.
+ */
+function buildRetentionStatus(
+  soloPosition: SoloJourneyStage,
+  daysQuiet: number | null,
+  hasPlannedNextTouch: boolean,
+): string | null {
+  if (soloPosition !== 'Retention') return null;
+  if (hasPlannedNextTouch) return 'Paid - next touch planned.';
+  if (daysQuiet === null) return 'Paid - no touch captured since; book a retention touch.';
+  if (daysQuiet >= 14) return `Paid - quiet ${daysQuiet}d; book a retention touch.`;
+  return `Paid - last touch ${daysQuiet}d ago.`;
 }
 
 function buildRiskStatus(

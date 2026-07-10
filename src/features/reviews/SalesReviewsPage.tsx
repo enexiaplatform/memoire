@@ -14,6 +14,8 @@ import { FollowUpImpactPanel } from '../dashboard/FollowUpImpactPanel';
 import { WeeklyBusinessReviewPanel } from './WeeklyBusinessReviewPanel';
 import { buildWeeklyBusinessReview } from '../../utils/weeklyBusinessReview';
 import { generateCommercialLearningBriefMarkdown } from '../../utils/commercialLearningBrief';
+import { generateRevenueRiskBriefMarkdown } from '../../utils/revenueRiskBrief';
+import { generateFollowUpBriefMarkdown } from '../../utils/followUpBrief';
 import { trackProductEvent } from '../../utils/productAnalytics';
 import { type OperatingContextRecord } from '../../services/operatingContextStore';
 import { buildFollowUpImpact } from '../../utils/followUpImpact';
@@ -393,6 +395,33 @@ export function SalesReviewsPage() {
           try {
             await navigator.clipboard.writeText(markdown);
             setLearningBriefMessage('Learning Brief copied.');
+          } catch {
+            setLearningBriefMessage('Clipboard unavailable - brief could not be copied.');
+          }
+        }}
+        onCopyRevenueRiskBrief={async () => {
+          const markdown = generateRevenueRiskBriefMarkdown({
+            opportunities,
+            quotes,
+            periodLabel: period.label,
+          });
+          try {
+            await navigator.clipboard.writeText(markdown);
+            setLearningBriefMessage('Revenue Risk Brief copied.');
+          } catch {
+            setLearningBriefMessage('Clipboard unavailable - brief could not be copied.');
+          }
+        }}
+        onCopyFollowUpBrief={async () => {
+          const markdown = generateFollowUpBriefMarkdown({
+            activities,
+            opportunities,
+            opportunityOutcomes,
+            periodLabel: period.label,
+          });
+          try {
+            await navigator.clipboard.writeText(markdown);
+            setLearningBriefMessage('Follow-up Brief copied.');
           } catch {
             setLearningBriefMessage('Clipboard unavailable - brief could not be copied.');
           }
