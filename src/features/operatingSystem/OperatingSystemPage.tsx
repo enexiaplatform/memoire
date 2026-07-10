@@ -28,6 +28,17 @@ import {
   type OperatingContextRecord,
   type OperatingContextType,
 } from '../../services/operatingContextStore';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
+import { type SalesActivityRecord } from '../../services/salesActivityStore';
+import {
+  initiativeDecisionLabel,
+  initiativeDecisions,
+  initiativeDecisionTone,
+  listInitiativeActivities,
+  readInitiativeExperiment,
+  writeInitiativeExperiment,
+  type InitiativeDecision,
+} from '../../utils/initiativeExperiment';
 
 type Filter = 'active' | 'initiative' | 'play' | 'all';
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -38,6 +49,7 @@ export function OperatingSystemPage() {
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
   const [records, setRecords] = useState<OperatingContextRecord[]>([]);
+  const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('active');
   const [panelMode, setPanelMode] = useState<'closed' | 'add' | 'edit'>('closed');
@@ -55,6 +67,16 @@ export function OperatingSystemPage() {
       if (!mounted) return;
       setRecords(next);
       setLoading(false);
+      const cached = getCachedSalesWorkspaceData(dataUserId);
+      if (cached) {
+        setActivities(cached.activities);
+        return;
+      }
+      loadSalesWorkspaceData(dataUserId)
+        .then((workspace) => {
+          if (mounted) setActivities(workspace.activities);
+        })
+        .catch(() => undefined);
     }
     if (!authLoading) load();
     return () => {
@@ -219,6 +241,7 @@ export function OperatingSystemPage() {
         mode={panelMode}
         form={form}
         record={editingRecord}
+        activities={activities}
         saveState={saveState}
         message={message}
         onChange={setForm}
@@ -289,6 +312,7 @@ function OperatingPanel({
   mode,
   form,
   record,
+  activities,
   saveState,
   message,
   onChange,
@@ -299,6 +323,7 @@ function OperatingPanel({
   mode: 'closed' | 'add' | 'edit';
   form: OperatingContextFormInput;
   record: OperatingContextRecord | null;
+  activities: SalesActivityRecord[];
   saveState: SaveState;
   message: string;
   onChange: (form: OperatingContextFormInput) => void;
@@ -330,14 +355,14 @@ function OperatingPanel({
           <div>
             <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">Type</p>
             <div className="inline-flex rounded-lg bg-gray-100 p-1">
-              {(['initiative', 'play'] as OperatingContextType[]).map((type) => (
+              {(['initiative', 'play', 'offer', 'experiment'] as OperatingContextType[]).map((type) => (
                 <button
                   key={type}
                   type="button"
                   onClick={() => update('contextType', type)}
                   className={`rounded-md px-3 py-1.5 text-xs font-bold ${form.contextType === type ? 'bg-white text-navy shadow-sm' : 'text-gray-500'}`}
                 >
-                  {type === 'initiative' ? 'Initiative' : 'Account play'}
+                  {contextTypeLabel(type)}
                 </button>
               ))}
             </div>
@@ -357,6 +382,12 @@ function OperatingPanel({
           </div>
           <TextArea label="Next action" value={form.nextAction} onChange={(value) => update('nextAction', value)} />
           <Field label="Next date" type="date" value={form.nextDate} onChange={(value) => update('nextDate', value)} />
+
+          <ExperimentSection form={form} onChange={onChange} />
+
+          {mode === 'edit' && record && (
+            <RelatedActivitiesSection title={record.title} activities={activities} />
+          )}
 
           {details.length > 0 && (
             <details className="rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -492,4 +523,85 @@ function operatingPrioritySort(left: OperatingContextRecord, right: OperatingCon
 function todayKey() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+
+function contextTypeLabel(type: OperatingContextType) {
+  return {
+    initiative: 'Initiative',
+    play: 'Account play',
+    offer: 'Offer',
+    experiment: 'Experiment',
+  }[type];
+}
+
+function ExperimentSection({
+  form,
+  onChange,
+}: {
+  form: OperatingContextFormInput;
+  onChange: (form: OperatingContextFormInput) => void;
+}) {
+  const fields = readInitiativeExperiment(form.payload);
+  const updateField = <Key extends keyof typeof fields>(key: Key, value: (typeof fields)[Key]) => {
+    onChange({ ...form, payload: writeInitiativeExperiment(form.payload, { ...fields, [key]: value }) });
+  };
+
+  return (
+    <section className="rounded-lg border border-violet-100 bg-violet-50/40 p-4">
+      <p className="text-sm font-bold text-navy">Experiment & learning</p>
+      <p className="mt-1 text-xs leading-5 text-gray-500">
+        What are you testing, what should happen, and what is the verdict? Answer these once and the weekly review can hold you to them.
+      </p>
+      <div className="mt-3 space-y-3">
+        <TextArea label="What am I testing? (hypothesis)" value={fields.hypothesis} onChange={(value) => updateField('hypothesis', value)} />
+        <TextArea label="What do I expect to happen? (expected signal)" value={fields.expectedSignal} onChange={(value) => updateField('expectedSignal', value)} />
+        <TextArea label="What is the signal so far?" value={fields.currentSignal} onChange={(value) => updateField('currentSignal', value)} />
+        <div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">Decision</p>
+          <div className="inline-flex rounded-lg bg-white p-1 ring-1 ring-gray-200">
+            {initiativeDecisions.map((decision) => (
+              <button
+                key={decision}
+                type="button"
+                onClick={() => updateField('decision', decision as InitiativeDecision)}
+                className={`rounded-md px-3 py-1.5 text-xs font-bold ${fields.decision === decision ? initiativeDecisionTone(decision as InitiativeDecision) : 'text-gray-500'}`}
+              >
+                {initiativeDecisionLabel(decision as InitiativeDecision)}
+              </button>
+            ))}
+          </div>
+        </div>
+        {fields.decision !== 'undecided' && (
+          <TextArea label="Why this decision?" value={fields.decisionNote} onChange={(value) => updateField('decisionNote', value)} />
+        )}
+      </div>
+    </section>
+  );
+}
+
+function RelatedActivitiesSection({ title, activities }: { title: string; activities: SalesActivityRecord[] }) {
+  const related = listInitiativeActivities(title, activities);
+  return (
+    <section className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-bold text-navy">Related activity ({related.length})</p>
+        <Link to="/app/activity" className="text-xs font-bold text-brand-blue hover:underline">Open ledger</Link>
+      </div>
+      {related.length === 0 ? (
+        <p className="mt-2 text-xs leading-5 text-gray-500">
+          No captured activity mentions this title yet. Capture updates that name it and they will appear here - and keep it out of the stalled list.
+        </p>
+      ) : (
+        <div className="mt-2 space-y-1.5">
+          {related.map((activity) => (
+            <div key={activity.id} className="rounded-lg bg-white px-3 py-2 text-xs">
+              <p className="font-semibold text-gray-900">{activity.summary}</p>
+              <p className="mt-0.5 text-gray-500">{formatSafeBusinessDate(activity.activityDate)} - {activity.activityType}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
 }
