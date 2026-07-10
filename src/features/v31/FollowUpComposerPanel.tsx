@@ -13,6 +13,7 @@ import { FOLLOWUP_DRAFT_READY_EVENT } from '../onboarding/guidedWorkflow';
 import { useAuthContext } from '../../auth/authContext';
 import { saveSalesActivity } from '../../services/salesActivityStore';
 import { hasLocalSampleData } from '../../utils/dataMode';
+import { trackProductEvent } from '../../utils/productAnalytics';
 
 interface FollowUpComposerPanelProps {
   initialContext: FollowUpContext;
@@ -90,6 +91,7 @@ export function FollowUpComposerPanel({ initialContext, onClose, onActivityLogge
       }, hasLocalSampleData() ? undefined : user?.id);
       setLogState('saved');
       setLogMessage(result.warning || 'Logged as a customer touch - silence tracking updated.');
+      trackProductEvent('follow_up_logged_as_sent');
       onActivityLogged?.();
     } catch {
       setLogState('idle');
@@ -215,6 +217,7 @@ export function FollowUpComposerPanel({ initialContext, onClose, onActivityLogge
                             try {
                               await onScheduleNextAction(nextTouchText.trim(), nextTouchDate);
                               setScheduleState('saved');
+                              trackProductEvent('next_touch_booked');
                             } catch {
                               setScheduleState('error');
                             }

@@ -24,6 +24,7 @@ import {
 import { updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { businessDomains, businessDomainTone, classifyBusinessDomain, type BusinessDomain } from '../../utils/businessDomain';
+import { trackProductEvent } from '../../utils/productAnalytics';
 import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
 import { applyOpportunityUpdateSuggestion, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 import type { SalesActivityType } from '../../utils/salesActivityClassifier';
@@ -103,6 +104,10 @@ export function SalesActivityCalendarPage() {
   useEffect(() => {
     refreshActivities();
   }, [refreshActivities]);
+
+  useEffect(() => {
+    trackProductEvent('activity_ledger_opened');
+  }, []);
 
   const range = useMemo(() => getCalendarRange(viewMode, anchorDate), [anchorDate, viewMode]);
   const periodActivities = useMemo(() => {

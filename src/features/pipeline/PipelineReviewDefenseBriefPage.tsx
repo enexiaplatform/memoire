@@ -314,6 +314,14 @@ export function PipelineReviewDefenseBriefPage() {
     };
   }, [accountLoading, sampleDataActive, user?.id]);
 
+  useEffect(() => {
+    if (workspaceSnapshot && opportunityOutcomes.length > 0) {
+      trackProductEvent('calibration_viewed');
+    }
+    // Track once per page visit when calibration has data to show.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Boolean(workspaceSnapshot && opportunityOutcomes.length > 0)]);
+
   const followUpImpact = useMemo(() => (workspaceSnapshot
     ? buildFollowUpImpact({
       activities: workspaceSnapshot.activities,

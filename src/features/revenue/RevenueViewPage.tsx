@@ -11,6 +11,7 @@ import { hasLocalSampleData } from '../../utils/dataMode';
 import { formatBaseCurrencyAmount as formatBaseMoney, formatCurrencyAmount as formatMoney } from '../../utils/money';
 import { buildRevenueView, type RevenueActionItem, type RevenueRiskKind } from '../../utils/revenueView';
 import { buildMoneyFlow, moneyFlowStages } from '../../utils/moneyFlow';
+import { trackProductEvent } from '../../utils/productAnalytics';
 import { formatBaseCurrencyAmount, formatCurrencyAmount } from '../../utils/money';
 
 type RevenueData = {
@@ -46,6 +47,10 @@ export function RevenueViewPage() {
     if (!authLoading) void loadRevenue();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, dataUserId]);
+
+  useEffect(() => {
+    trackProductEvent('money_flow_opened');
+  }, []);
 
   const revenue = useMemo(() => buildRevenueView(data), [data]);
   const moneyFlow = useMemo(() => buildMoneyFlow(data), [data]);

@@ -13,6 +13,7 @@ import { saveSalesAssetDraft } from '../../services/salesAssetStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { hasLocalSampleData } from '../../utils/dataMode';
+import { trackProductEvent } from '../../utils/productAnalytics';
 import { buildSalesAssetDraftFromPattern, generateAssetDraftMarkdown } from '../../utils/salesAssetSuggestions';
 import {
   buildObjectionPlaybook,
@@ -184,7 +185,10 @@ export function SalesPlaybookPage() {
           {!objectionPlaybook.needsMoreData && objectionPlaybook.insights.length > 0 && (
             <ObjectionLearningSection
               playbook={objectionPlaybook}
-              onCopy={() => copyText('objection playbook', generateObjectionPlaybookMarkdown(objectionPlaybook))}
+              onCopy={() => {
+                trackProductEvent('proven_responses_copied');
+                void copyText('objection playbook', generateObjectionPlaybookMarkdown(objectionPlaybook));
+              }}
             />
           )}
           <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">

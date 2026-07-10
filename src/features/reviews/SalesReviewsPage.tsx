@@ -13,6 +13,7 @@ import {
 import { FollowUpImpactPanel } from '../dashboard/FollowUpImpactPanel';
 import { WeeklyBusinessReviewPanel } from './WeeklyBusinessReviewPanel';
 import { buildWeeklyBusinessReview } from '../../utils/weeklyBusinessReview';
+import { trackProductEvent } from '../../utils/productAnalytics';
 import { type OperatingContextRecord } from '../../services/operatingContextStore';
 import { buildFollowUpImpact } from '../../utils/followUpImpact';
 import { type AccountMemoryRecord } from '../../services/accountStore';
@@ -88,6 +89,10 @@ export function SalesReviewsPage() {
   const [commercialCopyMessage, setCommercialCopyMessage] = useState('');
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
+
+  useEffect(() => {
+    trackProductEvent('business_review_opened');
+  }, []);
 
   const period = useMemo(() => getRecapRange(periodType, anchorDate), [anchorDate, periodType]);
   const periodActivities = useMemo(

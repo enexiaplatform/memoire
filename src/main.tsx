@@ -3,7 +3,10 @@ import ReactDOM from 'react-dom/client';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './auth/AuthProvider';
 import App from './App';
+import { installGlobalErrorReporter } from './lib/globalErrorReporter';
 import './index.css';
+
+installGlobalErrorReporter();
 
 // Legacy sample-data cleanup only matters when the demo flag is set. The cheap
 // flag check keeps the heavy sampleData module (and the domain stores it pulls

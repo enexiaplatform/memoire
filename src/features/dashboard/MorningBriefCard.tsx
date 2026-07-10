@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 import type { MorningBrief } from '../../utils/morningBrief';
+import { trackProductEvent } from '../../utils/productAnalytics';
 
 export function MorningBriefCard({ brief }: { brief: MorningBrief }) {
   return (
@@ -24,6 +25,7 @@ export function MorningBriefCard({ brief }: { brief: MorningBrief }) {
               <Link
                 key={question.label}
                 to={question.href}
+                onClick={() => trackProductEvent('morning_brief_question_clicked')}
                 className="rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-bold text-brand-blue hover:border-brand-blue/40 hover:bg-blue-50"
               >
                 {question.label}

@@ -41,6 +41,16 @@ export const PRODUCT_EVENTS = new Set([
   'csv_import_completed',
   'pipeline_defense_brief_created',
   'review_pack_saved',
+  'activity_ledger_opened',
+  'business_review_opened',
+  'money_flow_opened',
+  'cockpit_tile_clicked',
+  'morning_brief_question_clicked',
+  'follow_up_logged_as_sent',
+  'next_touch_booked',
+  'calibration_viewed',
+  'proven_responses_copied',
+  'voice_dictation_used',
 ]);
 export const DATA_MODES = new Set(['demo-local', 'cloud-browser', 'browser-only', 'sync-issue', 'unknown']);
 
