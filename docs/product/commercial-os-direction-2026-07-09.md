@@ -27,7 +27,7 @@ Not a full CRM (no territories, hierarchies, comp, enterprise workflow). Not pro
 | 7.2 Context linking | MOSTLY SHIPPED | linking + suggestions + correction memory exist. Gap: activity <-> initiative linking |
 | 7.3 Commercial state & journey | SHIPPED 2026-07-09 | `buildCommercialJourneySnapshot`: position from money flow or stage, last touch, quiet days, commitment, blocker, risk - in the ledger detail |
 | 7.4 Today as action surface | SHIPPED | cockpit (5 questions) + capped nudges; analysis lives in Review/detail pages |
-| 7.5 Weekly Commercial Review | SHIPPED (v1) | money lanes, wins/losses, stalled initiatives, next-week priorities + Pipeline Defense Brief as one output. Gap: commitments ledger, customer-signal digest, named Learning Brief |
+| 7.5 Weekly Commercial Review | SHIPPED (v2, 2026-07-10) | money lanes, wins/losses, stalled initiatives, commitments ledger (60dbf45), customer-signal digest (b141a1d), next-week priorities + copyable Commercial Learning Brief composed from the four measured layers (`commercialLearningBrief`). Pipeline Defense Brief stays the manager-facing artifact. No remaining gaps |
 | 7.6 Initiatives & experiments | SHIPPED 2026-07-09 | hypothesis/expected signal/current signal/decision on `payload`; related-activity read-model on the operating page |
 | 7.7 Workspace lenses | SHIPPED 2026-07-09 | Settings selector; Solo leads capture templates, B2B leads the cockpit; contract enforces reorder-only (never add/hide) |
 | 7.8 GTM/RTM intelligence | CORRECTLY DEFERRED | Stage 3; requires activity+outcome density; funnel instrumentation shipped 2026-07-09 feeds it |

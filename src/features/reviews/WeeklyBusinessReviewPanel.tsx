@@ -1,19 +1,44 @@
 import { Link } from 'react-router-dom';
-import { Banknote, Flag, Trophy } from 'lucide-react';
+import { Banknote, Copy, Flag, Trophy } from 'lucide-react';
 import type { WeeklyBusinessReview } from '../../utils/weeklyBusinessReview';
 import { formatBaseCurrencyAmount, formatCurrencyAmount } from '../../utils/money';
 import { formatOutcomeRetro } from '../../utils/personalSalesLearning';
 
-export function WeeklyBusinessReviewPanel({ review, periodLabel }: { review: WeeklyBusinessReview; periodLabel: string }) {
+export function WeeklyBusinessReviewPanel({
+  review,
+  periodLabel,
+  copyMessage,
+  onCopyLearningBrief,
+}: {
+  review: WeeklyBusinessReview;
+  periodLabel: string;
+  copyMessage?: string;
+  onCopyLearningBrief?: () => void;
+}) {
   const activeLanes = review.moneyFlow.lanes.filter((lane) => lane.threads > 0);
 
   return (
     <section className="rounded-lg border border-blue-100 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-bold text-navy">Business review - {periodLabel}</h2>
-        <p className="text-sm text-gray-600">
-          Where the money sits, what closed, which initiative stalled, and what next week must move.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-lg font-bold text-navy">Business review - {periodLabel}</h2>
+          <p className="text-sm text-gray-600">
+            Where the money sits, what closed, which initiative stalled, and what next week must move.
+          </p>
+        </div>
+        {onCopyLearningBrief && (
+          <div className="flex shrink-0 items-center gap-2">
+            {copyMessage && <span className="text-xs font-semibold text-emerald-700">{copyMessage}</span>}
+            <button
+              type="button"
+              onClick={onCopyLearningBrief}
+              className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-2 text-xs font-bold text-brand-blue hover:bg-blue-50"
+            >
+              <Copy className="h-3.5 w-3.5" />
+              Copy Learning Brief
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">

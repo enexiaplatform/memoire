@@ -13,6 +13,7 @@ import {
 import { FollowUpImpactPanel } from '../dashboard/FollowUpImpactPanel';
 import { WeeklyBusinessReviewPanel } from './WeeklyBusinessReviewPanel';
 import { buildWeeklyBusinessReview } from '../../utils/weeklyBusinessReview';
+import { generateCommercialLearningBriefMarkdown } from '../../utils/commercialLearningBrief';
 import { trackProductEvent } from '../../utils/productAnalytics';
 import { type OperatingContextRecord } from '../../services/operatingContextStore';
 import { buildFollowUpImpact } from '../../utils/followUpImpact';
@@ -87,6 +88,7 @@ export function SalesReviewsPage() {
   const [copyMessage, setCopyMessage] = useState('');
   const [executionCopyMessage, setExecutionCopyMessage] = useState('');
   const [commercialCopyMessage, setCommercialCopyMessage] = useState('');
+  const [learningBriefMessage, setLearningBriefMessage] = useState('');
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
@@ -376,7 +378,26 @@ export function SalesReviewsPage() {
 
       <ExecutionRhythmCharts activities={activities} opportunities={opportunities} />
 
-      <WeeklyBusinessReviewPanel review={weeklyBusinessReview} periodLabel={period.label} />
+      <WeeklyBusinessReviewPanel
+        review={weeklyBusinessReview}
+        periodLabel={period.label}
+        copyMessage={learningBriefMessage}
+        onCopyLearningBrief={async () => {
+          const markdown = generateCommercialLearningBriefMarkdown({
+            objections,
+            opportunityOutcomes,
+            opportunities,
+            activities,
+            periodLabel: period.label,
+          });
+          try {
+            await navigator.clipboard.writeText(markdown);
+            setLearningBriefMessage('Learning Brief copied.');
+          } catch {
+            setLearningBriefMessage('Clipboard unavailable - brief could not be copied.');
+          }
+        }}
+      />
 
       <FollowUpImpactPanel impact={periodFollowUpImpact} periodLabel={period.label} />
 
