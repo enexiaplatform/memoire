@@ -6,7 +6,7 @@ import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import { buildMoneyFlow, type MoneyFlow } from './moneyFlow.ts';
 import { classifyInitiativeHealth, type InitiativeHealth } from './proactiveNudges.ts';
 import { formatBaseCurrencyAmount, sumMoneyInBase } from './money.ts';
-import { formatSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
+import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 
 export type StalledInitiativeItem = {
   id: string;
@@ -24,6 +24,18 @@ export type NextWeekPriority = {
   href: string;
 };
 
+export type CommitmentStatus = 'kept' | 'missed' | 'upcoming';
+
+export type CommitmentItem = {
+  id: string;
+  accountName: string;
+  opportunityName: string;
+  action: string;
+  date: string;
+  status: CommitmentStatus;
+  evidence: string;
+};
+
 export type WeeklyBusinessReview = {
   moneyFlow: MoneyFlow;
   wins: OpportunityOutcomeRecord[];
@@ -31,6 +43,7 @@ export type WeeklyBusinessReview = {
   otherOutcomes: OpportunityOutcomeRecord[];
   wonValueLabel: string;
   stalledInitiatives: StalledInitiativeItem[];
+  commitments: CommitmentItem[];
   nextWeekPriorities: NextWeekPriority[];
 };
 
@@ -78,6 +91,8 @@ export function buildWeeklyBusinessReview(input: WeeklyBusinessReviewInput): Wee
       nextAction: context.nextAction || 'Capture an update, book the next step, or close it.',
     }));
 
+  const commitments = buildCommitmentLedger(input, today);
+
   return {
     moneyFlow,
     wins,
@@ -88,8 +103,69 @@ export function buildWeeklyBusinessReview(input: WeeklyBusinessReviewInput): Wee
       true,
     ),
     stalledInitiatives,
+    commitments,
     nextWeekPriorities: buildNextWeekPriorities(input, moneyFlow, stalledInitiatives, today),
   };
+}
+
+/**
+ * The commitments ledger: promised next actions (dated inside the review
+ * period or already overdue) against what actually happened. Kept = a
+ * captured touch on that deal on or after the promised date; missed = the
+ * date passed with no such touch; upcoming = still ahead inside the period.
+ * Only the current promise is stored on an opportunity, so this is honest
+ * for the live period - past periods cannot be reconstructed and are not
+ * pretended.
+ */
+function buildCommitmentLedger(input: WeeklyBusinessReviewInput, today: string): CommitmentItem[] {
+  const items: CommitmentItem[] = [];
+
+  input.opportunities
+    .filter((opportunity) => opportunity.status === 'Active' && isValidBusinessDate(opportunity.nextActionDate))
+    .filter((opportunity) => compareSafeBusinessDate(opportunity.nextActionDate, input.period.end) <= 0)
+    .forEach((opportunity) => {
+      const promiseDate = opportunity.nextActionDate;
+      const touchOnOrAfter = input.activities
+        .filter((activity) => isValidBusinessDate(activity.activityDate)
+          && (activity.linkedOpportunityId === opportunity.id
+            || (normalizeName(activity.accountName) !== ''
+              && (normalizeName(activity.accountName) === normalizeName(opportunity.accountName)
+                || normalizeName(activity.linkedAccountName) === normalizeName(opportunity.accountName)))))
+        .filter((activity) => compareSafeBusinessDate(activity.activityDate, promiseDate) >= 0)
+        .map((activity) => activity.activityDate)
+        .sort(compareSafeBusinessDate)
+        .at(0) || '';
+
+      let status: CommitmentStatus;
+      let evidence: string;
+      if (touchOnOrAfter) {
+        status = 'kept';
+        evidence = `Touch captured on ${formatSafeBusinessDate(touchOnOrAfter)}.`;
+      } else if (compareSafeBusinessDate(promiseDate, today) < 0) {
+        status = 'missed';
+        evidence = 'No captured touch since the promised date.';
+      } else {
+        status = 'upcoming';
+        evidence = `Due ${formatSafeBusinessDate(promiseDate)}.`;
+      }
+
+      items.push({
+        id: `commitment-${opportunity.id}`,
+        accountName: opportunity.accountName || 'Needs confirmation',
+        opportunityName: opportunity.opportunityName || 'Needs confirmation',
+        action: opportunity.nextAction || 'Next action',
+        date: promiseDate,
+        status,
+        evidence,
+      });
+    });
+
+  const statusRank = { missed: 0, upcoming: 1, kept: 2 };
+  return items.sort((a, b) => statusRank[a.status] - statusRank[b.status] || compareSafeBusinessDate(a.date, b.date));
+}
+
+function normalizeName(value?: string) {
+  return (value || '').trim().toLowerCase();
 }
 
 function buildNextWeekPriorities(

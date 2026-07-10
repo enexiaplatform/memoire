@@ -98,6 +98,25 @@ export function WeeklyBusinessReviewPanel({ review, periodLabel }: { review: Wee
         </article>
 
         <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+          <h3 className="text-sm font-bold text-navy">Commitments</h3>
+          <p className="mt-1 text-xs text-gray-500">Promised next actions vs what the ledger shows. Current promises only - honest, not reconstructed.</p>
+          {review.commitments.length === 0 ? (
+            <p className="mt-3 text-sm text-gray-500">No dated commitments in this period. Put dates on next actions so this ledger can hold you to them.</p>
+          ) : (
+            <div className="mt-3 space-y-1.5 text-xs leading-5">
+              {review.commitments.slice(0, 6).map((item) => (
+                <div key={item.id} className="flex flex-col gap-0.5 rounded-lg bg-white px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="font-bold text-gray-900">{item.accountName} / {item.opportunityName}: <span className="font-semibold text-gray-700">{item.action}</span></p>
+                  <span className={`w-fit shrink-0 rounded-full px-2 py-0.5 font-bold ${commitmentTone(item.status)}`} title={item.evidence}>
+                    {commitmentLabel(item.status)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </article>
+
+        <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
           <h3 className="text-sm font-bold text-navy">Next week's priorities</h3>
           {review.nextWeekPriorities.length === 0 ? (
             <p className="mt-3 text-sm text-gray-500">Nothing scheduled yet. Book the next touches before closing this review.</p>
@@ -117,4 +136,16 @@ export function WeeklyBusinessReviewPanel({ review, periodLabel }: { review: Wee
       </div>
     </section>
   );
+}
+
+function commitmentLabel(status: 'kept' | 'missed' | 'upcoming') {
+  return { kept: 'Kept', missed: 'Missed', upcoming: 'Upcoming' }[status];
+}
+
+function commitmentTone(status: 'kept' | 'missed' | 'upcoming') {
+  return {
+    kept: 'bg-emerald-50 text-emerald-700',
+    missed: 'bg-red-50 text-red-700',
+    upcoming: 'bg-blue-50 text-brand-blue',
+  }[status];
 }

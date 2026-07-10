@@ -165,6 +165,40 @@ assert.equal(classifyInitiativeHealth(makeContext({ status: 'Completed' }), [], 
   assert.ok(review.nextWeekPriorities.some((item) => item.label.includes('Restart the initiative')));
 }
 
+// === Stage 2.2: commitments ledger - promises vs the activity ledger ===
+{
+  const review = buildWeeklyBusinessReview({
+    opportunities: [
+      makeOpportunity({ id: 'kept', accountName: 'KeptCo', opportunityName: 'Deal K', nextAction: 'Send proposal', nextActionDate: '2026-07-07' }),
+      makeOpportunity({ id: 'missed', accountName: 'MissedCo', opportunityName: 'Deal M', nextAction: 'Call buyer', nextActionDate: '2026-07-07' }),
+      makeOpportunity({ id: 'up', accountName: 'UpCo', opportunityName: 'Deal U', nextAction: 'Demo', nextActionDate: '2026-07-11' }),
+      makeOpportunity({ id: 'undated', accountName: 'NoDateCo', nextActionDate: '' }),
+    ],
+    quotes: [],
+    operatingContexts: [],
+    activities: [
+      makeActivity({ linkedOpportunityId: 'kept', accountName: 'KeptCo', activityDate: '2026-07-08' }),
+      makeActivity({ linkedOpportunityId: 'missed', accountName: 'MissedCo', activityDate: '2026-07-05' }),
+    ],
+    opportunityOutcomes: [],
+    period: { start: '2026-07-06', end: '2026-07-12' },
+    today,
+  });
+  const byId = Object.fromEntries(review.commitments.map((item) => [item.id, item]));
+  assert.equal(byId['commitment-kept'].status, 'kept', 'touch on/after the promised date keeps the commitment');
+  assert.ok(byId['commitment-kept'].evidence.includes('Jul 8'));
+  assert.equal(byId['commitment-missed'].status, 'missed', 'a touch BEFORE the promised date does not keep it');
+  assert.equal(byId['commitment-up'].status, 'upcoming');
+  assert.equal('commitment-undated' in byId, false, 'undated next actions are not commitments');
+  assert.equal(review.commitments[0].status, 'missed', 'missed commitments sort first');
+}
+{
+  const panel = readFileSync(new URL('../src/features/reviews/WeeklyBusinessReviewPanel.tsx', import.meta.url), 'utf8');
+  for (const marker of ['Commitments', 'honest, not reconstructed', 'commitmentTone']) {
+    assert.ok(panel.includes(marker), `WeeklyBusinessReviewPanel missing marker: ${marker}`);
+  }
+}
+
 // === Phase 3: Ask Memoire business-state detection ===
 assert.equal(detectInsightQuestion('Where is the money?'), 'money_state');
 assert.equal(detectInsightQuestion('What am I owed right now?'), 'money_state');
