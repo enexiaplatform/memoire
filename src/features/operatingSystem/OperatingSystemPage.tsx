@@ -34,11 +34,11 @@ import {
   initiativeDecisionLabel,
   initiativeDecisions,
   initiativeDecisionTone,
-  listInitiativeActivities,
   readInitiativeExperiment,
   writeInitiativeExperiment,
   type InitiativeDecision,
 } from '../../utils/initiativeExperiment';
+import { listInitiativeActivityLinks, readLinkedActivityIds, toggleLinkedActivity } from '../../utils/initiativeActivityLink';
 
 type Filter = 'active' | 'initiative' | 'play' | 'all';
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -386,7 +386,7 @@ function OperatingPanel({
           <ExperimentSection form={form} onChange={onChange} />
 
           {mode === 'edit' && record && (
-            <RelatedActivitiesSection title={record.title} activities={activities} />
+            <RelatedActivitiesSection form={form} activities={activities} onChange={onChange} />
           )}
 
           {details.length > 0 && (
@@ -580,8 +580,26 @@ function ExperimentSection({
   );
 }
 
-function RelatedActivitiesSection({ title, activities }: { title: string; activities: SalesActivityRecord[] }) {
-  const related = listInitiativeActivities(title, activities);
+function RelatedActivitiesSection({
+  form,
+  activities,
+  onChange,
+}: {
+  form: OperatingContextFormInput;
+  activities: SalesActivityRecord[];
+  onChange: (form: OperatingContextFormInput) => void;
+}) {
+  const related = listInitiativeActivityLinks({ title: form.title, payload: form.payload }, activities);
+  const linkedIds = readLinkedActivityIds(form.payload);
+  const toggle = (activityId: string) => {
+    onChange({ ...form, payload: toggleLinkedActivity(form.payload, activityId) });
+  };
+  const relatedIds = new Set(related.map((item) => item.activity.id));
+  const linkable = [...activities]
+    .filter((activity) => !relatedIds.has(activity.id))
+    .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate))
+    .slice(0, 30);
+
   return (
     <section className="rounded-lg border border-gray-200 bg-gray-50 p-4">
       <div className="flex items-center justify-between gap-2">
@@ -590,17 +608,53 @@ function RelatedActivitiesSection({ title, activities }: { title: string; activi
       </div>
       {related.length === 0 ? (
         <p className="mt-2 text-xs leading-5 text-gray-500">
-          No captured activity mentions this title yet. Capture updates that name it and they will appear here - and keep it out of the stalled list.
+          No captured activity mentions this title yet. Capture updates that name it, or link one below - either keeps it out of the stalled list.
         </p>
       ) : (
         <div className="mt-2 space-y-1.5">
-          {related.map((activity) => (
-            <div key={activity.id} className="rounded-lg bg-white px-3 py-2 text-xs">
-              <p className="font-semibold text-gray-900">{activity.summary}</p>
-              <p className="mt-0.5 text-gray-500">{formatSafeBusinessDate(activity.activityDate)} - {activity.activityType}</p>
+          {related.map(({ activity, source }) => (
+            <div key={activity.id} className="flex items-start justify-between gap-2 rounded-lg bg-white px-3 py-2 text-xs">
+              <div>
+                <p className="font-semibold text-gray-900">
+                  {activity.summary}
+                  {source === 'linked' && (
+                    <span className="ml-1.5 rounded-full bg-blue-50 px-2 py-0.5 font-bold text-brand-blue">Linked</span>
+                  )}
+                </p>
+                <p className="mt-0.5 text-gray-500">{formatSafeBusinessDate(activity.activityDate)} - {activity.activityType}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => toggle(activity.id)}
+                className="shrink-0 rounded-full border border-gray-200 px-2.5 py-1 font-bold text-gray-600 hover:bg-gray-50"
+              >
+                {source === 'linked' ? 'Unlink' : 'Link'}
+              </button>
             </div>
           ))}
         </div>
+      )}
+      {linkable.length > 0 && (
+        <label className="mt-3 block text-xs">
+          <span className="font-bold uppercase tracking-wide text-gray-500">Link another activity</span>
+          <select
+            value=""
+            onChange={(event) => {
+              if (event.target.value) toggle(event.target.value);
+            }}
+            className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700"
+          >
+            <option value="">Pick a captured activity...</option>
+            {linkable.map((activity) => (
+              <option key={activity.id} value={activity.id}>
+                {formatSafeBusinessDate(activity.activityDate)} - {activity.summary.slice(0, 70)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {linkedIds.length > 0 && (
+        <p className="mt-2 text-[11px] leading-4 text-gray-500">Links are saved with this priority when you press Save.</p>
       )}
     </section>
   );

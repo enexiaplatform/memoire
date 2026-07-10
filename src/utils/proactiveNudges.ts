@@ -10,6 +10,7 @@ import type { StakeholderRecord } from '../services/stakeholderStore.ts';
 import type { PipelineDefenseBrief } from './pipelineDefenseStorage.ts';
 import type { RevenueActionItem } from './revenueView.ts';
 import { classifyAccountEngagement, type AccountHygienePreference } from './accountHygiene.ts';
+import { readLinkedActivityIds } from './initiativeActivityLink.ts';
 import { buildMeddicStakeholderMap } from './meddicStakeholderMap.ts';
 import { formatBaseCurrencyAmount, formatCurrencyAmount, convertMoney } from './money.ts';
 import { analyzePersonalSalesLearning } from './personalSalesLearning.ts';
@@ -575,7 +576,7 @@ export function classifyInitiativeHealth(
   if (isBusinessDateOverdue(context.nextDate, today)) {
     return { status: 'overdue-step', daysQuiet: null, lastMention: '' };
   }
-  const lastMention = findLastInitiativeMention(context.title, activities);
+  const lastMention = findLastInitiativeTouch(context, activities);
   const quietSince = lastMention || sanitizeBusinessDate(timestampToLocalDateKey(context.createdAt));
   const daysQuiet = daysBetweenBusinessDates(quietSince, sanitizeBusinessDate(today));
   if (daysQuiet !== null && daysQuiet >= INITIATIVE_STALL_DAYS) {
@@ -626,11 +627,19 @@ function buildInitiativeStalledNudges(input: ProactiveNudgeInput, today: string)
   });
 }
 
-function findLastInitiativeMention(title: string, activities: SalesActivityRecord[]) {
-  const tokens = normalize(title).split(' ').filter((token) => token.length >= 4);
-  if (tokens.length === 0) return '';
+// A touch is either a token mention of the title or an explicitly linked
+// activity (direction 7.2) - linking an activity keeps the initiative out
+// of the stalled list even when the capture never names it.
+function findLastInitiativeTouch(
+  context: Pick<OperatingContextRecord, 'title' | 'payload'>,
+  activities: SalesActivityRecord[],
+) {
+  const linkedIds = new Set(readLinkedActivityIds(context.payload));
+  const tokens = normalize(context.title).split(' ').filter((token) => token.length >= 4);
   return activities
     .filter((activity) => {
+      if (linkedIds.has(activity.id)) return true;
+      if (tokens.length === 0) return false;
       const text = normalize(`${activity.summary} ${activity.rawNote} ${(activity.tags || []).join(' ')}`);
       return tokens.some((token) => text.includes(token));
     })
