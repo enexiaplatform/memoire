@@ -24,6 +24,8 @@ import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportuni
 import { applyOpportunityUpdateSuggestion, suggestOpportunityLinks, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 import { deriveStakeholderCandidateFromCapture } from '../../utils/stakeholderGraph';
 import { buildObjectionFromActivity, detectObjectionCandidatesFromActivity } from '../../utils/objectionLedger';
+import { suggestQuoteStateChanges, type QuoteStateSuggestion } from '../../utils/quoteStateSuggestions';
+import { updateQuote, type QuoteRecord } from '../../services/quoteStore';
 import { markPipelineReviewHabitStepComplete } from '../../utils/pipelineReviewHabit';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
 import { markDemoJourneyStepComplete } from '../../utils/demoJourney';
@@ -266,6 +268,9 @@ export function DailyCapturePage() {
   const [objections, setObjections] = useState<ObjectionRecord[]>([]);
   const [stakeholderSuggestionDismissed, setStakeholderSuggestionDismissed] = useState(false);
   const [objectionSuggestionDismissed, setObjectionSuggestionDismissed] = useState(false);
+  const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
+  const [dismissedQuoteSuggestions, setDismissedQuoteSuggestions] = useState<string[]>([]);
+  const [quoteSuggestionMessage, setQuoteSuggestionMessage] = useState('');
   const [lastSavedActivity, setLastSavedActivity] = useState<SalesActivityRecord | null>(null);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [saveState, setSaveState] = useState<SaveState>('idle');
@@ -440,6 +445,7 @@ export function DailyCapturePage() {
       setAccounts(cachedData.accounts);
       setStakeholders(cachedData.stakeholders);
       setObjections(cachedData.objections);
+      setQuotes(cachedData.quotes);
       setLoadingActivities(false);
       return;
     }
@@ -451,6 +457,7 @@ export function DailyCapturePage() {
     setAccounts(workspaceData.accounts);
     setStakeholders(workspaceData.stakeholders);
     setObjections(workspaceData.objections);
+    setQuotes(workspaceData.quotes);
     setLoadingActivities(false);
   };
 
@@ -749,6 +756,19 @@ export function DailyCapturePage() {
 
   const stakeholderCandidate = lastSavedActivity ? deriveStakeholderCandidateFromCapture(lastSavedActivity) : null;
   const objectionCandidate = lastSavedActivity ? detectObjectionCandidatesFromActivity(lastSavedActivity)[0] : null;
+  const quoteStateSuggestions = (lastSavedActivity ? suggestQuoteStateChanges(lastSavedActivity, quotes) : [])
+    .filter((suggestion) => !dismissedQuoteSuggestions.includes(`${suggestion.quoteRecordId}:${suggestion.kind}`));
+
+  const applyQuoteStateSuggestion = (suggestion: QuoteStateSuggestion) => {
+    const quote = quotes.find((item) => item.id === suggestion.quoteRecordId);
+    if (!quote) return;
+    const { id, createdAt, updatedAt, ...input } = quote;
+    void id; void createdAt; void updatedAt;
+    const updated = updateQuote(quote, { ...input, ...suggestion.patch });
+    setQuotes((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    setDismissedQuoteSuggestions((current) => [...current, `${suggestion.quoteRecordId}:${suggestion.kind}`]);
+    setQuoteSuggestionMessage(`${suggestion.actionLabel}: ${suggestion.quoteLabel}. Money flow updated.`);
+  };
   const alreadyHasStakeholderCandidate = stakeholderCandidate ? stakeholders.some((stakeholder) => (
     stakeholder.name.toLowerCase() === stakeholderCandidate.name.toLowerCase() &&
     stakeholder.accountName.toLowerCase() === stakeholderCandidate.accountName.toLowerCase()
@@ -1167,6 +1187,30 @@ export function DailyCapturePage() {
           </div>
         </section>
       )}
+
+      {quoteSuggestionMessage && (
+        <p className="rounded-lg bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-100">{quoteSuggestionMessage}</p>
+      )}
+      {quoteStateSuggestions.map((suggestion) => (
+        <section key={`${suggestion.quoteRecordId}:${suggestion.kind}`} className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-4 shadow-sm">
+          <p className="text-sm font-bold text-emerald-950">{suggestion.actionLabel}?</p>
+          <p className="mt-1 text-sm leading-6 text-emerald-800">
+            {suggestion.reason} Quote: {suggestion.quoteLabel}. Nothing changes until you confirm.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" onClick={() => applyQuoteStateSuggestion(suggestion)} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+              {suggestion.actionLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDismissedQuoteSuggestions((current) => [...current, `${suggestion.quoteRecordId}:${suggestion.kind}`])}
+              className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-bold text-emerald-800"
+            >
+              Ignore
+            </button>
+          </div>
+        </section>
+      ))}
 
       {objectionCandidate && !alreadyHasObjectionCandidate && !objectionSuggestionDismissed && (
         <section className="rounded-lg border border-amber-100 bg-amber-50/80 p-4 shadow-sm">
