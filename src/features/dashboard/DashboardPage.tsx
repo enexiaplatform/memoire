@@ -59,6 +59,7 @@ import { buildFollowUpImpact } from '../../utils/followUpImpact';
 import { MorningBriefCard } from './MorningBriefCard';
 import { BusinessCockpitStrip } from './BusinessCockpitStrip';
 import { buildBusinessCockpit } from '../../utils/businessCockpit';
+import { getWorkspaceLens, orderCockpitForLens } from '../../utils/workspaceLens';
 import { buildMorningBrief } from '../../utils/morningBrief';
 import { buildReviveFollowUpContext } from '../../utils/followUpFromOpportunity';
 import type { FollowUpContext } from '../../types/v31';
@@ -349,12 +350,12 @@ export function TodayPage() {
     activities: data.activities,
     waitingFollowUps: followUpImpact.dealsWaiting,
   }), [data.activities, followUpImpact.dealsWaiting, proactiveNudges.todayNudges]);
-  const businessCockpit = useMemo(() => buildBusinessCockpit({
+  const businessCockpit = useMemo(() => orderCockpitForLens(buildBusinessCockpit({
     commercialRiskItems: todayCenter.commercialRiskItems,
     nudges: proactiveNudges.allActiveNudges,
     opportunities: data.opportunities,
     captureInboxCount: todayCenter.captureInbox.length,
-  }), [data.opportunities, proactiveNudges.allActiveNudges, todayCenter.captureInbox.length, todayCenter.commercialRiskItems]);
+  }), getWorkspaceLens()), [data.opportunities, proactiveNudges.allActiveNudges, todayCenter.captureInbox.length, todayCenter.commercialRiskItems]);
   const dashboardInsights = useMemo(() => (
     advancedInsightsOpen ? buildDashboardInsights(data) : null
   ), [advancedInsightsOpen, data]);

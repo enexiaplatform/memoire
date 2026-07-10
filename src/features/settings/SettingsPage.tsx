@@ -6,10 +6,12 @@ import { BoundariesTab } from './BoundariesTab';
 import { REPLAY_GUIDED_WORKFLOW_EVENT } from '../onboarding/guidedWorkflow';
 import { buildSalesOperatingSetupProgress, loadSalesOperatingSetupState } from '../../utils/salesOperatingSetup';
 import { SUPPORTED_CURRENCIES, getReportingCurrency, setReportingCurrency } from '../../utils/money';
+import { getWorkspaceLens, setWorkspaceLens, workspaceLensLabel, workspaceLenses } from '../../utils/workspaceLens';
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'export' | 'boundaries'>('boundaries');
   const [reportingCurrency, setReportingCurrencyState] = useState(() => getReportingCurrency());
+  const [workspaceLens, setWorkspaceLensState] = useState(() => getWorkspaceLens());
   const salesOperatingSetupProgress = buildSalesOperatingSetupProgress(loadSalesOperatingSetupState());
 
   return (
@@ -51,6 +53,33 @@ export function SettingsPage() {
             >
               {SUPPORTED_CURRENCIES.map((currency) => (
                 <option key={currency} value={currency}>{currency}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-navy">Workspace lens</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Re-weights emphasis for how you sell: B2B leads with deals and sales templates, Solo leads with money and whole-business templates.
+              One workspace, same data - switching is always safe.
+            </p>
+          </div>
+          <label className="flex items-center gap-2">
+            <span className="sr-only">Workspace lens</span>
+            <select
+              value={workspaceLens}
+              onChange={(event) => {
+                setWorkspaceLens(event.target.value);
+                setWorkspaceLensState(getWorkspaceLens());
+              }}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+            >
+              {workspaceLenses.map((lens) => (
+                <option key={lens} value={lens}>{workspaceLensLabel(lens)}</option>
               ))}
             </select>
           </label>

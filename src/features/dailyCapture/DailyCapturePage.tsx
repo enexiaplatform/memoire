@@ -25,6 +25,7 @@ import { applyOpportunityUpdateSuggestion, suggestOpportunityLinks, type Opportu
 import { deriveStakeholderCandidateFromCapture } from '../../utils/stakeholderGraph';
 import { buildObjectionFromActivity, detectObjectionCandidatesFromActivity } from '../../utils/objectionLedger';
 import { suggestQuoteStateChanges, type QuoteStateSuggestion } from '../../utils/quoteStateSuggestions';
+import { getWorkspaceLens, orderTemplatesForLens, WORKSPACE_LENS_CHANGED_EVENT } from '../../utils/workspaceLens';
 import { updateQuote, type QuoteRecord } from '../../services/quoteStore';
 import { markPipelineReviewHabitStepComplete } from '../../utils/pipelineReviewHabit';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
@@ -269,6 +270,7 @@ export function DailyCapturePage() {
   const [stakeholderSuggestionDismissed, setStakeholderSuggestionDismissed] = useState(false);
   const [objectionSuggestionDismissed, setObjectionSuggestionDismissed] = useState(false);
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
+  const [workspaceLens, setWorkspaceLensState] = useState(() => getWorkspaceLens());
   const [dismissedQuoteSuggestions, setDismissedQuoteSuggestions] = useState<string[]>([]);
   const [quoteSuggestionMessage, setQuoteSuggestionMessage] = useState('');
   const [lastSavedActivity, setLastSavedActivity] = useState<SalesActivityRecord | null>(null);
@@ -323,6 +325,14 @@ export function DailyCapturePage() {
     setCaptureCorrections(loadCaptureCorrections(user?.id));
     setAccountAliases(loadCaptureAccountAliases(user?.id));
   }, [user?.id]);
+
+  useEffect(() => {
+    const handleLensChange = () => setWorkspaceLensState(getWorkspaceLens());
+    window.addEventListener(WORKSPACE_LENS_CHANGED_EVENT, handleLensChange);
+    return () => window.removeEventListener(WORKSPACE_LENS_CHANGED_EVENT, handleLensChange);
+  }, []);
+
+  const lensOrderedTemplates = useMemo(() => orderTemplatesForLens(quickTemplates, workspaceLens), [workspaceLens]);
 
   const emailSourceItem = useMemo(() => {
     if (emailForm.body.trim().length < 8) return null;
@@ -828,6 +838,7 @@ export function DailyCapturePage() {
       {captureMode === 'quick' && (
         <QuickCapturePanel
           form={quickForm}
+          templates={lensOrderedTemplates}
           selectedTemplateId={quickTemplateId}
           saveState={saveState}
           message={message}
@@ -1333,6 +1344,7 @@ export function DailyCapturePage() {
 
 function QuickCapturePanel({
   form,
+  templates,
   selectedTemplateId,
   saveState,
   message,
@@ -1343,6 +1355,7 @@ function QuickCapturePanel({
   opportunitySuggestions,
 }: {
   form: QuickCaptureForm;
+  templates: typeof quickTemplates;
   selectedTemplateId: string;
   saveState: SaveState;
   message: string;
@@ -1388,7 +1401,7 @@ function QuickCapturePanel({
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        {quickTemplates.map((item) => (
+        {templates.map((item) => (
           <button
             key={item.id}
             type="button"
