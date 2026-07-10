@@ -24,6 +24,9 @@ import {
 import { updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { businessDomains, businessDomainTone, classifyBusinessDomain, type BusinessDomain } from '../../utils/businessDomain';
+import { buildCommercialJourneySnapshot, formatJourneyCommitment } from '../../utils/commercialJourney';
+import { type QuoteRecord } from '../../services/quoteStore';
+import { type ObjectionRecord } from '../../services/objectionStore';
 import { trackProductEvent } from '../../utils/productAnalytics';
 import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
 import { applyOpportunityUpdateSuggestion, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
@@ -78,6 +81,8 @@ export function SalesActivityCalendarPage() {
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
+  const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
+  const [objections, setObjections] = useState<ObjectionRecord[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [selectedActivity, setSelectedActivity] = useState<SalesActivityRecord | null>(null);
   const [copiedId, setCopiedId] = useState('');
@@ -90,6 +95,8 @@ export function SalesActivityCalendarPage() {
     if (cachedData) {
       setActivities(cachedData.activities);
       setOpportunities(cachedData.opportunities);
+      setQuotes(cachedData.quotes);
+      setObjections(cachedData.objections);
       setLoadingActivities(false);
       return;
     }
@@ -98,6 +105,8 @@ export function SalesActivityCalendarPage() {
     const workspaceData = await loadSalesWorkspaceData(dataUserId);
     setActivities(workspaceData.activities);
     setOpportunities(workspaceData.opportunities);
+    setQuotes(workspaceData.quotes);
+    setObjections(workspaceData.objections);
     setLoadingActivities(false);
   }, [dataUserId]);
 
@@ -367,6 +376,9 @@ export function SalesActivityCalendarPage() {
 
       {selectedActivity && (
         <ActivityDetailModal
+          allActivities={activities}
+          quotes={quotes}
+          objections={objections}
           activity={selectedActivity}
           copied={copiedId === selectedActivity.id}
           onClose={() => setSelectedActivity(null)}
@@ -493,6 +505,9 @@ function ActivityCard({
 
 function ActivityDetailModal({
   activity,
+  allActivities,
+  quotes,
+  objections,
   copied,
   onClose,
   onCopy,
@@ -503,6 +518,9 @@ function ActivityDetailModal({
   onUnlink,
 }: {
   activity: SalesActivityRecord;
+  allActivities: SalesActivityRecord[];
+  quotes: QuoteRecord[];
+  objections: ObjectionRecord[];
   copied: boolean;
   onClose: () => void;
   onCopy: () => void;
@@ -513,6 +531,10 @@ function ActivityDetailModal({
   onUnlink: () => void;
 }) {
   useEscapeToClose(onClose);
+  const linkedOpportunity = opportunities.find((item) => item.id === activity.linkedOpportunityId) || null;
+  const journey = linkedOpportunity
+    ? buildCommercialJourneySnapshot({ opportunity: linkedOpportunity, quotes, activities: allActivities, objections })
+    : null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 px-4 py-8">
       <div role="dialog" aria-modal="true" aria-label="Activity detail" className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-5 shadow-xl">
@@ -550,6 +572,25 @@ function ActivityDetailModal({
           <Fact label="Updated" value={new Date(activity.updatedAt).toLocaleString('en-US')} />
           <Fact label="Linked opportunity" value={activity.linkStatus === 'Linked' ? `${activity.linkedAccountName} / ${activity.linkedOpportunityName}` : activity.linkStatus} />
         </div>
+
+        {journey && linkedOpportunity && (
+          <section className="mt-5 rounded-lg border border-blue-100 bg-blue-50/40 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-bold text-navy">Where this deal stands</p>
+              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-brand-blue ring-1 ring-blue-100">
+                {journey.position}{journey.positionSource === 'money-flow' ? ' (money flow)' : ''}
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-1 gap-2 text-xs leading-5 sm:grid-cols-2">
+              <Fact label="Last touch" value={journey.lastTouch ? `${formatSafeBusinessDate(journey.lastTouch.date)} - ${journey.lastTouch.summary}` : 'None captured'} />
+              <Fact label="Next commitment" value={formatJourneyCommitment(journey.nextCommitment)} />
+              <Fact label="Money" value={journey.moneyStatus} />
+              <Fact label="Risk" value={journey.riskStatus} />
+              <Fact label="Blocker" value={journey.blocker || 'None open'} />
+              <Fact label="Evidence" value={journey.evidence || 'Not captured yet'} />
+            </div>
+          </section>
+        )}
 
         <ActivityExtractionDetail activity={activity} />
 
