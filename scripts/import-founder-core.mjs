@@ -432,7 +432,15 @@ function parsePipelineForecast(workbook, plan) {
     const q4 = asNumber(get(row, 'Q4'));
     const quarterValues = { Q1: q1, Q2: q2, Q3: q3, Q4: q4 };
     const expectedClosePeriod = firstQuarterWithValue(quarterValues);
-    const cleanOpportunityName = stripProbability(opportunityCell) || [accountName, product, brand].filter(Boolean).join(' / ') || 'Imported pipeline opportunity';
+    // The "Opportunity (prob.)" column holds the probability, not a name, so
+    // stripping its digits can leave punctuation-only junk (e.g. "0.25" -> ".").
+    // Use it only when it carries a real letter; otherwise name the deal after
+    // its product/brand so each line is distinct and readable.
+    const strippedName = stripProbability(opportunityCell);
+    const cleanOpportunityName = (/\p{L}/u.test(strippedName) ? strippedName : '')
+      || [product, brand, asText(get(row, 'Type'))].filter(Boolean).join(' / ')
+      || [accountName, product, brand].filter(Boolean).join(' / ')
+      || 'Imported pipeline opportunity';
     const missingContext = [
       'Stage inferred from probability/open fields because workbook has no explicit stage.',
       asText(get(row, 'Channel')) ? '' : 'Channel missing in source row.',
