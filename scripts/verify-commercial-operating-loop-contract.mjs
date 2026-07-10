@@ -171,8 +171,8 @@ requireIncludes(appRoutes, 'path="reviews" element={<SalesReviewsPage />}',
   'Legacy /app/reviews route should remain available');
 
 const sidebar = read('src/components/layout/Sidebar.tsx');
-requireIncludes(sidebar, "to: '/app/weekly-brief', label: 'Weekly Brief'",
-  'Sidebar missing Weekly Brief review entry');
+requireIncludes(sidebar, "to: '/app/weekly-brief', label: 'Business Review'",
+  'Sidebar missing Business Review entry');
 
 const salesReviewsPage = read('src/features/reviews/SalesReviewsPage.tsx');
 for (const marker of [

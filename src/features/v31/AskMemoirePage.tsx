@@ -22,9 +22,12 @@ import { buildForecastCalibration } from '../../utils/forecastCalibration';
 import {
   answerFromFollowUpImpact,
   answerFromForecastCalibration,
+  answerFromMoneyFlow,
   answerFromObjectionPlaybook,
+  answerFromWeekRecap,
   detectInsightQuestion,
 } from './askMemoireInsightAnswers';
+import { buildMoneyFlow } from '../../utils/moneyFlow';
 
 export function AskMemoirePage() {
   const { user } = useAuth();
@@ -228,6 +231,13 @@ export function AskMemoirePage() {
             objections: rawWorkspace.objections,
             opportunityOutcomes: rawWorkspace.opportunityOutcomes,
           })));
+        } else if (insightKind === 'money_state') {
+          setAnswer(answerFromMoneyFlow(buildMoneyFlow({
+            opportunities: rawWorkspace.opportunities,
+            quotes: rawWorkspace.quotes,
+          })));
+        } else if (insightKind === 'week_recap') {
+          setAnswer(answerFromWeekRecap(rawWorkspace.activities));
         } else {
           setAnswer(answerFromForecastCalibration(buildForecastCalibration({
             outcomes: rawWorkspace.opportunityOutcomes,

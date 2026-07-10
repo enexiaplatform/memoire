@@ -57,6 +57,8 @@ import { FollowUpComposerPanel } from '../v31/FollowUpComposerPanel';
 import { FollowUpImpactPanel } from './FollowUpImpactPanel';
 import { buildFollowUpImpact } from '../../utils/followUpImpact';
 import { MorningBriefCard } from './MorningBriefCard';
+import { BusinessCockpitStrip } from './BusinessCockpitStrip';
+import { buildBusinessCockpit } from '../../utils/businessCockpit';
 import { buildMorningBrief } from '../../utils/morningBrief';
 import { buildReviveFollowUpContext } from '../../utils/followUpFromOpportunity';
 import type { FollowUpContext } from '../../types/v31';
@@ -323,8 +325,9 @@ export function TodayPage() {
     quotes: data.quotes,
     accountPreferences: accountHygienePreferences,
     opportunityOutcomes: data.opportunityOutcomes,
+    operatingContexts: data.operatingContext,
     persistedNudges: nudgeState,
-  }), [accountHygienePreferences, data.accounts, data.activities, data.briefs, data.objections, data.opportunities, data.opportunityOutcomes, data.quotes, data.stakeholders, nudgeState, revenueView.actionItems]);
+  }), [accountHygienePreferences, data.accounts, data.activities, data.briefs, data.objections, data.operatingContext, data.opportunities, data.opportunityOutcomes, data.quotes, data.stakeholders, nudgeState, revenueView.actionItems]);
   const decidedActionIds = useMemo(() => (
     new Set(dailyExecutionState.decisions.map((decision) => decision.actionId))
   ), [dailyExecutionState.decisions]);
@@ -346,6 +349,12 @@ export function TodayPage() {
     activities: data.activities,
     waitingFollowUps: followUpImpact.dealsWaiting,
   }), [data.activities, followUpImpact.dealsWaiting, proactiveNudges.todayNudges]);
+  const businessCockpit = useMemo(() => buildBusinessCockpit({
+    commercialRiskItems: todayCenter.commercialRiskItems,
+    nudges: proactiveNudges.allActiveNudges,
+    opportunities: data.opportunities,
+    captureInboxCount: todayCenter.captureInbox.length,
+  }), [data.opportunities, proactiveNudges.allActiveNudges, todayCenter.captureInbox.length, todayCenter.commercialRiskItems]);
   const dashboardInsights = useMemo(() => (
     advancedInsightsOpen ? buildDashboardInsights(data) : null
   ), [advancedInsightsOpen, data]);
@@ -593,6 +602,7 @@ export function TodayPage() {
             <TodayCommandEmptyState />
           ) : (
             <>
+              <BusinessCockpitStrip answers={businessCockpit} />
               <MorningBriefCard brief={morningBrief} />
               <TodayTopThreeActions actions={todayCenter.topActions} />
               <PipelineGlanceSection opportunities={data.opportunities} activities={data.activities} />

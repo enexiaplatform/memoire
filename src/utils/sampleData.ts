@@ -6,6 +6,10 @@ import { STAKEHOLDER_STORAGE_KEY, type StakeholderRecord } from '../services/sta
 import { OBJECTION_STORAGE_KEY, type ObjectionRecord } from '../services/objectionStore';
 import { ACTION_OUTCOME_STORAGE_KEY, type ActionOutcomeRecord } from '../services/actionOutcomeStore';
 import { OPPORTUNITY_OUTCOME_STORAGE_KEY, type OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore';
+import { OPERATING_CONTEXT_STORAGE_KEY, type OperatingContextRecord } from '../services/operatingContextStore';
+
+// Operating contexts are stored per-user scope; the demo/anonymous scope is ':guest'.
+const DEMO_OPERATING_CONTEXT_KEY = `${OPERATING_CONTEXT_STORAGE_KEY}:guest`;
 import { SALES_ASSET_STORAGE_KEY, type SalesAssetRecord } from '../services/salesAssetStore';
 import { QUOTE_STORAGE_KEY, type QuoteRecord } from '../services/quoteStore';
 import { invalidateWorkspaceDataCache } from '../services/workspaceDataCache';
@@ -45,6 +49,7 @@ const SAMPLE_ARRAY_STORAGE_KEYS = [
   OBJECTION_STORAGE_KEY,
   ACTION_OUTCOME_STORAGE_KEY,
   OPPORTUNITY_OUTCOME_STORAGE_KEY,
+  DEMO_OPERATING_CONTEXT_KEY,
   SALES_ASSET_STORAGE_KEY,
   QUOTE_STORAGE_KEY,
 ];
@@ -65,6 +70,7 @@ export type SampleDataset = {
   objections: ObjectionRecord[];
   actionOutcomes: ActionOutcomeRecord[];
   opportunityOutcomes: OpportunityOutcomeRecord[];
+  operatingContexts: OperatingContextRecord[];
   salesAssets: SalesAssetRecord[];
   quotes: QuoteRecord[];
   briefs: PipelineDefenseBrief[];
@@ -110,6 +116,7 @@ export function loadSampleDataset(): SampleDataset {
   writeLocalArray(OBJECTION_STORAGE_KEY, dataset.objections);
   writeLocalArray(ACTION_OUTCOME_STORAGE_KEY, dataset.actionOutcomes);
   writeLocalArray(OPPORTUNITY_OUTCOME_STORAGE_KEY, dataset.opportunityOutcomes);
+  writeLocalArray(DEMO_OPERATING_CONTEXT_KEY, dataset.operatingContexts);
   writeLocalArray(SALES_ASSET_STORAGE_KEY, dataset.salesAssets);
   writeLocalArray(QUOTE_STORAGE_KEY, dataset.quotes);
   writeLocalBriefs(dataset.briefs);
@@ -136,6 +143,7 @@ export function clearSampleDataset() {
   removeSampleRecords(OBJECTION_STORAGE_KEY);
   removeSampleRecords(ACTION_OUTCOME_STORAGE_KEY);
   removeSampleRecords(OPPORTUNITY_OUTCOME_STORAGE_KEY);
+  removeSampleRecords(DEMO_OPERATING_CONTEXT_KEY);
   removeSampleRecords(SALES_ASSET_STORAGE_KEY);
   removeSampleRecords(QUOTE_STORAGE_KEY);
   removeSampleBriefs();
@@ -970,6 +978,28 @@ export function buildSampleDataset(): SampleDataset {
     }),
   ];
 
+  // A visibly stalled initiative so the cockpit's "Which initiative is stuck?"
+  // and the Weekly Business Review demo out of the box. The title shares no
+  // token with any sample activity, so it stays quiet by construction.
+  const operatingContexts: OperatingContextRecord[] = [
+    markSampleRecord({
+      id: 'demo-context-distributor-onboarding',
+      contextType: 'initiative' as const,
+      title: 'Distributor onboarding program',
+      status: 'Active',
+      period: 'Q3',
+      owner: 'You',
+      valueAtStake: null,
+      nextAction: 'Send the onboarding checklist to the northern distributor.',
+      nextDate: '',
+      summary: 'Recruit and onboard one northern distributor before quarter end.',
+      payload: {},
+      createdAt: addDays(now, -21).toISOString(),
+      updatedAt: addDays(now, -21).toISOString(),
+      storageMode: 'local' as const,
+    }),
+  ];
+
   return {
     activities,
     opportunities,
@@ -978,6 +1008,7 @@ export function buildSampleDataset(): SampleDataset {
     objections,
     actionOutcomes,
     opportunityOutcomes,
+    operatingContexts,
     salesAssets,
     quotes,
     briefs: [markSampleBrief(brief)],

@@ -4,7 +4,7 @@ import { reportWorkspaceSyncError } from './workspaceSyncStatus';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
 
 export const OPERATING_CONTEXT_STORAGE_KEY = 'memoire.operatingContext.v1';
-export const operatingContextTypes = ['initiative', 'play'] as const;
+export const operatingContextTypes = ['initiative', 'play', 'offer', 'experiment'] as const;
 
 export type OperatingContextType = (typeof operatingContextTypes)[number];
 
@@ -307,7 +307,9 @@ function deleteLocalOperatingContext(recordId: string, userId: string) {
 }
 
 function normalizeContextType(value: unknown): OperatingContextType {
-  return value === 'play' ? 'play' : 'initiative';
+  return operatingContextTypes.includes(value as OperatingContextType)
+    ? value as OperatingContextType
+    : 'initiative';
 }
 
 function normalizeNumber(value: unknown) {

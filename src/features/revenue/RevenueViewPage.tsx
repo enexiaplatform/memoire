@@ -10,6 +10,8 @@ import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { formatBaseCurrencyAmount as formatBaseMoney, formatCurrencyAmount as formatMoney } from '../../utils/money';
 import { buildRevenueView, type RevenueActionItem, type RevenueRiskKind } from '../../utils/revenueView';
+import { buildMoneyFlow, moneyFlowStages } from '../../utils/moneyFlow';
+import { formatBaseCurrencyAmount, formatCurrencyAmount } from '../../utils/money';
 
 type RevenueData = {
   opportunities: CrmLiteOpportunity[];
@@ -46,6 +48,7 @@ export function RevenueViewPage() {
   }, [authLoading, dataUserId]);
 
   const revenue = useMemo(() => buildRevenueView(data), [data]);
+  const moneyFlow = useMemo(() => buildMoneyFlow(data), [data]);
   const visibleActions = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return revenue.actionItems;
@@ -63,10 +66,10 @@ export function RevenueViewPage() {
     <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Supporting drill-down</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Commercial risk detail</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Money</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Where the money sits, end to end.</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            Inspect stuck money, quote, delivery, and payment follow-ups. Today owns the priority order.
+            One commercial lifecycle: deal, quote, PO, delivery, payment. Inspect stuck money and follow-ups - Today owns the priority order.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -103,6 +106,47 @@ export function RevenueViewPage() {
         <RevenueEmptyState />
       ) : (
         <>
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-navy">Money flow</h2>
+                <p className="mt-1 text-sm text-gray-500">Deal, quote, PO, delivery, payment - every thread in one lifecycle.</p>
+              </div>
+              <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-brand-blue">
+                In motion: {formatBaseCurrencyAmount(moneyFlow.totalInMotionBase, true)}
+              </span>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+              {moneyFlowStages.map((stage) => {
+                const lane = moneyFlow.lanes.find((item) => item.stage === stage);
+                return (
+                  <div key={stage} className={`rounded-lg border p-3 ${lane && lane.stuckThreads > 0 ? 'border-red-200 bg-red-50/50' : 'border-gray-100 bg-gray-50'}`}>
+                    <p className="text-xs font-bold uppercase tracking-wide text-gray-500">{stage}</p>
+                    <p className="mt-1 text-lg font-bold text-navy">{lane?.threads || 0}</p>
+                    <p className="text-xs font-semibold text-gray-600">{formatBaseCurrencyAmount(lane?.totalBase || 0, true)}</p>
+                    {lane && lane.stuckThreads > 0 && (
+                      <p className="mt-1 text-xs font-bold text-red-700">{lane.stuckThreads} stuck</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {moneyFlow.stuckThreads.length > 0 && (
+              <div className="mt-4 space-y-1.5">
+                <p className="text-xs font-bold uppercase tracking-wide text-red-700">Stuck money first</p>
+                {moneyFlow.stuckThreads.slice(0, 5).map((thread) => (
+                  <div key={thread.id} className="flex flex-col gap-1 rounded-lg border border-red-100 bg-red-50/40 px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between">
+                    <p className="font-bold text-gray-900">
+                      {thread.accountName} / {thread.label}
+                      {typeof thread.amount === 'number' && thread.currency ? ` - ${formatCurrencyAmount(thread.amount, thread.currency)}` : ''}
+                    </p>
+                    <p className="font-semibold text-red-800">{thread.stuckReason}. {thread.nextAction}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
           <section className="rounded-xl border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>

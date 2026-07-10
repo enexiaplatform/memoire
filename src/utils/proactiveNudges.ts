@@ -1,5 +1,6 @@
 import type { AccountMemoryRecord } from '../services/accountStore.ts';
 import type { NudgeRecord, NudgeSource, NudgeUrgency } from '../services/nudgeStore.ts';
+import type { OperatingContextRecord } from '../services/operatingContextStore.ts';
 import type { ObjectionRecord } from '../services/objectionStore.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore.ts';
@@ -26,6 +27,7 @@ export type ProactiveNudgeInput = {
   quotes?: QuoteRecord[];
   accountPreferences?: AccountHygienePreference[];
   opportunityOutcomes?: OpportunityOutcomeRecord[];
+  operatingContexts?: OperatingContextRecord[];
   persistedNudges?: NudgeRecord[];
   today?: string;
   limit?: number;
@@ -51,6 +53,7 @@ export function buildProactiveNudges(input: ProactiveNudgeInput): ProactiveNudge
     ...buildCaptureNudges(input.activities || [], today),
     ...buildAccountSignalNudges(input, today),
     ...buildOutcomeLearningNudges(input, today),
+    ...buildInitiativeStalledNudges(input, today),
     ...buildImportedAccountInfoNudges(input, today),
   ];
   const deduped = dedupeNudges(generated);
@@ -540,6 +543,103 @@ function buildOutcomeLearningNudges(input: ProactiveNudgeInput, today: string) {
   })];
 }
 
+export const INITIATIVE_STALL_DAYS = 14;
+
+export type InitiativeHealth = {
+  status: 'overdue-step' | 'quiet' | 'active' | 'closed';
+  daysQuiet: number | null;
+  lastMention: string;
+};
+
+/**
+ * Phase 2 of the Business Activity OS pivot: initiatives (projects, offers,
+ * experiments) go quiet exactly like deals do. An open initiative counts as
+ * stalled when its next step is overdue, or when no captured activity has
+ * mentioned it for 14+ days. Shared by the nudge engine and the Weekly
+ * Business Review.
+ */
+// Mirrors isOperatingContextClosed in operatingContextStore; kept local so the
+// nudge engine stays executable outside the browser (contract scripts).
+function isInitiativeClosed(context: OperatingContextRecord) {
+  return /complete|completed|done|closed|cancel|lost/i.test(context.status);
+}
+
+export function classifyInitiativeHealth(
+  context: OperatingContextRecord,
+  activities: SalesActivityRecord[],
+  today = todayDateKey(),
+): InitiativeHealth {
+  if (isInitiativeClosed(context) || !context.title?.trim()) {
+    return { status: 'closed', daysQuiet: null, lastMention: '' };
+  }
+  if (isBusinessDateOverdue(context.nextDate, today)) {
+    return { status: 'overdue-step', daysQuiet: null, lastMention: '' };
+  }
+  const lastMention = findLastInitiativeMention(context.title, activities);
+  const quietSince = lastMention || sanitizeBusinessDate(timestampToLocalDateKey(context.createdAt));
+  const daysQuiet = daysBetweenBusinessDates(quietSince, sanitizeBusinessDate(today));
+  if (daysQuiet !== null && daysQuiet >= INITIATIVE_STALL_DAYS) {
+    return { status: 'quiet', daysQuiet, lastMention };
+  }
+  return { status: 'active', daysQuiet, lastMention };
+}
+
+function buildInitiativeStalledNudges(input: ProactiveNudgeInput, today: string) {
+  const activities = input.activities || [];
+  return (input.operatingContexts || []).flatMap((context) => {
+    const health = classifyInitiativeHealth(context, activities, today);
+    const title = context.title?.trim() || '';
+
+    if (health.status === 'overdue-step') {
+      return [createNudge({
+        source: 'initiative',
+        entityType: 'initiative',
+        entityId: context.id,
+        accountName: '',
+        opportunityName: title,
+        title: 'Initiative next step overdue',
+        reason: `"${title}" has a next step dated ${formatSafeBusinessDate(context.nextDate)} that has passed.`,
+        recommendedAction: context.nextAction || 'Do the next step, reschedule it, or close the initiative.',
+        urgency: 'high',
+        dueDate: context.nextDate,
+        moneyAmount: context.valueAtStake ?? undefined,
+        today,
+      })];
+    }
+
+    if (health.status !== 'quiet') return [];
+    return [createNudge({
+      source: 'initiative',
+      entityType: 'initiative',
+      entityId: context.id,
+      accountName: '',
+      opportunityName: title,
+      title: 'Initiative going quiet',
+      reason: health.lastMention
+        ? `No captured activity has mentioned "${title}" since ${formatSafeBusinessDate(health.lastMention)}.`
+        : `No captured activity has mentioned "${title}" since it was created.`,
+      recommendedAction: context.nextAction || 'Capture the latest update, book the next step, or close this initiative.',
+      urgency: 'medium',
+      moneyAmount: context.valueAtStake ?? undefined,
+      today,
+    })];
+  });
+}
+
+function findLastInitiativeMention(title: string, activities: SalesActivityRecord[]) {
+  const tokens = normalize(title).split(' ').filter((token) => token.length >= 4);
+  if (tokens.length === 0) return '';
+  return activities
+    .filter((activity) => {
+      const text = normalize(`${activity.summary} ${activity.rawNote} ${(activity.tags || []).join(' ')}`);
+      return tokens.some((token) => text.includes(token));
+    })
+    .map((activity) => activity.activityDate)
+    .filter(isValidBusinessDate)
+    .sort(compareSafeBusinessDate)
+    .at(-1) || '';
+}
+
 function buildImportedAccountInfoNudges(input: ProactiveNudgeInput, today: string) {
   const hidden = countImportedOnlyAccounts(input, today);
   if (hidden === 0) return [];
@@ -680,10 +780,11 @@ function urgencyRank(urgency: NudgeUrgency) {
 
 function sourceRank(source: NudgeSource) {
   return {
-    revenue: 7,
-    opportunity: 6,
-    'pipeline-defense': 5,
-    objection: 4,
+    revenue: 8,
+    opportunity: 7,
+    'pipeline-defense': 6,
+    objection: 5,
+    initiative: 4,
     'outcome-learning': 3,
     capture: 2,
     stakeholder: 1,

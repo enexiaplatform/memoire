@@ -11,6 +11,9 @@ import {
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
 import { FollowUpImpactPanel } from '../dashboard/FollowUpImpactPanel';
+import { WeeklyBusinessReviewPanel } from './WeeklyBusinessReviewPanel';
+import { buildWeeklyBusinessReview } from '../../utils/weeklyBusinessReview';
+import { type OperatingContextRecord } from '../../services/operatingContextStore';
 import { buildFollowUpImpact } from '../../utils/followUpImpact';
 import { type AccountMemoryRecord } from '../../services/accountStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
@@ -77,6 +80,7 @@ export function SalesReviewsPage() {
   const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
   const [briefs, setBriefs] = useState<PipelineDefenseBrief[]>([]);
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
+  const [operatingContexts, setOperatingContexts] = useState<OperatingContextRecord[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [recap, setRecap] = useState<SalesActivityRecap | null>(null);
   const [copyMessage, setCopyMessage] = useState('');
@@ -108,6 +112,14 @@ export function SalesReviewsPage() {
     () => getActionOutcomesInPeriod(actionOutcomes, period),
     [actionOutcomes, period]
   );
+  const weeklyBusinessReview = useMemo(() => buildWeeklyBusinessReview({
+    opportunities,
+    quotes,
+    operatingContexts,
+    activities,
+    opportunityOutcomes,
+    period,
+  }), [activities, operatingContexts, opportunities, opportunityOutcomes, period, quotes]);
   // Full activity history goes in (not periodActivities): quiet gaps before the
   // period and replies after a follow-up both matter for honest attribution.
   const periodFollowUpImpact = useMemo(() => buildFollowUpImpact({
@@ -180,6 +192,7 @@ export function SalesReviewsPage() {
       setAccounts(cachedData.accounts);
       setBriefs(cachedData.briefs);
       setQuotes(cachedData.quotes);
+      setOperatingContexts(cachedData.operatingContext);
       setLoadingActivities(false);
       return;
     }
@@ -196,6 +209,7 @@ export function SalesReviewsPage() {
     setAccounts(workspaceData.accounts);
     setBriefs(workspaceData.briefs);
     setQuotes(workspaceData.quotes);
+    setOperatingContexts(workspaceData.operatingContext);
     setLoadingActivities(false);
   }, [dataUserId]);
 
@@ -251,8 +265,8 @@ export function SalesReviewsPage() {
     <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Weekly Brief</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Review summary</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Weekly Business Review</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">What happened, where the money is, what comes next.</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
             Summarize the week for review and sharing. Today remains the daily command center.
           </p>
@@ -356,6 +370,8 @@ export function SalesReviewsPage() {
       </section>
 
       <ExecutionRhythmCharts activities={activities} opportunities={opportunities} />
+
+      <WeeklyBusinessReviewPanel review={weeklyBusinessReview} periodLabel={period.label} />
 
       <FollowUpImpactPanel impact={periodFollowUpImpact} periodLabel={period.label} />
 

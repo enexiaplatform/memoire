@@ -34,7 +34,7 @@ const primarySections = [{
 }];
 
 const secondaryItems = [
-  { to: '/app/weekly-brief', label: 'Weekly Brief', icon: <ClipboardList className="h-5 w-5" /> },
+  { to: '/app/weekly-brief', label: 'Business Review', icon: <ClipboardList className="h-5 w-5" /> },
   { to: '/app/revenue', label: 'Money', icon: <Banknote className="h-5 w-5" /> },
   { to: '/app/stakeholders', label: 'Stakeholders', icon: <UsersRound className="h-5 w-5" /> },
   { to: '/app/objections', label: 'Objections', icon: <AlertTriangle className="h-5 w-5" /> },

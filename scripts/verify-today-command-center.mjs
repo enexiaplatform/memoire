@@ -76,7 +76,7 @@ for (const helper of ['formatSafeBusinessDate', 'formatCurrencyAmount', 'formatB
 }
 for (const [file, marker] of [
   ['src/features/revenue/RevenueViewPage.tsx', 'Commercial risk detail'],
-  ['src/features/reviews/SalesReviewsPage.tsx', 'Review summary'],
+  ['src/features/reviews/SalesReviewsPage.tsx', 'Weekly Business Review'],
   ['src/features/operatingSystem/OperatingSystemPage.tsx', 'Supporting drill-down'],
 ]) assert.ok(readFileSync(file, 'utf8').includes(marker), `${file} still competes with Today.`);
 

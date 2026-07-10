@@ -18,6 +18,7 @@ export const nudgeSources = [
   'outcome-learning',
   'stakeholder',
   'objection',
+  'initiative',
 ] as const;
 
 export const nudgeEntityTypes = [
@@ -27,6 +28,7 @@ export const nudgeEntityTypes = [
   'activity',
   'stakeholder',
   'objection',
+  'initiative',
   'system',
 ] as const;
 
