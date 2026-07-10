@@ -14,6 +14,9 @@ const DEEP_LOOP_EVENTS = [
   'calibration_viewed',
   'proven_responses_copied',
   'voice_dictation_used',
+  'learning_brief_copied',
+  'revenue_risk_brief_copied',
+  'follow_up_brief_copied',
 ];
 
 // 1. Client union and server whitelist stay in sync - an event missing on
@@ -37,6 +40,9 @@ const CALL_SITES = {
   calibration_viewed: 'src/features/pipeline/PipelineReviewDefenseBriefPage.tsx',
   proven_responses_copied: 'src/features/playbook/SalesPlaybookPage.tsx',
   voice_dictation_used: 'src/hooks/useSpeechDictation.ts',
+  learning_brief_copied: 'src/features/reviews/SalesReviewsPage.tsx',
+  revenue_risk_brief_copied: 'src/features/reviews/SalesReviewsPage.tsx',
+  follow_up_brief_copied: 'src/features/reviews/SalesReviewsPage.tsx',
 };
 for (const [eventName, file] of Object.entries(CALL_SITES)) {
   assert.ok(read(file).includes(`trackProductEvent('${eventName}'`), `${file} missing call site for ${eventName}`);

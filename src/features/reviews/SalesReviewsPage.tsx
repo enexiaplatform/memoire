@@ -385,6 +385,7 @@ export function SalesReviewsPage() {
         periodLabel={period.label}
         copyMessage={learningBriefMessage}
         onCopyLearningBrief={async () => {
+          trackProductEvent('learning_brief_copied');
           const markdown = generateCommercialLearningBriefMarkdown({
             objections,
             opportunityOutcomes,
@@ -400,6 +401,7 @@ export function SalesReviewsPage() {
           }
         }}
         onCopyRevenueRiskBrief={async () => {
+          trackProductEvent('revenue_risk_brief_copied');
           const markdown = generateRevenueRiskBriefMarkdown({
             opportunities,
             quotes,
@@ -413,6 +415,7 @@ export function SalesReviewsPage() {
           }
         }}
         onCopyFollowUpBrief={async () => {
+          trackProductEvent('follow_up_brief_copied');
           const markdown = generateFollowUpBriefMarkdown({
             activities,
             opportunities,

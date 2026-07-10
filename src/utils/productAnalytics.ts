@@ -19,7 +19,10 @@ export type ProductFunnelEvent =
   | 'next_touch_booked'
   | 'calibration_viewed'
   | 'proven_responses_copied'
-  | 'voice_dictation_used';
+  | 'voice_dictation_used'
+  | 'learning_brief_copied'
+  | 'revenue_risk_brief_copied'
+  | 'follow_up_brief_copied';
 
 export type AnalyticsDataMode = 'demo-local' | 'cloud-browser' | 'browser-only' | 'sync-issue' | 'unknown';
 

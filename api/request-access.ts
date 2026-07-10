@@ -51,6 +51,9 @@ export const PRODUCT_EVENTS = new Set([
   'calibration_viewed',
   'proven_responses_copied',
   'voice_dictation_used',
+  'learning_brief_copied',
+  'revenue_risk_brief_copied',
+  'follow_up_brief_copied',
 ]);
 export const DATA_MODES = new Set(['demo-local', 'cloud-browser', 'browser-only', 'sync-issue', 'unknown']);
 
