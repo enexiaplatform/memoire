@@ -6,6 +6,7 @@ import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import { buildMoneyFlow, type MoneyFlow } from './moneyFlow.ts';
 import { buildRetentionSignals } from './retentionSignals.ts';
+import { readInitiativeExperiment, type InitiativeDecision } from './initiativeExperiment.ts';
 import { classifyInitiativeHealth, type InitiativeHealth } from './proactiveNudges.ts';
 import { formatBaseCurrencyAmount, sumMoneyInBase } from './money.ts';
 import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
@@ -17,6 +18,9 @@ export type StalledInitiativeItem = {
   health: InitiativeHealth;
   reason: string;
   nextAction: string;
+  hypothesis: string;
+  currentSignal: string;
+  decision: InitiativeDecision;
 };
 
 export type NextWeekPriority = {
@@ -96,18 +100,24 @@ export function buildWeeklyBusinessReview(input: WeeklyBusinessReviewInput): Wee
   const stalledInitiatives = input.operatingContexts
     .map((context) => ({ context, health: classifyInitiativeHealth(context, input.activities, today) }))
     .filter(({ health }) => health.status === 'quiet' || health.status === 'overdue-step')
-    .map(({ context, health }) => ({
-      id: context.id,
-      title: context.title,
-      contextType: context.contextType,
-      health,
-      reason: health.status === 'overdue-step'
-        ? `Next step dated ${formatSafeBusinessDate(context.nextDate)} has passed.`
-        : health.lastMention
-          ? `No captured activity since ${formatSafeBusinessDate(health.lastMention)}.`
-          : 'No captured activity since it was created.',
-      nextAction: context.nextAction || 'Capture an update, book the next step, or close it.',
-    }));
+    .map(({ context, health }) => {
+      const experiment = readInitiativeExperiment(context.payload);
+      return {
+        id: context.id,
+        title: context.title,
+        contextType: context.contextType,
+        health,
+        reason: health.status === 'overdue-step'
+          ? `Next step dated ${formatSafeBusinessDate(context.nextDate)} has passed.`
+          : health.lastMention
+            ? `No captured activity since ${formatSafeBusinessDate(health.lastMention)}.`
+            : 'No captured activity since it was created.',
+        nextAction: context.nextAction || 'Capture an update, book the next step, or close it.',
+        hypothesis: experiment.hypothesis,
+        currentSignal: experiment.currentSignal,
+        decision: experiment.decision,
+      };
+    });
 
   const commitments = buildCommitmentLedger(input, today);
   const signals = buildSignalDigest(input);

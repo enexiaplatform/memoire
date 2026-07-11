@@ -160,9 +160,40 @@ assert.equal(classifyInitiativeHealth(makeContext({ status: 'Completed' }), [], 
   });
   assert.equal(review.wins.length, 1);
   assert.equal(review.stalledInitiatives.length, 1);
+  // The stalled initiative carries the experiment fields for the weekly decision.
+  assert.equal(review.stalledInitiatives[0].decision, 'undecided', 'a context with no experiment payload reads as undecided');
+  assert.equal(review.stalledInitiatives[0].currentSignal, '');
   assert.ok(review.nextWeekPriorities.some((item) => item.label.includes('Unstick the money')));
   assert.ok(review.nextWeekPriorities.some((item) => item.label.includes('Scheduled: DueCo')));
   assert.ok(review.nextWeekPriorities.some((item) => item.label.includes('Restart the initiative')));
+}
+
+// === A stalled experiment surfaces its signal and decision for the weekly
+// continue/adjust/stop call. ===
+{
+  const review = buildWeeklyBusinessReview({
+    opportunities: [],
+    quotes: [],
+    operatingContexts: [makeContext({
+      contextType: 'experiment', createdAt: '2026-05-01T00:00:00.000Z',
+      payload: { experiment: { hypothesis: 'Faster onboarding lifts activation', expectedSignal: '3 active in 30 days', currentSignal: '1 active so far', decision: 'adjust', decisionNote: '' } },
+    })],
+    activities: [],
+    opportunityOutcomes: [],
+    period: { start: '2026-07-06', end: '2026-07-12' },
+    today,
+  });
+  assert.equal(review.stalledInitiatives.length, 1);
+  assert.equal(review.stalledInitiatives[0].currentSignal, '1 active so far', 'the review must carry the current experiment signal');
+  assert.equal(review.stalledInitiatives[0].decision, 'adjust', 'the review must carry the recorded decision');
+}
+
+// UI contract: the Weekly Review panel renders the experiment signal and decision.
+{
+  const panel = readFileSync(new URL('../src/features/reviews/WeeklyBusinessReviewPanel.tsx', import.meta.url), 'utf8');
+  for (const marker of ['Signal so far:', 'initiativeDecisionLabel', 'item.currentSignal']) {
+    assert.ok(panel.includes(marker), `Weekly Review panel missing initiative marker: ${marker}`);
+  }
 }
 
 // === Retention tail in next-week priorities: the coldest paid-but-quiet

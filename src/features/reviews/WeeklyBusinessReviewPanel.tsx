@@ -4,6 +4,7 @@ import type { WeeklyBusinessReview } from '../../utils/weeklyBusinessReview';
 import { formatBaseCurrencyAmount, formatCurrencyAmount } from '../../utils/money';
 import { formatOutcomeRetro } from '../../utils/personalSalesLearning';
 import { getWorkspaceLens, orderReviewSectionsForLens } from '../../utils/workspaceLens';
+import { initiativeDecisionLabel, initiativeDecisionTone } from '../../utils/initiativeExperiment';
 
 export function WeeklyBusinessReviewPanel({
   review,
@@ -153,8 +154,19 @@ function reviewSections(review: WeeklyBusinessReview, activeLanes: WeeklyBusines
             <div className="mt-3 space-y-1.5 text-xs leading-5">
               {review.stalledInitiatives.slice(0, 4).map((item) => (
                 <div key={item.id} className="rounded-lg bg-white px-3 py-2">
-                  <p className="font-bold text-gray-900">{item.title} <span className="ml-1 rounded-full bg-violet-50 px-2 py-0.5 text-violet-700">{item.contextType}</span></p>
+                  <p className="font-bold text-gray-900">
+                    {item.title}
+                    <span className="ml-1 rounded-full bg-violet-50 px-2 py-0.5 text-violet-700">{item.contextType}</span>
+                    {item.decision !== 'undecided' && (
+                      <span className={`ml-1 rounded-full px-2 py-0.5 ${initiativeDecisionTone(item.decision)}`}>{initiativeDecisionLabel(item.decision)}</span>
+                    )}
+                  </p>
                   <p className="mt-0.5 text-gray-600">{item.reason} {item.nextAction}</p>
+                  {item.currentSignal
+                    ? <p className="mt-0.5 text-violet-800">Signal so far: {item.currentSignal}</p>
+                    : item.hypothesis
+                      ? <p className="mt-0.5 text-gray-500">Testing: {item.hypothesis}</p>
+                      : null}
                 </div>
               ))}
             </div>
