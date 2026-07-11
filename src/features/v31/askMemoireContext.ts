@@ -18,6 +18,7 @@ export const accountPresets = [
 ];
 
 export const opportunityPresets = [
+  'Where does this deal stand?',
   'Why is this deal stuck?',
   'What is blocking this opportunity?',
   'What follow-up is missing?',

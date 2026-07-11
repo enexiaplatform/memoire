@@ -16,6 +16,7 @@ import { buildForecastCalibration } from '../src/utils/forecastCalibration.ts';
 import { buildRetentionSignals } from '../src/utils/retentionSignals.ts';
 import { buildCommitmentLedger } from '../src/utils/weeklyBusinessReview.ts';
 import { buildCommercialJourneySnapshot } from '../src/utils/commercialJourney.ts';
+import { opportunityPresets } from '../src/features/v31/askMemoireContext.ts';
 
 // 1. Detection is narrow and routes to the right layer.
 assert.equal(detectInsightQuestion('Did my follow-ups work?'), 'follow_up_impact');
@@ -132,6 +133,11 @@ assert.equal(detectInsightQuestion('Which deals may go silent?'), null, 'silent 
   assert.ok(answer.answer.includes('Negotiation'), 'deal position must carry the journey position');
   assert.equal(answer.cards?.[0]?.kind, 'insight');
   assert.ok(answer.cards?.[0]?.fields.some((field) => field.label === 'Next commitment'));
+
+  // Discoverability: the opportunity-scoped presets lead with a one-tap
+  // deal-position question, and it routes to the deal_position layer.
+  assert.ok(opportunityPresets.includes('Where does this deal stand?'), 'opportunity presets must offer the deal-position question');
+  assert.equal(detectInsightQuestion('Where does this deal stand?'), 'deal_position', 'the deal-position preset must route to the journey answer');
 }
 
 // 3. Populated layers produce an insight card with real numbers.
