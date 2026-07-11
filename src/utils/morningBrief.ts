@@ -69,6 +69,21 @@ function buildQuestions(nudges: NudgeRecord[], waitingFollowUps: number): Mornin
     questions.push(askQuestion('Which unresolved objections are blocking my pipeline right now?'));
   }
 
+  // A deal flagged for something other than silence still deserves a
+  // one-tap "where does it stand" that Ask answers from the journey model -
+  // but only for an account not already covered by an earlier question, so
+  // the brief never asks two things about the same deal.
+  const dealNudge = nudges.find((nudge) => Boolean(nudge.accountName)
+    && (nudge.entityType === 'opportunity' || nudge.entityType === 'quote')
+    && !/silent|silence/i.test(nudge.title)
+    && !questions.some((question) => question.label.includes(nudge.accountName || '\0')));
+  if (dealNudge?.accountName) {
+    const scoped = dealNudge.entityType === 'opportunity' && dealNudge.entityId
+      ? { scope: 'opportunity', opportunityId: dealNudge.entityId }
+      : undefined;
+    questions.push(askQuestion(`Where does ${dealNudge.accountName} stand?`, scoped));
+  }
+
   if (waitingFollowUps > 0) {
     questions.push(askQuestion('Did my follow-ups work?'));
   }

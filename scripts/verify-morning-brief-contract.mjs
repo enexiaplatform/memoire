@@ -105,6 +105,31 @@ function makeActivity(patch = {}) {
   assert.equal(params.get('scope'), null, 'non-opportunity nudges must not force a scope');
 }
 
+// 3c. A non-silence deal nudge yields a scoped "where does it stand" question
+// that Ask Memoire answers from the journey read-model.
+{
+  const brief = buildMorningBrief({
+    today,
+    nudges: [makeNudge({ id: 'n-money', title: 'Payment overdue', entityType: 'opportunity', entityId: 'opp-9', accountName: 'Apex Labs', urgency: 'high' })],
+    activities: [],
+  });
+  const positionQuestion = brief.questions.find((question) => question.label === 'Where does Apex Labs stand?');
+  assert.ok(positionQuestion, 'a non-silence deal nudge must offer a deal-position question');
+  const params = new URL(`http://memoire.test${positionQuestion.href}`).searchParams;
+  assert.equal(params.get('scope'), 'opportunity', 'deal-position question must scope to the flagged opportunity');
+  assert.equal(params.get('opportunityId'), 'opp-9');
+}
+
+// 3d. A silence nudge keeps its own richer question - no duplicate deal-position.
+{
+  const brief = buildMorningBrief({ today, nudges: [makeNudge()], activities: [] });
+  assert.equal(
+    brief.questions.some((question) => question.label === 'Where does Summit Diagnostics stand?'),
+    false,
+    'a silence deal is covered by its silence question, not a second deal-position one',
+  );
+}
+
 // 4. UI contract: card rendered on Today; Ask Memoire consumes ?question= once context loads.
 const dashboard = readFileSync(new URL('../src/features/dashboard/DashboardPage.tsx', import.meta.url), 'utf8');
 for (const marker of ['MorningBriefCard', 'buildMorningBrief']) {

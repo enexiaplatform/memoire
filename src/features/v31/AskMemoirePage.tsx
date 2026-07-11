@@ -21,6 +21,7 @@ import { buildObjectionPlaybook } from '../../utils/objectionPlaybook';
 import { buildForecastCalibration } from '../../utils/forecastCalibration';
 import {
   answerFromCommitments,
+  answerFromDealPosition,
   answerFromFollowUpImpact,
   answerFromForecastCalibration,
   answerFromMoneyFlow,
@@ -28,10 +29,12 @@ import {
   answerFromRetentionSignals,
   answerFromWeekRecap,
   detectInsightQuestion,
+  resolveDealForQuestion,
 } from './askMemoireInsightAnswers';
 import { buildMoneyFlow } from '../../utils/moneyFlow';
 import { buildRetentionSignals } from '../../utils/retentionSignals';
 import { buildCommitmentLedger } from '../../utils/weeklyBusinessReview';
+import { buildCommercialJourneySnapshot } from '../../utils/commercialJourney';
 import { todayDateKey } from '../../utils/safeDate';
 
 export function AskMemoirePage() {
@@ -223,7 +226,25 @@ export function AskMemoirePage() {
       // Questions about the seller's own measured history are deterministic:
       // answer from the computed data layers, never from the AI endpoint.
       const insightKind = rawWorkspace ? detectInsightQuestion(nextQuestion) : null;
-      if (insightKind && rawWorkspace) {
+      // Deal position needs to resolve which deal first; if it can't, fall
+      // through to the normal answer path instead of guessing.
+      if (insightKind === 'deal_position' && rawWorkspace) {
+        const deal = resolveDealForQuestion(nextQuestion, rawWorkspace.opportunities, selectedOpportunityId);
+        if (deal) {
+          setStatusMessage('Answered from your measured history (no AI involved).');
+          setAnswer(answerFromDealPosition(
+            buildCommercialJourneySnapshot({
+              opportunity: deal,
+              quotes: rawWorkspace.quotes,
+              activities: rawWorkspace.activities,
+              objections: rawWorkspace.objections,
+            }),
+            deal,
+          ));
+          return;
+        }
+      }
+      if (insightKind && insightKind !== 'deal_position' && rawWorkspace) {
         setStatusMessage('Answered from your measured history (no AI involved).');
         if (insightKind === 'follow_up_impact') {
           setAnswer(answerFromFollowUpImpact(buildFollowUpImpact({

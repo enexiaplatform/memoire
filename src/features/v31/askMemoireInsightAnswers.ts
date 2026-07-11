@@ -3,10 +3,12 @@ import type { SalesActivityRecord } from '../../services/salesActivityStore.ts';
 import { followUpImpactStatusLabel, type FollowUpImpactSummary } from '../../utils/followUpImpact.ts';
 import { formatObjectionResolutionRate, type ObjectionPlaybook } from '../../utils/objectionPlaybook.ts';
 import { formatWinRate, type ForecastCalibration } from '../../utils/forecastCalibration.ts';
+import type { CrmLiteOpportunity } from '../../services/opportunityStore.ts';
 import { classifyBusinessDomain, type BusinessDomain } from '../../utils/businessDomain.ts';
 import { type MoneyFlow } from '../../utils/moneyFlow.ts';
 import { type RetentionSignal, RETENTION_QUIET_DAYS } from '../../utils/retentionSignals.ts';
 import { type CommitmentItem } from '../../utils/weeklyBusinessReview.ts';
+import { type CommercialJourneySnapshot, formatJourneyCommitment } from '../../utils/commercialJourney.ts';
 import { formatBaseCurrencyAmount, formatCurrencyAmount } from '../../utils/money.ts';
 import { formatSafeBusinessDate, isValidBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
 
@@ -17,7 +19,8 @@ export type InsightQuestionKind =
   | 'money_state'
   | 'week_recap'
   | 'retention_check'
-  | 'commitments';
+  | 'commitments'
+  | 'deal_position';
 
 /**
  * Deterministic questions about the seller's own history are answered from
@@ -48,7 +51,85 @@ export function detectInsightQuestion(question: string): InsightQuestionKind | n
   if (/did i keep (my )?(promises?|commitments?|word)|(promises?|commitments?)\b.*\b(kept|missed|due|status)|\b(kept|missed) (promises?|commitments?)|commitments? this week/.test(normalized)) {
     return 'commitments';
   }
+  // Deal position asks where a named (or scoped) deal stands. Checked after
+  // money_state so "where is the money" keeps the money answer; resolution
+  // failure falls through to the normal path, so loose detection is safe.
+  if (/where (do|does)\b.*\bstand|where do we stand|status of (the |my |this )?.*\bdeal|how('s| is| are)\b.*\bdeal\b.*(go|going|progress|doing|stand)|where (is|are)\b.*\bdeal\b/.test(normalized)) {
+    return 'deal_position';
+  }
   return null;
+}
+
+/**
+ * Resolve which deal a position question is about: the scoped opportunity
+ * wins, otherwise match the deal whose opportunity or account name appears
+ * in the question. Returns null when nothing resolves, so the caller can
+ * fall through instead of answering about the wrong deal.
+ */
+export function resolveDealForQuestion(
+  question: string,
+  opportunities: CrmLiteOpportunity[],
+  selectedOpportunityId?: string,
+): CrmLiteOpportunity | null {
+  if (selectedOpportunityId) {
+    const scoped = opportunities.find((opportunity) => opportunity.id === selectedOpportunityId);
+    if (scoped) return scoped;
+  }
+  const normalized = question.toLowerCase();
+  const candidates = opportunities
+    .map((opportunity) => {
+      const oppName = (opportunity.opportunityName || '').trim().toLowerCase();
+      const accName = (opportunity.accountName || '').trim().toLowerCase();
+      let score = 0;
+      // Opportunity names are more specific than account names, so they win.
+      if (oppName.length >= 3 && normalized.includes(oppName)) score = Math.max(score, oppName.length + 1000);
+      if (accName.length >= 3 && normalized.includes(accName)) score = Math.max(score, accName.length);
+      if (score > 0 && opportunity.status === 'Active') score += 1;
+      return { opportunity, score };
+    })
+    .filter((candidate) => candidate.score > 0)
+    .sort((a, b) => b.score - a.score);
+  return candidates[0]?.opportunity || null;
+}
+
+export function answerFromDealPosition(snapshot: CommercialJourneySnapshot, opportunity: CrmLiteOpportunity): AskMemoireAnswer {
+  const name = [opportunity.accountName, opportunity.opportunityName].filter(Boolean).join(' / ') || 'This deal';
+  const sentence = [
+    `${name} is at ${snapshot.position}${snapshot.positionSource === 'money-flow' ? ' (from the money flow)' : ''}.`,
+    `Money: ${snapshot.moneyStatus}.`,
+    `Risk: ${snapshot.riskStatus}.`,
+    snapshot.blocker ? `Blocker: ${snapshot.blocker}.` : '',
+    snapshot.lastTouch ? `Last touch ${formatSafeBusinessDate(snapshot.lastTouch.date)}.` : 'No touch captured yet.',
+  ].filter(Boolean).join(' ');
+
+  return {
+    answer: sentence,
+    contextUsed: ['Commercial journey (stage, money flow, captured touches, objections)'],
+    missingContext: snapshot.evidence ? [] : ['Evidence for this deal'],
+    suggestedNextAction: snapshot.nextCommitment
+      ? formatJourneyCommitment(snapshot.nextCommitment)
+      : snapshot.riskStatus !== 'No active risk signal'
+        ? 'Book the next touch to protect this deal.'
+        : 'Keep the next step dated so the deal stays on track.',
+    suggestedQuestions: ['Where is the money?', 'Which deals may go silent?'],
+    cards: [{
+      kind: 'insight',
+      title: `Where ${name} stands`,
+      fields: [
+        { label: 'Position', value: `${snapshot.position}${snapshot.positionSource === 'money-flow' ? ' (money flow)' : ' (sales stage)'}` },
+        { label: 'Money', value: snapshot.moneyStatus, tone: snapshot.moneyStatus.includes('stuck') ? 'warning' : 'default' },
+        { label: 'Risk', value: snapshot.riskStatus, tone: snapshot.riskStatus === 'No active risk signal' ? 'good' : 'warning' },
+        { label: 'Blocker', value: snapshot.blocker || 'None open' },
+        { label: 'Next commitment', value: formatJourneyCommitment(snapshot.nextCommitment) },
+        { label: 'Last touch', value: snapshot.lastTouch ? `${formatSafeBusinessDate(snapshot.lastTouch.date)} - ${snapshot.lastTouch.summary}` : 'None captured' },
+        { label: 'Evidence', value: snapshot.evidence || 'Not captured yet' },
+      ],
+      ctas: [
+        { label: 'Open Pipeline Defense', href: '/app/pipeline-defense' },
+        { label: 'Open Activity Ledger', href: '/app/activity' },
+      ],
+    }],
+  };
 }
 
 export function answerFromMoneyFlow(moneyFlow: MoneyFlow): AskMemoireAnswer {
