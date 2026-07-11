@@ -165,6 +165,39 @@ assert.equal(classifyInitiativeHealth(makeContext({ status: 'Completed' }), [], 
   assert.ok(review.nextWeekPriorities.some((item) => item.label.includes('Restart the initiative')));
 }
 
+// === Retention tail in next-week priorities: the coldest paid-but-quiet
+// customer earns one slot; an active deal on the account suppresses it
+// (the silence rules own that case). ===
+{
+  const paidQuiet = buildWeeklyBusinessReview({
+    opportunities: [],
+    quotes: [makeQuote({ status: 'Accepted', poStatus: 'Received', deliveryStatus: 'Delivered', paymentStatus: 'Paid', accountName: 'Retention Co', quoteDate: '2026-05-15' })],
+    operatingContexts: [],
+    activities: [],
+    opportunityOutcomes: [],
+    period: { start: '2026-07-06', end: '2026-07-12' },
+    today,
+  });
+  const retention = paidQuiet.nextWeekPriorities.find((item) => item.label.includes('Book a retention touch: Retention Co'));
+  assert.ok(retention, 'a paid-but-quiet customer must earn a next-week retention priority');
+  assert.ok(retention.detail.includes('no touch has been captured since'), 'no-history retention must say so plainly');
+
+  const suppressed = buildWeeklyBusinessReview({
+    opportunities: [makeOpportunity({ accountName: 'Retention Co', nextActionDate: '' })],
+    quotes: [makeQuote({ status: 'Accepted', poStatus: 'Received', deliveryStatus: 'Delivered', paymentStatus: 'Paid', accountName: 'Retention Co', quoteDate: '2026-05-15' })],
+    operatingContexts: [],
+    activities: [],
+    opportunityOutcomes: [],
+    period: { start: '2026-07-06', end: '2026-07-12' },
+    today,
+  });
+  assert.equal(
+    suppressed.nextWeekPriorities.some((item) => item.label.includes('Book a retention touch')),
+    false,
+    'an active deal on the account must suppress the retention priority',
+  );
+}
+
 // === Stage 2.2: commitments ledger - promises vs the activity ledger ===
 {
   const review = buildWeeklyBusinessReview({

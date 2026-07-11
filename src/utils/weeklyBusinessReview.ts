@@ -1,9 +1,11 @@
+import type { AccountMemoryRecord } from '../services/accountStore.ts';
 import type { OperatingContextRecord } from '../services/operatingContextStore.ts';
 import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import { buildMoneyFlow, type MoneyFlow } from './moneyFlow.ts';
+import { buildRetentionSignals } from './retentionSignals.ts';
 import { classifyInitiativeHealth, type InitiativeHealth } from './proactiveNudges.ts';
 import { formatBaseCurrencyAmount, sumMoneyInBase } from './money.ts';
 import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
@@ -68,6 +70,7 @@ type WeeklyBusinessReviewInput = {
   operatingContexts: OperatingContextRecord[];
   activities: SalesActivityRecord[];
   opportunityOutcomes: OpportunityOutcomeRecord[];
+  accounts?: AccountMemoryRecord[];
   period: { start: string; end: string };
   today?: string;
 };
@@ -292,6 +295,26 @@ function buildNextWeekPriorities(
       label: `Restart the initiative: ${topStalled.title}`,
       detail: topStalled.nextAction,
       href: '/app/operating-system',
+    });
+  }
+
+  // Retention tail: the coldest paid-but-quiet customer earns one slot -
+  // future revenue going cold is next week's work too, never this week's fire.
+  const coldestRetention = buildRetentionSignals({
+    quotes: input.quotes,
+    activities: input.activities,
+    opportunities: input.opportunities,
+    accounts: input.accounts,
+    today,
+  })[0];
+  if (coldestRetention) {
+    priorities.push({
+      id: `retention-${coldestRetention.quoteId}`,
+      label: `Book a retention touch: ${coldestRetention.accountName}`,
+      detail: coldestRetention.daysQuiet === null
+        ? 'This customer paid, and no touch has been captured since.'
+        : `Paid, and quiet for ${coldestRetention.daysQuiet}d - a check-in keeps the next order alive.`,
+      href: '/app/capture',
     });
   }
 

@@ -127,8 +127,9 @@ export function SalesReviewsPage() {
     operatingContexts,
     activities,
     opportunityOutcomes,
+    accounts,
     period,
-  }), [activities, operatingContexts, opportunities, opportunityOutcomes, period, quotes]);
+  }), [accounts, activities, operatingContexts, opportunities, opportunityOutcomes, period, quotes]);
   // Full activity history goes in (not periodActivities): quiet gaps before the
   // period and replies after a follow-up both matter for honest attribution.
   const periodFollowUpImpact = useMemo(() => buildFollowUpImpact({
