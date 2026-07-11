@@ -180,7 +180,17 @@ function buildSignalDigest(input: WeeklyBusinessReviewInput): SignalDigest {
  * for the live period - past periods cannot be reconstructed and are not
  * pretended.
  */
-function buildCommitmentLedger(input: WeeklyBusinessReviewInput, today: string): CommitmentItem[] {
+/**
+ * The commitments read-model: every dated next action on an active deal is
+ * a promise, checked against the activity ledger. Exported for reuse - the
+ * Weekly Business Review renders it, and Ask Memoire answers "did I keep my
+ * promises" from the same rules. Current promises only; past periods are
+ * not reconstructed because only the current promise is stored.
+ */
+export function buildCommitmentLedger(
+  input: Pick<WeeklyBusinessReviewInput, 'opportunities' | 'activities' | 'period'>,
+  today: string,
+): CommitmentItem[] {
   const items: CommitmentItem[] = [];
 
   input.opportunities

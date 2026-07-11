@@ -29,7 +29,7 @@ Verify: health probe shows `app_url_matches_request_host: true` and zero warning
 1. Vercel env (Production): `OPENAI_API_KEY` (embeddings) and the configured AI provider key for `/api/ask-memoire` and `/api/capture-ai-classify` if different.
 2. Redeploy.
 
-Verify: health probe `ok: true` with the embeddings check passing; on production, Ask Memoire status line switches from local-rules fallback to the configured endpoint. Note: measured-history questions ("did my follow-ups work", "where is the money", "what happened this week", calibration) never use AI by design - do not treat their "no AI involved" status as a failure.
+Verify: health probe `ok: true` with the embeddings check passing; on production, Ask Memoire status line switches from local-rules fallback to the configured endpoint. Note: measured-history questions ("did my follow-ups work", "where is the money", "what happened this week", "which customers should I check back with", "did I keep my promises", calibration) never use AI by design - do not treat their "no AI involved" status as a failure.
 
 ## Step 3 - Error and event visibility (pairs with the in-app instrumentation)
 

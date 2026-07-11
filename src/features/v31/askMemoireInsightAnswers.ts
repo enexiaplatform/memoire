@@ -5,6 +5,8 @@ import { formatObjectionResolutionRate, type ObjectionPlaybook } from '../../uti
 import { formatWinRate, type ForecastCalibration } from '../../utils/forecastCalibration.ts';
 import { classifyBusinessDomain, type BusinessDomain } from '../../utils/businessDomain.ts';
 import { type MoneyFlow } from '../../utils/moneyFlow.ts';
+import { type RetentionSignal, RETENTION_QUIET_DAYS } from '../../utils/retentionSignals.ts';
+import { type CommitmentItem } from '../../utils/weeklyBusinessReview.ts';
 import { formatBaseCurrencyAmount, formatCurrencyAmount } from '../../utils/money.ts';
 import { formatSafeBusinessDate, isValidBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
 
@@ -13,7 +15,9 @@ export type InsightQuestionKind =
   | 'objection_playbook'
   | 'forecast_calibration'
   | 'money_state'
-  | 'week_recap';
+  | 'week_recap'
+  | 'retention_check'
+  | 'commitments';
 
 /**
  * Deterministic questions about the seller's own history are answered from
@@ -37,6 +41,12 @@ export function detectInsightQuestion(question: string): InsightQuestionKind | n
   }
   if (/what happened (this|last) week|recap (of )?(this|last|my) week|(this|last) week.*(recap|summary|review)\b|week in review/.test(normalized)) {
     return 'week_recap';
+  }
+  if (/\bretention\b|check back with|keep warm|(customers?|clients?|accounts?)\b.*\b(check back|revisit|reconnect|going (quiet|cold))|paid\b.*\b(gone|going|went) (quiet|cold)/.test(normalized)) {
+    return 'retention_check';
+  }
+  if (/did i keep (my )?(promises?|commitments?|word)|(promises?|commitments?)\b.*\b(kept|missed|due|status)|\b(kept|missed) (promises?|commitments?)|commitments? this week/.test(normalized)) {
+    return 'commitments';
   }
   return null;
 }
@@ -65,7 +75,7 @@ export function answerFromMoneyFlow(moneyFlow: MoneyFlow): AskMemoireAnswer {
     contextUsed: ['Money flow (deals, quotes, POs, deliveries, payments)'],
     missingContext: [],
     suggestedNextAction: stuck[0] ? `${stuck[0].nextAction} (${stuck[0].accountName})` : 'Keep the next commercial steps dated.',
-    suggestedQuestions: ['What happened this week?', 'Which deals may go silent?'],
+    suggestedQuestions: ['Which customers should I check back with?', 'Which deals may go silent?'],
     cards: [{
       kind: 'insight',
       title: 'Where the money sits',
@@ -125,7 +135,7 @@ export function answerFromWeekRecap(activities: SalesActivityRecord[], today = t
     contextUsed: ['Activity Ledger (last 7 days)'],
     missingContext: [],
     suggestedNextAction: 'Open the Weekly Business Review for money, wins/losses, and next-week priorities.',
-    suggestedQuestions: ['Where is the money?', 'Did my follow-ups work?'],
+    suggestedQuestions: ['Did I keep my promises this week?', 'Where is the money?'],
     cards: [{
       kind: 'insight',
       title: 'Your week, from the ledger',
@@ -227,6 +237,90 @@ export function answerFromObjectionPlaybook(playbook: ObjectionPlaybook): AskMem
       ],
       ctas: [{ label: 'Open Playbook', href: '/app/playbook', note: 'Copy proven responses from the Playbook page.' }],
     })),
+  };
+}
+
+export function answerFromRetentionSignals(signals: RetentionSignal[]): AskMemoireAnswer {
+  if (signals.length === 0) {
+    return {
+      answer: `No paid customer needs a retention touch right now - every paid relationship either has a touch in the last ${RETENTION_QUIET_DAYS} days, active deal work, or a dated follow-up. This reads only paid quotes; it never guesses.`,
+      contextUsed: ['Paid quotes', 'Activity Ledger', 'Open deals and follow-up dates'],
+      missingContext: [],
+      suggestedNextAction: 'Keep capturing touches so this stays true.',
+      suggestedQuestions: ['Where is the money?', 'Which deals may go silent?'],
+    };
+  }
+
+  const coldest = signals[0];
+  return {
+    answer: `${signals.length} paid ${signals.length === 1 ? 'customer is' : 'customers are'} going quiet with nothing planned: ${signals.slice(0, 4).map((signal) => `${signal.accountName} (${signal.daysQuiet === null ? 'no touch captured since payment' : `quiet ${signal.daysQuiet}d`})`).join('; ')}. A check-in or thank-you keeps the next order alive.`,
+    contextUsed: ['Paid quotes', 'Activity Ledger', 'Open deals and follow-up dates'],
+    missingContext: [],
+    suggestedNextAction: `Book a retention touch with ${coldest.accountName}.`,
+    suggestedQuestions: ['Where is the money?', 'Did I keep my promises this week?'],
+    cards: [{
+      kind: 'insight',
+      title: 'Customers to check back with',
+      fields: [
+        {
+          label: 'Going quiet after payment',
+          value: signals.slice(0, 6).map((signal) => `${signal.accountName} / ${signal.quoteLabel}${typeof signal.amount === 'number' && signal.currency ? ` (${formatCurrencyAmount(signal.amount, signal.currency)})` : ''}: ${signal.daysQuiet === null ? 'no touch captured since payment' : `last touch ${formatSafeBusinessDate(signal.lastTouchDate)}, quiet ${signal.daysQuiet}d`}`),
+          tone: 'warning',
+        },
+        { label: 'Basis', value: `Paid quotes with no captured touch for ${RETENTION_QUIET_DAYS}+ days and no active deal or dated follow-up. Derived from what you captured - nothing inferred.` },
+      ],
+      ctas: [
+        { label: 'Open Accounts', href: '/app/accounts' },
+        { label: 'Capture a touch', href: '/app/capture' },
+      ],
+    }],
+  };
+}
+
+export function answerFromCommitments(commitments: CommitmentItem[]): AskMemoireAnswer {
+  if (commitments.length === 0) {
+    return {
+      answer: 'No dated commitments to check - none of your active deals carries a dated next action in this window. Put dates on next actions and Memoire can hold you to them.',
+      contextUsed: ['Active deals (dated next actions)', 'Activity Ledger'],
+      missingContext: ['Dated next actions on active deals'],
+      suggestedNextAction: 'Add a date to the next action on your most important deal.',
+      suggestedQuestions: ['Which deals may go silent?', 'What should I do first today?'],
+    };
+  }
+
+  const kept = commitments.filter((item) => item.status === 'kept');
+  const missed = commitments.filter((item) => item.status === 'missed');
+  const upcoming = commitments.filter((item) => item.status === 'upcoming');
+
+  return {
+    answer: `${kept.length} kept, ${missed.length} missed, ${upcoming.length} upcoming. ${missed.length > 0
+      ? `Missed first: ${missed.slice(0, 3).map((item) => `${item.accountName} - ${item.action} (${formatSafeBusinessDate(item.date)})`).join('; ')}.`
+      : 'Nothing promised has slipped.'} Current promises only - past periods are not reconstructed.`,
+    contextUsed: ['Active deals (dated next actions)', 'Activity Ledger'],
+    missingContext: [],
+    suggestedNextAction: missed.length > 0
+      ? `Recover the missed promise at ${missed[0].accountName}: ${missed[0].action}.`
+      : upcoming.length > 0
+        ? `Next up: ${upcoming[0].accountName} - ${upcoming[0].action} (${formatSafeBusinessDate(upcoming[0].date)}).`
+        : 'Book the next dated commitment.',
+    suggestedQuestions: ['Which deals may go silent?', 'Which customers should I check back with?'],
+    cards: [{
+      kind: 'insight',
+      title: 'Your promises, checked against the ledger',
+      fields: [
+        { label: 'Kept', value: String(kept.length), tone: kept.length > 0 ? 'good' : 'default' },
+        { label: 'Missed', value: String(missed.length), tone: missed.length > 0 ? 'warning' : 'default' },
+        { label: 'Upcoming', value: String(upcoming.length) },
+        ...(missed.length > 0
+          ? [{ label: 'Missed promises', value: missed.slice(0, 4).map((item) => `${item.accountName} / ${item.opportunityName}: ${item.action} - promised ${formatSafeBusinessDate(item.date)}`), tone: 'warning' as const }]
+          : []),
+        ...(upcoming.length > 0
+          ? [{ label: 'Coming up', value: upcoming.slice(0, 4).map((item) => `${item.accountName} / ${item.opportunityName}: ${item.action} - due ${formatSafeBusinessDate(item.date)}`) }]
+          : []),
+        { label: 'Basis', value: 'Kept = a captured touch on or after the promised date. Honest, not reconstructed.' },
+      ],
+      ctas: [{ label: 'Open Business Review', href: '/app/weekly-brief', note: 'The full commitments ledger lives in the Weekly Business Review.' }],
+    }],
   };
 }
 

@@ -15,6 +15,7 @@ import { buildMeddicStakeholderMap } from './meddicStakeholderMap.ts';
 import { formatBaseCurrencyAmount, formatCurrencyAmount, convertMoney } from './money.ts';
 import { analyzePersonalSalesLearning } from './personalSalesLearning.ts';
 import { buildManagerReadyDealBrief } from './pipelineDefenseCenter.ts';
+import { buildRetentionSignals } from './retentionSignals.ts';
 import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate, sanitizeBusinessDate, todayDateKey, timestampToLocalDateKey } from './safeDate.ts';
 
 export type ProactiveNudgeInput = {
@@ -521,69 +522,40 @@ function buildAccountSignalNudges(input: ProactiveNudgeInput, today: string) {
   });
 }
 
-const RETENTION_QUIET_DAYS = 14;
 const RETENTION_NUDGE_CAP = 3;
 
 /**
  * Retention follow-through (Commercial OS direction 7.3, solo journey tail):
  * a customer who paid and then went quiet is future revenue going cold.
- * One nudge per paid account when no touch was captured for 14+ days and
- * the relationship has no other motion - any active deal on the account
- * (the silence nudges own that case) or a dated account follow-up
- * suppresses it. Retention only speaks when nothing else will.
+ * The detection lives in the shared retention read-model (also behind the
+ * Ask Memoire retention answer); this only renders it as capped Today
+ * nudges. Low urgency by design - retention never outranks urgent work.
  */
 function buildRetentionNudges(input: ProactiveNudgeInput, today: string) {
-  const activities = input.activities || [];
-  const opportunities = input.opportunities || [];
-  const accounts = input.accounts || [];
-  const paidQuotes = (input.quotes || [])
-    .filter((quote) => !quote.__deleted && quote.status === 'Accepted' && quote.paymentStatus === 'Paid');
-
-  const latestPaidByAccount = new Map<string, QuoteRecord>();
-  paidQuotes.forEach((quote) => {
-    const key = (quote.accountName || '').trim().toLowerCase();
-    if (!key) return;
-    const current = latestPaidByAccount.get(key);
-    if (!current || compareSafeBusinessDate(quote.quoteDate, current.quoteDate) > 0) {
-      latestPaidByAccount.set(key, quote);
-    }
-  });
-
-  const nudges: NudgeRecord[] = [];
-  for (const [accountKey, quote] of latestPaidByAccount) {
-    const hasOtherMotion = opportunities.some((opportunity) => opportunity.status === 'Active'
-      && (opportunity.accountName || '').trim().toLowerCase() === accountKey)
-      || accounts.some((account) => (account.accountName || '').trim().toLowerCase() === accountKey
-        && isValidBusinessDate(account.nextFollowUp));
-    if (hasOtherMotion) continue;
-
-    const lastTouch = activities
-      .filter((activity) => isValidBusinessDate(activity.activityDate)
-        && ((activity.accountName || '').trim().toLowerCase() === accountKey
-          || (activity.linkedAccountName || '').trim().toLowerCase() === accountKey))
-      .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate))[0] || null;
-    const daysQuiet = lastTouch ? daysBetweenBusinessDates(lastTouch.activityDate, sanitizeBusinessDate(today)) : null;
-    if (daysQuiet !== null && daysQuiet < RETENTION_QUIET_DAYS) continue;
-
-    nudges.push(createNudge({
+  return buildRetentionSignals({
+    quotes: input.quotes || [],
+    activities: input.activities || [],
+    opportunities: input.opportunities,
+    accounts: input.accounts,
+    today,
+  })
+    .slice(0, RETENTION_NUDGE_CAP)
+    .map((signal) => createNudge({
       source: 'revenue',
       entityType: 'quote',
-      entityId: quote.id,
-      accountName: quote.accountName || 'Needs confirmation',
-      opportunityName: quote.opportunityName || '',
+      entityId: signal.quoteId,
+      accountName: signal.accountName,
+      opportunityName: '',
       title: 'Paid customer going quiet',
-      reason: daysQuiet === null
+      reason: signal.daysQuiet === null
         ? 'This customer paid, and no touch has been captured since.'
-        : `This customer paid, and the last captured touch was ${daysQuiet}d ago.`,
+        : `This customer paid, and the last captured touch was ${signal.daysQuiet}d ago.`,
       recommendedAction: 'Book a retention touch - a check-in or thank-you keeps the next order alive.',
       urgency: 'low',
-      moneyAmount: typeof quote.amount === 'number' ? quote.amount : undefined,
-      moneyCurrency: quote.currency,
+      moneyAmount: typeof signal.amount === 'number' ? signal.amount : undefined,
+      moneyCurrency: signal.currency,
       today,
     }));
-    if (nudges.length >= RETENTION_NUDGE_CAP) break;
-  }
-  return nudges;
 }
 
 function buildOutcomeLearningNudges(input: ProactiveNudgeInput, today: string) {

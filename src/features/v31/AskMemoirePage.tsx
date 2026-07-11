@@ -20,14 +20,19 @@ import { buildFollowUpImpact } from '../../utils/followUpImpact';
 import { buildObjectionPlaybook } from '../../utils/objectionPlaybook';
 import { buildForecastCalibration } from '../../utils/forecastCalibration';
 import {
+  answerFromCommitments,
   answerFromFollowUpImpact,
   answerFromForecastCalibration,
   answerFromMoneyFlow,
   answerFromObjectionPlaybook,
+  answerFromRetentionSignals,
   answerFromWeekRecap,
   detectInsightQuestion,
 } from './askMemoireInsightAnswers';
 import { buildMoneyFlow } from '../../utils/moneyFlow';
+import { buildRetentionSignals } from '../../utils/retentionSignals';
+import { buildCommitmentLedger } from '../../utils/weeklyBusinessReview';
+import { todayDateKey } from '../../utils/safeDate';
 
 export function AskMemoirePage() {
   const { user } = useAuth();
@@ -238,6 +243,21 @@ export function AskMemoirePage() {
           })));
         } else if (insightKind === 'week_recap') {
           setAnswer(answerFromWeekRecap(rawWorkspace.activities));
+        } else if (insightKind === 'retention_check') {
+          setAnswer(answerFromRetentionSignals(buildRetentionSignals({
+            quotes: rawWorkspace.quotes,
+            activities: rawWorkspace.activities,
+            opportunities: rawWorkspace.opportunities,
+            accounts: rawWorkspace.accounts,
+          })));
+        } else if (insightKind === 'commitments') {
+          // Promises checked one week back and one week ahead of today.
+          const today = todayDateKey();
+          setAnswer(answerFromCommitments(buildCommitmentLedger({
+            opportunities: rawWorkspace.opportunities,
+            activities: rawWorkspace.activities,
+            period: { start: addDaysToDateKey(today, -7), end: addDaysToDateKey(today, 7) },
+          }, today)));
         } else {
           setAnswer(answerFromForecastCalibration(buildForecastCalibration({
             outcomes: rawWorkspace.opportunityOutcomes,
@@ -559,6 +579,11 @@ export function AskMemoirePage() {
       </section>
     </div>
   );
+}
+
+function addDaysToDateKey(dateKey: string, days: number) {
+  const parsed = Date.parse(`${dateKey}T00:00:00Z`);
+  return new Date(parsed + days * 86_400_000).toISOString().slice(0, 10);
 }
 
 function withAnswerCards(answer: AskMemoireAnswer, question: string, context: AskMemoireContext): AskMemoireAnswer {
