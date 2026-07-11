@@ -327,6 +327,54 @@ for (const marker of ['classifyOpportunitySilence', "'goingSilent'", 'Going sile
   assert.ok(opportunitiesUi.includes(marker), `Opportunities silence rollup missing ${marker}`);
 }
 
+// Retention follow-through: a paid customer going quiet is future revenue
+// going cold. Quiet 14+ days fires; a recent touch, any active deal on the
+// account (the silence nudges own that case), or a dated account follow-up
+// suppresses. Retention only speaks when nothing else will.
+const paidQuote = {
+  id: 'q-paid-1', quoteId: 'Q-PAID-1', accountName: 'Retention Pharma', opportunityId: '', opportunityName: 'Analyzer order',
+  title: 'Analyzer order', quoteDate: '2026-05-15', validUntil: '2026-06-15', amount: 250_000_000, currency: 'VND',
+  grossMarginEstimate: null, discount: null, paymentTerm: '', status: 'Accepted', poStatus: 'Received',
+  deliveryStatus: 'Delivered', expectedDeliveryDate: '', paymentStatus: 'Paid', paymentDueDate: '',
+  nextAction: '', notes: '', createdAt: '', updatedAt: '',
+};
+const retentionTouchOld = { ...oldActivity, id: 'activity-retention-old', accountName: 'Retention Pharma', activityDate: '2026-06-10' };
+{
+  const retentionCenter = buildProactiveNudges({
+    quotes: [paidQuote], activities: [retentionTouchOld], today, limit: 20,
+  });
+  const retention = retentionCenter.allActiveNudges.find((nudge) => nudge.title === 'Paid customer going quiet');
+  assert.ok(retention, 'paid account quiet 14+ days should create a retention nudge');
+  assert.equal(retention.urgency, 'low', 'retention is a keep-warm nudge, never urgent work');
+  assert.ok(retention.reason.includes('20d ago'), 'retention reason should name the quiet days');
+  assert.ok(retention.recommendedAction.includes('retention touch'));
+
+  const freshTouch = { ...retentionTouchOld, id: 'activity-retention-fresh', activityDate: '2026-06-25' };
+  assert.equal(buildProactiveNudges({ quotes: [paidQuote], activities: [freshTouch], today, limit: 20 })
+    .allActiveNudges.some((nudge) => nudge.title === 'Paid customer going quiet'), false,
+  'a touch within 14 days must suppress the retention nudge');
+
+  const activeRetentionOpp = { ...overdueOpportunity, id: 'opp-retention-active', accountName: 'Retention Pharma', nextActionDate: '' };
+  assert.equal(buildProactiveNudges({ quotes: [paidQuote], activities: [retentionTouchOld], opportunities: [activeRetentionOpp], today, limit: 20 })
+    .allActiveNudges.some((nudge) => nudge.title === 'Paid customer going quiet'), false,
+  'any active deal on the account must suppress retention - the silence nudges own that case');
+
+  const followUpAccount = { ...strategicAccount, id: 'acct-retention', accountName: 'Retention Pharma', nextFollowUp: '2026-07-15' };
+  assert.equal(buildProactiveNudges({ quotes: [paidQuote], activities: [retentionTouchOld], accounts: [followUpAccount], today, limit: 20 })
+    .allActiveNudges.some((nudge) => nudge.title === 'Paid customer going quiet'), false,
+  'a dated account follow-up must suppress the retention nudge');
+
+  const noTouch = buildProactiveNudges({ quotes: [paidQuote], activities: [], today, limit: 20 })
+    .allActiveNudges.find((nudge) => nudge.title === 'Paid customer going quiet');
+  assert.ok(noTouch, 'paid account with no captured touch should still nudge');
+  assert.ok(noTouch.reason.includes('no touch has been captured since'), 'no-history retention must say so plainly');
+
+  const unpaid = { ...paidQuote, id: 'q-unpaid', paymentStatus: 'Due' };
+  assert.equal(buildProactiveNudges({ quotes: [unpaid], activities: [], today, limit: 20 })
+    .allActiveNudges.some((nudge) => nudge.title === 'Paid customer going quiet'), false,
+  'retention only speaks after the money actually landed');
+}
+
 const duplicateKeys = new Set();
 for (const nudge of center.allActiveNudges) {
   const key = `${nudge.source}|${nudge.entityType}|${nudge.entityId}|${nudge.reason.toLowerCase()}`;

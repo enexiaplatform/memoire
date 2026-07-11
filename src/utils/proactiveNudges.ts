@@ -53,6 +53,7 @@ export function buildProactiveNudges(input: ProactiveNudgeInput): ProactiveNudge
     ...buildObjectionNudges(input.objections || []),
     ...buildCaptureNudges(input.activities || [], today),
     ...buildAccountSignalNudges(input, today),
+    ...buildRetentionNudges(input, today),
     ...buildOutcomeLearningNudges(input, today),
     ...buildInitiativeStalledNudges(input, today),
     ...buildImportedAccountInfoNudges(input, today),
@@ -518,6 +519,71 @@ function buildAccountSignalNudges(input: ProactiveNudgeInput, today: string) {
       today,
     });
   });
+}
+
+const RETENTION_QUIET_DAYS = 14;
+const RETENTION_NUDGE_CAP = 3;
+
+/**
+ * Retention follow-through (Commercial OS direction 7.3, solo journey tail):
+ * a customer who paid and then went quiet is future revenue going cold.
+ * One nudge per paid account when no touch was captured for 14+ days and
+ * the relationship has no other motion - any active deal on the account
+ * (the silence nudges own that case) or a dated account follow-up
+ * suppresses it. Retention only speaks when nothing else will.
+ */
+function buildRetentionNudges(input: ProactiveNudgeInput, today: string) {
+  const activities = input.activities || [];
+  const opportunities = input.opportunities || [];
+  const accounts = input.accounts || [];
+  const paidQuotes = (input.quotes || [])
+    .filter((quote) => !quote.__deleted && quote.status === 'Accepted' && quote.paymentStatus === 'Paid');
+
+  const latestPaidByAccount = new Map<string, QuoteRecord>();
+  paidQuotes.forEach((quote) => {
+    const key = (quote.accountName || '').trim().toLowerCase();
+    if (!key) return;
+    const current = latestPaidByAccount.get(key);
+    if (!current || compareSafeBusinessDate(quote.quoteDate, current.quoteDate) > 0) {
+      latestPaidByAccount.set(key, quote);
+    }
+  });
+
+  const nudges: NudgeRecord[] = [];
+  for (const [accountKey, quote] of latestPaidByAccount) {
+    const hasOtherMotion = opportunities.some((opportunity) => opportunity.status === 'Active'
+      && (opportunity.accountName || '').trim().toLowerCase() === accountKey)
+      || accounts.some((account) => (account.accountName || '').trim().toLowerCase() === accountKey
+        && isValidBusinessDate(account.nextFollowUp));
+    if (hasOtherMotion) continue;
+
+    const lastTouch = activities
+      .filter((activity) => isValidBusinessDate(activity.activityDate)
+        && ((activity.accountName || '').trim().toLowerCase() === accountKey
+          || (activity.linkedAccountName || '').trim().toLowerCase() === accountKey))
+      .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate))[0] || null;
+    const daysQuiet = lastTouch ? daysBetweenBusinessDates(lastTouch.activityDate, sanitizeBusinessDate(today)) : null;
+    if (daysQuiet !== null && daysQuiet < RETENTION_QUIET_DAYS) continue;
+
+    nudges.push(createNudge({
+      source: 'revenue',
+      entityType: 'quote',
+      entityId: quote.id,
+      accountName: quote.accountName || 'Needs confirmation',
+      opportunityName: quote.opportunityName || '',
+      title: 'Paid customer going quiet',
+      reason: daysQuiet === null
+        ? 'This customer paid, and no touch has been captured since.'
+        : `This customer paid, and the last captured touch was ${daysQuiet}d ago.`,
+      recommendedAction: 'Book a retention touch - a check-in or thank-you keeps the next order alive.',
+      urgency: 'low',
+      moneyAmount: typeof quote.amount === 'number' ? quote.amount : undefined,
+      moneyCurrency: quote.currency,
+      today,
+    }));
+    if (nudges.length >= RETENTION_NUDGE_CAP) break;
+  }
+  return nudges;
 }
 
 function buildOutcomeLearningNudges(input: ProactiveNudgeInput, today: string) {
