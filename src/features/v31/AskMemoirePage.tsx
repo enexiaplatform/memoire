@@ -24,6 +24,7 @@ import {
   answerFromDealPosition,
   answerFromFollowUpImpact,
   answerFromForecastCalibration,
+  answerFromInitiativeReview,
   answerFromMoneyFlow,
   answerFromObjectionPlaybook,
   answerFromRetentionSignals,
@@ -34,6 +35,7 @@ import {
 import { buildMoneyFlow } from '../../utils/moneyFlow';
 import { buildRetentionSignals } from '../../utils/retentionSignals';
 import { buildCommitmentLedger } from '../../utils/weeklyBusinessReview';
+import { buildInitiativeReview } from '../../utils/initiativeReview';
 import { buildCommercialJourneySnapshot } from '../../utils/commercialJourney';
 import { todayDateKey } from '../../utils/safeDate';
 
@@ -279,6 +281,11 @@ export function AskMemoirePage() {
             activities: rawWorkspace.activities,
             period: { start: addDaysToDateKey(today, -7), end: addDaysToDateKey(today, 7) },
           }, today)));
+        } else if (insightKind === 'initiative_review') {
+          setAnswer(answerFromInitiativeReview(buildInitiativeReview({
+            operatingContexts: rawWorkspace.operatingContext,
+            activities: rawWorkspace.activities,
+          })));
         } else {
           setAnswer(answerFromForecastCalibration(buildForecastCalibration({
             outcomes: rawWorkspace.opportunityOutcomes,

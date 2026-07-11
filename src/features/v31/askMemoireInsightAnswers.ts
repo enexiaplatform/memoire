@@ -9,6 +9,8 @@ import { type MoneyFlow } from '../../utils/moneyFlow.ts';
 import { type RetentionSignal, RETENTION_QUIET_DAYS } from '../../utils/retentionSignals.ts';
 import { type CommitmentItem } from '../../utils/weeklyBusinessReview.ts';
 import { type CommercialJourneySnapshot, formatJourneyCommitment } from '../../utils/commercialJourney.ts';
+import { type InitiativeReview } from '../../utils/initiativeReview.ts';
+import { initiativeDecisionLabel } from '../../utils/initiativeExperiment.ts';
 import { formatBaseCurrencyAmount, formatCurrencyAmount } from '../../utils/money.ts';
 import { formatSafeBusinessDate, isValidBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
 
@@ -20,6 +22,7 @@ export type InsightQuestionKind =
   | 'week_recap'
   | 'retention_check'
   | 'commitments'
+  | 'initiative_review'
   | 'deal_position';
 
 /**
@@ -50,6 +53,11 @@ export function detectInsightQuestion(question: string): InsightQuestionKind | n
   }
   if (/did i keep (my )?(promises?|commitments?|word)|(promises?|commitments?)\b.*\b(kept|missed|due|status)|\b(kept|missed) (promises?|commitments?)|commitments? this week/.test(normalized)) {
     return 'commitments';
+  }
+  // Initiatives/experiments: checked before deal_position so "how is the
+  // experiment going" is not swallowed by the generic "how is ... going".
+  if (/\b(initiative|experiment|bet|play)s?\b.*(going|doing|stalled|revisit|stop|adjust|continue|drop|work|worth|progress|status|learn)|(which|what|how|any)\b.*\b(initiative|experiment)s?\b/.test(normalized)) {
+    return 'initiative_review';
   }
   // Deal position asks where a named (or scoped) deal stands. Checked after
   // money_state so "where is the money" keeps the money answer; resolution
@@ -401,6 +409,63 @@ export function answerFromCommitments(commitments: CommitmentItem[]): AskMemoire
         { label: 'Basis', value: 'Kept = a captured touch on or after the promised date. Honest, not reconstructed.' },
       ],
       ctas: [{ label: 'Open Business Review', href: '/app/weekly-brief', note: 'The full commitments ledger lives in the Weekly Business Review.' }],
+    }],
+  };
+}
+
+export function answerFromInitiativeReview(review: InitiativeReview): AskMemoireAnswer {
+  if (review.openCount === 0) {
+    return {
+      answer: 'No open initiatives or experiments to review. When you start a bet - an outbound push, an offer test, a partnership - track it on the operating page so Memoire can tell you what is testing, what the signal is, and whether to continue.',
+      contextUsed: ['Operating contexts (initiatives, plays, offers, experiments)'],
+      missingContext: ['Tracked initiatives'],
+      suggestedNextAction: 'Add the initiative or experiment you are running now.',
+      suggestedQuestions: ['What should I do first today?', 'Where is the money?'],
+    };
+  }
+
+  const stalledLine = review.stalled.length > 0
+    ? `${review.stalled.length} stalled: ${review.stalled.slice(0, 3).map((item) => `${item.title} (${item.reason.replace(/\.$/, '')})`).join('; ')}.`
+    : 'None are stalled.';
+  const decidedLine = review.decidedToChange.length > 0
+    ? ` ${review.decidedToChange.length} marked to adjust or stop but still open.`
+    : '';
+
+  return {
+    answer: `${review.openCount} open ${review.openCount === 1 ? 'initiative' : 'initiatives'}. ${stalledLine}${decidedLine}`,
+    contextUsed: ['Operating contexts', 'Activity Ledger (initiative mentions)'],
+    missingContext: [],
+    suggestedNextAction: review.stalled[0]
+      ? `${review.stalled[0].nextAction || 'Capture an update, book the next step, or close it'} (${review.stalled[0].title})`
+      : review.decidedToChange[0]
+        ? `Follow through on your decision to ${initiativeDecisionLabel(review.decidedToChange[0].decision).toLowerCase()}: ${review.decidedToChange[0].title}.`
+        : 'Keep capturing activity so the signal stays current.',
+    suggestedQuestions: ['Which deals may go silent?', 'What happened this week?'],
+    cards: [{
+      kind: 'insight',
+      title: 'Your initiatives and experiments',
+      fields: [
+        { label: 'Open', value: String(review.openCount) },
+        ...(review.stalled.length > 0
+          ? [{
+            label: 'Stalled - needs a decision',
+            value: review.stalled.slice(0, 4).map((item) => {
+              const signal = item.currentSignal ? ` Signal so far: ${item.currentSignal}.` : item.hypothesis ? ` Testing: ${item.hypothesis}.` : '';
+              return `${item.title}: ${item.reason}${signal}`;
+            }),
+            tone: 'warning' as const,
+          }]
+          : [{ label: 'Stalled', value: 'None - every open initiative has recent activity.', tone: 'good' as const }]),
+        ...(review.decidedToChange.length > 0
+          ? [{
+            label: 'Decided but still open',
+            value: review.decidedToChange.slice(0, 4).map((item) => `${item.title}: ${initiativeDecisionLabel(item.decision)}${item.currentSignal ? ` - ${item.currentSignal}` : ''}`),
+            tone: 'warning' as const,
+          }]
+          : []),
+        { label: 'Basis', value: 'Health measured from captured activity; hypothesis and signal from what you recorded. Nothing inferred.' },
+      ],
+      ctas: [{ label: 'Open initiatives', href: '/app/operating-system' }],
     }],
   };
 }
