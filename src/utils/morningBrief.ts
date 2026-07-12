@@ -17,6 +17,12 @@ type MorningBriefInput = {
   nudges: NudgeRecord[];
   activities: SalesActivityRecord[];
   waitingFollowUps?: number;
+  /**
+   * Paid customers going quiet. Passed as a count (not read from `nudges`)
+   * because retention is low urgency and lives below the Today nudge cap -
+   * the brief must still be able to offer the retention question.
+   */
+  retentionCount?: number;
   today?: string;
 };
 
@@ -48,10 +54,10 @@ export function buildMorningBrief(input: MorningBriefInput): MorningBrief {
     focus.push(`${input.waitingFollowUps} sent ${input.waitingFollowUps === 1 ? 'follow-up is' : 'follow-ups are'} still waiting on a reply.`);
   }
 
-  return { headline, focus: focus.slice(0, 3), questions: buildQuestions(nudges, input.waitingFollowUps || 0) };
+  return { headline, focus: focus.slice(0, 3), questions: buildQuestions(nudges, input.waitingFollowUps || 0, input.retentionCount || 0) };
 }
 
-function buildQuestions(nudges: NudgeRecord[], waitingFollowUps: number): MorningBriefQuestion[] {
+function buildQuestions(nudges: NudgeRecord[], waitingFollowUps: number, retentionCount: number): MorningBriefQuestion[] {
   const questions: MorningBriefQuestion[] = [];
 
   const silenceNudge = nudges.find((nudge) => /silent|silence/i.test(nudge.title));
@@ -82,6 +88,12 @@ function buildQuestions(nudges: NudgeRecord[], waitingFollowUps: number): Mornin
       ? { scope: 'opportunity', opportunityId: dealNudge.entityId }
       : undefined;
     questions.push(askQuestion(`Where does ${dealNudge.accountName} stand?`, scoped));
+  }
+
+  // A paid customer going quiet is a keep-warm prompt; the retention answer
+  // lists every such account from measured history.
+  if (retentionCount > 0) {
+    questions.push(askQuestion('Which customers should I check back with?'));
   }
 
   if (waitingFollowUps > 0) {

@@ -130,6 +130,28 @@ function makeActivity(patch = {}) {
   );
 }
 
+// 3e. A retention signal (counted from all active nudges, not the capped
+// Today set) offers the "check back with" question, which routes to the
+// measured retention answer in Ask Memoire.
+{
+  const brief = buildMorningBrief({ today, nudges: [], activities: [], retentionCount: 2 });
+  const retentionQuestion = brief.questions.find((question) => question.label === 'Which customers should I check back with?');
+  assert.ok(retentionQuestion, 'a retention count must offer the retention question');
+  assert.ok(retentionQuestion.href.startsWith('/app/ask?question='), 'retention question must deep-link into Ask Memoire');
+  // No retention signal, no retention question.
+  assert.equal(
+    buildMorningBrief({ today, nudges: [], activities: [], retentionCount: 0 }).questions.some((q) => q.label === 'Which customers should I check back with?'),
+    false, 'no retention signal means no retention question',
+  );
+}
+
+// 3f. The dashboard counts retention from all active nudges, not the cap.
+{
+  const dashboard = readFileSync(new URL('../src/features/dashboard/DashboardPage.tsx', import.meta.url), 'utf8');
+  assert.ok(dashboard.includes('retentionCount:'), 'the dashboard must pass a retention count to the morning brief');
+  assert.ok(dashboard.includes('allActiveNudges.filter'), 'retention count must come from all active nudges, not the capped set');
+}
+
 // 4. UI contract: card rendered on Today; Ask Memoire consumes ?question= once context loads.
 const dashboard = readFileSync(new URL('../src/features/dashboard/DashboardPage.tsx', import.meta.url), 'utf8');
 for (const marker of ['MorningBriefCard', 'buildMorningBrief']) {

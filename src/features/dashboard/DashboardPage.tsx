@@ -349,7 +349,10 @@ export function TodayPage() {
     nudges: proactiveNudges.todayNudges,
     activities: data.activities,
     waitingFollowUps: followUpImpact.dealsWaiting,
-  }), [data.activities, followUpImpact.dealsWaiting, proactiveNudges.todayNudges]);
+    // Retention is low urgency and lives below the Today nudge cap, so count
+    // it from all active nudges - not the capped todayNudges the brief reads.
+    retentionCount: proactiveNudges.allActiveNudges.filter((nudge) => nudge.title === 'Paid customer going quiet').length,
+  }), [data.activities, followUpImpact.dealsWaiting, proactiveNudges.allActiveNudges, proactiveNudges.todayNudges]);
   const businessCockpit = useMemo(() => orderCockpitForLens(buildBusinessCockpit({
     commercialRiskItems: todayCenter.commercialRiskItems,
     nudges: proactiveNudges.allActiveNudges,
