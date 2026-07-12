@@ -12,6 +12,8 @@ import { useSlowLoadingFallback } from './useSlowLoadingFallback';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { adaptWorkspaceToV31 } from './workspaceAdapter';
+import { buildCommercialJourneySnapshot, formatJourneyCommitment, type CommercialJourneySnapshot } from '../../utils/commercialJourney';
+import { getWorkspaceLens } from '../../utils/workspaceLens';
 
 type FlowState = 'Active' | 'Completed' | 'Missing' | 'Later';
 
@@ -31,6 +33,8 @@ interface JourneyCard {
   nextAction: string;
   currentStage: string;
   memoryHealth: MemoryHealth;
+  moneyStatus?: string;
+  riskStatus?: string;
 }
 
 const flowSteps: FlowStep[] = [
@@ -80,6 +84,7 @@ export function JourneyPage() {
   const [actions, setActions] = useState<SalesAction[]>([]);
   const [objections, setObjections] = useState<Objection[]>([]);
   const [captures, setCaptures] = useState<CaptureMemory[]>([]);
+  const [journeySnapshots, setJourneySnapshots] = useState<Map<string, CommercialJourneySnapshot>>(new Map());
   const [loading, setLoading] = useState(true);
   const slowLoading = useSlowLoadingFallback(loading);
   const sampleDataActive = hasLocalSampleData();
@@ -96,6 +101,20 @@ export function JourneyPage() {
       setActions(memory.actions);
       setObjections(memory.objections);
       setCaptures([]);
+      // The commercial journey read-model (7.3) is derived from the raw
+      // workspace, keyed by opportunity id (adaptWorkspaceToV31 preserves ids).
+      const snapshots = new Map<string, CommercialJourneySnapshot>();
+      workspace.opportunities
+        .filter((opportunity) => opportunity.status === 'Active')
+        .forEach((opportunity) => {
+          snapshots.set(opportunity.id, buildCommercialJourneySnapshot({
+            opportunity,
+            quotes: workspace.quotes,
+            activities: workspace.activities,
+            objections: workspace.objections,
+          }));
+        });
+      setJourneySnapshots(snapshots);
     } catch (error) {
       if (import.meta.env.DEV) {
         console.debug('[Journey] workspace load failed', {
@@ -109,6 +128,7 @@ export function JourneyPage() {
       setActions([]);
       setObjections([]);
       setCaptures([]);
+      setJourneySnapshots(new Map());
     } finally {
       setLoading(false);
     }
@@ -146,6 +166,7 @@ export function JourneyPage() {
   }, [accounts.length, actions.length, activeOpportunities.length, interactions.length, openActions.length]);
 
   const activeJourneys = useMemo(() => {
+    const lens = getWorkspaceLens();
     const latestInteractionByAccount = latestBy(interactions, (item) => item.account_id || '');
     const latestInteractionByOpportunity = latestBy(interactions, (item) => item.opportunity_id || '');
     const openActionByOpportunity = firstBy(openActions, (item) => item.opportunity_id || '');
@@ -161,16 +182,27 @@ export function JourneyPage() {
         { accounts, contacts, opportunities, interactions, actions, objections, brokenLoops }
       );
 
+      // Where this deal stands, from the commercial journey read-model - the
+      // real position (money flow or stage), money, risk, blocker, and next
+      // commitment. Falls back to the legacy stage when no snapshot exists.
+      const snapshot = journeySnapshots.get(opportunity.id);
+      const nextCommitment = snapshot ? formatJourneyCommitment(snapshot.nextCommitment) : '';
+
       return {
         id: opportunity.id,
         accountName: account?.name || 'No account linked',
         contactName: opportunity.account_id ? contactByAccountId.get(opportunity.account_id)?.name || 'No contact linked' : 'No contact linked',
         opportunityName: opportunity.title,
-        lastInteraction: latestInteraction?.summary || 'No interaction captured yet',
-        blocker: opportunity.blocker || latestInteraction?.objection || 'No blocker captured',
-        nextAction: action?.title || opportunity.next_action_text || 'Missing follow-up',
-        currentStage: getJourneyStage(Boolean(latestInteraction), Boolean(account), true, hasNextAction),
+        lastInteraction: snapshot?.lastTouch?.summary || latestInteraction?.summary || 'No interaction captured yet',
+        blocker: snapshot?.blocker || opportunity.blocker || latestInteraction?.objection || 'No blocker captured',
+        nextAction: (nextCommitment && nextCommitment !== 'No next commitment' ? nextCommitment : '')
+          || action?.title || opportunity.next_action_text || 'Missing follow-up',
+        currentStage: snapshot
+          ? (lens === 'solo' ? snapshot.soloPosition : snapshot.position)
+          : getJourneyStage(Boolean(latestInteraction), Boolean(account), true, hasNextAction),
         memoryHealth,
+        moneyStatus: snapshot?.moneyStatus,
+        riskStatus: snapshot?.riskStatus,
       };
     });
 
@@ -198,7 +230,7 @@ export function JourneyPage() {
       });
 
     return [...opportunityCards, ...accountOnlyCards].slice(0, 12);
-  }, [accountById, accounts, actions, activeOpportunities, brokenLoops, contactByAccountId, contacts, interactions, objections, openActions, opportunities]);
+  }, [accountById, accounts, actions, activeOpportunities, brokenLoops, contactByAccountId, contacts, interactions, journeySnapshots, objections, openActions, opportunities]);
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
@@ -273,6 +305,8 @@ export function JourneyPage() {
                   </div>
                   <div className="mt-4 space-y-2 text-sm text-gray-600">
                     <JourneyLine label="Last interaction" value={journey.lastInteraction} />
+                    {journey.moneyStatus && <JourneyLine label="Money" value={journey.moneyStatus} />}
+                    {journey.riskStatus && <JourneyLine label="Risk" value={journey.riskStatus} />}
                     <JourneyLine label="Current blocker" value={journey.blocker} />
                     <JourneyLine label="Next action" value={journey.nextAction} />
                   </div>

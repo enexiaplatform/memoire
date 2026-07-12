@@ -166,4 +166,11 @@ for (const marker of ['buildCommercialJourneySnapshot', 'Where this deal stands'
   assert.ok(ledger.includes(marker), `Activity Ledger missing journey marker: ${marker}`);
 }
 
+// 8. UI contract: the Journey page's deal cards read the same journey model
+// (position, money, risk, next commitment), lens-aware for solo naming.
+const journeyPage = readFileSync(new URL('../src/features/v31/JourneyPage.tsx', import.meta.url), 'utf8');
+for (const marker of ['buildCommercialJourneySnapshot', 'formatJourneyCommitment', 'snapshot.soloPosition', 'snapshot?.moneyStatus', 'snapshot?.riskStatus', 'getWorkspaceLens']) {
+  assert.ok(journeyPage.includes(marker), `Journey page missing journey marker: ${marker}`);
+}
+
 console.log('Commercial journey read-model contract verified.');
