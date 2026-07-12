@@ -63,6 +63,22 @@ function makeQuote(patch = {}) {
   assert.ok(markdown.includes('Nothing is stuck right now'), 'healthy money must say so plainly');
 }
 
+// 3b. Retention risk: a paid customer going quiet surfaces as revenue at risk.
+{
+  const paid = makeQuote({ id: 'q-paid', paymentStatus: 'Paid', paymentDueDate: '', accountName: 'Retention Co', opportunityId: '', opportunityName: 'Analyzer order', title: 'Analyzer order', quoteDate: '2026-05-15' });
+  const markdown = generateRevenueRiskBriefMarkdown({ opportunities: [], quotes: [paid], activities: [], accounts: [], periodLabel: 'Week of Jul 6', today });
+  assert.ok(markdown.includes('## Retention risk'), 'the brief must include a retention-risk section');
+  assert.ok(markdown.includes('Retention Co'), 'the paid-but-quiet customer must be named');
+  assert.ok(markdown.includes('no touch captured since payment'), 'no-history retention must say so plainly');
+  assert.ok(markdown.includes('Book a retention touch'), 'retention must carry a next action');
+}
+
+// 3c. No paid-but-quiet customer reads as healthy, not silent.
+{
+  const markdown = generateRevenueRiskBriefMarkdown({ opportunities: [makeOpportunity()], quotes: [makeQuote()], activities: [], accounts: [], periodLabel: 'Week of Jul 6', today });
+  assert.ok(markdown.includes('No paid customer is going quiet'), 'no retention risk must say so plainly');
+}
+
 // 4. UI wiring: the review page composes and copies the brief.
 const reviewsPage = readFileSync(new URL('../src/features/reviews/SalesReviewsPage.tsx', import.meta.url), 'utf8');
 assert.ok(reviewsPage.includes('generateRevenueRiskBriefMarkdown'), 'the review page must compose the Revenue Risk Brief');

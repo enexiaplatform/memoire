@@ -406,6 +406,8 @@ export function SalesReviewsPage() {
           const markdown = generateRevenueRiskBriefMarkdown({
             opportunities,
             quotes,
+            activities,
+            accounts,
             periodLabel: period.label,
           });
           try {
