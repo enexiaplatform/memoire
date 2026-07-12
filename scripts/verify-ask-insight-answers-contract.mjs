@@ -17,8 +17,9 @@ import { buildRetentionSignals } from '../src/utils/retentionSignals.ts';
 import { buildCommitmentLedger } from '../src/utils/weeklyBusinessReview.ts';
 import { buildCommercialJourneySnapshot } from '../src/utils/commercialJourney.ts';
 import { buildInitiativeReview } from '../src/utils/initiativeReview.ts';
+import { buildCustomerSignalDigest } from '../src/utils/customerSignals.ts';
 import { opportunityPresets } from '../src/features/v31/askMemoireContext.ts';
-import { answerFromInitiativeReview } from '../src/features/v31/askMemoireInsightAnswers.ts';
+import { answerFromInitiativeReview, answerFromCustomerSignals } from '../src/features/v31/askMemoireInsightAnswers.ts';
 
 // 1. Detection is narrow and routes to the right layer.
 assert.equal(detectInsightQuestion('Did my follow-ups work?'), 'follow_up_impact');
@@ -31,6 +32,9 @@ assert.equal(detectInsightQuestion('Which customers should I check back with?'),
 assert.equal(detectInsightQuestion('Which paid customers are going quiet?'), 'retention_check');
 assert.equal(detectInsightQuestion('Did I keep my promises this week?'), 'commitments');
 assert.equal(detectInsightQuestion('What commitments are due?'), 'commitments');
+assert.equal(detectInsightQuestion('What are customers telling me?'), 'customer_signals');
+assert.equal(detectInsightQuestion('What signals did I get this week?'), 'customer_signals');
+assert.equal(detectInsightQuestion('Which customers should I check back with?'), 'retention_check', 'retention keeps its own answer, not the signals one');
 assert.equal(detectInsightQuestion('How are my experiments going?'), 'initiative_review');
 assert.equal(detectInsightQuestion('Which initiative should I stop?'), 'initiative_review');
 assert.equal(detectInsightQuestion('How is the experiment going?'), 'initiative_review', 'experiment questions win over the generic deal-position "how is ... going"');
@@ -66,6 +70,32 @@ assert.equal(detectInsightQuestion('Which deals may go silent?'), null, 'silent 
   const initiativeAnswer = answerFromInitiativeReview(buildInitiativeReview({ operatingContexts: [], activities: [] }));
   assert.ok(initiativeAnswer.answer.includes('No open initiatives'), 'empty initiative review must invite tracking one');
   assert.equal(initiativeAnswer.cards, undefined);
+
+  const signalsAnswer = answerFromCustomerSignals(buildCustomerSignalDigest({ activities: [] }));
+  assert.ok(signalsAnswer.answer.includes('No customer signals captured'), 'empty signals must invite capturing them');
+  assert.equal(signalsAnswer.cards, undefined);
+}
+
+// 2e. Customer signals roll up buying/risk/timeline/competitor, risks first.
+{
+  const activity = (patch) => ({
+    id: `a-${Math.random().toString(36).slice(2)}`, accountName: 'Apex Labs', opportunityName: 'Validation',
+    activityType: 'Meeting', summary: '', nextAction: '', dueDate: '', tags: [],
+    buyingSignals: [], risks: [], timelineSignals: [], competitors: [],
+    linkedOpportunityId: '', linkedOpportunityName: '', linkedAccountName: '', linkStatus: 'Linked',
+    rawNote: 'x', activityDate: '2026-07-05', createdAt: '', updatedAt: '', storageMode: 'local', ...patch,
+  });
+  const digest = buildCustomerSignalDigest({ activities: [
+    activity({ buyingSignals: ['Budget approved'], activityDate: '2026-07-05' }),
+    activity({ risks: ['Lead time concern'], accountName: 'Northstar', activityDate: '2026-07-06' }),
+    activity({ buyingSignals: ['Budget approved'], activityDate: '2026-07-04' }), // dupe, dropped
+  ] });
+  assert.equal(digest.buying.length, 1, 'case-insensitive dedupe across activities');
+  assert.equal(digest.risks.length, 1);
+  const answer = answerFromCustomerSignals(digest);
+  assert.ok(answer.answer.includes('1 buying'), 'the answer must count buying signals');
+  assert.ok(answer.answer.includes('Lead time concern'), 'the answer must lead with the risk');
+  assert.ok(answer.cards?.[0]?.fields.some((field) => field.label === 'Risks'));
 }
 
 // 2d. Initiative review measures health and carries the experiment signal.
@@ -196,7 +226,7 @@ assert.equal(detectInsightQuestion('Which deals may go silent?'), null, 'silent 
 
 // 4. UI contract: the page routes insight questions locally, never to the endpoint.
 const askPage = readFileSync(new URL('../src/features/v31/AskMemoirePage.tsx', import.meta.url), 'utf8');
-for (const marker of ['detectInsightQuestion', 'answerFromFollowUpImpact', 'answerFromObjectionPlaybook', 'answerFromForecastCalibration', 'answerFromRetentionSignals', 'answerFromCommitments', 'answerFromDealPosition', 'resolveDealForQuestion', 'answerFromInitiativeReview', 'no AI involved']) {
+for (const marker of ['detectInsightQuestion', 'answerFromFollowUpImpact', 'answerFromObjectionPlaybook', 'answerFromForecastCalibration', 'answerFromRetentionSignals', 'answerFromCommitments', 'answerFromDealPosition', 'resolveDealForQuestion', 'answerFromInitiativeReview', 'answerFromCustomerSignals', 'no AI involved']) {
   assert.ok(askPage.includes(marker), `AskMemoirePage missing marker: ${marker}`);
 }
 const insightSource = readFileSync(new URL('../src/features/v31/askMemoireInsightAnswers.ts', import.meta.url), 'utf8');

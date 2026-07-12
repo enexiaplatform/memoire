@@ -21,6 +21,7 @@ import { buildObjectionPlaybook } from '../../utils/objectionPlaybook';
 import { buildForecastCalibration } from '../../utils/forecastCalibration';
 import {
   answerFromCommitments,
+  answerFromCustomerSignals,
   answerFromDealPosition,
   answerFromFollowUpImpact,
   answerFromForecastCalibration,
@@ -36,6 +37,7 @@ import { buildMoneyFlow } from '../../utils/moneyFlow';
 import { buildRetentionSignals } from '../../utils/retentionSignals';
 import { buildCommitmentLedger } from '../../utils/weeklyBusinessReview';
 import { buildInitiativeReview } from '../../utils/initiativeReview';
+import { buildCustomerSignalDigest } from '../../utils/customerSignals';
 import { buildCommercialJourneySnapshot } from '../../utils/commercialJourney';
 import { todayDateKey } from '../../utils/safeDate';
 
@@ -286,6 +288,8 @@ export function AskMemoirePage() {
             operatingContexts: rawWorkspace.operatingContext,
             activities: rawWorkspace.activities,
           })));
+        } else if (insightKind === 'customer_signals') {
+          setAnswer(answerFromCustomerSignals(buildCustomerSignalDigest({ activities: rawWorkspace.activities })));
         } else {
           setAnswer(answerFromForecastCalibration(buildForecastCalibration({
             outcomes: rawWorkspace.opportunityOutcomes,

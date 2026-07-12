@@ -11,6 +11,7 @@ import { type CommitmentItem } from '../../utils/weeklyBusinessReview.ts';
 import { type CommercialJourneySnapshot, formatJourneyCommitment } from '../../utils/commercialJourney.ts';
 import { type InitiativeReview } from '../../utils/initiativeReview.ts';
 import { initiativeDecisionLabel } from '../../utils/initiativeExperiment.ts';
+import { type SignalDigest } from '../../utils/customerSignals.ts';
 import { formatBaseCurrencyAmount, formatCurrencyAmount } from '../../utils/money.ts';
 import { formatSafeBusinessDate, isValidBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
 
@@ -22,6 +23,7 @@ export type InsightQuestionKind =
   | 'week_recap'
   | 'retention_check'
   | 'commitments'
+  | 'customer_signals'
   | 'initiative_review'
   | 'deal_position';
 
@@ -53,6 +55,12 @@ export function detectInsightQuestion(question: string): InsightQuestionKind | n
   }
   if (/did i keep (my )?(promises?|commitments?|word)|(promises?|commitments?)\b.*\b(kept|missed|due|status)|\b(kept|missed) (promises?|commitments?)|commitments? this week/.test(normalized)) {
     return 'commitments';
+  }
+  // Customer signals: what buyers are telling the seller (buying signals,
+  // risks, timeline, competitors). Checked after retention so "check back
+  // with" keeps its own answer.
+  if (/customers?\b.*\b(telling|saying|said|signal|signals)|what.*\bsignals?\b|buying signals?|customer signals?/.test(normalized)) {
+    return 'customer_signals';
   }
   // Initiatives/experiments: checked before deal_position so "how is the
   // experiment going" is not swallowed by the generic "how is ... going".
@@ -466,6 +474,57 @@ export function answerFromInitiativeReview(review: InitiativeReview): AskMemoire
         { label: 'Basis', value: 'Health measured from captured activity; hypothesis and signal from what you recorded. Nothing inferred.' },
       ],
       ctas: [{ label: 'Open initiatives', href: '/app/operating-system' }],
+    }],
+  };
+}
+
+export function answerFromCustomerSignals(digest: SignalDigest): AskMemoireAnswer {
+  if (digest.total === 0) {
+    return {
+      answer: 'No customer signals captured yet. Signals appear when your captures mention buying intent, risks, timelines, or competitors - capture what customers actually say and they roll up here.',
+      contextUsed: ['Captured activity signals'],
+      missingContext: ['Captured buying signals, risks, timelines, or competitors'],
+      suggestedNextAction: 'Capture the last thing a customer told you.',
+      suggestedQuestions: ['What happened this week?', 'Which deals may go silent?'],
+    };
+  }
+
+  const parts: string[] = [];
+  if (digest.buying.length > 0) parts.push(`${digest.buying.length} buying`);
+  if (digest.risks.length > 0) parts.push(`${digest.risks.length} risk`);
+  if (digest.timeline.length > 0) parts.push(`${digest.timeline.length} timeline`);
+  if (digest.competitors.length > 0) parts.push(`${digest.competitors.length} competitor`);
+
+  const signalGroup = (label: string, items: SignalDigest['buying']) => (
+    items.length > 0
+      ? [{ label, value: items.map((item) => `${item.text}${item.accountName ? ` - ${item.accountName}` : ''} (${formatSafeBusinessDate(item.date)})`) }]
+      : []
+  );
+
+  return {
+    answer: `Captured customer signals: ${parts.join(', ')}. ${digest.risks.length > 0 ? `Watch the risks first: ${digest.risks[0].text}${digest.risks[0].accountName ? ` (${digest.risks[0].accountName})` : ''}.` : 'No risks flagged.'}`,
+    contextUsed: ['Captured activity signals (buying, risk, timeline, competitor)'],
+    missingContext: [],
+    suggestedNextAction: digest.risks[0]
+      ? `Address the risk at ${digest.risks[0].accountName || 'the flagged account'}.`
+      : digest.buying[0]
+        ? `Act on the buying signal at ${digest.buying[0].accountName || 'the flagged account'}.`
+        : 'Keep capturing what customers tell you.',
+    suggestedQuestions: ['What happened this week?', 'Which deals may go silent?'],
+    cards: [{
+      kind: 'insight',
+      title: 'What customers are telling you',
+      fields: [
+        ...signalGroup('Buying signals', digest.buying),
+        ...signalGroup('Risks', digest.risks),
+        ...signalGroup('Timeline', digest.timeline),
+        ...signalGroup('Competitors', digest.competitors),
+        { label: 'Basis', value: 'Rolled up from what you captured - nothing inferred.' },
+      ],
+      ctas: [
+        { label: 'Open Activity Ledger', href: '/app/activity' },
+        { label: 'Open Business Review', href: '/app/weekly-brief' },
+      ],
     }],
   };
 }

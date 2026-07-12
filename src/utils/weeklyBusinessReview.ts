@@ -6,6 +6,7 @@ import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import { buildMoneyFlow, type MoneyFlow } from './moneyFlow.ts';
 import { buildRetentionSignals } from './retentionSignals.ts';
+import { buildCustomerSignalDigest, type SignalDigest, type SignalDigestItem } from './customerSignals.ts';
 import { readInitiativeExperiment, type InitiativeDecision } from './initiativeExperiment.ts';
 import { classifyInitiativeHealth, type InitiativeHealth } from './proactiveNudges.ts';
 import { formatBaseCurrencyAmount, sumMoneyInBase } from './money.ts';
@@ -30,19 +31,9 @@ export type NextWeekPriority = {
   href: string;
 };
 
-export type SignalDigestItem = {
-  text: string;
-  accountName: string;
-  date: string;
-};
-
-export type SignalDigest = {
-  buying: SignalDigestItem[];
-  risks: SignalDigestItem[];
-  timeline: SignalDigestItem[];
-  competitors: SignalDigestItem[];
-  total: number;
-};
+// Re-exported for existing consumers; the canonical read-model now lives in
+// customerSignals.ts and is shared with the Ask Memoire signals answer.
+export type { SignalDigest, SignalDigestItem };
 
 export type CommitmentStatus = 'kept' | 'missed' | 'upcoming';
 
@@ -145,7 +136,7 @@ export function buildWeeklyBusinessReview(input: WeeklyBusinessReviewInput): Wee
     }));
 
   const commitments = buildCommitmentLedger(input, today);
-  const signals = buildSignalDigest(input);
+  const signals = buildCustomerSignalDigest({ activities: input.activities, start: input.period.start, end: input.period.end });
 
   return {
     moneyFlow,
@@ -161,52 +152,6 @@ export function buildWeeklyBusinessReview(input: WeeklyBusinessReviewInput): Wee
     commitments,
     signals,
     nextWeekPriorities: buildNextWeekPriorities(input, moneyFlow, stalledInitiatives, today),
-  };
-}
-
-/**
- * Customer-signal digest: the buying signals, risks, timeline signals, and
- * competitor mentions that capture already extracted per activity, rolled up
- * for the review period. Pure read-model - nothing here is inferred beyond
- * what the seller captured.
- */
-function buildSignalDigest(input: WeeklyBusinessReviewInput): SignalDigest {
-  const periodActivities = input.activities.filter((activity) => (
-    isBusinessDateInRange(activity.activityDate, input.period.start, input.period.end)
-  ));
-
-  const collect = (getSignals: (activity: SalesActivityRecord) => string[] | undefined) => {
-    const seen = new Set<string>();
-    const items: SignalDigestItem[] = [];
-    [...periodActivities]
-      .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate))
-      .forEach((activity) => {
-        (getSignals(activity) || []).forEach((text) => {
-          const cleaned = text.trim();
-          const key = cleaned.toLowerCase();
-          if (!cleaned || seen.has(key)) return;
-          seen.add(key);
-          items.push({
-            text: cleaned,
-            accountName: activity.accountName || activity.linkedAccountName || '',
-            date: activity.activityDate,
-          });
-        });
-      });
-    return items.slice(0, 5);
-  };
-
-  const buying = collect((activity) => activity.buyingSignals);
-  const risks = collect((activity) => activity.risks);
-  const timeline = collect((activity) => activity.timelineSignals);
-  const competitors = collect((activity) => activity.competitors);
-
-  return {
-    buying,
-    risks,
-    timeline,
-    competitors,
-    total: buying.length + risks.length + timeline.length + competitors.length,
   };
 }
 
