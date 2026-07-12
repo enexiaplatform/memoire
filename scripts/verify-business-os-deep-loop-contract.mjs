@@ -88,6 +88,31 @@ assert.equal(classifyInitiativeHealth(makeContext({ status: 'Completed' }), [], 
   assert.ok(nudge.reason.includes('Distributor onboarding program'));
 }
 
+// Experiment decision prompt: a healthy experiment (recent activity) with a
+// recorded signal but no decision asks for the continue/adjust/stop call,
+// low urgency; a decided or signal-less experiment is left alone.
+{
+  const recentTouch = makeActivity({ activityDate: today, rawNote: 'Distributor onboarding program update', summary: 'Distributor onboarding program update' });
+  const withSignal = makeContext({ payload: { experiment: { hypothesis: 'x', expectedSignal: 'y', currentSignal: '1 active so far', decision: 'undecided', decisionNote: '' } } });
+  const decide = buildProactiveNudges({ operatingContexts: [withSignal], activities: [recentTouch], today })
+    .allActiveNudges.find((item) => item.title === 'Experiment has a signal - decide');
+  assert.ok(decide, 'a healthy experiment with a signal and no decision must prompt the decision');
+  assert.equal(decide.urgency, 'low', 'the decide prompt is reflective, never urgent');
+  assert.ok(decide.reason.includes('1 active so far'), 'the decide prompt must carry the recorded signal');
+
+  const decided = makeContext({ payload: { experiment: { hypothesis: 'x', expectedSignal: 'y', currentSignal: '1 active so far', decision: 'continue', decisionNote: '' } } });
+  assert.equal(
+    buildProactiveNudges({ operatingContexts: [decided], activities: [recentTouch], today }).allActiveNudges.some((item) => item.title === 'Experiment has a signal - decide'),
+    false, 'a decided experiment must not be nagged to decide again',
+  );
+
+  const noSignal = makeContext({ payload: {} });
+  assert.equal(
+    buildProactiveNudges({ operatingContexts: [noSignal], activities: [recentTouch], today }).allActiveNudges.some((item) => item.title === 'Experiment has a signal - decide'),
+    false, 'no recorded signal means no decision prompt',
+  );
+}
+
 // === Phase 2: business cockpit answers all five questions ===
 {
   const answers = buildBusinessCockpit({

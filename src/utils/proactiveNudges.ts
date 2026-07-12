@@ -16,6 +16,7 @@ import { formatBaseCurrencyAmount, formatCurrencyAmount, convertMoney } from './
 import { analyzePersonalSalesLearning } from './personalSalesLearning.ts';
 import { buildManagerReadyDealBrief } from './pipelineDefenseCenter.ts';
 import { buildRetentionSignals } from './retentionSignals.ts';
+import { readInitiativeExperiment } from './initiativeExperiment.ts';
 import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate, sanitizeBusinessDate, todayDateKey, timestampToLocalDateKey } from './safeDate.ts';
 
 export type ProactiveNudgeInput = {
@@ -646,22 +647,47 @@ function buildInitiativeStalledNudges(input: ProactiveNudgeInput, today: string)
       })];
     }
 
-    if (health.status !== 'quiet') return [];
-    return [createNudge({
-      source: 'initiative',
-      entityType: 'initiative',
-      entityId: context.id,
-      accountName: '',
-      opportunityName: title,
-      title: 'Initiative going quiet',
-      reason: health.lastMention
-        ? `No captured activity has mentioned "${title}" since ${formatSafeBusinessDate(health.lastMention)}.`
-        : `No captured activity has mentioned "${title}" since it was created.`,
-      recommendedAction: context.nextAction || 'Capture the latest update, book the next step, or close this initiative.',
-      urgency: 'medium',
-      moneyAmount: context.valueAtStake ?? undefined,
-      today,
-    })];
+    if (health.status === 'quiet') {
+      return [createNudge({
+        source: 'initiative',
+        entityType: 'initiative',
+        entityId: context.id,
+        accountName: '',
+        opportunityName: title,
+        title: 'Initiative going quiet',
+        reason: health.lastMention
+          ? `No captured activity has mentioned "${title}" since ${formatSafeBusinessDate(health.lastMention)}.`
+          : `No captured activity has mentioned "${title}" since it was created.`,
+        recommendedAction: context.nextAction || 'Capture the latest update, book the next step, or close this initiative.',
+        urgency: 'medium',
+        moneyAmount: context.valueAtStake ?? undefined,
+        today,
+      })];
+    }
+
+    // A healthy experiment with a recorded signal but no decision has reached
+    // the moment the direction asks for: continue, adjust, or stop. Closes the
+    // Learning end of the loop back to an action, never urgent (it's a call to
+    // reflect, not a fire). Stalled initiatives already have their own nudge.
+    if (health.status === 'active') {
+      const experiment = readInitiativeExperiment(context.payload);
+      if (experiment.currentSignal && experiment.decision === 'undecided') {
+        return [createNudge({
+          source: 'initiative',
+          entityType: 'initiative',
+          entityId: context.id,
+          accountName: '',
+          opportunityName: title,
+          title: 'Experiment has a signal - decide',
+          reason: `"${title}" has a signal recorded ("${experiment.currentSignal}") but no continue, adjust, or stop decision yet.`,
+          recommendedAction: 'Decide continue, adjust, or stop based on the signal so far.',
+          urgency: 'low',
+          moneyAmount: context.valueAtStake ?? undefined,
+          today,
+        })];
+      }
+    }
+    return [];
   });
 }
 
