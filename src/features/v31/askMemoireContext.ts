@@ -5,7 +5,12 @@ export const allMemoryPresets = [
   'Which accounts need follow-up?',
   'Which objections are unresolved?',
   'What should I fix today?',
-  'Which deals are missing next actions?',
+  // Measured-history questions answered from computed data (no AI), surfaced
+  // as presets so the loop's read-models are discoverable, not hidden behind
+  // guessing the phrasing.
+  'Where is the money?',
+  'Did my follow-ups work?',
+  'What are customers telling me?',
   'What changed recently?',
 ];
 

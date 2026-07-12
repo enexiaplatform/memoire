@@ -18,7 +18,7 @@ import { buildCommitmentLedger } from '../src/utils/weeklyBusinessReview.ts';
 import { buildCommercialJourneySnapshot } from '../src/utils/commercialJourney.ts';
 import { buildInitiativeReview } from '../src/utils/initiativeReview.ts';
 import { buildCustomerSignalDigest } from '../src/utils/customerSignals.ts';
-import { opportunityPresets } from '../src/features/v31/askMemoireContext.ts';
+import { opportunityPresets, allMemoryPresets } from '../src/features/v31/askMemoireContext.ts';
 import { answerFromInitiativeReview, answerFromCustomerSignals } from '../src/features/v31/askMemoireInsightAnswers.ts';
 
 // 1. Detection is narrow and routes to the right layer.
@@ -198,6 +198,14 @@ assert.equal(detectInsightQuestion('Which deals may go silent?'), null, 'silent 
   // deal-position question, and it routes to the deal_position layer.
   assert.ok(opportunityPresets.includes('Where does this deal stand?'), 'opportunity presets must offer the deal-position question');
   assert.equal(detectInsightQuestion('Where does this deal stand?'), 'deal_position', 'the deal-position preset must route to the journey answer');
+
+  // The all-scope presets surface measured-history questions, and every one
+  // routes to a measured answer layer (no dead preset that falls through).
+  const measuredPresets = ['Where is the money?', 'Did my follow-ups work?', 'What are customers telling me?'];
+  for (const preset of measuredPresets) {
+    assert.ok(allMemoryPresets.includes(preset), `all-scope presets must include the measured question: ${preset}`);
+    assert.ok(detectInsightQuestion(preset), `measured preset must route to an insight layer: ${preset}`);
+  }
 }
 
 // 3. Populated layers produce an insight card with real numbers.
