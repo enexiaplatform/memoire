@@ -171,6 +171,20 @@ function reviewSections(review: WeeklyBusinessReview, activeLanes: WeeklyBusines
               ))}
             </div>
           )}
+          {review.decidedInitiatives.length > 0 && (
+            <div className="mt-3 border-t border-gray-100 pt-3">
+              <p className="text-xs font-bold text-gray-500">Decided - needs closing</p>
+              <div className="mt-1.5 space-y-1.5 text-xs leading-5">
+                {review.decidedInitiatives.slice(0, 4).map((item) => (
+                  <div key={item.id} className="flex flex-wrap items-center gap-1.5 rounded-lg bg-white px-3 py-2">
+                    <span className="font-bold text-gray-900">{item.title}</span>
+                    <span className={`rounded-full px-2 py-0.5 ${initiativeDecisionTone(item.decision)}`}>{initiativeDecisionLabel(item.decision)}</span>
+                    <span className="text-gray-500">still open{item.currentSignal ? ` - ${item.currentSignal}` : ''}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </article>
       ),
     },

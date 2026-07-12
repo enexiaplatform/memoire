@@ -211,12 +211,37 @@ assert.equal(classifyInitiativeHealth(makeContext({ status: 'Completed' }), [], 
   assert.equal(review.stalledInitiatives.length, 1);
   assert.equal(review.stalledInitiatives[0].currentSignal, '1 active so far', 'the review must carry the current experiment signal');
   assert.equal(review.stalledInitiatives[0].decision, 'adjust', 'the review must carry the recorded decision');
+  // A stalled + decided initiative appears once (in the stalled list), not
+  // also in the decided-but-open list.
+  assert.equal(review.decidedInitiatives.length, 0, 'a stalled decided initiative is not double-listed');
+}
+
+// === A healthy initiative decided to stop/adjust but still open is a loose
+// end the review surfaces separately from stalled ones. ===
+{
+  const recentTouch = makeActivity({ activityDate: today, rawNote: 'Distributor onboarding program update', summary: 'Distributor onboarding program update' });
+  const decidedOpen = makeContext({ createdAt: '2026-05-01T00:00:00.000Z', payload: { experiment: { hypothesis: 'x', expectedSignal: 'y', currentSignal: 'no traction', decision: 'stop', decisionNote: '' } } });
+  const review = buildWeeklyBusinessReview({
+    opportunities: [], quotes: [], operatingContexts: [decidedOpen], activities: [recentTouch],
+    opportunityOutcomes: [], period: { start: '2026-07-06', end: '2026-07-12' }, today,
+  });
+  assert.equal(review.stalledInitiatives.length, 0, 'a healthy initiative is not stalled');
+  assert.equal(review.decidedInitiatives.length, 1, 'a decided-but-open healthy initiative must surface');
+  assert.equal(review.decidedInitiatives[0].decision, 'stop');
+  assert.equal(review.decidedInitiatives[0].currentSignal, 'no traction');
+
+  // Undecided healthy initiative is not a loose end.
+  const undecided = makeContext({ createdAt: '2026-05-01T00:00:00.000Z', payload: { experiment: { hypothesis: 'x', expectedSignal: 'y', currentSignal: 's', decision: 'undecided', decisionNote: '' } } });
+  assert.equal(
+    buildWeeklyBusinessReview({ opportunities: [], quotes: [], operatingContexts: [undecided], activities: [recentTouch], opportunityOutcomes: [], period: { start: '2026-07-06', end: '2026-07-12' }, today }).decidedInitiatives.length,
+    0, 'an undecided initiative is not a closing loose end',
+  );
 }
 
 // UI contract: the Weekly Review panel renders the experiment signal and decision.
 {
   const panel = readFileSync(new URL('../src/features/reviews/WeeklyBusinessReviewPanel.tsx', import.meta.url), 'utf8');
-  for (const marker of ['Signal so far:', 'initiativeDecisionLabel', 'item.currentSignal']) {
+  for (const marker of ['Signal so far:', 'initiativeDecisionLabel', 'item.currentSignal', 'Decided - needs closing', 'review.decidedInitiatives']) {
     assert.ok(panel.includes(marker), `Weekly Review panel missing initiative marker: ${marker}`);
   }
 }

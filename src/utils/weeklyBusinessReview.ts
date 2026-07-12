@@ -56,6 +56,14 @@ export type CommitmentItem = {
   evidence: string;
 };
 
+export type DecidedInitiativeItem = {
+  id: string;
+  title: string;
+  contextType: OperatingContextRecord['contextType'];
+  decision: InitiativeDecision;
+  currentSignal: string;
+};
+
 export type WeeklyBusinessReview = {
   moneyFlow: MoneyFlow;
   wins: OpportunityOutcomeRecord[];
@@ -63,6 +71,7 @@ export type WeeklyBusinessReview = {
   otherOutcomes: OpportunityOutcomeRecord[];
   wonValueLabel: string;
   stalledInitiatives: StalledInitiativeItem[];
+  decidedInitiatives: DecidedInitiativeItem[];
   commitments: CommitmentItem[];
   signals: SignalDigest;
   nextWeekPriorities: NextWeekPriority[];
@@ -119,6 +128,22 @@ export function buildWeeklyBusinessReview(input: WeeklyBusinessReviewInput): Wee
       };
     });
 
+  // Decided to adjust or stop but still open and not stalled - a decision
+  // without follow-through is a loose end the review should hold you to.
+  const stalledIds = new Set(stalledInitiatives.map((item) => item.id));
+  const decidedInitiatives = input.operatingContexts
+    .map((context) => ({ context, health: classifyInitiativeHealth(context, input.activities, today), experiment: readInitiativeExperiment(context.payload) }))
+    .filter(({ context, health, experiment }) => health.status === 'active'
+      && !stalledIds.has(context.id)
+      && (experiment.decision === 'adjust' || experiment.decision === 'stop'))
+    .map(({ context, experiment }) => ({
+      id: context.id,
+      title: context.title,
+      contextType: context.contextType,
+      decision: experiment.decision,
+      currentSignal: experiment.currentSignal,
+    }));
+
   const commitments = buildCommitmentLedger(input, today);
   const signals = buildSignalDigest(input);
 
@@ -132,6 +157,7 @@ export function buildWeeklyBusinessReview(input: WeeklyBusinessReviewInput): Wee
       true,
     ),
     stalledInitiatives,
+    decidedInitiatives,
     commitments,
     signals,
     nextWeekPriorities: buildNextWeekPriorities(input, moneyFlow, stalledInitiatives, today),
