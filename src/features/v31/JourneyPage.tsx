@@ -10,15 +10,16 @@ import { calculateMemoryHealth, memoryHealthLabel } from './memoryHealth';
 import { RouteLoadingFallback } from './RouteLoadingFallback';
 import { useSlowLoadingFallback } from './useSlowLoadingFallback';
 import { hasLocalSampleData } from '../../utils/dataMode';
-import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { loadSalesWorkspaceData, type SalesWorkspaceData } from '../../services/workspaceData';
 import { adaptWorkspaceToV31 } from './workspaceAdapter';
 import { buildCommercialJourneySnapshot, formatJourneyCommitment, type CommercialJourneySnapshot } from '../../utils/commercialJourney';
 import { getWorkspaceLens } from '../../utils/workspaceLens';
+import { isValidBusinessDate } from '../../utils/safeDate';
 
 type FlowState = 'Active' | 'Completed' | 'Missing' | 'Later';
 
 interface FlowStep {
-  key: 'capture' | 'structure' | 'account' | 'opportunity' | 'action' | 'ask' | 'learning';
+  key: 'activity' | 'context' | 'state' | 'action' | 'outcome' | 'review' | 'learning';
   label: string;
   description: string;
 }
@@ -39,39 +40,39 @@ interface JourneyCard {
 
 const flowSteps: FlowStep[] = [
   {
-    key: 'capture',
-    label: 'Quick Capture',
-    description: 'Raw interaction, note, or signal is captured',
+    key: 'activity',
+    label: 'Activity',
+    description: 'A commercial activity is captured - meeting, quote, payment, outreach',
   },
   {
-    key: 'structure',
-    label: 'Structure',
-    description: 'Capture is converted into usable sales objects',
+    key: 'context',
+    label: 'Context',
+    description: 'It is linked to the account, opportunity, or initiative it moves',
   },
   {
-    key: 'account',
-    label: 'Account Memory',
-    description: 'Customer context is stored and organized',
-  },
-  {
-    key: 'opportunity',
-    label: 'Opportunity',
-    description: 'Commercial movement is linked to the account',
+    key: 'state',
+    label: 'Commercial state',
+    description: 'The activity changes a state - stage, quote, money, risk',
   },
   {
     key: 'action',
-    label: 'Action',
-    description: 'Next step is created to move revenue forward',
+    label: 'Next action',
+    description: 'A clear next step is dated and owned',
   },
   {
-    key: 'ask',
-    label: 'Ask Memoire',
-    description: 'User can query the memory system',
+    key: 'outcome',
+    label: 'Outcome',
+    description: 'The result is recorded - won, lost, paid, or delivered',
+  },
+  {
+    key: 'review',
+    label: 'Review',
+    description: 'The week is reviewed for money, wins, and stalls',
   },
   {
     key: 'learning',
-    label: 'Learning Later',
-    description: 'Long-term sales pattern learning, not active in V1',
+    label: 'Learning',
+    description: 'Measured history sharpens the next call - calibration, playbook',
   },
 ];
 
@@ -85,6 +86,7 @@ export function JourneyPage() {
   const [objections, setObjections] = useState<Objection[]>([]);
   const [captures, setCaptures] = useState<CaptureMemory[]>([]);
   const [journeySnapshots, setJourneySnapshots] = useState<Map<string, CommercialJourneySnapshot>>(new Map());
+  const [loopStates, setLoopStates] = useState<Map<FlowStep['key'], FlowState>>(new Map());
   const [loading, setLoading] = useState(true);
   const slowLoading = useSlowLoadingFallback(loading);
   const sampleDataActive = hasLocalSampleData();
@@ -115,6 +117,7 @@ export function JourneyPage() {
           }));
         });
       setJourneySnapshots(snapshots);
+      setLoopStates(deriveOperatingLoopStates(workspace));
     } catch (error) {
       if (import.meta.env.DEV) {
         console.debug('[Journey] workspace load failed', {
@@ -129,6 +132,7 @@ export function JourneyPage() {
       setObjections([]);
       setCaptures([]);
       setJourneySnapshots(new Map());
+      setLoopStates(new Map());
     } finally {
       setLoading(false);
     }
@@ -148,22 +152,6 @@ export function JourneyPage() {
   const brokenLoops = useMemo(() => {
     return detectBrokenLoops({ accounts, opportunities, interactions, actions, objections, captures });
   }, [accounts, actions, captures, interactions, objections, opportunities]);
-
-  const flowStates = useMemo(() => {
-    const hasMemory = accounts.length > 0 || interactions.length > 0;
-    const hasAnyAction = actions.length > 0;
-    const hasOpenAction = openActions.length > 0;
-
-    return new Map<FlowStep['key'], FlowState>([
-      ['capture', interactions.length > 0 ? 'Completed' : 'Active'],
-      ['structure', interactions.length > 0 ? 'Completed' : 'Missing'],
-      ['account', accounts.length > 0 ? 'Completed' : 'Missing'],
-      ['opportunity', activeOpportunities.length > 0 ? 'Active' : hasMemory ? 'Missing' : 'Missing'],
-      ['action', hasOpenAction ? 'Active' : hasAnyAction ? 'Completed' : hasMemory ? 'Missing' : 'Missing'],
-      ['ask', hasMemory ? 'Active' : 'Missing'],
-      ['learning', 'Later'],
-    ]);
-  }, [accounts.length, actions.length, activeOpportunities.length, interactions.length, openActions.length]);
 
   const activeJourneys = useMemo(() => {
     const lens = getWorkspaceLens();
@@ -243,24 +231,24 @@ export function JourneyPage() {
             </span>
           )}
         </div>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Memory-to-Action Flow</h1>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Commercial operating loop</h1>
         <p className="mt-2 max-w-2xl text-sm text-gray-500">
-          See where Capture, Structure, Memory, Opportunity, Next Action, Ask Memoire, and Learning are working or broken.
+          See where each stage of the loop is working or broken: activity to context to commercial state to next action to outcome to review to learning.
         </p>
         <p className="mt-2 max-w-2xl text-xs leading-5 text-gray-500">
-          Journey shows how customer context becomes account memory, next action, and follow-up. A stuck deal is missing follow-up, recent context, or a clear fix.
+          A stuck deal is missing its next action, recent context, or a clear fix. Each stage below reflects your actual captured data.
         </p>
       </header>
 
       <section className="mb-6 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-        <h2 className="text-base font-bold text-navy">Sales Memory Flow Map</h2>
+        <h2 className="text-base font-bold text-navy">Operating loop map</h2>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-7">
           {flowSteps.map((step, index) => (
             <FlowStepCard
               key={step.key}
               step={step}
               index={index}
-              state={flowStates.get(step.key) || 'Missing'}
+              state={loopStates.get(step.key) || 'Missing'}
             />
           ))}
         </div>
@@ -443,6 +431,37 @@ function firstBy<T>(items: T[], getKey: (item: T) => string) {
     if (key && !result.has(key)) result.set(key, item);
   });
   return result;
+}
+
+/**
+ * Operating-loop state from the real captured workspace (direction 3): each
+ * stage reads whether the data behind it exists, so the map reflects the
+ * seller's actual loop, not a fixed demo. Learning is active whenever there
+ * is measured history to learn from - never "later".
+ */
+function deriveOperatingLoopStates(workspace: SalesWorkspaceData): Map<FlowStep['key'], FlowState> {
+  const activities = workspace.activities || [];
+  const opportunities = workspace.opportunities || [];
+  const activeOpportunities = opportunities.filter((opportunity) => opportunity.status === 'Active');
+  const quotes = (workspace.quotes || []).filter((quote) => !quote.__deleted);
+  const outcomes = workspace.opportunityOutcomes || [];
+
+  const hasActivities = activities.length > 0;
+  const hasContext = activities.some((activity) => activity.linkStatus === 'Linked') || opportunities.length > 0;
+  const hasState = activeOpportunities.length > 0 || quotes.length > 0;
+  const hasNextAction = activeOpportunities.some((opportunity) => isValidBusinessDate(opportunity.nextActionDate))
+    || quotes.some((quote) => Boolean((quote.nextAction || '').trim()));
+  const hasOutcome = outcomes.length > 0;
+
+  return new Map<FlowStep['key'], FlowState>([
+    ['activity', hasActivities ? 'Completed' : 'Active'],
+    ['context', hasContext ? 'Completed' : hasActivities ? 'Active' : 'Missing'],
+    ['state', hasState ? 'Completed' : hasActivities ? 'Active' : 'Missing'],
+    ['action', hasNextAction ? 'Active' : 'Missing'],
+    ['outcome', hasOutcome ? 'Completed' : hasState ? 'Active' : 'Missing'],
+    ['review', hasActivities || opportunities.length > 0 ? 'Active' : 'Missing'],
+    ['learning', hasOutcome ? 'Active' : 'Missing'],
+  ]);
 }
 
 function getJourneyStage(hasInteraction: boolean, hasAccount: boolean, hasOpportunity: boolean, hasAction: boolean) {
