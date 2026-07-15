@@ -105,6 +105,7 @@ import {
 } from '../../utils/firstPipelineReviewOnboarding';
 import {
   buildTrialActivationChecklist,
+  dismissTrialActivationChecklist,
   loadTrialActivationChecklistState,
   markTrialActivationChecklistItemComplete,
   resetTrialActivationChecklist,
@@ -129,6 +130,7 @@ import {
   type SalesOperatingSetupProgress,
 } from '../../utils/salesOperatingSetup';
 import { isQuickStartComplete } from '../../utils/quickStartSetup';
+import { buildFirstWeekPath, type FirstWeekPath } from '../../utils/firstWeekPath';
 import { generateInterviewScriptText } from '../../utils/demoFeedback';
 import { markDemoJourneyStepComplete } from '../../utils/demoJourney';
 import {
@@ -382,6 +384,11 @@ export function TodayPage() {
     sampleDataActive,
     state: trialChecklistState,
   }), [data, sampleDataActive, trialChecklistState]);
+  const firstWeekPath = useMemo(() => buildFirstWeekPath({
+    activities: data.activities,
+    opportunities: data.opportunities,
+    briefs: data.briefs,
+  }), [data]);
   const salesOperatingSetupProgress = useMemo(
     () => buildSalesOperatingSetupProgress(salesOperatingSetup),
     [salesOperatingSetup],
@@ -423,6 +430,13 @@ export function TodayPage() {
 
   const handleMarkTrialChecklistItem = (id: TrialActivationChecklistItemId) => {
     setTrialChecklistState(markTrialActivationChecklistItemComplete(id));
+  };
+
+  // Dismissing the first-week strip is the same intent as dismissing the trial
+  // checklist - both are the onboarding guidance - so it reuses that state
+  // rather than adding a second flag.
+  const handleDismissFirstWeekPath = () => {
+    setTrialChecklistState(dismissTrialActivationChecklist());
   };
 
   const handleDailyExecutionDecision = (action: CommandActionItem, status: DailyExecutionStatus) => {
@@ -622,6 +636,17 @@ export function TodayPage() {
                 onClearDismissed={handleClearDismissedNudges}
                 onClearAll={handleClearAllNudgeState}
               />
+
+              {/* First-week guidance on a real workspace only: while the loop is
+                  not yet established and not dismissed. Folds away for good once
+                  all three are done. The demo has its own DemoJourneyCard, so the
+                  strip stays off the showcase. */}
+              {!sampleDataActive && !firstWeekPath.complete && !trialChecklistState.dismissedAt && (
+                <FirstWeekPathStrip
+                  path={firstWeekPath}
+                  onDismiss={handleDismissFirstWeekPath}
+                />
+              )}
 
               {/* Supporting detail: the numbers behind today's priorities. Below
                   the fold on purpose - reference, not the first thing you act on. */}
@@ -1229,6 +1254,57 @@ function TodayCommandEmptyState({ onOpenDemoSandbox }: { onOpenDemoSandbox: () =
         <Link to="/app/opportunities?import=csv" className="text-sm font-semibold text-gray-500 underline-offset-2 hover:underline">
           Have a pipeline already? Import a CSV
         </Link>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * A compact first-week guide: three loop milestones with the next one as the
+ * primary action. Renders only while the loop is unfinished (the caller checks
+ * `complete`), so an operating workspace never sees it.
+ */
+function FirstWeekPathStrip({ path, onDismiss }: { path: FirstWeekPath; onDismiss: () => void }) {
+  return (
+    <section aria-label="First week path" className="rounded-xl border border-brand-blue/20 bg-blue-50/50 p-4 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Your first week</p>
+          <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-brand-blue ring-1 ring-blue-100">{path.done}/{path.total} done</span>
+        </div>
+        <button type="button" onClick={onDismiss} className="self-start text-xs font-semibold text-gray-400 underline-offset-2 hover:underline sm:self-auto">
+          Dismiss
+        </button>
+      </div>
+      <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-stretch">
+        {path.steps.map((step, index) => {
+          const isNext = path.nextStep?.id === step.id;
+          return (
+            <div
+              key={step.id}
+              className={`flex-1 rounded-lg border p-3 ${
+                step.done ? 'border-emerald-100 bg-emerald-50/60' : isNext ? 'border-brand-blue/40 bg-white' : 'border-gray-200 bg-white/70'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-black ${
+                  step.done ? 'bg-emerald-600 text-white' : isNext ? 'bg-brand-blue text-white' : 'bg-gray-200 text-gray-600'
+                }`}>
+                  {step.done ? '✓' : index + 1}
+                </span>
+                <p className="text-sm font-bold text-navy">{step.label}</p>
+              </div>
+              {!step.done && isNext && (
+                <>
+                  <p className="mt-2 text-xs leading-5 text-gray-600">{step.hint}</p>
+                  <Link to={step.href} className="mt-3 inline-flex rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white hover:bg-navy/90">
+                    {step.cta}
+                  </Link>
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
     </section>
   );

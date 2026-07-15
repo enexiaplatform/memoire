@@ -45,9 +45,15 @@ Keep cockpit-first opening. Re-check the visible-section order against "action o
 
 One voice pass over section headers and empty states: every card leads with the action, one CTA per card, honest empty states everywhere (`verify-ui-text-polish` extended as needed).
 
-## Add-on features (only if a gap remains after S1-S4)
+## Add-on features
 
-Candidate list is deliberately empty for now. The activation checklist, quick setup, demo sandbox, and guided first-review already exist - the problem is arrangement, not missing features. If cohort feedback after this pass still shows "don't know where to start", the next candidate is a single derived "First Week Path" strip on Today (state-derived, no new data entry), which folds away permanently once the loop is running.
+### S5 - First Week Path strip (SHIPPED 2026-07-15, founder-directed ahead of the cohort gate)
+
+The plan originally gated this on cohort feedback, but the founder directed building it now (feature-first, same call as the pivot's cohort-gate overrule). It is built to the plan's own constraints so the gate's intent is preserved: fully **state-derived** (`buildFirstWeekPath` reads activities/opportunities/briefs already loaded - no new store, no data entry), and it **folds away permanently** once the loop is running.
+
+The strip shows three commercial-loop milestones in order - capture an activity -> give it a deal to belong to -> prepare your first review - with the next incomplete one carrying the CTA. It renders at the bottom of the action tier (above the Supporting detail divider) only on a **real workspace** that has not finished the loop and has not dismissed it; the demo keeps its own DemoJourneyCard, so the showcase stays clean. The review milestone ignores the starter sample brief (same `isSample` rule as S2), so it only completes on a real brief. Dismissing reuses the trial-activation checklist state - no second flag. Contract: `verify-first-week-path`.
+
+If cohort feedback after this pass still shows "don't know where to start" despite the strip, the next candidates are inline capture on Today (reduce the capture round-trip) and a lighter Pipeline Defense first-run - both re-evaluated against the standing questions before building.
 
 ## Evidence
 
