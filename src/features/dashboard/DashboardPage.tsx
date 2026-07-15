@@ -128,6 +128,7 @@ import {
   loadSalesOperatingSetupState,
   type SalesOperatingSetupProgress,
 } from '../../utils/salesOperatingSetup';
+import { isQuickStartComplete } from '../../utils/quickStartSetup';
 import { generateInterviewScriptText } from '../../utils/demoFeedback';
 import { markDemoJourneyStepComplete } from '../../utils/demoJourney';
 import {
@@ -578,7 +579,9 @@ export function TodayPage() {
         </SkeletonScreen>
       ) : (
         <>
-          <ForecastDefenseReadiness center={todayCenter} />
+          {/* Readiness scaffolding on an empty workspace is noise - the empty
+              state below owns the first step instead. */}
+          {todayCenter.hasMeaningfulData && <ForecastDefenseReadiness center={todayCenter} />}
           {demoSandboxPromptOpen && (
             <DemoSandboxPrompt
               hasExistingData={commandCenter.hasAnyData}
@@ -603,7 +606,7 @@ export function TodayPage() {
             />
           )}
           {!todayCenter.hasMeaningfulData ? (
-            <TodayCommandEmptyState />
+            <TodayCommandEmptyState onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)} />
           ) : (
             <>
               <BusinessCockpitStrip answers={businessCockpit} />
@@ -1183,24 +1186,41 @@ function TodayCaptureInbox({ items }: { items: ReturnType<typeof buildUnifiedTod
   );
 }
 
-function TodayCommandEmptyState() {
+/**
+ * The empty workspace shows exactly one path in: quick setup when it has never
+ * run, otherwise capture the first activity. Everything else (import, demo)
+ * stays one step behind it - a new customer should never face a wall of CTAs.
+ */
+function TodayCommandEmptyState({ onOpenDemoSandbox }: { onOpenDemoSandbox: () => void }) {
+  const quickStartDone = isQuickStartComplete();
   return (
     <section className="rounded-xl border border-dashed border-blue-200 bg-white p-6 shadow-sm">
-      <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Start Today</p>
-      <h2 className="mt-2 text-2xl font-black text-navy">Give Memoire one real signal.</h2>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">Today ignores empty imported account volume. Add an activity, active opportunity, or defense brief to create meaningful priorities.</p>
-      <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 p-3">
-        <p className="text-sm font-bold text-navy">New here? Set up Memoire in a minute.</p>
-        <p className="mt-0.5 text-xs text-gray-600">Answer a few quick questions and Memoire tailors a basic setup for how you sell.</p>
-        <Link to="/app/onboarding/quick-start" className="mt-2 inline-flex rounded-full bg-brand-blue px-4 py-2 text-sm font-bold text-white hover:bg-brand-blue-dark">
-          Start quick setup
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Start here</p>
+      <h2 className="mt-2 text-2xl font-black text-navy">
+        {quickStartDone ? 'Capture your first activity.' : 'Set up Memoire in a minute.'}
+      </h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
+        {quickStartDone
+          ? 'Paste a note, an email thread, or type what happened. That one capture starts the loop below.'
+          : 'A few quick questions tailor Memoire to how you sell. Then one captured activity starts the loop.'}
+      </p>
+      <ol className="mt-4 max-w-2xl space-y-1.5 text-sm leading-6 text-gray-600">
+        <li><span className="font-bold text-navy">1.</span> Capture a customer update - a note or a pasted email.</li>
+        <li><span className="font-bold text-navy">2.</span> Memoire structures it into account, deal, next action, and date.</li>
+        <li><span className="font-bold text-navy">3.</span> When anything goes quiet, Today tells you and drafts the follow-up.</li>
+      </ol>
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        {quickStartDone ? (
+          <Link to="/app/capture" className="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white">Capture your first activity</Link>
+        ) : (
+          <Link to="/app/onboarding/quick-start" className="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white">Start quick setup</Link>
+        )}
+        <button type="button" onClick={onOpenDemoSandbox} className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
+          See it working with demo data
+        </button>
+        <Link to="/app/opportunities?import=csv" className="text-sm font-semibold text-gray-500 underline-offset-2 hover:underline">
+          Have a pipeline already? Import a CSV
         </Link>
-      </div>
-      <div className="mt-5 flex flex-wrap gap-2">
-        <Link to="/app/capture" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Capture a sales update</Link>
-        <Link to="/app/opportunities" className="rounded-full border border-gray-200 px-4 py-2 text-sm font-bold text-gray-700">Create or review an opportunity</Link>
-        <Link to="/app/pipeline-defense" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">Prepare first pipeline defense brief</Link>
-        <Link to="/app/opportunities?import=csv" className="rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700">Import or connect data later</Link>
       </div>
     </section>
   );

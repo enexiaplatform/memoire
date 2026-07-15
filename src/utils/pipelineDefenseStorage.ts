@@ -106,7 +106,7 @@ export function deletePipelineDefenseBrief(store: PipelineDefenseBriefStore, bri
   const remainingBriefs = store.briefs.filter((brief) => brief.id !== briefId);
 
   if (remainingBriefs.length === 0) {
-    const freshBrief = createPipelineDefenseBrief({ title: 'Sample Pipeline Defense Brief', weekLabel: pipelineDefenseBriefMeta.week });
+    const freshBrief = createPipelineDefenseBrief({ title: 'Sample Pipeline Defense Brief', weekLabel: pipelineDefenseBriefMeta.week, isSample: true });
     return { activeBriefId: freshBrief.id, briefs: [freshBrief] };
   }
 
@@ -119,12 +119,15 @@ export function getActivePipelineDefenseBrief(store: PipelineDefenseBriefStore) 
 }
 
 export function createDefaultPipelineDefenseBriefStore(): PipelineDefenseBriefStore {
+  // The starter brief is a template to explore, not the user's work - marking
+  // it as sample keeps Today's "has real data" check honest for new users.
   const brief = createPipelineDefenseBrief({
     title: 'Sample Pipeline Defense Brief',
     weekLabel: pipelineDefenseBriefMeta.week,
     salesOwner: pipelineDefenseBriefMeta.salesOwner,
     scope: pipelineDefenseBriefMeta.scope,
     deals: createInitialPipelineDefenseDeals(),
+    isSample: true,
   });
 
   return {

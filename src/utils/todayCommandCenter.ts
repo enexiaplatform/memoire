@@ -117,8 +117,10 @@ export function buildUnifiedTodayCommandCenter(input: {
     importedAccountsHidden,
     learningNudge: personalLearning.todayNudge,
     learningLowDataMessage: personalLearning.hasEnoughData ? '' : personalLearning.lowDataMessage,
+    // The starter sample brief is a template, not the user's work - it must
+    // not count as real data, or a brand-new workspace never sees Start here.
     hasMeaningfulData: Boolean(
-      latestBrief?.deals.length
+      (latestBrief && !latestBrief.isSample && latestBrief.deals.length)
       || input.opportunities.some((opportunity) => opportunity.status === 'Active')
       || input.revenueActions.length
       || input.activities.length
