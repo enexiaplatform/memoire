@@ -533,9 +533,9 @@ export function TodayPage() {
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Personal Business Activity OS</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Will your forecast survive review?</h1>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Nothing in your business goes silent.</h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500">
-            Memoire works beside your CRM to prepare review-ready answers, rescue exposed deals, and de-risk the forecast before anyone has to ask.
+            Memoire watches every deal, quote, delivery, and payment beside your CRM, and flags the moment one goes quiet — so you always know where the money sits and what to do next.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
