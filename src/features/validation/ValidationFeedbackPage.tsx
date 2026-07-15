@@ -24,6 +24,14 @@ import {
   type CohortBucket,
   type CohortQualification,
 } from '../../utils/cohortQualification';
+import {
+  evaluateCohortStopGo,
+  loadCohortFunnelInput,
+  saveCohortFunnelInput,
+  type CohortFunnelInput,
+  type CohortStopGo,
+  type CohortVerdict,
+} from '../../utils/cohortStopGo';
 
 export function ValidationFeedbackPage() {
   const [feedback] = useState<DemoFeedbackRecord[]>(() => loadDemoFeedback());
@@ -37,6 +45,11 @@ export function ValidationFeedbackPage() {
     .sort((left, right) => right.qualification.score - left.qualification.score),
     [earlyAccessRequests]);
   const bucketDistribution = useMemo(() => summariseCohortBuckets(earlyAccessRequests), [earlyAccessRequests]);
+  const [funnelInput, setFunnelInput] = useState<CohortFunnelInput>(() => loadCohortFunnelInput());
+  const stopGo = useMemo(() => evaluateCohortStopGo(funnelInput), [funnelInput]);
+  const updateFunnel = (patch: Partial<CohortFunnelInput>) => {
+    setFunnelInput((current) => saveCohortFunnelInput({ ...current, ...patch }));
+  };
 
   const copyText = async (label: string, text: string) => {
     try {
@@ -225,6 +238,8 @@ export function ValidationFeedbackPage() {
         )}
       </section>
 
+      <CohortStopGoPanel input={funnelInput} stopGo={stopGo} onChange={updateFunnel} />
+
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
@@ -346,6 +361,84 @@ function CohortBucketSummary({ distribution }: { distribution: Record<CohortBuck
         </div>
       ))}
     </div>
+  );
+}
+
+const COHORT_VERDICT_STYLE: Record<CohortVerdict, { label: string; tone: string }> = {
+  go: { label: 'Go to paid-offer design', tone: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
+  iterate: { label: 'Iterate before pricing', tone: 'bg-amber-50 text-amber-700 ring-amber-200' },
+  pause: { label: 'Pause or reposition', tone: 'bg-red-50 text-red-700 ring-red-200' },
+};
+
+const COHORT_FUNNEL_FIELDS: { id: keyof CohortFunnelInput; label: string }[] = [
+  { id: 'participants', label: 'Active participants' },
+  { id: 'finishedLoop', label: 'Finished the 14-day loop' },
+  { id: 'createdOrReviewedBrief', label: 'Created / reviewed a brief' },
+  { id: 'savedPackOrCopiedSummary', label: 'Saved pack / copied summary' },
+  { id: 'wouldUseWeeklyOrBeforeReview', label: 'Would use weekly / before review' },
+  { id: 'paidIntent', label: 'Showed paid intent' },
+];
+
+function CohortStopGoPanel({ input, stopGo, onChange }: { input: CohortFunnelInput; stopGo: CohortStopGo; onChange: (patch: Partial<CohortFunnelInput>) => void }) {
+  const verdict = COHORT_VERDICT_STYLE[stopGo.verdict];
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Cohort stop / go</p>
+          <h2 className="mt-2 text-xl font-bold text-navy">Friday review verdict</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
+            Enter this week&apos;s counts from your tracker. The verdict is computed from the measured stop/go criteria - the qualitative signals still need your read.
+          </p>
+        </div>
+        <div className={`shrink-0 rounded-lg px-4 py-2 text-center ring-1 ${verdict.tone}`}>
+          <p className="text-xs font-bold uppercase tracking-wide">Verdict</p>
+          <p className="text-base font-black">{verdict.label}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {COHORT_FUNNEL_FIELDS.map((field) => (
+          <label key={field.id} className="flex flex-col gap-1">
+            <span className="text-xs font-semibold text-gray-500">{field.label}</span>
+            <input
+              type="number"
+              min={0}
+              value={String(input[field.id] as number)}
+              onChange={(event) => onChange({ [field.id]: Number(event.target.value) } as Partial<CohortFunnelInput>)}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-bold text-navy focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-blue-100"
+            />
+          </label>
+        ))}
+      </div>
+
+      <label className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
+        <input
+          type="checkbox"
+          checked={input.hasUnresolvedP0}
+          onChange={(event) => onChange({ hasUnresolvedP0: event.target.checked })}
+          className="h-4 w-4 rounded border-gray-300"
+        />
+        An unresolved P0 (trust, isolation, deletion, or sync) is open
+      </label>
+
+      <p className="mt-4 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-700">{stopGo.summary}</p>
+
+      <div className="mt-4 grid grid-cols-1 gap-2 lg:grid-cols-2">
+        {[...stopGo.goConditions, ...stopGo.pauseFlags].map((condition) => {
+          const isPause = stopGo.pauseFlags.some((flag) => flag.id === condition.id);
+          const good = isPause ? !condition.met : condition.met;
+          return (
+            <div key={condition.id} className={`flex items-start justify-between gap-3 rounded-lg px-3 py-2 text-sm ${good ? 'bg-emerald-50' : 'bg-amber-50'}`}>
+              <span className={`font-semibold ${good ? 'text-emerald-800' : 'text-amber-900'}`}>
+                {good ? '✓' : '•'} {condition.label}
+              </span>
+              <span className="shrink-0 text-xs font-semibold text-gray-500">{condition.detail}</span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
