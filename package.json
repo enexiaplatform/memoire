@@ -8,6 +8,8 @@
     "build": "tsc -b && vite build",
     "typecheck:api": "tsc -p tsconfig.api.json",
     "lint": "eslint .",
+    "test": "node --test \"test/unit/*.test.mjs\"",
+    "test:coverage": "node --test --experimental-test-coverage \"test/unit/*.test.mjs\"",
     "preview": "vite preview",
     "import:founder-core": "node scripts/import-founder-core.mjs",
     "verify:commercial": "node scripts/verify-commercial-readiness.mjs",
