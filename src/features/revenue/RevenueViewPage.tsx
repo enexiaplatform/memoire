@@ -13,6 +13,7 @@ import { buildRevenueView, type RevenueActionItem, type RevenueRiskKind } from '
 import { buildMoneyFlow, moneyFlowStages } from '../../utils/moneyFlow';
 import { trackProductEvent } from '../../utils/productAnalytics';
 import { formatBaseCurrencyAmount, formatCurrencyAmount } from '../../utils/money';
+import { buildRouteHealth, type RouteHealthReport } from '../../utils/routeHealth';
 
 type RevenueData = {
   opportunities: CrmLiteOpportunity[];
@@ -54,6 +55,7 @@ export function RevenueViewPage() {
 
   const revenue = useMemo(() => buildRevenueView(data), [data]);
   const moneyFlow = useMemo(() => buildMoneyFlow(data), [data]);
+  const routeHealth = useMemo(() => buildRouteHealth({ opportunities: data.opportunities }), [data.opportunities]);
   const visibleActions = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return revenue.actionItems;
@@ -189,6 +191,8 @@ export function RevenueViewPage() {
             <RevenueMetric label="Overdue" value={revenue.overdueFollowUps} tone={revenue.overdueFollowUps ? 'red' : 'green'} />
           </section>
 
+          <RouteHealthSection report={routeHealth} />
+
           <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -223,6 +227,66 @@ export function RevenueViewPage() {
         </>
       )}
     </div>
+  );
+}
+
+function RouteHealthSection({ report }: { report: RouteHealthReport }) {
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Route intelligence</p>
+          <h2 className="mt-1 text-xl font-bold text-navy">Which routes make money.</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
+            Active money at stake and the win rate on closed deals, per product or solution you sell. Grown from your own pipeline - nothing assumed.
+          </p>
+        </div>
+        <Link to="/app/opportunities" className="shrink-0 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
+          Open deals
+        </Link>
+      </div>
+
+      {!report.hasEnoughData && (
+        <p className="mt-4 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">
+          {report.lowDataMessage}
+        </p>
+      )}
+
+      {report.routes.length === 0 ? (
+        <p className="mt-4 rounded-lg bg-gray-50 px-3 py-3 text-sm text-gray-500">No deals yet - add opportunities to see which routes convert.</p>
+      ) : (
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[560px] text-left text-sm">
+            <thead>
+              <tr className="text-xs font-bold uppercase tracking-wide text-gray-400">
+                <th className="pb-2">Route</th>
+                <th className="pb-2 text-right">Active</th>
+                <th className="pb-2 text-right">Money at stake</th>
+                <th className="pb-2 text-right">Win rate</th>
+                <th className="pb-2 text-right">Won / Lost</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {report.routes.map((route) => (
+                <tr key={route.route}>
+                  <td className="py-2.5 font-bold text-navy">{route.route}</td>
+                  <td className="py-2.5 text-right font-semibold text-gray-700">{route.activeCount}</td>
+                  <td className="py-2.5 text-right font-semibold text-gray-700">{formatBaseMoney(route.activeValueBase)}</td>
+                  <td className="py-2.5 text-right">
+                    {route.winRate === null ? (
+                      <span className="text-xs font-semibold text-gray-400">Too few closed</span>
+                    ) : (
+                      <span className={`font-black ${route.winRate >= 0.5 ? 'text-emerald-700' : 'text-amber-700'}`}>{Math.round(route.winRate * 100)}%</span>
+                    )}
+                  </td>
+                  <td className="py-2.5 text-right text-xs font-semibold text-gray-500">{route.wonCount} / {route.lostCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 
