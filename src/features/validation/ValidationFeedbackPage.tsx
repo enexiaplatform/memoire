@@ -17,12 +17,26 @@ import {
   loadEarlyAccessRequests,
   type EarlyAccessRequestRecord,
 } from '../../utils/earlyAccessRequests';
+import {
+  COHORT_BUCKET_LABELS,
+  scoreCohortRequest,
+  summariseCohortBuckets,
+  type CohortBucket,
+  type CohortQualification,
+} from '../../utils/cohortQualification';
 
 export function ValidationFeedbackPage() {
   const [feedback] = useState<DemoFeedbackRecord[]>(() => loadDemoFeedback());
   const [earlyAccessRequests, setEarlyAccessRequests] = useState<EarlyAccessRequestRecord[]>(() => loadEarlyAccessRequests());
   const [copyMessage, setCopyMessage] = useState('');
   const summary = useMemo(() => buildDemoFeedbackSummary(feedback), [feedback]);
+  // Score and rank access requests against the Wave 1 qualification rubric so the
+  // strongest cohort candidates surface first.
+  const scoredRequests = useMemo(() => earlyAccessRequests
+    .map((request) => ({ request, qualification: scoreCohortRequest(request) }))
+    .sort((left, right) => right.qualification.score - left.qualification.score),
+    [earlyAccessRequests]);
+  const bucketDistribution = useMemo(() => summariseCohortBuckets(earlyAccessRequests), [earlyAccessRequests]);
 
   const copyText = async (label: string, text: string) => {
     try {
@@ -192,15 +206,22 @@ export function ValidationFeedbackPage() {
             </Link>
           </div>
         ) : (
-          <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-2">
-            {earlyAccessRequests.map((request) => (
-              <EarlyAccessRequestCard
-                key={request.id}
-                request={request}
-                onCopy={() => copyText('early access request', generateEarlyAccessRequestSummary(request))}
-              />
-            ))}
-          </div>
+          <>
+            <CohortBucketSummary distribution={bucketDistribution} />
+            <p className="mt-4 text-xs font-semibold text-gray-400">
+              Scored against the Wave 1 rubric and ranked strongest first. Directional only - confirm fit on the onboarding call.
+            </p>
+            <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
+              {scoredRequests.map(({ request, qualification }) => (
+                <EarlyAccessRequestCard
+                  key={request.id}
+                  request={request}
+                  qualification={qualification}
+                  onCopy={() => copyText('early access request', generateEarlyAccessRequestSummary(request))}
+                />
+              ))}
+            </div>
+          </>
         )}
       </section>
 
@@ -307,19 +328,59 @@ function FeedbackCard({ entry }: { entry: DemoFeedbackRecord }) {
   );
 }
 
-function EarlyAccessRequestCard({ request, onCopy }: { request: EarlyAccessRequestRecord; onCopy: () => void }) {
+const COHORT_BUCKET_TONE: Record<CohortBucket, string> = {
+  'invite-first': 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  backup: 'bg-blue-50 text-brand-blue ring-blue-200',
+  clarify: 'bg-amber-50 text-amber-700 ring-amber-200',
+  skip: 'bg-gray-100 text-gray-500 ring-gray-200',
+};
+
+function CohortBucketSummary({ distribution }: { distribution: Record<CohortBucket, number> }) {
+  const order: CohortBucket[] = ['invite-first', 'backup', 'clarify', 'skip'];
+  return (
+    <div className="mt-5 grid grid-cols-2 gap-2 lg:grid-cols-4">
+      {order.map((bucket) => (
+        <div key={bucket} className={`rounded-lg px-3 py-2 ring-1 ${COHORT_BUCKET_TONE[bucket]}`}>
+          <p className="text-2xl font-black">{distribution[bucket]}</p>
+          <p className="text-xs font-bold uppercase tracking-wide">{COHORT_BUCKET_LABELS[bucket]}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EarlyAccessRequestCard({ request, qualification, onCopy }: { request: EarlyAccessRequestRecord; qualification: CohortQualification; onCopy: () => void }) {
   return (
     <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-      <div className="flex flex-wrap gap-2">
-        <Badge label={request.role} />
-        <Badge label={request.segment} />
-        <Badge label={request.budgetOwner} />
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          <Badge label={request.role} />
+          <Badge label={request.segment} />
+          <Badge label={request.budgetOwner} />
+        </div>
+        <div className={`shrink-0 rounded-lg px-2.5 py-1 text-center ring-1 ${COHORT_BUCKET_TONE[qualification.bucket]}`}>
+          <p className="text-lg font-black leading-none">{qualification.score}<span className="text-xs font-bold text-gray-400">/{qualification.maxScore}</span></p>
+          <p className="text-[10px] font-bold uppercase tracking-wide">{COHORT_BUCKET_LABELS[qualification.bucket]}</p>
+        </div>
       </div>
       <h3 className="mt-3 text-base font-bold text-navy">{request.name || 'Unnamed request'}</h3>
       <p className="mt-1 text-sm text-gray-600">{request.workEmail || 'No email provided'}</p>
       <p className="mt-2 text-sm text-gray-700"><span className="font-bold">Pain:</span> {request.biggestPain}</p>
       <p className="mt-1 text-sm text-gray-700"><span className="font-bold">Interested:</span> {request.interestedMost}</p>
       {request.currentTool && <p className="mt-1 text-sm text-gray-700"><span className="font-bold">Tool:</span> {request.currentTool}</p>}
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {qualification.signals.map((signal) => (
+          <span
+            key={signal.id}
+            title={signal.note ? `${signal.note}` : `${signal.met ? 'Met' : 'Not met'} - ${signal.points} pt`}
+            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+              signal.met ? 'bg-emerald-50 text-emerald-700' : 'bg-white text-gray-400 line-through ring-1 ring-gray-200'
+            }`}
+          >
+            {signal.met ? '✓' : '·'} {signal.label}
+          </span>
+        ))}
+      </div>
       <div className="mt-4 flex items-center justify-between gap-3">
         <p className="text-xs font-semibold text-gray-400">{request.createdAt.slice(0, 10)}</p>
         <button type="button" onClick={onCopy} className="rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-bold text-brand-blue">
