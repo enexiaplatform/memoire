@@ -110,7 +110,22 @@ assert.equal(detectInsightQuestion('Which deals may go silent?'), null, 'silent 
   assert.equal(review.openCount, 1);
   assert.equal(review.stalled.length, 1, 'an initiative with no recent activity is stalled');
   assert.equal(review.stalled[0].health, 'quiet');
-  assert.equal(review.decidedToChange.length, 1, 'an adjust/stop decision that is still open needs follow-through');
+  assert.equal(review.decidedToChange.length, 0, 'a stalled initiative is never double-listed under decided-to-change - the Weekly Review rule');
+
+  // The same decided initiative with a recent touch is active, so the decision
+  // without follow-through is what surfaces.
+  const touch = {
+    id: 'a-touch', accountName: '', opportunityName: '', activityType: 'Meeting',
+    summary: 'Distributor onboarding check-in', nextAction: '', dueDate: '', tags: [],
+    buyingSignals: [], risks: [], timelineSignals: [], competitors: [],
+    linkedOpportunityId: '', linkedOpportunityName: '', linkedAccountName: '', linkStatus: 'Unlinked',
+    rawNote: 'Distributor onboarding check-in', activityDate: '2026-07-07',
+    createdAt: '', updatedAt: '', storageMode: 'local',
+  };
+  const activeReview = buildInitiativeReview({ operatingContexts: [context], activities: [touch], today: '2026-07-09' });
+  assert.equal(activeReview.stalled.length, 0, 'a recent touch keeps the initiative out of the stalled list');
+  assert.equal(activeReview.decidedToChange.length, 1, 'an adjust/stop decision that is still open needs follow-through');
+  assert.equal(activeReview.decidedToChange[0].decision, 'adjust');
 
   const answer = answerFromInitiativeReview(review);
   assert.ok(answer.answer.includes('1 open initiative'), 'the answer must count open initiatives');

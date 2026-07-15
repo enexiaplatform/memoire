@@ -68,9 +68,12 @@ export function buildInitiativeReview(input: InitiativeReviewInput): InitiativeR
   });
 
   const stalled = items.filter((item) => item.health === 'overdue-step' || item.health === 'quiet');
-  // Explicitly decided to adjust or stop but still open - a decision without
-  // follow-through is its own kind of stall.
-  const decidedToChange = items.filter((item) => item.decision === 'adjust' || item.decision === 'stop');
+  // Decided to adjust or stop but still open and NOT already stalled: a
+  // decision without follow-through is its own loose end. Excluding stalled
+  // ones keeps this disjoint from `stalled`, so a single initiative is never
+  // listed under both - the same rule the Weekly Review uses.
+  const decidedToChange = items.filter((item) => item.health === 'active'
+    && (item.decision === 'adjust' || item.decision === 'stop'));
   const healthy = items.filter((item) => item.health === 'active');
 
   return { openCount: items.length, stalled, decidedToChange, healthy };
