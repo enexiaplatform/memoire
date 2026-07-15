@@ -579,9 +579,6 @@ export function TodayPage() {
         </SkeletonScreen>
       ) : (
         <>
-          {/* Readiness scaffolding on an empty workspace is noise - the empty
-              state below owns the first step instead. */}
-          {todayCenter.hasMeaningfulData && <ForecastDefenseReadiness center={todayCenter} />}
           {demoSandboxPromptOpen && (
             <DemoSandboxPrompt
               hasExistingData={commandCenter.hasAnyData}
@@ -609,10 +606,11 @@ export function TodayPage() {
             <TodayCommandEmptyState onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)} />
           ) : (
             <>
+              {/* Action tier: a glance, then the brief, then the three things to
+                  do and the watch-list. This is the whole first screen. */}
               <BusinessCockpitStrip answers={businessCockpit} />
               <MorningBriefCard brief={morningBrief} />
               <TodayTopThreeActions actions={todayCenter.topActions} />
-              <PipelineGlanceSection opportunities={data.opportunities} activities={data.activities} />
               <ProactiveNudgesPanel
                 center={proactiveNudges}
                 message={nudgeMessage}
@@ -624,7 +622,15 @@ export function TodayPage() {
                 onClearDismissed={handleClearDismissedNudges}
                 onClearAll={handleClearAllNudgeState}
               />
-              <FollowUpImpactPanel impact={followUpImpact} onDraftFollowUp={handleDraftFollowUpFromImpact} />
+
+              {/* Supporting detail: the numbers behind today's priorities. Below
+                  the fold on purpose - reference, not the first thing you act on. */}
+              <div className="flex items-center gap-3 pt-2">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-400">Supporting detail</p>
+                <div className="h-px flex-1 bg-gray-200" />
+              </div>
+              <ForecastDefenseReadiness center={todayCenter} />
+              <PipelineGlanceSection opportunities={data.opportunities} activities={data.activities} />
               <TodayPipelineReadiness center={todayCenter} />
               <TodayCommercialRisk items={todayCenter.commercialRiskItems} />
               <TodayCaptureInbox items={todayCenter.captureInbox} />
@@ -638,6 +644,8 @@ export function TodayPage() {
                 </summary>
                 {dashboardInsights && (
                   <div className="mt-4 flex flex-col gap-4">
+                    {/* Measured-history analysis - reference, not a first action. */}
+                    <FollowUpImpactPanel impact={followUpImpact} onDraftFollowUp={handleDraftFollowUpFromImpact} />
                     <StartHerePanel
                       commandCenter={commandCenter}
                       signal={pipelineReviewSignal}

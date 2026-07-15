@@ -66,11 +66,37 @@ navOrder.forEach((route, index) => {
 assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 14, 'A new CRM navigation item was added.');
 
 const todayPage = readFileSync('src/features/dashboard/DashboardPage.tsx', 'utf8');
-const sections = ['Forecast-defense readiness', 'Top 3 Today Actions', 'Pipeline Review Readiness', 'Commercial Risk', 'Capture Inbox'];
-sections.forEach((section, index) => {
+// The named sections all still exist on Today.
+for (const section of ['Forecast-defense readiness', 'Top 3 Today Actions', 'Pipeline Review Readiness', 'Commercial Risk', 'Capture Inbox']) {
   assert.ok(todayPage.includes(section), `Today missing ${section}`);
-  if (index > 0) assert.ok(todayPage.indexOf(section) > todayPage.indexOf(sections[index - 1]), `Today section order incorrect: ${section}`);
+}
+// Altitude: the action tier (cockpit -> brief -> top 3 -> nudges) renders
+// first, then a "Supporting detail" divider, then the reference scoreboards.
+// Asserted on the JSX usage sites (not display text, which also appears in the
+// function definitions) so the order reflects what actually renders.
+const renderOrder = [
+  '<BusinessCockpitStrip',
+  '<MorningBriefCard',
+  '<TodayTopThreeActions',
+  '<ProactiveNudgesPanel',
+  'Supporting detail',
+  '<ForecastDefenseReadiness',
+  '<PipelineGlanceSection',
+  '<TodayPipelineReadiness',
+  '<TodayCommercialRisk',
+  '<TodayCaptureInbox',
+];
+renderOrder.forEach((marker, index) => {
+  const at = todayPage.indexOf(marker);
+  assert.ok(at >= 0, `Today render missing ${marker}`);
+  if (index > 0) assert.ok(at > todayPage.indexOf(renderOrder[index - 1]), `Today render order incorrect at ${marker}`);
 });
+// The measured-history panel folds into the supporting-execution details block,
+// below the action tier - not a first-screen section.
+assert.ok(
+  todayPage.indexOf('<FollowUpImpactPanel') > todayPage.indexOf('Supporting execution detail'),
+  'FollowUpImpactPanel must fold into Supporting execution detail',
+);
 
 const model = readFileSync('src/utils/todayCommandCenter.ts', 'utf8');
 for (const helper of ['formatSafeBusinessDate', 'formatCurrencyAmount', 'formatBaseCurrencyAmount', 'isBusinessDateOverdue']) {
