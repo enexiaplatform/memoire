@@ -20,22 +20,29 @@ function hasFirstSavedBrief() {
   }
 }
 
+// Three tiers mirroring the operating loop: the daily loop, where the money
+// sits, and review artifacts. Pipeline Defense lives in Review & Learn per the
+// pivot ("the premium review output inside a larger operating loop").
 const primarySections = [{
   label: 'Business Activity OS',
   items: [
     { to: '/app/today', label: 'Today', icon: <LayoutDashboard className="h-5 w-5" /> },
     { to: '/app/capture', label: 'Capture', icon: <NotebookPen className="h-5 w-5" /> },
     { to: '/app/activity', label: 'Activity', icon: <CalendarDays className="h-5 w-5" /> },
-    { to: '/app/pipeline-defense', label: 'Pipeline Defense', icon: <FileCheck2 className="h-5 w-5" /> },
+    { to: '/app/ask', label: 'Ask Memoire', icon: <MessageCircleQuestion className="h-5 w-5" /> },
+  ],
+}, {
+  label: 'Pipeline & Money',
+  items: [
     { to: '/app/opportunities', label: 'Opportunities', icon: <Target className="h-5 w-5" /> },
     { to: '/app/accounts', label: 'Accounts', icon: <BookOpen className="h-5 w-5" /> },
-    { to: '/app/ask', label: 'Ask Memoire', icon: <MessageCircleQuestion className="h-5 w-5" /> },
+    { to: '/app/revenue', label: 'Money', icon: <Banknote className="h-5 w-5" /> },
   ],
 }];
 
 const secondaryItems = [
   { to: '/app/weekly-brief', label: 'Business Review', icon: <ClipboardList className="h-5 w-5" /> },
-  { to: '/app/revenue', label: 'Money', icon: <Banknote className="h-5 w-5" /> },
+  { to: '/app/pipeline-defense', label: 'Pipeline Defense', icon: <FileCheck2 className="h-5 w-5" /> },
   { to: '/app/stakeholders', label: 'Stakeholders', icon: <UsersRound className="h-5 w-5" /> },
   { to: '/app/objections', label: 'Objections', icon: <AlertTriangle className="h-5 w-5" /> },
   { to: '/app/playbook', label: 'Playbook', icon: <BookOpen className="h-5 w-5" /> },

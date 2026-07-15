@@ -55,7 +55,9 @@ assert.ok(app.includes('<Route path="dashboard" element={<Navigate to="/app/toda
 assert.ok(app.includes('<Route index element={<Navigate to="/app/today" replace />} />'));
 
 const sidebar = readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
-const navOrder = ['/app/today', '/app/capture', '/app/pipeline-defense', '/app/opportunities', '/app/accounts'];
+// Three tiers mirroring the operating loop: daily loop, then Pipeline & Money,
+// then Review & Learn (where Pipeline Defense lives as the review artifact).
+const navOrder = ['/app/today', '/app/capture', '/app/activity', '/app/ask', '/app/opportunities', '/app/accounts', '/app/revenue', '/app/weekly-brief', '/app/pipeline-defense'];
 navOrder.forEach((route, index) => {
   const location = sidebar.indexOf(`to: '${route}'`);
   assert.ok(location >= 0, `Sidebar missing ${route}`);
