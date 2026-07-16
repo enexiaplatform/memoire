@@ -53,15 +53,24 @@ export function buildUnifiedTodayCommandCenter(input: {
   quotes?: QuoteRecord[];
   accountPreferences?: AccountHygienePreference[];
   opportunityOutcomes?: OpportunityOutcomeRecord[];
+  /**
+   * Pipeline health, measured by the caller from the LIVE pipeline
+   * (buildLivePipelineHealth). Today used to score it from the latest saved
+   * brief - a snapshot that could be stale or absent - which is how one
+   * workspace read 0% readiness on Today while Opportunities showed 119 of 122
+   * deals weak. Today composes; it does not decide where health comes from.
+   */
+  pipelineHealth?: ReturnType<typeof buildPipelineDefenseCenter>;
   today?: string;
 }) {
   const today = isValidBusinessDate(input.today) ? input.today : todayDateKey();
   const latestBrief = [...input.briefs].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
-  const pipelineReadiness = buildPipelineDefenseCenter(latestBrief?.deals || [], today, input.opportunityOutcomes || []);
+  const pipelineReadiness = input.pipelineHealth
+    || buildPipelineDefenseCenter([], today, input.opportunityOutcomes || []);
   const personalLearning = analyzePersonalSalesLearning({
     outcomes: input.opportunityOutcomes || [],
     opportunities: input.opportunities,
-    deals: latestBrief?.deals || [],
+    deals: pipelineReadiness.items.map((item) => item.deal),
   });
   const pipelineActions = pipelineReadiness.items.flatMap((item) => buildPipelineAction(item));
   const revenueActions = input.revenueActions.map(buildRevenueAction);

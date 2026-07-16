@@ -3,6 +3,7 @@ import type { CrmLiteOpportunity, ForecastEvidenceCategory } from '../services/o
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { ObjectionRecord } from '../services/objectionStore';
 import { getObjectionsForOpportunity } from './objectionLedger';
+import { resolveCommercialDecision } from './pipelineDefenseCenter.ts';
 import { sumMoneyInBase } from './money';
 import { compareSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate } from './safeDate.ts';
 
@@ -230,8 +231,11 @@ export function analyzePipelineQuality(opportunities: CrmLiteOpportunity[], acti
     unsupportedHopeBasedCount: opportunities.filter((opportunity) =>
       ['Hope-based', 'Unsupported'].includes(opportunity.forecastEvidenceCategory)
     ).length,
+    // Same rule Pipeline Defense and Today use, so the surfaces can never
+    // disagree about the same pipeline. Counting the raw decisionRecommendation
+    // field here missed deals whose evidence category alone makes them a rescue.
     rescueDowngradeCount: opportunities.filter((opportunity) =>
-      ['Rescue', 'Downgrade'].includes(opportunity.decisionRecommendation)
+      ['Rescue', 'Downgrade'].includes(resolveCommercialDecision(opportunity))
     ).length,
     staleOpportunityCount: reviews.filter((review) =>
       review.issues.some((issue) => issue.id === 'stale-next-action')

@@ -131,6 +131,7 @@ import {
 } from '../../utils/salesOperatingSetup';
 import { isQuickStartComplete } from '../../utils/quickStartSetup';
 import { buildFirstWeekPath, type FirstWeekPath } from '../../utils/firstWeekPath';
+import { buildLivePipelineHealth } from '../../utils/livePipelineHealth';
 import { generateInterviewScriptText } from '../../utils/demoFeedback';
 import { markDemoJourneyStepComplete } from '../../utils/demoJourney';
 import {
@@ -306,6 +307,17 @@ export function TodayPage() {
     executionDecisions: dailyExecutionState.decisions,
   }), [dailyExecutionState.decisions, data, revenueView.actionItems]);
   const pipelineReviewSignal = useMemo(() => buildPipelineReviewDashboardSignal(data.briefs), [data.briefs]);
+  // Readiness comes from the live pipeline, not the latest saved brief - the
+  // same reading Opportunities and a freshly generated brief would give.
+  const livePipelineHealth = useMemo(() => buildLivePipelineHealth({
+    opportunities: data.opportunities,
+    objections: data.objections,
+    stakeholders: data.stakeholders,
+    activities: data.activities,
+    actionOutcomes: data.actionOutcomes,
+    salesAssets: data.assets,
+    opportunityOutcomes: data.opportunityOutcomes,
+  }), [data.actionOutcomes, data.activities, data.assets, data.objections, data.opportunities, data.opportunityOutcomes, data.stakeholders]);
   const todayCenter = useMemo(() => buildUnifiedTodayCommandCenter({
     briefs: data.briefs,
     revenueActions: revenueView.actionItems,
@@ -317,7 +329,8 @@ export function TodayPage() {
     quotes: data.quotes,
     accountPreferences: accountHygienePreferences,
     opportunityOutcomes: data.opportunityOutcomes,
-  }), [accountHygienePreferences, data.accounts, data.activities, data.briefs, data.objections, data.opportunities, data.opportunityOutcomes, data.quotes, data.stakeholders, revenueView.actionItems]);
+    pipelineHealth: livePipelineHealth,
+  }), [accountHygienePreferences, data.accounts, data.activities, data.briefs, data.objections, data.opportunities, data.opportunityOutcomes, data.quotes, data.stakeholders, livePipelineHealth, revenueView.actionItems]);
   const proactiveNudges = useMemo(() => buildProactiveNudges({
     briefs: data.briefs,
     revenueActions: revenueView.actionItems,

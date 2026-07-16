@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildUnifiedTodayCommandCenter } from '../src/utils/todayCommandCenter.ts';
+import { buildPipelineDefenseCenter } from '../src/utils/pipelineDefenseCenter.ts';
 
 const now = '2026-06-21';
 const brief = {
@@ -32,8 +33,12 @@ const revenueAction = {
   status: 'Pending delivery', risk: 'Delivery overdue', nextAction: 'Confirm delivery recovery date', dueDate: '2026-06-18', href: '/app/quotes', source: 'Quote',
 };
 
+// Pipeline health is measured from the live pipeline by the caller and injected
+// - Today no longer scores the latest saved brief. This stands in for what
+// DashboardPage passes from buildLivePipelineHealth.
 const center = buildUnifiedTodayCommandCenter({
   briefs: [brief], revenueActions: [revenueAction], opportunities: [opportunity], activities: [activity], today: now,
+  pipelineHealth: buildPipelineDefenseCenter(brief.deals, now),
 });
 assert.equal(center.hasMeaningfulData, true);
 assert.equal(center.topActions.length, 3);

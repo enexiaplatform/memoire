@@ -133,11 +133,28 @@ function buildFallbackPipelineReviewAnswer(
   return `I should monitor this deal. It needs ${nextAction} and clearer evidence before I call it defensible.`;
 }
 
-export function getPipelineDefenseDecision(deal: PipelineDefenseDeal): PipelineDefenseDecision {
-  if (deal.decisionRecommendation === 'Defend' && deal.forecastEvidenceCategory === 'Defensible') return 'Defend';
-  if (deal.decisionRecommendation === 'Downgrade' || deal.decisionRecommendation === 'Deprioritize' || deal.forecastEvidenceCategory === 'Unsupported') return 'Downgrade';
-  if (deal.decisionRecommendation === 'Rescue' || deal.forecastEvidenceCategory === 'Hope-based' || deal.forecastEvidenceCategory === 'Weak but recoverable') return 'Rescue';
+/**
+ * THE decision rule for a commercial record: what the seller must do about it.
+ *
+ * It takes only the two fields the decision depends on, so a live opportunity
+ * and a brief deal resolve identically. Every surface that counts defend /
+ * rescue / downgrade must call this. Opportunities used to count the raw
+ * decisionRecommendation field alone, so a deal marked Monitor with Hope-based
+ * evidence was a rescue on Pipeline Defense and invisible on Opportunities -
+ * the same pipeline reading differently depending on where you looked.
+ */
+export function resolveCommercialDecision(record: {
+  decisionRecommendation: string;
+  forecastEvidenceCategory: string;
+}): PipelineDefenseDecision {
+  if (record.decisionRecommendation === 'Defend' && record.forecastEvidenceCategory === 'Defensible') return 'Defend';
+  if (record.decisionRecommendation === 'Downgrade' || record.decisionRecommendation === 'Deprioritize' || record.forecastEvidenceCategory === 'Unsupported') return 'Downgrade';
+  if (record.decisionRecommendation === 'Rescue' || record.forecastEvidenceCategory === 'Hope-based' || record.forecastEvidenceCategory === 'Weak but recoverable') return 'Rescue';
   return 'Monitor';
+}
+
+export function getPipelineDefenseDecision(deal: PipelineDefenseDeal): PipelineDefenseDecision {
+  return resolveCommercialDecision(deal);
 }
 
 export function getPrimaryDefenseCategory(deal: PipelineDefenseDeal, today: string): PipelineDefenseCategory {
