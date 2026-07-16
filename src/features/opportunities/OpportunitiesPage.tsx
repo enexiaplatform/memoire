@@ -149,6 +149,7 @@ import {
   salesFlowSteps,
   type OpportunitySalesFlowGuidance,
 } from '../../utils/salesFlowGuidance';
+import { buildCommercialJourneySnapshot, formatJourneyCommitment } from '../../utils/commercialJourney';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type BriefPreviewMetadata = {
@@ -2457,6 +2458,17 @@ function OpportunityPanel({
         </button>
       </div>
 
+      {mode === 'edit' && currentOpportunity && (
+        <DealFirstThingHead
+          snapshot={buildCommercialJourneySnapshot({
+            opportunity: currentOpportunity,
+            quotes,
+            activities: linkedActivities,
+            objections,
+          })}
+        />
+      )}
+
       {currentOpportunity && (
         <OpportunitySalesFlowCard
           guidance={buildOpportunitySalesFlowGuidance(currentOpportunity)}
@@ -2499,7 +2511,11 @@ function OpportunityPanel({
       </div>
 
       {mode === 'edit' && (
-        <>
+        <details className="mt-5 rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+          <summary className="cursor-pointer text-sm font-bold text-navy">
+            Full deal analysis — stakeholders, MEDDIC, quotes, objections, action plan, retro, assets, activity
+          </summary>
+          <div className="mt-4 space-y-4">
           {currentOpportunity && (
             <StakeholderMap
               opportunity={currentOpportunity}
@@ -2561,7 +2577,8 @@ function OpportunityPanel({
             />
           )}
           <LinkedActivitiesTimeline activities={linkedActivities} />
-        </>
+          </div>
+        </details>
       )}
 
       {message && (
@@ -2605,6 +2622,52 @@ function OpportunityPanel({
       </div>
       </aside>
     </>
+  );
+}
+
+/**
+ * Opens the deal drawer on the one question the seller has: what do I do first?
+ * Position, money, risk, and the next commitment - the same commercial-journey
+ * read-model Today and Ask use - before the long CRM form and the folded deep
+ * analysis. The drawer used to open straight into a form of twenty fields.
+ */
+function DealFirstThingHead({ snapshot }: { snapshot: ReturnType<typeof buildCommercialJourneySnapshot> }) {
+  const commitment = formatJourneyCommitment(snapshot.nextCommitment);
+  return (
+    <section className="mt-4 rounded-xl border border-brand-blue/20 bg-blue-50/50 p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-navy px-2.5 py-1 text-xs font-black text-white">{snapshot.position}</span>
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+          {snapshot.positionSource === 'money-flow' ? 'from money flow' : 'from sales stage'}
+        </span>
+        {snapshot.daysQuiet !== null && snapshot.daysQuiet > 0 && (
+          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">Quiet {snapshot.daysQuiet}d</span>
+        )}
+      </div>
+      <p className="mt-3 text-xs font-bold uppercase tracking-wide text-brand-blue">Do this first</p>
+      <p className="mt-1 text-sm font-bold leading-6 text-navy">
+        {snapshot.nextCommitment ? commitment : 'No next action set — decide the first move and add it below.'}
+      </p>
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="rounded-lg bg-white/70 px-3 py-2">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Money</p>
+          <p className="mt-0.5 text-xs font-semibold text-gray-700">{snapshot.moneyStatus || 'Not captured'}</p>
+        </div>
+        <div className="rounded-lg bg-white/70 px-3 py-2">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Risk</p>
+          <p className="mt-0.5 text-xs font-semibold text-gray-700">{snapshot.riskStatus || 'None flagged'}</p>
+        </div>
+        <div className="rounded-lg bg-white/70 px-3 py-2">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Blocker</p>
+          <p className="mt-0.5 text-xs font-semibold text-gray-700">{snapshot.blocker || 'None captured'}</p>
+        </div>
+      </div>
+      {snapshot.lastTouch && (
+        <p className="mt-3 text-xs text-gray-500">
+          Last touch {formatSafeBusinessDate(snapshot.lastTouch.date)}: {snapshot.lastTouch.summary}
+        </p>
+      )}
+    </section>
   );
 }
 
