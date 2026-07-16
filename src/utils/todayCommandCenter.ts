@@ -8,7 +8,7 @@ import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeSto
 import type { RevenueActionItem } from './revenueView';
 import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
 import { buildPipelineDefenseCenter, type ManagerReadyDealBrief } from './pipelineDefenseCenter.ts';
-import { convertMoney, formatBaseCurrencyAmount, formatCurrencyAmount } from './money.ts';
+import { formatMoneyWithBase } from './money.ts';
 import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 import { classifyAccountEngagement, type AccountHygienePreference } from './accountHygiene.ts';
 import { analyzePersonalSalesLearning } from './personalSalesLearning.ts';
@@ -279,9 +279,7 @@ function isRecent(date: string, today: string) {
 
 function formatMoney(amount: number | null | undefined, currency: string | null | undefined) {
   if (amount === null || amount === undefined || !currency?.trim()) return 'Needs confirmation';
-  const converted = convertMoney(amount, currency);
-  if (converted === null) return `${formatCurrencyAmount(amount, currency)} · Needs confirmation`;
-  return `${formatCurrencyAmount(amount, currency)} · ${formatBaseCurrencyAmount(converted)}`;
+  return formatMoneyWithBase(amount, currency);
 }
 
 function cleanOrConfirm(value: string | null | undefined) {

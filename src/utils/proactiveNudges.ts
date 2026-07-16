@@ -12,7 +12,7 @@ import type { RevenueActionItem } from './revenueView.ts';
 import { classifyAccountEngagement, type AccountHygienePreference } from './accountHygiene.ts';
 import { readLinkedActivityIds } from './initiativeActivityLink.ts';
 import { buildMeddicStakeholderMap } from './meddicStakeholderMap.ts';
-import { formatBaseCurrencyAmount, formatCurrencyAmount, convertMoney } from './money.ts';
+import { formatMoneyWithBase } from './money.ts';
 import { analyzePersonalSalesLearning } from './personalSalesLearning.ts';
 import { buildManagerReadyDealBrief } from './pipelineDefenseCenter.ts';
 import { buildRetentionSignals } from './retentionSignals.ts';
@@ -194,9 +194,7 @@ export function formatNudgeDueDate(nudge: Pick<NudgeRecord, 'dueDate'>) {
 
 export function formatNudgeMoney(nudge: Pick<NudgeRecord, 'moneyAmount' | 'moneyCurrency'>) {
   if (typeof nudge.moneyAmount !== 'number' || !nudge.moneyCurrency) return '';
-  const baseAmount = convertMoney(nudge.moneyAmount, nudge.moneyCurrency);
-  if (baseAmount === null) return `${formatCurrencyAmount(nudge.moneyAmount, nudge.moneyCurrency)} · Needs confirmation`;
-  return `${formatCurrencyAmount(nudge.moneyAmount, nudge.moneyCurrency)} · ${formatBaseCurrencyAmount(baseAmount, true)}`;
+  return formatMoneyWithBase(nudge.moneyAmount, nudge.moneyCurrency, { compact: true });
 }
 
 export function isNudgeActiveToday(nudge: NudgeRecord, today = todayDateKey()) {

@@ -57,8 +57,11 @@ assert.ok(guarded.moneyLabel.includes('Missing evidence'));
 assert.ok(guarded.copyText.includes('Data quality: Needs confirmation'));
 
 const centerSource = readFileSync('src/utils/pipelineDefenseCenter.ts', 'utf8');
-assert.ok(centerSource.includes('formatCurrencyAmount'));
-assert.ok(centerSource.includes('formatBaseCurrencyAmount'));
+// Money goes through the one shared formatter (formatMoneyWithBase), which owns
+// the item-currency + reporting-currency composition. This used to assert the
+// hand-rolled pair here, which is how a mislabelled conversion could diverge
+// between surfaces.
+assert.ok(centerSource.includes('formatMoneyWithBase'));
 assert.ok(centerSource.includes('formatSafeBusinessDate'));
 
 const page = readFileSync('src/features/pipeline/PipelineReviewDefenseBriefPage.tsx', 'utf8');

@@ -99,7 +99,9 @@ assert.ok(
 );
 
 const model = readFileSync('src/utils/todayCommandCenter.ts', 'utf8');
-for (const helper of ['formatSafeBusinessDate', 'formatCurrencyAmount', 'formatBaseCurrencyAmount', 'isBusinessDateOverdue']) {
+// Money goes through the shared formatMoneyWithBase (which owns the item +
+// reporting-currency composition), not a hand-rolled pair per surface.
+for (const helper of ['formatSafeBusinessDate', 'formatMoneyWithBase', 'isBusinessDateOverdue']) {
   assert.ok(model.includes(helper), `Today command model missing ${helper}`);
 }
 for (const [file, marker] of [

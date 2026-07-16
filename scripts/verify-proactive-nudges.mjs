@@ -406,10 +406,25 @@ assert.equal(buildProactiveNudges({
 }).todayNudges.length, 1, 'snoozed nudge should reappear on snoozedUntil');
 
 assert.ok(formatNudgeDueDate(dismissTarget).includes('Jun 20, 2026'));
-assert.ok(formatNudgeMoney(dismissTarget).includes('Base: VND'));
+
+// A nudge already in the reporting currency states its money once. This used to
+// echo itself - "100,000,000 VND · 100,000,000 VND (Base: VND)" - which is the
+// noise the first user reported.
+assert.equal(formatNudgeMoney(dismissTarget), '100,000,000 VND');
+assert.equal(formatNudgeMoney(dismissTarget).includes('Base:'), false);
+
+// A nudge in another currency shows the conversion, labelled with the currency
+// it was actually converted into.
+{
+  const sgdNudge = { moneyAmount: 200_000, moneyCurrency: 'SGD' };
+  const label = formatNudgeMoney(sgdNudge);
+  assert.ok(label.startsWith('200,000 SGD · '), `must lead with the deal's own currency, got: ${label}`);
+  assert.ok(label.includes('VND'), 'the converted figure must name VND, the currency it is in');
+  assert.equal(/4B SGD|4,000,000,000 SGD/.test(label), false, 'a VND figure must never be labelled SGD');
+}
 
 const engine = readFileSync('src/utils/proactiveNudges.ts', 'utf8');
-for (const helper of ['formatSafeBusinessDate', 'formatCurrencyAmount', 'formatBaseCurrencyAmount', 'isBusinessDateOverdue', 'classifyAccountEngagement', 'analyzePersonalSalesLearning']) {
+for (const helper of ['formatSafeBusinessDate', 'formatMoneyWithBase', 'isBusinessDateOverdue', 'classifyAccountEngagement', 'analyzePersonalSalesLearning']) {
   assert.ok(engine.includes(helper), `proactive nudge engine missing ${helper}`);
 }
 

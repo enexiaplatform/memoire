@@ -1,7 +1,7 @@
 import type { PipelineDefenseDeal } from '../data/pipelineDefenseBrief.ts';
 import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
-import { formatBaseCurrencyAmount, formatCurrencyAmount, convertMoney } from './money.ts';
+import { formatMoneyWithBase } from './money.ts';
 import { formatSafeBusinessDate } from './safeDate.ts';
 
 export type PersonalSalesLearningInsightType =
@@ -111,7 +111,7 @@ export function getLearningWarningForOpportunity(
 
 export function formatOutcomeRetro(outcome: OpportunityOutcomeRecord) {
   const money = typeof outcome.finalAmount === 'number'
-    ? `${formatCurrencyAmount(outcome.finalAmount, outcome.currency)}${convertMoney(outcome.finalAmount, outcome.currency) !== null ? ` · ${formatBaseCurrencyAmount(convertMoney(outcome.finalAmount, outcome.currency) as number)}` : ''}`
+    ? formatMoneyWithBase(outcome.finalAmount, outcome.currency)
     : 'final amount not captured';
   return `${outcome.outcome} on ${formatSafeBusinessDate(outcome.outcomeDate)} for ${outcome.accountName} / ${outcome.opportunityName}: ${outcome.reasonCategory}${outcome.reasonText ? ` — ${outcome.reasonText}` : ''}. ${money}.`;
 }

@@ -1,6 +1,6 @@
 import type { PipelineDefenseDeal } from '../data/pipelineDefenseBrief';
 import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore';
-import { convertMoney, formatBaseCurrencyAmount, formatCurrencyAmount } from './money.ts';
+import { formatMoneyWithBase } from './money.ts';
 import { analyzePersonalSalesLearning, type PersonalSalesLearningWarning } from './personalSalesLearning.ts';
 import { formatSafeBusinessDate, isValidBusinessDate, todayDateKey } from './safeDate.ts';
 
@@ -154,9 +154,7 @@ function formatDealMoney(deal: PipelineDefenseDeal) {
   if (deal.estimatedValue === null || deal.estimatedValue === undefined || !deal.currency) {
     return 'Missing evidence — amount or currency not captured';
   }
-  const converted = convertMoney(deal.estimatedValue, deal.currency);
-  if (converted === null) return `${formatCurrencyAmount(deal.estimatedValue, deal.currency)} · Needs confirmation`;
-  return `${formatCurrencyAmount(deal.estimatedValue, deal.currency)} · ${formatBaseCurrencyAmount(converted)}`;
+  return formatMoneyWithBase(deal.estimatedValue, deal.currency);
 }
 
 function buildDealMissingContext(deal: PipelineDefenseDeal) {

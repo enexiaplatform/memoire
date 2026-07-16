@@ -2,7 +2,16 @@ export const SUPPORTED_CURRENCIES = ['VND', 'SGD', 'USD', 'EUR'] as const;
 
 export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];
 
+/**
+ * The exchange-rate anchor ONLY - the pivot every rate is expressed against.
+ * It is NOT the display basis: that is getReportingCurrency(). Conflating the
+ * two is what made a converted VND figure render as "4,000,000,000 SGD".
+ */
 export const BASE_CURRENCY: SupportedCurrency = 'VND';
+
+// The UI copy is English, so money must format English. Leaving the locale to
+// the browser rendered Vietnamese compact units ("4 Tr") inside English copy.
+const MONEY_LOCALE = 'en';
 
 // Static planning rates. These are deliberately centralized so they can be
 // replaced by workspace-configured or live rates without changing consumers.
@@ -22,10 +31,17 @@ export function isSupportedCurrency(currency?: string | null) {
   return SUPPORTED_CURRENCIES.includes(normalizeCurrency(currency) as SupportedCurrency);
 }
 
+/**
+ * Converts into the reporting currency by default - the same currency every
+ * money label names. It used to default to BASE_CURRENCY (VND) while the
+ * formatters labelled the result with the reporting currency, so a seller
+ * reporting in SGD saw 200,000 SGD echoed as "4,000,000,000 SGD": the number
+ * was VND, the label was not.
+ */
 export function convertMoney(
   amount: number | null | undefined,
   fromCurrency: string | null | undefined,
-  toCurrency: SupportedCurrency = BASE_CURRENCY,
+  toCurrency: SupportedCurrency = getReportingCurrency(),
 ) {
   const numericAmount = toFiniteAmount(amount);
   const normalizedFrom = normalizeCurrency(fromCurrency);
@@ -39,7 +55,7 @@ export function convertMoney(
  * Sums only after converting every supported input to the requested currency.
  * Unknown currencies are excluded rather than being treated as the base currency.
  */
-export function sumMoney(values: MoneyValue[], toCurrency: SupportedCurrency = BASE_CURRENCY) {
+export function sumMoney(values: MoneyValue[], toCurrency: SupportedCurrency = getReportingCurrency()) {
   return values.reduce((total, value) => {
     const converted = convertMoney(value.amount, value.currency, toCurrency);
     return converted === null ? total : total + converted;
@@ -89,7 +105,7 @@ export function formatCompactBaseAmount(value?: number | null) {
 export function formatCurrencyAmount(value?: number | null, currency: string = BASE_CURRENCY) {
   const numericValue = toFiniteAmount(value);
   const normalizedCurrency = normalizeCurrency(currency) || BASE_CURRENCY;
-  const formattedValue = new Intl.NumberFormat(undefined, {
+  const formattedValue = new Intl.NumberFormat(MONEY_LOCALE, {
     maximumFractionDigits: normalizedCurrency === 'VND' ? 0 : 2,
   }).format(numericValue);
 
@@ -99,11 +115,33 @@ export function formatCurrencyAmount(value?: number | null, currency: string = B
 export function formatCompactCurrencyAmount(value?: number | null, currency: string = BASE_CURRENCY) {
   const numericValue = toFiniteAmount(value);
   const normalizedCurrency = normalizeCurrency(currency) || BASE_CURRENCY;
-  const formattedValue = new Intl.NumberFormat(undefined, {
+  const formattedValue = new Intl.NumberFormat(MONEY_LOCALE, {
     notation: 'compact',
     maximumFractionDigits: 1,
   }).format(numericValue);
   return `${formattedValue} ${normalizedCurrency}`;
+}
+
+/**
+ * An amount in its own currency, plus its reporting-currency equivalent only
+ * when that is genuinely a different figure. Callers keep their own
+ * missing-value copy; this formats an amount that is present.
+ *
+ * Replaces four hand-rolled copies of the same concatenation, which is how the
+ * mislabelled conversion spread across Today, nudges, Pipeline Defense, and
+ * outcome retros at once.
+ */
+export function formatMoneyWithBase(amount: number, currency: string, options: { compact?: boolean } = {}) {
+  const reporting = getReportingCurrency();
+  const source = normalizeCurrency(currency);
+  const item = formatCurrencyAmount(amount, source);
+  // Same currency: the "base" figure would just repeat the number the seller
+  // has already read ("650,000,000 VND · 650,000,000 VND (Base: VND)").
+  if (source === reporting) return item;
+
+  const converted = convertMoney(amount, source, reporting);
+  if (converted === null) return `${item} · Needs confirmation`;
+  return `${item} · ${formatBaseCurrencyAmount(converted, options.compact)}`;
 }
 
 /** Aggregate formatter: makes the reporting basis explicit in every money card. */

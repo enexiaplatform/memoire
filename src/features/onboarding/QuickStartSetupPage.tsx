@@ -10,11 +10,17 @@ import {
   type QuickStartAnswers,
   type QuickStartFieldId,
 } from '../../utils/quickStartSetup';
-import { setReportingCurrency } from '../../utils/money';
+import { getReportingCurrency, setReportingCurrency } from '../../utils/money';
 
 export function QuickStartSetupPage() {
   const navigate = useNavigate();
-  const [answers, setAnswers] = useState<QuickStartAnswers>(() => loadQuickStart().answers || defaultQuickStartAnswers());
+  const [answers, setAnswers] = useState<QuickStartAnswers>(() => {
+    const saved = loadQuickStart().answers || defaultQuickStartAnswers();
+    // Currency's real home is Settings. The saved answer is a snapshot that
+    // goes stale the moment Settings changes - showing it made Quick Setup say
+    // VND while Settings said SGD. Always start from the live value.
+    return { ...saved, currency: getReportingCurrency() };
+  });
   const [applied, setApplied] = useState(() => Boolean(loadQuickStart().completedAt));
 
   const plan = buildQuickStartPlan(answers);
@@ -84,8 +90,9 @@ export function QuickStartSetupPage() {
             </button>
           ) : (
             <>
+              {/* Say what was actually stored, so "applied" is checkable. */}
               <span className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-700">
-                <CheckCircle2 className="h-4 w-4" /> Setup applied
+                <CheckCircle2 className="h-4 w-4" /> Saved. Reporting currency is {answers.currency} - change it any time in Settings.
               </span>
               <button
                 type="button"
