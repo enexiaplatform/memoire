@@ -441,9 +441,13 @@ export function AccountsPage() {
         <QuickFilterBar value={quickFilter} onChange={setQuickFilter} importSummary={importSummary} />
       </section>
 
-      <ImportedCoreBanner summary={importSummary} lastLoadedAt={lastLoadedAt} refreshing={refreshing} />
+      {/* The summary counts derive from the loaded rows; rendering them during
+          the initial load flashed "0 accounts" before the real count arrived,
+          reading as data loss. Hold them until the load resolves - the skeleton
+          below carries the loading state. */}
+      {!loading && <ImportedCoreBanner summary={importSummary} lastLoadedAt={lastLoadedAt} refreshing={refreshing} />}
 
-      <AccountMemorySummary summary={summary} />
+      {!loading && <AccountMemorySummary summary={summary} />}
 
       <section className="space-y-5">
         {candidates.length > 0 && (

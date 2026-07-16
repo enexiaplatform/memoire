@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Suspense, useEffect, useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopNav } from './TopNav';
@@ -7,6 +7,14 @@ import { DemoModeBanner } from '../demo/DemoModeBanner';
 
 export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const { pathname } = useLocation();
+
+  // Reset scroll on navigation. Without this a new page opened mid-content
+  // (e.g. jumping from a long Opportunities list to Accounts) - it looked like
+  // the page loaded half-scrolled or, worse, empty.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
