@@ -4,6 +4,7 @@ import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { ObjectionRecord } from '../services/objectionStore';
 import type { QuoteRecord } from '../services/quoteStore';
 import { isBusinessDateOverdue, isValidBusinessDate, todayDateKey } from './safeDate.ts';
+import { sameAccount } from './accountIdentity.ts';
 
 export const ACCOUNT_HYGIENE_PREFERENCES_KEY = 'memoire.accountHygiene.v1';
 export const accountEngagementStatuses = ['Active', 'Strategic', 'Needs follow-up', 'Dormant', 'Imported only', 'Archived'] as const;
@@ -120,7 +121,7 @@ function savePreference(accountId: string, patch: Partial<Pick<AccountHygienePre
 }
 
 function matching<T extends { accountName: string; accountId?: string }>(items: T[], account: AccountMemoryRecord) {
-  return items.filter((item) => item.accountId === account.id || normalize(item.accountName) === normalize(account.accountName));
+  return items.filter((item) => item.accountId === account.id || sameAccount(item.accountName, account.accountName));
 }
 
 function isRecent(value: string, today = todayDateKey()) {
@@ -131,8 +132,4 @@ function isRecent(value: string, today = todayDateKey()) {
 
 function preferenceKey(userId?: string) {
   return `${ACCOUNT_HYGIENE_PREFERENCES_KEY}:${userId || 'guest'}`;
-}
-
-function normalize(value: string) {
-  return value.trim().toLowerCase();
 }

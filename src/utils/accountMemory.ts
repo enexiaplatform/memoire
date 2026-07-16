@@ -1,8 +1,9 @@
 import type { AccountMemoryRecord } from '../services/accountStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
-import { sumMoneyInBase } from './money';
+import { sumMoneyInBase } from './money.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import { compareSafeBusinessDate, isValidBusinessDate } from './safeDate.ts';
+import { accountKey as normalize, sameAccount } from './accountIdentity.ts';
 
 export type AccountCandidate = {
   accountName: string;
@@ -35,13 +36,16 @@ export function buildAccountMemory(
   opportunities: CrmLiteOpportunity[],
   activities: SalesActivityRecord[]
 ): AccountMemory {
-  const accountName = normalize(account.accountName);
-  const accountOpportunities = opportunities.filter((opportunity) => normalize(opportunity.accountName) === accountName);
+  // Match on the shared canonical key (diacritic- and punctuation-insensitive),
+  // so a deal on "VNVC" and this "VNVC." account are the same account. Exact
+  // lowercase+trim equality here is what reported 0 active opportunities while
+  // the deals were visible one screen over.
+  const accountOpportunities = opportunities.filter((opportunity) => sameAccount(opportunity.accountName, account.accountName));
   const linkedActivities = activities.filter((activity) =>
-    activity.linkStatus === 'Linked' && normalize(activity.linkedAccountName || activity.accountName) === accountName
+    activity.linkStatus === 'Linked' && sameAccount(activity.linkedAccountName || activity.accountName, account.accountName)
   );
   const matchingActivities = activities.filter((activity) =>
-    activity.linkStatus !== 'Linked' && normalize(activity.accountName) === accountName
+    activity.linkStatus !== 'Linked' && sameAccount(activity.accountName, account.accountName)
   );
   const allActivities = [...linkedActivities, ...matchingActivities];
   const openNextActions = uniqueClean([
@@ -175,10 +179,6 @@ function getRiskSignals(memory: Omit<AccountMemory, 'health' | 'riskSignals'>, h
 
 function uniqueClean(values: string[]) {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
-}
-
-function normalize(value: string) {
-  return value.toLowerCase().trim();
 }
 
 function daysSince(dateKey: string) {

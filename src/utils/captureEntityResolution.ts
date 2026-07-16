@@ -1,5 +1,6 @@
 import type { AccountMemoryRecord } from '../services/accountStore';
 import type { CaptureAccountAlias, CaptureCorrectionEvent } from '../services/captureCorrectionMemoryStore';
+import { normalizeEntityName as normalize } from './accountIdentity.ts';
 
 type AccountContext = Pick<AccountMemoryRecord, 'id' | 'accountName'>;
 type OpportunityContext = {
@@ -243,11 +244,5 @@ function uniqueAccounts(values: string[]) {
   return Array.from(new Map(values.filter(Boolean).map((value) => [normalize(value), value])).values());
 }
 
-function normalize(value: string) {
-  return value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-}
+// The shared account/entity normalizer - identical algorithm, one home, so
+// Capture and Account Memory can never resolve the same name differently.
