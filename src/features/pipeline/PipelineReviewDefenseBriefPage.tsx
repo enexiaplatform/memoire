@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Banknote, ClipboardCheck, Copy, Download, HelpCircle, Printer, ReceiptText, RotateCcw, ShieldCheck, Target, Trash2, Upload } from 'lucide-react';
 import {
-  createInitialPipelineDefenseDeals,
   decisionRecommendations,
   forecastEvidenceCategories,
   forecastEvidenceDefinitions,
@@ -18,7 +17,8 @@ import { generatePipelineDefenseBriefMarkdown } from '../../utils/exportPipeline
 import { parsePipelineDeals, type ImportFormat } from '../../utils/importPipelineDefenseBrief';
 import {
   clearPipelineDefenseBriefStore,
-  createDefaultPipelineDefenseBriefStore,
+  createBriefFromLiveDeals,
+  createEmptyPipelineDefenseBriefStore,
   createPipelineDefenseBrief,
   deletePipelineDefenseBrief,
   duplicatePipelineDefenseBrief,
@@ -101,6 +101,8 @@ import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../servi
 import { buildFollowUpImpact } from '../../utils/followUpImpact';
 import type { SalesActivityRecord } from '../../services/salesActivityStore';
 import type { CrmLiteOpportunity as WorkspaceOpportunity } from '../../services/opportunityStore';
+import { generatePipelineDefenseBriefFromOpportunities } from '../../utils/opportunityToPipelineBrief';
+import { convertMoney } from '../../utils/money';
 import { buildForecastCalibration } from '../../utils/forecastCalibration';
 import { ForecastCalibrationPanel } from './ForecastCalibrationPanel';
 
@@ -209,6 +211,12 @@ export function PipelineReviewDefenseBriefPage() {
 
   const activeBrief = getActivePipelineDefenseBrief(store);
   const deals = activeBrief?.deals || [];
+  // Live pipeline available to seed a first brief: active deals, biggest money
+  // first, capped so a 122-deal import produces a reviewable brief, not a dump.
+  const liveDeals = useMemo(() => (workspaceSnapshot?.opportunities || [])
+    .filter((opportunity) => opportunity.status === 'Active')
+    .sort((left, right) => (convertMoney(right.estimatedValue, right.currency) || 0) - (convertMoney(left.estimatedValue, left.currency) || 0))
+    .slice(0, 10), [workspaceSnapshot]);
   const summary = buildSummary(deals);
   const defenseCenter = buildPipelineDefenseCenter(deals, undefined, opportunityOutcomes);
   const proactiveNudges = buildProactiveNudges({
@@ -534,8 +542,10 @@ export function PipelineReviewDefenseBriefPage() {
     clearDealAnalysis(dealId);
   };
 
+  // Clears the brief's deals. It used to refill them with the hard-coded
+  // starter sample, which put demo accounts into a real user's review.
   const resetDeals = () => {
-    updateActiveBrief({ deals: createInitialPipelineDefenseDeals() });
+    updateActiveBrief({ deals: [] });
     setEditingDealId(null);
     clearAnalysis();
   };
@@ -547,19 +557,44 @@ export function PipelineReviewDefenseBriefPage() {
       return;
     }
 
-    const freshStore = createDefaultPipelineDefenseBriefStore();
+    const freshStore = createEmptyPipelineDefenseBriefStore();
     clearPipelineDefenseBriefStore();
     setStore(freshStore);
     setEditingDealId(null);
     clearAnalysis();
-    setSaveStatus(savePipelineDefenseBriefStore(freshStore) ? 'Local brief storage cleared' : 'Local save unavailable');
+    setSaveStatus('Local brief storage cleared');
+  };
+
+  // The real first-brief path: build it from the live pipeline, ranked by money
+  // at stake, so a review is never prepared against data the seller never entered.
+  const generateBriefFromLiveDeals = () => {
+    if (liveDeals.length === 0) return;
+    const generated = generatePipelineDefenseBriefFromOpportunities(
+      liveDeals,
+      {
+        title: `Pipeline Defense Brief - ${new Date().toISOString().slice(0, 10)}`,
+        scope: `Top ${liveDeals.length} active deals by value`,
+      },
+      [],
+      [],
+      workspaceSnapshot?.activities || [],
+    );
+    const nextStore = createBriefFromLiveDeals(generated.deals, {
+      title: generated.title,
+      scope: generated.scope,
+    });
+    setStore(nextStore);
+    setEditingDealId(null);
+    clearAnalysis();
+    setSaveStatus(savePipelineDefenseBriefStore(nextStore) ? 'Brief generated from your live deals' : 'Local save unavailable');
   };
 
   const createNewBrief = async () => {
+    // Starts empty - the seller fills it from live deals, not from sample ones.
     const brief = createPipelineDefenseBrief({
       title: 'New Weekly Pipeline Defense Brief',
       weekLabel: 'Current Week',
-      deals: createInitialPipelineDefenseDeals(),
+      deals: [],
     });
 
     if (cloudSyncReady && user) {
@@ -1213,6 +1248,40 @@ export function PipelineReviewDefenseBriefPage() {
           </div>
         </div>
       </header>
+
+      {/* No brief yet: the page used to fabricate a sample starter brief here,
+          so a real pipeline showed demo accounts. Now it offers to build one
+          from the live pipeline instead. */}
+      {!activeBrief && (
+        <section className="mb-6 rounded-xl border border-dashed border-brand-blue/40 bg-blue-50/40 p-6 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">No brief yet</p>
+          <h2 className="mt-2 text-2xl font-black text-navy">
+            {liveDeals.length > 0 ? 'Build this review from your live pipeline.' : 'Add a deal before preparing a review.'}
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
+            {liveDeals.length > 0
+              ? `Memoire will pull your ${liveDeals.length} biggest active deal${liveDeals.length === 1 ? '' : 's'} and lay out what you can defend, what needs rescuing, and what evidence is missing. Only your own data - nothing sampled.`
+              : 'A pipeline review is built from real deals. Import your pipeline or add one opportunity, then come back.'}
+          </p>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            {liveDeals.length > 0 ? (
+              <button type="button" onClick={generateBriefFromLiveDeals} className="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-navy/90">
+                Generate from your {liveDeals.length} live deal{liveDeals.length === 1 ? '' : 's'}
+              </button>
+            ) : (
+              <Link to="/app/opportunities" className="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white">
+                Open deals
+              </Link>
+            )}
+            <button type="button" onClick={() => void createNewBrief()} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
+              Start a blank brief
+            </button>
+            <button type="button" onClick={() => setImportOpen(true)} className="text-sm font-semibold text-gray-500 underline-offset-2 hover:underline">
+              Import a brief instead
+            </button>
+          </div>
+        </section>
+      )}
 
       <CommercialHandoffStrip summary={summary} hasSavedPack={Boolean(currentWeekReviewPack)} />
 

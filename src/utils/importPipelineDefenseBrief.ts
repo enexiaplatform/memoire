@@ -4,7 +4,7 @@ import {
   type DecisionRecommendation,
   type ForecastEvidenceCategory,
   type PipelineDefenseDeal,
-} from '../data/pipelineDefenseBrief';
+} from '../data/pipelineDefenseBrief.ts';
 import { sanitizeBusinessDate } from './safeDate.ts';
 
 export type ImportFormat = 'csv' | 'markdown' | 'unknown';

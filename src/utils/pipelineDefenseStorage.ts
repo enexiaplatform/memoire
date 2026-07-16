@@ -1,6 +1,6 @@
-import { createInitialPipelineDefenseDeals, pipelineDefenseBriefMeta, type PipelineDefenseDeal } from '../data/pipelineDefenseBrief';
-import { invalidateWorkspaceDataCache } from '../services/workspaceDataCache';
-import { normalizeImportedDeal } from './importPipelineDefenseBrief';
+import { pipelineDefenseBriefMeta, type PipelineDefenseDeal } from '../data/pipelineDefenseBrief.ts';
+import { invalidateWorkspaceDataCache } from '../services/workspaceDataCache.ts';
+import { normalizeImportedDeal } from './importPipelineDefenseBrief.ts';
 
 export const MULTI_BRIEF_STORAGE_KEY = 'memoire.pipelineDefenseBriefs.v1';
 export const LEGACY_LOCAL_STORAGE_KEY = 'memoire.pipelineDefenseBrief.v1';
@@ -23,6 +23,13 @@ export type PipelineDefenseBriefStore = {
   briefs: PipelineDefenseBrief[];
 };
 
+/**
+ * Loads the saved briefs, or an EMPTY store. It must never fabricate a sample
+ * brief: the first real user opened Pipeline Defense on a workspace of 122 live
+ * deals and was shown the hard-coded starter brief (Orion Pharma, Northstar
+ * Foods), with no way to tell demo data from their own. A workspace with no
+ * brief has no brief - the page offers to generate one from live deals instead.
+ */
 export function loadPipelineDefenseBriefStore(): PipelineDefenseBriefStore {
   const savedStore = loadNewStore();
   if (savedStore) return savedStore;
@@ -33,7 +40,11 @@ export function loadPipelineDefenseBriefStore(): PipelineDefenseBriefStore {
     return migratedStore;
   }
 
-  return createDefaultPipelineDefenseBriefStore();
+  return createEmptyPipelineDefenseBriefStore();
+}
+
+export function createEmptyPipelineDefenseBriefStore(): PipelineDefenseBriefStore {
+  return { activeBriefId: '', briefs: [] };
 }
 
 export function savePipelineDefenseBriefStore(store: PipelineDefenseBriefStore) {
@@ -70,7 +81,9 @@ export function createPipelineDefenseBrief(overrides: Partial<PipelineDefenseBri
     scope: overrides.scope || pipelineDefenseBriefMeta.scope,
     createdAt: overrides.createdAt || now,
     updatedAt: overrides.updatedAt || now,
-    deals: overrides.deals ? cloneDeals(overrides.deals) : createInitialPipelineDefenseDeals(),
+    // A new brief starts empty. It used to default to the hard-coded starter
+    // deals, which silently seeded sample accounts into real users' briefs.
+    deals: overrides.deals ? cloneDeals(overrides.deals) : [],
   };
 }
 
@@ -105,10 +118,8 @@ export function updatePipelineDefenseBrief(
 export function deletePipelineDefenseBrief(store: PipelineDefenseBriefStore, briefId: string): PipelineDefenseBriefStore {
   const remainingBriefs = store.briefs.filter((brief) => brief.id !== briefId);
 
-  if (remainingBriefs.length === 0) {
-    const freshBrief = createPipelineDefenseBrief({ title: 'Sample Pipeline Defense Brief', weekLabel: pipelineDefenseBriefMeta.week, isSample: true });
-    return { activeBriefId: freshBrief.id, briefs: [freshBrief] };
-  }
+  // Deleting the last brief leaves no brief - it must not resurrect a sample.
+  if (remainingBriefs.length === 0) return createEmptyPipelineDefenseBriefStore();
 
   const activeBriefId = store.activeBriefId === briefId ? remainingBriefs[0].id : store.activeBriefId;
   return { activeBriefId, briefs: remainingBriefs };
@@ -118,16 +129,19 @@ export function getActivePipelineDefenseBrief(store: PipelineDefenseBriefStore) 
   return store.briefs.find((brief) => brief.id === store.activeBriefId) || store.briefs[0] || null;
 }
 
-export function createDefaultPipelineDefenseBriefStore(): PipelineDefenseBriefStore {
-  // The starter brief is a template to explore, not the user's work - marking
-  // it as sample keeps Today's "has real data" check honest for new users.
+/**
+ * Builds a brief from live opportunities - the only way a real workspace should
+ * ever get its first brief. The starter-sample store this replaced is gone: it
+ * was the mechanism that showed demo accounts inside a real pipeline review.
+ */
+export function createBriefFromLiveDeals(deals: PipelineDefenseDeal[], metadata: { title?: string; weekLabel?: string; salesOwner?: string; scope?: string } = {}): PipelineDefenseBriefStore {
   const brief = createPipelineDefenseBrief({
-    title: 'Sample Pipeline Defense Brief',
-    weekLabel: pipelineDefenseBriefMeta.week,
-    salesOwner: pipelineDefenseBriefMeta.salesOwner,
-    scope: pipelineDefenseBriefMeta.scope,
-    deals: createInitialPipelineDefenseDeals(),
-    isSample: true,
+    title: metadata.title || 'Pipeline Defense Brief',
+    weekLabel: metadata.weekLabel || pipelineDefenseBriefMeta.week,
+    salesOwner: metadata.salesOwner || pipelineDefenseBriefMeta.salesOwner,
+    scope: metadata.scope || 'Live pipeline',
+    deals,
+    source: 'user',
   });
 
   return {
