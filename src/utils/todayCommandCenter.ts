@@ -30,6 +30,13 @@ export type TodayCommandAction = {
   dueDateLabel: string;
   moneyLabel: string;
   rank: number;
+  /**
+   * "Why am I seeing this?" - the rule that surfaced it plus its evidence.
+   * Populated centrally by withBasis for every action that reaches Today.
+   */
+  basis?: string;
+  /** How many deals this one card stands for, when identical work was merged. */
+  mergedCount?: number;
 };
 
 export type TodayCaptureInboxItem = {
@@ -109,7 +116,11 @@ export function buildUnifiedTodayCommandCenter(input: {
   const rankedActions = [...pipelineActions, ...revenueActions, ...opportunityActions, ...captureActions]
     .filter((action) => action.source === 'Capture' || !suppressedAccounts.has(normalize(action.accountName)))
     .sort(compareTodayActions);
-  const allActions = dedupeActions(rankedActions).sort(compareTodayActions);
+  const allActions = dedupeActions(rankedActions).sort(compareTodayActions).map(withBasis);
+  // Collapse identical titles into one card so a dataset where many deals share
+  // the same fallback ("Confirm overdue next action") produces one prioritised
+  // hygiene action, not the same sentence three times in the Top 3.
+  const topActions = collapseByTitle(allActions).slice(0, 3);
 
   return {
     readinessScore: pipelineReadiness.readinessScore,
@@ -118,7 +129,7 @@ export function buildUnifiedTodayCommandCenter(input: {
     downgradeCandidates: pipelineReadiness.downgradeCandidates,
     overdueActions: allActions.filter((action) => isBusinessDateOverdue(action.dueDate, today)).length,
     missingEvidenceGaps: pipelineReadiness.topMissingEvidenceGaps,
-    topActions: allActions.slice(0, 3),
+    topActions,
     allActions,
     pipelineReadiness,
     commercialRiskItems: input.revenueActions.slice(0, 5),
@@ -256,6 +267,47 @@ function dedupeActions(actions: TodayCommandAction[]) {
     seen.add(key);
     return true;
   });
+}
+
+/** Names the rule that surfaced an action and the money it concerns. */
+function withBasis(action: TodayCommandAction): TodayCommandAction {
+  const parts = [`${action.source}: ${action.reason}`];
+  if (action.moneyLabel && !action.moneyLabel.startsWith('Needs')) parts.push(action.moneyLabel);
+  if (action.dueDate) parts.push(`Due ${action.dueDateLabel}`);
+  return { ...action, basis: parts.join(' · ') };
+}
+
+/**
+ * Merges actions that carry the identical title into one card. A pipeline of
+ * imported deals with no next action all produce the same fallback sentence;
+ * shown one-per-deal they filled the Top 3 with the same words. Merged, the
+ * seller sees "Confirm overdue next action - 12 deals, 3.2B VND" once, ranked
+ * by the money it stands for, and works the biggest first.
+ */
+function collapseByTitle(actions: TodayCommandAction[]): TodayCommandAction[] {
+  const groups = new Map<string, TodayCommandAction[]>();
+  const order: string[] = [];
+  actions.forEach((action) => {
+    const key = normalize(action.title);
+    if (!groups.has(key)) { groups.set(key, []); order.push(key); }
+    groups.get(key)!.push(action);
+  });
+
+  const merged = order.map((key) => {
+    const group = groups.get(key)!;
+    if (group.length === 1) return group[0];
+    // The strongest card is the face; it stands in for the whole group and
+    // points the seller at the biggest one to start with.
+    const lead = [...group].sort(compareTodayActions)[0];
+    return {
+      ...lead,
+      reason: `${group.length} deals need this. Start with ${lead.accountName}${lead.moneyLabel && !lead.moneyLabel.startsWith('Needs') ? ` (${lead.moneyLabel})` : ''}.`,
+      basis: `${lead.source}: ${group.length} deals share this action · ${lead.reason}`,
+      mergedCount: group.length,
+    };
+  });
+
+  return merged.sort(compareTodayActions);
 }
 
 function compareTodayActions(left: TodayCommandAction, right: TodayCommandAction) {

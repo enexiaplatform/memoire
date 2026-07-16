@@ -1045,10 +1045,19 @@ function TodayTopThreeActions({ actions }: { actions: TodayCommandAction[] }) {
                   <span className="rounded-full bg-navy px-2.5 py-1 text-xs font-black text-white">#{index + 1}</span>
                   <PriorityBadge priority={action.urgency} />
                   <Badge label={action.source} tone="blue" />
+                  {action.mergedCount && action.mergedCount > 1 && (
+                    <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">{action.mergedCount} deals</span>
+                  )}
                 </div>
                 <h3 className="mt-3 text-base font-bold text-navy">{action.title}</h3>
                 <p className="mt-1 text-xs font-bold uppercase tracking-wide text-gray-400">{action.accountName} / {action.opportunityName}</p>
                 <p className="mt-3 text-sm leading-6 text-gray-600">{action.reason}</p>
+                {action.basis && (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs font-semibold text-brand-blue">Why am I seeing this?</summary>
+                    <p className="mt-1 text-xs leading-5 text-gray-500">{action.basis}</p>
+                  </details>
+                )}
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Badge label={`Due: ${action.dueDateLabel}`} tone={action.urgency === 'Critical' ? 'red' : 'blue'} />
                   {action.moneyLabel && <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-gray-700 ring-1 ring-gray-200">{action.moneyLabel}</span>}
