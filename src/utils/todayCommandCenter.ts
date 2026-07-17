@@ -4,6 +4,7 @@ import type { StakeholderRecord } from '../services/stakeholderStore';
 import type { ObjectionRecord } from '../services/objectionStore';
 import type { AccountMemoryRecord } from '../services/accountStore';
 import type { QuoteRecord } from '../services/quoteStore';
+import type { ExpenseRecord } from '../services/expenseStore';
 import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore';
 import type { RevenueActionItem } from './revenueView';
 import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
@@ -14,9 +15,10 @@ import { classifyAccountEngagement, type AccountHygienePreference } from './acco
 import { analyzePersonalSalesLearning } from './personalSalesLearning.ts';
 import { normalizeMeddicRole } from './meddicStakeholderMap.ts';
 import { buildPostWonCustomers, type WonCustomerNudge } from './postWonCustomers.ts';
+import { buildOwnObligations, type OwnObligation } from './ownObligations.ts';
 import { formatCompactBaseAmount } from './money.ts';
 
-export type TodayActionSource = 'Pipeline Defense' | 'Revenue' | 'Opportunity' | 'Capture' | 'Customer';
+export type TodayActionSource = 'Pipeline Defense' | 'Revenue' | 'Opportunity' | 'Capture' | 'Customer' | 'Obligation';
 export type TodayActionUrgency = 'Critical' | 'High' | 'Medium' | 'Low';
 
 export type TodayCommandAction = {
@@ -60,6 +62,7 @@ export function buildUnifiedTodayCommandCenter(input: {
   objections?: ObjectionRecord[];
   accounts?: AccountMemoryRecord[];
   quotes?: QuoteRecord[];
+  expenses?: ExpenseRecord[];
   accountPreferences?: AccountHygienePreference[];
   opportunityOutcomes?: OpportunityOutcomeRecord[];
   /**
@@ -92,6 +95,17 @@ export function buildUnifiedTodayCommandCenter(input: {
     today,
   });
   const postWonActions = postWon.quietCustomers.map(buildPostWonAction);
+  const obligations = buildOwnObligations({
+    expenses: input.expenses || [],
+    quotes: input.quotes || [],
+    today,
+  });
+  // Payment obligations are the genuinely-missing side; delivery obligations are
+  // already surfaced as Revenue "Delivery overdue", so only payments become
+  // Today actions to avoid double-surfacing the same work.
+  const obligationActions = obligations.obligations
+    .filter((obligation) => obligation.kind === 'Payment' && (obligation.status === 'Overdue' || obligation.status === 'Due soon'))
+    .map(buildObligationAction);
   const captureInbox = buildCaptureInbox(input.activities);
   const accountClassifications = (input.accounts || []).map((account) => ({
     account,
@@ -123,8 +137,8 @@ export function buildUnifiedTodayCommandCenter(input: {
     moneyLabel: '',
     rank: 72 - index,
   }));
-  const rankedActions = [...pipelineActions, ...revenueActions, ...opportunityActions, ...postWonActions, ...captureActions]
-    .filter((action) => action.source === 'Capture' || !suppressedAccounts.has(normalize(action.accountName)))
+  const rankedActions = [...pipelineActions, ...revenueActions, ...opportunityActions, ...postWonActions, ...obligationActions, ...captureActions]
+    .filter((action) => action.source === 'Capture' || action.source === 'Obligation' || !suppressedAccounts.has(normalize(action.accountName)))
     .sort(compareTodayActions);
   const allActions = dedupeActions(rankedActions).sort(compareTodayActions).map(withBasis);
   // Collapse identical titles into one card so a dataset where many deals share
@@ -145,6 +159,7 @@ export function buildUnifiedTodayCommandCenter(input: {
     commercialRiskItems: input.revenueActions.slice(0, 5),
     captureInbox,
     postWonCustomers: postWon,
+    ownObligations: obligations,
     importedAccountsHidden,
     learningNudge: personalLearning.todayNudge,
     learningLowDataMessage: personalLearning.hasEnoughData ? '' : personalLearning.lowDataMessage,
@@ -269,6 +284,27 @@ function buildPostWonAction(customer: WonCustomerNudge): TodayCommandAction {
   };
 }
 
+function buildObligationAction(obligation: OwnObligation): TodayCommandAction {
+  const overdue = obligation.status === 'Overdue';
+  const dueLabel = obligation.dueDate ? formatSafeBusinessDate(obligation.dueDate) : '';
+  return {
+    id: obligation.id,
+    title: `Pay ${obligation.label}`,
+    accountName: obligation.counterparty || 'Needs confirmation',
+    opportunityName: 'Obligation',
+    reason: overdue
+      ? `Payment overdue — a missed deadline costs more than a cold deal.`
+      : `Payment due ${dueLabel} — settle before it goes silent.`,
+    source: 'Obligation',
+    urgency: overdue ? 'Critical' : 'High',
+    href: obligation.href,
+    dueDate: obligation.dueDate,
+    dueDateLabel: formatSafeBusinessDate(obligation.dueDate),
+    moneyLabel: obligation.amountBase !== null ? formatCompactBaseAmount(obligation.amountBase) : '',
+    rank: overdue ? 95 : 80,
+  };
+}
+
 function buildCaptureInbox(activities: SalesActivityRecord[]): TodayCaptureInboxItem[] {
   return [...activities]
     .filter((activity) => activity.linkStatus === 'Unlinked' || activity.linkStatus === 'Suggested' || !activity.accountName.trim() || !activity.opportunityName.trim())
@@ -293,7 +329,9 @@ function dedupeActions(actions: TodayCommandAction[]) {
   const seen = new Set<string>();
   return actions.filter((action) => {
     const entity = `${normalize(action.accountName)}|${normalize(action.opportunityName)}`;
-    const key = action.source === 'Capture' ? action.id : entity;
+    // Capture and Obligation actions are per-record (many can share a
+    // counterparty), so they dedupe by id, not by account+opportunity.
+    const key = action.source === 'Capture' || action.source === 'Obligation' ? action.id : entity;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

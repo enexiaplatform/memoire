@@ -949,6 +949,7 @@ export function buildSampleDataset(): SampleDataset {
     sampleExpense({ id: 'demo-expense-logistics', label: 'Delivery logistics (Northstar)', category: 'Logistics', amount: 6000000, status: 'Paid', expenseDate: nineDaysAgo, linkedAccountName: 'Northstar Foods' }),
     sampleExpense({ id: 'demo-expense-tax-upcoming', label: 'Quarterly VAT', category: 'Tax & fees', amount: 34000000, status: 'Upcoming', dueDate: nextWeek }),
     sampleExpense({ id: 'demo-expense-tools', label: 'CRM & software subscriptions', category: 'Tools & software', amount: 4500000, status: 'Upcoming', dueDate: friday, recurring: true }),
+    sampleExpense({ id: 'demo-expense-supplier-overdue', label: 'Supplier invoice (reagent distributor)', category: 'Cost of goods', amount: 48000000, status: 'Upcoming', dueDate: sixDaysAgo, vendor: 'Reagent distributor' }),
   ];
 
   const brief = {

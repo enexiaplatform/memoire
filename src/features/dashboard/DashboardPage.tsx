@@ -38,6 +38,7 @@ import {
   summarizeQuotes,
   type QuoteRecord,
 } from '../../services/quoteStore';
+import { type ExpenseRecord } from '../../services/expenseStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
 import { type OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore';
@@ -159,6 +160,7 @@ type DashboardData = {
   actionOutcomes: ActionOutcomeRecord[];
   assets: SalesAssetRecord[];
   quotes: QuoteRecord[];
+  expenses: ExpenseRecord[];
   operatingContext: OperatingContextRecord[];
   opportunityOutcomes: OpportunityOutcomeRecord[];
 };
@@ -190,6 +192,7 @@ export function TodayPage() {
     actionOutcomes: [],
     assets: [],
     quotes: [],
+    expenses: [],
     operatingContext: [],
     opportunityOutcomes: [],
   });
@@ -327,10 +330,11 @@ export function TodayPage() {
     objections: data.objections,
     accounts: data.accounts,
     quotes: data.quotes,
+    expenses: data.expenses,
     accountPreferences: accountHygienePreferences,
     opportunityOutcomes: data.opportunityOutcomes,
     pipelineHealth: livePipelineHealth,
-  }), [accountHygienePreferences, data.accounts, data.activities, data.briefs, data.objections, data.opportunities, data.opportunityOutcomes, data.quotes, data.stakeholders, livePipelineHealth, revenueView.actionItems]);
+  }), [accountHygienePreferences, data.accounts, data.activities, data.briefs, data.expenses, data.objections, data.opportunities, data.opportunityOutcomes, data.quotes, data.stakeholders, livePipelineHealth, revenueView.actionItems]);
   const proactiveNudges = useMemo(() => buildProactiveNudges({
     briefs: data.briefs,
     revenueActions: revenueView.actionItems,

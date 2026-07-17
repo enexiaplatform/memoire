@@ -15,6 +15,7 @@ import { trackProductEvent } from '../../utils/productAnalytics';
 import { formatBaseCurrencyAmount, formatCompactCurrencyAmount, formatCurrencyAmount, SUPPORTED_CURRENCIES } from '../../utils/money';
 import { buildRouteHealth, type RouteHealthReport } from '../../utils/routeHealth';
 import { buildCashPosition, getOpeningCashBalance } from '../../utils/cashPosition';
+import { buildOwnObligations } from '../../utils/ownObligations';
 import {
   createExpense,
   deleteExpense,
@@ -360,6 +361,7 @@ function MoneyOutSection({ quotes }: { quotes: QuoteRecord[] }) {
     () => buildCashPosition({ quotes, expenses, openingBalanceBase: getOpeningCashBalance() }),
     [quotes, expenses],
   );
+  const obligations = useMemo(() => buildOwnObligations({ quotes, expenses }), [quotes, expenses]);
 
   const handleAdd = () => {
     if (!form.label.trim() || form.amount === null) return;
@@ -369,7 +371,6 @@ function MoneyOutSection({ quotes }: { quotes: QuoteRecord[] }) {
     refresh();
   };
 
-  const upcoming = expenses.filter((expense) => expense.status === 'Upcoming');
   const recent = [...expenses].sort((a, b) => (b.expenseDate || '').localeCompare(a.expenseDate || '')).slice(0, 6);
 
   return (
@@ -489,19 +490,47 @@ function MoneyOutSection({ quotes }: { quotes: QuoteRecord[] }) {
         </div>
       )}
 
-      {upcoming.length > 0 && (
+      {obligations.obligations.length > 0 && (
         <div className="mt-4">
-          <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Committed but not yet paid</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Obligations you owe</p>
+            {obligations.overdue.length > 0 && (
+              <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-700">{obligations.overdue.length} overdue</span>
+            )}
+          </div>
+          <p className="mt-0.5 text-xs text-gray-400">Payments and deliveries you committed to — silence here costs more than a cold deal.</p>
           <div className="mt-2 space-y-1.5">
-            {upcoming.slice(0, 5).map((expense) => (
-              <div key={expense.id} className="flex flex-col gap-1 rounded-lg border border-amber-100 bg-amber-50/50 px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between">
-                <p className="font-bold text-gray-900">{expense.label} · {formatCurrencyAmount(expense.amount, expense.currency)}{expense.dueDate ? ` · due ${expense.dueDate}` : ''}</p>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => { markExpensePaid(expense); refresh(); }} className="rounded-full bg-white px-3 py-1 font-bold text-emerald-700 ring-1 ring-emerald-100 hover:bg-emerald-50">Mark paid</button>
-                  <button type="button" onClick={() => { deleteExpense(expense.id); refresh(); }} className="rounded-full p-1 text-gray-400 hover:bg-white hover:text-red-600" title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+            {obligations.obligations.slice(0, 8).map((obligation) => {
+              const expenseId = obligation.kind === 'Payment' ? obligation.id.replace('obligation-pay-', '') : '';
+              const expense = expenseId ? expenses.find((item) => item.id === expenseId) : undefined;
+              const tone = obligation.status === 'Overdue'
+                ? 'border-red-200 bg-red-50/60'
+                : obligation.status === 'Due soon'
+                  ? 'border-amber-100 bg-amber-50/50'
+                  : 'border-gray-100 bg-gray-50';
+              return (
+                <div key={obligation.id} className={`flex flex-col gap-1 rounded-lg border ${tone} px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between`}>
+                  <div>
+                    <p className="font-bold text-gray-900">
+                      <span className="mr-1.5 rounded bg-white/70 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gray-500">{obligation.kind}</span>
+                      {obligation.label}
+                    </p>
+                    <p className="mt-0.5 font-semibold text-gray-600">
+                      {obligation.counterparty}
+                      {typeof obligation.amount === 'number' ? ` · ${formatCurrencyAmount(obligation.amount, obligation.currency)}` : ''}
+                      {obligation.dueDate ? ` · due ${obligation.dueDate}` : ' · no due date'}
+                      {obligation.status === 'Overdue' && obligation.daysUntilDue !== null ? ` · ${Math.abs(obligation.daysUntilDue)}d overdue` : ''}
+                    </p>
+                  </div>
+                  {expense && (
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => { markExpensePaid(expense); refresh(); }} className="rounded-full bg-white px-3 py-1 font-bold text-emerald-700 ring-1 ring-emerald-100 hover:bg-emerald-50">Mark paid</button>
+                      <button type="button" onClick={() => { deleteExpense(expense.id); refresh(); }} className="rounded-full p-1 text-gray-400 hover:bg-white hover:text-red-600" title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
