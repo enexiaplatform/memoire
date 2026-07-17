@@ -52,6 +52,7 @@ import {
   generateShareReadyPipelineDefenseMarkdown,
   type ShareablePipelineDefenseBrief,
 } from '../../utils/shareablePipelineDefenseBrief';
+import { buildCompactSharedBrief, buildSharedBriefUrl } from '../../utils/shareableBriefLink';
 import {
   draftAssistTypes,
   type DraftAssistResult,
@@ -185,6 +186,7 @@ export function PipelineReviewDefenseBriefPage() {
   const [actionPlanCopyStatus, setActionPlanCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [managerSummaryCopyStatus, setManagerSummaryCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [shareMarkdownCopyStatus, setShareMarkdownCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const [shareLinkCopyStatus, setShareLinkCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [draftAssistDealId, setDraftAssistDealId] = useState<string | null>(null);
   const [draftAssistType, setDraftAssistType] = useState<DraftAssistType>('Deal truth');
   const [draftAssistResult, setDraftAssistResult] = useState<DraftAssistResult | null>(null);
@@ -856,6 +858,21 @@ export function PipelineReviewDefenseBriefPage() {
     }
   };
 
+  const copyManagerLink = async () => {
+    setShareLinkCopyStatus('idle');
+    try {
+      const compact = buildCompactSharedBrief({ brief: activeBrief, shareable: shareableBrief });
+      const origin = typeof window === 'undefined' ? '' : window.location.origin;
+      const url = buildSharedBriefUrl(compact, origin);
+      if (!await copyTextToClipboard(url)) throw new Error('Clipboard unavailable');
+      setShareLinkCopyStatus('copied');
+      markPipelineReviewHabitStepComplete('copiedManagerSummaryAt');
+      if (sampleDataActive) markDemoJourneyComplete('Manager share link copied');
+    } catch {
+      setShareLinkCopyStatus('failed');
+    }
+  };
+
   const buildCurrentReviewPack = (existing?: ReviewPackSnapshot | null) => createReviewPackSnapshot({
     brief: activeBrief,
     shareable: shareableBrief,
@@ -1492,8 +1509,10 @@ export function PipelineReviewDefenseBriefPage() {
         shareableBrief={shareableBrief}
         managerSummaryCopyStatus={managerSummaryCopyStatus}
         shareMarkdownCopyStatus={shareMarkdownCopyStatus}
+        shareLinkCopyStatus={shareLinkCopyStatus}
         onCopyManagerSummary={copyManagerSummary}
         onCopyShareMarkdown={copyShareReadyMarkdown}
+        onCopyManagerLink={copyManagerLink}
       />
 
       {isReviewMode && (
@@ -2006,14 +2025,18 @@ function ShareableBriefPanel({
   shareableBrief,
   managerSummaryCopyStatus,
   shareMarkdownCopyStatus,
+  shareLinkCopyStatus,
   onCopyManagerSummary,
   onCopyShareMarkdown,
+  onCopyManagerLink,
 }: {
   shareableBrief: ShareablePipelineDefenseBrief;
   managerSummaryCopyStatus: 'idle' | 'copied' | 'failed';
   shareMarkdownCopyStatus: 'idle' | 'copied' | 'failed';
+  shareLinkCopyStatus: 'idle' | 'copied' | 'failed';
   onCopyManagerSummary: () => void;
   onCopyShareMarkdown: () => void;
+  onCopyManagerLink: () => void;
 }) {
   const summary = shareableBrief.executiveSummary;
   const [briefUsefulness, setBriefUsefulness] = useState<PipelineBriefUsefulness>('Yes, useful');
@@ -2060,13 +2083,24 @@ function ShareableBriefPanel({
           >
             Copy Share-ready Markdown
           </button>
+          <button
+            type="button"
+            onClick={onCopyManagerLink}
+            className="rounded-full border border-brand-blue bg-white px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-50"
+            title="A link your manager can open to view this brief — no login required"
+          >
+            Copy manager link
+          </button>
         </div>
       </div>
 
       {(managerSummaryCopyStatus === 'copied' || shareMarkdownCopyStatus === 'copied') && (
         <p className="mb-3 text-sm font-semibold text-emerald-700">Copied to clipboard.</p>
       )}
-      {(managerSummaryCopyStatus === 'failed' || shareMarkdownCopyStatus === 'failed') && (
+      {shareLinkCopyStatus === 'copied' && (
+        <p className="mb-3 text-sm font-semibold text-emerald-700">Manager link copied — paste it to your manager. It opens read-only, no login, and the brief data travels in the link itself (never sent to a server).</p>
+      )}
+      {(managerSummaryCopyStatus === 'failed' || shareMarkdownCopyStatus === 'failed' || shareLinkCopyStatus === 'failed') && (
         <p className="mb-3 text-sm font-semibold text-amber-700">Clipboard failed. The summary and export sections remain visible for manual copy.</p>
       )}
 

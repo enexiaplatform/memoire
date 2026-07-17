@@ -23,6 +23,7 @@ const EarlyAccessRequestPage = lazy(() =>
 );
 const LegalPage = lazy(() => import('./features/legal/LegalPage').then((module) => ({ default: module.LegalPage })));
 const DemoGuidePage = lazy(() => import('./features/demo/DemoGuidePage').then((module) => ({ default: module.DemoGuidePage })));
+const SharedBriefPage = lazy(() => import('./features/pipeline/SharedBriefPage').then((module) => ({ default: module.SharedBriefPage })));
 const ValidationFeedbackPage = lazy(() =>
   import('./features/validation/ValidationFeedbackPage').then((module) => ({ default: module.ValidationFeedbackPage })),
 );
@@ -97,6 +98,7 @@ function App() {
           <Route path="/privacy" element={<Navigate to="/legal/privacy" replace />} />
           <Route path="/terms" element={<Navigate to="/legal/terms" replace />} />
           <Route path="/legal/:document" element={<LegalPage />} />
+          <Route path="/share/brief" element={<SharedBriefPage />} />
 
           {/* Protected app routes */}
           <Route
