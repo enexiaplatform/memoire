@@ -75,7 +75,7 @@ for (const marker of ['Forecast-defense readiness', 'Review readiness', 'Defenda
 }
 
 const sidebar = readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
-assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 14, 'A new CRM navigation item was added.');
+assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 16, 'A new CRM navigation item was added.');
 assert.equal((sidebar.match(/to: '\/app\/pipeline-defense'/g) || []).length, 1);
 
 console.log('Pipeline Defense center regression verified.');

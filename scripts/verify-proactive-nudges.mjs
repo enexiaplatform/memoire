@@ -443,6 +443,6 @@ const pipelineUi = readFileSync('src/features/pipeline/PipelineReviewDefenseBrie
 assert.ok(pipelineUi.includes('Proactive nudge'), 'Pipeline Defense should show per-opportunity proactive nudges');
 
 const sidebar = readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
-assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 14, 'A new CRM navigation item was added.');
+assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 16, 'A new CRM navigation item was added.');
 
 console.log('Proactive nudge engine regression verified.');

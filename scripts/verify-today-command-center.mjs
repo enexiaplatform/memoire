@@ -56,19 +56,21 @@ assert.equal(empty.topActions.length, 0);
 
 const app = readFileSync('src/App.tsx', 'utf8');
 assert.ok(app.includes('<Route path="today" element={<TodayPage />} />'));
-assert.ok(app.includes('<Route path="dashboard" element={<Navigate to="/app/today" replace />} />'));
+// /app/dashboard is the master chart/report view; Today stays the action view.
+assert.ok(app.includes('<Route path="dashboard" element={<MasterDashboardPage />} />'));
 assert.ok(app.includes('<Route index element={<Navigate to="/app/today" replace />} />'));
 
 const sidebar = readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
 // Three tiers mirroring the operating loop: daily loop, then Pipeline & Money,
 // then Review & Learn (where Pipeline Defense lives as the review artifact).
-const navOrder = ['/app/today', '/app/capture', '/app/activity', '/app/ask', '/app/opportunities', '/app/accounts', '/app/revenue', '/app/weekly-brief', '/app/pipeline-defense'];
+const navOrder = ['/app/today', '/app/dashboard', '/app/capture', '/app/activity', '/app/ask', '/app/opportunities', '/app/accounts', '/app/revenue', '/app/weekly-brief', '/app/pipeline-defense'];
 navOrder.forEach((route, index) => {
   const location = sidebar.indexOf(`to: '${route}'`);
   assert.ok(location >= 0, `Sidebar missing ${route}`);
   if (index > 0) assert.ok(location > sidebar.indexOf(`to: '${navOrder[index - 1]}'`), `Sidebar order incorrect for ${route}`);
 });
-assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 14, 'A new CRM navigation item was added.');
+// 16 = 5 daily loop + 3 Pipeline & Money + 6 Review & Learn + founder Import Review + Settings.
+assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 16, 'A new CRM navigation item was added.');
 
 const todayPage = readFileSync('src/features/dashboard/DashboardPage.tsx', 'utf8');
 // The named sections all still exist on Today.

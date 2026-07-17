@@ -1,6 +1,34 @@
-export const SUPPORTED_CURRENCIES = ['VND', 'SGD', 'USD', 'EUR'] as const;
+export const SUPPORTED_CURRENCIES = [
+  'VND', 'USD', 'EUR', 'GBP', 'SGD', 'JPY', 'KRW', 'CNY', 'HKD', 'TWD',
+  'THB', 'MYR', 'IDR', 'PHP', 'INR', 'AUD', 'NZD', 'CAD', 'CHF', 'AED', 'SAR',
+] as const;
 
 export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];
+
+/** Display names for the Settings currency picker. */
+export const CURRENCY_NAMES: Readonly<Record<SupportedCurrency, string>> = {
+  VND: 'Vietnamese Dong',
+  USD: 'US Dollar',
+  EUR: 'Euro',
+  GBP: 'British Pound',
+  SGD: 'Singapore Dollar',
+  JPY: 'Japanese Yen',
+  KRW: 'South Korean Won',
+  CNY: 'Chinese Yuan',
+  HKD: 'Hong Kong Dollar',
+  TWD: 'New Taiwan Dollar',
+  THB: 'Thai Baht',
+  MYR: 'Malaysian Ringgit',
+  IDR: 'Indonesian Rupiah',
+  PHP: 'Philippine Peso',
+  INR: 'Indian Rupee',
+  AUD: 'Australian Dollar',
+  NZD: 'New Zealand Dollar',
+  CAD: 'Canadian Dollar',
+  CHF: 'Swiss Franc',
+  AED: 'UAE Dirham',
+  SAR: 'Saudi Riyal',
+};
 
 /**
  * The exchange-rate anchor ONLY - the pivot every rate is expressed against.
@@ -17,9 +45,26 @@ const MONEY_LOCALE = 'en';
 // replaced by workspace-configured or live rates without changing consumers.
 export const EXCHANGE_RATES_TO_VND: Readonly<Record<SupportedCurrency, number>> = {
   VND: 1,
-  SGD: 20_000,
   USD: 26_000,
   EUR: 30_000,
+  GBP: 35_000,
+  SGD: 20_000,
+  JPY: 175,
+  KRW: 19,
+  CNY: 3_600,
+  HKD: 3_350,
+  TWD: 850,
+  THB: 780,
+  MYR: 6_100,
+  IDR: 1.6,
+  PHP: 460,
+  INR: 300,
+  AUD: 17_500,
+  NZD: 16_000,
+  CAD: 19_000,
+  CHF: 32_000,
+  AED: 7_100,
+  SAR: 6_900,
 };
 
 export type MoneyValue = {

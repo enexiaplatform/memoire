@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { AlertTriangle, Banknote, BookOpen, CalendarDays, ChevronDown, ClipboardList, Database, FileCheck2, FileText, LayoutDashboard, MessageCircleQuestion, NotebookPen, Settings, Target, UsersRound, X } from 'lucide-react';
+import { AlertTriangle, Banknote, BookOpen, CalendarDays, ChevronDown, ClipboardList, Database, FileCheck2, FileText, LayoutDashboard, MessageCircleQuestion, NotebookPen, Settings, Sun, Target, UsersRound, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 import { prefetchAppRoute } from '../../utils/routePrefetch';
@@ -23,10 +24,12 @@ function hasFirstSavedBrief() {
 // Three tiers mirroring the operating loop: the daily loop, where the money
 // sits, and review artifacts. Pipeline Defense lives in Review & Learn per the
 // pivot ("the premium review output inside a larger operating loop").
+// Today answers "what do I do now"; Dashboard is the central chart/report view.
 const primarySections = [{
   label: 'Business Activity OS',
   items: [
-    { to: '/app/today', label: 'Today', icon: <LayoutDashboard className="h-5 w-5" /> },
+    { to: '/app/today', label: 'Today', icon: <Sun className="h-5 w-5" /> },
+    { to: '/app/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
     { to: '/app/capture', label: 'Capture', icon: <NotebookPen className="h-5 w-5" /> },
     { to: '/app/activity', label: 'Activity', icon: <CalendarDays className="h-5 w-5" /> },
     { to: '/app/ask', label: 'Ask Memoire', icon: <MessageCircleQuestion className="h-5 w-5" /> },
@@ -91,10 +94,31 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [isOpen, onClose]);
 
+  // One geometry for every tier: same left edge (px-5), same icon size, same
+  // row height. Tier identity comes from the section headers, not indentation.
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `relative flex items-center gap-3 px-5 py-2.5 text-[14px] font-medium transition-all ${
+    `relative flex items-center gap-3 whitespace-nowrap px-5 py-2.5 text-[14px] font-medium transition-all ${
       isActive ? 'bg-white/10 text-white' : 'text-white/55 hover:bg-white/5 hover:text-white/90'
     }`;
+
+  const renderNavItem = (item: { to: string; label: string; icon: ReactNode }) => (
+    <NavLink
+      key={item.to}
+      to={item.to}
+      onClick={onClose}
+      onMouseEnter={() => prefetchAppRoute(item.to)}
+      onFocus={() => prefetchAppRoute(item.to)}
+      className={navLinkClass}
+    >
+      {({ isActive }) => (
+        <>
+          <span className="opacity-80">{item.icon}</span>
+          {item.label}
+          {isActive && <div className="brand-gradient absolute bottom-0 right-0 top-0 w-1" />}
+        </>
+      )}
+    </NavLink>
+  );
 
   return (
     <>
@@ -123,31 +147,14 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
               {section.label}
             </p>
             <div className="space-y-1">
-              {section.items.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  onClick={onClose}
-                  onMouseEnter={() => prefetchAppRoute(item.to)}
-                  onFocus={() => prefetchAppRoute(item.to)}
-                  className={navLinkClass}
-                >
-                  {({ isActive }) => (
-                    <>
-                      <span className="opacity-80">{item.icon}</span>
-                      {item.label}
-                      {isActive && <div className="brand-gradient absolute bottom-0 right-0 top-0 w-1" />}
-                    </>
-                  )}
-                </NavLink>
-              ))}
+              {section.items.map(renderNavItem)}
             </div>
           </div>
         ))}
 
-        <div className="mx-3 mt-2 border-t border-white/10 pt-3">
+        <div className="mt-2 border-t border-white/10 pt-2">
           {!showReviewTier && (
-            <p className="px-2 py-2 text-[11px] leading-4 text-white/30">
+            <p className="px-5 py-2 text-[11px] leading-4 text-white/30">
               Review & Learn unlocks after your first saved brief.
             </p>
           )}
@@ -163,49 +170,21 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
               }
               return next;
             })}
-            className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-white/40 hover:bg-white/5 hover:text-white/70"
+            className="flex w-full items-center justify-between px-5 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/30 transition-colors hover:text-white/70"
           >
             Review & Learn
-            <ChevronDown className={`h-4 w-4 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
           </button>
           )}
           {showReviewTier && moreOpen && (
             <div className="mt-1 space-y-1">
-              {visibleSecondaryItems.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  onClick={onClose}
-                  onMouseEnter={() => prefetchAppRoute(item.to)}
-                  onFocus={() => prefetchAppRoute(item.to)}
-                  className={navLinkClass}
-                >
-                  {({ isActive }) => (
-                    <>
-                      <span className="opacity-80">{item.icon}</span>
-                      {item.label}
-                      {isActive && <div className="brand-gradient absolute bottom-0 right-0 top-0 w-1" />}
-                    </>
-                  )}
-                </NavLink>
-              ))}
+              {visibleSecondaryItems.map(renderNavItem)}
             </div>
           )}
         </div>
 
-        <div className="mx-3 mt-3 border-t border-white/10 pt-3">
-          <NavLink
-            to="/app/settings"
-            onClick={onClose}
-            className={({ isActive }) =>
-              `relative flex items-center gap-3 rounded-lg px-2 py-2 text-[13px] font-medium transition-all ${
-                isActive ? 'bg-white/10 text-white' : 'text-white/40 hover:bg-white/5 hover:text-white/75'
-              }`
-            }
-          >
-            <Settings className="h-4 w-4 opacity-80" />
-            Settings
-          </NavLink>
+        <div className="mt-3 border-t border-white/10 pt-3">
+          {renderNavItem({ to: '/app/settings', label: 'Settings', icon: <Settings className="h-5 w-5" /> })}
         </div>
       </nav>
 

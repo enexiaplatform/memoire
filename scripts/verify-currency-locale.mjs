@@ -26,8 +26,9 @@ import {
 }
 
 // 2. An unsupported currency is excluded, not silently treated as the anchor.
-assert.equal(convertMoney(100, 'GBP'), null);
-assert.equal(sumMoney([{ amount: 100, currency: 'GBP' }, { amount: 5, currency: 'VND' }]), 5);
+// ('XYZ' stands in for any code outside SUPPORTED_CURRENCIES.)
+assert.equal(convertMoney(100, 'XYZ'), null);
+assert.equal(sumMoney([{ amount: 100, currency: 'XYZ' }, { amount: 5, currency: 'VND' }]), 5);
 
 // 3. Money formats in English, whatever the machine locale. The browser locale
 // rendered Vietnamese units ("Tr", "N") inside English copy.
@@ -54,7 +55,7 @@ assert.equal(sumMoney([{ amount: 100, currency: 'GBP' }, { amount: 5, currency: 
   assert.equal(/4,000,000,000 SGD/.test(converted), false, 'the reported bug: a VND figure labelled SGD');
 
   // Unsupported currency: honest, not a fabricated conversion.
-  assert.equal(formatMoneyWithBase(100, 'GBP'), '100 GBP · Needs confirmation');
+  assert.equal(formatMoneyWithBase(100, 'XYZ'), '100 XYZ · Needs confirmation');
 }
 
 // 5. BASE_CURRENCY stays the rate anchor only; the module says so.

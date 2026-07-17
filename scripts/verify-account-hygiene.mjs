@@ -72,6 +72,6 @@ for (const filter of ['Active', 'Needs follow-up', 'Strategic', 'Dormant', 'Impo
 const dashboard = readFileSync('src/features/dashboard/DashboardPage.tsx', 'utf8');
 assert.ok(dashboard.includes('imported accounts are available in search but hidden from active work.'));
 const sidebar = readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
-assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 14, 'A new CRM navigation item was added.');
+assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 16, 'A new CRM navigation item was added.');
 
 console.log('Account archive and empty-state hygiene regression verified.');

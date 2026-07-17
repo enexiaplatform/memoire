@@ -5,7 +5,7 @@ import { ExportTab } from './ExportTab';
 import { BoundariesTab } from './BoundariesTab';
 import { REPLAY_GUIDED_WORKFLOW_EVENT } from '../onboarding/guidedWorkflow';
 import { buildSalesOperatingSetupProgress, loadSalesOperatingSetupState } from '../../utils/salesOperatingSetup';
-import { SUPPORTED_CURRENCIES, getReportingCurrency, setReportingCurrency } from '../../utils/money';
+import { CURRENCY_NAMES, SUPPORTED_CURRENCIES, getReportingCurrency, setReportingCurrency } from '../../utils/money';
 import { getWorkspaceLens, setWorkspaceLens, workspaceLensLabel, workspaceLenses } from '../../utils/workspaceLens';
 
 export function SettingsPage() {
@@ -15,7 +15,12 @@ export function SettingsPage() {
   const salesOperatingSetupProgress = buildSalesOperatingSetupProgress(loadSalesOperatingSetupState());
 
   return (
-    <div className="w-full max-w-4xl">
+    <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
+      <header className="mb-6">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Workspace</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Settings</h1>
+      </header>
+
       <div className="mb-6 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -52,7 +57,7 @@ export function SettingsPage() {
               className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
             >
               {SUPPORTED_CURRENCIES.map((currency) => (
-                <option key={currency} value={currency}>{currency}</option>
+                <option key={currency} value={currency}>{currency} — {CURRENCY_NAMES[currency]}</option>
               ))}
             </select>
           </label>

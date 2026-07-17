@@ -90,6 +90,6 @@ for (const marker of [
   assert.ok(`${pipelineCenter}\n${opportunityMapper}`.includes(marker), `Manager-ready copy missing ${marker}`);
 }
 
-assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 14, 'A new CRM navigation item was added.');
+assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 16, 'A new CRM navigation item was added.');
 
 console.log('Product positioning and demo proof path regression verified.');

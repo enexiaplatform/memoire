@@ -1,6 +1,6 @@
 const routePrefetchers: Record<string, () => Promise<unknown>> = {
   '/app/today': () => import('../features/dashboard/DashboardPage'),
-  '/app/dashboard': () => import('../features/dashboard/DashboardPage'),
+  '/app/dashboard': () => import('../features/dashboard/MasterDashboardPage'),
   '/app/operating-system': () => import('../features/operatingSystem/OperatingSystemPage'),
   '/app/capture': () => import('../features/dailyCapture/DailyCapturePage'),
   '/app/opportunities': () => import('../features/opportunities/OpportunitiesPage'),

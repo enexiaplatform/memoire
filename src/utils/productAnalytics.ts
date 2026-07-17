@@ -22,7 +22,9 @@ export type ProductFunnelEvent =
   | 'voice_dictation_used'
   | 'learning_brief_copied'
   | 'revenue_risk_brief_copied'
-  | 'follow_up_brief_copied';
+  | 'follow_up_brief_copied'
+  | 'master_dashboard_opened'
+  | 'master_dashboard_exported';
 
 export type AnalyticsDataMode = 'demo-local' | 'cloud-browser' | 'browser-only' | 'sync-issue' | 'unknown';
 

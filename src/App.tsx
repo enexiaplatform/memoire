@@ -27,6 +27,9 @@ const ValidationFeedbackPage = lazy(() =>
   import('./features/validation/ValidationFeedbackPage').then((module) => ({ default: module.ValidationFeedbackPage })),
 );
 const TodayPage = lazy(() => import('./features/dashboard/DashboardPage').then((module) => ({ default: module.TodayPage })));
+const MasterDashboardPage = lazy(() =>
+  import('./features/dashboard/MasterDashboardPage').then((module) => ({ default: module.MasterDashboardPage })),
+);
 const OperatingSystemPage = lazy(() =>
   import('./features/operatingSystem/OperatingSystemPage').then((module) => ({ default: module.OperatingSystemPage })),
 );
@@ -106,7 +109,7 @@ function App() {
           >
             <Route index element={<Navigate to="/app/today" replace />} />
             <Route path="today" element={<TodayPage />} />
-            <Route path="dashboard" element={<Navigate to="/app/today" replace />} />
+            <Route path="dashboard" element={<MasterDashboardPage />} />
             <Route path="operating-system" element={<OperatingSystemPage />} />
             <Route path="demo-guide" element={<DemoGuidePage />} />
             <Route
