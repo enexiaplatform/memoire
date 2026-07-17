@@ -13,8 +13,10 @@ import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue,
 import { classifyAccountEngagement, type AccountHygienePreference } from './accountHygiene.ts';
 import { analyzePersonalSalesLearning } from './personalSalesLearning.ts';
 import { normalizeMeddicRole } from './meddicStakeholderMap.ts';
+import { buildPostWonCustomers, type WonCustomerNudge } from './postWonCustomers.ts';
+import { formatCompactBaseAmount } from './money.ts';
 
-export type TodayActionSource = 'Pipeline Defense' | 'Revenue' | 'Opportunity' | 'Capture';
+export type TodayActionSource = 'Pipeline Defense' | 'Revenue' | 'Opportunity' | 'Capture' | 'Customer';
 export type TodayActionUrgency = 'Critical' | 'High' | 'Medium' | 'Low';
 
 export type TodayCommandAction = {
@@ -82,6 +84,14 @@ export function buildUnifiedTodayCommandCenter(input: {
   const pipelineActions = pipelineReadiness.items.flatMap((item) => buildPipelineAction(item));
   const revenueActions = input.revenueActions.map(buildRevenueAction);
   const opportunityActions = buildOpportunityActions(input.opportunities, input.activities, input.stakeholders || [], input.objections || [], today);
+  const postWon = buildPostWonCustomers({
+    opportunities: input.opportunities,
+    opportunityOutcomes: input.opportunityOutcomes || [],
+    quotes: input.quotes || [],
+    activities: input.activities,
+    today,
+  });
+  const postWonActions = postWon.quietCustomers.map(buildPostWonAction);
   const captureInbox = buildCaptureInbox(input.activities);
   const accountClassifications = (input.accounts || []).map((account) => ({
     account,
@@ -113,7 +123,7 @@ export function buildUnifiedTodayCommandCenter(input: {
     moneyLabel: '',
     rank: 72 - index,
   }));
-  const rankedActions = [...pipelineActions, ...revenueActions, ...opportunityActions, ...captureActions]
+  const rankedActions = [...pipelineActions, ...revenueActions, ...opportunityActions, ...postWonActions, ...captureActions]
     .filter((action) => action.source === 'Capture' || !suppressedAccounts.has(normalize(action.accountName)))
     .sort(compareTodayActions);
   const allActions = dedupeActions(rankedActions).sort(compareTodayActions).map(withBasis);
@@ -134,6 +144,7 @@ export function buildUnifiedTodayCommandCenter(input: {
     pipelineReadiness,
     commercialRiskItems: input.revenueActions.slice(0, 5),
     captureInbox,
+    postWonCustomers: postWon,
     importedAccountsHidden,
     learningNudge: personalLearning.todayNudge,
     learningLowDataMessage: personalLearning.hasEnoughData ? '' : personalLearning.lowDataMessage,
@@ -236,6 +247,26 @@ function buildOpportunityActions(
     }];
     return [];
   });
+}
+
+function buildPostWonAction(customer: WonCustomerNudge): TodayCommandAction {
+  // A won customer left quiet for a quarter is a High signal; below that it is a
+  // steady Medium reconnect. Ranked below overdue money but above capture chores.
+  const veryQuiet = customer.daysSinceTouch >= 90;
+  return {
+    id: `postwon-${normalize(customer.accountName)}`,
+    title: `Reconnect with ${customer.accountName}`,
+    accountName: customer.accountName,
+    opportunityName: 'Won customer',
+    reason: `Won customer quiet for ${customer.daysSinceTouch} days — the relationship is going silent.`,
+    source: 'Customer',
+    urgency: veryQuiet ? 'High' : 'Medium',
+    href: '/app/accounts',
+    dueDate: '',
+    dueDateLabel: formatSafeBusinessDate(''),
+    moneyLabel: customer.wonValueBase > 0 ? formatCompactBaseAmount(customer.wonValueBase) : '',
+    rank: veryQuiet ? 82 : 70,
+  };
 }
 
 function buildCaptureInbox(activities: SalesActivityRecord[]): TodayCaptureInboxItem[] {

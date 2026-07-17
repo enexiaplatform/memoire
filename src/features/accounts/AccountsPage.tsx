@@ -23,7 +23,9 @@ import { type SalesActivityRecord } from '../../services/salesActivityStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
 import { getQuoteCommercialStage, getQuoteRisk, quoteRiskTone, type QuoteRecord } from '../../services/quoteStore';
+import { type OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore';
 import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { buildPostWonCustomers } from '../../utils/postWonCustomers';
 import {
   buildAccountMemory,
   deriveAccountCandidatesFromActivities,
@@ -36,6 +38,7 @@ import { getStakeholdersForAccount } from '../../utils/stakeholderGraph';
 import { getObjectionsForAccount, objectionStatusTone } from '../../utils/objectionLedger';
 import {
   formatBaseCurrencyAmount as formatBaseMoney,
+  formatCompactBaseAmount,
   formatCurrencyAmount as formatMoney,
   sumMoneyInBase,
 } from '../../utils/money';
@@ -90,6 +93,7 @@ export function AccountsPage() {
   const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
   const [objections, setObjections] = useState<ObjectionRecord[]>([]);
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
+  const [opportunityOutcomes, setOpportunityOutcomes] = useState<OpportunityOutcomeRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastLoadedAt, setLastLoadedAt] = useState('');
@@ -132,6 +136,7 @@ export function AccountsPage() {
       setStakeholders(workspaceData.stakeholders);
       setObjections(workspaceData.objections);
       setQuotes(workspaceData.quotes);
+      setOpportunityOutcomes(workspaceData.opportunityOutcomes);
       setLastLoadedAt(new Date().toISOString());
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : 'Memoire could not refresh account memory.');
@@ -165,6 +170,11 @@ export function AccountsPage() {
   const accountRows = useMemo(
     () => buildAccountMasterRows(memories, stakeholders, objections, quotes, hygienePreferences),
     [hygienePreferences, memories, objections, quotes, stakeholders],
+  );
+
+  const postWon = useMemo(
+    () => buildPostWonCustomers({ opportunities, opportunityOutcomes, quotes, activities }),
+    [activities, opportunities, opportunityOutcomes, quotes],
   );
 
   const visibleRows = useMemo(() => {
@@ -415,6 +425,8 @@ export function AccountsPage() {
         </section>
       )}
 
+      {!loading && <QuietWonCustomersCard postWon={postWon} onOpenAccount={(name) => setQuery(name)} />}
+
       <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <button type="button" onClick={openAddPanel} className="inline-flex items-center justify-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
@@ -509,6 +521,48 @@ export function AccountsPage() {
         />
       )}
     </div>
+  );
+}
+
+function QuietWonCustomersCard({
+  postWon,
+  onOpenAccount,
+}: {
+  postWon: ReturnType<typeof buildPostWonCustomers>;
+  onOpenAccount: (accountName: string) => void;
+}) {
+  if (postWon.quietCustomers.length === 0) return null;
+  return (
+    <section className="rounded-xl border border-amber-200 bg-amber-50/60 p-5 shadow-sm">
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <ArchiveRestore className="h-4 w-4 text-amber-700" />
+          <h2 className="text-lg font-bold text-navy">Won customers going quiet</h2>
+        </div>
+        <p className="text-sm text-amber-900/80">
+          {postWon.quietCustomers.length} of {postWon.wonCustomerCount} won {postWon.wonCustomerCount === 1 ? 'customer has' : 'customers have'} no deal in flight and no recent touch. Repeat business starts with the next contact.
+        </p>
+      </div>
+      <div className="mt-4 space-y-2">
+        {postWon.quietCustomers.slice(0, 6).map((customer) => (
+          <div key={customer.accountName} className="flex flex-col gap-2 rounded-lg border border-amber-100 bg-white px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-bold text-navy">{customer.accountName}</p>
+              <p className="text-xs font-semibold text-amber-800">
+                Quiet {customer.daysSinceTouch} days{customer.wonValueBase > 0 ? ` · won ${formatCompactBaseAmount(customer.wonValueBase)}` : ''}{customer.wonDealCount > 1 ? ` · ${customer.wonDealCount} deals` : ''}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onOpenAccount(customer.accountName)}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white hover:bg-navy/90"
+            >
+              Open account
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

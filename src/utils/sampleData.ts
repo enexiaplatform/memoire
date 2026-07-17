@@ -401,6 +401,19 @@ export function buildSampleDataset(): SampleDataset {
       tags: ['demo-data', 'dormant'],
       createdAt: timestamp,
     }),
+    sampleAccount({
+      id: 'demo-account-delta-nutrition',
+      accountName: 'Delta Nutrition',
+      segment: 'Food manufacturer',
+      industry: 'Food/testing',
+      location: 'Vietnam',
+      accountPotential: 'Medium',
+      relationshipStatus: 'Strong',
+      keyStakeholders: ['QA manager'],
+      notes: 'Won a QC starter package last quarter; no follow-up or repeat order since delivery.',
+      tags: ['demo-data', 'won-customer'],
+      createdAt: timestamp,
+    }),
   ];
 
   const activities: SalesActivityRecord[] = [
@@ -968,6 +981,21 @@ export function buildSampleDataset(): SampleDataset {
       reasonText: 'Ops director committed after the revive follow-up; audit scope was already agreed.',
       decisiveStakeholder: 'Lan Pham (Ops Director)',
       lessonLearned: 'A direct follow-up after two quiet weeks reopened and closed the deal.',
+    }),
+    sampleOpportunityOutcome({
+      id: 'demo-outcome-delta-nutrition-qc-won',
+      opportunityId: 'demo-opp-delta-nutrition-qc-closed',
+      accountName: 'Delta Nutrition',
+      opportunityName: 'QC starter package',
+      outcome: 'Won',
+      outcomeDate: toDateKey(addDays(now, -70)),
+      finalAmount: 320000000,
+      forecastEvidenceCategoryBeforeOutcome: 'Defensible',
+      decisionRecommendationBeforeOutcome: 'Defend',
+      stageBeforeOutcome: 'Procurement',
+      reasonCategory: 'Technical fit',
+      reasonText: 'QC workflow matched their line; closed without discount.',
+      lessonLearned: 'Delivered and paid - but no repeat contact was scheduled after the win.',
     }),
     sampleOpportunityOutcome({
       id: 'demo-outcome-northstar-water-lab-won',
