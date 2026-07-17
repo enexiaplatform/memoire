@@ -979,7 +979,10 @@ function ExecutionReviewPanel({
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-6">
-        <MetricCard label="Recommended" value={summary.recommendedActionsCount} />
+        {/* Deals needing action, not raw per-deal action permutations - the
+            latter reached the hundreds on an imported pipeline and read as
+            noise rather than a prioritised list. */}
+        <MetricCard label="Deals needing action" value={summary.dealsNeedingActionCount} />
         <MetricCard label="Completed" value={summary.completedActionsCount} tone={summary.completedActionsCount ? 'green' : 'blue'} />
         <MetricCard label="Unresolved critical" value={summary.unresolvedCriticalActionsCount} tone={summary.unresolvedCriticalActionsCount ? 'amber' : 'green'} />
         <MetricCard label="Improved" value={summary.improvedOutcomeCount} tone={summary.improvedOutcomeCount ? 'green' : 'blue'} />

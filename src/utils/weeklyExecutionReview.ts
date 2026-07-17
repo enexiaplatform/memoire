@@ -31,6 +31,13 @@ export type ExecutionDealMovement =
 
 export type ExecutionSummary = {
   recommendedActionsCount: number;
+  /**
+   * Distinct deals that need an action - the real signal. The raw
+   * recommendedActionsCount runs into the hundreds on an imported pipeline
+   * (every deal generates several generic actions), which describes the data
+   * volume, not the work to prioritise.
+   */
+  dealsNeedingActionCount: number;
   completedActionsCount: number;
   dismissedActionsCount: number;
   unresolvedCriticalActionsCount: number;
@@ -102,6 +109,7 @@ export function generateWeeklyExecutionReview(input: {
 
   const executionSummary = {
     recommendedActionsCount: recommendedActions.length,
+    dealsNeedingActionCount: new Set(recommendedActions.map((action) => action.opportunityId)).size,
     completedActionsCount: completedOutcomes.length,
     dismissedActionsCount: dismissedOutcomes.length,
     unresolvedCriticalActionsCount: unresolvedCriticalActions.length,
