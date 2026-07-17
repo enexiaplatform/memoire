@@ -6,6 +6,7 @@ import { loadOpportunities, type CrmLiteOpportunity } from './opportunityStore';
 import { loadOperatingContext, type OperatingContextRecord } from './operatingContextStore';
 import { canUsePipelineDefenseCloudStore, loadCloudBriefs } from './pipelineDefenseCloudStore';
 import { loadQuotes, loadQuotesForUser, type QuoteRecord } from './quoteStore';
+import { loadExpenses, loadExpensesForUser, type ExpenseRecord } from './expenseStore';
 import { loadSalesActivities, type SalesActivityRecord } from './salesActivityStore';
 import { loadSalesAssets, loadSalesAssetsForUser, type SalesAssetRecord } from './salesAssetStore';
 import { loadStakeholders, type StakeholderRecord } from './stakeholderStore';
@@ -35,6 +36,7 @@ export type SalesWorkspaceData = {
   actionOutcomes: ActionOutcomeRecord[];
   assets: SalesAssetRecord[];
   quotes: QuoteRecord[];
+  expenses: ExpenseRecord[];
   operatingContext: OperatingContextRecord[];
   opportunityOutcomes: OpportunityOutcomeRecord[];
 };
@@ -67,7 +69,8 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
     userId ? loadQuotesForUser(userId) : Promise.resolve(loadQuotes()),
     loadOperatingContext(userId),
     userId ? loadOpportunityOutcomesForUser(userId) : Promise.resolve(loadOpportunityOutcomes()),
-  ]).then(([activities, opportunities, accounts, briefs, objections, stakeholders, actionOutcomes, assets, quotes, operatingContext, opportunityOutcomes]) => {
+    userId ? loadExpensesForUser(userId) : Promise.resolve(loadExpenses()),
+  ]).then(([activities, opportunities, accounts, briefs, objections, stakeholders, actionOutcomes, assets, quotes, operatingContext, opportunityOutcomes, expenses]) => {
     if (userId && getWorkspaceSyncStatus().state !== 'error') reportWorkspaceSyncReady();
     return {
       activities,
@@ -79,6 +82,7 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
       actionOutcomes,
       assets,
       quotes,
+      expenses,
       operatingContext,
       opportunityOutcomes,
     };

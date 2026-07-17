@@ -46,6 +46,7 @@ export function MasterDashboardPage() {
   const stageChartRef = useRef<SVGSVGElement>(null);
   const activityChartRef = useRef<SVGSVGElement>(null);
   const evidenceChartRef = useRef<SVGSVGElement>(null);
+  const spendChartRef = useRef<SVGSVGElement>(null);
 
   const loadDashboard = async (force = false) => {
     if (force) setSyncing(true);
@@ -68,7 +69,7 @@ export function MasterDashboardPage() {
   }, []);
 
   const model = useMemo(() => (workspace ? buildMasterDashboard(workspace) : null), [workspace]);
-  const hasData = Boolean(workspace && (workspace.opportunities.length || workspace.activities.length || workspace.quotes.length));
+  const hasData = Boolean(workspace && (workspace.opportunities.length || workspace.activities.length || workspace.quotes.length || workspace.expenses.length));
 
   const handleExport = async () => {
     if (!model) return;
@@ -83,6 +84,7 @@ export function MasterDashboardPage() {
         ['pipeline-by-stage.png', stageChartRef.current],
         ['weekly-activity.png', activityChartRef.current],
         ['forecast-evidence.png', evidenceChartRef.current],
+        ['money-out-by-category.png', spendChartRef.current],
       ];
       for (const [name, svg] of charts) {
         if (!svg) continue;
@@ -167,6 +169,17 @@ export function MasterDashboardPage() {
             />
           </section>
 
+          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Profit and cash">
+            <KpiCard label="Collected revenue" value={formatCompactCurrencyAmount(model.money.collectedRevenueBase, model.reportingCurrency)} sub="Cash actually received" tone="positive" />
+            <KpiCard label="Money out (paid)" value={formatCompactCurrencyAmount(model.money.paidExpensesBase, model.reportingCurrency)} sub="Expenses settled" tone={model.money.paidExpensesBase > 0 ? 'warn' : 'default'} />
+            <KpiCard label="Realized profit" value={formatCompactCurrencyAmount(model.money.realizedProfitBase, model.reportingCurrency)} sub="Collected − paid out" tone={model.money.realizedProfitBase >= 0 ? 'positive' : 'warn'} />
+            <KpiCard
+              label={model.money.cashOnHandBase === null ? 'Projected net flow' : 'Cash on hand'}
+              value={formatCompactCurrencyAmount(model.money.cashOnHandBase === null ? model.money.projectedDeltaBase : model.money.cashOnHandBase, model.reportingCurrency)}
+              sub={model.money.cashOnHandBase === null ? 'Set opening balance in Settings' : `${formatCompactCurrencyAmount(model.money.projectedDeltaBase, model.reportingCurrency)} projected change`}
+            />
+          </section>
+
           <section className="grid gap-4 xl:grid-cols-2">
             <ChartCard title="Pipeline by stage" subtitle={`Active deals · value in ${model.reportingCurrency}`}>
               <StageBarChart model={model} svgRef={stageChartRef} />
@@ -176,6 +189,9 @@ export function MasterDashboardPage() {
             </ChartCard>
             <ChartCard title="Forecast evidence mix" subtitle="How defensible the active pipeline is">
               <EvidenceMixChart model={model} svgRef={evidenceChartRef} />
+            </ChartCard>
+            <ChartCard title="Money out by category" subtitle={`Paid expenses · value in ${model.reportingCurrency}`}>
+              <SpendByCategoryChart model={model} svgRef={spendChartRef} />
             </ChartCard>
             <div className="flex flex-col gap-4">
               <OutcomesCard model={model} />
@@ -326,6 +342,39 @@ function EvidenceMixChart({ model, svgRef }: { model: MasterDashboardModel; svgR
   );
 }
 
+function SpendByCategoryChart({ model, svgRef }: { model: MasterDashboardModel; svgRef: Ref<SVGSVGElement> }) {
+  const rows = model.money.categorySpend;
+  const rowHeight = 30;
+  const top = 8;
+  const labelWidth = 128;
+  const width = 520;
+  const height = top + Math.max(rows.length, 1) * rowHeight + 8;
+  const maxValue = Math.max(...rows.map((row) => row.totalBase), 1);
+  const barArea = width - labelWidth - 118;
+
+  return (
+    <svg ref={svgRef} viewBox={`0 0 ${width} ${height}`} className="h-auto w-full" role="img" aria-label="Money out by category">
+      {rows.length === 0 && (
+        <text x={width / 2} y={height / 2} textAnchor="middle" fontFamily={CHART.font} fontSize="13" fill={CHART.slate}>No paid expenses yet</text>
+      )}
+      {rows.map((row, index) => {
+        const y = top + index * rowHeight;
+        const barWidth = Math.max((row.totalBase / maxValue) * barArea, 4);
+        return (
+          <g key={row.category}>
+            <text x={labelWidth - 8} y={y + 19} textAnchor="end" fontFamily={CHART.font} fontSize="12" fill={CHART.navy}>{row.category}</text>
+            <rect x={labelWidth} y={y + 7} width={barArea} height={16} rx={4} fill="#f1f5f9" />
+            <rect x={labelWidth} y={y + 7} width={barWidth} height={16} rx={4} fill={CHART.amber} />
+            <text x={labelWidth + barArea + 8} y={y + 19} fontFamily={CHART.font} fontSize="11" fill={CHART.slate}>
+              {formatCompactCurrencyAmount(row.totalBase, model.reportingCurrency)}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 function OutcomesCard({ model }: { model: MasterDashboardModel }) {
   const { won, lost } = model.outcomes;
   const total = won.count + lost.count;
@@ -383,6 +432,16 @@ function addDashboardCsvFiles(zip: JSZip, model: MasterDashboardModel) {
     ['Deals won', model.outcomes.won.count],
     [`Won value (${model.reportingCurrency})`, Math.round(model.outcomes.won.totalBase)],
     ['Deals lost', model.outcomes.lost.count],
+    [`Collected revenue (${model.reportingCurrency})`, Math.round(model.money.collectedRevenueBase)],
+    [`Money out, paid (${model.reportingCurrency})`, Math.round(model.money.paidExpensesBase)],
+    [`Realized profit (${model.reportingCurrency})`, Math.round(model.money.realizedProfitBase)],
+    [`Projected net flow (${model.reportingCurrency})`, Math.round(model.money.projectedDeltaBase)],
+    [`Cash on hand (${model.reportingCurrency})`, model.money.cashOnHandBase === null ? 'n/a (set opening balance)' : Math.round(model.money.cashOnHandBase)],
+  ]));
+
+  zip.file('money-out-by-category.csv', csv([
+    ['Category', `Paid (${model.reportingCurrency})`],
+    ...model.money.categorySpend.map((row) => [row.category, Math.round(row.totalBase)] as (string | number)[]),
   ]));
 
   zip.file('pipeline-by-stage.csv', csv([

@@ -3,7 +3,9 @@ import { forecastEvidenceCategories, opportunityStages } from '../services/oppor
 import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore.ts';
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
+import type { ExpenseRecord } from '../services/expenseStore.ts';
 import { buildMoneyFlow } from './moneyFlow.ts';
+import { buildCashPosition, getOpeningCashBalance, type CategorySpendRow } from './cashPosition.ts';
 import { getReportingCurrency, sumMoney, type SupportedCurrency } from './money.ts';
 import { sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 
@@ -34,6 +36,14 @@ export type MasterDashboardModel = {
     activitiesLast30: number;
     openQuotes: number;
   };
+  money: {
+    collectedRevenueBase: number;
+    paidExpensesBase: number;
+    realizedProfitBase: number;
+    projectedDeltaBase: number;
+    cashOnHandBase: number | null;
+    categorySpend: CategorySpendRow[];
+  };
   stageMix: StageMixRow[];
   evidenceMix: EvidenceMixRow[];
   weeklyActivity: WeeklyActivityPoint[];
@@ -47,6 +57,7 @@ type MasterDashboardInput = {
   opportunities: CrmLiteOpportunity[];
   activities: SalesActivityRecord[];
   quotes: QuoteRecord[];
+  expenses: ExpenseRecord[];
   opportunityOutcomes: OpportunityOutcomeRecord[];
   today?: string;
 };
@@ -87,6 +98,12 @@ export function buildMasterDashboard(input: MasterDashboardInput): MasterDashboa
 
   const outcomes = { won: bucketOutcomes(input.opportunityOutcomes, 'Won'), lost: bucketOutcomes(input.opportunityOutcomes, 'Lost') };
   const moneyFlow = buildMoneyFlow({ opportunities: input.opportunities, quotes: input.quotes, today: todayKey });
+  const cash = buildCashPosition({
+    quotes: input.quotes,
+    expenses: input.expenses,
+    openingBalanceBase: getOpeningCashBalance(),
+    today: todayKey,
+  });
 
   const todayDate = new Date(`${todayKey}T00:00:00`);
   const thirtyDaysAgo = new Date(todayDate.getTime() - 30 * DAY_MS);
@@ -105,6 +122,14 @@ export function buildMasterDashboard(input: MasterDashboardInput): MasterDashboa
       activitiesLast30,
       openQuotes: input.quotes.filter((quote) => !quote.__deleted
         && (quote.status === 'Draft' || quote.status === 'Sent' || quote.status === 'Revised')).length,
+    },
+    money: {
+      collectedRevenueBase: cash.collectedRevenueBase,
+      paidExpensesBase: cash.paidExpensesBase,
+      realizedProfitBase: cash.realizedProfitBase,
+      projectedDeltaBase: cash.projectedDeltaBase,
+      cashOnHandBase: cash.cashOnHandBase,
+      categorySpend: cash.categorySpend,
     },
     stageMix,
     evidenceMix,

@@ -6,12 +6,17 @@ import { BoundariesTab } from './BoundariesTab';
 import { REPLAY_GUIDED_WORKFLOW_EVENT } from '../onboarding/guidedWorkflow';
 import { buildSalesOperatingSetupProgress, loadSalesOperatingSetupState } from '../../utils/salesOperatingSetup';
 import { CURRENCY_NAMES, SUPPORTED_CURRENCIES, getReportingCurrency, setReportingCurrency } from '../../utils/money';
+import { getOpeningCashBalance, setOpeningCashBalance } from '../../utils/cashPosition';
 import { getWorkspaceLens, setWorkspaceLens, workspaceLensLabel, workspaceLenses } from '../../utils/workspaceLens';
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'export' | 'boundaries'>('boundaries');
   const [reportingCurrency, setReportingCurrencyState] = useState(() => getReportingCurrency());
   const [workspaceLens, setWorkspaceLensState] = useState(() => getWorkspaceLens());
+  const [openingBalance, setOpeningBalanceState] = useState(() => {
+    const stored = getOpeningCashBalance();
+    return stored === null ? '' : String(stored);
+  });
   const salesOperatingSetupProgress = buildSalesOperatingSetupProgress(loadSalesOperatingSetupState());
 
   return (
@@ -60,6 +65,31 @@ export function SettingsPage() {
                 <option key={currency} value={currency}>{currency} — {CURRENCY_NAMES[currency]}</option>
               ))}
             </select>
+          </label>
+        </div>
+      </div>
+
+      <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-navy">Opening cash balance</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Optional. The cash you started with, in {reportingCurrency}. Set this and the Money page and Dashboard show absolute cash on hand, not just profit.
+            </p>
+          </div>
+          <label className="flex items-center gap-2">
+            <span className="sr-only">Opening cash balance</span>
+            <input
+              inputMode="numeric"
+              value={openingBalance}
+              onChange={(event) => {
+                const next = event.target.value;
+                setOpeningBalanceState(next);
+                setOpeningCashBalance(next.trim() === '' ? null : Number(next.replace(/,/g, '')));
+              }}
+              placeholder="e.g. 100000000"
+              className="w-44 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+            />
           </label>
         </div>
       </div>

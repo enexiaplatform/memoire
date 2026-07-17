@@ -12,6 +12,7 @@ import { OPERATING_CONTEXT_STORAGE_KEY, type OperatingContextRecord } from '../s
 const DEMO_OPERATING_CONTEXT_KEY = `${OPERATING_CONTEXT_STORAGE_KEY}:guest`;
 import { SALES_ASSET_STORAGE_KEY, type SalesAssetRecord } from '../services/salesAssetStore';
 import { QUOTE_STORAGE_KEY, type QuoteRecord } from '../services/quoteStore';
+import { EXPENSE_STORAGE_KEY, type ExpenseRecord, type ExpenseCategory, type ExpenseStatus } from '../services/expenseStore';
 import { invalidateWorkspaceDataCache } from '../services/workspaceDataCache';
 import { classifySalesActivity } from './salesActivityClassifier';
 import { generatePipelineDefenseBriefFromOpportunities } from './opportunityToPipelineBrief';
@@ -52,6 +53,7 @@ const SAMPLE_ARRAY_STORAGE_KEYS = [
   DEMO_OPERATING_CONTEXT_KEY,
   SALES_ASSET_STORAGE_KEY,
   QUOTE_STORAGE_KEY,
+  EXPENSE_STORAGE_KEY,
 ];
 
 type SampleRecord = {
@@ -73,6 +75,7 @@ export type SampleDataset = {
   operatingContexts: OperatingContextRecord[];
   salesAssets: SalesAssetRecord[];
   quotes: QuoteRecord[];
+  expenses: ExpenseRecord[];
   briefs: PipelineDefenseBrief[];
 };
 
@@ -119,6 +122,7 @@ export function loadSampleDataset(): SampleDataset {
   writeLocalArray(DEMO_OPERATING_CONTEXT_KEY, dataset.operatingContexts);
   writeLocalArray(SALES_ASSET_STORAGE_KEY, dataset.salesAssets);
   writeLocalArray(QUOTE_STORAGE_KEY, dataset.quotes);
+  writeLocalArray(EXPENSE_STORAGE_KEY, dataset.expenses);
   writeLocalBriefs(dataset.briefs);
   markSampleDataLoaded();
   invalidateWorkspaceDataCache();
@@ -146,6 +150,7 @@ export function clearSampleDataset() {
   removeSampleRecords(DEMO_OPERATING_CONTEXT_KEY);
   removeSampleRecords(SALES_ASSET_STORAGE_KEY);
   removeSampleRecords(QUOTE_STORAGE_KEY);
+  removeSampleRecords(EXPENSE_STORAGE_KEY);
   removeSampleBriefs();
   clearDemoJourneyCompletion();
   clearDailyExecutionState('demo');
@@ -899,6 +904,38 @@ export function buildSampleDataset(): SampleDataset {
       notes: 'Delivery completed; payment release is overdue.',
       createdAt: timestamp,
     }),
+    sampleQuote({
+      id: 'demo-quote-northstar-reagent-paid',
+      quoteId: 'Q-DEMO-NORTHSTAR-02',
+      accountName: 'Northstar Foods',
+      opportunityName: 'Reagent resupply',
+      title: 'Reagent resupply order',
+      quoteDate: sixteenDaysAgo,
+      validUntil: nineDaysAgo,
+      amount: 180000000,
+      currency: 'VND',
+      grossMarginEstimate: 38,
+      discount: 0,
+      paymentTerm: 'Paid on delivery',
+      status: 'Accepted',
+      poStatus: 'Received',
+      deliveryStatus: 'Delivered',
+      expectedDeliveryDate: nineDaysAgo,
+      paymentStatus: 'Paid',
+      paymentDueDate: sixDaysAgo,
+      nextAction: '',
+      notes: 'Repeat reagent order, delivered and fully collected.',
+      createdAt: timestamp,
+    }),
+  ];
+
+  const expenses: ExpenseRecord[] = [
+    sampleExpense({ id: 'demo-expense-reagent-cogs', label: 'Reagent stock (resupply COGS)', category: 'Cost of goods', amount: 62000000, status: 'Paid', expenseDate: nineDaysAgo }),
+    sampleExpense({ id: 'demo-expense-salary', label: 'Team salaries', category: 'Salaries', amount: 90000000, status: 'Paid', expenseDate: sixDaysAgo, recurring: true }),
+    sampleExpense({ id: 'demo-expense-rent', label: 'Office & lab rent', category: 'Rent & utilities', amount: 28000000, status: 'Paid', expenseDate: sixteenDaysAgo, recurring: true }),
+    sampleExpense({ id: 'demo-expense-logistics', label: 'Delivery logistics (Northstar)', category: 'Logistics', amount: 6000000, status: 'Paid', expenseDate: nineDaysAgo, linkedAccountName: 'Northstar Foods' }),
+    sampleExpense({ id: 'demo-expense-tax-upcoming', label: 'Quarterly VAT', category: 'Tax & fees', amount: 34000000, status: 'Upcoming', dueDate: nextWeek }),
+    sampleExpense({ id: 'demo-expense-tools', label: 'CRM & software subscriptions', category: 'Tools & software', amount: 4500000, status: 'Upcoming', dueDate: friday, recurring: true }),
   ];
 
   const brief = {
@@ -1011,6 +1048,7 @@ export function buildSampleDataset(): SampleDataset {
     operatingContexts,
     salesAssets,
     quotes,
+    expenses,
     briefs: [markSampleBrief(brief)],
   };
 }
@@ -1155,6 +1193,38 @@ function sampleQuote(input: Omit<QuoteRecord, 'updatedAt' | 'source' | 'isSample
   return markSampleRecord({
     ...input,
     updatedAt: input.createdAt,
+  });
+}
+
+function sampleExpense(input: {
+  id: string;
+  label: string;
+  category: ExpenseCategory;
+  amount: number;
+  status: ExpenseStatus;
+  expenseDate?: string;
+  dueDate?: string;
+  vendor?: string;
+  linkedAccountName?: string;
+  recurring?: boolean;
+}): ExpenseRecord {
+  const timestamp = new Date().toISOString();
+  return markSampleRecord({
+    id: input.id,
+    expenseId: input.id.replace(/^demo-expense-/, 'E-DEMO-').toUpperCase(),
+    label: input.label,
+    category: input.category,
+    amount: input.amount,
+    currency: 'VND',
+    status: input.status,
+    expenseDate: input.expenseDate || '',
+    dueDate: input.dueDate || '',
+    vendor: input.vendor || '',
+    linkedAccountName: input.linkedAccountName || '',
+    recurring: input.recurring === true,
+    notes: '',
+    createdAt: timestamp,
+    updatedAt: timestamp,
   });
 }
 

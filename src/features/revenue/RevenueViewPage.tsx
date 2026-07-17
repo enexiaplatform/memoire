@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Banknote, ReceiptText, RefreshCw, Search } from 'lucide-react';
+import { ArrowRight, Banknote, Plus, ReceiptText, RefreshCw, Search, Trash2, Wallet } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -12,8 +12,18 @@ import { formatBaseCurrencyAmount as formatBaseMoney, formatCurrencyAmount as fo
 import { buildRevenueView, type RevenueActionItem, type RevenueRiskKind } from '../../utils/revenueView';
 import { buildMoneyFlow, moneyFlowStages } from '../../utils/moneyFlow';
 import { trackProductEvent } from '../../utils/productAnalytics';
-import { formatBaseCurrencyAmount, formatCurrencyAmount } from '../../utils/money';
+import { formatBaseCurrencyAmount, formatCompactCurrencyAmount, formatCurrencyAmount, SUPPORTED_CURRENCIES } from '../../utils/money';
 import { buildRouteHealth, type RouteHealthReport } from '../../utils/routeHealth';
+import { buildCashPosition, getOpeningCashBalance } from '../../utils/cashPosition';
+import {
+  createExpense,
+  deleteExpense,
+  emptyExpenseInput,
+  expenseCategories,
+  loadExpenses,
+  markExpensePaid,
+  type ExpenseRecord,
+} from '../../services/expenseStore';
 
 type RevenueData = {
   opportunities: CrmLiteOpportunity[];
@@ -153,6 +163,8 @@ export function RevenueViewPage() {
               </div>
             )}
           </section>
+
+          <MoneyOutSection quotes={data.quotes} />
 
           <section className="rounded-xl border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -333,6 +345,215 @@ function RevenueActionTable({ items }: { items: RevenueActionItem[] }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function MoneyOutSection({ quotes }: { quotes: QuoteRecord[] }) {
+  const [expenses, setExpenses] = useState<ExpenseRecord[]>(() => loadExpenses());
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(() => ({ ...emptyExpenseInput }));
+
+  const refresh = () => setExpenses(loadExpenses());
+
+  const cash = useMemo(
+    () => buildCashPosition({ quotes, expenses, openingBalanceBase: getOpeningCashBalance() }),
+    [quotes, expenses],
+  );
+
+  const handleAdd = () => {
+    if (!form.label.trim() || form.amount === null) return;
+    createExpense({ ...form, source: 'user', isSample: false });
+    setForm({ ...emptyExpenseInput });
+    setShowForm(false);
+    refresh();
+  };
+
+  const upcoming = expenses.filter((expense) => expense.status === 'Upcoming');
+  const recent = [...expenses].sort((a, b) => (b.expenseDate || '').localeCompare(a.expenseDate || '')).slice(0, 6);
+
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-amber-600" />
+            <h2 className="text-lg font-bold text-navy">Money out & profit</h2>
+          </div>
+          <p className="mt-1 text-sm text-gray-500">
+            The other half of the money-spine: costs settled and committed, so the picture is profit, not just revenue.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowForm((open) => !open)}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-navy px-3 py-2 text-sm font-bold text-white hover:bg-navy/90"
+        >
+          <Plus className="h-4 w-4" />
+          Log expense
+        </button>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <MoneyStat label="Collected" value={formatCompactCurrencyAmount(cash.collectedRevenueBase, cash.reportingCurrency)} tone="green" />
+        <MoneyStat label="Money out" value={formatCompactCurrencyAmount(cash.paidExpensesBase, cash.reportingCurrency)} tone={cash.paidExpensesBase ? 'amber' : 'gray'} />
+        <MoneyStat label="Realized profit" value={formatCompactCurrencyAmount(cash.realizedProfitBase, cash.reportingCurrency)} tone={cash.realizedProfitBase >= 0 ? 'green' : 'red'} />
+        <MoneyStat
+          label={cash.cashOnHandBase === null ? 'Projected net flow' : 'Cash on hand'}
+          value={formatCompactCurrencyAmount(cash.cashOnHandBase === null ? cash.projectedDeltaBase : cash.cashOnHandBase, cash.reportingCurrency)}
+          tone="blue"
+        />
+      </div>
+
+      {cash.cashOnHandBase === null && (
+        <p className="mt-2 text-xs text-gray-400">
+          Set an opening cash balance in <Link to="/app/settings" className="font-semibold text-brand-blue hover:underline">Settings</Link> to see absolute cash on hand.
+        </p>
+      )}
+
+      {showForm && (
+        <div className="mt-4 grid gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 md:grid-cols-2 xl:grid-cols-3">
+          <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-gray-500">
+            What
+            <input
+              value={form.label}
+              onChange={(event) => setForm((prev) => ({ ...prev, label: event.target.value }))}
+              placeholder="e.g. Reagent restock"
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
+            />
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-gray-500">
+              Amount
+              <input
+                inputMode="numeric"
+                value={form.amount ?? ''}
+                onChange={(event) => setForm((prev) => ({ ...prev, amount: event.target.value === '' ? null : Number(event.target.value.replace(/,/g, '')) }))}
+                placeholder="0"
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-gray-500">
+              Currency
+              <select
+                value={form.currency}
+                onChange={(event) => setForm((prev) => ({ ...prev, currency: event.target.value }))}
+                className="rounded-lg border border-gray-300 px-2 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
+              >
+                {SUPPORTED_CURRENCIES.map((currency) => <option key={currency} value={currency}>{currency}</option>)}
+              </select>
+            </label>
+          </div>
+          <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-gray-500">
+            Category
+            <select
+              value={form.category}
+              onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value as ExpenseRecord['category'] }))}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
+            >
+              {expenseCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+            </select>
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-gray-500">
+              Status
+              <select
+                value={form.status}
+                onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value as ExpenseRecord['status'] }))}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
+              >
+                <option value="Paid">Paid</option>
+                <option value="Upcoming">Upcoming</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-gray-500">
+              {form.status === 'Upcoming' ? 'Due date' : 'Date'}
+              <input
+                type="date"
+                value={form.status === 'Upcoming' ? form.dueDate : form.expenseDate}
+                onChange={(event) => setForm((prev) => (prev.status === 'Upcoming'
+                  ? { ...prev, dueDate: event.target.value }
+                  : { ...prev, expenseDate: event.target.value }))}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
+              />
+            </label>
+          </div>
+          <div className="flex items-end gap-2">
+            <button type="button" onClick={handleAdd} className="rounded-lg bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90 disabled:opacity-50" disabled={!form.label.trim() || form.amount === null}>
+              Save expense
+            </button>
+            <button type="button" onClick={() => { setShowForm(false); setForm({ ...emptyExpenseInput }); }} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {upcoming.length > 0 && (
+        <div className="mt-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Committed but not yet paid</p>
+          <div className="mt-2 space-y-1.5">
+            {upcoming.slice(0, 5).map((expense) => (
+              <div key={expense.id} className="flex flex-col gap-1 rounded-lg border border-amber-100 bg-amber-50/50 px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between">
+                <p className="font-bold text-gray-900">{expense.label} · {formatCurrencyAmount(expense.amount, expense.currency)}{expense.dueDate ? ` · due ${expense.dueDate}` : ''}</p>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => { markExpensePaid(expense); refresh(); }} className="rounded-full bg-white px-3 py-1 font-bold text-emerald-700 ring-1 ring-emerald-100 hover:bg-emerald-50">Mark paid</button>
+                  <button type="button" onClick={() => { deleteExpense(expense.id); refresh(); }} className="rounded-full p-1 text-gray-400 hover:bg-white hover:text-red-600" title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {recent.length === 0 ? (
+        <p className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-4 text-center text-sm text-gray-500">
+          No expenses logged yet. Log one cost and the profit line becomes real.
+        </p>
+      ) : (
+        <div className="mt-4 max-w-full overflow-x-auto">
+          <table className="w-full min-w-[560px] text-left text-sm">
+            <thead className="text-[11px] font-bold uppercase tracking-wide text-gray-400">
+              <tr>
+                <th className="pb-2">Expense</th>
+                <th className="pb-2">Category</th>
+                <th className="pb-2 text-right">Amount</th>
+                <th className="pb-2">Status</th>
+                <th className="pb-2 text-right"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {recent.map((expense) => (
+                <tr key={expense.id}>
+                  <td className="py-2.5 font-semibold text-navy">{expense.label}</td>
+                  <td className="py-2.5 text-gray-600">{expense.category}</td>
+                  <td className="py-2.5 text-right font-bold text-gray-800">{formatCurrencyAmount(expense.amount, expense.currency)}</td>
+                  <td className="py-2.5"><Badge label={expense.status} tone={expense.status === 'Paid' ? 'green' : 'amber'} /></td>
+                  <td className="py-2.5 text-right">
+                    <button type="button" onClick={() => { deleteExpense(expense.id); refresh(); }} className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600" title="Delete"><Trash2 className="h-4 w-4" /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function MoneyStat({ label, value, tone }: { label: string; value: string; tone: 'green' | 'amber' | 'red' | 'blue' | 'gray' }) {
+  const toneClass = {
+    green: 'text-emerald-700',
+    amber: 'text-amber-700',
+    red: 'text-red-700',
+    blue: 'text-brand-blue',
+    gray: 'text-gray-600',
+  }[tone];
+  return (
+    <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
+      <p className={`mt-1 text-lg font-bold ${toneClass}`}>{value}</p>
     </div>
   );
 }
