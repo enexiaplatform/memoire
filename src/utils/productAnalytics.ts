@@ -24,7 +24,8 @@ export type ProductFunnelEvent =
   | 'revenue_risk_brief_copied'
   | 'follow_up_brief_copied'
   | 'master_dashboard_opened'
-  | 'master_dashboard_exported';
+  | 'master_dashboard_exported'
+  | 'daily_digest_copied';
 
 export type AnalyticsDataMode = 'demo-local' | 'cloud-browser' | 'browser-only' | 'sync-issue' | 'unknown';
 

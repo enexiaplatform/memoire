@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode, Ref } from 'react';
 import { Link } from 'react-router-dom';
 import JSZip from 'jszip';
-import { ArrowRight, Download, RefreshCw } from 'lucide-react';
+import { ArrowRight, Copy, Download, Mail, RefreshCw } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -10,6 +10,9 @@ import { loadSalesWorkspaceData, type SalesWorkspaceData } from '../../services/
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { buildMasterDashboard, type MasterDashboardModel } from '../../utils/masterDashboard';
 import { formatCompactCurrencyAmount } from '../../utils/money';
+import { buildDailyDigest, buildDigestMailtoLink } from '../../utils/dailyDigest';
+import { getUserDisplayName } from '../../utils/userDisplay';
+import { copyTextToClipboard } from '../../utils/clipboard';
 import { trackProductEvent } from '../../utils/productAnalytics';
 
 // Chart palette: fixed hex values (not Tailwind classes) so the SVGs survive
@@ -34,12 +37,13 @@ const EVIDENCE_COLORS: Record<string, string> = {
 };
 
 export function MasterDashboardPage() {
-  const { user, loading: authLoading, isAuthenticated } = useAuthContext();
+  const { user, profile, loading: authLoading, isAuthenticated } = useAuthContext();
   const [workspace, setWorkspace] = useState<SalesWorkspaceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState('');
+  const [digestCopied, setDigestCopied] = useState(false);
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
@@ -69,6 +73,14 @@ export function MasterDashboardPage() {
   }, []);
 
   const model = useMemo(() => (workspace ? buildMasterDashboard(workspace) : null), [workspace]);
+  const digest = useMemo(() => (workspace ? buildDailyDigest({
+    opportunities: workspace.opportunities,
+    quotes: workspace.quotes,
+    expenses: workspace.expenses,
+    activities: workspace.activities,
+    opportunityOutcomes: workspace.opportunityOutcomes,
+    ownerName: sampleDataActive ? 'Demo workspace' : getUserDisplayName(user, profile),
+  }) : null), [workspace, sampleDataActive, user, profile]);
   const hasData = Boolean(workspace && (workspace.opportunities.length || workspace.activities.length || workspace.quotes.length || workspace.expenses.length));
 
   const handleExport = async () => {
@@ -195,6 +207,19 @@ export function MasterDashboardPage() {
             </ChartCard>
             <div className="flex flex-col gap-4">
               <OutcomesCard model={model} />
+              {digest && (
+                <DigestCard
+                  digest={digest}
+                  copied={digestCopied}
+                  onCopy={async () => {
+                    if (await copyTextToClipboard(digest.plainText)) {
+                      setDigestCopied(true);
+                      trackProductEvent('daily_digest_copied');
+                      window.setTimeout(() => setDigestCopied(false), 2500);
+                    }
+                  }}
+                />
+              )}
               <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
                 <h2 className="text-sm font-bold text-navy">Go deeper</h2>
                 <div className="mt-3 flex flex-col gap-2 text-sm font-semibold">
@@ -397,6 +422,50 @@ function OutcomesCard({ model }: { model: MasterDashboardModel }) {
           <p className="text-xs font-semibold text-gray-500">Win rate</p>
         </div>
       </div>
+    </section>
+  );
+}
+
+function DigestCard({
+  digest,
+  copied,
+  onCopy,
+}: {
+  digest: ReturnType<typeof buildDailyDigest>;
+  copied: boolean;
+  onCopy: () => void;
+}) {
+  return (
+    <section className="rounded-xl border border-brand-blue/20 bg-blue-50/40 p-5 shadow-sm">
+      <div className="flex items-center gap-2">
+        <Mail className="h-4 w-4 text-brand-blue" />
+        <h2 className="text-sm font-bold text-navy">Daily digest</h2>
+      </div>
+      <p className="mt-1 text-xs text-gray-500">{digest.headline}</p>
+      <p className="mt-2 text-xs leading-5 text-gray-400">
+        Memoire's outbound voice. Copy it into your morning routine, or mail it to yourself — so the day's silence signals reach you even before you open the app.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onCopy}
+          className="inline-flex items-center gap-1.5 rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white hover:bg-navy/90"
+        >
+          <Copy className="h-3.5 w-3.5" />
+          {copied ? 'Copied' : 'Copy digest'}
+        </button>
+        <a
+          href={buildDigestMailtoLink(digest)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-brand-blue bg-white px-3 py-1.5 text-xs font-bold text-brand-blue hover:bg-blue-50"
+        >
+          <Mail className="h-3.5 w-3.5" />
+          Email to myself
+        </a>
+      </div>
+      <details className="mt-3">
+        <summary className="cursor-pointer text-xs font-semibold text-brand-blue">Preview</summary>
+        <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-white p-3 text-[11px] leading-5 text-gray-700">{digest.plainText}</pre>
+      </details>
     </section>
   );
 }
