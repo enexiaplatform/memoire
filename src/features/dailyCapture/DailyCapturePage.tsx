@@ -1568,10 +1568,14 @@ function ActivityCard({
             <ActivityFact label="Due date" value={formatSafeBusinessDate(activity.dueDate)} />
           </div>
           <ActivitySignals activity={activity} />
+          {/* Tags are machine-made and can arrive as one unbroken token
+              ("source-label:Pasted_email:_Orion_Pharma..."), which in a chip
+              that could not wrap widened the whole document and left every page
+              in the app scrolling sideways on a phone. */}
           {activity.tags.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
               {activity.tags.map((tag) => (
-                <span key={tag} className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-600">
+                <span key={tag} className="max-w-full break-all rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-600">
                   {tag}
                 </span>
               ))}

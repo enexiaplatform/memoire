@@ -1,0 +1,39 @@
+{
+  "name": "Memoire - Business Activity OS",
+  "short_name": "Memoire",
+  "description": "Capture every commercial activity, see where the money sits, and never let anything go silent.",
+  "start_url": "/app/today",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f9fafb",
+  "theme_color": "#020617",
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/app-icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Capture an activity",
+      "short_name": "Capture",
+      "description": "Log what just happened before it is forgotten.",
+      "url": "/app/capture"
+    },
+    {
+      "name": "Today",
+      "short_name": "Today",
+      "description": "What moves money today.",
+      "url": "/app/today"
+    }
+  ]
+}
