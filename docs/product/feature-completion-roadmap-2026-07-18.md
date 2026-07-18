@@ -22,7 +22,8 @@ feels plan; this one is the what-it-does plan).
 - Hidden surface debt: `/app/quotes`, `/app/journey`, `/app/operating-system`
   are routed and internally linked but absent from nav since the 2026-07-02
   demotion. Aliases `/app/calendar` and `/app/reviews`/`/app/weekly-brief`
-  duplicate live routes.
+  duplicate live routes. **(Resolved in A3 — but not the way this line
+  assumed: two of the three were load-bearing, not debt.)**
 
 ## Binding rules (unchanged)
 
@@ -33,15 +34,23 @@ Stage-3/intelligence gate from the commitment audit stays in force.
 
 ---
 
-## Phase A — Finish what is started (no gate, do now)
+## Phase A — Finish what is started (SHIPPED 2026-07-18)
 
-**A1. Committed-week strip on Today/Dashboard.** The missing touchpoint that
+A1, A2, A3 shipped and verified live the same day (commits `0e30a5c`,
+`66a3467`). A4 remains operator action. Notably A3's audit **reversed two of
+its own three proposed decisions** — see the corrected entry below; the
+proposal had been made from the nav map rather than the code.
+
+**A1. Committed-week strip on Today/Dashboard.** SHIPPED. The missing touchpoint that
 makes the commitment visible *during* the week, not only at planning and
 review time. Read-only strip + check-off, reading `weeklyCommitmentStore`;
 renders only when a confirmed snapshot exists for the current week. Contract:
 extend `verify:weekly-commitment` (strip presence + read-only invariant).
 
-**A2. Commitment analytics verification.** The four funnel events
+**A2. Commitment analytics verification.** SHIPPED — all four events verified
+firing at their call sites, and the contract raised from "the event name is
+declared" to "the event is emitted", so a declared-but-dead event can no
+longer hold the Phase C gate shut. The four funnel events
 (`weekly_commitment_confirmed/edited/resolved/reconciliation_viewed`) were
 specified with the feature; verify they actually fire from the shipped
 panels, and that the derived rates (acceptance, return, completion,
