@@ -73,6 +73,16 @@ export type PlanRecord = {
   doneAt?: string;
   /** Set only on completion stubs for derived items. */
   derivedKey?: string;
+  linkedOpportunityId?: string;
+  linkedAccountName?: string;
+  /**
+   * The suggestion this record answers. Present whether the suggestion was
+   * taken or refused, so acceptance rate has a denominator - the same
+   * discipline the weekly commitment snapshot uses.
+   */
+  suggestionKey?: string;
+  /** Shown, and consciously refused. Never re-suggested. */
+  dismissed?: boolean;
   createdAt: string;
   updatedAt: string;
   source?: 'demo' | 'user';
@@ -110,6 +120,8 @@ export function buildPlanBoard(input: {
 
   const personal = liveRecords
     .filter((record) => !record.derivedKey)
+    // A refused suggestion is kept as evidence that it was refused, never as work.
+    .filter((record) => record.dismissed !== true)
     .filter((record) => isValidBusinessDate(record.date) && isBusinessDateInRange(record.date, range.start, range.end))
     .map((record) => ({
       id: record.id,
@@ -119,7 +131,7 @@ export function buildPlanBoard(input: {
       label: record.label,
       done: record.done,
       doneAt: record.doneAt,
-      href: '',
+      href: record.linkedOpportunityId ? '/app/opportunities' : '',
       overdue: !record.done && compareSafeBusinessDate(record.date, today) < 0,
     }));
 
@@ -246,6 +258,9 @@ export function createPersonalPlanRecord(input: {
   date: string;
   label: string;
   tag?: string;
+  linkedOpportunityId?: string;
+  linkedAccountName?: string;
+  suggestionKey?: string;
   source?: 'demo' | 'user';
   isSample?: boolean;
 }): PlanRecord {
@@ -257,6 +272,37 @@ export function createPersonalPlanRecord(input: {
     label,
     tag,
     done: false,
+    linkedOpportunityId: input.linkedOpportunityId,
+    linkedAccountName: input.linkedAccountName,
+    suggestionKey: input.suggestionKey,
+    createdAt: now,
+    updatedAt: now,
+    source: input.source,
+    isSample: input.isSample,
+  };
+}
+
+/**
+ * A refused suggestion. Stored rather than forgotten so it is never proposed
+ * again, and so "shown but not taken" stays countable.
+ */
+export function createDismissedSuggestionRecord(input: {
+  suggestionKey: string;
+  date: string;
+  label: string;
+  tag: string;
+  source?: 'demo' | 'user';
+  isSample?: boolean;
+}): PlanRecord {
+  const now = new Date().toISOString();
+  return {
+    id: `plan-dismissed-${input.suggestionKey}`,
+    date: input.date,
+    label: input.label,
+    tag: input.tag,
+    done: false,
+    suggestionKey: input.suggestionKey,
+    dismissed: true,
     createdAt: now,
     updatedAt: now,
     source: input.source,

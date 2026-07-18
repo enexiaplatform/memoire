@@ -3,9 +3,11 @@ import { readFileSync, readdirSync } from 'node:fs';
 import {
   buildPlanBoard,
   createDerivedCompletionRecord,
+  createDismissedSuggestionRecord,
   createPersonalPlanRecord,
   getPlanRange,
 } from '../src/utils/weeklyPlan.ts';
+import { buildPlanSuggestions } from '../src/utils/planSuggestions.ts';
 
 // The plan board is the week laid out as days. Two kinds of item share a
 // column: commitments already dated in the workspace, and the operator's own
@@ -159,12 +161,93 @@ const anchor = new Date(2026, 6, 22); // Wed of the Mon 2026-07-20 week
   assert.match(app, /path="plan"/, 'the plan route is registered');
 }
 
-// 8. Instrumentation ships with the feature.
+// 8. Suggestions read last week's ledger, explain themselves, and are never
+//    work until accepted. A refusal is remembered so it is not asked twice.
+{
+  const week = { rangeStart: '2026-07-20', rangeEnd: '2026-07-26' };
+  const touch = (overrides = {}) => ({
+    id: 'a1', accountName: 'MDL', linkedAccountName: '', linkedOpportunityId: '',
+    activityType: 'Customer meeting', activityDate: '2026-07-15', nextAction: '', dueDate: '',
+    summary: '', risks: [], ...overrides,
+  });
+
+  const promised = buildPlanSuggestions({
+    activities: [touch({ nextAction: 'Send revised quote', dueDate: '2026-07-22' })],
+    opportunities: [], records: [], ...week,
+  });
+  assert.equal(promised.length, 1);
+  assert.equal(promised[0].kind, 'due-next-action');
+  assert.ok(promised[0].reason, 'every suggestion states the rule that fired');
+  assert.ok(promised[0].evidence, 'every suggestion cites the capture it came from');
+  assert.ok(promised[0].sourceActivityId, 'every suggestion points back at its activity');
+
+  // Already on the board via the deal: proposing it again would show one
+  // commitment twice.
+  const duplicate = buildPlanSuggestions({
+    activities: [touch({ linkedOpportunityId: 'o1', nextAction: 'Send quote', dueDate: '2026-07-22' })],
+    opportunities: [{
+      id: 'o1', accountName: 'MDL', opportunityName: 'MDL deal', status: 'Active',
+      nextAction: 'Send quote', nextActionDate: '2026-07-22', stage: 'Qualified',
+      estimatedValue: 1000, currency: 'VND',
+    }],
+    records: [], ...week,
+  });
+  assert.equal(duplicate.length, 0, 'a commitment already on the board is not suggested again');
+
+  // Refusal is stored, not forgotten.
+  const dismissal = createDismissedSuggestionRecord({
+    suggestionKey: promised[0].key,
+    date: promised[0].suggestedDate,
+    label: promised[0].label,
+    tag: promised[0].tag,
+  });
+  assert.equal(dismissal.dismissed, true);
+  const afterDismissal = buildPlanSuggestions({
+    activities: [touch({ nextAction: 'Send revised quote', dueDate: '2026-07-22' })],
+    opportunities: [], records: [dismissal], ...week,
+  });
+  assert.equal(afterDismissal.length, 0, 'a refused suggestion is never asked twice');
+
+  // A dismissal is evidence, never work: it must not appear on the board.
+  const board = buildPlanBoard({
+    periodType: 'week', anchorDate: anchor, opportunities: [], obligations: [],
+    records: [dismissal], today: '2026-07-22',
+  });
+  assert.equal(board.totalCount, 0, 'a refused suggestion never becomes a plan item');
+
+  // Capped, so the panel stays a plan rather than a description of the data -
+  // the same lesson the review page learned from "Recommended: 865".
+  const many = buildPlanSuggestions({
+    activities: Array.from({ length: 20 }, (_, index) => touch({ id: `a${index}`, accountName: `Account ${index}` })),
+    opportunities: [], records: [], ...week,
+  });
+  assert.ok(many.length <= 6, `suggestions must stay capped (got ${many.length})`);
+
+  const panel = readFileSync(new URL('../src/features/plan/PlanSuggestionsPanel.tsx', import.meta.url), 'utf8');
+  assert.match(panel, /Nothing here is on your plan until you put it there/, 'the panel says suggestions are not commitments');
+}
+
+// 9. Instrumentation ships with the feature.
 {
   const analytics = readFileSync(new URL('../src/utils/productAnalytics.ts', import.meta.url), 'utf8');
-  ['weekly_plan_opened', 'weekly_plan_item_added', 'weekly_plan_item_checked'].forEach((eventName) => {
+  [
+    'weekly_plan_opened',
+    'weekly_plan_item_added',
+    'weekly_plan_item_checked',
+    'weekly_plan_suggestion_accepted',
+    'weekly_plan_suggestion_dismissed',
+  ].forEach((eventName) => {
     assert.match(analytics, new RegExp(`'${eventName}'`), `${eventName} is a tracked funnel event`);
   });
+}
+
+// 10. The data-mode pill reports the real workspace mode. Rendering it with no
+//     props made Plan claim "Browser only" while the header said "Cloud +
+//     browser" - two surfaces disagreeing about where the data lives.
+{
+  const page = readFileSync(new URL('../src/features/plan/WeeklyPlanPage.tsx', import.meta.url), 'utf8');
+  assert.match(page, /isAuthenticated=\{isAuthenticated\}/, 'the pill is told whether the user is signed in');
+  assert.match(page, /cloudAvailable=\{canUseSalesActivityCloudStore\(dataUserId\)\}/, 'the pill is told whether cloud is reachable');
 }
 
 console.log('Weekly plan board contract verified.');

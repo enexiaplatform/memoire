@@ -4,14 +4,19 @@ import { CalendarDays, ChevronLeft, ChevronRight, Loader2, Plus, RotateCcw, X } 
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { hasLocalSampleData } from '../../utils/dataMode';
+import { isSupabaseConfigured } from '../../lib/demoMode';
+import { canUseSalesActivityCloudStore, type SalesActivityRecord } from '../../services/salesActivityStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { type QuoteRecord } from '../../services/quoteStore';
 import { type ExpenseRecord } from '../../services/expenseStore';
 import { buildOwnObligations } from '../../utils/ownObligations';
+import { buildPlanSuggestions, type PlanSuggestion } from '../../utils/planSuggestions';
+import { PlanSuggestionsPanel } from './PlanSuggestionsPanel';
 import {
   buildPlanBoard,
   createDerivedCompletionRecord,
+  createDismissedSuggestionRecord,
   createPersonalPlanRecord,
   formatPlanRangeLabel,
   planKindTone,
@@ -43,9 +48,10 @@ const periodOptions: { value: PlanPeriod; label: string }[] = [
  * deal it came from.
  */
 export function WeeklyPlanPage() {
-  const { user } = useAuthContext();
+  const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const [periodType, setPeriodType] = useState<PlanPeriod>('week');
   const [anchorDate, setAnchorDate] = useState(() => new Date());
+  const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
@@ -64,6 +70,7 @@ export function WeeklyPlanPage() {
   const refresh = useCallback(async () => {
     const cached = getCachedSalesWorkspaceData(dataUserId);
     if (cached) {
+      setActivities(cached.activities);
       setOpportunities(cached.opportunities);
       setQuotes(cached.quotes);
       setExpenses(cached.expenses);
@@ -71,6 +78,7 @@ export function WeeklyPlanPage() {
     } else {
       setLoading(true);
       const workspaceData = await loadSalesWorkspaceData(dataUserId);
+      setActivities(workspaceData.activities);
       setOpportunities(workspaceData.opportunities);
       setQuotes(workspaceData.quotes);
       setExpenses(workspaceData.expenses);
@@ -136,6 +144,46 @@ export function WeeklyPlanPage() {
     setRecords(deletePlanItem(itemId));
   }, []);
 
+  // Suggestions only look at the week being planned, so paging to another week
+  // asks the same question of that week's ledger rather than replaying this one.
+  const suggestions = useMemo(() => (
+    periodType === 'week'
+      ? buildPlanSuggestions({
+        activities,
+        opportunities,
+        records,
+        rangeStart: board.rangeStart,
+        rangeEnd: board.rangeEnd,
+      })
+      : []
+  ), [activities, board.rangeEnd, board.rangeStart, opportunities, periodType, records]);
+
+  const acceptSuggestion = useCallback((suggestion: PlanSuggestion, date: string) => {
+    setRecords(savePlanItem(createPersonalPlanRecord({
+      date,
+      label: suggestion.label,
+      tag: suggestion.tag,
+      linkedOpportunityId: suggestion.linkedOpportunityId,
+      linkedAccountName: suggestion.linkedAccountName,
+      suggestionKey: suggestion.key,
+      source: sampleDataActive ? 'demo' : 'user',
+      isSample: sampleDataActive,
+    })));
+    trackProductEvent('weekly_plan_suggestion_accepted');
+  }, [sampleDataActive]);
+
+  const dismissSuggestion = useCallback((suggestion: PlanSuggestion) => {
+    setRecords(savePlanItem(createDismissedSuggestionRecord({
+      suggestionKey: suggestion.key,
+      date: suggestion.suggestedDate,
+      label: suggestion.label,
+      tag: suggestion.tag,
+      source: sampleDataActive ? 'demo' : 'user',
+      isSample: sampleDataActive,
+    })));
+    trackProductEvent('weekly_plan_suggestion_dismissed');
+  }, [sampleDataActive]);
+
   if (loading) {
     return (
       <SkeletonScreen label="Loading your plan">
@@ -157,7 +205,14 @@ export function WeeklyPlanPage() {
           <div className="flex items-center gap-2">
             <CalendarDays className="h-5 w-5 text-brand-blue" />
             <h1 className="text-2xl font-bold text-navy">Plan</h1>
-            <DataModePill />
+            <DataModePill
+              compact
+              isLoading={authLoading}
+              isAuthenticated={isAuthenticated}
+              isSupabaseConfigured={isSupabaseConfigured}
+              cloudAvailable={canUseSalesActivityCloudStore(dataUserId)}
+              hasSampleData={sampleDataActive}
+            />
           </div>
           <p className="mt-1 text-sm text-gray-600">
             Your week as days. Dated commitments already in Memoire appear on their own; add anything else the week needs.
@@ -220,7 +275,14 @@ export function WeeklyPlanPage() {
         )}
       </div>
 
-      {board.totalCount === 0 && (
+      <PlanSuggestionsPanel
+        suggestions={suggestions}
+        days={board.days}
+        onAccept={acceptSuggestion}
+        onDismiss={dismissSuggestion}
+      />
+
+      {board.totalCount === 0 && suggestions.length === 0 && (
         <p className="mt-6 rounded-lg border border-gray-100 bg-gray-50 p-4 text-sm text-gray-500">
           Nothing dated in this period yet. Put dates on your deals' next actions, or add your own items to a day below.
         </p>

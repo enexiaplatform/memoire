@@ -36,7 +36,11 @@ export type ProductFunnelEvent =
   // The plan board: is the week actually lived here, or abandoned after a look?
   | 'weekly_plan_opened'
   | 'weekly_plan_item_added'
-  | 'weekly_plan_item_checked';
+  | 'weekly_plan_item_checked'
+  // Suggestion acceptance rate: shown vs taken vs refused. Without the refusal
+  // event the denominator is missing and the engine cannot be judged.
+  | 'weekly_plan_suggestion_accepted'
+  | 'weekly_plan_suggestion_dismissed';
 
 export type AnalyticsDataMode = 'demo-local' | 'cloud-browser' | 'browser-only' | 'sync-issue' | 'unknown';
 
