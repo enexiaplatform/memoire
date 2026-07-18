@@ -112,10 +112,15 @@ restoring inside the demo clears the sample flag, and since access is granted
 on a session *or* that flag, a demo visitor was left at the login wall with
 their own data behind it — restore is refused in demo mode.
 
-**B3. Account dedup/merge UI.** The canonical account resolver already
-unifies reads; give the user a small "these look like the same account —
-merge?" surface in Accounts so the underlying records converge too.
-Derive-don't-migrate: merge writes a mapping, never rewrites history.
+**B3. Account dedup/merge UI.** SHIPPED 2026-07-18 (`b0882d1`). Detection is
+tuned for precision over recall — a false merge buries a customer's history
+under an unrecognised name. Merge writes one decision record; nothing is
+deleted or edited, so undo is real. Alternate names reach
+`buildAccountMemory`, which is what stops it being cosmetic. Also adds the
+migration for the three JSON collections that shipped without one
+(`weekly_commitments`, `plan_items`, `account_merges`) — **operator action:
+run `docs/database/supabase-json-collections-migration.sql` once**, or those
+three keep working local-first with cloud sync failing softly.
 
 **B4. Mobile capture ergonomics + PWA shell.** SHIPPED 2026-07-18
 (`0173091`) — manifest with maskable icon, `start_url` on the workspace, a
