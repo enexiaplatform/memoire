@@ -59,6 +59,7 @@ import { FollowUpImpactPanel } from './FollowUpImpactPanel';
 import { buildFollowUpImpact } from '../../utils/followUpImpact';
 import { MorningBriefCard } from './MorningBriefCard';
 import { BusinessCockpitStrip } from './BusinessCockpitStrip';
+import { CommittedWeekStrip } from './CommittedWeekStrip';
 import { buildBusinessCockpit } from '../../utils/businessCockpit';
 import { getWorkspaceLens, orderCockpitForLens } from '../../utils/workspaceLens';
 import { buildMorningBrief } from '../../utils/morningBrief';
@@ -640,6 +641,10 @@ export function TodayPage() {
               {/* Action tier: a glance, then the brief, then the three things to
                   do and the watch-list. This is the whole first screen. */}
               <BusinessCockpitStrip answers={businessCockpit} />
+              {/* The user's own promise for the week outranks the app's
+                  suggestions, so it sits above the recommended Top 3. Renders
+                  only when a week was actually confirmed. */}
+              <CommittedWeekStrip userId={sampleDataActive ? undefined : user?.id} sampleDataActive={sampleDataActive} />
               <MorningBriefCard brief={morningBrief} />
               <TodayTopThreeActions actions={todayCenter.topActions} />
               <ProactiveNudgesPanel

@@ -14,6 +14,7 @@ import { buildDailyDigest, buildDigestMailtoLink } from '../../utils/dailyDigest
 import { getUserDisplayName } from '../../utils/userDisplay';
 import { copyTextToClipboard } from '../../utils/clipboard';
 import { trackProductEvent } from '../../utils/productAnalytics';
+import { CommittedWeekStrip } from './CommittedWeekStrip';
 
 // Chart palette: fixed hex values (not Tailwind classes) so the SVGs survive
 // serialization to PNG for the presentation export.
@@ -169,6 +170,8 @@ export function MasterDashboardPage() {
         <DashboardEmptyState />
       ) : (
         <>
+          <CommittedWeekStrip userId={dataUserId} sampleDataActive={sampleDataActive} />
+
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Key numbers">
             <KpiCard label="Open deals" value={String(model.kpis.openDeals)} sub={`${formatCompactCurrencyAmount(model.kpis.openPipelineBase, model.reportingCurrency)} pipeline`} />
             <KpiCard label="Money in motion" value={formatCompactCurrencyAmount(model.kpis.inMotionBase, model.reportingCurrency)} sub={`${model.kpis.stuckThreads} stuck thread${model.kpis.stuckThreads === 1 ? '' : 's'}`} tone={model.kpis.stuckThreads > 0 ? 'warn' : 'default'} />

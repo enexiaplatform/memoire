@@ -165,8 +165,15 @@ const week = { weekId: '2026-07-20', periodStart: '2026-07-20', periodEnd: '2026
 
 // 8. Instrumentation ships with the feature, not after it. Without these four
 //    events the stop conditions for further planning work cannot be evaluated.
+//     Declaring the event is not the same as emitting it: the stop conditions
+//     read counts, so each one is asserted at its call site too.
 {
   const analytics = readFileSync(new URL('../src/utils/productAnalytics.ts', import.meta.url), 'utf8');
+  const surfaces = [
+    '../src/features/reviews/WeeklyCommitmentPanel.tsx',
+    '../src/features/dashboard/CommittedWeekStrip.tsx',
+  ].map((path) => readFileSync(new URL(path, import.meta.url), 'utf8')).join('\n');
+
   [
     'weekly_commitment_confirmed',
     'weekly_commitment_edited',
@@ -174,6 +181,11 @@ const week = { weekId: '2026-07-20', periodStart: '2026-07-20', periodEnd: '2026
     'weekly_commitment_reconciliation_viewed',
   ].forEach((eventName) => {
     assert.match(analytics, new RegExp(`'${eventName}'`), `${eventName} is a tracked funnel event`);
+    assert.match(
+      surfaces,
+      new RegExp(`trackProductEvent\\('${eventName}'\\)`),
+      `${eventName} is actually emitted by a commitment surface`,
+    );
   });
 }
 
@@ -184,6 +196,37 @@ const week = { weekId: '2026-07-20', periodStart: '2026-07-20', periodEnd: '2026
   const pushCount = (priorityBlock.match(/priorities\.push\(/g) || []).length;
   const reasonCount = (priorityBlock.match(/\n\s+reason:/g) || []).length;
   assert.equal(reasonCount, pushCount, 'every next-week priority carries its source signal');
+}
+
+// 10. The commitment is visible during the week, not only at planning and
+//     review time - and the strip that shows it can only tick items off. If it
+//     could edit a label the snapshot would stop being historical truth.
+{
+  const strip = readFileSync(new URL('../src/features/dashboard/CommittedWeekStrip.tsx', import.meta.url), 'utf8');
+
+  assert.match(strip, /getCurrentPipelineReviewWeekId\(\)/, 'the strip reads the current week, not the week being planned');
+  assert.match(strip, /getWeeklyCommitmentForWeek/, 'the strip reads the frozen snapshot');
+  assert.match(strip, /if \(!snapshot \|\| snapshot\.items\.length === 0\) return null;/, 'no confirmed week renders nothing at all');
+  assert.match(strip, /resolveCommitmentItem\(current, itemId, done \? 'completed' : 'open'\)/, 'ticking an item only moves its resolution');
+  assert.match(strip, /trackProductEvent\('weekly_commitment_resolved'\)/, 'resolving from the strip is instrumented');
+
+  assert.ok(
+    !/buildWeeklyCommitmentSnapshot|buildNextWeekPriorities/.test(strip),
+    'the strip never builds or re-ranks commitments - it only displays the frozen one',
+  );
+  assert.ok(
+    !/<input[^>]*type="text"/.test(strip),
+    'the strip offers no text entry: labels are frozen at confirm time',
+  );
+
+  [
+    ['../src/features/dashboard/DashboardPage.tsx', 'Today'],
+    ['../src/features/dashboard/MasterDashboardPage.tsx', 'Dashboard'],
+  ].forEach(([path, surface]) => {
+    const page = readFileSync(new URL(path, import.meta.url), 'utf8');
+    assert.match(page, /<CommittedWeekStrip/, `${surface} renders the committed-week strip`);
+    assert.match(page, /sampleDataActive=\{sampleDataActive\}/, `${surface} passes the data mode through to the strip`);
+  });
 }
 
 console.log('Weekly commitment snapshot contract verified.');

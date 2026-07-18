@@ -26,6 +26,10 @@ import {
   type PipelineDefenseBriefStore,
 } from './pipelineDefenseStorage';
 
+import { WEEKLY_COMMITMENT_STORAGE_KEY } from '../services/weeklyCommitmentStore';
+import type { WeeklyCommitmentSnapshot } from './weeklyCommitment';
+import { getCurrentPipelineReviewWeekId } from './pipelineReviewHabit';
+
 export const SAMPLE_DATA_FLAG_KEY = 'memoire.sampleData.loaded';
 export const SAMPLE_DATA_NAMESPACE = 'demo';
 export const SAMPLE_DATA_UPDATED_EVENT = 'memoire:sample-data-updated';
@@ -54,6 +58,7 @@ const SAMPLE_ARRAY_STORAGE_KEYS = [
   SALES_ASSET_STORAGE_KEY,
   QUOTE_STORAGE_KEY,
   EXPENSE_STORAGE_KEY,
+  WEEKLY_COMMITMENT_STORAGE_KEY,
 ];
 
 type SampleRecord = {
@@ -77,6 +82,7 @@ export type SampleDataset = {
   quotes: QuoteRecord[];
   expenses: ExpenseRecord[];
   briefs: PipelineDefenseBrief[];
+  weeklyCommitments: WeeklyCommitmentSnapshot[];
 };
 
 export function isSampleDataLoaded() {
@@ -123,6 +129,7 @@ export function loadSampleDataset(): SampleDataset {
   writeLocalArray(SALES_ASSET_STORAGE_KEY, dataset.salesAssets);
   writeLocalArray(QUOTE_STORAGE_KEY, dataset.quotes);
   writeLocalArray(EXPENSE_STORAGE_KEY, dataset.expenses);
+  writeLocalArray(WEEKLY_COMMITMENT_STORAGE_KEY, dataset.weeklyCommitments);
   writeLocalBriefs(dataset.briefs);
   markSampleDataLoaded();
   invalidateWorkspaceDataCache();
@@ -151,6 +158,7 @@ export function clearSampleDataset() {
   removeSampleRecords(SALES_ASSET_STORAGE_KEY);
   removeSampleRecords(QUOTE_STORAGE_KEY);
   removeSampleRecords(EXPENSE_STORAGE_KEY);
+  removeSampleRecords(WEEKLY_COMMITMENT_STORAGE_KEY);
   removeSampleBriefs();
   clearDemoJourneyCompletion();
   clearDailyExecutionState('demo');
@@ -1079,6 +1087,68 @@ export function buildSampleDataset(): SampleDataset {
     quotes,
     expenses,
     briefs: [markSampleBrief(brief)],
+    weeklyCommitments: [buildSampleWeeklyCommitment(now)],
+  };
+}
+
+/**
+ * A week already confirmed, caught mid-flight: one done, one still open, one
+ * carried over from the week before. Without it the demo shows the commitment
+ * being made and reviewed but never the part in between, which is where the
+ * loop actually lives.
+ */
+function buildSampleWeeklyCommitment(now: Date): WeeklyCommitmentSnapshot {
+  const weekId = getCurrentPipelineReviewWeekId(now);
+  const periodEnd = toDateKey(addDays(new Date(`${weekId}T00:00:00`), 6));
+  const confirmedAt = new Date(`${weekId}T09:00:00`).toISOString();
+
+  return {
+    id: 'demo-weekly-commitment-current',
+    weekId,
+    periodStart: weekId,
+    periodEnd,
+    confirmedAt,
+    createdAt: confirmedAt,
+    updatedAt: confirmedAt,
+    items: [
+      {
+        id: 'demo-commitment-apex',
+        label: 'Send Apex Labs the revised quote and procurement checklist',
+        detail: 'Negotiation stalls without the checklist; procurement owner is confirmed.',
+        source: 'suggested',
+        suggestionId: 'demo-priority-apex',
+        suggestionReason: 'Largest open deal with a next action due this week.',
+        editedFromSuggestion: false,
+        linkedAccountName: 'Apex Labs',
+        resolution: 'completed',
+        resolvedAt: new Date(`${weekId}T15:30:00`).toISOString(),
+      },
+      {
+        id: 'demo-commitment-northstar',
+        label: 'Get Northstar Foods to name the PO issue date',
+        detail: 'Quote accepted, but no date means no forecast.',
+        source: 'suggested',
+        suggestionId: 'demo-priority-northstar',
+        suggestionReason: 'Accepted quote with no payment date recorded.',
+        editedFromSuggestion: false,
+        linkedAccountName: 'Northstar Foods',
+        resolution: 'open',
+      },
+      {
+        id: 'demo-commitment-orion',
+        label: 'Re-open the Orion Pharma validation thread',
+        detail: 'Quiet for over two weeks after the technical review.',
+        source: 'user-added',
+        editedFromSuggestion: false,
+        linkedAccountName: 'Orion Pharma',
+        resolution: 'open',
+      },
+    ],
+    suggestedButRejected: [
+      { suggestionId: 'demo-priority-summit', label: 'Chase Summit Diagnostics on the pilot scope' },
+    ],
+    source: SAMPLE_DATA_NAMESPACE as 'demo',
+    isSample: true,
   };
 }
 
