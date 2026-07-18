@@ -166,11 +166,21 @@ for (const marker of ['buildCommercialJourneySnapshot', 'Where this deal stands'
   assert.ok(ledger.includes(marker), `Activity Ledger missing journey marker: ${marker}`);
 }
 
-// 8. UI contract: the Journey page's deal cards read the same journey model
-// (position, money, risk, next commitment), lens-aware for solo naming.
-const journeyPage = readFileSync(new URL('../src/features/v31/JourneyPage.tsx', import.meta.url), 'utf8');
-for (const marker of ['buildCommercialJourneySnapshot', 'formatJourneyCommitment', 'snapshot.soloPosition', 'snapshot?.moneyStatus', 'snapshot?.riskStatus', 'getWorkspaceLens']) {
-  assert.ok(journeyPage.includes(marker), `Journey page missing journey marker: ${marker}`);
+// 8. The journey read-model still has a home at the deal level. The standalone
+// Journey page was removed on 2026-07-18 - it was the last surface on the
+// superseded v31 data layer, reachable only from legacy onboarding and a page
+// that was itself dead code. What mattered about it was never the page: it was
+// that a deal states its position, money, risk, and next commitment from the
+// one journey model. The deal drawer carries that, so the contract follows it
+// there rather than protecting a route nobody could reach.
+const dealDrawer = readFileSync(new URL('../src/features/opportunities/OpportunitiesPage.tsx', import.meta.url), 'utf8');
+for (const marker of ['buildCommercialJourneySnapshot', 'formatJourneyCommitment', 'moneyStatus', 'riskStatus']) {
+  assert.ok(dealDrawer.includes(marker), `Deal drawer missing journey marker: ${marker}`);
 }
+
+// The removed page must stay removed, and its route must land somewhere real.
+const appRoutes = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
+assert.ok(!appRoutes.includes('JourneyPage'), 'the v31 Journey page is not routed');
+assert.match(appRoutes, /path="journey" element={<Navigate to="\/app\/accounts" replace \/>}/, 'the journey route redirects rather than 404s');
 
 console.log('Commercial journey read-model contract verified.');

@@ -43,11 +43,15 @@ decision behind it; contracts updated in the same commit
   Plan and Dashboard move to the top of a "Steer" grouping with Business
   Review (or equivalent naming that survives a 5-second read). Nav guards
   updated deliberately in the same commit, per the standing pattern.
-- **P2. Execute the orphan decisions** from roadmap A3 (fold Quotes into
-  Money, Journey into Accounts, audit-then-fold Operating System; 301 the
-  routes). Every page left standing is in the nav; every nav item answers a
-  distinct question. Exit criterion: a new user can say what each nav item is
-  for from its label alone.
+- **P2. Execute the corrected orphan decisions** from roadmap A3. The audit
+  reversed two of the three folds: Quotes and Operating System are the only
+  CRUD surfaces for quotes and initiatives and stay exactly where they are;
+  only Journey folds. So P2 is **not** a deletion pass — it is an
+  *orientation* pass. A contextual detail-surface (Quotes, Operating System,
+  a review pack, a shared brief) must say where it sits: an active parent
+  section in the nav, and a header that names the surface that sent you
+  there. Exit criterion: landing on any page, a user can say what it is for
+  and which part of the app it belongs to, without using the back button.
 - **P3. Page-title/one-voice header contract.** Every page opens with the
   same header anatomy: what this page answers, the one primary action, and
   nothing else above the fold that isn't action or state.

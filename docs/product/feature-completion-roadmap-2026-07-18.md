@@ -48,18 +48,37 @@ panels, and that the derived rates (acceptance, return, completion,
 carry-over) are computable from what is emitted. This is the data the Phase-C
 gate reads — if it isn't firing, the gate can never open.
 
-**A3. Orphan-surface decisions** (decision now, execution in the polish
-pass):
-- **Quotes** (`/app/quotes`): fold into Money as a tab/section — quotes are a
-  money-flow lane already; a second standalone money surface violates
-  one-voice. Route 301s to `/app/revenue`.
-- **Journey** (`/app/journey`): its account-timeline value belongs inside the
-  Accounts drawer; fold and 301 to `/app/accounts`.
-- **Operating System** (`/app/operating-system`): overlaps Plan + Business
-  Review; keep only if it renders something neither does (audit first),
-  else 301 to `/app/plan`.
+**A3. Orphan-surface decisions.** ~~Fold all three.~~ **The audit (run
+2026-07-18, before touching anything) reversed two of the three proposed
+folds.** The proposal was made from the nav map; the code says otherwise:
+
+- **Quotes** (`/app/quotes`): **KEEP as-is.** It is the *only* quote
+  create/edit surface, and nine contextual links point at it from Money,
+  Accounts, Opportunities, Pipeline Defense, Reviews, and Dashboard —
+  including Money's own "Create quote" button. A 301 to `/app/revenue`
+  would have deleted the only way to create a quote and broken the
+  money-spine (deal → quote → PO → delivery → payment) in nine places.
+- **Operating System** (`/app/operating-system`): **KEEP as-is.** Same
+  shape: it is the only initiative (`OperatingContextRecord`) CRUD surface,
+  and five read-surfaces depend on that data — proactive nudges, Today's
+  "which initiative is stuck", the weekly business review, next-week
+  priorities, and the command center. Reached contextually from Today's
+  cockpit and the review's "Open initiatives".
+- **Journey** (`/app/journey`): **fold, as proposed.** This one is the real
+  legacy orphan — built on the superseded `types/v31` + `useAuth` layer, and
+  reachable only from the legacy onboarding modal and `AccountMemoryPage`,
+  which is itself **dead code** (imported by nothing, routed nowhere).
+  301 to `/app/accounts`; delete `AccountMemoryPage`.
 - Keep `/app/calendar` and `/app/weekly-brief` as silent aliases (cheap,
   breaks nothing).
+
+**The generalisable finding:** "routed but not in nav" is not the same as
+"orphan". Quotes and Operating System are *contextual detail-surfaces* —
+reached from the surface that raises the need, which is a legitimate
+pattern and the reason nav stays short. The genuine defect is orientation:
+landing on one shows no active nav section, so the user cannot place
+themselves in the map. That is a polish-pass problem (P2/P3), not a
+deletion problem. Only Journey fails on existence.
 
 **A4. Operator configuration (not code, blocks real users):** fix
 `VITE_APP_URL` to the owned host + redeploy; choose the digest email service.

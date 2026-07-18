@@ -309,7 +309,7 @@ export function OnboardingModal() {
     setWorkflow((current) => ({ ...current, active: false, completed: true }));
   }
 
-  function finish(destination: '/app/today' | '/app/journey' = '/app/today') {
+  function finish(destination: '/app/today' | '/app/accounts' = '/app/today') {
     sessionStorage.setItem(sessionKey, 'true');
     writePreference(storageKey, {
       ...preference,
@@ -400,10 +400,6 @@ export function OnboardingModal() {
           if (accountId) query.set('accountId', accountId);
           navigate(`/app/accounts?${query.toString()}`);
         }
-        return;
-      case 'journey':
-        navigate('/app/journey');
-        goNext();
         return;
       case 'finish':
         finish('/app/today');
@@ -582,10 +578,10 @@ export function OnboardingModal() {
           {currentStep.step === 'finish' && (
             <button
               type="button"
-              onClick={() => finish('/app/journey')}
+              onClick={() => finish('/app/accounts')}
               className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-bold text-brand-blue hover:border-brand-blue/40"
             >
-              Explore Journey
+              Explore accounts
             </button>
           )}
           <button

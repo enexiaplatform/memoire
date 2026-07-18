@@ -58,7 +58,6 @@ const SalesReviewsPage = lazy(() =>
 const SalesPlaybookPage = lazy(() =>
   import('./features/playbook/SalesPlaybookPage').then((module) => ({ default: module.SalesPlaybookPage })),
 );
-const JourneyPage = lazy(() => import('./features/v31/JourneyPage').then((module) => ({ default: module.JourneyPage })));
 const AccountsPage = lazy(() => import('./features/accounts/AccountsPage').then((module) => ({ default: module.AccountsPage })));
 const StakeholdersPage = lazy(() => import('./features/stakeholders/StakeholdersPage').then((module) => ({ default: module.StakeholdersPage })));
 const ObjectionsPage = lazy(() => import('./features/objections/ObjectionsPage').then((module) => ({ default: module.ObjectionsPage })));
@@ -129,7 +128,6 @@ function App() {
             <Route path="reviews" element={<SalesReviewsPage />} />
             <Route path="playbook" element={<SalesPlaybookPage />} />
             <Route path="assets" element={<SalesAssetsPage />} />
-            <Route path="journey" element={<JourneyPage />} />
             <Route path="accounts" element={<AccountsPage />} />
             <Route path="accounts/:accountId" element={<LegacyAccountRouteRedirect />} />
             <Route path="opportunities" element={<OpportunitiesPage />} />
@@ -147,6 +145,9 @@ function App() {
             <Route path="settings" element={<SettingsPage />} />
 
             {/* Legacy V0 routes, downgraded out of the primary V1 surface. */}
+            {/* Journey was the last surface still on the superseded v31 data
+                layer; the account timeline it showed now lives in Accounts. */}
+            <Route path="journey" element={<Navigate to="/app/accounts" replace />} />
             <Route path="history" element={<Navigate to="/app/today" replace />} />
             <Route path="entities" element={<Navigate to="/app/accounts" replace />} />
             <Route path="entities/:entityId" element={<Navigate to="/app/accounts" replace />} />
