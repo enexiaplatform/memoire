@@ -29,6 +29,16 @@ export type NextWeekPriority = {
   label: string;
   detail: string;
   href: string;
+  /**
+   * Which signal produced this suggestion. Carried so that a commitment frozen
+   * from it can still explain itself weeks later, when the underlying state has
+   * moved on.
+   */
+  reason: string;
+  /** Entity binding, so a commitment can be reconciled against captured work. */
+  linkedOpportunityId?: string;
+  linkedContextId?: string;
+  linkedAccountName?: string;
 };
 
 // Re-exported for existing consumers; the canonical read-model now lives in
@@ -240,6 +250,8 @@ function buildNextWeekPriorities(
       label: `Unstick the money: ${topStuckMoney.accountName} / ${topStuckMoney.label}`,
       detail: `${topStuckMoney.stuckReason}. ${topStuckMoney.nextAction}`,
       href: '/app/revenue',
+      reason: `Money-flow: this thread is stuck (${topStuckMoney.stuckReason}).`,
+      linkedAccountName: topStuckMoney.accountName,
     });
   }
 
@@ -252,6 +264,9 @@ function buildNextWeekPriorities(
       label: `Carry-over follow-up: ${opportunity.accountName} / ${opportunity.opportunityName}`,
       detail: opportunity.nextAction || 'Next action date has passed - do it or reschedule it.',
       href: '/app/opportunities',
+      reason: `Next action dated ${formatSafeBusinessDate(opportunity.nextActionDate)} has passed with no captured touch.`,
+      linkedOpportunityId: opportunity.id,
+      linkedAccountName: opportunity.accountName,
     });
   });
 
@@ -266,6 +281,9 @@ function buildNextWeekPriorities(
       label: `Scheduled: ${opportunity.accountName} / ${opportunity.opportunityName}`,
       detail: `${opportunity.nextAction || 'Next action'} - ${formatSafeBusinessDate(opportunity.nextActionDate)}`,
       href: '/app/opportunities',
+      reason: `You already booked this for ${formatSafeBusinessDate(opportunity.nextActionDate)}.`,
+      linkedOpportunityId: opportunity.id,
+      linkedAccountName: opportunity.accountName,
     });
   });
 
@@ -276,6 +294,8 @@ function buildNextWeekPriorities(
       label: `Restart the initiative: ${topStalled.title}`,
       detail: topStalled.nextAction,
       href: '/app/operating-system',
+      reason: topStalled.reason,
+      linkedContextId: topStalled.id,
     });
   }
 
@@ -296,6 +316,8 @@ function buildNextWeekPriorities(
         ? 'This customer paid, and no touch has been captured since.'
         : `Paid, and quiet for ${coldestRetention.daysQuiet}d - a check-in keeps the next order alive.`,
       href: '/app/capture',
+      reason: 'Retention: this customer paid and has gone quiet since.',
+      linkedAccountName: coldestRetention.accountName,
     });
   }
 

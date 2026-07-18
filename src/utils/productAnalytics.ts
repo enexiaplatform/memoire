@@ -25,7 +25,14 @@ export type ProductFunnelEvent =
   | 'follow_up_brief_copied'
   | 'master_dashboard_opened'
   | 'master_dashboard_exported'
-  | 'daily_digest_copied';
+  | 'daily_digest_copied'
+  // The weekly commitment loop: shown -> confirmed -> edited -> returned to.
+  // Without all four, acceptance and return rates are unmeasurable, and the
+  // stop conditions for further planning work cannot be evaluated.
+  | 'weekly_commitment_confirmed'
+  | 'weekly_commitment_edited'
+  | 'weekly_commitment_resolved'
+  | 'weekly_commitment_reconciliation_viewed';
 
 export type AnalyticsDataMode = 'demo-local' | 'cloud-browser' | 'browser-only' | 'sync-issue' | 'unknown';
 

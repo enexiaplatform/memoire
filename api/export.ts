@@ -32,6 +32,7 @@ export const exportTables = [
   { table: 'review_packs', ownerColumn: 'user_id' },
   { table: 'sales_assets', ownerColumn: 'user_id' },
   { table: 'action_outcomes', ownerColumn: 'user_id' },
+  { table: 'weekly_commitments', ownerColumn: 'user_id' },
   { table: 'deals', ownerColumn: 'user_id' },
   { table: 'captures', ownerColumn: 'user_id' },
   { table: 'entities', ownerColumn: 'user_id' },

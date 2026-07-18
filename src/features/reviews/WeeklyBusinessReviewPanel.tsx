@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Banknote, Copy, Flag, Trophy } from 'lucide-react';
 import type { WeeklyBusinessReview } from '../../utils/weeklyBusinessReview';
@@ -13,6 +14,7 @@ export function WeeklyBusinessReviewPanel({
   onCopyLearningBrief,
   onCopyRevenueRiskBrief,
   onCopyFollowUpBrief,
+  commitmentSlot,
 }: {
   review: WeeklyBusinessReview;
   periodLabel: string;
@@ -20,6 +22,11 @@ export function WeeklyBusinessReviewPanel({
   onCopyLearningBrief?: () => void;
   onCopyRevenueRiskBrief?: () => void;
   onCopyFollowUpBrief?: () => void;
+  /**
+   * Replaces the read-only priority list with the commitment picker. Passed in
+   * rather than rendered here so this panel stays a pure view of derived state.
+   */
+  commitmentSlot?: ReactNode;
 }) {
   const activeLanes = review.moneyFlow.lanes.filter((lane) => lane.threads > 0);
   const briefButtons = [
@@ -56,7 +63,7 @@ export function WeeklyBusinessReviewPanel({
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
-        {orderReviewSectionsForLens(reviewSections(review, activeLanes), getWorkspaceLens()).map((section) => (
+        {orderReviewSectionsForLens(reviewSections(review, activeLanes, commitmentSlot), getWorkspaceLens()).map((section) => (
           <div key={section.id} className="contents">{section.node}</div>
         ))}
       </div>
@@ -69,7 +76,11 @@ export function WeeklyBusinessReviewPanel({
  * re-weight emphasis (direction 7.7). Reorder-only: every section always
  * renders; the lens never adds or hides one.
  */
-function reviewSections(review: WeeklyBusinessReview, activeLanes: WeeklyBusinessReview['moneyFlow']['lanes']) {
+function reviewSections(
+  review: WeeklyBusinessReview,
+  activeLanes: WeeklyBusinessReview['moneyFlow']['lanes'],
+  commitmentSlot?: ReactNode,
+) {
   return [
     {
       id: 'money',
@@ -235,7 +246,7 @@ function reviewSections(review: WeeklyBusinessReview, activeLanes: WeeklyBusines
       node: (
         <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
           <h3 className="text-sm font-bold text-navy">Next week's priorities</h3>
-          {review.nextWeekPriorities.length === 0 ? (
+          {commitmentSlot ? <div className="mt-3">{commitmentSlot}</div> : review.nextWeekPriorities.length === 0 ? (
             <p className="mt-3 text-sm text-gray-500">Nothing scheduled yet. Book the next touches before closing this review.</p>
           ) : (
             <ol className="mt-3 space-y-1.5 text-xs leading-5">

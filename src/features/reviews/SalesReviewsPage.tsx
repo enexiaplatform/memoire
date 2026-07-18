@@ -12,6 +12,7 @@ import {
 } from '../../services/salesActivityStore';
 import { FollowUpImpactPanel } from '../dashboard/FollowUpImpactPanel';
 import { WeeklyBusinessReviewPanel } from './WeeklyBusinessReviewPanel';
+import { WeeklyCommitmentPanel } from './WeeklyCommitmentPanel';
 import { buildWeeklyBusinessReview } from '../../utils/weeklyBusinessReview';
 import { generateCommercialLearningBriefMarkdown } from '../../utils/commercialLearningBrief';
 import { generateRevenueRiskBriefMarkdown } from '../../utils/revenueRiskBrief';
@@ -432,6 +433,14 @@ export function SalesReviewsPage() {
             setLearningBriefMessage('Clipboard unavailable - brief could not be copied.');
           }
         }}
+        commitmentSlot={(
+          <WeeklyCommitmentPanel
+            suggestions={weeklyBusinessReview.nextWeekPriorities}
+            activities={activities}
+            userId={dataUserId}
+            sampleDataActive={sampleDataActive}
+          />
+        )}
       />
 
       <FollowUpImpactPanel impact={periodFollowUpImpact} periodLabel={period.label} />
