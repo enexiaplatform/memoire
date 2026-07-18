@@ -34,6 +34,17 @@ import {
   type AccountCandidate,
   type AccountMemory,
 } from '../../utils/accountMemory';
+import { findDuplicateAccountGroups, type DuplicateGroup } from '../../utils/accountDuplicates';
+import { accountKey } from '../../utils/accountIdentity';
+import {
+  alternateNamesFor,
+  deleteAccountMerge,
+  dismissedPairKeys,
+  loadAccountMergesForWorkspace,
+  mergedAwayNames,
+  saveAccountMerge,
+  type AccountMergeRecord,
+} from '../../services/accountMergeStore';
 import { getStakeholdersForAccount } from '../../utils/stakeholderGraph';
 import { getObjectionsForAccount, objectionStatusTone } from '../../utils/objectionLedger';
 import {
@@ -116,8 +127,17 @@ export function AccountsPage() {
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [message, setMessage] = useState('');
   const [followUpContext, setFollowUpContext] = useState<FollowUpContext | null>(null);
+  const [accountMerges, setAccountMerges] = useState<AccountMergeRecord[]>([]);
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
+
+  useEffect(() => {
+    let active = true;
+    void loadAccountMergesForWorkspace(dataUserId, sampleDataActive).then((records) => {
+      if (active) setAccountMerges(records);
+    });
+    return () => { active = false; };
+  }, [dataUserId, sampleDataActive]);
 
   useEffect(() => {
     setHygienePreferences(loadAccountHygienePreferences(user?.id));
@@ -151,9 +171,31 @@ export function AccountsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataUserId]);
 
+  // A merged-away account keeps its record - the merge is reversible precisely
+  // because nothing was deleted - but it stops occupying a row of its own, and
+  // its deals and activities are counted under the survivor instead.
+  const mergedAway = useMemo(() => new Set(mergedAwayNames(accountMerges).map(accountKey)), [accountMerges]);
+  const visibleAccounts = useMemo(
+    () => accounts.filter((account) => !mergedAway.has(accountKey(account.accountName))),
+    [accounts, mergedAway],
+  );
+
   const memories = useMemo(() => {
-    return accounts.map((account) => buildAccountMemory(account, opportunities, activities));
-  }, [accounts, activities, opportunities]);
+    return visibleAccounts.map((account) => buildAccountMemory(
+      account,
+      opportunities,
+      activities,
+      alternateNamesFor(account.accountName, accountMerges),
+    ));
+  }, [accountMerges, activities, opportunities, visibleAccounts]);
+
+  const duplicateGroups = useMemo(() => findDuplicateAccountGroups({
+    accounts: visibleAccounts.map((account) => ({ id: account.id, accountName: account.accountName })),
+    opportunities,
+    activities,
+    resolvedNames: mergedAwayNames(accountMerges),
+    dismissedPairs: dismissedPairKeys(accountMerges),
+  }), [accountMerges, activities, opportunities, visibleAccounts]);
 
   const candidates = useMemo(() => {
     return mergeAccountCandidates(
@@ -162,6 +204,46 @@ export function AccountsPage() {
       accounts,
     );
   }, [accounts, activities, opportunities]);
+
+  const handleMergeAccounts = (group: DuplicateGroup, survivorName: string) => {
+    const mergedNames = group.members
+      .map((member) => member.accountName)
+      .filter((name) => accountKey(name) !== accountKey(survivorName));
+    if (mergedNames.length === 0) return;
+
+    const now = new Date().toISOString();
+    setAccountMerges(saveAccountMerge({
+      id: `account-merge-${accountKey(survivorName)}-${Date.now()}`,
+      kind: 'merge',
+      canonicalAccountName: survivorName,
+      mergedNames,
+      createdAt: now,
+      updatedAt: now,
+      source: sampleDataActive ? 'demo' : 'user',
+      isSample: sampleDataActive,
+    }));
+    setMessage(`Merged into ${survivorName}. Nothing was deleted - undo it below if this was wrong.`);
+  };
+
+  const handleDismissDuplicate = (group: DuplicateGroup) => {
+    const now = new Date().toISOString();
+    setAccountMerges(saveAccountMerge({
+      id: `account-dismissal-${group.key}-${Date.now()}`,
+      kind: 'dismissal',
+      canonicalAccountName: '',
+      mergedNames: [],
+      pairKey: group.key,
+      createdAt: now,
+      updatedAt: now,
+      source: sampleDataActive ? 'demo' : 'user',
+      isSample: sampleDataActive,
+    }));
+  };
+
+  const handleUndoMerge = (recordId: string) => {
+    setAccountMerges(deleteAccountMerge(recordId));
+    setMessage('Merge undone.');
+  };
 
   const segments = useMemo(() => {
     return [allFilter, ...Array.from(new Set(accounts.map((account) => account.segment).filter(Boolean))).sort()];
@@ -230,7 +312,9 @@ export function AccountsPage() {
   }, [page, pageCount]);
 
   const selectedAccount = accounts.find((account) => account.id === selectedAccountId) || null;
-  const selectedMemory = selectedAccount ? buildAccountMemory(selectedAccount, opportunities, activities) : null;
+  const selectedMemory = selectedAccount
+    ? buildAccountMemory(selectedAccount, opportunities, activities, alternateNamesFor(selectedAccount.accountName, accountMerges))
+    : null;
   const selectedQuotes = selectedAccount
     ? quotes.filter((quote) => sameName(quote.accountName, selectedAccount.accountName))
     : [];
@@ -328,7 +412,7 @@ export function AccountsPage() {
     if (!account) return;
 
     openEditPanel(account, false);
-    openFollowUpComposer(buildAccountMemory(account, opportunities, activities));
+    openFollowUpComposer(buildAccountMemory(account, opportunities, activities, alternateNamesFor(account.accountName, accountMerges)));
     setSearchParams({ accountId: account.id }, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accounts, activities, opportunities, searchParams, setSearchParams, stakeholders]);
@@ -462,6 +546,18 @@ export function AccountsPage() {
       {!loading && <AccountMemorySummary summary={summary} />}
 
       <section className="space-y-5">
+        {!loading && duplicateGroups.length > 0 && (
+          <DuplicateAccountsSection
+            groups={duplicateGroups}
+            onMerge={handleMergeAccounts}
+            onDismiss={handleDismissDuplicate}
+          />
+        )}
+
+        {!loading && accountMerges.some((record) => record.kind === 'merge') && (
+          <MergedAccountsNote merges={accountMerges.filter((record) => record.kind === 'merge')} onUndo={handleUndoMerge} />
+        )}
+
         {candidates.length > 0 && (
           <CandidateSection candidates={candidates} onCreate={handleCreateCandidate} />
         )}
@@ -1573,6 +1669,100 @@ function AccountQuotesSection({ accountName, quotes }: { accountName: string; qu
           Create a quote when this account moves from opportunity to commercial follow-up.
         </p>
       )}
+    </section>
+  );
+}
+
+/**
+ * Proposes; never merges on its own. Each row carries the deals and activities
+ * at stake and the rule that fired, so keeping two records apart is as easy as
+ * joining them - and refusing once means never being asked again.
+ */
+function DuplicateAccountsSection({
+  groups,
+  onMerge,
+  onDismiss,
+}: {
+  groups: DuplicateGroup[];
+  onMerge: (group: DuplicateGroup, survivorName: string) => void;
+  onDismiss: (group: DuplicateGroup) => void;
+}) {
+  return (
+    <section className="rounded-lg border border-amber-200 bg-amber-50/50 p-5 shadow-sm">
+      <h2 className="text-base font-bold text-navy">These look like the same account</h2>
+      <p className="mt-1 text-sm text-gray-600">
+        Split records split the memory. Merging keeps every deal and activity exactly where it is -
+        it only records that these names are one account, so it can be undone.
+      </p>
+
+      <ul className="mt-4 space-y-3">
+        {groups.map((group) => (
+          <li key={group.key} className="rounded-lg border border-amber-100 bg-white p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                group.confidence === 'certain' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'
+              }`}
+              >
+                {group.confidence === 'certain' ? 'Almost certainly one' : 'Possibly one'}
+              </span>
+              <span className="text-xs text-gray-500">{group.reason}</span>
+            </div>
+
+            <ul className="mt-3 space-y-2">
+              {group.members.map((member) => (
+                <li key={member.accountId} className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-2 first:border-t-0 first:pt-0">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-gray-900">{member.accountName}</p>
+                    <p className="text-xs text-gray-500">
+                      {member.opportunityCount} deal{member.opportunityCount === 1 ? '' : 's'}
+                      {' · '}
+                      {member.activityCount} activit{member.activityCount === 1 ? 'y' : 'ies'}
+                      {member.lastTouchDate ? ` · last touch ${formatSafeBusinessDate(member.lastTouchDate)}` : ' · never touched'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onMerge(group, member.accountName)}
+                    className="shrink-0 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-navy hover:bg-gray-50"
+                  >
+                    Keep this name
+                  </button>
+                </li>
+              ))}
+            </ul>
+
+            <button
+              type="button"
+              onClick={() => onDismiss(group)}
+              className="mt-3 text-xs font-bold text-gray-500 hover:underline"
+            >
+              They are different companies
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function MergedAccountsNote({ merges, onUndo }: { merges: AccountMergeRecord[]; onUndo: (recordId: string) => void }) {
+  return (
+    <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <h2 className="text-sm font-bold text-navy">Merged accounts</h2>
+      <ul className="mt-2 space-y-1.5 text-xs leading-5">
+        {merges.map((record) => (
+          <li key={record.id} className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-gray-600">
+              <span className="font-bold text-gray-900">{record.canonicalAccountName}</span>
+              {' also answers to '}
+              {record.mergedNames.join(', ')}
+            </span>
+            <button type="button" onClick={() => onUndo(record.id)} className="shrink-0 font-bold text-brand-blue hover:underline">
+              Undo
+            </button>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

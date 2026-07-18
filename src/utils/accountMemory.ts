@@ -34,18 +34,29 @@ export type AccountMemory = {
 export function buildAccountMemory(
   account: AccountMemoryRecord,
   opportunities: CrmLiteOpportunity[],
-  activities: SalesActivityRecord[]
+  activities: SalesActivityRecord[],
+  /**
+   * Names the user merged into this account. Deals and activities keep the name
+   * they were captured under - a merge is a decision, not a rewrite - so this is
+   * how that decision reaches the numbers.
+   */
+  alternateNames: string[] = [],
 ): AccountMemory {
   // Match on the shared canonical key (diacritic- and punctuation-insensitive),
   // so a deal on "VNVC" and this "VNVC." account are the same account. Exact
   // lowercase+trim equality here is what reported 0 active opportunities while
   // the deals were visible one screen over.
-  const accountOpportunities = opportunities.filter((opportunity) => sameAccount(opportunity.accountName, account.accountName));
+  const answersTo = (name?: string) => (
+    sameAccount(name || '', account.accountName)
+    || alternateNames.some((alternate) => sameAccount(name || '', alternate))
+  );
+
+  const accountOpportunities = opportunities.filter((opportunity) => answersTo(opportunity.accountName));
   const linkedActivities = activities.filter((activity) =>
-    activity.linkStatus === 'Linked' && sameAccount(activity.linkedAccountName || activity.accountName, account.accountName)
+    activity.linkStatus === 'Linked' && answersTo(activity.linkedAccountName || activity.accountName)
   );
   const matchingActivities = activities.filter((activity) =>
-    activity.linkStatus !== 'Linked' && sameAccount(activity.accountName, account.accountName)
+    activity.linkStatus !== 'Linked' && answersTo(activity.accountName)
   );
   const allActivities = [...linkedActivities, ...matchingActivities];
   const openNextActions = uniqueClean([
