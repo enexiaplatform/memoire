@@ -163,10 +163,12 @@ for (const marker of [
 }
 
 for (const [file, marker] of [
-  ['src/features/v31/AskMemoirePage.tsx', 'Ask endpoint unavailable - showing a local rule-based answer.'],
-  ['src/features/v31/AskMemoirePage.tsx', 'Ask Memoire could not reach the configured endpoint. Local rules are still available.'],
-  ['src/features/dailyCapture/DailyCapturePage.tsx', 'AI unavailable — using local fallback. Please review before saving.'],
-  ['src/features/dailyCapture/DailyCapturePage.tsx', "setAiState('error')"],
+  // The app no longer calls any AI service: answers and capture parsing are
+  // rule-based on-device, so the honest-state markers assert that, not a fallback.
+  ['src/features/v31/AskMemoirePage.tsx', 'Answered from your workspace using rules - nothing was sent to an AI service.'],
+  ['src/features/v31/AskMemoirePage.tsx', 'Ask Memoire could not build an answer from the current workspace.'],
+  ['src/features/dailyCapture/DailyCapturePage.tsx', 'On-device parsing'],
+  ['src/features/dailyCapture/DailyCapturePage.tsx', 'nothing is sent to an AI service'],
 ]) {
   requireIncludes(read(file), marker, `${file} missing AI failure fallback marker: ${marker}`);
 }

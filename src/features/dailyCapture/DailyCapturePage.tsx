@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertTriangle, Bot, CalendarDays, Clipboard, Copy, Loader2, Mail, Mic, MicOff, NotebookPen, Save, Sparkles, Trash2 } from 'lucide-react';
+import { Bot, CalendarDays, Clipboard, Copy, Loader2, Mail, Mic, MicOff, NotebookPen, Save, Trash2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { useSpeechDictation } from '../../hooks/useSpeechDictation';
 import { DataModePill } from '../../components/common/DataModePill';
@@ -19,7 +19,6 @@ import { type AccountMemoryRecord } from '../../services/accountStore';
 import { createStakeholder, type StakeholderRecord } from '../../services/stakeholderStore';
 import { createObjection, type ObjectionRecord } from '../../services/objectionStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
-import { getActiveCaptureAiProvider, type CaptureAiSuggestion } from '../../services/captureAiProvider';
 import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
 import { applyOpportunityUpdateSuggestion, suggestOpportunityLinks, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 import { deriveStakeholderCandidateFromCapture } from '../../utils/stakeholderGraph';
@@ -51,8 +50,6 @@ import {
 } from '../../services/captureCorrectionMemoryStore';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
-type AiState = 'idle' | 'loading' | 'ready' | 'error';
-type ParseSource = 'local' | 'ai';
 type CaptureMode = 'note' | 'quick' | 'email';
 type QuickInteractionType =
   | 'Customer meeting'
@@ -276,32 +273,20 @@ export function DailyCapturePage() {
   const [lastSavedActivity, setLastSavedActivity] = useState<SalesActivityRecord | null>(null);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [saveState, setSaveState] = useState<SaveState>('idle');
-  const [aiState, setAiState] = useState<AiState>('idle');
   const [message, setMessage] = useState('');
-  const [aiMessage, setAiMessage] = useState('');
-  const [aiSuggestion, setAiSuggestion] = useState<CaptureAiSuggestion | null>(null);
   const [structuredDraft, setStructuredDraft] = useState<ClassifiedSalesActivity | null>(null);
   const [originalParsedDraft, setOriginalParsedDraft] = useState<ClassifiedSalesActivity | null>(null);
   const [captureCorrections, setCaptureCorrections] = useState<CaptureCorrectionEvent[]>([]);
   const [accountAliases, setAccountAliases] = useState<CaptureAccountAlias[]>([]);
   const [newAlias, setNewAlias] = useState('');
   const [newAliasAccount, setNewAliasAccount] = useState('');
-  const [parseSource, setParseSource] = useState<ParseSource>('local');
-  const aiRequestVersion = useRef(0);
   const [copiedId, setCopiedId] = useState('');
-  const aiProvider = useMemo(() => getActiveCaptureAiProvider(), []);
-  const aiConfigured = aiProvider.isConfigured() && isAuthenticated;
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
   const resetNoteDerivedState = useCallback(() => {
-    aiRequestVersion.current += 1;
     setStructuredDraft(null);
     setOriginalParsedDraft(null);
-    setAiSuggestion(null);
-    setAiState('idle');
-    setParseSource('local');
-    setAiMessage('');
     setSaveState('idle');
     setMessage('');
   }, []);
@@ -371,81 +356,7 @@ export function DailyCapturePage() {
       : null;
   }, [accountAliases, accounts, activeActivityDate, activeCaptureText, activeSourceItem, captureCorrections, captureMode, opportunities]);
   const preview = structuredDraft || localPreview;
-  const needsConfirmation = parseSource === 'local' || aiSuggestion?.confidence === 'Low' || !preview?.accountName;
-
-  const runAiClassification = useCallback(async () => {
-    const note = activeCaptureText.trim();
-    if (!aiConfigured || note.length < 8 || !isValidBusinessDate(activeActivityDate)) {
-      setParseSource('local');
-      setAiState('error');
-      setAiMessage('AI unavailable — using local fallback. Please review before saving.');
-      return false;
-    }
-
-    const requestVersion = ++aiRequestVersion.current;
-    setAiState('loading');
-    setAiMessage('AI is parsing this note...');
-    try {
-      const suggestion = await aiProvider.classifyCapture({
-        rawNote: note,
-        activityDate: activeActivityDate,
-        opportunities: opportunities.map((opportunity) => ({
-          id: opportunity.id,
-          accountName: opportunity.accountName,
-          opportunityName: opportunity.opportunityName,
-          stage: opportunity.stage,
-          productOrSolution: opportunity.productOrSolution,
-        })),
-        accounts: accounts.map((account) => ({
-          id: account.id,
-          accountName: account.accountName,
-          segment: account.segment,
-          industry: account.industry,
-        })),
-        corrections: captureCorrections,
-        aliases: accountAliases,
-      });
-      if (requestVersion !== aiRequestVersion.current) return false;
-
-      setAiSuggestion(suggestion);
-      const parsedDraft = withCaptureSourceMetadata(
-        aiSuggestionToClassified(suggestion, note, activeActivityDate, 'ai'),
-        activeSourceItem,
-      );
-      setStructuredDraft(parsedDraft);
-      setOriginalParsedDraft(cloneClassifiedDraft(parsedDraft));
-      setParseSource('ai');
-      setAiState('ready');
-      setAiMessage(suggestion.confidence === 'Low'
-        ? 'AI parsed — needs confirmation. Review the fields before saving.'
-        : 'AI parsed. Review the fields before saving.');
-      return true;
-    } catch {
-      if (requestVersion !== aiRequestVersion.current) return false;
-      setAiSuggestion(null);
-      setStructuredDraft(null);
-      setOriginalParsedDraft(null);
-      setParseSource('local');
-      setAiState('error');
-      setAiMessage('AI unavailable — using local fallback. Please review before saving.');
-      return false;
-    }
-  }, [accountAliases, accounts, activeActivityDate, activeCaptureText, activeSourceItem, aiConfigured, aiProvider, captureCorrections, opportunities]);
-
-  useEffect(() => {
-    if ((captureMode !== 'note' && captureMode !== 'email') || activeCaptureText.trim().length < 8) return;
-    if (!aiConfigured) {
-      setParseSource('local');
-      setAiMessage('AI unavailable — using local fallback. Please review before saving.');
-      return;
-    }
-
-    const timer = window.setTimeout(() => void runAiClassification(), 650);
-    return () => {
-      window.clearTimeout(timer);
-      aiRequestVersion.current += 1;
-    };
-  }, [activeCaptureText, aiConfigured, captureMode, runAiClassification]);
+  const needsConfirmation = !preview?.accountName;
 
   const refreshActivities = async () => {
     const cachedData = getCachedSalesWorkspaceData(dataUserId);
@@ -508,19 +419,6 @@ export function DailyCapturePage() {
       setSaveState('error');
       return;
     }
-    if (aiConfigured && parseSource !== 'ai' && aiState !== 'error') {
-      if (aiState === 'loading') {
-        setMessage('AI is still parsing. Review the AI parsed draft when it appears.');
-        setSaveState('error');
-        return;
-      }
-      const parsed = await runAiClassification();
-      setMessage(parsed
-        ? 'AI parsed. Confirm or correct the structured fields, then save again.'
-        : 'AI unavailable — using local fallback. Please review before saving.');
-      setSaveState('error');
-      return;
-    }
     if (!isValidBusinessDate(activeActivityDate) || (preview.dueDate && !isValidBusinessDate(preview.dueDate)) || preview.nextActions?.some((action) => action.dueDate && !isValidBusinessDate(action.dueDate))) {
       setMessage('Needs date correction before this activity can be saved.');
       setSaveState('error');
@@ -533,12 +431,12 @@ export function DailyCapturePage() {
       ...withCaptureSourceMetadata(preview, activeSourceItem),
       rawNote: captureText,
       activityDate: activeActivityDate,
-      tags: mergeSourceTags(normalizeTags([parseSource === 'ai' ? 'ai-parsed' : 'local-fallback', ...preview.tags]), activeSourceItem),
+      tags: mergeSourceTags(normalizeTags(['rule-parsed', ...preview.tags]), activeSourceItem),
     };
     const corrections = buildCaptureCorrectionEvents({
       original: originalParsedDraft || localPreview || classified,
       corrected: classified,
-      source: parseSource === 'ai' ? 'ai' : 'local-fallback',
+      source: 'local-fallback',
       rawNote: captureText,
       userId: user?.id,
     });
@@ -552,11 +450,6 @@ export function DailyCapturePage() {
     setEmailForm(createInitialEmailThreadCaptureForm(searchParams));
     setStructuredDraft(null);
     setOriginalParsedDraft(null);
-    setOriginalParsedDraft(null);
-    setAiSuggestion(null);
-    setAiMessage('');
-    setAiState('idle');
-    setParseSource('local');
     setSaveState(result.warning ? 'error' : 'saved');
     setMessage(result.warning || (result.mode === 'cloud' ? 'Synced to your account.' : 'Saved locally in this browser.'));
     markTrialActivationChecklistItemComplete('capture-update');
@@ -595,9 +488,6 @@ export function DailyCapturePage() {
     }));
     setRawNote('');
     setStructuredDraft(null);
-    setAiSuggestion(null);
-    setAiMessage('');
-    setAiState('idle');
     setSaveState(result.warning ? 'error' : 'saved');
     setMessage(result.warning || (result.mode === 'cloud' ? 'Quick capture synced to your account.' : 'Quick capture saved locally.'));
     markTrialActivationChecklistItemComplete('capture-update');
@@ -617,13 +507,8 @@ export function DailyCapturePage() {
   };
 
   const resetParserState = () => {
-    aiRequestVersion.current += 1;
     setStructuredDraft(null);
     setOriginalParsedDraft(null);
-    setAiSuggestion(null);
-    setAiState('idle');
-    setParseSource('local');
-    setAiMessage('');
     setSaveState('idle');
     setMessage('');
   };
@@ -823,7 +708,7 @@ export function DailyCapturePage() {
             onClick={() => setCaptureMode('note')}
             className={`rounded-lg px-4 py-3 text-sm font-bold ${captureMode === 'note' ? 'bg-navy text-white' : 'bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-brand-blue'}`}
           >
-            Full Note + AI Assist
+            Full Note
           </button>
           <button
             type="button"
@@ -899,13 +784,9 @@ export function DailyCapturePage() {
                 type="date"
                 value={activityDate}
                 onChange={(event) => {
-                  aiRequestVersion.current += 1;
                   setActivityDate(event.target.value);
                   setStructuredDraft(null);
                   setOriginalParsedDraft(null);
-                  setAiSuggestion(null);
-                  setAiState('idle');
-                  setParseSource('local');
                 }}
                 className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
               />
@@ -913,7 +794,7 @@ export function DailyCapturePage() {
             <button
               type="button"
               onClick={handleSave}
-              disabled={saveState === 'saving' || (aiConfigured && aiState === 'loading')}
+              disabled={saveState === 'saving'}
               className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-navy px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saveState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -922,45 +803,17 @@ export function DailyCapturePage() {
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
               <div className="flex items-center gap-2">
                 <Bot className="h-4 w-4 text-brand-blue" />
-                <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                  {aiConfigured ? `AI default: ${aiProvider.label}` : 'Local fallback'}
-                </p>
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-500">On-device parsing</p>
               </div>
               <p className="mt-2 text-xs leading-5 text-gray-500">
-                {aiConfigured
-                  ? 'AI parses Full Notes automatically. Confirm or correct every field before saving.'
-                  : isAuthenticated
-                    ? 'AI unavailable — using local fallback. Please review before saving.'
-                    : 'AI unavailable — using local fallback. Please review before saving.'}
+                Notes are structured by rules on this device - nothing is sent to an AI service. Confirm or correct every field before saving.
               </p>
-              {aiConfigured && (
-                <p className="mt-2 flex gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold leading-5 text-amber-800">
-                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  AI Assist sends this note to your configured server-side AI endpoint. Do not use it for confidential customer data unless your provider is approved.
-                </p>
-              )}
-              <button
-                type="button"
-                onClick={() => void runAiClassification()}
-                disabled={!aiConfigured || aiState === 'loading' || rawNote.trim().length < 8}
-                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-2 text-xs font-bold text-brand-blue disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {aiState === 'loading' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                {aiState === 'loading' ? 'AI parsing...' : aiState === 'ready' ? 'Re-run AI parse' : 'Try AI parse'}
-              </button>
             </div>
             {message && (
               <p className={`rounded-lg px-3 py-2 text-sm font-semibold ${
                 saveState === 'saved' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
               }`}>
                 {message}
-              </p>
-            )}
-            {aiMessage && (
-              <p className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-                aiState === 'ready' ? 'bg-blue-50 text-blue-700' : aiState === 'error' ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-600'
-              }`}>
-                {aiMessage}
               </p>
             )}
           </div>
@@ -974,13 +827,13 @@ export function DailyCapturePage() {
                 <p className="mt-1 text-xs text-blue-800">This reviewed structured draft is exactly what Save Activity will store.</p>
               </div>
               <div className="flex flex-wrap gap-2 text-xs font-bold">
-                <span className={`rounded-full px-2.5 py-1 ${parseSource === 'ai' ? 'bg-violet-100 text-violet-700' : 'bg-amber-100 text-amber-700'}`}>
-                  {parseSource === 'ai' ? 'AI parsed' : 'Local fallback preview'}
+                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-700">
+                  Rule-based preview
                 </span>
                 {needsConfirmation && <span className="rounded-full bg-white px-2.5 py-1 text-amber-700 ring-1 ring-amber-200">Needs confirmation</span>}
               </div>
             </div>
-            <StructuredPreviewEditor preview={preview} parseSource={parseSource} onChange={updateDraft} accountSuggestions={accountNameSuggestions} opportunitySuggestions={opportunityNameSuggestions} />
+            <StructuredPreviewEditor preview={preview} onChange={updateDraft} accountSuggestions={accountNameSuggestions} opportunitySuggestions={opportunityNameSuggestions} />
             {opportunities.length > 0 && (
               <PreviewOpportunitySuggestions preview={previewToRecord(preview)} opportunities={opportunities} />
             )}
@@ -996,7 +849,7 @@ export function DailyCapturePage() {
           <div>
             <p className="text-sm font-bold text-blue-950">Paste Email / Thread</p>
             <p className="mt-1 text-xs leading-5 text-blue-800">
-              Memoire keeps source metadata, parses only a safe excerpt, and routes this through the same AI-first confirm-and-correct flow. Calendar ingestion coming later; no Gmail, Calendar, Zalo, or CRM sync is added here.
+              Memoire keeps source metadata, parses only a safe excerpt on this device, and routes this through the same confirm-and-correct flow. Calendar ingestion coming later; no Gmail, Calendar, Zalo, or CRM sync is added here.
             </p>
           </div>
         </div>
@@ -1099,7 +952,7 @@ export function DailyCapturePage() {
             <button
               type="button"
               onClick={handleSave}
-              disabled={saveState === 'saving' || (aiConfigured && aiState === 'loading')}
+              disabled={saveState === 'saving'}
               className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-navy px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saveState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -1108,24 +961,11 @@ export function DailyCapturePage() {
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
               <div className="flex items-center gap-2">
                 <Bot className="h-4 w-4 text-brand-blue" />
-                <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                  {aiConfigured ? `AI default: ${aiProvider.label}` : 'Local fallback'}
-                </p>
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-500">On-device parsing</p>
               </div>
               <p className="mt-2 text-xs leading-5 text-gray-500">
-                {aiConfigured
-                  ? 'AI parses pasted emails by default. Confirm or correct every field before saving.'
-                  : 'AI unavailable — using local fallback. Please review before saving.'}
+                Pasted emails are structured by rules on this device - nothing is sent to an AI service. Confirm or correct every field before saving.
               </p>
-              <button
-                type="button"
-                onClick={() => void runAiClassification()}
-                disabled={!aiConfigured || aiState === 'loading' || activeCaptureText.trim().length < 8}
-                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-2 text-xs font-bold text-brand-blue disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {aiState === 'loading' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                {aiState === 'loading' ? 'AI parsing...' : aiState === 'ready' ? 'Re-run AI parse' : 'Try AI parse'}
-              </button>
             </div>
             <div className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs font-semibold leading-5 text-amber-800">
               Long thread guard: saved cards use structured evidence plus source excerpt/hash, not the full raw thread.
@@ -1135,13 +975,6 @@ export function DailyCapturePage() {
                 saveState === 'saved' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
               }`}>
                 {message}
-              </p>
-            )}
-            {aiMessage && (
-              <p className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-                aiState === 'ready' ? 'bg-blue-50 text-blue-700' : aiState === 'error' ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-600'
-              }`}>
-                {aiMessage}
               </p>
             )}
           </div>
@@ -1155,14 +988,14 @@ export function DailyCapturePage() {
                 <p className="mt-1 text-xs text-blue-800">This reviewed structured draft is exactly what Save Reviewed Evidence will store.</p>
               </div>
               <div className="flex flex-wrap gap-2 text-xs font-bold">
-                <span className={`rounded-full px-2.5 py-1 ${parseSource === 'ai' ? 'bg-violet-100 text-violet-700' : 'bg-amber-100 text-amber-700'}`}>
-                  {parseSource === 'ai' ? 'AI parsed' : 'Local fallback preview'}
+                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-700">
+                  Rule-based preview
                 </span>
                 <span className="rounded-full bg-white px-2.5 py-1 text-blue-700 ring-1 ring-blue-200">{emailSourceItem?.sourceLabel || 'Source aware'}</span>
                 {needsConfirmation && <span className="rounded-full bg-white px-2.5 py-1 text-amber-700 ring-1 ring-amber-200">Needs confirmation</span>}
               </div>
             </div>
-            <StructuredPreviewEditor preview={preview} parseSource={parseSource} onChange={updateDraft} accountSuggestions={accountNameSuggestions} opportunitySuggestions={opportunityNameSuggestions} />
+            <StructuredPreviewEditor preview={preview} onChange={updateDraft} accountSuggestions={accountNameSuggestions} opportunitySuggestions={opportunityNameSuggestions} />
             {opportunities.length > 0 && (
               <PreviewOpportunitySuggestions preview={previewToRecord(preview)} opportunities={opportunities} />
             )}
@@ -1563,13 +1396,11 @@ function QuickTextArea({
 
 function StructuredPreviewEditor({
   preview,
-  parseSource,
   onChange,
   accountSuggestions,
   opportunitySuggestions,
 }: {
   preview: ClassifiedSalesActivity;
-  parseSource: ParseSource;
   onChange: <Key extends keyof ClassifiedSalesActivity>(key: Key, value: ClassifiedSalesActivity[Key]) => void;
   accountSuggestions?: string[];
   opportunitySuggestions?: string[];
@@ -1578,7 +1409,7 @@ function StructuredPreviewEditor({
     <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
       <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-blue-100">
         <span className="text-xs font-bold uppercase tracking-wide text-blue-500">Source</span>
-        <p className="mt-1 text-sm font-semibold text-blue-950">{parseSource === 'ai' ? 'AI parsed' : 'Local fallback'}</p>
+        <p className="mt-1 text-sm font-semibold text-blue-950">Rule-based</p>
       </div>
       <label className="block rounded-lg bg-white px-3 py-2 ring-1 ring-blue-100">
         <span className="text-xs font-bold uppercase tracking-wide text-blue-500">Type</span>
@@ -1800,35 +1631,6 @@ function previewToRecord(preview: ReturnType<typeof classifySalesActivity>): Sal
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     storageMode: 'local',
-  };
-}
-
-function aiSuggestionToClassified(
-  suggestion: CaptureAiSuggestion,
-  rawNote: string,
-  activityDate: string,
-  source: ParseSource,
-): ClassifiedSalesActivity {
-  return {
-    accountName: suggestion.accountName || '',
-    opportunityName: suggestion.opportunityName || '',
-    activityType: activityTypes.includes(suggestion.activityType as SalesActivityType)
-      ? suggestion.activityType as SalesActivityType
-      : 'Other',
-    summary: suggestion.summary || rawNote.trim().slice(0, 180),
-    nextAction: suggestion.nextAction || '',
-    dueDate: sanitizeBusinessDate(suggestion.dueDate),
-    contactName: suggestion.contactName || '',
-    stakeholderName: suggestion.stakeholderName || suggestion.contactName || '',
-    stakeholderRole: suggestion.stakeholderRole || '',
-    competitors: suggestion.competitors || [],
-    buyingSignals: suggestion.buyingSignals || [],
-    risks: suggestion.risks || [],
-    timelineSignals: suggestion.timelineSignals || [],
-    nextActions: suggestion.nextActions || [],
-    tags: normalizeTags([source === 'ai' ? 'ai-parsed' : 'local-fallback', ...suggestion.tags]),
-    rawNote: rawNote.trim(),
-    activityDate,
   };
 }
 

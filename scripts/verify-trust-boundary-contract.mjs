@@ -61,40 +61,24 @@ for (const marker of [
 const askMemoire = read('src/features/v31/AskMemoirePage.tsx');
 for (const marker of [
   'Ask Memoire uses local rule-based answers when the configured endpoint is unavailable.',
-  'Ask endpoint unavailable - showing a local rule-based answer.',
-  'Answered with the configured Ask endpoint.',
-  'Cloud answers may send the selected sales context to your configured AI provider.',
-  'confidential customer data unless that provider is approved by your organization.',
+  'Answered from your workspace using rules - nothing was sent to an AI service.',
+  'Ask Memoire could not build an answer from the current workspace.',
+  'Answers are built on this device from your captured data.',
+  'Nothing is sent to an AI service, so no',
 ]) {
-  requireIncludes(askMemoire, marker, `Ask Memoire missing AI/provider marker: ${marker}`);
+  requireIncludes(askMemoire, marker, `Ask Memoire missing local-answer marker: ${marker}`);
 }
 
 const dailyCapture = read('src/features/dailyCapture/DailyCapturePage.tsx');
+// Capture parses on-device by rule; the boundary promise is now "nothing
+// leaves the browser", which is stronger than the old AI-disclosure wording.
 for (const marker of [
-  'AI unavailable — using local fallback. Please review before saving.',
-  'AI parsed. Review the fields before saving.',
-  'AI parses Full Notes automatically. Confirm or correct every field before saving.',
-  'Local fallback preview',
+  'On-device parsing',
+  'nothing is sent to an AI service',
+  'Confirm or correct every field before saving',
   'Needs confirmation',
-  'AI Assist sends this note to your configured server-side AI endpoint.',
-  'Do not use it for confidential customer data unless your provider is approved.',
 ]) {
-  requireIncludes(dailyCapture, marker, `Daily Capture missing AI disclosure marker: ${marker}`);
-}
-
-const quickCapture = read('src/features/v31/QuickCapturePanel.tsx');
-for (const marker of [
-  'Quick Note',
-  'Email Thread',
-  'Local parsing.',
-  'AI-assisted when configured.',
-  'Signed-in structuring may send this note to the configured server-side AI endpoint.',
-  'Review output before saving',
-  'avoid confidential customer data unless that provider is approved.',
-  'Email thread structuring runs in this browser flow.',
-  'Review extracted fields before saving to Sales Memory.',
-]) {
-  requireIncludes(quickCapture, marker, `Quick Capture missing boundary marker: ${marker}`);
+  requireIncludes(dailyCapture, marker, `Daily Capture missing on-device disclosure marker: ${marker}`);
 }
 
 const pipelineDefense = read('src/features/pipeline/PipelineReviewDefenseBriefPage.tsx');

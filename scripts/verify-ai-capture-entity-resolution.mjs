@@ -59,14 +59,11 @@ assert.equal(guardedAiEntities.needsConfirmation, true);
 
 const capturePage = readFileSync('src/features/dailyCapture/DailyCapturePage.tsx', 'utf8');
 for (const marker of [
-  'runAiClassification',
-  "parseSource !== 'ai'",
-  'AI unavailable — using local fallback. Please review before saving.',
-  'Local fallback preview',
-  'AI parsed',
+  'On-device parsing',
+  'Rule-based preview',
   'Needs confirmation',
   'Confirm and correct',
   'This reviewed structured draft is exactly what Save Activity will store.',
-]) assert.ok(capturePage.includes(marker), `Full Note capture missing AI-first review marker: ${marker}`);
+]) assert.ok(capturePage.includes(marker), `Full Note capture missing review marker: ${marker}`);
 
 console.log('AI-first capture and entity resolution regression verified.');

@@ -1,4 +1,13 @@
-import type { SaveStructuredSalesCaptureResult } from '../v31/salesMemory';
+// Inlined when the AI capture cluster (v31/salesMemory) was removed with the
+// rest of the OpenAI-dependent code; this shape is all the guided workflow needs.
+export interface SaveStructuredSalesCaptureResult {
+  captureId: string;
+  accountId: string | null;
+  contactId: string | null;
+  opportunityId: string | null;
+  interactionId: string;
+  actionId: string | null;
+}
 
 export const REPLAY_GUIDED_WORKFLOW_EVENT = 'memoire:replay-guided-workflow';
 export const USE_SAMPLE_NOTE_EVENT = 'memoire:onboarding-use-sample-note';

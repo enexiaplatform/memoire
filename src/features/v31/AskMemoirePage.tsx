@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Bot, ExternalLink, Send, Sparkles } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { DEMO_USER_ID } from '../../lib/demoMode';
 import type { Account, AskMemoireAnswer, AskMemoireAnswerCard, AskMemoireContext, Interaction, MemoryChange, Objection, Opportunity, SalesAction, SalesPattern } from '../../types/v31';
@@ -298,54 +297,21 @@ export function AskMemoirePage() {
         }
         return;
       }
-      if (hasLocalSampleData() || !user) {
-        setStatusMessage(user
-          ? 'Demo workspace uses local rule-based answers.'
-          : 'You are in local mode. Ask Memoire is using rule-based fallback; sign in to use configured cloud context.');
-        setAnswer(fallbackAnswer);
-        return;
-      }
-
-      const { data: { session } } = await supabase.auth.getSession();
-      const result = await fetch('/api/ask-memoire', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question: nextQuestion,
-          userId: user.id,
-          authToken: session?.access_token,
-          scope,
-          accountId: selectedAccountId || undefined,
-          opportunityId: selectedOpportunityId || undefined,
-        }),
-      });
-
-      if (!result.ok) {
-        setStatusMessage('Ask endpoint unavailable - showing a local rule-based answer.');
-        setAnswer(fallbackAnswer);
-        return;
-      }
-      const data = await result.json();
-      setStatusMessage('Answered with the configured Ask endpoint.');
-      setAnswer(withAnswerCards({
-        answer: data.answer || fallbackAnswer.answer,
-        contextUsed: data.sources || fallbackAnswer.contextUsed,
-        suggestedNextAction: data.suggested_next_action || fallbackAnswer.suggestedNextAction,
-        missingContext: data.missing_context || fallbackAnswer.missingContext,
-        suggestedQuestions: data.suggested_questions || fallbackAnswer.suggestedQuestions,
-      }, nextQuestion, contextPacket));
+      // Answers are computed from your own workspace by rule, on this device.
+      // No model call, no API key, nothing leaves the browser.
+      setStatusMessage('Answered from your workspace using rules - nothing was sent to an AI service.');
+      setAnswer(fallbackAnswer);
     } catch (err) {
       if (import.meta.env.DEV) {
-        console.debug('[Ask Memoire] falling back to local answer', { message: err instanceof Error ? err.message : 'Unknown error' });
+        console.debug('[Ask Memoire] answer build failed', { message: err instanceof Error ? err.message : 'Unknown error' });
       }
-      setStatusMessage('Ask Memoire could not reach the configured endpoint. Local rules are still available.');
+      setStatusMessage('Ask Memoire could not build an answer from the current workspace.');
       setAnswer(withAnswerCards(answerFromMemory(nextQuestion, contextPacket), nextQuestion, contextPacket));
     } finally {
       setLoading(false);
     }
   }, [
     question,
-    user,
     scope,
     selectedAccountId,
     selectedOpportunityId,
@@ -393,11 +359,11 @@ export function AskMemoirePage() {
           Choose a context and ask about stuck deals, missing follow-ups, unresolved objections, or account context.
         </p>
         <p className="mt-2 max-w-2xl text-xs font-semibold text-gray-500">
-          Presets run immediately. If the Ask endpoint is unavailable, Memoire shows a local rule-based answer.
+          Presets run immediately. Every answer is computed from your own workspace by rule.
         </p>
-        <p className="mt-2 max-w-2xl text-xs text-amber-700">
-          Cloud answers may send the selected sales context to your configured AI provider. Do not include
-          confidential customer data unless that provider is approved by your organization.
+        <p className="mt-2 max-w-2xl text-xs text-emerald-700">
+          Answers are built on this device from your captured data. Nothing is sent to an AI service, so no
+          customer context leaves your browser.
         </p>
       </header>
 

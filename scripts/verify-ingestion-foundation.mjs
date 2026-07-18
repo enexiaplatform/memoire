@@ -120,7 +120,6 @@ for (const marker of [
   'Account hint optional',
   'Opportunity hint optional',
   'composeIngestionParserText',
-  'runAiClassification',
   'Calendar ingestion coming later',
   'no Gmail, Calendar, Zalo, or CRM sync',
 ]) {
@@ -132,17 +131,14 @@ for (const marker of ['sourceType', 'sourceLabel', 'parseIngestionSourceTags', '
   assert.ok(activityStore.includes(marker), `Sales activity source metadata storage missing ${marker}`);
 }
 
-const aiPrompt = readFileSync('src/utils/captureAiPrompt.ts', 'utf8');
-assert.ok(aiPrompt.includes('pasted email/thread'), 'AI prompt should understand pasted email/thread inputs');
-assert.ok(aiPrompt.includes('Do not auto-confirm Champion or Economic Buyer'), 'AI prompt must avoid MEDDIC role hallucination');
-
-const aiProvider = readFileSync('src/services/captureAiProvider.ts', 'utf8');
-assert.ok(aiProvider.includes('hasExplicitStakeholderRoleEvidence'), 'AI normalization must guard stakeholder roles');
+// Capture is rule-based on-device: the AI prompt/provider layer was removed with
+// the rest of the OpenAI-dependent code, so the guard is that no AI call remains.
+assert.equal(captureUi.includes('/api/capture-ai-classify'), false, 'capture must not call an AI endpoint');
+assert.equal(captureUi.includes('classifyCapture('), false, 'capture must not invoke an AI provider');
 
 const scannedFiles = [
   captureUi,
   readFileSync('src/utils/ingestionSource.ts', 'utf8'),
-  readFileSync('src/services/captureAiProvider.ts', 'utf8'),
 ].join('\n');
 for (const forbidden of ['gmail.users', 'calendar.events', 'google.calendar', 'zalo.send', 'crm.sync']) {
   assert.equal(scannedFiles.includes(forbidden), false, `External integration marker should not exist: ${forbidden}`);

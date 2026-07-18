@@ -8,9 +8,14 @@ infrastructure that Claude cannot and must not set. This is the checklist.
 
 | Variable | Status (as last known) | What to set | Why it matters |
 | --- | --- | --- | --- |
-| `VITE_APP_URL` | Set, but to the wrong host (`memoire.vercel.app`, not owned) | The real production origin, e.g. `https://memoire-blush-eta.vercel.app` (or the custom domain once attached) | Used to build absolute links (including the new **manager share link**). A wrong host makes shared links point nowhere. |
-| `OPENAI_API_KEY` | Missing | A valid OpenAI API key | Powers AI capture (natural-note → structured activity/deal/risk). Without it, the product's "magic" first-run moment is off in production. |
+| `VITE_APP_URL` | Set, but to the wrong host (`memoire.vercel.app`, not owned) | The real production origin, e.g. `https://memoire-blush-eta.vercel.app` (or the custom domain once attached) | Used to build absolute links (including the **manager share link**). A wrong host makes shared links point nowhere. |
 | Generation key (`VITE_*` publishable, per current setup) | OK | — | Already configured. |
+
+**No AI key is needed.** As of 2026-07-17 the app runs with **no AI service at all** —
+capture parsing and Ask Memoire answers are computed by rule, on the user's device.
+The OpenAI/Groq endpoints, the `openai` dependency, and every AI key reference were
+removed, and `verify:no-ai` fails the build if any are reintroduced. There is no
+per-use AI cost.
 
 After changing env vars, **redeploy** (Vercel does not apply new env to existing
 builds). Verify via the deployment's runtime, not just the dashboard.
@@ -23,15 +28,15 @@ needs two things the operator provisions:
 
 - **An email service** (Resend, Postmark, SendGrid, or SES) with its own API key.
 - **A scheduler** to send on a cadence. Options:
-  - Vercel Cron → an API route. **Blocked today**: `api/` is at the Hobby
-    12-function cap. Requires either upgrading the plan or consolidating routes
-    first (see the Vercel Hobby function-limit note).
+  - Vercel Cron → an API route. **No longer blocked**: removing the five AI
+    endpoints took `api/` from 12 functions to **7**, so there are now 5 free
+    slots under the Hobby cap — a send route fits without consolidation.
   - An external scheduler (GitHub Actions cron, Supabase scheduled Edge Function)
-    calling a send endpoint — avoids adding a Vercel function.
+    calling a send endpoint — keeps the function count where it is.
 
-Decision needed: **which email service**, and **which scheduler path** (upgrade
-Vercel vs external cron). Once chosen, wiring `buildDailyDigest` output into a
-send job is small.
+Decision needed: **which email service** (and whether to send from a Vercel cron
+route or an external scheduler). Once chosen, wiring `buildDailyDigest` output
+into a send job is small.
 
 ## 3. Cohort onboarding (the validation gate)
 
