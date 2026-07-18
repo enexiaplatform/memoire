@@ -102,22 +102,38 @@ API, generous free tier). Includes an unsubscribe flag in Settings. Contract:
 `verify:digest-send` (auth, rate-limit, opt-out honored, no send without
 service key).
 
-**B2. Workspace backup/restore.** `api/export` exists; complete the loop
-with a full-workspace JSON download (every store, versioned envelope) and a
-restore path that refuses partial/foreign envelopes. This is the trust
-feature for a local-first product: the user can always walk away with
-everything. No new endpoint needed for restore (client-side into stores).
+**B2. Workspace backup/restore.** SHIPPED 2026-07-18 (`416e151`). The audit
+found export was already complete — it collects every `memoire.*` key — so
+the gap was only ever the way back in. Restore validates strictly, previews
+before writing, refuses newer format versions, never writes outside the
+`memoire.` namespace, and drops demo records so a sandbox backup cannot
+contaminate a live workspace. Running it end to end found a trap now closed:
+restoring inside the demo clears the sample flag, and since access is granted
+on a session *or* that flag, a demo visitor was left at the login wall with
+their own data behind it — restore is refused in demo mode.
 
 **B3. Account dedup/merge UI.** The canonical account resolver already
 unifies reads; give the user a small "these look like the same account —
 merge?" surface in Accounts so the underlying records converge too.
 Derive-don't-migrate: merge writes a mapping, never rewrites history.
 
-**B4. Mobile capture ergonomics + PWA shell.** Capture is the spine and
-happens away from the desk. Add a web manifest + icons (none exist today) so
-the app is installable, and audit the Capture page at 375px: one-thumb
-quick-capture, templates reachable, voice dictation button prominent. No
-offline-sync work — local-first storage already covers the common case.
+**B4. Mobile capture ergonomics + PWA shell.** SHIPPED 2026-07-18
+(`0173091`) — manifest with maskable icon, `start_url` on the workspace, a
+long-press shortcut to Capture. The 375px audit found a real defect worth
+more than the manifest: **every page in the app scrolled sideways on a
+phone** because one machine-made capture tag arrives as an unbroken token and
+its chip could not wrap, widening the document to 413px. The fixed header
+stretched with it, which disguised it as a header bug. `break-all` +
+`max-w-full` on the chip cleared all five money surfaces at once.
+
+Remaining under B4, deliberately not faked: **iOS home-screen icons need a
+PNG**, which requires a rasteriser this repo does not have and should not
+grow one for. This is a design task — supply `app-icon-192.png` and
+`app-icon-512.png` in `public/` and add them to the manifest.
+
+Still open from the original scope: the one-thumb capture ergonomics pass
+(tap targets — the audit counted 48 controls under 44px, mostly nav rows at
+41px) belongs to polish P8 rather than here.
 
 ## Phase C — Evidence-gated (opens only on cohort data)
 
