@@ -72,6 +72,8 @@ for (const filter of ['Active', 'Needs follow-up', 'Strategic', 'Dormant', 'Impo
 const dashboard = readFileSync('src/features/dashboard/DashboardPage.tsx', 'utf8');
 assert.ok(dashboard.includes('imported accounts are available in search but hidden from active work.'));
 const sidebar = readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
-assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 16, 'A new CRM navigation item was added.');
+// 17 since Plan joined the daily loop (2026-07-18). Raise this deliberately,
+// never to make a build pass: the count exists so nav sprawl has to be argued for.
+assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 17, 'A new CRM navigation item was added.');
 
 console.log('Account archive and empty-state hygiene regression verified.');

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { AlertTriangle, Banknote, BookOpen, CalendarDays, ChevronDown, ClipboardList, Database, FileCheck2, FileText, LayoutDashboard, MessageCircleQuestion, NotebookPen, Settings, Sun, Target, UsersRound, X } from 'lucide-react';
+import { AlertTriangle, Banknote, BookOpen, CalendarCheck, CalendarDays, ClipboardList, Database, FileCheck2, FileText, LayoutDashboard, MessageCircleQuestion, NotebookPen, Settings, Sun, Target, UsersRound, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 import { prefetchAppRoute } from '../../utils/routePrefetch';
@@ -10,8 +10,6 @@ import { BrandWordmark } from '../brand/BrandWordmark';
 import { isFounderImportUser } from '../../services/importAuditStore';
 import { loadPipelineDefenseBriefStore } from '../../utils/pipelineDefenseStorage';
 import { loadReviewPacks } from '../../utils/reviewPacks';
-
-const REVIEW_TIER_COLLAPSED_KEY = 'memoire_review_tier_collapsed';
 
 function hasFirstSavedBrief() {
   try {
@@ -29,6 +27,7 @@ const primarySections = [{
   label: 'Business Activity OS',
   items: [
     { to: '/app/today', label: 'Today', icon: <Sun className="h-5 w-5" /> },
+    { to: '/app/plan', label: 'Plan', icon: <CalendarCheck className="h-5 w-5" /> },
     { to: '/app/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
     { to: '/app/capture', label: 'Capture', icon: <NotebookPen className="h-5 w-5" /> },
     { to: '/app/activity', label: 'Activity', icon: <CalendarDays className="h-5 w-5" /> },
@@ -62,20 +61,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     ? [...secondaryItems, { to: '/app/imports', label: 'Import Review', icon: <Database className="h-5 w-5" /> }]
     : secondaryItems;
   const hasActiveSecondaryRoute = visibleSecondaryItems.some((item) => location.pathname.startsWith(item.to));
-  // Review & Learn is expanded by default; collapse is remembered per user choice.
-  const [moreOpen, setMoreOpen] = useState(() => {
-    if (hasActiveSecondaryRoute) return true;
-    try {
-      return localStorage.getItem(REVIEW_TIER_COLLAPSED_KEY) !== 'true';
-    } catch {
-      return true;
-    }
-  });
   const [reviewTierUnlocked, setReviewTierUnlocked] = useState(() => hasFirstSavedBrief());
-
-  useEffect(() => {
-    if (hasActiveSecondaryRoute) setMoreOpen(true);
-  }, [hasActiveSecondaryRoute]);
 
   useEffect(() => {
     if (!reviewTierUnlocked) setReviewTierUnlocked(hasFirstSavedBrief());
@@ -159,27 +145,14 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
             </p>
           )}
           {showReviewTier && (
-          <button
-            type="button"
-            onClick={() => setMoreOpen((current) => {
-              const next = !current;
-              try {
-                localStorage.setItem(REVIEW_TIER_COLLAPSED_KEY, next ? 'false' : 'true');
-              } catch {
-                // ignore storage failures - state still toggles for this session
-              }
-              return next;
-            })}
-            className="flex w-full items-center justify-between px-5 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/30 transition-colors hover:text-white/70"
-          >
-            Review & Learn
-            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
-          </button>
-          )}
-          {showReviewTier && moreOpen && (
-            <div className="mt-1 space-y-1">
-              {visibleSecondaryItems.map(renderNavItem)}
-            </div>
+            <>
+              <p className="px-5 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/30">
+                Review & Learn
+              </p>
+              <div className="mt-1 space-y-1">
+                {visibleSecondaryItems.map(renderNavItem)}
+              </div>
+            </>
           )}
         </div>
 

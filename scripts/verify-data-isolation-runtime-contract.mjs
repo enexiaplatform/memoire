@@ -47,6 +47,7 @@ const expectedTables = [
   ['sales_assets', 'user_id'],
   ['action_outcomes', 'user_id'],
   ['weekly_commitments', 'user_id'],
+  ['plan_items', 'user_id'],
   ['deals', 'user_id'],
   ['captures', 'user_id'],
   ['entities', 'user_id'],

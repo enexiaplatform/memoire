@@ -32,7 +32,11 @@ export type ProductFunnelEvent =
   | 'weekly_commitment_confirmed'
   | 'weekly_commitment_edited'
   | 'weekly_commitment_resolved'
-  | 'weekly_commitment_reconciliation_viewed';
+  | 'weekly_commitment_reconciliation_viewed'
+  // The plan board: is the week actually lived here, or abandoned after a look?
+  | 'weekly_plan_opened'
+  | 'weekly_plan_item_added'
+  | 'weekly_plan_item_checked';
 
 export type AnalyticsDataMode = 'demo-local' | 'cloud-browser' | 'browser-only' | 'sync-issue' | 'unknown';
 

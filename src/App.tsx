@@ -49,6 +49,9 @@ const SettingsPage = lazy(() => import('./features/settings/SettingsPage').then(
 const SalesActivityCalendarPage = lazy(() =>
   import('./features/calendar/SalesActivityCalendarPage').then((module) => ({ default: module.SalesActivityCalendarPage })),
 );
+const WeeklyPlanPage = lazy(() =>
+  import('./features/plan/WeeklyPlanPage').then((module) => ({ default: module.WeeklyPlanPage })),
+);
 const SalesReviewsPage = lazy(() =>
   import('./features/reviews/SalesReviewsPage').then((module) => ({ default: module.SalesReviewsPage })),
 );
@@ -119,6 +122,7 @@ function App() {
               element={isFounderWorkspaceEnabled ? <ValidationFeedbackPage /> : <Navigate to="/app/today" replace />}
             />
             <Route path="capture" element={<DailyCapturePage />} />
+            <Route path="plan" element={<WeeklyPlanPage />} />
             <Route path="activity" element={<SalesActivityCalendarPage />} />
             <Route path="calendar" element={<SalesActivityCalendarPage />} />
             <Route path="weekly-brief" element={<SalesReviewsPage />} />

@@ -70,7 +70,7 @@ navOrder.forEach((route, index) => {
   if (index > 0) assert.ok(location > sidebar.indexOf(`to: '${navOrder[index - 1]}'`), `Sidebar order incorrect for ${route}`);
 });
 // 16 = 5 daily loop + 3 Pipeline & Money + 6 Review & Learn + founder Import Review + Settings.
-assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 16, 'A new CRM navigation item was added.');
+assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 17, 'A new CRM navigation item was added.');
 
 const todayPage = readFileSync('src/features/dashboard/DashboardPage.tsx', 'utf8');
 // The named sections all still exist on Today.
