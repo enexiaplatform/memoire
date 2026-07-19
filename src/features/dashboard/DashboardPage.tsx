@@ -567,7 +567,7 @@ export function TodayPage() {
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Personal Business Activity OS</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Nothing in your business goes silent.</h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500">
-            Memoire watches every deal, quote, delivery, and payment beside your CRM, and flags the moment one goes quiet — so you always know where the money sits and what to do next.
+            Three steps: get the picture, do today's work, check the watch-list.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -638,15 +638,21 @@ export function TodayPage() {
             <TodayCommandEmptyState onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)} />
           ) : (
             <>
-              {/* Action tier: a glance, then the brief, then the three things to
-                  do and the watch-list. This is the whole first screen. */}
+              {/* The day as three numbered steps: see the picture, do the work,
+                  check the watch-list. Reference numbers fold away below, so
+                  Today reads as a flow, not a report. */}
+              <StepDivider step={1} title="Get the picture" hint="Ten seconds: where the money sits and what changed" />
               <BusinessCockpitStrip answers={businessCockpit} />
+              <MorningBriefCard brief={morningBrief} />
+
+              <StepDivider step={2} title="Do today's work" hint="Your own weekly promise first, then the top three" />
               {/* The user's own promise for the week outranks the app's
                   suggestions, so it sits above the recommended Top 3. Renders
                   only when a week was actually confirmed. */}
               <CommittedWeekStrip userId={sampleDataActive ? undefined : user?.id} sampleDataActive={sampleDataActive} />
-              <MorningBriefCard brief={morningBrief} />
               <TodayTopThreeActions actions={todayCenter.topActions} />
+
+              <StepDivider step={3} title="Check the watch-list" hint="What Memoire flags before it can surprise you" />
               <ProactiveNudgesPanel
                 center={proactiveNudges}
                 message={nudgeMessage}
@@ -670,17 +676,23 @@ export function TodayPage() {
                 />
               )}
 
-              {/* Supporting detail: the numbers behind today's priorities. Below
-                  the fold on purpose - reference, not the first thing you act on. */}
-              <div className="flex items-center gap-3 pt-2">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-400">Supporting detail</p>
-                <div className="h-px flex-1 bg-gray-200" />
-              </div>
-              <ForecastDefenseReadiness center={todayCenter} />
-              <PipelineGlanceSection opportunities={data.opportunities} activities={data.activities} />
-              <TodayPipelineReadiness center={todayCenter} />
-              <TodayCommercialRisk items={todayCenter.commercialRiskItems} />
-              <TodayCaptureInbox items={todayCenter.captureInbox} />
+              {/* Supporting detail: the numbers behind today's priorities.
+                  Collapsed by default - reference, not the first thing you act
+                  on. The contract-asserted sections keep their render order
+                  inside the fold. */}
+              <details className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <summary className="cursor-pointer text-sm font-bold text-navy">
+                  Supporting detail
+                  <span className="ml-2 text-xs font-semibold text-gray-400">The numbers behind today's priorities</span>
+                </summary>
+                <div className="mt-4 flex flex-col gap-4">
+                  <ForecastDefenseReadiness center={todayCenter} />
+                  <PipelineGlanceSection opportunities={data.opportunities} activities={data.activities} />
+                  <TodayPipelineReadiness center={todayCenter} />
+                  <TodayCommercialRisk items={todayCenter.commercialRiskItems} />
+                  <TodayCaptureInbox items={todayCenter.captureInbox} />
+                </div>
+              </details>
               {sampleDataActive && <DemoJourneyCard compact />}
               <details
                 className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
@@ -1081,6 +1093,21 @@ function TodayTopThreeActions({ actions }: { actions: TodayCommandAction[] }) {
   );
 }
 
+/**
+ * Numbered flow markers that turn Today into three explicit steps. Cheap on
+ * purpose: a number, a title, a one-line hint - the sections stay the content.
+ */
+function StepDivider({ step, title, hint }: { step: number; title: string; hint: string }) {
+  return (
+    <div className="flex items-center gap-3 pt-2">
+      <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-black text-white">{step}</span>
+      <p className="shrink-0 text-xs font-bold uppercase tracking-[0.18em] text-navy">{title}</p>
+      <p className="hidden truncate text-xs font-medium text-gray-400 sm:block">{hint}</p>
+      <div className="h-px min-w-4 flex-1 bg-gray-200" />
+    </div>
+  );
+}
+
 function ProactiveNudgesPanel({
   center,
   message,
@@ -1104,22 +1131,12 @@ function ProactiveNudgesPanel({
 }) {
   return (
     <section className="rounded-xl border border-indigo-100 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+      <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Proactive Nudges</p>
-          <h2 className="mt-1 text-xl font-bold text-navy">Memoire is watching the few things that can embarrass you in review.</h2>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
-            Capped at five active in-app nudges. You can mark done, dismiss, or snooze without changing the underlying CRM data.
-          </p>
+          <h2 className="mt-1 text-xl font-bold text-navy">The few things that could embarrass you in review.</h2>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={onClearDismissed} className="rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-bold text-gray-600">
-            Clear dismissed local nudges
-          </button>
-          <button type="button" onClick={onClearAll} className="rounded-full border border-red-100 bg-red-50 px-3 py-2 text-xs font-bold text-red-700">
-            Clear all local nudge state
-          </button>
-        </div>
+        <span className="text-xs font-semibold text-gray-400">Capped at five · never changes CRM data</span>
       </div>
       {message && <p className="mt-3 rounded-lg bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-800">{message}</p>}
       {center.todayNudges.length === 0 ? (
@@ -1145,12 +1162,15 @@ function ProactiveNudgesPanel({
                   {formatNudgeDueDate(nudge)}
                 </span>
               </div>
-              <p className="mt-3 text-sm leading-6 text-gray-600">{nudge.reason}</p>
+              {/* Some pipeline-defense nudges carry a whole review answer as
+                  their reason; the card points at the risk, the full answer
+                  lives in Pipeline Defense. */}
+              <p className="mt-3 line-clamp-3 text-sm leading-6 text-gray-600" title={nudge.reason}>{nudge.reason}</p>
               <p className="mt-2 text-sm font-semibold text-navy">Recommended: {nudge.recommendedAction}</p>
               {formatNudgeMoney(nudge) && (
                 <p className="mt-2 text-xs font-bold text-gray-500">{formatNudgeMoney(nudge)}</p>
               )}
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
                 {nudge.entityType === 'opportunity' && (
                   <button type="button" onClick={() => onDraftFollowUp(nudge)} className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">
                     Draft follow-up
@@ -1159,25 +1179,37 @@ function ProactiveNudgesPanel({
                 <button type="button" onClick={() => onMarkDone(nudge)} className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white">
                   Mark done
                 </button>
-                <button type="button" onClick={() => onDismiss(nudge)} className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-600">
-                  Dismiss
-                </button>
-                <button type="button" onClick={() => onSnoozeTomorrow(nudge)} className="rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700">
-                  Snooze tomorrow
-                </button>
-                <button type="button" onClick={() => onSnoozeNextWeek(nudge)} className="rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700">
-                  Snooze next week
-                </button>
+                <span className="flex items-center gap-3 text-xs font-semibold text-gray-500">
+                  <button type="button" onClick={() => onDismiss(nudge)} className="underline-offset-2 hover:text-gray-800 hover:underline">
+                    Dismiss
+                  </button>
+                  <button type="button" onClick={() => onSnoozeTomorrow(nudge)} className="underline-offset-2 hover:text-indigo-700 hover:underline">
+                    Snooze tomorrow
+                  </button>
+                  <button type="button" onClick={() => onSnoozeNextWeek(nudge)} className="underline-offset-2 hover:text-indigo-700 hover:underline">
+                    Snooze next week
+                  </button>
+                </span>
               </div>
             </article>
           ))}
         </div>
       )}
-      {center.hiddenImportedAccountCount > 0 && (
-        <p className="mt-3 text-xs font-semibold text-gray-500">
-          {center.hiddenImportedAccountCount.toLocaleString()} imported accounts are still searchable but do not create urgent nudges.
-        </p>
-      )}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        {center.hiddenImportedAccountCount > 0 ? (
+          <p className="text-xs font-semibold text-gray-500">
+            {center.hiddenImportedAccountCount.toLocaleString()} imported accounts are still searchable but do not create urgent nudges.
+          </p>
+        ) : <span />}
+        <span className="flex items-center gap-3 text-xs font-semibold text-gray-400">
+          <button type="button" onClick={onClearDismissed} className="underline-offset-2 hover:text-gray-700 hover:underline">
+            Clear dismissed local nudges
+          </button>
+          <button type="button" onClick={onClearAll} className="underline-offset-2 hover:text-red-700 hover:underline">
+            Clear all local nudge state
+          </button>
+        </span>
+      </div>
     </section>
   );
 }
