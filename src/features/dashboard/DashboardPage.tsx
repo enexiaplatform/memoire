@@ -55,6 +55,7 @@ import {
 import { type SalesAssetRecord } from '../../services/salesAssetStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { FollowUpComposerPanel } from '../v31/FollowUpComposerPanel';
+import { DealQuickLookDrawer } from './DealQuickLookDrawer';
 import { FollowUpImpactPanel } from './FollowUpImpactPanel';
 import { buildFollowUpImpact } from '../../utils/followUpImpact';
 import { MorningBriefCard } from './MorningBriefCard';
@@ -207,6 +208,7 @@ export function TodayPage() {
   const [validationMessage, setValidationMessage] = useState('');
   const [demoSandboxPromptOpen, setDemoSandboxPromptOpen] = useState(false);
   const [advancedInsightsOpen, setAdvancedInsightsOpen] = useState(false);
+  const [supportingDetailOpen, setSupportingDetailOpen] = useState(false);
   const [setupToolsOpen, setSetupToolsOpen] = useState(false);
   const [workspaceSyncing, setWorkspaceSyncing] = useState(false);
   const [commercialProgressMessage, setCommercialProgressMessage] = useState('');
@@ -217,6 +219,7 @@ export function TodayPage() {
   const [nudgeMessage, setNudgeMessage] = useState('');
   const [followUpContext, setFollowUpContext] = useState<FollowUpContext | null>(null);
   const [followUpOpportunity, setFollowUpOpportunity] = useState<CrmLiteOpportunity | null>(null);
+  const [quickLookOpportunity, setQuickLookOpportunity] = useState<CrmLiteOpportunity | null>(null);
 
   const refreshDashboard = useCallback(async (options: DashboardLoadOptions = {}) => {
     const sampleActive = hasLocalSampleData();
@@ -305,11 +308,14 @@ export function TodayPage() {
     quotes: data.quotes,
   }), [data.opportunities, data.quotes]);
   const accountHygienePreferences = useMemo(() => loadAccountHygienePreferences(user?.id), [user?.id]);
-  const commandCenter = useMemo(() => buildTodayCommandCenter({
+  // The legacy command-center model only feeds the Supporting-execution fold
+  // and the demo prompt - keep its heavy scan off the initial render path.
+  const commandCenterNeeded = advancedInsightsOpen || demoSandboxPromptOpen;
+  const commandCenter = useMemo(() => (commandCenterNeeded ? buildTodayCommandCenter({
     ...data,
     commercialActions: revenueView.actionItems,
     executionDecisions: dailyExecutionState.decisions,
-  }), [dailyExecutionState.decisions, data, revenueView.actionItems]);
+  }) : null), [commandCenterNeeded, dailyExecutionState.decisions, data, revenueView.actionItems]);
   const pipelineReviewSignal = useMemo(() => buildPipelineReviewDashboardSignal(data.briefs), [data.briefs]);
   // Readiness comes from the live pipeline, not the latest saved brief - the
   // same reading Opportunities and a freshly generated brief would give.
@@ -560,8 +566,25 @@ export function TodayPage() {
     }
   };
 
+  // Today is home base: any alarm that targets a deal opens the in-place quick
+  // look instead of ejecting the user to the Opportunities tab. Runs in the
+  // capture phase so it fires before react-router's Link navigation. Links that
+  // must actually leave (the drawer's "Open full record") opt out via
+  // data-quick-look-exempt.
+  const handleTodayLinkCapture = (event: React.MouseEvent<HTMLDivElement>) => {
+    const anchor = (event.target as HTMLElement).closest?.('a');
+    if (!anchor || anchor.dataset.quickLookExempt === 'true') return;
+    const match = (anchor.getAttribute('href') || '').match(/^\/app\/opportunities\?opportunityId=([^&]+)$/);
+    if (!match) return;
+    const opportunity = data.opportunities.find((item) => item.id === decodeURIComponent(match[1]));
+    if (!opportunity) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setQuickLookOpportunity(opportunity);
+  };
+
   return (
-    <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
+    <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6" onClickCapture={handleTodayLinkCapture}>
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Personal Business Activity OS</p>
@@ -613,10 +636,24 @@ export function TodayPage() {
         <>
           {demoSandboxPromptOpen && (
             <DemoSandboxPrompt
-              hasExistingData={commandCenter.hasAnyData}
+              hasExistingData={Boolean(commandCenter?.hasAnyData)}
               isAuthenticated={isAuthenticated}
               onCancel={() => setDemoSandboxPromptOpen(false)}
               onLoad={handleLoadDemoSandbox}
+            />
+          )}
+          {quickLookOpportunity && (
+            <DealQuickLookDrawer
+              opportunity={quickLookOpportunity}
+              activities={data.activities}
+              quotes={data.quotes}
+              objections={data.objections}
+              onClose={() => setQuickLookOpportunity(null)}
+              onDraftFollowUp={() => {
+                setFollowUpOpportunity(quickLookOpportunity);
+                setFollowUpContext(buildReviveFollowUpContext(quickLookOpportunity, data.activities));
+                setQuickLookOpportunity(null);
+              }}
             />
           )}
           {followUpContext && (
@@ -680,18 +717,25 @@ export function TodayPage() {
                   Collapsed by default - reference, not the first thing you act
                   on. The contract-asserted sections keep their render order
                   inside the fold. */}
-              <details className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <details
+                className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+                onToggle={(event) => setSupportingDetailOpen(event.currentTarget.open)}
+              >
                 <summary className="cursor-pointer text-sm font-bold text-navy">
                   Supporting detail
                   <span className="ml-2 text-xs font-semibold text-gray-400">The numbers behind today's priorities</span>
                 </summary>
-                <div className="mt-4 flex flex-col gap-4">
-                  <ForecastDefenseReadiness center={todayCenter} />
-                  <PipelineGlanceSection opportunities={data.opportunities} activities={data.activities} />
-                  <TodayPipelineReadiness center={todayCenter} />
-                  <TodayCommercialRisk items={todayCenter.commercialRiskItems} />
-                  <TodayCaptureInbox items={todayCenter.captureInbox} />
-                </div>
+                {/* Mounted only when opened - these reference sections (and their
+                    charts) stay out of the initial render cost. */}
+                {supportingDetailOpen && (
+                  <div className="mt-4 flex flex-col gap-4">
+                    <ForecastDefenseReadiness center={todayCenter} />
+                    <PipelineGlanceSection opportunities={data.opportunities} activities={data.activities} />
+                    <TodayPipelineReadiness center={todayCenter} />
+                    <TodayCommercialRisk items={todayCenter.commercialRiskItems} />
+                    <TodayCaptureInbox items={todayCenter.captureInbox} />
+                  </div>
+                )}
               </details>
               {sampleDataActive && <DemoJourneyCard compact />}
               <details
@@ -701,7 +745,7 @@ export function TodayPage() {
                 <summary className="cursor-pointer text-sm font-bold text-navy">
                   Supporting execution detail
                 </summary>
-                {dashboardInsights && (
+                {dashboardInsights && commandCenter && (
                   <div className="mt-4 flex flex-col gap-4">
                     {/* Measured-history analysis - reference, not a first action. */}
                     <FollowUpImpactPanel impact={followUpImpact} onDraftFollowUp={handleDraftFollowUpFromImpact} />
