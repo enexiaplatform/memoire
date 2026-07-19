@@ -25,6 +25,25 @@ type BusinessCockpitInput = {
  * Every answer is a glance plus a deep link - the cockpit never invents work,
  * it routes to surfaces that already own the follow-through.
  */
+/**
+ * A nudge's entity as a deep link to its handling spot. Revenue nudges store a
+ * prefixed entityId (`quote-x` / `opportunity-x`, see buildRevenueNudges);
+ * opportunity/initiative nudges store the raw record id - normalize both.
+ */
+export function nudgeEntityHref(nudge: NudgeRecord | undefined): string {
+  if (!nudge?.entityId) return '';
+  if (nudge.entityType === 'opportunity') {
+    return `/app/opportunities?opportunityId=${encodeURIComponent(nudge.entityId.replace(/^opportunity-/, ''))}`;
+  }
+  if (nudge.entityType === 'quote') {
+    return `/app/quotes?quoteId=${encodeURIComponent(nudge.entityId.replace(/^quote-/, ''))}`;
+  }
+  if (nudge.entityType === 'initiative') {
+    return `/app/operating-system?contextId=${encodeURIComponent(nudge.entityId)}`;
+  }
+  return '';
+}
+
 export function buildBusinessCockpit(input: BusinessCockpitInput): BusinessCockpitAnswer[] {
   const today = sanitizeBusinessDate(input.today) || todayDateKey();
   const nudges = input.nudges || [];
@@ -36,6 +55,8 @@ export function buildBusinessCockpit(input: BusinessCockpitInput): BusinessCockp
   ));
   const stalledInitiative = nudges.find((nudge) => nudge.source === 'initiative');
 
+  // Every urgent answer routes to the exact record that raised it (the quote,
+  // the deal, the initiative) - a page top is only the fallback for calm tiles.
   return [
     {
       id: 'money',
@@ -43,7 +64,7 @@ export function buildBusinessCockpit(input: BusinessCockpitInput): BusinessCockp
       answer: moneyItem
         ? `${moneyItem.risk}: ${moneyItem.accountName || 'Needs confirmation'}${typeof moneyItem.amount === 'number' && moneyItem.currency ? ` (${formatCompactCurrencyAmount(moneyItem.amount, moneyItem.currency)})` : ''}`
         : 'No money action is waiting on you.',
-      href: '/app/revenue',
+      href: moneyItem?.href || '/app/revenue',
       urgent: Boolean(moneyItem),
     },
     {
@@ -52,7 +73,7 @@ export function buildBusinessCockpit(input: BusinessCockpitInput): BusinessCockp
       answer: hotDealNudge
         ? `${hotDealNudge.title}: ${[hotDealNudge.accountName, hotDealNudge.opportunityName].filter(Boolean).join(' / ')}`
         : 'No deal is flashing right now.',
-      href: '/app/opportunities',
+      href: nudgeEntityHref(hotDealNudge) || '/app/opportunities',
       urgent: Boolean(hotDealNudge && (hotDealNudge.urgency === 'critical' || hotDealNudge.urgency === 'high')),
     },
     {
@@ -61,7 +82,11 @@ export function buildBusinessCockpit(input: BusinessCockpitInput): BusinessCockp
       answer: lateFollowUps.length > 0
         ? `${lateFollowUps.length} overdue: ${lateFollowUps.slice(0, 2).map((item) => item.accountName).filter(Boolean).join(', ')}${lateFollowUps.length > 2 ? '...' : ''}`
         : 'Nothing overdue. Keep it that way.',
-      href: '/app/opportunities',
+      href: lateFollowUps.length === 1
+        ? `/app/opportunities?opportunityId=${encodeURIComponent(lateFollowUps[0].id)}`
+        : lateFollowUps.length > 1
+          ? '/app/opportunities?filter=needsAction'
+          : '/app/opportunities',
       urgent: lateFollowUps.length > 0,
     },
     {
@@ -70,7 +95,9 @@ export function buildBusinessCockpit(input: BusinessCockpitInput): BusinessCockp
       answer: stalledInitiative
         ? `${stalledInitiative.title}: ${stalledInitiative.opportunityName}`
         : 'No initiative looks stalled.',
-      href: '/app/operating-system',
+      href: stalledInitiative?.entityId
+        ? `/app/operating-system?contextId=${encodeURIComponent(stalledInitiative.entityId)}`
+        : '/app/operating-system',
       urgent: Boolean(stalledInitiative),
     },
     {

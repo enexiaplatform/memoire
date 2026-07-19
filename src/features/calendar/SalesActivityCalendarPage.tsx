@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   CalendarDays,
   ChevronLeft,
@@ -119,6 +119,22 @@ export function SalesActivityCalendarPage() {
   useEffect(() => {
     trackProductEvent('activity_ledger_opened');
   }, []);
+
+  // Deep link from Today's capture inbox: ?activityId= jumps to the activity's
+  // day and opens its detail modal (where the link/confirm panel lives).
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const requestedActivityId = searchParams.get('activityId');
+    if (!requestedActivityId || loadingActivities) return;
+    const requested = activities.find((item) => item.id === requestedActivityId);
+    if (requested) {
+      if (isValidBusinessDate(requested.activityDate)) {
+        setAnchorDate(new Date(`${requested.activityDate}T00:00:00`));
+      }
+      setSelectedActivity(requested);
+    }
+    setSearchParams({}, { replace: true });
+  }, [activities, loadingActivities, searchParams, setSearchParams]);
 
   const range = useMemo(() => getCalendarRange(viewMode, anchorDate), [anchorDate, viewMode]);
   const periodActivities = useMemo(() => {

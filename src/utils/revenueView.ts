@@ -142,7 +142,7 @@ function buildPipelineRevenueRisks(opportunities: CrmLiteOpportunity[], quotedOp
         risk: 'Weak pipeline' as const,
         nextAction: opportunity.nextAction || 'Define the next customer-confirmed action.',
         dueDate: opportunity.nextActionDate,
-        href: '/app/opportunities',
+        href: `/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}`,
         source: 'Opportunity' as const,
       };
     });

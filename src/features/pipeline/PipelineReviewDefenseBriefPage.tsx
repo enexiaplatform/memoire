@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, Banknote, ClipboardCheck, Copy, Download, HelpCircle, Printer, ReceiptText, RotateCcw, ShieldCheck, Target, Trash2, Upload } from 'lucide-react';
 import {
   decisionRecommendations,
@@ -211,8 +211,38 @@ export function PipelineReviewDefenseBriefPage() {
     opportunities: WorkspaceOpportunity[];
   } | null>(null);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const activeBrief = getActivePipelineDefenseBrief(store);
   const deals = activeBrief?.deals || [];
+
+  // Deep link from Today alarms: ?dealId= opens that deal card for editing and
+  // scrolls it into view, so the alarm lands on the handling spot. The scroll
+  // retries until the card actually sits in the viewport - the page keeps
+  // laying out sections for a while after mount, which shifts the target.
+  useEffect(() => {
+    const requestedDealId = searchParams.get('dealId');
+    if (!requestedDealId) return;
+    if (deals.length === 0) return;
+    if (deals.some((deal) => deal.id === requestedDealId)) {
+      setEditingDealId(requestedDealId);
+      let attempts = 0;
+      const scrollToCard = () => {
+        const card = document.getElementById(`deal-${requestedDealId}`);
+        if (card) {
+          card.scrollIntoView({ block: 'start' });
+          const top = card.getBoundingClientRect().top;
+          if (top >= -40 && top < window.innerHeight) return;
+        }
+        if (attempts < 12) {
+          attempts += 1;
+          window.setTimeout(scrollToCard, 180);
+        }
+      };
+      window.setTimeout(scrollToCard, 120);
+    }
+    setSearchParams({}, { replace: true });
+  }, [deals, searchParams, setSearchParams]);
   // Live pipeline available to seed a first brief: active deals, biggest money
   // first, capped so a 122-deal import produces a reviewable brief, not a dump.
   const liveDeals = useMemo(() => (workspaceSnapshot?.opportunities || [])
@@ -1614,8 +1644,8 @@ export function PipelineReviewDefenseBriefPage() {
                 isReviewMode ? (
                   <PipelineDefenseReviewDealCard key={deal.id} deal={deal} />
                 ) : (
+                  <div key={deal.id} id={`deal-${deal.id}`} className="scroll-mt-20">
                   <DealDefenseCard
-                    key={deal.id}
                     deal={deal}
                     editing={editingDealId === deal.id}
                     onEdit={() => setEditingDealId(deal.id)}
@@ -1645,6 +1675,7 @@ export function PipelineReviewDefenseBriefPage() {
                     onCopyDraft={copyDraft}
                     onApplyDraft={() => applyDraft(deal.id)}
                   />
+                  </div>
                 )
               ))}
             </div>

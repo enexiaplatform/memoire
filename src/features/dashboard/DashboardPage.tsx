@@ -60,7 +60,7 @@ import { buildFollowUpImpact } from '../../utils/followUpImpact';
 import { MorningBriefCard } from './MorningBriefCard';
 import { BusinessCockpitStrip } from './BusinessCockpitStrip';
 import { CommittedWeekStrip } from './CommittedWeekStrip';
-import { buildBusinessCockpit } from '../../utils/businessCockpit';
+import { buildBusinessCockpit, nudgeEntityHref } from '../../utils/businessCockpit';
 import { getWorkspaceLens, orderCockpitForLens } from '../../utils/workspaceLens';
 import { buildMorningBrief } from '../../utils/morningBrief';
 import { buildReviveFollowUpContext } from '../../utils/followUpFromOpportunity';
@@ -1153,7 +1153,18 @@ function ProactiveNudgesPanel({
                     <NudgeUrgencyBadge urgency={nudge.urgency} />
                     <Badge label={nudge.source} tone={nudge.source === 'outcome-learning' ? 'purple' : 'blue'} />
                   </div>
-                  <h3 className="mt-3 text-base font-bold text-navy">{nudge.title}</h3>
+                  {/* An alarm's title is a door: it lands on the exact record
+                      that raised it, never on a page top. */}
+                  {nudgeEntityHref(nudge) ? (
+                    <Link
+                      to={nudgeEntityHref(nudge)}
+                      className="mt-3 block text-base font-bold text-navy underline-offset-2 hover:text-brand-blue hover:underline"
+                    >
+                      {nudge.title}
+                    </Link>
+                  ) : (
+                    <h3 className="mt-3 text-base font-bold text-navy">{nudge.title}</h3>
+                  )}
                   <p className="mt-1 text-xs font-bold uppercase tracking-wide text-gray-400">
                     {nudge.accountName || 'Needs confirmation'}{nudge.opportunityName ? ` / ${nudge.opportunityName}` : ''}
                   </p>

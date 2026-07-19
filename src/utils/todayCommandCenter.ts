@@ -192,7 +192,9 @@ function buildPipelineAction(item: ManagerReadyDealBrief): TodayCommandAction[] 
       : `${item.category}: the forecast position needs review.` ,
     source: 'Pipeline Defense',
     urgency,
-    href: '/app/pipeline-defense',
+    // Deep-link to the exact deal card - the alarm's job is to land the user
+    // on the handling spot, never on a page top.
+    href: `/app/pipeline-defense?dealId=${encodeURIComponent(item.deal.id)}`,
     dueDate: sanitizeBusinessDate(item.deal.nextActionDate),
     dueDateLabel: item.dueDateLabel,
     moneyLabel: item.moneyLabel,
@@ -234,7 +236,7 @@ function buildOpportunityActions(
     const common = {
       accountName: cleanOrConfirm(opportunity.accountName),
       opportunityName: cleanOrConfirm(opportunity.opportunityName),
-      href: '/app/opportunities',
+      href: `/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}`,
       dueDate,
       dueDateLabel: formatSafeBusinessDate(opportunity.nextActionDate),
       moneyLabel: formatMoney(opportunity.estimatedValue, opportunity.currency),
@@ -276,7 +278,7 @@ function buildPostWonAction(customer: WonCustomerNudge): TodayCommandAction {
     reason: `Won customer quiet for ${customer.daysSinceTouch} days — the relationship is going silent.`,
     source: 'Customer',
     urgency: veryQuiet ? 'High' : 'Medium',
-    href: '/app/accounts',
+    href: `/app/accounts?accountName=${encodeURIComponent(customer.accountName)}`,
     dueDate: '',
     dueDateLabel: formatSafeBusinessDate(''),
     moneyLabel: customer.wonValueBase > 0 ? formatCompactBaseAmount(customer.wonValueBase) : '',
@@ -320,7 +322,8 @@ function buildCaptureInbox(activities: SalesActivityRecord[]): TodayCaptureInbox
         : activity.linkStatus === 'Unlinked'
           ? 'Link capture to an opportunity'
           : 'Needs confirmation',
-      href: '/app/capture',
+      // The linking UI lives in the Activity ledger's detail modal.
+      href: `/app/activity?activityId=${encodeURIComponent(activity.id)}`,
       activityDateLabel: formatSafeBusinessDate(activity.activityDate),
     }));
 }
