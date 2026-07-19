@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { AlertTriangle, Banknote, BookOpen, CalendarCheck, CalendarDays, ClipboardList, Database, FileCheck2, FileText, LayoutDashboard, MessageCircleQuestion, NotebookPen, Settings, Sun, Target, UsersRound, X } from 'lucide-react';
+import { AlertTriangle, Banknote, BookOpen, CalendarCheck, ClipboardList, Database, FileCheck2, FileText, History, LayoutDashboard, MessageCircleQuestion, NotebookPen, Settings, Sun, Target, UsersRound, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 import { prefetchAppRoute } from '../../utils/routePrefetch';
@@ -23,6 +23,9 @@ function hasFirstSavedBrief() {
 // sits, and review artifacts. Pipeline Defense lives in Review & Learn per the
 // pivot ("the premium review output inside a larger operating loop").
 // Today answers "what do I do now"; Dashboard is the central chart/report view.
+// Plan (a calendar, forward-looking) and Activity (a history clock, the ledger of
+// what already happened) carry deliberately different icon families so a glance at
+// the rail never reads them as two versions of the same calendar.
 const primarySections = [{
   label: 'Business Activity OS',
   items: [
@@ -30,7 +33,7 @@ const primarySections = [{
     { to: '/app/plan', label: 'Plan', icon: <CalendarCheck className="h-5 w-5" /> },
     { to: '/app/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
     { to: '/app/capture', label: 'Capture', icon: <NotebookPen className="h-5 w-5" /> },
-    { to: '/app/activity', label: 'Activity', icon: <CalendarDays className="h-5 w-5" /> },
+    { to: '/app/activity', label: 'Activity', icon: <History className="h-5 w-5" /> },
     { to: '/app/ask', label: 'Ask Memoire', icon: <MessageCircleQuestion className="h-5 w-5" /> },
   ],
 }, {
