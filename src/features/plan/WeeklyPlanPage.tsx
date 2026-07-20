@@ -15,6 +15,7 @@ import { buildPlanSuggestions, type PlanSuggestion } from '../../utils/planSugge
 import { PlanSuggestionsPanel } from './PlanSuggestionsPanel';
 import {
   buildPlanBoard,
+  buildPlanLinkOptions,
   createDerivedCompletionRecord,
   createDismissedSuggestionRecord,
   createPersonalPlanRecord,
@@ -22,6 +23,7 @@ import {
   planKindTone,
   shiftPlanAnchor,
   type PlanItem,
+  type PlanLinkOption,
   type PlanPeriod,
   type PlanRecord,
 } from '../../utils/weeklyPlan';
@@ -60,6 +62,7 @@ export function WeeklyPlanPage() {
   const [loading, setLoading] = useState(true);
   const [composerDate, setComposerDate] = useState('');
   const [draft, setDraft] = useState('');
+  const [draftLink, setDraftLink] = useState<PlanLinkOption | null>(null);
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
@@ -105,6 +108,17 @@ export function WeeklyPlanPage() {
     records,
   }), [anchorDate, obligations, opportunities, periodType, records]);
 
+  // Every account name the workspace already knows, so a typed plan item can
+  // link to the entity it belongs to instead of living as loose text.
+  const knownAccountNames = useMemo(() => [
+    ...opportunities.map((item) => item.accountName),
+    ...activities.map((item) => item.linkedAccountName || item.accountName),
+    ...quotes.map((item) => item.accountName),
+  ], [activities, opportunities, quotes]);
+  const draftLinkOptions = useMemo(() => (
+    draftLink ? [] : buildPlanLinkOptions({ draft, opportunities, accountNames: knownAccountNames })
+  ), [draft, draftLink, knownAccountNames, opportunities]);
+
   const toggleItem = useCallback((item: PlanItem) => {
     if (item.kind === 'personal') {
       const existing = records.find((record) => record.id === item.id);
@@ -133,12 +147,15 @@ export function WeeklyPlanPage() {
     setRecords(savePlanItem(createPersonalPlanRecord({
       date,
       label,
+      linkedOpportunityId: draftLink?.opportunityId,
+      linkedAccountName: draftLink?.accountName,
       source: sampleDataActive ? 'demo' : 'user',
       isSample: sampleDataActive,
     })));
     setDraft('');
+    setDraftLink(null);
     trackProductEvent('weekly_plan_item_added');
-  }, [draft, sampleDataActive]);
+  }, [draft, draftLink, sampleDataActive]);
 
   const removePersonalItem = useCallback((itemId: string) => {
     setRecords(deletePlanItem(itemId));
@@ -348,33 +365,68 @@ export function WeeklyPlanPage() {
               ))}
 
               {composerDate === day.date ? (
-                <div className="mt-1 flex items-center gap-1">
-                  <input
-                    type="text"
-                    value={draft}
-                    autoFocus
-                    onChange={(event) => setDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') { event.preventDefault(); addPersonalItem(day.date); }
-                      if (event.key === 'Escape') { setComposerDate(''); setDraft(''); }
-                    }}
-                    onBlur={() => { if (!draft.trim()) setComposerDate(''); }}
-                    placeholder="[Internal] Submit KPI"
-                    aria-label={`Add an item to ${day.weekdayLabel}`}
-                    className="min-w-0 flex-1 rounded border border-gray-200 px-2 py-1 text-xs"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => addPersonalItem(day.date)}
-                    className="shrink-0 rounded bg-brand-blue px-2 py-1 text-xs font-bold text-white hover:bg-blue-700"
-                  >
-                    Add
-                  </button>
+                <div className="mt-1">
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      value={draft}
+                      autoFocus
+                      onChange={(event) => setDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') { event.preventDefault(); addPersonalItem(day.date); }
+                        if (event.key === 'Escape') { setComposerDate(''); setDraft(''); setDraftLink(null); }
+                      }}
+                      placeholder="[Internal] Submit KPI"
+                      aria-label={`Add an item to ${day.weekdayLabel}`}
+                      className="min-w-0 flex-1 rounded border border-gray-200 px-2 py-1 text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => addPersonalItem(day.date)}
+                      className="shrink-0 rounded bg-brand-blue px-2 py-1 text-xs font-bold text-white hover:bg-blue-700"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  {draftLink && (
+                    <span className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-brand-blue">
+                      <span className="truncate">Linked: {draftLink.display}</span>
+                      <button
+                        type="button"
+                        aria-label="Remove link"
+                        onClick={() => setDraftLink(null)}
+                        className="shrink-0 text-blue-400 hover:text-blue-700"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  )}
+                  {draftLinkOptions.length > 0 && (
+                    <div className="mt-1.5 overflow-hidden rounded-md border border-gray-100 bg-white shadow-sm">
+                      <p className="border-b border-gray-100 bg-gray-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-gray-400">
+                        Link to
+                      </p>
+                      {draftLinkOptions.map((option) => (
+                        <button
+                          key={option.key}
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => setDraftLink(option)}
+                          className="flex w-full items-center gap-1.5 px-2 py-1.5 text-left text-[11px] font-semibold text-gray-700 hover:bg-blue-50 hover:text-brand-blue"
+                        >
+                          <span className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-bold uppercase ${option.kind === 'deal' ? 'bg-blue-50 text-brand-blue' : 'bg-gray-100 text-gray-500'}`}>
+                            {option.kind}
+                          </span>
+                          <span className="truncate">{option.display}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <button
                   type="button"
-                  onClick={() => { setComposerDate(day.date); setDraft(''); }}
+                  onClick={() => { setComposerDate(day.date); setDraft(''); setDraftLink(null); }}
                   className="mt-1 flex w-full items-center gap-1 rounded px-1.5 py-1 text-[11px] font-bold text-gray-400 transition hover:bg-gray-50 hover:text-brand-blue"
                 >
                   <Plus className="h-3 w-3" />

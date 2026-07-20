@@ -1,4 +1,4 @@
-import type { CrmLiteOpportunity } from '../services/opportunityStore';
+﻿import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { OwnObligation } from './ownObligations.ts';
 import {
   compareSafeBusinessDate,
@@ -131,7 +131,13 @@ export function buildPlanBoard(input: {
       label: record.label,
       done: record.done,
       doneAt: record.doneAt,
-      href: record.linkedOpportunityId ? '/app/opportunities' : '',
+      // A linked item deep-links to the exact record it belongs to, so the
+      // board stays wired into the same data spine as everything else.
+      href: record.linkedOpportunityId
+        ? `/app/opportunities?opportunityId=${encodeURIComponent(record.linkedOpportunityId)}`
+        : record.linkedAccountName
+          ? `/app/accounts?accountName=${encodeURIComponent(record.linkedAccountName)}`
+          : '',
       overdue: !record.done && compareSafeBusinessDate(record.date, today) < 0,
     }));
 
@@ -270,7 +276,9 @@ export function createPersonalPlanRecord(input: {
     id: `plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     date: input.date,
     label,
-    tag,
+    // A linked item wears its account as the tag - the same convention derived
+    // deal items use - unless the operator wrote an explicit [Tag].
+    tag: tag || input.linkedAccountName || '',
     done: false,
     linkedOpportunityId: input.linkedOpportunityId,
     linkedAccountName: input.linkedAccountName,
@@ -349,6 +357,72 @@ export function createDerivedCompletionRecord(
     source: existing?.source ?? options.source,
     isSample: existing?.isSample ?? options.isSample,
   };
+}
+
+export type PlanLinkOption = {
+  key: string;
+  kind: 'deal' | 'account';
+  accountName: string;
+  opportunityId?: string;
+  display: string;
+};
+
+/**
+ * Entity matches for the text the operator is typing into the composer, so a
+ * personal item can be linked to the account or deal it belongs to instead of
+ * living as loose text beside the data spine. Matching is by token: typing
+ * "send quote apex" surfaces Apex Labs and its deals.
+ */
+export function buildPlanLinkOptions(input: {
+  draft: string;
+  opportunities: CrmLiteOpportunity[];
+  accountNames: string[];
+  limit?: number;
+}): PlanLinkOption[] {
+  const tokens = normalizePlanText(input.draft).split(/\s+/).filter((token) => token.length >= 2);
+  if (tokens.length === 0) return [];
+  const limit = input.limit ?? 4;
+  const matches = (name: string) => {
+    const normalized = normalizePlanText(name);
+    return normalized.length > 0 && tokens.some((token) => normalized.includes(token));
+  };
+
+  const dealOptions = input.opportunities
+    .filter((opportunity) => opportunity.status === 'Active')
+    .filter((opportunity) => matches(opportunity.accountName) || matches(opportunity.opportunityName))
+    .map((opportunity) => ({
+      key: `deal-${opportunity.id}`,
+      kind: 'deal' as const,
+      accountName: opportunity.accountName,
+      opportunityId: opportunity.id,
+      display: `${opportunity.accountName || 'No account'} / ${opportunity.opportunityName || 'Untitled deal'}`,
+    }));
+
+  const dealAccounts = new Set(dealOptions.map((option) => normalizePlanText(option.accountName)));
+  const accountOptions = [...new Map(
+    input.accountNames
+      .filter((name) => name.trim().length > 0)
+      .map((name) => [normalizePlanText(name), name] as const),
+  ).values()]
+    .filter((name) => matches(name))
+    // An account whose deal already matched is covered by the deal option.
+    .filter((name) => !dealAccounts.has(normalizePlanText(name)))
+    .map((name) => ({
+      key: `account-${normalizePlanText(name)}`,
+      kind: 'account' as const,
+      accountName: name,
+      display: name,
+    }));
+
+  return [...dealOptions, ...accountOptions].slice(0, limit);
+}
+
+function normalizePlanText(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
 }
 
 export function planKindTone(kind: PlanItemKind) {

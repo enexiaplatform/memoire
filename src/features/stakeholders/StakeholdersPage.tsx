@@ -153,6 +153,21 @@ export function StakeholdersPage() {
 
   return (
     <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
+      {/* Entity options for the add/edit form: names come from the records the
+          workspace already knows, so a typed stakeholder joins the data spine
+          instead of inventing a new spelling. */}
+      <datalist id="stakeholder-account-options">
+        {[...new Set([
+          ...opportunities.map((item) => item.accountName),
+          ...stakeholders.map((item) => item.accountName),
+        ].filter(Boolean))].sort().map((name) => <option key={name} value={name} />)}
+      </datalist>
+      <datalist id="stakeholder-opportunity-options">
+        {[...new Set([
+          ...opportunities.filter((item) => item.status === 'Active').map((item) => item.opportunityName),
+          ...stakeholders.map((item) => item.opportunityName),
+        ].filter(Boolean))].sort().map((name) => <option key={name} value={name} />)}
+      </datalist>
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Stakeholders</p>
@@ -312,8 +327,10 @@ function StakeholderPanel({
         <Field label="Name" value={form.name} onChange={(value) => update('name', value)} required />
         <Field label="Role title" value={form.roleTitle} onChange={(value) => update('roleTitle', value)} />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <Field label="Account" value={form.accountName} onChange={(value) => update('accountName', value)} />
-          <Field label="Opportunity" value={form.opportunityName} onChange={(value) => update('opportunityName', value)} />
+          {/* Datalist-backed so typed names land on accounts and deals the
+              workspace already knows - one data spine, no loose spellings. */}
+          <Field label="Account" value={form.accountName} onChange={(value) => update('accountName', value)} listId="stakeholder-account-options" />
+          <Field label="Opportunity" value={form.opportunityName} onChange={(value) => update('opportunityName', value)} listId="stakeholder-opportunity-options" />
           <SelectField label="Stakeholder role" value={form.stakeholderRole} options={stakeholderRoles} onChange={(value) => update('stakeholderRole', value)} />
           <SelectField label="Influence" value={form.influenceLevel} options={influenceLevels} onChange={(value) => update('influenceLevel', value)} />
           <SelectField label="Relationship" value={form.relationshipStrength} options={relationshipStrengths} onChange={(value) => update('relationshipStrength', value)} />
@@ -384,8 +401,8 @@ function SelectField<Value extends string>({ label, value, options, onChange }: 
   return <label className="block"><span className="text-sm font-bold text-navy">{label}</span><select value={value} onChange={(event) => onChange(event.target.value as Value)} className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10">{options.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>;
 }
 
-function Field({ label, value, onChange, required = false, type = 'text' }: { label: string; value: string; onChange: (value: string) => void; required?: boolean; type?: string }) {
-  return <label className="block"><span className="text-sm font-bold text-navy">{label}{required ? ' *' : ''}</span><input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10" /></label>;
+function Field({ label, value, onChange, required = false, type = 'text', listId }: { label: string; value: string; onChange: (value: string) => void; required?: boolean; type?: string; listId?: string }) {
+  return <label className="block"><span className="text-sm font-bold text-navy">{label}{required ? ' *' : ''}</span><input type={type} value={value} list={listId} onChange={(event) => onChange(event.target.value)} className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10" /></label>;
 }
 
 function TextArea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
