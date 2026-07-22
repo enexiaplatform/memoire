@@ -61,6 +61,7 @@ import { buildFollowUpImpact } from '../../utils/followUpImpact';
 import { MorningBriefCard } from './MorningBriefCard';
 import { BusinessCockpitStrip } from './BusinessCockpitStrip';
 import { CommittedWeekStrip } from './CommittedWeekStrip';
+import { TodayCommitmentStrip } from './TodayCommitmentStrip';
 import { buildBusinessCockpit, nudgeEntityHref } from '../../utils/businessCockpit';
 import { getWorkspaceLens, orderCockpitForLens } from '../../utils/workspaceLens';
 import { buildMorningBrief } from '../../utils/morningBrief';
@@ -682,11 +683,14 @@ export function TodayPage() {
               <BusinessCockpitStrip answers={businessCockpit} />
               <MorningBriefCard brief={morningBrief} />
 
-              <StepDivider step={2} title="Do today's work" hint="Your own weekly promise first, then the top three" />
+              <StepDivider step={2} title="Do today's work" hint="Your own weekly promise first, then what's on the plan, then the top three" />
               {/* The user's own promise for the week outranks the app's
                   suggestions, so it sits above the recommended Top 3. Renders
                   only when a week was actually confirmed. */}
               <CommittedWeekStrip userId={sampleDataActive ? undefined : user?.id} sampleDataActive={sampleDataActive} />
+              {/* The plan's own column for today, shared box-for-box with the
+                  Plan board: today's dated commitments, run from here. */}
+              <TodayCommitmentStrip userId={sampleDataActive ? undefined : user?.id} sampleDataActive={sampleDataActive} />
               <TodayTopThreeActions actions={todayCenter.topActions} />
 
               <StepDivider step={3} title="Check the watch-list" hint="What Memoire flags before it can surprise you" />
