@@ -22,6 +22,10 @@ import {
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
 import { updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
+import { loadPlanItemsForWorkspace, PLAN_ITEMS_UPDATED_EVENT } from '../../services/planItemStore';
+import type { PlanRecord } from '../../utils/weeklyPlan';
+import { buildActivityInsights } from '../../utils/activityInsights';
+import { ActivityInsightsBand } from './ActivityInsightsBand';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { businessDomains, businessDomainTone, classifyBusinessDomain, type BusinessDomain } from '../../utils/businessDomain';
 import { buildCommercialJourneySnapshot, formatJourneyCommitment } from '../../utils/commercialJourney';
@@ -89,6 +93,7 @@ export function SalesActivityCalendarPage() {
   const [selectedActivity, setSelectedActivity] = useState<SalesActivityRecord | null>(null);
   const [copiedId, setCopiedId] = useState('');
   const [message, setMessage] = useState('');
+  const [planRecords, setPlanRecords] = useState<PlanRecord[]>([]);
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
@@ -115,6 +120,22 @@ export function SalesActivityCalendarPage() {
   useEffect(() => {
     refreshActivities();
   }, [refreshActivities]);
+
+  // The plan's completion marks, so the insights band can read follow-through -
+  // which captured next actions were actually ticked done. Stays in step live
+  // when a box is checked on Today or the board.
+  useEffect(() => {
+    let active = true;
+    void loadPlanItemsForWorkspace(dataUserId, sampleDataActive).then((records) => {
+      if (active) setPlanRecords(records);
+    });
+    const onUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<PlanRecord[]>).detail;
+      if (Array.isArray(detail)) setPlanRecords(detail);
+    };
+    window.addEventListener(PLAN_ITEMS_UPDATED_EVENT, onUpdate);
+    return () => { active = false; window.removeEventListener(PLAN_ITEMS_UPDATED_EVENT, onUpdate); };
+  }, [dataUserId, sampleDataActive]);
 
   useEffect(() => {
     trackProductEvent('activity_ledger_opened');
@@ -157,6 +178,12 @@ export function SalesActivityCalendarPage() {
   ), [domainFilter, periodActivities]);
   const groupedActivities = useMemo(() => groupActivitiesByDate(visibleActivities), [visibleActivities]);
   const summary = useMemo(() => buildActivitySummary(visibleActivities), [visibleActivities]);
+  // Insights read the whole ledger (for cadence and quiet accounts) plus the
+  // plan's completion marks (for follow-through), scoped to the viewed period.
+  const insights = useMemo(
+    () => buildActivityInsights({ activities, planRecords, range: { start: range.start, end: range.end } }),
+    [activities, planRecords, range.end, range.start],
+  );
   const dateKeys = useMemo(() => getDateKeysForRange(range.start, range.end), [range.end, range.start]);
 
   const shiftPeriod = (direction: -1 | 1) => {
@@ -302,6 +329,8 @@ export function SalesActivityCalendarPage() {
           <WeeklySummaryPanel summary={summary} />
         )}
       </section>
+
+      {!loadingActivities && <ActivityInsightsBand insights={insights} />}
 
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center gap-2">
