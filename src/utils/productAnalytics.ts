@@ -37,6 +37,11 @@ export type ProductFunnelEvent =
   | 'weekly_plan_opened'
   | 'weekly_plan_item_added'
   | 'weekly_plan_item_checked'
+  // Today and the plan are one surface: a commitment ticked from the Today strip
+  // is the same record as one ticked on the board. Measures whether the day is
+  // actually run from Today.
+  | 'today_plan_item_checked'
+  | 'capture_closed_plan_item'
   // Suggestion acceptance rate: shown vs taken vs refused. Without the refusal
   // event the denominator is missing and the engine cannot be judged.
   | 'weekly_plan_suggestion_accepted'

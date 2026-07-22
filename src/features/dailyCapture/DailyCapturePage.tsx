@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Bot, CalendarDays, Clipboard, Copy, Loader2, Mail, Mic, MicOff, NotebookPen, Save, Trash2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { useSpeechDictation } from '../../hooks/useSpeechDictation';
@@ -26,6 +26,14 @@ import { buildObjectionFromActivity, detectObjectionCandidatesFromActivity } fro
 import { suggestQuoteStateChanges, type QuoteStateSuggestion } from '../../utils/quoteStateSuggestions';
 import { getWorkspaceLens, orderTemplatesForLens, WORKSPACE_LENS_CHANGED_EVENT } from '../../utils/workspaceLens';
 import { updateQuote, type QuoteRecord } from '../../services/quoteStore';
+import { loadPlanItemsForWorkspace, savePlanItem } from '../../services/planItemStore';
+import {
+  findClosablePlanItems,
+  getCaptureScheduledEntries,
+  planItemDoneRecord,
+} from '../../utils/capturePlanReconciliation';
+import type { PlanItem, PlanRecord } from '../../utils/weeklyPlan';
+import { trackProductEvent } from '../../utils/productAnalytics';
 import { markPipelineReviewHabitStepComplete } from '../../utils/pipelineReviewHabit';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
 import { markDemoJourneyStepComplete } from '../../utils/demoJourney';
@@ -271,6 +279,9 @@ export function DailyCapturePage() {
   const [dismissedQuoteSuggestions, setDismissedQuoteSuggestions] = useState<string[]>([]);
   const [quoteSuggestionMessage, setQuoteSuggestionMessage] = useState('');
   const [lastSavedActivity, setLastSavedActivity] = useState<SalesActivityRecord | null>(null);
+  const [planRecords, setPlanRecords] = useState<PlanRecord[]>([]);
+  const [planCloseDismissed, setPlanCloseDismissed] = useState(false);
+  const [markedDoneKeys, setMarkedDoneKeys] = useState<string[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [message, setMessage] = useState('');
@@ -387,6 +398,16 @@ export function DailyCapturePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataUserId]);
 
+  // The plan's own records, so a saved capture can offer to tick off the open
+  // item it just satisfied - the backward half of "record it once".
+  useEffect(() => {
+    let cancelled = false;
+    void loadPlanItemsForWorkspace(dataUserId, sampleDataActive).then((records) => {
+      if (!cancelled) setPlanRecords(records);
+    });
+    return () => { cancelled = true; };
+  }, [dataUserId, sampleDataActive]);
+
   useEffect(() => {
     const mode = searchParams.get('mode');
     const nextMode: CaptureMode = mode === 'quick' ? 'quick' : mode === 'email' ? 'email' : 'note';
@@ -459,6 +480,8 @@ export function DailyCapturePage() {
     }
     setStakeholderSuggestionDismissed(false);
     setObjectionSuggestionDismissed(false);
+    setPlanCloseDismissed(false);
+    setMarkedDoneKeys([]);
   };
 
   const handleQuickSave = async () => {
@@ -494,6 +517,8 @@ export function DailyCapturePage() {
     markPipelineReviewHabitStepComplete('capturedUpdatesAt');
     setStakeholderSuggestionDismissed(false);
     setObjectionSuggestionDismissed(false);
+    setPlanCloseDismissed(false);
+    setMarkedDoneKeys([]);
   };
 
   const applyQuickTemplate = (templateId: string) => {
@@ -648,6 +673,32 @@ export function DailyCapturePage() {
     setMessage(result.warning || 'Objection created from capture.');
     setSaveState(result.warning ? 'error' : 'saved');
   };
+
+  // What the just-saved capture did to the plan, both directions: the dated
+  // actions that landed on it by themselves, and the open items this touch may
+  // have just closed. Both read the same rules the plan board uses.
+  const planScheduledEntries = useMemo(
+    () => (lastSavedActivity ? getCaptureScheduledEntries(lastSavedActivity) : []),
+    [lastSavedActivity],
+  );
+  const closablePlanItems = useMemo(
+    () => (lastSavedActivity
+      ? findClosablePlanItems({ activity: lastSavedActivity, opportunities, records: planRecords })
+        .filter((closable) => !markedDoneKeys.includes(closableKey(closable.item)))
+      : []),
+    [lastSavedActivity, opportunities, planRecords, markedDoneKeys],
+  );
+
+  const handleMarkPlanItemDone = useCallback((item: PlanItem) => {
+    const record = planItemDoneRecord(item, planRecords, {
+      source: sampleDataActive ? 'demo' : 'user',
+      isSample: sampleDataActive,
+    });
+    if (!record) return;
+    setPlanRecords(savePlanItem(record));
+    setMarkedDoneKeys((current) => [...current, closableKey(item)]);
+    trackProductEvent('capture_closed_plan_item');
+  }, [planRecords, sampleDataActive]);
 
   const stakeholderCandidate = lastSavedActivity ? deriveStakeholderCandidateFromCapture(lastSavedActivity) : null;
   const objectionCandidate = lastSavedActivity ? detectObjectionCandidatesFromActivity(lastSavedActivity)[0] : null;
@@ -1012,6 +1063,72 @@ export function DailyCapturePage() {
           onIgnore={() => handleIgnoreActivityLink(lastSavedActivity)}
           onUnlink={() => handleUnlinkActivity(lastSavedActivity)}
         />
+      )}
+
+      {lastSavedActivity && !planCloseDismissed && (planScheduledEntries.length > 0 || closablePlanItems.length > 0) && (
+        <section className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-4 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-emerald-600" />
+              <p className="text-sm font-bold text-emerald-950">Your plan is in step</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPlanCloseDismissed(true)}
+              className="rounded-full p-1 text-emerald-400 hover:bg-emerald-100 hover:text-emerald-700"
+              aria-label="Dismiss plan sync"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {planScheduledEntries.length > 0 && (
+            <div className="mt-2">
+              <p className="text-xs leading-6 text-emerald-800">
+                Added to your <Link to="/app/plan" className="font-bold underline hover:text-emerald-950">Plan</Link> automatically — you wrote it once, it landed on the day:
+              </p>
+              <ul className="mt-1 space-y-1">
+                {planScheduledEntries.map((entry) => (
+                  <li key={`${entry.dueDate}-${entry.label}`} className="flex items-center gap-2 text-xs text-emerald-900">
+                    <span className="rounded bg-white px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 ring-1 ring-emerald-200">
+                      {entry.weekdayLabel.slice(0, 3)} {entry.dueDateLabel}
+                    </span>
+                    <span className="font-medium">{entry.label}</span>
+                    {entry.overdue && <span className="rounded bg-red-50 px-1 py-0.5 text-[10px] font-bold text-red-700">Overdue</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {closablePlanItems.length > 0 && (
+            <div className="mt-3 border-t border-emerald-100 pt-3">
+              <p className="text-xs leading-6 text-emerald-800">
+                This touch looks like it closed something you had planned. Tick it off here — no need to hunt for it on the board:
+              </p>
+              <ul className="mt-1.5 space-y-1.5">
+                {closablePlanItems.map((closable) => (
+                  <li key={closableKey(closable.item)} className="flex flex-col gap-2 rounded-lg bg-white px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-gray-900">
+                        <span className="mr-1 rounded bg-emerald-50 px-1 py-0.5 text-[10px] font-bold text-emerald-700">{closable.item.tag}</span>
+                        {closable.item.label}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-gray-500">{closable.reason}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleMarkPlanItemDone(closable.item)}
+                      className="shrink-0 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700"
+                    >
+                      Mark done
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
       )}
 
       {stakeholderCandidate && !alreadyHasStakeholderCandidate && !stakeholderSuggestionDismissed && (
@@ -1707,6 +1824,10 @@ function ActivitySignals({ activity }: { activity: SalesActivityRecord }) {
       ))}
     </div>
   );
+}
+
+function closableKey(item: PlanItem) {
+  return item.derivedKey || item.id;
 }
 
 function formatActivitySummary(activity: SalesActivityRecord) {

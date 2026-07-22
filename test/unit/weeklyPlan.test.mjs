@@ -198,6 +198,118 @@ describe('buildPlanBoard', () => {
   });
 });
 
+const capture = (overrides = {}) => ({
+  id: 'c1', accountName: 'MDL', linkedAccountName: '', linkedOpportunityId: '',
+  activityType: 'Customer meeting', activityDate: '2026-07-20',
+  nextAction: '', dueDate: '', nextActions: [], summary: '', ...overrides,
+});
+
+describe('buildPlanBoard capture items', () => {
+  test('a dated captured next action lands on the plan automatically', () => {
+    const board = buildPlanBoard({
+      periodType: 'week', anchorDate: anchor,
+      opportunities: [], obligations: [], records: [],
+      activities: [capture({ nextAction: 'Send revised quote', dueDate: '2026-07-22' })],
+      today: '2026-07-22',
+    });
+
+    const wednesday = board.days.find((day) => day.date === '2026-07-22');
+    assert.equal(wednesday.items.length, 1);
+    assert.equal(wednesday.items[0].kind, 'capture');
+    assert.equal(wednesday.items[0].tag, 'MDL');
+    assert.equal(wednesday.items[0].label, 'Send revised quote');
+    assert.equal(board.captureCount, 1);
+    assert.equal(board.derivedCount, 1);
+  });
+
+  test('an undated captured next action never reaches the board', () => {
+    const board = buildPlanBoard({
+      periodType: 'week', anchorDate: anchor,
+      opportunities: [], obligations: [], records: [],
+      activities: [capture({ nextAction: 'Call back', dueDate: '' })],
+      today: '2026-07-22',
+    });
+    assert.equal(board.totalCount, 0);
+    assert.equal(board.captureCount, 0);
+  });
+
+  test('each structured next action with its own date gets a day', () => {
+    const board = buildPlanBoard({
+      periodType: 'week', anchorDate: anchor,
+      opportunities: [], obligations: [], records: [],
+      activities: [capture({ nextActions: [
+        { title: 'Send quote', dueDate: '2026-07-21' },
+        { title: 'Book demo', dueDate: '2026-07-23' },
+        { title: 'No date here' },
+      ] })],
+      today: '2026-07-22',
+    });
+    assert.equal(board.captureCount, 2);
+    assert.equal(board.days.find((day) => day.date === '2026-07-21').items[0].label, 'Send quote');
+    assert.equal(board.days.find((day) => day.date === '2026-07-23').items[0].label, 'Book demo');
+  });
+
+  test('a capture linked to a deal does not duplicate the deal item', () => {
+    const board = buildPlanBoard({
+      periodType: 'week', anchorDate: anchor,
+      opportunities: [opportunity('o1', 'MDL', 'Send quote', '2026-07-22')],
+      obligations: [], records: [],
+      activities: [capture({ accountName: 'MDL', linkedOpportunityId: 'o1', nextAction: 'Send quote', dueDate: '2026-07-22' })],
+      today: '2026-07-22',
+    });
+
+    const wednesday = board.days.find((day) => day.date === '2026-07-22');
+    assert.equal(wednesday.items.length, 1);
+    assert.equal(wednesday.items[0].kind, 'deal');
+    assert.equal(board.captureCount, 0);
+  });
+
+  test('a hand-typed personal item wins over an equivalent capture on the same day', () => {
+    const personal = createPersonalPlanRecord({ date: '2026-07-22', label: 'Send revised quote', tag: 'MDL' });
+    const board = buildPlanBoard({
+      periodType: 'week', anchorDate: anchor,
+      opportunities: [], obligations: [], records: [personal],
+      activities: [capture({ accountName: 'MDL', nextAction: 'Send revised quote', dueDate: '2026-07-22' })],
+      today: '2026-07-22',
+    });
+
+    const wednesday = board.days.find((day) => day.date === '2026-07-22');
+    assert.equal(wednesday.items.length, 1);
+    assert.equal(wednesday.items[0].kind, 'personal');
+    assert.equal(board.captureCount, 0);
+  });
+
+  test('a genuinely different capture on a planned day is kept, not hidden', () => {
+    const personal = createPersonalPlanRecord({ date: '2026-07-22', label: 'Internal budget review', tag: 'MDL' });
+    const board = buildPlanBoard({
+      periodType: 'week', anchorDate: anchor,
+      opportunities: [], obligations: [], records: [personal],
+      activities: [capture({ accountName: 'MDL', nextAction: 'Send revised quote', dueDate: '2026-07-22' })],
+      today: '2026-07-22',
+    });
+
+    const wednesday = board.days.find((day) => day.date === '2026-07-22');
+    assert.equal(wednesday.items.length, 2);
+    assert.equal(board.captureCount, 1);
+  });
+
+  test('a completion mark checks off a capture item', () => {
+    const activities = [capture({ nextAction: 'Send revised quote', dueDate: '2026-07-22' })];
+    const seed = buildPlanBoard({
+      periodType: 'week', anchorDate: anchor, opportunities: [], obligations: [], records: [], activities, today: '2026-07-22',
+    });
+    const item = seed.days.find((day) => day.date === '2026-07-22').items[0];
+
+    const done = buildPlanBoard({
+      periodType: 'week', anchorDate: anchor, opportunities: [], obligations: [],
+      records: [createDerivedCompletionRecord(item, true)], activities, today: '2026-07-22',
+    });
+
+    assert.equal(done.days.find((day) => day.date === '2026-07-22').items[0].done, true);
+    assert.equal(done.doneCount, 1);
+  });
+});
+
 describe('splitBracketTag', () => {
   test('reads a bracketed prefix as the tag', () => {
     assert.deepEqual(splitBracketTag('[Internal] Submit KPI'), { tag: 'Internal', label: 'Submit KPI' });

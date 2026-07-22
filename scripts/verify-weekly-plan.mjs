@@ -171,12 +171,28 @@ const anchor = new Date(2026, 6, 22); // Wed of the Mon 2026-07-20 week
     summary: '', risks: [], ...overrides,
   });
 
-  const promised = buildPlanSuggestions({
+  // A dated next action is not a suggestion any more - it derives straight onto
+  // the board, so the seller records it once and never re-adds it by hand.
+  const datedOntoBoard = buildPlanBoard({
+    periodType: 'week', anchorDate: anchor, opportunities: [], obligations: [],
+    activities: [touch({ nextAction: 'Send revised quote', dueDate: '2026-07-22' })],
+    records: [], today: '2026-07-22',
+  });
+  assert.equal(datedOntoBoard.captureCount, 1, 'a dated captured next action lands on the plan by itself');
+  assert.equal(datedOntoBoard.days.find((day) => day.date === '2026-07-22').items[0].kind, 'capture');
+  const notSuggested = buildPlanSuggestions({
     activities: [touch({ nextAction: 'Send revised quote', dueDate: '2026-07-22' })],
     opportunities: [], records: [], ...week,
   });
+  assert.equal(notSuggested.length, 0, 'and so it is never also proposed as a thing to add');
+
+  // The panel still owns the softer half: a next action nobody put a date on.
+  const promised = buildPlanSuggestions({
+    activities: [touch({ nextAction: 'Call the buyer back' })],
+    opportunities: [], records: [], ...week,
+  });
   assert.equal(promised.length, 1);
-  assert.equal(promised[0].kind, 'due-next-action');
+  assert.equal(promised[0].kind, 'undated-next-action');
   assert.ok(promised[0].reason, 'every suggestion states the rule that fired');
   assert.ok(promised[0].evidence, 'every suggestion cites the capture it came from');
   assert.ok(promised[0].sourceActivityId, 'every suggestion points back at its activity');
@@ -203,7 +219,7 @@ const anchor = new Date(2026, 6, 22); // Wed of the Mon 2026-07-20 week
   });
   assert.equal(dismissal.dismissed, true);
   const afterDismissal = buildPlanSuggestions({
-    activities: [touch({ nextAction: 'Send revised quote', dueDate: '2026-07-22' })],
+    activities: [touch({ nextAction: 'Call the buyer back' })],
     opportunities: [], records: [dismissal], ...week,
   });
   assert.equal(afterDismissal.length, 0, 'a refused suggestion is never asked twice');
@@ -225,6 +241,53 @@ const anchor = new Date(2026, 6, 22); // Wed of the Mon 2026-07-20 week
 
   const panel = readFileSync(new URL('../src/features/plan/PlanSuggestionsPanel.tsx', import.meta.url), 'utf8');
   assert.match(panel, /Nothing here is on your plan until you put it there/, 'the panel says suggestions are not commitments');
+}
+
+// 8b. Capture is the single place a dated next action is recorded; the plan
+//     reflects it both ways, and neither direction ever writes a second copy.
+{
+  const { findClosablePlanItems, getCaptureScheduledEntries, planItemDoneRecord } =
+    await import('../src/utils/capturePlanReconciliation.ts');
+
+  const touch = (overrides = {}) => ({
+    id: 'c1', accountName: 'MDL', linkedAccountName: '', linkedOpportunityId: '',
+    activityType: 'Customer meeting', activityDate: '2026-07-22', nextAction: '', dueDate: '',
+    nextActions: [], summary: '', ...overrides,
+  });
+
+  // Forward: the capture tells the seller exactly what landed on the plan.
+  const scheduled = getCaptureScheduledEntries(
+    touch({ nextAction: 'Send revised quote', dueDate: '2026-07-24' }), '2026-07-22',
+  );
+  assert.equal(scheduled.length, 1, 'a dated next action is reported as scheduled');
+  assert.equal(scheduled[0].label, 'Send revised quote');
+  assert.equal(scheduled[0].overdue, false);
+
+  // Backward: an open planned item on the same account near the touch can be
+  // closed from Capture - suggested, never auto-ticked.
+  const planned = createPersonalPlanRecord({ date: '2026-07-22', label: 'Follow up with MDL', tag: 'MDL' });
+  const closable = findClosablePlanItems({
+    activity: touch(), opportunities: [], records: [planned], today: '2026-07-22',
+  });
+  assert.equal(closable.length, 1, 'the planned item this touch satisfied is offered for closing');
+  assert.equal(closable[0].item.kind, 'personal');
+
+  const doneRecord = planItemDoneRecord(closable[0].item, [planned]);
+  assert.equal(doneRecord.done, true, 'marking it produces a done record');
+  assert.ok(doneRecord.doneAt, 'with a timestamp');
+
+  // A touch with no account matches nothing - no fishing for items to close.
+  assert.equal(
+    findClosablePlanItems({ activity: touch({ accountName: '' }), opportunities: [], records: [planned], today: '2026-07-22' }).length,
+    0,
+    'a touch with no account offers nothing to close',
+  );
+
+  // The Capture page wires both directions and adds no new API function.
+  const capturePage = readFileSync(new URL('../src/features/dailyCapture/DailyCapturePage.tsx', import.meta.url), 'utf8');
+  assert.match(capturePage, /getCaptureScheduledEntries/, 'Capture reports what it scheduled');
+  assert.match(capturePage, /findClosablePlanItems/, 'Capture offers to close matching planned items');
+  assert.match(capturePage, /Added to your/, 'Capture tells the seller the plan is in step');
 }
 
 // 9. Instrumentation ships with the feature.

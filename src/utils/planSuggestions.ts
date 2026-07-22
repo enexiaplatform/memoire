@@ -1,7 +1,7 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { SalesActivityType } from './salesActivityClassifier';
-import type { PlanRecord } from './weeklyPlan.ts';
+import { condensePlanLabel, type PlanRecord } from './weeklyPlan.ts';
 import { sameAccount } from './accountIdentity.ts';
 import {
   compareSafeBusinessDate,
@@ -14,9 +14,10 @@ import {
  * What last week is asking of this one.
  *
  * The activity ledger already knows a call happened, that a next action was
- * written down, or that a thread went quiet straight after a demo. None of that
- * reaches the plan board on its own, so the seller has to remember it. These
- * suggestions read the ledger and propose the follow-up - with the captured
+ * written down, or that a thread went quiet straight after a demo. A next action
+ * that carries a due date now lands on the board by itself (buildCaptureItems),
+ * so this file's job is the softer half: the follow-ups nobody dated, the risks
+ * left open, the threads that went silent - each proposed with the captured
  * evidence attached, so the operator can judge it in a second rather than
  * trusting it.
  *
@@ -100,7 +101,11 @@ export function buildPlanSuggestions(input: {
 }): PlanSuggestion[] {
   const lookbackDays = input.lookbackDays ?? 14;
   const lookbackStart = addDays(input.rangeStart, -lookbackDays);
-  const lookbackEnd = addDays(input.rangeStart, -1);
+  // Read through the end of the planned period, not just up to the day before it.
+  // A touch captured earlier today, planning the rest of this same week, has to
+  // be able to reach the board - otherwise the seller feels they recorded it for
+  // nothing.
+  const lookbackEnd = input.rangeEnd;
 
   const decided = new Set(
     input.records
@@ -140,18 +145,10 @@ export function buildPlanSuggestions(input: {
     const nextAction = (activity.nextAction || '').trim();
 
     if (nextAction && isValidBusinessDate(activity.dueDate)) {
-      // Dated inside the week being planned: the seller already said when.
-      if (isBusinessDateInRange(activity.dueDate, input.rangeStart, input.rangeEnd)) {
-        suggestions.push({
-          ...base,
-          key: `sug:due:${activity.id}:${activity.dueDate}`,
-          kind: 'due-next-action',
-          label: condensePlanLabel(nextAction),
-          reason: `You promised this for ${formatSafeBusinessDate(activity.dueDate)}.`,
-          evidence: `Captured from your ${touchLabel}.`,
-          suggestedDate: activity.dueDate,
-        });
-      }
+      // A dated next action drives straight onto the board (buildCaptureItems).
+      // Proposing it here too would show the same commitment twice - once as a
+      // live plan item, once as a thing to add - which is exactly the "did I
+      // record this already?" doubt the plan is meant to remove.
       return;
     }
 
@@ -268,25 +265,9 @@ function hasLaterTouch(
   });
 }
 
-/**
- * A captured next action is often a paragraph. A plan item has to be readable
- * at a glance in a narrow column, so take the first sentence and cap it - the
- * full text stays on the activity, which the suggestion cites.
- */
-const MAX_LABEL_LENGTH = 80;
-
-export function condensePlanLabel(rawLabel: string) {
-  const trimmed = (rawLabel || '').trim().replace(/\s+/g, ' ');
-  if (!trimmed) return '';
-
-  const firstSentence = /^(.+?[.!?])\s+\S/.exec(trimmed)?.[1] || trimmed;
-  const candidate = firstSentence.replace(/[.\s]+$/, '');
-  if (candidate.length <= MAX_LABEL_LENGTH) return candidate;
-
-  const clipped = candidate.slice(0, MAX_LABEL_LENGTH);
-  const lastSpace = clipped.lastIndexOf(' ');
-  return `${(lastSpace > 40 ? clipped.slice(0, lastSpace) : clipped).replace(/[,;:\s]+$/, '')}...`;
-}
+// condensePlanLabel now lives with the board it feeds (weeklyPlan.ts) and is
+// re-exported here so existing importers keep working unchanged.
+export { condensePlanLabel } from './weeklyPlan.ts';
 
 function firstNonEmpty(values?: string[]) {
   return (values || []).map((value) => (value || '').trim()).find(Boolean) || '';

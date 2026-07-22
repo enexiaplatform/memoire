@@ -105,8 +105,9 @@ export function WeeklyPlanPage() {
     anchorDate,
     opportunities,
     obligations,
+    activities,
     records,
-  }), [anchorDate, obligations, opportunities, periodType, records]);
+  }), [activities, anchorDate, obligations, opportunities, periodType, records]);
 
   // Every account name the workspace already knows, so a typed plan item can
   // link to the entity it belongs to instead of living as loose text.
@@ -283,7 +284,13 @@ export function WeeklyPlanPage() {
 
       <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-gray-600">
         <span className="font-bold text-navy">{board.doneCount} / {board.totalCount} done</span>
-        <span>{board.derivedCount} from your pipeline and obligations</span>
+        <span>{board.derivedCount - board.captureCount} from your pipeline and obligations</span>
+        {board.captureCount > 0 && (
+          <span className="inline-flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            {board.captureCount} pulled in from your captures
+          </span>
+        )}
         <span>{board.personalCount} added by you</span>
         {commitment && (
           <Link to="/app/weekly-brief" className="ml-auto font-bold text-brand-blue hover:underline">
@@ -439,8 +446,9 @@ export function WeeklyPlanPage() {
       </div>
 
       <p className="mt-4 text-xs leading-5 text-gray-400">
-        Checking a pipeline or obligation item records that you did your plan. It does not change the deal - capture the
-        touch so the rest of Memoire sees it too.
+        Items in green were pulled in from a capture - you wrote them once, they landed here on their own. Checking any
+        pipeline, capture, or obligation item records that you did your plan; it does not change the deal, so capture the
+        touch when it happens and the rest of Memoire stays in step.
       </p>
     </div>
   );

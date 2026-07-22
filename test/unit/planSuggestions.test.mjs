@@ -28,7 +28,7 @@ const opportunity = (id, accountName, nextActionDate, status = 'Active') => ({
 const week = { rangeStart: '2026-07-20', rangeEnd: '2026-07-26' };
 
 describe('buildPlanSuggestions', () => {
-  test('promotes a next action already promised inside the planned week', () => {
+  test('leaves a dated next action to the board rather than proposing it', () => {
     const suggestions = buildPlanSuggestions({
       activities: [activity({ nextAction: 'Send revised quote', dueDate: '2026-07-22' })],
       opportunities: [],
@@ -36,11 +36,10 @@ describe('buildPlanSuggestions', () => {
       ...week,
     });
 
-    assert.equal(suggestions.length, 1);
-    assert.equal(suggestions[0].kind, 'due-next-action');
-    assert.equal(suggestions[0].label, 'Send revised quote');
-    assert.equal(suggestions[0].suggestedDate, '2026-07-22');
-    assert.match(suggestions[0].evidence, /Customer meeting on/);
+    // A dated action derives straight onto the plan (buildCaptureItems), so it is
+    // deliberately not also offered here - showing it twice is the exact doubt we
+    // are removing.
+    assert.equal(suggestions.length, 0);
   });
 
   test('ignores a promise dated outside the planned week', () => {
@@ -66,6 +65,21 @@ describe('buildPlanSuggestions', () => {
     // so it lands on the first day of the week being planned.
     assert.equal(suggestions[0].suggestedDate, '2026-07-20');
     assert.match(suggestions[0].reason, /never put a date on it/);
+  });
+
+  test('surfaces an undated action captured earlier in the same week being planned', () => {
+    // Monday of the planned week itself; the old lookback stopped at the day
+    // before the week, so a touch logged mid-week could never reach it.
+    const suggestions = buildPlanSuggestions({
+      activities: [activity({ activityDate: '2026-07-20', nextAction: 'Send the deck' })],
+      opportunities: [],
+      records: [],
+      ...week,
+    });
+
+    assert.equal(suggestions.length, 1);
+    assert.equal(suggestions[0].kind, 'undated-next-action');
+    assert.equal(suggestions[0].label, 'Send the deck');
   });
 
   test('chases a customer touch that captured no next action and went quiet', () => {
@@ -149,22 +163,25 @@ describe('buildPlanSuggestions', () => {
   });
 
   test('drops a suggestion once it has been accepted', () => {
+    // Undated: a dated action never becomes a suggestion, so the accept/refuse
+    // machinery is exercised on the softer half the panel still owns.
     const first = buildPlanSuggestions({
-      activities: [activity({ nextAction: 'Send revised quote', dueDate: '2026-07-22' })],
+      activities: [activity({ nextAction: 'Call Mr. Tinh back' })],
       opportunities: [],
       records: [],
       ...week,
     });
+    assert.equal(first.length, 1);
 
     const accepted = createPersonalPlanRecord({
-      date: '2026-07-22',
+      date: first[0].suggestedDate,
       label: first[0].label,
       tag: first[0].tag,
       suggestionKey: first[0].key,
     });
 
     const after = buildPlanSuggestions({
-      activities: [activity({ nextAction: 'Send revised quote', dueDate: '2026-07-22' })],
+      activities: [activity({ nextAction: 'Call Mr. Tinh back' })],
       opportunities: [],
       records: [accepted],
       ...week,
@@ -175,7 +192,7 @@ describe('buildPlanSuggestions', () => {
 
   test('drops a suggestion once it has been refused, and remembers the refusal', () => {
     const first = buildPlanSuggestions({
-      activities: [activity({ nextAction: 'Send revised quote', dueDate: '2026-07-22' })],
+      activities: [activity({ nextAction: 'Call Mr. Tinh back' })],
       opportunities: [],
       records: [],
       ...week,
@@ -191,7 +208,7 @@ describe('buildPlanSuggestions', () => {
     assert.equal(dismissal.suggestionKey, first[0].key);
 
     const after = buildPlanSuggestions({
-      activities: [activity({ nextAction: 'Send revised quote', dueDate: '2026-07-22' })],
+      activities: [activity({ nextAction: 'Call Mr. Tinh back' })],
       opportunities: [],
       records: [dismissal],
       ...week,

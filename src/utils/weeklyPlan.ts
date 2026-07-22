@@ -1,4 +1,5 @@
 ﻿import type { CrmLiteOpportunity } from '../services/opportunityStore';
+import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { OwnObligation } from './ownObligations.ts';
 import {
   compareSafeBusinessDate,
@@ -11,18 +12,20 @@ import {
 /**
  * The week laid out as days.
  *
- * Two kinds of item sit side by side, and the difference matters. Derived items
- * are dated commitments that already exist in the workspace - a deal's next
- * action, a payment you owe - so the board can never quietly disagree with the
- * money spine. Personal items are the operator's own work (an internal report,
- * a claim to file) that no commercial record would ever produce.
+ * Two families of item sit side by side, and the difference matters. Derived
+ * items are dated commitments that already exist in the workspace - a deal's
+ * next action, a payment you owe, a next action captured against a touch - so
+ * the board can never quietly disagree with the money spine. The seller records
+ * a thing once, in Capture or on the deal, and the plan simply reflects it back.
+ * Personal items are the operator's own work (an internal report, a claim to
+ * file) that no commercial record would ever produce, typed straight onto a day.
  *
  * Checking a derived item records that you did your plan. It deliberately does
  * NOT write back into the deal: only a captured touch moves the deal, so the
  * board can be honest without becoming a second source of truth.
  */
 
-export type PlanItemKind = 'deal' | 'obligation' | 'personal';
+export type PlanItemKind = 'deal' | 'obligation' | 'capture' | 'personal';
 
 export type PlanItem = {
   id: string;
@@ -59,6 +62,8 @@ export type PlanBoard = {
   doneCount: number;
   personalCount: number;
   derivedCount: number;
+  /** Derived items that came from a captured touch, a subset of derivedCount. */
+  captureCount: number;
 };
 
 export type PlanPeriod = 'week' | 'month';
@@ -97,6 +102,12 @@ export function buildPlanBoard(input: {
   anchorDate?: Date;
   opportunities: CrmLiteOpportunity[];
   obligations: OwnObligation[];
+  /**
+   * Captured touches, so a next action written down with a due date lands on the
+   * plan automatically - the seller records it once in Capture and never has to
+   * copy it onto a day by hand. Optional so existing callers keep working.
+   */
+  activities?: SalesActivityRecord[];
   records: PlanRecord[];
   today?: string;
 }): PlanBoard {
@@ -110,19 +121,23 @@ export function buildPlanBoard(input: {
       .map((record) => [record.derivedKey as string, record]),
   );
 
+  const dealItems = buildDealItems(input.opportunities, range, today);
+  const personalRecordsInRange = liveRecords
+    .filter((record) => !record.derivedKey)
+    .filter((record) => record.dismissed !== true)
+    .filter((record) => isValidBusinessDate(record.date) && isBusinessDateInRange(record.date, range.start, range.end));
+  const captureItems = buildCaptureItems(input.activities || [], range, today, dealItems, personalRecordsInRange);
+
   const derived = [
-    ...buildDealItems(input.opportunities, range, today),
+    ...dealItems,
     ...buildObligationItems(input.obligations, range, today),
+    ...captureItems,
   ].map((item) => {
     const completion = completionByKey.get(item.derivedKey as string);
     return completion ? { ...item, done: completion.done, doneAt: completion.doneAt } : item;
   });
 
-  const personal = liveRecords
-    .filter((record) => !record.derivedKey)
-    // A refused suggestion is kept as evidence that it was refused, never as work.
-    .filter((record) => record.dismissed !== true)
-    .filter((record) => isValidBusinessDate(record.date) && isBusinessDateInRange(record.date, range.start, range.end))
+  const personal = personalRecordsInRange
     .map((record) => ({
       id: record.id,
       kind: 'personal' as const,
@@ -160,6 +175,7 @@ export function buildPlanBoard(input: {
     doneCount: allItems.filter((item) => item.done).length,
     personalCount: personal.length,
     derivedCount: derived.length,
+    captureCount: captureItems.length,
   };
 }
 
@@ -196,6 +212,123 @@ function buildObligationItems(obligations: OwnObligation[], range: PlanRange, to
       href: obligation.href || '/app/revenue',
       overdue: compareSafeBusinessDate(obligation.dueDate, today) < 0,
     }));
+}
+
+/**
+ * A next action captured against a touch, with a due date, becomes a plan item
+ * on that day - automatically, so the seller who writes "send revised quote by
+ * Friday" in Capture never has to re-type it onto Friday's column.
+ *
+ * Two things it deliberately does not do:
+ *  - It does not duplicate a deal item. If the touch is linked to a deal and the
+ *    deal already carries that same dated action, the deal item stands (it is the
+ *    editable source of truth); the capture item steps aside.
+ *  - It does not duplicate the operator's own hand-typed plan. If a personal item
+ *    for the same account already sits on that day saying the same thing, the
+ *    typed one wins - the seller planned it, the capture is just evidence.
+ */
+function buildCaptureItems(
+  activities: SalesActivityRecord[],
+  range: PlanRange,
+  today: string,
+  dealItems: PlanItem[],
+  personalRecordsInRange: PlanRecord[],
+): PlanItem[] {
+  // A deal's dated action is keyed by account+date, so a linked capture with the
+  // same account on the same day is recognised as the same commitment.
+  const dealSignatures = new Set(
+    dealItems.map((item) => `${normalizePlanText(item.tag)}|${item.date}`),
+  );
+  const personalByDate = new Map<string, { account: string; label: string }[]>();
+  personalRecordsInRange.forEach((record) => {
+    const list = personalByDate.get(record.date) || [];
+    list.push({ account: normalizePlanText(record.tag), label: normalizePlanText(record.label) });
+    personalByDate.set(record.date, list);
+  });
+
+  const items: PlanItem[] = [];
+  const seenKeys = new Set<string>();
+
+  activities.forEach((activity) => {
+    const account = (activity.linkedAccountName || activity.accountName || '').trim() || 'Unknown account';
+    const normalizedAccount = normalizePlanText(account);
+
+    getDatedCaptureActions(activity).forEach((candidate) => {
+      if (!isBusinessDateInRange(candidate.dueDate, range.start, range.end)) return;
+
+      // The deal item is the editable copy; never show the same commitment twice.
+      if (dealSignatures.has(`${normalizedAccount}|${candidate.dueDate}`)) return;
+
+      // The operator already planned this by hand - keep their words, drop ours.
+      const personalHere = personalByDate.get(candidate.dueDate) || [];
+      const normalizedLabel = normalizePlanText(candidate.title);
+      const duplicatedByHand = personalHere.some(
+        (record) => record.account === normalizedAccount && labelsEquivalent(record.label, normalizedLabel),
+      );
+      if (duplicatedByHand) return;
+
+      const derivedKey = buildCaptureDerivedKey(activity.id, candidate.dueDate, candidate.slot);
+      if (seenKeys.has(derivedKey)) return;
+      seenKeys.add(derivedKey);
+
+      items.push({
+        id: `capture-${activity.id}-${candidate.slot}`,
+        derivedKey,
+        kind: 'capture',
+        date: candidate.dueDate,
+        tag: account,
+        label: condensePlanLabel(candidate.title),
+        done: false,
+        // Land on the exact touch that raised this, so its evidence is one click away.
+        href: `/app/activity?activityId=${encodeURIComponent(activity.id)}`,
+        overdue: compareSafeBusinessDate(candidate.dueDate, today) < 0,
+      });
+    });
+  });
+
+  return items;
+}
+
+/**
+ * The one place the capture-item derived key is spelled, so the board that
+ * writes a completion mark and anything measuring follow-through read the same
+ * identity. Drift here would silently make "captured then done" uncountable.
+ */
+export function buildCaptureDerivedKey(activityId: string, dueDate: string, slot: string) {
+  return `capture:${activityId}:${dueDate}:${slot}`;
+}
+
+/**
+ * Every dated next action a touch carries: the headline nextAction with its
+ * dueDate, plus each structured nextActions[] entry that has its own date. Slots
+ * keep their derived keys stable so a completion mark survives a rebuild.
+ * Exported so Capture can tell the seller, at save time, what just landed on the
+ * plan - reading the same rule the board itself uses.
+ */
+export function getDatedCaptureActions(activity: SalesActivityRecord): { title: string; dueDate: string; slot: string }[] {
+  const candidates: { title: string; dueDate: string; slot: string }[] = [];
+  const headline = (activity.nextAction || '').trim();
+  if (headline && isValidBusinessDate(activity.dueDate)) {
+    candidates.push({ title: headline, dueDate: sanitizeBusinessDate(activity.dueDate), slot: 'main' });
+  }
+  (activity.nextActions || []).forEach((action, index) => {
+    const title = (action?.title || '').trim();
+    if (title && isValidBusinessDate(action?.dueDate)) {
+      candidates.push({ title, dueDate: sanitizeBusinessDate(action.dueDate), slot: `n${index}` });
+    }
+  });
+  return candidates;
+}
+
+/**
+ * Two plan labels are "the same work" when one contains the other after
+ * normalisation - deliberately strict, so a genuine second task is never hidden.
+ */
+function labelsEquivalent(left: string, right: string) {
+  if (!left || !right) return false;
+  if (left === right) return true;
+  const [shorter, longer] = left.length <= right.length ? [left, right] : [right, left];
+  return shorter.length >= 6 && longer.includes(shorter);
 }
 
 type PlanRange = { start: string; end: string };
@@ -429,8 +562,29 @@ export function planKindTone(kind: PlanItemKind) {
   return {
     deal: 'bg-blue-50 text-brand-blue',
     obligation: 'bg-amber-50 text-amber-800',
+    capture: 'bg-emerald-50 text-emerald-700',
     personal: 'bg-gray-100 text-gray-600',
   }[kind];
+}
+
+/**
+ * A captured next action is often a paragraph. A plan item has to be readable
+ * at a glance in a narrow column, so take the first sentence and cap it - the
+ * full text stays on the activity, which the item links back to.
+ */
+const MAX_LABEL_LENGTH = 80;
+
+export function condensePlanLabel(rawLabel: string) {
+  const trimmed = (rawLabel || '').trim().replace(/\s+/g, ' ');
+  if (!trimmed) return '';
+
+  const firstSentence = /^(.+?[.!?])\s+\S/.exec(trimmed)?.[1] || trimmed;
+  const candidate = firstSentence.replace(/[.\s]+$/, '');
+  if (candidate.length <= MAX_LABEL_LENGTH) return candidate;
+
+  const clipped = candidate.slice(0, MAX_LABEL_LENGTH);
+  const lastSpace = clipped.lastIndexOf(' ');
+  return `${(lastSpace > 40 ? clipped.slice(0, lastSpace) : clipped).replace(/[,;:\s]+$/, '')}...`;
 }
 
 function formatDayLabel(dateKey: string) {
