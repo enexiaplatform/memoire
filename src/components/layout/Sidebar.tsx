@@ -22,16 +22,18 @@ function hasFirstSavedBrief() {
 // Three tiers mirroring the operating loop: the daily loop, where the money
 // sits, and review artifacts. Pipeline Defense lives in Review & Learn per the
 // pivot ("the premium review output inside a larger operating loop").
-// Today answers "what do I do now"; Dashboard is the central chart/report view.
-// Plan (a calendar, forward-looking) and Activity (a history clock, the ledger of
-// what already happened) carry deliberately different icon families so a glance at
-// the rail never reads them as two versions of the same calendar.
+// Dashboard sits at the very top as the roll-up of everything below - the single
+// place the whole business is aggregated. Today answers "what do I do now" and
+// stays the daily landing. Plan (a calendar, forward-looking) and Activity (a
+// history clock, the ledger of what already happened) carry deliberately
+// different icon families so a glance at the rail never reads them as two
+// versions of the same calendar.
 const primarySections = [{
   label: 'Business Activity OS',
   items: [
+    { to: '/app/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
     { to: '/app/today', label: 'Today', icon: <Sun className="h-5 w-5" /> },
     { to: '/app/plan', label: 'Plan', icon: <CalendarCheck className="h-5 w-5" /> },
-    { to: '/app/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
     { to: '/app/capture', label: 'Capture', icon: <NotebookPen className="h-5 w-5" /> },
     { to: '/app/activity', label: 'Activity', icon: <History className="h-5 w-5" /> },
     { to: '/app/ask', label: 'Ask Memoire', icon: <MessageCircleQuestion className="h-5 w-5" /> },

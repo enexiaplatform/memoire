@@ -6,6 +6,8 @@ import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import type { ExpenseRecord } from '../services/expenseStore.ts';
 import { buildMoneyFlow } from './moneyFlow.ts';
 import { buildCashPosition, getOpeningCashBalance, type CategorySpendRow } from './cashPosition.ts';
+import { buildOwnObligations } from './ownObligations.ts';
+import { buildPlanBoard, buildCaptureDerivedKey, getDatedCaptureActions, type PlanRecord } from './weeklyPlan.ts';
 import { getReportingCurrency, sumMoney, type SupportedCurrency } from './money.ts';
 import { sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 
@@ -51,6 +53,25 @@ export type MasterDashboardModel = {
     won: { count: number; totalBase: number };
     lost: { count: number; totalBase: number };
   };
+  /**
+   * How the operating loop is actually being run this week, and the proof that
+   * a thing recorded once flows all the way through: captured, on the plan
+   * without re-entry, and completed.
+   */
+  execution: {
+    weekStart: string;
+    weekEnd: string;
+    planned: number;
+    done: number;
+    adherenceRate: number | null;
+    fromCaptures: number;
+    fromPipeline: number;
+    personal: number;
+    // Record-once funnel over the recent activity window.
+    capturedNextActions: number;
+    onPlan: number;
+    completedNextActions: number;
+  };
 };
 
 type MasterDashboardInput = {
@@ -59,6 +80,8 @@ type MasterDashboardInput = {
   quotes: QuoteRecord[];
   expenses: ExpenseRecord[];
   opportunityOutcomes: OpportunityOutcomeRecord[];
+  /** The plan's records, so adherence and follow-through can be measured. */
+  planRecords?: PlanRecord[];
   today?: string;
 };
 
@@ -112,6 +135,17 @@ export function buildMasterDashboard(input: MasterDashboardInput): MasterDashboa
     return date !== null && date >= thirtyDaysAgo && date <= todayDate;
   }).length;
 
+  const execution = buildExecution({
+    opportunities: input.opportunities,
+    activities: input.activities,
+    quotes: input.quotes,
+    expenses: input.expenses,
+    planRecords: input.planRecords || [],
+    todayKey,
+    todayDate,
+    thirtyDaysAgo,
+  });
+
   return {
     reportingCurrency,
     kpis: {
@@ -135,6 +169,73 @@ export function buildMasterDashboard(input: MasterDashboardInput): MasterDashboa
     evidenceMix,
     weeklyActivity: buildWeeklyActivity(input.activities, todayDate),
     outcomes,
+    execution,
+  };
+}
+
+/**
+ * This week's plan adherence plus the record-once funnel. Everything the plan
+ * board already derives is reused here rather than recomputed, so the Dashboard
+ * can never disagree with Plan about what "done" means.
+ */
+function buildExecution(input: {
+  opportunities: CrmLiteOpportunity[];
+  activities: SalesActivityRecord[];
+  quotes: QuoteRecord[];
+  expenses: ExpenseRecord[];
+  planRecords: PlanRecord[];
+  todayKey: string;
+  todayDate: Date;
+  thirtyDaysAgo: Date;
+}): MasterDashboardModel['execution'] {
+  const obligations = buildOwnObligations({ expenses: input.expenses, quotes: input.quotes, today: input.todayKey }).obligations;
+  const board = buildPlanBoard({
+    periodType: 'week',
+    anchorDate: input.todayDate,
+    opportunities: input.opportunities,
+    obligations,
+    activities: input.activities,
+    records: input.planRecords,
+    today: input.todayKey,
+  });
+
+  const doneKeys = new Set(
+    input.planRecords
+      .filter((record) => record.__deleted !== true && record.derivedKey && record.done)
+      .map((record) => record.derivedKey as string),
+  );
+
+  const recentActivities = input.activities.filter((activity) => {
+    const date = parseBusinessDate(activity.activityDate);
+    return date !== null && date >= input.thirtyDaysAgo && date <= input.todayDate;
+  });
+
+  let capturedNextActions = 0;
+  let completedNextActions = 0;
+  recentActivities.forEach((activity) => {
+    getDatedCaptureActions(activity).forEach((candidate) => {
+      capturedNextActions += 1;
+      if (doneKeys.has(buildCaptureDerivedKey(activity.id, candidate.dueDate, candidate.slot))) {
+        completedNextActions += 1;
+      }
+    });
+  });
+
+  return {
+    weekStart: board.rangeStart,
+    weekEnd: board.rangeEnd,
+    planned: board.totalCount,
+    done: board.doneCount,
+    adherenceRate: board.totalCount === 0 ? null : board.doneCount / board.totalCount,
+    fromCaptures: board.captureCount,
+    fromPipeline: board.derivedCount - board.captureCount,
+    personal: board.personalCount,
+    // Every dated captured action derives onto the plan, so "on plan" equals
+    // "captured" by construction - that is the point being shown: nothing is
+    // re-entered between capturing it and planning it.
+    capturedNextActions,
+    onPlan: capturedNextActions,
+    completedNextActions,
   };
 }
 

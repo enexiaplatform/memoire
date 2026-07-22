@@ -7,9 +7,12 @@ import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import { loadSalesWorkspaceData, type SalesWorkspaceData } from '../../services/workspaceData';
+import { loadPlanItemsForWorkspace, PLAN_ITEMS_UPDATED_EVENT } from '../../services/planItemStore';
+import type { PlanRecord } from '../../utils/weeklyPlan';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { buildMasterDashboard, type MasterDashboardModel } from '../../utils/masterDashboard';
 import { formatCompactCurrencyAmount } from '../../utils/money';
+import { formatSafeBusinessDate } from '../../utils/safeDate.ts';
 import { buildDailyDigest, buildDigestMailtoLink } from '../../utils/dailyDigest';
 import { getUserDisplayName } from '../../utils/userDisplay';
 import { copyTextToClipboard } from '../../utils/clipboard';
@@ -40,6 +43,7 @@ const EVIDENCE_COLORS: Record<string, string> = {
 export function MasterDashboardPage() {
   const { user, profile, loading: authLoading, isAuthenticated } = useAuthContext();
   const [workspace, setWorkspace] = useState<SalesWorkspaceData | null>(null);
+  const [planRecords, setPlanRecords] = useState<PlanRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -73,7 +77,25 @@ export function MasterDashboardPage() {
     trackProductEvent('master_dashboard_opened');
   }, []);
 
-  const model = useMemo(() => (workspace ? buildMasterDashboard(workspace) : null), [workspace]);
+  // The plan's records feed adherence and the record-once funnel, and stay live
+  // when a box is ticked on Today or the board.
+  useEffect(() => {
+    let active = true;
+    void loadPlanItemsForWorkspace(dataUserId, sampleDataActive).then((records) => {
+      if (active) setPlanRecords(records);
+    });
+    const onUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<PlanRecord[]>).detail;
+      if (Array.isArray(detail)) setPlanRecords(detail);
+    };
+    window.addEventListener(PLAN_ITEMS_UPDATED_EVENT, onUpdate);
+    return () => { active = false; window.removeEventListener(PLAN_ITEMS_UPDATED_EVENT, onUpdate); };
+  }, [dataUserId, sampleDataActive]);
+
+  const model = useMemo(
+    () => (workspace ? buildMasterDashboard({ ...workspace, planRecords }) : null),
+    [workspace, planRecords],
+  );
   const digest = useMemo(() => (workspace ? buildDailyDigest({
     opportunities: workspace.opportunities,
     quotes: workspace.quotes,
@@ -172,6 +194,8 @@ export function MasterDashboardPage() {
         <>
           <CommittedWeekStrip userId={dataUserId} sampleDataActive={sampleDataActive} />
 
+          <ExecutionBand execution={model.execution} />
+
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Key numbers">
             <KpiCard label="Open deals" value={String(model.kpis.openDeals)} sub={`${formatCompactCurrencyAmount(model.kpis.openPipelineBase, model.reportingCurrency)} pipeline`} />
             <KpiCard label="Money in motion" value={formatCompactCurrencyAmount(model.kpis.inMotionBase, model.reportingCurrency)} sub={`${model.kpis.stuckThreads} stuck thread${model.kpis.stuckThreads === 1 ? '' : 's'}`} tone={model.kpis.stuckThreads > 0 ? 'warn' : 'default'} />
@@ -236,6 +260,73 @@ export function MasterDashboardPage() {
         </>
       )}
     </div>
+  );
+}
+
+function ExecutionBand({ execution }: { execution: MasterDashboardModel['execution'] }) {
+  const adherencePct = execution.adherenceRate === null ? null : Math.round(execution.adherenceRate * 100);
+  const funnelRate = execution.capturedNextActions === 0
+    ? null
+    : Math.round((execution.completedNextActions / execution.capturedNextActions) * 100);
+
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" aria-label="How the loop is running">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-bold text-navy">How the loop is running</h2>
+          <p className="mt-0.5 text-xs text-gray-500">
+            This week, {formatSafeBusinessDate(execution.weekStart)} – {formatSafeBusinessDate(execution.weekEnd)}. Record once; it flows all the way through.
+          </p>
+        </div>
+        <Link to="/app/plan" className="text-xs font-bold text-brand-blue hover:underline">Open the plan</Link>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-4">
+          <div className="flex items-baseline justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Plan adherence</p>
+            <Link to="/app/plan" className="text-2xl font-bold text-navy hover:text-brand-blue">
+              {adherencePct === null ? '—' : `${adherencePct}%`}
+            </Link>
+          </div>
+          <p className="mt-1 text-xs text-gray-500">{execution.done} of {execution.planned} planned commitments done</p>
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-500">
+            <span><Link to="/app/opportunities" className="font-bold text-gray-700 hover:text-brand-blue">{execution.fromPipeline}</Link> from pipeline</span>
+            <span><Link to="/app/capture" className="font-bold text-emerald-700 hover:text-emerald-800">{execution.fromCaptures}</Link> from captures</span>
+            <span><Link to="/app/plan" className="font-bold text-gray-700 hover:text-brand-blue">{execution.personal}</Link> added by you</span>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-4">
+          <div className="flex items-baseline justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Record-once funnel · last 30 days</p>
+            <span className={`text-2xl font-bold ${funnelRate !== null && funnelRate >= 60 ? 'text-emerald-700' : 'text-navy'}`}>
+              {funnelRate === null ? '—' : `${funnelRate}%`}
+            </span>
+          </div>
+          <div className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold">
+            <FunnelStep to="/app/capture" value={execution.capturedNextActions} label="captured" tone="blue" />
+            <ArrowRight className="h-3.5 w-3.5 shrink-0 text-gray-300" />
+            <FunnelStep to="/app/plan" value={execution.onPlan} label="on plan" tone="gray" />
+            <ArrowRight className="h-3.5 w-3.5 shrink-0 text-gray-300" />
+            <FunnelStep to="/app/plan" value={execution.completedNextActions} label="done" tone="emerald" />
+          </div>
+          <p className="mt-2 text-[11px] leading-4 text-gray-500">
+            Every next action captured landed on the plan — none re-entered by hand.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FunnelStep({ to, value, label, tone }: { to: string; value: number; label: string; tone: 'blue' | 'gray' | 'emerald' }) {
+  const toneClass = tone === 'blue' ? 'text-brand-blue' : tone === 'emerald' ? 'text-emerald-700' : 'text-gray-700';
+  return (
+    <Link to={to} className="flex min-w-0 flex-col items-center rounded-lg bg-white px-3 py-1.5 ring-1 ring-gray-100 hover:ring-gray-300">
+      <span className={`text-base font-bold ${toneClass}`}>{value}</span>
+      <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{label}</span>
+    </Link>
   );
 }
 
