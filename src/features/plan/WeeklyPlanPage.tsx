@@ -284,14 +284,16 @@ export function WeeklyPlanPage() {
 
       <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-gray-600">
         <span className="font-bold text-navy">{board.doneCount} / {board.totalCount} done</span>
-        <span>{board.derivedCount - board.captureCount} from your pipeline and obligations</span>
+        {board.derivedCount - board.captureCount > 0 && (
+          <span>{board.derivedCount - board.captureCount} from your pipeline and obligations</span>
+        )}
         {board.captureCount > 0 && (
           <span className="inline-flex items-center gap-1">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
             {board.captureCount} pulled in from your captures
           </span>
         )}
-        <span>{board.personalCount} added by you</span>
+        {board.personalCount > 0 && <span>{board.personalCount} added by you</span>}
         {commitment && (
           <Link to="/app/weekly-brief" className="ml-auto font-bold text-brand-blue hover:underline">
             {commitment.items.length} commitments confirmed for this week

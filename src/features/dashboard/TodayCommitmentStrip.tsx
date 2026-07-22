@@ -139,7 +139,7 @@ export function TodayCommitmentStrip({
         </Link>
       </div>
       <p className="mt-0.5 text-xs text-gray-500">
-        The dated commitments your plan holds for today. Tick one here or on the board - it is the same box.
+        Dated for today on your plan. Tick here or on the board — it is the same box.
       </p>
 
       <ul className="mt-3 space-y-1.5 text-xs leading-5">
