@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Banknote, Plus, ReceiptText, RefreshCw, Search, Trash2, Wallet } from 'lucide-react';
+import { ProfitAndLossStatement } from './ProfitAndLossStatement';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -12,9 +13,8 @@ import { formatBaseCurrencyAmount as formatBaseMoney, formatCurrencyAmount as fo
 import { buildRevenueView, type RevenueActionItem, type RevenueRiskKind } from '../../utils/revenueView';
 import { buildMoneyFlow, moneyFlowStages } from '../../utils/moneyFlow';
 import { trackProductEvent } from '../../utils/productAnalytics';
-import { formatBaseCurrencyAmount, formatCompactCurrencyAmount, formatCurrencyAmount, SUPPORTED_CURRENCIES } from '../../utils/money';
+import { formatBaseCurrencyAmount, formatCurrencyAmount, SUPPORTED_CURRENCIES } from '../../utils/money';
 import { buildRouteHealth, type RouteHealthReport } from '../../utils/routeHealth';
-import { buildCashPosition, getOpeningCashBalance } from '../../utils/cashPosition';
 import { buildOwnObligations } from '../../utils/ownObligations';
 import {
   createExpense,
@@ -34,11 +34,16 @@ type RevenueData = {
 export function RevenueViewPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const [data, setData] = useState<RevenueData>({ opportunities: [], quotes: [] });
+  const [expenses, setExpenses] = useState<ExpenseRecord[]>(() => loadExpenses());
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
+
+  // Expenses are local, but they feed both the P&L headline and the money-out
+  // panel below it, so they live on the page and both surfaces read one copy.
+  const reloadExpenses = useCallback(() => setExpenses(loadExpenses()), []);
 
   const loadRevenue = async (force = false) => {
     if (force) setSyncing(true);
@@ -85,9 +90,9 @@ export function RevenueViewPage() {
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Money</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Where the money sits, end to end.</h1>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Profit, cash, and the money in motion.</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            One commercial lifecycle: deal, quote, PO, delivery, payment. Inspect stuck money and follow-ups - Today owns the priority order.
+            A mini P&amp;L on top - revenue, cost, net profit - then the commercial lifecycle beneath it: deal, quote, PO, delivery, payment. Today owns the priority order.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -124,6 +129,8 @@ export function RevenueViewPage() {
         <RevenueEmptyState />
       ) : (
         <>
+          <ProfitAndLossStatement quotes={data.quotes} expenses={expenses} />
+
           <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -165,7 +172,7 @@ export function RevenueViewPage() {
             )}
           </section>
 
-          <MoneyOutSection quotes={data.quotes} />
+          <MoneyOutSection quotes={data.quotes} expenses={expenses} onExpensesChanged={reloadExpenses} />
 
           <section className="rounded-xl border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -350,17 +357,18 @@ function RevenueActionTable({ items }: { items: RevenueActionItem[] }) {
   );
 }
 
-function MoneyOutSection({ quotes }: { quotes: QuoteRecord[] }) {
-  const [expenses, setExpenses] = useState<ExpenseRecord[]>(() => loadExpenses());
+function MoneyOutSection({
+  quotes,
+  expenses,
+  onExpensesChanged,
+}: {
+  quotes: QuoteRecord[];
+  expenses: ExpenseRecord[];
+  onExpensesChanged: () => void;
+}) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(() => ({ ...emptyExpenseInput }));
 
-  const refresh = () => setExpenses(loadExpenses());
-
-  const cash = useMemo(
-    () => buildCashPosition({ quotes, expenses, openingBalanceBase: getOpeningCashBalance() }),
-    [quotes, expenses],
-  );
   const obligations = useMemo(() => buildOwnObligations({ quotes, expenses }), [quotes, expenses]);
 
   const handleAdd = () => {
@@ -368,7 +376,7 @@ function MoneyOutSection({ quotes }: { quotes: QuoteRecord[] }) {
     createExpense({ ...form, source: 'user', isSample: false });
     setForm({ ...emptyExpenseInput });
     setShowForm(false);
-    refresh();
+    onExpensesChanged();
   };
 
   const recent = [...expenses].sort((a, b) => (b.expenseDate || '').localeCompare(a.expenseDate || '')).slice(0, 6);
@@ -379,10 +387,10 @@ function MoneyOutSection({ quotes }: { quotes: QuoteRecord[] }) {
         <div>
           <div className="flex items-center gap-2">
             <Wallet className="h-4 w-4 text-amber-600" />
-            <h2 className="text-lg font-bold text-navy">Money out & profit</h2>
+            <h2 className="text-lg font-bold text-navy">Costs &amp; what you owe</h2>
           </div>
           <p className="mt-1 text-sm text-gray-500">
-            The other half of the money-spine: costs settled and committed, so the picture is profit, not just revenue.
+            Log costs and track the payments you owe. Every settled cost flows straight into the P&amp;L above.
           </p>
         </div>
         <button
@@ -394,23 +402,6 @@ function MoneyOutSection({ quotes }: { quotes: QuoteRecord[] }) {
           Log expense
         </button>
       </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <MoneyStat label="Collected" value={formatCompactCurrencyAmount(cash.collectedRevenueBase, cash.reportingCurrency)} tone="green" />
-        <MoneyStat label="Money out" value={formatCompactCurrencyAmount(cash.paidExpensesBase, cash.reportingCurrency)} tone={cash.paidExpensesBase ? 'amber' : 'gray'} />
-        <MoneyStat label="Realized profit" value={formatCompactCurrencyAmount(cash.realizedProfitBase, cash.reportingCurrency)} tone={cash.realizedProfitBase >= 0 ? 'green' : 'red'} />
-        <MoneyStat
-          label={cash.cashOnHandBase === null ? 'Projected net flow' : 'Cash on hand'}
-          value={formatCompactCurrencyAmount(cash.cashOnHandBase === null ? cash.projectedDeltaBase : cash.cashOnHandBase, cash.reportingCurrency)}
-          tone="blue"
-        />
-      </div>
-
-      {cash.cashOnHandBase === null && (
-        <p className="mt-2 text-xs text-gray-400">
-          Set an opening cash balance in <Link to="/app/settings" className="font-semibold text-brand-blue hover:underline">Settings</Link> to see absolute cash on hand.
-        </p>
-      )}
 
       {showForm && (
         <div className="mt-4 grid gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 md:grid-cols-2 xl:grid-cols-3">
@@ -524,8 +515,8 @@ function MoneyOutSection({ quotes }: { quotes: QuoteRecord[] }) {
                   </div>
                   {expense && (
                     <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => { markExpensePaid(expense); refresh(); }} className="rounded-full bg-white px-3 py-1 font-bold text-emerald-700 ring-1 ring-emerald-100 hover:bg-emerald-50">Mark paid</button>
-                      <button type="button" onClick={() => { deleteExpense(expense.id); refresh(); }} className="rounded-full p-1 text-gray-400 hover:bg-white hover:text-red-600" title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+                      <button type="button" onClick={() => { markExpensePaid(expense); onExpensesChanged(); }} className="rounded-full bg-white px-3 py-1 font-bold text-emerald-700 ring-1 ring-emerald-100 hover:bg-emerald-50">Mark paid</button>
+                      <button type="button" onClick={() => { deleteExpense(expense.id); onExpensesChanged(); }} className="rounded-full p-1 text-gray-400 hover:bg-white hover:text-red-600" title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
                   )}
                 </div>
@@ -559,7 +550,7 @@ function MoneyOutSection({ quotes }: { quotes: QuoteRecord[] }) {
                   <td className="py-2.5 text-right font-bold text-gray-800">{formatCurrencyAmount(expense.amount, expense.currency)}</td>
                   <td className="py-2.5"><Badge label={expense.status} tone={expense.status === 'Paid' ? 'green' : 'amber'} /></td>
                   <td className="py-2.5 text-right">
-                    <button type="button" onClick={() => { deleteExpense(expense.id); refresh(); }} className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600" title="Delete"><Trash2 className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => { deleteExpense(expense.id); onExpensesChanged(); }} className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600" title="Delete"><Trash2 className="h-4 w-4" /></button>
                   </td>
                 </tr>
               ))}
@@ -568,22 +559,6 @@ function MoneyOutSection({ quotes }: { quotes: QuoteRecord[] }) {
         </div>
       )}
     </section>
-  );
-}
-
-function MoneyStat({ label, value, tone }: { label: string; value: string; tone: 'green' | 'amber' | 'red' | 'blue' | 'gray' }) {
-  const toneClass = {
-    green: 'text-emerald-700',
-    amber: 'text-amber-700',
-    red: 'text-red-700',
-    blue: 'text-brand-blue',
-    gray: 'text-gray-600',
-  }[tone];
-  return (
-    <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
-      <p className={`mt-1 text-lg font-bold ${toneClass}`}>{value}</p>
-    </div>
   );
 }
 

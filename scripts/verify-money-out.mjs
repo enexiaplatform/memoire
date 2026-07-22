@@ -84,7 +84,15 @@ assert.ok(expenseCategories.includes('Cost of goods') && expenseCategories.inclu
 
   const money = readFileSync('src/features/revenue/RevenueViewPage.tsx', 'utf8');
   assert.ok(money.includes('MoneyOutSection'), 'Money page must render the money-out section');
-  assert.ok(money.includes('buildCashPosition'), 'Money page must derive the cash position');
+  assert.ok(money.includes('ProfitAndLossStatement'), 'Money page must render the P&L statement');
+
+  // The cash position now lives inside the P&L statement, which the page shows -
+  // and the P&L reuses buildCashPosition rather than inventing its own rules, so
+  // the receivables/payables/cash line can never disagree with the money-out panel.
+  const pnl = readFileSync('src/utils/pnl.ts', 'utf8');
+  assert.ok(pnl.includes('buildCashPosition'), 'the P&L must derive the cash position from the shared rule');
+  const pnlStatement = readFileSync('src/features/revenue/ProfitAndLossStatement.tsx', 'utf8');
+  assert.ok(pnlStatement.includes('buildProfitAndLoss'), 'the P&L statement must derive from buildProfitAndLoss');
 
   const dashboard = readFileSync('src/utils/masterDashboard.ts', 'utf8');
   assert.ok(dashboard.includes('buildCashPosition'), 'Dashboard model must include the cash position');
