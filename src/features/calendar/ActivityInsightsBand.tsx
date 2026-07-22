@@ -120,7 +120,24 @@ export function ActivityInsightsBand({ insights }: { insights: ActivityInsights 
           )}
         </InsightTile>
       </div>
+
+      {/* The counts worth keeping at a glance - the rest fold away below. */}
+      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 border-t border-gray-100 pt-3 text-[11px] text-gray-500">
+        <Coverage label="accounts touched" value={insights.coverage.accountsTouched} />
+        <Coverage label="opportunities" value={insights.coverage.opportunitiesTouched} />
+        <Coverage label="follow-ups" value={insights.coverage.followUps} />
+        <Coverage label="objections" value={insights.coverage.objections} tone={insights.coverage.objections > 0 ? 'amber' : 'default'} />
+      </div>
     </section>
+  );
+}
+
+function Coverage({ label, value, tone = 'default' }: { label: string; value: number; tone?: 'default' | 'amber' }) {
+  return (
+    <span className="inline-flex items-baseline gap-1">
+      <span className={`font-bold ${tone === 'amber' ? 'text-amber-700' : 'text-navy'}`}>{value}</span>
+      {label}
+    </span>
   );
 }
 

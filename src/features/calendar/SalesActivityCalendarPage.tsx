@@ -322,15 +322,24 @@ export function SalesActivityCalendarPage() {
             </button>
           </div>
         </div>
-
-        {viewMode === 'month' ? (
-          <MonthlySummaryPanel summary={summary} />
-        ) : (
-          <WeeklySummaryPanel summary={summary} />
-        )}
       </section>
 
+      {/* The read comes first - cadence, follow-through, effort, quiet accounts -
+          with the raw per-metric counts a click away rather than stacked on top. */}
       {!loadingActivities && <ActivityInsightsBand insights={insights} />}
+
+      {!loadingActivities && visibleActivities.length > 0 && (
+        <details className="rounded-lg border border-gray-200 bg-white px-5 py-3 shadow-sm">
+          <summary className="cursor-pointer text-sm font-bold text-navy">All period metrics</summary>
+          <div className="mt-3">
+            {viewMode === 'month' ? (
+              <MonthlySummaryPanel summary={summary} />
+            ) : (
+              <WeeklySummaryPanel summary={summary} />
+            )}
+          </div>
+        </details>
+      )}
 
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center gap-2">

@@ -97,6 +97,24 @@ describe('buildActivityInsights', () => {
     assert.equal(insights.quietAccounts[0].daysSinceTouch, 24);
   });
 
+  test('counts coverage - distinct accounts and opportunities, follow-ups and objections', () => {
+    const insights = buildActivityInsights({
+      activities: [
+        activity({ id: 'a1', accountName: 'MDL', opportunityName: 'MDL deal', activityDate: '2026-07-20', activityType: 'Customer meeting' }),
+        activity({ id: 'a2', accountName: 'MDL', opportunityName: 'MDL deal', activityDate: '2026-07-21', activityType: 'Follow-up' }),
+        activity({ id: 'a3', accountName: 'ACS', opportunityName: 'ACS deal', activityDate: '2026-07-22', activityType: 'Objection handling' }),
+      ],
+      planRecords: [],
+      range: week,
+      today: '2026-07-23',
+    });
+
+    assert.equal(insights.coverage.accountsTouched, 2);
+    assert.equal(insights.coverage.opportunitiesTouched, 2);
+    assert.equal(insights.coverage.followUps, 1);
+    assert.equal(insights.coverage.objections, 1);
+  });
+
   test('is empty and safe when nothing was captured in the period', () => {
     const insights = buildActivityInsights({ activities: [], planRecords: [], range: week, today: '2026-07-23' });
     assert.equal(insights.total, 0);

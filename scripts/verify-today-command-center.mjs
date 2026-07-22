@@ -114,7 +114,9 @@ for (const helper of ['formatSafeBusinessDate', 'formatMoneyWithBase', 'isBusine
   assert.ok(model.includes(helper), `Today command model missing ${helper}`);
 }
 for (const [file, marker] of [
-  ['src/features/revenue/RevenueViewPage.tsx', 'Commercial risk detail'],
+  // Money defers the priority order to Today explicitly; its risk content is a
+  // reference list, not a competing command center.
+  ['src/features/revenue/RevenueViewPage.tsx', 'Today owns the priority order'],
   ['src/features/reviews/SalesReviewsPage.tsx', 'Weekly Business Review'],
   ['src/features/operatingSystem/OperatingSystemPage.tsx', 'Supporting drill-down'],
 ]) assert.ok(readFileSync(file, 'utf8').includes(marker), `${file} still competes with Today.`);

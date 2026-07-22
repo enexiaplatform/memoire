@@ -46,6 +46,13 @@ export type QuietAccount = {
   daysSinceTouch: number;
 };
 
+export type ActivityCoverage = {
+  accountsTouched: number;
+  opportunitiesTouched: number;
+  followUps: number;
+  objections: number;
+};
+
 export type ActivityInsights = {
   total: number;
   momentum: ActivityMomentum;
@@ -56,6 +63,7 @@ export type ActivityInsights = {
   topAccount: { account: string; count: number } | null;
   followThrough: FollowThrough;
   quietAccounts: QuietAccount[];
+  coverage: ActivityCoverage;
   headline: string;
 };
 
@@ -85,6 +93,7 @@ export function buildActivityInsights(input: {
   ));
   const followThrough = buildFollowThrough(inPeriod, input.planRecords, today);
   const quietAccounts = buildQuietAccounts(input.activities, today);
+  const coverage = buildCoverage(inPeriod);
 
   return {
     total: inPeriod.length,
@@ -96,7 +105,19 @@ export function buildActivityInsights(input: {
     topAccount: topAccount ? { account: topAccount.key, count: topAccount.count } : null,
     followThrough,
     quietAccounts,
+    coverage,
     headline: buildHeadline({ total: inPeriod.length, momentum, followThrough, topAccount, quietAccounts }),
+  };
+}
+
+function buildCoverage(activities: SalesActivityRecord[]): ActivityCoverage {
+  return {
+    accountsTouched: new Set(activities.map(accountOf).filter(Boolean).map((name) => name.toLowerCase())).size,
+    opportunitiesTouched: new Set(
+      activities.map((activity) => (activity.linkedOpportunityName || activity.opportunityName || '').trim()).filter(Boolean).map((name) => name.toLowerCase()),
+    ).size,
+    followUps: activities.filter((activity) => activity.activityType === 'Follow-up').length,
+    objections: activities.filter((activity) => activity.activityType === 'Objection handling').length,
   };
 }
 

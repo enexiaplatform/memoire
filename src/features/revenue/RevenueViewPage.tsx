@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Banknote, Plus, ReceiptText, RefreshCw, Search, Trash2, Wallet } from 'lucide-react';
+import { ArrowRight, Plus, ReceiptText, RefreshCw, Search, Trash2, Wallet } from 'lucide-react';
 import { ProfitAndLossStatement } from './ProfitAndLossStatement';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
@@ -173,36 +173,6 @@ export function RevenueViewPage() {
           </section>
 
           <MoneyOutSection quotes={data.quotes} expenses={expenses} onExpensesChanged={reloadExpenses} />
-
-          <section className="rounded-xl border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Banknote className="h-4 w-4 text-brand-blue" />
-                  <h2 className="text-lg font-bold text-navy">Commercial risk detail</h2>
-                </div>
-                <p className="mt-1 text-sm text-blue-900/75">
-                  {revenue.topAction
-                    ? `${revenue.topAction.accountName}: ${revenue.topAction.nextAction}`
-                    : 'No commercial risk is blocking today.'}
-                </p>
-                {revenue.topAction && (
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <Badge label={revenue.topAction.risk} tone={riskTone(revenue.topAction.risk)} />
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-blue-900">
-                      {formatMoney(revenue.topAction.amount, revenue.topAction.currency)}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Link to={revenue.topAction?.href || '/app/quotes'} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-                  {revenue.topAction ? 'Open action' : 'Create quote'}
-                </Link>
-                <Link to="/app/opportunities" className="rounded-full border border-blue-100 bg-white px-4 py-2 text-sm font-bold text-brand-blue">Review pipeline</Link>
-              </div>
-            </div>
-          </section>
 
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <RevenueMetric label="Active pipeline" value={formatBaseMoney(revenue.activePipeline)} tone="blue" />

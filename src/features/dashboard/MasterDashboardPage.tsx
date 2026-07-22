@@ -192,9 +192,11 @@ export function MasterDashboardPage() {
         <DashboardEmptyState />
       ) : (
         <>
-          <CommittedWeekStrip userId={dataUserId} sampleDataActive={sampleDataActive} />
-
+          {/* The operating-loop roll-up leads - adherence and the record-once
+              funnel - then the week's specific promises, then the charts. */}
           <ExecutionBand execution={model.execution} />
+
+          <CommittedWeekStrip userId={dataUserId} sampleDataActive={sampleDataActive} />
 
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Key numbers">
             <KpiCard label="Open deals" value={String(model.kpis.openDeals)} sub={`${formatCompactCurrencyAmount(model.kpis.openPipelineBase, model.reportingCurrency)} pipeline`} />
