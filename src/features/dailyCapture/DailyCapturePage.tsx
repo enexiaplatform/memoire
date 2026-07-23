@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Bot, CalendarDays, Clipboard, Copy, Loader2, Mail, Mic, MicOff, NotebookPen, Save, Trash2 } from 'lucide-react';
+import { Bot, CalendarDays, Clipboard, Copy, Loader2, Mail, Mic, MicOff, NotebookPen, Save, Sparkles, Trash2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { useSpeechDictation } from '../../hooks/useSpeechDictation';
 import { DataModePill } from '../../components/common/DataModePill';
@@ -1088,8 +1088,8 @@ export function DailyCapturePage() {
                 Added to your <Link to="/app/plan" className="font-bold underline hover:text-emerald-950">Plan</Link> automatically — you wrote it once, it landed on the day:
               </p>
               <ul className="mt-1 space-y-1">
-                {planScheduledEntries.map((entry) => (
-                  <li key={`${entry.dueDate}-${entry.label}`} className="flex items-center gap-2 text-xs text-emerald-900">
+                {planScheduledEntries.map((entry, index) => (
+                  <li key={`${entry.dueDate}-${entry.label}-${index}`} className="flex items-center gap-2 text-xs text-emerald-900">
                     <span className="rounded bg-white px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 ring-1 ring-emerald-200">
                       {entry.weekdayLabel.slice(0, 3)} {entry.dueDateLabel}
                     </span>
@@ -1131,64 +1131,69 @@ export function DailyCapturePage() {
         </section>
       )}
 
-      {stakeholderCandidate && !alreadyHasStakeholderCandidate && !stakeholderSuggestionDismissed && (
-        <section className="rounded-lg border border-blue-100 bg-blue-50/70 p-4 shadow-sm">
-          <p className="text-sm font-bold text-blue-950">Create stakeholder from {stakeholderCandidate.name}?</p>
-          <p className="mt-1 text-sm leading-6 text-blue-800">
-            Memoire detected this person in the capture and can add them to {stakeholderCandidate.accountName || 'this account'} for stakeholder mapping.
-            Role starts as Unknown — Memoire will not auto-assign Champion or Economic Buyer unless explicit evidence is confirmed.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" onClick={createStakeholderFromLastActivity} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-              Create stakeholder
-            </button>
-            <button type="button" onClick={() => setStakeholderSuggestionDismissed(true)} className="rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-bold text-blue-800">
-              Ignore
-            </button>
-          </div>
-        </section>
-      )}
+      {(() => {
+        const showStakeholder = Boolean(stakeholderCandidate && !alreadyHasStakeholderCandidate && !stakeholderSuggestionDismissed);
+        const showObjection = Boolean(objectionCandidate && !alreadyHasObjectionCandidate && !objectionSuggestionDismissed);
+        const showQuote = quoteStateSuggestions.length > 0;
+        if (!showStakeholder && !showObjection && !showQuote) return null;
+        return (
+          // One grouped panel instead of three separate coloured cards - the
+          // seller just logged a note and sees the related records Memoire can
+          // spin off as a compact, scannable list, not a wall of prompts.
+          <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-brand-blue" />
+              <p className="text-sm font-bold text-navy">Memoire also spotted in this capture</p>
+            </div>
+            {/* The consent guarantee is deliberate and contract-pinned: these
+                suggestions never create or mutate anything on their own. */}
+            <p className="mt-0.5 text-xs text-gray-500">Spin off a related record or update a quote. Nothing changes until you confirm.</p>
+            <div className="mt-3 space-y-2">
+              {showStakeholder && stakeholderCandidate && (
+                <CaptureSpotRow
+                  tone="blue"
+                  tag="Person"
+                  title={stakeholderCandidate.name}
+                  // Role starts as Unknown - Memoire will not auto-assign Champion
+                  // or Economic Buyer without explicit evidence. Stated to the user,
+                  // and contract-pinned, because inventing a role is the one thing
+                  // stakeholder mapping must never do.
+                  detail={`Add to ${stakeholderCandidate.accountName || 'this account'} for stakeholder mapping. Role starts as Unknown — Memoire will not auto-assign Champion or Economic Buyer.`}
+                  actionLabel="Create stakeholder"
+                  onAct={createStakeholderFromLastActivity}
+                  onIgnore={() => setStakeholderSuggestionDismissed(true)}
+                />
+              )}
+              {quoteStateSuggestions.map((suggestion) => (
+                <CaptureSpotRow
+                  key={`${suggestion.quoteRecordId}:${suggestion.kind}`}
+                  tone="emerald"
+                  tag="Quote"
+                  title={suggestion.actionLabel}
+                  detail={`${suggestion.reason} Quote: ${suggestion.quoteLabel}`}
+                  actionLabel={suggestion.actionLabel}
+                  onAct={() => applyQuoteStateSuggestion(suggestion)}
+                  onIgnore={() => setDismissedQuoteSuggestions((current) => [...current, `${suggestion.quoteRecordId}:${suggestion.kind}`])}
+                />
+              ))}
+              {showObjection && objectionCandidate && (
+                <CaptureSpotRow
+                  tone="amber"
+                  tag="Objection"
+                  title={objectionCandidate.objectionText}
+                  detail={`${objectionCandidate.objectionType} risk · ${objectionCandidate.reason}`}
+                  actionLabel="Create objection"
+                  onAct={createObjectionFromLastActivity}
+                  onIgnore={() => setObjectionSuggestionDismissed(true)}
+                />
+              )}
+            </div>
+          </section>
+        );
+      })()}
 
       {quoteSuggestionMessage && (
         <p className="rounded-lg bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-100">{quoteSuggestionMessage}</p>
-      )}
-      {quoteStateSuggestions.map((suggestion) => (
-        <section key={`${suggestion.quoteRecordId}:${suggestion.kind}`} className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-4 shadow-sm">
-          <p className="text-sm font-bold text-emerald-950">{suggestion.actionLabel}?</p>
-          <p className="mt-1 text-sm leading-6 text-emerald-800">
-            {suggestion.reason} Quote: {suggestion.quoteLabel}. Nothing changes until you confirm.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" onClick={() => applyQuoteStateSuggestion(suggestion)} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-              {suggestion.actionLabel}
-            </button>
-            <button
-              type="button"
-              onClick={() => setDismissedQuoteSuggestions((current) => [...current, `${suggestion.quoteRecordId}:${suggestion.kind}`])}
-              className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-bold text-emerald-800"
-            >
-              Ignore
-            </button>
-          </div>
-        </section>
-      ))}
-
-      {objectionCandidate && !alreadyHasObjectionCandidate && !objectionSuggestionDismissed && (
-        <section className="rounded-lg border border-amber-100 bg-amber-50/80 p-4 shadow-sm">
-          <p className="text-sm font-bold text-amber-950">Create objection from this activity?</p>
-          <p className="mt-1 text-sm leading-6 text-amber-800">
-            Memoire detected {objectionCandidate.objectionType.toLowerCase()} risk: {objectionCandidate.objectionText}
-          </p>
-          <p className="mt-1 text-xs font-semibold text-amber-700">Reason: {objectionCandidate.reason}</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" onClick={createObjectionFromLastActivity} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-              Create objection
-            </button>
-            <button type="button" onClick={() => setObjectionSuggestionDismissed(true)} className="rounded-full border border-amber-200 bg-white px-4 py-2 text-sm font-bold text-amber-800">
-              Ignore
-            </button>
-          </div>
-        </section>
       )}
 
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
@@ -1828,6 +1833,54 @@ function ActivitySignals({ activity }: { activity: SalesActivityRecord }) {
 
 function closableKey(item: PlanItem) {
   return item.derivedKey || item.id;
+}
+
+/**
+ * One compact row in the "Memoire also spotted" group - a labelled extraction
+ * with its confirm/ignore pair, so three kinds of side-suggestion read as one
+ * scannable list rather than three full-width coloured cards.
+ */
+function CaptureSpotRow({
+  tone,
+  tag,
+  title,
+  detail,
+  actionLabel,
+  onAct,
+  onIgnore,
+}: {
+  tone: 'blue' | 'emerald' | 'amber';
+  tag: string;
+  title: string;
+  detail: string;
+  actionLabel: string;
+  onAct: () => void;
+  onIgnore: () => void;
+}) {
+  const tagClass = {
+    blue: 'bg-blue-50 text-brand-blue',
+    emerald: 'bg-emerald-50 text-emerald-700',
+    amber: 'bg-amber-50 text-amber-700',
+  }[tone];
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-gray-900">
+          <span className={`mr-1.5 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${tagClass}`}>{tag}</span>
+          {title}
+        </p>
+        <p className="mt-0.5 text-[11px] leading-4 text-gray-500">{detail}</p>
+      </div>
+      <div className="flex shrink-0 gap-1.5">
+        <button type="button" onClick={onAct} className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white hover:bg-navy/90">
+          {actionLabel}
+        </button>
+        <button type="button" onClick={onIgnore} className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-50">
+          Ignore
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function formatActivitySummary(activity: SalesActivityRecord) {

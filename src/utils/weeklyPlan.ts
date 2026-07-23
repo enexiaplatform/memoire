@@ -307,16 +307,23 @@ export function buildCaptureDerivedKey(activityId: string, dueDate: string, slot
  */
 export function getDatedCaptureActions(activity: SalesActivityRecord): { title: string; dueDate: string; slot: string }[] {
   const candidates: { title: string; dueDate: string; slot: string }[] = [];
-  const headline = (activity.nextAction || '').trim();
-  if (headline && isValidBusinessDate(activity.dueDate)) {
-    candidates.push({ title: headline, dueDate: sanitizeBusinessDate(activity.dueDate), slot: 'main' });
-  }
-  (activity.nextActions || []).forEach((action, index) => {
-    const title = (action?.title || '').trim();
-    if (title && isValidBusinessDate(action?.dueDate)) {
-      candidates.push({ title, dueDate: sanitizeBusinessDate(action.dueDate), slot: `n${index}` });
-    }
-  });
+  // The parser often writes the same next action into both the headline field
+  // and the structured list; the same title on the same day is one commitment,
+  // so it is counted once (the headline wins) rather than twice on the board,
+  // in the scheduled confirmation, and in the follow-through funnel.
+  const seen = new Set<string>();
+  const add = (rawTitle: string, rawDueDate: string | undefined, slot: string) => {
+    const title = (rawTitle || '').trim();
+    if (!title || !isValidBusinessDate(rawDueDate)) return;
+    const dueDate = sanitizeBusinessDate(rawDueDate);
+    const signature = `${dueDate}|${title.toLowerCase()}`;
+    if (seen.has(signature)) return;
+    seen.add(signature);
+    candidates.push({ title, dueDate, slot });
+  };
+
+  add(activity.nextAction || '', activity.dueDate, 'main');
+  (activity.nextActions || []).forEach((action, index) => add(action?.title || '', action?.dueDate, `n${index}`));
   return candidates;
 }
 

@@ -293,6 +293,22 @@ describe('buildPlanBoard capture items', () => {
     assert.equal(board.captureCount, 1);
   });
 
+  test('the same next action in both the headline and the list is one plan item', () => {
+    // The parser commonly mirrors the headline nextAction into nextActions[0];
+    // that must not surface the same commitment twice.
+    const board = buildPlanBoard({
+      periodType: 'week', anchorDate: anchor,
+      opportunities: [], obligations: [], records: [],
+      activities: [capture({
+        nextAction: 'Send revised quote', dueDate: '2026-07-22',
+        nextActions: [{ title: 'Send revised quote', dueDate: '2026-07-22' }],
+      })],
+      today: '2026-07-22',
+    });
+    assert.equal(board.captureCount, 1);
+    assert.equal(board.days.find((day) => day.date === '2026-07-22').items.length, 1);
+  });
+
   test('a completion mark checks off a capture item', () => {
     const activities = [capture({ nextAction: 'Send revised quote', dueDate: '2026-07-22' })];
     const seed = buildPlanBoard({
