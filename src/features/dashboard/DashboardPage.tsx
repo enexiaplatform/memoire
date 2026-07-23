@@ -683,14 +683,18 @@ export function TodayPage() {
               <BusinessCockpitStrip answers={businessCockpit} />
               <MorningBriefCard brief={morningBrief} />
 
-              <StepDivider step={2} title="Do today's work" hint="Your own weekly promise first, then what's on the plan, then the top three" />
-              {/* The user's own promise for the week outranks the app's
-                  suggestions, so it sits above the recommended Top 3. Renders
-                  only when a week was actually confirmed. */}
-              <CommittedWeekStrip userId={sampleDataActive ? undefined : user?.id} sampleDataActive={sampleDataActive} />
-              {/* The plan's own column for today, shared box-for-box with the
-                  Plan board: today's dated commitments, run from here. */}
-              <TodayCommitmentStrip userId={sampleDataActive ? undefined : user?.id} sampleDataActive={sampleDataActive} />
+              <StepDivider step={2} title="Do today's work" hint="What you committed to, then the three Memoire would start with" />
+              {/* What the operator committed to sits as one row: the week's
+                  frozen promise beside today's dated plan column (shared
+                  box-for-box with the Plan board). Pairing them says these are
+                  yours, distinct from the app's suggestions underneath - and
+                  costs half the height of stacking. Either alone, or neither,
+                  still lays out correctly: each card is its own flex child, so
+                  a card that renders nothing simply leaves the row. */}
+              <div className="flex flex-col gap-4 lg:flex-row lg:[&>section]:min-w-0 lg:[&>section]:flex-1">
+                <CommittedWeekStrip userId={sampleDataActive ? undefined : user?.id} sampleDataActive={sampleDataActive} />
+                <TodayCommitmentStrip userId={sampleDataActive ? undefined : user?.id} sampleDataActive={sampleDataActive} />
+              </div>
               <TodayTopThreeActions actions={todayCenter.topActions} />
 
               <StepDivider step={3} title="Check the watch-list" hint="What Memoire flags before it can surprise you" />
