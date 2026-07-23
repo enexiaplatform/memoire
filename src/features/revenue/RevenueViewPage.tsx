@@ -83,7 +83,6 @@ export function RevenueViewPage() {
       item.status,
     ].join(' ').toLowerCase().includes(query));
   }, [revenue.actionItems, search]);
-  const stuckRevenue = revenue.pendingPo + revenue.pendingDelivery + revenue.pendingPayment;
 
   return (
     <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
@@ -174,9 +173,10 @@ export function RevenueViewPage() {
 
           <MoneyOutSection quotes={data.quotes} expenses={expenses} onExpensesChanged={reloadExpenses} />
 
-          <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {/* Stuck money is not repeated here: the flow lanes above already
+              carry it per stage, with the stuck threads listed underneath. */}
+          <section className="grid grid-cols-3 gap-3">
             <RevenueMetric label="Active pipeline" value={formatBaseMoney(revenue.activePipeline)} tone="blue" />
-            <RevenueMetric label="Stuck money" value={formatBaseMoney(stuckRevenue)} tone={stuckRevenue ? 'amber' : 'green'} />
             <RevenueMetric label="At risk" value={formatBaseMoney(revenue.atRiskRevenue)} tone={revenue.atRiskRevenue ? 'red' : 'green'} />
             <RevenueMetric label="Overdue" value={revenue.overdueFollowUps} tone={revenue.overdueFollowUps ? 'red' : 'green'} />
           </section>
@@ -201,36 +201,32 @@ export function RevenueViewPage() {
             </div>
             <RevenueActionTable items={visibleActions} />
           </section>
-
-          <details className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <summary className="cursor-pointer text-sm font-bold text-navy">More money signals</summary>
-            <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-7">
-              <RevenueMetric label="Won" value={formatBaseMoney(revenue.won)} tone={revenue.won ? 'green' : 'blue'} />
-              <RevenueMetric label="Quoted" value={formatBaseMoney(revenue.quoted)} tone={revenue.quoted ? 'blue' : 'green'} />
-              <RevenueMetric label="Pending PO" value={formatBaseMoney(revenue.pendingPo)} tone={revenue.pendingPo ? 'amber' : 'green'} />
-              <RevenueMetric label="Pending delivery" value={formatBaseMoney(revenue.pendingDelivery)} tone={revenue.pendingDelivery ? 'amber' : 'green'} />
-              <RevenueMetric label="Pending payment" value={formatBaseMoney(revenue.pendingPayment)} tone={revenue.pendingPayment ? 'amber' : 'green'} />
-              <RevenueMetric label="Paid" value={formatBaseMoney(revenue.paid)} tone="green" />
-              <RevenueMetric label="Expiring quotes" value={revenue.expiringQuotes} tone={revenue.expiringQuotes ? 'amber' : 'green'} />
-            </div>
-          </details>
         </>
       )}
     </div>
   );
 }
 
+/**
+ * Route intelligence is something you study now and then, not every morning -
+ * so it folds away by default and the daily money spine above it stays short.
+ */
 function RouteHealthSection({ report }: { report: RouteHealthReport }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Route intelligence</p>
-          <h2 className="mt-1 text-xl font-bold text-navy">Which routes make money.</h2>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
-            Active money at stake and the win rate on closed deals, per product or solution you sell. Grown from your own pipeline - nothing assumed.
-          </p>
-        </div>
+    <details className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <summary className="cursor-pointer list-none">
+        <span className="flex flex-col gap-1 md:flex-row md:items-baseline md:justify-between">
+          <span>
+            <span className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Route intelligence</span>
+            <span className="ml-2 text-base font-bold text-navy">Which routes make money.</span>
+          </span>
+          <span className="text-xs text-gray-500">
+            {report.routes.length} route{report.routes.length === 1 ? '' : 's'} · win rate and money at stake
+          </span>
+        </span>
+      </summary>
+
+      <div className="mt-3 flex justify-end">
         <Link to="/app/opportunities" className="shrink-0 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
           Open deals
         </Link>
@@ -276,7 +272,7 @@ function RouteHealthSection({ report }: { report: RouteHealthReport }) {
           </table>
         </div>
       )}
-    </section>
+    </details>
   );
 }
 
@@ -501,7 +497,13 @@ function MoneyOutSection({
           No expenses logged yet. Log one cost and the profit line becomes real.
         </p>
       ) : (
-        <div className="mt-4 max-w-full overflow-x-auto">
+        // The cost log is a receipt, not a decision - what you owe stays open
+        // above it, the ledger folds away.
+        <details className="mt-4">
+          <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-gray-500">
+            Recent expenses ({recent.length})
+          </summary>
+          <div className="mt-2 max-w-full overflow-x-auto">
           <table className="w-full min-w-[560px] text-left text-sm">
             <thead className="text-[11px] font-bold uppercase tracking-wide text-gray-400">
               <tr>
@@ -526,7 +528,8 @@ function MoneyOutSection({
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        </details>
       )}
     </section>
   );
