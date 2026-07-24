@@ -71,6 +71,8 @@ export type MasterDashboardModel = {
     capturedNextActions: number;
     onPlan: number;
     completedNextActions: number;
+    /** Of the captured actions, those whose day has arrived (done or overdue). */
+    dueNextActions: number;
   };
 };
 
@@ -212,12 +214,15 @@ function buildExecution(input: {
 
   let capturedNextActions = 0;
   let completedNextActions = 0;
+  // Actions still ahead of their due date are not counted as due: a week spent
+  // capturing future commitments must not read as a week of misses.
+  let dueNextActions = 0;
   recentActivities.forEach((activity) => {
     getDatedCaptureActions(activity).forEach((candidate) => {
       capturedNextActions += 1;
-      if (doneKeys.has(buildCaptureDerivedKey(activity.id, candidate.dueDate, candidate.slot))) {
-        completedNextActions += 1;
-      }
+      const isDone = doneKeys.has(buildCaptureDerivedKey(activity.id, candidate.dueDate, candidate.slot));
+      if (isDone) completedNextActions += 1;
+      if (isDone || candidate.dueDate < input.todayKey) dueNextActions += 1;
     });
   });
 
@@ -236,6 +241,7 @@ function buildExecution(input: {
     capturedNextActions,
     onPlan: capturedNextActions,
     completedNextActions,
+    dueNextActions,
   };
 }
 

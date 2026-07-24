@@ -77,8 +77,52 @@ describe('buildActivityInsights', () => {
 
     assert.equal(insights.followThrough.committed, 2, 'two dated next actions were captured');
     assert.equal(insights.followThrough.done, 1, 'one of them was ticked done on the plan');
-    assert.equal(insights.followThrough.rate, 0.5);
     assert.equal(insights.followThrough.openOverdue, 1, 'the undone one is now past due');
+    assert.equal(insights.followThrough.settled, 2, 'both days have arrived');
+    assert.equal(insights.followThrough.notYetDue, 0);
+    assert.equal(insights.followThrough.rate, 0.5);
+  });
+
+  test('work still ahead of its due date is not scored as a miss', () => {
+    // Captured on Monday, both due later in the week, neither done. Nothing has
+    // come due, so there is no rate to report - not a 0%.
+    const insights = buildActivityInsights({
+      activities: [activity({
+        id: 'a1', activityDate: '2026-07-20',
+        nextAction: 'Send revised quote', dueDate: '2026-07-24',
+        nextActions: [{ title: 'Book demo', dueDate: '2026-07-25' }],
+      })],
+      planRecords: [],
+      range: week,
+      today: '2026-07-21',
+    });
+
+    assert.equal(insights.followThrough.committed, 2);
+    assert.equal(insights.followThrough.done, 0);
+    assert.equal(insights.followThrough.openOverdue, 0, 'nothing is late');
+    assert.equal(insights.followThrough.settled, 0);
+    assert.equal(insights.followThrough.notYetDue, 2);
+    assert.equal(insights.followThrough.rate, null, 'no rate while nothing has come due');
+    assert.match(insights.headline, /none due yet/);
+  });
+
+  test('an action finished before its due date still counts as kept', () => {
+    const done = {
+      id: 'done-early', date: '2026-07-24', label: 'Send revised quote', tag: 'MDL',
+      done: true, doneAt: '2026-07-21T09:00:00Z',
+      derivedKey: buildCaptureDerivedKey('a1', '2026-07-24', 'main'),
+      createdAt: '2026-07-21T09:00:00Z', updatedAt: '2026-07-21T09:00:00Z',
+    };
+    const insights = buildActivityInsights({
+      activities: [activity({ id: 'a1', activityDate: '2026-07-20', nextAction: 'Send revised quote', dueDate: '2026-07-24' })],
+      planRecords: [done],
+      range: week,
+      today: '2026-07-21',
+    });
+
+    assert.equal(insights.followThrough.done, 1);
+    assert.equal(insights.followThrough.settled, 1, 'a completed action is judged even if early');
+    assert.equal(insights.followThrough.rate, 1);
   });
 
   test('flags an account that has gone quiet but is still recent', () => {

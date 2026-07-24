@@ -60,15 +60,25 @@ export function ActivityInsightsBand({ insights }: { insights: ActivityInsights 
               <span className="text-2xl font-bold text-gray-400">—</span>
               <p className="mt-0.5 text-[11px] text-gray-500">No dated next actions captured yet.</p>
             </>
+          ) : ratePct === null ? (
+            <>
+              {/* Captured and dated, but nothing has reached its day - a rate
+                  here would read as failure for work that is simply not due. */}
+              <span className="text-2xl font-bold text-gray-400">—</span>
+              <p className="mt-0.5 text-[11px] text-gray-500">
+                {followThrough.notYetDue} captured {followThrough.notYetDue === 1 ? 'action' : 'actions'} on the plan, none due yet.
+              </p>
+            </>
           ) : (
             <>
               <div className="flex items-baseline gap-2">
-                <span className={`text-2xl font-bold ${ratePct !== null && ratePct >= 60 ? 'text-emerald-700' : 'text-amber-700'}`}>{ratePct}%</span>
-                <span className="text-xs font-semibold text-gray-500">{followThrough.done}/{followThrough.committed} done</span>
+                <span className={`text-2xl font-bold ${ratePct >= 60 ? 'text-emerald-700' : 'text-amber-700'}`}>{ratePct}%</span>
+                <span className="text-xs font-semibold text-gray-500">{followThrough.done}/{followThrough.settled} due</span>
               </div>
               <p className="mt-0.5 text-[11px] text-gray-500">
-                captured next actions closed
+                closed of what came due
                 {followThrough.openOverdue > 0 ? ` · ${followThrough.openOverdue} overdue` : ''}
+                {followThrough.notYetDue > 0 ? ` · ${followThrough.notYetDue} ahead` : ''}
               </p>
             </>
           )}

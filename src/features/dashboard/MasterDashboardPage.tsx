@@ -267,9 +267,12 @@ export function MasterDashboardPage() {
 
 function ExecutionBand({ execution }: { execution: MasterDashboardModel['execution'] }) {
   const adherencePct = execution.adherenceRate === null ? null : Math.round(execution.adherenceRate * 100);
-  const funnelRate = execution.capturedNextActions === 0
+  // Measured against what actually came due, so a week of capturing commitments
+  // that are still ahead does not read as a week of misses.
+  const funnelRate = execution.dueNextActions === 0
     ? null
-    : Math.round((execution.completedNextActions / execution.capturedNextActions) * 100);
+    : Math.round((execution.completedNextActions / execution.dueNextActions) * 100);
+  const stillAhead = execution.capturedNextActions - execution.dueNextActions;
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" aria-label="How the loop is running">
@@ -315,6 +318,11 @@ function ExecutionBand({ execution }: { execution: MasterDashboardModel['executi
           </div>
           <p className="mt-2 text-[11px] leading-4 text-gray-500">
             Every next action captured landed on the plan — none re-entered by hand.
+            {funnelRate === null
+              ? stillAhead > 0
+                ? ` ${stillAhead} still ahead of ${stillAhead === 1 ? 'its' : 'their'} due date, so nothing is late yet.`
+                : ''
+              : ` The rate is of the ${execution.dueNextActions} that came due${stillAhead > 0 ? `; ${stillAhead} still ahead` : ''}.`}
           </p>
         </div>
       </div>

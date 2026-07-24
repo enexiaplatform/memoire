@@ -30,14 +30,25 @@ export type EffortMixRow = {
   share: number;
 };
 
+/**
+ * Follow-through is only fair to measure on work whose day has arrived. An
+ * action captured today for next Friday is not a miss, so it sits in notYetDue
+ * and stays out of the rate entirely - otherwise a productive week of capturing
+ * would read as 0%, which is the opposite of the truth.
+ */
 export type FollowThrough = {
   /** Dated next actions captured on touches in this period. */
   committed: number;
-  /** Of those, marked done on the plan. */
+  /** Of those, marked done on the plan (including ones finished early). */
   done: number;
-  rate: number | null;
   /** Dated next actions now past due and still not done. */
   openOverdue: number;
+  /** Actions whose day has come: done + openOverdue. The rate's denominator. */
+  settled: number;
+  /** Captured, dated, and still ahead of their day - not judged yet. */
+  notYetDue: number;
+  /** done / settled, or null while nothing has come due. */
+  rate: number | null;
 };
 
 export type QuietAccount = {
@@ -163,7 +174,17 @@ function buildFollowThrough(periodActivities: SalesActivityRecord[], planRecords
     });
   });
 
-  return { committed, done, rate: committed === 0 ? null : done / committed, openOverdue };
+  // Only work whose day has arrived is judged: an action still ahead of its due
+  // date is neither kept nor missed yet.
+  const settled = done + openOverdue;
+  return {
+    committed,
+    done,
+    openOverdue,
+    settled,
+    notYetDue: committed - settled,
+    rate: settled === 0 ? null : done / settled,
+  };
 }
 
 function buildQuietAccounts(activities: SalesActivityRecord[], today: string): QuietAccount[] {
@@ -207,9 +228,16 @@ function buildHeadline(input: {
         : ', level with the previous period';
   parts.push(`${input.total} ${input.total === 1 ? 'touch' : 'touches'} captured${trend}.`);
 
-  if (input.followThrough.committed > 0) {
-    const ratePct = Math.round((input.followThrough.rate || 0) * 100);
-    parts.push(`You've closed ${input.followThrough.done} of ${input.followThrough.committed} captured next actions (${ratePct}%).`);
+  const { committed, done, settled, notYetDue, rate } = input.followThrough;
+  if (committed > 0) {
+    if (rate === null) {
+      // Everything captured is still ahead of its day - nothing to judge yet.
+      parts.push(`${committed} captured next ${committed === 1 ? 'action is' : 'actions are'} on the plan, none due yet.`);
+    } else {
+      const ratePct = Math.round(rate * 100);
+      const ahead = notYetDue > 0 ? ` ${notYetDue} still ahead.` : '';
+      parts.push(`You've closed ${done} of the ${settled} that came due (${ratePct}%).${ahead}`);
+    }
   }
 
   if (input.quietAccounts.length > 0) {
