@@ -309,9 +309,19 @@ export function WeeklyPlanPage() {
       />
 
       {board.totalCount === 0 && suggestions.length === 0 && (
-        <p className="mt-6 rounded-lg border border-gray-100 bg-gray-50 p-4 text-sm text-gray-500">
-          Nothing dated in this period yet. Put dates on your deals' next actions, or add your own items to a day below.
-        </p>
+        <div className="mt-6 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
+          <p className="text-sm font-bold text-navy">Nothing dated in this period yet.</p>
+          <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">
+            Capture a touch with a due date and it lands here on its own — nothing to re-type. Deals and payments you owe
+            fill in too, and you can always add your own items to a day below.
+          </p>
+          <Link
+            to="/app/capture?mode=quick"
+            className="mt-4 inline-flex rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
+          >
+            Capture activity
+          </Link>
+        </div>
       )}
 
       <div className={`mt-4 grid gap-3 ${
