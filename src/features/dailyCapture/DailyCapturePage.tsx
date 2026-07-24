@@ -104,6 +104,10 @@ type EmailThreadCaptureForm = {
   opportunityHint: string;
 };
 
+// How many just-captured touches Capture shows inline before deferring to the
+// Activity timeline - enough to confirm what landed, not a second ledger.
+const RECENT_CAPTURE_LIMIT = 5;
+
 const activityTypes: SalesActivityType[] = [
   'Customer meeting',
   'Follow-up',
@@ -1255,8 +1259,8 @@ export function DailyCapturePage() {
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-navy">Recent activities</h2>
-            <p className="mt-1 text-sm text-gray-500">Your latest structured daily sales captures.</p>
+            <h2 className="text-lg font-bold text-navy">Just captured</h2>
+            <p className="mt-1 text-sm text-gray-500">Your last few touches, to confirm they landed. The full timeline lives in Activity.</p>
           </div>
           <button
             type="button"
@@ -1281,7 +1285,10 @@ export function DailyCapturePage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {activities.map((activity) => (
+            {/* Only the most recent few - the whole ledger is the Activity page's
+                job, so Capture stays a place to capture rather than a second
+                timeline scrolling on forever. */}
+            {activities.slice(0, RECENT_CAPTURE_LIMIT).map((activity) => (
               <ActivityCard
                 key={activity.id}
                 activity={activity}
@@ -1290,6 +1297,14 @@ export function DailyCapturePage() {
                 onDelete={() => handleDelete(activity)}
               />
             ))}
+            <Link
+              to="/app/activity"
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50/60 px-4 py-2.5 text-sm font-bold text-brand-blue hover:bg-gray-50"
+            >
+              {activities.length > RECENT_CAPTURE_LIMIT
+                ? `See all ${activities.length} in Activity`
+                : 'Open the Activity timeline'}
+            </Link>
           </div>
         )}
       </section>
