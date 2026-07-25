@@ -41,6 +41,13 @@ export type ProfitAndLoss = {
   accountsPayableBase: number;
   cashOnHandBase: number | null;
   projectedCashBase: number | null;
+  /**
+   * Currencies in this period's revenue or cost that are not the reporting
+   * currency, so the statement can say a figure was converted rather than
+   * presenting a mixed-currency total as if it were counted. Empty when every
+   * amount was already in the reporting currency, which is the common case.
+   */
+  convertedFrom: string[];
 };
 
 type PnlInput = {
@@ -96,6 +103,15 @@ export function buildProfitAndLoss(input: PnlInput): ProfitAndLoss {
     .filter((row) => row.totalBase > 0)
     .sort((left, right) => right.totalBase - left.totalBase);
 
+  // Named from the amounts that actually contributed to this period, so the
+  // disclosure appears only when a conversion really happened.
+  const convertedFrom = [...new Set([
+    ...paidQuotesInPeriod.map((quote) => (quote.currency || '').trim().toUpperCase()),
+    ...paidExpensesInPeriod.map((expense) => (expense.currency || '').trim().toUpperCase()),
+  ])]
+    .filter((currency) => currency && currency !== reportingCurrency)
+    .sort();
+
   return {
     period: input.period,
     periodLabel: PERIOD_LABEL[input.period],
@@ -111,6 +127,7 @@ export function buildProfitAndLoss(input: PnlInput): ProfitAndLoss {
     accountsPayableBase: cash.upcomingOutBase,
     cashOnHandBase: cash.cashOnHandBase,
     projectedCashBase: cash.projectedCashBase,
+    convertedFrom,
   };
 }
 

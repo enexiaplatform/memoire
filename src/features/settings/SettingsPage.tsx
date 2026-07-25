@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ExportTab } from './ExportTab';
 import { BoundariesTab } from './BoundariesTab';
+import { ProfileTab } from './ProfileTab';
 import { REPLAY_GUIDED_WORKFLOW_EVENT } from '../onboarding/guidedWorkflow';
 import { buildSalesOperatingSetupProgress, loadSalesOperatingSetupState } from '../../utils/salesOperatingSetup';
 import { CURRENCY_NAMES, SUPPORTED_CURRENCIES, getReportingCurrency, setReportingCurrency } from '../../utils/money';
@@ -10,7 +11,7 @@ import { getOpeningCashBalance, setOpeningCashBalance } from '../../utils/cashPo
 import { getWorkspaceLens, setWorkspaceLens, workspaceLensLabel, workspaceLenses } from '../../utils/workspaceLens';
 
 export function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<'export' | 'boundaries'>('boundaries');
+  const [activeTab, setActiveTab] = useState<'profile' | 'export' | 'boundaries'>('profile');
   const [reportingCurrency, setReportingCurrencyState] = useState(() => getReportingCurrency());
   const [workspaceLens, setWorkspaceLensState] = useState(() => getWorkspaceLens());
   const [openingBalance, setOpeningBalanceState] = useState(() => {
@@ -157,6 +158,9 @@ export function SettingsPage() {
       </div>
 
       <div className="mb-8 flex space-x-6 border-b border-gray-200">
+        <TabButton active={activeTab === 'profile'} onClick={() => setActiveTab('profile')}>
+          Profile
+        </TabButton>
         <TabButton active={activeTab === 'boundaries'} onClick={() => setActiveTab('boundaries')}>
           Data & Privacy
         </TabButton>
@@ -165,6 +169,7 @@ export function SettingsPage() {
         </TabButton>
       </div>
 
+      {activeTab === 'profile' && <ProfileTab />}
       {activeTab === 'boundaries' && <BoundariesTab />}
       {activeTab === 'export' && <ExportTab />}
     </div>

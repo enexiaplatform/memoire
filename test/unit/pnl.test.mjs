@@ -93,6 +93,24 @@ describe('buildProfitAndLoss', () => {
     assert.equal(pnl.revenueBase, 0, 'an unpaid quote is not revenue');
   });
 
+  test('names the currencies it had to convert, and stays quiet when there are none', () => {
+    const singleCurrency = buildProfitAndLoss({
+      quotes: [quote({ currency: 'VND' })],
+      expenses: [expense({ currency: 'VND' })],
+      period: 'mtd',
+      today: '2026-07-22',
+    });
+    assert.deepEqual(singleCurrency.convertedFrom, [], 'a VND-only period claims no conversion');
+
+    const mixed = buildProfitAndLoss({
+      quotes: [quote({ currency: 'VND' }), quote({ currency: 'EUR', amount: 1000 })],
+      expenses: [expense({ currency: 'USD', amount: 500 })],
+      period: 'mtd',
+      today: '2026-07-22',
+    });
+    assert.deepEqual(mixed.convertedFrom, ['EUR', 'USD'], 'foreign currencies are named, reporting currency is not');
+  });
+
   test('has no margin when there is no revenue', () => {
     const pnl = buildProfitAndLoss({
       quotes: [],

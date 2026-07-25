@@ -266,6 +266,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
     },
+    /**
+     * The operator's own name, which the sidebar, the manager-facing brief and
+     * the daily digest all read. It lives in two places - the profile row and
+     * the auth user's metadata - because signup writes the metadata and the
+     * profile row is what the app reads first. Writing one and not the other is
+     * how a name silently reverts, so both move together and the in-memory
+     * profile is updated straight away rather than waiting for a reload.
+     */
+    updateDisplayName: async (displayName: string) => {
+      if (!supabaseClient) return { error: pipelineSupabaseConfigMessage };
+      const trimmed = displayName.trim();
+      if (!trimmed) return { error: 'Enter the name you want to be shown.' };
+      if (trimmed.length > 80) return { error: 'Keep your name to 80 characters or fewer.' };
+      if (!user) return { error: 'Sign in to change your name.' };
+
+      try {
+        // display_name is the only column a client may write on user_profiles;
+        // the billing columns are server-only by grant.
+        const { error: profileUpdateError } = await withTimeout(
+          Promise.resolve(
+            supabaseClient.from('user_profiles').update({ display_name: trimmed }).eq('id', user.id),
+          ),
+          'Saving your name timed out. Please retry.',
+          AUTH_TIMEOUT_MS,
+        );
+        if (profileUpdateError) {
+          return { error: getFriendlyAuthErrorMessage(profileUpdateError, 'Could not save your name.') };
+        }
+
+        const { error: metadataError } = await withTimeout(
+          supabaseClient.auth.updateUser({ data: { display_name: trimmed } }),
+          'Saving your name timed out. Please retry.',
+          AUTH_TIMEOUT_MS,
+        );
+        if (metadataError) {
+          return { error: getFriendlyAuthErrorMessage(metadataError, 'Could not save your name.') };
+        }
+
+        if (mountedRef.current) {
+          setProfile((current) => (current ? { ...current, display_name: trimmed } : current));
+        }
+        return { error: null };
+      } catch (updateFailure: unknown) {
+        return { error: getFriendlyAuthErrorMessage(updateFailure, 'Could not save your name.') };
+      }
+    },
     resendSignupConfirmation: async (email: string) => {
       if (!supabaseClient) return { error: pipelineSupabaseConfigMessage };
       setError(null);

@@ -39,7 +39,14 @@ export function ProfitAndLossStatement({
           <FileText className="h-4 w-4 text-brand-blue" />
           <div>
             <h2 className="text-lg font-bold text-navy">Profit &amp; Loss</h2>
-            <p className="text-xs text-gray-500">{pnl.periodLabel} · cash actually moved, in {pnl.reportingCurrency}</p>
+            <p className="text-xs text-gray-500">
+              {pnl.periodLabel} · cash actually moved, in {pnl.reportingCurrency}
+              {/* Said only when a conversion really happened: a single-currency
+                  workspace should not read a caveat that does not apply to it. */}
+              {pnl.convertedFrom.length > 0 && (
+                <> · includes {pnl.convertedFrom.join(', ')} converted at planning rates</>
+              )}
+            </p>
           </div>
         </div>
         <div className="flex rounded-full border border-gray-200 p-0.5">

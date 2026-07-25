@@ -16,6 +16,7 @@ export type AuthContextValue = {
   signInWithGoogle: (redirectTo?: string) => Promise<{ error: string | null }>;
   requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
   updatePassword: (password: string) => Promise<{ error: string | null }>;
+  updateDisplayName: (displayName: string) => Promise<{ error: string | null }>;
   resendSignupConfirmation: (email: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<{ error: string | null }>;
 };
