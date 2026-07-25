@@ -13,6 +13,9 @@ import { type ExpenseRecord } from '../../services/expenseStore';
 import { buildOwnObligations } from '../../utils/ownObligations';
 import { buildPlanSuggestions, type PlanSuggestion } from '../../utils/planSuggestions';
 import { PlanSuggestionsPanel } from './PlanSuggestionsPanel';
+import { PlanTagAccountsPanel } from './PlanTagAccountsPanel';
+import { buildPlanTagAccountCandidates, planRecordsForCandidate, type PlanTagAccountCandidate } from '../../utils/planTagAccounts';
+import { createAccount, emptyAccountInput, loadAccounts, type AccountMemoryRecord } from '../../services/accountStore';
 import {
   buildPlanBoard,
   buildPlanLinkOptions,
@@ -60,6 +63,10 @@ export function WeeklyPlanPage() {
   const [records, setRecords] = useState<PlanRecord[]>([]);
   const [commitment, setCommitment] = useState<WeeklyCommitmentSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
+  const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
+  const [creatingAccount, setCreatingAccount] = useState('');
+  const [dismissedTagKeys, setDismissedTagKeys] = useState<string[]>([]);
+  const [accountMessage, setAccountMessage] = useState('');
   const [composerDate, setComposerDate] = useState('');
   const [draft, setDraft] = useState('');
   const [draftLink, setDraftLink] = useState<PlanLinkOption | null>(null);
@@ -88,6 +95,7 @@ export function WeeklyPlanPage() {
       setLoading(false);
     }
 
+    setAccounts(await loadAccounts(dataUserId));
     setRecords(await loadPlanItemsForWorkspace(dataUserId, sampleDataActive));
     const snapshots = await loadWeeklyCommitmentsForWorkspace(dataUserId, sampleDataActive);
     setCommitment(getWeeklyCommitmentForWeek(getCurrentPipelineReviewWeekId(), snapshots));
@@ -175,6 +183,50 @@ export function WeeklyPlanPage() {
       })
       : []
   ), [activities, board.rangeEnd, board.rangeStart, opportunities, periodType, records]);
+
+  // The customers this week's hand-written lines are about, that the workspace
+  // does not know yet. Refused tags stay refused for the session.
+  const tagAccountCandidates = useMemo(() => buildPlanTagAccountCandidates({
+    records,
+    accounts,
+    opportunities,
+    rangeStart: board.rangeStart,
+    rangeEnd: board.rangeEnd,
+  }).filter((candidate) => !dismissedTagKeys.includes(candidate.name)), [
+    accounts, board.rangeEnd, board.rangeStart, dismissedTagKeys, opportunities, records,
+  ]);
+
+  const createAccountFromTag = useCallback(async (candidate: PlanTagAccountCandidate) => {
+    setCreatingAccount(candidate.name);
+    setAccountMessage('');
+    try {
+      const result = await createAccount({ ...emptyAccountInput, accountName: candidate.name }, dataUserId);
+
+      // Every spelling the candidate folded together points at the new account,
+      // so "[DP Lab]" and "[DPLab]" both become one customer's work rather than
+      // leaving half the week still loose.
+      const now = new Date().toISOString();
+      let nextRecords = records;
+      planRecordsForCandidate(records, candidate).forEach((record) => {
+        nextRecords = savePlanItem({
+          ...record,
+          tag: candidate.name,
+          linkedAccountName: result.account.accountName,
+          updatedAt: now,
+        });
+      });
+      setRecords(nextRecords);
+      setAccounts(await loadAccounts(dataUserId));
+      setAccountMessage(
+        result.warning
+        || `${result.account.accountName} is an account now — ${candidate.itemCount} plan ${candidate.itemCount === 1 ? 'item is' : 'items are'} linked to it.`,
+      );
+    } catch {
+      setAccountMessage(`Could not create ${candidate.name}. Your plan is unchanged.`);
+    } finally {
+      setCreatingAccount('');
+    }
+  }, [dataUserId, records]);
 
   const acceptSuggestion = useCallback((suggestion: PlanSuggestion, date: string) => {
     setRecords(savePlanItem(createPersonalPlanRecord({
@@ -300,6 +352,19 @@ export function WeeklyPlanPage() {
           </Link>
         )}
       </div>
+
+      <PlanTagAccountsPanel
+        candidates={tagAccountCandidates}
+        creating={creatingAccount}
+        onCreate={createAccountFromTag}
+        onDismiss={(candidate) => setDismissedTagKeys((current) => [...current, candidate.name])}
+      />
+
+      {accountMessage && (
+        <p className="mt-3 rounded-lg bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-100">
+          {accountMessage}
+        </p>
+      )}
 
       <PlanSuggestionsPanel
         suggestions={suggestions}

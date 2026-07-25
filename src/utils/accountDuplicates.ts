@@ -119,6 +119,13 @@ export function compareAccountNames(left: string, right: string): { reason: stri
     return { reason: 'The same name with a different legal form (Ltd, JSC, Co).', confidence: 'certain' };
   }
 
+  // "DPLab" and "DP Lab", "NamKhoa" and "Nam Khoa" - the same letters in the
+  // same order, written open or closed. Nobody runs two companies whose names
+  // differ only by a space, and a seller types it both ways within one week.
+  if (leftTokens.join('') === rightTokens.join('')) {
+    return { reason: 'The same name written with and without a space.', confidence: 'certain' };
+  }
+
   const shorter = leftTokens.length <= rightTokens.length ? leftTokens : rightTokens;
   const longer = shorter === leftTokens ? rightTokens : leftTokens;
 

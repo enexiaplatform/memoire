@@ -13,6 +13,19 @@ test('punctuation-only differences are certain', () => {
   assert.equal(compareAccountNames('VNVC', 'VNVC.').confidence, 'certain');
 });
 
+test('the same name written with and without a space is certain', () => {
+  // Taken from a real weekly plan: the same customer appears as "[DP Lab]" on
+  // one line and "[DPLab]" two lines later.
+  assert.equal(compareAccountNames('DP Lab', 'DPLab').confidence, 'certain');
+  assert.equal(compareAccountNames('NamKhoa', 'Nam Khoa').confidence, 'certain');
+  assert.equal(compareAccountNames('DHG Pharma', 'DHGPharma').confidence, 'certain');
+});
+
+test('closing a space does not merge genuinely different companies', () => {
+  assert.equal(compareAccountNames('DP Lab', 'DP Labs Vietnam Distribution'), null);
+  assert.equal(compareAccountNames('Nam Khoa', 'Nam Long'), null);
+});
+
 test('one name being the other plus a word or two is likely, not certain', () => {
   const match = compareAccountNames('VNVC', 'VNVC Vietnam');
   assert.equal(match.confidence, 'likely');
