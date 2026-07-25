@@ -75,19 +75,21 @@ export function findClosablePlanItems(input: {
   const touchDate = sanitizeBusinessDate(input.activity.activityDate) || sanitizeBusinessDate(input.today) || todayDateKey();
   const windowDays = input.windowDays ?? 3;
 
-  // A month around the touch, so an item a day or two either side of a week
-  // boundary is still found. Activities are deliberately NOT fed in: we match
-  // against plan items that already existed, not this capture's own new item.
-  const board = buildPlanBoard({
+  // Month boards around the touch. The window can straddle a month edge - a
+  // touch on the 30th and an item planned for the 1st are two days apart - so
+  // every month the window reaches into is built, not just the touch's own.
+  // Activities are deliberately NOT fed in: we match against plan items that
+  // already existed, not this capture's own new item.
+  const boards = monthAnchorsForWindow(touchDate, windowDays).map((anchorDate) => buildPlanBoard({
     periodType: 'month',
-    anchorDate: new Date(`${touchDate}T00:00:00`),
+    anchorDate,
     opportunities: input.opportunities,
     obligations: input.obligations || [],
     records: input.records,
     today: input.today,
-  });
+  }));
 
-  return board.days
+  return boards.flatMap((board) => board.days)
     .flatMap((day) => day.items.map((item) => ({ item, weekdayLabel: day.weekdayLabel })))
     .filter(({ item }) => !item.done)
     .filter(({ item }) => item.kind === 'deal' || item.kind === 'personal')
@@ -130,6 +132,24 @@ function closeReason(item: PlanItem, touchDate: string) {
   if (delta === 0) return 'Planned for today, and you just logged a touch on it.';
   if (delta > 0) return `Planned for ${formatSafeBusinessDate(item.date)} - your touch may have handled it early.`;
   return `Was due ${formatSafeBusinessDate(item.date)} - this touch looks like it closed it out.`;
+}
+
+/**
+ * One anchor date per distinct month the ±windowDays window touches, so a
+ * window spanning a month edge builds both months rather than silently losing
+ * the far side.
+ */
+function monthAnchorsForWindow(touchDate: string, windowDays: number): Date[] {
+  const base = Date.parse(`${touchDate}T00:00:00Z`);
+  if (Number.isNaN(base)) return [new Date()];
+
+  const anchors = new Map<string, Date>();
+  [-windowDays, 0, windowDays].forEach((offset) => {
+    const edge = new Date(base + offset * 86_400_000);
+    const key = `${edge.getUTCFullYear()}-${edge.getUTCMonth()}`;
+    if (!anchors.has(key)) anchors.set(key, new Date(edge.getUTCFullYear(), edge.getUTCMonth(), edge.getUTCDate()));
+  });
+  return [...anchors.values()];
 }
 
 function dayDelta(fromDateKey: string, toDateKey: string) {

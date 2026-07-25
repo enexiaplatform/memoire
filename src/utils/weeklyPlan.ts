@@ -234,11 +234,19 @@ function buildCaptureItems(
   dealItems: PlanItem[],
   personalRecordsInRange: PlanRecord[],
 ): PlanItem[] {
-  // A deal's dated action is keyed by account+date, so a linked capture with the
-  // same account on the same day is recognised as the same commitment.
-  const dealSignatures = new Set(
-    dealItems.map((item) => `${normalizePlanText(item.tag)}|${item.date}`),
-  );
+  // A deal's dated actions, grouped by account and day, so a capture can be
+  // compared against them by wording. Matching on account+date alone would hide
+  // genuinely different work: a deal saying "send the quote" on Friday would
+  // silently swallow a captured "prepare the demo environment" for the same
+  // account that Friday, and the seller would watch something they recorded
+  // disappear.
+  const dealLabelsByAccountDate = new Map<string, string[]>();
+  dealItems.forEach((item) => {
+    const key = `${normalizePlanText(item.tag)}|${item.date}`;
+    const list = dealLabelsByAccountDate.get(key) || [];
+    list.push(normalizePlanText(item.label));
+    dealLabelsByAccountDate.set(key, list);
+  });
   const personalByDate = new Map<string, { account: string; label: string }[]>();
   personalRecordsInRange.forEach((record) => {
     const list = personalByDate.get(record.date) || [];
@@ -256,12 +264,16 @@ function buildCaptureItems(
     getDatedCaptureActions(activity).forEach((candidate) => {
       if (!isBusinessDateInRange(candidate.dueDate, range.start, range.end)) return;
 
-      // The deal item is the editable copy; never show the same commitment twice.
-      if (dealSignatures.has(`${normalizedAccount}|${candidate.dueDate}`)) return;
+      const normalizedLabel = normalizePlanText(candidate.title);
+
+      // The deal item is the editable copy of the same commitment, so it wins -
+      // but only when it really is the same wording, not merely the same account
+      // on the same day.
+      const dealLabelsHere = dealLabelsByAccountDate.get(`${normalizedAccount}|${candidate.dueDate}`) || [];
+      if (dealLabelsHere.some((label) => labelsEquivalent(label, normalizedLabel))) return;
 
       // The operator already planned this by hand - keep their words, drop ours.
       const personalHere = personalByDate.get(candidate.dueDate) || [];
-      const normalizedLabel = normalizePlanText(candidate.title);
       const duplicatedByHand = personalHere.some(
         (record) => record.account === normalizedAccount && labelsEquivalent(record.label, normalizedLabel),
       );

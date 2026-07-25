@@ -264,6 +264,25 @@ describe('buildPlanBoard capture items', () => {
     assert.equal(board.captureCount, 0);
   });
 
+  test('different captured work on the same account and day is kept beside the deal', () => {
+    // The deal wants the quote sent on Wednesday; the touch also promised a demo
+    // environment that day. Two commitments, not one - hiding the second would
+    // lose work the seller recorded.
+    const board = buildPlanBoard({
+      periodType: 'week', anchorDate: anchor,
+      opportunities: [opportunity('o1', 'MDL', 'Send quote', '2026-07-22')],
+      obligations: [], records: [],
+      activities: [capture({ accountName: 'MDL', linkedOpportunityId: 'o1', nextAction: 'Prepare the demo environment', dueDate: '2026-07-22' })],
+      today: '2026-07-22',
+    });
+
+    const wednesday = board.days.find((day) => day.date === '2026-07-22');
+    assert.equal(wednesday.items.length, 2);
+    assert.equal(board.captureCount, 1);
+    assert.ok(wednesday.items.some((item) => item.kind === 'deal' && item.label === 'Send quote'));
+    assert.ok(wednesday.items.some((item) => item.kind === 'capture' && item.label === 'Prepare the demo environment'));
+  });
+
   test('a hand-typed personal item wins over an equivalent capture on the same day', () => {
     const personal = createPersonalPlanRecord({ date: '2026-07-22', label: 'Send revised quote', tag: 'MDL' });
     const board = buildPlanBoard({

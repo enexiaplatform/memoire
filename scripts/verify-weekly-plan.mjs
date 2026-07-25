@@ -283,6 +283,17 @@ const anchor = new Date(2026, 6, 22); // Wed of the Mon 2026-07-20 week
     'a touch with no account offers nothing to close',
   );
 
+  // The window must not be cut off by a month edge: a touch on the 30th and an
+  // item planned for the 1st are two days apart, not a month.
+  const acrossMonth = createPersonalPlanRecord({ date: '2026-08-01', label: 'Follow up with MDL', tag: 'MDL' });
+  assert.equal(
+    findClosablePlanItems({
+      activity: touch({ activityDate: '2026-07-30' }), opportunities: [], records: [acrossMonth], today: '2026-07-30',
+    }).length,
+    1,
+    'an item just across a month boundary is still offered for closing',
+  );
+
   // The Capture page wires both directions and adds no new API function.
   const capturePage = readFileSync(new URL('../src/features/dailyCapture/DailyCapturePage.tsx', import.meta.url), 'utf8');
   assert.match(capturePage, /getCaptureScheduledEntries/, 'Capture reports what it scheduled');
