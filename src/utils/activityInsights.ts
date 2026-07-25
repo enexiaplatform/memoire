@@ -93,7 +93,7 @@ export function buildActivityInsights(input: {
   const today = sanitizeBusinessDate(input.today) || todayDateKey();
   const inPeriod = input.activities.filter((activity) => isBusinessDateInRange(activity.activityDate, input.range.start, input.range.end));
 
-  const momentum = buildMomentum(input.activities, input.range);
+  const momentum = buildMomentum(input.activities, input.range, today);
   const dayCounts = countByDay(inPeriod);
   const busiestDay = topEntry(dayCounts);
   const effortMix = buildEffortMix(inPeriod);
@@ -132,12 +132,19 @@ function buildCoverage(activities: SalesActivityRecord[]): ActivityCoverage {
   };
 }
 
-function buildMomentum(activities: SalesActivityRecord[], range: { start: string; end: string }): ActivityMomentum {
-  const lengthDays = daysBetween(range.start, range.end) + 1;
+function buildMomentum(activities: SalesActivityRecord[], range: { start: string; end: string }, today: string): ActivityMomentum {
+  // A period still running is only counted as far as it has actually run, and
+  // the previous period is measured over the same number of days. Comparing
+  // three days of this week against seven of last week would report a collapse
+  // in effort on a Wednesday morning, every week.
+  const periodEnd = compareSafeBusinessDate(today, range.end) < 0 ? today : range.end;
+  const elapsedDays = Math.max(daysBetween(range.start, periodEnd) + 1, 1);
   const prevEnd = shiftDateKey(range.start, -1);
-  const prevStart = shiftDateKey(prevEnd, -(lengthDays - 1));
-  const current = activities.filter((activity) => isBusinessDateInRange(activity.activityDate, range.start, range.end)).length;
-  const previous = activities.filter((activity) => isBusinessDateInRange(activity.activityDate, prevStart, prevEnd)).length;
+  const prevStart = shiftDateKey(prevEnd, -(daysBetween(range.start, range.end)));
+  const prevComparableEnd = shiftDateKey(prevStart, elapsedDays - 1);
+
+  const current = activities.filter((activity) => isBusinessDateInRange(activity.activityDate, range.start, periodEnd)).length;
+  const previous = activities.filter((activity) => isBusinessDateInRange(activity.activityDate, prevStart, prevComparableEnd)).length;
   const deltaPct = previous === 0 ? null : Math.round(((current - previous) / previous) * 100);
   const direction: ActivityMomentum['direction'] = current > previous ? 'up' : current < previous ? 'down' : 'flat';
   return { current, previous, deltaPct, direction };

@@ -54,6 +54,45 @@ describe('buildActivityInsights', () => {
     assert.equal(insights.momentum.deltaPct, 200);
   });
 
+  test('a half-finished week is compared with the same half of the previous one', () => {
+    // Last week: a touch every day. This week: one a day so far, and it is only
+    // Wednesday. Comparing 3 against the full 7 would report a collapse every
+    // Wednesday morning; the honest comparison is 3 against last week's first 3.
+    const daily = (id, date) => activity({ id, activityDate: date });
+    const insights = buildActivityInsights({
+      activities: [
+        daily('p1','2026-07-13'), daily('p2','2026-07-14'), daily('p3','2026-07-15'),
+        daily('p4','2026-07-16'), daily('p5','2026-07-17'), daily('p6','2026-07-18'), daily('p7','2026-07-19'),
+        daily('c1','2026-07-20'), daily('c2','2026-07-21'), daily('c3','2026-07-22'),
+      ],
+      planRecords: [],
+      range: week,
+      today: '2026-07-22',
+    });
+
+    assert.equal(insights.momentum.current, 3);
+    assert.equal(insights.momentum.previous, 3, 'only the matching first three days of last week count');
+    assert.equal(insights.momentum.direction, 'flat');
+    assert.equal(insights.momentum.deltaPct, 0);
+  });
+
+  test('a finished period is compared with the whole previous period', () => {
+    const daily = (id, date) => activity({ id, activityDate: date });
+    const insights = buildActivityInsights({
+      activities: [
+        daily('p1','2026-07-13'), daily('p2','2026-07-14'), daily('p3','2026-07-15'), daily('p4','2026-07-16'),
+        daily('c1','2026-07-20'), daily('c2','2026-07-21'),
+      ],
+      planRecords: [],
+      range: week,
+      today: '2026-08-05', // well past the week being viewed
+    });
+
+    assert.equal(insights.momentum.current, 2);
+    assert.equal(insights.momentum.previous, 4, 'a closed period compares against the full previous one');
+    assert.equal(insights.momentum.direction, 'down');
+  });
+
   test('measures follow-through against the plan completion marks', () => {
     const touch = activity({
       id: 'a1', activityDate: '2026-07-20',
