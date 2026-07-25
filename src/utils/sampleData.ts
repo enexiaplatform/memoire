@@ -27,6 +27,10 @@ import {
 } from './pipelineDefenseStorage';
 
 import { WEEKLY_COMMITMENT_STORAGE_KEY } from '../services/weeklyCommitmentStore';
+// Deliberately cleared by tag only (removeSampleRecords), never added to
+// SAMPLE_ARRAY_STORAGE_KEYS: that list runs legacy term matching, which would
+// delete a real plan item whose label happens to read "Tender opportunity".
+import { PLAN_ITEM_STORAGE_KEY } from '../services/planItemStore';
 import type { WeeklyCommitmentSnapshot } from './weeklyCommitment';
 import { getCurrentPipelineReviewWeekId } from './pipelineReviewHabit';
 
@@ -159,6 +163,11 @@ export function clearSampleDataset() {
   removeSampleRecords(QUOTE_STORAGE_KEY);
   removeSampleRecords(EXPENSE_STORAGE_KEY);
   removeSampleRecords(WEEKLY_COMMITMENT_STORAGE_KEY);
+  // Plan items are written during a demo too - ticking a derived item stores a
+  // completion record, and Today's strip and Capture's "mark done" write the
+  // same store. Without this, demo ticks survived "clear sample demo data" and
+  // showed up in a browser-only workspace's real plan.
+  removeSampleRecords(PLAN_ITEM_STORAGE_KEY);
   removeSampleBriefs();
   clearDemoJourneyCompletion();
   clearDailyExecutionState('demo');

@@ -75,4 +75,43 @@ for (const marker of ['{!activeBrief && (', 'No brief yet', 'generateBriefFromLi
 }
 assert.equal(page.includes('createInitialPipelineDefenseDeals'), false, 'Pipeline Defense must not seed sample deals anywhere');
 
+// 8. Every store a demo can write must be cleared when the demo is exited.
+//    Plan items were the gap: ticking a derived item during a demo stores a
+//    completion record, and it survived "clear sample demo data" - so a
+//    browser-only workspace (which never re-merges from cloud) kept demo ticks
+//    in its real plan. The banner promises "only records marked as demo/sample
+//    are removed"; every one of them must actually go.
+{
+  const sample = readFileSync('src/utils/sampleData.ts', 'utf8');
+  const clearBlock = sample.slice(
+    sample.indexOf('export function clearSampleDataset'),
+    sample.indexOf('export function sanitizeLegacySampleDataset'),
+  );
+  for (const key of [
+    'SALES_ACTIVITY_STORAGE_KEY',
+    'QUOTE_STORAGE_KEY',
+    'EXPENSE_STORAGE_KEY',
+    'WEEKLY_COMMITMENT_STORAGE_KEY',
+    'PLAN_ITEM_STORAGE_KEY',
+  ]) {
+    assert.ok(
+      clearBlock.includes(`removeSampleRecords(${key})`),
+      `clearSampleDataset must clear sample records from ${key}`,
+    );
+  }
+
+  // Plan items are cleared by tag only. The legacy-term sweep matches phrases
+  // like "Tender opportunity", which a real operator could genuinely write on
+  // their own plan item - running it over plan items would delete real work.
+  const legacyList = sample.slice(
+    sample.indexOf('const SAMPLE_ARRAY_STORAGE_KEYS'),
+    sample.indexOf('type SampleRecord'),
+  );
+  assert.equal(
+    legacyList.includes('PLAN_ITEM_STORAGE_KEY'),
+    false,
+    'plan items must not join the legacy term sweep - it would delete real items by wording',
+  );
+}
+
 console.log('Sample/live separation contract verified.');
