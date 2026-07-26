@@ -58,15 +58,25 @@ for (const marker of [
   requireIncludes(boundariesTab, marker, `settings boundaries tab missing marker: ${marker}`);
 }
 
+// Search & Insights is a bounded, deterministic query surface, not a chatbot.
+// The supported questions are listed on the page for the same reason the
+// no-AI promise is: an open text box that implies unlimited natural-language
+// intelligence is a claim the product cannot keep.
 const askMemoire = read('src/features/v31/AskMemoirePage.tsx');
 for (const marker of [
-  'Ask Memoire uses local rule-based answers when the configured endpoint is unavailable.',
+  'Search &amp; Insights',
+  'What this can answer',
+  'Who needs follow-up?',
+  'Where is money stuck?',
+  'Which commitments are overdue?',
+  'What do I owe today?',
+  'Every answer is computed on this device from your own records.',
   'Answered from your workspace using rules - nothing was sent to an AI service.',
-  'Ask Memoire could not build an answer from the current workspace.',
+  'There is not enough recorded yet to answer that from your workspace.',
   'Answers are built on this device from your captured data.',
   'Nothing is sent to an AI service, so no',
 ]) {
-  requireIncludes(askMemoire, marker, `Ask Memoire missing local-answer marker: ${marker}`);
+  requireIncludes(askMemoire, marker, `Search & Insights missing local-answer marker: ${marker}`);
 }
 
 const dailyCapture = read('src/features/dailyCapture/DailyCapturePage.tsx');

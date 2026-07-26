@@ -2,6 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, ChevronLeft, ChevronRight, Copy, Loader2, RotateCcw } from 'lucide-react';
 import { ReviewAnalyticsSection } from './ReviewAnalyticsSection';
+import { CommercialRiskPanel } from '../threads/CommercialRiskPanel';
+import { ThreadsSection } from '../threads/ThreadsSection';
+import { useCommercialThreads } from '../threads/useCommercialThreads';
+import { CommitmentLedgerPanel } from '../commitments/CommitmentLedgerPanel';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -93,6 +97,7 @@ export function SalesReviewsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('view');
   const tab: ReviewTab = rawTab === 'defense' || rawTab === 'analytics' ? rawTab : 'review';
+  const { recommendations: reviewRecommendations } = useCommercialThreads();
 
   const selectTab = (next: ReviewTab) => {
     const params = new URLSearchParams(searchParams);
@@ -127,7 +132,16 @@ export function SalesReviewsPage() {
         ))}
       </div>
 
-      {tab === 'review' && <WeeklyReviewSection />}
+      {tab === 'review' && (
+        <>
+          {/* The week's commercial risks and the promises behind them lead the
+              review, because they are what the week is actually judged on. */}
+          <CommercialRiskPanel recommendations={reviewRecommendations} limit={10} title="Commercial threads at risk" />
+          <ThreadsSection title="Threads to look at" description="Quietest first" limit={4} />
+          <CommitmentLedgerPanel title="Commitment performance" showComposer={false} />
+          <WeeklyReviewSection />
+        </>
+      )}
       {tab === 'defense' && <PipelineDefenseArtifactSection />}
       {tab === 'analytics' && <ReviewAnalyticsSection />}
     </div>

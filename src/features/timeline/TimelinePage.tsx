@@ -4,6 +4,7 @@ import { History, Plus } from 'lucide-react';
 import { WeeklyPlanPage } from '../plan/WeeklyPlanPage';
 import { SalesActivityCalendarPage } from '../calendar/SalesActivityCalendarPage';
 import { trackProductEvent } from '../../utils/productAnalytics';
+import { CommitmentLedgerPanel } from '../commitments/CommitmentLedgerPanel';
 
 export type TimelineView = 'upcoming' | 'history';
 
@@ -81,8 +82,17 @@ export function TimelinePage() {
         ))}
       </div>
 
-      <div className="mt-4">
-        {view === 'upcoming' ? <WeeklyPlanPage embedded /> : <SalesActivityCalendarPage embedded />}
+      <div className="mt-4 flex flex-col gap-5">
+        {view === 'upcoming' ? (
+          <>
+            {/* Open commitments lead: they are the promises the week is made
+                of. The plan board below is the same week laid out as days. */}
+            <CommitmentLedgerPanel title="Open commitments" />
+            <WeeklyPlanPage embedded />
+          </>
+        ) : (
+          <SalesActivityCalendarPage embedded />
+        )}
       </div>
     </div>
   );

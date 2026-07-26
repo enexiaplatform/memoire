@@ -130,6 +130,45 @@ describe('resolveCommercialThreads', () => {
     assert.equal(threads[0].openCommitmentCount, 2);
   });
 
+  test('a commitment recorded against a customer reaches that customer\'s only thread', () => {
+    // Without this, the thread reported "no next commitment" while the promise
+    // sat in the ledger one panel away.
+    const threads = resolveCommercialThreads(base({
+      opportunities: [opportunity()],
+      commitments: [commitment({ opportunityId: undefined, threadId: '', commitmentText: 'Confirm quantity' })],
+    }));
+    assert.equal(threads[0].nextCommitment?.commitmentText, 'Confirm quantity');
+    assert.equal(threads[0].currentWaitingParty, 'customer');
+  });
+
+  test('but an account running two open deals is left alone rather than guessed at', () => {
+    const threads = resolveCommercialThreads(base({
+      opportunities: [opportunity(), opportunity({ id: 'opp-2', opportunityName: 'Second deal' })],
+      commitments: [commitment({ opportunityId: undefined, threadId: '' })],
+    }));
+    assert.equal(threads.length, 2);
+    for (const thread of threads) {
+      assert.equal(thread.nextCommitment, null, 'an ambiguous commitment is not attached to either deal');
+    }
+  });
+
+  test('a closed deal does not count as competition for an unattached commitment', () => {
+    // Otherwise every customer who has ever won or lost something stops
+    // receiving commitments on their live thread.
+    const threads = resolveCommercialThreads(base({
+      opportunities: [
+        opportunity(),
+        opportunity({ id: 'opp-won', opportunityName: 'Last year', status: 'Won' }),
+      ],
+      commitments: [commitment({ opportunityId: undefined, threadId: '', commitmentText: 'Confirm quantity' })],
+    }));
+
+    const live = threads.find((thread) => thread.status === 'active');
+    assert.equal(live.nextCommitment?.commitmentText, 'Confirm quantity');
+    const won = threads.find((thread) => thread.status === 'won');
+    assert.equal(won.nextCommitment, null, 'a won thread never picks up a new promise');
+  });
+
   test('days since activity is measured from the last thing that happened', () => {
     const threads = resolveCommercialThreads(base({
       opportunities: [opportunity()],

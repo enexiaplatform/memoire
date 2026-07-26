@@ -133,8 +133,24 @@ describe('commitment rules', () => {
     assert.equal(unowned.severity, 'low');
   });
 
-  test('sample commitments never generate recommendations', () => {
+  test('sample commitments never generate recommendations in a real workspace', () => {
     assert.deepEqual(run({ commitments: [commitment({ isSample: true })] }), []);
+  });
+
+  test('but in the demo, where sample data IS the workspace, they do', () => {
+    // Suppressing samples everywhere left the demo saying "nothing is going
+    // silent" over a pipeline full of overdue payments - the showcase
+    // demonstrating the opposite of the product's promise.
+    const demo = run({
+      commitments: [commitment({ isSample: true })],
+      opportunities: [opportunity({ isSample: true, evidence: '' })],
+      quotes: [quote({ isSample: true, validUntil: '2026-07-27' })],
+      includeSampleRecords: true,
+    });
+    assert.ok(demo.length >= 3, 'the demo must show its own risks');
+    assert.ok(codes(demo).includes('CUSTOMER_COMMITMENT_OVERDUE'));
+    assert.ok(codes(demo).includes('OPPORTUNITY_WITHOUT_STAGE_EVIDENCE'));
+    assert.ok(codes(demo).includes('QUOTE_EXPIRING'));
   });
 });
 

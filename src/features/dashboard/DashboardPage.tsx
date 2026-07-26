@@ -64,6 +64,10 @@ import { BusinessCockpitStrip } from './BusinessCockpitStrip';
 import { CommittedWeekStrip } from './CommittedWeekStrip';
 import { loadPlanItemsForWorkspace, PLAN_ITEMS_UPDATED_EVENT } from '../../services/planItemStore';
 import type { PlanRecord } from '../../utils/weeklyPlan';
+import { CommitmentLedgerPanel } from '../commitments/CommitmentLedgerPanel';
+import { CommercialRiskPanel } from '../threads/CommercialRiskPanel';
+import { ThreadQuickLook } from '../threads/ThreadQuickLook';
+import { useCommercialThreads } from '../threads/useCommercialThreads';
 import { TodayCommitmentStrip } from './TodayCommitmentStrip';
 import { buildBusinessCockpit, nudgeEntityHref } from '../../utils/businessCockpit';
 import { buildMorningBrief } from '../../utils/morningBrief';
@@ -356,6 +360,24 @@ export function TodayPage() {
   const dashboardInsights = useMemo(() => (
     advancedInsightsOpen ? buildDashboardInsights(data) : null
   ), [advancedInsightsOpen, data]);
+  // The Commercial Kernel view of the same workspace: threads derived from the
+  // records already loaded, and the deterministic recommendations about them.
+  const { threads: commercialThreads, recommendations: kernelRecommendations } = useCommercialThreads();
+
+  // The quietest threads are the point of a control tower - a thread that has
+  // been moving does not need watching.
+  const quietestThreads = useMemo(() => (
+    commercialThreads
+      .filter((thread) => thread.status === 'active' || thread.status === 'waiting')
+      .sort((left, right) => (right.daysSinceActivity ?? 0) - (left.daysSinceActivity ?? 0))
+      .slice(0, 4)
+  ), [commercialThreads]);
+
+  const knownAccountNames = useMemo(() => Array.from(new Set([
+    ...data.accounts.map((account) => account.accountName),
+    ...data.opportunities.map((opportunity) => opportunity.accountName),
+  ].filter(Boolean))).sort((a, b) => a.localeCompare(b)), [data.accounts, data.opportunities]);
+
   const firstWeekPath = useMemo(() => buildFirstWeekPath({
     activities: data.activities,
     opportunities: data.opportunities,
@@ -640,6 +662,32 @@ export function TodayPage() {
                 onClearDismissed={handleClearDismissedNudges}
                 onClearAll={handleClearAllNudgeState}
               />
+
+              {/* The commercial control tower, in the action tier: what is
+                  going silent and why, then the promises the day is made of.
+                  Both read the Commercial Kernel, so a commitment ticked here
+                  is the same record as one ticked on Timeline. */}
+              <CommercialRiskPanel recommendations={kernelRecommendations} />
+
+              <CommitmentLedgerPanel
+                title="Commitments"
+                accountNames={knownAccountNames}
+                limit={4}
+              />
+
+              {commercialThreads.length > 0 && (
+                <section aria-label="Commercial threads">
+                  <div className="mb-2 flex items-baseline justify-between">
+                    <h2 className="text-sm font-bold text-navy">Commercial threads</h2>
+                    <span className="text-xs text-gray-400">Quietest first</span>
+                  </div>
+                  <div className="grid gap-3 xl:grid-cols-2">
+                    {quietestThreads.map((thread) => (
+                      <ThreadQuickLook key={thread.id} thread={thread} compact />
+                    ))}
+                  </div>
+                </section>
+              )}
 
               {/* First-week guidance on a real workspace only: while the loop is
                   not yet established and not dismissed. Folds away for good once

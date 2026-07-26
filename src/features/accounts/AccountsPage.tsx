@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Archive, ArchiveRestore, ArrowUpDown, Building2, ChevronDown, ChevronLeft, ChevronRight, Database, Eye, Filter, Plus, RefreshCw, Save, Search, Star, Trash2, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
+import { ThreadsSection } from '../threads/ThreadsSection';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
@@ -589,6 +590,17 @@ export function AccountsPage() {
           />
         )}
       </section>
+
+      {/* The same thread component Today, Money and Review use. When an account
+          is selected this narrows to that customer's story; otherwise it shows
+          the quietest threads across the book. */}
+      <div className="mt-6">
+        <ThreadsSection
+          title={selectedAccount ? `Commercial threads · ${selectedAccount.accountName}` : 'Commercial threads'}
+          description="Quietest first"
+          filter={selectedAccount ? { accountName: selectedAccount.accountName } : {}}
+        />
+      </div>
 
       <AccountDetailPanel
         mode={panelMode}

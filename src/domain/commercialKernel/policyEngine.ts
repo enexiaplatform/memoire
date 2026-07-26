@@ -91,6 +91,16 @@ export type PolicyInput = {
   quotes: QuoteRecord[];
   today?: Date;
   thresholds?: Partial<PolicyThresholds>;
+  /**
+   * Whether sample records may produce recommendations.
+   *
+   * False everywhere except the demo workspace. In a real workspace a demo
+   * record must never generate a real risk - that is how a seller ends up
+   * chasing a fictional customer. In the demo, the sample data *is* the
+   * workspace, and suppressing it left the showcase saying "nothing is going
+   * silent" over a pipeline full of overdue payments.
+   */
+  includeSampleRecords?: boolean;
 };
 
 const SEVERITY_ORDER: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -101,11 +111,14 @@ export function evaluateCommercialPolicies(input: PolicyInput): Recommendation[]
   const thresholds = { ...policyThresholds, ...(input.thresholds || {}) };
   const todayKey = toDateKey(today);
 
+  const includeSamples = input.includeSampleRecords === true;
+  const isVisible = (record: { isSample?: boolean }) => includeSamples || record.isSample !== true;
+
   const recommendations: Recommendation[] = [
-    ...commitmentRules(input.commitments, todayKey, thresholds, calculatedAt),
+    ...commitmentRules(input.commitments.filter(isVisible), todayKey, thresholds, calculatedAt),
     ...threadRules(input.threads, thresholds, calculatedAt),
-    ...opportunityRules(input.opportunities, todayKey, calculatedAt),
-    ...quoteRules(input.quotes, todayKey, thresholds, calculatedAt),
+    ...opportunityRules(input.opportunities.filter(isVisible), todayKey, calculatedAt),
+    ...quoteRules(input.quotes.filter(isVisible), todayKey, thresholds, calculatedAt),
   ];
 
   return recommendations.sort((left, right) => {
@@ -126,7 +139,6 @@ function commitmentRules(
 
   for (const commitment of commitments) {
     if (commitment.status !== 'open') continue;
-    if (commitment.isSample) continue;
 
     const due = commitment.currentDueDate;
     const daysOverdue = due ? daysBetween(due, todayKey) : null;
@@ -302,7 +314,6 @@ function opportunityRules(
 
   for (const opportunity of opportunities) {
     if (opportunity.status !== 'Active') continue;
-    if (opportunity.isSample) continue;
 
     if (!opportunity.evidence?.trim()) {
       out.push({
@@ -357,7 +368,6 @@ function quoteRules(
   const out: Recommendation[] = [];
 
   for (const quote of quotes) {
-    if (quote.isSample) continue;
     if (quote.status !== 'Sent' && quote.status !== 'Revised') continue;
     if (!quote.validUntil) continue;
 

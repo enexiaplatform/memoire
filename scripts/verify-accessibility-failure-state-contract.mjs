@@ -168,7 +168,7 @@ for (const [file, marker] of [
   // The app no longer calls any AI service: answers and capture parsing are
   // rule-based on-device, so the honest-state markers assert that, not a fallback.
   ['src/features/v31/AskMemoirePage.tsx', 'Answered from your workspace using rules - nothing was sent to an AI service.'],
-  ['src/features/v31/AskMemoirePage.tsx', 'Ask Memoire could not build an answer from the current workspace.'],
+  ['src/features/v31/AskMemoirePage.tsx', 'There is not enough recorded yet to answer that from your workspace.'],
   ['src/features/dailyCapture/DailyCapturePage.tsx', 'On-device parsing'],
   ['src/features/dailyCapture/DailyCapturePage.tsx', 'nothing is sent to an AI service'],
 ]) {

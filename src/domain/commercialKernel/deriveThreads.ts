@@ -62,14 +62,38 @@ export function resolveCommercialThreads(input: {
   const resolved: ResolvedThread[] = [];
   const accountsWithOpportunity = new Set<string>();
 
+  // A commitment recorded against a customer, without naming a deal, still has
+  // to reach that customer's thread - otherwise the thread reports "no next
+  // commitment" while the promise sits in the ledger one panel away. It can
+  // only be attached when there is no ambiguity about which thread it belongs
+  // to, so accounts running more than one deal are left alone rather than
+  // guessed at.
+  // Only *open* deals compete for an unattached commitment. A won or lost deal
+  // cannot receive a new promise, so counting it as ambiguity would strand
+  // every commitment for a customer who has ever closed anything - which is
+  // most customers worth having.
+  const openDealCountByAccount = new Map<string, number>();
   for (const opportunity of input.opportunities) {
-    accountsWithOpportunity.add(normalizeAccount(opportunity.accountName));
+    if (threadStatusForOpportunity(opportunity.status) !== 'active') continue;
+    const key = normalizeAccount(opportunity.accountName);
+    openDealCountByAccount.set(key, (openDealCountByAccount.get(key) || 0) + 1);
+  }
+
+  for (const opportunity of input.opportunities) {
+    const accountKey = normalizeAccount(opportunity.accountName);
+    accountsWithOpportunity.add(accountKey);
     const stored = storedByOpportunity.get(opportunity.id);
     const activities = activitiesForOpportunity(input.activities, opportunity);
     const quotes = input.quotes.filter((quote) => quote.opportunityId === opportunity.id);
+    const soleDealForAccount = threadStatusForOpportunity(opportunity.status) === 'active'
+      && openDealCountByAccount.get(accountKey) === 1;
     const commitments = input.commitments.filter(
       (commitment) => commitment.opportunityId === opportunity.id
-        || (stored && commitment.threadId === stored.id),
+        || (stored && commitment.threadId === stored.id)
+        || (soleDealForAccount
+          && !commitment.opportunityId
+          && !commitment.threadId
+          && normalizeAccount(commitment.accountName) === accountKey),
     );
 
     resolved.push(buildResolved({

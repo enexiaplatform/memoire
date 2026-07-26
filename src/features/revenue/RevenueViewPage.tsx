@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Plus, ReceiptText, RefreshCw, Search, Trash2, Wallet } from 'lucide-react';
 import { ProfitAndLossStatement } from './ProfitAndLossStatement';
 import { BUSINESS_ACCOUNTING_ENABLED } from '../../config/featureFlags';
+import { ThreadsSection } from '../threads/ThreadsSection';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -136,6 +137,16 @@ export function RevenueViewPage() {
           {BUSINESS_ACCOUNTING_ENABLED && (
             <ProfitAndLossStatement quotes={data.quotes} expenses={expenses} />
           )}
+
+          {/* Where the value is sitting, thread by thread: the same component
+              Today and Accounts use, narrowed to money that has left the
+              starting line and has not arrived. */}
+          <ThreadsSection
+            title="Value in motion"
+            description="Quietest first"
+            filter={{ moneyInMotionOnly: true }}
+            emptyMessage="No commercial value is in motion. Send a quote and the thread appears here with its money position."
+          />
 
           <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">

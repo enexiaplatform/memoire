@@ -159,7 +159,13 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
       }
       setSelectedActivity(requested);
     }
-    setSearchParams({}, { replace: true });
+    // Consume only this page's own parameter. Clearing the whole query string
+    // used to take Timeline's `view` with it, so following an ?activityId=
+    // deep link opened the history tab and then immediately snapped back to
+    // Upcoming with the activity nowhere in sight.
+    const next = new URLSearchParams(searchParams);
+    next.delete('activityId');
+    setSearchParams(next, { replace: true });
   }, [activities, loadingActivities, searchParams, setSearchParams]);
 
   const range = useMemo(() => getCalendarRange(viewMode, anchorDate), [anchorDate, viewMode]);

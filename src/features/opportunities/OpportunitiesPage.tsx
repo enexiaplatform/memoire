@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ThreadsSection } from '../threads/ThreadsSection';
 import {
   AlertTriangle,
   ArrowUpDown,
@@ -1129,6 +1130,17 @@ export function OpportunitiesPage() {
           } : undefined}
         />
       )}
+
+      {/* The same thread component every other surface uses. When a deal is
+          open this narrows to that customer's story, so the opportunity is read
+          in the context of the whole thread rather than on its own. */}
+      <div className="mt-6">
+        <ThreadsSection
+          title={editingOpportunity ? `Commercial threads · ${editingOpportunity.accountName}` : 'Commercial threads'}
+          description="Quietest first"
+          filter={editingOpportunity ? { accountName: editingOpportunity.accountName } : {}}
+        />
+      </div>
 
       <OpportunityPanel
         mode={panelMode}
