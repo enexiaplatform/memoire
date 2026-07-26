@@ -240,8 +240,8 @@ export function OpportunitiesPage() {
   const dataUserId = sampleDataActive ? undefined : user?.id;
   const getAnalyticsDataMode = (syncIssue = false): AnalyticsDataMode => {
     if (sampleDataActive) return 'demo-local';
-    if (syncIssue) return 'sync-issue';
-    return dataUserId ? 'cloud-browser' : 'browser-only';
+    if (syncIssue) return 'sync-failed';
+    return dataUserId ? 'cloud-synced' : 'browser-only';
   };
 
   const applyWorkspaceData = (workspaceData: Awaited<ReturnType<typeof loadSalesWorkspaceData>>) => {
@@ -874,7 +874,7 @@ export function OpportunitiesPage() {
       markFirstPipelineReviewStepComplete('hasGeneratedPipelineDefense');
       markTrialActivationChecklistItemComplete('generate-defense-brief');
       markPipelineReviewHabitStepComplete('generatedBriefAt');
-      trackProductEvent('pipeline_defense_brief_created', getAnalyticsDataMode());
+      trackProductEvent('review_completed', getAnalyticsDataMode());
       window.setTimeout(() => navigate('/app/pipeline-defense'), 150);
     } catch (error) {
       const localBrief = createPipelineDefenseBrief(draftBrief);
@@ -884,7 +884,7 @@ export function OpportunitiesPage() {
       markFirstPipelineReviewStepComplete('hasGeneratedPipelineDefense');
       markTrialActivationChecklistItemComplete('generate-defense-brief');
       markPipelineReviewHabitStepComplete('generatedBriefAt');
-      trackProductEvent('pipeline_defense_brief_created', getAnalyticsDataMode(true));
+      trackProductEvent('review_completed', getAnalyticsDataMode(true));
       if (import.meta.env.DEV) {
         console.debug('[Opportunities] defense brief cloud create failed', { message: error instanceof Error ? error.message : 'Unknown error' });
       }

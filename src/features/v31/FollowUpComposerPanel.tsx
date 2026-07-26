@@ -91,7 +91,7 @@ export function FollowUpComposerPanel({ initialContext, onClose, onActivityLogge
       }, hasLocalSampleData() ? undefined : user?.id);
       setLogState('saved');
       setLogMessage(result.warning || 'Logged as a customer touch - silence tracking updated.');
-      trackProductEvent('follow_up_logged_as_sent');
+      trackProductEvent('commercial_risk_acted_on');
       onActivityLogged?.();
     } catch {
       setLogState('idle');
@@ -217,7 +217,7 @@ export function FollowUpComposerPanel({ initialContext, onClose, onActivityLogge
                             try {
                               await onScheduleNextAction(nextTouchText.trim(), nextTouchDate);
                               setScheduleState('saved');
-                              trackProductEvent('next_touch_booked');
+                              trackProductEvent('commitment_created');
                             } catch {
                               setScheduleState('error');
                             }

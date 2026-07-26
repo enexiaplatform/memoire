@@ -28,7 +28,7 @@ export function SignupPage() {
     const { error } = await signUp(email, password, displayName);
     setSubmitting(false);
     if (!error) {
-      trackProductEvent('signup_completed', 'cloud-browser');
+      trackProductEvent('signup_completed', 'cloud-synced');
       navigate('/verify-email', { state: { email } });
     }
   };

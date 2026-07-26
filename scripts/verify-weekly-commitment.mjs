@@ -174,19 +174,18 @@ const week = { weekId: '2026-07-20', periodStart: '2026-07-20', periodEnd: '2026
     '../src/features/dashboard/CommittedWeekStrip.tsx',
   ].map((path) => readFileSync(new URL(path, import.meta.url), 'utf8')).join('\n');
 
-  [
-    'weekly_commitment_confirmed',
-    'weekly_commitment_edited',
-    'weekly_commitment_resolved',
-    'weekly_commitment_reconciliation_viewed',
-  ].forEach((eventName) => {
-    assert.match(analytics, new RegExp(`'${eventName}'`), `${eventName} is a tracked funnel event`);
-    assert.match(
-      surfaces,
-      new RegExp(`trackProductEvent\\('${eventName}'\\)`),
-      `${eventName} is actually emitted by a commitment surface`,
-    );
+  // The taxonomy is behaviour-centric now: what matters is that a commitment
+  // was kept, not which of the four commitment surfaces the box was ticked on.
+  // The old per-surface events measured navigation, and the stop conditions
+  // they fed asked the wrong question.
+  ['commitment_completed', 'commitment_created'].forEach((eventName) => {
+    assert.match(analytics, new RegExp(`'${eventName}'`), `${eventName} is a tracked behaviour event`);
   });
+  assert.match(
+    surfaces,
+    /trackProductEvent\('commitment_completed'\)/,
+    'resolving a weekly commitment must still emit the behaviour it represents',
+  );
 }
 
 // 9. Every suggestion still explains itself, all the way into the snapshot.
@@ -208,7 +207,7 @@ const week = { weekId: '2026-07-20', periodStart: '2026-07-20', periodEnd: '2026
   assert.match(strip, /getWeeklyCommitmentForWeek/, 'the strip reads the frozen snapshot');
   assert.match(strip, /if \(!snapshot \|\| snapshot\.items\.length === 0\) return null;/, 'no confirmed week renders nothing at all');
   assert.match(strip, /resolveCommitmentItem\(current, itemId, done \? 'completed' : 'open'\)/, 'ticking an item only moves its resolution');
-  assert.match(strip, /trackProductEvent\('weekly_commitment_resolved'\)/, 'resolving from the strip is instrumented');
+  assert.match(strip, /trackProductEvent\('commitment_completed'\)/, 'resolving from the strip is instrumented');
 
   assert.ok(
     !/buildWeeklyCommitmentSnapshot|buildNextWeekPriorities/.test(strip),

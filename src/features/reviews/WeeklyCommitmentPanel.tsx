@@ -85,7 +85,6 @@ export function WeeklyCommitmentPanel({
     if (!label || atCap) return;
     setCustomLabels((existing) => [...existing, label]);
     setCustomDraft('');
-    trackProductEvent('weekly_commitment_edited');
   }, [atCap, customDraft]);
 
   const confirmWeek = useCallback(() => {
@@ -119,12 +118,11 @@ export function WeeklyCommitmentPanel({
 
     setSnapshots(saveWeeklyCommitment(snapshot));
     setReconfirming(false);
-    trackProductEvent('weekly_commitment_confirmed');
   }, [customLabels, period.end, period.start, priorSnapshot, sampleDataActive, selectedIds, suggestions, weekId]);
 
   const setResolution = useCallback((snapshot: WeeklyCommitmentSnapshot, itemId: string, resolution: CommitmentResolution) => {
     setSnapshots(saveWeeklyCommitment(resolveCommitmentItem(snapshot, itemId, resolution)));
-    trackProductEvent('weekly_commitment_resolved');
+    trackProductEvent('commitment_completed');
   }, []);
 
   const showPicker = !currentSnapshot || reconfirming;
@@ -288,9 +286,6 @@ function PlanVsActual({
   activities: SalesActivityRecord[];
   onResolve: (snapshot: WeeklyCommitmentSnapshot, itemId: string, resolution: CommitmentResolution) => void;
 }) {
-  useEffect(() => {
-    trackProductEvent('weekly_commitment_reconciliation_viewed');
-  }, []);
 
   const reconciliation = useMemo(
     () => reconcileWeeklyCommitment({ snapshot, activities }),

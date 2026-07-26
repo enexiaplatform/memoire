@@ -22,7 +22,6 @@ import { buildWeeklyBusinessReview } from '../../utils/weeklyBusinessReview';
 import { generateCommercialLearningBriefMarkdown } from '../../utils/commercialLearningBrief';
 import { generateRevenueRiskBriefMarkdown } from '../../utils/revenueRiskBrief';
 import { generateFollowUpBriefMarkdown } from '../../utils/followUpBrief';
-import { trackProductEvent } from '../../utils/productAnalytics';
 import { type OperatingContextRecord } from '../../services/operatingContextStore';
 import { buildFollowUpImpact } from '../../utils/followUpImpact';
 import { type AccountMemoryRecord } from '../../services/accountStore';
@@ -199,10 +198,6 @@ function WeeklyReviewSection() {
   const [learningBriefMessage, setLearningBriefMessage] = useState('');
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
-
-  useEffect(() => {
-    trackProductEvent('business_review_opened');
-  }, []);
 
   const period = useMemo(() => getRecapRange(periodType, anchorDate), [anchorDate, periodType]);
   const periodActivities = useMemo(
@@ -490,7 +485,6 @@ function WeeklyReviewSection() {
         periodLabel={period.label}
         copyMessage={learningBriefMessage}
         onCopyLearningBrief={async () => {
-          trackProductEvent('learning_brief_copied');
           const markdown = generateCommercialLearningBriefMarkdown({
             objections,
             opportunityOutcomes,
@@ -506,7 +500,6 @@ function WeeklyReviewSection() {
           }
         }}
         onCopyRevenueRiskBrief={async () => {
-          trackProductEvent('revenue_risk_brief_copied');
           const markdown = generateRevenueRiskBriefMarkdown({
             opportunities,
             quotes,
@@ -522,7 +515,6 @@ function WeeklyReviewSection() {
           }
         }}
         onCopyFollowUpBrief={async () => {
-          trackProductEvent('follow_up_brief_copied');
           const markdown = generateFollowUpBriefMarkdown({
             activities,
             opportunities,

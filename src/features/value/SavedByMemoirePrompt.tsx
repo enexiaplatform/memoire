@@ -8,6 +8,7 @@ import type {
   ValueOutcomeType,
 } from '../../domain/commercialKernel/types';
 import type { Recommendation, ReasonCode } from '../../domain/commercialKernel/policyEngine';
+import { trackProductEvent } from '../../utils/productAnalytics';
 
 const assessmentLabels: Record<ValueAssessment, string> = {
   would_have_done_anyway: 'I would have done it anyway',
@@ -72,15 +73,25 @@ export function SavedByMemoirePrompt({ recommendation }: { recommendation: Recom
   }
 
   const record = (assessment: ValueAssessment) => {
+    const outcomeType: ValueOutcomeType = assessment === 'would_have_done_anyway'
+      ? 'no_material_impact'
+      : OUTCOME_BY_REASON[recommendation.reasonCode];
+
     recordValueOutcome(scope, {
-      outcomeType: assessment === 'would_have_done_anyway'
-        ? 'no_material_impact'
-        : OUTCOME_BY_REASON[recommendation.reasonCode],
+      outcomeType,
       userAssessment: assessment,
       threadId: recommendation.threadId,
       opportunityId: recommendation.opportunityId,
       recommendationId: recommendation.id,
     });
+
+    // The value events mirror the ledger, so "did Memoire help?" is answerable
+    // in aggregate without reading anyone's commercial records. A
+    // no-material-impact verdict has no event: it is a real and useful answer
+    // in the ledger, but it is not a claim of value, and emitting one would let
+    // the value funnel count its own rejections as successes.
+    if (outcomeType !== 'no_material_impact') trackProductEvent(outcomeType);
+
     setRecorded(true);
   };
 

@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import type { BusinessCockpitAnswer } from '../../utils/businessCockpit';
-import { trackProductEvent } from '../../utils/productAnalytics';
 
 export function BusinessCockpitStrip({ answers }: { answers: BusinessCockpitAnswer[] }) {
   return (
@@ -9,7 +8,7 @@ export function BusinessCockpitStrip({ answers }: { answers: BusinessCockpitAnsw
         <Link
           key={answer.id}
           to={answer.href}
-          onClick={() => trackProductEvent('cockpit_tile_clicked')}
+          onClick={() => undefined}
           className={`group rounded-xl border p-3 shadow-sm transition hover:border-brand-blue/40 ${
             answer.urgent ? 'border-amber-200 bg-amber-50/60' : 'border-gray-200 bg-white'
           }`}

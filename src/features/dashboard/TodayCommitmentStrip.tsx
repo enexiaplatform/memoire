@@ -117,7 +117,7 @@ export function TodayCommitmentStrip({
         isSample: sampleDataActive,
       }));
     }
-    trackProductEvent('today_plan_item_checked');
+    trackProductEvent('commitment_completed');
   }, [records, sampleDataActive]);
 
   // Nothing dated for today is not a gap to fill with a prompt - the plan simply

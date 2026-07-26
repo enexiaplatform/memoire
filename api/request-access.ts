@@ -3,11 +3,6 @@ import { getSupabaseServiceRoleKey, getSupabaseUrl } from './_env.js';
 import { enforceRateLimit, rateLimitExceeded } from './_rateLimit.js';
 
 export interface RequestAccessBody {
-  kind?: unknown;
-  eventName?: unknown;
-  anonymousId?: unknown;
-  route?: unknown;
-  dataMode?: unknown;
   name?: unknown;
   workEmail?: unknown;
   role?: unknown;
@@ -33,29 +28,12 @@ interface ApiResponse {
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-export const PRODUCT_EVENTS = new Set([
-  'demo_started',
-  'demo_completed',
-  'request_access_submitted',
-  'signup_completed',
-  'csv_import_completed',
-  'pipeline_defense_brief_created',
-  'review_pack_saved',
-  'activity_ledger_opened',
-  'business_review_opened',
-  'money_flow_opened',
-  'cockpit_tile_clicked',
-  'morning_brief_question_clicked',
-  'follow_up_logged_as_sent',
-  'next_touch_booked',
-  'calibration_viewed',
-  'proven_responses_copied',
-  'voice_dictation_used',
-  'learning_brief_copied',
-  'revenue_risk_brief_copied',
-  'follow_up_brief_copied',
-]);
-export const DATA_MODES = new Set(['demo-local', 'cloud-browser', 'browser-only', 'sync-issue', 'unknown']);
+
+// Product analytics used to be POSTed here, to the lead-capture endpoint. It
+// now has its own route, table and rate limit in api/product-events.ts: a
+// product measurement and a sales lead have different retention and different
+// privacy weight, and sharing a route meant neither could be changed safely.
+// This endpoint accepts leads only.
 
 type LeadPayloadResult =
   | { kind: 'honeypot' }
@@ -82,9 +60,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
 
   const body = req.body || {};
-  if (body.kind === 'event') {
-    return recordProductEvent(req, res, body);
-  }
 
   if (isHoneypotSubmission(body)) {
     return res.status(201).json({ success: true });
@@ -115,34 +90,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   }
 }
 
-async function recordProductEvent(req: ApiRequest, res: ApiResponse, body: RequestAccessBody) {
-  const eventPayload = buildProductEventPayload(body);
-
-  if (!eventPayload) {
-    return res.status(400).json({ error: 'Invalid analytics event.' });
-  }
-
-  const rateLimit = enforceRateLimit(req, 'product-event', eventPayload.anonymous_id, 60, 60 * 60 * 1000);
-  if (!rateLimit.allowed) return res.status(202).json({ success: true });
-
-  try {
-    const supabase = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey(), {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-    const { error } = await supabase.from('product_funnel_events').insert(eventPayload);
-    if (error) throw error;
-    return res.status(202).json({ success: true });
-  } catch (error) {
-    console.error(JSON.stringify({
-      level: 'error',
-      message: 'Product event insert failed',
-      eventName: eventPayload.event_name,
-      error: error instanceof Error ? error.message : String(error),
-    }));
-    return res.status(202).json({ success: true });
-  }
-}
-
 export function buildLeadInsertPayload(body: RequestAccessBody): LeadPayloadResult {
   if (isHoneypotSubmission(body)) return { kind: 'honeypot' };
 
@@ -170,22 +117,6 @@ export function buildLeadInsertPayload(body: RequestAccessBody): LeadPayloadResu
       consent_at: new Date().toISOString(),
       source: 'request_access_page',
     },
-  };
-}
-
-export function buildProductEventPayload(body: RequestAccessBody) {
-  const eventName = cleanText(body.eventName, 80);
-  const anonymousId = cleanText(body.anonymousId, 100);
-  const route = cleanRoute(body.route);
-  const dataMode = cleanText(body.dataMode, 40);
-
-  if (!PRODUCT_EVENTS.has(eventName) || anonymousId.length < 8 || !DATA_MODES.has(dataMode)) return null;
-
-  return {
-    event_name: eventName,
-    anonymous_id: anonymousId,
-    route,
-    data_mode: dataMode,
   };
 }
 

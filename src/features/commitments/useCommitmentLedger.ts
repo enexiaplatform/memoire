@@ -15,6 +15,7 @@ import {
 } from '../../domain/commercialKernel/commands';
 import type { CommercialCommitment, CommercialScope } from '../../domain/commercialKernel/types';
 import { todayDateKey } from '../../utils/safeDate.ts';
+import { trackFirstTimeEvent, trackProductEvent } from '../../utils/productAnalytics';
 
 export type CommitmentGroups = {
   overdue: CommercialCommitment[];
@@ -81,20 +82,40 @@ export function useCommitmentLedger() {
     return result.ok;
   }, []);
 
-  const create = useCallback((input: CreateCommitmentInput) =>
-    run(createCommitment(scope, input), 'Commitment recorded.'), [run, scope]);
+  // Analytics is emitted here, where the behaviour happens, rather than in each
+  // page - so a commitment created on Today and one created on Timeline count
+  // as the same thing. The `first_*` events fire once per browser and never in
+  // the demo, because activation means "this worked for them once", not "they
+  // looked at the showcase".
+  const create = useCallback((input: CreateCommitmentInput) => {
+    const created = run(createCommitment(scope, input), 'Commitment recorded.');
+    if (created) {
+      trackProductEvent('commitment_created');
+      trackFirstTimeEvent('first_commitment_created');
+    }
+    return created;
+  }, [run, scope]);
 
-  const complete = useCallback((commitmentId: string, evidence?: string) =>
-    run(completeCommitment(scope, { commitmentId, evidence }), 'Marked as kept.'), [run, scope]);
+  const complete = useCallback((commitmentId: string, evidence?: string) => {
+    const completed = run(completeCommitment(scope, { commitmentId, evidence }), 'Marked as kept.');
+    if (completed) {
+      trackProductEvent('commitment_completed');
+      trackFirstTimeEvent('first_commitment_completed');
+    }
+    return completed;
+  }, [run, scope]);
 
   const cancel = useCallback((commitmentId: string, reason?: string) =>
     run(cancelCommitment(scope, { commitmentId, reason }), 'Commitment cancelled.'), [run, scope]);
 
-  const reschedule = useCallback((commitmentId: string, newDueDate: string, reason?: string) =>
-    run(
+  const reschedule = useCallback((commitmentId: string, newDueDate: string, reason?: string) => {
+    const moved = run(
       rescheduleCommitment(scope, { commitmentId, newDueDate, reason }),
       'Moved. The promise you first made is kept in its history.',
-    ), [run, scope]);
+    );
+    if (moved) trackProductEvent('commitment_rescheduled');
+    return moved;
+  }, [run, scope]);
 
   return {
     commitments,

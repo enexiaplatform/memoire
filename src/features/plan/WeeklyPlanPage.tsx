@@ -78,10 +78,6 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
-  useEffect(() => {
-    trackProductEvent('weekly_plan_opened');
-  }, []);
-
   const refresh = useCallback(async () => {
     const cached = getCachedSalesWorkspaceData(dataUserId);
     if (cached) {
@@ -152,7 +148,7 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
       source: sampleDataActive ? 'demo' : 'user',
       isSample: sampleDataActive,
     })));
-    trackProductEvent('weekly_plan_item_checked');
+    trackProductEvent('commitment_completed');
   }, [records, sampleDataActive]);
 
   const addPersonalItem = useCallback((date: string) => {
@@ -168,7 +164,7 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
     })));
     setDraft('');
     setDraftLink(null);
-    trackProductEvent('weekly_plan_item_added');
+    trackProductEvent('commitment_created');
   }, [draft, draftLink, sampleDataActive]);
 
   const importPastedWeek = useCallback((lines: { date: string; tag: string; label: string }[]) => {
@@ -186,7 +182,7 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
     setAccountMessage(
       `${lines.length} ${lines.length === 1 ? 'item' : 'items'} added to this week. Tag an account and it can become a real customer below.`,
     );
-    trackProductEvent('weekly_plan_item_added');
+    trackProductEvent('commitment_created');
   }, [records, sampleDataActive]);
 
   const removePersonalItem = useCallback((itemId: string) => {
@@ -262,7 +258,6 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
       source: sampleDataActive ? 'demo' : 'user',
       isSample: sampleDataActive,
     })));
-    trackProductEvent('weekly_plan_suggestion_accepted');
   }, [sampleDataActive]);
 
   const dismissSuggestion = useCallback((suggestion: PlanSuggestion) => {
@@ -274,7 +269,6 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
       source: sampleDataActive ? 'demo' : 'user',
       isSample: sampleDataActive,
     })));
-    trackProductEvent('weekly_plan_suggestion_dismissed');
   }, [sampleDataActive]);
 
   if (loading) {

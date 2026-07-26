@@ -354,13 +354,9 @@ export function PipelineReviewDefenseBriefPage() {
     };
   }, [accountLoading, sampleDataActive, user?.id]);
 
-  useEffect(() => {
-    if (workspaceSnapshot && opportunityOutcomes.length > 0) {
-      trackProductEvent('calibration_viewed');
-    }
-    // Track once per page visit when calibration has data to show.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [Boolean(workspaceSnapshot && opportunityOutcomes.length > 0)]);
+  // The calibration panel used to emit a `calibration_viewed` event here. It
+  // counted a page section scrolling into existence, which said nothing about
+  // whether the forecast got more honest, so the effect went with the event.
 
   const followUpImpact = useMemo(() => (workspaceSnapshot
     ? buildFollowUpImpact({
@@ -637,14 +633,14 @@ export function PipelineReviewDefenseBriefPage() {
           briefs: [cloudBrief, ...currentStore.briefs],
         }));
         setSaveStatus('Synced to your account');
-        trackProductEvent('pipeline_defense_brief_created', sampleDataActive ? 'demo-local' : 'cloud-browser');
+        trackProductEvent('review_completed', sampleDataActive ? 'demo-local' : 'cloud-synced');
       } catch {
         setStore((currentStore) => ({
           activeBriefId: brief.id,
           briefs: [brief, ...currentStore.briefs],
         }));
         setSaveStatus('Cloud sync issue - your local copy is preserved');
-        trackProductEvent('pipeline_defense_brief_created', 'sync-issue');
+        trackProductEvent('review_completed', 'sync-failed');
       }
       setEditingDealId(null);
       clearAnalysis();
@@ -655,7 +651,7 @@ export function PipelineReviewDefenseBriefPage() {
       activeBriefId: brief.id,
       briefs: [brief, ...currentStore.briefs],
     }));
-    trackProductEvent('pipeline_defense_brief_created', sampleDataActive ? 'demo-local' : 'browser-only');
+    trackProductEvent('review_completed', sampleDataActive ? 'demo-local' : 'browser-only');
     setEditingDealId(null);
     clearAnalysis();
   };
@@ -925,7 +921,7 @@ export function PipelineReviewDefenseBriefPage() {
     setReviewPacks(saveReviewPack(pack, { syncCloud: !sampleDataActive }));
     setReviewPackMessage(isAuthenticated && !sampleDataActive ? 'Review pack saved and syncing to your workspace.' : 'Review pack saved in this browser.');
     markPipelineReviewHabitStepComplete('generatedBriefAt');
-    trackProductEvent('review_pack_saved', sampleDataActive ? 'demo-local' : isAuthenticated ? 'cloud-browser' : 'browser-only');
+    trackProductEvent('review_completed', sampleDataActive ? 'demo-local' : isAuthenticated ? 'cloud-synced' : 'browser-only');
     if (sampleDataActive) {
       markDemoJourneyComplete('Review Pack saved from Pipeline Defense');
     }

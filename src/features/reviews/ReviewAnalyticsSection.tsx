@@ -16,7 +16,6 @@ import { formatSafeBusinessDate } from '../../utils/safeDate.ts';
 import { buildDailyDigest, buildDigestMailtoLink } from '../../utils/dailyDigest';
 import { getUserDisplayName } from '../../utils/userDisplay';
 import { copyTextToClipboard } from '../../utils/clipboard';
-import { trackProductEvent } from '../../utils/productAnalytics';
 import { CommittedWeekStrip } from '../dashboard/CommittedWeekStrip';
 
 // Chart palette: fixed hex values (not Tailwind classes) so the SVGs survive
@@ -83,10 +82,6 @@ export function ReviewAnalyticsSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, dataUserId]);
 
-  useEffect(() => {
-    trackProductEvent('master_dashboard_opened');
-  }, []);
-
   // The plan's records feed adherence and the record-once funnel, and stay live
   // when a box is ticked on Today or the board.
   useEffect(() => {
@@ -140,7 +135,6 @@ export function ReviewAnalyticsSection() {
       const content = await zip.generateAsync({ type: 'blob' });
       downloadBlob(content, `memoire-dashboard-${dateKey}.zip`);
       setExportMessage('Export downloaded: PNG charts (drop into PowerPoint/Slides) + CSV data.');
-      trackProductEvent('master_dashboard_exported');
     } catch {
       setExportMessage('Export failed. Please retry.');
     } finally {
@@ -252,7 +246,6 @@ export function ReviewAnalyticsSection() {
                   onCopy={async () => {
                     if (await copyTextToClipboard(digest.plainText)) {
                       setDigestCopied(true);
-                      trackProductEvent('daily_digest_copied');
                       window.setTimeout(() => setDigestCopied(false), 2500);
                     }
                   }}

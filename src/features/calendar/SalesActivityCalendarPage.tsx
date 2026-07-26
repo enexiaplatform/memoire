@@ -32,7 +32,6 @@ import { buildCommercialJourneySnapshot, formatJourneyCommitment } from '../../u
 import { buildActivityStateTrail, type ActivityTrailChipKind } from '../../utils/activityStateTrail';
 import { type QuoteRecord } from '../../services/quoteStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
-import { trackProductEvent } from '../../utils/productAnalytics';
 import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
 import { applyOpportunityUpdateSuggestion, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 import type { SalesActivityType } from '../../utils/salesActivityClassifier';
@@ -141,10 +140,6 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
     window.addEventListener(PLAN_ITEMS_UPDATED_EVENT, onUpdate);
     return () => { active = false; window.removeEventListener(PLAN_ITEMS_UPDATED_EVENT, onUpdate); };
   }, [dataUserId, sampleDataActive]);
-
-  useEffect(() => {
-    trackProductEvent('activity_ledger_opened');
-  }, []);
 
   // Deep link from Today's capture inbox: ?activityId= jumps to the activity's
   // day and opens its detail modal (where the link/confirm panel lives).

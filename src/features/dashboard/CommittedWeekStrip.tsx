@@ -47,7 +47,7 @@ export function CommittedWeekStrip({
 
   const toggleDone = useCallback((current: WeeklyCommitmentSnapshot, itemId: string, done: boolean) => {
     setSnapshots(saveWeeklyCommitment(resolveCommitmentItem(current, itemId, done ? 'completed' : 'open')));
-    trackProductEvent('weekly_commitment_resolved');
+    trackProductEvent('commitment_completed');
   }, []);
 
   // Nothing confirmed for this week is not a gap to fill with a prompt - the

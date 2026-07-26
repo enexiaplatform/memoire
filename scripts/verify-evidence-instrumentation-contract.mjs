@@ -3,50 +3,42 @@ import { readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-const DEEP_LOOP_EVENTS = [
-  'activity_ledger_opened',
-  'business_review_opened',
-  'money_flow_opened',
-  'cockpit_tile_clicked',
-  'morning_brief_question_clicked',
-  'follow_up_logged_as_sent',
-  'next_touch_booked',
-  'calibration_viewed',
-  'proven_responses_copied',
-  'voice_dictation_used',
-  'learning_brief_copied',
-  'revenue_risk_brief_copied',
-  'follow_up_brief_copied',
-];
+// The deep-loop events were page opens and copy-button clicks. They measured
+// which rooms the seller walked into, which told us nothing about whether the
+// product worked - and most of them named destinations that no longer exist,
+// so keeping them would have left a funnel reading as a collapse in usage.
+// The taxonomy is now behaviour-centric; `verify-product-analytics-contract.mjs`
+// owns the three-way sync between client, endpoint and table.
 
-// 1. Client union and server whitelist stay in sync - an event missing on
-// either side is silently dropped, which is exactly the failure this guards.
-const clientAnalytics = read('src/utils/productAnalytics.ts');
-const serverWhitelist = read('api/request-access.ts');
-for (const eventName of DEEP_LOOP_EVENTS) {
-  assert.ok(clientAnalytics.includes(`'${eventName}'`), `client union missing ${eventName}`);
-  assert.ok(serverWhitelist.includes(`'${eventName}'`), `server PRODUCT_EVENTS missing ${eventName}`);
-}
-
-// 2. Every event has a real call site - dead event names lie to the funnel.
+// 1. Every behaviour event has a real call site. A declared event with no
+// emitter lies to the funnel exactly as loudly as a dropped one.
 const CALL_SITES = {
-  activity_ledger_opened: 'src/features/calendar/SalesActivityCalendarPage.tsx',
-  business_review_opened: 'src/features/reviews/SalesReviewsPage.tsx',
-  money_flow_opened: 'src/features/revenue/RevenueViewPage.tsx',
-  cockpit_tile_clicked: 'src/features/dashboard/BusinessCockpitStrip.tsx',
-  morning_brief_question_clicked: 'src/features/dashboard/MorningBriefCard.tsx',
-  follow_up_logged_as_sent: 'src/features/v31/FollowUpComposerPanel.tsx',
-  next_touch_booked: 'src/features/v31/FollowUpComposerPanel.tsx',
-  calibration_viewed: 'src/features/pipeline/PipelineReviewDefenseBriefPage.tsx',
-  proven_responses_copied: 'src/features/playbook/SalesPlaybookPage.tsx',
-  voice_dictation_used: 'src/hooks/useSpeechDictation.ts',
-  learning_brief_copied: 'src/features/reviews/SalesReviewsPage.tsx',
-  revenue_risk_brief_copied: 'src/features/reviews/SalesReviewsPage.tsx',
-  follow_up_brief_copied: 'src/features/reviews/SalesReviewsPage.tsx',
+  commitment_created: 'src/features/commitments/useCommitmentLedger.ts',
+  commitment_completed: 'src/features/commitments/useCommitmentLedger.ts',
+  commitment_rescheduled: 'src/features/commitments/useCommitmentLedger.ts',
+  first_commitment_created: 'src/features/commitments/useCommitmentLedger.ts',
+  first_commitment_completed: 'src/features/commitments/useCommitmentLedger.ts',
+  commercial_risk_viewed: 'src/features/threads/CommercialRiskPanel.tsx',
+  commercial_risk_acted_on: 'src/features/threads/CommercialRiskPanel.tsx',
+  backup_exported: 'src/features/settings/ExportTab.tsx',
+  restore_completed: 'src/features/settings/ExportTab.tsx',
 };
 for (const [eventName, file] of Object.entries(CALL_SITES)) {
-  assert.ok(read(file).includes(`trackProductEvent('${eventName}'`), `${file} missing call site for ${eventName}`);
+  const source = read(file);
+  assert.ok(
+    source.includes(`trackProductEvent('${eventName}')`) || source.includes(`trackFirstTimeEvent('${eventName}')`),
+    `${file} missing call site for ${eventName}`,
+  );
 }
+
+// 2. Analytics goes to its own endpoint, not through lead capture.
+const clientAnalytics = read('src/utils/productAnalytics.ts');
+assert.ok(clientAnalytics.includes("'/api/product-events'"), 'analytics must post to its own endpoint');
+assert.equal(
+  read('api/request-access.ts').includes('PRODUCT_EVENTS'),
+  false,
+  'the lead endpoint must no longer carry the analytics allowlist',
+);
 
 // 3. Global error reporter: installed at boot, deduped, capped, noise-filtered,
 // and inert without the endpoint env (via the telemetry pipe).

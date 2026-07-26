@@ -694,7 +694,7 @@ export function DailyCapturePage() {
     if (!record) return;
     setPlanRecords(savePlanItem(record));
     setMarkedDoneKeys((current) => [...current, closableKey(item)]);
-    trackProductEvent('capture_closed_plan_item');
+    trackProductEvent('commitment_completed');
   }, [planRecords, sampleDataActive]);
 
   const stakeholderCandidate = lastSavedActivity ? deriveStakeholderCandidateFromCapture(lastSavedActivity) : null;

@@ -308,15 +308,16 @@ const anchor = new Date(2026, 6, 22); // Wed of the Mon 2026-07-20 week
 // 9. Instrumentation ships with the feature.
 {
   const analytics = readFileSync(new URL('../src/utils/productAnalytics.ts', import.meta.url), 'utf8');
-  [
-    'weekly_plan_opened',
-    'weekly_plan_item_added',
-    'weekly_plan_item_checked',
-    'weekly_plan_suggestion_accepted',
-    'weekly_plan_suggestion_dismissed',
-  ].forEach((eventName) => {
-    assert.match(analytics, new RegExp(`'${eventName}'`), `${eventName} is a tracked funnel event`);
+  // Behaviour, not page opens. `weekly_plan_opened` counted which room the
+  // seller walked into; what the board is for is creating and keeping dated
+  // commitments, and those are what it now reports.
+  ['commitment_created', 'commitment_completed'].forEach((eventName) => {
+    assert.match(analytics, new RegExp(`'${eventName}'`), `${eventName} is a tracked behaviour event`);
   });
+
+  const board = readFileSync(new URL('../src/features/plan/WeeklyPlanPage.tsx', import.meta.url), 'utf8');
+  assert.match(board, /trackProductEvent\('commitment_created'\)/, 'adding a dated item is a commitment created');
+  assert.match(board, /trackProductEvent\('commitment_completed'\)/, 'ticking an item is a commitment kept');
 }
 
 // 10. The data-mode pill reports the real workspace mode. Rendering it with no

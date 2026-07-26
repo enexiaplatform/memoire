@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { trackProductEvent } from '../utils/productAnalytics';
 
 type SpeechRecognitionResultLike = {
   isFinal: boolean;
@@ -95,7 +94,6 @@ export function useSpeechDictation(onTranscript: (chunk: string) => void, lang?:
       recognition.start();
       recognitionRef.current = recognition;
       setListening(true);
-      trackProductEvent('voice_dictation_used');
     } catch {
       setError('Dictation could not start. You can keep typing.');
     }

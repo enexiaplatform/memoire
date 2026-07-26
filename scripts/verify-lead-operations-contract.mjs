@@ -16,12 +16,14 @@ function requireIncludes(text, marker, label) {
   if (!text.includes(marker)) fail(label);
 }
 
+// This endpoint captures leads and nothing else. Product analytics moved to
+// api/product-events.ts: a measurement and a sales lead have different
+// retention, different privacy weight and different rate limits, and sharing a
+// route meant neither could be changed safely.
 const requestAccessApi = read('api/request-access.ts');
 for (const marker of [
   "res.setHeader('Allow', 'POST')",
-  "body.kind === 'event'",
   'export function buildLeadInsertPayload',
-  'export function buildProductEventPayload',
   'export function isHoneypotSubmission',
   'export function cleanRoute',
   "typeof body.website === 'string' && body.website.trim()",
@@ -31,24 +33,33 @@ for (const marker of [
   'getSupabaseServiceRoleKey()',
   "supabase.from('early_access_requests').insert",
   "source: 'request_access_page'",
-  "recordProductEvent(req, res, body)",
-  "supabase.from('product_funnel_events').insert",
-  "return res.status(202).json({ success: true })",
-  "message: 'Product event insert failed'",
 ]) {
   requireIncludes(requestAccessApi, marker, `request-access API missing marker: ${marker}`);
 }
 
+for (const analytics of [
+  "body.kind === 'event'",
+  'buildProductEventPayload',
+  'PRODUCT_EVENTS',
+  'product_funnel_events',
+]) {
+  if (requestAccessApi.includes(analytics)) {
+    fail(`the lead endpoint must not carry product analytics: ${analytics}`);
+  }
+}
+
+// The funnel event names now live with the rest of the taxonomy, in the
+// dedicated analytics endpoint. `verify-product-analytics-contract.mjs` keeps
+// them in sync with the client union and the product_events constraint.
+const productEventsApi = read('api/product-events.ts');
 for (const eventName of [
   'demo_started',
   'demo_completed',
   'request_access_submitted',
   'signup_completed',
   'csv_import_completed',
-  'pipeline_defense_brief_created',
-  'review_pack_saved',
 ]) {
-  requireIncludes(requestAccessApi, eventName, `request-access API missing product event ${eventName}`);
+  requireIncludes(productEventsApi, eventName, `product-events API missing funnel event ${eventName}`);
 }
 
 const requestPage = read('src/features/earlyAccess/EarlyAccessRequestPage.tsx');

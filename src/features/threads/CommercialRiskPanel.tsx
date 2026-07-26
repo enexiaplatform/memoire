@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { trackProductEvent } from '../../utils/productAnalytics';
 import { AlertTriangle, Info } from 'lucide-react';
 import type { Recommendation, Severity } from '../../domain/commercialKernel/policyEngine';
 import { SavedByMemoirePrompt } from '../value/SavedByMemoirePrompt';
@@ -38,6 +39,14 @@ export function CommercialRiskPanel({
 }) {
   const [explaining, setExplaining] = useState('');
 
+  // Measured once per mount, and only when there is something to see: the pair
+  // that matters is risks shown against risks acted on, and counting empty
+  // renders would make the ratio meaningless.
+  const shown = recommendations.length;
+  useEffect(() => {
+    if (shown > 0) trackProductEvent('commercial_risk_viewed');
+  }, [shown]);
+
   if (recommendations.length === 0) {
     return (
       <section className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 shadow-sm" aria-label={title}>
@@ -72,7 +81,11 @@ export function CommercialRiskPanel({
             </div>
 
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-              <Link to={item.href} className="text-xs font-bold text-brand-blue hover:underline">
+              <Link
+                to={item.href}
+                onClick={() => trackProductEvent('commercial_risk_acted_on')}
+                className="text-xs font-bold text-brand-blue hover:underline"
+              >
                 {item.recommendedAction}
               </Link>
               <button

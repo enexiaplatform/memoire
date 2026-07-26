@@ -13,7 +13,6 @@ import { saveSalesAssetDraft } from '../../services/salesAssetStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { hasLocalSampleData } from '../../utils/dataMode';
-import { trackProductEvent } from '../../utils/productAnalytics';
 import { buildSalesAssetDraftFromPattern, generateAssetDraftMarkdown } from '../../utils/salesAssetSuggestions';
 import {
   buildObjectionPlaybook,
@@ -186,7 +185,6 @@ export function SalesPlaybookPage() {
             <ObjectionLearningSection
               playbook={objectionPlaybook}
               onCopy={() => {
-                trackProductEvent('proven_responses_copied');
                 void copyText('objection playbook', generateObjectionPlaybookMarkdown(objectionPlaybook));
               }}
             />

@@ -40,30 +40,11 @@ try {
   const loaded = await loadRequestAccessModule();
   cleanup = loaded.cleanup;
   const {
-    PRODUCT_EVENTS,
-    DATA_MODES,
     buildLeadInsertPayload,
-    buildProductEventPayload,
     cleanRoute,
     cleanText,
     isHoneypotSubmission,
   } = loaded.mod;
-
-  for (const eventName of [
-    'demo_started',
-    'demo_completed',
-    'request_access_submitted',
-    'signup_completed',
-    'csv_import_completed',
-    'pipeline_defense_brief_created',
-    'review_pack_saved',
-  ]) {
-    assert(PRODUCT_EVENTS.has(eventName), `product event allowlist missing ${eventName}`);
-  }
-
-  for (const dataMode of ['demo-local', 'cloud-browser', 'browser-only', 'sync-issue', 'unknown']) {
-    assert(DATA_MODES.has(dataMode), `data mode allowlist missing ${dataMode}`);
-  }
 
   assert(cleanText('  hello world  ', 8) === 'hello wo', 'cleanText should trim and cap text');
   assert(cleanText(123, 8) === '', 'cleanText should reject non-string values');
@@ -104,30 +85,6 @@ try {
   assert(isHoneypotSubmission({ website: 'spam bot' }), 'honeypot field should be detected');
   assert(buildLeadInsertPayload({ website: 'spam bot', name: 'Spam', workEmail: 'spam@example.com' }).kind === 'honeypot', 'honeypot lead should be classified quietly');
 
-  const validEvent = buildProductEventPayload({
-    kind: 'event',
-    eventName: 'review_pack_saved',
-    anonymousId: 'anonymous-user-123',
-    route: '/app/pipeline-defense',
-    dataMode: 'cloud-browser',
-  });
-  assert(validEvent?.event_name === 'review_pack_saved', 'valid event should preserve allowlisted event name');
-  assert(validEvent?.anonymous_id === 'anonymous-user-123', 'valid event should preserve anonymous id');
-  assert(validEvent?.route === '/app/pipeline-defense', 'valid event should preserve clean route');
-  assert(validEvent?.data_mode === 'cloud-browser', 'valid event should preserve data mode');
-
-  const eventWithBadRoute = buildProductEventPayload({
-    kind: 'event',
-    eventName: 'demo_started',
-    anonymousId: 'anonymous-user-123',
-    route: '/demo?utm=secret',
-    dataMode: 'demo-local',
-  });
-  assert(eventWithBadRoute?.route === '', 'event route should be blanked when query strings are present');
-
-  assert(buildProductEventPayload({ kind: 'event', eventName: 'unknown_event', anonymousId: 'anonymous-user-123', dataMode: 'demo-local' }) === null, 'unknown events should be rejected');
-  assert(buildProductEventPayload({ kind: 'event', eventName: 'demo_started', anonymousId: 'short', dataMode: 'demo-local' }) === null, 'short anonymous ids should be rejected');
-  assert(buildProductEventPayload({ kind: 'event', eventName: 'demo_started', anonymousId: 'anonymous-user-123', dataMode: 'private-mode' }) === null, 'unknown data modes should be rejected');
 } finally {
   cleanup();
 }

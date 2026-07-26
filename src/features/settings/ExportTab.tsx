@@ -10,6 +10,8 @@ import {
   type BackupSummary,
 } from '../../utils/workspaceBackup';
 import { hasLocalSampleData } from '../../utils/dataMode';
+import { trackProductEvent } from '../../utils/productAnalytics';
+import { recordBackupExport } from '../../services/syncRecoveryLog';
 
 const SUPPORT_EMAIL = 'hello@memoire.app';
 const SUPPORT_MAILTO = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Memoire early-access support')}`;
@@ -71,6 +73,8 @@ export function ExportTab() {
     clearMemoireLocalData();
     plan.writes.forEach(({ key, value }) => window.localStorage.setItem(key, value));
 
+    trackProductEvent('restore_completed');
+
     const dropped = plan.droppedSampleRecords > 0
       ? ` ${plan.droppedSampleRecords} demo records were left out.`
       : '';
@@ -129,6 +133,11 @@ export function ExportTab() {
       zip.file('README.txt', buildExportReadme(exportedAt, Boolean(user), cloudWarning));
       const content = await zip.generateAsync({ type: 'blob' });
       downloadBlob(content, `memoire-export-${exportedAt.slice(0, 10)}.zip`);
+
+      // Trust events: whether the product keeps the data it was given is the
+      // one thing a local-first workspace has to be able to prove.
+      recordBackupExport();
+      trackProductEvent('backup_exported');
 
       setStatusMessage(cloudWarning || 'Workspace export downloaded.');
     } catch (error) {

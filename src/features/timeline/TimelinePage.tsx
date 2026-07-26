@@ -1,9 +1,7 @@
-import { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { History, Plus } from 'lucide-react';
 import { WeeklyPlanPage } from '../plan/WeeklyPlanPage';
 import { SalesActivityCalendarPage } from '../calendar/SalesActivityCalendarPage';
-import { trackProductEvent } from '../../utils/productAnalytics';
 import { CommitmentLedgerPanel } from '../commitments/CommitmentLedgerPanel';
 
 export type TimelineView = 'upcoming' | 'history';
@@ -34,9 +32,9 @@ export function TimelinePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const view = readView(searchParams.get('view'));
 
-  useEffect(() => {
-    trackProductEvent(view === 'history' ? 'timeline_history_viewed' : 'timeline_upcoming_viewed');
-  }, [view]);
+  // Deliberately no "timeline viewed" event. Page opens measure which rooms
+  // people walk into; what matters is whether commitments get created and kept,
+  // and the ledger emits those itself.
 
   const selectView = (next: TimelineView) => {
     const params = new URLSearchParams(searchParams);
