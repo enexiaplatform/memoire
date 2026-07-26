@@ -34,6 +34,13 @@ export const exportTables = [
   { table: 'action_outcomes', ownerColumn: 'user_id' },
   { table: 'weekly_commitments', ownerColumn: 'user_id' },
   { table: 'plan_items', ownerColumn: 'user_id' },
+  // Commercial Kernel. An export that omitted these would hand the user a
+  // backup missing every promise, every thread and the whole event history -
+  // which is most of what the product is for.
+  { table: 'commercial_threads', ownerColumn: 'user_id' },
+  { table: 'commercial_commitments', ownerColumn: 'user_id' },
+  { table: 'commercial_events', ownerColumn: 'user_id' },
+  { table: 'commercial_value_outcomes', ownerColumn: 'user_id' },
   { table: 'deals', ownerColumn: 'user_id' },
   { table: 'captures', ownerColumn: 'user_id' },
   { table: 'entities', ownerColumn: 'user_id' },

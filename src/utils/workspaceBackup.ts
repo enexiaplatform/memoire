@@ -10,7 +10,16 @@
  * backup, what never comes back in - can be tested without a browser.
  */
 
-export const BACKUP_FORMAT_VERSION = 1;
+/**
+ * Format 2 added the Commercial Kernel stores (threads, commitments, events,
+ * value outcomes). The format is key-prefixed rather than a fixed schema, so a
+ * version-1 backup restores into a version-2 workspace unchanged - it simply
+ * carries no kernel keys, and the kernel derives what it can from the
+ * opportunities and activities that are in the file. The version number is
+ * still incremented, because it is what tells a *newer* backup apart from one
+ * this build can safely read.
+ */
+export const BACKUP_FORMAT_VERSION = 2;
 export const BACKUP_KEY_PREFIX = 'memoire.';
 
 export type BackupEnvelope = {

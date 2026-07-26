@@ -56,6 +56,61 @@ test('a backup with no formatVersion is treated as version 1, not rejected', () 
   assert.equal(result.summary.formatVersion, 1);
 });
 
+test('a version-1 backup still restores after the kernel raised the format to 2', () => {
+  // The format is key-prefixed, not a fixed schema, so an older file is missing
+  // kernel keys rather than being incompatible. It must restore everything it
+  // does carry.
+  assert.equal(BACKUP_FORMAT_VERSION, 2, 'the kernel stores raised the backup format');
+
+  const v1 = { ...validBackup, formatVersion: 1 };
+  const parsed = parseBackupFile(JSON.stringify(v1));
+  assert.equal(parsed.ok, true, 'a previous-version backup must still be readable');
+
+  const plan = buildRestorePlan(v1);
+  assert.equal(plan.restoredRecords, 2, 'every record in the older file is restored');
+  assert.ok(
+    plan.writes.some((write) => write.key === 'memoire.opportunities.v1'),
+    'the older stores are written back',
+  );
+});
+
+test('kernel stores ride the same prefix, so export and restore carry them without a list to maintain', () => {
+  const withKernel = {
+    ...validBackup,
+    formatVersion: 2,
+    localBrowserData: {
+      ...validBackup.localBrowserData,
+      'memoire.commercialCommitments.v1': [
+        { id: 'c1', commitmentText: 'Send revised quote', status: 'open' },
+        { id: 'c2', commitmentText: 'Demo promise', status: 'open', isSample: true },
+      ],
+      'memoire.commercialThreads.v1': [{ id: 't1', title: 'QC analyser rollout' }],
+      'memoire.commercialEvents.v1': [{ id: 'e1', eventType: 'commitment_created' }],
+      'memoire.commercialValueOutcomes.v1': [{ id: 'v1', outcomeType: 'payment_recovered' }],
+    },
+  };
+
+  const parsed = parseBackupFile(JSON.stringify(withKernel));
+  assert.equal(parsed.ok, true);
+
+  const keys = parsed.summary.entries.map((entry) => entry.key);
+  for (const key of [
+    'memoire.commercialThreads.v1',
+    'memoire.commercialCommitments.v1',
+    'memoire.commercialEvents.v1',
+    'memoire.commercialValueOutcomes.v1',
+  ]) {
+    assert.ok(keys.includes(key), `backup must carry the kernel store ${key}`);
+  }
+
+  const plan = buildRestorePlan(withKernel);
+  const commitments = JSON.parse(
+    plan.writes.find((write) => write.key === 'memoire.commercialCommitments.v1').value,
+  );
+  assert.equal(commitments.length, 1, 'the demo commitment is dropped like every other sample record');
+  assert.equal(commitments[0].id, 'c1');
+});
+
 test('demo records never ride a restore into a live workspace', () => {
   const plan = buildRestorePlan(validBackup);
   assert.equal(plan.droppedSampleRecords, 1);

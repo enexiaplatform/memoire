@@ -1,0 +1,430 @@
+import type { CommercialCommitment } from './types.ts';
+import type { ResolvedThread } from './deriveThreads.ts';
+import { isThreadClosed } from './types.ts';
+import type { QuoteRecord } from '../../services/quoteStore';
+import type { CrmLiteOpportunity } from '../../services/opportunityStore';
+
+/**
+ * The deterministic policy engine.
+ *
+ * Every recommendation Memoire makes is produced here, by a pure function, from
+ * records the user can see, with the evidence attached. There is no model, no
+ * external call, and nothing that cannot be explained in one sentence to the
+ * person it is shown to - because a recommendation a seller cannot check is a
+ * recommendation they will stop trusting the first time it is wrong.
+ *
+ * Two hard rules:
+ *
+ *   1. Rules never mutate anything. They read; the user decides. Nothing here
+ *      may silently change an opportunity stage, a quote state, or a commitment.
+ *   2. Every recommendation carries `reasonCode`, `reasonText`,
+ *      `sourceRecordIds`, `threshold`, `severity`, `recommendedAction` and
+ *      `calculatedAt`. A recommendation that cannot say which record produced
+ *      it, and against which threshold, does not ship.
+ */
+
+export const reasonCodes = [
+  'CUSTOMER_COMMITMENT_OVERDUE',
+  'SELF_COMMITMENT_OVERDUE',
+  'COMMITMENT_REPEATEDLY_RESCHEDULED',
+  'COMMITMENT_WITHOUT_OWNER',
+  'COMMITMENT_WITHOUT_DUE_DATE',
+  'THREAD_SILENT',
+  'THREAD_WITHOUT_NEXT_COMMITMENT',
+  'OPPORTUNITY_WITHOUT_STAGE_EVIDENCE',
+  'OPPORTUNITY_WITHOUT_FUTURE_ACTION',
+  'QUOTE_EXPIRING',
+  'MONEY_CHECKPOINT_STUCK',
+] as const;
+export type ReasonCode = (typeof reasonCodes)[number];
+
+export const severities = ['critical', 'high', 'medium', 'low'] as const;
+export type Severity = (typeof severities)[number];
+
+export type Recommendation = {
+  id: string;
+  reasonCode: ReasonCode;
+  /** One sentence naming the evidence, the threshold, and the gap. */
+  reasonText: string;
+  sourceRecordIds: string[];
+  /** The rule's numeric boundary, so the user can see what it is measured against. */
+  threshold: number;
+  severity: Severity;
+  recommendedAction: string;
+  calculatedAt: string;
+  accountName: string;
+  threadId?: string | null;
+  opportunityId?: string | null;
+  commitmentId?: string | null;
+  /** Where to go to act on it. */
+  href: string;
+};
+
+/**
+ * Thresholds live here, in one place, and are exported so the interface can
+ * show the number it judged against. Personalisation will eventually override
+ * these per account and per thread type from the user's own history; until
+ * there is enough history to learn from, everyone gets the same defaults, and
+ * every threshold stays inspectable and resettable.
+ */
+export const policyThresholds = {
+  /** Days a thread may go quiet before it counts as silent. */
+  threadSilenceDays: 10,
+  /** Days a *waiting-on-customer* thread may go quiet. Shorter: the ball is not yours. */
+  waitingThreadSilenceDays: 5,
+  /** Days past due before an overdue commitment is critical rather than high. */
+  overdueCriticalDays: 3,
+  /** How many reschedules make a promise a pattern rather than an accident. */
+  rescheduleLimit: 2,
+  /** Days before a quote's validity ends that it needs attention. */
+  quoteExpiryWarningDays: 7,
+  /** Days a money checkpoint may sit unchanged before it is stuck. */
+  moneyCheckpointStuckDays: 14,
+} as const;
+
+export type PolicyThresholds = typeof policyThresholds;
+
+export type PolicyInput = {
+  threads: ResolvedThread[];
+  commitments: CommercialCommitment[];
+  opportunities: CrmLiteOpportunity[];
+  quotes: QuoteRecord[];
+  today?: Date;
+  thresholds?: Partial<PolicyThresholds>;
+};
+
+const SEVERITY_ORDER: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+
+export function evaluateCommercialPolicies(input: PolicyInput): Recommendation[] {
+  const today = input.today || new Date();
+  const calculatedAt = today.toISOString();
+  const thresholds = { ...policyThresholds, ...(input.thresholds || {}) };
+  const todayKey = toDateKey(today);
+
+  const recommendations: Recommendation[] = [
+    ...commitmentRules(input.commitments, todayKey, thresholds, calculatedAt),
+    ...threadRules(input.threads, thresholds, calculatedAt),
+    ...opportunityRules(input.opportunities, todayKey, calculatedAt),
+    ...quoteRules(input.quotes, todayKey, thresholds, calculatedAt),
+  ];
+
+  return recommendations.sort((left, right) => {
+    const bySeverity = SEVERITY_ORDER[left.severity] - SEVERITY_ORDER[right.severity];
+    return bySeverity !== 0 ? bySeverity : left.accountName.localeCompare(right.accountName);
+  });
+}
+
+// ------------------------------------------------------------ commitments
+
+function commitmentRules(
+  commitments: CommercialCommitment[],
+  todayKey: string,
+  thresholds: PolicyThresholds,
+  calculatedAt: string,
+): Recommendation[] {
+  const out: Recommendation[] = [];
+
+  for (const commitment of commitments) {
+    if (commitment.status !== 'open') continue;
+    if (commitment.isSample) continue;
+
+    const due = commitment.currentDueDate;
+    const daysOverdue = due ? daysBetween(due, todayKey) : null;
+
+    if (due && daysOverdue !== null && daysOverdue > 0) {
+      const isCustomer = commitment.commitmentParty === 'customer';
+      const moved = commitment.dueDateHistory.length;
+      out.push({
+        id: `${commitment.id}:overdue`,
+        reasonCode: isCustomer ? 'CUSTOMER_COMMITMENT_OVERDUE' : 'SELF_COMMITMENT_OVERDUE',
+        reasonText: isCustomer
+          ? `${commitment.ownerLabel} committed to "${commitment.commitmentText}" by ${formatDate(commitment.originalDueDate || due)}. It is ${plural(daysOverdue, 'day')} overdue${moved ? ` after ${plural(moved, 'reschedule')}` : ''}.`
+          : `You committed to "${commitment.commitmentText}" by ${formatDate(commitment.originalDueDate || due)}. It is ${plural(daysOverdue, 'day')} overdue${moved ? ` after ${plural(moved, 'reschedule')}` : ''}.`,
+        sourceRecordIds: [commitment.id],
+        threshold: 0,
+        severity: daysOverdue >= thresholds.overdueCriticalDays ? 'critical' : 'high',
+        recommendedAction: isCustomer
+          ? 'Send a confirmation follow-up.'
+          : 'Complete it, or reschedule it with a date you can keep.',
+        calculatedAt,
+        accountName: commitment.accountName,
+        threadId: commitment.threadId || null,
+        opportunityId: commitment.opportunityId || null,
+        commitmentId: commitment.id,
+        href: commitmentHref(commitment),
+      });
+    }
+
+    if (commitment.dueDateHistory.length >= thresholds.rescheduleLimit) {
+      out.push({
+        id: `${commitment.id}:rescheduled`,
+        reasonCode: 'COMMITMENT_REPEATEDLY_RESCHEDULED',
+        reasonText: `"${commitment.commitmentText}" has moved ${plural(commitment.dueDateHistory.length, 'time')} since it was first promised for ${formatDate(commitment.originalDueDate)}.`,
+        sourceRecordIds: [commitment.id],
+        threshold: thresholds.rescheduleLimit,
+        severity: 'medium',
+        recommendedAction: 'Find out what is really blocking it, or drop it honestly.',
+        calculatedAt,
+        accountName: commitment.accountName,
+        threadId: commitment.threadId || null,
+        opportunityId: commitment.opportunityId || null,
+        commitmentId: commitment.id,
+        href: commitmentHref(commitment),
+      });
+    }
+
+    if (!due) {
+      out.push({
+        id: `${commitment.id}:no-date`,
+        reasonCode: 'COMMITMENT_WITHOUT_DUE_DATE',
+        reasonText: `"${commitment.commitmentText}" has no date, so nothing can ever tell you it is late.`,
+        sourceRecordIds: [commitment.id],
+        threshold: 0,
+        severity: 'medium',
+        recommendedAction: 'Give it a date.',
+        calculatedAt,
+        accountName: commitment.accountName,
+        threadId: commitment.threadId || null,
+        opportunityId: commitment.opportunityId || null,
+        commitmentId: commitment.id,
+        href: commitmentHref(commitment),
+      });
+    }
+
+    if (!commitment.ownerLabel.trim()) {
+      out.push({
+        id: `${commitment.id}:no-owner`,
+        reasonCode: 'COMMITMENT_WITHOUT_OWNER',
+        reasonText: `"${commitment.commitmentText}" does not say who owes it.`,
+        sourceRecordIds: [commitment.id],
+        threshold: 0,
+        severity: 'low',
+        recommendedAction: 'Name the person who owes it.',
+        calculatedAt,
+        accountName: commitment.accountName,
+        threadId: commitment.threadId || null,
+        opportunityId: commitment.opportunityId || null,
+        commitmentId: commitment.id,
+        href: commitmentHref(commitment),
+      });
+    }
+  }
+
+  return out;
+}
+
+// ---------------------------------------------------------------- threads
+
+function threadRules(
+  threads: ResolvedThread[],
+  thresholds: PolicyThresholds,
+  calculatedAt: string,
+): Recommendation[] {
+  const out: Recommendation[] = [];
+
+  for (const thread of threads) {
+    if (isThreadClosed(thread.status)) continue;
+
+    const waitingOnCustomer = thread.currentWaitingParty === 'customer';
+    const limit = waitingOnCustomer ? thresholds.waitingThreadSilenceDays : thresholds.threadSilenceDays;
+
+    if (thread.daysSinceActivity !== null && thread.daysSinceActivity >= limit) {
+      out.push({
+        id: `${thread.id}:silent`,
+        reasonCode: 'THREAD_SILENT',
+        reasonText: waitingOnCustomer
+          ? `${thread.title} has been waiting on ${thread.accountName} for ${plural(thread.daysSinceActivity, 'day')}, past the ${plural(limit, 'day')} you allow a customer.`
+          : `Nothing has happened on ${thread.title} for ${plural(thread.daysSinceActivity, 'day')}, past the ${plural(limit, 'day')} silence threshold.`,
+        sourceRecordIds: [thread.id],
+        threshold: limit,
+        severity: thread.daysSinceActivity >= limit * 2 ? 'high' : 'medium',
+        recommendedAction: waitingOnCustomer
+          ? 'Chase the customer for the answer you are waiting on.'
+          : 'Make contact, or record why this thread is parked.',
+        calculatedAt,
+        accountName: thread.accountName,
+        threadId: thread.id,
+        opportunityId: thread.opportunityId || null,
+        href: threadHref(thread),
+      });
+    }
+
+    if (thread.openCommitmentCount === 0) {
+      out.push({
+        id: `${thread.id}:no-next`,
+        reasonCode: 'THREAD_WITHOUT_NEXT_COMMITMENT',
+        reasonText: `${thread.title} has no open commitment, so nothing is scheduled to move it.`,
+        sourceRecordIds: [thread.id],
+        threshold: 1,
+        severity: 'medium',
+        recommendedAction: 'Set the next commitment: what happens, by whom, by when.',
+        calculatedAt,
+        accountName: thread.accountName,
+        threadId: thread.id,
+        opportunityId: thread.opportunityId || null,
+        href: threadHref(thread),
+      });
+    }
+
+    // Money that has stopped moving. A thread waiting on payment for a
+    // fortnight is a collection problem, not a sales one.
+    const moneyInMotion = thread.currentMoneyState !== 'none' && thread.currentMoneyState !== 'paid';
+    if (moneyInMotion && thread.daysSinceActivity !== null
+      && thread.daysSinceActivity >= thresholds.moneyCheckpointStuckDays) {
+      out.push({
+        id: `${thread.id}:money-stuck`,
+        reasonCode: 'MONEY_CHECKPOINT_STUCK',
+        reasonText: `${thread.title} has sat at "${humanMoneyState(thread.currentMoneyState)}" for ${plural(thread.daysSinceActivity, 'day')}.`,
+        sourceRecordIds: [thread.id],
+        threshold: thresholds.moneyCheckpointStuckDays,
+        severity: 'high',
+        recommendedAction: `Move it on from ${humanMoneyState(thread.currentMoneyState)}, or record what is holding it.`,
+        calculatedAt,
+        accountName: thread.accountName,
+        threadId: thread.id,
+        opportunityId: thread.opportunityId || null,
+        href: '/app/revenue',
+      });
+    }
+  }
+
+  return out;
+}
+
+// ---------------------------------------------------------- opportunities
+
+function opportunityRules(
+  opportunities: CrmLiteOpportunity[],
+  todayKey: string,
+  calculatedAt: string,
+): Recommendation[] {
+  const out: Recommendation[] = [];
+
+  for (const opportunity of opportunities) {
+    if (opportunity.status !== 'Active') continue;
+    if (opportunity.isSample) continue;
+
+    if (!opportunity.evidence?.trim()) {
+      out.push({
+        id: `${opportunity.id}:no-evidence`,
+        reasonCode: 'OPPORTUNITY_WITHOUT_STAGE_EVIDENCE',
+        reasonText: `${opportunity.opportunityName} is at "${opportunity.stage}" with nothing recorded that supports that stage.`,
+        sourceRecordIds: [opportunity.id],
+        threshold: 1,
+        severity: 'medium',
+        recommendedAction: 'Record what the customer actually did that puts it at this stage.',
+        calculatedAt,
+        accountName: opportunity.accountName,
+        opportunityId: opportunity.id,
+        href: `/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}`,
+      });
+    }
+
+    const hasFutureAction = Boolean(opportunity.nextAction?.trim())
+      && Boolean(opportunity.nextActionDate?.trim())
+      && opportunity.nextActionDate >= todayKey;
+
+    if (!hasFutureAction) {
+      out.push({
+        id: `${opportunity.id}:no-future-action`,
+        reasonCode: 'OPPORTUNITY_WITHOUT_FUTURE_ACTION',
+        reasonText: opportunity.nextActionDate && opportunity.nextActionDate < todayKey
+          ? `${opportunity.opportunityName}'s next action was dated ${formatDate(opportunity.nextActionDate)} and has passed.`
+          : `${opportunity.opportunityName} has no dated next action.`,
+        sourceRecordIds: [opportunity.id],
+        threshold: 1,
+        severity: 'medium',
+        recommendedAction: 'Set a dated next action, or close the opportunity honestly.',
+        calculatedAt,
+        accountName: opportunity.accountName,
+        opportunityId: opportunity.id,
+        href: `/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}`,
+      });
+    }
+  }
+
+  return out;
+}
+
+// ----------------------------------------------------------------- quotes
+
+function quoteRules(
+  quotes: QuoteRecord[],
+  todayKey: string,
+  thresholds: PolicyThresholds,
+  calculatedAt: string,
+): Recommendation[] {
+  const out: Recommendation[] = [];
+
+  for (const quote of quotes) {
+    if (quote.isSample) continue;
+    if (quote.status !== 'Sent' && quote.status !== 'Revised') continue;
+    if (!quote.validUntil) continue;
+
+    const daysLeft = daysBetween(todayKey, quote.validUntil);
+    if (daysLeft === null || daysLeft > thresholds.quoteExpiryWarningDays) continue;
+
+    out.push({
+      id: `${quote.id}:expiring`,
+      reasonCode: 'QUOTE_EXPIRING',
+      reasonText: daysLeft < 0
+        ? `Quote ${quote.quoteId} for ${quote.accountName} expired ${plural(Math.abs(daysLeft), 'day')} ago.`
+        : `Quote ${quote.quoteId} for ${quote.accountName} is valid for ${plural(daysLeft, 'more day')}.`,
+      sourceRecordIds: [quote.id],
+      threshold: thresholds.quoteExpiryWarningDays,
+      severity: daysLeft < 0 ? 'high' : 'medium',
+      recommendedAction: daysLeft < 0
+        ? 'Extend the validity or reissue it before you chase.'
+        : 'Chase the decision, or extend the validity.',
+      calculatedAt,
+      accountName: quote.accountName,
+      opportunityId: quote.opportunityId || null,
+      href: '/app/quotes',
+    });
+  }
+
+  return out;
+}
+
+// ----------------------------------------------------------------- helpers
+
+function commitmentHref(commitment: CommercialCommitment) {
+  if (commitment.opportunityId) {
+    return `/app/opportunities?opportunityId=${encodeURIComponent(commitment.opportunityId)}`;
+  }
+  return '/app/timeline?view=upcoming';
+}
+
+function threadHref(thread: ResolvedThread) {
+  if (thread.opportunityId) {
+    return `/app/opportunities?opportunityId=${encodeURIComponent(thread.opportunityId)}`;
+  }
+  return `/app/accounts?accountName=${encodeURIComponent(thread.accountName)}`;
+}
+
+function humanMoneyState(state: string) {
+  return state.replace(/_/g, ' ');
+}
+
+/** Whole days from `from` to `to`. Null when either date is unusable. */
+function daysBetween(from: string, to: string): number | null {
+  const start = Date.parse(`${from}T00:00:00Z`);
+  const end = Date.parse(`${to}T00:00:00Z`);
+  if (Number.isNaN(start) || Number.isNaN(end)) return null;
+  return Math.round((end - start) / 86_400_000);
+}
+
+function toDateKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function formatDate(value: string) {
+  if (!value) return 'no date';
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' });
+}
+
+function plural(count: number, noun: string) {
+  return `${count} ${noun}${Math.abs(count) === 1 ? '' : 's'}`;
+}

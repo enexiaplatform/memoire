@@ -10,6 +10,14 @@ import { loadExpenses, loadExpensesForUser, type ExpenseRecord } from './expense
 import { loadSalesActivities, type SalesActivityRecord } from './salesActivityStore';
 import { loadSalesAssets, loadSalesAssetsForUser, type SalesAssetRecord } from './salesAssetStore';
 import { loadStakeholders, type StakeholderRecord } from './stakeholderStore';
+import { loadCommitmentsForWorkspace } from './commercialKernel/commitmentStore';
+import { loadThreadsForWorkspace } from './commercialKernel/threadStore';
+import { loadValueOutcomesForWorkspace } from './commercialKernel/valueOutcomeStore';
+import type {
+  CommercialCommitment,
+  CommercialThread,
+  CommercialValueOutcome,
+} from '../domain/commercialKernel/types';
 import type { PipelineDefenseBrief } from '../utils/pipelineDefenseStorage';
 import { loadPipelineDefenseBriefStore } from '../utils/pipelineDefenseStorage';
 import {
@@ -39,6 +47,12 @@ export type SalesWorkspaceData = {
   expenses: ExpenseRecord[];
   operatingContext: OperatingContextRecord[];
   opportunityOutcomes: OpportunityOutcomeRecord[];
+  // Commercial Kernel. Loaded with everything else so no surface has to fetch
+  // commitments separately and end up showing a different answer to "what is
+  // overdue" than the surface next to it.
+  commitments: CommercialCommitment[];
+  threads: CommercialThread[];
+  valueOutcomes: CommercialValueOutcome[];
 };
 
 type LoadOptions = {
@@ -70,7 +84,10 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
     loadOperatingContext(userId),
     userId ? loadOpportunityOutcomesForUser(userId) : Promise.resolve(loadOpportunityOutcomes()),
     userId ? loadExpensesForUser(userId) : Promise.resolve(loadExpenses()),
-  ]).then(([activities, opportunities, accounts, briefs, objections, stakeholders, actionOutcomes, assets, quotes, operatingContext, opportunityOutcomes, expenses]) => {
+    loadCommitmentsForWorkspace(userId),
+    loadThreadsForWorkspace(userId),
+    loadValueOutcomesForWorkspace(userId),
+  ]).then(([activities, opportunities, accounts, briefs, objections, stakeholders, actionOutcomes, assets, quotes, operatingContext, opportunityOutcomes, expenses, commitments, threads, valueOutcomes]) => {
     if (userId && getWorkspaceSyncStatus().state !== 'error') reportWorkspaceSyncReady();
     return {
       activities,
@@ -85,6 +102,9 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
       expenses,
       operatingContext,
       opportunityOutcomes,
+      commitments,
+      threads,
+      valueOutcomes,
     };
   });
 

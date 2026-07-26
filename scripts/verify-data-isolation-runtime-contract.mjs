@@ -48,6 +48,12 @@ const expectedTables = [
   ['action_outcomes', 'user_id'],
   ['weekly_commitments', 'user_id'],
   ['plan_items', 'user_id'],
+  // Commercial Kernel. A backup without these would be missing every promise,
+  // every thread and the whole event history.
+  ['commercial_threads', 'user_id'],
+  ['commercial_commitments', 'user_id'],
+  ['commercial_events', 'user_id'],
+  ['commercial_value_outcomes', 'user_id'],
   ['deals', 'user_id'],
   ['captures', 'user_id'],
   ['entities', 'user_id'],
