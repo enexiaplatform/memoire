@@ -1,127 +1,118 @@
 # Memoire
 
-Memoire is a personal Business Activity OS for B2B sellers and solo operators: individual B2B sellers, founder-led sellers, consultants, freelancers, and agency owners running their own commercial motion. It captures every commercial activity - meetings, quotes, deliveries, payments, content, experiments - into one business memory with money state, silence alerts, and next actions.
+**Personal Commercial Control Tower**
 
-Core statement:
+> From conversation to cash, nothing goes silent.
 
-> Your CRM, spreadsheet, or notes track records for the company. Memoire remembers your whole commercial story and never lets anything go silent - deals, quotes, payments, or follow-ups. Strategy: docs/product/pivot-business-activity-os-2026-07-09.md.
+Memoire is a personal commercial control tower for complex B2B sellers. It turns every customer interaction into a continuous commercial thread - from conversation and quotation to delivery and cash - so no commitment, follow-up, or revenue opportunity goes silent.
 
-## Launch Status
+Positioning and boundaries: [`docs/positioning.md`](docs/positioning.md). Current architecture and the decisions behind it: [`docs/product/focused-refactor-2026-07-26.md`](docs/product/focused-refactor-2026-07-26.md).
 
-Memoire is currently an intentional private beta. Public routes explain the product and support demo and access-request flows, while search indexing remains disabled until checkout, onboarding, and launch QA are complete.
+## Launch status
 
-## Brand System
+Single-user private beta. The question this phase answers is whether one individual B2B seller repeatedly gets value from the core loop. Search indexing stays disabled until that is answered.
 
-The Memoire brand guide and machine-readable tokens live in `docs/brand/`. The canonical identity is the Outfit ExtraBold gradient wordmark, supported by the navy and brand-blue product palette.
+## The operating loop
 
-## V1 Scope
+```text
+Capture → Commercial Thread → Commitment → Silence and Risk → Today → Review → Measured Commercial Value
+```
 
-The V1 product flow is:
+## Information architecture
 
-Quick Capture -> Structure -> Today Actions -> Account Memory -> Ask Memoire
+```text
+GLOBAL          + Capture · Search & Insights · Settings
+PRIMARY         Today · Accounts · Opportunities · Money · Timeline · Review
+```
 
-The V1 screens are:
+Six primary destinations. There is no seventh: navigation renders from `src/config/featureRegistry.ts`, and `scripts/verify-navigation-contract.mjs` fails the build if that changes.
 
-- Today
-- Vault / Accounts
-- Pipeline / Opportunities
-- Ask Memoire
-- Settings / Export
+- **Today** - what must be done, what is overdue, which threads are going silent, what was captured but not yet linked.
+- **Accounts** - who the customer is, what happened, who the stakeholders are, what is open.
+- **Opportunities** - the commercial objective, its real stage, the evidence for it, what is blocking it.
+- **Money** - where commercial value is sitting: quote, customer decision, PO, delivery, invoice, paid, and what is stuck.
+- **Timeline** - Upcoming (open commitments and dated work) and History (everything that happened).
+- **Review** - the weekly loop, the Pipeline Defense artifact, and analytics.
 
-V1 intentionally does not include manager dashboards, team workspaces, CRM integrations, advanced analytics, email/calendar sync, proposal generation, complex automation, invoicing, inventory, ecommerce, marketplace, or project-delivery management.
+## Signature mechanisms
 
-## V1 Data Model
+1. **Commercial Thread** - the continuous story around one customer outcome. Derived from existing records, so a workspace that has never written one still sees its threads.
+2. **Commercial Commitment Ledger** - who owes what, to whom, by when, with what impact. Three parties: I owe, the customer owes, internal owes. A rescheduled promise keeps the date it was first made.
+3. **Saved by Memoire** - an optional, inline record of whether Memoire actually produced commercial value. "I would have done it anyway" is a first-class answer.
 
-Required core tables:
+## No AI dependency
 
-- `accounts`
-- `contacts`
-- `opportunities`
-- `interactions`
-- `actions`
-- `captures` for preserved raw notes
+Capture parsing, prioritisation, search, and every recommendation are deterministic and computed on the user's device. Nothing is sent to an AI service, no AI SDK is installed, and no AI key is required to run or deploy Memoire.
 
-Future concepts such as signals, assets, deals, learnings, and playbooks are prepared for conceptually but not built into the V1 surface.
+This is a trust differentiator, not the promise. `npm run verify:no-ai` fails the build if an AI SDK, endpoint, or key placeholder is reintroduced, and `/api/health` reports a warning if an AI key is present in the environment.
 
-## Tech Stack
+## Architecture
+
+The **Commercial Kernel** (`src/domain/commercialKernel/`) holds the canonical vocabulary, the state machines, the application commands, and the deterministic policy engine.
+
+- `types.ts` - the eight canonical concepts, the legal state transitions, and the scope object domain rules take instead of a global current user.
+- `commands.ts` - the only place a kernel record changes state. Page components call commands; they do not implement transitions.
+- `policyEngine.ts` - pure functions producing explainable recommendations. Every one carries a reason code, reason text, source record ids, the threshold it was judged against, severity, a recommended action, and when it was calculated. Rules never write.
+- `deriveThreads.ts` - resolves threads from the workspace, so nothing had to be backfilled.
+
+Storage is relational for records with a lifecycle (`commercial_threads`, `commercial_commitments`, `commercial_events`, `commercial_value_outcomes`) and JSON for cached projections and artifacts. Every user-owned table has `user_id`, row-level security, authenticated-only policies, revoked anonymous access, and indexes for the queries the product actually runs.
+
+## Tech stack
 
 - Frontend: React + Vite + TypeScript + Tailwind CSS
 - Backend/DB: Supabase Postgres + Auth + RLS
 - Hosting: Vercel
-- AI: Claude API primary, Groq/OpenAI-compatible fallback where configured, OpenAI embeddings for existing vector search
-- Payments: Stripe exists in the codebase but is not central to the immediate V1 MVP
+- Payments: Stripe, present but not part of the beta journey
 
-## Local Setup
+## Local setup
 
 ```bash
 npm install
 npm run dev
 ```
 
-Copy `.env.example` to `.env` and provide Supabase, AI, and Stripe values as needed.
+Copy `.env.example` to `.env` and fill in the Supabase values. There are deliberately no AI keys to set.
 
-Run Supabase migrations in order, including:
-
-```text
-supabase/migrations/005_master_plan_v31_core.sql
-```
-
-## Data Principles
-
-- Cloud-first
-- Export-first
-- Privacy-first
-- User-owned sales memory
-- Raw capture is preserved
-- AI-structured output is editable before saving
-- Every user-owned table is scoped by `user_id` and protected by RLS
+Apply the migrations in `supabase/migrations/` in filename order.
 
 ## Verification
 
 ```bash
-npm run build
-npm run lint
+npm run check
 ```
 
-Current note: the app builds successfully and `npm run lint` passes clean. The full contract suite runs with `npm run check`.
+Runs the build, the API typecheck, lint, and the full contract suite. Unit tests run separately:
 
-## V1 QA Checklist
+```bash
+npm test
+```
 
-Sample capture:
+CI runs both on every push and pull request (`.github/workflows/ci.yml`): a fast gate (build, typecheck, lint, test) and the full contract suite. Vercel build success is not a release gate on its own - it never runs any of this.
 
-> Just called Alex at Northstar Foods. They are still reviewing the proposal. Main concerns are lead time and service support. I should follow up next Tuesday and offer a short meeting to clarify.
+The contracts that protect the product boundaries:
 
-Expected structured fields:
+- `verify:navigation` - six primary destinations, three global actions, no orphaned deep links.
+- `verify:commercial-kernel` - relational tables, RLS, indexes, explainable rules, threads derived not migrated.
+- `verify:kernel-surface` - one thread component and one ledger across every surface.
+- `verify:product-analytics` - one taxonomy in three places, five fields, no customer content.
+- `verify:no-ai` - no AI SDK, endpoint, key, or health requirement.
+- `verify:data-isolation` - demo records never reach a real workspace or the cloud.
 
-- Type: call
-- Account: Northstar Foods
-- Contact: Nam
-- Opportunity: proposal review or equivalent proposal-related title
-- Interaction summary: Alex / Northstar Foods is still reviewing the proposal
-- Pain point: lead time and service support
-- Objection / blocker: lead time and service support
-- Next action: follow up next Tuesday and offer a short meeting
-- Follow-up date: the next Tuesday after the test date
+## Data principles
 
-Expected records after save:
+- Local-first, cloud-synced. A seller with no connection can still record a promise.
+- Export-first: everything the workspace holds comes out in one file, including the kernel records.
+- Restore puts back the **browser** copy. It does not replace what is in the cloud - Settings > Sync & Recovery says so plainly.
+- Raw capture is preserved.
+- Demo records never sync, never export into a real workspace, and never satisfy an activation or unlock condition.
+- Every user-owned table is scoped by `user_id` and protected by RLS.
 
-- Raw note remains in `captures`
-- Account memory exists for Northstar Foods
-- Contact exists for Alex and links to Northstar Foods
-- Interaction links to the Northstar Foods account
-- Opportunity links to Northstar Foods when the structured opportunity title is present
-- Today action is created from the next action
+## First-run path
 
-Manual test flow:
+One onboarding path, five steps, derived entirely from workspace data:
 
-- Quick Capture: open `/app/today`, paste the sample capture, click Structure, review/edit the structured output, then save it.
-- Today Actions: confirm the saved follow-up appears as an open action and that due/overdue sections load without errors.
-- Account Memory: open `/app/accounts`, select Northstar Foods, and confirm the account shows contacts, latest interactions, pain points, objections, opportunities, and open actions.
-- Opportunity Basic: open `/app/opportunities` and confirm the proposal opportunity shows account, stage, blocker, next action, last touch, urgency, and confidence. Confirm opportunities without next actions are highlighted.
-- Ask Memoire: open `/app/ask` and try "Who should I follow up today?", "Summarize this account.", and "What happened last time with this customer?"
-
-Dogfood regression check:
-
-- Save the same sample capture twice.
-- Confirm Memoire does not create two clearly duplicate active opportunities for Northstar Foods.
-- Confirm both interactions remain preserved as memory.
+1. Capture one real customer interaction.
+2. Link it to a customer.
+3. Set the next commitment.
+4. Come back and complete it.
+5. Run the first weekly review.
