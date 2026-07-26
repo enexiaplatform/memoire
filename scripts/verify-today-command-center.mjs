@@ -56,23 +56,19 @@ assert.equal(empty.topActions.length, 0);
 
 const app = readFileSync('src/App.tsx', 'utf8');
 assert.ok(app.includes('<Route path="today" element={<TodayPage />} />'));
-// /app/dashboard is the master chart/report view; Today stays the action view.
-assert.ok(app.includes('<Route path="dashboard" element={<MasterDashboardPage />} />'));
 assert.ok(app.includes('<Route index element={<Navigate to="/app/today" replace />} />'));
+// Today is the action surface and the landing. Dashboard was the reporting
+// rival to it; its charts are now Review > Analytics, and the old URL lands on
+// Today rather than 404ing.
+assert.ok(app.includes('<Route path="dashboard" element={<LegacyRedirect to="/app/today" />} />'));
 
 const sidebar = readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
-// Three tiers mirroring the operating loop: daily loop, then Pipeline & Money,
-// then Review & Learn (where Pipeline Defense lives as the review artifact).
-// Dashboard leads the daily loop as the roll-up of everything below; Today
-// stays the landing (index route), one row down.
-const navOrder = ['/app/dashboard', '/app/today', '/app/plan', '/app/capture', '/app/activity', '/app/ask', '/app/opportunities', '/app/accounts', '/app/revenue', '/app/weekly-brief', '/app/pipeline-defense'];
-navOrder.forEach((route, index) => {
-  const location = sidebar.indexOf(`to: '${route}'`);
-  assert.ok(location >= 0, `Sidebar missing ${route}`);
-  if (index > 0) assert.ok(location > sidebar.indexOf(`to: '${navOrder[index - 1]}'`), `Sidebar order incorrect for ${route}`);
-});
-// 16 = 5 daily loop + 3 Pipeline & Money + 6 Review & Learn + founder Import Review + Settings.
-assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 17, 'A new CRM navigation item was added.');
+// Navigation is owned by src/config/featureRegistry.ts and enforced by
+// scripts/verify-navigation-contract.mjs. This check only guards the boundary
+// that matters here: the rail must not hard-code its own destinations, because
+// that is how a seventh one used to appear without anyone deciding to add it.
+assert.ok(sidebar.includes("from '../../config/featureRegistry'"), 'Sidebar must render navigation from the feature registry');
+assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 0, 'A navigation item was hard-coded into the Sidebar instead of declared in the feature registry.');
 
 const todayPage = readFileSync('src/features/dashboard/DashboardPage.tsx', 'utf8');
 // The named sections all still exist on Today.
@@ -113,12 +109,13 @@ const model = readFileSync('src/utils/todayCommandCenter.ts', 'utf8');
 for (const helper of ['formatSafeBusinessDate', 'formatMoneyWithBase', 'isBusinessDateOverdue']) {
   assert.ok(model.includes(helper), `Today command model missing ${helper}`);
 }
+// Every other surface defers the priority order to Today in its own copy, so
+// nothing else reads as a second place to decide what to do now.
 for (const [file, marker] of [
-  // Money defers the priority order to Today explicitly; its risk content is a
-  // reference list, not a competing command center.
   ['src/features/revenue/RevenueViewPage.tsx', 'Today owns the priority order'],
-  ['src/features/reviews/SalesReviewsPage.tsx', 'Weekly Business Review'],
-  ['src/features/operatingSystem/OperatingSystemPage.tsx', 'Supporting drill-down'],
+  ['src/features/reviews/SalesReviewsPage.tsx', 'Today remains the daily command center'],
+  ['src/features/operatingSystem/OperatingSystemPage.tsx', 'Today stays the'],
+  ['src/features/reviews/ReviewAnalyticsSection.tsx', 'For what to do next, use Today'],
 ]) assert.ok(readFileSync(file, 'utf8').includes(marker), `${file} still competes with Today.`);
 
 console.log('One Today command center regression verified.');

@@ -50,7 +50,9 @@ for (const marker of [
   'aria-label="Close navigation"',
   'title="Close navigation"',
   'onFocus={() => prefetchAppRoute(item.to)}',
-  'Review & Learn',
+  // The rail is one landmark with a name, now that it is a single flat list
+  // rather than three conditionally-disclosed tiers.
+  'aria-label="Primary"',
 ]) {
   requireIncludes(sidebar, marker, `Sidebar accessibility marker missing: ${marker}`);
 }

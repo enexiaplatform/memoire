@@ -1,8 +1,9 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import { AppErrorBoundary } from './components/common/AppErrorBoundary';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { isFounderWorkspaceEnabled } from './lib/demoMode';
+import { LibraryGate } from './features/library/LibraryGate';
 
 const AppShell = lazy(() => import('./components/layout/AppShell').then((module) => ({ default: module.AppShell })));
 const LandingPage = lazy(() => import('./pages/LandingPage').then((module) => ({ default: module.LandingPage })));
@@ -28,9 +29,7 @@ const ValidationFeedbackPage = lazy(() =>
   import('./features/validation/ValidationFeedbackPage').then((module) => ({ default: module.ValidationFeedbackPage })),
 );
 const TodayPage = lazy(() => import('./features/dashboard/DashboardPage').then((module) => ({ default: module.TodayPage })));
-const MasterDashboardPage = lazy(() =>
-  import('./features/dashboard/MasterDashboardPage').then((module) => ({ default: module.MasterDashboardPage })),
-);
+const TimelinePage = lazy(() => import('./features/timeline/TimelinePage').then((module) => ({ default: module.TimelinePage })));
 const OperatingSystemPage = lazy(() =>
   import('./features/operatingSystem/OperatingSystemPage').then((module) => ({ default: module.OperatingSystemPage })),
 );
@@ -46,12 +45,6 @@ const SalesAssetsPage = lazy(() =>
 const QuotesPage = lazy(() => import('./features/quotes/QuotesPage').then((module) => ({ default: module.QuotesPage })));
 const RevenueViewPage = lazy(() => import('./features/revenue/RevenueViewPage').then((module) => ({ default: module.RevenueViewPage })));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })));
-const SalesActivityCalendarPage = lazy(() =>
-  import('./features/calendar/SalesActivityCalendarPage').then((module) => ({ default: module.SalesActivityCalendarPage })),
-);
-const WeeklyPlanPage = lazy(() =>
-  import('./features/plan/WeeklyPlanPage').then((module) => ({ default: module.WeeklyPlanPage })),
-);
 const SalesReviewsPage = lazy(() =>
   import('./features/reviews/SalesReviewsPage').then((module) => ({ default: module.SalesReviewsPage })),
 );
@@ -67,15 +60,6 @@ const PipelineReviewDefenseBriefPage = lazy(() =>
 );
 const PipelineReviewPackPage = lazy(() =>
   import('./features/pipeline/PipelineReviewPackPage').then((module) => ({ default: module.PipelineReviewPackPage })),
-);
-const FirstPipelineReviewFlow = lazy(() =>
-  import('./features/onboarding/FirstPipelineReviewFlow').then((module) => ({ default: module.FirstPipelineReviewFlow })),
-);
-const SalesOperatingSetupPage = lazy(() =>
-  import('./features/onboarding/SalesOperatingSetupPage').then((module) => ({ default: module.SalesOperatingSetupPage })),
-);
-const QuickStartSetupPage = lazy(() =>
-  import('./features/onboarding/QuickStartSetupPage').then((module) => ({ default: module.QuickStartSetupPage })),
 );
 const FounderImportReviewPage = lazy(() =>
   import('./features/imports/FounderImportReviewPage').then((module) => ({ default: module.FounderImportReviewPage })),
@@ -112,43 +96,67 @@ function App() {
             }
           >
             <Route index element={<Navigate to="/app/today" replace />} />
+
+            {/* The six primary destinations. See src/config/featureRegistry.ts -
+                nothing may be added here without a registry entry. */}
             <Route path="today" element={<TodayPage />} />
-            <Route path="dashboard" element={<MasterDashboardPage />} />
+            <Route path="accounts" element={<AccountsPage />} />
+            <Route path="opportunities" element={<OpportunitiesPage />} />
+            <Route path="revenue" element={<RevenueViewPage />} />
+            <Route path="timeline" element={<TimelinePage />} />
+            <Route path="reviews" element={<SalesReviewsPage />} />
+
+            {/* Global actions: reachable everywhere, not destinations. */}
+            <Route path="capture" element={<DailyCapturePage />} />
+            <Route path="ask" element={<AskMemoirePage />} />
+            <Route path="settings" element={<SettingsPage />} />
+
+            {/* Contextual surfaces: opened from a record, a search result or a
+                deep link, never from the nav rail. */}
+            <Route path="quotes" element={<QuotesPage />} />
+            {/* The Account and Opportunity pages show stakeholders and
+                objections in place. These two routes are the editors behind
+                those panels - reachable from the record, never from the rail.
+                Redirecting them instead would have silently removed the only
+                way to create, edit or delete either record. */}
+            <Route path="stakeholders" element={<StakeholdersPage />} />
+            <Route path="objections" element={<ObjectionsPage />} />
+            {/* Was the "Operating System" destination. It is the only editor for
+                initiative records, so the route survives as the must-win-work
+                editor behind Review; only the standalone destination and the
+                "we are an operating system" framing are gone. */}
             <Route path="operating-system" element={<OperatingSystemPage />} />
+            <Route path="pipeline-defense" element={<PipelineReviewDefenseBriefPage />} />
+            <Route path="pipeline-defense/review-pack/:id" element={<PipelineReviewPackPage />} />
             <Route path="demo-guide" element={<DemoGuidePage />} />
+
+            {/* Hidden until the workspace has real outcome evidence. The routes
+                stay resolvable so existing records are never stranded. */}
+            <Route path="playbook" element={<LibraryGate title="Playbook"><SalesPlaybookPage /></LibraryGate>} />
+            <Route path="assets" element={<LibraryGate title="Assets"><SalesAssetsPage /></LibraryGate>} />
+
+            {/* Founder-only operator tooling. */}
+            <Route path="imports" element={<FounderImportReviewPage />} />
             <Route
               path="validation-feedback"
               element={isFounderWorkspaceEnabled ? <ValidationFeedbackPage /> : <Navigate to="/app/today" replace />}
             />
-            <Route path="capture" element={<DailyCapturePage />} />
-            <Route path="plan" element={<WeeklyPlanPage />} />
-            <Route path="activity" element={<SalesActivityCalendarPage />} />
-            <Route path="calendar" element={<SalesActivityCalendarPage />} />
-            <Route path="weekly-brief" element={<SalesReviewsPage />} />
-            <Route path="reviews" element={<SalesReviewsPage />} />
-            <Route path="playbook" element={<SalesPlaybookPage />} />
-            <Route path="assets" element={<SalesAssetsPage />} />
-            <Route path="accounts" element={<AccountsPage />} />
-            <Route path="accounts/:accountId" element={<LegacyAccountRouteRedirect />} />
-            <Route path="opportunities" element={<OpportunitiesPage />} />
-            <Route path="quotes" element={<QuotesPage />} />
-            <Route path="revenue" element={<RevenueViewPage />} />
-            <Route path="onboarding/pipeline-review" element={<FirstPipelineReviewFlow />} />
-            <Route path="onboarding/sales-operating-setup" element={<SalesOperatingSetupPage />} />
-            <Route path="onboarding/quick-start" element={<QuickStartSetupPage />} />
-            <Route path="stakeholders" element={<StakeholdersPage />} />
-            <Route path="objections" element={<ObjectionsPage />} />
-            <Route path="pipeline-defense" element={<PipelineReviewDefenseBriefPage />} />
-            <Route path="pipeline-defense/review-pack/:id" element={<PipelineReviewPackPage />} />
-            <Route path="ask" element={<AskMemoirePage />} />
-            <Route path="imports" element={<FounderImportReviewPage />} />
-            <Route path="settings" element={<SettingsPage />} />
 
-            {/* Legacy V0 routes, downgraded out of the primary V1 surface. */}
-            {/* Journey was the last surface still on the superseded v31 data
-                layer; the account timeline it showed now lives in Accounts. */}
-            <Route path="journey" element={<Navigate to="/app/accounts" replace />} />
-            <Route path="history" element={<Navigate to="/app/today" replace />} />
+            {/* Retired destinations. Deep links, bookmarks and shared links keep
+                working; each lands on the surface that now owns the job. */}
+            <Route path="dashboard" element={<LegacyRedirect to="/app/today" />} />
+            <Route path="plan" element={<LegacyRedirect to="/app/timeline" params={{ view: 'upcoming' }} />} />
+            <Route path="activity" element={<LegacyRedirect to="/app/timeline" params={{ view: 'history' }} />} />
+            <Route path="calendar" element={<LegacyRedirect to="/app/timeline" params={{ view: 'history' }} />} />
+            <Route path="weekly-brief" element={<LegacyRedirect to="/app/reviews" />} />
+            <Route path="onboarding/pipeline-review" element={<LegacyRedirect to="/app/reviews" />} />
+            <Route path="onboarding/sales-operating-setup" element={<LegacyRedirect to="/app/settings" />} />
+            <Route path="onboarding/quick-start" element={<LegacyRedirect to="/app/today" />} />
+
+            {/* Legacy V0 routes, downgraded out of the primary surface. */}
+            <Route path="accounts/:accountId" element={<LegacyAccountRouteRedirect />} />
+            <Route path="journey" element={<LegacyRedirect to="/app/accounts" />} />
+            <Route path="history" element={<LegacyRedirect to="/app/timeline" params={{ view: 'history' }} />} />
             <Route path="entities" element={<Navigate to="/app/accounts" replace />} />
             <Route path="entities/:entityId" element={<Navigate to="/app/accounts" replace />} />
             <Route path="deals" element={<Navigate to="/app/opportunities" replace />} />
@@ -164,6 +172,25 @@ function App() {
       </AppErrorBoundary>
     </BrowserRouter>
   );
+}
+
+/**
+ * Redirects a retired route while keeping its query string and hash.
+ *
+ * A plain <Navigate> drops them, which would have quietly broken every deep
+ * link that carries a record id - `/app/activity?activityId=...` is generated
+ * by Today, the plan board and Search, and would have landed on an unfiltered
+ * Timeline with the record nowhere in sight. `params` supplies the destination
+ * defaults (which tab to open) without overwriting anything the caller sent.
+ */
+function LegacyRedirect({ to, params }: { to: string; params?: Record<string, string> }) {
+  const location = useLocation();
+  const search = new URLSearchParams(location.search);
+  for (const [key, value] of Object.entries(params || {})) {
+    if (!search.has(key)) search.set(key, value);
+  }
+  const query = search.toString();
+  return <Navigate to={`${to}${query ? `?${query}` : ''}${location.hash}`} replace />;
 }
 
 function LegacyAccountRouteRedirect() {

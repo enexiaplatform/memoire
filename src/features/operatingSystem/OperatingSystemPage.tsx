@@ -164,10 +164,11 @@ export function OperatingSystemPage() {
     <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Supporting drill-down</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Operating context detail</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Opened from Review</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Must-win work</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            Maintain initiatives and account plays that support Today. Today remains the single ranked action queue.
+            The initiatives and account plays you are betting on this quarter. Review reads them back; Today stays the
+            single ranked action queue.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -604,7 +605,7 @@ function RelatedActivitiesSection({
     <section className="rounded-lg border border-gray-200 bg-gray-50 p-4">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-bold text-navy">Related activity ({related.length})</p>
-        <Link to="/app/activity" className="text-xs font-bold text-brand-blue hover:underline">Open ledger</Link>
+        <Link to="/app/timeline?view=history" className="text-xs font-bold text-brand-blue hover:underline">Open ledger</Link>
       </div>
       {related.length === 0 ? (
         <p className="mt-2 text-xs leading-5 text-gray-500">

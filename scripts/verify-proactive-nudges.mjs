@@ -443,6 +443,11 @@ const pipelineUi = readFileSync('src/features/pipeline/PipelineReviewDefenseBrie
 assert.ok(pipelineUi.includes('Proactive nudge'), 'Pipeline Defense should show per-opportunity proactive nudges');
 
 const sidebar = readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
-assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 17, 'A new CRM navigation item was added.');
+// Navigation is owned by src/config/featureRegistry.ts and enforced by
+// scripts/verify-navigation-contract.mjs. This check only guards the boundary
+// that matters here: the rail must not hard-code its own destinations, because
+// that is how a seventh one used to appear without anyone deciding to add it.
+assert.ok(sidebar.includes("from '../../config/featureRegistry'"), 'Sidebar must render navigation from the feature registry');
+assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 0, 'A navigation item was hard-coded into the Sidebar instead of declared in the feature registry.');
 
 console.log('Proactive nudge engine regression verified.');

@@ -54,7 +54,33 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
   }
 }
 
-// 4. The user-facing promise is honest: capture and Ask say the work is local.
+// 4. No AI provider key is required to run Memoire. Production health must be
+// green with none configured, and .env.example must not invite an operator to
+// set one - a stale key placeholder is how a paid dependency creeps back in.
+{
+  const envExample = readFileSync('.env.example', 'utf8');
+  for (const key of ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'ANTHROPIC_MODEL', 'GROQ_API_KEY', 'CAPTURE_AI_']) {
+    assert.equal(envExample.includes(key), false, `.env.example still advertises an AI key: ${key}`);
+  }
+
+  const { evaluateProductionReadiness } = await import('./lib/production-readiness-runtime.mjs');
+  const readiness = evaluateProductionReadiness({
+    VITE_SUPABASE_URL: 'https://project.supabase.co',
+    VITE_SUPABASE_ANON_KEY: 'anon',
+    SUPABASE_SERVICE_ROLE_KEY: 'service-role',
+    VITE_APP_URL: 'https://memoire-blush-eta.vercel.app',
+  });
+  assert.equal(readiness.ok, true, 'production health must be green with no AI configuration');
+  for (const check of readiness.checks) {
+    assert.equal(
+      check.severity === 'required' && /ai|openai|anthropic|groq|embedding/i.test(check.name),
+      false,
+      `production readiness must not require AI configuration: ${check.name}`,
+    );
+  }
+}
+
+// 5. The user-facing promise is honest: capture and Ask say the work is local.
 {
   const capture = readFileSync('src/features/dailyCapture/DailyCapturePage.tsx', 'utf8');
   assert.ok(capture.includes('On-device parsing'), 'capture must state that parsing is on-device');

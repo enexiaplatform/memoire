@@ -219,9 +219,11 @@ const week = { weekId: '2026-07-20', periodStart: '2026-07-20', periodEnd: '2026
     'the strip offers no text entry: labels are frozen at confirm time',
   );
 
+  // Today runs the day; Review's analytics section is where the Dashboard's
+  // roll-up went. Both read the same committed-week snapshot.
   [
     ['../src/features/dashboard/DashboardPage.tsx', 'Today'],
-    ['../src/features/dashboard/MasterDashboardPage.tsx', 'Dashboard'],
+    ['../src/features/reviews/ReviewAnalyticsSection.tsx', 'Review analytics'],
   ].forEach(([path, surface]) => {
     const page = readFileSync(new URL(path, import.meta.url), 'utf8');
     assert.match(page, /<CommittedWeekStrip/, `${surface} renders the committed-week strip`);

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Copy, Loader2, RotateCcw } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ArrowRight, ChevronLeft, ChevronRight, Copy, Loader2, RotateCcw } from 'lucide-react';
+import { ReviewAnalyticsSection } from './ReviewAnalyticsSection';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -71,7 +72,97 @@ const periodOptions: { value: SalesRecapPeriod; label: string }[] = [
   { value: 'month', label: 'Monthly' },
 ];
 
+export type ReviewTab = 'review' | 'defense' | 'analytics';
+
+const reviewTabs: { value: ReviewTab; label: string }[] = [
+  { value: 'review', label: 'Weekly review' },
+  { value: 'defense', label: 'Pipeline Defense' },
+  { value: 'analytics', label: 'Analytics' },
+];
+
+/**
+ * Review is one destination that closes the weekly loop.
+ *
+ * Pipeline Defense used to be its own top-level workflow, which forced a second
+ * mental model on top of the review the user was already doing; it is an
+ * artifact produced by Review, so it is a tab here and a shareable export, not
+ * a destination. Analytics is what remains of the Dashboard: trend and history,
+ * a weekly question, answered where the weekly work happens.
+ */
 export function SalesReviewsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawTab = searchParams.get('view');
+  const tab: ReviewTab = rawTab === 'defense' || rawTab === 'analytics' ? rawTab : 'review';
+
+  const selectTab = (next: ReviewTab) => {
+    const params = new URLSearchParams(searchParams);
+    if (next === 'review') params.delete('view');
+    else params.set('view', next);
+    setSearchParams(params, { replace: true });
+  };
+
+  return (
+    <div className="flex w-full max-w-none flex-col gap-4 px-4 py-5 sm:px-5 lg:px-6">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Review</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">
+          What happened, where the money is, what comes next.
+        </h1>
+      </div>
+
+      <div className="inline-flex flex-wrap rounded-full border border-gray-200 bg-gray-50 p-1" role="tablist" aria-label="Review section">
+        {reviewTabs.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            role="tab"
+            aria-selected={tab === option.value}
+            onClick={() => selectTab(option.value)}
+            className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
+              tab === option.value ? 'bg-navy text-white' : 'text-gray-600 hover:bg-white'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'review' && <WeeklyReviewSection />}
+      {tab === 'defense' && <PipelineDefenseArtifactSection />}
+      {tab === 'analytics' && <ReviewAnalyticsSection />}
+    </div>
+  );
+}
+
+/**
+ * Pipeline Defense as a Review output. The brief builder itself is a large
+ * surface with its own printable and shareable forms, so it stays on its own
+ * contextual route; what belongs in Review is the decision to produce one and
+ * the record that you did.
+ */
+function PipelineDefenseArtifactSection() {
+  return (
+    <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+      <h2 className="text-xl font-bold text-navy">Pipeline Defense Brief</h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
+        The deal-by-deal story you can defend in a pipeline review: what each opportunity is worth, what evidence supports
+        its stage, what is blocking it, and what you will do next. It is an output of this review - generate it here,
+        share it as a link, or export it.
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Link
+          to="/app/pipeline-defense"
+          className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
+        >
+          Generate / view Pipeline Defense Brief
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+function WeeklyReviewSection() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const [periodType, setPeriodType] = useState<SalesRecapPeriod>('week');
   const [anchorDate, setAnchorDate] = useState(() => new Date());
@@ -273,12 +364,10 @@ export function SalesReviewsPage() {
   };
 
   return (
-    <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
+    <div className="flex w-full max-w-none flex-col gap-5">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Weekly Business Review</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">What happened, where the money is, what comes next.</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
+          <p className="max-w-2xl text-sm leading-6 text-gray-500">
             Summarize the week for review and sharing. Today remains the daily command center.
           </p>
         </div>
@@ -369,7 +458,7 @@ export function SalesReviewsPage() {
             Refresh activities
           </button>
           <Link
-            to="/app/calendar"
+            to="/app/timeline?view=history"
             className="rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50"
           >
             Open activity calendar
@@ -616,7 +705,7 @@ function ActivityTimelinePanel({ activities, periodLabel }: { activities: SalesA
           <p className="text-sm font-bold text-navy">Activity timeline</p>
           <p className="mt-1 text-sm text-gray-500">Every recorded customer touch in {periodLabel}, grouped by day.</p>
         </div>
-        <Link to="/app/calendar" className="text-sm font-bold text-brand-blue hover:underline">
+        <Link to="/app/timeline?view=history" className="text-sm font-bold text-brand-blue hover:underline">
           Open full calendar
         </Link>
       </div>

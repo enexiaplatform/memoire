@@ -147,13 +147,13 @@ export function LandingPage() {
   return (
     <div className="min-h-screen bg-white text-slate-950">
       <Helmet>
-        <title>Memoire - Personal Business Activity OS for B2B and Solo Operators</title>
+        <title>Memoire - Personal Commercial Control Tower for B2B Sellers</title>
         <meta
           name="description"
-          content="Memoire is a Personal Business Activity OS used beside CRM, spreadsheets, and notes: capture every commercial activity, see where the money sits, prepare reviews, and never let anything go silent."
+          content="Memoire is a personal commercial control tower for complex B2B sellers: every customer interaction becomes a continuous commercial thread, from conversation and quotation to delivery and cash, so nothing goes silent."
         />
         <meta name="robots" content="noindex, nofollow" />
-        <meta property="og:title" content="Memoire - Personal Business Activity OS for B2B and Solo Operators" />
+        <meta property="og:title" content="Memoire - Personal Commercial Control Tower for B2B Sellers" />
         <meta
           property="og:description"
           content="Never enter a pipeline review unprepared. Capture messy notes and emails, find risks in Today, and copy manager-ready Pipeline Defense answers."
@@ -176,7 +176,7 @@ export function LandingPage() {
             <div>
               <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">
                 <span className="brand-gradient inline-block h-2 w-2 rounded-full" />
-                Personal Business Activity OS
+                Personal Commercial Control Tower
               </p>
               <h1 className="mt-6 font-display text-5xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
                 Nothing in your business

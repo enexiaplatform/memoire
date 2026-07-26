@@ -1,5 +1,20 @@
 export const AUTH_REDIRECT_PATHS = ['/login?verified=1', '/reset-password', '/app/today'];
 
+// Keys that would signal an AI provider had been wired back into the product.
+// Memoire's parsing, prioritisation, search and recommendations are all
+// deterministic and local; none of these should ever be set in production.
+export const AI_PROVIDER_ENV_KEYS = [
+  'OPENAI_API_KEY',
+  'ANTHROPIC_API_KEY',
+  'GROQ_API_KEY',
+  'GOOGLE_GENERATIVE_AI_API_KEY',
+  'COHERE_API_KEY',
+  'CAPTURE_AI_PROVIDER',
+  'CAPTURE_AI_ENDPOINT',
+  'CAPTURE_AI_API_KEY',
+  'CAPTURE_AI_MODEL',
+];
+
 export function evaluateProductionReadiness(env = process.env, options = {}) {
   const appUrl = parseAppUrl(env.VITE_APP_URL);
   const requestHost = normalizeHost(options.requestHost);
@@ -10,8 +25,13 @@ export function evaluateProductionReadiness(env = process.env, options = {}) {
     required('supabase_service_role', hasEnv(env, 'SUPABASE_SERVICE_ROLE_KEY')),
     required('app_url', hasEnv(env, 'VITE_APP_URL')),
     required('app_url_valid', Boolean(appUrl)),
-    required('ai_generation_provider', hasEnv(env, 'ANTHROPIC_API_KEY') || hasEnv(env, 'GROQ_API_KEY')),
-    required('openai_embeddings', hasEnv(env, 'OPENAI_API_KEY')),
+    // Memoire has no AI dependency. The readiness contract used to require an
+    // AI generation provider and an OpenAI embeddings key; both outlived the
+    // features that needed them and were failing production health for
+    // configuration the product no longer uses. `no_ai_provider_configured`
+    // replaces them: it fails loudly if an AI key is set, so a paid external
+    // dependency cannot be reintroduced by environment configuration alone.
+    warning('no_ai_provider_configured', !hasAnyEnv(env, AI_PROVIDER_ENV_KEYS)),
     warning('app_url_https', appUrl?.protocol === 'https:'),
     warning('app_url_not_localhost', Boolean(appUrl && !['localhost', '127.0.0.1'].includes(appUrl.hostname))),
     // Catches VITE_APP_URL pointing at a domain this deployment does not
@@ -19,7 +39,6 @@ export function evaluateProductionReadiness(env = process.env, options = {}) {
     warning('app_url_matches_request_host', !requestHost || !appUrlHost || requestHost === appUrlHost),
     warning('demo_mode_disabled', env.VITE_ENABLE_DEMO_MODE !== 'true'),
     warning('founder_workspace_disabled', env.VITE_ENABLE_FOUNDER_WORKSPACE !== 'true'),
-    optional('capture_ai_provider', captureAiProviderIsCompleteOrUnset(env)),
     optional('stripe_secret', hasEnv(env, 'STRIPE_SECRET_KEY')),
     optional('stripe_webhook_secret', hasEnv(env, 'STRIPE_WEBHOOK_SECRET')),
     optional('billing_checkout_disabled', env.BILLING_CHECKOUT_ENABLED !== 'true'),
@@ -51,12 +70,6 @@ export function evaluateProductionReadiness(env = process.env, options = {}) {
   };
 }
 
-function captureAiProviderIsCompleteOrUnset(env) {
-  const keys = ['CAPTURE_AI_PROVIDER', 'CAPTURE_AI_ENDPOINT', 'CAPTURE_AI_API_KEY', 'CAPTURE_AI_MODEL'];
-  if (!keys.some((key) => hasEnv(env, key))) return true;
-  return env.CAPTURE_AI_PROVIDER === 'openai-compatible' && keys.slice(1).every((key) => hasEnv(env, key));
-}
-
 function parseAppUrl(value) {
   if (!value) return null;
   try {
@@ -73,6 +86,10 @@ function normalizeHost(value) {
 
 function hasEnv(env, key) {
   return Boolean(String(env[key] || '').trim());
+}
+
+function hasAnyEnv(env, keys) {
+  return keys.some((key) => hasEnv(env, key));
 }
 
 function required(name, ok) {

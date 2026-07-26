@@ -3679,7 +3679,7 @@ function EmptyState({ onAdd, onImport }: { onAdd: () => void; onImport: () => vo
           <Plus className="h-4 w-4" />
           Add Opportunity
         </button>
-        <Link to="/app/onboarding/pipeline-review" className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
+        <Link to="/app/reviews" className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
           Start First Pipeline Review
         </Link>
         <Link to="/app/capture" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">

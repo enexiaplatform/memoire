@@ -40,10 +40,17 @@ for (const checkName of [
   'supabase_service_role',
   'app_url',
   'app_url_valid',
-  'ai_generation_provider',
-  'openai_embeddings',
 ]) {
   requireIncludes(readiness, checkName, `readiness runtime missing required check ${checkName}`);
+}
+
+// Production health must not require AI configuration - Memoire has no AI
+// dependency. A readiness check that demands an AI key would make a healthy
+// deployment report itself unhealthy.
+for (const retired of ['ai_generation_provider', 'openai_embeddings', 'capture_ai_provider']) {
+  if (readiness.includes(`'${retired}'`)) {
+    fail(`readiness runtime still declares retired AI check ${retired}`);
+  }
 }
 
 for (const warningName of [
@@ -51,12 +58,38 @@ for (const warningName of [
   'app_url_not_localhost',
   'demo_mode_disabled',
   'founder_workspace_disabled',
+  'no_ai_provider_configured',
 ]) {
   requireIncludes(readiness, warningName, `readiness runtime missing warning check ${warningName}`);
 }
 
-for (const optionalName of ['capture_ai_provider', 'stripe_secret', 'stripe_webhook_secret', 'billing_checkout_disabled']) {
+for (const optionalName of ['stripe_secret', 'stripe_webhook_secret', 'billing_checkout_disabled']) {
   requireIncludes(readiness, optionalName, `readiness runtime missing optional check ${optionalName}`);
+}
+
+// The whole point of the change: a deployment configured with Supabase and an
+// app URL, and no AI key at all, must be healthy.
+{
+  const readinessModule = await import(pathToFileURL(resolve('scripts/lib/production-readiness-runtime.mjs')).href);
+  const noAiEnv = {
+    VITE_SUPABASE_URL: 'https://project.supabase.co',
+    VITE_SUPABASE_ANON_KEY: 'anon-key',
+    SUPABASE_SERVICE_ROLE_KEY: 'service-role-key',
+    VITE_APP_URL: 'https://memoire-blush-eta.vercel.app',
+  };
+  const healthy = readinessModule.evaluateProductionReadiness(noAiEnv, {
+    requestHost: 'memoire-blush-eta.vercel.app',
+  });
+  assert.equal(healthy.ok, true, 'production health must succeed with no AI configuration');
+  assert.equal(healthy.summary.requiredFailed, 0, 'no required check may depend on AI configuration');
+  assert.equal(healthy.summary.warnings, 0, 'a correctly configured AI-free deployment must raise no warnings');
+
+  const withAiKey = readinessModule.evaluateProductionReadiness(
+    { ...noAiEnv, OPENAI_API_KEY: 'sk-proj-leftover' },
+    { requestHost: 'memoire-blush-eta.vercel.app' },
+  );
+  const aiWarning = withAiKey.checks.find((check) => check.name === 'no_ai_provider_configured');
+  assert.equal(aiWarning?.ok, false, 'a leftover AI provider key must be reported by health');
 }
 
 for (const redirectPath of ['/login?verified=1', '/reset-password', '/app/today']) {

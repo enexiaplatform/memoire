@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ArrowRight,
   BookOpen,
+  CalendarCheck,
   CalendarDays,
   CheckCircle2,
   ChevronDown,
@@ -61,9 +62,10 @@ import { buildFollowUpImpact } from '../../utils/followUpImpact';
 import { MorningBriefCard } from './MorningBriefCard';
 import { BusinessCockpitStrip } from './BusinessCockpitStrip';
 import { CommittedWeekStrip } from './CommittedWeekStrip';
+import { loadPlanItemsForWorkspace, PLAN_ITEMS_UPDATED_EVENT } from '../../services/planItemStore';
+import type { PlanRecord } from '../../utils/weeklyPlan';
 import { TodayCommitmentStrip } from './TodayCommitmentStrip';
 import { buildBusinessCockpit, nudgeEntityHref } from '../../utils/businessCockpit';
-import { getWorkspaceLens, orderCockpitForLens } from '../../utils/workspaceLens';
 import { buildMorningBrief } from '../../utils/morningBrief';
 import { buildReviveFollowUpContext } from '../../utils/followUpFromOpportunity';
 import type { FollowUpContext } from '../../types/v31';
@@ -100,40 +102,9 @@ import { summarizeAssetGaps } from '../../utils/salesAssetSuggestions';
 import { buildCaptureNudges, type CaptureNudge } from '../../utils/captureNudges';
 import { buildPipelineReviewDashboardSignal } from '../../utils/shareablePipelineDefenseBrief';
 import {
-  buildFirstPipelineReviewMetrics,
-  buildFirstPipelineReviewProgress,
-  getFirstPipelineReviewNextStep,
-  getFirstPipelineReviewProgressPercent,
-  loadFirstPipelineReviewOnboardingState,
-  type FirstPipelineReviewProgressStep,
-} from '../../utils/firstPipelineReviewOnboarding';
-import {
-  buildTrialActivationChecklist,
   dismissTrialActivationChecklist,
   loadTrialActivationChecklistState,
-  markTrialActivationChecklistItemComplete,
-  resetTrialActivationChecklist,
-  type TrialActivationChecklistItem,
-  type TrialActivationChecklistItemId,
 } from '../../utils/trialActivationChecklist';
-import {
-  buildPipelineReviewHabitProgress,
-  loadPipelineReviewHabitState,
-  PIPELINE_REVIEW_HABIT_UPDATED_EVENT,
-  type PipelineReviewHabitProgress,
-} from '../../utils/pipelineReviewHabit';
-import {
-  loadReviewPacks,
-  loadReviewPacksForWorkspace,
-  REVIEW_PACKS_UPDATED_EVENT,
-  type ReviewPackSnapshot,
-} from '../../utils/reviewPacks';
-import {
-  buildSalesOperatingSetupProgress,
-  loadSalesOperatingSetupState,
-  type SalesOperatingSetupProgress,
-} from '../../utils/salesOperatingSetup';
-import { isQuickStartComplete } from '../../utils/quickStartSetup';
 import { buildFirstWeekPath, type FirstWeekPath } from '../../utils/firstWeekPath';
 import { buildLivePipelineHealth } from '../../utils/livePipelineHealth';
 import { generateInterviewScriptText } from '../../utils/demoFeedback';
@@ -201,11 +172,10 @@ export function TodayPage() {
   });
   const [loading, setLoading] = useState(() => !getCachedSalesWorkspaceData(sampleDataActive ? undefined : user?.id));
   const [message, setMessage] = useState('');
-  const [firstReviewOnboarding, setFirstReviewOnboarding] = useState(() => loadFirstPipelineReviewOnboardingState());
+  // The First Week Path strip reuses the trial-checklist dismissal flag rather
+  // than adding a second one, so anyone who dismissed onboarding guidance
+  // before the consolidation stays dismissed.
   const [trialChecklistState, setTrialChecklistState] = useState(() => loadTrialActivationChecklistState());
-  const [salesOperatingSetup, setSalesOperatingSetup] = useState(() => loadSalesOperatingSetupState());
-  const [pipelineReviewHabitState, setPipelineReviewHabitState] = useState(() => loadPipelineReviewHabitState());
-  const [reviewPacks, setReviewPacks] = useState<ReviewPackSnapshot[]>(() => loadReviewPacks());
   const [validationMessage, setValidationMessage] = useState('');
   const [demoSandboxPromptOpen, setDemoSandboxPromptOpen] = useState(false);
   const [advancedInsightsOpen, setAdvancedInsightsOpen] = useState(false);
@@ -216,6 +186,11 @@ export function TodayPage() {
   const [dailyExecutionState, setDailyExecutionState] = useState(() => loadDailyExecutionState(dailyExecutionScope));
   const [dailyExecutionMessage, setDailyExecutionMessage] = useState('');
   const [lastDailyExecutionActionId, setLastDailyExecutionActionId] = useState('');
+  // The First Week Path asks whether a commitment was made and then kept. Plan
+  // items are where dated promises live today, so Today loads them once and the
+  // strip reads them - the commitment strips below load the same records and
+  // stay in step through PLAN_ITEMS_UPDATED_EVENT.
+  const [firstWeekPlanRecords, setFirstWeekPlanRecords] = useState<PlanRecord[]>([]);
   const [nudgeState, setNudgeState] = useState<NudgeRecord[]>(() => loadNudges());
   const [nudgeMessage, setNudgeMessage] = useState('');
   const [followUpContext, setFollowUpContext] = useState<FollowUpContext | null>(null);
@@ -233,13 +208,9 @@ export function TodayPage() {
       const cachedData = getCachedSalesWorkspaceData(dataUserId);
       if (cachedData) {
         setData(cachedData);
-        setFirstReviewOnboarding(loadFirstPipelineReviewOnboardingState());
         setTrialChecklistState(loadTrialActivationChecklistState());
-        setSalesOperatingSetup(loadSalesOperatingSetupState());
-        setPipelineReviewHabitState(loadPipelineReviewHabitState());
         setLoading(false);
         setMessage('Command center ready');
-        void loadReviewPacksForWorkspace(dataUserId, sampleActive).then(setReviewPacks).catch(() => undefined);
         return;
       }
     }
@@ -250,15 +221,10 @@ export function TodayPage() {
 
     try {
       const nextData = await loadDashboardData(dataUserId, options);
-      const nextReviewPacks = await loadReviewPacksForWorkspace(dataUserId, sampleActive);
 
       setData(nextData);
       setMessage('Command center ready');
-      setFirstReviewOnboarding(loadFirstPipelineReviewOnboardingState());
       setTrialChecklistState(loadTrialActivationChecklistState());
-      setSalesOperatingSetup(loadSalesOperatingSetupState());
-      setPipelineReviewHabitState(loadPipelineReviewHabitState());
-      setReviewPacks(nextReviewPacks);
     } catch (error) {
       if (import.meta.env.DEV) {
         console.debug('[Dashboard] load failed', { message: error instanceof Error ? error.message : 'Unknown error' });
@@ -381,66 +347,38 @@ export function TodayPage() {
     // it from all active nudges - not the capped todayNudges the brief reads.
     retentionCount: proactiveNudges.allActiveNudges.filter((nudge) => nudge.title === 'Paid customer going quiet').length,
   }), [data.activities, followUpImpact.dealsWaiting, proactiveNudges.allActiveNudges, proactiveNudges.todayNudges]);
-  const businessCockpit = useMemo(() => orderCockpitForLens(buildBusinessCockpit({
+  const businessCockpit = useMemo(() => buildBusinessCockpit({
     commercialRiskItems: todayCenter.commercialRiskItems,
     nudges: proactiveNudges.allActiveNudges,
     opportunities: data.opportunities,
     captureInboxCount: todayCenter.captureInbox.length,
-  }), getWorkspaceLens()), [data.opportunities, proactiveNudges.allActiveNudges, todayCenter.captureInbox.length, todayCenter.commercialRiskItems]);
+  }), [data.opportunities, proactiveNudges.allActiveNudges, todayCenter.captureInbox.length, todayCenter.commercialRiskItems]);
   const dashboardInsights = useMemo(() => (
     advancedInsightsOpen ? buildDashboardInsights(data) : null
   ), [advancedInsightsOpen, data]);
-  const firstReviewMetrics = useMemo(() => buildFirstPipelineReviewMetrics({
-    opportunities: data.opportunities,
-    objections: data.objections,
-    assets: data.assets,
-    briefs: data.briefs,
-  }), [data]);
-  const firstReviewProgress = useMemo(() => buildFirstPipelineReviewProgress({
-    state: firstReviewOnboarding,
-    metrics: firstReviewMetrics,
-    includeDataSignals: !sampleDataActive,
-  }), [firstReviewMetrics, firstReviewOnboarding, sampleDataActive]);
-  const trialChecklist = useMemo(() => buildTrialActivationChecklist({
-    activities: data.activities,
-    opportunities: data.opportunities,
-    assets: data.assets,
-    briefs: data.briefs,
-    sampleDataActive,
-    state: trialChecklistState,
-  }), [data, sampleDataActive, trialChecklistState]);
   const firstWeekPath = useMemo(() => buildFirstWeekPath({
     activities: data.activities,
     opportunities: data.opportunities,
     briefs: data.briefs,
-  }), [data]);
-  const salesOperatingSetupProgress = useMemo(
-    () => buildSalesOperatingSetupProgress(salesOperatingSetup),
-    [salesOperatingSetup],
-  );
-  const pipelineReviewHabitProgress = useMemo(
-    () => buildPipelineReviewHabitProgress(pipelineReviewHabitState),
-    [pipelineReviewHabitState],
-  );
-  const latestWeeklyReviewPack = useMemo(() => (
-    reviewPacks.find((pack) => pack.weekId === pipelineReviewHabitProgress.state.currentWeekId) || null
-  ), [pipelineReviewHabitProgress.state.currentWeekId, reviewPacks]);
+    commitments: firstWeekPlanRecords,
+  }), [data, firstWeekPlanRecords]);
+
 
   useEffect(() => {
-    const handleHabitUpdate = () => setPipelineReviewHabitState(loadPipelineReviewHabitState());
-    window.addEventListener(PIPELINE_REVIEW_HABIT_UPDATED_EVENT, handleHabitUpdate);
-    return () => window.removeEventListener(PIPELINE_REVIEW_HABIT_UPDATED_EVENT, handleHabitUpdate);
-  }, []);
-
-  useEffect(() => {
-    const handleReviewPackUpdate = () => setReviewPacks(loadReviewPacks());
-    window.addEventListener(REVIEW_PACKS_UPDATED_EVENT, handleReviewPackUpdate);
-    return () => window.removeEventListener(REVIEW_PACKS_UPDATED_EVENT, handleReviewPackUpdate);
-  }, []);
+    let active = true;
+    void loadPlanItemsForWorkspace(sampleDataActive ? undefined : user?.id, sampleDataActive).then((records) => {
+      if (active) setFirstWeekPlanRecords(records);
+    });
+    const onUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<PlanRecord[]>).detail;
+      if (Array.isArray(detail)) setFirstWeekPlanRecords(detail);
+    };
+    window.addEventListener(PLAN_ITEMS_UPDATED_EVENT, onUpdate);
+    return () => { active = false; window.removeEventListener(PLAN_ITEMS_UPDATED_EVENT, onUpdate); };
+  }, [sampleDataActive, user?.id]);
 
   const handleLoadDemoSandbox = async () => {
     loadSampleDataset();
-    setTrialChecklistState(markTrialActivationChecklistItemComplete('load-demo-or-import-csv'));
     const nextData = await loadDashboardData();
     setData(nextData);
     setMessage(isAuthenticated
@@ -449,13 +387,6 @@ export function TodayPage() {
     setDemoSandboxPromptOpen(false);
   };
 
-  const handleResetTrialChecklist = () => {
-    setTrialChecklistState(resetTrialActivationChecklist());
-  };
-
-  const handleMarkTrialChecklistItem = (id: TrialActivationChecklistItemId) => {
-    setTrialChecklistState(markTrialActivationChecklistItemComplete(id));
-  };
 
   // Dismissing the first-week strip is the same intent as dismissing the trial
   // checklist - both are the onboarding guidance - so it reuses that state
@@ -588,7 +519,7 @@ export function TodayPage() {
     <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6" onClickCapture={handleTodayLinkCapture}>
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Personal Business Activity OS</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Personal Commercial Control Tower</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Nothing in your business goes silent.</h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500">
             Three steps: get the picture, do today's work, check the watch-list.
@@ -815,40 +746,29 @@ export function TodayPage() {
               </details>
             </>
           )}
-          <details
-            className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
-            onToggle={(event) => setSetupToolsOpen(event.currentTarget.open)}
-          >
-            <summary className="cursor-pointer text-sm font-bold text-navy">
-              Review setup
-            </summary>
-            {setupToolsOpen && (
-              <div className="mt-4 flex flex-col gap-4">
-                <SalesOperatingSetupCta progress={salesOperatingSetupProgress} />
-                <PipelineReviewHabitCard progress={pipelineReviewHabitProgress} latestReviewPack={latestWeeklyReviewPack} />
-                <TrialActivationChecklistCard
-                  items={trialChecklist}
-                  onMarkDone={handleMarkTrialChecklistItem}
-                  onReset={handleResetTrialChecklist}
-                />
-                {!firstReviewOnboarding.completedAt && (
-                  <FirstPipelineReviewCta
-                    progress={firstReviewProgress}
-                    metrics={firstReviewMetrics}
-                    hasSampleData={sampleDataActive}
-                  />
-                )}
-                {sampleDataActive && (
-                  <>
-                    <DemoCommercializationCta onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)} />
-                    {isFounderWorkspaceEnabled && (
-                      <ValidationCta message={validationMessage} onCopyInterviewScript={handleCopyInterviewScript} />
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </details>
+          {/* Onboarding is the First Week Path strip above and nothing else.
+              The Sales Operating Setup CTA, the pipeline-review habit card, the
+              trial checklist and the first-review CTA all used to live in this
+              drawer, each teaching a different "first thing to do". Demo
+              guidance survives, but only inside demo mode where it belongs. */}
+          {sampleDataActive && (
+            <details
+              className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+              onToggle={(event) => setSetupToolsOpen(event.currentTarget.open)}
+            >
+              <summary className="cursor-pointer text-sm font-bold text-navy">
+                Demo guidance
+              </summary>
+              {setupToolsOpen && (
+                <div className="mt-4 flex flex-col gap-4">
+                  <DemoCommercializationCta onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)} />
+                  {isFounderWorkspaceEnabled && (
+                    <ValidationCta message={validationMessage} onCopyInterviewScript={handleCopyInterviewScript} />
+                  )}
+                </div>
+              )}
+            </details>
+          )}
         </>
       )}
     </div>
@@ -1351,29 +1271,21 @@ function TodayCaptureInbox({ items }: { items: ReturnType<typeof buildUnifiedTod
  * stays one step behind it - a new customer should never face a wall of CTAs.
  */
 function TodayCommandEmptyState({ onOpenDemoSandbox }: { onOpenDemoSandbox: () => void }) {
-  const quickStartDone = isQuickStartComplete();
   return (
     <section className="rounded-xl border border-dashed border-blue-200 bg-white p-6 shadow-sm">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Start here</p>
-      <h2 className="mt-2 text-2xl font-black text-navy">
-        {quickStartDone ? 'Capture your first activity.' : 'Set up Memoire in a minute.'}
-      </h2>
+      <h2 className="mt-2 text-2xl font-black text-navy">Capture one real customer interaction.</h2>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-        {quickStartDone
-          ? 'Paste a note, an email thread, or type what happened. That one capture starts the loop below.'
-          : 'A few quick questions tailor Memoire to how you sell. Then one captured activity starts the loop.'}
+        Paste a note, an email thread, or type what happened. That one capture starts the loop below. There is nothing to
+        configure first.
       </p>
       <ol className="mt-4 max-w-2xl space-y-1.5 text-sm leading-6 text-gray-600">
         <li><span className="font-bold text-navy">1.</span> Capture a customer update - a note or a pasted email.</li>
-        <li><span className="font-bold text-navy">2.</span> Memoire structures it into account, deal, next action, and date.</li>
+        <li><span className="font-bold text-navy">2.</span> Memoire structures it into account, deal, next commitment, and date.</li>
         <li><span className="font-bold text-navy">3.</span> When anything goes quiet, Today tells you and drafts the follow-up.</li>
       </ol>
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        {quickStartDone ? (
-          <Link to="/app/capture" className="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white">Capture your first activity</Link>
-        ) : (
-          <Link to="/app/onboarding/quick-start" className="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white">Start quick setup</Link>
-        )}
+        <Link to="/app/capture" className="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white">Capture your first activity</Link>
         <button type="button" onClick={onOpenDemoSandbox} className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
           See it working with demo data
         </button>
@@ -1514,7 +1426,7 @@ function StartHerePanel({
             <button type="button" onClick={onOpenDemoSandbox} className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
               Try demo first
             </button>
-            <Link to="/app/onboarding/sales-operating-setup" className="rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700">
+            <Link to="/app/settings" className="rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700">
               Set sales context
             </Link>
           </div>
@@ -1639,7 +1551,7 @@ function DashboardPrimaryWork({
           <Link to={signal.href} className="inline-flex rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
             Open Pipeline Defense
           </Link>
-          <Link to="/app/weekly-brief" className="inline-flex rounded-full border border-blue-100 bg-white px-4 py-2 text-sm font-bold text-brand-blue">
+          <Link to="/app/reviews" className="inline-flex rounded-full border border-blue-100 bg-white px-4 py-2 text-sm font-bold text-brand-blue">
             Weekly Brief
           </Link>
         </div>
@@ -2007,14 +1919,14 @@ function TodayFocus({ commandCenter }: { commandCenter: CommandCenter }) {
         <FocusCard
           title="Today's actions"
           value={commandCenter.todayActions.length}
-          href="/app/calendar"
+          href="/app/timeline?view=history"
           tone={commandCenter.todayActions.length ? 'blue' : 'green'}
           helper={commandCenter.todayActions[0]?.title || 'No actions due today.'}
         />
         <FocusCard
           title="Overdue actions"
           value={commandCenter.overdueActions.length}
-          href="/app/calendar"
+          href="/app/timeline?view=history"
           tone={commandCenter.overdueActions.length ? 'red' : 'green'}
           helper={commandCenter.overdueActions[0]?.title || 'No overdue actions.'}
         />
@@ -2088,7 +2000,7 @@ function WeeklyExecutionHealth({
             Deal execution learning for {review.periodLabel}: completed actions, unresolved critical work, unclear outcomes, and rescue signals.
           </p>
         </div>
-        <Link to="/app/weekly-brief" className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+        <Link to="/app/reviews" className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
           Open Weekly Brief
         </Link>
       </div>
@@ -2536,7 +2448,7 @@ function RecentActivityFeed({ items }: { items: RecentActivityItem[] }) {
           <h2 className="text-lg font-bold text-navy">Recent Activity Feed</h2>
           <p className="mt-1 text-sm text-gray-500">Latest captured sales activity across accounts and opportunities.</p>
         </div>
-        <Link to="/app/calendar" className="text-sm font-bold text-brand-blue">Open Calendar</Link>
+        <Link to="/app/timeline?view=history" className="text-sm font-bold text-brand-blue">Open Calendar</Link>
       </div>
       {items.length === 0 ? (
         <EmptyPanel title="No recent activity captured." helper="Capture your next customer touch to build the feed." href="/app/capture" cta="Capture activity" />
@@ -2564,11 +2476,11 @@ function RecentActivityFeed({ items }: { items: RecentActivityItem[] }) {
 function QuickActions() {
   const actions = [
     { label: 'Quick Capture', href: '/app/capture?mode=quick', icon: <NotebookPen className="h-4 w-4" /> },
-    { label: 'Sales Setup', href: '/app/onboarding/sales-operating-setup', icon: <Target className="h-4 w-4" /> },
     { label: 'Add Opportunity', href: '/app/opportunities', icon: <Target className="h-4 w-4" /> },
     { label: 'Add Account', href: '/app/accounts', icon: <BookOpen className="h-4 w-4" /> },
-    { label: 'Weekly Brief', href: '/app/weekly-brief', icon: <ClipboardList className="h-4 w-4" /> },
-    { label: 'Open Pipeline Defense', href: '/app/pipeline-defense', icon: <FileCheck2 className="h-4 w-4" /> },
+    { label: 'Open Timeline', href: '/app/timeline?view=upcoming', icon: <CalendarCheck className="h-4 w-4" /> },
+    { label: 'Weekly Review', href: '/app/reviews', icon: <ClipboardList className="h-4 w-4" /> },
+    { label: 'Pipeline Defense Brief', href: '/app/reviews?view=defense', icon: <FileCheck2 className="h-4 w-4" /> },
   ];
 
   return (
@@ -2650,249 +2562,6 @@ function DemoCommercializationCta({ onOpenDemoSandbox }: { onOpenDemoSandbox: ()
   );
 }
 
-function SalesOperatingSetupCta({ progress }: { progress: SalesOperatingSetupProgress }) {
-  const ready = progress.status === 'Ready';
-
-  return (
-    <section className="rounded-xl border border-blue-100 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Target className="h-4 w-4 text-brand-blue" />
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Sales operating context</p>
-            <Badge label={progress.status} tone={ready ? 'green' : progress.status === 'In progress' ? 'amber' : 'gray'} />
-          </div>
-          <h2 className="mt-2 text-xl font-bold text-navy">Set Target, GTM, RTM, Cycle, and Daily Log</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-            This gives Memoire the operating frame behind pipeline reviews, activity capture, forecast pressure, and next-action prompts.
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 sm:min-w-[220px]">
-          <div className="flex items-center justify-between text-xs font-bold text-gray-500">
-            <span>{progress.percent}% ready</span>
-            <span>{progress.completedRequired}/{progress.requiredCount} required</span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-            <div className="h-full rounded-full bg-brand-blue" style={{ width: `${progress.percent}%` }} />
-          </div>
-          <Link to="/app/onboarding/sales-operating-setup" className="mt-1 inline-flex justify-center rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-            {ready ? 'Review Setup' : 'Open Setup'}
-          </Link>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function PipelineReviewHabitCard({
-  progress,
-  latestReviewPack,
-}: {
-  progress: PipelineReviewHabitProgress;
-  latestReviewPack: ReviewPackSnapshot | null;
-}) {
-  const nextStep = progress.nextStep;
-  const statusTone =
-    progress.readinessStatus === 'Review ready'
-      ? 'green'
-      : progress.readinessStatus === 'Almost ready'
-        ? 'amber'
-        : progress.readinessStatus === 'In progress'
-          ? 'blue'
-          : 'gray';
-
-  return (
-    <section className="rounded-xl border border-blue-100 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <ClipboardList className="h-4 w-4 text-brand-blue" />
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Weekly pipeline habit</p>
-            <Badge label={progress.readinessStatus} tone={statusTone} />
-          </div>
-          <h2 className="mt-2 text-xl font-bold text-navy">This Week&apos;s Pipeline Review</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-            A lightweight checklist for getting from raw pipeline data to a manager-ready review. It resets automatically each week and stays local to this browser.
-          </p>
-        </div>
-        <div className="min-w-[150px] rounded-lg border border-blue-100 bg-blue-50 p-4 text-center">
-          <p className="text-xs font-bold uppercase tracking-wide text-blue-700">Progress</p>
-          <p className="mt-1 text-3xl font-black text-brand-blue">{progress.progressPercent}%</p>
-          <p className="mt-1 text-xs font-semibold text-blue-800">
-            {progress.completedCount}/{progress.totalCount} steps complete
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-5 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-        {progress.steps.map((step) => (
-          <div key={step.id} className={`rounded-lg border p-3 ${
-            step.done ? 'border-emerald-100 bg-emerald-50' : 'border-gray-200 bg-gray-50'
-          }`}>
-            <div className="flex items-start gap-2">
-              <CheckCircle2 className={`mt-0.5 h-4 w-4 ${step.done ? 'text-emerald-600' : 'text-gray-300'}`} />
-              <div>
-                <p className={`text-sm font-bold ${step.done ? 'text-emerald-800' : 'text-navy'}`}>{step.label}</p>
-                <p className="mt-1 text-xs leading-5 text-gray-600">{step.description}</p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-5 flex flex-col gap-3 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-bold text-blue-950">
-            {nextStep ? `Next step: ${nextStep.label}` : 'Pipeline review is ready.'}
-          </p>
-          <p className="mt-1 text-sm text-blue-800">
-            {nextStep ? nextStep.description : 'Copy or export the final summary before your pipeline review.'}
-          </p>
-        </div>
-        <Link
-          to={nextStep?.href || '/app/pipeline-defense'}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-sm font-bold text-white"
-        >
-          {nextStep?.cta || 'Open Brief'}
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
-
-      {latestReviewPack ? (
-        <div className="mt-3 flex flex-col gap-3 rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-bold text-emerald-900">Latest saved review pack</p>
-            <p className="mt-1 text-sm text-emerald-800">
-              {latestReviewPack.title} • {latestReviewPack.dealCount} deals • {latestReviewPack.defendCount} defend / {latestReviewPack.rescueCount} rescue / {latestReviewPack.downgradeCount} downgrade
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link to={`/app/pipeline-defense/review-pack/${latestReviewPack.id}`} className="inline-flex items-center justify-center rounded-full bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800">
-              Open Latest Review Pack
-            </Link>
-            <Link to="/app/pipeline-defense" className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-100">
-              Save This Week's Pack
-            </Link>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-3 flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-bold text-navy">No saved pack for this week yet.</p>
-            <p className="mt-1 text-sm text-gray-600">Save a review pack after generating the defense brief so you can reopen what was presented.</p>
-          </div>
-          <Link to="/app/pipeline-defense" className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">
-            Go to Pipeline Defense
-          </Link>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function TrialActivationChecklistCard({
-  items,
-  onMarkDone,
-  onReset,
-}: {
-  items: TrialActivationChecklistItem[];
-  onMarkDone: (id: TrialActivationChecklistItemId) => void;
-  onReset: () => void;
-}) {
-  const doneCount = items.filter((item) => item.done).length;
-
-  return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Trial activation checklist</p>
-          <h2 className="mt-2 text-xl font-bold text-navy">Get to a manager-ready review</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-            Complete these steps to validate the full Memoire loop: pipeline copy, opportunity review, capture, assets, defense brief, and manager summary.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-brand-blue">{doneCount}/{items.length} done</span>
-          <button type="button" onClick={onReset} className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-600">
-            Reset
-          </button>
-        </div>
-      </div>
-      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
-        {items.map((item) => (
-          <article key={item.id} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${
-              item.done ? 'bg-emerald-50 text-emerald-700' : 'bg-white text-gray-600 ring-1 ring-gray-200'
-            }`}>
-              {item.done ? 'Done' : 'Next'}
-            </span>
-            <h3 className="mt-3 text-sm font-bold text-navy">{item.title}</h3>
-            <p className="mt-2 text-sm leading-6 text-gray-600">{item.description}</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link to={item.href} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-brand-blue ring-1 ring-blue-100">
-                {item.cta}
-              </Link>
-              {!item.done && (
-                <button
-                  type="button"
-                  onClick={() => onMarkDone(item.id)}
-                  className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-600"
-                >
-                  Mark done
-                </button>
-              )}
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function FirstPipelineReviewCta({
-  progress,
-  metrics,
-  hasSampleData,
-}: {
-  progress: FirstPipelineReviewProgressStep[];
-  metrics: ReturnType<typeof buildFirstPipelineReviewMetrics>;
-  hasSampleData: boolean;
-}) {
-  const nextStep = getFirstPipelineReviewNextStep(progress);
-  const percent = getFirstPipelineReviewProgressPercent(progress);
-  const hasPipelineData = metrics.totalOpportunities > 0 || hasSampleData;
-
-  return (
-    <section className="rounded-xl border border-blue-100 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <FileCheck2 className="h-4 w-4 text-brand-blue" />
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">First review path</p>
-          </div>
-          <h2 className="mt-2 text-xl font-bold text-navy">Prepare Your First Pipeline Review</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-            {hasPipelineData
-              ? `You have ${metrics.totalOpportunities} opportunity record${metrics.totalOpportunities === 1 ? '' : 's'}. Next: ${nextStep.title.toLowerCase()}.`
-              : 'Start with a CSV import, demo sandbox, or one manual opportunity, then generate a Pipeline Defense Brief.'}
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 sm:min-w-[240px]">
-          <div className="flex items-center justify-between text-xs font-bold text-gray-500">
-            <span>{percent}% complete</span>
-            <span>{progress.filter((step) => step.done).length}/{progress.length} steps</span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-            <div className="h-full rounded-full bg-brand-blue" style={{ width: `${percent}%` }} />
-          </div>
-          <Link to="/app/onboarding/pipeline-review" className="mt-1 inline-flex justify-center rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-            Continue
-          </Link>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function DemoSandboxPrompt({
   hasExistingData,

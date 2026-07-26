@@ -1,0 +1,48 @@
+name: CI
+
+# Vercel build success is not a release gate on its own: it never runs the
+# contract suite, the unit tests, or the API typecheck. This workflow is the
+# gate. `fast` runs on every push and pull request; `contracts` runs the full
+# suite, which is slower but is what actually protects the product boundaries
+# (navigation, no-AI, RLS, data isolation, legacy routes, export/restore).
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast:
+    name: Build, typecheck, lint, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run typecheck:api
+      - run: npm run lint
+      - run: npm test
+
+  contracts:
+    name: Full contract suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: fast
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check

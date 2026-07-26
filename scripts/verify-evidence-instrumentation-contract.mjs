@@ -66,8 +66,24 @@ assert.ok(read('src/services/clientTelemetry.ts').includes('VITE_CLIENT_LOG_ENDP
 
 // 4. The founder runbook exists and covers the launch-blocking env steps.
 const runbook = read('docs/deployment/founder-launch-runbook.md');
-for (const marker of ['VITE_APP_URL', 'OPENAI_API_KEY', 'VITE_CLIENT_LOG_ENDPOINT', 'STRIPE_SECRET_KEY', '/api/health', 'product_funnel_events']) {
+for (const marker of ['VITE_APP_URL', 'VITE_CLIENT_LOG_ENDPOINT', 'STRIPE_SECRET_KEY', '/api/health', 'product_events']) {
   assert.ok(runbook.includes(marker), `runbook missing: ${marker}`);
 }
+// The runbook must not send an operator shopping for an AI key Memoire does not
+// use. It may name the keys - it names them to forbid them - so the contract
+// checks for the prohibition rather than for the absence of the strings.
+assert.ok(
+  runbook.includes('No AI configuration is required'),
+  'runbook must state that no AI configuration is required',
+);
+assert.ok(
+  runbook.includes('Do not** set') || runbook.includes('Do **not** set'),
+  'runbook must explicitly tell the operator not to set AI provider keys',
+);
+assert.equal(
+  runbook.includes('capture-ai-classify'),
+  false,
+  'runbook still references the removed capture AI endpoint',
+);
 
 console.log('Evidence instrumentation contract verified.');

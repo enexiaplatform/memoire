@@ -142,7 +142,7 @@ export function answerFromDealPosition(snapshot: CommercialJourneySnapshot, oppo
       ],
       ctas: [
         { label: 'Open Pipeline Defense', href: '/app/pipeline-defense' },
-        { label: 'Open Activity Ledger', href: '/app/activity' },
+        { label: 'Open Activity Ledger', href: '/app/timeline?view=history' },
       ],
     }],
   };
@@ -247,8 +247,8 @@ export function answerFromWeekRecap(activities: SalesActivityRecord[], today = t
         { label: 'Accounts touched', value: accountsTouched.size > 0 ? Array.from(accountsTouched).slice(0, 6).join(', ') : 'None linked yet' },
       ],
       ctas: [
-        { label: 'Open Activity Ledger', href: '/app/activity' },
-        { label: 'Open Business Review', href: '/app/weekly-brief' },
+        { label: 'Open Activity Ledger', href: '/app/timeline?view=history' },
+        { label: 'Open Business Review', href: '/app/reviews' },
       ],
     }],
   };
@@ -416,7 +416,7 @@ export function answerFromCommitments(commitments: CommitmentItem[]): AskMemoire
           : []),
         { label: 'Basis', value: 'Kept = a captured touch on or after the promised date. Honest, not reconstructed.' },
       ],
-      ctas: [{ label: 'Open Business Review', href: '/app/weekly-brief', note: 'The full commitments ledger lives in the Weekly Business Review.' }],
+      ctas: [{ label: 'Open Business Review', href: '/app/reviews', note: 'The full commitments ledger lives in the Weekly Business Review.' }],
     }],
   };
 }
@@ -522,8 +522,8 @@ export function answerFromCustomerSignals(digest: SignalDigest): AskMemoireAnswe
         { label: 'Basis', value: 'Rolled up from what you captured - nothing inferred.' },
       ],
       ctas: [
-        { label: 'Open Activity Ledger', href: '/app/activity' },
-        { label: 'Open Business Review', href: '/app/weekly-brief' },
+        { label: 'Open Activity Ledger', href: '/app/timeline?view=history' },
+        { label: 'Open Business Review', href: '/app/reviews' },
       ],
     }],
   };

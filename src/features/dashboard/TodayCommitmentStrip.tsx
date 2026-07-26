@@ -134,7 +134,7 @@ export function TodayCommitmentStrip({
           <CalendarCheck className="h-4 w-4 text-brand-blue" />
           <h2 className="text-sm font-bold text-navy">On your plan today ({doneCount}/{items.length})</h2>
         </div>
-        <Link to="/app/plan" className="text-xs font-bold text-brand-blue hover:underline">
+        <Link to="/app/timeline?view=upcoming" className="text-xs font-bold text-brand-blue hover:underline">
           Open the week
         </Link>
       </div>

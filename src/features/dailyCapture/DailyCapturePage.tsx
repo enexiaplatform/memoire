@@ -24,7 +24,6 @@ import { applyOpportunityUpdateSuggestion, suggestOpportunityLinks, type Opportu
 import { deriveStakeholderCandidateFromCapture } from '../../utils/stakeholderGraph';
 import { buildObjectionFromActivity, detectObjectionCandidatesFromActivity } from '../../utils/objectionLedger';
 import { suggestQuoteStateChanges, type QuoteStateSuggestion } from '../../utils/quoteStateSuggestions';
-import { getWorkspaceLens, orderTemplatesForLens, WORKSPACE_LENS_CHANGED_EVENT } from '../../utils/workspaceLens';
 import { updateQuote, type QuoteRecord } from '../../services/quoteStore';
 import { loadPlanItemsForWorkspace, savePlanItem } from '../../services/planItemStore';
 import {
@@ -279,7 +278,6 @@ export function DailyCapturePage() {
   const [stakeholderSuggestionDismissed, setStakeholderSuggestionDismissed] = useState(false);
   const [objectionSuggestionDismissed, setObjectionSuggestionDismissed] = useState(false);
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
-  const [workspaceLens, setWorkspaceLensState] = useState(() => getWorkspaceLens());
   const [dismissedQuoteSuggestions, setDismissedQuoteSuggestions] = useState<string[]>([]);
   const [quoteSuggestionMessage, setQuoteSuggestionMessage] = useState('');
   const [lastSavedActivity, setLastSavedActivity] = useState<SalesActivityRecord | null>(null);
@@ -326,13 +324,8 @@ export function DailyCapturePage() {
     setAccountAliases(loadCaptureAccountAliases(user?.id));
   }, [user?.id]);
 
-  useEffect(() => {
-    const handleLensChange = () => setWorkspaceLensState(getWorkspaceLens());
-    window.addEventListener(WORKSPACE_LENS_CHANGED_EVENT, handleLensChange);
-    return () => window.removeEventListener(WORKSPACE_LENS_CHANGED_EVENT, handleLensChange);
-  }, []);
-
-  const lensOrderedTemplates = useMemo(() => orderTemplatesForLens(quickTemplates, workspaceLens), [workspaceLens]);
+  // One product, one voice: templates keep a single neutral order for everyone.
+  const lensOrderedTemplates = quickTemplates;
 
   const emailSourceItem = useMemo(() => {
     if (emailForm.body.trim().length < 8) return null;
@@ -1089,7 +1082,7 @@ export function DailyCapturePage() {
           {planScheduledEntries.length > 0 && (
             <div className="mt-2">
               <p className="text-xs leading-6 text-emerald-800">
-                Added to your <Link to="/app/plan" className="font-bold underline hover:text-emerald-950">Plan</Link> automatically — you wrote it once, it landed on the day:
+                Added to your <Link to="/app/timeline?view=upcoming" className="font-bold underline hover:text-emerald-950">Plan</Link> automatically — you wrote it once, it landed on the day:
               </p>
               <ul className="mt-1 space-y-1">
                 {planScheduledEntries.map((entry, index) => (
@@ -1298,7 +1291,7 @@ export function DailyCapturePage() {
               />
             ))}
             <Link
-              to="/app/activity"
+              to="/app/timeline?view=history"
               className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50/60 px-4 py-2.5 text-sm font-bold text-brand-blue hover:bg-gray-50"
             >
               {activities.length > RECENT_CAPTURE_LIMIT

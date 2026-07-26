@@ -45,7 +45,11 @@ export type ProductFunnelEvent =
   // Suggestion acceptance rate: shown vs taken vs refused. Without the refusal
   // event the denominator is missing and the engine cannot be judged.
   | 'weekly_plan_suggestion_accepted'
-  | 'weekly_plan_suggestion_dismissed';
+  | 'weekly_plan_suggestion_dismissed'
+  // Timeline replaced Plan and Activity as separate destinations. Which half of
+  // the ledger the week is actually run from is the question these answer.
+  | 'timeline_upcoming_viewed'
+  | 'timeline_history_viewed';
 
 export type AnalyticsDataMode = 'demo-local' | 'cloud-browser' | 'browser-only' | 'sync-issue' | 'unknown';
 

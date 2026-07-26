@@ -6,13 +6,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import ts from 'typescript';
 import { evaluateProductionReadiness } from './lib/production-readiness-runtime.mjs';
 
+// A complete production environment for Memoire contains NO AI provider key.
+// Health must be green on exactly this configuration.
 const completeEnv = {
   SUPABASE_URL: 'https://project.supabase.co',
   VITE_SUPABASE_ANON_KEY: 'anon-secret-value',
   SUPABASE_SERVICE_ROLE_KEY: 'service-role-secret-value',
   VITE_APP_URL: 'https://app.memoire.test',
-  ANTHROPIC_API_KEY: 'anthropic-secret-value',
-  OPENAI_API_KEY: 'openai-secret-value',
   VITE_ENABLE_DEMO_MODE: 'false',
   VITE_ENABLE_FOUNDER_WORKSPACE: 'false',
   BILLING_CHECKOUT_ENABLED: 'false',
@@ -48,19 +48,38 @@ assert.equal(hostWithPort.checks.find((check) => check.name === 'app_url_matches
 const checkNames = new Set(healthy.checks.map((check) => check.name));
 for (const name of [
   'supabase_url', 'supabase_anon_key', 'supabase_service_role', 'app_url', 'app_url_valid',
-  'ai_generation_provider', 'openai_embeddings', 'app_url_https', 'app_url_not_localhost',
-  'demo_mode_disabled', 'founder_workspace_disabled', 'capture_ai_provider', 'stripe_secret',
+  'app_url_https', 'app_url_not_localhost', 'no_ai_provider_configured',
+  'demo_mode_disabled', 'founder_workspace_disabled', 'stripe_secret',
   'stripe_webhook_secret', 'billing_checkout_disabled',
 ]) assert.ok(checkNames.has(name), `readiness result missing check ${name}`);
 
+// No check may be *required* to depend on AI configuration.
+for (const retired of ['ai_generation_provider', 'openai_embeddings', 'capture_ai_provider']) {
+  assert.equal(checkNames.has(retired), false, `retired AI readiness check still present: ${retired}`);
+}
+assert.equal(healthy.summary.warnings, 0, 'an AI-free production env must raise no readiness warnings');
+
+// A leftover AI key is surfaced, not silently accepted.
+const withLeftoverAiKey = evaluateProductionReadiness({ ...completeEnv, OPENAI_API_KEY: 'openai-secret-value' });
+assert.equal(withLeftoverAiKey.ok, true, 'a leftover AI key is a warning, not a production outage');
+assert.equal(
+  withLeftoverAiKey.checks.find((check) => check.name === 'no_ai_provider_configured').ok,
+  false,
+  'a leftover AI provider key must be reported',
+);
+
 const serialized = JSON.stringify(healthy);
-for (const secret of [completeEnv.VITE_SUPABASE_ANON_KEY, completeEnv.SUPABASE_SERVICE_ROLE_KEY, completeEnv.ANTHROPIC_API_KEY, completeEnv.OPENAI_API_KEY]) {
+for (const secret of [completeEnv.VITE_SUPABASE_ANON_KEY, completeEnv.SUPABASE_SERVICE_ROLE_KEY]) {
   assert.ok(!serialized.includes(secret), 'readiness result must not expose secret values');
 }
+assert.ok(
+  !JSON.stringify(withLeftoverAiKey).includes('openai-secret-value'),
+  'readiness result must not expose an AI key value even while reporting it',
+);
 
-const missing = evaluateProductionReadiness({ ...completeEnv, SUPABASE_SERVICE_ROLE_KEY: '', OPENAI_API_KEY: '' });
+const missing = evaluateProductionReadiness({ ...completeEnv, SUPABASE_SERVICE_ROLE_KEY: '' });
 assert.equal(missing.ok, false);
-assert.equal(missing.summary.requiredFailed, 2);
+assert.equal(missing.summary.requiredFailed, 1);
 
 const invalidUrl = evaluateProductionReadiness({ ...completeEnv, VITE_APP_URL: 'not a url' });
 assert.equal(invalidUrl.ok, false);
@@ -89,7 +108,7 @@ try {
   assert.equal(headRes.ended, true, 'HEAD /api/health should end without JSON body');
   assert.equal(headRes.body, undefined, 'HEAD /api/health should not return JSON body');
 
-  process.env = { ...completeEnv, SUPABASE_SERVICE_ROLE_KEY: '', OPENAI_API_KEY: '' };
+  process.env = { ...completeEnv, SUPABASE_SERVICE_ROLE_KEY: '' };
   const unhealthyRes = await invokeHealth(healthHandler, 'GET');
   assert.equal(unhealthyRes.statusCode, 503, 'GET /api/health should return HTTP 503 when required env is missing');
   assert.equal(unhealthyRes.body?.ok, false, 'GET /api/health should return ok: false when required env is missing');

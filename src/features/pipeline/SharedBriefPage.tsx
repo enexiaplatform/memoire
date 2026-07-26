@@ -117,7 +117,7 @@ export function SharedBriefPage() {
         )}
 
         <footer className="mt-10 border-t border-gray-200 pt-4 text-center text-xs text-gray-400">
-          Shared with Memoire — the Personal Business Activity OS that keeps deals from going silent.
+          Shared with Memoire — the personal commercial control tower that keeps commercial threads from going silent.
         </footer>
       </main>
     </div>

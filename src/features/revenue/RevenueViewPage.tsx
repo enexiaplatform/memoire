@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Plus, ReceiptText, RefreshCw, Search, Trash2, Wallet } from 'lucide-react';
 import { ProfitAndLossStatement } from './ProfitAndLossStatement';
+import { BUSINESS_ACCOUNTING_ENABLED } from '../../config/featureFlags';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -89,9 +90,10 @@ export function RevenueViewPage() {
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Money</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Profit, cash, and the money in motion.</h1>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Where your commercial value is sitting.</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            A mini P&amp;L on top - revenue, cost, net profit - then the commercial lifecycle beneath it: deal, quote, PO, delivery, payment. Today owns the priority order.
+            The commercial lifecycle end to end: quote, customer decision, PO, delivery, invoice, paid - and what is stuck
+            at each step. Today owns the priority order.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -128,7 +130,12 @@ export function RevenueViewPage() {
         <RevenueEmptyState />
       ) : (
         <>
-          <ProfitAndLossStatement quotes={data.quotes} expenses={expenses} />
+          {/* Accounting-style reporting is outside the beta proposition. See
+              src/config/featureFlags.ts - the expense records themselves are
+              untouched, still synced, and still exported. */}
+          {BUSINESS_ACCOUNTING_ENABLED && (
+            <ProfitAndLossStatement quotes={data.quotes} expenses={expenses} />
+          )}
 
           <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -171,7 +178,9 @@ export function RevenueViewPage() {
             )}
           </section>
 
-          <MoneyOutSection quotes={data.quotes} expenses={expenses} onExpensesChanged={reloadExpenses} />
+          {BUSINESS_ACCOUNTING_ENABLED && (
+            <MoneyOutSection quotes={data.quotes} expenses={expenses} onExpensesChanged={reloadExpenses} />
+          )}
 
           {/* Stuck money is not repeated here: the flow lanes above already
               carry it per stage, with the stuck threads listed underneath. */}

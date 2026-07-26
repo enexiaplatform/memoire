@@ -15,7 +15,7 @@ const sampleData = read('src/utils/sampleData.ts');
 const sidebar = read('src/components/layout/Sidebar.tsx');
 
 for (const marker of [
-  'Personal Business Activity OS',
+  'Personal Commercial Control Tower',
   'Never enter a pipeline review unprepared',
   'works beside your CRM',
   'messy notes and emails',
@@ -90,6 +90,11 @@ for (const marker of [
   assert.ok(`${pipelineCenter}\n${opportunityMapper}`.includes(marker), `Manager-ready copy missing ${marker}`);
 }
 
-assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 17, 'A new CRM navigation item was added.');
+// Navigation is owned by src/config/featureRegistry.ts and enforced by
+// scripts/verify-navigation-contract.mjs. This check only guards the boundary
+// that matters here: the rail must not hard-code its own destinations, because
+// that is how a seventh one used to appear without anyone deciding to add it.
+assert.ok(sidebar.includes("from '../../config/featureRegistry'"), 'Sidebar must render navigation from the feature registry');
+assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 0, 'A navigation item was hard-coded into the Sidebar instead of declared in the feature registry.');
 
 console.log('Product positioning and demo proof path regression verified.');

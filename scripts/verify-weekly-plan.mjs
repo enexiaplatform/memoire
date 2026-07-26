@@ -150,15 +150,19 @@ const anchor = new Date(2026, 6, 22); // Wed of the Mon 2026-07-20 week
   assert.ok(apiFunctions.length <= 12, `api/ must stay within the Hobby function cap (found ${apiFunctions.length})`);
 }
 
-// 7. The sidebar has no collapse control, and Plan is reachable.
+// 7. The plan board is reachable as Timeline > Upcoming, and the old /app/plan
+// URL still resolves. Plan is no longer its own destination: a plan item is a
+// future-dated action, and a separate nav entry made Plan and Activity read as
+// rival calendars.
 {
-  const sidebar = readFileSync(new URL('../src/components/layout/Sidebar.tsx', import.meta.url), 'utf8');
-  assert.doesNotMatch(sidebar, /ChevronDown/, 'the review tier no longer collapses');
-  assert.doesNotMatch(sidebar, /REVIEW_TIER_COLLAPSED_KEY/, 'the collapse preference is gone');
-  assert.match(sidebar, /to: '\/app\/plan'/, 'Plan is in the sidebar');
-
   const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
-  assert.match(app, /path="plan"/, 'the plan route is registered');
+  assert.match(app, /path="timeline"/, 'the timeline route is registered');
+  assert.match(app, /path="plan" element=\{<LegacyRedirect/, 'the old plan URL still resolves');
+
+  const timeline = readFileSync(new URL('../src/features/timeline/TimelinePage.tsx', import.meta.url), 'utf8');
+  assert.match(timeline, /<WeeklyPlanPage embedded \/>/, 'Timeline > Upcoming renders the plan board');
+  assert.match(timeline, /Upcoming/, 'Timeline offers the Upcoming view');
+  assert.match(timeline, /History/, 'Timeline offers the History view');
 }
 
 // 8. Suggestions read last week's ledger, explain themselves, and are never

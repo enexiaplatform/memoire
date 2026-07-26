@@ -292,7 +292,7 @@ function buildCaptureItems(
         label: condensePlanLabel(candidate.title),
         done: false,
         // Land on the exact touch that raised this, so its evidence is one click away.
-        href: `/app/activity?activityId=${encodeURIComponent(activity.id)}`,
+        href: `/app/timeline?view=history&activityId=${encodeURIComponent(activity.id)}`,
         overdue: compareSafeBusinessDate(candidate.dueDate, today) < 0,
       });
     });

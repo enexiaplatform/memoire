@@ -158,13 +158,19 @@ function makeQuote(patch = {}) {
   assert.ok(paidNoTouch.retentionStatus.includes('no touch captured since'), 'paid with no touches must say so plainly');
 }
 
-// 7. UI contract: the ledger's detail modal shows where the deal stands,
-// speaks the solo journey's language under the solo lens, and surfaces
-// retention when money has landed.
+// 7. UI contract: Timeline > History's detail modal shows where the deal
+// stands and surfaces retention when money has landed. It states one position
+// in one vocabulary - the persona lens that used to fork this copy is gone,
+// because one product with two voices taught the reader neither.
 const ledger = readFileSync(new URL('../src/features/calendar/SalesActivityCalendarPage.tsx', import.meta.url), 'utf8');
-for (const marker of ['buildCommercialJourneySnapshot', 'Where this deal stands', 'Next commitment', 'formatJourneyCommitment', 'soloPosition', 'retentionStatus', 'getWorkspaceLens']) {
-  assert.ok(ledger.includes(marker), `Activity Ledger missing journey marker: ${marker}`);
+for (const marker of ['buildCommercialJourneySnapshot', 'Where this deal stands', 'Next commitment', 'formatJourneyCommitment', 'retentionStatus']) {
+  assert.ok(ledger.includes(marker), `Timeline history missing journey marker: ${marker}`);
 }
+assert.equal(
+  ledger.includes('getWorkspaceLens'),
+  false,
+  'the persona lens must not fork the journey vocabulary again',
+);
 
 // 8. The journey read-model still has a home at the deal level. The standalone
 // Journey page was removed on 2026-07-18 - it was the last surface on the
@@ -181,6 +187,10 @@ for (const marker of ['buildCommercialJourneySnapshot', 'formatJourneyCommitment
 // The removed page must stay removed, and its route must land somewhere real.
 const appRoutes = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
 assert.ok(!appRoutes.includes('JourneyPage'), 'the v31 Journey page is not routed');
-assert.match(appRoutes, /path="journey" element={<Navigate to="\/app\/accounts" replace \/>}/, 'the journey route redirects rather than 404s');
+assert.match(
+  appRoutes,
+  /path="journey" element={<LegacyRedirect to="\/app\/accounts" \/>}/,
+  'the journey route redirects rather than 404s, keeping any query string',
+);
 
 console.log('Commercial journey read-model contract verified.');

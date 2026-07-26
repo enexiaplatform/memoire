@@ -450,7 +450,7 @@ export function getTodayActions(opportunities: CrmLiteOpportunity[], activities:
       dueDate: activity.dueDate,
       priority: activity.activityType === 'Objection handling' ? 'High' : 'Medium',
       reason: 'Captured activity next action is due today.',
-      href: '/app/calendar',
+      href: '/app/timeline?view=history',
     }));
 
   return sortActions([...opportunityActions, ...activityActions]);
@@ -483,7 +483,7 @@ export function getOverdueActions(opportunities: CrmLiteOpportunity[], activitie
       dueDate: activity.dueDate,
       priority: 'High',
       reason: 'Captured activity next action is overdue.',
-      href: '/app/calendar',
+      href: '/app/timeline?view=history',
     }));
 
   return sortActions([...opportunityActions, ...activityActions]);

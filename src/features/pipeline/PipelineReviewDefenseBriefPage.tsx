@@ -1109,7 +1109,7 @@ export function PipelineReviewDefenseBriefPage() {
       <header className="mb-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Personal Business Activity OS</p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Personal Commercial Control Tower</p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Never enter a pipeline review unprepared.</h1>
             <p className="mt-2 max-w-3xl text-sm text-gray-500">
               Memoire works beside your company CRM—not in place of it—to prepare, defend, rescue, or downgrade every forecast with manager-ready review answers.
@@ -1621,7 +1621,7 @@ export function PipelineReviewDefenseBriefPage() {
                 <a href="/app/opportunities" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-100">
                   Create from opportunities
                 </a>
-                <a href="/app/onboarding/pipeline-review" className="rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-100">
+                <a href="/app/reviews" className="rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-100">
                   Start First Pipeline Review
                 </a>
                 <button type="button" onClick={resetDeals} className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">
@@ -1988,7 +1988,7 @@ function CommercialHandoffStrip({
 
   const handoffs = [
     {
-      href: '/app/weekly-brief',
+      href: '/app/reviews',
       icon: <ClipboardCheck className="h-4 w-4" />,
       label: 'Weekly Brief',
       value: hasSavedPack ? 'Pack saved' : `${summary.atRiskDeals} at risk`,

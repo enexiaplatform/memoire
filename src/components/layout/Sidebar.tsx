@@ -1,78 +1,63 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { AlertTriangle, Banknote, BookOpen, CalendarCheck, ClipboardList, Database, FileCheck2, FileText, History, LayoutDashboard, MessageCircleQuestion, NotebookPen, Settings, Sun, Target, UsersRound, X } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
+import { Banknote, BookOpen, ClipboardList, Database, History, Search, Settings, Sun, Target, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 import { prefetchAppRoute } from '../../utils/routePrefetch';
 import { useDemoWorkspaceMode } from '../../hooks/useDemoWorkspaceMode';
 import { BrandWordmark } from '../brand/BrandWordmark';
 import { isFounderImportUser } from '../../services/importAuditStore';
-import { loadPipelineDefenseBriefStore } from '../../utils/pipelineDefenseStorage';
-import { loadReviewPacks } from '../../utils/reviewPacks';
+import { getFeature, globalActions, primaryNavigation } from '../../config/featureRegistry';
 
-function hasFirstSavedBrief() {
-  try {
-    return loadPipelineDefenseBriefStore().briefs.length > 0 || loadReviewPacks().length > 0;
-  } catch {
-    return false;
-  }
-}
+// One flat list of six. No tiers, no unlock conditions, no "advanced" drawer -
+// a rail that grows sections is how a focused product becomes a suite again.
+// The order follows the operating loop: what to do now, who it is for, what it
+// is worth, where the money sits, when it happens, what it taught us.
+const primaryIcons: Record<string, ReactNode> = {
+  today: <Sun className="h-5 w-5" />,
+  accounts: <BookOpen className="h-5 w-5" />,
+  opportunities: <Target className="h-5 w-5" />,
+  money: <Banknote className="h-5 w-5" />,
+  timeline: <History className="h-5 w-5" />,
+  review: <ClipboardList className="h-5 w-5" />,
+};
 
-// Three tiers mirroring the operating loop: the daily loop, where the money
-// sits, and review artifacts. Pipeline Defense lives in Review & Learn per the
-// pivot ("the premium review output inside a larger operating loop").
-// Dashboard sits at the very top as the roll-up of everything below - the single
-// place the whole business is aggregated. Today answers "what do I do now" and
-// stays the daily landing. Plan (a calendar, forward-looking) and Activity (a
-// history clock, the ledger of what already happened) carry deliberately
-// different icon families so a glance at the rail never reads them as two
-// versions of the same calendar.
-const primarySections = [{
-  label: 'Business Activity OS',
-  items: [
-    { to: '/app/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
-    { to: '/app/today', label: 'Today', icon: <Sun className="h-5 w-5" /> },
-    { to: '/app/plan', label: 'Plan', icon: <CalendarCheck className="h-5 w-5" /> },
-    { to: '/app/capture', label: 'Capture', icon: <NotebookPen className="h-5 w-5" /> },
-    { to: '/app/activity', label: 'Activity', icon: <History className="h-5 w-5" /> },
-    { to: '/app/ask', label: 'Ask Memoire', icon: <MessageCircleQuestion className="h-5 w-5" /> },
-  ],
-}, {
-  label: 'Pipeline & Money',
-  items: [
-    { to: '/app/opportunities', label: 'Opportunities', icon: <Target className="h-5 w-5" /> },
-    { to: '/app/accounts', label: 'Accounts', icon: <BookOpen className="h-5 w-5" /> },
-    { to: '/app/revenue', label: 'Money', icon: <Banknote className="h-5 w-5" /> },
-  ],
-}];
-
-const secondaryItems = [
-  { to: '/app/weekly-brief', label: 'Business Review', icon: <ClipboardList className="h-5 w-5" /> },
-  { to: '/app/pipeline-defense', label: 'Pipeline Defense', icon: <FileCheck2 className="h-5 w-5" /> },
-  { to: '/app/stakeholders', label: 'Stakeholders', icon: <UsersRound className="h-5 w-5" /> },
-  { to: '/app/objections', label: 'Objections', icon: <AlertTriangle className="h-5 w-5" /> },
-  { to: '/app/playbook', label: 'Playbook', icon: <BookOpen className="h-5 w-5" /> },
-  { to: '/app/assets', label: 'Assets', icon: <FileText className="h-5 w-5" /> },
-];
+const globalIcons: Record<string, ReactNode> = {
+  'search-insights': <Search className="h-5 w-5" />,
+  settings: <Settings className="h-5 w-5" />,
+};
 
 export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { user, profile } = useAuthContext();
-  const location = useLocation();
   const demoActive = useDemoWorkspaceMode();
   const displayName = demoActive ? 'Demo workspace' : getUserDisplayName(user, profile);
   const initials = demoActive ? 'D' : getUserInitials(user, profile);
-  const visibleSecondaryItems = isFounderImportUser(user?.email)
-    ? [...secondaryItems, { to: '/app/imports', label: 'Import Review', icon: <Database className="h-5 w-5" /> }]
-    : secondaryItems;
-  const hasActiveSecondaryRoute = visibleSecondaryItems.some((item) => location.pathname.startsWith(item.to));
-  const [reviewTierUnlocked, setReviewTierUnlocked] = useState(() => hasFirstSavedBrief());
 
-  useEffect(() => {
-    if (!reviewTierUnlocked) setReviewTierUnlocked(hasFirstSavedBrief());
-  }, [location.pathname, reviewTierUnlocked]);
+  const primaryItems = primaryNavigation.map((feature) => ({
+    to: feature.route as string,
+    label: feature.label,
+    icon: primaryIcons[feature.id],
+  }));
 
-  const showReviewTier = reviewTierUnlocked || demoActive || hasActiveSecondaryRoute || isFounderImportUser(user?.email);
+  // Search and Settings are reachable from anywhere; Capture is the button in
+  // the top bar, so it is not repeated here.
+  const globalItems = globalActions
+    .filter((feature) => feature.id !== 'capture')
+    .map((feature) => ({
+      to: feature.route as string,
+      label: feature.label,
+      icon: globalIcons[feature.id],
+    }));
+
+  // Founder Import is operator tooling, not a seventh destination. It appears
+  // only for the founder account, stays visually separated from the product,
+  // and - like everything else in this rail - is declared in the registry
+  // rather than hard-coded here.
+  const founderImport = getFeature('founder-import');
+  const founderItems = isFounderImportUser(user?.email) && founderImport?.route
+    ? [{ to: founderImport.route, label: 'Import Review', icon: <Database className="h-5 w-5" /> }]
+    : [];
 
   useEffect(() => {
     if (!isOpen) return;
@@ -85,8 +70,6 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [isOpen, onClose]);
 
-  // One geometry for every tier: same left edge (px-5), same icon size, same
-  // row height. Tier identity comes from the section headers, not indentation.
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     `relative flex items-center gap-3 whitespace-nowrap px-5 py-2.5 text-[14px] font-medium transition-all ${
       isActive ? 'bg-white/10 text-white' : 'text-white/55 hover:bg-white/5 hover:text-white/90'
@@ -131,39 +114,23 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         </button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-4">
-        {primarySections.map((section) => (
-          <div key={section.label} className="mb-3">
-            <p className="px-5 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/30">
-              {section.label}
+      <nav className="flex-1 overflow-y-auto py-4" aria-label="Primary">
+        <div className="space-y-1">
+          {primaryItems.map(renderNavItem)}
+        </div>
+
+        <div className="mt-3 space-y-1 border-t border-white/10 pt-3">
+          {globalItems.map(renderNavItem)}
+        </div>
+
+        {founderItems.length > 0 && (
+          <div className="mt-3 border-t border-white/10 pt-3">
+            <p className="px-5 pb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white/25">
+              Founder only
             </p>
-            <div className="space-y-1">
-              {section.items.map(renderNavItem)}
-            </div>
+            <div className="space-y-1">{founderItems.map(renderNavItem)}</div>
           </div>
-        ))}
-
-        <div className="mt-2 border-t border-white/10 pt-2">
-          {!showReviewTier && (
-            <p className="px-5 py-2 text-[11px] leading-4 text-white/30">
-              Review & Learn unlocks after your first saved brief.
-            </p>
-          )}
-          {showReviewTier && (
-            <>
-              <p className="px-5 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/30">
-                Review & Learn
-              </p>
-              <div className="mt-1 space-y-1">
-                {visibleSecondaryItems.map(renderNavItem)}
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="mt-3 border-t border-white/10 pt-3">
-          {renderNavItem({ to: '/app/settings', label: 'Settings', icon: <Settings className="h-5 w-5" /> })}
-        </div>
+        )}
       </nav>
 
       <div className="border-t border-[#243447] p-4">

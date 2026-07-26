@@ -184,7 +184,7 @@ export function buildFirstPipelineReviewProgress(input: {
       title: 'Fix top gaps',
       description: 'Review buyer, champion, process, objection, proof, evidence, and next-action gaps.',
       cta: 'Review top gaps',
-      href: '/app/onboarding/pipeline-review#gaps',
+      href: '/app/reviews',
       done: input.state.hasViewedGaps,
       status: input.state.hasViewedGaps ? 'Done' : 'Not started',
     },

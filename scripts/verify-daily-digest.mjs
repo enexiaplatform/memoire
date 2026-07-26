@@ -53,12 +53,13 @@ const wonOutcome = () => ({ outcome: 'Won', accountName: 'Delta Nutrition', oppo
   assert.ok(link.includes('body='), 'body is prefilled');
 }
 
-// 4. Wiring: the Dashboard renders the digest card with copy + email.
+// 4. Wiring: Review's analytics section renders the digest card with copy +
+// email. It moved there with the rest of the retired Dashboard.
 {
-  const dashboard = readFileSync('src/features/dashboard/MasterDashboardPage.tsx', 'utf8');
-  assert.ok(dashboard.includes('buildDailyDigest'), 'Dashboard must build the digest');
-  assert.ok(dashboard.includes('DigestCard'), 'Dashboard must render the digest card');
-  assert.ok(dashboard.includes('Email to myself'), 'the digest card must offer email-to-self');
+  const analytics = readFileSync('src/features/reviews/ReviewAnalyticsSection.tsx', 'utf8');
+  assert.ok(analytics.includes('buildDailyDigest'), 'Review analytics must build the digest');
+  assert.ok(analytics.includes('DigestCard'), 'Review analytics must render the digest card');
+  assert.ok(analytics.includes('Email to myself'), 'the digest card must offer email-to-self');
 }
 
 console.log('Daily digest contract verified.');

@@ -52,8 +52,12 @@ const periodOptions: { value: PlanPeriod; label: string }[] = [
  * same column, because that is how the week is actually lived - but they are
  * visibly different, and checking a derived item never writes back onto the
  * deal it came from.
+ *
+ * This is Timeline > Upcoming. `embedded` drops the page chrome so Timeline can
+ * own one heading for both halves of the ledger; the board itself is unchanged,
+ * which is why the old /app/plan URL can keep working as a deep link.
  */
-export function WeeklyPlanPage() {
+export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const [periodType, setPeriodType] = useState<PlanPeriod>('week');
   const [anchorDate, setAnchorDate] = useState(() => new Date());
@@ -275,8 +279,8 @@ export function WeeklyPlanPage() {
 
   if (loading) {
     return (
-      <SkeletonScreen label="Loading your plan">
-        <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6">
+      <SkeletonScreen label="Loading what is coming up">
+        <div className={embedded ? '' : 'mx-auto max-w-[1600px] px-4 py-6 sm:px-6'}>
           <SkeletonCard />
         </div>
       </SkeletonScreen>
@@ -288,25 +292,27 @@ export function WeeklyPlanPage() {
     : board.days;
 
   return (
-    <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-brand-blue" />
-            <h1 className="text-2xl font-bold text-navy">Plan</h1>
-            <DataModePill
-              compact
-              isLoading={authLoading}
-              isAuthenticated={isAuthenticated}
-              isSupabaseConfigured={isSupabaseConfigured}
-              cloudAvailable={canUseSalesActivityCloudStore(dataUserId)}
-              hasSampleData={sampleDataActive}
-            />
+    <div className={embedded ? '' : 'mx-auto max-w-[1600px] px-4 py-6 sm:px-6'}>
+      <header className={`flex flex-col gap-3 sm:flex-row sm:items-start ${embedded ? 'sm:justify-end' : 'sm:justify-between'}`}>
+        {!embedded && (
+          <div>
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-5 w-5 text-brand-blue" />
+              <h1 className="text-2xl font-bold text-navy">Plan</h1>
+              <DataModePill
+                compact
+                isLoading={authLoading}
+                isAuthenticated={isAuthenticated}
+                isSupabaseConfigured={isSupabaseConfigured}
+                cloudAvailable={canUseSalesActivityCloudStore(dataUserId)}
+                hasSampleData={sampleDataActive}
+              />
+            </div>
+            <p className="mt-1 text-sm text-gray-600">
+              Your week as days. Dated commitments already in Memoire appear on their own; add anything else the week needs.
+            </p>
           </div>
-          <p className="mt-1 text-sm text-gray-600">
-            Your week as days. Dated commitments already in Memoire appear on their own; add anything else the week needs.
-          </p>
-        </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-full border border-gray-200 p-0.5">
@@ -366,7 +372,7 @@ export function WeeklyPlanPage() {
         )}
         {board.personalCount > 0 && <span>{board.personalCount} added by you</span>}
         {commitment && (
-          <Link to="/app/weekly-brief" className="ml-auto font-bold text-brand-blue hover:underline">
+          <Link to="/app/reviews" className="ml-auto font-bold text-brand-blue hover:underline">
             {commitment.items.length} commitments confirmed for this week
           </Link>
         )}

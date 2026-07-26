@@ -17,7 +17,7 @@ import { buildDailyDigest, buildDigestMailtoLink } from '../../utils/dailyDigest
 import { getUserDisplayName } from '../../utils/userDisplay';
 import { copyTextToClipboard } from '../../utils/clipboard';
 import { trackProductEvent } from '../../utils/productAnalytics';
-import { CommittedWeekStrip } from './CommittedWeekStrip';
+import { CommittedWeekStrip } from '../dashboard/CommittedWeekStrip';
 
 // Chart palette: fixed hex values (not Tailwind classes) so the SVGs survive
 // serialization to PNG for the presentation export.
@@ -40,7 +40,17 @@ const EVIDENCE_COLORS: Record<string, string> = {
   Unsupported: CHART.slate,
 };
 
-export function MasterDashboardPage() {
+/**
+ * Review's analytics section: the whole business in charts, plus the CSV/PNG
+ * export and the daily digest.
+ *
+ * This was the standalone Dashboard destination. It failed the feature gate as
+ * a destination - it creates no source-of-truth record, and it answered "how is
+ * the business trending", which is a weekly question, not a daily one. Its
+ * immediate priorities and risks moved to Today; everything historical lives
+ * here, under Review, where the weekly loop already happens.
+ */
+export function ReviewAnalyticsSection() {
   const { user, profile, loading: authLoading, isAuthenticated } = useAuthContext();
   const [workspace, setWorkspace] = useState<SalesWorkspaceData | null>(null);
   const [planRecords, setPlanRecords] = useState<PlanRecord[]>([]);
@@ -139,13 +149,12 @@ export function MasterDashboardPage() {
   };
 
   return (
-    <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
+    <div className="flex w-full max-w-none flex-col gap-5">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Dashboard</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">The whole business, in charts.</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            Every chart and stat in one place. For what to do next, use Today.
+          <h2 className="text-xl font-bold tracking-tight text-navy">The whole business, in charts.</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
+            History and trend. For what to do next, use Today.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -254,7 +263,7 @@ export function MasterDashboardPage() {
                 <div className="mt-3 flex flex-col gap-2 text-sm font-semibold">
                   <Link to="/app/revenue" className="inline-flex items-center gap-2 text-brand-blue hover:underline">Money flow, end to end <ArrowRight className="h-4 w-4" /></Link>
                   <Link to="/app/opportunities" className="inline-flex items-center gap-2 text-brand-blue hover:underline">Opportunities <ArrowRight className="h-4 w-4" /></Link>
-                  <Link to="/app/weekly-brief" className="inline-flex items-center gap-2 text-brand-blue hover:underline">Business Review <ArrowRight className="h-4 w-4" /></Link>
+                  <Link to="/app/timeline?view=history" className="inline-flex items-center gap-2 text-brand-blue hover:underline">Timeline history <ArrowRight className="h-4 w-4" /></Link>
                 </div>
               </div>
             </div>
@@ -283,14 +292,14 @@ function ExecutionBand({ execution }: { execution: MasterDashboardModel['executi
             This week, {formatSafeBusinessDate(execution.weekStart)} – {formatSafeBusinessDate(execution.weekEnd)}. Record once; it flows all the way through.
           </p>
         </div>
-        <Link to="/app/plan" className="text-xs font-bold text-brand-blue hover:underline">Open the plan</Link>
+        <Link to="/app/timeline?view=upcoming" className="text-xs font-bold text-brand-blue hover:underline">Open the plan</Link>
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-4">
           <div className="flex items-baseline justify-between">
             <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Plan adherence</p>
-            <Link to="/app/plan" className="text-2xl font-bold text-navy hover:text-brand-blue">
+            <Link to="/app/timeline?view=upcoming" className="text-2xl font-bold text-navy hover:text-brand-blue">
               {adherencePct === null ? '—' : `${adherencePct}%`}
             </Link>
           </div>
@@ -298,7 +307,7 @@ function ExecutionBand({ execution }: { execution: MasterDashboardModel['executi
           <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-500">
             <span><Link to="/app/opportunities" className="font-bold text-gray-700 hover:text-brand-blue">{execution.fromPipeline}</Link> from pipeline</span>
             <span><Link to="/app/capture" className="font-bold text-emerald-700 hover:text-emerald-800">{execution.fromCaptures}</Link> from captures</span>
-            <span><Link to="/app/plan" className="font-bold text-gray-700 hover:text-brand-blue">{execution.personal}</Link> added by you</span>
+            <span><Link to="/app/timeline?view=upcoming" className="font-bold text-gray-700 hover:text-brand-blue">{execution.personal}</Link> added by you</span>
           </div>
         </div>
 
@@ -312,9 +321,9 @@ function ExecutionBand({ execution }: { execution: MasterDashboardModel['executi
           <div className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold">
             <FunnelStep to="/app/capture" value={execution.capturedNextActions} label="captured" tone="blue" />
             <ArrowRight className="h-3.5 w-3.5 shrink-0 text-gray-300" />
-            <FunnelStep to="/app/plan" value={execution.onPlan} label="on plan" tone="gray" />
+            <FunnelStep to="/app/timeline?view=upcoming" value={execution.onPlan} label="on plan" tone="gray" />
             <ArrowRight className="h-3.5 w-3.5 shrink-0 text-gray-300" />
-            <FunnelStep to="/app/plan" value={execution.completedNextActions} label="done" tone="emerald" />
+            <FunnelStep to="/app/timeline?view=upcoming" value={execution.completedNextActions} label="done" tone="emerald" />
           </div>
           <p className="mt-2 text-[11px] leading-4 text-gray-500">
             Every next action captured landed on the plan — none re-entered by hand.

@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle2, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { getDemoWorkspaceState, readLocalMemory } from '../../features/v31/localStore';
-import { getWorkspaceLens, onboardingEmphasisForLens } from '../../utils/workspaceLens';
 import {
   CAPTURE_SAVED_EVENT,
   CAPTURE_STRUCTURED_EVENT,
@@ -409,9 +408,13 @@ export function OnboardingModal() {
     }
   }
 
-  // Onboarding emphasis follows the workspace lens (direction 7.7): copy
-  // only - the guided steps and the data model are identical for every lens.
-  const lensEmphasis = onboardingEmphasisForLens(getWorkspaceLens());
+  // One product, one voice. Onboarding copy no longer forks by persona: every
+  // beta user walks the same First Week Path.
+  const lensEmphasis = {
+    intro:
+      "Memoire is your personal commercial control tower. Let's record one real customer interaction and make sure the next commitment is not forgotten.",
+    workflowLine: 'Capture what happened - link it to a customer - set the next commitment',
+  };
 
   if (mode === 'welcome' || workflow.currentStep === 'welcome') {
     return (

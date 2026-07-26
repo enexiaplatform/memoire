@@ -29,7 +29,6 @@ import { ActivityInsightsBand } from './ActivityInsightsBand';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { businessDomains, businessDomainTone, classifyBusinessDomain, type BusinessDomain } from '../../utils/businessDomain';
 import { buildCommercialJourneySnapshot, formatJourneyCommitment } from '../../utils/commercialJourney';
-import { getWorkspaceLens } from '../../utils/workspaceLens';
 import { buildActivityStateTrail, type ActivityTrailChipKind } from '../../utils/activityStateTrail';
 import { type QuoteRecord } from '../../services/quoteStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
@@ -80,7 +79,13 @@ const activityTypeTone: Record<SalesActivityType, string> = {
   Other: 'border-gray-200 bg-white text-gray-700',
 };
 
-export function SalesActivityCalendarPage() {
+/**
+ * This is Timeline > History: everything that already happened. `embedded`
+ * drops the page chrome so Timeline can own one heading for both halves of the
+ * ledger; the ledger itself is unchanged, which is why the old /app/activity
+ * and /app/calendar URLs keep working as deep links.
+ */
+export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const [viewMode, setViewMode] = useState<CalendarViewMode>('week');
   const [domainFilter, setDomainFilter] = useState<BusinessDomain | 'All'>('All');
@@ -241,16 +246,18 @@ export function SalesActivityCalendarPage() {
   };
 
   return (
-    <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
-      <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Activity Ledger</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Everything that happened in your business, in one timeline.</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            Sales, money, delivery, marketing, product, and learning activity - all captured through Capture, classified by business domain.
-            No Google Calendar, Gmail, CRM sync, or AI integration is connected.
-          </p>
-        </div>
+    <div className={`flex w-full max-w-none flex-col gap-5 ${embedded ? '' : 'px-4 py-5 sm:px-5 lg:px-6'}`}>
+      <header className={`flex flex-col gap-3 lg:flex-row lg:items-end ${embedded ? 'lg:justify-end' : 'lg:justify-between'}`}>
+        {!embedded && (
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Activity Ledger</p>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Everything that happened in your business, in one timeline.</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
+              Sales, money, delivery, marketing, product, and learning activity - all captured through Capture, classified by business domain.
+              No Google Calendar, Gmail, CRM sync, or AI integration is connected.
+            </p>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           <DataModePill
             compact
@@ -660,10 +667,7 @@ function ActivityDetailModal({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-bold text-navy">Where this deal stands</p>
               <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-brand-blue ring-1 ring-blue-100">
-                {/* The solo lens speaks the solo journey's language (direction 7.3); same derived state either way. */}
-                {getWorkspaceLens() === 'solo'
-                  ? journey.soloPosition
-                  : `${journey.position}${journey.positionSource === 'money-flow' ? ' (money flow)' : ''}`}
+                {journey.position}{journey.positionSource === 'money-flow' ? ' (money flow)' : ''}
               </span>
             </div>
             <div className="mt-3 grid grid-cols-1 gap-2 text-xs leading-5 sm:grid-cols-2">

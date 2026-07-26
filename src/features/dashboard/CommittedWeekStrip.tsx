@@ -68,7 +68,7 @@ export function CommittedWeekStrip({
             {snapshot.items.length < MAX_WEEKLY_COMMITMENTS ? ' Change it in the weekly review.' : ''}
           </p>
         </div>
-        <Link to="/app/weekly-brief" className="text-xs font-bold text-brand-blue hover:underline">
+        <Link to="/app/reviews" className="text-xs font-bold text-brand-blue hover:underline">
           Open the review
         </Link>
       </div>

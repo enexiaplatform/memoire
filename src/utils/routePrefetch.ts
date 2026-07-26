@@ -1,19 +1,16 @@
+// Only routes that still exist as surfaces. A prefetcher for a retired
+// destination would keep a removed page's chunk in the bundle graph forever.
 const routePrefetchers: Record<string, () => Promise<unknown>> = {
   '/app/today': () => import('../features/dashboard/DashboardPage'),
-  '/app/dashboard': () => import('../features/dashboard/MasterDashboardPage'),
-  '/app/operating-system': () => import('../features/operatingSystem/OperatingSystemPage'),
-  '/app/capture': () => import('../features/dailyCapture/DailyCapturePage'),
-  '/app/opportunities': () => import('../features/opportunities/OpportunitiesPage'),
-  '/app/quotes': () => import('../features/quotes/QuotesPage'),
-  '/app/revenue': () => import('../features/revenue/RevenueViewPage'),
-  '/app/calendar': () => import('../features/calendar/SalesActivityCalendarPage'),
-  '/app/weekly-brief': () => import('../features/reviews/SalesReviewsPage'),
-  '/app/reviews': () => import('../features/reviews/SalesReviewsPage'),
-  '/app/playbook': () => import('../features/playbook/SalesPlaybookPage'),
-  '/app/assets': () => import('../features/assets/SalesAssetsPage'),
   '/app/accounts': () => import('../features/accounts/AccountsPage'),
-  '/app/stakeholders': () => import('../features/stakeholders/StakeholdersPage'),
-  '/app/objections': () => import('../features/objections/ObjectionsPage'),
+  '/app/opportunities': () => import('../features/opportunities/OpportunitiesPage'),
+  '/app/revenue': () => import('../features/revenue/RevenueViewPage'),
+  '/app/timeline': () => import('../features/timeline/TimelinePage'),
+  '/app/reviews': () => import('../features/reviews/SalesReviewsPage'),
+  '/app/capture': () => import('../features/dailyCapture/DailyCapturePage'),
+  '/app/ask': () => import('../features/v31/AskMemoirePage'),
+  '/app/settings': () => import('../features/settings/SettingsPage'),
+  '/app/quotes': () => import('../features/quotes/QuotesPage'),
   '/app/pipeline-defense': () => import('../features/pipeline/PipelineReviewDefenseBriefPage'),
 };
 
@@ -32,13 +29,11 @@ export function prefetchAppRoute(route: string) {
 export function prefetchPrimaryAppRoutes() {
   const routes = [
     '/app/capture',
-    '/app/operating-system',
-    '/app/opportunities',
-    '/app/quotes',
-    '/app/revenue',
     '/app/accounts',
-    '/app/pipeline-defense',
-    '/app/weekly-brief',
+    '/app/opportunities',
+    '/app/revenue',
+    '/app/timeline',
+    '/app/reviews',
   ];
 
   scheduleRoutePrefetch(routes);

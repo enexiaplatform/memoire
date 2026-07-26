@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import {
   BASE_CURRENCY,
   convertMoney,
@@ -80,11 +80,20 @@ for (const [file, label] of [
   assert.equal(/formatBaseCurrencyAmount\(convert/.test(source), false, `${label} must not hand-roll the item · base concatenation`);
 }
 
-// 7. Quick Setup reads the live reporting currency, not its stale saved answer.
+// 7. Settings is now the only place the reporting currency is chosen. Quick
+// Setup used to offer a second, staler copy of the same question; it was one of
+// six competing onboarding mechanisms and is gone.
 {
-  const page = readFileSync('src/features/onboarding/QuickStartSetupPage.tsx', 'utf8');
-  assert.ok(page.includes('currency: getReportingCurrency()'), 'Quick Setup must show the live reporting currency');
-  assert.equal(page.includes('> Setup applied'), false, 'the applied state must name what was stored');
+  const settings = readFileSync('src/features/settings/SettingsPage.tsx', 'utf8');
+  assert.ok(
+    settings.includes('getReportingCurrency()') && settings.includes('setReportingCurrency('),
+    'Settings must own the reporting-currency choice',
+  );
+  assert.equal(
+    existsSync('src/features/onboarding/QuickStartSetupPage.tsx'),
+    false,
+    'a second place to set reporting currency is back',
+  );
 }
 
 console.log('Currency and locale contract verified.');

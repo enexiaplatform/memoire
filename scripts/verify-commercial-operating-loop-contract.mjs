@@ -164,15 +164,19 @@ const packageJson = read('package.json');
 requireIncludes(packageJson, '"verify:commercial-operating-loop"', 'package.json missing verify:commercial-operating-loop script');
 requireIncludes(packageJson, 'npm run verify:commercial-operating-loop', 'npm run check does not include operating-loop verifier');
 
+// Review is one of the six primary destinations and lives at /app/reviews. The
+// old /app/weekly-brief URL redirects there rather than 404ing.
 const appRoutes = read('src/App.tsx');
-requireIncludes(appRoutes, 'path="weekly-brief" element={<SalesReviewsPage />}',
-  'App route missing /app/weekly-brief Commercial Review Brief entry point');
 requireIncludes(appRoutes, 'path="reviews" element={<SalesReviewsPage />}',
-  'Legacy /app/reviews route should remain available');
+  'App route missing the Review destination');
+requireIncludes(appRoutes, 'path="weekly-brief" element={<LegacyRedirect to="/app/reviews" />}',
+  'the old /app/weekly-brief URL must still resolve');
 
 const sidebar = read('src/components/layout/Sidebar.tsx');
-requireIncludes(sidebar, "to: '/app/weekly-brief', label: 'Business Review'",
-  'Sidebar missing Business Review entry');
+requireIncludes(sidebar, 'primaryNavigation',
+  'Sidebar must render Review from the feature registry');
+const featureRegistry = read('src/config/featureRegistry.ts');
+requireIncludes(featureRegistry, "route: '/app/reviews'", 'Review must be a registered primary destination');
 
 const salesReviewsPage = read('src/features/reviews/SalesReviewsPage.tsx');
 for (const marker of [
@@ -188,7 +192,7 @@ const pipelineDefensePage = read('src/features/pipeline/PipelineReviewDefenseBri
 for (const marker of [
   'Commercial handoff',
   'After defense, move the money loop.',
-  '/app/weekly-brief',
+  '/app/reviews',
   '/app/quotes',
   '/app/revenue',
 ]) {

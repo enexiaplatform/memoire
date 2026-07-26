@@ -4,7 +4,6 @@ import { Banknote, Copy, Flag, Trophy } from 'lucide-react';
 import type { WeeklyBusinessReview } from '../../utils/weeklyBusinessReview';
 import { formatBaseCurrencyAmount, formatCurrencyAmount } from '../../utils/money';
 import { formatOutcomeRetro } from '../../utils/personalSalesLearning';
-import { getWorkspaceLens, orderReviewSectionsForLens } from '../../utils/workspaceLens';
 import { initiativeDecisionLabel, initiativeDecisionTone } from '../../utils/initiativeExperiment';
 
 export function WeeklyBusinessReviewPanel({
@@ -63,7 +62,7 @@ export function WeeklyBusinessReviewPanel({
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
-        {orderReviewSectionsForLens(reviewSections(review, activeLanes, commitmentSlot), getWorkspaceLens()).map((section) => (
+        {reviewSections(review, activeLanes, commitmentSlot).map((section) => (
           <div key={section.id} className="contents">{section.node}</div>
         ))}
       </div>

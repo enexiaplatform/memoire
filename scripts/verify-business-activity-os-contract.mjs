@@ -46,22 +46,45 @@ for (const marker of ['Activity Ledger', 'classifyBusinessDomain', 'businessDoma
   assert.ok(ledger.includes(marker), `Activity Ledger missing marker: ${marker}`);
 }
 const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
-assert.ok(app.includes('path="activity"'), 'App must route /app/activity');
+assert.ok(app.includes('path="timeline"'), 'App must route /app/timeline');
+assert.ok(app.includes('path="activity"'), '/app/activity must still resolve');
 assert.ok(app.includes('path="calendar"'), '/app/calendar alias must stay live');
 
-// 5. Navigation: Business Activity OS brand, Activity primary, Money reachable.
-const sidebar = readFileSync(new URL('../src/components/layout/Sidebar.tsx', import.meta.url), 'utf8');
-for (const marker of ["label: 'Business Activity OS'", "to: '/app/activity', label: 'Activity'", "to: '/app/revenue', label: 'Money'"]) {
-  assert.ok(sidebar.includes(marker), `Sidebar missing pivot marker: ${marker}`);
+// 5. Navigation: the whole-business ledger is Timeline > History, and Money is
+// one of the six primary destinations. Neither is a separate module any more.
+const registry = readFileSync(new URL('../src/config/featureRegistry.ts', import.meta.url), 'utf8');
+for (const marker of ["id: 'timeline'", "id: 'money'", "ownerSurface: 'timeline'"]) {
+  assert.ok(registry.includes(marker), `Feature registry missing marker: ${marker}`);
 }
+const timeline = readFileSync(new URL('../src/features/timeline/TimelinePage.tsx', import.meta.url), 'utf8');
+assert.ok(timeline.includes('<SalesActivityCalendarPage embedded />'), 'Timeline > History must render the ledger');
 
-// 6. Positioning: hero and strategy doc carry the money-spine framing, and the
-// hard rules that keep this from becoming a generic productivity app.
+// 6. Positioning: the hero carries the current category and promise. The
+// money-spine framing survives as the boundary rule; only the category name
+// changed, from Business Activity OS to Personal Commercial Control Tower.
 const hero = readFileSync(new URL('../src/components/marketing/HeroSection.tsx', import.meta.url), 'utf8');
-assert.ok(hero.includes('Nothing in your business goes silent.'), 'Hero must carry the generalized silence wedge');
-assert.ok(hero.includes('Business Activity OS'), 'Hero must name the category');
+assert.ok(
+  hero.includes('From conversation to cash, nothing goes silent.'),
+  'Hero must carry the current promise',
+);
+assert.ok(hero.includes('personal commercial control tower'), 'Hero must name the current category');
+assert.equal(
+  hero.includes('Business Activity OS'),
+  false,
+  'the superseded category must not reappear in the hero',
+);
+const positioning = readFileSync(new URL('../docs/positioning.md', import.meta.url), 'utf8');
+for (const marker of [
+  'Personal Commercial Control Tower',
+  'From conversation to cash, nothing goes silent.',
+  'Commercial Thread',
+  'Commercial Commitment Ledger',
+  'Positioning guardrails',
+]) {
+  assert.ok(positioning.includes(marker), `Positioning doc missing: ${marker}`);
+}
 const pivotDoc = readFileSync(new URL('../docs/product/pivot-business-activity-os-2026-07-09.md', import.meta.url), 'utf8');
-for (const marker of ['money-spine rule', 'no persona modes', "Derive, don't migrate", 'Kill / keep criteria']) {
+for (const marker of ['money-spine rule', 'no persona modes', "Derive, don't migrate"]) {
   assert.ok(pivotDoc.includes(marker), `Pivot doc missing hard rule: ${marker}`);
 }
 

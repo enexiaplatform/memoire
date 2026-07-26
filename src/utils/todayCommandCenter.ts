@@ -323,7 +323,7 @@ function buildCaptureInbox(activities: SalesActivityRecord[]): TodayCaptureInbox
           ? 'Link capture to an opportunity'
           : 'Needs confirmation',
       // The linking UI lives in the Activity ledger's detail modal.
-      href: `/app/activity?activityId=${encodeURIComponent(activity.id)}`,
+      href: `/app/timeline?view=history&activityId=${encodeURIComponent(activity.id)}`,
       activityDateLabel: formatSafeBusinessDate(activity.activityDate),
     }));
 }

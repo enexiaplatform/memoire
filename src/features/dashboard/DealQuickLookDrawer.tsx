@@ -6,7 +6,6 @@ import type { SalesActivityRecord } from '../../services/salesActivityStore';
 import type { QuoteRecord } from '../../services/quoteStore';
 import type { ObjectionRecord } from '../../services/objectionStore';
 import { buildCommercialJourneySnapshot, formatJourneyCommitment } from '../../utils/commercialJourney';
-import { getWorkspaceLens } from '../../utils/workspaceLens';
 import { formatCurrencyAmount } from '../../utils/money';
 import { formatSafeBusinessDate } from '../../utils/safeDate.ts';
 
@@ -32,9 +31,7 @@ export function DealQuickLookDrawer({
   onDraftFollowUp: () => void;
 }) {
   const journey = buildCommercialJourneySnapshot({ opportunity, quotes, activities, objections });
-  const position = getWorkspaceLens() === 'solo'
-    ? journey.soloPosition
-    : `${journey.position}${journey.positionSource === 'money-flow' ? ' (money flow)' : ''}`;
+  const position = `${journey.position}${journey.positionSource === 'money-flow' ? ' (money flow)' : ''}`;
   const fullRecordHref = `/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}`;
 
   useEffect(() => {

@@ -1,58 +1,105 @@
 # Memoire Positioning
 
-Updated: 2026-07-09 per `docs/product/pivot-business-activity-os-2026-07-09.md` (Business Activity OS pivot). Earlier wedge-only framing is superseded.
+Updated: 2026-07-26. Supersedes the Business Activity OS framing of 2026-07-09 (`docs/product/pivot-business-activity-os-2026-07-09.md`), which is kept as history.
 
-## One-Liner
+## Category
 
-Memoire is a personal Business Activity OS for B2B sellers and solo operators. It turns every commercial activity - meetings, quotes, deliveries, payments, content, experiments - into one business memory with money state, silence alerts, and next actions.
+**Personal Commercial Control Tower**
 
-## Core Contrast
+## Promise
 
-Your CRM, spreadsheet, or notes track records for the company. Memoire remembers your whole commercial story and never lets anything go silent - deals, quotes, payments, or follow-ups.
+> From conversation to cash, nothing goes silent.
 
-## What Memoire Is
+## Expanded positioning
 
-- Personal Business Activity OS
-- One activity ledger for the whole commercial motion
-- Daily business cockpit (what moves money today)
-- Sales memory + money-flow memory + follow-up safety
-- Private working layer for founder-led, solo-led, and individual B2B selling
+Memoire is a personal commercial control tower for complex B2B sellers. It turns every customer interaction into a continuous commercial thread - from conversation and quotation to delivery and cash - so no commitment, follow-up, or revenue opportunity goes silent.
 
-## What Memoire Is Not
+## Core contrast
 
-- CRM clone
-- Task manager or generic productivity app
-- Note-taking app or second brain for everything
-- Invoicing, accounting, inventory, ecommerce, or marketplace software
-- Project-delivery management tool
-- Sales dashboard with vanity metrics
-- Generic AI chatbot
-- Forecasting tool
+Your CRM tracks records for the company. Memoire keeps your commercial threads moving.
 
-The money-spine rule keeps the boundary: every surface must connect activity -> money state -> next action. Anything that cannot name the money it moves or protects is out of scope.
+## The operating loop
 
-## Target Users
+```text
+Capture
+→ Commercial Thread
+→ Commitment
+→ Silence and Risk
+→ Today
+→ Review
+→ Measured Commercial Value
+```
 
-- B2B sales professionals who own their own follow-up
-- Founder-led sellers and solo operators running the whole commercial motion
-- Consultants, freelancers, and agency owners selling and delivering client work
-- Account managers, business development, technical and consultative sellers
-- Creators and experts selling sponsorships, partnerships, workshops, or services
+## Signature mechanisms
 
-## Persona Boundary
+1. **Commercial Thread** - the continuous commercial story around one customer outcome: conversation, follow-up, technical evaluation, quote, customer commitment, PO, delivery, payment, post-sale commitment.
+2. **Commercial Commitment Ledger** - who owes what, to whom, in which commercial context, by when, and with what impact. Three parties: I owe, the customer owes, internal owes.
+3. **Saved by Memoire** - a lightweight record of whether Memoire actually produced commercial value, so the product's worth is measured rather than asserted.
 
-Use "solo operator" or "founder-led seller" when the user owns their own sales follow-up, money flow, and deal story. Do not use C2B or C2C as the primary public persona because those labels are too broad and can pull the product toward marketplaces, ecommerce, or transaction management. There are no persona modes: one product, one voice.
+## The hypothesis being validated
 
-## Core Value
+A seller running their own complex B2B commercial motion will repeatedly use Memoire if they only need to record commercial information once, and Memoire reliably helps them recover context, keep commitments, and act before a commercial thread goes silent.
 
-- Remember the whole commercial story, not just deals
-- Never miss a follow-up - on deals, quotes, deliveries, or payments
-- See where the money sits and what is going silent
-- Turn every activity into a next action
-- Keep one ledger of everything that happened in the business
-- Learn from measured history: silence rescues, objection responses that worked, personal win-rate calibration
-- Prepare a review-ready business story for yourself, a partner, a client, or a manager (Pipeline Defense Brief is the premium artifact)
+Three behaviours, in order:
 
-## Product Loop
+1. **Record once** - capture a commercial event once, without re-entering it across modules.
+2. **Recover context** - understand quickly what happened, what is being waited on, what matters next.
+3. **Act on time** - complete commitments, recover follow-ups, advance quotations, prevent delivery delays, collect payments sooner.
 
-Activity -> Capture -> Ledger -> Memory (accounts, opportunities, quotes, initiatives) -> Money & silence state -> Action -> Review (Weekly Business Review + Pipeline Defense Brief) -> Outcome -> Measured learning
+Everything else is secondary.
+
+## Target user
+
+An individual B2B seller or solo commercial operator running their own complex commercial motion: founder-led sellers, technical and consultative sellers, account managers and business development who own their own follow-up, consultants and agency owners who sell and then deliver.
+
+There are no persona modes. One product, one voice, one target user during validation.
+
+## What Memoire is not
+
+- A generic CRM replacement
+- A generic productivity application
+- A task manager
+- An invoicing application
+- An accounting system
+- A project-management suite
+- An AI sales assistant
+- An ERP
+- An all-in-one freelancer platform
+
+## Positioning guardrails
+
+These may appear descriptively where a sentence needs them. None may be the headline claim or the category:
+
+- "AI sales assistant"
+- "Never miss a follow-up"
+- "Flexible CRM"
+- "Revenue intelligence platform"
+- "All-in-one business management"
+- "Generic productivity OS"
+
+**No AI dependency** is a trust differentiator, not the promise. Parsing, prioritisation, search and recommendations are deterministic and run on the user's device. Say it where trust is the question; never lead with it.
+
+## Product phase
+
+Single-user private beta. The purpose of this phase is to find out whether one individual B2B seller repeatedly gets value from the core loop. No team functionality, no external integrations, no paid AI dependencies, and no growth in the number of top-level modules.
+
+Prepared for, but explicitly out of scope: team workspaces, shared ownership, manager workflows, CRM integrations, email and calendar ingestion, commercial approvals, cross-functional handovers, enterprise controls.
+
+## Information architecture
+
+```text
+GLOBAL
++ Capture
+Search & Insights
+Settings
+
+PRIMARY NAVIGATION
+Today
+Accounts
+Opportunities
+Money
+Timeline
+Review
+```
+
+Six primary destinations, enforced by `src/config/featureRegistry.ts` and `scripts/verify-navigation-contract.mjs`. There is no seventh.

@@ -16,20 +16,25 @@ function requireIncludes(text, marker, label) {
   if (!text.includes(marker)) fail(label);
 }
 
+// Today is the activation surface. The trial checklist, the "latest saved
+// review pack" card and the CSV/demo triage that used to live beside it were
+// four more onboarding mechanisms competing with the First Week Path; the path
+// replaced all of them, so this contract follows activation to where it went.
 const dashboard = read('src/features/dashboard/DashboardPage.tsx');
 for (const marker of [
-  'loadReviewPacksForWorkspace',
   'hasLocalSampleData',
-  'Import CSV',
-  'Try demo first',
-  'Add Opportunity',
-  'Open Pipeline Defense',
-  'Latest saved review pack',
-  'Open Latest Review Pack',
-  'Trial activation checklist',
-  'Start with a CSV import, demo sandbox, or one manual opportunity, then generate a Pipeline Defense Brief.',
+  'buildFirstWeekPath',
+  '<FirstWeekPathStrip',
+  'Capture your first activity',
+  'See it working with demo data',
+  'Have a pipeline already? Import a CSV',
 ]) {
-  requireIncludes(dashboard, marker, `dashboard activation surface missing marker: ${marker}`);
+  requireIncludes(dashboard, marker, `Today activation surface missing marker: ${marker}`);
+}
+for (const retired of ['Trial activation checklist', 'Latest saved review pack', 'Open Latest Review Pack']) {
+  if (dashboard.includes(retired)) {
+    fail(`a retired activation mechanism is back on Today: ${retired}`);
+  }
 }
 
 const opportunities = read('src/features/opportunities/OpportunitiesPage.tsx');
@@ -185,10 +190,25 @@ const packet = read('docs/product/cohort-release-evidence-packet-2026-06-17.md')
 requireIncludes(packet, 'scripts/verify-activation-workflow-contract.mjs', 'cohort packet does not reference activation workflow verifier');
 requireIncludes(packet, 'scripts/verify-cloud-json-runtime-contract.mjs', 'cohort packet does not reference cloud JSON runtime verifier');
 
+// The rail no longer discloses progressively. It used to hide a "Review &
+// Learn" tier until the first saved brief, which meant the navigation a user
+// learned on Monday was not the navigation they had on Friday. Six destinations
+// are few enough to show all of them, all the time; what is *gated* now is the
+// Playbook and Asset library, and that gate is on real workspace evidence
+// rather than on a first-run milestone.
 const sidebarNav = read('src/components/layout/Sidebar.tsx');
-requireIncludes(sidebarNav, 'function hasFirstSavedBrief()', 'Sidebar progressive disclosure missing first-saved-brief check');
-requireIncludes(sidebarNav, 'Review & Learn unlocks after your first saved brief.', 'Sidebar missing locked Review & Learn hint');
-requireIncludes(sidebarNav, 'reviewTierUnlocked || demoActive || hasActiveSecondaryRoute || isFounderImportUser(user?.email)', 'Sidebar Review & Learn unlock conditions changed unexpectedly');
+requireIncludes(sidebarNav, 'primaryNavigation', 'Sidebar must render the six primary destinations');
+requireIncludes(sidebarNav, 'globalActions', 'Sidebar must render the global actions');
+for (const retired of ['hasFirstSavedBrief', 'reviewTierUnlocked', 'Review & Learn']) {
+  if (sidebarNav.includes(retired)) {
+    fail(`progressive disclosure is back in the navigation rail: ${retired}`);
+  }
+}
+
+const libraryGate = read('src/config/libraryActivation.ts');
+requireIncludes(libraryGate, 'MIN_REAL_COMMERCIAL_EVENTS', 'library activation must state its evidence threshold');
+requireIncludes(libraryGate, 'decidedOpportunityCount', 'library activation must require a decided opportunity');
+requireIncludes(libraryGate, 'repeatedObjectionCount', 'library activation must require a repeated objection');
 
 if (failures.length > 0) {
   console.error('Activation workflow contract verification failed:');

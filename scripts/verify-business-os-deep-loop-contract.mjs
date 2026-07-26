@@ -355,7 +355,7 @@ for (const marker of ['BusinessCockpitStrip', 'buildBusinessCockpit', 'operating
   assert.ok(dashboard.includes(marker), `DashboardPage missing marker: ${marker}`);
 }
 const reviews = readFileSync(new URL('../src/features/reviews/SalesReviewsPage.tsx', import.meta.url), 'utf8');
-for (const marker of ['WeeklyBusinessReviewPanel', 'buildWeeklyBusinessReview', 'Weekly Business Review']) {
+for (const marker of ['WeeklyBusinessReviewPanel', 'buildWeeklyBusinessReview', 'Weekly review']) {
   assert.ok(reviews.includes(marker), `SalesReviewsPage missing marker: ${marker}`);
 }
 const revenue = readFileSync(new URL('../src/features/revenue/RevenueViewPage.tsx', import.meta.url), 'utf8');
