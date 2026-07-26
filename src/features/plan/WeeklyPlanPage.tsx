@@ -14,6 +14,7 @@ import { buildOwnObligations } from '../../utils/ownObligations';
 import { buildPlanSuggestions, type PlanSuggestion } from '../../utils/planSuggestions';
 import { PlanSuggestionsPanel } from './PlanSuggestionsPanel';
 import { PlanTagAccountsPanel } from './PlanTagAccountsPanel';
+import { PlanPasteImportPanel } from './PlanPasteImportPanel';
 import { buildPlanTagAccountCandidates, planRecordsForCandidate, type PlanTagAccountCandidate } from '../../utils/planTagAccounts';
 import { createAccount, emptyAccountInput, loadAccounts, type AccountMemoryRecord } from '../../services/accountStore';
 import {
@@ -165,6 +166,24 @@ export function WeeklyPlanPage() {
     setDraftLink(null);
     trackProductEvent('weekly_plan_item_added');
   }, [draft, draftLink, sampleDataActive]);
+
+  const importPastedWeek = useCallback((lines: { date: string; tag: string; label: string }[]) => {
+    let nextRecords = records;
+    lines.forEach((line) => {
+      nextRecords = savePlanItem(createPersonalPlanRecord({
+        date: line.date,
+        label: line.label,
+        tag: line.tag,
+        source: sampleDataActive ? 'demo' : 'user',
+        isSample: sampleDataActive,
+      }));
+    });
+    setRecords(nextRecords);
+    setAccountMessage(
+      `${lines.length} ${lines.length === 1 ? 'item' : 'items'} added to this week. Tag an account and it can become a real customer below.`,
+    );
+    trackProductEvent('weekly_plan_item_added');
+  }, [records, sampleDataActive]);
 
   const removePersonalItem = useCallback((itemId: string) => {
     setRecords(deletePlanItem(itemId));
@@ -352,6 +371,8 @@ export function WeeklyPlanPage() {
           </Link>
         )}
       </div>
+
+      <PlanPasteImportPanel days={board.days} records={records} onImport={importPastedWeek} />
 
       <PlanTagAccountsPanel
         candidates={tagAccountCandidates}
