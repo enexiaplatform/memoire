@@ -77,17 +77,33 @@ export function readLocal<T extends KernelRecord>(codec: KernelCodec<T>): T[] {
   }
 }
 
+/**
+ * Writes the store, and announces it **only when something actually changed**.
+ *
+ * The guard is not an optimisation. Every load path ends in a write: a
+ * cloud/local merge finishes by persisting the merged result, which is usually
+ * byte-for-byte what was already there. Announcing that as a change made the
+ * app eat itself - a surface listening for the update refetched the workspace,
+ * the refetch merged and wrote again, and the cycle ran forever, flickering the
+ * sync pill and firing an upsert at Supabase on every pass.
+ *
+ * A write that changes nothing is not a change, so it emits no event and does
+ * not invalidate the workspace cache.
+ */
 export function writeLocal<T extends KernelRecord>(codec: KernelCodec<T>, records: T[]): T[] {
   const sanitized = records
     .map(codec.sanitize)
     .filter((record): record is T => Boolean(record))
     .sort(codec.compare);
 
-  if (canUseStorage()) {
-    window.localStorage.setItem(codec.storageKey, JSON.stringify(sanitized));
-    invalidateWorkspaceDataCache();
-    window.dispatchEvent(new CustomEvent(codec.updatedEvent, { detail: sanitized }));
-  }
+  if (!canUseStorage()) return sanitized;
+
+  const serialized = JSON.stringify(sanitized);
+  if (window.localStorage.getItem(codec.storageKey) === serialized) return sanitized;
+
+  window.localStorage.setItem(codec.storageKey, serialized);
+  invalidateWorkspaceDataCache();
+  window.dispatchEvent(new CustomEvent(codec.updatedEvent, { detail: sanitized }));
 
   return sanitized;
 }
