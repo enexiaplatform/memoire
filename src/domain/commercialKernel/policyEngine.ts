@@ -1,5 +1,6 @@
 import type { CommercialCommitment } from './types.ts';
 import type { ResolvedThread } from './deriveThreads.ts';
+import type { CoverageReport } from './forecast.ts';
 import { isThreadClosed } from './types.ts';
 import type { QuoteRecord } from '../../services/quoteStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
@@ -35,6 +36,8 @@ export const reasonCodes = [
   'OPPORTUNITY_WITHOUT_FUTURE_ACTION',
   'QUOTE_EXPIRING',
   'MONEY_CHECKPOINT_STUCK',
+  'PERIOD_COVERAGE_LOW',
+  'FORECAST_NOT_SUPPORTED',
 ] as const;
 export type ReasonCode = (typeof reasonCodes)[number];
 
@@ -80,6 +83,20 @@ export const policyThresholds = {
   quoteExpiryWarningDays: 7,
   /** Days a money checkpoint may sit unchanged before it is stuck. */
   moneyCheckpointStuckDays: 14,
+  /**
+   * Coverage below which the current quarter is in trouble. 1.0 would be
+   * "exactly on plan and nothing may slip", which is not how a quarter ever
+   * runs; 0.8 leaves room to react while there is still a quarter left to
+   * react in.
+   */
+  minimumCoverage: 0.8,
+  /**
+   * Days left in the quarter below which a coverage shortfall stops being
+   * something to fix and becomes something to report. Raising it earlier is
+   * pointless noise; raising it later is a warning that arrives after the
+   * quarter is already decided.
+   */
+  coverageWarningDaysLeft: 60,
 } as const;
 
 export type PolicyThresholds = typeof policyThresholds;
@@ -101,6 +118,12 @@ export type PolicyInput = {
    * silent" over a pipeline full of overdue payments.
    */
   includeSampleRecords?: boolean;
+  /**
+   * Quarterly coverage, when the workspace has targets. Optional: a seller who
+   * has not set a number gets no coverage nagging, which is right - a rule that
+   * fires on data the user never entered is a rule they will learn to ignore.
+   */
+  coverage?: CoverageReport;
 };
 
 const SEVERITY_ORDER: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -119,6 +142,7 @@ export function evaluateCommercialPolicies(input: PolicyInput): Recommendation[]
     ...threadRules(input.threads, thresholds, calculatedAt),
     ...opportunityRules(input.opportunities.filter(isVisible), todayKey, calculatedAt),
     ...quoteRules(input.quotes.filter(isVisible), todayKey, thresholds, calculatedAt),
+    ...coverageRules(input.coverage, thresholds, calculatedAt),
   ];
 
   return recommendations.sort((left, right) => {
@@ -396,6 +420,72 @@ function quoteRules(
   return out;
 }
 
+// --------------------------------------------------------------- coverage
+
+/**
+ * The quarter as a whole, not deal by deal.
+ *
+ * Everything else in this engine watches one record. These two watch the
+ * number the seller is measured on - the question a control tower exists to
+ * answer, and the one Memoire was previously blind to. Both are deliberately
+ * timed: a shortfall raised with two months left is something to fix, the same
+ * shortfall raised in the final fortnight is only something to explain.
+ */
+function coverageRules(
+  coverage: CoverageReport | undefined,
+  thresholds: PolicyThresholds,
+  calculatedAt: string,
+): Recommendation[] {
+  if (!coverage || !coverage.hasTargets) return [];
+
+  const out: Recommendation[] = [];
+  const current = coverage.quarters.find((quarter) => quarter.isCurrent);
+
+  if (current && current.target > 0 && current.coverage !== null) {
+    const daysLeft = current.daysLeft ?? 0;
+    const shortfall = Math.max(0, current.gap);
+
+    if (current.coverage < thresholds.minimumCoverage && shortfall > 0) {
+      const stillTime = daysLeft >= 14;
+      out.push({
+        id: `coverage:${current.quarter}`,
+        reasonCode: 'PERIOD_COVERAGE_LOW',
+        reasonText: `${current.quarter} is ${Math.round(current.coverage * 100)}% covered with ${plural(daysLeft, 'day')} left. Won plus evidence-backed pipeline is ${formatMoney(current.committed + current.weightedSupported)} against a ${formatMoney(current.target)} target - short by ${formatMoney(shortfall)}.`,
+        sourceRecordIds: [`target:${current.quarter}`],
+        threshold: thresholds.minimumCoverage,
+        severity: daysLeft <= 30 ? 'critical' : 'high',
+        recommendedAction: stillTime
+          ? 'Add pipeline, or pull a later deal forward - there is still time to change the number.'
+          : 'Too late to close the gap with new pipeline. Decide what you are telling the business.',
+        calculatedAt,
+        accountName: '',
+        href: '/app/revenue',
+      });
+    }
+  }
+
+  // The declared forecast against what the evidence supports. This is the
+  // number that gets challenged in a review, so it is worth seeing first.
+  if (coverage.unsupportedValue > 0 && coverage.unsupportedDeals.length > 0) {
+    const worst = coverage.unsupportedDeals[0];
+    out.push({
+      id: 'coverage:unsupported',
+      reasonCode: 'FORECAST_NOT_SUPPORTED',
+      reasonText: `${formatMoney(coverage.unsupportedValue)} of weighted forecast is not supported by evidence, across ${plural(coverage.unsupportedDeals.length, 'deal')}. The largest is ${worst.accountName} - declared ${worst.declared}%, evidence supports ${worst.supported}%.`,
+      sourceRecordIds: coverage.unsupportedDeals.map((deal) => deal.opportunityId),
+      threshold: 0,
+      severity: 'medium',
+      recommendedAction: 'Refresh the evidence on these deals, or mark the forecast down before someone else does.',
+      calculatedAt,
+      accountName: worst.accountName,
+      opportunityId: worst.opportunityId,
+      href: '/app/revenue',
+    });
+  }
+
+  return out;
+}
+
 // ----------------------------------------------------------------- helpers
 
 function commitmentHref(commitment: CommercialCommitment) {
@@ -437,4 +527,13 @@ function formatDate(value: string) {
 
 function plural(count: number, noun: string) {
   return `${count} ${noun}${Math.abs(count) === 1 ? '' : 's'}`;
+}
+
+/** Compact money for a sentence: 1.2M rather than 1,234,567. */
+function formatMoney(value: number) {
+  const rounded = Math.round(value);
+  if (Math.abs(rounded) >= 1_000_000_000) return `${(rounded / 1_000_000_000).toFixed(1)}B`;
+  if (Math.abs(rounded) >= 1_000_000) return `${(rounded / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(rounded) >= 1_000) return `${(rounded / 1_000).toFixed(0)}K`;
+  return String(rounded);
 }

@@ -199,6 +199,10 @@ export const commercialEventTypes = [
   'opportunity_won',
   'opportunity_lost',
   'value_outcome_recorded',
+  // A quota that moves mid-year is a fact about the year, not a correction to
+  // be overwritten. Without this event, "I was raised in Q3" is unanswerable
+  // the moment the number changes.
+  'target_changed',
 ] as const;
 export type CommercialEventType = (typeof commercialEventTypes)[number];
 

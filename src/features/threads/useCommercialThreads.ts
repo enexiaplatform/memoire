@@ -10,6 +10,13 @@ import {
   evaluateCommercialPolicies,
   type Recommendation,
 } from '../../domain/commercialKernel/policyEngine';
+import { buildCoverage } from '../../domain/commercialKernel/forecast';
+import {
+  loadTargets,
+  loadTargetsForWorkspace,
+  TARGETS_UPDATED_EVENT,
+  type CommercialTarget,
+} from '../../services/commercialKernel/targetStore';
 import { COMMITMENTS_UPDATED_EVENT } from '../../services/commercialKernel/commitmentStore';
 import { THREADS_UPDATED_EVENT } from '../../services/commercialKernel/threadStore';
 
@@ -29,6 +36,21 @@ export function useCommercialThreads() {
   const [workspace, setWorkspace] = useState(() => getCachedSalesWorkspaceData(dataUserId));
   const [loading, setLoading] = useState(() => !getCachedSalesWorkspaceData(dataUserId));
   const [refreshToken, setRefreshToken] = useState(0);
+  const [targets, setTargets] = useState<CommercialTarget[]>(() => loadTargets());
+
+  useEffect(() => {
+    let active = true;
+    void loadTargetsForWorkspace(dataUserId, sampleDataActive)
+      .then((loaded) => { if (active) setTargets(loaded); })
+      .catch(() => undefined);
+
+    const onTargets = (event: Event) => {
+      const detail = (event as CustomEvent<CommercialTarget[]>).detail;
+      if (Array.isArray(detail)) setTargets(detail);
+    };
+    window.addEventListener(TARGETS_UPDATED_EVENT, onTargets);
+    return () => { active = false; window.removeEventListener(TARGETS_UPDATED_EVENT, onTargets); };
+  }, [dataUserId, sampleDataActive]);
 
   useEffect(() => {
     let active = true;
@@ -66,6 +88,20 @@ export function useCommercialThreads() {
     });
   }, [workspace]);
 
+  // Coverage feeds the two quarter-level rules. Built here rather than in the
+  // Money page so Today can raise a coverage warning without Money being open -
+  // a shortfall you only see when you go looking is not a warning.
+  const coverage = useMemo(() => {
+    if (!workspace || targets.length === 0) return undefined;
+    return buildCoverage({
+      opportunities: workspace.opportunities,
+      threads,
+      targets: targets.map((target) => ({ quarter: target.period, amount: target.amount })),
+      fiscalYearStartMonth: targets[0]?.fiscalYearStartMonth || 1,
+      includeSampleRecords: sampleDataActive,
+    });
+  }, [sampleDataActive, targets, threads, workspace]);
+
   const recommendations = useMemo<Recommendation[]>(() => {
     if (!workspace) return [];
     return evaluateCommercialPolicies({
@@ -73,11 +109,12 @@ export function useCommercialThreads() {
       commitments: workspace.commitments,
       opportunities: workspace.opportunities,
       quotes: workspace.quotes,
+      coverage,
       // In the demo, the sample data is the workspace. Anywhere else, a demo
       // record must never raise a real risk.
       includeSampleRecords: sampleDataActive,
     });
-  }, [sampleDataActive, threads, workspace]);
+  }, [coverage, sampleDataActive, threads, workspace]);
 
-  return { threads, recommendations, workspace, loading };
+  return { threads, recommendations, coverage, workspace, loading };
 }

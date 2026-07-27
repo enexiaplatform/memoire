@@ -28,6 +28,8 @@ import {
 import { loadThreads, newThreadId, saveThread } from '../../services/commercialKernel/threadStore.ts';
 import { appendEvent, newEventId } from '../../services/commercialKernel/eventStore.ts';
 import { newValueOutcomeId, saveValueOutcome } from '../../services/commercialKernel/valueOutcomeStore.ts';
+import { loadTargets, saveTarget, type CommercialTarget } from '../../services/commercialKernel/targetStore.ts';
+import type { ForecastQuarter } from './forecast.ts';
 
 /**
  * Application commands: the only place a Commercial Kernel record changes state.
@@ -516,6 +518,69 @@ function ownerPhrase(commitment: CommercialCommitment) {
   if (commitment.commitmentParty === 'customer') return `${commitment.ownerLabel} owes:`;
   if (commitment.commitmentParty === 'internal') return `${commitment.ownerLabel} owes:`;
   return 'You owe:';
+}
+
+// --------------------------------------------------------------- targets
+
+/**
+ * Sets the number for a quarter, and records that it moved.
+ *
+ * The event is the point. A quota raised mid-year is a fact about the year, and
+ * overwriting the old value would make "I was raised in Q3" unanswerable
+ * exactly when it matters - the review where the gap is being discussed. The
+ * table holds today's number; commercial_events holds how it got there.
+ */
+export function setCommercialTarget(
+  scope: CommercialScope,
+  input: {
+    period: ForecastQuarter;
+    fiscalYear: number;
+    amount: number;
+    currency?: string;
+    fiscalYearStartMonth?: number;
+    note?: string;
+  },
+): CommandResult<CommercialTarget> {
+  if (!Number.isFinite(input.amount) || input.amount < 0) {
+    return fail('A target needs a number that is zero or more.');
+  }
+
+  const previous = loadTargets().find(
+    (target) => target.period === input.period && target.fiscalYear === input.fiscalYear,
+  );
+  const timestamp = now();
+
+  const target: CommercialTarget = {
+    period: input.period,
+    fiscalYear: input.fiscalYear,
+    amount: input.amount,
+    currency: input.currency || 'VND',
+    fiscalYearStartMonth: input.fiscalYearStartMonth ?? previous?.fiscalYearStartMonth ?? 1,
+    note: input.note?.trim() || null,
+    createdAt: previous?.createdAt || timestamp,
+    updatedAt: timestamp,
+  };
+
+  if (previous && previous.amount === target.amount) return ok(target);
+
+  saveTarget(target);
+
+  const event = recordCommercialEvent(scope, {
+    eventType: 'target_changed',
+    summary: previous
+      ? `${input.period} FY${input.fiscalYear} target moved from ${previous.amount} to ${target.amount}`
+      : `${input.period} FY${input.fiscalYear} target set to ${target.amount}`,
+    structuredPayload: {
+      period: target.period,
+      fiscalYear: target.fiscalYear,
+      from: previous?.amount ?? null,
+      to: target.amount,
+      currency: target.currency,
+      note: target.note,
+    },
+  });
+
+  return ok(target, event);
 }
 
 // -------------------------------------------------------- value outcomes

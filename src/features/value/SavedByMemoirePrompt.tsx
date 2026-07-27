@@ -33,6 +33,11 @@ const OUTCOME_BY_REASON: Record<ReasonCode, ValueOutcomeType> = {
   OPPORTUNITY_WITHOUT_FUTURE_ACTION: 'follow_up_recovered',
   QUOTE_EXPIRING: 'quote_advanced',
   MONEY_CHECKPOINT_STUCK: 'payment_recovered',
+  // Acting on a coverage warning is revenue that would otherwise not have been
+  // in the quarter; acting on an unsupported forecast protects the number you
+  // are about to stand behind. Both are revenue protection, not follow-up.
+  PERIOD_COVERAGE_LOW: 'revenue_protected',
+  FORECAST_NOT_SUPPORTED: 'revenue_protected',
 };
 
 /**

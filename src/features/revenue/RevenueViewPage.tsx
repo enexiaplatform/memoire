@@ -4,6 +4,7 @@ import { ArrowRight, Plus, ReceiptText, RefreshCw, Search, Trash2, Wallet } from
 import { ProfitAndLossStatement } from './ProfitAndLossStatement';
 import { BUSINESS_ACCOUNTING_ENABLED } from '../../config/featureFlags';
 import { ThreadsSection } from '../threads/ThreadsSection';
+import { CoveragePanel } from './CoveragePanel';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -132,6 +133,11 @@ export function RevenueViewPage() {
           {BUSINESS_ACCOUNTING_ENABLED && (
             <ProfitAndLossStatement quotes={data.quotes} expenses={expenses} />
           )}
+
+          {/* Leads the page: a control tower has to say whether you are going
+              to make the number, and whether there is still time to change it.
+              Everything below is where the value currently sits. */}
+          <CoveragePanel />
 
           {/* Where the value is sitting, thread by thread: the same component
               Today and Accounts use, narrowed to money that has left the
