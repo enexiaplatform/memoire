@@ -25,6 +25,7 @@ const primaryIcons: Record<string, ReactNode> = {
 
 const globalIcons: Record<string, ReactNode> = {
   'search-insights': <Search className="h-5 w-5" />,
+  'business-vault': <Network className="h-5 w-5" />,
   settings: <Settings className="h-5 w-5" />,
 };
 
@@ -55,12 +56,8 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   // and - like everything else in this rail - is declared in the registry
   // rather than hard-coded here.
   const founderImport = getFeature('founder-import');
-  const businessVault = getFeature('business-vault');
-  const founderItems = isFounderImportUser(user?.email)
-    ? [
-      ...(businessVault?.route ? [{ to: businessVault.route, label: businessVault.label, icon: <Network className="h-5 w-5" /> }] : []),
-      ...(founderImport?.route ? [{ to: founderImport.route, label: 'Import Review', icon: <Database className="h-5 w-5" /> }] : []),
-    ]
+  const founderItems = isFounderImportUser(user?.email) && founderImport?.route
+    ? [{ to: founderImport.route, label: 'Import Review', icon: <Database className="h-5 w-5" /> }]
     : [];
 
   useEffect(() => {

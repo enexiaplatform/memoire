@@ -182,6 +182,25 @@ export const featureRegistry: FeatureRecord[] = [
     dataRetention: 'Owns export, restore and sync recovery.',
     killOrActivationCondition: 'Never.',
   },
+  {
+    id: 'business-vault',
+    label: 'Business Vault',
+    status: 'global',
+    ownerSurface: 'business-vault',
+    route: '/app/vault',
+    routeBehavior: 'primary',
+    // Deliberately a global surface rather than a seventh primary destination.
+    // It is a way of seeing the six, not a seventh place to work: everything on
+    // the map is a customer, a deal or a brand that already has an owner
+    // surface. Making it primary would be the exact drift this registry exists
+    // to stop - and would have meant editing PRIMARY_DESTINATION_IDS, which is
+    // a product decision, not a side effect of shipping a map.
+    navVisible: true,
+    analytics: 'active',
+    dataRetention: 'Derived map. Owns no records.',
+    killOrActivationCondition:
+      'Retire if the map is never the thing that starts an action - a picture people admire and never click is decoration.',
+  },
 
   // -------------------------------------------------------------- embedded
   {
@@ -328,19 +347,6 @@ export const featureRegistry: FeatureRecord[] = [
     killOrActivationCondition: 'Founder-only forever. Never a primary destination.',
   },
   {
-    id: 'business-vault',
-    label: 'Business Vault',
-    status: 'founder',
-    ownerSurface: 'founder tooling',
-    route: '/app/vault',
-    routeBehavior: 'compatibility',
-    navVisible: false,
-    analytics: 'none',
-    dataRetention: 'Derived map. Owns no records.',
-    killOrActivationCondition:
-      'Founder-only prototype (2026-07-28 feedback): the whole business as an Obsidian-style map. Graduates into the product only on cohort evidence that seeing the map changes what the operator does next.',
-  },
-  {
     id: 'cohort-console',
     label: 'Cohort qualification console',
     status: 'founder',
@@ -437,7 +443,7 @@ export const primaryNavigation: FeatureRecord[] = PRIMARY_DESTINATION_IDS.map((i
 });
 
 /** Always reachable, never a primary destination. */
-export const globalActions: FeatureRecord[] = ['capture', 'search-insights', 'settings'].map((id) => {
+export const globalActions: FeatureRecord[] = ['capture', 'search-insights', 'business-vault', 'settings'].map((id) => {
   const feature = byId.get(id);
   if (!feature) throw new Error(`Feature registry is missing global action "${id}"`);
   return feature;

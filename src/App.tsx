@@ -112,6 +112,7 @@ function App() {
             {/* Global actions: reachable everywhere, not destinations. */}
             <Route path="capture" element={<DailyCapturePage />} />
             <Route path="ask" element={<AskMemoirePage />} />
+            <Route path="vault" element={<BusinessVaultPage />} />
             <Route path="settings" element={<SettingsPage />} />
 
             {/* Contextual surfaces: opened from a record, a search result or a
@@ -140,7 +141,6 @@ function App() {
 
             {/* Founder-only operator tooling. */}
             <Route path="imports" element={<FounderImportReviewPage />} />
-            <Route path="vault" element={<BusinessVaultPage />} />
             <Route
               path="validation-feedback"
               element={isFounderWorkspaceEnabled ? <ValidationFeedbackPage /> : <Navigate to="/app/today" replace />}

@@ -64,14 +64,24 @@ for (const retired of [
   );
 }
 
-// 4. Capture, Search & Insights and Settings stay globally reachable.
+// 4. Capture, Search & Insights, the Business Vault and Settings stay globally
+// reachable - and the Vault stays global. It is a way of seeing the six
+// destinations, not a seventh place to work, so it may live in the rail's
+// second tier and must never appear in PRIMARY_DESTINATION_IDS.
 {
   assert.ok(topNav.includes('to="/app/capture"'), 'Capture must stay a global action in the top bar');
   const globals = registry.match(/export const globalActions[\s\S]*?\]\.map/);
   assert.ok(globals, 'featureRegistry must declare globalActions');
-  for (const id of ['capture', 'search-insights', 'settings']) {
+  for (const id of ['capture', 'search-insights', 'business-vault', 'settings']) {
     assert.ok(globals[0].includes(`'${id}'`), `global action missing from registry: ${id}`);
   }
+
+  const primaries = registry.match(/export const PRIMARY_DESTINATION_IDS = \[([\s\S]*?)\] as const;/);
+  assert.equal(
+    primaries[1].includes('business-vault'),
+    false,
+    'the Business Vault must not become a seventh primary destination',
+  );
 }
 
 // 5. Every primary destination has a route, and every retired destination still
@@ -171,4 +181,4 @@ for (const removed of [
   );
 }
 
-console.log('Navigation contract verified: six primary destinations, three global actions, no orphaned deep links.');
+console.log('Navigation contract verified: six primary destinations, four global surfaces, no orphaned deep links.');
