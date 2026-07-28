@@ -64,6 +64,9 @@ const PipelineReviewPackPage = lazy(() =>
 const FounderImportReviewPage = lazy(() =>
   import('./features/imports/FounderImportReviewPage').then((module) => ({ default: module.FounderImportReviewPage })),
 );
+const BusinessVaultPage = lazy(() =>
+  import('./features/vault/BusinessVaultPage').then((module) => ({ default: module.BusinessVaultPage })),
+);
 
 function App() {
   return (
@@ -137,6 +140,7 @@ function App() {
 
             {/* Founder-only operator tooling. */}
             <Route path="imports" element={<FounderImportReviewPage />} />
+            <Route path="vault" element={<BusinessVaultPage />} />
             <Route
               path="validation-feedback"
               element={isFounderWorkspaceEnabled ? <ValidationFeedbackPage /> : <Navigate to="/app/today" replace />}

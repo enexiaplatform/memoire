@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Banknote, BookOpen, ClipboardList, Database, History, Search, Settings, Sun, Target, X } from 'lucide-react';
+import { Banknote, BookOpen, ClipboardList, Database, History, Network, Search, Settings, Sun, Target, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 import { prefetchAppRoute } from '../../utils/routePrefetch';
@@ -55,8 +55,12 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   // and - like everything else in this rail - is declared in the registry
   // rather than hard-coded here.
   const founderImport = getFeature('founder-import');
-  const founderItems = isFounderImportUser(user?.email) && founderImport?.route
-    ? [{ to: founderImport.route, label: 'Import Review', icon: <Database className="h-5 w-5" /> }]
+  const businessVault = getFeature('business-vault');
+  const founderItems = isFounderImportUser(user?.email)
+    ? [
+      ...(businessVault?.route ? [{ to: businessVault.route, label: businessVault.label, icon: <Network className="h-5 w-5" /> }] : []),
+      ...(founderImport?.route ? [{ to: founderImport.route, label: 'Import Review', icon: <Database className="h-5 w-5" /> }] : []),
+    ]
     : [];
 
   useEffect(() => {
