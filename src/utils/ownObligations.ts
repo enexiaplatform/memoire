@@ -30,6 +30,13 @@ export type OwnObligationsModel = {
 type OwnObligationsInput = {
   expenses: ExpenseRecord[];
   quotes: QuoteRecord[];
+  /**
+   * What you owe your principals - a forecast, a purchase order, a payment to
+   * the brand. Already shaped as obligations by supplierCommitments, because
+   * only your own side of that relationship belongs in "what you owe".
+   * Optional so existing callers keep working.
+   */
+  supplierObligations?: OwnObligation[];
   today?: string;
   dueSoonDays?: number;
 };
@@ -81,12 +88,11 @@ export function buildOwnObligations(input: OwnObligationsInput): OwnObligationsM
       dueSoonDays,
     }));
 
-  const obligations = [...paymentObligations, ...deliveryObligations].sort(compareObligations);
+  const supplierObligations = input.supplierObligations || [];
+  const obligations = [...paymentObligations, ...deliveryObligations, ...supplierObligations].sort(compareObligations);
 
-  const paymentsOwedBase = paymentObligations.reduce(
-    (total, obligation) => total + (obligation.amountBase ?? 0),
-    0,
-  );
+  const paymentsOwedBase = [...paymentObligations, ...supplierObligations.filter((item) => item.kind === 'Payment')]
+    .reduce((total, obligation) => total + (obligation.amountBase ?? 0), 0);
 
   return {
     obligations,

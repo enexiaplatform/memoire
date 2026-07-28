@@ -6,6 +6,7 @@ import { BUSINESS_ACCOUNTING_ENABLED } from '../../config/featureFlags';
 import { ThreadsSection } from '../threads/ThreadsSection';
 import { CoveragePanel } from './CoveragePanel';
 import { OrderBookPanel } from './OrderBookPanel';
+import { SupplierCommitmentsPanel } from './SupplierCommitmentsPanel';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -144,6 +145,12 @@ export function RevenueViewPage() {
             dataUserId={dataUserId}
             sampleDataActive={sampleDataActive}
           />
+
+          {/* The supply side of the same orders. An order stuck on a price the
+              principal has not confirmed is stuck for a reason no amount of
+              chasing the customer will fix, so it sits next to the order book
+              rather than in a room of its own. */}
+          <SupplierCommitmentsPanel opportunities={data.opportunities} />
 
           {/* A control tower has to say whether you are going to make the
               number, and whether there is still time to change it. */}

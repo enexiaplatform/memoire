@@ -16,6 +16,12 @@ import { type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { type QuoteRecord } from '../../services/quoteStore';
 import { type ExpenseRecord } from '../../services/expenseStore';
 import { buildOwnObligations } from '../../utils/ownObligations';
+import { loadSupplierCommitmentsForWorkspace } from '../../services/supplierCommitmentStore';
+import {
+  supplierCommitmentsAsOwnObligations,
+  SUPPLIER_OBLIGATION_MARKER,
+  type SupplierCommitmentRecord,
+} from '../../utils/supplierCommitments';
 import { buildPlanSuggestions, type PlanSuggestion } from '../../utils/planSuggestions';
 import { PlanSuggestionsPanel } from './PlanSuggestionsPanel';
 import { PlanTagAccountsPanel } from './PlanTagAccountsPanel';
@@ -75,6 +81,7 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
   const [records, setRecords] = useState<PlanRecord[]>([]);
+  const [supplierCommitments, setSupplierCommitments] = useState<SupplierCommitmentRecord[]>([]);
   const [commitment, setCommitment] = useState<WeeklyCommitmentSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
@@ -112,6 +119,7 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
 
     setAccounts(await loadAccounts(dataUserId));
     setRecords(await loadPlanItemsForWorkspace(dataUserId, sampleDataActive));
+    setSupplierCommitments(await loadSupplierCommitmentsForWorkspace(dataUserId, sampleDataActive));
     const snapshots = await loadWeeklyCommitmentsForWorkspace(dataUserId, sampleDataActive);
     setCommitment(getWeeklyCommitmentForWeek(getCurrentPipelineReviewWeekId(), snapshots));
   }, [dataUserId, sampleDataActive]);
@@ -119,8 +127,14 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
   useEffect(() => { void refresh(); }, [refresh]);
 
   const obligations = useMemo(
-    () => buildOwnObligations({ expenses, quotes }).obligations,
-    [expenses, quotes],
+    () => buildOwnObligations({
+      expenses,
+      quotes,
+      // A forecast owed to a principal is a dated promise like any other, so it
+      // belongs on the week rather than in a second place to remember.
+      supplierObligations: supplierCommitmentsAsOwnObligations({ records: supplierCommitments }),
+    }).obligations,
+    [expenses, quotes, supplierCommitments],
   );
 
   const board = useMemo(() => buildPlanBoard({
@@ -232,7 +246,13 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
         return;
       }
 
-      setBoardMessage('Payments and deliveries you owe move when the quote or expense behind them changes date.');
+      // Three kinds of record can raise an obligation, and the message has to
+      // name the right one or it sends the operator to the wrong screen.
+      setBoardMessage(
+        item.id.includes(SUPPLIER_OBLIGATION_MARKER)
+          ? `Change the date with the principal on Orders & Cash - "${item.tag}" is holding this one.`
+          : 'Payments and deliveries you owe move when the quote or expense behind them changes date.',
+      );
     } catch {
       setBoardMessage('Could not move that item. Nothing was changed.');
     }
@@ -610,7 +630,12 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
                 return (
                 <div
                   key={item.id}
-                  draggable={editable && !isEditing}
+                  // Obligations can be picked up even though they will not
+                  // move. Refusing the drag outright taught the operator
+                  // nothing - the item simply did not respond - whereas
+                  // catching it lets the board say which record holds the date.
+                  // The grab cursor stays off them, so nothing invites the try.
+                  draggable={!isEditing}
                   onDragStart={(event) => {
                     event.dataTransfer.effectAllowed = 'move';
                     event.dataTransfer.setData('text/plain', item.id);
