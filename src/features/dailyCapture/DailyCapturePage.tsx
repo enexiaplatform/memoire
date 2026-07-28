@@ -779,7 +779,7 @@ export function DailyCapturePage() {
           onChange={setQuickForm}
           onSave={handleQuickSave}
           accountSuggestions={accountNameSuggestions}
-          opportunitySuggestions={opportunityNameSuggestions}
+          opportunityRecords={opportunities}
         />
       )}
 
@@ -1315,7 +1315,7 @@ function QuickCapturePanel({
   onChange,
   onSave,
   accountSuggestions,
-  opportunitySuggestions,
+  opportunityRecords,
 }: {
   form: QuickCaptureForm;
   templates: typeof quickTemplates;
@@ -1326,7 +1326,7 @@ function QuickCapturePanel({
   onChange: (form: QuickCaptureForm) => void;
   onSave: () => void;
   accountSuggestions?: string[];
-  opportunitySuggestions?: string[];
+  opportunityRecords?: CrmLiteOpportunity[];
 }) {
   const template = quickTemplates.find((item) => item.id === selectedTemplateId) || quickTemplates[0];
   const update = <Key extends keyof QuickCaptureForm>(key: Key, value: QuickCaptureForm[Key]) => {
@@ -1338,6 +1338,45 @@ function QuickCapturePanel({
       whatHappened: form.whatHappened.trim() ? `${form.whatHappened.trimEnd()} ${chunk}` : chunk,
     });
   });
+
+  // Live typeahead over the workspace: type a few letters and the customer or
+  // deal is one click away, diacritic-insensitive - "dp" finds "DP Lab",
+  // "euvi" finds "Euvipharm". Picking a deal fills its account in too, so a
+  // 30-second capture lands already linked instead of as loose text.
+  const accountOptions = useMemo(() => {
+    const query = normalizeQuickSuggestText(form.accountName);
+    return (accountSuggestions || [])
+      .filter((name) => !query || normalizeQuickSuggestText(name).includes(query))
+      .filter((name) => normalizeQuickSuggestText(name) !== query)
+      .slice(0, 6)
+      .map((name) => ({
+        key: `account-${name}`,
+        primary: name,
+        onPick: () => onChange({ ...form, accountName: name }),
+      }));
+  }, [accountSuggestions, form, onChange]);
+
+  const opportunityOptions = useMemo(() => {
+    const account = normalizeQuickSuggestText(form.accountName);
+    const query = normalizeQuickSuggestText(form.opportunityName);
+    return (opportunityRecords || [])
+      .filter((opportunity) => opportunity.status === 'Active')
+      .filter((opportunity) => !account || normalizeQuickSuggestText(opportunity.accountName).includes(account))
+      .filter((opportunity) => !query
+        || normalizeQuickSuggestText(`${opportunity.opportunityName} ${opportunity.accountName}`).includes(query))
+      .filter((opportunity) => normalizeQuickSuggestText(opportunity.opportunityName) !== query)
+      .slice(0, 6)
+      .map((opportunity) => ({
+        key: opportunity.id,
+        primary: opportunity.opportunityName || 'Untitled deal',
+        secondary: opportunity.accountName,
+        onPick: () => onChange({
+          ...form,
+          opportunityName: opportunity.opportunityName,
+          accountName: form.accountName.trim() ? form.accountName : opportunity.accountName,
+        }),
+      }));
+  }, [form, onChange, opportunityRecords]);
 
   return (
     <section className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-5 shadow-sm">
@@ -1381,8 +1420,20 @@ function QuickCapturePanel({
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
-        <QuickInput label="Account" value={form.accountName} placeholder="Your customer's company" onChange={(value) => update('accountName', value)} suggestions={accountSuggestions} />
-        <QuickInput label="Opportunity optional" value={form.opportunityName} placeholder="Deal or project name" onChange={(value) => update('opportunityName', value)} suggestions={opportunitySuggestions} />
+        <QuickSuggestInput
+          label="Account"
+          value={form.accountName}
+          placeholder="Your customer's company"
+          onChange={(value) => update('accountName', value)}
+          options={accountOptions}
+        />
+        <QuickSuggestInput
+          label="Opportunity optional"
+          value={form.opportunityName}
+          placeholder="Deal or project name"
+          onChange={(value) => update('opportunityName', value)}
+          options={opportunityOptions}
+        />
         <QuickSelect label="Interaction type" value={form.interactionType} options={quickInteractionTypes} onChange={(value) => update('interactionType', value as QuickInteractionType)} />
         <QuickSelect label="Signal type" value={form.signalType} options={quickSignalTypes} onChange={(value) => update('signalType', value as QuickSignalType)} />
         <QuickInput label="Activity date" type="date" value={form.activityDate} placeholder="" onChange={(value) => update('activityDate', value)} />
@@ -1467,6 +1518,65 @@ function QuickInput({
       )}
     </label>
   );
+}
+
+/**
+ * A text field with a live dropdown over the workspace's own records - the
+ * quick-capture answer to "does it suggest accounts and deals?". Unlike the
+ * native datalist (invisible until the exact prefix matches, and blind to
+ * Vietnamese diacritics), this one is always one keystroke away and matches
+ * anywhere in the name.
+ */
+function QuickSuggestInput({
+  label,
+  value,
+  placeholder,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  onChange: (value: string) => void;
+  options: { key: string; primary: string; secondary?: string; onPick: () => void }[];
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <label className="relative block rounded-lg bg-white px-3 py-2 ring-1 ring-emerald-100">
+      <span className="text-xs font-bold uppercase tracking-wide text-emerald-700">{label}</span>
+      <input
+        type="text"
+        value={value}
+        placeholder={placeholder}
+        onChange={(event) => { onChange(event.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onKeyDown={(event) => { if (event.key === 'Escape') setOpen(false); }}
+        autoComplete="off"
+        className="mt-1 w-full bg-transparent text-sm font-semibold text-emerald-950 outline-none placeholder:text-emerald-300"
+      />
+      {open && options.length > 0 && (
+        <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-lg border border-emerald-100 bg-white shadow-lg">
+          {options.map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => { option.onPick(); setOpen(false); }}
+              className="flex w-full items-baseline justify-between gap-2 px-3 py-1.5 text-left text-sm font-semibold text-emerald-950 hover:bg-emerald-50"
+            >
+              <span className="truncate">{option.primary}</span>
+              {option.secondary && <span className="shrink-0 text-[11px] font-semibold text-gray-400">{option.secondary}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </label>
+  );
+}
+
+function normalizeQuickSuggestText(value: string) {
+  return (value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 }
 
 function QuickSelect({
