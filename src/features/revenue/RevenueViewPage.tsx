@@ -5,6 +5,7 @@ import { ProfitAndLossStatement } from './ProfitAndLossStatement';
 import { BUSINESS_ACCOUNTING_ENABLED } from '../../config/featureFlags';
 import { ThreadsSection } from '../threads/ThreadsSection';
 import { CoveragePanel } from './CoveragePanel';
+import { OrderBookPanel } from './OrderBookPanel';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -86,11 +87,11 @@ export function RevenueViewPage() {
     <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Money</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Where your commercial value is sitting.</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Orders &amp; Cash</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">From committed order to money in the bank.</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            The commercial lifecycle end to end: quote, customer decision, PO, delivery, invoice, paid - and what is stuck
-            at each step. Today owns the priority order.
+            Only the deals the customer has committed to. Contract, deposit, delivery, invoice, collection - and what is
+            stuck at each step. Today owns the priority order.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -134,9 +135,18 @@ export function RevenueViewPage() {
             <ProfitAndLossStatement quotes={data.quotes} expenses={expenses} />
           )}
 
-          {/* Leads the page: a control tower has to say whether you are going
-              to make the number, and whether there is still time to change it.
-              Everything below is where the value currently sits. */}
+          {/* Leads the page: the orders that are actually going to become
+              money, each walked from contract to cash. Everything below is
+              context - coverage, value in motion, and risk. */}
+          <OrderBookPanel
+            opportunities={data.opportunities}
+            quotes={data.quotes}
+            dataUserId={dataUserId}
+            sampleDataActive={sampleDataActive}
+          />
+
+          {/* A control tower has to say whether you are going to make the
+              number, and whether there is still time to change it. */}
           <CoveragePanel />
 
           {/* Where the value is sitting, thread by thread: the same component

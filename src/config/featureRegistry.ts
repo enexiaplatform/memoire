@@ -108,7 +108,9 @@ export const featureRegistry: FeatureRecord[] = [
   },
   {
     id: 'money',
-    label: 'Money',
+    // Renamed from "Money" (2026-07-28, founder feedback): the surface is not
+    // "all money things", it is the committed orders and their road to cash.
+    label: 'Orders & Cash',
     status: 'core',
     ownerSurface: 'money',
     route: '/app/revenue',
@@ -324,6 +326,19 @@ export const featureRegistry: FeatureRecord[] = [
     analytics: 'retained',
     dataRetention: 'Import audit trail preserved.',
     killOrActivationCondition: 'Founder-only forever. Never a primary destination.',
+  },
+  {
+    id: 'business-vault',
+    label: 'Business Vault',
+    status: 'founder',
+    ownerSurface: 'founder tooling',
+    route: '/app/vault',
+    routeBehavior: 'compatibility',
+    navVisible: false,
+    analytics: 'none',
+    dataRetention: 'Derived map. Owns no records.',
+    killOrActivationCondition:
+      'Founder-only prototype (2026-07-28 feedback): the whole business as an Obsidian-style map. Graduates into the product only on cohort evidence that seeing the map changes what the operator does next.',
   },
   {
     id: 'cohort-console',
