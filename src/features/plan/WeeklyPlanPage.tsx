@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, ChevronLeft, ChevronRight, Loader2, Plus, RotateCcw, X } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Loader2, Pencil, Plus, RotateCcw, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { isSupabaseConfigured } from '../../lib/demoMode';
-import { canUseSalesActivityCloudStore, type SalesActivityRecord } from '../../services/salesActivityStore';
+import {
+  canUseSalesActivityCloudStore,
+  updateSalesActivitySchedule,
+  type SalesActivityRecord,
+} from '../../services/salesActivityStore';
+import { opportunityToFormInput, updateOpportunity } from '../../services/opportunityStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { type QuoteRecord } from '../../services/quoteStore';
@@ -18,14 +23,18 @@ import { PlanPasteImportPanel } from './PlanPasteImportPanel';
 import { buildPlanTagAccountCandidates, planRecordsForCandidate, type PlanTagAccountCandidate } from '../../utils/planTagAccounts';
 import { createAccount, emptyAccountInput, loadAccounts, type AccountMemoryRecord } from '../../services/accountStore';
 import {
+  buildCaptureDerivedKey,
+  buildDealDerivedKey,
   buildPlanBoard,
   buildPlanLinkOptions,
   createDerivedCompletionRecord,
   createDismissedSuggestionRecord,
   createPersonalPlanRecord,
   formatPlanRangeLabel,
+  getPlanItemWriteTarget,
   planKindTone,
   shiftPlanAnchor,
+  splitBracketTag,
   type PlanItem,
   type PlanLinkOption,
   type PlanPeriod,
@@ -75,6 +84,11 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
   const [composerDate, setComposerDate] = useState('');
   const [draft, setDraft] = useState('');
   const [draftLink, setDraftLink] = useState<PlanLinkOption | null>(null);
+  const [dragItem, setDragItem] = useState<PlanItem | null>(null);
+  const [dragOverDate, setDragOverDate] = useState('');
+  const [editingId, setEditingId] = useState('');
+  const [editDraft, setEditDraft] = useState('');
+  const [boardMessage, setBoardMessage] = useState('');
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
@@ -150,6 +164,146 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
     })));
     trackProductEvent('commitment_completed');
   }, [records, sampleDataActive]);
+
+  /**
+   * Rewrites the completion stub for a derived item whose date is changing, so
+   * a tick made on Tuesday is still a tick after the item moves to Thursday.
+   */
+  const carryCompletionStub = useCallback((item: PlanItem, nextDerivedKey: string, nextDate: string) => {
+    const stub = records.find((record) => record.derivedKey === item.derivedKey);
+    if (!stub) return;
+    setRecords(savePlanItem({ ...stub, date: nextDate, derivedKey: nextDerivedKey, updatedAt: new Date().toISOString() }));
+  }, [records]);
+
+  /**
+   * Dragging an item onto another day writes the new date into the record that
+   * owns the commitment: the plan record, the deal's next-action date, or the
+   * captured touch's due date. The board stays a mirror, never a second copy.
+   */
+  const moveItem = useCallback(async (item: PlanItem, targetDate: string) => {
+    if (item.date === targetDate) return;
+    setBoardMessage('');
+    const target = getPlanItemWriteTarget(item);
+
+    try {
+      if (target.kind === 'personal') {
+        const existing = records.find((record) => record.id === target.recordId);
+        if (!existing) return;
+        setRecords(savePlanItem({ ...existing, date: targetDate, updatedAt: new Date().toISOString() }));
+        return;
+      }
+
+      if (target.kind === 'deal') {
+        const opportunity = opportunities.find((candidate) => candidate.id === target.opportunityId);
+        if (!opportunity) return;
+        const result = await updateOpportunity(
+          opportunity,
+          { ...opportunityToFormInput(opportunity), nextActionDate: targetDate },
+          dataUserId,
+        );
+        carryCompletionStub(item, buildDealDerivedKey(opportunity.id, targetDate), targetDate);
+        setOpportunities((current) => current.map((candidate) => (candidate.id === opportunity.id ? result.opportunity : candidate)));
+        if (result.warning) setBoardMessage(result.warning);
+        return;
+      }
+
+      if (target.kind === 'capture') {
+        const activity = activities.find((candidate) => candidate.id === target.activityId);
+        if (!activity) return;
+        // The headline action and its structured copy describe one commitment,
+        // so both move; a structured-only slot moves alone.
+        const changes = target.slot === 'main'
+          ? {
+            dueDate: targetDate,
+            nextActions: (activity.nextActions || []).map((action) => (
+              action.dueDate === item.date && (action.title || '').trim() === (activity.nextAction || '').trim()
+                ? { ...action, dueDate: targetDate }
+                : action
+            )),
+          }
+          : {
+            nextActions: (activity.nextActions || []).map((action, index) => (
+              `n${index}` === target.slot ? { ...action, dueDate: targetDate } : action
+            )),
+          };
+        const updated = await updateSalesActivitySchedule(activity, changes, dataUserId);
+        carryCompletionStub(item, buildCaptureDerivedKey(activity.id, targetDate, target.slot), targetDate);
+        setActivities((current) => current.map((candidate) => (candidate.id === activity.id ? updated : candidate)));
+        return;
+      }
+
+      setBoardMessage('Payments and deliveries you owe move when the quote or expense behind them changes date.');
+    } catch {
+      setBoardMessage('Could not move that item. Nothing was changed.');
+    }
+  }, [activities, carryCompletionStub, dataUserId, opportunities, records]);
+
+  const startEdit = useCallback((item: PlanItem) => {
+    setEditingId(item.id);
+    setEditDraft(item.tag && item.kind === 'personal' ? `[${item.tag}] ${item.label}` : item.label);
+  }, []);
+
+  /**
+   * Editing a label in place rewrites the wording where it lives: the plan
+   * record, the deal's next action, or the captured touch's next action.
+   */
+  const saveEdit = useCallback(async (item: PlanItem) => {
+    const raw = editDraft.trim();
+    setEditingId('');
+    setEditDraft('');
+    if (!raw) return;
+    setBoardMessage('');
+    const target = getPlanItemWriteTarget(item);
+
+    try {
+      if (target.kind === 'personal') {
+        const existing = records.find((record) => record.id === target.recordId);
+        if (!existing) return;
+        const { tag, label } = splitBracketTag(raw);
+        if (label === existing.label && (!tag || tag === existing.tag)) return;
+        setRecords(savePlanItem({ ...existing, label, tag: tag || existing.tag, updatedAt: new Date().toISOString() }));
+        return;
+      }
+
+      if (target.kind === 'deal') {
+        if (raw === item.label) return;
+        const opportunity = opportunities.find((candidate) => candidate.id === target.opportunityId);
+        if (!opportunity) return;
+        const result = await updateOpportunity(
+          opportunity,
+          { ...opportunityToFormInput(opportunity), nextAction: raw },
+          dataUserId,
+        );
+        setOpportunities((current) => current.map((candidate) => (candidate.id === opportunity.id ? result.opportunity : candidate)));
+        if (result.warning) setBoardMessage(result.warning);
+        return;
+      }
+
+      if (target.kind === 'capture') {
+        if (raw === item.label) return;
+        const activity = activities.find((candidate) => candidate.id === target.activityId);
+        if (!activity) return;
+        const changes = target.slot === 'main'
+          ? {
+            nextAction: raw,
+            nextActions: (activity.nextActions || []).map((action) => (
+              action.dueDate === item.date && (action.title || '').trim() === (activity.nextAction || '').trim()
+                ? { ...action, title: raw }
+                : action
+            )),
+          }
+          : {
+            nextActions: (activity.nextActions || []).map((action, index) => (
+              `n${index}` === target.slot ? { ...action, title: raw } : action
+            )),
+          };
+        const updated = await updateSalesActivitySchedule(activity, changes, dataUserId);
+        setActivities((current) => current.map((candidate) => (candidate.id === activity.id ? updated : candidate)));
+      }
+    } catch {
+      setBoardMessage('Could not save that edit. The original wording stands.');
+    }
+  }, [activities, dataUserId, editDraft, opportunities, records]);
 
   const addPersonalItem = useCallback((date: string) => {
     const label = draft.trim();
@@ -387,6 +541,12 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
         </p>
       )}
 
+      {boardMessage && (
+        <p className="mt-3 rounded-lg bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800 ring-1 ring-amber-100">
+          {boardMessage}
+        </p>
+      )}
+
       <PlanSuggestionsPanel
         suggestions={suggestions}
         days={board.days}
@@ -418,7 +578,21 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
         {visibleDays.map((day) => (
           <section
             key={day.date}
-            className={`flex flex-col rounded-lg border ${day.isToday ? 'border-brand-blue' : 'border-gray-100'} bg-white`}
+            onDragOver={(event) => {
+              if (!dragItem) return;
+              event.preventDefault();
+              event.dataTransfer.dropEffect = 'move';
+              if (dragOverDate !== day.date) setDragOverDate(day.date);
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              setDragOverDate('');
+              if (dragItem) void moveItem(dragItem, day.date);
+              setDragItem(null);
+            }}
+            className={`flex flex-col rounded-lg border ${day.isToday ? 'border-brand-blue' : 'border-gray-100'} bg-white ${
+              dragItem && dragOverDate === day.date && dragItem.date !== day.date ? 'ring-2 ring-brand-blue/40' : ''
+            }`}
           >
             <header className={`flex items-baseline justify-between rounded-t-lg px-3 py-2 ${day.isToday ? 'bg-blue-50' : 'bg-gray-50'}`}>
               <h2 className={`text-sm font-bold ${day.isToday ? 'text-brand-blue' : 'text-navy'}`}>
@@ -430,8 +604,23 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
             </header>
 
             <div className="flex-1 space-y-1 p-2">
-              {day.items.map((item) => (
-                <div key={item.id} className="group flex items-start gap-2 rounded-md px-1.5 py-1 hover:bg-gray-50">
+              {day.items.map((item) => {
+                const editable = item.kind !== 'obligation';
+                const isEditing = editingId === item.id;
+                return (
+                <div
+                  key={item.id}
+                  draggable={editable && !isEditing}
+                  onDragStart={(event) => {
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', item.id);
+                    setDragItem(item);
+                  }}
+                  onDragEnd={() => { setDragItem(null); setDragOverDate(''); }}
+                  className={`group flex items-start gap-2 rounded-md px-1.5 py-1 hover:bg-gray-50 ${
+                    editable && !isEditing ? 'cursor-grab active:cursor-grabbing' : ''
+                  } ${dragItem?.id === item.id ? 'opacity-40' : ''}`}
+                >
                   <input
                     type="checkbox"
                     checked={item.done}
@@ -440,6 +629,21 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
                     className="mt-[3px] h-3.5 w-3.5 shrink-0"
                   />
                   <div className="min-w-0 flex-1">
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editDraft}
+                        autoFocus
+                        onChange={(event) => setEditDraft(event.target.value)}
+                        onBlur={() => void saveEdit(item)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') { event.preventDefault(); void saveEdit(item); }
+                          if (event.key === 'Escape') { setEditingId(''); setEditDraft(''); }
+                        }}
+                        aria-label={`Edit "${item.label}"`}
+                        className="w-full rounded border border-brand-blue/60 px-1.5 py-0.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue/20"
+                      />
+                    ) : (
                     <p className={`text-xs leading-5 ${item.done ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                       {item.tag && (
                         <span className={`mr-1 rounded px-1 py-0.5 text-[10px] font-bold ${item.done ? 'bg-gray-100 text-gray-400' : planKindTone(item.kind)}`}>
@@ -448,6 +652,15 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
                       )}
                       {item.href && !item.done ? (
                         <Link to={item.href} className="font-medium hover:text-brand-blue hover:underline">{item.label}</Link>
+                      ) : editable ? (
+                        <button
+                          type="button"
+                          onClick={() => startEdit(item)}
+                          className="text-left font-medium hover:text-brand-blue"
+                          title="Edit"
+                        >
+                          {item.label}
+                        </button>
                       ) : (
                         <span className="font-medium">{item.label}</span>
                       )}
@@ -455,8 +668,19 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
                         <span className="ml-1 rounded bg-red-50 px-1 py-0.5 text-[10px] font-bold text-red-700">Overdue</span>
                       )}
                     </p>
+                    )}
                   </div>
-                  {item.kind === 'personal' && (
+                  {editable && !isEditing && (
+                    <button
+                      type="button"
+                      aria-label={`Edit ${item.label}`}
+                      onClick={() => startEdit(item)}
+                      className="shrink-0 rounded p-0.5 text-gray-300 opacity-0 transition hover:bg-gray-200 hover:text-gray-700 group-hover:opacity-100"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  )}
+                  {item.kind === 'personal' && !isEditing && (
                     <button
                       type="button"
                       aria-label={`Remove ${item.label}`}
@@ -467,7 +691,8 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
                     </button>
                   )}
                 </div>
-              ))}
+                );
+              })}
 
               {composerDate === day.date ? (
                 <div className="mt-1">
@@ -544,9 +769,10 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
       </div>
 
       <p className="mt-4 text-xs leading-5 text-gray-400">
-        Items in green were pulled in from a capture - you wrote them once, they landed here on their own. Checking any
-        pipeline, capture, or obligation item records that you did your plan; it does not change the deal, so capture the
-        touch when it happens and the rest of Memoire stays in step.
+        Items in green were pulled in from a capture - you wrote them once, they landed here on their own. Drag any item
+        to another day to reschedule it, or use the pencil to rewrite it - both write straight into the deal or touch it
+        came from. Checking an item records that you did your plan; it does not change the deal, so capture the touch
+        when it happens and the rest of Memoire stays in step.
       </p>
     </div>
   );

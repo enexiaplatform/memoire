@@ -186,7 +186,7 @@ function buildDealItems(opportunities: CrmLiteOpportunity[], range: PlanRange, t
     .filter((opportunity) => isBusinessDateInRange(opportunity.nextActionDate, range.start, range.end))
     .map((opportunity) => ({
       id: `deal-${opportunity.id}`,
-      derivedKey: `deal:${opportunity.id}:${opportunity.nextActionDate}`,
+      derivedKey: buildDealDerivedKey(opportunity.id, opportunity.nextActionDate),
       kind: 'deal' as const,
       date: opportunity.nextActionDate,
       tag: opportunity.accountName || 'Unknown account',
@@ -308,6 +308,37 @@ function buildCaptureItems(
  */
 export function buildCaptureDerivedKey(activityId: string, dueDate: string, slot: string) {
   return `capture:${activityId}:${dueDate}:${slot}`;
+}
+
+/**
+ * Where a board item's date and wording actually live, so dragging it to
+ * another day or editing it in place writes into the record that owns it - the
+ * plan record for personal items, the deal for deal items, the captured touch
+ * for capture items. Obligations reschedule only when the quote or expense
+ * behind them changes, so they report no write target.
+ */
+export type PlanItemWriteTarget =
+  | { kind: 'personal'; recordId: string }
+  | { kind: 'deal'; opportunityId: string }
+  | { kind: 'capture'; activityId: string; slot: string }
+  | { kind: 'obligation' };
+
+export function getPlanItemWriteTarget(item: PlanItem): PlanItemWriteTarget {
+  if (item.kind === 'personal') return { kind: 'personal', recordId: item.id };
+  if (item.kind === 'deal') return { kind: 'deal', opportunityId: item.id.slice('deal-'.length) };
+  if (item.kind === 'capture') {
+    // Activity ids may themselves contain dashes; the slot never does, so the
+    // last dash is the only safe split point.
+    const body = item.id.slice('capture-'.length);
+    const lastDash = body.lastIndexOf('-');
+    return { kind: 'capture', activityId: body.slice(0, lastDash), slot: body.slice(lastDash + 1) };
+  }
+  return { kind: 'obligation' };
+}
+
+/** The derived key a deal item will carry once its next action moves to `date`. */
+export function buildDealDerivedKey(opportunityId: string, date: string) {
+  return `deal:${opportunityId}:${date}`;
 }
 
 /**

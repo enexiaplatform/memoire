@@ -172,6 +172,57 @@ export async function updateSalesActivityLink(
   return { ...updated, storageMode: 'local' };
 }
 
+export type SalesActivityScheduleInput = {
+  nextAction?: string;
+  dueDate?: string;
+  nextActions?: ClassifiedSalesActivity['nextActions'];
+};
+
+/**
+ * Rewrites a touch's dated next actions - the write behind dragging a capture
+ * item to another day, or editing its wording, on the Timeline board. The board
+ * derives from the activity, so rescheduling has to land here: writing the new
+ * date anywhere else would create a second copy of the commitment that the
+ * activity itself would quietly contradict.
+ */
+export async function updateSalesActivitySchedule(
+  activity: SalesActivityRecord,
+  changes: SalesActivityScheduleInput,
+  userId?: string | null
+): Promise<SalesActivityRecord> {
+  const timestamp = new Date().toISOString();
+  const updated: SalesActivityRecord = {
+    ...activity,
+    nextAction: changes.nextAction !== undefined ? changes.nextAction : activity.nextAction,
+    dueDate: changes.dueDate !== undefined ? sanitizeBusinessDate(changes.dueDate) : activity.dueDate,
+    nextActions: changes.nextActions !== undefined ? normalizeNextActions(changes.nextActions) : activity.nextActions,
+    updatedAt: timestamp,
+  };
+
+  if (activity.storageMode === 'cloud' && canUseSalesActivityCloudStore(userId)) {
+    const { data, error } = await supabaseClient!
+      .from(TABLE_NAME)
+      .update({
+        next_action: updated.nextAction || null,
+        due_date: sanitizeBusinessDate(updated.dueDate) || null,
+        next_actions: normalizeNextActions(updated.nextActions),
+        updated_at: timestamp,
+      })
+      .eq('id', activity.id)
+      .eq('user_id', userId)
+      .select('*')
+      .single();
+
+    if (error) throw new Error(error.message);
+    invalidateWorkspaceDataCache();
+    return rowToRecord(data as SalesActivityRow);
+  }
+
+  saveLocalActivityRecord({ ...updated, storageMode: 'local' });
+  invalidateWorkspaceDataCache();
+  return { ...updated, storageMode: 'local' };
+}
+
 function loadLocalActivities(): SalesActivityRecord[] {
   if (typeof localStorage === 'undefined') return [];
   const raw = localStorage.getItem(SALES_ACTIVITY_STORAGE_KEY);

@@ -131,11 +131,38 @@ const anchor = new Date(2026, 6, 22); // Wed of the Mon 2026-07-20 week
   assert.equal(kpi.href, '', 'a personal item has nowhere commercial to link to');
 }
 
-// 5. The page never writes back onto the deal - the whole reason the board can
-//    be checked off without lying to the rest of the app.
+// 5. Ticking an item never writes back onto the deal - the whole reason the
+//    board can be checked off without lying to the rest of the app.
+//
+//    Rescheduling and rewording DO write back, and must: dragging an item to
+//    Thursday or correcting its wording is the operator stating an intention
+//    about the commitment itself, not a note about their own day. If those
+//    edits stayed on the board, the board would become the second source of
+//    truth this whole contract exists to prevent - the deal would still say
+//    Tuesday while the seller looked at Thursday. So the rule is narrow: the
+//    completion path is read-only, the explicit-edit paths are not, and no
+//    path may touch anything other than the deal's next action and its date.
 {
   const page = readFileSync(new URL('../src/features/plan/WeeklyPlanPage.tsx', import.meta.url), 'utf8');
-  assert.doesNotMatch(page, /updateOpportunity|saveOpportunity|deleteOpportunity/, 'the plan board must not mutate opportunities');
+
+  const toggle = page.slice(page.indexOf('const toggleItem'), page.indexOf('const carryCompletionStub'));
+  assert.ok(toggle.length > 0, 'the completion handler must be findable');
+  assert.doesNotMatch(
+    toggle,
+    /updateOpportunity|saveOpportunity|deleteOpportunity|updateSalesActivity/,
+    'checking an item off must not mutate the deal or the touch it came from',
+  );
+  assert.match(toggle, /createDerivedCompletionRecord/, 'a derived tick is stored as its own completion stub');
+
+  // Every write the board is allowed to make, and the only fields it may set.
+  const dealWrites = [...page.matchAll(/opportunityToFormInput\(opportunity\), ([a-zA-Z]+):/g)].map((match) => match[1]);
+  assert.deepEqual(
+    [...new Set(dealWrites)].sort(),
+    ['nextAction', 'nextActionDate'],
+    'the board may only reschedule or reword the deal\'s next action',
+  );
+  assert.doesNotMatch(page, /saveOpportunity|deleteOpportunity/, 'the board never creates or deletes a deal');
+
   assert.match(page, /does not change the deal/, 'the page says so to the operator');
   assert.match(page, /isSample: sampleDataActive/, 'demo plan items are tagged at birth');
 }
