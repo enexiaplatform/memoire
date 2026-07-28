@@ -153,6 +153,7 @@ export const emptyOpportunityInput: OpportunityFormInput = {
   forecastEvidenceCategory: 'Weak but recoverable',
   decisionRecommendation: 'Monitor',
   status: 'Active',
+  brand: '',
 };
 
 export function canUseOpportunityCloudStore(userId?: string | null) {
@@ -284,6 +285,11 @@ export function opportunityToFormInput(opportunity: CrmLiteOpportunity): Opportu
     forecastEvidenceCategory: opportunity.forecastEvidenceCategory,
     decisionRecommendation: opportunity.decisionRecommendation,
     status: opportunity.status,
+    // Carried through the form round-trip. Without this, opening a deal in the
+    // editor and saving it - or dragging it to another day on the plan board,
+    // which uses this same round-trip - silently blanked the brand it was
+    // imported with, and with it the deal's line in the brand rollup.
+    brand: opportunity.brand || '',
   };
 }
 
@@ -320,6 +326,26 @@ function loadLocalOpportunities(): CrmLiteOpportunity[] {
         forecastEvidenceCategory: normalizeForecastCategory(item.forecastEvidenceCategory),
         decisionRecommendation: normalizeDecisionRecommendation(item.decisionRecommendation),
         status: normalizeStatus(item.status),
+        // The imported dimensions. These were absent here while the cloud
+        // reader carried all of them, so every local read quietly returned a
+        // thinner opportunity than the one that was stored - and because
+        // saveLocalOpportunityRecord rebuilds the file from this reader,
+        // editing one deal stripped brand, probability and quarter values from
+        // every other deal in the mirror. Nothing warned: the fields simply
+        // stopped existing, so the order book saw no committed deals and the
+        // brand rollup saw no brands.
+        brand: item.brand || '',
+        channel: item.channel || '',
+        opportunityType: item.opportunityType || '',
+        fy26Value: normalizeNumber(item.fy26Value),
+        fy27Value: normalizeNumber(item.fy27Value),
+        quarterValues: item.quarterValues,
+        forecastMetadata: item.forecastMetadata,
+        pipelineProbability: normalizeNumber(item.pipelineProbability),
+        isStageInferred: item.isStageInferred === true,
+        sourceStageConfidence: item.sourceStageConfidence || '',
+        sourceSystem: item.sourceSystem || '',
+        externalSourceKey: item.externalSourceKey || '',
         createdAt: item.createdAt || new Date().toISOString(),
         updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
         storageMode: 'local',
@@ -508,6 +534,7 @@ function opportunityToRow(input: OpportunityFormInput) {
     forecast_evidence_category: input.forecastEvidenceCategory,
     decision_recommendation: input.decisionRecommendation,
     status: input.status,
+    brand: input.brand?.trim() || null,
   };
 }
 
