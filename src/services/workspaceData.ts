@@ -21,8 +21,10 @@ import type {
 import type { PipelineDefenseBrief } from '../utils/pipelineDefenseStorage';
 import { loadPipelineDefenseBriefStore } from '../utils/pipelineDefenseStorage';
 import {
+  clearCachedWorkspacePromise,
   getCachedWorkspacePromise,
   getCachedWorkspaceValue,
+  getWorkspaceDataGeneration,
   invalidateWorkspaceDataCache,
   setCachedWorkspacePromise,
   setCachedWorkspaceValue,
@@ -59,6 +61,18 @@ type LoadOptions = {
   force?: boolean;
 };
 
+/**
+ * How long a cloud workspace load may run before the browser copy is shown
+ * instead.
+ *
+ * A skeleton that never resolves is the worst answer this screen can give: the
+ * seller cannot tell whether their day is empty, slow, or lost. If the cloud has
+ * not answered by now, the local copy is shown, the sync pill says the cloud is
+ * unavailable, and "Cloud sync" retries - all of which are true statements the
+ * seller can act on.
+ */
+const WORKSPACE_LOAD_TIMEOUT_MS = 20_000;
+
 export async function loadSalesWorkspaceData(userId?: string | null, options: LoadOptions = {}): Promise<SalesWorkspaceData> {
   const cacheKey = `sales-workspace:${userId || 'local'}`;
   if (!options.force) {
@@ -71,22 +85,32 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
 
   if (userId) beginWorkspaceSyncCheck();
 
-  const promise = Promise.all([
-    loadSalesActivities(userId),
-    loadOpportunities(userId),
-    loadAccounts(userId),
-    loadPipelineBriefs(userId),
-    loadObjections(userId),
-    loadStakeholders(userId),
-    userId ? loadActionOutcomesForUser(userId) : Promise.resolve(loadActionOutcomes()),
-    userId ? loadSalesAssetsForUser(userId) : Promise.resolve(loadSalesAssets()),
-    userId ? loadQuotesForUser(userId) : Promise.resolve(loadQuotes()),
-    loadOperatingContext(userId),
-    userId ? loadOpportunityOutcomesForUser(userId) : Promise.resolve(loadOpportunityOutcomes()),
-    userId ? loadExpensesForUser(userId) : Promise.resolve(loadExpenses()),
-    loadCommitmentsForWorkspace(userId),
-    loadThreadsForWorkspace(userId),
-    loadValueOutcomesForWorkspace(userId),
+  const generationAtLoadStart = getWorkspaceDataGeneration();
+  // Which of the fifteen loaders have not answered yet. When the watchdog below
+  // gives up, this is the difference between "the workspace is slow" and a
+  // named store to go and look at.
+  const unsettled = new Set<string>();
+  const track = <T,>(name: string, loader: Promise<T>): Promise<T> => {
+    unsettled.add(name);
+    return loader.finally(() => unsettled.delete(name));
+  };
+
+  const cloudLoad = Promise.all([
+    track('activities', loadSalesActivities(userId)),
+    track('opportunities', loadOpportunities(userId)),
+    track('accounts', loadAccounts(userId)),
+    track('briefs', loadPipelineBriefs(userId)),
+    track('objections', loadObjections(userId)),
+    track('stakeholders', loadStakeholders(userId)),
+    track('actionOutcomes', userId ? loadActionOutcomesForUser(userId) : Promise.resolve(loadActionOutcomes())),
+    track('assets', userId ? loadSalesAssetsForUser(userId) : Promise.resolve(loadSalesAssets())),
+    track('quotes', userId ? loadQuotesForUser(userId) : Promise.resolve(loadQuotes())),
+    track('operatingContext', loadOperatingContext(userId)),
+    track('opportunityOutcomes', userId ? loadOpportunityOutcomesForUser(userId) : Promise.resolve(loadOpportunityOutcomes())),
+    track('expenses', userId ? loadExpensesForUser(userId) : Promise.resolve(loadExpenses())),
+    track('commitments', loadCommitmentsForWorkspace(userId)),
+    track('threads', loadThreadsForWorkspace(userId)),
+    track('valueOutcomes', loadValueOutcomesForWorkspace(userId)),
   ]).then(([activities, opportunities, accounts, briefs, objections, stakeholders, actionOutcomes, assets, quotes, operatingContext, opportunityOutcomes, expenses, commitments, threads, valueOutcomes]) => {
     if (userId && getWorkspaceSyncStatus().state !== 'error') reportWorkspaceSyncReady();
     return {
@@ -108,15 +132,70 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
     };
   });
 
+  // A cloud load that finishes after the watchdog gave up still holds the
+  // freshest answer, so it fills the cache for the next reader instead of being
+  // thrown away.
+  const tracked = cloudLoad.then(
+    (value) => {
+      setCachedWorkspaceValue(cacheKey, value, generationAtLoadStart);
+      return value;
+    },
+    (error) => {
+      invalidateWorkspaceDataCache();
+      if (userId) reportWorkspaceSyncError();
+      throw error;
+    },
+  );
+
+  const promise = userId ? withLocalFallback(tracked, unsettled) : tracked;
   setCachedWorkspacePromise(cacheKey, promise);
 
-  const value = await promise.catch((error) => {
-    invalidateWorkspaceDataCache();
-    if (userId) reportWorkspaceSyncError();
-    throw error;
+  try {
+    return await promise;
+  } finally {
+    clearCachedWorkspacePromise(cacheKey, promise);
+  }
+}
+
+/**
+ * Resolves with the browser copy if the cloud load has not answered in time.
+ *
+ * The cloud load is not cancelled - it may still finish and populate the cache
+ * for the next reader. What it loses is the right to keep the screen waiting.
+ */
+function withLocalFallback(
+  cloudLoad: Promise<SalesWorkspaceData>,
+  unsettled: Set<string>,
+): Promise<SalesWorkspaceData> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      console.warn(
+        `[Memoire] Cloud workspace load exceeded ${WORKSPACE_LOAD_TIMEOUT_MS}ms; showing the browser copy. Still waiting on: ${
+          Array.from(unsettled).join(', ') || 'nothing (the merge itself stalled)'
+        }`,
+      );
+      reportWorkspaceSyncError('Cloud sync did not answer. Showing this browser\'s copy.');
+      loadSalesWorkspaceData(null).then(resolve, reject);
+    }, WORKSPACE_LOAD_TIMEOUT_MS);
+
+    cloudLoad.then(
+      (value) => {
+        clearTimeout(timer);
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        if (settled) return;
+        settled = true;
+        reject(error);
+      },
+    );
   });
-  setCachedWorkspaceValue(cacheKey, value);
-  return value;
 }
 
 export function getCachedSalesWorkspaceData(userId?: string | null) {

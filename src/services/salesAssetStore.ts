@@ -113,8 +113,10 @@ function persistSalesAssets(assets: SalesAssetRecord[], syncCloud: boolean) {
   try {
     const sanitized = assets.map(sanitizeAsset).filter((asset): asset is SalesAssetRecord => Boolean(asset));
     window.localStorage.setItem(SALES_ASSET_STORAGE_KEY, JSON.stringify(sanitized));
-    if (syncCloud) syncCloudJsonCollectionForCurrentUser('sales_assets', sanitized);
-    invalidateWorkspaceDataCache();
+    if (syncCloud) {
+      syncCloudJsonCollectionForCurrentUser('sales_assets', sanitized);
+      invalidateWorkspaceDataCache();
+    }
     return true;
   } catch {
     return false;

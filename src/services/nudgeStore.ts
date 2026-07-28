@@ -145,8 +145,10 @@ function persistNudges(nudges: NudgeRecord[], userId: string | undefined, syncCl
   try {
     const sanitized = nudges.map(sanitizeNudge).filter((item): item is NudgeRecord => Boolean(item));
     localStorage.setItem(storageKey(userId), JSON.stringify(sanitized));
-    if (syncCloud) syncCloudJsonCollectionForCurrentUser('nudges', sanitized);
-    invalidateWorkspaceDataCache();
+    if (syncCloud) {
+      syncCloudJsonCollectionForCurrentUser('nudges', sanitized);
+      invalidateWorkspaceDataCache();
+    }
     return true;
   } catch {
     return false;

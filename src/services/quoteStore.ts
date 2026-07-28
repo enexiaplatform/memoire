@@ -143,8 +143,10 @@ function persistQuotes(quotes: QuoteRecord[], syncCloud: boolean) {
   try {
     const sanitized = quotes.map(sanitizeQuote).filter((quote): quote is QuoteRecord => Boolean(quote));
     window.localStorage.setItem(QUOTE_STORAGE_KEY, JSON.stringify(sanitized));
-    if (syncCloud) syncCloudJsonCollectionForCurrentUser('quotes', sanitized);
-    invalidateWorkspaceDataCache();
+    if (syncCloud) {
+      syncCloudJsonCollectionForCurrentUser('quotes', sanitized);
+      invalidateWorkspaceDataCache();
+    }
     return true;
   } catch {
     return false;

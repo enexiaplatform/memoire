@@ -75,8 +75,10 @@ function persistPlanItems(records: PlanRecord[], syncCloud = true) {
 
   if (canUseStorage()) {
     window.localStorage.setItem(PLAN_ITEM_STORAGE_KEY, JSON.stringify(sanitized));
-    if (syncCloud) syncCloudJsonCollectionForCurrentUser('plan_items', sanitized);
-    invalidateWorkspaceDataCache();
+    if (syncCloud) {
+      syncCloudJsonCollectionForCurrentUser('plan_items', sanitized);
+      invalidateWorkspaceDataCache();
+    }
     window.dispatchEvent(new CustomEvent(PLAN_ITEMS_UPDATED_EVENT, { detail: sanitized }));
   }
   return sanitized;

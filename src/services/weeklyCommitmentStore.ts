@@ -82,8 +82,10 @@ function persistWeeklyCommitments(snapshots: WeeklyCommitmentSnapshot[], syncClo
 
   if (canUseStorage()) {
     window.localStorage.setItem(WEEKLY_COMMITMENT_STORAGE_KEY, JSON.stringify(sanitized));
-    if (syncCloud) syncCloudJsonCollectionForCurrentUser('weekly_commitments', sanitized);
-    invalidateWorkspaceDataCache();
+    if (syncCloud) {
+      syncCloudJsonCollectionForCurrentUser('weekly_commitments', sanitized);
+      invalidateWorkspaceDataCache();
+    }
     window.dispatchEvent(new CustomEvent(WEEKLY_COMMITMENTS_UPDATED_EVENT, { detail: sanitized }));
   }
   return sanitized;

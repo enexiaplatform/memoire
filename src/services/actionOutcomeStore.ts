@@ -88,8 +88,10 @@ function persistActionOutcomes(outcomes: ActionOutcomeRecord[], syncCloud: boole
   try {
     const sanitized = outcomes.map(sanitizeOutcome).filter((outcome): outcome is ActionOutcomeRecord => Boolean(outcome));
     window.localStorage.setItem(ACTION_OUTCOME_STORAGE_KEY, JSON.stringify(sanitized));
-    if (syncCloud) syncCloudJsonCollectionForCurrentUser('action_outcomes', sanitized);
-    invalidateWorkspaceDataCache();
+    if (syncCloud) {
+      syncCloudJsonCollectionForCurrentUser('action_outcomes', sanitized);
+      invalidateWorkspaceDataCache();
+    }
     return true;
   } catch {
     return false;

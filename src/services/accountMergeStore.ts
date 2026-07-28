@@ -113,8 +113,10 @@ function persist(records: AccountMergeRecord[], syncCloud = true) {
 
   if (canUseStorage()) {
     window.localStorage.setItem(ACCOUNT_MERGE_STORAGE_KEY, JSON.stringify(sanitized));
-    if (syncCloud) syncCloudJsonCollectionForCurrentUser('account_merges', sanitized);
-    invalidateWorkspaceDataCache();
+    if (syncCloud) {
+      syncCloudJsonCollectionForCurrentUser('account_merges', sanitized);
+      invalidateWorkspaceDataCache();
+    }
     window.dispatchEvent(new CustomEvent(ACCOUNT_MERGES_UPDATED_EVENT, { detail: sanitized }));
   }
   return sanitized;

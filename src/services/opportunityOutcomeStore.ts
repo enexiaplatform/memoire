@@ -130,8 +130,10 @@ function persistOpportunityOutcomes(outcomes: OpportunityOutcomeRecord[], syncCl
       .map(sanitizeOpportunityOutcome)
       .filter((record): record is OpportunityOutcomeRecord => Boolean(record));
     window.localStorage.setItem(OPPORTUNITY_OUTCOME_STORAGE_KEY, JSON.stringify(sanitized));
-    if (syncCloud) syncCloudJsonCollectionForCurrentUser('opportunity_outcomes', sanitized);
-    invalidateWorkspaceDataCache();
+    if (syncCloud) {
+      syncCloudJsonCollectionForCurrentUser('opportunity_outcomes', sanitized);
+      invalidateWorkspaceDataCache();
+    }
     return true;
   } catch {
     return false;
