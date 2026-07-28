@@ -16,6 +16,7 @@ import {
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
 import { FollowUpImpactPanel } from '../dashboard/FollowUpImpactPanel';
+import { BrandPerformancePanel } from './BrandPerformancePanel';
 import { WeeklyBusinessReviewPanel } from './WeeklyBusinessReviewPanel';
 import { WeeklyCommitmentPanel } from './WeeklyCommitmentPanel';
 import { buildWeeklyBusinessReview } from '../../utils/weeklyBusinessReview';
@@ -138,6 +139,9 @@ export function SalesReviewsPage() {
           <CommercialRiskPanel recommendations={reviewRecommendations} limit={10} title="Commercial threads at risk" />
           <ThreadsSection title="Threads to look at" description="Quietest first" limit={4} />
           <CommitmentLedgerPanel title="Commitment performance" showComposer={false} />
+          {/* Renders only for a workspace carrying several brands. A single-line
+              seller never sees a panel that could only say "100%". */}
+          <BrandPerformancePanel />
           <WeeklyReviewSection />
         </>
       )}

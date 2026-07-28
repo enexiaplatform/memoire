@@ -197,6 +197,7 @@ export function OpportunitiesPage() {
   const [forecastFilter, setForecastFilter] = useState(allFilter);
   const [recommendationFilter, setRecommendationFilter] = useState(allFilter);
   const [statusFilter, setStatusFilter] = useState(allFilter);
+  const [brandFilter, setBrandFilter] = useState(allFilter);
   const [quickFilter, setQuickFilter] = useState<OpportunityQuickFilter>('all');
   const [sortKey, setSortKey] = useState<OpportunitySortKey>('updatedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -307,6 +308,17 @@ export function OpportunitiesPage() {
     [opportunityRows],
   );
 
+  // An operator carrying several principals' lines needs to ask "how is
+  // Sartorius doing" without reading past every other brand. The filter only
+  // appears once the workspace actually carries brands, so a single-brand
+  // seller never sees a control that would always say "All".
+  const brandOptions = useMemo(
+    () => Array.from(new Set(
+      opportunities.map((opportunity) => (opportunity.brand || '').trim()).filter(Boolean),
+    )).sort((a, b) => a.localeCompare(b)),
+    [opportunities],
+  );
+
   const visibleOpportunityRows = useMemo(() => {
     const query = search.trim().toLowerCase();
     return opportunityRows.filter((row) => {
@@ -329,10 +341,11 @@ export function OpportunitiesPage() {
         (stageFilter === allFilter || opportunity.stage === stageFilter) &&
         (forecastFilter === allFilter || opportunity.forecastEvidenceCategory === forecastFilter) &&
         (recommendationFilter === allFilter || opportunity.decisionRecommendation === recommendationFilter) &&
-        (statusFilter === allFilter || opportunity.status === statusFilter)
+        (statusFilter === allFilter || opportunity.status === statusFilter) &&
+        (brandFilter === allFilter || (opportunity.brand || '').trim() === brandFilter)
       );
     }).sort((left, right) => compareOpportunityRows(left, right, sortKey, sortDirection));
-  }, [forecastFilter, opportunityRows, quickFilter, recommendationFilter, search, sortDirection, sortKey, stageFilter, statusFilter]);
+  }, [brandFilter, forecastFilter, opportunityRows, quickFilter, recommendationFilter, search, sortDirection, sortKey, stageFilter, statusFilter]);
 
   const visibleOpportunities = useMemo(
     () => visibleOpportunityRows.map((row) => row.opportunity),
@@ -346,7 +359,7 @@ export function OpportunitiesPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [forecastFilter, pageSize, quickFilter, recommendationFilter, search, stageFilter, statusFilter]);
+  }, [brandFilter, forecastFilter, pageSize, quickFilter, recommendationFilter, search, stageFilter, statusFilter]);
 
   useEffect(() => {
     if (page > pageCount) setPage(pageCount);
@@ -954,7 +967,11 @@ export function OpportunitiesPage() {
             </button>
           </div>
 
-          <div className="grid flex-1 grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[minmax(260px,1.4fr)_repeat(4,minmax(150px,1fr))]">
+          <div className={`grid flex-1 grid-cols-1 gap-2 md:grid-cols-2 ${
+            brandOptions.length > 0
+              ? 'xl:grid-cols-[minmax(240px,1.3fr)_repeat(5,minmax(140px,1fr))]'
+              : 'xl:grid-cols-[minmax(260px,1.4fr)_repeat(4,minmax(150px,1fr))]'
+          }`}>
             <label className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
@@ -964,6 +981,9 @@ export function OpportunitiesPage() {
                 className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
               />
             </label>
+            {brandOptions.length > 0 && (
+              <FilterSelect label="Brand" value={brandFilter} onChange={setBrandFilter} options={[allFilter, ...brandOptions]} />
+            )}
             <FilterSelect label="Stage" value={stageFilter} onChange={setStageFilter} options={[allFilter, ...opportunityStages]} />
             <FilterSelect label="Forecast" value={forecastFilter} onChange={setForecastFilter} options={[allFilter, ...forecastEvidenceCategories]} />
             <FilterSelect label="Decision" value={recommendationFilter} onChange={setRecommendationFilter} options={[allFilter, ...decisionRecommendations]} />
@@ -2432,6 +2452,12 @@ function OpportunityPanel({
     onChange({ ...form, [key]: value });
   };
   const currentOpportunity = editingOpportunity ? { ...editingOpportunity, ...form } : null;
+  // Principals already in the workspace, so the second deal for a line spells
+  // it the same way as the first - a brand typed two ways is two brands in
+  // every rollup that reads it.
+  const brandOptions = Array.from(new Set(
+    allOpportunities.map((opportunity) => (opportunity.brand || '').trim()).filter(Boolean),
+  )).sort((a, b) => a.localeCompare(b));
 
   return (
     <>
@@ -2507,6 +2533,16 @@ function OpportunityPanel({
         </div>
 
         <Field label="Product / solution" value={form.productOrSolution} onChange={(value) => update('productOrSolution', value)} />
+        {/* The principal whose line this deal sells. It arrived with the CSV
+            import and had no way in by hand, so a deal added manually could
+            never join a brand - which made the brand rollup a report on the
+            import rather than on the business. */}
+        <Field
+          label="Brand / principal"
+          value={form.brand || ''}
+          onChange={(value) => update('brand', value)}
+          suggestions={brandOptions}
+        />
         <Field label="Decision maker" value={form.decisionMaker} onChange={(value) => update('decisionMaker', value)} />
         <Field label="Budget owner" value={form.budgetOwner} onChange={(value) => update('budgetOwner', value)} />
         <TextArea label="Procurement path" value={form.procurementPath} onChange={(value) => update('procurementPath', value)} />
@@ -3749,13 +3785,17 @@ function Field({
   onChange,
   type = 'text',
   required = false,
+  suggestions,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
   required?: boolean;
+  /** Existing values in the workspace, so a repeated name is picked not retyped. */
+  suggestions?: string[];
 }) {
+  const listId = suggestions && suggestions.length > 0 ? `field-${label.replace(/\W+/g, '-').toLowerCase()}` : undefined;
   return (
     <label className="block">
       <span className="text-sm font-bold text-navy">{label}{required ? ' *' : ''}</span>
@@ -3763,8 +3803,14 @@ function Field({
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        list={listId}
         className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
       />
+      {listId && (
+        <datalist id={listId}>
+          {suggestions!.map((option) => <option key={option} value={option} />)}
+        </datalist>
+      )}
     </label>
   );
 }
@@ -4122,6 +4168,8 @@ function opportunityToForm(opportunity: CrmLiteOpportunity): OpportunityFormInpu
     forecastEvidenceCategory: opportunity.forecastEvidenceCategory,
     decisionRecommendation: opportunity.decisionRecommendation,
     status: opportunity.status,
+    // Opening a deal in the editor must not quietly drop the line it sells.
+    brand: opportunity.brand || '',
   };
 }
 
