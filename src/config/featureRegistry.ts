@@ -197,9 +197,9 @@ export const featureRegistry: FeatureRecord[] = [
     // a product decision, not a side effect of shipping a map.
     navVisible: true,
     analytics: 'active',
-    dataRetention: 'Derived map. Owns no records.',
+    dataRetention: 'Derived coverage matrix. Owns no records.',
     killOrActivationCondition:
-      'Retire if the map is never the thing that starts an action - a picture people admire and never click is decoration.',
+      'Was a force-directed map of accounts and deals; that drew the business accurately and was worthless, because it showed the operator the one thing they already know. It is now customer x line coverage, where the empty squares are the information. Retire it if those squares stop starting conversations.',
   },
 
   // -------------------------------------------------------------- embedded

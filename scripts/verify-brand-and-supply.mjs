@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { buildBrandPerformance } from '../src/utils/brandPerformance.ts';
+import { buildCoverageMatrix } from '../src/utils/coverageMatrix.ts';
 import {
   buildSupplierCommitments,
   supplierCommitmentsAsOwnObligations,
@@ -106,7 +107,43 @@ import {
   assert.match(money, /<SupplierCommitmentsPanel/, 'Orders & Cash owns the supply relationship');
 }
 
-// 6. Storage contract: another JSON collection with a real table behind it, and
+// 6. The Vault answers a question rather than drawing a picture. The first
+//    version was a force-directed graph of accounts and deals: accurate, and
+//    worthless, because an operator already knows their own customer list. What
+//    they cannot hold in their head is which customer x line squares have never
+//    been filled, so that is what the page shows - and the empty squares have
+//    to stay legible, because they are the entire message.
+{
+  const vault = readFileSync(new URL('../src/features/vault/BusinessVaultPage.tsx', import.meta.url), 'utf8');
+  assert.match(vault, /buildCoverageMatrix/, 'the Vault renders the coverage matrix');
+  // Implementation signals only. The prose above them is allowed to say the
+  // word "force" - the page explains its own history, and a contract that
+  // fails on the explanation would teach people to delete the explanation.
+  for (const marker of ['function runLayout', '<line', 'strokeWidth']) {
+    assert.equal(
+      vault.includes(marker),
+      false,
+      `the node-graph layout must not come back (found ${marker}) - it was replaced for showing only what the operator already knew`,
+    );
+  }
+  assert.equal(
+    existsSync(new URL('../src/utils/businessGraph.ts', import.meta.url)),
+    false,
+    'the graph derivation is retired, not left lying around to be re-imported',
+  );
+
+  const matrix = buildCoverageMatrix({
+    opportunities: [
+      { id: 'a', accountName: 'DP Lab', opportunityName: 'A', brand: 'Sartorius', status: 'Active', estimatedValue: 100, currency: 'VND', stage: 'Demo', pipelineProbability: null },
+      { id: 'b', accountName: 'Rohto', opportunityName: 'B', brand: 'Cobetter', status: 'Active', estimatedValue: 100, currency: 'VND', stage: 'Demo', pipelineProbability: null },
+    ],
+  });
+  assert.equal(matrix.totalCells, 4, 'every customer is measured against every line');
+  assert.equal(matrix.filledCells, 2);
+  assert.equal(matrix.gaps.length, 2, 'a partly-covered paying customer is a named gap');
+}
+
+// 7. Storage contract: another JSON collection with a real table behind it, and
 //    no new API function.
 {
   const cloudStore = readFileSync(new URL('../src/services/cloudJsonCollectionStore.ts', import.meta.url), 'utf8');
