@@ -17,6 +17,7 @@ import { buildDailyDigest, buildDigestMailtoLink } from '../../utils/dailyDigest
 import { getUserDisplayName } from '../../utils/userDisplay';
 import { copyTextToClipboard } from '../../utils/clipboard';
 import { CommittedWeekStrip } from '../dashboard/CommittedWeekStrip';
+import { OperatorProfileSection } from './OperatorProfileSection';
 
 // Chart palette: fixed hex values (not Tailwind classes) so the SVGs survive
 // serialization to PNG for the presentation export.
@@ -195,8 +196,14 @@ export function ReviewAnalyticsSection() {
         <DashboardEmptyState />
       ) : (
         <>
-          {/* The operating-loop roll-up leads - adherence and the record-once
-              funnel - then the week's specific promises, then the charts. */}
+          {/* What is normal for this seller, and which way it is going. It
+              leads because the charts below are a period and this is the
+              person: the same 40% win rate reads differently once you know it
+              has been falling for a month. */}
+          {workspace && <OperatorProfileSection workspace={workspace} planRecords={planRecords} />}
+
+          {/* The operating-loop roll-up - adherence and the record-once funnel
+              - then the week's specific promises, then the charts. */}
           <ExecutionBand execution={model.execution} />
 
           <CommittedWeekStrip userId={dataUserId} sampleDataActive={sampleDataActive} />

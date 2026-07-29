@@ -5,13 +5,16 @@ import { ProfitAndLossStatement } from './ProfitAndLossStatement';
 import { BUSINESS_ACCOUNTING_ENABLED } from '../../config/featureFlags';
 import { ThreadsSection } from '../threads/ThreadsSection';
 import { CoveragePanel } from './CoveragePanel';
+import { TargetPlanPanel } from './TargetPlanPanel';
 import { OrderBookPanel } from './OrderBookPanel';
 import { SupplierCommitmentsPanel } from './SupplierCommitmentsPanel';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
+import type { OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore';
 import type { QuoteRecord } from '../../services/quoteStore';
+import type { SalesActivityRecord } from '../../services/salesActivityStore';
 import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { formatBaseCurrencyAmount as formatBaseMoney, formatCurrencyAmount as formatMoney } from '../../utils/money';
@@ -33,11 +36,18 @@ import {
 type RevenueData = {
   opportunities: CrmLiteOpportunity[];
   quotes: QuoteRecord[];
+  // Only the target plan reads these two, and only to work out the seller's own
+  // win rate, deal size and cycle. They come from the same cached workspace
+  // load, so carrying them costs nothing the page was not already paying.
+  activities: SalesActivityRecord[];
+  opportunityOutcomes: OpportunityOutcomeRecord[];
 };
 
 export function RevenueViewPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
-  const [data, setData] = useState<RevenueData>({ opportunities: [], quotes: [] });
+  const [data, setData] = useState<RevenueData>({
+    opportunities: [], quotes: [], activities: [], opportunityOutcomes: [],
+  });
   const [expenses, setExpenses] = useState<ExpenseRecord[]>(() => loadExpenses());
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -57,6 +67,8 @@ export function RevenueViewPage() {
       setData({
         opportunities: workspace.opportunities,
         quotes: workspace.quotes,
+        activities: workspace.activities,
+        opportunityOutcomes: workspace.opportunityOutcomes,
       });
     } finally {
       setLoading(false);
@@ -155,6 +167,17 @@ export function RevenueViewPage() {
           {/* A control tower has to say whether you are going to make the
               number, and whether there is still time to change it. */}
           <CoveragePanel />
+
+          {/* The second half of Coverage's sentence: the shortfall turned into
+              deals, quotes and a weekly rate, at the seller's own conversion.
+              Renders nothing until a target exists, so it never repeats the
+              invitation the panel above already makes. */}
+          <TargetPlanPanel
+            opportunities={data.opportunities}
+            quotes={data.quotes}
+            activities={data.activities}
+            opportunityOutcomes={data.opportunityOutcomes}
+          />
 
           {/* Where the value is sitting, thread by thread: the same component
               Today and Accounts use, narrowed to money that has left the
