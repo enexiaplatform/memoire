@@ -444,11 +444,13 @@ export function OpportunitiesPage() {
     // A square on the coverage matrix links here meaning "show me these deals".
     // Without this the link landed on the unfiltered list and the operator had
     // to find the pair by hand, which is the work the square was meant to save.
-    const brandParam = searchParams.get('brand');
+    // A square on the coverage matrix sends both; a plan item tagged with a
+    // line sends the brand alone.
+    const brandParam = searchParams.get('brand') || searchParams.get('brandOnly');
     const accountParam = searchParams.get('account');
-    if (brandParam && accountParam && searchParams.get('outcome') !== '1') {
+    if (brandParam && searchParams.get('outcome') !== '1') {
       setBrandFilter(brandParam);
-      setSearch(accountParam);
+      if (accountParam) setSearch(accountParam);
       setSearchParams({}, { replace: true });
       return;
     }

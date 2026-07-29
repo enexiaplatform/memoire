@@ -38,7 +38,7 @@ import {
   createPersonalPlanRecord,
   formatPlanRangeLabel,
   getPlanItemWriteTarget,
-  planKindTone,
+  planWorkTone,
   shiftPlanAnchor,
   splitBracketTag,
   type PlanItem,
@@ -137,6 +137,12 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
     [expenses, quotes, supplierCommitments],
   );
 
+  // The lines this workspace carries. A plan line tagged with one of them is
+  // work for that principal, not unattached admin.
+  const knownBrands = useMemo(() => Array.from(new Set(
+    opportunities.map((opportunity) => (opportunity.brand || '').trim()).filter(Boolean),
+  )).sort((a, b) => a.localeCompare(b)), [opportunities]);
+
   const board = useMemo(() => buildPlanBoard({
     periodType,
     anchorDate,
@@ -144,7 +150,8 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
     obligations,
     activities,
     records,
-  }), [activities, anchorDate, obligations, opportunities, periodType, records]);
+    brands: knownBrands,
+  }), [activities, anchorDate, knownBrands, obligations, opportunities, periodType, records]);
 
   // Every account name the workspace already knows, so a typed plan item can
   // link to the entity it belongs to instead of living as loose text.
@@ -154,8 +161,8 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
     ...quotes.map((item) => item.accountName),
   ], [activities, opportunities, quotes]);
   const draftLinkOptions = useMemo(() => (
-    draftLink ? [] : buildPlanLinkOptions({ draft, opportunities, accountNames: knownAccountNames })
-  ), [draft, draftLink, knownAccountNames, opportunities]);
+    draftLink ? [] : buildPlanLinkOptions({ draft, opportunities, accountNames: knownAccountNames, brands: knownBrands })
+  ), [draft, draftLink, knownAccountNames, knownBrands, opportunities]);
 
   const toggleItem = useCallback((item: PlanItem) => {
     if (item.kind === 'personal') {
@@ -333,6 +340,7 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
       label,
       linkedOpportunityId: draftLink?.opportunityId,
       linkedAccountName: draftLink?.accountName,
+      linkedBrand: draftLink?.brand,
       source: sampleDataActive ? 'demo' : 'user',
       isSample: sampleDataActive,
     })));
@@ -527,7 +535,36 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
         </div>
       </header>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-gray-600">
+      {/* Who the week is for. The line above it answers where each item came
+          from; this one answers who it serves, which is the question a
+          distributor's week could never be asked before - every line without a
+          customer used to read as the same undifferentiated admin. */}
+      {board.totalCount > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+          <span className="font-bold uppercase tracking-wide text-gray-400">This week serves</span>
+          {board.workSplit.customer > 0 && (
+            <span className="rounded-full bg-blue-50 px-2.5 py-1 font-bold text-brand-blue">
+              {board.workSplit.customer} customer
+            </span>
+          )}
+          {board.workSplit.principal > 0 && (
+            <span className="rounded-full bg-violet-50 px-2.5 py-1 font-bold text-violet-700">
+              {board.workSplit.principal} principal
+            </span>
+          )}
+          {board.workSplit.internal > 0 && (
+            <span className="rounded-full bg-gray-100 px-2.5 py-1 font-bold text-gray-600">
+              {board.workSplit.internal} internal
+              {/* The domain breakdown only earns its place when it says
+                  something the count did not. A week whose internal work is all
+                  admin would otherwise read "3 internal - 3 internal". */}
+              {describeInternalDomains(board.workSplit.internalByDomain)}
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-600">
         <span className="font-bold text-navy">{board.doneCount} / {board.totalCount} done</span>
         {board.derivedCount - board.captureCount > 0 && (
           <span>{board.derivedCount - board.captureCount} from your pipeline and obligations</span>
@@ -671,7 +708,7 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
                     ) : (
                     <p className={`text-xs leading-5 ${item.done ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                       {item.tag && (
-                        <span className={`mr-1 rounded px-1 py-0.5 text-[10px] font-bold ${item.done ? 'bg-gray-100 text-gray-400' : planKindTone(item.kind)}`}>
+                        <span className={`mr-1 rounded px-1 py-0.5 text-[10px] font-bold ${item.done ? 'bg-gray-100 text-gray-400' : planWorkTone(item)}`}>
                           {item.tag}
                         </span>
                       )}
@@ -769,7 +806,13 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
                           onClick={() => setDraftLink(option)}
                           className="flex w-full items-center gap-1.5 px-2 py-1.5 text-left text-[11px] font-semibold text-gray-700 hover:bg-blue-50 hover:text-brand-blue"
                         >
-                          <span className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-bold uppercase ${option.kind === 'deal' ? 'bg-blue-50 text-brand-blue' : 'bg-gray-100 text-gray-500'}`}>
+                          <span className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-bold uppercase ${
+                            option.kind === 'deal'
+                              ? 'bg-blue-50 text-brand-blue'
+                              : option.kind === 'brand'
+                                ? 'bg-violet-50 text-violet-700'
+                                : 'bg-gray-100 text-gray-500'
+                          }`}>
                             {option.kind}
                           </span>
                           <span className="truncate">{option.display}</span>
@@ -801,6 +844,12 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
       </p>
     </div>
   );
+}
+
+function describeInternalDomains(domains: { domain: string; count: number }[]) {
+  const informative = domains.length > 1 || (domains.length === 1 && domains[0].domain !== 'Internal');
+  if (!informative) return '';
+  return ` · ${domains.map((entry) => `${entry.count} ${entry.domain.toLowerCase()}`).join(', ')}`;
 }
 
 export function WeeklyPlanPageFallback() {

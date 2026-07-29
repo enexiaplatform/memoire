@@ -1,6 +1,8 @@
 ﻿import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { OwnObligation } from './ownObligations.ts';
+import type { BusinessDomain } from './businessDomain.ts';
+import { classifyPlanWork, summarisePlanWork, type PlanWorkKind, type PlanWorkSplit } from './planWorkKind.ts';
 import {
   compareSafeBusinessDate,
   isBusinessDateInRange,
@@ -41,6 +43,12 @@ export type PlanItem = {
   /** Where to go to act on it. Empty for personal items. */
   href: string;
   overdue: boolean;
+  /** Customer work, work for a line you carry, or your own machinery. */
+  workKind: PlanWorkKind;
+  /** The line served, for principal work. Empty otherwise. */
+  workBrand: string;
+  /** Which of the seven domains internal work belongs to. Null for the rest. */
+  workDomain: BusinessDomain | null;
 };
 
 export type PlanDay = {
@@ -64,6 +72,12 @@ export type PlanBoard = {
   derivedCount: number;
   /** Derived items that came from a captured touch, a subset of derivedCount. */
   captureCount: number;
+  /**
+   * The week split by who the work is for. Provenance ("where did this item
+   * come from") and purpose ("who is it for") are different questions, and the
+   * board previously only answered the first.
+   */
+  workSplit: PlanWorkSplit;
 };
 
 export type PlanPeriod = 'week' | 'month';
@@ -80,6 +94,13 @@ export type PlanRecord = {
   derivedKey?: string;
   linkedOpportunityId?: string;
   linkedAccountName?: string;
+  /**
+   * The line this work serves, when it serves one rather than a customer.
+   * Researching a principal or building its presentation has a real owner; it
+   * simply is not a customer, and without this field all of it read as
+   * unattached admin.
+   */
+  linkedBrand?: string;
   /**
    * The suggestion this record answers. Present whether the suggestion was
    * taken or refused, so acceptance rate has a denominator - the same
@@ -109,6 +130,12 @@ export function buildPlanBoard(input: {
    */
   activities?: SalesActivityRecord[];
   records: PlanRecord[];
+  /**
+   * The lines you carry, so a tag naming one is read as work for that
+   * principal rather than as unattached admin. Optional: a workspace with no
+   * brands classifies exactly as it did before.
+   */
+  brands?: string[];
   today?: string;
 }): PlanBoard {
   const today = sanitizeBusinessDate(input.today) || todayDateKey();
@@ -137,8 +164,26 @@ export function buildPlanBoard(input: {
     return completion ? { ...item, done: completion.done, doneAt: completion.doneAt } : item;
   });
 
+  // Who the workspace already knows, so a bracket tag can be read as a
+  // customer, as a line you carry, or as neither.
+  const workContext = {
+    brands: input.brands || [],
+    accountNames: [...new Set([
+      ...input.opportunities.map((opportunity) => opportunity.accountName),
+      ...(input.activities || []).map((activity) => activity.linkedAccountName || activity.accountName),
+    ].filter(Boolean))],
+  };
+
+  const withWork = (
+    item: UnclassifiedPlanItem,
+    links?: { linkedOpportunityId?: string; linkedAccountName?: string; linkedBrand?: string },
+  ): PlanItem => {
+    const work = classifyPlanWork({ tag: item.tag, label: item.label, ...links }, workContext);
+    return { ...item, workKind: work.kind, workBrand: work.brand, workDomain: work.domain };
+  };
+
   const personal = personalRecordsInRange
-    .map((record) => ({
+    .map((record) => withWork({
       id: record.id,
       kind: 'personal' as const,
       date: record.date,
@@ -152,11 +197,17 @@ export function buildPlanBoard(input: {
         ? `/app/opportunities?opportunityId=${encodeURIComponent(record.linkedOpportunityId)}`
         : record.linkedAccountName
           ? `/app/accounts?accountName=${encodeURIComponent(record.linkedAccountName)}`
-          : '',
+          : record.linkedBrand
+            ? `/app/opportunities?brandOnly=${encodeURIComponent(record.linkedBrand)}`
+            : '',
       overdue: !record.done && compareSafeBusinessDate(record.date, today) < 0,
+    }, {
+      linkedOpportunityId: record.linkedOpportunityId,
+      linkedAccountName: record.linkedAccountName,
+      linkedBrand: record.linkedBrand,
     }));
 
-  const allItems = [...derived, ...personal];
+  const allItems = [...derived.map((item) => withWork(item)), ...personal];
   const days = buildDays(range, today).map((day) => {
     const items = allItems
       .filter((item) => item.date === day.date)
@@ -176,10 +227,18 @@ export function buildPlanBoard(input: {
     personalCount: personal.length,
     derivedCount: derived.length,
     captureCount: captureItems.length,
+    workSplit: summarisePlanWork(allItems.map((item) => ({
+      kind: item.workKind,
+      brand: item.workBrand,
+      domain: item.workDomain,
+    }))),
   };
 }
 
-function buildDealItems(opportunities: CrmLiteOpportunity[], range: PlanRange, today: string): PlanItem[] {
+/** A board item before it has been asked who it is for. */
+type UnclassifiedPlanItem = Omit<PlanItem, 'workKind' | 'workBrand' | 'workDomain'>;
+
+function buildDealItems(opportunities: CrmLiteOpportunity[], range: PlanRange, today: string): UnclassifiedPlanItem[] {
   return opportunities
     .filter((opportunity) => opportunity.status === 'Active')
     .filter((opportunity) => isValidBusinessDate(opportunity.nextActionDate))
@@ -197,7 +256,7 @@ function buildDealItems(opportunities: CrmLiteOpportunity[], range: PlanRange, t
     }));
 }
 
-function buildObligationItems(obligations: OwnObligation[], range: PlanRange, today: string): PlanItem[] {
+function buildObligationItems(obligations: OwnObligation[], range: PlanRange, today: string): UnclassifiedPlanItem[] {
   return obligations
     .filter((obligation) => isValidBusinessDate(obligation.dueDate))
     .filter((obligation) => isBusinessDateInRange(obligation.dueDate, range.start, range.end))
@@ -231,9 +290,9 @@ function buildCaptureItems(
   activities: SalesActivityRecord[],
   range: PlanRange,
   today: string,
-  dealItems: PlanItem[],
+  dealItems: UnclassifiedPlanItem[],
   personalRecordsInRange: PlanRecord[],
-): PlanItem[] {
+): UnclassifiedPlanItem[] {
   // A deal's dated actions, grouped by account and day, so a capture can be
   // compared against them by wording. Matching on account+date alone would hide
   // genuinely different work: a deal saying "send the quote" on Friday would
@@ -254,7 +313,7 @@ function buildCaptureItems(
     personalByDate.set(record.date, list);
   });
 
-  const items: PlanItem[] = [];
+  const items: UnclassifiedPlanItem[] = [];
   const seenKeys = new Set<string>();
 
   activities.forEach((activity) => {
@@ -449,6 +508,7 @@ export function createPersonalPlanRecord(input: {
   tag?: string;
   linkedOpportunityId?: string;
   linkedAccountName?: string;
+  linkedBrand?: string;
   suggestionKey?: string;
   source?: 'demo' | 'user';
   isSample?: boolean;
@@ -459,12 +519,14 @@ export function createPersonalPlanRecord(input: {
     id: `plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     date: input.date,
     label,
-    // A linked item wears its account as the tag - the same convention derived
-    // deal items use - unless the operator wrote an explicit [Tag].
-    tag: tag || input.linkedAccountName || '',
+    // A linked item wears its account - or the line it serves - as the tag,
+    // the same convention derived deal items use, unless the operator wrote an
+    // explicit [Tag].
+    tag: tag || input.linkedAccountName || input.linkedBrand || '',
     done: false,
     linkedOpportunityId: input.linkedOpportunityId,
     linkedAccountName: input.linkedAccountName,
+    linkedBrand: input.linkedBrand,
     suggestionKey: input.suggestionKey,
     createdAt: now,
     updatedAt: now,
@@ -544,9 +606,10 @@ export function createDerivedCompletionRecord(
 
 export type PlanLinkOption = {
   key: string;
-  kind: 'deal' | 'account';
+  kind: 'deal' | 'account' | 'brand';
   accountName: string;
   opportunityId?: string;
+  brand?: string;
   display: string;
 };
 
@@ -560,6 +623,11 @@ export function buildPlanLinkOptions(input: {
   draft: string;
   opportunities: CrmLiteOpportunity[];
   accountNames: string[];
+  /**
+   * The lines you carry. Typing "research sartorius" should offer the Sartorius
+   * line, because that work has an owner even though it has no customer.
+   */
+  brands?: string[];
   limit?: number;
 }): PlanLinkOption[] {
   const tokens = normalizePlanText(input.draft).split(/\s+/).filter((token) => token.length >= 2);
@@ -597,7 +665,19 @@ export function buildPlanLinkOptions(input: {
       display: name,
     }));
 
-  return [...dealOptions, ...accountOptions].slice(0, limit);
+  const brandOptions = [...new Set((input.brands || []).map((brand) => brand.trim()).filter(Boolean))]
+    .filter((brand) => matches(brand))
+    .map((brand) => ({
+      key: `brand-${normalizePlanText(brand)}`,
+      kind: 'brand' as const,
+      accountName: '',
+      brand,
+      display: brand,
+    }));
+
+  // Customers first: a line named beside a customer usually means work for that
+  // customer, and the brand option stays one row below rather than competing.
+  return [...dealOptions, ...accountOptions, ...brandOptions].slice(0, limit);
 }
 
 function normalizePlanText(value: string) {
@@ -606,6 +686,21 @@ function normalizePlanText(value: string) {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
+}
+
+/**
+ * The colour a board tag wears, by who the work is for rather than by where the
+ * item came from. Provenance is already legible from the item itself; what an
+ * operator wants to read across a whole week is the mix - blue customer, violet
+ * principal, grey their own machinery - in the same colours the order book and
+ * the brand rollup already use for the same ideas.
+ */
+export function planWorkTone(item: Pick<PlanItem, 'workKind'>) {
+  return {
+    customer: 'bg-blue-50 text-brand-blue',
+    principal: 'bg-violet-50 text-violet-700',
+    internal: 'bg-gray-100 text-gray-600',
+  }[item.workKind];
 }
 
 export function planKindTone(kind: PlanItemKind) {

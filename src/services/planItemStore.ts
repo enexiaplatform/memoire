@@ -102,6 +102,7 @@ function sanitizePlanRecord(value: unknown): PlanRecord | null {
     derivedKey: typeof candidate.derivedKey === 'string' ? candidate.derivedKey : undefined,
     linkedOpportunityId: typeof candidate.linkedOpportunityId === 'string' ? candidate.linkedOpportunityId : undefined,
     linkedAccountName: typeof candidate.linkedAccountName === 'string' ? candidate.linkedAccountName : undefined,
+    linkedBrand: typeof candidate.linkedBrand === 'string' ? candidate.linkedBrand : undefined,
     suggestionKey: typeof candidate.suggestionKey === 'string' ? candidate.suggestionKey : undefined,
     dismissed: candidate.dismissed === true,
     createdAt: typeof candidate.createdAt === 'string' && candidate.createdAt ? candidate.createdAt : now,

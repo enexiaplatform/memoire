@@ -15,7 +15,7 @@ import { buildOwnObligations } from '../../utils/ownObligations';
 import {
   buildPlanBoard,
   createDerivedCompletionRecord,
-  planKindTone,
+  planWorkTone,
   type PlanItem,
   type PlanRecord,
 } from '../../utils/weeklyPlan';
@@ -155,7 +155,7 @@ export function TodayCommitmentStrip({
               />
               <span className="min-w-0 flex-1">
                 {item.tag && (
-                  <span className={`mr-1.5 rounded px-1 py-0.5 text-[10px] font-bold ${item.done ? 'bg-gray-100 text-gray-400' : planKindTone(item.kind)}`}>
+                  <span className={`mr-1.5 rounded px-1 py-0.5 text-[10px] font-bold ${item.done ? 'bg-gray-100 text-gray-400' : planWorkTone(item)}`}>
                     {item.tag}
                   </span>
                 )}
