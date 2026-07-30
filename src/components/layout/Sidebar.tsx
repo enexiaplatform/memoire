@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Banknote, BookOpen, ClipboardList, Database, History, Network, Search, Settings, Sun, Target, X } from 'lucide-react';
+import { Activity, Banknote, BookOpen, ClipboardList, Database, History, Network, Search, Settings, Sun, Target, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 import { prefetchAppRoute } from '../../utils/routePrefetch';
@@ -25,6 +25,7 @@ const primaryIcons: Record<string, ReactNode> = {
 
 const globalIcons: Record<string, ReactNode> = {
   'search-insights': <Search className="h-5 w-5" />,
+  activity: <Activity className="h-5 w-5" />,
   'business-vault': <Network className="h-5 w-5" />,
   settings: <Settings className="h-5 w-5" />,
 };

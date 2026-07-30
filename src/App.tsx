@@ -67,6 +67,9 @@ const FounderImportReviewPage = lazy(() =>
 const BusinessVaultPage = lazy(() =>
   import('./features/vault/BusinessVaultPage').then((module) => ({ default: module.BusinessVaultPage })),
 );
+const ActivityPage = lazy(() =>
+  import('./features/activity/ActivityPage').then((module) => ({ default: module.ActivityPage })),
+);
 
 function App() {
   return (
@@ -112,6 +115,7 @@ function App() {
             {/* Global actions: reachable everywhere, not destinations. */}
             <Route path="capture" element={<DailyCapturePage />} />
             <Route path="ask" element={<AskMemoirePage />} />
+            <Route path="activity" element={<ActivityRouteEntry />} />
             <Route path="vault" element={<BusinessVaultPage />} />
             <Route path="settings" element={<SettingsPage />} />
 
@@ -150,7 +154,6 @@ function App() {
                 working; each lands on the surface that now owns the job. */}
             <Route path="dashboard" element={<LegacyRedirect to="/app/today" />} />
             <Route path="plan" element={<LegacyRedirect to="/app/timeline" params={{ view: 'upcoming' }} />} />
-            <Route path="activity" element={<LegacyRedirect to="/app/timeline" params={{ view: 'history' }} />} />
             <Route path="calendar" element={<LegacyRedirect to="/app/timeline" params={{ view: 'history' }} />} />
             <Route path="weekly-brief" element={<LegacyRedirect to="/app/reviews" />} />
             <Route path="onboarding/pipeline-review" element={<LegacyRedirect to="/app/reviews" />} />
@@ -195,6 +198,23 @@ function LegacyRedirect({ to, params }: { to: string; params?: Record<string, st
   }
   const query = search.toString();
   return <Navigate to={`${to}${query ? `?${query}` : ''}${location.hash}`} replace />;
+}
+
+/**
+ * `/app/activity` serves two jobs that used to be one.
+ *
+ * The Activity surface is now the analysis over the ledger, so the bare URL
+ * renders it. But `/app/activity?activityId=...` has been a live deep link since
+ * the ledger lived here - Today, Search and the daily digest all generate it, and
+ * it is expected to open that exact touch with its detail modal. A row id is a
+ * request for a record, not for a dashboard, so it keeps forwarding to Timeline >
+ * History where the record and its modal live.
+ */
+function ActivityRouteEntry() {
+  const location = useLocation();
+  const hasRecordId = new URLSearchParams(location.search).has('activityId');
+  if (hasRecordId) return <LegacyRedirect to="/app/timeline" params={{ view: 'history' }} />;
+  return <ActivityPage />;
 }
 
 function LegacyAccountRouteRedirect() {

@@ -26,6 +26,12 @@ import { loadPlanItemsForWorkspace, PLAN_ITEMS_UPDATED_EVENT } from '../../servi
 import type { PlanRecord } from '../../utils/weeklyPlan';
 import { buildAccountAliasIndex } from '../../utils/accountAliases';
 import { buildActivityInsights } from '../../utils/activityInsights';
+import {
+  buildActivityLedgerContext,
+  resolveActivitySubject,
+  type ActivityRelation,
+} from '../../utils/activityLedger';
+import { SubjectChip } from '../../components/common/SubjectChip';
 import { ActivityInsightsBand } from './ActivityInsightsBand';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { businessDomains, businessDomainTone, classifyBusinessDomain, type BusinessDomain } from '../../utils/businessDomain';
@@ -34,6 +40,7 @@ import { buildActivityStateTrail, type ActivityTrailChipKind } from '../../utils
 import { type QuoteRecord } from '../../services/quoteStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
 import { type AccountMergeRecord } from '../../services/accountMergeStore';
+import { type AccountMemoryRecord } from '../../services/accountStore';
 import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
 import { applyOpportunityUpdateSuggestion, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 import type { SalesActivityType } from '../../utils/salesActivityClassifier';
@@ -101,6 +108,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
   const [message, setMessage] = useState('');
   const [planRecords, setPlanRecords] = useState<PlanRecord[]>([]);
   const [accountMerges, setAccountMerges] = useState<AccountMergeRecord[]>([]);
+  const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
@@ -112,6 +120,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
       setQuotes(cachedData.quotes);
       setObjections(cachedData.objections);
       setAccountMerges(cachedData.accountMerges);
+      setAccounts(cachedData.accounts);
       setLoadingActivities(false);
       return;
     }
@@ -123,6 +132,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
     setQuotes(workspaceData.quotes);
     setObjections(workspaceData.objections);
     setAccountMerges(workspaceData.accountMerges);
+    setAccounts(workspaceData.accounts);
     setLoadingActivities(false);
   }, [dataUserId]);
 
@@ -191,14 +201,21 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
   const summary = useMemo(() => buildActivitySummary(visibleActivities), [visibleActivities]);
   // Insights read the whole ledger (for cadence and quiet accounts) plus the
   // plan's completion marks (for follow-through), scoped to the viewed period.
+  const accountAliases = useMemo(() => buildAccountAliasIndex(accountMerges), [accountMerges]);
+  // Who the business actually knows, so each card can say what its touch resolves
+  // to - and say so with the same resolver the Activity ledger counts with.
+  const subjectContext = useMemo(
+    () => buildActivityLedgerContext({ opportunities, accounts }),
+    [accounts, opportunities],
+  );
   const insights = useMemo(
     () => buildActivityInsights({
       activities,
       planRecords,
       range: { start: range.start, end: range.end },
-      accountAliases: buildAccountAliasIndex(accountMerges),
+      accountAliases,
     }),
-    [accountMerges, activities, planRecords, range.end, range.start],
+    [accountAliases, activities, planRecords, range.end, range.start],
   );
   const dateKeys = useMemo(() => getDateKeysForRange(range.start, range.end), [range.end, range.start]);
 
@@ -434,6 +451,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
                         <ActivityCard
                           key={activity.id}
                           activity={activity}
+                          subject={resolveActivitySubject(activity, subjectContext, accountAliases)}
                           copied={copiedId === activity.id}
                           onOpen={() => setSelectedActivity(activity)}
                           onCopy={() => handleCopy(activity)}
@@ -524,11 +542,14 @@ function MetricTextCard({ label, value }: { label: string; value: string }) {
 
 function ActivityCard({
   activity,
+  subject,
   copied,
   onOpen,
   onCopy,
 }: {
   activity: SalesActivityRecord;
+  /** What this touch is about, resolved the same way the Activity ledger does. */
+  subject: ActivityRelation;
   copied: boolean;
   onOpen: () => void;
   onCopy: () => void;
@@ -539,6 +560,10 @@ function ActivityCard({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <span className="flex flex-wrap items-center gap-1.5">
+              {/* The subject leads. "Customer meeting" tells you the shape of the
+                  hour; who it was with is what makes the row worth keeping - and
+                  when it resolves to nothing, that is the fact worth seeing. */}
+              <SubjectChip relation={subject} />
               <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${activityTypeTone[activity.activityType]}`}>
                 {activity.activityType}
               </span>

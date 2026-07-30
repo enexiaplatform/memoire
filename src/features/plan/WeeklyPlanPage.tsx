@@ -38,7 +38,6 @@ import {
   createPersonalPlanRecord,
   formatPlanRangeLabel,
   getPlanItemWriteTarget,
-  planWorkTone,
   shiftPlanAnchor,
   splitBracketTag,
   type PlanItem,
@@ -51,6 +50,10 @@ import {
   loadPlanItemsForWorkspace,
   savePlanItem,
 } from '../../services/planItemStore';
+import { buildActivityLedgerContext, resolvePlanItemSubject } from '../../utils/activityLedger';
+import { buildAccountAliasIndex } from '../../utils/accountAliases';
+import type { AccountMergeRecord } from '../../services/accountMergeStore';
+import { SubjectChip } from '../../components/common/SubjectChip';
 import { getWeeklyCommitmentForWeek, loadWeeklyCommitmentsForWorkspace } from '../../services/weeklyCommitmentStore';
 import { getCurrentPipelineReviewWeekId } from '../../utils/pipelineReviewHabit';
 import type { WeeklyCommitmentSnapshot } from '../../utils/weeklyCommitment';
@@ -85,6 +88,7 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
   const [commitment, setCommitment] = useState<WeeklyCommitmentSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
+  const [accountMerges, setAccountMerges] = useState<AccountMergeRecord[]>([]);
   const [creatingAccount, setCreatingAccount] = useState('');
   const [dismissedTagKeys, setDismissedTagKeys] = useState<string[]>([]);
   const [accountMessage, setAccountMessage] = useState('');
@@ -106,6 +110,7 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
       setOpportunities(cached.opportunities);
       setQuotes(cached.quotes);
       setExpenses(cached.expenses);
+      setAccountMerges(cached.accountMerges);
       setLoading(false);
     } else {
       setLoading(true);
@@ -114,6 +119,7 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
       setOpportunities(workspaceData.opportunities);
       setQuotes(workspaceData.quotes);
       setExpenses(workspaceData.expenses);
+      setAccountMerges(workspaceData.accountMerges);
       setLoading(false);
     }
 
@@ -142,6 +148,24 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
   const knownBrands = useMemo(() => Array.from(new Set(
     opportunities.map((opportunity) => (opportunity.brand || '').trim()).filter(Boolean),
   )).sort((a, b) => a.localeCompare(b)), [opportunities]);
+
+  /**
+   * What each line on the board is actually about, resolved with the same
+   * function the Activity ledger counts with.
+   *
+   * The board has always drawn the bracket tag the operator typed. That says who
+   * they think the work is for; it cannot say whether the workspace agrees. A tag
+   * reading "Tenamyd" looked identical whether Tenamyd was a live deal or a name
+   * that exists nowhere but this one line - and the second case is work that will
+   * never reach a quote, a forecast or an invoice. The chip now carries the
+   * operator's own wording and the resolution behind it, so the difference is
+   * visible on the calendar rather than only on Activity.
+   */
+  const subjectContext = useMemo(
+    () => buildActivityLedgerContext({ opportunities, accounts }),
+    [accounts, opportunities],
+  );
+  const accountAliases = useMemo(() => buildAccountAliasIndex(accountMerges), [accountMerges]);
 
   const board = useMemo(() => buildPlanBoard({
     periodType,
@@ -708,9 +732,21 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
                     ) : (
                     <p className={`text-xs leading-5 ${item.done ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                       {item.tag && (
-                        <span className={`mr-1 rounded px-1 py-0.5 text-[10px] font-bold ${item.done ? 'bg-gray-100 text-gray-400' : planWorkTone(item)}`}>
-                          {item.tag}
-                        </span>
+                        item.done ? (
+                          // A finished line does not need to argue about
+                          // attachment any more; greying it keeps the column
+                          // quiet so live work reads first.
+                          <span className="mr-1 rounded bg-gray-100 px-1 py-0.5 text-[10px] font-bold text-gray-400">
+                            {item.tag}
+                          </span>
+                        ) : (
+                          <SubjectChip
+                            relation={resolvePlanItemSubject(item, subjectContext, accountAliases)}
+                            label={item.tag}
+                            size="compact"
+                            className="mr-1"
+                          />
+                        )
                       )}
                       {item.href && !item.done ? (
                         <Link to={item.href} className="font-medium hover:text-brand-blue hover:underline">{item.label}</Link>

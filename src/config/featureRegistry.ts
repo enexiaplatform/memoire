@@ -183,6 +183,33 @@ export const featureRegistry: FeatureRecord[] = [
     killOrActivationCondition: 'Never.',
   },
   {
+    id: 'activity',
+    label: 'Activity',
+    status: 'global',
+    ownerSurface: 'activity',
+    route: '/app/activity',
+    routeBehavior: 'primary',
+    // Global, not a seventh primary destination, and the distinction is real
+    // rather than a dodge around this file. Activity owns no records: every row
+    // on it is a captured touch or a plan item that Timeline, Capture and the
+    // deal already own, resolved to the one thing it was for. You do not go
+    // there to work, you go there to find out what the work added up to - the
+    // same job the Business Vault does for coverage. Promoting it would put two
+    // calendars in the primary rail and force the operator to decide which one
+    // "the week" lives in, which is the exact mistake the Plan/Activity merge
+    // was undone to fix.
+    navVisible: true,
+    analytics: 'active',
+    dataRetention: 'Derived ledger and pivots. Owns no records.',
+    killOrActivationCondition:
+      'Retire it if the pivot and the unattached-subject queue stop changing what the operator does next. Its one irreplaceable job is showing work that names a customer the workspace has never heard of - that work reaches no deal, no quote and no forecast, and a calendar cannot tell it apart from work that does.',
+    // History: this id previously held the retired Activity *destination*, whose
+    // route redirected into Timeline > History. Same capability, different
+    // altitude - the ledger stayed under Timeline, and what came back is the
+    // analysis over it. `/app/activity?activityId=...` still forwards to the
+    // touch in Timeline > History, so every deep link ever generated resolves.
+  },
+  {
     id: 'business-vault',
     label: 'Business Vault',
     status: 'global',
@@ -240,18 +267,6 @@ export const featureRegistry: FeatureRecord[] = [
     analytics: 'retained',
     dataRetention: 'Plan items preserved and shown under Timeline > Upcoming.',
     killOrActivationCondition: 'Stays embedded - a plan item is a future-dated action, not a module.',
-  },
-  {
-    id: 'activity',
-    label: 'Activity',
-    status: 'embedded',
-    ownerSurface: 'timeline',
-    route: '/app/activity',
-    routeBehavior: 'redirect',
-    navVisible: false,
-    analytics: 'retained',
-    dataRetention: 'Sales activities preserved and shown under Timeline > History.',
-    killOrActivationCondition: 'Stays embedded - history is one half of the timeline.',
   },
   {
     id: 'stakeholders',
@@ -443,7 +458,7 @@ export const primaryNavigation: FeatureRecord[] = PRIMARY_DESTINATION_IDS.map((i
 });
 
 /** Always reachable, never a primary destination. */
-export const globalActions: FeatureRecord[] = ['capture', 'search-insights', 'business-vault', 'settings'].map((id) => {
+export const globalActions: FeatureRecord[] = ['capture', 'search-insights', 'activity', 'business-vault', 'settings'].map((id) => {
   const feature = byId.get(id);
   if (!feature) throw new Error(`Feature registry is missing global action "${id}"`);
   return feature;
