@@ -1,8 +1,49 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { compareAccountNames, findDuplicateAccountGroups, pairKey } from '../../src/utils/accountDuplicates.ts';
+import {
+  ACCOUNT_TYPO_MAX_DISTANCE,
+  compareAccountNames,
+  findDuplicateAccountGroups,
+  findSimilarAccountName,
+  pairKey,
+} from '../../src/utils/accountDuplicates.ts';
 
 const base = { opportunities: [], activities: [] };
+
+test('a one-letter slip is caught for asking, though never for merging', () => {
+  // The exact case from the deal form: "Trust Farma" typed over a workspace that
+  // already has "Trust Farm" with deals on it.
+  assert.equal(compareAccountNames('Trust Farma', 'Trust Farm'), null, 'too risky to merge on');
+
+  const similar = findSimilarAccountName('Trust Farma', ['Euvipharm', 'Trust Farm', 'VNVC']);
+  assert.equal(similar.name, 'Trust Farm');
+  assert.equal(similar.distance, 1);
+});
+
+test('the nearest name wins when several are close', () => {
+  const similar = findSimilarAccountName('Bidipharm', ['Bidiphar', 'Bidipharma']);
+  assert.equal(similar.name, 'Bidiphar');
+  assert.equal(similar.distance, 1);
+});
+
+test('short names are left alone, because one letter really does separate them', () => {
+  assert.equal(findSimilarAccountName('MDL', ['MDK', 'MDF']), null);
+  assert.equal(findSimilarAccountName('VNVC', ['VNVA']), null);
+});
+
+test('a name that is already known is not offered as its own near-miss', () => {
+  assert.equal(findSimilarAccountName('Trust Farm', ['Trust Farm']), null);
+  assert.equal(findSimilarAccountName('trust  farm.', ['Trust Farm']), null, 'the same key is not a near-miss');
+});
+
+test('genuinely different customers are not offered', () => {
+  assert.equal(findSimilarAccountName('Euvipharm', ['Trust Farm', 'VNVC', 'Northstar Foods']), null);
+  assert.equal(
+    findSimilarAccountName('Apex Labs', ['Orion Pharma']),
+    null,
+    `more than ${ACCOUNT_TYPO_MAX_DISTANCE} edits apart`,
+  );
+});
 
 test('the same name with a different legal form is certain', () => {
   const match = compareAccountNames('Apex Labs', 'Apex Labs Ltd');

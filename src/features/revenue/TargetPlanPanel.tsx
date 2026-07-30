@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CalendarClock, Route } from 'lucide-react';
+import type { AccountMergeRecord } from '../../services/accountMergeStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore';
 import type { QuoteRecord } from '../../services/quoteStore';
 import type { SalesActivityRecord } from '../../services/salesActivityStore';
+import { buildAccountAliasIndex } from '../../utils/accountAliases';
 import { buildCoverageMatrix } from '../../utils/coverageMatrix';
 import { buildOperatorProfile } from '../../utils/operatorProfile';
 import { buildTargetPlan, joinWords } from '../../utils/targetPlan';
@@ -26,17 +28,20 @@ export function TargetPlanPanel({
   quotes,
   activities,
   opportunityOutcomes,
+  accountMerges,
 }: {
   opportunities: CrmLiteOpportunity[];
   quotes: QuoteRecord[];
   activities: SalesActivityRecord[];
   opportunityOutcomes: OpportunityOutcomeRecord[];
+  accountMerges: AccountMergeRecord[];
 }) {
   const { coverage } = useCoverage();
 
   const plan = useMemo(() => {
-    const profile = buildOperatorProfile({ opportunities, opportunityOutcomes, activities, quotes });
-    const matrix = buildCoverageMatrix({ opportunities });
+    const accountAliases = buildAccountAliasIndex(accountMerges);
+    const profile = buildOperatorProfile({ opportunities, opportunityOutcomes, activities, quotes, accountAliases });
+    const matrix = buildCoverageMatrix({ opportunities, accountAliases });
     return buildTargetPlan({
       quarter: coverage.quarters.find((entry) => entry.isCurrent),
       economics: profile.economics,
@@ -44,7 +49,7 @@ export function TargetPlanPanel({
       unsupportedDealCount: coverage.unsupportedDeals.length,
       whitespace: matrix.hasEnoughBrands ? matrix.gaps : [],
     });
-  }, [coverage, opportunities, opportunityOutcomes, activities, quotes]);
+  }, [coverage, opportunities, opportunityOutcomes, activities, quotes, accountMerges]);
 
   // Coverage already owns the "set a target" invitation. A second copy of it
   // here would be the same empty state twice on one page.

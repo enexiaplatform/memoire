@@ -2,6 +2,7 @@ import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore.ts';
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
+import { resolveAccountName, resolvedAccountKey, type AccountAliasIndex } from './accountAliases.ts';
 import { classifyBusinessDomain } from './businessDomain.ts';
 import { convertMoney, formatCompactBaseAmount } from './money.ts';
 import {
@@ -137,6 +138,11 @@ export function buildOperatorProfile(input: {
   activities: SalesActivityRecord[];
   quotes: QuoteRecord[];
   today?: string;
+  /**
+   * Names the user has merged. Without them a customer written two ways carries
+   * two touch rhythms, and both look calmer than the real one.
+   */
+  accountAliases?: AccountAliasIndex;
 }): OperatorProfile {
   const today = sanitizeBusinessDate(input.today) || todayDateKey();
   const outcomes = dedupeOutcomes(input.opportunityOutcomes || []);
@@ -169,7 +175,7 @@ export function buildOperatorProfile(input: {
   push(traits, gaps, buildTouchPatternTrait(closed, activitiesByOpportunity));
   push(traits, gaps, buildSizeBandTrait(closed, opportunityById));
   push(traits, gaps, buildWeekShapeTrait(input.activities || []));
-  push(traits, gaps, buildReturnGapTrait(input.activities || []));
+  push(traits, gaps, buildReturnGapTrait(input.activities || [], input.accountAliases));
 
   return {
     economics: {
@@ -183,7 +189,7 @@ export function buildOperatorProfile(input: {
     },
     traits,
     gaps,
-    unusuallyQuiet: buildUnusuallyQuiet(input.activities || [], today),
+    unusuallyQuiet: buildUnusuallyQuiet(input.activities || [], today, input.accountAliases),
     headline: buildHeadline(traits, gaps),
   };
 }
@@ -484,9 +490,9 @@ function buildWeekShapeTrait(activities: SalesActivityRecord[]): TraitResult {
 }
 
 /** How long you take to come back to a customer after a commercial touch. */
-function buildReturnGapTrait(activities: SalesActivityRecord[]): TraitResult {
+function buildReturnGapTrait(activities: SalesActivityRecord[], aliases?: AccountAliasIndex): TraitResult {
   const gaps: number[] = [];
-  groupActivitiesByAccount(activities).forEach((records) => {
+  groupActivitiesByAccount(activities, aliases).forEach((records) => {
     for (let index = 0; index < records.length - 1; index += 1) {
       const current = records[index];
       const next = records[index + 1];
@@ -532,10 +538,14 @@ function buildReturnGapTrait(activities: SalesActivityRecord[]): TraitResult {
  * running on the published threshold, so nothing the user is shown daily changes
  * shape because of a number they cannot see.
  */
-function buildUnusuallyQuiet(activities: SalesActivityRecord[], today: string): QuietAgainstOwnRhythm[] {
+function buildUnusuallyQuiet(
+  activities: SalesActivityRecord[],
+  today: string,
+  aliases?: AccountAliasIndex,
+): QuietAgainstOwnRhythm[] {
   const results: QuietAgainstOwnRhythm[] = [];
 
-  groupActivitiesByAccount(activities).forEach((records, account) => {
+  groupActivitiesByAccount(activities, aliases).forEach((records, account) => {
     if (records.length < profileMinimums.cadenceTouches) return;
 
     const gaps: number[] = [];
@@ -556,7 +566,9 @@ function buildUnusuallyQuiet(activities: SalesActivityRecord[], today: string): 
     if (daysSince < 7 || ratio < 2) return;
 
     results.push({
-      account: records[0].linkedAccountName || records[0].accountName || account,
+      // The surviving name, not the spelling on the first touch: a merged
+      // customer must be named here the way Accounts names them.
+      account: resolveAccountName(records[0].linkedAccountName || records[0].accountName || account, aliases),
       normalGapDays: Math.round(normalGap),
       daysSinceTouch: daysSince,
       ratio,
@@ -647,12 +659,19 @@ function groupActivitiesByOpportunity(activities: SalesActivityRecord[]) {
   return grouped;
 }
 
-function groupActivitiesByAccount(activities: SalesActivityRecord[]) {
+/**
+ * Grouped on the resolved account key, so two spellings of one customer are one
+ * rhythm. Keying on `toLowerCase()` alone was enough to split "VNVC" from
+ * "VNVC." - and two half-rhythms both read calmer than the real one, which is
+ * the wrong direction for a panel about accounts going quiet.
+ */
+function groupActivitiesByAccount(activities: SalesActivityRecord[], aliases?: AccountAliasIndex) {
   const grouped = new Map<string, SalesActivityRecord[]>();
   activities.forEach((activity) => {
     const name = (activity.linkedAccountName || activity.accountName || '').trim();
     if (!name || !isValidBusinessDate(activity.activityDate)) return;
-    const key = name.toLowerCase();
+    const key = resolvedAccountKey(name, aliases);
+    if (!key) return;
     grouped.set(key, [...(grouped.get(key) || []), activity]);
   });
   grouped.forEach((records) => records.sort((left, right) => compareSafeBusinessDate(left.activityDate, right.activityDate)));

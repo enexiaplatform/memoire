@@ -1,4 +1,6 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
+import { resolveAccountName, type AccountAliasIndex } from './accountAliases.ts';
+import { accountKey } from './accountIdentity.ts';
 import { isCommittedToOrder } from './orderToCash.ts';
 import { sumMoneyInBase } from './money.ts';
 
@@ -81,8 +83,13 @@ export function buildCoverageMatrix(input: {
   opportunities: CrmLiteOpportunity[];
   /** How many gaps to name. The panel shows a shortlist, not a backlog. */
   gapLimit?: number;
+  /** Names the user has merged, so a customer merged in Accounts is one row here. */
+  accountAliases?: AccountAliasIndex;
 }): CoverageMatrix {
-  const withBrand = input.opportunities.filter((opportunity) => (opportunity.brand || '').trim());
+  const opportunities = input.opportunities.map((opportunity) => (
+    { ...opportunity, accountName: resolveAccountName(opportunity.accountName, input.accountAliases) }
+  ));
+  const withBrand = opportunities.filter((opportunity) => (opportunity.brand || '').trim());
 
   const brandValue = new Map<string, number>();
   withBrand.forEach((opportunity) => {
@@ -97,9 +104,18 @@ export function buildCoverageMatrix(input: {
   // Every customer the workspace knows through a deal, branded or not: a
   // customer who buys nothing from your branded lines is exactly the row worth
   // seeing, and dropping them would hide the widest gap on the page.
-  const accountNames = [...new Set(
-    input.opportunities.map((opportunity) => (opportunity.accountName || '').trim()).filter(Boolean),
-  )];
+  //
+  // Deduped on the normalized key, not the raw string. The cells below already
+  // group with `cellKey`, so a customer written "VNVC" on one deal and "vnvc."
+  // on another used to get two rows carrying the same squares.
+  const accountNamesByKey = new Map<string, string>();
+  opportunities.forEach((opportunity) => {
+    const name = (opportunity.accountName || '').trim();
+    if (!name) return;
+    const key = accountKey(name);
+    if (key && !accountNamesByKey.has(key)) accountNamesByKey.set(key, name);
+  });
+  const accountNames = [...accountNamesByKey.values()];
 
   const byAccountBrand = new Map<string, CrmLiteOpportunity[]>();
   withBrand.forEach((opportunity) => {
@@ -203,8 +219,14 @@ function valueOf(opportunity: CrmLiteOpportunity) {
   return opportunity.status === 'Lost' ? 0 : sumValue([opportunity]);
 }
 
+/**
+ * The account half uses `accountKey` - the app's one answer to "are these the
+ * same customer" - rather than this file's local normalizer, which lowercases
+ * and strips accents but keeps punctuation. "VNVC" and "vnvc." were two rows
+ * carrying two halves of one customer's squares.
+ */
 function cellKey(accountName: string, brand: string) {
-  return `${normalize(accountName)}|${normalize(brand)}`;
+  return `${accountKey(accountName)}|${normalize(brand)}`;
 }
 
 function normalize(value: string) {

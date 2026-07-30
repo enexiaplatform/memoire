@@ -11,6 +11,7 @@ import { SupplierCommitmentsPanel } from './SupplierCommitmentsPanel';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
+import type { AccountMergeRecord } from '../../services/accountMergeStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore';
 import type { QuoteRecord } from '../../services/quoteStore';
@@ -41,12 +42,13 @@ type RevenueData = {
   // load, so carrying them costs nothing the page was not already paying.
   activities: SalesActivityRecord[];
   opportunityOutcomes: OpportunityOutcomeRecord[];
+  accountMerges: AccountMergeRecord[];
 };
 
 export function RevenueViewPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const [data, setData] = useState<RevenueData>({
-    opportunities: [], quotes: [], activities: [], opportunityOutcomes: [],
+    opportunities: [], quotes: [], activities: [], opportunityOutcomes: [], accountMerges: [],
   });
   const [expenses, setExpenses] = useState<ExpenseRecord[]>(() => loadExpenses());
   const [loading, setLoading] = useState(true);
@@ -69,6 +71,7 @@ export function RevenueViewPage() {
         quotes: workspace.quotes,
         activities: workspace.activities,
         opportunityOutcomes: workspace.opportunityOutcomes,
+        accountMerges: workspace.accountMerges,
       });
     } finally {
       setLoading(false);
@@ -177,6 +180,7 @@ export function RevenueViewPage() {
             quotes={data.quotes}
             activities={data.activities}
             opportunityOutcomes={data.opportunityOutcomes}
+            accountMerges={data.accountMerges}
           />
 
           {/* Where the value is sitting, thread by thread: the same component

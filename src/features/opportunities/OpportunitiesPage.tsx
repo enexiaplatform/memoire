@@ -84,6 +84,12 @@ import {
   type OpportunityOutcomeRecord,
 } from '../../services/opportunityOutcomeStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
+import { type AccountMemoryRecord } from '../../services/accountStore';
+import { type AccountMergeRecord } from '../../services/accountMergeStore';
+import { SuggestInput } from '../../components/common/SuggestInput';
+import { buildAccountAliasIndex, resolveAccountName, type AccountAliasIndex } from '../../utils/accountAliases';
+import { accountKey, normalizeEntityName, sameAccount } from '../../utils/accountIdentity';
+import { compareAccountNames, findSimilarAccountName } from '../../utils/accountDuplicates';
 import { analyzeStakeholderCoverage, getStakeholdersForOpportunity } from '../../utils/stakeholderGraph';
 import { buildMeddicStakeholderMap, formatMeddicStakeholderDate } from '../../utils/meddicStakeholderMap.ts';
 import { getObjectionsForOpportunity, objectionStatusTone } from '../../utils/objectionLedger';
@@ -191,6 +197,8 @@ export function OpportunitiesPage() {
   const [opportunityOutcomes, setOpportunityOutcomes] = useState<OpportunityOutcomeRecord[]>([]);
   const [salesAssets, setSalesAssets] = useState<SalesAssetRecord[]>([]);
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
+  const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
+  const [accountMerges, setAccountMerges] = useState<AccountMergeRecord[]>([]);
   const [loading, setLoading] = useState(() => !getCachedSalesWorkspaceData(hasLocalSampleData() ? undefined : user?.id));
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState(allFilter);
@@ -254,7 +262,31 @@ export function OpportunitiesPage() {
     setOpportunityOutcomes(workspaceData.opportunityOutcomes);
     setSalesAssets(workspaceData.assets);
     setQuotes(workspaceData.quotes);
+    setAccounts(workspaceData.accounts);
+    setAccountMerges(workspaceData.accountMerges);
   };
+
+  const accountAliases = useMemo(() => buildAccountAliasIndex(accountMerges), [accountMerges]);
+  /** The account spelling the seller has explicitly stood behind on a save. */
+  const [accountNameConfirmed, setAccountNameConfirmed] = useState('');
+
+  /**
+   * Every customer the workspace already knows, by the name that survived any
+   * merge. An opportunity's account link *is* this string, so the deal form has
+   * to offer the existing spelling rather than let the seller retype it.
+   */
+  const knownAccountNames = useMemo(() => {
+    const byKey = new Map<string, string>();
+    const add = (raw: string) => {
+      const name = resolveAccountName(raw || '', accountAliases);
+      const key = accountKey(name);
+      if (!key || byKey.has(key)) return;
+      byKey.set(key, name);
+    };
+    accounts.forEach((account) => add(account.accountName));
+    opportunities.forEach((opportunity) => add(opportunity.accountName));
+    return [...byKey.values()].sort((left, right) => left.localeCompare(right));
+  }, [accountAliases, accounts, opportunities]);
 
   const refreshOpportunities = async (options: { force?: boolean } = {}) => {
     setWorkspaceLoadError('');
@@ -776,12 +808,42 @@ export function OpportunitiesPage() {
     setMessage('');
   };
 
+  /**
+   * Interrupts the first write of an account name that looks like a customer the
+   * workspace already has. Returns true when the caller must stop.
+   *
+   * Every path that persists the panel's form runs through this, because there
+   * is more than one: Save Opportunity, and the outcome retro - which writes
+   * `{ ...editingOpportunity, ...form }` and so carries the typed account name
+   * with it. Guarding only the obvious button left the other one able to create
+   * the duplicate silently.
+   *
+   * One interruption, not a block. The first press names the customer this looks
+   * like; a second press means the seller meant it. Keyed on the exact string,
+   * so editing the name asks again.
+   */
+  const holdForAccountNameCheck = (rawAccountName: string) => {
+    const typedAccount = (rawAccountName || '').trim();
+    const check = checkAccountName(typedAccount, knownAccountNames, accountAliases);
+    if (check.kind !== 'near' && check.kind !== 'renamed') return false;
+    if (accountNameConfirmed === typedAccount) return false;
+
+    setAccountNameConfirmed(typedAccount);
+    setSaveState('error');
+    setMessage(check.kind === 'renamed'
+      ? `You merged "${typedAccount}" into ${check.name}. Save again to keep it separate, or pick ${check.name} above.`
+      : `"${typedAccount}" looks like ${check.name}. ${check.reason} Save again to create it as a separate customer.`);
+    return true;
+  };
+
   const handleSave = async () => {
     if (!form.accountName.trim() || !form.opportunityName.trim()) {
       setSaveState('error');
       setMessage('Add account and opportunity names first.');
       return;
     }
+
+    if (holdForAccountNameCheck(form.accountName)) return;
 
     setSaveState('saving');
     setMessage('Saving opportunity...');
@@ -804,6 +866,11 @@ export function OpportunitiesPage() {
   };
 
   const handleSaveOpportunityOutcome = async (opportunity: CrmLiteOpportunity, draft: OpportunityOutcomeDraft) => {
+    // This receives `{ ...editingOpportunity, ...form }`, so it writes the
+    // account name currently typed in the panel - the same duplicate risk the
+    // Save button carries, and it needs the same interruption.
+    if (holdForAccountNameCheck(opportunity.accountName)) return;
+
     const outcomeRecord = createOpportunityOutcomeFromOpportunity(opportunity, draft, dataUserId);
     setOpportunityOutcomes((current) => [
       outcomeRecord,
@@ -1189,6 +1256,9 @@ export function OpportunitiesPage() {
         opportunityOutcomes={editingOpportunity ? opportunityOutcomes : []}
         salesAssets={salesAssets}
         allOpportunities={opportunities}
+        knownAccountNames={knownAccountNames}
+        accountAliases={accountAliases}
+        accountWarningForced={accountNameConfirmed === form.accountName.trim() && Boolean(accountNameConfirmed)}
         quotes={editingOpportunity ? getQuotesForOpportunity(quotes, editingOpportunity) : []}
         onChange={setForm}
         onActionOutcomesChange={setActionOutcomes}
@@ -2428,6 +2498,9 @@ function OpportunityPanel({
   opportunityOutcomes,
   salesAssets,
   allOpportunities,
+  knownAccountNames,
+  accountAliases,
+  accountWarningForced,
   quotes,
   onChange,
   onActionOutcomesChange,
@@ -2449,6 +2522,11 @@ function OpportunityPanel({
   opportunityOutcomes: OpportunityOutcomeRecord[];
   salesAssets: SalesAssetRecord[];
   allOpportunities: CrmLiteOpportunity[];
+  /** Customers already in the workspace, by their surviving name. */
+  knownAccountNames: string[];
+  accountAliases: AccountAliasIndex;
+  /** True once a save has raised the near-miss, so the field shows it too. */
+  accountWarningForced: boolean;
   quotes: QuoteRecord[];
   onChange: (form: OpportunityFormInput) => void;
   onActionOutcomesChange: (outcomes: ActionOutcomeRecord[]) => void;
@@ -2458,6 +2536,10 @@ function OpportunityPanel({
   onDelete?: () => void;
   onCreateDefenseBrief?: () => void;
 }) {
+  // Declared before the early return below: a hook after a conditional return is
+  // a different hook order on every open and close of this panel.
+  const [accountFieldLeft, setAccountFieldLeft] = useState(false);
+
   if (mode === 'closed') {
     return null;
   }
@@ -2472,6 +2554,18 @@ function OpportunityPanel({
   const brandOptions = Array.from(new Set(
     allOpportunities.map((opportunity) => (opportunity.brand || '').trim()).filter(Boolean),
   )).sort((a, b) => a.localeCompare(b));
+
+  // The account field is the deal's only link to a customer, so it offers what
+  // the workspace knows instead of trusting the seller to spell it the same way
+  // twice. Matches anywhere in the name, diacritics ignored.
+  const accountQuery = normalizeEntityName(form.accountName);
+  const accountOptions = knownAccountNames
+    .filter((name) => !accountQuery || normalizeEntityName(name).includes(accountQuery))
+    .filter((name) => normalizeEntityName(name) !== accountQuery)
+    .slice(0, 8)
+    .map((name) => ({ key: `account-${name}`, primary: name, onPick: () => update('accountName', name) }));
+
+  const accountCheck = checkAccountName(form.accountName, knownAccountNames, accountAliases);
 
   return (
     <>
@@ -2529,7 +2623,26 @@ function OpportunityPanel({
       )}
 
       <div className="mt-5 space-y-4">
-        <Field label="Account" value={form.accountName} onChange={(value) => update('accountName', value)} required />
+        <div>
+          <SuggestInput
+            label="Account"
+            required
+            value={form.accountName}
+            placeholder="Your customer's company"
+            onChange={(value) => { update('accountName', value); setAccountFieldLeft(false); }}
+            onBlurred={() => setAccountFieldLeft(true)}
+            options={accountOptions}
+          />
+          {/* A near-miss is only worth saying once the seller has stopped
+              typing: mid-word, the dropdown above is already offering the fix.
+              The confirmations ("you already have this customer", "you merged
+              this name away") are safe to show live. */}
+          <AccountNameNotice
+            check={accountCheck}
+            settled={accountFieldLeft || accountWarningForced}
+            onUse={(name) => { update('accountName', name); setAccountFieldLeft(true); }}
+          />
+        </div>
         <Field label="Opportunity" value={form.opportunityName} onChange={(value) => update('opportunityName', value)} required />
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -3790,6 +3903,104 @@ function SelectField<Value extends string>({
         ))}
       </select>
     </label>
+  );
+}
+
+type AccountNameCheck =
+  | { kind: 'quiet' }
+  | { kind: 'known'; name: string }
+  | { kind: 'renamed'; name: string }
+  | { kind: 'near'; name: string; reason: string }
+  | { kind: 'new' };
+
+/**
+ * What the typed account name means, before it becomes a record.
+ *
+ * An opportunity's link to a customer is this string, so the moment it is saved
+ * a near-miss is a customer split in two - across their deals, their touches,
+ * their coverage row and their contact rhythm - with nothing on screen to say so.
+ * The four answers are: this is a customer you have, this is a name you merged
+ * away, this looks like a customer you have, and this is new.
+ */
+function checkAccountName(typed: string, known: string[], aliases: AccountAliasIndex): AccountNameCheck {
+  const raw = (typed || '').trim();
+  if (raw.length < 2) return { kind: 'quiet' };
+
+  const resolved = resolveAccountName(raw, aliases);
+  if (accountKey(resolved) !== accountKey(raw)) return { kind: 'renamed', name: resolved };
+
+  const exact = known.find((name) => sameAccount(name, raw));
+  if (exact) return { kind: 'known', name: exact };
+
+  const strong = known
+    .map((name) => ({ name, match: compareAccountNames(raw, name) }))
+    .find((row) => row.match);
+  if (strong?.match) return { kind: 'near', name: strong.name, reason: strong.match.reason };
+
+  const similar = findSimilarAccountName(raw, known);
+  if (similar) {
+    return {
+      kind: 'near',
+      name: similar.name,
+      reason: similar.distance === 1
+        ? 'One character apart.'
+        : 'Nearly the same name.',
+    };
+  }
+
+  return { kind: 'new' };
+}
+
+function AccountNameNotice({
+  check,
+  settled,
+  onUse,
+}: {
+  check: AccountNameCheck;
+  /** True once the seller has left the field, so a guess is worth voicing. */
+  settled: boolean;
+  onUse: (name: string) => void;
+}) {
+  if (check.kind === 'quiet') return null;
+  // Both of these are guesses about a half-typed name. The two confirmations
+  // below - already yours, and merged away - are facts, so they stay live.
+  if ((check.kind === 'near' || check.kind === 'new') && !settled) return null;
+
+  if (check.kind === 'known') {
+    return (
+      <p className="mt-1.5 text-xs font-semibold text-emerald-700">
+        Linked to {check.name}, a customer you already have.
+      </p>
+    );
+  }
+
+  if (check.kind === 'new') {
+    // Deliberately quiet. Adding a genuinely new customer is normal, and an
+    // amber box every time would train the seller to ignore the amber box that
+    // matters.
+    return (
+      <p className="mt-1.5 text-xs text-gray-500">
+        New customer - no existing account matches this name.
+      </p>
+    );
+  }
+
+  const isRenamed = check.kind === 'renamed';
+  return (
+    <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+      <p className="text-xs font-semibold leading-5 text-amber-900">
+        {isRenamed
+          ? `You merged this name into ${check.name}. Saving it as typed would split them again.`
+          : `Did you mean ${check.name}? ${check.reason} Saving this as typed creates a second customer.`}
+      </p>
+      <button
+        type="button"
+        onClick={() => onUse(check.name)}
+        className="rounded-full bg-navy px-2.5 py-1 text-[11px] font-bold text-white hover:bg-navy/90"
+      >
+        Use {check.name}
+      </button>
+    </div>
   );
 }
 

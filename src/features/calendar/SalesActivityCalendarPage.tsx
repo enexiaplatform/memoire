@@ -24,6 +24,7 @@ import {
 import { updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { loadPlanItemsForWorkspace, PLAN_ITEMS_UPDATED_EVENT } from '../../services/planItemStore';
 import type { PlanRecord } from '../../utils/weeklyPlan';
+import { buildAccountAliasIndex } from '../../utils/accountAliases';
 import { buildActivityInsights } from '../../utils/activityInsights';
 import { ActivityInsightsBand } from './ActivityInsightsBand';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
@@ -32,6 +33,7 @@ import { buildCommercialJourneySnapshot, formatJourneyCommitment } from '../../u
 import { buildActivityStateTrail, type ActivityTrailChipKind } from '../../utils/activityStateTrail';
 import { type QuoteRecord } from '../../services/quoteStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
+import { type AccountMergeRecord } from '../../services/accountMergeStore';
 import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
 import { applyOpportunityUpdateSuggestion, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 import type { SalesActivityType } from '../../utils/salesActivityClassifier';
@@ -98,6 +100,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
   const [copiedId, setCopiedId] = useState('');
   const [message, setMessage] = useState('');
   const [planRecords, setPlanRecords] = useState<PlanRecord[]>([]);
+  const [accountMerges, setAccountMerges] = useState<AccountMergeRecord[]>([]);
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
@@ -108,6 +111,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
       setOpportunities(cachedData.opportunities);
       setQuotes(cachedData.quotes);
       setObjections(cachedData.objections);
+      setAccountMerges(cachedData.accountMerges);
       setLoadingActivities(false);
       return;
     }
@@ -118,6 +122,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
     setOpportunities(workspaceData.opportunities);
     setQuotes(workspaceData.quotes);
     setObjections(workspaceData.objections);
+    setAccountMerges(workspaceData.accountMerges);
     setLoadingActivities(false);
   }, [dataUserId]);
 
@@ -187,8 +192,13 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
   // Insights read the whole ledger (for cadence and quiet accounts) plus the
   // plan's completion marks (for follow-through), scoped to the viewed period.
   const insights = useMemo(
-    () => buildActivityInsights({ activities, planRecords, range: { start: range.start, end: range.end } }),
-    [activities, planRecords, range.end, range.start],
+    () => buildActivityInsights({
+      activities,
+      planRecords,
+      range: { start: range.start, end: range.end },
+      accountAliases: buildAccountAliasIndex(accountMerges),
+    }),
+    [accountMerges, activities, planRecords, range.end, range.start],
   );
   const dateKeys = useMemo(() => getDateKeysForRange(range.start, range.end), [range.end, range.start]);
 

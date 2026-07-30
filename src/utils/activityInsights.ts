@@ -1,4 +1,5 @@
 import type { SalesActivityRecord } from '../services/salesActivityStore';
+import { resolveAccountName, type AccountAliasIndex } from './accountAliases.ts';
 import { classifyBusinessDomain, type BusinessDomain } from './businessDomain.ts';
 import { buildCaptureDerivedKey, getDatedCaptureActions, type PlanRecord } from './weeklyPlan.ts';
 import {
@@ -89,8 +90,11 @@ export function buildActivityInsights(input: {
   planRecords: PlanRecord[];
   range: { start: string; end: string };
   today?: string;
+  /** Names the user has merged, so a merged customer is one account here. */
+  accountAliases?: AccountAliasIndex;
 }): ActivityInsights {
   const today = sanitizeBusinessDate(input.today) || todayDateKey();
+  const aliases = input.accountAliases;
   const inPeriod = input.activities.filter((activity) => isBusinessDateInRange(activity.activityDate, input.range.start, input.range.end));
 
   const momentum = buildMomentum(input.activities, input.range, today);
@@ -99,12 +103,12 @@ export function buildActivityInsights(input: {
   const effortMix = buildEffortMix(inPeriod);
   const topActivityType = topEntry(countBy(inPeriod, (activity) => activity.activityType || 'Other'));
   const topAccount = topEntry(countBy(
-    inPeriod.filter((activity) => accountOf(activity)),
-    (activity) => accountOf(activity),
+    inPeriod.filter((activity) => accountOf(activity, aliases)),
+    (activity) => accountOf(activity, aliases),
   ));
   const followThrough = buildFollowThrough(inPeriod, input.planRecords, today);
-  const quietAccounts = buildQuietAccounts(input.activities, today);
-  const coverage = buildCoverage(inPeriod);
+  const quietAccounts = buildQuietAccounts(input.activities, today, aliases);
+  const coverage = buildCoverage(inPeriod, aliases);
 
   return {
     total: inPeriod.length,
@@ -121,9 +125,11 @@ export function buildActivityInsights(input: {
   };
 }
 
-function buildCoverage(activities: SalesActivityRecord[]): ActivityCoverage {
+function buildCoverage(activities: SalesActivityRecord[], aliases?: AccountAliasIndex): ActivityCoverage {
   return {
-    accountsTouched: new Set(activities.map(accountOf).filter(Boolean).map((name) => name.toLowerCase())).size,
+    accountsTouched: new Set(
+      activities.map((activity) => accountOf(activity, aliases)).filter(Boolean).map((name) => name.toLowerCase()),
+    ).size,
     opportunitiesTouched: new Set(
       activities.map((activity) => (activity.linkedOpportunityName || activity.opportunityName || '').trim()).filter(Boolean).map((name) => name.toLowerCase()),
     ).size,
@@ -194,10 +200,10 @@ function buildFollowThrough(periodActivities: SalesActivityRecord[], planRecords
   };
 }
 
-function buildQuietAccounts(activities: SalesActivityRecord[], today: string): QuietAccount[] {
+function buildQuietAccounts(activities: SalesActivityRecord[], today: string, aliases?: AccountAliasIndex): QuietAccount[] {
   const lastTouchByAccount = new Map<string, { account: string; lastTouch: string }>();
   activities.forEach((activity) => {
-    const account = accountOf(activity);
+    const account = accountOf(activity, aliases);
     if (!account || !isValidBusinessDate(activity.activityDate)) return;
     const key = account.toLowerCase();
     const existing = lastTouchByAccount.get(key);
@@ -255,8 +261,8 @@ function buildHeadline(input: {
   return parts.join(' ');
 }
 
-function accountOf(activity: SalesActivityRecord) {
-  return (activity.linkedAccountName || activity.accountName || '').trim();
+function accountOf(activity: SalesActivityRecord, aliases?: AccountAliasIndex) {
+  return resolveAccountName(activity.linkedAccountName || activity.accountName || '', aliases);
 }
 
 function countByDay(activities: SalesActivityRecord[]) {

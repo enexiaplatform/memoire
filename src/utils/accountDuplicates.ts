@@ -142,6 +142,67 @@ export function pairKey(left: string, right: string) {
   return [accountKey(left), accountKey(right)].sort().join('|');
 }
 
+/** How far apart two names may be and still be worth asking about. */
+export const ACCOUNT_TYPO_MAX_DISTANCE = 2;
+/** Below this, one letter is a real difference between two real companies. */
+const ACCOUNT_TYPO_MIN_LENGTH = 5;
+
+/**
+ * The closest existing customer to a name being typed - for asking, never for
+ * merging.
+ *
+ * `compareAccountNames` above is deliberately blind to a one-letter slip,
+ * because it feeds a merge, and a wrong merge buries a customer's history under
+ * a name the seller no longer recognises. This feeds a question on a form still
+ * being filled in, where being wrong costs one glance, so it can afford to
+ * notice that "Trust Farma" is probably the "Trust Farm" with twelve deals on
+ * it. It suggests; the seller decides, and creating a genuinely new customer
+ * stays exactly one click.
+ */
+export function findSimilarAccountName(
+  typed: string,
+  candidates: string[],
+  maxDistance = ACCOUNT_TYPO_MAX_DISTANCE,
+): { name: string; distance: number } | null {
+  const key = accountKey(typed);
+  if (key.length < ACCOUNT_TYPO_MIN_LENGTH) return null;
+
+  let best: { name: string; distance: number } | null = null;
+  for (const candidate of candidates) {
+    const candidateKey = accountKey(candidate);
+    if (!candidateKey || candidateKey === key) continue;
+    if (Math.abs(candidateKey.length - key.length) > maxDistance) continue;
+
+    const distance = editDistanceWithin(key, candidateKey, maxDistance);
+    if (distance === null) continue;
+    if (!best || distance < best.distance) best = { name: candidate, distance };
+  }
+  return best;
+}
+
+/** Levenshtein distance, or null once it is certain to exceed `max`. */
+function editDistanceWithin(left: string, right: string, max: number): number | null {
+  let previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+
+  for (let i = 1; i <= left.length; i += 1) {
+    const current = [i];
+    let rowMin = i;
+    for (let j = 1; j <= right.length; j += 1) {
+      const cost = left[i - 1] === right[j - 1] ? 0 : 1;
+      const value = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + cost);
+      current.push(value);
+      if (value < rowMin) rowMin = value;
+    }
+    // Every future row is at least this good, so the answer cannot come back
+    // under the limit. Bailing here keeps the scan cheap over hundreds of names.
+    if (rowMin > max) return null;
+    previous = current;
+  }
+
+  const distance = previous[right.length];
+  return distance <= max ? distance : null;
+}
+
 /** Tokens that actually identify the company. */
 function meaningfulTokens(value: string) {
   return accountKey(value)

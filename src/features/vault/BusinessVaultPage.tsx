@@ -4,7 +4,9 @@ import { Grid3x3 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import type { AccountMergeRecord } from '../../services/accountMergeStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
+import { buildAccountAliasIndex } from '../../utils/accountAliases';
 import {
   buildCoverageMatrix,
   coverageCellLabel,
@@ -39,20 +41,29 @@ const stateStyles: Record<CoverageCellState, string> = {
 export function BusinessVaultPage() {
   const { user } = useAuthContext();
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[] | null>(null);
+  const [accountMerges, setAccountMerges] = useState<AccountMergeRecord[]>([]);
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
   useEffect(() => {
     let cancelled = false;
     void loadSalesWorkspaceData(dataUserId).then((workspace) => {
-      if (!cancelled) setOpportunities(workspace.opportunities);
+      if (cancelled) return;
+      setOpportunities(workspace.opportunities);
+      setAccountMerges(workspace.accountMerges);
     });
     return () => { cancelled = true; };
   }, [dataUserId]);
 
+  // A customer merged in Accounts has to be one row here. Without the merges
+  // this page drew the same customer twice, splitting their squares across two
+  // rows and inventing gaps in both.
   const matrix = useMemo(
-    () => buildCoverageMatrix({ opportunities: opportunities || [] }),
-    [opportunities],
+    () => buildCoverageMatrix({
+      opportunities: opportunities || [],
+      accountAliases: buildAccountAliasIndex(accountMerges),
+    }),
+    [opportunities, accountMerges],
   );
 
   if (!opportunities) {

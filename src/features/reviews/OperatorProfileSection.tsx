@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowDownRight, ArrowUpRight, Fingerprint, Minus } from 'lucide-react';
 import type { SalesWorkspaceData } from '../../services/workspaceData';
 import type { PlanRecord } from '../../utils/weeklyPlan';
+import { buildAccountAliasIndex } from '../../utils/accountAliases';
 import { buildOperatorProfile, type ProfileTrait } from '../../utils/operatorProfile';
 import { buildOperatorTrends, type MetricTrend, trendRules } from '../../utils/metricTrend';
 import { formatCompactBaseAmount } from '../../utils/money';
@@ -34,6 +35,7 @@ export function OperatorProfileSection({
     opportunityOutcomes: workspace.opportunityOutcomes,
     activities: workspace.activities,
     quotes: workspace.quotes,
+    accountAliases: buildAccountAliasIndex(workspace.accountMerges),
   }), [workspace]);
 
   const trends = useMemo(() => buildOperatorTrends({

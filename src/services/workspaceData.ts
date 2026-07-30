@@ -1,4 +1,5 @@
 import { loadAccounts, type AccountMemoryRecord } from './accountStore';
+import { loadAccountMergesForWorkspace, type AccountMergeRecord } from './accountMergeStore';
 import { loadActionOutcomes, loadActionOutcomesForUser, type ActionOutcomeRecord } from './actionOutcomeStore';
 import { loadObjections, type ObjectionRecord } from './objectionStore';
 import { loadOpportunityOutcomes, loadOpportunityOutcomesForUser, type OpportunityOutcomeRecord } from './opportunityOutcomeStore';
@@ -49,6 +50,12 @@ export type SalesWorkspaceData = {
   expenses: ExpenseRecord[];
   operatingContext: OperatingContextRecord[];
   opportunityOutcomes: OpportunityOutcomeRecord[];
+  /**
+   * Which names the user has said are the same customer. Loaded here rather
+   * than per page because every surface that groups by account has to apply
+   * them or it draws a merged customer twice.
+   */
+  accountMerges: AccountMergeRecord[];
   // Commercial Kernel. Loaded with everything else so no surface has to fetch
   // commitments separately and end up showing a different answer to "what is
   // overdue" than the surface next to it.
@@ -86,7 +93,7 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
   if (userId) beginWorkspaceSyncCheck();
 
   const generationAtLoadStart = getWorkspaceDataGeneration();
-  // Which of the fifteen loaders have not answered yet. When the watchdog below
+  // Which of the sixteen loaders have not answered yet. When the watchdog below
   // gives up, this is the difference between "the workspace is slow" and a
   // named store to go and look at.
   const unsettled = new Set<string>();
@@ -111,7 +118,8 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
     track('commitments', loadCommitmentsForWorkspace(userId)),
     track('threads', loadThreadsForWorkspace(userId)),
     track('valueOutcomes', loadValueOutcomesForWorkspace(userId)),
-  ]).then(([activities, opportunities, accounts, briefs, objections, stakeholders, actionOutcomes, assets, quotes, operatingContext, opportunityOutcomes, expenses, commitments, threads, valueOutcomes]) => {
+    track('accountMerges', loadAccountMergesForWorkspace(userId)),
+  ]).then(([activities, opportunities, accounts, briefs, objections, stakeholders, actionOutcomes, assets, quotes, operatingContext, opportunityOutcomes, expenses, commitments, threads, valueOutcomes, accountMerges]) => {
     if (userId && getWorkspaceSyncStatus().state !== 'error') reportWorkspaceSyncReady();
     return {
       activities,
@@ -129,6 +137,7 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
       commitments,
       threads,
       valueOutcomes,
+      accountMerges,
     };
   });
 
