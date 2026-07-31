@@ -104,8 +104,9 @@ import type { SalesActivityRecord } from '../../services/salesActivityStore';
 import type { CrmLiteOpportunity as WorkspaceOpportunity } from '../../services/opportunityStore';
 import { generatePipelineDefenseBriefFromOpportunities } from '../../utils/opportunityToPipelineBrief';
 import { convertMoney } from '../../utils/money';
-import { buildForecastCalibration } from '../../utils/forecastCalibration';
+import { buildForecastCalibration, buildProbabilityCalibration } from '../../utils/forecastCalibration';
 import { ForecastCalibrationPanel } from './ForecastCalibrationPanel';
+import { ProbabilityCalibrationPanel } from './ProbabilityCalibrationPanel';
 
 const categoryClasses: Record<ForecastEvidenceCategory, string> = {
   Defensible: 'border-emerald-200 bg-emerald-50 text-emerald-700',
@@ -371,6 +372,13 @@ export function PipelineReviewDefenseBriefPage() {
       opportunities: workspaceSnapshot.opportunities,
     })
     : null), [opportunityOutcomes, workspaceSnapshot]);
+
+  // The blunter half of the same question: not whether the evidence label held
+  // up, but whether the number did.
+  const probabilityCalibration = useMemo(
+    () => buildProbabilityCalibration({ outcomes: opportunityOutcomes }),
+    [opportunityOutcomes],
+  );
 
   useEffect(() => {
     if (accountLoading) {
@@ -1514,6 +1522,10 @@ export function PipelineReviewDefenseBriefPage() {
           <ForecastCalibrationPanel calibration={forecastCalibration} />
         </div>
       )}
+
+      <div className="mb-6">
+        <ProbabilityCalibrationPanel calibration={probabilityCalibration} />
+      </div>
 
       <DefenseCategoryBoard
         groups={defenseCenter.groups}

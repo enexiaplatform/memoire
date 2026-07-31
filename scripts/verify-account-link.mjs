@@ -111,6 +111,29 @@ const merge = (canonical, mergedNames) => ({
   );
 }
 
+// 1c. The account panel used to report "12 contacts | 34 activities" and keep
+//     deals, touches, quotes and outcomes in four separate boxes. A count is
+//     not a memory: the question walking into a meeting is what happened here
+//     and in what order.
+{
+  const timeline = readFileSync('src/utils/accountTimeline.ts', 'utf8');
+  for (const marker of ['export function buildAccountTimeline', 'activityEntries', 'opportunityEntries', 'quoteEntries', 'outcomeEntries']) {
+    assert.ok(timeline.includes(marker), `the account history lost a source: ${marker}`);
+  }
+
+  // Every row must reach the record behind it, or the history becomes a second
+  // copy of the data instead of a way into it.
+  assert.equal(
+    (timeline.match(/href: `\/app\//g) || []).length,
+    4,
+    'every timeline source must link back to its own record',
+  );
+
+  const accounts = readFileSync('src/features/accounts/AccountsPage.tsx', 'utf8');
+  assert.ok(accounts.includes('<AccountHistorySection'), 'the account panel must render the history');
+  assert.ok(accounts.includes('buildAccountTimeline'), 'the history must come from the shared builder');
+}
+
 // 2. One typeahead, not two. The capture panel had its own copy; a second
 //    implementation is a second set of matching rules to disagree with.
 {

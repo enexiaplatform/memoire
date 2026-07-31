@@ -4,6 +4,7 @@ import { sumMoneyInBase } from './money.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import { compareSafeBusinessDate, isValidBusinessDate } from './safeDate.ts';
 import { accountKey as normalize, sameAccount } from './accountIdentity.ts';
+import { resolveAccountName, type AccountAliasIndex } from './accountAliases.ts';
 
 export type AccountCandidate = {
   accountName: string;
@@ -125,24 +126,37 @@ export function calculateAccountHealth(memory: Omit<AccountMemory, 'health' | 'r
   return 'Healthy';
 }
 
+/**
+ * Names carrying real work that the workspace has no customer record for.
+ *
+ * `aliases` matters more than it looks. A merge records an alias and rewrites
+ * nothing, so a deal keeps the spelling it was created with. Without resolving
+ * through the alias index, every name the operator had already merged away came
+ * back here as a brand-new customer to create - offering to rebuild, one click
+ * at a time, exactly the duplicate they had just cleaned up.
+ */
 export function mergeAccountCandidates(
   opportunityCandidates: AccountCandidate[],
   activityCandidates: AccountCandidate[],
-  existingAccounts: AccountMemoryRecord[]
+  existingAccounts: AccountMemoryRecord[],
+  aliases?: AccountAliasIndex,
 ) {
   const existing = new Set(existingAccounts.map((account) => normalize(account.accountName)));
   const byName = new Map<string, AccountCandidate>();
 
   [...opportunityCandidates, ...activityCandidates].forEach((candidate) => {
-    const key = normalize(candidate.accountName);
+    const resolvedName = aliases ? resolveAccountName(candidate.accountName, aliases) : candidate.accountName;
+    const key = normalize(resolvedName);
     if (!key || existing.has(key)) return;
     const current = byName.get(key);
     if (!current) {
-      byName.set(key, candidate);
+      // Offer the canonical name, not the spelling this record happens to
+      // carry: creating the alias would recreate the split the merge closed.
+      byName.set(key, { ...candidate, accountName: resolvedName || candidate.accountName });
       return;
     }
     byName.set(key, {
-      accountName: candidate.accountName || current.accountName,
+      accountName: current.accountName || resolvedName,
       source: current.source === candidate.source ? current.source : 'mixed',
       opportunityCount: current.opportunityCount + candidate.opportunityCount,
       activityCount: current.activityCount + candidate.activityCount,

@@ -42,7 +42,8 @@ import {
   type DuplicateGroup,
 } from '../../utils/accountDuplicates';
 import { buildAccountAliasIndex } from '../../utils/accountAliases';
-import { accountKey } from '../../utils/accountIdentity';
+import { buildAccountTimeline, type AccountTimelineKind } from '../../utils/accountTimeline';
+import { accountKey, sameAccount } from '../../utils/accountIdentity';
 import {
   alternateNamesFor,
   deleteAccountMerge,
@@ -221,13 +222,53 @@ export function AccountsPage() {
     dismissedPairs: dismissedPairKeys(accountMerges),
   }), [accountMerges, activities, opportunities, visibleAccounts]);
 
+  // Work that belongs to a customer the workspace has no record for. Deals
+  // first: an opportunity with no account is the one that reaches a forecast
+  // without a customer behind it.
   const candidates = useMemo(() => {
     return mergeAccountCandidates(
       deriveAccountCandidatesFromOpportunities(opportunities),
       deriveAccountCandidatesFromActivities(activities),
       accounts,
+      accountAliases,
     );
-  }, [accounts, activities, opportunities]);
+  }, [accountAliases, accounts, activities, opportunities]);
+
+  const unlinkedOpportunityCount = useMemo(
+    () => candidates.reduce((total, candidate) => total + candidate.opportunityCount, 0),
+    [candidates],
+  );
+
+  /**
+   * Creating them one at a time is the same objection the plan board had: the
+   * workspace already knows every name, so making the operator click through
+   * them individually is work the app invented for itself.
+   */
+  const handleCreateAllCandidates = async () => {
+    setSaveState('saving');
+    setMessage(`Creating ${candidates.length} accounts...`);
+
+    let created = 0;
+    let failed = 0;
+    for (const candidate of candidates) {
+      try {
+        const result = await createAccount({
+          ...emptyAccountInput,
+          accountName: candidate.accountName,
+          relationshipStatus: candidate.activityCount > 0 ? 'Developing' : 'New',
+        }, dataUserId);
+        setAccounts((current) => [result.account, ...current.filter((item) => item.id !== result.account.id)]);
+        created += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+
+    setSaveState(failed > 0 ? 'error' : 'saved');
+    setMessage(failed > 0
+      ? `${created} accounts created, ${failed} failed. The ones that failed are still listed below.`
+      : `${created} accounts created. Every deal and touch now has a customer behind it.`);
+  };
 
   const handleMergeAccounts = (group: DuplicateGroup, survivorName: string) => {
     const mergedNames = group.members
@@ -604,7 +645,12 @@ export function AccountsPage() {
         )}
 
         {candidates.length > 0 && (
-          <CandidateSection candidates={candidates} onCreate={handleCreateCandidate} />
+          <CandidateSection
+            candidates={candidates}
+            unlinkedOpportunityCount={unlinkedOpportunityCount}
+            onCreate={handleCreateCandidate}
+            onCreateAll={handleCreateAllCandidates}
+          />
         )}
 
         {loading ? (
@@ -657,6 +703,9 @@ export function AccountsPage() {
         quotes={selectedQuotes}
         hygieneStatus={selectedHygiene?.status || null}
         nameCheck={accountNameCheck}
+        outcomes={selectedAccount
+          ? opportunityOutcomes.filter((outcome) => sameAccount(outcome.accountName, selectedAccount.accountName))
+          : []}
         onChange={setForm}
         onSave={handleSave}
         onClose={closePanel}
@@ -1061,6 +1110,7 @@ function AccountDetailPanel({
   saveState,
   message,
   nameCheck,
+  outcomes,
   onChange,
   onSave,
   onClose,
@@ -1081,6 +1131,8 @@ function AccountDetailPanel({
   message: string;
   /** What the typed name means against the customers already in the workspace. */
   nameCheck: AccountNameCheck;
+  /** Closed-deal retros for this customer, so the history says how deals ended. */
+  outcomes: OpportunityOutcomeRecord[];
   onChange: (form: AccountFormInput) => void;
   onSave: () => void;
   onClose: () => void;
@@ -1160,7 +1212,7 @@ function AccountDetailPanel({
               onMarkStrategic={onMarkStrategic}
             />
           ) : (
-            <MemorySections memory={selectedMemory} stakeholders={stakeholders} objections={objections} quotes={quotes} />
+            <MemorySections memory={selectedMemory} stakeholders={stakeholders} objections={objections} quotes={quotes} outcomes={outcomes} />
           )}
           <details className="group mt-5 rounded-lg border border-gray-200 bg-gray-50">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-navy">
@@ -1528,17 +1580,20 @@ function MemorySections({
   stakeholders,
   objections,
   quotes,
+  outcomes,
 }: {
   memory: AccountMemory;
   stakeholders: StakeholderRecord[];
   objections: ObjectionRecord[];
   quotes: QuoteRecord[];
+  outcomes: OpportunityOutcomeRecord[];
 }) {
   const allActivities = [...memory.linkedActivities, ...memory.matchingActivities]
     .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate) || b.createdAt.localeCompare(a.createdAt));
   return (
     <div className="mt-5 space-y-4">
       <AccountQuotesSection accountName={memory.account.accountName} quotes={quotes} />
+      <AccountHistorySection memory={memory} quotes={quotes} outcomes={outcomes} />
 
       <details className="group rounded-lg border border-gray-200 bg-gray-50">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-navy">
@@ -1836,23 +1891,75 @@ function MergedAccountsNote({ merges, onUndo }: { merges: AccountMergeRecord[]; 
   );
 }
 
-function CandidateSection({ candidates, onCreate }: { candidates: AccountCandidate[]; onCreate: (candidate: AccountCandidate) => void }) {
+/**
+ * Deals and touches whose customer does not exist as a record.
+ *
+ * This is where "opportunity rác" comes from: a deal typed against a name
+ * nobody ever made an account for reaches the pipeline, the forecast and the
+ * coverage row while the customer behind it has no stakeholders, no history and
+ * no owner. Naming the count is the point - "6 suggestions" reads as optional,
+ * "9 deals have no customer record" does not.
+ */
+function CandidateSection({
+  candidates,
+  unlinkedOpportunityCount,
+  onCreate,
+  onCreateAll,
+}: {
+  candidates: AccountCandidate[];
+  unlinkedOpportunityCount: number;
+  onCreate: (candidate: AccountCandidate) => void;
+  onCreateAll: () => void;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const visible = showAll ? candidates : candidates.slice(0, 6);
+
   return (
-    <section className="rounded-lg border border-blue-100 bg-blue-50/70 p-4">
-      <p className="text-sm font-bold text-blue-950">Suggested accounts from your pipeline/activity</p>
+    <section className="rounded-lg border border-amber-200 bg-amber-50/70 p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <div>
+          <p className="text-sm font-bold text-amber-950">
+            {unlinkedOpportunityCount > 0
+              ? `${unlinkedOpportunityCount} ${unlinkedOpportunityCount === 1 ? 'deal has' : 'deals have'} no customer record`
+              : 'Work without a customer record'}
+          </p>
+          <p className="mt-0.5 text-xs text-amber-900/80">
+            {candidates.length} {candidates.length === 1 ? 'name' : 'names'} carry deals or touches but exist nowhere as an account.
+            Until they do, there are no stakeholders, no history and no owner behind them.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onCreateAll}
+          className="ml-auto rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white hover:bg-navy/90"
+        >
+          Create all {candidates.length}
+        </button>
+      </div>
+
       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-        {candidates.slice(0, 6).map((candidate) => (
-          <div key={candidate.accountName} className="rounded-lg bg-white p-3 ring-1 ring-blue-100">
+        {visible.map((candidate) => (
+          <div key={candidate.accountName} className="rounded-lg bg-white p-3 ring-1 ring-amber-100">
             <p className="font-bold text-navy">{candidate.accountName}</p>
             <p className="mt-1 text-xs font-semibold text-gray-500">
               {candidate.opportunityCount} opportunities | {candidate.activityCount} activities | {candidate.source}
             </p>
             <button type="button" onClick={() => onCreate(candidate)} className="mt-3 rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">
-              Create account from candidate
+              Create account
             </button>
           </div>
         ))}
       </div>
+
+      {candidates.length > 6 && (
+        <button
+          type="button"
+          onClick={() => setShowAll((current) => !current)}
+          className="mt-3 text-xs font-bold text-amber-900 underline"
+        >
+          {showAll ? 'Show fewer' : `Show all ${candidates.length}`}
+        </button>
+      )}
     </section>
   );
 }
@@ -2234,5 +2341,102 @@ function NewAccountNameNotice({ check, creating }: { check: AccountNameCheck; cr
     <p className="mt-1.5 text-xs font-semibold text-amber-800">
       This looks like {check.name}. {check.reason} Save anyway if they are genuinely different companies.
     </p>
+  );
+}
+
+const TIMELINE_PAGE = 12;
+
+const TIMELINE_TONE: Record<AccountTimelineKind, string> = {
+  activity: 'bg-blue-50 text-brand-blue',
+  opportunity: 'bg-indigo-50 text-indigo-700',
+  quote: 'bg-emerald-50 text-emerald-700',
+  outcome: 'bg-amber-50 text-amber-800',
+};
+
+const TIMELINE_KIND_LABEL: Record<AccountTimelineKind, string> = {
+  activity: 'Touch',
+  opportunity: 'Deal',
+  quote: 'Quote',
+  outcome: 'Closed',
+};
+
+/**
+ * The account's whole story in the order it happened.
+ *
+ * The panel used to report "12 contacts | 34 activities" and keep deals,
+ * touches, quotes and outcomes in separate boxes. A count is not a memory:
+ * walking into a meeting the question is what happened here and in what order,
+ * and answering it meant opening four screens and reassembling them by hand.
+ *
+ * Every row links to the record it came from, so this is a way into the data
+ * rather than a second copy of it.
+ */
+function AccountHistorySection({
+  memory,
+  quotes,
+  outcomes,
+}: {
+  memory: AccountMemory;
+  quotes: QuoteRecord[];
+  outcomes: OpportunityOutcomeRecord[];
+}) {
+  const [shown, setShown] = useState(TIMELINE_PAGE);
+  const timeline = useMemo(
+    () => buildAccountTimeline({ memory, quotes, outcomes, limit: shown }),
+    [memory, outcomes, quotes, shown],
+  );
+
+  if (timeline.totalCount === 0) {
+    return (
+      <section className="rounded-lg border border-gray-200 bg-white p-4">
+        <p className="text-sm font-bold text-navy">History</p>
+        <p className="mt-1 text-xs text-gray-500">
+          Nothing recorded for this customer yet. Captures, deals and quotes appear here in the order they happen.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="flex flex-wrap items-baseline gap-2">
+        <p className="text-sm font-bold text-navy">History</p>
+        <p className="text-xs text-gray-500">
+          {timeline.totalCount} {timeline.totalCount === 1 ? 'event' : 'events'}
+          {timeline.firstDate ? ` since ${formatDate(timeline.firstDate)}` : ''}
+        </p>
+      </div>
+
+      <ol className="mt-3 space-y-2">
+        {timeline.entries.map((entry) => (
+          <li key={entry.id} className="border-l-2 border-gray-200 pl-3">
+            <div className="flex flex-wrap items-baseline gap-2">
+              <span className="font-mono text-[11px] font-bold text-gray-400">{formatDate(entry.date)}</span>
+              <span className={`rounded px-1 py-0.5 text-[10px] font-bold ${TIMELINE_TONE[entry.kind]}`}>
+                {TIMELINE_KIND_LABEL[entry.kind]}
+              </span>
+              <Link to={entry.href} className="text-sm font-bold text-navy hover:underline">{entry.title}</Link>
+              <span className="text-[11px] font-semibold text-gray-500">{entry.label}</span>
+            </div>
+            {entry.detail && <p className="mt-0.5 text-xs leading-5 text-gray-600">{entry.detail}</p>}
+            {entry.nextAction && (
+              <p className="mt-0.5 text-xs leading-5 text-gray-500">
+                <span className="font-bold text-gray-600">Next:</span> {entry.nextAction}
+              </p>
+            )}
+          </li>
+        ))}
+      </ol>
+
+      {timeline.totalCount > timeline.entries.length && (
+        <button
+          type="button"
+          onClick={() => setShown((current) => current + TIMELINE_PAGE)}
+          className="mt-3 text-xs font-bold text-brand-blue underline"
+        >
+          Show {Math.min(TIMELINE_PAGE, timeline.totalCount - timeline.entries.length)} earlier
+        </button>
+      )}
+    </section>
   );
 }

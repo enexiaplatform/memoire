@@ -209,4 +209,62 @@ const sidebar = readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
 assert.ok(sidebar.includes("from '../../config/featureRegistry'"), 'Sidebar must render navigation from the feature registry');
 assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 0, 'A navigation item was hard-coded into the Sidebar instead of declared in the feature registry.');
 
+// A reason is what a win/loss report is built from, and a category is not one:
+// "Price" is a bucket. Won and Lost are blocked without it; Delayed and No
+// decision stay open, because sometimes nobody knows why yet.
+{
+  const page = readFileSync('src/features/opportunities/OpportunitiesPage.tsx', 'utf8');
+  assert.ok(
+    page.includes("const outcomeNeedsReason = draft.outcome === 'Won' || draft.outcome === 'Lost'"),
+    'the retro must require a reason on Won and Lost',
+  );
+  assert.ok(
+    page.includes('disabled={outcomeNeedsReason && !draft.reasonText.trim()}'),
+    'the retro save button must be blocked until the reason is written',
+  );
+
+  // Closing a deal straight from the status dropdown skipped the retro
+  // entirely, which is how a workspace fills with Won rows that cannot say why.
+  assert.ok(
+    page.includes('const closing =') && page.includes('hasRecordedOutcomeReason'),
+    'saving a deal as Won or Lost must require a recorded reason',
+  );
+}
+
+// The probability a deal carried when it closed, snapshotted. Read back off the
+// live deal it would always be 100 or 0, which would grade every seller as
+// perfectly calibrated and make the whole measurement worthless.
+{
+  const store = readFileSync('src/services/opportunityOutcomeStore.ts', 'utf8');
+  assert.ok(
+    store.includes('pipelineProbabilityBeforeOutcome: number | null;'),
+    'outcome records must carry the probability declared before the close',
+  );
+  assert.match(
+    store,
+    /pipelineProbabilityBeforeOutcome: typeof opportunity\.pipelineProbability === 'number'/,
+    'the snapshot must be taken from the opportunity at close time',
+  );
+
+  const calibration = readFileSync('src/utils/forecastCalibration.ts', 'utf8');
+  assert.ok(
+    calibration.includes('export function buildProbabilityCalibration'),
+    'probability calibration must exist',
+  );
+  assert.ok(
+    calibration.includes('outcome.pipelineProbabilityBeforeOutcome'),
+    'calibration must read the snapshot, never the live deal',
+  );
+  assert.ok(
+    calibration.includes('FORECAST_CALIBRATION_MIN_SAMPLE'),
+    'a band under the minimum sample must stay unrated rather than invent a track record',
+  );
+
+  const pipelineCalibrationUi = readFileSync('src/features/pipeline/PipelineReviewDefenseBriefPage.tsx', 'utf8');
+  assert.ok(
+    pipelineCalibrationUi.includes('<ProbabilityCalibrationPanel'),
+    'the calibration must be rendered, not just computed',
+  );
+}
+
 console.log('Win/loss closed-loop learning regression verified.');

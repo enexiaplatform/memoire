@@ -47,6 +47,15 @@ export type OpportunityOutcomeRecord = {
   forecastEvidenceCategoryBeforeOutcome: ForecastEvidenceCategory;
   decisionRecommendationBeforeOutcome: DecisionRecommendation;
   stageBeforeOutcome: OpportunityStage;
+  /**
+   * The probability the seller had declared when the deal closed.
+   *
+   * Snapshotted here rather than read back off the live deal, because closing
+   * a deal sets it to 100 or 0. Grading a forecast against the number it
+   * reached at the finish line would make everyone look perfectly calibrated.
+   * Null on records closed before this was captured.
+   */
+  pipelineProbabilityBeforeOutcome: number | null;
   reasonCategory: OpportunityOutcomeReasonCategory;
   reasonText: string;
   decisiveStakeholder?: string;
@@ -175,6 +184,9 @@ export function createOpportunityOutcomeFromOpportunity(
     forecastEvidenceCategoryBeforeOutcome: opportunity.forecastEvidenceCategory,
     decisionRecommendationBeforeOutcome: opportunity.decisionRecommendation,
     stageBeforeOutcome: opportunity.stage,
+    pipelineProbabilityBeforeOutcome: typeof opportunity.pipelineProbability === 'number'
+      ? opportunity.pipelineProbability
+      : null,
     reasonCategory: draft.reasonCategory,
     reasonText: draft.reasonText,
     decisiveStakeholder: draft.decisiveStakeholder,
@@ -241,6 +253,10 @@ function sanitizeOpportunityOutcome(raw: Partial<OpportunityOutcomeRecord> | nul
       ? raw.decisionRecommendationBeforeOutcome
       : 'Monitor',
     stageBeforeOutcome: isOpportunityStage(raw.stageBeforeOutcome) ? raw.stageBeforeOutcome : 'Discovery',
+    pipelineProbabilityBeforeOutcome: typeof raw.pipelineProbabilityBeforeOutcome === 'number'
+      && Number.isFinite(raw.pipelineProbabilityBeforeOutcome)
+      ? Math.min(100, Math.max(0, Math.round(raw.pipelineProbabilityBeforeOutcome)))
+      : null,
     reasonCategory: isReasonCategory(raw.reasonCategory) ? raw.reasonCategory : 'Other',
     reasonText: raw.reasonText || '',
     decisiveStakeholder: cleanOptional(raw.decisiveStakeholder),
