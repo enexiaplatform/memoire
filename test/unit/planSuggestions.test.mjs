@@ -23,6 +23,21 @@ const opportunity = (id, accountName, nextActionDate, status = 'Active') => ({
   estimatedValue: 1000, currency: 'VND',
 });
 
+const recommendation = (overrides = {}) => ({
+  id: 'c1:overdue',
+  reasonCode: 'CUSTOMER_COMMITMENT_OVERDUE',
+  reasonText: 'Promised for 2026-07-18, 2 days past due against a 3-day threshold.',
+  sourceRecordIds: ['c1'],
+  threshold: 3,
+  severity: 'high',
+  recommendedAction: 'Confirm the delivery date with the customer.',
+  calculatedAt: '2026-07-20T00:00:00.000Z',
+  accountName: 'MDL',
+  opportunityId: null,
+  href: '/app/today',
+  ...overrides,
+});
+
 // Planning the week of Mon 2026-07-20 .. Sun 2026-07-26; the ledger looked at
 // is the fortnight before it.
 const week = { rangeStart: '2026-07-20', rangeEnd: '2026-07-26' };
@@ -241,6 +256,141 @@ describe('buildPlanSuggestions', () => {
 
     const suggestions = buildPlanSuggestions({ activities, opportunities: [], records: [], ...week });
     assert.equal(suggestions.length, 6);
+  });
+
+  // The plan is meant to be the place the workspace's own warnings become work.
+  // Before this, an operator read a risk on Today and retyped it here by hand.
+  test('turns policy-engine alerts into datable plan lines', () => {
+    const suggestions = buildPlanSuggestions({
+      activities: [],
+      opportunities: [],
+      records: [],
+      recommendations: [
+        recommendation({ id: 'c1:overdue', reasonCode: 'CUSTOMER_COMMITMENT_OVERDUE', severity: 'critical', accountName: 'MDL' }),
+        recommendation({ id: 't9:silent', reasonCode: 'THREAD_SILENT', severity: 'medium', accountName: 'ACS' }),
+      ],
+      today: '2026-07-20',
+      ...week,
+    });
+
+    assert.equal(suggestions.length, 2);
+    assert.equal(suggestions[0].kind, 'alert');
+    assert.equal(suggestions[0].tag, 'MDL', 'the critical alert leads');
+    assert.equal(suggestions[0].severity, 'critical');
+    assert.equal(suggestions[0].reasonCode, 'CUSTOMER_COMMITMENT_OVERDUE');
+    // The engine's own sentence travels with it, so the row stays explainable.
+    assert.match(suggestions[0].reason, /2 days past due/);
+    assert.equal(suggestions[0].suggestedDate, '2026-07-20', 'critical lands as early as the week allows');
+    assert.equal(suggestions[1].suggestedDate, '2026-07-22', 'medium is given room');
+  });
+
+  test('never proposes an alert for a day that has already gone', () => {
+    const [suggestion] = buildPlanSuggestions({
+      activities: [],
+      opportunities: [],
+      records: [],
+      recommendations: [recommendation({ severity: 'critical' })],
+      // Planning the current week on the Thursday.
+      today: '2026-07-23',
+      ...week,
+    });
+
+    assert.equal(suggestion.suggestedDate, '2026-07-23');
+  });
+
+  test('a dismissed alert is not proposed again', () => {
+    const alert = recommendation({ id: 'c1:overdue' });
+    const suggestions = buildPlanSuggestions({
+      activities: [],
+      opportunities: [],
+      records: [createDismissedSuggestionRecord({
+        suggestionKey: 'sug:alert:c1:overdue',
+        date: '2026-07-20',
+        label: 'Chase what the customer owes',
+        tag: 'MDL',
+      })],
+      recommendations: [alert],
+      ...week,
+    });
+
+    assert.equal(suggestions.length, 0);
+  });
+
+  // Four overdue promises from one customer is one line of work, not four.
+  test('collapses repeated alerts of the same rule on one account', () => {
+    const suggestions = buildPlanSuggestions({
+      activities: [],
+      opportunities: [],
+      records: [],
+      recommendations: [
+        recommendation({ id: 'c1:overdue', accountName: 'MDL' }),
+        recommendation({ id: 'c2:overdue', accountName: 'MDL' }),
+        recommendation({ id: 'c3:overdue', accountName: 'MDL' }),
+      ],
+      ...week,
+    });
+
+    assert.equal(suggestions.length, 1);
+  });
+
+  test('does not raise an alert for a deal already planned this week', () => {
+    const suggestions = buildPlanSuggestions({
+      activities: [],
+      opportunities: [opportunity('o1', 'MDL', '2026-07-22')],
+      records: [],
+      recommendations: [recommendation({ opportunityId: 'o1', accountName: 'MDL' })],
+      ...week,
+    });
+
+    assert.equal(suggestions.length, 0, 'the account is already on the board this week');
+  });
+
+  // The two sources describing one piece of work is the noise that makes an
+  // operator stop reading the panel.
+  test('an alerted account does not also get the softer ledger nudge', () => {
+    const suggestions = buildPlanSuggestions({
+      activities: [activity({ accountName: 'MDL' })],
+      opportunities: [],
+      records: [],
+      recommendations: [recommendation({ accountName: 'MDL', reasonCode: 'THREAD_SILENT' })],
+      ...week,
+    });
+
+    assert.equal(suggestions.length, 1);
+    assert.equal(suggestions[0].kind, 'alert');
+  });
+
+  // The gap that left a week planned in advance empty: every recent promise had
+  // been dated for a week that was already over, so nothing reached the board.
+  test('carries an overdue promise onto the week being planned', () => {
+    const [suggestion] = buildPlanSuggestions({
+      activities: [activity({ nextAction: 'Send revised quote', dueDate: '2026-07-16' })],
+      opportunities: [],
+      records: [],
+      ...week,
+    });
+
+    assert.equal(suggestion.kind, 'due-next-action');
+    assert.equal(suggestion.label, 'Send revised quote');
+    assert.equal(suggestion.suggestedDate, '2026-07-20', 'it lands on the first day of the week being planned');
+    assert.match(suggestion.reason, /never reached a plan/);
+  });
+
+  test('alerts and the ledger together stay inside one readable list', () => {
+    const suggestions = buildPlanSuggestions({
+      activities: Array.from({ length: 20 }, (_, index) => activity({
+        id: `a${index}`, accountName: `Account ${index}`, activityDate: '2026-07-15',
+      })),
+      opportunities: [],
+      records: [],
+      recommendations: Array.from({ length: 20 }, (_, index) => recommendation({
+        id: `c${index}:overdue`, accountName: `Risk ${index}`,
+      })),
+      ...week,
+    });
+
+    assert.equal(suggestions.length, 8);
+    assert.equal(suggestions.filter((item) => item.kind === 'alert').length, 5, 'alerts keep the larger share');
   });
 
   test('leaves a short action untouched and truncates a long one on a word', () => {

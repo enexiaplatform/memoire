@@ -41,6 +41,12 @@ import {
   type OpportunityFormInput,
 } from '../../services/opportunityStore';
 import { analyzePipelineQuality, analyzeOpportunityQuality } from '../../utils/opportunityQuality';
+import {
+  defaultProbabilityForStage,
+  isClosedProbabilityStale,
+  isProbabilityOptimistic,
+  probabilityGapText,
+} from '../../utils/stageProbability';
 import { classifyOpportunitySilence, type OpportunitySilenceState } from '../../utils/proactiveNudges';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { FollowUpComposerPanel } from '../v31/FollowUpComposerPanel';
@@ -88,8 +94,8 @@ import { type AccountMemoryRecord } from '../../services/accountStore';
 import { type AccountMergeRecord } from '../../services/accountMergeStore';
 import { SuggestInput } from '../../components/common/SuggestInput';
 import { buildAccountAliasIndex, resolveAccountName, type AccountAliasIndex } from '../../utils/accountAliases';
-import { accountKey, normalizeEntityName, sameAccount } from '../../utils/accountIdentity';
-import { compareAccountNames, findSimilarAccountName } from '../../utils/accountDuplicates';
+import { accountKey, normalizeEntityName } from '../../utils/accountIdentity';
+import { checkAccountName, type AccountNameCheck } from '../../utils/accountDuplicates';
 import { analyzeStakeholderCoverage, getStakeholdersForOpportunity } from '../../utils/stakeholderGraph';
 import { buildMeddicStakeholderMap, formatMeddicStakeholderDate } from '../../utils/meddicStakeholderMap.ts';
 import { getObjectionsForOpportunity, objectionStatusTone } from '../../utils/objectionLedger';
@@ -836,6 +842,12 @@ export function OpportunitiesPage() {
     return true;
   };
 
+  /** A retro already exists for this deal, and it says why. */
+  const hasRecordedOutcomeReason = editingOpportunity
+    ? getOpportunityOutcomesForOpportunity(opportunityOutcomes, editingOpportunity)
+      .some((outcome) => (outcome.reasonText || '').trim().length > 0)
+    : false;
+
   const handleSave = async () => {
     if (!form.accountName.trim() || !form.opportunityName.trim()) {
       setSaveState('error');
@@ -844,6 +856,18 @@ export function OpportunitiesPage() {
     }
 
     if (holdForAccountNameCheck(form.accountName)) return;
+
+    // Closing a deal from the plain form skipped the retro entirely, so the
+    // workspace filled up with Won and Lost rows that could never answer "why".
+    // The status dropdown is not the place to close a deal; the retro below is,
+    // and it is one click away.
+    const closing = form.status === 'Won' || form.status === 'Lost';
+    const alreadyClosed = editingOpportunity?.status === 'Won' || editingOpportunity?.status === 'Lost';
+    if (closing && !alreadyClosed && !hasRecordedOutcomeReason) {
+      setSaveState('error');
+      setMessage(`Marking this ${form.status} needs a reason. Use "Mark outcome" below - it records what happened and closes the deal for you.`);
+      return;
+    }
 
     setSaveState('saving');
     setMessage('Saving opportunity...');
@@ -2646,8 +2670,35 @@ function OpportunityPanel({
         <Field label="Opportunity" value={form.opportunityName} onChange={(value) => update('opportunityName', value)} required />
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <SelectField label="Stage" value={form.stage} options={opportunityStages} onChange={(value) => update('stage', value)} />
+          <SelectField
+            label="Stage"
+            value={form.stage}
+            options={opportunityStages}
+            onChange={(value) => {
+              // Moving a deal forward carries its probability with it, unless
+              // the seller has already put their own number on it. Their
+              // judgement outranks the convention; a blank field does not.
+              const stageDefault = defaultProbabilityForStage(value);
+              const untouched = form.pipelineProbability === null
+                || form.pipelineProbability === undefined
+                || form.pipelineProbability === defaultProbabilityForStage(form.stage);
+              onChange({
+                ...form,
+                stage: value,
+                pipelineProbability: untouched && stageDefault !== null ? stageDefault : form.pipelineProbability,
+              });
+            }}
+          />
           <SelectField label="Status" value={form.status} options={opportunityStatuses} onChange={(value) => update('status', value)} />
+          <div>
+            <Field
+              label="Probability %"
+              type="number"
+              value={form.pipelineProbability?.toString() ?? ''}
+              onChange={(value) => update('pipelineProbability', value === '' ? null : Number(value))}
+            />
+            <ProbabilityNotice form={form} />
+          </div>
           <Field
             label="Estimated value"
             type="number"
@@ -3713,6 +3764,8 @@ function OpportunityOutcomeRetroPanel({
     setDraft((current) => ({ ...current, [key]: value }));
   };
 
+  const outcomeNeedsReason = draft.outcome === 'Won' || draft.outcome === 'Lost';
+
   return (
     <section className="mt-5 rounded-lg border border-indigo-100 bg-indigo-50/70 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -3752,14 +3805,25 @@ function OpportunityOutcomeRetroPanel({
           <TextArea label="What evidence was missing?" value={draft.evidenceThatWasMissing || ''} onChange={(value) => update('evidenceThatWasMissing', value)} />
           <TextArea label="What should I do differently next time?" value={draft.lessonLearned || ''} onChange={(value) => update('lessonLearned', value)} />
           <div className="flex flex-wrap items-center gap-2">
+            {/* Won and Lost are the two outcomes the whole learning loop reads
+                from, and a category alone says nothing a report can use -
+                "Price" is not a reason, it is a bucket. Delayed and No decision
+                stay unblocked: they are states, and often the honest answer is
+                that nobody knows why yet. */}
             <button
               type="button"
+              disabled={outcomeNeedsReason && !draft.reasonText.trim()}
               onClick={() => onSaveOutcome(draft)}
-              className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
+              className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-300"
             >
               <CheckCircle2 className="h-4 w-4" />
               Save outcome retro
             </button>
+            {outcomeNeedsReason && !draft.reasonText.trim() && (
+              <p className="text-xs font-semibold text-amber-800">
+                {draft.outcome} needs a reason in "Why did this happen?" - it is what every win/loss report is built from.
+              </p>
+            )}
             <p className="text-xs font-semibold text-indigo-800">
               Previous forecast snapshot: {opportunity.forecastEvidenceCategory} / {opportunity.decisionRecommendation} / {opportunity.stage}
             </p>
@@ -3906,49 +3970,35 @@ function SelectField<Value extends string>({
   );
 }
 
-type AccountNameCheck =
-  | { kind: 'quiet' }
-  | { kind: 'known'; name: string }
-  | { kind: 'renamed'; name: string }
-  | { kind: 'near'; name: string; reason: string }
-  | { kind: 'new' };
-
 /**
- * What the typed account name means, before it becomes a record.
+ * The declared probability, held against the stage it sits in.
  *
- * An opportunity's link to a customer is this string, so the moment it is saved
- * a near-miss is a customer split in two - across their deals, their touches,
- * their coverage row and their contact rhythm - with nothing on screen to say so.
- * The four answers are: this is a customer you have, this is a name you merged
- * away, this looks like a customer you have, and this is new.
+ * Not a prediction and not a block - a seller may know something the stage
+ * table does not. It just refuses to let "80%, still in Discovery" pass without
+ * anyone noticing, which is the exact record that makes a forecast miss.
  */
-function checkAccountName(typed: string, known: string[], aliases: AccountAliasIndex): AccountNameCheck {
-  const raw = (typed || '').trim();
-  if (raw.length < 2) return { kind: 'quiet' };
-
-  const resolved = resolveAccountName(raw, aliases);
-  if (accountKey(resolved) !== accountKey(raw)) return { kind: 'renamed', name: resolved };
-
-  const exact = known.find((name) => sameAccount(name, raw));
-  if (exact) return { kind: 'known', name: exact };
-
-  const strong = known
-    .map((name) => ({ name, match: compareAccountNames(raw, name) }))
-    .find((row) => row.match);
-  if (strong?.match) return { kind: 'near', name: strong.name, reason: strong.match.reason };
-
-  const similar = findSimilarAccountName(raw, known);
-  if (similar) {
-    return {
-      kind: 'near',
-      name: similar.name,
-      reason: similar.distance === 1
-        ? 'One character apart.'
-        : 'Nearly the same name.',
-    };
+function ProbabilityNotice({ form }: { form: OpportunityFormInput }) {
+  const stale = isClosedProbabilityStale(form);
+  const optimistic = isProbabilityOptimistic(form);
+  if (!stale && !optimistic) {
+    const stageDefault = defaultProbabilityForStage(form.stage);
+    if (form.pipelineProbability === null || form.pipelineProbability === undefined) {
+      return (
+        <p className="mt-1.5 text-xs text-gray-500">
+          {stageDefault === null
+            ? 'On hold has no default - set the number yourself.'
+            : `${form.stage} normally runs at ${stageDefault}%.`}
+        </p>
+      );
+    }
+    return null;
   }
 
-  return { kind: 'new' };
+  return (
+    <p className={`mt-1.5 text-xs font-semibold ${stale ? 'text-red-700' : 'text-amber-700'}`}>
+      {probabilityGapText(form)}
+    </p>
+  );
 }
 
 function AccountNameNotice({

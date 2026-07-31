@@ -44,9 +44,21 @@ const merge = (canonical, mergedNames) => ({
 //    to retype a customer, and says something when the name is a near-miss.
 {
   const page = readFileSync('src/features/opportunities/OpportunitiesPage.tsx', 'utf8');
-  for (const marker of ['<SuggestInput', 'label="Account"', 'checkAccountName', '<AccountNameNotice', 'findSimilarAccountName']) {
+  for (const marker of ['<SuggestInput', 'label="Account"', 'checkAccountName', '<AccountNameNotice']) {
     assert.ok(page.includes(marker), `the deal form lost its account-identity wiring: ${marker}`);
   }
+
+  // The check itself lives in the util both entry points share. It used to be
+  // defined inside this page, which is why the Accounts page - the one place a
+  // customer is created deliberately - had no check at all.
+  const duplicates = readFileSync('src/utils/accountDuplicates.ts', 'utf8');
+  for (const marker of ['export function checkAccountName', 'findSimilarAccountName', 'compareAccountNames']) {
+    assert.ok(duplicates.includes(marker), `the shared account-name check lost: ${marker}`);
+  }
+  assert.ok(
+    !page.includes('function checkAccountName'),
+    'the deal form must use the shared check, not keep a second copy of the matching rules',
+  );
   assert.ok(
     !/<Field label="Account"/.test(page),
     'the account field must not go back to being a bare text input',
@@ -66,6 +78,36 @@ const merge = (canonical, mergedNames) => ({
   assert.ok(
     page.slice(retroIndex, retroIndex + 600).includes('holdForAccountNameCheck'),
     'the outcome retro writes the typed account name and must be guarded too',
+  );
+}
+
+// 1b. Creating an account is the one place a duplicate customer is made on
+//     purpose, and it was the one place nothing asked. The guard interrupts
+//     once; a second save means the seller meant it.
+{
+  const accounts = readFileSync('src/features/accounts/AccountsPage.tsx', 'utf8');
+  for (const marker of ['checkAccountName', '<NewAccountNameNotice', 'accountNameConfirmed']) {
+    assert.ok(accounts.includes(marker), `the account form lost its duplicate guard: ${marker}`);
+  }
+
+  const saveIndex = accounts.indexOf('const handleSave = async');
+  const saveBody = accounts.slice(saveIndex, accounts.indexOf('const handleDelete', saveIndex));
+  assert.ok(
+    saveBody.includes('checkAccountName'),
+    'the account save path must run the duplicate check, not only render a notice',
+  );
+  assert.ok(
+    saveBody.indexOf('checkAccountName') < saveBody.indexOf('createAccount'),
+    'the check must run before the record is created',
+  );
+
+  // A near-miss is checked against every name the workspace holds, not only
+  // against other account rows: the commonest duplicate is a company that
+  // already exists as a deal.
+  assert.match(
+    accounts,
+    /knownAccountNames = useMemo\(\(\) => Array\.from\(new Set\(\[[\s\S]{0,400}?opportunities\.map/,
+    'the known-name list must include deals, not just account records',
   );
 }
 

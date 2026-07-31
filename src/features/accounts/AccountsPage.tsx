@@ -35,7 +35,13 @@ import {
   type AccountCandidate,
   type AccountMemory,
 } from '../../utils/accountMemory';
-import { findDuplicateAccountGroups, type DuplicateGroup } from '../../utils/accountDuplicates';
+import {
+  checkAccountName,
+  findDuplicateAccountGroups,
+  type AccountNameCheck,
+  type DuplicateGroup,
+} from '../../utils/accountDuplicates';
+import { buildAccountAliasIndex } from '../../utils/accountAliases';
 import { accountKey } from '../../utils/accountIdentity';
 import {
   alternateNamesFor,
@@ -129,6 +135,8 @@ export function AccountsPage() {
   const [message, setMessage] = useState('');
   const [followUpContext, setFollowUpContext] = useState<FollowUpContext | null>(null);
   const [accountMerges, setAccountMerges] = useState<AccountMergeRecord[]>([]);
+  // The exact string the seller has already been warned about and kept.
+  const [accountNameConfirmed, setAccountNameConfirmed] = useState('');
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
@@ -179,6 +187,21 @@ export function AccountsPage() {
   const visibleAccounts = useMemo(
     () => accounts.filter((account) => !mergedAway.has(accountKey(account.accountName))),
     [accounts, mergedAway],
+  );
+
+  // Every customer name the workspace already carries, from any source. A new
+  // account is checked against all of them, not only against other accounts:
+  // the commonest duplicate is a company that already exists as a deal.
+  const accountAliases = useMemo(() => buildAccountAliasIndex(accountMerges), [accountMerges]);
+  const knownAccountNames = useMemo(() => Array.from(new Set([
+    ...accounts.map((account) => account.accountName),
+    ...opportunities.map((opportunity) => opportunity.accountName),
+    ...activities.map((activity) => activity.linkedAccountName || activity.accountName),
+  ].map((name) => (name || '').trim()).filter(Boolean))), [accounts, activities, opportunities]);
+
+  const accountNameCheck = useMemo(
+    () => checkAccountName(form.accountName, knownAccountNames, accountAliases),
+    [accountAliases, form.accountName, knownAccountNames],
   );
 
   const memories = useMemo(() => {
@@ -425,6 +448,27 @@ export function AccountsPage() {
       return;
     }
 
+    // Accounts were the one place a customer could be created with no check at
+    // all. Every other entry point warns; this one is where a seller types a
+    // company name deliberately, which is exactly when a second spelling of an
+    // existing customer gets a permanent record.
+    //
+    // One interruption, not a block: the first press names the customer this
+    // looks like, a second press means they meant it. Keyed on the exact
+    // string, so editing the name asks again.
+    if (panelMode !== 'edit') {
+      const typed = form.accountName.trim();
+      const check = checkAccountName(typed, knownAccountNames, accountAliases);
+      if ((check.kind === 'near' || check.kind === 'renamed') && accountNameConfirmed !== typed) {
+        setAccountNameConfirmed(typed);
+        setSaveState('error');
+        setMessage(check.kind === 'renamed'
+          ? `You merged "${typed}" into ${check.name}. Save again to create it as a separate customer.`
+          : `"${typed}" looks like ${check.name}. ${check.reason} Save again to create it as a separate customer.`);
+        return;
+      }
+    }
+
     setSaveState('saving');
     setMessage('Saving account...');
     const result = panelMode === 'edit' && selectedAccount
@@ -612,6 +656,7 @@ export function AccountsPage() {
         objections={selectedAccount ? getObjectionsForAccount(objections, { id: selectedAccount.id, accountName: selectedAccount.accountName }) : []}
         quotes={selectedQuotes}
         hygieneStatus={selectedHygiene?.status || null}
+        nameCheck={accountNameCheck}
         onChange={setForm}
         onSave={handleSave}
         onClose={closePanel}
@@ -1015,6 +1060,7 @@ function AccountDetailPanel({
   hygieneStatus,
   saveState,
   message,
+  nameCheck,
   onChange,
   onSave,
   onClose,
@@ -1033,6 +1079,8 @@ function AccountDetailPanel({
   hygieneStatus: AccountEngagementStatus | null;
   saveState: SaveState;
   message: string;
+  /** What the typed name means against the customers already in the workspace. */
+  nameCheck: AccountNameCheck;
   onChange: (form: AccountFormInput) => void;
   onSave: () => void;
   onClose: () => void;
@@ -1097,7 +1145,7 @@ function AccountDetailPanel({
 
       {mode === 'add' ? (
         <>
-          <AccountEditFields form={form} update={update} />
+          <AccountEditFields form={form} update={update} nameCheck={nameCheck} creating />
           <AccountSaveMessage message={message} saveState={saveState} />
           <AccountSaveActions saveState={saveState} onSave={onSave} />
         </>
@@ -1192,13 +1240,22 @@ function ImportedOnlyAccountState({
 function AccountEditFields({
   form,
   update,
+  nameCheck,
+  creating = false,
 }: {
   form: AccountFormInput;
   update: <Key extends keyof AccountFormInput>(key: Key, value: AccountFormInput[Key]) => void;
+  /** What the typed name means against the customers already in the workspace. */
+  nameCheck?: AccountNameCheck;
+  /** Only a new record can become a duplicate; renaming an existing one cannot. */
+  creating?: boolean;
 }) {
   return (
     <div className="mt-5 space-y-4 first:mt-0">
-      <Field label="Account name" value={form.accountName} onChange={(value) => update('accountName', value)} required />
+      <div>
+        <Field label="Account name" value={form.accountName} onChange={(value) => update('accountName', value)} required />
+        {nameCheck && <NewAccountNameNotice check={nameCheck} creating={creating} />}
+      </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <Field label="Segment" value={form.segment} onChange={(value) => update('segment', value)} />
         <Field label="Industry" value={form.industry} onChange={(value) => update('industry', value)} />
@@ -2146,3 +2203,36 @@ function mostCommonObjectionType(objections: ObjectionRecord[]) {
   return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'None';
 }
 
+
+/**
+ * A new customer, held against the ones already there.
+ *
+ * Deliberately quiet for a genuinely new name: adding a customer is the normal
+ * case, and an amber box every time teaches the seller to ignore the amber box
+ * that matters.
+ */
+function NewAccountNameNotice({ check, creating }: { check: AccountNameCheck; creating: boolean }) {
+  if (!creating || check.kind === 'quiet' || check.kind === 'new') return null;
+
+  if (check.kind === 'known') {
+    return (
+      <p className="mt-1.5 text-xs font-semibold text-amber-800">
+        {check.name} is already a customer you have. Saving this creates a second record for them.
+      </p>
+    );
+  }
+
+  if (check.kind === 'renamed') {
+    return (
+      <p className="mt-1.5 text-xs font-semibold text-amber-800">
+        You merged this name into {check.name}. Saving it here undoes that in practice, by creating the split again.
+      </p>
+    );
+  }
+
+  return (
+    <p className="mt-1.5 text-xs font-semibold text-amber-800">
+      This looks like {check.name}. {check.reason} Save anyway if they are genuinely different companies.
+    </p>
+  );
+}

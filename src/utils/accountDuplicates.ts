@@ -1,4 +1,5 @@
-import { accountKey } from './accountIdentity.ts';
+import { accountKey, sameAccount } from './accountIdentity.ts';
+import { resolveAccountName, type AccountAliasIndex } from './accountAliases.ts';
 
 /**
  * Two account records, one company.
@@ -233,4 +234,52 @@ function buildMember(account: { id: string; accountName: string }, input: Duplic
 
 function totalRecords(group: DuplicateGroup) {
   return group.members.reduce((total, member) => total + member.opportunityCount + member.activityCount, 0);
+}
+
+export type AccountNameCheck =
+  | { kind: 'quiet' }
+  | { kind: 'known'; name: string }
+  | { kind: 'renamed'; name: string }
+  | { kind: 'near'; name: string; reason: string }
+  | { kind: 'new' };
+
+/**
+ * What a typed account name means, before it becomes a record.
+ *
+ * A customer's identity is this string, so the moment it is saved a near-miss
+ * is a customer split in two - across their deals, their touches, their
+ * coverage row and their contact rhythm - with nothing on screen to say so. The
+ * four answers are: this is a customer you have, this is a name you merged
+ * away, this looks like a customer you have, and this is new.
+ *
+ * It lives here rather than on a page because both places a customer can be
+ * born need the same answer. It was written for the opportunity form; the
+ * Accounts page created records with no check at all, which is the one place a
+ * duplicate is created deliberately.
+ */
+export function checkAccountName(typed: string, known: string[], aliases: AccountAliasIndex): AccountNameCheck {
+  const raw = (typed || '').trim();
+  if (raw.length < 2) return { kind: 'quiet' };
+
+  const resolved = resolveAccountName(raw, aliases);
+  if (accountKey(resolved) !== accountKey(raw)) return { kind: 'renamed', name: resolved };
+
+  const exact = known.find((name) => sameAccount(name, raw));
+  if (exact) return { kind: 'known', name: exact };
+
+  const strong = known
+    .map((name) => ({ name, match: compareAccountNames(raw, name) }))
+    .find((row) => row.match);
+  if (strong?.match) return { kind: 'near', name: strong.name, reason: strong.match.reason };
+
+  const similar = findSimilarAccountName(raw, known);
+  if (similar) {
+    return {
+      kind: 'near',
+      name: similar.name,
+      reason: similar.distance === 1 ? 'One character apart.' : 'Nearly the same name.',
+    };
+  }
+
+  return { kind: 'new' };
 }

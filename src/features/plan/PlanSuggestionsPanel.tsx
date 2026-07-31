@@ -8,9 +8,17 @@ import {
 import type { PlanDay } from '../../utils/weeklyPlan';
 
 /**
- * Last week's ledger, proposed as this week's work. Every row carries the rule
- * that fired and the capture it came from, so accepting one is a judgement
- * rather than an act of faith - and one click is enough to make it real.
+ * The week the workspace would propose, if asked.
+ *
+ * Two sources sit in one list: the policy engine's live warnings (overdue
+ * promises, silent threads, expiring quotes, deals with no next action) and the
+ * softer half of the activity ledger. Every row carries the rule that fired and
+ * the evidence behind it, so accepting one is a judgement rather than an act of
+ * faith.
+ *
+ * "Add all" exists because the alternative is retyping a risk list by hand,
+ * which is the thing this panel was built to stop. It is still an accept, not a
+ * default: nothing reaches the board until the operator says so.
  */
 export function PlanSuggestionsPanel({
   suggestions,
@@ -27,12 +35,28 @@ export function PlanSuggestionsPanel({
 
   if (suggestions.length === 0) return null;
 
+  const alertCount = suggestions.filter((suggestion) => suggestion.kind === 'alert').length;
+
   return (
     <section className="mt-4 rounded-lg border border-blue-100 bg-blue-50/40 p-4">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Lightbulb className="h-4 w-4 text-brand-blue" />
-        <h2 className="text-sm font-bold text-navy">From last week ({suggestions.length})</h2>
-        <span className="text-xs text-gray-500">Nothing here is on your plan until you put it there.</span>
+        <h2 className="text-sm font-bold text-navy">Suggested for this week ({suggestions.length})</h2>
+        <span className="text-xs text-gray-500">
+          {alertCount > 0
+            ? `${alertCount} from what is at risk right now. Nothing is on your plan until you put it there.`
+            : 'Nothing here is on your plan until you put it there.'}
+        </span>
+        <button
+          type="button"
+          onClick={() => suggestions.forEach((suggestion) => (
+            onAccept(suggestion, dateOverrides[suggestion.key] || suggestion.suggestedDate)
+          ))}
+          className="ml-auto inline-flex items-center gap-1 rounded-full border border-brand-blue px-3 py-1 text-xs font-bold text-brand-blue hover:bg-blue-50"
+        >
+          <Plus className="h-3 w-3" />
+          Add all {suggestions.length}
+        </button>
       </div>
 
       <ul className="mt-3 space-y-1.5">

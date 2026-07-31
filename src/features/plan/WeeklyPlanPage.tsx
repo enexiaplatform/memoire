@@ -23,6 +23,8 @@ import {
   type SupplierCommitmentRecord,
 } from '../../utils/supplierCommitments';
 import { buildPlanSuggestions, type PlanSuggestion } from '../../utils/planSuggestions';
+import { useCommercialThreads } from '../threads/useCommercialThreads';
+import { todayDateKey } from '../../utils/safeDate';
 import { PlanSuggestionsPanel } from './PlanSuggestionsPanel';
 import { PlanTagAccountsPanel } from './PlanTagAccountsPanel';
 import { PlanPasteImportPanel } from './PlanPasteImportPanel';
@@ -77,6 +79,10 @@ const periodOptions: { value: PlanPeriod; label: string }[] = [
  */
 export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
+  // The same recommendations Today and Pipeline Defense show. The plan reads
+  // them rather than recomputing, so a risk cannot say one thing on one page
+  // and something else on another.
+  const { recommendations } = useCommercialThreads();
   const [periodType, setPeriodType] = useState<PlanPeriod>('week');
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
@@ -397,17 +403,23 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
 
   // Suggestions only look at the week being planned, so paging to another week
   // asks the same question of that week's ledger rather than replaying this one.
+  //
+  // `recommendations` is the same policy-engine output Today and Pipeline
+  // Defense render. Passing it here is what stops the operator having to read a
+  // risk on one page and retype it as a plan item on another.
   const suggestions = useMemo(() => (
     periodType === 'week'
       ? buildPlanSuggestions({
         activities,
         opportunities,
         records,
+        recommendations,
         rangeStart: board.rangeStart,
         rangeEnd: board.rangeEnd,
+        today: todayDateKey(),
       })
       : []
-  ), [activities, board.rangeEnd, board.rangeStart, opportunities, periodType, records]);
+  ), [activities, board.rangeEnd, board.rangeStart, opportunities, periodType, recommendations, records]);
 
   // The customers this week's hand-written lines are about, that the workspace
   // does not know yet. Refused tags stay refused for the session.
