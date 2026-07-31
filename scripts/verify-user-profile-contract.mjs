@@ -33,13 +33,13 @@ const migrations = readdirSync('supabase/migrations')
   );
 }
 
-// 2. The billing columns are never written from the browser. Only the Stripe
-//    webhook and the billing endpoint touch them, under service_role.
+// 2. The billing columns are never written from the browser. Only the Lemon
+//    Squeezy webhook and the billing endpoint touch them, under service_role.
 {
   const clientSource = ['src/auth/AuthProvider.tsx', 'src/features/settings/ProfileTab.tsx']
     .map((path) => readFileSync(path, 'utf8'))
     .join('\n');
-  for (const column of ['subscription_tier', 'subscription_status', 'stripe_customer_id']) {
+  for (const column of ['subscription_tier', 'subscription_status', 'lemonsqueezy_customer_id', 'lemonsqueezy_subscription_id']) {
     assert.equal(
       clientSource.includes(column),
       false,

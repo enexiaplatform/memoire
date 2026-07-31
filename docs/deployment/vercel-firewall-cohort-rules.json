@@ -144,6 +144,6 @@
     "Send a normal browser request through the demo and signed-in app; it should not be challenged.",
     "Use a scripted client against one protected AI endpoint until the limit is exceeded; Vercel should return HTTP 429.",
     "Confirm application-level rate limits still return app JSON 429s when user-level limits are exceeded.",
-    "Confirm Stripe webhook traffic is not rate-limited by these rules because /api/stripe-webhook is excluded."
+    "Confirm Lemon Squeezy webhook traffic is not rate-limited by these rules because /api/lemonsqueezy-webhook is excluded. A throttled billing webhook silently leaves a paying user on the free tier."
   ]
 }

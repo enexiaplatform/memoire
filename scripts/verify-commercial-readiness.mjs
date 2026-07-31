@@ -18,7 +18,7 @@ const checks = [
     file: 'api/billing.ts',
     assert: (text) => {
       const guardIndex = text.indexOf("process.env.BILLING_CHECKOUT_ENABLED !== 'true'");
-      const checkoutIndex = text.indexOf('stripe.checkout.sessions.create');
+      const checkoutIndex = text.indexOf("lemonSqueezyRequest('/checkouts'");
       return guardIndex !== -1 && checkoutIndex !== -1 && guardIndex < checkoutIndex;
     },
   },
@@ -33,7 +33,7 @@ const checks = [
     assert: (text) => text.includes('billing_checkout_disabled') && text.includes('BILLING_CHECKOUT_ENABLED'),
   },
   {
-    name: 'billing QA covers disabled flag with Stripe configured',
+    name: 'billing QA covers disabled flag with Lemon Squeezy configured',
     file: 'docs/qa/billing-payment-qa-2026-06-17.md',
     assert: (text) => text.includes('Checkout flag disabled') && text.includes('BILLING_CHECKOUT_ENABLED=false'),
   },

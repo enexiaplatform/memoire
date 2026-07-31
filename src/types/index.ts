@@ -7,7 +7,8 @@ export interface UserProfile {
   id: string;
   display_name: string | null;
   email: string;
-  stripe_customer_id: string | null;
+  lemonsqueezy_customer_id: string | null;
+  lemonsqueezy_subscription_id: string | null;
   subscription_status: SubscriptionStatus;
   subscription_tier: SubscriptionTier;
   acknowledged_at?: string | null;

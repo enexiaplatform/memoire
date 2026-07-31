@@ -63,7 +63,7 @@ for (const warningName of [
   requireIncludes(readiness, warningName, `readiness runtime missing warning check ${warningName}`);
 }
 
-for (const optionalName of ['stripe_secret', 'stripe_webhook_secret', 'billing_checkout_disabled']) {
+for (const optionalName of ['lemonsqueezy_api_key', 'lemonsqueezy_store', 'lemonsqueezy_webhook_secret', 'billing_checkout_disabled']) {
   requireIncludes(readiness, optionalName, `readiness runtime missing optional check ${optionalName}`);
 }
 

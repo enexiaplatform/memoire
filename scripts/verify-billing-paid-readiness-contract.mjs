@@ -19,54 +19,97 @@ function requireIncludes(text, marker, label) {
 const envExample = read('.env.example');
 for (const marker of [
   'BILLING_CHECKOUT_ENABLED=false',
-  'STRIPE_SECRET_KEY',
-  'STRIPE_WEBHOOK_SECRET',
-  'STRIPE_PERSONAL_PRICE_ID',
-  'STRIPE_TEAM_PRICE_ID',
+  'LEMONSQUEEZY_API_KEY',
+  'LEMONSQUEEZY_STORE_ID',
+  'LEMONSQUEEZY_WEBHOOK_SECRET',
+  'LEMONSQUEEZY_PERSONAL_VARIANT_ID',
+  'LEMONSQUEEZY_TEAM_VARIANT_ID',
 ]) {
   requireIncludes(envExample, marker, `.env.example missing billing marker: ${marker}`);
+}
+
+// Lemon Squeezy is a merchant of record and mints its checkout as a hosted URL,
+// so there is no publishable key and no client-side payment SDK. A billing key
+// reaching the browser bundle would be a real regression, not a style choice.
+if (/VITE_[A-Z_]*(?:STRIPE|LEMONSQUEEZY)[A-Z_]*/.test(envExample)) {
+  fail('.env.example must not expose a client-side billing key');
 }
 
 const billingApi = read('api/billing.ts');
 for (const marker of [
   "if (req.method !== 'POST') return res.status(405).end();",
-  "if (!process.env.STRIPE_SECRET_KEY) return res.status(503).json({ error: 'Billing is not configured.' });",
+  "if (!billingConfigured()) return res.status(503).json({ error: 'Billing is not configured.' });",
   'verifyUserToken(authToken, userId)',
   "return res.status(401).json({ error: 'Unauthorized' })",
   "if (action === 'checkout')",
   "process.env.BILLING_CHECKOUT_ENABLED !== 'true'",
   "return res.status(503).json({ error: 'Checkout is not enabled.' })",
-  'const allowedPriceIds = [process.env.STRIPE_PERSONAL_PRICE_ID, process.env.STRIPE_TEAM_PRICE_ID].filter(Boolean);',
+  'const allowedVariants = allowedVariantIds();',
+  '!allowedVariants.includes(String(variantId))',
   "return res.status(400).json({ error: 'Invalid price.' })",
-  'metadata: { supabase_user_id: userId }',
-  'subscription_data: { metadata: { supabase_user_id: userId } }',
-  "success_url: `${appUrl}/app/capture?upgrade=success`",
-  "cancel_url: `${appUrl}/pricing?upgrade=cancelled`",
+  "lemonSqueezyRequest('/checkouts'",
+  'redirectUrl: `${appUrl}/app/capture?upgrade=success`',
   "if (action === 'portal')",
   "return res.status(400).json({ error: 'No billing account found' })",
-  "return_url: `${appUrl}/app/settings`",
+  'urls?.customer_portal',
 ]) {
   requireIncludes(billingApi, marker, `billing API missing marker: ${marker}`);
 }
 
-const webhook = read('api/stripe-webhook.ts');
+const billingClient = read('api/_lemonsqueezy.js');
+for (const marker of [
+  "createHmac('sha256', secret)",
+  'timingSafeEqual(expected, received)',
+  'custom: { user_id: userId }',
+  'export function subscriptionStateFor(',
+  "return { subscription_status: 'free', subscription_tier: 'free' };",
+]) {
+  requireIncludes(billingClient, marker, `Lemon Squeezy client missing marker: ${marker}`);
+}
+
+const webhook = read('api/lemonsqueezy-webhook.ts');
 for (const marker of [
   'export const config = { api: { bodyParser: false } };',
-  'STRIPE_WEBHOOK_SECRET',
-  'stripe.webhooks.constructEvent(rawBody, sig, webhookSecret)',
+  'LEMONSQUEEZY_WEBHOOK_SECRET',
+  "req.headers['x-signature']",
+  "return res.status(400).json({ error: 'Missing webhook signature.' })",
+  'verifyWebhookSignature(rawBody, signature, webhookSecret)',
   "return res.status(400).json({ error: 'Invalid webhook signature.' })",
-  "case 'customer.subscription.created':",
-  "case 'customer.subscription.updated':",
-  "sub.status === 'active' || sub.status === 'trialing'",
-  "subscription_status: isActive ? 'active' : 'cancelled'",
-  "subscription_tier: isActive ? tier : 'free'",
-  "case 'customer.subscription.deleted':",
-  "subscription_status: 'cancelled'",
-  "subscription_tier: 'free'",
-  "case 'checkout.session.completed':",
+  'event?.meta?.custom_data?.user_id',
+  "case 'subscription_created':",
+  "case 'subscription_updated':",
+  "case 'subscription_cancelled':",
+  "case 'subscription_expired':",
+  'subscriptionStateFor(attributes.status, attributes.variant_id)',
+  'lemonsqueezy_customer_id',
+  'lemonsqueezy_subscription_id',
+  "case 'order_created':",
   "action: 'subscription_started'",
 ]) {
-  requireIncludes(webhook, marker, `Stripe webhook missing marker: ${marker}`);
+  requireIncludes(webhook, marker, `Lemon Squeezy webhook missing marker: ${marker}`);
+}
+
+// The signature check must gate the handler, not sit beside it.
+{
+  const verifyIndex = webhook.indexOf('verifyWebhookSignature(rawBody, signature, webhookSecret)');
+  const writeIndex = webhook.indexOf("from('user_profiles')");
+  if (verifyIndex === -1 || writeIndex === -1 || verifyIndex > writeIndex) {
+    fail('Lemon Squeezy webhook must verify the signature before writing billing state');
+  }
+}
+
+// Stripe is gone. A reintroduced import or key would mean two payment paths,
+// one of which nobody is watching.
+{
+  const packageJsonText = read('package.json');
+  if (/"stripe"|@stripe\//.test(packageJsonText)) {
+    fail('package.json must not depend on Stripe - Lemon Squeezy is the payment provider');
+  }
+  for (const file of ['api/billing.ts', 'api/lemonsqueezy-webhook.ts', 'api/_lemonsqueezy.js', '.env.example']) {
+    if (/stripe/i.test(read(file))) {
+      fail(`${file} must not reference Stripe`);
+    }
+  }
 }
 
 const pricing = read('src/features/pricing/PricingPage.tsx');
@@ -91,13 +134,13 @@ for (const marker of [
   'BILLING_CHECKOUT_ENABLED=false',
   'Only set it to `true` after:',
   'Paid offer selected.',
-  'Stripe price ID confirmed.',
+  'Lemon Squeezy variant ID confirmed.',
   'Billing payment QA passed.',
   'Billing support owner and refund/trial policy recorded.',
   'Pricing page matches the active offer.',
   'Legal review covers paid access.',
   'B1 selected paid offer.',
-  'B3 Stripe test/live evidence.',
+  'B3 Lemon Squeezy test/live evidence.',
   'B4 named owners and test support case.',
   'B5 pricing page update.',
   'B6 paid-access legal review.',
@@ -109,7 +152,7 @@ for (const marker of [
 const billingQa = read('docs/qa/billing-payment-qa-2026-06-17.md');
 for (const marker of [
   'One selected paid early-access offer.',
-  'Stripe test-mode product and price IDs.',
+  'Lemon Squeezy test-mode product and variant IDs.',
   '`BILLING_CHECKOUT_ENABLED=true` only in the billing QA environment after offer/support/legal approval.',
   'B3-01',
   'B3-02',
@@ -127,7 +170,7 @@ for (const marker of [
   'B3-14',
   'B3-15',
   'B3 can pass only when:',
-  'B3-01 through B3-15 pass in Stripe test mode.',
+  'B3-01 through B3-15 pass in Lemon Squeezy test mode.',
   'No checkout path is exposed on `/pricing` until B1, B4, B5, and B6 are ready.',
   'B4 can pass only when:',
 ]) {
@@ -138,15 +181,15 @@ const billingSupport = read('docs/operations/billing-support-runbook-2026-06-17.
 for (const marker of [
   'This runbook does not authorize enabling checkout.',
   'A single paid offer is selected.',
-  'Stripe test-mode and production-mode QA pass.',
+  'Lemon Squeezy test-mode and production-mode QA pass.',
   'Legal terms cover paid access, refunds, cancellations, service availability, export, and deletion obligations.',
   'Keep `BILLING_CHECKOUT_ENABLED=false` until B1, B3, B4, B5, and B6 are ready.',
   'Billing support owner:',
   'Backup owner:',
-  'Stripe dashboard access owner:',
+  'Lemon Squeezy dashboard access owner:',
   'Refund approver:',
   'Legal/commercial approver:',
-  'Never ask users to send full card details. Card data stays inside Stripe.',
+  'Never ask users to send full card details. Card data stays inside Lemon Squeezy.',
   '| Checkout failed |',
   '| Portal failed |',
   '| Plan mismatch |',
@@ -158,7 +201,7 @@ for (const marker of [
   '| Dispute/chargeback |',
   'B4 can move from runbook-ready to operational evidence only when:',
   'Billing support owner and backup are named.',
-  'Selected paid offer, price ID, refund policy, and trial policy are filled in.',
+  'Selected paid offer, variant ID, refund policy, and trial policy are filled in.',
   'One test support ticket is run through the intake and resolution workflow.',
   'B3 payment QA, B5 pricing-page update, and B6 legal review remain open.',
 ]) {

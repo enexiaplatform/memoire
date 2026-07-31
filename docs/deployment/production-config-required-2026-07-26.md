@@ -106,4 +106,4 @@ Expect `ok: true` and `warnings: 0`. Then walk section A of `docs/qa/focused-ref
 
 ## Function budget
 
-Vercel Hobby allows 12 serverless functions. `api/` now holds 8: `billing`, `client-log`, `delete-account`, `export`, `health`, `product-events`, `request-access`, `stripe-webhook`. Four spare — count before adding another.
+Vercel Hobby allows 12 serverless functions. `api/` now holds 8: `billing`, `client-log`, `delete-account`, `export`, `health`, `product-events`, `request-access`, `lemonsqueezy-webhook`. Files prefixed with `_` are shared modules, not functions, so `_lemonsqueezy.js` does not count. Four spare — count before adding another.

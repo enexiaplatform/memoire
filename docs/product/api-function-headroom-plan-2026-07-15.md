@@ -9,7 +9,9 @@ Status: READY TO EXECUTE - deliberately not executed yet (see decision below).
 
 `ask-memoire`, `billing`, `capture-ai-classify`, `client-log`, `delete-account`, `export`, `generate-embedding`, `health`, `request-access`, `search`, `stripe-webhook`, `structure-capture`.
 
-None are dead: `billing`/`stripe-webhook` are Phase-2 groundwork, `health` is probed externally, the rest have live client callers. So headroom requires **consolidation**, not deletion. (The dead *client* code that called two phantom endpoints - `/api/claude-extract`, `/api/anonymize` - was removed in b015f6c; those were never on disk, so they never counted against the cap.)
+(`stripe-webhook` became `lemonsqueezy-webhook` on 2026-07-31 when billing moved to Lemon Squeezy. Its shared module `_lemonsqueezy.js` is `_`-prefixed, so the count is unchanged.)
+
+None are dead: `billing` and the billing webhook are Phase-2 groundwork, `health` is probed externally, the rest have live client callers. So headroom requires **consolidation**, not deletion. (The dead *client* code that called two phantom endpoints - `/api/claude-extract`, `/api/anonymize` - was removed in b015f6c; those were never on disk, so they never counted against the cap.)
 
 ## The decision: don't churn now
 
@@ -21,7 +23,7 @@ Merge **`capture-ai-classify` + `structure-capture`** into one `api/capture-ai.t
 
 - Both are capture-AI, non-destructive, and already **degrade gracefully** to local rules on failure (`src/services/captureAiProvider.ts` and `src/features/v31/salesMemory.ts` both catch and fall back). A merge bug therefore soft-degrades AI capture rather than crashing - the safest possible failure mode for a first consolidation.
 - Both already share helpers (`_captureAiPrompt.js`, `_auth.js`, `_rateLimit.js`), so the merge is mostly moving two handler bodies behind a switch.
-- Neither is destructive (unlike `delete-account`) or externally called on a fixed path (unlike `stripe-webhook`).
+- Neither is destructive (unlike `delete-account`) or externally called on a fixed path (unlike the billing webhook).
 
 ### Steps
 

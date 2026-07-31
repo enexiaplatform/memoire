@@ -149,7 +149,7 @@ over ≥4 weeks. Until then these are **frozen**:
 - Planning calibration / personalized prioritization (any new weekly
   intelligence).
 - Stage-3 route-intelligence expansion beyond what is already built.
-- Billing go-live (Stripe live keys, paid gating flip) — the machinery is
+- Billing go-live (Lemon Squeezy live store, paid gating flip) — the machinery is
   contract-covered; flipping it before a cohort proves willingness-to-pay
   adds support surface with no evidence.
 

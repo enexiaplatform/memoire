@@ -13,7 +13,7 @@ The verifier confirms:
 - The weekly operating review template still requires funnel SQL, cohort tracker rows, support notes, `/api/health`, Vercel errors, client operational events, Supabase errors, AI cost, and data-boundary issues.
 - The weekly review still includes scorecard targets for activation, value, retention, trust, paid intent, support, reliability, and AI spend.
 - The release-gate review still covers A1 through A10 plus C3 and C5.
-- The monitoring review still covers health, function errors, client operational events, Supabase Auth/database errors, AI provider cost, and Stripe/webhook errors if enabled.
+- The monitoring review still covers health, function errors, client operational events, Supabase Auth/database errors, AI provider cost, and Lemon Squeezy/webhook errors if enabled.
 - The operator funnel query pack still covers daily funnel metrics, 7-day activation, anonymous journey progress, early-access queue, lead workflow actions, and retention review.
 - Operator funnel views remain service-role-only and privacy-minimized.
 - Completed weekly reviews have a durable storage location under `docs/operations/weekly-reviews/`.

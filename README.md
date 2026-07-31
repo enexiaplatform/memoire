@@ -62,7 +62,7 @@ Storage is relational for records with a lifecycle (`commercial_threads`, `comme
 - Frontend: React + Vite + TypeScript + Tailwind CSS
 - Backend/DB: Supabase Postgres + Auth + RLS
 - Hosting: Vercel
-- Payments: Stripe, present but not part of the beta journey
+- Payments: Lemon Squeezy (merchant of record), present but not part of the beta journey
 
 ## Local setup
 

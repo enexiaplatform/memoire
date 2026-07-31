@@ -55,7 +55,7 @@ for (const signal of [
   'Supabase Auth errors',
   'Supabase database errors',
   'AI provider usage/cost',
-  'Stripe/webhook errors, if enabled',
+  'Lemon Squeezy/webhook errors, if enabled',
 ]) {
   requireIncludes(weeklyReview, signal, `weekly monitoring review missing signal: ${signal}`);
 }

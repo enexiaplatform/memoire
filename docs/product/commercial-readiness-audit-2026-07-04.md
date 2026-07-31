@@ -18,7 +18,7 @@ Verdict: no additional feature is needed for Phase 1-2 commercial viability. Bui
 ## Commercial funnel status (by design)
 
 - Pricing page frames early access honestly ($15-25/month indicative); CTA routes to `/request-access`. Checkout is intentionally disabled (`billing_checkout_disabled` passes) per GTM Phase 1.
-- Stripe env (secret + webhook) is unconfigured - required only when Phase 2 (paid early access) starts.
+- Lemon Squeezy env (API key, store, webhook secret) is unconfigured - required only when Phase 2 (paid early access) starts.
 
 ## Critical finding: production signup was broken
 
@@ -43,6 +43,6 @@ Stay on the current Vercel alias now; buy and switch to a custom domain later, o
 
 1. **Unblock signup (critical).** On Vercel → Project Settings → Environment Variables, set `VITE_APP_URL = https://memoire-blush-eta.vercel.app` (Production). Then in Supabase → Auth → URL Configuration, set Site URL to the same, and add to the redirect allowlist: `https://memoire-blush-eta.vercel.app/login?verified=1`, `.../reset-password`, `.../app/today`. Redeploy.
 2. **Enable semantic search.** Add `OPENAI_API_KEY` (clears the one failing required health check; until then Ask Memoire runs on local rules - graceful, not broken).
-3. **Phase 2 (paid access) only.** Add `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, set `BILLING_CHECKOUT_ENABLED=true`.
+3. **Phase 2 (paid access) only.** Add `LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_STORE_ID`, `LEMONSQUEEZY_WEBHOOK_SECRET`, the selected variant ID, set `BILLING_CHECKOUT_ENABLED=true`.
 4. **Later, when the custom domain is bought.** Repeat step 1 with the new domain (Vercel env + Supabase Auth in one coordinated change), then redeploy. `app_url_matches_request_host` will flag it immediately if the two drift.
 5. **After each change**, probe `https://memoire-blush-eta.vercel.app/api/health`; expect `ok: true`, `warnings: 0`, and `app_url_matches_request_host: true`.

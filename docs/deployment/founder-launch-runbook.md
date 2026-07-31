@@ -1,7 +1,7 @@
 # Founder Launch Runbook
 
 Date: 2026-07-26 (supersedes the 2026-07-09 revision)
-Purpose: every environment action needed to open Memoire to real users, in order, each with its verification command. These are founder actions (Vercel/Supabase/Stripe dashboards) - no code change is involved.
+Purpose: every environment action needed to open Memoire to real users, in order, each with its verification command. These are founder actions (Vercel/Supabase/Lemon Squeezy dashboards) - no code change is involved.
 
 Canonical production host: `https://memoire-blush-eta.vercel.app`. This is the one authoritative application URL. `VITE_APP_URL`, the Supabase Site URL, the email-verification redirect, the password-recovery redirect, the OAuth return URL and the shared-brief base URL must all agree with it. When a custom domain is bought, repeat Step 1 with the new domain in one coordinated change.
 
@@ -44,8 +44,9 @@ Verify: `/api/health` returns `ok: true` with `no_ai_provider_configured` passin
 
 ## Step 4 - Paid early access only (Phase: after cohort evidence)
 
-1. Vercel env: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `BILLING_CHECKOUT_ENABLED=true`.
-2. Run the B1-B6 billing QA in Stripe test mode first (see `commercial-release-gate-2026-06-16.md`).
+1. Vercel env: `LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_STORE_ID`, `LEMONSQUEEZY_WEBHOOK_SECRET`, the selected `LEMONSQUEEZY_*_VARIANT_ID`, `BILLING_CHECKOUT_ENABLED=true`.
+2. Point the Lemon Squeezy webhook at `https://<domain>/api/lemonsqueezy-webhook`, subscribed to `order_created` and every `subscription_*` event.
+3. Run the B1-B6 billing QA in Lemon Squeezy test mode first (see `commercial-release-gate-2026-06-16.md`).
 
 Verify: health probe billing checks pass; `billing_checkout_disabled` flips only when intended.
 

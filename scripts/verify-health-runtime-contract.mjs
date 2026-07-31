@@ -49,8 +49,8 @@ const checkNames = new Set(healthy.checks.map((check) => check.name));
 for (const name of [
   'supabase_url', 'supabase_anon_key', 'supabase_service_role', 'app_url', 'app_url_valid',
   'app_url_https', 'app_url_not_localhost', 'no_ai_provider_configured',
-  'demo_mode_disabled', 'founder_workspace_disabled', 'stripe_secret',
-  'stripe_webhook_secret', 'billing_checkout_disabled',
+  'demo_mode_disabled', 'founder_workspace_disabled', 'lemonsqueezy_api_key',
+  'lemonsqueezy_store', 'lemonsqueezy_webhook_secret', 'billing_checkout_disabled',
 ]) assert.ok(checkNames.has(name), `readiness result missing check ${name}`);
 
 // No check may be *required* to depend on AI configuration.

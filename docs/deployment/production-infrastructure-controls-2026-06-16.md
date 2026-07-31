@@ -32,10 +32,10 @@ Verified in repo:
   - `/api/capture-ai-classify`
   - `/api/generate-embedding`
 - `src/auth/passwordPolicy.ts` enforces 12+ characters with uppercase, lowercase, number, and symbol.
-- `.env.example` lists the required Supabase, AI, Stripe, and app URL variables.
+- `.env.example` lists the required Supabase, Lemon Squeezy, and app URL variables.
 - `.vercel/project.json` links the local repo to the Vercel project named `memoire`.
 - `/api/health` provides a safe app-level readiness check for required production environment variables without exposing secret values.
-- `/api/billing` requires `BILLING_CHECKOUT_ENABLED=true` before creating any Checkout session, even when Stripe keys and price IDs are configured.
+- `/api/billing` requires `BILLING_CHECKOUT_ENABLED=true` before creating any checkout, even when Lemon Squeezy credentials and variant IDs are configured.
 - `/api/client-log` records allowlisted, sanitized client operational failures in serverless logs.
 
 Missing current evidence:
@@ -162,11 +162,11 @@ Optional for controlled cohort:
 Not required until paid checkout:
 
 - [ ] `BILLING_CHECKOUT_ENABLED=true`
-- [ ] `STRIPE_SECRET_KEY`
-- [ ] `STRIPE_WEBHOOK_SECRET`
-- [ ] `VITE_STRIPE_PUBLISHABLE_KEY`
-- [ ] `STRIPE_PERSONAL_PRICE_ID`
-- [ ] `STRIPE_TEAM_PRICE_ID`
+- [ ] `LEMONSQUEEZY_API_KEY`
+- [ ] `LEMONSQUEEZY_STORE_ID`
+- [ ] `LEMONSQUEEZY_WEBHOOK_SECRET`
+- [ ] `LEMONSQUEEZY_PERSONAL_VARIANT_ID`
+- [ ] `LEMONSQUEEZY_TEAM_VARIANT_ID`
 
 Current decision:
 

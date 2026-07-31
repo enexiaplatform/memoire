@@ -39,8 +39,9 @@ export function evaluateProductionReadiness(env = process.env, options = {}) {
     warning('app_url_matches_request_host', !requestHost || !appUrlHost || requestHost === appUrlHost),
     warning('demo_mode_disabled', env.VITE_ENABLE_DEMO_MODE !== 'true'),
     warning('founder_workspace_disabled', env.VITE_ENABLE_FOUNDER_WORKSPACE !== 'true'),
-    optional('stripe_secret', hasEnv(env, 'STRIPE_SECRET_KEY')),
-    optional('stripe_webhook_secret', hasEnv(env, 'STRIPE_WEBHOOK_SECRET')),
+    optional('lemonsqueezy_api_key', hasEnv(env, 'LEMONSQUEEZY_API_KEY')),
+    optional('lemonsqueezy_store', hasEnv(env, 'LEMONSQUEEZY_STORE_ID')),
+    optional('lemonsqueezy_webhook_secret', hasEnv(env, 'LEMONSQUEEZY_WEBHOOK_SECRET')),
     optional('billing_checkout_disabled', env.BILLING_CHECKOUT_ENABLED !== 'true'),
   ];
   const requiredFailures = checks.filter((check) => check.severity === 'required' && !check.ok);

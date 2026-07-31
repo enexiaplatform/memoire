@@ -58,7 +58,7 @@ assert.ok(read('src/services/clientTelemetry.ts').includes('VITE_CLIENT_LOG_ENDP
 
 // 4. The founder runbook exists and covers the launch-blocking env steps.
 const runbook = read('docs/deployment/founder-launch-runbook.md');
-for (const marker of ['VITE_APP_URL', 'VITE_CLIENT_LOG_ENDPOINT', 'STRIPE_SECRET_KEY', '/api/health', 'product_events']) {
+for (const marker of ['VITE_APP_URL', 'VITE_CLIENT_LOG_ENDPOINT', 'LEMONSQUEEZY_API_KEY', '/api/health', 'product_events']) {
   assert.ok(runbook.includes(marker), `runbook missing: ${marker}`);
 }
 // The runbook must not send an operator shopping for an AI key Memoire does not

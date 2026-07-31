@@ -129,7 +129,7 @@ Required actions:
 | Supabase Auth errors |  |  |  |
 | Supabase database errors |  |  |  |
 | AI provider usage/cost |  |  |  |
-| Stripe/webhook errors, if enabled |  |  |  |
+| Lemon Squeezy/webhook errors, if enabled |  |  |  |
 
 ## Go/No-Go Decision
 
