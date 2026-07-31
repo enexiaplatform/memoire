@@ -64,6 +64,9 @@ const PipelineReviewPackPage = lazy(() =>
 const FounderImportReviewPage = lazy(() =>
   import('./features/imports/FounderImportReviewPage').then((module) => ({ default: module.FounderImportReviewPage })),
 );
+const BusinessLensPage = lazy(() =>
+  import('./features/business/BusinessLensPage').then((module) => ({ default: module.BusinessLensPage })),
+);
 const BusinessVaultPage = lazy(() =>
   import('./features/vault/BusinessVaultPage').then((module) => ({ default: module.BusinessVaultPage })),
 );
@@ -116,6 +119,7 @@ function App() {
             <Route path="capture" element={<DailyCapturePage />} />
             <Route path="ask" element={<AskMemoirePage />} />
             <Route path="activity" element={<ActivityRouteEntry />} />
+            <Route path="business" element={<BusinessLensPage />} />
             <Route path="vault" element={<BusinessVaultPage />} />
             <Route path="settings" element={<SettingsPage />} />
 

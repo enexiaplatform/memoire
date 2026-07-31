@@ -210,6 +210,31 @@ export const featureRegistry: FeatureRecord[] = [
     // touch in Timeline > History, so every deep link ever generated resolves.
   },
   {
+    id: 'business-lens',
+    label: 'Business',
+    status: 'global',
+    ownerSurface: 'business-lens',
+    route: '/app/business',
+    routeBehavior: 'primary',
+    // The third lens, and global for the same reason as the other two: it owns
+    // no records and writes nothing. Every number on it is read from what
+    // Accounts, Opportunities, Money and Timeline already wrote, and there is
+    // not one action button on the page.
+    //
+    // The standalone Dashboard failed the feature gate in the 2026-07-26
+    // refactor because it answered "what should I do now" worse than Today did.
+    // This does not attempt that question - it answers "how is the business
+    // doing", which is the one thing the six destinations each answer a slice
+    // of and none of them answers whole. Promoting it to a seventh primary
+    // would mean editing PRIMARY_DESTINATION_IDS, which is a product decision
+    // and not a side effect of shipping charts.
+    navVisible: true,
+    analytics: 'active',
+    dataRetention: 'Derived from the workspace. Owns no records.',
+    killOrActivationCondition:
+      'Retire it if the operator stops opening it between weekly reviews - that would mean the daily loop on Today and the weekly loop in Review already cover the question, and this is only decoration.',
+  },
+  {
     id: 'business-vault',
     label: 'Business Vault',
     status: 'global',
@@ -458,7 +483,7 @@ export const primaryNavigation: FeatureRecord[] = PRIMARY_DESTINATION_IDS.map((i
 });
 
 /** Always reachable, never a primary destination. */
-export const globalActions: FeatureRecord[] = ['capture', 'search-insights', 'activity', 'business-vault', 'settings'].map((id) => {
+export const globalActions: FeatureRecord[] = ['capture', 'search-insights', 'activity', 'business-lens', 'business-vault', 'settings'].map((id) => {
   const feature = byId.get(id);
   if (!feature) throw new Error(`Feature registry is missing global action "${id}"`);
   return feature;

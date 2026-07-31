@@ -8,20 +8,35 @@ export interface FunnelBarRow {
 /**
  * Horizontal bars scaled to the largest row - reads as a pipeline funnel.
  * When onSelect is provided each row becomes a button (e.g. filter by stage).
+ *
+ * `scaleTo` changes the denominator, and it matters more than it looks. Scaled
+ * to the largest row, a bar means "biggest"; scaled to a total, it means
+ * "share". Putting a percent-of-total label beside a bar drawn against the
+ * largest row is two different denominators on one line, and the reader
+ * believes the bar.
+ *
+ * `labelWidth` exists because a Vietnamese company name carries its legal form
+ * up front - "Cong ty TNHH Duoc pham ..." - and the default column truncates
+ * every one of them to the same unreadable prefix.
  */
 export function FunnelBars({
   rows,
   color = '#1976D2',
   ariaLabel,
   onSelect,
+  scaleTo,
+  labelWidth = 'sm:w-32',
 }: {
   rows: FunnelBarRow[];
   color?: string;
   ariaLabel: string;
   onSelect?: (label: string) => void;
+  /** Denominator for bar length. Defaults to the largest row. */
+  scaleTo?: number;
+  labelWidth?: string;
 }) {
   if (rows.length === 0) return null;
-  const max = Math.max(...rows.map((row) => row.value), 1);
+  const max = Math.max(scaleTo ?? 0, ...rows.map((row) => row.value), 1);
   return (
     <div role={onSelect ? 'group' : 'img'} aria-label={ariaLabel} className="space-y-2">
       {rows.map((row) => {
@@ -35,7 +50,7 @@ export function FunnelBars({
         // sm and up: label | bar | value in three columns.
         const content = (
           <>
-            <div className="flex w-full items-baseline justify-between gap-2 sm:w-32 sm:shrink-0 sm:justify-start">
+            <div className={`flex w-full items-baseline justify-between gap-2 sm:shrink-0 sm:justify-start ${labelWidth}`}>
               <span className="truncate text-left text-xs font-semibold text-gray-600" title={row.label}>{row.label}</span>
               <span className="shrink-0 text-right text-xs font-bold text-navy sm:hidden">{valueLabel}</span>
             </div>

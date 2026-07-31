@@ -66,27 +66,46 @@ for (const retired of [
   );
 }
 
-// 4. Capture, Search & Insights, Activity, the Business Vault and Settings stay
-// globally reachable - and the two lenses stay lenses. Activity and the Vault are
-// ways of seeing the six destinations, not seventh and eighth places to work:
-// both own no records, both read what the six already wrote, and both may live in
-// the rail's second tier. Neither may ever appear in PRIMARY_DESTINATION_IDS.
+// 4. Capture, Search & Insights, Activity, Business, the Business Vault and
+// Settings stay globally reachable - and the three lenses stay lenses. Activity,
+// Business and the Vault are ways of seeing the six destinations, not seventh,
+// eighth and ninth places to work: none owns a record, all three read what the
+// six already wrote, and all three may live in the rail's second tier. None may
+// ever appear in PRIMARY_DESTINATION_IDS.
 {
   assert.ok(topNav.includes('to="/app/capture"'), 'Capture must stay a global action in the top bar');
   const globals = registry.match(/export const globalActions[\s\S]*?\]\.map/);
   assert.ok(globals, 'featureRegistry must declare globalActions');
-  for (const id of ['capture', 'search-insights', 'activity', 'business-vault', 'settings']) {
+  for (const id of ['capture', 'search-insights', 'activity', 'business-lens', 'business-vault', 'settings']) {
     assert.ok(globals[0].includes(`'${id}'`), `global action missing from registry: ${id}`);
   }
 
   const primaries = registry.match(/export const PRIMARY_DESTINATION_IDS = \[([\s\S]*?)\] as const;/);
-  for (const lens of ['business-vault', 'activity']) {
+  for (const lens of ['business-vault', 'activity', 'business-lens']) {
     assert.equal(
       primaries[1].includes(lens),
       false,
       `${lens} is a lens over the six destinations and must not become a primary one`,
     );
   }
+}
+
+// 4b. The Business lens is a lens because it writes nothing. If an action button
+// ever appears on it, it has become a place to work and the argument for keeping
+// it out of the primary rail collapses.
+{
+  const page = readFileSync('src/features/business/BusinessLensPage.tsx', 'utf8');
+  for (const writer of ['createOpportunity', 'updateOpportunity', 'createAccount', 'updateAccount', 'savePlanItem', 'deletePlanItem']) {
+    assert.equal(
+      page.includes(writer),
+      false,
+      `the Business lens must not write records - found ${writer}. A lens that writes is a seventh destination.`,
+    );
+  }
+  assert.ok(
+    page.includes('buildMasterDashboard') && page.includes('buildBusinessLens'),
+    'the Business lens must read the derived models rather than recomputing the business',
+  );
 }
 
 // 5. Every primary destination has a route, and every retired destination still
@@ -202,4 +221,4 @@ for (const removed of [
   );
 }
 
-console.log('Navigation contract verified: six primary destinations, five global surfaces, no orphaned deep links.');
+console.log('Navigation contract verified: six primary destinations, six global surfaces, no orphaned deep links.');
