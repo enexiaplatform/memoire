@@ -13,6 +13,7 @@ import {
 } from '../utils/commercialFulfillment';
 import { sumMoneyInBase } from '../utils/money';
 import { compareSafeBusinessDate, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from '../utils/safeDate.ts';
+import { writeLocalRecords } from './localWriteGuard.ts';
 
 export { buildDeliveryScheduleUpdate, getNextCommercialProgressAction, getQuoteCommercialStage, getQuoteWorkspaceHref, requiresExpectedDeliveryDate } from '../utils/commercialFulfillment';
 export type { CommercialProgressAction, CommercialStage } from '../utils/commercialFulfillment';
@@ -142,7 +143,7 @@ function persistQuotes(quotes: QuoteRecord[], syncCloud: boolean) {
   if (typeof window === 'undefined') return false;
   try {
     const sanitized = quotes.map(sanitizeQuote).filter((quote): quote is QuoteRecord => Boolean(quote));
-    window.localStorage.setItem(QUOTE_STORAGE_KEY, JSON.stringify(sanitized));
+    writeLocalRecords(QUOTE_STORAGE_KEY, sanitized);
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('quotes', sanitized);
       invalidateWorkspaceDataCache();

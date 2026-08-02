@@ -7,6 +7,7 @@ import {
 } from './cloudJsonCollectionStore';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
+import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const NUDGE_STORAGE_KEY = 'memoire.nudges.v1';
 
@@ -144,7 +145,7 @@ function persistNudges(nudges: NudgeRecord[], userId: string | undefined, syncCl
   if (typeof localStorage === 'undefined') return false;
   try {
     const sanitized = nudges.map(sanitizeNudge).filter((item): item is NudgeRecord => Boolean(item));
-    localStorage.setItem(storageKey(userId), JSON.stringify(sanitized));
+    writeLocalRecords(storageKey(userId), sanitized);
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('nudges', sanitized);
       invalidateWorkspaceDataCache();

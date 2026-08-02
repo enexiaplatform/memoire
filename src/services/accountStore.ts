@@ -1,6 +1,7 @@
 import { supabaseClient } from '../lib/supabaseClient';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus';
+import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const ACCOUNT_STORAGE_KEY = 'memoire.accounts.v1';
 
@@ -260,7 +261,7 @@ function loadLocalAccounts(): AccountMemoryRecord[] {
       .sort(sortNewestFirst);
     const normalized = ensureAccountCodes(accounts);
     if (normalized.changed) {
-      localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(normalized.accounts));
+      writeLocalRecords(ACCOUNT_STORAGE_KEY, normalized.accounts);
     }
     return normalized.accounts;
   } catch {
@@ -271,13 +272,13 @@ function loadLocalAccounts(): AccountMemoryRecord[] {
 function saveLocalAccountRecord(record: AccountMemoryRecord) {
   if (typeof localStorage === 'undefined') return;
   const next = [record, ...loadLocalAccounts().filter((item) => item.id !== record.id)];
-  localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(next.sort(sortNewestFirst)));
+  writeLocalRecords(ACCOUNT_STORAGE_KEY, next.sort(sortNewestFirst));
 }
 
 function deleteLocalAccount(accountId: string) {
   if (typeof localStorage === 'undefined') return;
   const next = loadLocalAccounts().filter((item) => item.id !== accountId);
-  localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(next));
+  writeLocalRecords(ACCOUNT_STORAGE_KEY, next);
 }
 
 async function loadCloudAccounts(userId: string): Promise<AccountMemoryRecord[]> {

@@ -6,6 +6,7 @@ import {
   upsertCloudJsonCollection,
 } from './cloudJsonCollectionStore';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const ACCOUNT_MERGE_STORAGE_KEY = 'memoire.accountMerges.v1';
 export const ACCOUNT_MERGES_UPDATED_EVENT = 'memoire:account-merges-updated';
@@ -112,7 +113,7 @@ function persist(records: AccountMergeRecord[], syncCloud = true) {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   if (canUseStorage()) {
-    window.localStorage.setItem(ACCOUNT_MERGE_STORAGE_KEY, JSON.stringify(sanitized));
+    writeLocalRecords(ACCOUNT_MERGE_STORAGE_KEY, sanitized);
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('account_merges', sanitized);
       invalidateWorkspaceDataCache();

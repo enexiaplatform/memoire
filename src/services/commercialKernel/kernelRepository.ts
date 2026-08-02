@@ -2,6 +2,7 @@ import { supabaseClient } from '../../lib/supabaseClient.ts';
 import { reportClientOperationalEvent } from '../clientTelemetry.ts';
 import { reportWorkspaceSyncError } from '../workspaceSyncStatus.ts';
 import { invalidateWorkspaceDataCache } from '../workspaceDataCache.ts';
+import { writeLocalCollection } from '../localWriteGuard.ts';
 
 export type KernelTable =
   | 'commercial_threads'
@@ -101,7 +102,7 @@ export function writeLocal<T extends KernelRecord>(codec: KernelCodec<T>, record
   const serialized = JSON.stringify(sanitized);
   if (window.localStorage.getItem(codec.storageKey) === serialized) return sanitized;
 
-  window.localStorage.setItem(codec.storageKey, serialized);
+  writeLocalCollection(codec.storageKey, serialized);
   invalidateWorkspaceDataCache();
   window.dispatchEvent(new CustomEvent(codec.updatedEvent, { detail: sanitized }));
 

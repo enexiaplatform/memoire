@@ -14,7 +14,12 @@ type ClientLogResponse = {
   setHeader: (name: string, value: string) => void;
 };
 
-const ALLOWED_EVENTS = new Set(['cloud_json_sync_failed', 'pipeline_defense_cloud_sync_failed', 'client_render_error']);
+const ALLOWED_EVENTS = new Set([
+  'cloud_json_sync_failed',
+  'pipeline_defense_cloud_sync_failed',
+  'client_render_error',
+  'local_write_failed',
+]);
 const DATA_MODES = new Set(['demo-local', 'cloud-browser', 'browser-only', 'sync-issue', 'unknown']);
 const SEVERITIES = new Set(['warning', 'error']);
 

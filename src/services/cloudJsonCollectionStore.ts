@@ -1,6 +1,7 @@
 import { supabaseClient } from '../lib/supabaseClient';
 import { reportClientOperationalEvent } from './clientTelemetry';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus';
+import { writeLocalCollection } from './localWriteGuard.ts';
 
 export type CloudJsonCollectionTable = 'review_packs' | 'sales_assets' | 'action_outcomes' | 'opportunity_outcomes' | 'quotes' | 'nudges' | 'weekly_commitments' | 'plan_items' | 'account_merges' | 'order_milestones' | 'supplier_commitments';
 
@@ -132,7 +133,7 @@ export function claimLocalCollectionForUser(table: CloudJsonCollectionTable, use
   if (typeof window === 'undefined') return false;
   const key = getOwnerKey(table);
   const owner = window.localStorage.getItem(key);
-  window.localStorage.setItem(key, userId);
+  writeLocalCollection(key, userId);
   return !owner || owner === userId;
 }
 
@@ -153,7 +154,7 @@ async function getCurrentUserId() {
 
 function setLocalCollectionOwner(table: CloudJsonCollectionTable, userId: string) {
   if (typeof window === 'undefined') return;
-  window.localStorage.setItem(getOwnerKey(table), userId);
+  writeLocalCollection(getOwnerKey(table), userId);
 }
 
 function getOwnerKey(table: CloudJsonCollectionTable) {

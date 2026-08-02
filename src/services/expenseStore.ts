@@ -1,5 +1,6 @@
 import { invalidateWorkspaceDataCache } from './workspaceDataCache.ts';
 import { sanitizeBusinessDate, todayDateKey } from '../utils/safeDate.ts';
+import { writeLocalRecords } from './localWriteGuard.ts';
 
 // Money-out half of the money-spine. Local-first by design: it persists to
 // localStorage under the `memoire.` prefix so the existing export and
@@ -97,7 +98,7 @@ export function saveExpenses(expenses: ExpenseRecord[]) {
     const sanitized = expenses
       .map(sanitizeExpense)
       .filter((expense): expense is ExpenseRecord => Boolean(expense));
-    window.localStorage.setItem(EXPENSE_STORAGE_KEY, JSON.stringify(sanitized));
+    writeLocalRecords(EXPENSE_STORAGE_KEY, sanitized);
     invalidateWorkspaceDataCache();
     return true;
   } catch {

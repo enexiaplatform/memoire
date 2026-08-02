@@ -8,6 +8,7 @@ import {
   upsertCloudJsonCollection,
 } from './cloudJsonCollectionStore';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const PLAN_ITEM_STORAGE_KEY = 'memoire.planItems.v1';
 export const PLAN_ITEMS_UPDATED_EVENT = 'memoire:plan-items-updated';
@@ -74,7 +75,7 @@ function persistPlanItems(records: PlanRecord[], syncCloud = true) {
     .sort((a, b) => a.date.localeCompare(b.date));
 
   if (canUseStorage()) {
-    window.localStorage.setItem(PLAN_ITEM_STORAGE_KEY, JSON.stringify(sanitized));
+    writeLocalRecords(PLAN_ITEM_STORAGE_KEY, sanitized);
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('plan_items', sanitized);
       invalidateWorkspaceDataCache();

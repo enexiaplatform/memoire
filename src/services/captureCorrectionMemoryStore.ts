@@ -1,3 +1,4 @@
+import { writeLocalRecords } from './localWriteGuard.ts';
 export const CAPTURE_CORRECTION_STORAGE_KEY = 'memoire.captureCorrections.v1';
 export const CAPTURE_ACCOUNT_ALIAS_STORAGE_KEY = 'memoire.captureAccountAliases.v1';
 
@@ -196,7 +197,7 @@ function readLocal<T>(key: string): T[] {
 
 function writeLocal(key: string, value: unknown) {
   if (typeof localStorage === 'undefined') return;
-  localStorage.setItem(key, JSON.stringify(value));
+  writeLocalRecords(key, value);
 }
 
 function createId(prefix: string) {

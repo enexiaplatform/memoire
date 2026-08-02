@@ -2,6 +2,7 @@ import { supabaseClient } from '../lib/supabaseClient';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
+import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const OPPORTUNITY_STORAGE_KEY = 'memoire.opportunities.v1';
 
@@ -359,13 +360,13 @@ function loadLocalOpportunities(): CrmLiteOpportunity[] {
 function saveLocalOpportunityRecord(record: CrmLiteOpportunity) {
   if (typeof localStorage === 'undefined') return;
   const next = [record, ...loadLocalOpportunities().filter((item) => item.id !== record.id)];
-  localStorage.setItem(OPPORTUNITY_STORAGE_KEY, JSON.stringify(next.sort(sortNewestFirst)));
+  writeLocalRecords(OPPORTUNITY_STORAGE_KEY, next.sort(sortNewestFirst));
 }
 
 function deleteLocalOpportunity(opportunityId: string) {
   if (typeof localStorage === 'undefined') return;
   const next = loadLocalOpportunities().filter((item) => item.id !== opportunityId);
-  localStorage.setItem(OPPORTUNITY_STORAGE_KEY, JSON.stringify(next));
+  writeLocalRecords(OPPORTUNITY_STORAGE_KEY, next);
 }
 
 async function loadCloudOpportunities(userId: string): Promise<CrmLiteOpportunity[]> {

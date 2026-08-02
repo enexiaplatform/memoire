@@ -8,6 +8,7 @@ import {
   upsertCloudJsonCollection,
 } from './cloudJsonCollectionStore';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const ACTION_OUTCOME_STORAGE_KEY = 'memoire.actionOutcomes.v1';
 
@@ -87,7 +88,7 @@ function persistActionOutcomes(outcomes: ActionOutcomeRecord[], syncCloud: boole
   if (typeof window === 'undefined') return false;
   try {
     const sanitized = outcomes.map(sanitizeOutcome).filter((outcome): outcome is ActionOutcomeRecord => Boolean(outcome));
-    window.localStorage.setItem(ACTION_OUTCOME_STORAGE_KEY, JSON.stringify(sanitized));
+    writeLocalRecords(ACTION_OUTCOME_STORAGE_KEY, sanitized);
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('action_outcomes', sanitized);
       invalidateWorkspaceDataCache();

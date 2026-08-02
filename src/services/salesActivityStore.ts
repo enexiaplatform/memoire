@@ -8,6 +8,7 @@ import {
   parseIngestionSourceTags,
   type IngestionSourceType,
 } from '../utils/ingestionSource.ts';
+import { writeLocalRecords } from './localWriteGuard.ts';
 
 export interface SalesActivityRecord extends ClassifiedSalesActivity {
   id: string;
@@ -279,14 +280,14 @@ function loadLocalActivities(): SalesActivityRecord[] {
 function saveLocalActivityRecord(record: SalesActivityRecord) {
   const next = [record, ...loadLocalActivities().filter((item) => item.id !== record.id)];
   if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(SALES_ACTIVITY_STORAGE_KEY, JSON.stringify(next.sort(sortNewestFirst)));
+    writeLocalRecords(SALES_ACTIVITY_STORAGE_KEY, next.sort(sortNewestFirst));
   }
 }
 
 function deleteLocalActivity(activityId: string) {
   if (typeof localStorage === 'undefined') return;
   const next = loadLocalActivities().filter((item) => item.id !== activityId);
-  localStorage.setItem(SALES_ACTIVITY_STORAGE_KEY, JSON.stringify(next));
+  writeLocalRecords(SALES_ACTIVITY_STORAGE_KEY, next);
 }
 
 async function loadCloudActivities(userId: string): Promise<SalesActivityRecord[]> {

@@ -34,6 +34,24 @@ async function loadCloudJsonModule() {
   };
 }
 
+/**
+ * The harness strips every import and runs the module against globals, so any
+ * dependency the store gained has to be provided here. `writeLocalCollection`
+ * is the guarded write path all stores use since 2026-08-02; this stub keeps
+ * the same signature, including the result object, so the isolation behaviour
+ * under test is the real one rather than a lenient version of it.
+ */
+function installWriteGuardMock() {
+  globalThis.writeLocalCollection = (key, payload) => {
+    try {
+      globalThis.window.localStorage.setItem(key, payload);
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, reason: 'unknown', message: String(error) };
+    }
+  };
+}
+
 function installWindowMock() {
   const store = new Map();
   globalThis.window = {
@@ -105,6 +123,7 @@ try {
   assert(createdAtFallback[0]?.title === 'Local createdAt', 'merge should use createdAt when updatedAt is missing');
 
   const ownerStore = installWindowMock();
+  installWriteGuardMock();
   assert(claimLocalCollectionForUser('review_packs', 'user-a') === true, 'unclaimed local review packs should be claimable');
   assert(ownerStore.get('memoire.cloud-owner.review_packs.v1') === 'user-a', 'claim should write review_packs owner marker');
   assert(claimLocalCollectionForUser('review_packs', 'user-a') === true, 'same owner should keep local collection claim');

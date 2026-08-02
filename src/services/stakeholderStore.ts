@@ -1,6 +1,7 @@
 import { supabaseClient } from '../lib/supabaseClient';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus';
+import { writeLocalCollection, writeLocalRecords } from './localWriteGuard.ts';
 
 export const STAKEHOLDER_STORAGE_KEY = 'memoire.stakeholders.v1';
 
@@ -232,12 +233,12 @@ function loadLocalStakeholders(): StakeholderRecord[] {
 function saveLocalStakeholderRecord(record: StakeholderRecord) {
   if (typeof localStorage === 'undefined') return;
   const next = [record, ...loadLocalStakeholders().filter((item) => item.id !== record.id)];
-  localStorage.setItem(STAKEHOLDER_STORAGE_KEY, JSON.stringify(next.sort(sortNewestFirst)));
+  writeLocalRecords(STAKEHOLDER_STORAGE_KEY, next.sort(sortNewestFirst));
 }
 
 function deleteLocalStakeholder(stakeholderId: string) {
   if (typeof localStorage === 'undefined') return;
-  localStorage.setItem(STAKEHOLDER_STORAGE_KEY, JSON.stringify(loadLocalStakeholders().filter((item) => item.id !== stakeholderId)));
+  writeLocalCollection(STAKEHOLDER_STORAGE_KEY, JSON.stringify(loadLocalStakeholders().filter((item) => item.id !== stakeholderId)));
 }
 
 async function loadCloudStakeholders(userId: string) {

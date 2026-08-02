@@ -5,6 +5,7 @@ import { TopNav } from './TopNav';
 import { MobileTabBar } from './MobileTabBar';
 import { OnboardingModal } from './OnboardingModal';
 import { DemoModeBanner } from '../demo/DemoModeBanner';
+import { StorageFailureBanner } from '../common/StorageFailureBanner';
 
 export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -32,6 +33,9 @@ export function AppShell() {
         aria-label="Memoire workspace"
         className="relative ml-0 flex min-h-screen min-w-0 flex-1 flex-col pb-16 pt-14 outline-none sm:pt-16 lg:ml-[220px] lg:pb-0"
       >
+        {/* Above the demo banner on purpose: unsaved data outranks every
+            other thing this shell has to say. */}
+        <StorageFailureBanner />
         <DemoModeBanner />
         <div className="flex-1">
           <Suspense fallback={<AppContentLoading />}>

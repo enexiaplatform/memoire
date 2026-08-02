@@ -7,6 +7,7 @@ import {
   syncCloudJsonCollectionForCurrentUser,
   upsertCloudJsonCollection,
 } from './cloudJsonCollectionStore';
+import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const SALES_ASSET_STORAGE_KEY = 'memoire.salesAssets.v1';
 export const SALES_ASSET_DRAFT_STORAGE_KEY = 'memoire.salesAssets.draft.v1';
@@ -112,7 +113,7 @@ function persistSalesAssets(assets: SalesAssetRecord[], syncCloud: boolean) {
   if (typeof window === 'undefined') return false;
   try {
     const sanitized = assets.map(sanitizeAsset).filter((asset): asset is SalesAssetRecord => Boolean(asset));
-    window.localStorage.setItem(SALES_ASSET_STORAGE_KEY, JSON.stringify(sanitized));
+    writeLocalRecords(SALES_ASSET_STORAGE_KEY, sanitized);
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('sales_assets', sanitized);
       invalidateWorkspaceDataCache();
@@ -161,7 +162,7 @@ export function deleteSalesAsset(assetId: string) {
 export function saveSalesAssetDraft(input: SalesAssetInput) {
   if (typeof window === 'undefined') return false;
   try {
-    window.localStorage.setItem(SALES_ASSET_DRAFT_STORAGE_KEY, JSON.stringify(input));
+    writeLocalRecords(SALES_ASSET_DRAFT_STORAGE_KEY, input);
     return true;
   } catch {
     return false;

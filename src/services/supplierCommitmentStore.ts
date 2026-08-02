@@ -13,6 +13,7 @@ import {
   upsertCloudJsonCollection,
 } from './cloudJsonCollectionStore';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const SUPPLIER_COMMITMENT_STORAGE_KEY = 'memoire.supplierCommitments.v1';
 
@@ -72,7 +73,7 @@ function persistSupplierCommitments(records: SupplierCommitmentRecord[], syncClo
     .sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || ''));
 
   if (canUseStorage()) {
-    window.localStorage.setItem(SUPPLIER_COMMITMENT_STORAGE_KEY, JSON.stringify(sanitized));
+    writeLocalRecords(SUPPLIER_COMMITMENT_STORAGE_KEY, sanitized);
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('supplier_commitments', sanitized);
       invalidateWorkspaceDataCache();

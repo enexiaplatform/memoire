@@ -91,7 +91,10 @@ for (const marker of [
   "record.source !== 'demo'",
   'record.isSample !== true',
   'payload: { id: recordId, updatedAt: now, __deleted: true }',
-  "window.localStorage.setItem(getOwnerKey(table), userId)",
+  // Ownership is claimed through the guarded write path like every other
+  // record, so a browser that refuses the write says so instead of leaving the
+  // collection unclaimed and silent.
+  'writeLocalCollection(getOwnerKey(table), userId)',
   'claimLocalCollectionForUser',
   "eventName: 'cloud_json_sync_failed'",
 ]) {

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { ExportTab } from './ExportTab';
 import { SyncRecoveryPanel } from './SyncRecoveryPanel';
+import { StoragePanel } from './StoragePanel';
 import { BoundariesTab } from './BoundariesTab';
 import { ProfileTab } from './ProfileTab';
 import { REPLAY_GUIDED_WORKFLOW_EVENT } from '../onboarding/guidedWorkflow';
@@ -82,6 +83,8 @@ export function SettingsPage() {
       )}
 
       <SyncRecoveryPanel />
+
+      <StoragePanel />
 
       <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

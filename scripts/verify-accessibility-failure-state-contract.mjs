@@ -117,12 +117,19 @@ for (const marker of [
 const clientTelemetry = read('src/services/clientTelemetry.ts');
 for (const marker of [
   'export function reportClientOperationalEvent',
-  'if (!import.meta.env.VITE_CLIENT_LOG_ENDPOINT) return',
-  'fetch(import.meta.env.VITE_CLIENT_LOG_ENDPOINT',
+  // Inert unless configured, and fire-and-forget. The endpoint is read into a
+  // local first so the reporter also survives an environment with no
+  // `import.meta.env` - it is called from inside every `catch` in the app, and
+  // a reporter that throws from there hides the failure it was reporting.
+  'VITE_CLIENT_LOG_ENDPOINT',
+  'if (!endpoint) return',
+  'fetch(endpoint',
   '.catch(() => undefined)',
   'cloud_json_sync_failed',
   'pipeline_defense_cloud_sync_failed',
   'client_render_error',
+  // A write this browser refused: the record did not land locally either.
+  'local_write_failed',
 ]) {
   requireIncludes(clientTelemetry, marker, `client telemetry marker missing: ${marker}`);
 }

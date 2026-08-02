@@ -112,14 +112,28 @@ for (const marker of [
 
 const clientLog = read('src/services/clientTelemetry.ts');
 for (const marker of [
+  // Still inert unless the endpoint is configured, still fire-and-forget. The
+  // endpoint is read into a local now rather than inlined at the fetch, because
+  // the reporter also has to survive an environment where `import.meta.env` is
+  // absent - see below.
   'VITE_CLIENT_LOG_ENDPOINT',
-  'void fetch(import.meta.env.VITE_CLIENT_LOG_ENDPOINT',
+  'void fetch(endpoint',
   "method: 'POST'",
   "headers: { 'Content-Type': 'application/json' }",
   'keepalive: body.length < 8_000',
 ]) {
   requireIncludes(clientLog, marker, `external client telemetry contract missing marker: ${marker}`);
 }
+
+// Every caller of this reporter is inside a `catch`. A reporter that can throw
+// from there replaces a precise failure with a vague one - which is exactly
+// what happened on 2026-08-02, when the local-write guard called it outside
+// Vite and lost a QuotaExceededError to a TypeError about `import.meta.env`.
+requireIncludes(
+  clientLog,
+  'try {',
+  'the telemetry reporter must not be able to throw into the failure path it is reporting on',
+);
 
 for (const eventName of ['cloud_json_sync_failed', 'pipeline_defense_cloud_sync_failed']) {
   requireIncludes(clientLog, eventName, `client telemetry missing allowlisted event ${eventName}`);

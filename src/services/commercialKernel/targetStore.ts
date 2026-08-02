@@ -2,6 +2,7 @@ import { FORECAST_QUARTERS, type ForecastQuarter } from '../../domain/commercial
 import { supabaseClient } from '../../lib/supabaseClient.ts';
 import { reportWorkspaceSyncError } from '../workspaceSyncStatus.ts';
 import { invalidateWorkspaceDataCache } from '../workspaceDataCache.ts';
+import { writeLocalCollection } from '../localWriteGuard.ts';
 
 export const TARGET_STORAGE_KEY = 'memoire.commercialTargets.v1';
 export const TARGETS_UPDATED_EVENT = 'memoire:commercial-targets-updated';
@@ -81,7 +82,7 @@ function persist(targets: CommercialTarget[]): CommercialTarget[] {
   const serialized = JSON.stringify(sorted);
   if (window.localStorage.getItem(TARGET_STORAGE_KEY) === serialized) return sorted;
 
-  window.localStorage.setItem(TARGET_STORAGE_KEY, serialized);
+  writeLocalCollection(TARGET_STORAGE_KEY, serialized);
   invalidateWorkspaceDataCache();
   window.dispatchEvent(new CustomEvent(TARGETS_UPDATED_EVENT, { detail: sorted }));
   return sorted;

@@ -2,6 +2,7 @@ import { supabaseClient } from '../lib/supabaseClient';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
+import { writeLocalCollection, writeLocalRecords } from './localWriteGuard.ts';
 
 export const OBJECTION_STORAGE_KEY = 'memoire.objections.v1';
 
@@ -246,12 +247,12 @@ function loadLocalObjections(): ObjectionRecord[] {
 function saveLocalObjectionRecord(record: ObjectionRecord) {
   if (typeof localStorage === 'undefined') return;
   const next = [record, ...loadLocalObjections().filter((item) => item.id !== record.id)];
-  localStorage.setItem(OBJECTION_STORAGE_KEY, JSON.stringify(next.sort(sortNewestFirst)));
+  writeLocalRecords(OBJECTION_STORAGE_KEY, next.sort(sortNewestFirst));
 }
 
 function deleteLocalObjection(objectionId: string) {
   if (typeof localStorage === 'undefined') return;
-  localStorage.setItem(OBJECTION_STORAGE_KEY, JSON.stringify(loadLocalObjections().filter((item) => item.id !== objectionId)));
+  writeLocalCollection(OBJECTION_STORAGE_KEY, JSON.stringify(loadLocalObjections().filter((item) => item.id !== objectionId)));
 }
 
 async function loadCloudObjections(userId: string) {

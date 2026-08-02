@@ -7,6 +7,7 @@ import {
   upsertCloudJsonCollection,
 } from './cloudJsonCollectionStore';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const WEEKLY_COMMITMENT_STORAGE_KEY = 'memoire.weeklyCommitments.v1';
 export const WEEKLY_COMMITMENTS_UPDATED_EVENT = 'memoire:weekly-commitments-updated';
@@ -81,7 +82,7 @@ function persistWeeklyCommitments(snapshots: WeeklyCommitmentSnapshot[], syncClo
     .sort((a, b) => b.weekId.localeCompare(a.weekId));
 
   if (canUseStorage()) {
-    window.localStorage.setItem(WEEKLY_COMMITMENT_STORAGE_KEY, JSON.stringify(sanitized));
+    writeLocalRecords(WEEKLY_COMMITMENT_STORAGE_KEY, sanitized);
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('weekly_commitments', sanitized);
       invalidateWorkspaceDataCache();

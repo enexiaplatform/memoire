@@ -12,6 +12,7 @@ import {
   syncCloudJsonCollectionForCurrentUser,
   upsertCloudJsonCollection,
 } from '../services/cloudJsonCollectionStore';
+import { writeLocalRecords } from '../services/localWriteGuard.ts';
 
 export const REVIEW_PACK_STORAGE_KEY = 'memoire.reviewPacks.v1';
 export const REVIEW_PACKS_UPDATED_EVENT = 'memoire:review-packs-updated';
@@ -248,7 +249,7 @@ function persistReviewPacks(packs: ReviewPackSnapshot[], syncCloud = true) {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   if (canUseStorage()) {
-    window.localStorage.setItem(REVIEW_PACK_STORAGE_KEY, JSON.stringify(sanitized));
+    writeLocalRecords(REVIEW_PACK_STORAGE_KEY, sanitized);
     if (syncCloud) syncCloudJsonCollectionForCurrentUser('review_packs', sanitized);
     window.dispatchEvent(new CustomEvent(REVIEW_PACKS_UPDATED_EVENT, { detail: sanitized }));
   }

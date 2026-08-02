@@ -15,6 +15,7 @@ import {
 } from './cloudJsonCollectionStore.ts';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache.ts';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
+import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const OPPORTUNITY_OUTCOME_STORAGE_KEY = 'memoire.opportunityOutcomes.v1';
 
@@ -138,7 +139,7 @@ function persistOpportunityOutcomes(outcomes: OpportunityOutcomeRecord[], syncCl
     const sanitized = outcomes
       .map(sanitizeOpportunityOutcome)
       .filter((record): record is OpportunityOutcomeRecord => Boolean(record));
-    window.localStorage.setItem(OPPORTUNITY_OUTCOME_STORAGE_KEY, JSON.stringify(sanitized));
+    writeLocalRecords(OPPORTUNITY_OUTCOME_STORAGE_KEY, sanitized);
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('opportunity_outcomes', sanitized);
       invalidateWorkspaceDataCache();

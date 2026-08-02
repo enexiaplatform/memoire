@@ -11,13 +11,14 @@
  * it never makes a record unsafe, so a storage failure here is swallowed rather
  * than surfaced.
  */
+import { writeLocalCollection } from './localWriteGuard.ts';
 
 const LAST_SYNC_KEY = 'memoire.sync.lastSuccessAt.v1';
 const LAST_BACKUP_KEY = 'memoire.sync.lastBackupAt.v1';
 
 function write(key: string) {
   try {
-    window.localStorage.setItem(key, new Date().toISOString());
+    writeLocalCollection(key, new Date().toISOString());
   } catch {
     // Best effort only.
   }

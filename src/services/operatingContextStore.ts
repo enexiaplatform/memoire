@@ -2,6 +2,7 @@ import { supabaseClient } from '../lib/supabaseClient';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
+import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const OPERATING_CONTEXT_STORAGE_KEY = 'memoire.operatingContext.v1';
 export const operatingContextTypes = ['initiative', 'play', 'offer', 'experiment'] as const;
@@ -297,13 +298,13 @@ function loadLocalOperatingContext(userId: string): OperatingContextRecord[] {
 function saveLocalOperatingContext(record: OperatingContextRecord, userId: string) {
   if (typeof localStorage === 'undefined') return;
   const next = [record, ...loadLocalOperatingContext(userId).filter((item) => item.id !== record.id)];
-  localStorage.setItem(localStorageKey(userId), JSON.stringify(next.sort(sortNewestFirst)));
+  writeLocalRecords(localStorageKey(userId), next.sort(sortNewestFirst));
 }
 
 function deleteLocalOperatingContext(recordId: string, userId: string) {
   if (typeof localStorage === 'undefined') return;
   const next = loadLocalOperatingContext(userId).filter((item) => item.id !== recordId);
-  localStorage.setItem(localStorageKey(userId), JSON.stringify(next));
+  writeLocalRecords(localStorageKey(userId), next);
 }
 
 function normalizeContextType(value: unknown): OperatingContextType {

@@ -1,6 +1,7 @@
 import { pipelineDefenseBriefMeta, type PipelineDefenseDeal } from '../data/pipelineDefenseBrief.ts';
 import { invalidateWorkspaceDataCache } from '../services/workspaceDataCache.ts';
 import { normalizeImportedDeal } from './importPipelineDefenseBrief.ts';
+import { writeLocalRecords } from '../services/localWriteGuard.ts';
 
 export const MULTI_BRIEF_STORAGE_KEY = 'memoire.pipelineDefenseBriefs.v1';
 export const LEGACY_LOCAL_STORAGE_KEY = 'memoire.pipelineDefenseBrief.v1';
@@ -50,7 +51,7 @@ export function createEmptyPipelineDefenseBriefStore(): PipelineDefenseBriefStor
 export function savePipelineDefenseBriefStore(store: PipelineDefenseBriefStore) {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return false;
-    window.localStorage.setItem(MULTI_BRIEF_STORAGE_KEY, JSON.stringify(sanitizeStore(store)));
+    writeLocalRecords(MULTI_BRIEF_STORAGE_KEY, sanitizeStore(store));
     invalidateWorkspaceDataCache();
     return true;
   } catch {
