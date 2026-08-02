@@ -248,7 +248,7 @@ function Header() {
       <div>
         <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">
           <BarChart3 className="h-3.5 w-3.5" />
-          Business
+          Dashboard
         </p>
         <h1 className="mt-2 text-2xl font-bold text-navy">How the business is doing</h1>
         <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-600">

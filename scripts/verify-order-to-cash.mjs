@@ -132,11 +132,13 @@ const quote = (id, opportunityId, overrides = {}) => ({
 //    one page; the rename is the product decision, not a caption.
 {
   const registry = readFileSync(new URL('../src/config/featureRegistry.ts', import.meta.url), 'utf8');
-  assert.match(registry, /label: 'Orders & Cash'/, 'the destination is named for committed orders');
+  // Shortened to "Orders" on 2026-08-02: the road to cash is what the page
+  // shows, the order is what the operator came to look at.
+  assert.match(registry, /label: 'Orders'/, 'the destination is named for committed orders');
 
   const page = readFileSync(new URL('../src/features/revenue/RevenueViewPage.tsx', import.meta.url), 'utf8');
   assert.match(page, /<OrderBookPanel/, 'the order book leads the page');
-  assert.match(page, /ORDERS & CASH|Orders &amp; Cash/i, 'the page header matches the rail');
+  assert.match(page, /Orders/, 'the page header matches the rail');
 }
 
 // 6. Storage contract: another JSON collection with a real table behind it, and

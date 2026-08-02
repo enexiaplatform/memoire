@@ -3,6 +3,7 @@ import { useAuthContext } from '../../auth/authContext';
 import { Button } from '../ui/Button';
 import { Link, useNavigate } from 'react-router-dom';
 import { getUserDisplayName } from '../../utils/userDisplay';
+import { BrandWordmark } from '../brand/BrandWordmark';
 import { Menu, Plus } from 'lucide-react';
 import { useDemoWorkspaceMode } from '../../hooks/useDemoWorkspaceMode';
 import { DataModePill } from '../common/DataModePill';
@@ -30,8 +31,22 @@ export function TopNav({ onOpenMenu }: { onOpenMenu: () => void }) {
   };
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 sm:px-5 lg:left-[220px] lg:px-6">
-      <button type="button" onClick={onOpenMenu} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-600 lg:hidden" title="Open navigation">
+    <header className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4 sm:h-16 sm:px-5 lg:left-[220px] lg:px-6">
+      {/* On a phone the wordmark takes the corner the hamburger used to hold.
+          Navigation lives on the tab bar at the bottom, where a thumb is - the
+          top-left menu button was a desktop rail wearing a phone's clothes, and
+          it left the app with no visible identity on mobile at all. The button
+          survives for tablet widths between the bar and the pinned rail. */}
+      <Link to="/app/today" className="lg:hidden" aria-label="Memoire home">
+        <BrandWordmark className="text-lg" />
+      </Link>
+      <button
+        type="button"
+        onClick={onOpenMenu}
+        aria-controls="app-navigation"
+        className="ml-2 hidden h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-600 md:inline-flex lg:hidden"
+        title="Open navigation"
+      >
         <Menu className="h-5 w-5" />
       </button>
 

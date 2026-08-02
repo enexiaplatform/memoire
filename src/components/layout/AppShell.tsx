@@ -2,6 +2,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Suspense, useEffect, useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopNav } from './TopNav';
+import { MobileTabBar } from './MobileTabBar';
 import { OnboardingModal } from './OnboardingModal';
 import { DemoModeBanner } from '../demo/DemoModeBanner';
 
@@ -23,11 +24,13 @@ export function AppShell() {
       </a>
       <Sidebar isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
       <TopNav onOpenMenu={() => setMobileNavOpen(true)} />
+      {/* pb-16 on small screens keeps the last row of any page clear of the
+          phone tab bar; the bar itself adds the safe-area inset below that. */}
       <main
         id="app-main-content"
         tabIndex={-1}
         aria-label="Memoire workspace"
-        className="relative ml-0 flex min-h-screen min-w-0 flex-1 flex-col pt-16 outline-none lg:ml-[220px]"
+        className="relative ml-0 flex min-h-screen min-w-0 flex-1 flex-col pb-16 pt-14 outline-none sm:pt-16 lg:ml-[220px] lg:pb-0"
       >
         <DemoModeBanner />
         <div className="flex-1">
@@ -36,6 +39,7 @@ export function AppShell() {
           </Suspense>
         </div>
       </main>
+      <MobileTabBar onOpenMenu={() => setMobileNavOpen(true)} menuOpen={mobileNavOpen} />
       <OnboardingModal />
     </div>
   );

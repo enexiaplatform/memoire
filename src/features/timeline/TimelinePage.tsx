@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom';
-import { History, Plus } from 'lucide-react';
+import { CalendarDays, Plus } from 'lucide-react';
 import { WeeklyPlanPage } from '../plan/WeeklyPlanPage';
 import { SalesActivityCalendarPage } from '../calendar/SalesActivityCalendarPage';
 import { CommitmentLedgerPanel } from '../commitments/CommitmentLedgerPanel';
@@ -16,12 +16,15 @@ function readView(value: string | null): TimelineView {
 }
 
 /**
- * Timeline is one destination with two halves of the same ledger: what is
- * coming (the former Plan board) and what already happened (the former Activity
- * ledger). They were never two products - a plan item is a future-dated action
- * and an activity is a past commercial event - but two nav entries made them
- * read as rival calendars, and the seller had to decide which one "the week"
- * lived in.
+ * Plan is one destination with two halves of the same ledger: what is coming
+ * (the plan board) and what already happened (the former Activity ledger). They
+ * were never two products - a plan item is a future-dated action and an
+ * activity is a past commercial event - but two nav entries made them read as
+ * rival calendars, and the seller had to decide which one "the week" lived in.
+ *
+ * It was called Timeline until 2026-08-02. The id, the route and the two tabs
+ * are unchanged; the name now says the job (work out the week) rather than the
+ * shape of the data (a line of dated things).
  *
  * This is a UI and information-architecture merge only. Plan items and sales
  * activities remain separate source-of-truth records with their own stores;
@@ -49,8 +52,8 @@ export function TimelinePage() {
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <History className="h-5 w-5 text-brand-blue" />
-            <h1 className="text-2xl font-bold tracking-tight text-navy">Timeline</h1>
+            <CalendarDays className="h-5 w-5 text-brand-blue" />
+            <h1 className="text-2xl font-bold tracking-tight text-navy">Plan</h1>
           </div>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-600">{activeHint}</p>
         </div>

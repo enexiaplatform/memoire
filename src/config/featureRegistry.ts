@@ -10,10 +10,11 @@
  * item: a page reappears, the sidebar grows, and the product stops being
  * describable in one sentence.
  *
- * The navigation renders from `primaryNavigation` / `globalActions`. Nothing
- * else may add a nav item, and `scripts/verify-navigation-contract.mjs` fails
- * the build if the six primary destinations change or a hidden feature becomes
- * visible.
+ * The navigation renders from `navigationGroups`, which is assembled here from
+ * `primaryNavigation` and `globalActions`. Nothing else may add a nav item, and
+ * `scripts/verify-navigation-contract.mjs` fails the build if the six primary
+ * destinations change, if a hidden feature becomes visible, or if a rail item
+ * exists that no group claims.
  *
  * Statuses:
  *   core        - a primary destination in the beta product.
@@ -40,10 +41,41 @@ export type RouteBehavior = 'primary' | 'contextual' | 'redirect' | 'compatibili
 
 export type AnalyticsStatus = 'active' | 'retained' | 'deprecated' | 'none';
 
+/**
+ * The three blocks of the navigation rail.
+ *
+ * Status ("is this a primary destination?") and grouping ("where does it sit in
+ * the rail?") used to be the same thing, and the rail read as two tiers: the six
+ * primary destinations, then everything else. That is a statement about product
+ * architecture, not about how the operator works. Reading it top to bottom, the
+ * old order asked you to jump between rhythms - a daily surface, then a records
+ * surface, then a weekly one - and the lens that answers "how is the business
+ * doing" sat below the fold with Settings.
+ *
+ * The rail is now grouped by the question being asked, not by registry status:
+ *
+ *   run     - the operating rhythm: today, this week, the picture, the review.
+ *   records - the three books the rhythm reads and writes.
+ *   tools   - ways of searching and seeing, plus workspace settings.
+ *
+ * Primary destinations still exist and are still exactly six; four of them sit
+ * in `run` and three in `records`, and one lens (`business-lens`) sits in `run`
+ * because that is where the operator looks for it, not because its status
+ * changed. `PRIMARY_DESTINATION_IDS` remains the product decision;
+ * `NAVIGATION_GROUPS` is only the shape of the rail.
+ */
+export type NavGroupId = 'run' | 'records' | 'tools';
+
 export type FeatureRecord = {
   /** Stable identifier. Never reused for a different capability. */
   id: string;
   label: string;
+  /**
+   * The name to use where there is no room for the real one - today, the phone
+   * tab bar, where five labels share a 390px row. Only set it where the full
+   * label would truncate, and only to a word the product already says out loud.
+   */
+  shortLabel?: string;
   status: FeatureStatus;
   /** Where the capability lives now. For `core`, this is its own route. */
   ownerSurface: string;
@@ -97,6 +129,9 @@ export const featureRegistry: FeatureRecord[] = [
   {
     id: 'opportunities',
     label: 'Opportunities',
+    // "Opportunities" truncates to "Opportuniti..." in a five-up tab bar. Deals
+    // is what the product already calls them in every sentence it writes.
+    shortLabel: 'Deals',
     status: 'core',
     ownerSurface: 'opportunities',
     route: '/app/opportunities',
@@ -110,7 +145,12 @@ export const featureRegistry: FeatureRecord[] = [
     id: 'money',
     // Renamed from "Money" (2026-07-28, founder feedback): the surface is not
     // "all money things", it is the committed orders and their road to cash.
-    label: 'Orders & Cash',
+    //
+    // Shortened again to "Orders" (2026-08-02). "& Cash" was doing no work in
+    // the rail: cash is where an order ends, so naming both halves described the
+    // page rather than naming the thing you go there to look at. The page still
+    // walks contract to collection - the noun in the rail is just the record.
+    label: 'Orders',
     status: 'core',
     ownerSurface: 'money',
     route: '/app/revenue',
@@ -122,7 +162,17 @@ export const featureRegistry: FeatureRecord[] = [
   },
   {
     id: 'timeline',
-    label: 'Timeline',
+    // Renamed from "Timeline" (2026-08-02). The id stays `timeline` and the
+    // route stays /app/timeline, because the destination did not change: it is
+    // still the one ledger with Upcoming and History as its two halves.
+    //
+    // What changed is the name's honesty. "Timeline" describes the data
+    // structure; nobody opens it to look at a timeline, they open it to work
+    // out what this week holds. Upcoming - the plan board - is what the surface
+    // opens on and where the operator spends their time, so the rail now says
+    // the job. History is not demoted by this: it is the same ledger read
+    // backwards, and it keeps its tab, its deep links and its route.
+    label: 'Plan',
     status: 'core',
     ownerSurface: 'timeline',
     route: '/app/timeline',
@@ -153,6 +203,8 @@ export const featureRegistry: FeatureRecord[] = [
     ownerSurface: 'capture',
     route: '/app/capture',
     routeBehavior: 'primary',
+    // Genuinely false: Capture is the button in the top bar and the home-screen
+    // shortcut on a phone. It is an action, not a place in the rail.
     navVisible: false,
     analytics: 'active',
     dataRetention: 'Creates commercial events. Raw text preserved.',
@@ -165,7 +217,12 @@ export const featureRegistry: FeatureRecord[] = [
     ownerSurface: 'search-insights',
     route: '/app/ask',
     routeBehavior: 'primary',
-    navVisible: false,
+    // Was declared false while sitting in the rail all along: `navVisible` had
+    // drifted into meaning "is a primary destination", which is what `status`
+    // already says. It means what it says again - this is in the rail, so it is
+    // true, and `navigationGroups` refuses to build a rail item that claims
+    // otherwise.
+    navVisible: true,
     analytics: 'active',
     dataRetention: 'Derived query results only.',
     killOrActivationCondition: 'Never - bounded, deterministic answers over the workspace.',
@@ -177,7 +234,8 @@ export const featureRegistry: FeatureRecord[] = [
     ownerSurface: 'settings',
     route: '/app/settings',
     routeBehavior: 'primary',
-    navVisible: false,
+    // In the rail's last group. See the note on search-insights above.
+    navVisible: true,
     analytics: 'active',
     dataRetention: 'Owns export, restore and sync recovery.',
     killOrActivationCondition: 'Never.',
@@ -211,7 +269,18 @@ export const featureRegistry: FeatureRecord[] = [
   },
   {
     id: 'business-lens',
-    label: 'Business',
+    // Renamed from "Business" (2026-08-02) - and yes, "Dashboard" is the name
+    // of a page this product deliberately retired. What was retired was the
+    // *page*: a standalone surface that tried to answer "what should I do now"
+    // and did it worse than Today. The word is not the mistake. "Dashboard" is
+    // what every operator already calls the place they go to read instrument
+    // values without touching the controls, which is exactly what this lens is
+    // and exactly why it still has no action button on it.
+    //
+    // The retired id stays retired: `dashboard` below is still non-visible, and
+    // /app/dashboard now redirects here rather than to Today, so the old
+    // bookmark lands on the page that carries the name.
+    label: 'Dashboard',
     status: 'global',
     ownerSurface: 'business-lens',
     route: '/app/business',
@@ -257,16 +326,19 @@ export const featureRegistry: FeatureRecord[] = [
   // -------------------------------------------------------------- embedded
   {
     id: 'dashboard',
-    label: 'Dashboard',
+    // The retired page, not the word. `business-lens` carries the label now, so
+    // this record is named for what it actually is: the surface that was taken
+    // apart in the 2026-07-26 refactor.
+    label: 'Legacy dashboard page',
     status: 'embedded',
-    ownerSurface: 'today/review',
+    ownerSurface: 'today/review/business-lens',
     route: '/app/dashboard',
     routeBehavior: 'redirect',
     navVisible: false,
     analytics: 'deprecated',
     dataRetention: 'Derived only. Nothing to retain.',
     killOrActivationCondition:
-      'Stays embedded. Immediate priorities and risks belong on Today; trends and history belong in Review.',
+      'Stays embedded. Immediate priorities and risks belong on Today; trends and history belong in Review. Its route now forwards to the Business lens, which is what the rail calls Dashboard.',
   },
   {
     id: 'pipeline-defense',
@@ -283,14 +355,18 @@ export const featureRegistry: FeatureRecord[] = [
   },
   {
     id: 'plan',
-    label: 'Plan',
+    // The retired standalone board. The word "Plan" is back in the rail as the
+    // name of the `timeline` destination, which is where this board has lived
+    // since the merge - so this record is named for the old page to keep one
+    // label per surface.
+    label: 'Legacy plan board page',
     status: 'embedded',
     ownerSurface: 'timeline',
     route: '/app/plan',
     routeBehavior: 'redirect',
     navVisible: false,
     analytics: 'retained',
-    dataRetention: 'Plan items preserved and shown under Timeline > Upcoming.',
+    dataRetention: 'Plan items preserved and shown under Plan > Upcoming.',
     killOrActivationCondition: 'Stays embedded - a plan item is a future-dated action, not a module.',
   },
   {
@@ -486,5 +562,77 @@ export const primaryNavigation: FeatureRecord[] = PRIMARY_DESTINATION_IDS.map((i
 export const globalActions: FeatureRecord[] = ['capture', 'search-insights', 'activity', 'business-lens', 'business-vault', 'settings'].map((id) => {
   const feature = byId.get(id);
   if (!feature) throw new Error(`Feature registry is missing global action "${id}"`);
+  return feature;
+});
+
+/**
+ * The navigation rail, in order, grouped by the question each block answers.
+ *
+ * This is the only place the rail's shape is declared. The Sidebar renders it
+ * and knows nothing else; the mobile tab bar takes its first row from the same
+ * list. Adding a nav item means adding an id here, in a reviewed file, which is
+ * the whole point - a rail that grows by accident is how the last suite got
+ * away from us.
+ *
+ * Capture is deliberately absent: it is the button in the top bar and the
+ * install shortcut on a phone, not a place you navigate to.
+ */
+const NAVIGATION_GROUP_IDS: { id: NavGroupId; label: string; itemIds: string[] }[] = [
+  {
+    id: 'run',
+    // No heading rendered for the first block - the wordmark above it is the
+    // heading, and an operator does not need to be told that Today is where
+    // running the business starts.
+    label: '',
+    itemIds: ['today', 'timeline', 'business-lens', 'review'],
+  },
+  {
+    id: 'records',
+    label: 'Records',
+    itemIds: ['accounts', 'opportunities', 'money'],
+  },
+  {
+    id: 'tools',
+    label: 'Workspace',
+    itemIds: ['search-insights', 'activity', 'business-vault', 'settings'],
+  },
+];
+
+export type NavGroup = {
+  id: NavGroupId;
+  label: string;
+  items: FeatureRecord[];
+};
+
+export const navigationGroups: NavGroup[] = NAVIGATION_GROUP_IDS.map((group) => ({
+  id: group.id,
+  label: group.label,
+  items: group.itemIds.map((id) => {
+    const feature = byId.get(id);
+    if (!feature) throw new Error(`Feature registry is missing nav item "${id}"`);
+    if (!feature.route) throw new Error(`Nav item "${id}" has no route`);
+    if (!feature.navVisible) throw new Error(`Nav item "${id}" is not navVisible`);
+    return feature;
+  }),
+}));
+
+/**
+ * The phone's bottom tab bar.
+ *
+ * Four destinations plus a "More" button that opens the same rail. Chosen from
+ * what a distributor actually does away from the desk: what is on today, what
+ * the week holds, and looking up a customer or a deal before walking into a
+ * meeting. Capture is not here because it is already the primary button in the
+ * top bar on every screen width.
+ *
+ * Everything else stays one tap away in the drawer. The point of the bar is
+ * that the four things people open twenty times a day never require opening a
+ * drawer at all.
+ */
+export const MOBILE_TAB_IDS = ['today', 'timeline', 'accounts', 'opportunities'] as const;
+
+export const mobileTabs: FeatureRecord[] = MOBILE_TAB_IDS.map((id) => {
+  const feature = byId.get(id);
+  if (!feature) throw new Error(`Feature registry is missing mobile tab "${id}"`);
   return feature;
 });

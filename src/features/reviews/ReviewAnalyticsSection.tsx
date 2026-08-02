@@ -263,7 +263,7 @@ export function ReviewAnalyticsSection() {
                 <div className="mt-3 flex flex-col gap-2 text-sm font-semibold">
                   <Link to="/app/revenue" className="inline-flex items-center gap-2 text-brand-blue hover:underline">Money flow, end to end <ArrowRight className="h-4 w-4" /></Link>
                   <Link to="/app/opportunities" className="inline-flex items-center gap-2 text-brand-blue hover:underline">Opportunities <ArrowRight className="h-4 w-4" /></Link>
-                  <Link to="/app/timeline?view=history" className="inline-flex items-center gap-2 text-brand-blue hover:underline">Timeline history <ArrowRight className="h-4 w-4" /></Link>
+                  <Link to="/app/timeline?view=history" className="inline-flex items-center gap-2 text-brand-blue hover:underline">Plan history <ArrowRight className="h-4 w-4" /></Link>
                 </div>
               </div>
             </div>

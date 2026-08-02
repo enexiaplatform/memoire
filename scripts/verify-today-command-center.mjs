@@ -57,10 +57,13 @@ assert.equal(empty.topActions.length, 0);
 const app = readFileSync('src/App.tsx', 'utf8');
 assert.ok(app.includes('<Route path="today" element={<TodayPage />} />'));
 assert.ok(app.includes('<Route index element={<Navigate to="/app/today" replace />} />'));
-// Today is the action surface and the landing. Dashboard was the reporting
-// rival to it; its charts are now Review > Analytics, and the old URL lands on
-// Today rather than 404ing.
-assert.ok(app.includes('<Route path="dashboard" element={<LegacyRedirect to="/app/today" />} />'));
+// Today is the action surface and the landing. The old Dashboard page was the
+// reporting rival to it and is gone; what survives of it is Review > Analytics
+// and the read-only Business lens, which took the name "Dashboard" in the rail
+// on 2026-08-02. The old URL therefore lands on that lens - what matters here
+// is that it still resolves, and that it does not land back on Today as a
+// second reporting surface competing with the action list.
+assert.ok(app.includes('<Route path="dashboard" element={<LegacyRedirect to="/app/business" />} />'));
 
 const sidebar = readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
 // Navigation is owned by src/config/featureRegistry.ts and enforced by

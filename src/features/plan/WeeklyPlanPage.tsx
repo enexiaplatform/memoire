@@ -287,7 +287,7 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
       // name the right one or it sends the operator to the wrong screen.
       setBoardMessage(
         item.id.includes(SUPPLIER_OBLIGATION_MARKER)
-          ? `Change the date with the principal on Orders & Cash - "${item.tag}" is holding this one.`
+          ? `Change the date with the principal on Orders - "${item.tag}" is holding this one.`
           : 'Payments and deliveries you owe move when the quote or expense behind them changes date.',
       );
     } catch {

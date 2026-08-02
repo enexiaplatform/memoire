@@ -2526,7 +2526,7 @@ function QuickActions() {
     { label: 'Quick Capture', href: '/app/capture?mode=quick', icon: <NotebookPen className="h-4 w-4" /> },
     { label: 'Add Opportunity', href: '/app/opportunities', icon: <Target className="h-4 w-4" /> },
     { label: 'Add Account', href: '/app/accounts', icon: <BookOpen className="h-4 w-4" /> },
-    { label: 'Open Timeline', href: '/app/timeline?view=upcoming', icon: <CalendarCheck className="h-4 w-4" /> },
+    { label: 'Open Plan', href: '/app/timeline?view=upcoming', icon: <CalendarCheck className="h-4 w-4" /> },
     { label: 'Weekly Review', href: '/app/reviews', icon: <ClipboardList className="h-4 w-4" /> },
     { label: 'Pipeline Defense Brief', href: '/app/reviews?view=defense', icon: <FileCheck2 className="h-4 w-4" /> },
   ];

@@ -156,7 +156,12 @@ function App() {
 
             {/* Retired destinations. Deep links, bookmarks and shared links keep
                 working; each lands on the surface that now owns the job. */}
-            <Route path="dashboard" element={<LegacyRedirect to="/app/today" />} />
+            {/* Followed Today until 2026-08-02, when the Business lens took the
+                name "Dashboard" in the rail. A bookmark to /app/dashboard now
+                lands on the page that carries that name; the daily loop it used
+                to forward to is one tap away and is not what someone typing
+                "dashboard" is looking for. */}
+            <Route path="dashboard" element={<LegacyRedirect to="/app/business" />} />
             <Route path="plan" element={<LegacyRedirect to="/app/timeline" params={{ view: 'upcoming' }} />} />
             <Route path="calendar" element={<LegacyRedirect to="/app/timeline" params={{ view: 'history' }} />} />
             <Route path="weekly-brief" element={<LegacyRedirect to="/app/reviews" />} />

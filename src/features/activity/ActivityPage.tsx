@@ -594,7 +594,7 @@ export function ActivityPage() {
             entries={visibleEntries}
             emptyMessage={
               entries.length === 0
-                ? 'Nothing dated in this period. Capture a touch, or plan a day on Timeline, and it appears here attached to whoever it was for.'
+                ? 'Nothing dated in this period. Capture a touch, or plan a day on Plan, and it appears here attached to whoever it was for.'
                 : 'No rows match these filters.'
             }
           />

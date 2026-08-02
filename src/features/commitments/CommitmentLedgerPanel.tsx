@@ -254,7 +254,7 @@ function CommitmentGroup({
       </ul>
       {limit && items.length > visible.length && (
         <p className="mt-1.5 text-[11px] text-gray-400">
-          +{items.length - visible.length} more in Timeline
+          +{items.length - visible.length} more in Plan
         </p>
       )}
     </div>

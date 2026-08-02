@@ -23,7 +23,7 @@ import { formatSafeBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
 /**
  * Your principals, and what is owed in each direction.
  *
- * This sits on Orders & Cash because it answers the same question the page
+ * This sits on Orders because it answers the same question the page
  * asks - why is this order not money yet - from the side the customer cannot
  * see. A quote that cannot be sent until the brand confirms a price is stuck
  * for a supply reason, and chasing the customer will not move it.
@@ -150,7 +150,7 @@ export function SupplierCommitmentsPanel({ opportunities }: { opportunities: Crm
 
       {model.waitingOnSuppliers.length > 0 && (
         <p className="mt-3 text-xs leading-5 text-gray-400">
-          Items you owe a principal appear on your week in Timeline, alongside every other commitment. What a principal
+          Items you owe a principal appear on your week in Plan, alongside every other commitment. What a principal
           owes you stays here - it is chasing, not delivering, so counting it as your own obligation would make that
           number a lie.
         </p>
