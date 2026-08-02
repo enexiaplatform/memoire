@@ -1,4 +1,4 @@
-import { supabaseClient } from '../lib/supabaseClient';
+import { supabaseClient } from '../lib/supabaseClient.ts';
 
 export const FOUNDER_IMPORT_TARGET_EMAIL = 'thongtran.hcmus@gmail.com';
 

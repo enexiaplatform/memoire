@@ -1,4 +1,4 @@
-import { supabaseClient } from '../lib/supabaseClient';
+import { supabaseClient } from '../lib/supabaseClient.ts';
 import type { ClassifiedSalesActivity, SalesActivityType } from '../utils/salesActivityClassifier';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus';

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import type { UserProfile } from '../types';
-import { pipelineSupabaseConfigMessage, supabaseClient } from '../lib/supabaseClient';
+import { pipelineSupabaseConfigMessage, supabaseClient } from '../lib/supabaseClient.ts';
 import { clearDemoWorkspaceForAccount, clearDemoWorkspaceMode } from '../lib/demoMode';
 import { AuthContext, type AuthContextValue } from './authContext';
 import { getFriendlyAuthErrorMessage, logAuthDebug, logAuthWarning } from './authErrors';

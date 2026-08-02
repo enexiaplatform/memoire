@@ -1,4 +1,4 @@
-import { supabaseClient } from '../lib/supabaseClient';
+import { supabaseClient } from '../lib/supabaseClient.ts';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus';
 import { writeLocalRecords } from './localWriteGuard.ts';

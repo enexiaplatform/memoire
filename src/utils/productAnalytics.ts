@@ -1,6 +1,6 @@
 import { isDemoWorkspaceActive, isSupabaseConfigured } from '../lib/demoMode';
 import { getWorkspaceSyncStatus } from '../services/workspaceSyncStatus';
-import { supabaseClient } from '../lib/supabaseClient';
+import { supabaseClient } from '../lib/supabaseClient.ts';
 
 const ANALYTICS_ID_KEY = 'memoire.analytics.anonymousId.v1';
 const FIRST_EVENT_KEY_PREFIX = 'memoire.analytics.first.';

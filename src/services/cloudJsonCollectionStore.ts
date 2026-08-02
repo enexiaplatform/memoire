@@ -1,4 +1,4 @@
-import { supabaseClient } from '../lib/supabaseClient';
+import { supabaseClient } from '../lib/supabaseClient.ts';
 import { reportClientOperationalEvent } from './clientTelemetry';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus';
 import { writeLocalCollection } from './localWriteGuard.ts';

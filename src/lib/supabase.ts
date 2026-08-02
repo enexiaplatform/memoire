@@ -3,7 +3,7 @@ import {
   isPipelineSupabaseConfigured,
   pipelineSupabaseConfigMessage,
   supabaseClient,
-} from './supabaseClient';
+} from './supabaseClient.ts';
 
 export const supabase = supabaseClient as SupabaseClient;
 export { supabaseClient };

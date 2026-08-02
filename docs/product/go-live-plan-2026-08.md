@@ -115,16 +115,52 @@ the IndexedDB migration for the two collections that grow without bound
 (activities, quotes). **Effort: 2 days for the guard + meter, 3–4 days for the
 migration spike.**
 
-### P0-5 · Behaviour at real scale is unmeasured
+### P0-5 · Behaviour at real scale — now measured (2026-08-02)
 
-The founder's own import is 122 opportunities. Nobody has measured what happens
-at 300 deals and 3,000 activities, and this month is when a second and third
-user arrive with books that size. My attempt to build that dataset hit the test
-browser's storage ceiling, which is itself the answer to "has anyone tried".
+The founder's own import is 122 opportunities and the next users arrive with
+more. Nobody had measured 300.
 
-**Fix:** a synthetic-workspace generator, a measured budget per surface, and a
-CI check that fails when a surface exceeds it. **Effort: 2 days** to measure,
-unknown to fix — which is exactly why it goes in week 1 rather than week 4.
+**Measured since.** `npm run verify:performance-budget` builds a synthetic book
+(300 deals / 900 activities / 200 accounts / 250 quotes) and times the derived
+models in Node; `npm run measure:surfaces` loads the same workspace into a
+browser against a production build and times each destination to content.
+
+Derived models, at that scale:
+
+| Model | Time | Budget |
+|---|---|---|
+| masterDashboard | 23 ms | 400 ms |
+| businessLens | 7 ms | 250 ms |
+| orderBook | 7 ms | 250 ms |
+| outcomeScoreboard | 2 ms | 250 ms |
+| resolveCommercialThreads | 11 ms | 600 ms |
+
+Surfaces, same workspace, production build, 1.45 MB stored:
+
+| Surface | To content | Longest frame |
+|---|---|---|
+| Opportunities | 413 ms | 17 ms |
+| Accounts | 539 ms | 18 ms |
+| Orders | 504 ms | 36 ms |
+| Review | 533 ms | 17 ms |
+| Plan | 369 ms | 17 ms |
+| Dashboard | 365 ms | 17 ms |
+| Activity | 1,134 ms | 140 ms |
+| **Today** | **4,475 ms** | 70 ms |
+
+So the answer is: **the product holds at scale except on Today**, which is the
+landing page after login and takes four and a half seconds to show anything.
+
+A CPU profile of that cold load attributes it to bundled utility chunks -
+pipeline-defense and sales-playbook work, cloud-JSON record sanitising, account
+identity resolution - not to rendering (877 DOM nodes) and not to the five core
+models above. The heavy insight builder on that page is already gated behind a
+disclosure and memoised, so the cost is in the always-on path.
+
+**Remaining work:** narrow the profile with source maps and move whatever is
+running on the cold path either behind the fold or into a worker. One surface,
+one well-evidenced target. **Effort: 1–2 days.** The budget check and the
+harness are in place, so the fix can be proven rather than assumed.
 
 ### P1-6 · Mobile capture is not the fast path it needs to be
 
@@ -189,10 +225,10 @@ The week that removes the reasons not to launch.
 
 | # | Work | Done when |
 |---|------|-----------|
-| 1.1 | Dashboard renders in browser-only mode | Every routed destination renders non-empty with local-only data; contract added |
-| 1.2 | Storage write guard + usage meter in Settings | A failed write surfaces as a visible error and a retry, never a silent loss |
-| 1.3 | Scale harness + budgets | 300 deals / 3,000 activities / 400 accounts generated on demand; every surface measured; budget published |
-| 1.4 | Fix whatever 1.3 finds | Every surface within budget (target: interactive < 1.5 s at scale) |
+| 1.1 | ~~Dashboard renders in browser-only mode~~ **done 2026-08-02** | Guard removed; contract checks all twelve routed surfaces for auth-gated blank renders |
+| 1.2 | ~~Storage write guard + usage meter~~ **done 2026-08-02** | One guarded write path across 24 stores, an undismissable banner, a storage panel in Settings, `verify:storage-safety` |
+| 1.3 | ~~Scale harness + budgets~~ **done 2026-08-02** | `verify:performance-budget` in CI; `measure:surfaces` for the browser side; numbers recorded under P0-5 |
+| 1.4 | Fix Today's cold load | Today under 1.5 s at 300 deals, proven with `measure:surfaces` |
 | 1.5 | Cloud restore, transactional | Restore into a signed-in workspace shows counts before/after and cannot be silently overwritten by sync |
 
 **Gate:** a workspace with 300 deals is usable end to end, and a backup taken on

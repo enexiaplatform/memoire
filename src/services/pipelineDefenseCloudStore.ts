@@ -1,4 +1,4 @@
-import { supabaseClient } from '../lib/supabaseClient';
+import { supabaseClient } from '../lib/supabaseClient.ts';
 import type { PipelineDefenseBrief, PipelineDefenseBriefStore } from '../utils/pipelineDefenseStorage';
 import { reportClientOperationalEvent } from './clientTelemetry';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
