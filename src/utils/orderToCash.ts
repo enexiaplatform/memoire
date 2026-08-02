@@ -1,6 +1,6 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { QuoteRecord } from '../services/quoteStore';
-import { compareSafeBusinessDate, isValidBusinessDate, todayDateKey } from './safeDate.ts';
+import { compareSafeBusinessDate, isValidBusinessDate, timestampToLocalDateKey, todayDateKey } from './safeDate.ts';
 import { sumMoneyInBase } from './money.ts';
 
 /**
@@ -34,6 +34,39 @@ export const orderMilestoneLabels: Record<OrderMilestoneKey, string> = {
   paid: 'Collected',
 };
 
+/**
+ * Where an order is standing right now, named for what has to happen next.
+ *
+ * This is the one thing every ERP sales-order list has and this one did not.
+ * Odoo, NetSuite and SAP all answer "where is this order" with a single derived
+ * status - awaiting confirmation, to deliver, to invoice, paid - computed from
+ * which documents exist, and then let you filter the list by it. Memoire has
+ * the same information (a quote that is accepted, a PO that was received, a
+ * delivery that happened, a payment that landed) and was showing it only as
+ * five chips per card, which reads as a progress bar and not as a status you
+ * can sort, count or chase.
+ *
+ * The stage is always the first open milestone, so it cannot drift from the
+ * ticks: it *is* the ticks, said as a sentence.
+ */
+export const orderStages = [
+  'To confirm',
+  'Deposit due',
+  'To deliver',
+  'To invoice',
+  'Awaiting payment',
+  'Collected',
+] as const;
+export type OrderStage = (typeof orderStages)[number];
+
+const STAGE_BY_MILESTONE: Record<OrderMilestoneKey, OrderStage> = {
+  contract: 'To confirm',
+  deposit: 'Deposit due',
+  delivery: 'To deliver',
+  invoice: 'To invoice',
+  paid: 'Awaiting payment',
+};
+
 /** A hand-made tick for a milestone no record proves. One row per (order, milestone). */
 export type OrderMilestoneRecord = {
   id: string;
@@ -57,6 +90,8 @@ export type OrderMilestoneState = {
   evidence: 'quote' | 'manual' | null;
   /** When this step is expected, where a quote carries a date for it. */
   dueDate: string;
+  /** When it actually happened, for a step somebody ticked by hand. */
+  doneAt: string;
   overdue: boolean;
 };
 
@@ -64,8 +99,17 @@ export type CommittedOrder = {
   opportunityId: string;
   accountName: string;
   orderName: string;
+  /**
+   * What to call this order out loud - the quote reference where there is one,
+   * otherwise a stable code derived from the deal. An order somebody is chasing
+   * on the phone needs a number, not a row position.
+   */
+  orderRef: string;
+  /** The deal's own pipeline stage. Kept for the header line and filters. */
   stage: string;
   status: string;
+  /** Where the order stands on the road to cash. */
+  orderStage: OrderStage;
   probability: number | null;
   amount: number | null;
   currency: string;
@@ -73,13 +117,35 @@ export type CommittedOrder = {
   /** The commercial terms as written on the freshest linked quote. */
   paymentTerm: string;
   quoteCount: number;
+  /** When the customer committed: the freshest quote's date, else the deal's. */
+  orderDate: string;
+  /** The last time anything on this order actually moved. */
+  lastMovedAt: string;
+  /**
+   * Days since that last movement. The number an ERP calls aging, and the one
+   * thing a five-chip progress bar could never say: an order stuck for sixty
+   * days looked exactly like an order confirmed this morning.
+   */
+  daysInStage: number | null;
   milestones: OrderMilestoneState[];
   doneCount: number;
   /** The first milestone still open - the thing to chase on this order. */
   nextMilestone: OrderMilestoneState | null;
+  /** When the next step is expected, where any record carries a date for it. */
+  nextDueDate: string;
+  /** Negative when the next step is already late. Null when nothing is dated. */
+  daysUntilDue: number | null;
   fullyCollected: boolean;
   overdue: boolean;
   href: string;
+};
+
+export type OrderStageSummary = {
+  stage: OrderStage;
+  count: number;
+  /** Order value sitting at this stage, in the base currency. */
+  valueBase: number;
+  overdueCount: number;
 };
 
 export type OrderBook = {
@@ -89,6 +155,8 @@ export type OrderBook = {
   /** Committed money not yet fully collected, in the base currency. */
   awaitingBase: number;
   overdueCount: number;
+  /** Every stage, in road-to-cash order, including the empty ones. */
+  stages: OrderStageSummary[];
 };
 
 /**
@@ -133,21 +201,40 @@ export function buildOrderBook(input: {
       const amount = freshestQuote?.amount ?? opportunity.estimatedValue;
       const currency = freshestQuote?.currency || opportunity.currency || 'VND';
 
+      const orderDate = sanitize(freshestQuote?.quoteDate)
+        || sanitize(timestampToLocalDateKey(freshestQuote?.createdAt))
+        || sanitize(timestampToLocalDateKey(opportunity.updatedAt))
+        || '';
+      // The freshest dated thing that happened *on this order*, so aging is
+      // measured from real movement rather than from when the row was created.
+      const lastMovedAt = milestones
+        .map((milestone) => milestone.doneAt)
+        .filter(isValidBusinessDate)
+        .sort()
+        .pop() || orderDate;
+
       return {
         opportunityId: opportunity.id,
         accountName: opportunity.accountName || 'Unknown account',
         orderName: opportunity.opportunityName || 'Untitled order',
+        orderRef: freshestQuote?.quoteId?.trim() || fallbackOrderRef(opportunity.id),
         stage: opportunity.stage,
         status: opportunity.status,
+        orderStage: nextMilestone ? STAGE_BY_MILESTONE[nextMilestone.key] : 'Collected',
         probability: typeof opportunity.pipelineProbability === 'number' ? opportunity.pipelineProbability : null,
         amount,
         currency,
         amountBase: typeof amount === 'number' ? sumMoneyInBase([{ amount, currency }]) : 0,
         paymentTerm: freshestQuote?.paymentTerm?.trim() || '',
         quoteCount: quotes.length,
+        orderDate,
+        lastMovedAt,
+        daysInStage: daysBetween(lastMovedAt, today),
         milestones,
         doneCount,
         nextMilestone,
+        nextDueDate: nextMilestone?.dueDate || '',
+        daysUntilDue: nextMilestone?.dueDate ? daysBetween(today, nextMilestone.dueDate) : null,
         fullyCollected: milestones[milestones.length - 1].done,
         overdue: milestones.some((milestone) => milestone.overdue),
         href: `/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}`,
@@ -171,7 +258,38 @@ export function buildOrderBook(input: {
         .map((order) => ({ amount: order.amount || 0, currency: order.currency })),
     ),
     overdueCount: orders.filter((order) => order.overdue).length,
+    // Every stage is reported, including the empty ones: a row of counters
+    // with a gap in it says "nothing is waiting to be invoiced", which is
+    // information. A list that silently omits empty stages says nothing.
+    stages: orderStages.map((stage) => {
+      const atStage = orders.filter((order) => order.orderStage === stage);
+      return {
+        stage,
+        count: atStage.length,
+        valueBase: atStage.reduce((sum, order) => sum + order.amountBase, 0),
+        overdueCount: atStage.filter((order) => order.overdue).length,
+      };
+    }),
   };
+}
+
+/** A stable, readable reference for an order with no quote behind it yet. */
+function fallbackOrderRef(opportunityId: string): string {
+  const tail = opportunityId.replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase();
+  return `ORD-${tail || '000000'}`;
+}
+
+/** Whole days from `from` to `to`. Negative when `to` is already past. */
+function daysBetween(from: string, to: string): number | null {
+  if (!isValidBusinessDate(from) || !isValidBusinessDate(to)) return null;
+  const start = Date.parse(`${from}T00:00:00Z`);
+  const end = Date.parse(`${to}T00:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  return Math.round((end - start) / 86_400_000);
+}
+
+function sanitize(value: string | undefined | null): string {
+  return isValidBusinessDate(value) ? value : '';
 }
 
 /**
@@ -208,6 +326,7 @@ function deriveMilestone(
     done,
     evidence: proof.done ? 'quote' : manual?.done ? 'manual' : null,
     dueDate,
+    doneAt: done && manual?.done ? timestampToLocalDateKey(manual.doneAt) : '',
     overdue: !done && isValidBusinessDate(dueDate) && compareSafeBusinessDate(dueDate, today) < 0,
   };
 }

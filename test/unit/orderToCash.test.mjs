@@ -140,3 +140,97 @@ describe('order book: ordering and totals', () => {
     assert.equal(book.orders[0].amount, 700_000);
   });
 });
+
+describe('order book: where the order is standing', () => {
+  test('the stage is the first open step, and it is Collected once nothing is open', () => {
+    const book = buildOrderBook({
+      opportunities: [
+        opportunity('fresh', { status: 'Won' }),
+        opportunity('delivering', { status: 'Won' }),
+        opportunity('done', { status: 'Won' }),
+      ],
+      quotes: [
+        quote('q1', 'fresh'),
+        quote('q2', 'delivering', { poStatus: 'Received' }),
+        quote('q3', 'done', { poStatus: 'Received', deliveryStatus: 'Delivered', paymentStatus: 'Paid' }),
+      ],
+      milestoneRecords: [
+        // The deposit is the one step no record proves, so it has to be ticked
+        // by hand before an order can read as "to deliver" or as collected.
+        createOrderMilestoneRecord({ opportunityId: 'delivering', milestone: 'deposit', done: true }),
+        createOrderMilestoneRecord({ opportunityId: 'done', milestone: 'deposit', done: true }),
+      ],
+      today: '2026-07-28',
+    });
+
+    const byId = Object.fromEntries(book.orders.map((order) => [order.opportunityId, order]));
+    assert.equal(byId.fresh.orderStage, 'To confirm');
+    assert.equal(byId.delivering.orderStage, 'To deliver');
+    assert.equal(byId.done.orderStage, 'Collected');
+    assert.equal(byId.done.fullyCollected, true);
+  });
+
+  test('every stage is reported, including the empty ones', () => {
+    const book = buildOrderBook({
+      opportunities: [opportunity('a', { status: 'Won' })],
+      quotes: [quote('q1', 'a', { amount: 250_000 })],
+      milestoneRecords: [],
+      today: '2026-07-28',
+    });
+
+    assert.deepEqual(
+      book.stages.map((stage) => stage.stage),
+      ['To confirm', 'Deposit due', 'To deliver', 'To invoice', 'Awaiting payment', 'Collected'],
+    );
+    const toConfirm = book.stages.find((stage) => stage.stage === 'To confirm');
+    assert.equal(toConfirm.count, 1);
+    assert.equal(toConfirm.valueBase, 250_000);
+    assert.equal(book.stages.find((stage) => stage.stage === 'Collected').count, 0);
+  });
+
+  test('aging runs from the last thing that actually moved, not from the row', () => {
+    const ticked = createOrderMilestoneRecord({ opportunityId: 'a', milestone: 'deposit', done: true });
+    const book = buildOrderBook({
+      opportunities: [opportunity('a', { status: 'Won' })],
+      // Ordered on the 1st; nothing has moved since.
+      quotes: [quote('q1', 'a', { quoteDate: '2026-07-01' })],
+      milestoneRecords: [],
+      today: '2026-07-28',
+    });
+    assert.equal(book.orders[0].orderDate, '2026-07-01');
+    assert.equal(book.orders[0].daysInStage, 27);
+
+    const moved = buildOrderBook({
+      opportunities: [opportunity('a', { status: 'Won' })],
+      quotes: [quote('q1', 'a', { quoteDate: '2026-07-01' })],
+      milestoneRecords: [{ ...ticked, doneAt: '2026-07-26T09:00:00.000Z' }],
+      today: '2026-07-28',
+    });
+    assert.equal(moved.orders[0].daysInStage, 2, 'a step ticked two days ago resets the clock');
+  });
+
+  test('an order without a quote still has a reference to chase it by', () => {
+    const book = buildOrderBook({
+      opportunities: [opportunity('abc123def', { status: 'Won' })],
+      quotes: [],
+      milestoneRecords: [],
+      today: '2026-07-28',
+    });
+    assert.equal(book.orders[0].orderRef, 'ORD-123DEF');
+  });
+
+  test('the next step carries its own due date and lateness', () => {
+    const book = buildOrderBook({
+      opportunities: [opportunity('a', { status: 'Won' })],
+      quotes: [quote('q1', 'a', { poStatus: 'Received', expectedDeliveryDate: '2026-07-20' })],
+      milestoneRecords: [createOrderMilestoneRecord({ opportunityId: 'a', milestone: 'deposit', done: true })],
+      today: '2026-07-28',
+    });
+
+    const [order] = book.orders;
+    assert.equal(order.orderStage, 'To deliver');
+    assert.equal(order.nextDueDate, '2026-07-20');
+    assert.equal(order.daysUntilDue, -8);
+    assert.equal(order.overdue, true);
+  });
+});

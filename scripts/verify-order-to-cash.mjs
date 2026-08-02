@@ -158,4 +158,33 @@ const quote = (id, opportunityId, overrides = {}) => ({
   assert.ok(apiFunctions.length <= 12, `api/ must stay within the Hobby function cap (found ${apiFunctions.length})`);
 }
 
-console.log('Order-to-cash contract verified: committed orders only, quote evidence outranks hand ticks.');
+// 7. Following an order is a list with a status, a date and an age - the four
+//    things every ERP sales-order screen has and this page did not. The
+//    milestone chips answered "how far along", which is not the same question
+//    as "where is it stuck, since when, and what do I chase".
+{
+  const book = buildOrderBook({
+    opportunities: [opportunity('a', { status: 'Won' })],
+    quotes: [quote('q1', 'a', { quoteDate: '2026-07-01', poStatus: 'Received' })],
+    milestoneRecords: [],
+    today: '2026-07-28',
+  });
+  const [order] = book.orders;
+
+  assert.equal(order.orderStage, 'Deposit due', 'the stage is the first step still open');
+  assert.equal(order.orderDate, '2026-07-01', 'an order has the date it was placed');
+  assert.equal(order.daysInStage, 27, 'an order says how long it has been sitting');
+  assert.ok(order.orderRef, 'an order has a reference to chase it by');
+  assert.equal(
+    book.stages.length,
+    6,
+    'the book reports every stage, so the operator can count and filter what is stuck where',
+  );
+
+  const panel = readFileSync(new URL('../src/features/revenue/OrderBookPanel.tsx', import.meta.url), 'utf8');
+  for (const marker of ['orderStage', 'daysInStage', 'orderRef', 'orderDate', '<table']) {
+    assert.ok(panel.includes(marker), `the order book must show ${marker}`);
+  }
+}
+
+console.log('Order-to-cash contract verified: committed orders only, quote evidence outranks hand ticks, every order has a status, a date and an age.');

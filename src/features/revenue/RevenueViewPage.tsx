@@ -100,30 +100,27 @@ export function RevenueViewPage() {
   }, [revenue.actionItems, search]);
 
   return (
-    <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
-      <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Orders &amp; Cash</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">From committed order to money in the bank.</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            Only the deals the customer has committed to. Contract, deposit, delivery, invoice, collection - and what is
-            stuck at each step. Today owns the priority order.
+    <div className="flex w-full max-w-none flex-col gap-4 px-4 py-4 sm:px-5 lg:px-6">
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="text-xl font-bold tracking-tight text-navy">Orders</h1>
+          <p className="max-w-2xl text-sm text-gray-500">
+            Committed orders, followed from contract to money in the bank.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link to="/app/today" className="inline-flex items-center justify-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-            Return to Today
+          <Link to="/app/today" className="inline-flex items-center justify-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-sm font-bold text-white">
+            Today
             <ArrowRight className="h-4 w-4" />
           </Link>
           <button
             type="button"
             onClick={() => loadRevenue(true)}
             disabled={syncing}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
-            title="Reload revenue view"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
+            title="Reload orders from cloud"
           >
             <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-            Cloud sync
           </button>
           <DataModePill
             compact
@@ -151,9 +148,12 @@ export function RevenueViewPage() {
             <ProfitAndLossStatement quotes={data.quotes} expenses={expenses} />
           )}
 
-          {/* Leads the page: the orders that are actually going to become
-              money, each walked from contract to cash. Everything below is
-              context - coverage, value in motion, and risk. */}
+          {/* The page is the order book.
+              Everything under it answers a different question - will I make
+              the number, what is the principal owed, which threads are quiet -
+              and each of those was a full-height panel between the operator
+              and the orders they came to chase. They are still here, folded,
+              in the order somebody actually reaches for them. */}
           <OrderBookPanel
             opportunities={data.opportunities}
             quotes={data.quotes}
@@ -161,11 +161,15 @@ export function RevenueViewPage() {
             sampleDataActive={sampleDataActive}
           />
 
-          {/* The supply side of the same orders. An order stuck on a price the
-              principal has not confirmed is stuck for a reason no amount of
-              chasing the customer will fix, so it sits next to the order book
-              rather than in a room of its own. */}
-          <SupplierCommitmentsPanel opportunities={data.opportunities} />
+          {/* Compact amounts on purpose: at full precision "4,920,000,000 VND
+              (Base: VND)" wrapped to two lines inside its own card and turned a
+              four-number strip into a paragraph. */}
+          <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+            <RevenueMetric label="In motion" value={formatBaseCurrencyAmount(moneyFlow.totalInMotionBase, true)} tone="blue" />
+            <RevenueMetric label="Active pipeline" value={formatBaseMoney(revenue.activePipeline, true)} tone="blue" />
+            <RevenueMetric label="At risk" value={formatBaseMoney(revenue.atRiskRevenue, true)} tone={revenue.atRiskRevenue ? 'red' : 'green'} />
+            <RevenueMetric label="Overdue follow-ups" value={revenue.overdueFollowUps} tone={revenue.overdueFollowUps ? 'red' : 'green'} />
+          </section>
 
           {/* A control tower has to say whether you are going to make the
               number, and whether there is still time to change it. */}
@@ -183,27 +187,33 @@ export function RevenueViewPage() {
             accountMerges={data.accountMerges}
           />
 
-          {/* Where the value is sitting, thread by thread: the same component
-              Today and Accounts use, narrowed to money that has left the
-              starting line and has not arrived. */}
-          <ThreadsSection
-            title="Value in motion"
-            description="Quietest first"
-            filter={{ moneyInMotionOnly: true }}
-            emptyMessage="No commercial value is in motion. Send a quote and the thread appears here with its money position."
-          />
+          {/* The supply side of the same orders. An order stuck on a price the
+              principal has not confirmed is stuck for a reason no amount of
+              chasing the customer will fix, so it stays on this page - but
+              below the orders it explains, not above them. */}
+          <SupplierCommitmentsPanel opportunities={data.opportunities} />
 
-          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-bold text-navy">Money flow</h2>
-                <p className="mt-1 text-sm text-gray-500">Deal, quote, PO, delivery, payment - every thread in one lifecycle.</p>
-              </div>
-              <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-brand-blue">
-                In motion: {formatBaseCurrencyAmount(moneyFlow.totalInMotionBase, true)}
-              </span>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+          <FoldedSection
+            title="Commercial risk list"
+            summary={`${visibleActions.length} item${visibleActions.length === 1 ? '' : 's'} to review`}
+          >
+            <label className="relative block w-full lg:w-[340px]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search account, quote, risk..."
+                className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+              />
+            </label>
+            <RevenueActionTable items={visibleActions} />
+          </FoldedSection>
+
+          <FoldedSection
+            title="Money flow"
+            summary={`Every thread in one lifecycle · in motion ${formatBaseCurrencyAmount(moneyFlow.totalInMotionBase, true)}`}
+          >
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
               {moneyFlowStages.map((stage) => {
                 const lane = moneyFlow.lanes.find((item) => item.stage === stage);
                 return (
@@ -232,43 +242,55 @@ export function RevenueViewPage() {
                 ))}
               </div>
             )}
-          </section>
+          </FoldedSection>
+
+          {/* Where the value is sitting, thread by thread: the same component
+              Today and Accounts use, narrowed to money that has left the
+              starting line and has not arrived. */}
+          <FoldedSection title="Value in motion" summary="Threads carrying money, quietest first">
+            <ThreadsSection
+              title="Value in motion"
+              description="Quietest first"
+              filter={{ moneyInMotionOnly: true }}
+              emptyMessage="No commercial value is in motion. Send a quote and the thread appears here with its money position."
+            />
+          </FoldedSection>
 
           {BUSINESS_ACCOUNTING_ENABLED && (
             <MoneyOutSection quotes={data.quotes} expenses={expenses} onExpensesChanged={reloadExpenses} />
           )}
 
-          {/* Stuck money is not repeated here: the flow lanes above already
-              carry it per stage, with the stuck threads listed underneath. */}
-          <section className="grid grid-cols-3 gap-3">
-            <RevenueMetric label="Active pipeline" value={formatBaseMoney(revenue.activePipeline)} tone="blue" />
-            <RevenueMetric label="At risk" value={formatBaseMoney(revenue.atRiskRevenue)} tone={revenue.atRiskRevenue ? 'red' : 'green'} />
-            <RevenueMetric label="Overdue" value={revenue.overdueFollowUps} tone={revenue.overdueFollowUps ? 'red' : 'green'} />
-          </section>
-
           <RouteHealthSection report={routeHealth} />
-
-          <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="text-base font-bold text-navy">Commercial risk list</h2>
-                <p className="mt-1 text-xs text-gray-500">{visibleActions.length} items need review</p>
-              </div>
-              <label className="relative w-full lg:w-[340px]">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search account, quote, risk..."
-                  className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
-                />
-              </label>
-            </div>
-            <RevenueActionTable items={visibleActions} />
-          </section>
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * A panel you open when you have the question, not one you scroll past on the
+ * way to the orders. Same visual weight as the sections that stay open, so the
+ * page reads as one stack rather than as a page plus an appendix.
+ */
+function FoldedSection({
+  title,
+  summary,
+  children,
+}: {
+  title: string;
+  summary: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <details className="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <summary className="cursor-pointer list-none px-5 py-3">
+        <span className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="text-base font-bold text-navy">{title}</span>
+          <span className="text-xs font-semibold text-gray-500">{summary}</span>
+        </span>
+      </summary>
+      <div className="border-t border-gray-100 p-5">{children}</div>
+    </details>
   );
 }
 
@@ -620,9 +642,9 @@ function RevenueEmptyState() {
 
 function RevenueMetric({ label, value, tone }: { label: string; value: string | number; tone: 'blue' | 'green' | 'amber' | 'red' }) {
   return (
-    <div className="rounded-lg border border-gray-100 bg-white p-3 shadow-sm">
-      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
-      <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-base font-black ${toneClass(tone)}`}>{value}</p>
+    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
+      <p className="truncate text-[10px] font-bold uppercase tracking-wide text-gray-400" title={label}>{label}</p>
+      <p className={`text-lg font-bold leading-tight ${textToneClass(tone)}`}>{value}</p>
     </div>
   );
 }
@@ -645,11 +667,11 @@ function riskTone(risk: RevenueRiskKind): 'blue' | 'green' | 'amber' | 'red' | '
   return 'gray';
 }
 
-function toneClass(tone: 'blue' | 'green' | 'amber' | 'red') {
+function textToneClass(tone: 'blue' | 'green' | 'amber' | 'red') {
   return {
-    blue: 'bg-blue-50 text-brand-blue',
-    green: 'bg-emerald-50 text-emerald-700',
-    amber: 'bg-amber-50 text-amber-700',
-    red: 'bg-red-50 text-red-700',
+    blue: 'text-navy',
+    green: 'text-emerald-700',
+    amber: 'text-amber-700',
+    red: 'text-red-700',
   }[tone];
 }
