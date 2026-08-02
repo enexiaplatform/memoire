@@ -1023,7 +1023,9 @@ function AccountMasterTable({
         </label>
       </div>
 
-      <div className="max-w-full overflow-x-auto">
+      {/* See OrderBookPanel: `relative` keeps the absolutely positioned
+          sort-state spans inside this scroller instead of inside <main>. */}
+      <div className="relative max-w-full overflow-x-auto">
         <table className="w-full min-w-[1240px] border-collapse text-left text-sm">
           <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
             <tr>

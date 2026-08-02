@@ -95,7 +95,12 @@ export function OrderBookPanel({
   };
 
   return (
-    <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+    // `min-w-0` is not decoration: without it the 980px order table grows the
+    // whole document's scroll width, and every page on a phone scrolls sideways
+    // by 590px. The table's own overflow-x container clips the paint but not
+    // the layout, which is why the two other master tables in this app carry
+    // the same pair.
+    <section className="min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5">
         <div>
           <div className="flex items-center gap-2">
@@ -181,7 +186,12 @@ export function OrderBookPanel({
             </div>
           </div>
 
-          <div className="max-w-full overflow-x-auto">
+          {/* `relative` is load bearing. The screen-reader spans inside the
+              rows are absolutely positioned, so their containing block is the
+              nearest positioned ancestor - which used to be the app's <main>,
+              not this scroller. They escaped the clip, sat at x=981 inside the
+              wide table, and made every phone page scroll sideways. */}
+          <div className="relative max-w-full overflow-x-auto">
             <table className="w-full min-w-[980px] border-collapse text-left text-sm">
               <thead className="bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
                 <tr>

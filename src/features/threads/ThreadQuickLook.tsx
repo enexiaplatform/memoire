@@ -58,7 +58,12 @@ export function ThreadQuickLook({
     : `/app/accounts?accountName=${encodeURIComponent(thread.accountName)}`;
 
   return (
-    <article className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+    // `min-w-0`: this card is a grid item wherever it is used, and a grid item
+    // refuses to shrink below its min-content width unless told to. At phone
+    // width that made the card 403px inside a 358px column, and the whole page
+    // scrolled sideways by 30px - on Today, Accounts and Opportunities alike.
+    // Everything inside already truncates; it just never got the chance.
+    <article className="min-w-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">

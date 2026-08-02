@@ -2403,7 +2403,10 @@ function OpportunityMasterTable({
         </div>
       </div>
 
-      <div className="max-w-full overflow-x-auto">
+      {/* `relative` contains the absolutely positioned sort-state spans in
+          the header row; without it they escape this scroller and widen the
+          document itself at phone width. */}
+      <div className="relative max-w-full overflow-x-auto">
         <table className={`w-full border-collapse text-left text-sm ${showAll ? 'min-w-[2040px]' : 'min-w-[1160px]'}`}>
           <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
             <tr>
