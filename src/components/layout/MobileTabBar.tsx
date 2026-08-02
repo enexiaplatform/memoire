@@ -24,7 +24,9 @@ import { navIcon } from './navIcons';
 export function MobileTabBar({ onOpenMenu, menuOpen }: { onOpenMenu: () => void; menuOpen: boolean }) {
   return (
     <nav
-      aria-label="Primary"
+      // Distinct from the rail's "Primary" landmark: two navigation landmarks
+      // with the same name are indistinguishable in a screen reader's list.
+      aria-label="Quick navigation"
       // Hidden while the drawer is open: two navigations stacked on top of each
       // other is the confusion this bar exists to remove.
       className={`fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 backdrop-blur lg:hidden ${

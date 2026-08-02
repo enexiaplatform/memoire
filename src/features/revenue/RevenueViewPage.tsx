@@ -104,8 +104,12 @@ export function RevenueViewPage() {
       <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <h1 className="text-xl font-bold tracking-tight text-navy">Orders</h1>
+          {/* The second sentence is load bearing, not decoration: this page
+              ranks orders by where money is stuck, and Today owns the priority
+              order for the day. Two surfaces claiming to say what to do first
+              is how an operator stops trusting either. */}
           <p className="max-w-2xl text-sm text-gray-500">
-            Committed orders, followed from contract to money in the bank.
+            Committed orders, followed from contract to money in the bank. Today owns the priority order.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

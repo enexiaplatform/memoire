@@ -128,7 +128,10 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         id="app-navigation"
         tabIndex={-1}
         role="navigation"
-        aria-label="Main"
+        // Two navigation landmarks exist at phone width - this rail and the tab
+        // bar - so they carry different names. This is the whole rail; the bar
+        // is the four-destination shortcut into it.
+        aria-label="Primary"
         // Off-canvas links stay in the tab order unless the panel is told it is
         // not there. On a phone that means tabbing off the top bar walked into
         // eleven invisible destinations.
@@ -147,7 +150,8 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         {/* `nav-scroll` keeps the scrollbar thin and dark instead of letting the
             OS paint a light native bar down a navy rail - the rail is tall
             enough to overflow on a laptop, so this shows more often than not. */}
-        <nav className="nav-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-3">
+        {/* The landmark is the panel above; this is only the scroll area. */}
+        <div className="nav-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-3">
           {groups.map((group, index) => (
             <div
               key={group.id}
@@ -170,7 +174,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
               <div className="space-y-0.5">{founderItems.map(renderNavItem)}</div>
             </div>
           )}
-        </nav>
+        </div>
 
         <div className="shrink-0 border-t border-[#243447] px-3 py-3">
           <div className="flex items-center gap-2.5">
