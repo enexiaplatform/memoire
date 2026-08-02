@@ -3,12 +3,21 @@
 Date: 2026-07-26 (supersedes the 2026-07-09 revision)
 Purpose: every environment action needed to open Memoire to real users, in order, each with its verification command. These are founder actions (Vercel/Supabase/Lemon Squeezy dashboards) - no code change is involved.
 
-Canonical production host: `https://memoire-blush-eta.vercel.app`. This is the one authoritative application URL. `VITE_APP_URL`, the Supabase Site URL, the email-verification redirect, the password-recovery redirect, the OAuth return URL and the shared-brief base URL must all agree with it. When a custom domain is bought, repeat Step 1 with the new domain in one coordinated change.
+Canonical production host: **`https://memoire-official.com`** (custom domain, purchased 2026-07-31; supersedes the interim `https://memoire-blush-eta.vercel.app`). This is the one authoritative application URL. `VITE_APP_URL`, the Supabase Site URL, the email-verification redirect, the password-recovery redirect, the OAuth return URL and the shared-brief base URL must all agree with it - a link built against any other host sends a user, or a signup email, to a domain this project does not serve.
+
+## Custom domain cutover (2026-07-31) - do this first, in one sitting
+
+The domain is bought but not yet attached anywhere in the stack. None of the code changed - `VITE_APP_URL` was always meant to be read from environment, never hard-coded - so this is entirely dashboard work, and it is exactly the case Step 1 below already covers. Do these four things together, not spread across separate sessions: a host attached in Vercel but not yet the Supabase Site URL sends real signup emails to a domain that will 404 until Supabase agrees.
+
+1. **Vercel -> Project Settings -> Domains:** add `memoire-official.com` (and `www.memoire-official.com` if you want the redirect). Follow Vercel's DNS instructions at your registrar (GoDaddy) - typically an `A`/`ALIAS` record for the apex and a `CNAME` for `www`. Wait for the certificate to issue before continuing.
+2. Run Step 1 below, with `https://memoire-official.com` as the host everywhere it appears.
+3. **Keep the old Vercel host reachable, do not delete it.** Any auth email already sent, or any bookmark/deep link a beta user holds, points at `memoire-blush-eta.vercel.app`. Vercel serves both hosts for the same deployment once the custom domain is attached, so this needs no extra step - just do not remove the old domain from the project.
+4. Run Step 5's health probe against **both** hosts. The new host must show `app_url_matches_request_host: true`; the old host will show `false` (its request host no longer matches `VITE_APP_URL`), which is expected and fine - it is being kept reachable, not treated as canonical.
 
 ## Step 0 - Baseline probe
 
 ```bash
-curl -s https://memoire-blush-eta.vercel.app/api/health
+curl -s https://memoire-official.com/api/health
 ```
 
 Expect to see which checks fail before touching anything. The health endpoint compares `VITE_APP_URL` against the actual serving host (`app_url_matches_request_host`), so canonical-domain drift can never be silent.
@@ -16,13 +25,13 @@ Expect to see which checks fail before touching anything. The health endpoint co
 ## Step 1 - Unblock signup (CRITICAL - was sending auth emails to a domain this project does not own)
 
 1. Vercel -> Project Settings -> Environment Variables (Production):
-   - `VITE_APP_URL = https://memoire-blush-eta.vercel.app`
+   - `VITE_APP_URL = https://memoire-official.com`
 2. Supabase -> Auth -> URL Configuration:
-   - Site URL: `https://memoire-blush-eta.vercel.app`
+   - Site URL: `https://memoire-official.com`
    - Redirect allowlist (full URLs on the same host):
-     - `https://memoire-blush-eta.vercel.app/login?verified=1`
-     - `https://memoire-blush-eta.vercel.app/reset-password`
-     - `https://memoire-blush-eta.vercel.app/app/today`
+     - `https://memoire-official.com/login?verified=1`
+     - `https://memoire-official.com/reset-password`
+     - `https://memoire-official.com/app/today`
 3. Redeploy.
 
 Verify: health probe shows `app_url_matches_request_host: true` and zero warnings for app URL. Then run one real signup + email verification + password reset on the production host.
@@ -45,7 +54,7 @@ Verify: `/api/health` returns `ok: true` with `no_ai_provider_configured` passin
 ## Step 4 - Paid early access only (Phase: after cohort evidence)
 
 1. Vercel env: `LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_STORE_ID`, `LEMONSQUEEZY_WEBHOOK_SECRET`, the selected `LEMONSQUEEZY_*_VARIANT_ID`, `BILLING_CHECKOUT_ENABLED=true`.
-2. Point the Lemon Squeezy webhook at `https://<domain>/api/lemonsqueezy-webhook`, subscribed to `order_created` and every `subscription_*` event.
+2. Point the Lemon Squeezy webhook at `https://memoire-official.com/api/lemonsqueezy-webhook`, subscribed to `order_created` and every `subscription_*` event.
 3. Run the B1-B6 billing QA in Lemon Squeezy test mode first (see `commercial-release-gate-2026-06-16.md`).
 
 Verify: health probe billing checks pass; `billing_checkout_disabled` flips only when intended.
@@ -53,7 +62,7 @@ Verify: health probe billing checks pass; `billing_checkout_disabled` flips only
 ## Step 5 - After every change
 
 ```bash
-curl -s https://memoire-blush-eta.vercel.app/api/health
+curl -s https://memoire-official.com/api/health
 ```
 
 Expect `ok: true`, `warnings: 0`. Anything else: the failing check names the exact env var.
@@ -62,4 +71,4 @@ Expect `ok: true`, `warnings: 0`. Anything else: the failing check names the exa
 
 - Never set env values in code or commit them; this runbook exists precisely because these live only in Vercel/Supabase.
 - Never add an AI provider key. `npm run verify:no-ai` fails the build if an AI SDK, endpoint or key placeholder is reintroduced.
-- When the custom domain arrives: Step 1 with the new domain + Supabase URL config in one sitting, then Step 5. `app_url_matches_request_host` flags any drift immediately.
+- If the domain ever changes again: Step 1 with the new domain + Supabase URL config in one sitting, then Step 5. `app_url_matches_request_host` flags any drift immediately.
