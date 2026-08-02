@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Archive, ArchiveRestore, ArrowUpDown, Building2, ChevronDown, ChevronLeft, ChevronRight, Database, Eye, Filter, Plus, RefreshCw, Save, Search, Star, Trash2, X } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, Database, Eye, Filter, Plus, RefreshCw, Save, Search, Star, Trash2, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { ThreadsSection } from '../threads/ThreadsSection';
 import { DataModePill } from '../../components/common/DataModePill';
@@ -324,6 +324,27 @@ export function AccountsPage() {
     [activities, opportunities, opportunityOutcomes, quotes],
   );
 
+  // "Active work" is the default engagement tab, so it does not count as a
+  // filter the operator has to be rescued from - the other six do.
+  const hasActiveFilters = query.trim() !== ''
+    || segmentFilter !== allFilter
+    || potentialFilter !== allFilter
+    || relationshipFilter !== allFilter
+    || healthFilter !== allFilter
+    || quickFilter !== 'all'
+    || hygieneFilter !== 'Active work';
+
+  const clearAllFilters = () => {
+    setQuery('');
+    setSegmentFilter(allFilter);
+    setPotentialFilter(allFilter);
+    setRelationshipFilter(allFilter);
+    setHealthFilter(allFilter);
+    setQuickFilter('all');
+    setHygieneFilter('Active work');
+    setPage(1);
+  };
+
   const visibleRows = useMemo(() => {
     const searchText = query.trim().toLowerCase();
     return accountRows.filter((row) => {
@@ -559,24 +580,39 @@ export function AccountsPage() {
   };
 
   return (
-    <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
-      <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Account Master</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Accounts</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            Search every account while active work stays focused on memory, evidence, and real next actions.
+    <div className="flex w-full max-w-none flex-col gap-4 px-4 py-4 sm:px-5 lg:px-6">
+      {/* Accounts opened on a title, a paragraph, a quiet-customers card, a
+          toolbar, an import banner and a seven-metric summary - the book of
+          customers itself started below two screens. The founder's read is
+          right that the list can sit lower here than it does on
+          Opportunities: this page is as much "how is the book doing" as it is
+          "find me a customer". So the counts stay above the list, but as one
+          strip you read in a glance rather than a wall of cards, and
+          everything that is a *task* about the book - quiet won customers,
+          duplicates, unlinked candidates - moves below it, where you go
+          looking for work rather than tripping over it. */}
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="text-xl font-bold tracking-tight text-navy">Accounts</h1>
+          <p className="text-sm text-gray-500">
+            {loading
+              ? 'Loading your customers...'
+              : `${visibleRows.length.toLocaleString()} shown of ${summary.totalAccounts.toLocaleString()}`}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={openAddPanel} className="inline-flex items-center justify-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-sm font-bold text-white">
+            <Plus className="h-4 w-4" />
+            Add account
+          </button>
           <button
             type="button"
             onClick={() => refreshAccounts(true)}
             disabled={loading || refreshing}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-60"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-60"
+            title="Reload accounts from cloud"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Sync
           </button>
           <DataModePill
             compact
@@ -595,64 +631,46 @@ export function AccountsPage() {
         </section>
       )}
 
-      {!loading && <QuietWonCustomersCard postWon={postWon} onOpenAccount={(name) => setQuery(name)} />}
+      {!loading && <AccountMemorySummary summary={summary} />}
 
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <button type="button" onClick={openAddPanel} className="inline-flex items-center justify-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-            <Plus className="h-4 w-4" />
-            Add Account
-          </button>
-          <div className="grid flex-1 grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-[1.4fr_repeat(4,1fr)]">
-            <label className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search code, account, industry, note..."
-                className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
-              />
-            </label>
+      <section className="sticky top-14 z-20 -mx-4 border-y border-gray-200 bg-page/95 px-4 py-2.5 backdrop-blur sm:-mx-5 sm:px-5 lg:-mx-6 lg:top-16 lg:px-6">
+        <div className="flex flex-col gap-2 xl:flex-row xl:items-center">
+          <label className="relative xl:w-[300px]">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search code, account, industry, note..."
+              className="w-full rounded-lg border border-gray-300 bg-white py-1.5 pl-9 pr-3 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+            />
+          </label>
+          <div className="grid flex-1 grid-cols-2 gap-2 md:grid-cols-4">
             <FilterSelect label="Segment" value={segmentFilter} options={segments} onChange={setSegmentFilter} />
             <FilterSelect label="Potential" value={potentialFilter} options={[allFilter, ...accountPotentials]} onChange={setPotentialFilter} />
             <FilterSelect label="Relationship" value={relationshipFilter} options={[allFilter, ...relationshipStatuses]} onChange={setRelationshipFilter} />
             <FilterSelect label="Health" value={healthFilter} options={[allFilter, 'Healthy', 'Needs attention', 'At risk', 'Dormant']} onChange={setHealthFilter} />
           </div>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="shrink-0 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-600 hover:border-brand-blue hover:text-brand-blue"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
-        <AccountHygieneTabs value={hygieneFilter} rows={accountRows} onChange={setHygieneFilter} />
-        <QuickFilterBar value={quickFilter} onChange={setQuickFilter} importSummary={importSummary} />
+        {/* Two rows of chips asking two different questions - engagement state
+            and imported-core cuts - read as one long undifferentiated bar.
+            They are one row now, separated by a rule. */}
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <AccountHygieneTabs value={hygieneFilter} rows={accountRows} onChange={setHygieneFilter} />
+          <span className="mx-1 hidden h-4 w-px bg-gray-200 sm:block" />
+          <QuickFilterBar value={quickFilter} onChange={setQuickFilter} importSummary={importSummary} />
+        </div>
       </section>
 
-      {/* The summary counts derive from the loaded rows; rendering them during
-          the initial load flashed "0 accounts" before the real count arrived,
-          reading as data loss. Hold them until the load resolves - the skeleton
-          below carries the loading state. */}
-      {!loading && <ImportedCoreBanner summary={importSummary} lastLoadedAt={lastLoadedAt} refreshing={refreshing} />}
-
-      {!loading && <AccountMemorySummary summary={summary} />}
-
-      <section className="space-y-5">
-        {!loading && duplicateGroups.length > 0 && (
-          <DuplicateAccountsSection
-            groups={duplicateGroups}
-            onMerge={handleMergeAccounts}
-            onDismiss={handleDismissDuplicate}
-          />
-        )}
-
-        {!loading && accountMerges.some((record) => record.kind === 'merge') && (
-          <MergedAccountsNote merges={accountMerges.filter((record) => record.kind === 'merge')} onUndo={handleUndoMerge} />
-        )}
-
-        {candidates.length > 0 && (
-          <CandidateSection
-            candidates={candidates}
-            unlinkedOpportunityCount={unlinkedOpportunityCount}
-            onCreate={handleCreateCandidate}
-            onCreateAll={handleCreateAllCandidates}
-          />
-        )}
-
+      <section className="space-y-4">
         {loading ? (
           <SkeletonScreen label="Loading your account master">
             <SkeletonTable rows={6} columns={4} />
@@ -663,6 +681,15 @@ export function AccountsPage() {
           <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
             <p className="text-sm font-semibold text-gray-900">No accounts match these filters.</p>
             <p className="mt-1 text-sm text-gray-500">Clear search or filters to review all account records.</p>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="mt-4 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
+              >
+                Clear all filters
+              </button>
+            )}
           </div>
         ) : (
           <AccountMasterTable
@@ -681,16 +708,47 @@ export function AccountsPage() {
         )}
       </section>
 
-      {/* The same thread component Today, Money and Review use. When an account
+      {/* Work on the book, underneath the book. Each of these is a queue with
+          a real action attached - call a won customer who has gone quiet, merge
+          two spellings of one company, create the account a deal is pointing
+          at - and none of them should stand between the operator and the list
+          they came for. */}
+      {!loading && <QuietWonCustomersCard postWon={postWon} onOpenAccount={(name) => setQuery(name)} />}
+
+      {!loading && duplicateGroups.length > 0 && (
+        <DuplicateAccountsSection
+          groups={duplicateGroups}
+          onMerge={handleMergeAccounts}
+          onDismiss={handleDismissDuplicate}
+        />
+      )}
+
+      {!loading && accountMerges.some((record) => record.kind === 'merge') && (
+        <MergedAccountsNote merges={accountMerges.filter((record) => record.kind === 'merge')} onUndo={handleUndoMerge} />
+      )}
+
+      {candidates.length > 0 && (
+        <CandidateSection
+          candidates={candidates}
+          unlinkedOpportunityCount={unlinkedOpportunityCount}
+          onCreate={handleCreateCandidate}
+          onCreateAll={handleCreateAllCandidates}
+        />
+      )}
+
+      {/* The same thread component Today, Orders and Review use. When an account
           is selected this narrows to that customer's story; otherwise it shows
           the quietest threads across the book. */}
-      <div className="mt-6">
-        <ThreadsSection
-          title={selectedAccount ? `Commercial threads · ${selectedAccount.accountName}` : 'Commercial threads'}
-          description="Quietest first"
-          filter={selectedAccount ? { accountName: selectedAccount.accountName } : {}}
-        />
-      </div>
+      <ThreadsSection
+        title={selectedAccount ? `Commercial threads · ${selectedAccount.accountName}` : 'Commercial threads'}
+        description="Quietest first"
+        filter={selectedAccount ? { accountName: selectedAccount.accountName } : {}}
+      />
+
+      {/* The founder-import readout is a fact about a one-off load, not a
+          daily signal. It keeps its place on the page and loses its claim on
+          the top of it. */}
+      {!loading && <ImportedCoreBanner summary={importSummary} lastLoadedAt={lastLoadedAt} refreshing={refreshing} />}
 
       <AccountDetailPanel
         mode={panelMode}
@@ -768,22 +826,36 @@ function QuietWonCustomersCard({
   );
 }
 
+/**
+ * The shape of the book in one line.
+ *
+ * Seven metric cards in a titled panel took 190px to say what seven numbers
+ * say in 56. The heading went too: a row of labelled counts above a list of
+ * accounts does not need to introduce itself as an Account Memory Summary.
+ */
 function AccountMemorySummary({ summary }: { summary: ReturnType<typeof buildAccountsSummary> }) {
+  const stats: { label: string; value: number; tone?: 'green' | 'amber' }[] = [
+    { label: 'Total', value: summary.totalAccounts },
+    { label: 'Active', value: summary.activeAccounts, tone: 'green' },
+    { label: 'Needs follow-up', value: summary.followUpAccounts, tone: summary.followUpAccounts ? 'amber' : 'green' },
+    { label: 'Strategic', value: summary.strategicAccounts },
+    { label: 'Dormant', value: summary.dormantAccounts },
+    { label: 'Imported only', value: summary.importedOnlyAccounts },
+    { label: 'Archived', value: summary.archivedAccounts },
+  ];
+
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-2">
-        <Building2 className="h-4 w-4 text-brand-blue" />
-        <h2 className="text-lg font-bold text-navy">Account Memory Summary</h2>
-      </div>
-      <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-7">
-        <Metric label="Total searchable" value={summary.totalAccounts} />
-        <Metric label="Active" value={summary.activeAccounts} tone="green" />
-        <Metric label="Needs follow-up" value={summary.followUpAccounts} tone={summary.followUpAccounts ? 'amber' : 'green'} />
-        <Metric label="Strategic" value={summary.strategicAccounts} />
-        <Metric label="Dormant" value={summary.dormantAccounts} />
-        <Metric label="Imported only" value={summary.importedOnlyAccounts} />
-        <Metric label="Archived" value={summary.archivedAccounts} />
-      </div>
+    <section className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7" aria-label="Account book summary">
+      {stats.map((stat) => (
+        <div key={stat.label} className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
+          <p className="truncate text-[10px] font-bold uppercase tracking-wide text-gray-400" title={stat.label}>{stat.label}</p>
+          <p className={`text-lg font-bold leading-tight ${
+            stat.tone === 'green' ? 'text-emerald-700' : stat.tone === 'amber' ? 'text-amber-700' : 'text-navy'
+          }`}>
+            {stat.value.toLocaleString()}
+          </p>
+        </div>
+      ))}
     </section>
   );
 }
@@ -799,7 +871,7 @@ function AccountHygieneTabs({
 }) {
   const options: HygieneFilter[] = ['Active work', ...accountEngagementStatuses, 'All'];
   return (
-    <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-3" aria-label="Account engagement filters">
+    <div className="flex flex-wrap gap-1.5" aria-label="Account engagement filters">
       {options.map((option) => {
         const count = option === 'All'
           ? rows.length
@@ -811,7 +883,7 @@ function AccountHygieneTabs({
             key={option}
             type="button"
             onClick={() => onChange(option)}
-            className={`rounded-full border px-3 py-1.5 text-xs font-bold ${value === option ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-gray-200 bg-white text-gray-600'}`}
+            className={`rounded-full border px-2.5 py-1 text-xs font-bold ${value === option ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-gray-200 bg-white text-gray-600'}`}
           >
             {option} <span className="ml-1 text-[10px] opacity-70">{count}</span>
           </button>
@@ -831,7 +903,7 @@ function QuickFilterBar({
   importSummary: ImportedCoreSummary;
 }) {
   return (
-    <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+    <div className="flex flex-wrap gap-1.5">
       {quickFilterOptions.map((option) => {
         const count = quickFilterCount(option.value, importSummary);
         const active = option.value === value;
@@ -840,7 +912,7 @@ function QuickFilterBar({
             key={option.value}
             type="button"
             onClick={() => onChange(option.value)}
-            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold transition ${
               active ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
             }`}
           >
@@ -937,17 +1009,14 @@ function AccountMasterTable({
 }) {
   return (
     <section className="min-w-0 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-      <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-base font-bold text-navy">Master Account List</h2>
-          <p className="mt-1 text-xs text-gray-500">{totalRows.toLocaleString()} accounts after filters</p>
-        </div>
-        <label className="flex items-center gap-2 text-xs font-semibold text-gray-500">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-2">
+        <p className="text-xs font-semibold text-gray-500">{totalRows.toLocaleString()} accounts after filters</p>
+        <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500">
           Rows
           <select
             value={pageSize}
             onChange={(event) => onPageSizeChange(Number(event.target.value))}
-            className="rounded-md border border-gray-200 bg-white px-2 py-1.5 text-sm font-bold text-gray-700"
+            className="rounded-md border border-gray-200 bg-white px-1.5 py-1 text-xs font-bold text-gray-700"
           >
             {[25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
           </select>
@@ -955,19 +1024,19 @@ function AccountMasterTable({
       </div>
 
       <div className="max-w-full overflow-x-auto">
-        <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[1240px] border-collapse text-left text-sm">
           <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
             <tr>
               <SortableHeader label="Code" sortKey="accountCode" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <SortableHeader label="Account" sortKey="accountName" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <th className="border-b border-gray-200 px-3 py-3">Segment / Industry</th>
+              <th className="border-b border-gray-200 px-3 py-2">Segment / Industry</th>
               <SortableHeader label="Relationship" sortKey="relationship" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <SortableHeader label="Potential" sortKey="potential" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <SortableHeader label="Pipeline" sortKey="activeValue" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <SortableHeader label="Last update" sortKey="lastUpdated" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <th className="border-b border-gray-200 px-3 py-3">Latest account memory</th>
-              <th className="border-b border-gray-200 px-3 py-3">Engagement</th>
-              <th className="border-b border-gray-200 px-3 py-3 text-right">Open</th>
+              <th className="border-b border-gray-200 px-3 py-2">Latest account memory</th>
+              <th className="border-b border-gray-200 px-3 py-2">Engagement</th>
+              <th className="border-b border-gray-200 px-3 py-2 text-right">Open</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -979,40 +1048,40 @@ function AccountMasterTable({
                   onClick={() => onOpen(memory)}
                   className="cursor-pointer bg-white transition hover:bg-blue-50/60"
                 >
-                  <td className="whitespace-nowrap px-3 py-3 font-mono text-xs font-bold text-brand-blue">{row.accountCode}</td>
-                  <td className="px-3 py-3">
+                  <td className="whitespace-nowrap px-3 py-2 font-mono text-xs font-bold text-brand-blue">{row.accountCode}</td>
+                  <td className="px-3 py-2">
                     <p className="max-w-[220px] truncate font-bold text-navy" title={memory.account.accountName}>{memory.account.accountName}</p>
-                    <p className="mt-1 max-w-[220px] truncate text-xs text-gray-500">{formatAccountLocation(memory.account)}</p>
+                    <p className="max-w-[220px] truncate text-xs text-gray-500">{formatAccountLocation(memory.account)}</p>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     <p className="max-w-[170px] truncate font-semibold text-gray-700">{memory.account.segment || 'Unsegmented'}</p>
-                    <p className="mt-1 max-w-[170px] truncate text-xs text-gray-500">{formatAccountPriority(memory.account)}</p>
+                    <p className="max-w-[170px] truncate text-xs text-gray-500">{formatAccountPriority(memory.account)}</p>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     <Badge
                       label={memory.account.relationshipStatus}
                       tone={memory.account.relationshipStatus === 'At risk' ? 'red' : memory.account.relationshipStatus === 'Strong' ? 'green' : 'blue'}
                     />
                   </td>
-                  <td className="px-3 py-3"><Badge label={memory.account.accountPotential} /></td>
-                  <td className="whitespace-nowrap px-3 py-3">
+                  <td className="px-3 py-2"><Badge label={memory.account.accountPotential} /></td>
+                  <td className="whitespace-nowrap px-3 py-2">
                     {row.hygiene.status === 'Imported only' || row.hygiene.status === 'Archived' ? (
                       <p className="text-xs font-semibold text-gray-400">No pipeline evidence</p>
                     ) : (
-                      <><p className="font-bold text-gray-800">{formatBaseMoney(memory.estimatedActiveValue)}</p><p className="mt-1 text-xs text-gray-500">{memory.activeOpportunityCount} active opps</p></>
+                      <><p className="font-bold text-gray-800">{formatBaseMoney(memory.estimatedActiveValue)}</p><p className="text-xs text-gray-500">{memory.activeOpportunityCount} active opps</p></>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-3">
+                  <td className="whitespace-nowrap px-3 py-2">
                     <p className="font-semibold text-gray-700">{formatDate(row.lastUpdatedAt)}</p>
-                    <p className="mt-1 text-xs text-gray-500">{formatRelativeDate(row.lastUpdatedAt)}</p>
+                    <p className="text-xs text-gray-500">{formatRelativeDate(row.lastUpdatedAt)}</p>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     {row.latestActivity ? (
                       <>
                         <p className="max-w-[270px] truncate font-semibold text-gray-800" title={row.latestActivity.summary}>
                           {row.latestActivity.summary}
                         </p>
-                        <p className="mt-1 max-w-[270px] truncate text-xs text-gray-500">
+                        <p className="max-w-[270px] truncate text-xs text-gray-500">
                           {formatSafeBusinessDate(row.latestActivity.activityDate)} · {row.latestContact || row.latestActivity.activityType}
                         </p>
                       </>
@@ -1020,11 +1089,14 @@ function AccountMasterTable({
                       <span className="text-xs text-gray-400">No activity captured</span>
                     )}
                   </td>
-                  <td className="px-3 py-3">
+                  {/* Nowrap on purpose: at this column width "Needs follow-up"
+                      broke over two lines and the contact count over three,
+                      which set the height of every row in the table. */}
+                  <td className="whitespace-nowrap px-3 py-2">
                     <Badge label={row.hygiene.status} tone={row.hygiene.status === 'Needs follow-up' ? 'amber' : row.hygiene.status === 'Active' || row.hygiene.status === 'Strategic' ? 'green' : 'gray'} />
-                    <p className="mt-1 text-xs text-gray-500">{row.stakeholderCount} contacts · {row.openObjectionCount} open objections</p>
+                    <p className="text-xs text-gray-500">{row.stakeholderCount} contacts · {row.openObjectionCount} open</p>
                   </td>
-                  <td className="px-3 py-3 text-right">
+                  <td className="px-3 py-2 text-right">
                     <button
                       type="button"
                       onClick={(event) => {
@@ -2018,21 +2090,6 @@ function TextArea({ label, value, onChange }: { label: string; value: string; on
       <span className="text-sm font-bold text-navy">{label}</span>
       <textarea value={value} onChange={(event) => onChange(event.target.value)} rows={4} className="mt-2 w-full resize-y rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10" />
     </label>
-  );
-}
-
-function Metric({ label, value, tone = 'blue' }: { label: string; value: string | number; tone?: 'blue' | 'green' | 'amber' | 'red' }) {
-  const toneClass = {
-    blue: 'bg-blue-50 text-brand-blue',
-    green: 'bg-emerald-50 text-emerald-700',
-    amber: 'bg-amber-50 text-amber-700',
-    red: 'bg-red-50 text-red-700',
-  }[tone];
-  return (
-    <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
-      <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-lg font-black ${toneClass}`}>{value}</p>
-    </div>
   );
 }
 

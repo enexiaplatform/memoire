@@ -16,6 +16,10 @@ function requireIncludes(text, marker, label) {
   if (!text.includes(marker)) fail(label);
 }
 
+function requireExcludes(text, marker, label) {
+  if (text.includes(marker)) fail(label);
+}
+
 // Today is the activation surface. The trial checklist, the "latest saved
 // review pack" card and the CSV/demo triage that used to live beside it were
 // four more onboarding mechanisms competing with the First Week Path; the path
@@ -196,9 +200,15 @@ requireIncludes(packet, 'scripts/verify-cloud-json-runtime-contract.mjs', 'cohor
 // are few enough to show all of them, all the time; what is *gated* now is the
 // Playbook and Asset library, and that gate is on real workspace evidence
 // rather than on a first-run milestone.
+//
+// The rail is now rendered from `navigationGroups`, which is assembled in the
+// registry from the same primary destinations and global actions - grouped by
+// the question each block answers rather than by registry status.
+// verify-navigation-contract.mjs pins the membership of that list exactly; what
+// matters here is only that nothing is hidden behind a milestone.
 const sidebarNav = read('src/components/layout/Sidebar.tsx');
-requireIncludes(sidebarNav, 'primaryNavigation', 'Sidebar must render the six primary destinations');
-requireIncludes(sidebarNav, 'globalActions', 'Sidebar must render the global actions');
+requireIncludes(sidebarNav, 'navigationGroups', 'Sidebar must render the full rail from the registry');
+requireExcludes(sidebarNav, 'firstWeek', 'the rail must not gate destinations on a first-run milestone');
 for (const retired of ['hasFirstSavedBrief', 'reviewTierUnlocked', 'Review & Learn']) {
   if (sidebarNav.includes(retired)) {
     fail(`progressive disclosure is back in the navigation rail: ${retired}`);

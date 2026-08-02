@@ -187,6 +187,17 @@ type OpportunitySortKey =
   | 'quality'
   | 'updatedAt';
 type OpportunityQuickFilter = 'all' | 'imported' | 'stageInferred' | 'fy26' | 'fy27' | 'needsAction' | 'goingSilent';
+
+/**
+ * How much of the row to show.
+ *
+ * `essentials` is the working list: which deal, worth what, how healthy, what
+ * next. `all` is the imported spreadsheet in full - the FY splits, the forecast
+ * category, the review decision, the sales-flow cell - which matters during a
+ * pipeline review and is noise on a Tuesday morning. Everything hidden here is
+ * still on the deal itself, one click away in the drawer.
+ */
+type OpportunityColumnSet = 'essentials' | 'all';
 const allFilter = 'All';
 const defaultPageSize = 25;
 const founderCoreSourceSystem = 'founder_core_fy26';
@@ -215,6 +226,11 @@ export function OpportunitiesPage() {
   const [quickFilter, setQuickFilter] = useState<OpportunityQuickFilter>('all');
   const [sortKey, setSortKey] = useState<OpportunitySortKey>('updatedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  // Seventeen columns is a spreadsheet somebody exported, not a list somebody
+  // reads: at 2040px the account name scrolled off before the value arrived.
+  // The default is the eleven that answer "which deal, worth what, how healthy,
+  // what next"; the rest are one click away for the week where they matter.
+  const [columnSet, setColumnSet] = useState<OpportunityColumnSet>('essentials');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
   const [editingOpportunity, setEditingOpportunity] = useState<CrmLiteOpportunity | null>(null);
@@ -787,6 +803,29 @@ export function OpportunitiesPage() {
     );
   };
 
+  // A filtered list that looks empty is the most expensive state this page has:
+  // the operator reads "no deals" as data loss rather than as their own Stage
+  // filter from twenty minutes ago. The escape hatch only appears when there is
+  // something to escape from.
+  const hasActiveFilters = search.trim() !== ''
+    || stageFilter !== allFilter
+    || statusFilter !== allFilter
+    || forecastFilter !== allFilter
+    || recommendationFilter !== allFilter
+    || brandFilter !== allFilter
+    || quickFilter !== 'all';
+
+  const clearAllFilters = () => {
+    setSearch('');
+    setStageFilter(allFilter);
+    setStatusFilter(allFilter);
+    setForecastFilter(allFilter);
+    setRecommendationFilter(allFilter);
+    setBrandFilter(allFilter);
+    setQuickFilter('all');
+    setPage(1);
+  };
+
   const markWeakDealsReviewed = () => {
     markPipelineReviewHabitStepComplete('reviewedWeakDealsAt');
     setSaveState('saved');
@@ -1012,25 +1051,58 @@ export function OpportunitiesPage() {
   };
 
   return (
-    <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
-      <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Opportunity Master</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Opportunities</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-500">
-            Review pipeline movement, forecast evidence, close timing, next actions, and deal risk in one working table.
+    <div className="flex w-full max-w-none flex-col gap-4 px-4 py-4 sm:px-5 lg:px-6">
+      {/* The list is the page.
+          This used to open on a title, a paragraph, a toolbar, a quality
+          scorecard and two charts - roughly a screen and a half before the
+          first deal. Every one of those panels answers a question worth
+          asking once a week; the table answers the question the operator came
+          with, and it now starts within the first screen. The analysis is
+          still here, one fold below the rows it describes. */}
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="text-xl font-bold tracking-tight text-navy">Opportunities</h1>
+          <p className="text-sm text-gray-500">
+            {loading
+              ? 'Loading pipeline...'
+              : `${visibleOpportunityRows.length.toLocaleString()} shown of ${opportunities.length.toLocaleString()}`}
+            {lastWorkspaceRefreshAt ? ` · synced ${formatOpportunityDate(lastWorkspaceRefreshAt)}` : ''}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
+            onClick={openAddPanel}
+            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-sm font-bold text-white"
+          >
+            <Plus className="h-4 w-4" />
+            Add
+          </button>
+          <button
+            type="button"
+            onClick={openCsvImport}
+            className="inline-flex items-center justify-center gap-1.5 rounded-full border border-brand-blue bg-blue-50 px-3.5 py-1.5 text-sm font-bold text-brand-blue hover:bg-blue-100"
+          >
+            <Upload className="h-4 w-4" />
+            Import
+          </button>
+          <button
+            type="button"
+            onClick={() => openDefenseBriefPreview()}
+            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-brand-blue px-3.5 py-1.5 text-sm font-bold text-white"
+            title="Generate Pipeline Defense Brief from the selected deals"
+          >
+            <FileText className="h-4 w-4" />
+            Defense brief{selectedOpportunities.length > 0 ? ` (${selectedOpportunities.length})` : ''}
+          </button>
+          <button
+            type="button"
             onClick={() => refreshOpportunities({ force: true })}
             disabled={workspaceSyncing}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
             title="Reload opportunities from cloud"
           >
             <RefreshCw className={`h-4 w-4 ${workspaceSyncing ? 'animate-spin' : ''}`} />
-            Cloud sync
           </button>
           <DataModePill
             compact
@@ -1043,59 +1115,41 @@ export function OpportunitiesPage() {
         </div>
       </header>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-3 2xl:flex-row 2xl:items-center">
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={openAddPanel}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
-            >
-              <Plus className="h-4 w-4" />
-              Add Opportunity
-            </button>
-            <button
-              type="button"
-              onClick={openCsvImport}
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-brand-blue bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-100"
-            >
-              <Upload className="h-4 w-4" />
-              Import / Refresh
-            </button>
-            <button
-              type="button"
-              onClick={() => openDefenseBriefPreview()}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-sm font-bold text-white"
-            >
-              <FileText className="h-4 w-4" />
-              Generate Defense Brief{selectedOpportunities.length > 0 ? ` (${selectedOpportunities.length})` : ''}
-            </button>
-          </div>
-
-          <div className={`grid flex-1 grid-cols-1 gap-2 md:grid-cols-2 ${
-            brandOptions.length > 0
-              ? 'xl:grid-cols-[minmax(240px,1.3fr)_repeat(5,minmax(140px,1fr))]'
-              : 'xl:grid-cols-[minmax(260px,1.4fr)_repeat(4,minmax(150px,1fr))]'
-          }`}>
-            <label className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search account, opportunity, brand, channel..."
-                className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
-              />
-            </label>
-            {brandOptions.length > 0 && (
-              <FilterSelect label="Brand" value={brandFilter} onChange={setBrandFilter} options={[allFilter, ...brandOptions]} />
-            )}
+      {/* Filters sit directly above the rows they filter, on two lines: what
+          you type and pick, then the saved cuts. Sticky, because filtering a
+          long list is useless if choosing the next filter means scrolling
+          back to the top. */}
+      <section className="sticky top-14 z-20 -mx-4 border-y border-gray-200 bg-page/95 px-4 py-2.5 backdrop-blur sm:-mx-5 sm:px-5 lg:-mx-6 lg:top-16 lg:px-6">
+        <div className="flex flex-col gap-2 xl:flex-row xl:items-center">
+          <label className="relative xl:w-[300px]">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search account, deal, brand, channel..."
+              className="w-full rounded-lg border border-gray-300 bg-white py-1.5 pl-9 pr-3 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+            />
+          </label>
+          <div className="grid flex-1 grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
             <FilterSelect label="Stage" value={stageFilter} onChange={setStageFilter} options={[allFilter, ...opportunityStages]} />
+            <FilterSelect label="Status" value={statusFilter} onChange={setStatusFilter} options={[allFilter, ...opportunityStatuses]} />
             <FilterSelect label="Forecast" value={forecastFilter} onChange={setForecastFilter} options={[allFilter, ...forecastEvidenceCategories]} />
             <FilterSelect label="Decision" value={recommendationFilter} onChange={setRecommendationFilter} options={[allFilter, ...decisionRecommendations]} />
-            <FilterSelect label="Status" value={statusFilter} onChange={setStatusFilter} options={[allFilter, ...opportunityStatuses]} />
+            {brandOptions.length > 0
+              ? <FilterSelect label="Brand" value={brandFilter} onChange={setBrandFilter} options={[allFilter, ...brandOptions]} />
+              : null}
           </div>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="shrink-0 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-600 hover:border-brand-blue hover:text-brand-blue"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
-        <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+        <div className="mt-2 flex flex-wrap gap-1.5">
           {[
             ['all', 'All pipeline'],
             ['imported', 'Imported core'],
@@ -1109,7 +1163,7 @@ export function OpportunitiesPage() {
               key={value}
               type="button"
               onClick={() => setQuickFilter(value as OpportunityQuickFilter)}
-              className={`rounded-full px-3 py-1.5 text-xs font-bold ${
+              className={`rounded-full px-2.5 py-1 text-xs font-bold ${
                 quickFilter === value
                   ? 'bg-navy text-white'
                   : 'border border-gray-200 bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue'
@@ -1119,35 +1173,20 @@ export function OpportunitiesPage() {
             </button>
           ))}
         </div>
-        <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3 lg:flex-row lg:items-center lg:justify-between">
-          <p className="text-xs text-gray-500">
-            Select deals in the table to build a new Pipeline Defense Brief. Existing records are never overwritten.
-            {lastWorkspaceRefreshAt ? ` Last cloud read: ${formatOpportunityDate(lastWorkspaceRefreshAt)}.` : ''}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={markWeakDealsReviewed} className="inline-flex items-center gap-2 text-xs font-bold text-blue-700 hover:text-brand-blue">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Mark weak deals reviewed
-            </button>
-            <button type="button" onClick={markMeddicAndProofGapsChecked} className="inline-flex items-center gap-2 text-xs font-bold text-blue-700 hover:text-brand-blue">
-              <ClipboardList className="h-3.5 w-3.5" />
-              Mark gaps checked
-            </button>
-          </div>
-        </div>
-        {briefCreateMessage && !isPreviewOpen && (
-          <p className={`mt-3 rounded-lg px-3 py-2 text-sm font-semibold ${
-            briefCreateState === 'error' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
-          }`}>
-            {briefCreateMessage}
-          </p>
-        )}
-        {workspaceLoadError && (
-          <p className="mt-3 rounded-lg bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-800">
-            Cloud refresh issue: {workspaceLoadError}
-          </p>
-        )}
       </section>
+
+      {briefCreateMessage && !isPreviewOpen && (
+        <p className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+          briefCreateState === 'error' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+        }`}>
+          {briefCreateMessage}
+        </p>
+      )}
+      {workspaceLoadError && (
+        <p className="rounded-lg bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-800">
+          Cloud refresh issue: {workspaceLoadError}
+        </p>
+      )}
 
       {csvImportOpen && (
         <OpportunityCsvImportPanel
@@ -1192,14 +1231,6 @@ export function OpportunitiesPage() {
         />
       )}
 
-      <PipelineQualitySummary quality={quality} />
-
-      <PipelineShapeCharts opportunities={opportunities} onSelectStage={setStageFilter} />
-
-      <ImportedPipelineForecastPanel summary={importedPipelineSummary} onFilter={setQuickFilter} />
-
-      <ImportedOpportunityEnrichmentSignal summary={importedEnrichment} />
-
       <section>
         {loading ? (
           <SkeletonScreen label="Loading your opportunity master">
@@ -1211,6 +1242,15 @@ export function OpportunitiesPage() {
           <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
             <p className="text-sm font-semibold text-gray-900">No opportunities match these filters.</p>
             <p className="mt-1 text-sm text-gray-500">Clear search or filters to review your full pipeline.</p>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="mt-4 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
+              >
+                Clear all filters
+              </button>
+            )}
           </div>
         ) : (
           <OpportunityMasterTable
@@ -1220,12 +1260,14 @@ export function OpportunitiesPage() {
             page={page}
             pageCount={pageCount}
             pageSize={pageSize}
+            columnSet={columnSet}
             selectedIds={selectedOpportunityIds}
             sortKey={sortKey}
             sortDirection={sortDirection}
             onSort={handleSort}
             onPageChange={setPage}
             onPageSizeChange={setPageSize}
+            onColumnSetChange={setColumnSet}
             onToggleSelection={toggleOpportunitySelection}
             onOpen={(opportunity) => openEditPanel(opportunity)}
             onDraftFollowUp={(opportunity) => {
@@ -1235,6 +1277,46 @@ export function OpportunitiesPage() {
           />
         )}
       </section>
+
+      {/* Everything below reads the same deals the table just listed. It is
+          the weekly conversation about the pipeline, not the daily work in it,
+          so it opens on request and stays under the rows it describes. */}
+      {!loading && opportunities.length > 0 && (
+        <details className="rounded-lg border border-gray-200 bg-white shadow-sm">
+          <summary className="cursor-pointer list-none px-4 py-3">
+            <span className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-sm font-bold text-navy">
+                Pipeline analysis
+                <span className="ml-2 font-semibold text-gray-500">
+                  quality, shape, forecast and import coverage
+                </span>
+              </span>
+              <span className="text-xs font-bold text-brand-blue">Open</span>
+            </span>
+          </summary>
+
+          <div className="flex flex-col gap-4 border-t border-gray-100 p-4">
+            <div className="flex flex-wrap gap-3">
+              <button type="button" onClick={markWeakDealsReviewed} className="inline-flex items-center gap-2 text-xs font-bold text-blue-700 hover:text-brand-blue">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Mark weak deals reviewed
+              </button>
+              <button type="button" onClick={markMeddicAndProofGapsChecked} className="inline-flex items-center gap-2 text-xs font-bold text-blue-700 hover:text-brand-blue">
+                <ClipboardList className="h-3.5 w-3.5" />
+                Mark gaps checked
+              </button>
+            </div>
+
+            <PipelineQualitySummary quality={quality} />
+
+            <PipelineShapeCharts opportunities={opportunities} onSelectStage={setStageFilter} />
+
+            <ImportedPipelineForecastPanel summary={importedPipelineSummary} onFilter={setQuickFilter} />
+
+            <ImportedOpportunityEnrichmentSignal summary={importedEnrichment} />
+          </div>
+        </details>
+      )}
 
       {followUpContext && (
         <FollowUpComposerPanel
@@ -2253,12 +2335,14 @@ function OpportunityMasterTable({
   page,
   pageCount,
   pageSize,
+  columnSet,
   selectedIds,
   sortKey,
   sortDirection,
   onSort,
   onPageChange,
   onPageSizeChange,
+  onColumnSetChange,
   onToggleSelection,
   onOpen,
   onDraftFollowUp,
@@ -2269,59 +2353,77 @@ function OpportunityMasterTable({
   page: number;
   pageCount: number;
   pageSize: number;
+  columnSet: OpportunityColumnSet;
   selectedIds: string[];
   sortKey: OpportunitySortKey;
   sortDirection: SortDirection;
   onSort: (key: OpportunitySortKey) => void;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
+  onColumnSetChange: (columnSet: OpportunityColumnSet) => void;
   onToggleSelection: (opportunityId: string) => void;
   onOpen: (opportunity: CrmLiteOpportunity) => void;
   onDraftFollowUp: (opportunity: CrmLiteOpportunity) => void;
 }) {
+  const showAll = columnSet === 'all';
+
   return (
     <section className="min-w-0 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-      <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-base font-bold text-navy">Opportunity Master List</h2>
-          <p className="mt-1 text-xs text-gray-500">
-            {totalRows.toLocaleString()} after filters / {totalOpportunities.toLocaleString()} total
-            {selectedIds.length > 0 ? ` / ${selectedIds.length} selected` : ''}
-          </p>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-2">
+        <p className="text-xs font-semibold text-gray-500">
+          {totalRows.toLocaleString()} after filters / {totalOpportunities.toLocaleString()} total
+          {selectedIds.length > 0 ? ` / ${selectedIds.length} selected` : ''}
+        </p>
+        <div className="flex items-center gap-3">
+          <div className="inline-flex rounded-full border border-gray-200 bg-gray-50 p-0.5" role="group" aria-label="Columns">
+            {([['essentials', 'Essentials'], ['all', 'All columns']] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => onColumnSetChange(value)}
+                aria-pressed={columnSet === value}
+                className={`rounded-full px-2.5 py-1 text-xs font-bold transition ${
+                  columnSet === value ? 'bg-navy text-white' : 'text-gray-600 hover:text-navy'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500">
+            Rows
+            <select
+              value={pageSize}
+              onChange={(event) => onPageSizeChange(Number(event.target.value))}
+              className="rounded-md border border-gray-200 bg-white px-1.5 py-1 text-xs font-bold text-gray-700"
+            >
+              {[25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+            </select>
+          </label>
         </div>
-        <label className="flex items-center gap-2 text-xs font-semibold text-gray-500">
-          Rows
-          <select
-            value={pageSize}
-            onChange={(event) => onPageSizeChange(Number(event.target.value))}
-            className="rounded-md border border-gray-200 bg-white px-2 py-1.5 text-sm font-bold text-gray-700"
-          >
-            {[25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
-          </select>
-        </label>
       </div>
 
       <div className="max-w-full overflow-x-auto">
-        <table className="w-full min-w-[2040px] border-collapse text-left text-sm">
+        <table className={`w-full border-collapse text-left text-sm ${showAll ? 'min-w-[2040px]' : 'min-w-[1160px]'}`}>
           <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
             <tr>
-              <th className="sticky left-0 z-20 w-12 border-b border-gray-200 bg-gray-50 px-3 py-3 text-center">Pick</th>
-              <OpportunitySortableHeader label="Account" sortKey="account" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="sticky left-12 z-20 border-r border-gray-200 bg-gray-50" />
+              <th className="sticky left-0 z-20 w-10 border-b border-gray-200 bg-gray-50 px-2 py-2 text-center">Pick</th>
+              <OpportunitySortableHeader label="Account" sortKey="account" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="sticky left-10 z-20 border-r border-gray-200 bg-gray-50" />
               <OpportunitySortableHeader label="Opportunity" sortKey="opportunity" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <th className="border-b border-gray-200 px-3 py-3">Brand / channel</th>
+              {showAll && <th className="border-b border-gray-200 px-3 py-2">Brand / channel</th>}
               <OpportunitySortableHeader label="Stage" sortKey="stage" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Value" sortKey="value" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <OpportunitySortableHeader label="FY26" sortKey="fy26" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <OpportunitySortableHeader label="FY27" sortKey="fy27" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              {showAll && <OpportunitySortableHeader label="FY26" sortKey="fy26" activeKey={sortKey} direction={sortDirection} onSort={onSort} />}
+              {showAll && <OpportunitySortableHeader label="FY27" sortKey="fy27" activeKey={sortKey} direction={sortDirection} onSort={onSort} />}
               <OpportunitySortableHeader label="Prob." sortKey="probability" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Close" sortKey="closePeriod" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <OpportunitySortableHeader label="Forecast evidence" sortKey="forecast" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <OpportunitySortableHeader label="Review decision" sortKey="recommendation" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <th className="border-b border-gray-200 px-3 py-3">Sales flow</th>
+              {showAll && <OpportunitySortableHeader label="Forecast evidence" sortKey="forecast" activeKey={sortKey} direction={sortDirection} onSort={onSort} />}
+              {showAll && <OpportunitySortableHeader label="Review decision" sortKey="recommendation" activeKey={sortKey} direction={sortDirection} onSort={onSort} />}
+              {showAll && <th className="border-b border-gray-200 px-3 py-2">Sales flow</th>}
               <OpportunitySortableHeader label="Next action" sortKey="nextActionDate" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Deal quality" sortKey="quality" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Last update" sortKey="updatedAt" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <th className="border-b border-gray-200 px-3 py-3 text-right">Open</th>
+              <th className="border-b border-gray-200 px-3 py-2 text-right">Open</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -2334,7 +2436,7 @@ function OpportunityMasterTable({
                   onClick={() => onOpen(opportunity)}
                   className={`group cursor-pointer transition hover:bg-blue-50/60 ${selected ? 'bg-blue-50/40' : 'bg-white'}`}
                 >
-                  <td className={`sticky left-0 z-10 px-3 py-3 text-center group-hover:bg-blue-50 ${selected ? 'bg-blue-50' : 'bg-white'}`}>
+                  <td className={`sticky left-0 z-10 px-2 py-2 text-center group-hover:bg-blue-50 ${selected ? 'bg-blue-50' : 'bg-white'}`}>
                     <input
                       type="checkbox"
                       checked={selected}
@@ -2344,77 +2446,90 @@ function OpportunityMasterTable({
                       className="h-4 w-4 accent-brand-blue"
                     />
                   </td>
-                  <td className={`sticky left-12 z-10 border-r border-gray-100 px-3 py-3 group-hover:bg-blue-50 ${selected ? 'bg-blue-50' : 'bg-white'}`}>
+                  <td className={`sticky left-10 z-10 border-r border-gray-100 px-3 py-2 group-hover:bg-blue-50 ${selected ? 'bg-blue-50' : 'bg-white'}`}>
                     <p className="max-w-[190px] truncate font-bold text-navy" title={opportunity.accountName}>{opportunity.accountName || 'No account'}</p>
-                    <p className="mt-1 max-w-[190px] truncate text-xs text-gray-500">
-                      {opportunity.productOrSolution || `${opportunity.stage} opportunity`}
+                    {/* In the compact set this line carries what the hidden
+                        brand column used to say, so a distributor can still
+                        read the principal off the row. */}
+                    <p className="max-w-[190px] truncate text-xs text-gray-500">
+                      {showAll
+                        ? (opportunity.productOrSolution || `${opportunity.stage} opportunity`)
+                        : [opportunity.brand, opportunity.productOrSolution].filter(Boolean).join(' · ') || 'No brand recorded'}
                     </p>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     <p className="max-w-[250px] truncate font-bold text-gray-900" title={opportunity.opportunityName}>{opportunity.opportunityName || 'Untitled opportunity'}</p>
-                    <p className="mt-1 max-w-[250px] truncate text-xs text-gray-500">
+                    <p className="max-w-[250px] truncate text-xs text-gray-500">
                       {opportunity.opportunityType || (opportunity.decisionMaker ? `DM: ${opportunity.decisionMaker}` : 'Decision maker missing')}
                     </p>
                   </td>
-                  <td className="px-3 py-3">
-                    <div className="flex max-w-[190px] flex-wrap gap-1.5">
-                      {opportunity.brand ? <Badge label={opportunity.brand} tone="green" /> : <Badge label="No brand" tone="gray" />}
-                      {opportunity.channel ? <Badge label={opportunity.channel} tone="blue" /> : null}
-                    </div>
-                    {isFounderImportedOpportunity(opportunity) && (
-                      <p className="mt-1 text-xs font-semibold text-emerald-700">Imported core</p>
-                    )}
-                  </td>
-                  <td className="px-3 py-3">
+                  {showAll && (
+                    <td className="px-3 py-2">
+                      <div className="flex max-w-[190px] flex-wrap gap-1.5">
+                        {opportunity.brand ? <Badge label={opportunity.brand} tone="green" /> : <Badge label="No brand" tone="gray" />}
+                        {opportunity.channel ? <Badge label={opportunity.channel} tone="blue" /> : null}
+                      </div>
+                      {isFounderImportedOpportunity(opportunity) && (
+                        <p className="mt-1 text-xs font-semibold text-emerald-700">Imported core</p>
+                      )}
+                    </td>
+                  )}
+                  <td className="px-3 py-2">
                     <Badge label={opportunity.stage} />
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-0.5 text-xs text-gray-500">
                       {opportunity.isStageInferred ? 'Inferred stage' : opportunity.status}
                     </p>
                   </td>
-                  <td className="whitespace-nowrap px-3 py-3 font-bold text-gray-800">
+                  <td className="whitespace-nowrap px-3 py-2 font-bold text-gray-800">
                     {opportunity.estimatedValue ? formatMoney(opportunity.estimatedValue, opportunity.currency) : 'Not set'}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-3 font-bold text-emerald-700">
-                    {opportunity.fy26Value ? formatMoney(opportunity.fy26Value, opportunity.currency) : 'Not set'}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3 font-bold text-gray-800">
-                    {opportunity.fy27Value ? formatMoney(opportunity.fy27Value, opportunity.currency) : 'Not set'}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-3">
+                  {showAll && (
+                    <td className="whitespace-nowrap px-3 py-2 font-bold text-emerald-700">
+                      {opportunity.fy26Value ? formatMoney(opportunity.fy26Value, opportunity.currency) : 'Not set'}
+                    </td>
+                  )}
+                  {showAll && (
+                    <td className="whitespace-nowrap px-3 py-2 font-bold text-gray-800">
+                      {opportunity.fy27Value ? formatMoney(opportunity.fy27Value, opportunity.currency) : 'Not set'}
+                    </td>
+                  )}
+                  <td className="whitespace-nowrap px-3 py-2">
                     <p className="font-bold text-gray-800">
                       {typeof opportunity.pipelineProbability === 'number' ? `${Math.round(opportunity.pipelineProbability)}%` : 'Not set'}
                     </p>
                     {opportunity.sourceStageConfidence && (
-                      <p className="mt-1 text-xs text-gray-500">{opportunity.sourceStageConfidence}</p>
+                      <p className="text-xs text-gray-500">{opportunity.sourceStageConfidence}</p>
                     )}
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     <p className="max-w-[150px] truncate font-semibold text-gray-700" title={opportunity.expectedClosePeriod}>
                       {opportunity.expectedClosePeriod || 'Missing'}
                     </p>
                   </td>
-                  <td className="px-3 py-3"><Badge label={opportunity.forecastEvidenceCategory} tone={forecastTone(opportunity.forecastEvidenceCategory)} /></td>
-                  <td className="px-3 py-3"><Badge label={opportunity.decisionRecommendation} tone={decisionTone(opportunity.decisionRecommendation)} /></td>
-                  <td className="px-3 py-3">
-                    <OpportunitySalesFlowCell opportunity={opportunity} />
-                  </td>
-                  <td className="px-3 py-3">
+                  {showAll && <td className="px-3 py-2"><Badge label={opportunity.forecastEvidenceCategory} tone={forecastTone(opportunity.forecastEvidenceCategory)} /></td>}
+                  {showAll && <td className="px-3 py-2"><Badge label={opportunity.decisionRecommendation} tone={decisionTone(opportunity.decisionRecommendation)} /></td>}
+                  {showAll && (
+                    <td className="px-3 py-2">
+                      <OpportunitySalesFlowCell opportunity={opportunity} />
+                    </td>
+                  )}
+                  <td className="px-3 py-2">
                     <p className="max-w-[250px] truncate font-semibold text-gray-800" title={opportunity.nextAction}>
                       {opportunity.nextAction || 'No next action'}
                     </p>
-                    <p className={`mt-1 text-xs font-semibold ${isPastDate(opportunity.nextActionDate) ? 'text-red-600' : 'text-gray-500'}`}>
+                    <p className={`text-xs font-semibold ${isPastDate(opportunity.nextActionDate) ? 'text-red-600' : 'text-gray-500'}`}>
                       {formatSafeBusinessDate(opportunity.nextActionDate)}
                     </p>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     <Badge label={quality.status} tone={quality.status === 'High risk' ? 'red' : quality.status === 'Needs cleanup' ? 'amber' : 'green'} />
-                    <p className="mt-1 max-w-[190px] truncate text-xs text-gray-500" title={quality.primaryAction}>
+                    <p className="max-w-[190px] truncate text-xs text-gray-500" title={quality.primaryAction}>
                       {quality.issues.length} gap{quality.issues.length === 1 ? '' : 's'} / {row.linkedActivityCount} activities
                     </p>
                   </td>
-                  <td className="whitespace-nowrap px-3 py-3">
+                  <td className="whitespace-nowrap px-3 py-2">
                     <p className="font-semibold text-gray-700">{formatOpportunityDate(row.lastUpdatedAt)}</p>
-                    <p className={`mt-1 text-xs ${row.silence.status === 'silent' ? 'font-bold text-red-600' : row.silence.status === 'at-risk' ? 'font-bold text-amber-600' : 'text-gray-500'}`}>
+                    <p className={`text-xs ${row.silence.status === 'silent' ? 'font-bold text-red-600' : row.silence.status === 'at-risk' ? 'font-bold text-amber-600' : 'text-gray-500'}`}>
                       {row.silence.status === 'silent' || row.silence.status === 'at-risk'
                         ? `Quiet ${row.silence.daysQuiet}d - no next action`
                         : row.lastActivityDate ? `Last touch ${formatOpportunityDate(row.lastActivityDate)}` : 'No linked touch'}
@@ -2426,13 +2541,13 @@ function OpportunityMasterTable({
                           event.stopPropagation();
                           onDraftFollowUp(opportunity);
                         }}
-                        className="mt-1.5 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-bold text-brand-blue hover:border-brand-blue/40"
+                        className="mt-1 rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-xs font-bold text-brand-blue hover:border-brand-blue/40"
                       >
                         Draft follow-up
                       </button>
                     )}
                   </td>
-                  <td className="px-3 py-3 text-right">
+                  <td className="px-3 py-2 text-right">
                     <button
                       type="button"
                       onClick={(event) => {
