@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowRight, ChevronLeft, ChevronRight, Copy, Loader2, RotateCcw } from 'lucide-react';
+import { ArrowRight, Copy, Loader2 } from 'lucide-react';
 import { ReviewAnalyticsSection } from './ReviewAnalyticsSection';
+import { ReviewScoreboardPanel } from './ReviewScoreboardPanel';
 import { CommercialRiskPanel } from '../threads/CommercialRiskPanel';
 import { ThreadsSection } from '../threads/ThreadsSection';
 import { useCommercialThreads } from '../threads/useCommercialThreads';
@@ -71,11 +72,6 @@ import {
   type SalesRecapRange,
 } from '../../utils/salesActivityRecap';
 
-const periodOptions: { value: SalesRecapPeriod; label: string }[] = [
-  { value: 'week', label: 'Weekly' },
-  { value: 'month', label: 'Monthly' },
-];
-
 export type ReviewTab = 'review' | 'defense' | 'analytics';
 
 const reviewTabs: { value: ReviewTab; label: string }[] = [
@@ -99,6 +95,13 @@ export function SalesReviewsPage() {
   const tab: ReviewTab = rawTab === 'defense' || rawTab === 'analytics' ? rawTab : 'review';
   const { recommendations: reviewRecommendations } = useCommercialThreads();
 
+  // One period for the whole tab. The scoreboard declares it and the recap
+  // below reads it: two period pickers on one page meant the headline and the
+  // detail could be describing different weeks, which is worse than either.
+  const [periodType, setPeriodType] = useState<SalesRecapPeriod>('week');
+  const [anchorDate, setAnchorDate] = useState(() => new Date());
+  const period = useMemo(() => getRecapRange(periodType, anchorDate), [anchorDate, periodType]);
+
   const selectTab = (next: ReviewTab) => {
     const params = new URLSearchParams(searchParams);
     if (next === 'review') params.delete('view');
@@ -107,42 +110,69 @@ export function SalesReviewsPage() {
   };
 
   return (
-    <div className="flex w-full max-w-none flex-col gap-4 px-4 py-5 sm:px-5 lg:px-6">
-      <div>
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Review</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">
-          What happened, where the money is, what comes next.
-        </h1>
-      </div>
-
-      <div className="inline-flex flex-wrap rounded-full border border-gray-200 bg-gray-50 p-1" role="tablist" aria-label="Review section">
-        {reviewTabs.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            role="tab"
-            aria-selected={tab === option.value}
-            onClick={() => selectTab(option.value)}
-            className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
-              tab === option.value ? 'bg-navy text-white' : 'text-gray-600 hover:bg-white'
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
+    <div className="flex w-full max-w-none flex-col gap-4 px-4 py-4 sm:px-5 lg:px-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+        <h1 className="text-xl font-bold tracking-tight text-navy">Review</h1>
+        <div className="inline-flex flex-wrap rounded-full border border-gray-200 bg-gray-50 p-1" role="tablist" aria-label="Review section">
+          {reviewTabs.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="tab"
+              aria-selected={tab === option.value}
+              onClick={() => selectTab(option.value)}
+              className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
+                tab === option.value ? 'bg-navy text-white' : 'text-gray-600 hover:bg-white'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {tab === 'review' && (
         <>
-          {/* The week's commercial risks and the promises behind them lead the
-              review, because they are what the week is actually judged on. */}
-          <CommercialRiskPanel recommendations={reviewRecommendations} limit={10} title="Commercial threads at risk" />
-          <ThreadsSection title="Threads to look at" description="Quietest first" limit={4} />
+          {/* The outcome, first and above everything else. What closed in this
+              window, how that compares with the one before, and what it leaves
+              of the quarter and the year. */}
+          <ReviewScoreboardPanel
+            periodKind={periodType}
+            period={{ kind: periodType, label: period.label, start: period.start, end: period.end }}
+            onPeriodKindChange={setPeriodType}
+            onShiftPeriod={(direction: -1 | 1) => setAnchorDate((date) => shiftRecapAnchor(date, periodType, direction))}
+            onResetPeriod={() => setAnchorDate(new Date())}
+          />
+
+          {/* Promises kept is the other half of an outcome: a period that hit
+              its number by abandoning everything it committed to is not a good
+              period, and this is the only place that shows it. */}
           <CommitmentLedgerPanel title="Commitment performance" showComposer={false} />
+
           {/* Renders only for a workspace carrying several brands. A single-line
               seller never sees a panel that could only say "100%". */}
           <BrandPerformancePanel />
-          <WeeklyReviewSection />
+
+          <WeeklyReviewSection periodType={periodType} period={period} />
+
+          {/* Forward-looking work, deliberately last and folded. These are the
+              two panels Review used to open on; they are what to do about the
+              period rather than what the period produced, and Today owns the
+              daily version of the same list. */}
+          <details className="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <summary className="cursor-pointer list-none px-5 py-3">
+              <span className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="text-base font-bold text-navy">What this leaves for next week</span>
+                <span className="text-xs font-semibold text-gray-500">
+                  {reviewRecommendations.length} thread{reviewRecommendations.length === 1 ? '' : 's'} at risk
+                </span>
+              </span>
+            </summary>
+            <div className="flex flex-col gap-4 border-t border-gray-100 p-5">
+              <CommercialRiskPanel recommendations={reviewRecommendations} limit={10} title="Commercial threads at risk" />
+              <ThreadsSection title="Threads to look at" description="Quietest first" limit={4} />
+            </div>
+          </details>
         </>
       )}
       {tab === 'defense' && <PipelineDefenseArtifactSection />}
@@ -179,10 +209,19 @@ function PipelineDefenseArtifactSection() {
   );
 }
 
-function WeeklyReviewSection() {
+/**
+ * The detail under the scoreboard: what the period was made of, how execution
+ * went, and what it taught. The period itself is owned by the page - this
+ * section reads the window it is given rather than carrying a second picker.
+ */
+function WeeklyReviewSection({
+  periodType,
+  period,
+}: {
+  periodType: SalesRecapPeriod;
+  period: SalesRecapRange;
+}) {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
-  const [periodType, setPeriodType] = useState<SalesRecapPeriod>('week');
-  const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [objections, setObjections] = useState<ObjectionRecord[]>([]);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
@@ -203,7 +242,6 @@ function WeeklyReviewSection() {
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
-  const period = useMemo(() => getRecapRange(periodType, anchorDate), [anchorDate, periodType]);
   const periodActivities = useMemo(
     () => filterSalesActivitiesByPeriod(activities, period),
     [activities, period]
@@ -406,54 +444,12 @@ function WeeklyReviewSection() {
       </header>
 
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm font-bold text-navy">Review period</p>
-            <h2 className="mt-1 text-2xl font-bold text-navy">{period.label}</h2>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex rounded-full border border-gray-200 bg-gray-50 p-1">
-              {periodOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setPeriodType(option.value)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-bold ${
-                    periodType === option.value ? 'bg-navy text-white' : 'text-gray-600 hover:bg-white'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => setAnchorDate((date) => shiftRecapAnchor(date, periodType, -1))}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-              aria-label="Previous period"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setAnchorDate(new Date())}
-              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Today
-            </button>
-            <button
-              type="button"
-              onClick={() => setAnchorDate((date) => shiftRecapAnchor(date, periodType, 1))}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-              aria-label="Next period"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h2 className="text-base font-bold text-navy">What the period was made of</h2>
+          <p className="text-xs font-semibold text-gray-500">{period.label}</p>
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={generateRecap}

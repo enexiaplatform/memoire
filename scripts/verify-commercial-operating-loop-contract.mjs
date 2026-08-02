@@ -172,8 +172,12 @@ requireIncludes(appRoutes, 'path="reviews" element={<SalesReviewsPage />}',
 requireIncludes(appRoutes, 'path="weekly-brief" element={<LegacyRedirect to="/app/reviews" />}',
   'the old /app/weekly-brief URL must still resolve');
 
+// The rail renders from `navigationGroups`, which the registry assembles from
+// the primary destinations and global surfaces. Review's membership is pinned
+// by verify-navigation-contract.mjs; what matters here is that the rail is
+// still driven by the registry rather than by a hand-kept list in the sidebar.
 const sidebar = read('src/components/layout/Sidebar.tsx');
-requireIncludes(sidebar, 'primaryNavigation',
+requireIncludes(sidebar, 'navigationGroups',
   'Sidebar must render Review from the feature registry');
 const featureRegistry = read('src/config/featureRegistry.ts');
 requireIncludes(featureRegistry, "route: '/app/reviews'", 'Review must be a registered primary destination');
