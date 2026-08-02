@@ -53,7 +53,7 @@ const EVIDENCE_COLORS: Record<string, string> = {
 };
 
 export function BusinessLensPage() {
-  const { user, loading: authLoading, isAuthenticated } = useAuthContext();
+  const { user, loading: authLoading } = useAuthContext();
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
@@ -97,7 +97,20 @@ export function BusinessLensPage() {
       </SkeletonScreen>
     );
   }
-  if (!isAuthenticated) return null;
+
+  // There is deliberately no authentication check here.
+  //
+  // This page used to return null when `isAuthenticated` was false, which meant
+  // it rendered a white page - not a skeleton, not an empty state, nothing - for
+  // every session without a Supabase user: the entire public demo, and any
+  // workspace running browser-only. The demo is how a prospect meets the
+  // product, so one of eleven rail items was a blank screen for them.
+  //
+  // Nothing on this page needs an account. It reads the same local workspace
+  // records every other surface reads, and `authLoading` above already covers
+  // the only real concern - rendering before the session has resolved. Who may
+  // reach this route at all is ProtectedRoute's decision, made once, for every
+  // destination; repeating that decision per page is how it gets made wrong.
 
   if (!model || !lens) {
     return (

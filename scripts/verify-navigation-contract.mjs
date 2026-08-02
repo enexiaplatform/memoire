@@ -155,6 +155,57 @@ for (const retiredId of [
   );
 }
 
+// 4bb. No destination may render nothing because there is no account.
+//
+// The Business lens returned `null` when `isAuthenticated` was false, and the
+// result was a white page - no skeleton, no empty state - for every session
+// without a Supabase user: the whole public demo, and any browser-only
+// workspace. It was one of eleven rail items and it was blank for exactly the
+// people the demo exists to convince.
+//
+// Whether a session may reach /app at all is ProtectedRoute's decision, made
+// once for every destination. A second authentication test inside a page can
+// only disagree with the first one, and this is what disagreeing looks like.
+// Reading local records never needs an account; Memoire runs browser-only by
+// design.
+{
+  const surfaces = [
+    ['Today', 'src/features/dashboard/DashboardPage.tsx'],
+    ['Accounts', 'src/features/accounts/AccountsPage.tsx'],
+    ['Opportunities', 'src/features/opportunities/OpportunitiesPage.tsx'],
+    ['Orders', 'src/features/revenue/RevenueViewPage.tsx'],
+    ['Plan', 'src/features/timeline/TimelinePage.tsx'],
+    ['Review', 'src/features/reviews/SalesReviewsPage.tsx'],
+    ['Capture', 'src/features/dailyCapture/DailyCapturePage.tsx'],
+    ['Search & Insights', 'src/features/v31/AskMemoirePage.tsx'],
+    ['Activity', 'src/features/activity/ActivityPage.tsx'],
+    ['Dashboard lens', 'src/features/business/BusinessLensPage.tsx'],
+    ['Business Vault', 'src/features/vault/BusinessVaultPage.tsx'],
+    ['Settings', 'src/features/settings/SettingsPage.tsx'],
+  ];
+
+  // Any early return that hinges on being signed in. Written as patterns rather
+  // than one regex so the failure message can name the shape that was found.
+  const bailouts = [
+    /!isAuthenticated\)\s*return null/,
+    /!isAuthenticated\)\s*\{\s*return null/,
+    /!user\)\s*return null/,
+    /!session\)\s*return null/,
+  ];
+
+  for (const [label, file] of surfaces) {
+    assert.ok(existsSync(file), `${label} lost its page file: ${file}`);
+    const source = readFileSync(file, 'utf8');
+    for (const bailout of bailouts) {
+      assert.equal(
+        bailout.test(source),
+        false,
+        `${label} renders nothing when signed out (${file}). Route access is ProtectedRoute's decision; a page that reads local records must render for a browser-only workspace.`,
+      );
+    }
+  }
+}
+
 // 4c. The phone is navigable without opening anything.
 //
 // The rail behind a hamburger was the whole of mobile navigation: three taps to
