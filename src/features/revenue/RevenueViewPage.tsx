@@ -626,19 +626,29 @@ function MoneyOutSection({
   );
 }
 
+/**
+ * The empty room, described as the room it is.
+ *
+ * It used to say "Create a quote or update pipeline" and send people to
+ * /app/quotes - a title in the voice of the old Revenue View, offering two
+ * doors and explaining neither. This page is the order book now: it follows
+ * what happens to a deal after it is won, and the thing that fills it is a won
+ * deal, so that is what it says and where it points.
+ */
 function RevenueEmptyState() {
   return (
     <section className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-brand-blue">
         <ReceiptText className="h-6 w-6" />
       </div>
-      <h2 className="mt-4 text-xl font-bold text-navy">Create a quote or update pipeline.</h2>
+      <h2 className="mt-4 text-xl font-bold text-navy">No orders yet.</h2>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">
-        Revenue View needs opportunities or quotes to show stuck money and risk.
+        An order appears here the moment a deal is won, and stays until the money is in - confirmation, deposit,
+        delivery, invoice, payment. Nothing to set up: mark a deal Won on Opportunities and it arrives.
       </p>
       <div className="mt-5 flex flex-wrap justify-center gap-2">
-        <Link to="/app/quotes" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Create quote</Link>
-        <Link to="/app/opportunities" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">Review pipeline</Link>
+        <Link to="/app/opportunities" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Open opportunities</Link>
+        <Link to="/app/quotes" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">Write a quote instead</Link>
       </div>
     </section>
   );

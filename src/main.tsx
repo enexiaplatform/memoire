@@ -15,6 +15,18 @@ if (window.localStorage.getItem('memoire.sampleData.loaded') === 'true') {
   void import('./utils/sampleData').then((module) => module.sanitizeLegacySampleDataset());
 }
 
+// Registered after load so it never competes with the first render, and only
+// in a real build: in dev the worker would serve a cached shell over Vite's
+// own module graph and hide every change made since the tab was opened.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('/sw.js').catch(() => {
+      // No offline shell. Capture still writes to this device, and the banner
+      // still reports what is waiting - there is nothing to tell the user here.
+    });
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <HelmetProvider>

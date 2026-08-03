@@ -313,12 +313,23 @@ The week that makes a new user's first day work.
 | 3.1 | ~~Mobile-first capture~~ **done 2026-08-03** | Quick mode is the default under 768px (an explicit `?mode=` still wins), and the three-mode switch is one row with short labels on small screens |
 | 3.2 | ~~Accounts + contacts CSV import~~ **done 2026-08-03** | Upload or paste, auto-mapped columns shown and correctable, preview before anything is written, duplicates decided by the app-wide account key *and* the operator's own merges, and the whole batch written in one read and one write (`verify:account-import`) |
 | 3.3 | ~~Search-first Ask~~ **done 2026-08-03** | The question box is the first thing on the page; what it can answer and the privacy note moved below it |
-| 3.4 | Offline capture | Capture works with no network and syncs when it returns |
-| 3.5 | Empty-state pass | Every destination's empty state names the one action that fills it |
+| 3.4 | ~~Offline capture~~ **done 2026-08-03** | A service worker serves the shell with no network; a capture the cloud refused is marked `pendingSync`, stays visible after the connection returns, and sends itself on the browser's `online` event with the date it was actually made (`verify:offline-capture`) |
+| 3.5 | ~~Empty-state pass~~ **done 2026-08-03** | Ten destinations, each saying what is missing and offering exactly one primary action — Activity no longer draws a dashboard of zeros, Orders speaks as the order book, Opportunities is down from four CTAs to one plus an alternative (`verify:empty-states`) |
 
 **Gate:** a new user with a spreadsheet and a phone reaches "first thread with a
 commitment" in under 20 minutes, measured on a real person who has not seen the
 product.
+
+**Week 3 note (2026-08-03).** The serious find of this week was not on the list.
+Offline capture was assumed to be a shell-caching problem; it was also a data
+problem. A capture made offline while signed in was written to the device, and
+the next successful cloud load returned the server's answer alone — so the note
+disappeared from every surface while sitting in `localStorage` with nothing
+pointing at it and nothing that would ever send it. For a product whose promise
+is that nothing goes silent, that was the worst bug it had. Fixed by making the
+record its own queue entry (`pendingSync`) rather than adding an outbox, which
+would have been a second source of truth able to drift from the records it
+describes.
 
 ### Week 4 (Aug 25–31) · Go live
 

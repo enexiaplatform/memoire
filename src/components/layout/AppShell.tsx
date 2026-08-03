@@ -6,6 +6,7 @@ import { MobileTabBar } from './MobileTabBar';
 import { OnboardingModal } from './OnboardingModal';
 import { DemoModeBanner } from '../demo/DemoModeBanner';
 import { StorageFailureBanner } from '../common/StorageFailureBanner';
+import { OfflineCaptureBanner } from '../common/OfflineCaptureBanner';
 
 export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -36,6 +37,10 @@ export function AppShell() {
         {/* Above the demo banner on purpose: unsaved data outranks every
             other thing this shell has to say. */}
         <StorageFailureBanner />
+        {/* Below the unsaved-data alert and above the demo notice: a waiting
+            capture is real data in a state the operator should know about,
+            but it is safe, and the one above it is not. */}
+        <OfflineCaptureBanner />
         <DemoModeBanner />
         <div className="flex-1">
           <Suspense fallback={<AppContentLoading />}>

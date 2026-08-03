@@ -4020,28 +4020,30 @@ function ActionOutcomeHistory({
   );
 }
 
+/**
+ * Four buttons, two of them identically primary, and two that led away from the
+ * page rather than filling it - "Start First Pipeline Review" on a workspace
+ * with no pipeline to review. An empty state that offers four doors is asking
+ * the new user to make a decision they have no basis for. One primary way in,
+ * one quieter alternative for the person who has nothing to import.
+ */
 function EmptyState({ onAdd, onImport }: { onAdd: () => void; onImport: () => void }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
-      <p className="text-base font-bold text-navy">Import your pipeline or add your first opportunity.</p>
+      <p className="text-base font-bold text-navy">Import the deals you are already working.</p>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
-        Opportunities are the deals you want to track and defend. Add one active deal, then Memoire can help you inspect evidence, risk, next action, and pipeline defense readiness.
+        Opportunities are the deals you want to track and defend. Bring in a CSV from wherever they live now - Memoire
+        shows you what it read before it creates anything - and the evidence, risk and next-action views fill in behind it.
       </p>
       <div className="mt-5 flex flex-wrap justify-center gap-2">
         <button type="button" onClick={onImport} className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
           <Upload className="h-4 w-4" />
           Import CSV
         </button>
-        <button type="button" onClick={onAdd} className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+        <button type="button" onClick={onAdd} className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
           <Plus className="h-4 w-4" />
-          Add Opportunity
+          Add one deal instead
         </button>
-        <Link to="/app/reviews" className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
-          Start First Pipeline Review
-        </Link>
-        <Link to="/app/capture" className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
-          Go to Capture
-        </Link>
       </div>
     </div>
   );

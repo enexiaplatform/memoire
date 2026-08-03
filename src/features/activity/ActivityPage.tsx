@@ -235,6 +235,14 @@ export function ActivityPage() {
     );
   }
 
+  // Nothing has ever been dated in this workspace - not in this period, in any
+  // of them. Everything below computes correctly on an empty set and draws a
+  // wall of zeros, em-dashes and "0% attached", which reads as a verdict on the
+  // operator rather than as an empty room. One sentence and one way in instead.
+  if (allEntries.length === 0) {
+    return <ActivityEmptyState />;
+  }
+
   const activePeriod = periods.find((option) => option.id === period);
   const filtersActive = relationFilter !== 'all' || domainFilter !== 'all' || Boolean(search.trim()) || Boolean(focus);
 
@@ -804,6 +812,31 @@ function GapsPanel({
         </div>
       )}
     </section>
+  );
+}
+
+function ActivityEmptyState() {
+  return (
+    <div className="flex w-full flex-col gap-4 px-4 py-5 sm:px-5 lg:px-6">
+      <header className="flex items-center gap-2">
+        <ActivityIcon className="h-5 w-5 text-brand-blue" />
+        <h1 className="text-2xl font-bold tracking-tight text-navy">Activity</h1>
+      </header>
+      <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center">
+        <p className="text-base font-bold text-navy">Nothing dated yet.</p>
+        <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">
+          This page does not ask you to fill it in - it reads every dated thing you already have and works out who it
+          was for. Capture one thing that happened with a customer and the first row appears here.
+        </p>
+        <Link
+          to="/app/capture?mode=quick"
+          className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
+        >
+          <Plus className="h-4 w-4" />
+          Capture something
+        </Link>
+      </div>
+    </div>
   );
 }
 

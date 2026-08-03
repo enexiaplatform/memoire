@@ -1,7 +1,7 @@
 import { supabaseClient } from '../lib/supabaseClient.ts';
-import type { ClassifiedSalesActivity, SalesActivityType } from '../utils/salesActivityClassifier';
-import { invalidateWorkspaceDataCache } from './workspaceDataCache';
-import { reportWorkspaceSyncError } from './workspaceSyncStatus';
+import type { ClassifiedSalesActivity, SalesActivityType } from '../utils/salesActivityClassifier.ts';
+import { invalidateWorkspaceDataCache } from './workspaceDataCache.ts';
+import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { compareSafeBusinessDate, isBusinessDateInRange, sanitizeBusinessDate } from '../utils/safeDate.ts';
 import {
   buildIngestionSourceTags,
@@ -22,6 +22,16 @@ export interface SalesActivityRecord extends ClassifiedSalesActivity {
   createdAt: string;
   updatedAt: string;
   storageMode: 'local' | 'cloud';
+  /**
+   * Captured while the cloud write could not be made, and still owed to it.
+   *
+   * This flag is the whole offline queue. There is no second list of things to
+   * send, because a second list is a second source of truth: it can hold an
+   * entry for a record that was deleted, or miss one that was written, and the
+   * bug that produces is a capture that never arrives with nothing anywhere
+   * saying so. The record itself is the queue entry.
+   */
+  pendingSync?: boolean;
 }
 
 type SalesActivityRow = {
@@ -69,7 +79,8 @@ export function canUseSalesActivityCloudStore(userId?: string | null) {
 export async function loadSalesActivities(userId?: string | null): Promise<SalesActivityRecord[]> {
   if (canUseSalesActivityCloudStore(userId)) {
     try {
-      return await loadCloudActivities(userId as string);
+      const cloud = await loadCloudActivities(userId as string);
+      return mergePendingIntoCloud(cloud, listPendingSalesActivities());
     } catch (error) {
       reportWorkspaceSyncError();
       debugSalesActivityStore('cloud load failed; falling back to local', { message: getErrorMessage(error) });
@@ -78,6 +89,83 @@ export async function loadSalesActivities(userId?: string | null): Promise<Sales
   }
 
   return loadLocalActivities();
+}
+
+/**
+ * What the workspace shows when the cloud has the account's records and this
+ * device is still holding some of them.
+ *
+ * A capture made with no network lives only here. Returning the cloud answer on
+ * its own - which is what `loadSalesActivities` did until 2026-08-03 - makes
+ * that capture vanish from every surface the moment the connection comes back,
+ * while the record sits in localStorage forever with nothing pointing at it.
+ * For a product whose promise is that nothing goes silent, that is the worst
+ * bug it can have.
+ *
+ * The pending copy wins on a clash of ids: it is the one the operator typed
+ * and has not seen confirmed.
+ */
+export function mergePendingIntoCloud(
+  cloud: SalesActivityRecord[],
+  pending: SalesActivityRecord[],
+): SalesActivityRecord[] {
+  if (pending.length === 0) return cloud;
+  const pendingIds = new Set(pending.map((record) => record.id));
+  return [...pending, ...cloud.filter((record) => !pendingIds.has(record.id))].sort(sortNewestFirst);
+}
+
+/** Everything captured on this device that the cloud has not accepted yet. */
+export function listPendingSalesActivities(): SalesActivityRecord[] {
+  return loadLocalActivities().filter((record) => record.pendingSync);
+}
+
+export const PENDING_SYNC_CHANGED_EVENT = 'memoire:pending-sync-changed';
+
+function announcePendingSync() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(PENDING_SYNC_CHANGED_EVENT, {
+    detail: { pending: listPendingSalesActivities().length },
+  }));
+}
+
+/**
+ * Sends what was captured offline, once there is somewhere to send it.
+ *
+ * Each record is sent on its own and removed from the local copy only after
+ * the cloud has confirmed it. A batch insert would be faster and would lose
+ * everything on one bad row; here a note the server rejects stays on the
+ * device, still visible, still counted as waiting, instead of disappearing
+ * with the rest of the batch.
+ */
+export async function flushPendingSalesActivities(
+  userId?: string | null
+): Promise<{ synced: number; remaining: number; error?: string }> {
+  const pending = listPendingSalesActivities();
+  if (pending.length === 0) return { synced: 0, remaining: 0 };
+  if (!canUseSalesActivityCloudStore(userId)) return { synced: 0, remaining: pending.length };
+
+  let synced = 0;
+  let error: string | undefined;
+
+  for (const record of pending) {
+    try {
+      await createCloudActivity(record, userId as string, {
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
+      });
+      deleteLocalActivity(record.id);
+      synced += 1;
+    } catch (sendError) {
+      error = getErrorMessage(sendError);
+      reportWorkspaceSyncError();
+      debugSalesActivityStore('pending capture could not be sent; it stays on the device', { message: error });
+      break;
+    }
+  }
+
+  if (synced > 0) invalidateWorkspaceDataCache();
+  announcePendingSync();
+  return { synced, remaining: listPendingSalesActivities().length, error };
 }
 
 export function filterSalesActivitiesByPeriod(
@@ -98,14 +186,18 @@ export async function saveSalesActivity(
       return { record, mode: 'cloud' };
     } catch (error) {
       reportWorkspaceSyncError();
-      const record = createLocalActivity(activity);
+      // Owed to the cloud, not merely saved locally. Without the flag this
+      // capture is indistinguishable from one made while signed out, and
+      // nothing would ever send it.
+      const record = { ...createLocalActivity(activity), pendingSync: true };
       saveLocalActivityRecord(record);
       invalidateWorkspaceDataCache();
+      announcePendingSync();
       debugSalesActivityStore('cloud save failed; local copy preserved', { message: getErrorMessage(error) });
       return {
         record,
         mode: 'local',
-        warning: 'Cloud sync issue - your local copy is preserved.',
+        warning: 'Saved on this device. Memoire will send it when the connection is back.',
       };
     }
   }
@@ -269,6 +361,7 @@ function loadLocalActivities(): SalesActivityRecord[] {
         createdAt: item.createdAt || new Date().toISOString(),
         updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
         storageMode: 'local',
+        pendingSync: item.pendingSync === true,
       });
       })
       .sort(sortNewestFirst);
@@ -302,10 +395,14 @@ async function loadCloudActivities(userId: string): Promise<SalesActivityRecord[
   return ((data || []) as SalesActivityRow[]).map(rowToRecord);
 }
 
-async function createCloudActivity(activity: ClassifiedSalesActivity, userId: string) {
+async function createCloudActivity(
+  activity: ClassifiedSalesActivity,
+  userId: string,
+  timestamps?: { createdAt: string; updatedAt: string },
+) {
   const { data, error } = await supabaseClient!
     .from(TABLE_NAME)
-    .insert(activityToInsert(activity, userId))
+    .insert(activityToInsert(activity, userId, timestamps))
     .select('*')
     .single();
 
@@ -373,7 +470,14 @@ function rowToRecord(row: SalesActivityRow): SalesActivityRecord {
   };
 }
 
-function activityToInsert(activity: ClassifiedSalesActivity, userId: string) {
+function activityToInsert(
+  activity: ClassifiedSalesActivity,
+  userId: string,
+  // A capture that waited three days offline was made three days ago. Stamping
+  // it with the moment it finally sent would put it at the top of the activity
+  // log under today's date and quietly rewrite when the customer was seen.
+  timestamps?: { createdAt: string; updatedAt: string },
+) {
   const timestamp = new Date().toISOString();
   return {
     user_id: userId,
@@ -398,8 +502,8 @@ function activityToInsert(activity: ClassifiedSalesActivity, userId: string) {
     linked_opportunity_name: null,
     linked_account_name: null,
     link_status: 'Unlinked',
-    created_at: timestamp,
-    updated_at: timestamp,
+    created_at: timestamps?.createdAt || timestamp,
+    updated_at: timestamps?.updatedAt || timestamp,
   };
 }
 
