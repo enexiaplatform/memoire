@@ -3,7 +3,7 @@ import {
   loadCloudJsonCollection,
   mergeCloudJsonRecords,
   syncCloudJsonCollectionForCurrentUser,
-  upsertCloudJsonCollection,
+  sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
@@ -91,7 +91,7 @@ export async function loadNudgesForUser(userId: string) {
       .map(sanitizeNudge)
       .filter((item): item is NudgeRecord => Boolean(item));
     persistNudges(merged, userId, false);
-    await upsertCloudJsonCollection('nudges', userId, merged);
+    sendOwedCloudJsonRecords('nudges', userId, merged, cloud);
     return merged;
   } catch {
     return local;

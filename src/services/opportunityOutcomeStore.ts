@@ -11,7 +11,7 @@ import {
   loadCloudJsonCollection,
   mergeCloudJsonRecords,
   syncCloudJsonCollectionForCurrentUser,
-  upsertCloudJsonCollection,
+  sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore.ts';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache.ts';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
@@ -125,7 +125,7 @@ export async function loadOpportunityOutcomesForUser(userId: string) {
     .map(sanitizeOpportunityOutcome)
     .filter((record): record is OpportunityOutcomeRecord => Boolean(record));
   persistOpportunityOutcomes(merged, false);
-  await upsertCloudJsonCollection('opportunity_outcomes', userId, merged);
+  sendOwedCloudJsonRecords('opportunity_outcomes', userId, merged, cloud);
   return merged;
 }
 

@@ -7,10 +7,17 @@ import { OnboardingModal } from './OnboardingModal';
 import { DemoModeBanner } from '../demo/DemoModeBanner';
 import { StorageFailureBanner } from '../common/StorageFailureBanner';
 import { OfflineCaptureBanner } from '../common/OfflineCaptureBanner';
+import { prefetchPrimaryAppRoutes } from '../../utils/routePrefetch';
 
 export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { pathname } = useLocation();
+
+  // Warm every nav destination's chunk once the first screen has settled, so a
+  // tab switch renders from memory instead of downloading a page first.
+  useEffect(() => {
+    prefetchPrimaryAppRoutes();
+  }, []);
 
   // Reset scroll on navigation. Without this a new page opened mid-content
   // (e.g. jumping from a long Opportunities list to Accounts) - it looked like

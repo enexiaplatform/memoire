@@ -10,7 +10,7 @@ import {
   loadCloudJsonCollection,
   mergeCloudJsonRecords,
   syncCloudJsonCollectionForCurrentUser,
-  upsertCloudJsonCollection,
+  sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import { writeLocalRecords } from './localWriteGuard.ts';
@@ -48,7 +48,7 @@ export async function loadSupplierCommitmentsForWorkspace(userId?: string | null
       .map(sanitizeSupplierCommitment)
       .filter((record): record is SupplierCommitmentRecord => Boolean(record));
     persistSupplierCommitments(merged, false);
-    await upsertCloudJsonCollection('supplier_commitments', userId, merged);
+    sendOwedCloudJsonRecords('supplier_commitments', userId, merged, cloud);
     return merged;
   } catch {
     return loadSupplierCommitments();

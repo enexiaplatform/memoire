@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Grid3x3 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { hasLocalSampleData } from '../../utils/dataMode';
-import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import type { AccountMergeRecord } from '../../services/accountMergeStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import { buildAccountAliasIndex } from '../../utils/accountAliases';
@@ -40,10 +40,15 @@ const stateStyles: Record<CoverageCellState, string> = {
 
 export function BusinessVaultPage() {
   const { user } = useAuthContext();
-  const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[] | null>(null);
-  const [accountMerges, setAccountMerges] = useState<AccountMergeRecord[]>([]);
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
+  // `null` is this page's "still loading" state, so seeding it from the cache
+  // is what stops the grid appearing empty on every arrival.
+  const cachedWorkspace = getCachedSalesWorkspaceData(dataUserId);
+  const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[] | null>(
+    cachedWorkspace?.opportunities || null,
+  );
+  const [accountMerges, setAccountMerges] = useState<AccountMergeRecord[]>(cachedWorkspace?.accountMerges || []);
 
   useEffect(() => {
     let cancelled = false;
