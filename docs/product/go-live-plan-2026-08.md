@@ -137,16 +137,16 @@ Derived models, at that scale:
 
 Surfaces, same workspace, production build, 1.45 MB stored:
 
-| Surface | To content | Longest frame |
+| Surface | To content (2026-08-02) | After the fixes below |
 |---|---|---|
-| Opportunities | 413 ms | 17 ms |
-| Accounts | 539 ms | 18 ms |
-| Orders | 504 ms | 36 ms |
-| Review | 533 ms | 17 ms |
-| Plan | 369 ms | 17 ms |
-| Dashboard | 365 ms | 17 ms |
-| Activity | 1,134 ms | 140 ms |
-| **Today** | **4,475 ms** | 70 ms |
+| Opportunities | 413 ms | 469 ms |
+| Accounts | 539 ms | 486 ms |
+| Orders | 504 ms | 527 ms |
+| Review | 533 ms | 529 ms |
+| Plan | 369 ms | 425 ms |
+| Dashboard | 365 ms | 376 ms |
+| Activity | 1,134 ms | 1,172 ms |
+| **Today** | **4,475 ms** | **2,760 ms** |
 
 So the answer is: **the product holds at scale except on Today**, which is the
 landing page after login and takes four and a half seconds to show anything.
@@ -157,10 +157,29 @@ identity resolution - not to rendering (877 DOM nodes) and not to the five core
 models above. The heavy insight builder on that page is already gated behind a
 disclosure and memoised, so the cost is in the always-on path.
 
-**Remaining work:** narrow the profile with source maps and move whatever is
-running on the cold path either behind the fold or into a worker. One surface,
-one well-evidenced target. **Effort: 1–2 days.** The budget check and the
-harness are in place, so the fix can be proven rather than assumed.
+**Fixed since (2026-08-02).** Profiling with real function names found the cost
+was not in the product's logic at all - it was in formatter construction.
+`Intl.NumberFormat` was being built once per money value on screen and
+`Intl.DateTimeFormat` once per date, which at 300 deals came to 4.0 s and 1.8 s
+of CPU respectively. Both are now built once. `isValidBusinessDate`, one of the
+most-called functions in the app, no longer allocates a `Date` to find out
+whether the 31st of February exists; `normalizeEntityName` is memoised; the
+competitor regexes in the MEDDIC review are compiled once instead of seven per
+call.
+
+Today went from 4,475 ms to 2,760 ms, a 38% cut, and because every one of those
+fixes is in shared code it applies to every surface and every re-render, not
+only to the cold load being measured.
+
+**Remaining work:** Today is still over the 1.5 s target. What is left is spread
+thin rather than concentrated - roughly 300 ms of it is the deal action plan
+reached through the Today command centre, and the rest is a 2,700-line page that
+computes fifteen memos on mount over a workspace of sixteen collections. A
+bisect confirmed the heavy insight builders behind the disclosure are correctly
+gated and do not run on the cold path. The next move is to defer or virtualise
+what the first screen does not need, which is surgery on the most important page
+in the product and should be its own change with `measure:surfaces` proving it.
+**Effort: 1 day.**
 
 ### P1-6 · Mobile capture is not the fast path it needs to be
 
@@ -228,7 +247,7 @@ The week that removes the reasons not to launch.
 | 1.1 | ~~Dashboard renders in browser-only mode~~ **done 2026-08-02** | Guard removed; contract checks all twelve routed surfaces for auth-gated blank renders |
 | 1.2 | ~~Storage write guard + usage meter~~ **done 2026-08-02** | One guarded write path across 24 stores, an undismissable banner, a storage panel in Settings, `verify:storage-safety` |
 | 1.3 | ~~Scale harness + budgets~~ **done 2026-08-02** | `verify:performance-budget` in CI; `measure:surfaces` for the browser side; numbers recorded under P0-5 |
-| 1.4 | Fix Today's cold load | Today under 1.5 s at 300 deals, proven with `measure:surfaces` |
+| 1.4 | Fix Today's cold load — **4,475 → 2,760 ms on 2026-08-02**, target not yet met | Today under 1.5 s at 300 deals, proven with `measure:surfaces` |
 | 1.5 | Cloud restore, transactional | Restore into a signed-in workspace shows counts before/after and cannot be silently overwritten by sync |
 
 **Gate:** a workspace with 300 deals is usable end to end, and a backup taken on

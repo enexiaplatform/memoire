@@ -419,11 +419,19 @@ function hasStrongSignal(value: string) {
   return /confirmed|approved|budget|po|procurement owner|decision maker|timeline|completed|requested|technical evaluation|validation/i.test(value);
 }
 
+/**
+ * Compiled once. The list is fixed, so building seven regexes per call only
+ * ever produced the same seven - and this runs for every opportunity on Today,
+ * which made it visible in a profile at 300 deals.
+ */
+const KNOWN_COMPETITORS: { name: string; pattern: RegExp }[] = [
+  'Incumbent Vendor', 'Competing platform', '3M', 'Thermo Fisher', 'Merck', 'Sartorius',
+].map((name) => ({ name, pattern: new RegExp(`\\b${escapeRegExp(name)}\\b`, 'i') }));
+
 function extractCompetitorMentions(value: string) {
   const competitors = new Set<string>();
-  const known = ['Incumbent Vendor', 'Competing platform', 'Competing platform', '3M', 'Thermo Fisher', 'Merck', 'Sartorius'];
-  known.forEach((competitor) => {
-    if (new RegExp(`\\b${escapeRegExp(competitor)}\\b`, 'i').test(value)) competitors.add(competitor === 'Competing platform' ? 'Competing platform' : competitor);
+  KNOWN_COMPETITORS.forEach(({ name, pattern }) => {
+    if (pattern.test(value)) competitors.add(name);
   });
   const genericMatch = value.match(/competitor\s+([A-Z][A-Za-z0-9-]+)/i);
   if (genericMatch?.[1]) competitors.add(genericMatch[1]);
