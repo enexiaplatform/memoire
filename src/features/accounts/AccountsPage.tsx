@@ -1190,7 +1190,7 @@ function SortableHeader({
   const active = sortKey === activeKey;
   return (
     <th className="border-b border-gray-200 px-3 py-3">
-      <button type="button" onClick={() => onSort(sortKey)} className="inline-flex items-center gap-1 hover:text-navy">
+      <button type="button" onClick={() => onSort(sortKey)} className="inline-flex min-h-[24px] items-center gap-1 hover:text-navy">
         {label}
         <ArrowUpDown className={`h-3.5 w-3.5 ${active ? 'text-brand-blue' : 'text-gray-300'}`} />
         <span className="sr-only">{active ? `Sorted ${direction}` : 'Not sorted'}</span>

@@ -103,6 +103,8 @@
     "verify:activity-ledger": "node scripts/verify-activity-ledger.mjs",
     "verify:storage-safety": "node scripts/verify-storage-safety.mjs",
     "verify:performance-budget": "node scripts/verify-performance-budget.mjs",
+    "preflight:production": "node scripts/preflight-production.mjs",
+    "measure:mobile": "node scripts/measure-mobile-accessibility.mjs",
     "measure:surfaces": "node scripts/measure-surface-render.mjs",
     "verify:digest-delivery": "node scripts/verify-digest-delivery.mjs"
   },

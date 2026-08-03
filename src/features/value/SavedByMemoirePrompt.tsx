@@ -70,7 +70,7 @@ export function SavedByMemoirePrompt({ recommendation }: { recommendation: Recom
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-[11px] font-semibold text-gray-400 hover:text-brand-blue"
+        className="min-h-[24px] text-[11px] font-semibold text-gray-400 hover:text-brand-blue"
       >
         Did this help?
       </button>

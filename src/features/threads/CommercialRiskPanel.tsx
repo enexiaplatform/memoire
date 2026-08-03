@@ -91,7 +91,7 @@ export function CommercialRiskPanel({
               <button
                 type="button"
                 onClick={() => setExplaining(explaining === item.id ? '' : item.id)}
-                className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-gray-800"
+                className="inline-flex min-h-[24px] items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-gray-800"
               >
                 <Info className="h-3 w-3" />
                 Why am I seeing this?

@@ -1210,14 +1210,17 @@ function ProactiveNudgesPanel({
                 <button type="button" onClick={() => onMarkDone(nudge)} className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white">
                   Mark done
                 </button>
-                <span className="flex items-center gap-3 text-xs font-semibold text-gray-500">
-                  <button type="button" onClick={() => onDismiss(nudge)} className="underline-offset-2 hover:text-gray-800 hover:underline">
+                {/* py-1 is the whole fix: these read as quiet text links and
+                    were 16px tall, which is a miss on a thumb. They keep the
+                    quiet look and become a 24px target, the WCAG 2.5.8 floor. */}
+                <span className="flex items-center gap-x-3 gap-y-1 text-xs font-semibold text-gray-500">
+                  <button type="button" onClick={() => onDismiss(nudge)} className="py-1 underline-offset-2 hover:text-gray-800 hover:underline">
                     Dismiss
                   </button>
-                  <button type="button" onClick={() => onSnoozeTomorrow(nudge)} className="underline-offset-2 hover:text-indigo-700 hover:underline">
+                  <button type="button" onClick={() => onSnoozeTomorrow(nudge)} className="py-1 underline-offset-2 hover:text-indigo-700 hover:underline">
                     Snooze tomorrow
                   </button>
-                  <button type="button" onClick={() => onSnoozeNextWeek(nudge)} className="underline-offset-2 hover:text-indigo-700 hover:underline">
+                  <button type="button" onClick={() => onSnoozeNextWeek(nudge)} className="py-1 underline-offset-2 hover:text-indigo-700 hover:underline">
                     Snooze next week
                   </button>
                 </span>
@@ -1358,7 +1361,7 @@ function FirstWeekPathStrip({ path, onDismiss }: { path: FirstWeekPath; onDismis
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Your first week</p>
           <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-brand-blue ring-1 ring-blue-100">{path.done}/{path.total} done</span>
         </div>
-        <button type="button" onClick={onDismiss} className="self-start text-xs font-semibold text-gray-400 underline-offset-2 hover:underline sm:self-auto">
+        <button type="button" onClick={onDismiss} className="min-h-[24px] self-start text-xs font-semibold text-gray-400 underline-offset-2 hover:underline sm:self-auto">
           Dismiss
         </button>
       </div>

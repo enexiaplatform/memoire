@@ -2446,7 +2446,11 @@ function OpportunityMasterTable({
                       onClick={(event) => event.stopPropagation()}
                       onChange={() => onToggleSelection(opportunity.id)}
                       aria-label={`Select ${opportunity.accountName} / ${opportunity.opportunityName}`}
-                      className="h-4 w-4 accent-brand-blue"
+                      // 24px, the WCAG 2.5.8 floor. Padding does not work on a
+                      // checkbox - browsers ignore it on the replaced box - so
+                      // the control itself is the size of the target. The
+                      // sticky column is 40px, which fits it with its padding.
+                      className="h-6 w-6 accent-brand-blue"
                     />
                   </td>
                   <td className={`sticky left-10 z-10 border-r border-gray-100 px-3 py-2 group-hover:bg-blue-50 ${selected ? 'bg-blue-50' : 'bg-white'}`}>
@@ -2618,7 +2622,7 @@ function OpportunitySortableHeader({
   const active = sortKey === activeKey;
   return (
     <th className={`border-b border-gray-200 px-3 py-3 ${className}`}>
-      <button type="button" onClick={() => onSort(sortKey)} className="inline-flex items-center gap-1 hover:text-navy">
+      <button type="button" onClick={() => onSort(sortKey)} className="inline-flex min-h-[24px] items-center gap-1 hover:text-navy">
         {label}
         <ArrowUpDown className={`h-3.5 w-3.5 ${active ? 'text-brand-blue' : 'text-gray-300'}`} />
         <span className="sr-only">{active ? `Sorted ${direction}` : 'Not sorted'}</span>

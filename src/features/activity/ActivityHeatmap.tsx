@@ -67,7 +67,11 @@ export function ActivityHeatmap({
                   onClick={() => onSelectDay?.(selected ? '' : date)}
                   title={`${formatSafeBusinessDate(date)} · ${count} ${count === 1 ? 'item' : 'items'}`}
                   aria-label={`${formatSafeBusinessDate(date)}, ${count} items`}
-                  className={`h-4 w-4 rounded-sm transition ${selected ? 'ring-2 ring-navy ring-offset-1' : ''} ${
+                  // A year of weeks only fits at 16px, so the square stays 16px
+                  // and the thumb gets 24px: `after:-inset-1` is an invisible
+                  // hit area around it. Inflating the square instead would cost
+                  // the density that makes the pattern readable at all.
+                  className={`relative h-4 w-4 rounded-sm transition after:absolute after:-inset-1 after:content-[''] ${selected ? 'ring-2 ring-navy ring-offset-1' : ''} ${
                     count === 0 ? 'bg-gray-100 hover:bg-gray-200' : 'hover:opacity-80'
                   }`}
                   style={count === 0 ? undefined : { backgroundColor: shade(count, max) }}

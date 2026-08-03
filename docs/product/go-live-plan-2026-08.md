@@ -335,11 +335,11 @@ describes.
 
 | # | Work | Done when |
 |---|------|-----------|
-| 4.1 | Domain cutover | `founder-launch-runbook.md` steps 1–5 executed; `app_url_matches_request_host: true`; real signup, verification and password reset on the live host |
-| 4.2 | Telemetry live | `client-log` entries and `product_events` rows confirmed in production |
-| 4.3 | Founder-data QA | The real 122-deal import walked end to end on production, including a real capture, a real commitment and a real weekly review |
-| 4.4 | Mobile + accessibility pass | All eleven destinations at 390 px; keyboard path through capture and Today; contrast check |
-| 4.5 | Launch operations | Support runbook, incident path, rollback rehearsed once |
+| 4.1 | Domain cutover — **founder, needs production access** | `founder-launch-runbook.md` steps 1–5 executed; `app_url_matches_request_host: true`; real signup, verification and password reset on the live host. `npm run preflight:production` now checks every part of this that can be checked from outside, and names the four that cannot |
+| 4.2 | Telemetry live — **founder, needs production access** | `client-log` entries and `product_events` rows confirmed in production |
+| 4.3 | Founder-data QA — **founder, needs the real workspace** | The real 122-deal import walked end to end on production, including a real capture, a real commitment and a real weekly review |
+| 4.4 | ~~Mobile + accessibility pass~~ **done 2026-08-03** | All twelve destinations at 390 px: no sideways scroll, no unnamed control, every tap target at the WCAG 2.5.8 24 px floor, main landmark and heading everywhere; keyboard path through capture and Today reaches the primary control and the skip link (`npm run measure:mobile`) |
+| 4.5 | ~~Launch operations~~ **done 2026-08-03** | `docs/deployment/launch-operations.md`: the four failure modes in cost order, the rollback (and what it does not undo), and the four signals to watch in the first fortnight |
 | 4.6 | Metrics review | Activation and retention queries run against the first cohort |
 
 **Gate:** the founder's own week runs entirely on production, with email arriving

@@ -719,13 +719,21 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
                     editable && !isEditing ? 'cursor-grab active:cursor-grabbing' : ''
                   } ${dragItem?.id === item.id ? 'opacity-40' : ''}`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={item.done}
-                    onChange={() => toggleItem(item)}
-                    aria-label={`Mark "${item.label}" ${item.done ? 'not done' : 'done'}`}
-                    className="mt-[3px] h-3.5 w-3.5 shrink-0"
-                  />
+                  {/* A label, not a bare checkbox: padding is ignored on a
+                      checkbox's own box, so the way to give a 14px control a
+                      24px target is to make the label the target. It is also
+                      the right markup - tapping anywhere in it toggles the
+                      item - and the negative margin keeps the day column as
+                      tight as it was. */}
+                  <label className="-my-[5px] -ml-[5px] flex shrink-0 cursor-pointer items-start p-[5px]">
+                    <input
+                      type="checkbox"
+                      checked={item.done}
+                      onChange={() => toggleItem(item)}
+                      aria-label={`Mark "${item.label}" ${item.done ? 'not done' : 'done'}`}
+                      className="mt-[3px] h-3.5 w-3.5"
+                    />
+                  </label>
                   <div className="min-w-0 flex-1">
                     {isEditing ? (
                       <input
@@ -785,7 +793,7 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
                       type="button"
                       aria-label={`Edit ${item.label}`}
                       onClick={() => startEdit(item)}
-                      className="shrink-0 rounded p-0.5 text-gray-300 opacity-0 transition hover:bg-gray-200 hover:text-gray-700 group-hover:opacity-100"
+                      className="relative shrink-0 rounded p-0.5 text-gray-300 opacity-0 transition after:absolute after:-inset-1.5 after:content-[''] hover:bg-gray-200 hover:text-gray-700 group-hover:opacity-100"
                     >
                       <Pencil className="h-3 w-3" />
                     </button>
