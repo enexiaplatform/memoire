@@ -27,6 +27,7 @@ import {
   getCachedWorkspaceValue,
   getWorkspaceDataGeneration,
   invalidateWorkspaceDataCache,
+  isCachedWorkspaceValueStale,
   setCachedWorkspacePromise,
   setCachedWorkspaceValue,
 } from './workspaceDataCache';
@@ -84,7 +85,13 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
   const cacheKey = `sales-workspace:${userId || 'local'}`;
   if (!options.force) {
     const cached = getCachedWorkspaceValue<SalesWorkspaceData>(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      // Serve from memory now, and if the entry has aged past the freshness
+      // window, refresh it behind the screen so the next reader gets the newer
+      // copy without anyone having waited for it.
+      if (userId && isCachedWorkspaceValueStale(cacheKey)) revalidateInBackground(userId);
+      return cached;
+    }
 
     const pending = getCachedWorkspacePromise<SalesWorkspaceData>(cacheKey);
     if (pending) return pending;
@@ -205,6 +212,29 @@ function withLocalFallback(
       },
     );
   });
+}
+
+/**
+ * Refreshes an aged cache entry without anyone waiting on it.
+ *
+ * `inFlightRevalidation` is not an optimisation either: without it, every
+ * surface that reads a stale entry - and a single visit to Today reads it from
+ * four places - would start its own refresh, which is the fan-out this whole
+ * cache exists to prevent.
+ */
+const inFlightRevalidation = new Set<string>();
+
+function revalidateInBackground(userId: string) {
+  if (inFlightRevalidation.has(userId)) return;
+  inFlightRevalidation.add(userId);
+  void loadSalesWorkspaceData(userId, { force: true })
+    .catch(() => {
+      // The served copy stands. A failed refresh is already reported through
+      // the sync status by the load itself.
+    })
+    .finally(() => {
+      inFlightRevalidation.delete(userId);
+    });
 }
 
 export function getCachedSalesWorkspaceData(userId?: string | null) {

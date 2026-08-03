@@ -5,7 +5,7 @@ import {
   loadCloudJsonCollection,
   mergeCloudJsonRecords,
   syncCloudJsonCollectionForCurrentUser,
-  upsertCloudJsonCollection,
+  sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import { writeLocalRecords } from './localWriteGuard.ts';
@@ -44,7 +44,7 @@ export async function loadPlanItemsForUser(userId: string) {
     .map(sanitizePlanRecord)
     .filter((record): record is PlanRecord => Boolean(record));
   persistPlanItems(merged, false);
-  await upsertCloudJsonCollection('plan_items', userId, merged);
+  sendOwedCloudJsonRecords('plan_items', userId, merged, cloud);
   return merged;
 }
 

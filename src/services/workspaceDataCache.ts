@@ -1,7 +1,27 @@
-const WORKSPACE_CACHE_TTL_MS = 120_000;
+/**
+ * How long a cached workspace may still be served at all.
+ *
+ * Every write in the app invalidates this cache, so a stale entry can only come
+ * from another device or another tab - not from anything the seller just did
+ * here. Ten minutes is the outer bound on that; `WORKSPACE_REVALIDATE_AFTER_MS`
+ * below is what actually keeps it fresh, and it is a minute.
+ */
+const WORKSPACE_CACHE_TTL_MS = 600_000;
+
+/**
+ * How old a cached workspace may get before the next reader also triggers a
+ * background refresh.
+ *
+ * The entry is still served immediately - the seller gets their screen painted
+ * from memory - and the refresh lands in the cache for whoever reads next. This
+ * is the difference between a tab switch that waits on sixteen tables and one
+ * that does not.
+ */
+const WORKSPACE_REVALIDATE_AFTER_MS = 60_000;
 
 type ValueEntry<T> = {
   expiresAt: number;
+  staleAt: number;
   value: T;
   generation: number;
 };
@@ -38,6 +58,13 @@ export function getCachedWorkspaceValue<T>(key: string): T | null {
   return entry.value;
 }
 
+/** Whether a served entry is old enough that the reader should also refresh it. */
+export function isCachedWorkspaceValueStale(key: string): boolean {
+  const entry = values.get(key);
+  if (!entry) return false;
+  return Date.now() > entry.staleAt;
+}
+
 export function getCachedWorkspacePromise<T>(key: string): Promise<T> | null {
   const entry = pending.get(key) as PendingEntry<T> | undefined;
   if (!entry || entry.generation !== generation) return null;
@@ -57,8 +84,10 @@ export function setCachedWorkspaceValue<T>(key: string, value: T, generationAtLo
   // A value merged from data that has since changed would be served to the next
   // surface as if it were current. Drop it instead - the next reader reloads.
   if (generationAtLoadStart !== generation) return;
+  const now = Date.now();
   values.set(key, {
-    expiresAt: Date.now() + WORKSPACE_CACHE_TTL_MS,
+    expiresAt: now + WORKSPACE_CACHE_TTL_MS,
+    staleAt: now + WORKSPACE_REVALIDATE_AFTER_MS,
     value,
     generation,
   });

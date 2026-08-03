@@ -176,8 +176,48 @@ export async function loadMergedForUser<T extends KernelRecord>(
 
   const result = Array.from(merged.values()).sort(codec.compare);
   writeLocal(codec, result);
-  await upsertCloudRecords(codec, userId, result);
+  sendOwedCloudRecords(codec, userId, result, cloud);
   return result;
+}
+
+/**
+ * Sends only the records the cloud does not already have.
+ *
+ * The merged read used to end with an awaited upsert of the whole collection.
+ * That is a second round trip on the read path, and in the steady state it
+ * writes back exactly what it just read. The merge above already decided which
+ * copy wins per id, so a record is owed to the cloud only when it beat an older
+ * cloud copy or the cloud had none - normally an empty set, and then no request
+ * is made.
+ *
+ * It does not block the read: the answer is `result` either way, and a failed
+ * push leaves the record in the browser for the next read to offer again.
+ */
+export function sendOwedCloudRecords<T extends KernelRecord>(
+  codec: KernelCodec<T>,
+  userId: string,
+  merged: T[],
+  cloud: T[],
+) {
+  const owed = selectOwedCloudRecords(merged, cloud);
+  if (owed.length === 0) return;
+
+  void upsertCloudRecords(codec, userId, owed).catch((error) => {
+    reportWorkspaceSyncError();
+    reportKernelSyncFailure(codec.table, 'upsert', error);
+  });
+}
+
+/**
+ * Which of the merged records the cloud is still missing. Split out from the
+ * send so the decision can be tested without a network.
+ */
+export function selectOwedCloudRecords<T extends KernelRecord>(merged: T[], cloud: T[]): T[] {
+  const cloudUpdatedAt = new Map(cloud.map((record) => [record.id, updatedAt(record)]));
+  return merged.filter((record) => {
+    const seen = cloudUpdatedAt.get(record.id);
+    return seen === undefined || updatedAt(record) > seen;
+  });
 }
 
 /**

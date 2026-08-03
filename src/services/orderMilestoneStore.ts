@@ -9,7 +9,7 @@ import {
   loadCloudJsonCollection,
   mergeCloudJsonRecords,
   syncCloudJsonCollectionForCurrentUser,
-  upsertCloudJsonCollection,
+  sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import { writeLocalRecords } from './localWriteGuard.ts';
@@ -47,7 +47,7 @@ export async function loadOrderMilestonesForWorkspace(userId?: string | null, sa
       .map(sanitizeOrderMilestoneRecord)
       .filter((record): record is OrderMilestoneRecord => Boolean(record));
     persistOrderMilestones(merged, false);
-    await upsertCloudJsonCollection('order_milestones', userId, merged);
+    sendOwedCloudJsonRecords('order_milestones', userId, merged, cloud);
     return merged;
   } catch {
     return loadOrderMilestones();

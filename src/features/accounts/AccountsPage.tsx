@@ -25,7 +25,7 @@ import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
 import { getQuoteCommercialStage, getQuoteRisk, quoteRiskTone, type QuoteRecord } from '../../services/quoteStore';
 import { type OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore';
-import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { buildPostWonCustomers } from '../../utils/postWonCustomers';
 import {
   buildAccountMemory,
@@ -107,14 +107,20 @@ const quickFilterOptions: Array<{ value: QuickFilter; label: string }> = [
 export function AccountsPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
-  const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
-  const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
-  const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
-  const [objections, setObjections] = useState<ObjectionRecord[]>([]);
-  const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
-  const [opportunityOutcomes, setOpportunityOutcomes] = useState<OpportunityOutcomeRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Paint from the workspace already in memory. The refresh below still runs;
+  // without this the page went blank on every arrival even though every record
+  // it needs was sitting in the cache the previous surface had just filled.
+  const cachedWorkspace = getCachedSalesWorkspaceData(hasLocalSampleData() ? undefined : user?.id);
+  const [accounts, setAccounts] = useState<AccountMemoryRecord[]>(cachedWorkspace?.accounts || []);
+  const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>(cachedWorkspace?.opportunities || []);
+  const [activities, setActivities] = useState<SalesActivityRecord[]>(cachedWorkspace?.activities || []);
+  const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>(cachedWorkspace?.stakeholders || []);
+  const [objections, setObjections] = useState<ObjectionRecord[]>(cachedWorkspace?.objections || []);
+  const [quotes, setQuotes] = useState<QuoteRecord[]>(cachedWorkspace?.quotes || []);
+  const [opportunityOutcomes, setOpportunityOutcomes] = useState<OpportunityOutcomeRecord[]>(
+    cachedWorkspace?.opportunityOutcomes || [],
+  );
+  const [loading, setLoading] = useState(!cachedWorkspace);
   const [refreshing, setRefreshing] = useState(false);
   const [lastLoadedAt, setLastLoadedAt] = useState('');
   const [loadError, setLoadError] = useState('');

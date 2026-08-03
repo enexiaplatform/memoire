@@ -4,7 +4,7 @@ import {
   loadCloudJsonCollection,
   mergeCloudJsonRecords,
   syncCloudJsonCollectionForCurrentUser,
-  upsertCloudJsonCollection,
+  sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import {
@@ -128,7 +128,7 @@ export async function loadQuotesForUser(userId: string) {
       .map(sanitizeQuote)
       .filter((quote): quote is QuoteRecord => Boolean(quote));
     persistQuotes(merged, false);
-    await upsertCloudJsonCollection('quotes', userId, merged);
+    sendOwedCloudJsonRecords('quotes', userId, merged, cloud);
     return merged;
   } catch {
     return local;

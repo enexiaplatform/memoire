@@ -16,7 +16,7 @@ import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore';
 import type { QuoteRecord } from '../../services/quoteStore';
 import type { SalesActivityRecord } from '../../services/salesActivityStore';
-import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData, type SalesWorkspaceData } from '../../services/workspaceData';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { formatBaseCurrencyAmount as formatBaseMoney, formatCurrencyAmount as formatMoney } from '../../utils/money';
 import { buildRevenueView, type RevenueActionItem, type RevenueRiskKind } from '../../utils/revenueView';
@@ -45,13 +45,33 @@ type RevenueData = {
   accountMerges: AccountMergeRecord[];
 };
 
+const emptyRevenueData: RevenueData = {
+  opportunities: [], quotes: [], activities: [], opportunityOutcomes: [], accountMerges: [],
+};
+
+function revenueDataFrom(workspace: SalesWorkspaceData | null): RevenueData | null {
+  if (!workspace) return null;
+  return {
+    opportunities: workspace.opportunities,
+    quotes: workspace.quotes,
+    activities: workspace.activities,
+    opportunityOutcomes: workspace.opportunityOutcomes,
+    accountMerges: workspace.accountMerges,
+  };
+}
+
 export function RevenueViewPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
-  const [data, setData] = useState<RevenueData>({
-    opportunities: [], quotes: [], activities: [], opportunityOutcomes: [], accountMerges: [],
-  });
+  // Paint from the workspace already in memory rather than flashing a skeleton
+  // on every arrival. Money is the surface sellers bounce in and out of most,
+  // and the load below still runs - it just no longer holds the screen blank
+  // while it does.
+  const initialRevenueData = revenueDataFrom(
+    getCachedSalesWorkspaceData(hasLocalSampleData() ? undefined : user?.id),
+  );
+  const [data, setData] = useState<RevenueData>(initialRevenueData || emptyRevenueData);
   const [expenses, setExpenses] = useState<ExpenseRecord[]>(() => loadExpenses());
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialRevenueData);
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
   const sampleDataActive = hasLocalSampleData();
@@ -63,16 +83,12 @@ export function RevenueViewPage() {
 
   const loadRevenue = async (force = false) => {
     if (force) setSyncing(true);
-    setLoading(!force);
+    // A cache hit has already painted the page. Raising the skeleton again for
+    // the load that confirms it is the flicker this page was showing.
+    setLoading(!force && !getCachedSalesWorkspaceData(dataUserId));
     try {
       const workspace = await loadSalesWorkspaceData(dataUserId, { force });
-      setData({
-        opportunities: workspace.opportunities,
-        quotes: workspace.quotes,
-        activities: workspace.activities,
-        opportunityOutcomes: workspace.opportunityOutcomes,
-        accountMerges: workspace.accountMerges,
-      });
+      setData(revenueDataFrom(workspace) || emptyRevenueData);
     } finally {
       setLoading(false);
       setSyncing(false);

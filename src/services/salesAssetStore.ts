@@ -5,7 +5,7 @@ import {
   loadCloudJsonCollection,
   mergeCloudJsonRecords,
   syncCloudJsonCollectionForCurrentUser,
-  upsertCloudJsonCollection,
+  sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore';
 import { writeLocalRecords } from './localWriteGuard.ts';
 
@@ -101,7 +101,7 @@ export async function loadSalesAssetsForUser(userId: string) {
     .map(sanitizeAsset)
     .filter((asset): asset is SalesAssetRecord => Boolean(asset));
   persistSalesAssets(merged, false);
-  await upsertCloudJsonCollection('sales_assets', userId, merged);
+  sendOwedCloudJsonRecords('sales_assets', userId, merged, cloud);
   return merged;
 }
 

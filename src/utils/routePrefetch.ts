@@ -12,6 +12,11 @@ const routePrefetchers: Record<string, () => Promise<unknown>> = {
   '/app/settings': () => import('../features/settings/SettingsPage'),
   '/app/quotes': () => import('../features/quotes/QuotesPage'),
   '/app/pipeline-defense': () => import('../features/pipeline/PipelineReviewDefenseBriefPage'),
+  // These three are in the nav rail but were missing here, so hovering them
+  // prefetched nothing and the click paid for the chunk.
+  '/app/business': () => import('../features/business/BusinessLensPage'),
+  '/app/activity': () => import('../features/activity/ActivityPage'),
+  '/app/vault': () => import('../features/vault/BusinessVaultPage'),
 };
 
 const prefetchedRoutes = new Set<string>();
@@ -26,6 +31,15 @@ export function prefetchAppRoute(route: string) {
   });
 }
 
+/**
+ * Warms the chunk for every destination in the nav rail while the browser is
+ * idle, so switching tabs is a render rather than a download.
+ *
+ * Hovering a link prefetches it too, but hover does not exist on a phone and it
+ * does not help the first tap either way. This ran nowhere until 2026-08-03 -
+ * the function was written and never called - which is why every first visit to
+ * a tab, on every device, paid for its own chunk at click time.
+ */
 export function prefetchPrimaryAppRoutes() {
   const routes = [
     '/app/capture',
@@ -34,6 +48,9 @@ export function prefetchPrimaryAppRoutes() {
     '/app/revenue',
     '/app/timeline',
     '/app/reviews',
+    '/app/business',
+    '/app/activity',
+    '/app/ask',
   ];
 
   scheduleRoutePrefetch(routes);

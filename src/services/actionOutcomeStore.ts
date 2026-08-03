@@ -5,7 +5,7 @@ import {
   loadCloudJsonCollection,
   mergeCloudJsonRecords,
   syncCloudJsonCollectionForCurrentUser,
-  upsertCloudJsonCollection,
+  sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore.ts';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
@@ -76,7 +76,7 @@ export async function loadActionOutcomesForUser(userId: string) {
     .map(sanitizeOutcome)
     .filter((outcome): outcome is ActionOutcomeRecord => Boolean(outcome));
   persistActionOutcomes(merged, false);
-  await upsertCloudJsonCollection('action_outcomes', userId, merged);
+  sendOwedCloudJsonRecords('action_outcomes', userId, merged, cloud);
   return merged;
 }
 

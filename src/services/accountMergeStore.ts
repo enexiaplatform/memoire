@@ -3,7 +3,7 @@ import {
   loadCloudJsonCollection,
   mergeCloudJsonRecords,
   syncCloudJsonCollectionForCurrentUser,
-  upsertCloudJsonCollection,
+  sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import { writeLocalRecords } from './localWriteGuard.ts';
@@ -63,7 +63,7 @@ export async function loadAccountMergesForUser(userId: string) {
     .map(sanitize)
     .filter((record): record is AccountMergeRecord => Boolean(record));
   persist(merged, false);
-  await upsertCloudJsonCollection('account_merges', userId, merged);
+  sendOwedCloudJsonRecords('account_merges', userId, merged, cloud);
   return merged;
 }
 

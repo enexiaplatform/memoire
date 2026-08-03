@@ -83,6 +83,58 @@ export async function deleteCloudJsonRecord(
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Sends only the records the cloud does not already have.
+ *
+ * Every merged read used to finish by upserting the whole collection back, and
+ * it awaited that write before answering. On the read path that is a second
+ * round trip carrying every record the user owns, and in the steady state -
+ * nothing captured offline, nothing edited on another device - it writes back
+ * byte for byte what it just read. Measured against this project's Supabase
+ * region a warm round trip is ~140ms, so the pattern doubled the cost of every
+ * workspace load; the workspace is loaded on every navigation, which is what
+ * made switching tabs feel slow.
+ *
+ * The merge has already decided which copy wins for each id. A record is owed
+ * to the cloud only when it won against an older cloud copy, or when the cloud
+ * had no copy at all. In the steady state that set is empty and no request is
+ * made at all.
+ *
+ * It deliberately does not block the read. The caller's answer is `merged`
+ * either way, and a push that fails leaves the record in the browser, where the
+ * next read finds the cloud still missing it and offers it again.
+ */
+export function sendOwedCloudJsonRecords<T extends CloudJsonRecord>(
+  table: CloudJsonCollectionTable,
+  userId: string,
+  merged: T[],
+  cloud: T[],
+) {
+  const owed = selectOwedCloudJsonRecords(merged, cloud);
+  if (owed.length === 0) return;
+
+  void upsertCloudJsonCollection(table, userId, owed).catch((error) => {
+    reportWorkspaceSyncError();
+    reportCloudJsonSyncFailure(table, 'upsert', error);
+  });
+}
+
+/**
+ * Which of the merged records the cloud is still missing.
+ *
+ * Split out from the send so the decision can be tested without a network: what
+ * gets sent is the part that has to be right, and sending nothing when nothing
+ * is owed is the whole point of the change.
+ */
+export function selectOwedCloudJsonRecords<T extends CloudJsonRecord>(merged: T[], cloud: T[]): T[] {
+  const cloudUpdatedAt = new Map(cloud.map((record) => [record.id, getUpdatedAt(record)]));
+  return merged.filter((record) => {
+    if (!isUserRecord(record)) return false;
+    const seen = cloudUpdatedAt.get(record.id);
+    return seen === undefined || getUpdatedAt(record) > seen;
+  });
+}
+
 export function syncCloudJsonCollectionForCurrentUser<T extends CloudJsonRecord>(
   table: CloudJsonCollectionTable,
   records: T[],

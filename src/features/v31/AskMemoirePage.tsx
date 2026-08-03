@@ -13,7 +13,7 @@ import { ASK_ANSWER_READY_EVENT, ASK_GUIDED_QUESTION_EVENT } from '../onboarding
 import { RouteLoadingFallback } from './RouteLoadingFallback';
 import { useSlowLoadingFallback } from './useSlowLoadingFallback';
 import { hasLocalSampleData } from '../../utils/dataMode';
-import { loadSalesWorkspaceData, type SalesWorkspaceData } from '../../services/workspaceData';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData, type SalesWorkspaceData } from '../../services/workspaceData';
 import { adaptWorkspaceToV31 } from './workspaceAdapter';
 import { buildFollowUpImpact } from '../../utils/followUpImpact';
 import { buildObjectionPlaybook } from '../../utils/objectionPlaybook';
@@ -62,12 +62,30 @@ export function AskMemoirePage() {
   const slowContextLoading = useSlowLoadingFallback(contextLoading);
 
   const loadMemory = useCallback(async () => {
+    const sampleDataActive = hasLocalSampleData();
+    const dataUserId = sampleDataActive ? undefined : user?.id;
+    const cached = getCachedSalesWorkspaceData(dataUserId);
+    if (cached) {
+      // Ask answers from records that are already in memory. Blocking the whole
+      // surface on a load that is about to return that same cached copy is what
+      // made asking a question feel like waiting on the network.
+      const cachedMemory = adaptWorkspaceToV31(cached, user?.id || DEMO_USER_ID);
+      setRawWorkspace(cached);
+      setAccounts(cachedMemory.accounts);
+      setOpportunities(cachedMemory.opportunities);
+      setInteractions(cachedMemory.interactions);
+      setActions(cachedMemory.actions);
+      setObjections(cachedMemory.objections);
+      setContextLoading(false);
+      setError(null);
+      return;
+    }
+
     setContextLoading(true);
     setError(null);
 
     try {
-      const sampleDataActive = hasLocalSampleData();
-      const workspace = await loadSalesWorkspaceData(sampleDataActive ? undefined : user?.id);
+      const workspace = await loadSalesWorkspaceData(dataUserId);
       const memory = adaptWorkspaceToV31(workspace, user?.id || DEMO_USER_ID);
       setRawWorkspace(workspace);
       setAccounts(memory.accounts);

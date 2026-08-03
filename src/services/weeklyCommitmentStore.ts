@@ -4,7 +4,7 @@ import {
   loadCloudJsonCollection,
   mergeCloudJsonRecords,
   syncCloudJsonCollectionForCurrentUser,
-  upsertCloudJsonCollection,
+  sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache';
 import { writeLocalRecords } from './localWriteGuard.ts';
@@ -45,7 +45,7 @@ export async function loadWeeklyCommitmentsForUser(userId: string) {
     .map(sanitizeSnapshot)
     .filter((snapshot): snapshot is WeeklyCommitmentSnapshot => Boolean(snapshot));
   persistWeeklyCommitments(merged, false);
-  await upsertCloudJsonCollection('weekly_commitments', userId, merged);
+  sendOwedCloudJsonRecords('weekly_commitments', userId, merged, cloud);
   return merged;
 }
 
