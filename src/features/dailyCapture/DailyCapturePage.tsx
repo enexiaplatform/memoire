@@ -263,11 +263,23 @@ export function DailyCapturePage() {
   const searchParamsKey = searchParams.toString();
   const [rawNote, setRawNote] = useState('');
   const [activityDate, setActivityDate] = useState(() => getQueryDate(searchParams) || todayKey());
+  /**
+   * Quick on a phone, the full note on a desk.
+   *
+   * Capture is the spine of the product and most of it happens away from a
+   * desk - in a lobby, in a car park, between two meetings. This page opened on
+   * Full Note on every device: a dozen fields, with the thirty-second form one
+   * tap away and not obviously there. An explicit `?mode=` in the link always
+   * wins; the width only decides what somebody who just tapped Capture sees
+   * first.
+   */
   const [captureMode, setCaptureMode] = useState<CaptureMode>(() => {
     const mode = searchParams.get('mode');
     if (mode === 'quick') return 'quick';
     if (mode === 'email') return 'email';
-    return 'note';
+    if (mode === 'note') return 'note';
+    const isSmallScreen = typeof window !== 'undefined' && window.innerWidth < 768;
+    return isSmallScreen ? 'quick' : 'note';
   });
   const [quickTemplateId, setQuickTemplateId] = useState(quickTemplates[0].id);
   const [quickForm, setQuickForm] = useState<QuickCaptureForm>(() => createInitialQuickCaptureForm(searchParams));
@@ -744,29 +756,29 @@ export function DailyCapturePage() {
         />
       </header>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-2 shadow-sm">
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-          <button
-            type="button"
-            onClick={() => setCaptureMode('quick')}
-            className={`rounded-lg px-4 py-3 text-sm font-bold ${captureMode === 'quick' ? 'bg-navy text-white' : 'bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-brand-blue'}`}
-          >
-            Quick Capture
-          </button>
-          <button
-            type="button"
-            onClick={() => setCaptureMode('note')}
-            className={`rounded-lg px-4 py-3 text-sm font-bold ${captureMode === 'note' ? 'bg-navy text-white' : 'bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-brand-blue'}`}
-          >
-            Full Note
-          </button>
-          <button
-            type="button"
-            onClick={() => setCaptureMode('email')}
-            className={`rounded-lg px-4 py-3 text-sm font-bold ${captureMode === 'email' ? 'bg-navy text-white' : 'bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-brand-blue'}`}
-          >
-            Paste Email / Thread
-          </button>
+      {/* One row, always. Three stacked full-width buttons took a third of a
+          phone screen before the first field - on the one page where the whole
+          point is to be finished before the moment passes. */}
+      <section className="rounded-lg border border-gray-200 bg-white p-1.5 shadow-sm">
+        <div className="grid grid-cols-3 gap-1.5">
+          {([
+            ['quick', 'Quick', 'Quick Capture'],
+            ['note', 'Note', 'Full Note'],
+            ['email', 'Email', 'Paste Email / Thread'],
+          ] as const).map(([mode, shortLabel, label]) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setCaptureMode(mode)}
+              aria-pressed={captureMode === mode}
+              className={`rounded-lg px-2 py-2 text-sm font-bold transition ${
+                captureMode === mode ? 'bg-navy text-white' : 'bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-brand-blue'
+              }`}
+            >
+              <span className="sm:hidden">{shortLabel}</span>
+              <span className="hidden sm:inline">{label}</span>
+            </button>
+          ))}
         </div>
       </section>
 

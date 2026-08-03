@@ -357,30 +357,14 @@ export function AskMemoirePage() {
           records, deterministically. So the supported questions are shown as
           buttons and named as a list - what it can answer is visible before
           anything is typed, and nothing is implied that is not true. */}
-      <header className="mb-6">
+      {/* The list of supported questions stays - it is the honest alternative to
+          a blinking cursor promising unlimited intelligence - but it moved
+          below the box it describes. Three explanatory blocks before the input
+          meant the page opened on an argument about itself; the reader wants to
+          type first and be told what is possible second. */}
+      <header className="mb-4">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Search &amp; Insights</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Find anything, and ask what it means</h1>
-        <p className="mt-2 max-w-2xl text-sm text-gray-500">
-          Search accounts, opportunities, quotes and captured activity - then ask one of the questions below. Answers are
-          computed from your own records by rule, so every one can be traced back to what you wrote.
-        </p>
-        <div className="mt-3 max-w-3xl rounded-lg border border-gray-200 bg-gray-50 p-3">
-          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">What this can answer</p>
-          <ul className="mt-1.5 grid gap-x-4 gap-y-0.5 text-xs leading-5 text-gray-600 sm:grid-cols-2">
-            <li>Who needs follow-up?</li>
-            <li>Where is money stuck?</li>
-            <li>What changed this week?</li>
-            <li>Summarise this account.</li>
-            <li>Which opportunities have no next action?</li>
-            <li>Which commitments are overdue?</li>
-            <li>What am I waiting for from customers?</li>
-            <li>What do I owe today?</li>
-          </ul>
-        </div>
-        <p className="mt-2 max-w-2xl text-xs text-emerald-700">
-          Answers are built on this device from your captured data. Nothing is sent to an AI service, so no
-          customer context leaves your browser.
-        </p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-navy">Find anything, and ask what it means</h1>
       </header>
 
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
@@ -507,6 +491,24 @@ export function AskMemoirePage() {
           </button>
         </div>
         <p className="mt-2 text-xs text-gray-400">Press Ctrl+Enter (Cmd+Enter on Mac) to ask.</p>
+
+        <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">What this can answer</p>
+          <ul className="mt-1.5 grid gap-x-4 gap-y-0.5 text-xs leading-5 text-gray-600 sm:grid-cols-2">
+            <li>Who needs follow-up?</li>
+            <li>Where is money stuck?</li>
+            <li>What changed this week?</li>
+            <li>Summarise this account.</li>
+            <li>Which opportunities have no next action?</li>
+            <li>Which commitments are overdue?</li>
+            <li>What am I waiting for from customers?</li>
+            <li>What do I owe today?</li>
+          </ul>
+          <p className="mt-2 text-xs text-emerald-700">
+            Answers are built on this device from your captured data. Nothing is sent to an AI service, so no
+            customer context leaves your browser.
+          </p>
+        </div>
       </section>
 
       <section className="mt-5 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">

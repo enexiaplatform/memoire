@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Archive, ArchiveRestore, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, Database, Eye, Filter, Plus, RefreshCw, Save, Search, Star, Trash2, X } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, Database, Eye, Filter, Plus, RefreshCw, Save, Search, Star, Trash2, Upload, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { ThreadsSection } from '../threads/ThreadsSection';
 import { DataModePill } from '../../components/common/DataModePill';
@@ -62,6 +62,7 @@ import {
   sumMoneyInBase,
 } from '../../utils/money';
 import { compareSafeBusinessDate, formatSafeBusinessDate } from '../../utils/safeDate.ts';
+import { AccountImportPanel } from './AccountImportPanel';
 import { FollowUpComposerPanel } from '../v31/FollowUpComposerPanel';
 import { SkeletonScreen, SkeletonTable } from '../../components/common/Skeleton';
 import type { FollowUpContext } from '../../types/v31';
@@ -136,6 +137,7 @@ export function AccountsPage() {
   const [message, setMessage] = useState('');
   const [followUpContext, setFollowUpContext] = useState<FollowUpContext | null>(null);
   const [accountMerges, setAccountMerges] = useState<AccountMergeRecord[]>([]);
+  const [importOpen, setImportOpen] = useState(false);
   // The exact string the seller has already been warned about and kept.
   const [accountNameConfirmed, setAccountNameConfirmed] = useState('');
   const sampleDataActive = hasLocalSampleData();
@@ -607,6 +609,17 @@ export function AccountsPage() {
           </button>
           <button
             type="button"
+            onClick={() => setImportOpen((open) => !open)}
+            aria-expanded={importOpen}
+            className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-bold transition ${
+              importOpen ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-gray-300 bg-white text-gray-700 hover:border-brand-blue hover:text-brand-blue'
+            }`}
+          >
+            <Upload className="h-4 w-4" />
+            Import
+          </button>
+          <button
+            type="button"
             onClick={() => refreshAccounts(true)}
             disabled={loading || refreshing}
             className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-60"
@@ -629,6 +642,19 @@ export function AccountsPage() {
         <section className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
           {loadError}
         </section>
+      )}
+
+      {importOpen && (
+        <AccountImportPanel
+          existingAccounts={accounts}
+          aliases={accountAliases}
+          userId={dataUserId}
+          onClose={() => setImportOpen(false)}
+          onImported={(created) => {
+            setAccounts((current) => [...created, ...current.filter((item) => !created.some((account) => account.id === item.id))]);
+            void refreshAccounts(true);
+          }}
+        />
       )}
 
       {!loading && <AccountMemorySummary summary={summary} />}
@@ -676,7 +702,7 @@ export function AccountsPage() {
             <SkeletonTable rows={6} columns={4} />
           </SkeletonScreen>
         ) : accounts.length === 0 && candidates.length === 0 ? (
-          <EmptyState onAdd={openAddPanel} />
+          <EmptyState onAdd={openAddPanel} onImport={() => setImportOpen(true)} />
         ) : visibleRows.length === 0 ? (
           <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
             <p className="text-sm font-semibold text-gray-900">No accounts match these filters.</p>
@@ -2038,17 +2064,19 @@ function CandidateSection({
   );
 }
 
-function EmptyState({ onAdd }: { onAdd: () => void }) {
+function EmptyState({ onAdd, onImport }: { onAdd: () => void; onImport: () => void }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
       <p className="text-base font-bold text-navy">No accounts yet.</p>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
         Accounts remember the relationship context behind your deals: stakeholders, notes, linked activity, open next actions, and objection debt.
       </p>
+      {/* Somebody who already sells has a customer list, and typing it in one
+          at a time is the reason a trial ends on day one. Import leads. */}
       <div className="mt-5 flex flex-wrap justify-center gap-2">
-        <button type="button" onClick={onAdd} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Add Account</button>
+        <button type="button" onClick={onImport} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Import your customer list</button>
+        <button type="button" onClick={onAdd} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">Add one account</button>
         <Link to="/app/opportunities" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">Go to Opportunities</Link>
-        <Link to="/app/capture" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">Go to Capture</Link>
       </div>
     </div>
   );

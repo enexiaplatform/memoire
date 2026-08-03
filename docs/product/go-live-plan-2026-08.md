@@ -310,9 +310,9 @@ The week that makes a new user's first day work.
 
 | # | Work | Done when |
 |---|------|-----------|
-| 3.1 | Mobile-first capture | Quick mode default under `sm`, field focused on open, one-row mode switch |
-| 3.2 | Accounts + contacts CSV import | A new user can load their book in one sitting using the existing mapping profiles |
-| 3.3 | Search-first Ask | Search field is the first element; presets move below results |
+| 3.1 | ~~Mobile-first capture~~ **done 2026-08-03** | Quick mode is the default under 768px (an explicit `?mode=` still wins), and the three-mode switch is one row with short labels on small screens |
+| 3.2 | ~~Accounts + contacts CSV import~~ **done 2026-08-03** | Upload or paste, auto-mapped columns shown and correctable, preview before anything is written, duplicates decided by the app-wide account key *and* the operator's own merges, and the whole batch written in one read and one write (`verify:account-import`) |
+| 3.3 | ~~Search-first Ask~~ **done 2026-08-03** | The question box is the first thing on the page; what it can answer and the privacy note moved below it |
 | 3.4 | Offline capture | Capture works with no network and syncs when it returns |
 | 3.5 | Empty-state pass | Every destination's empty state names the one action that fills it |
 

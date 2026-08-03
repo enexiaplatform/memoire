@@ -1,6 +1,6 @@
 import { supabaseClient } from '../lib/supabaseClient.ts';
-import { invalidateWorkspaceDataCache } from './workspaceDataCache';
-import { reportWorkspaceSyncError } from './workspaceSyncStatus';
+import { invalidateWorkspaceDataCache } from './workspaceDataCache.ts';
+import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const ACCOUNT_STORAGE_KEY = 'memoire.accounts.v1';
@@ -144,6 +144,59 @@ export async function createAccount(
   return { account, mode: 'local' };
 }
 
+/**
+ * Creating a book of customers in one go.
+ *
+ * `createAccount` is right for the one account somebody types: it reloads the
+ * cloud copy so the new account code cannot collide, then inserts. Called two
+ * hundred times by a CSV import that is the wrong shape entirely - four hundred
+ * round trips, several minutes, and a half-written workspace if the connection
+ * drops in the middle. This reads once, allocates every code from that single
+ * answer, and writes once.
+ */
+export async function createAccounts(
+  inputs: AccountFormInput[],
+  userId?: string | null
+): Promise<{ accounts: AccountMemoryRecord[]; mode: 'local' | 'cloud'; warning?: string }> {
+  const normalized = inputs.map(normalizeAccountInput).filter((input) => input.accountName);
+  if (normalized.length === 0) return { accounts: [], mode: 'local' };
+
+  if (canUseAccountCloudStore(userId)) {
+    try {
+      const cloudAccounts = await loadCloudAccounts(userId as string);
+      const codes = allocateAccountCodes(cloudAccounts, normalized.length);
+      const created = await createCloudAccounts(normalized, userId as string, codes);
+      const localWrite = saveLocalAccountRecords(created.map((account) => ({ ...account, storageMode: 'local' as const })));
+      invalidateWorkspaceDataCache();
+      return {
+        accounts: created,
+        mode: 'cloud',
+        warning: localWrite?.ok === false ? localWrite.message : undefined,
+      };
+    } catch (error) {
+      reportWorkspaceSyncError();
+      debugAccountStore('cloud bulk create failed; local copies preserved', { message: getErrorMessage(error) });
+      const local = createLocalAccounts(normalized, userId || undefined);
+      invalidateWorkspaceDataCache();
+      return {
+        accounts: local.accounts,
+        mode: 'local',
+        warning: local.write.ok === false
+          ? local.write.message
+          : 'Cloud sync issue - the imported accounts are saved on this device.',
+      };
+    }
+  }
+
+  const local = createLocalAccounts(normalized, userId || undefined);
+  invalidateWorkspaceDataCache();
+  return {
+    accounts: local.accounts,
+    mode: 'local',
+    warning: local.write.ok === false ? local.write.message : undefined,
+  };
+}
+
 export async function updateAccount(
   account: AccountMemoryRecord,
   input: AccountFormInput,
@@ -275,6 +328,13 @@ function saveLocalAccountRecord(record: AccountMemoryRecord) {
   writeLocalRecords(ACCOUNT_STORAGE_KEY, next.sort(sortNewestFirst));
 }
 
+function saveLocalAccountRecords(records: AccountMemoryRecord[]) {
+  if (typeof localStorage === 'undefined' || records.length === 0) return null;
+  const ids = new Set(records.map((record) => record.id));
+  const next = [...records, ...loadLocalAccounts().filter((item) => !ids.has(item.id))];
+  return writeLocalRecords(ACCOUNT_STORAGE_KEY, next.sort(sortNewestFirst));
+}
+
 function deleteLocalAccount(accountId: string) {
   if (typeof localStorage === 'undefined') return;
   const next = loadLocalAccounts().filter((item) => item.id !== accountId);
@@ -312,6 +372,31 @@ async function createCloudAccount(input: AccountFormInput, userId: string, accou
 
   const created = rowToAccount(data as AccountRow);
   return { ...created, accountCode: created.accountCode || accountCode };
+}
+
+async function createCloudAccounts(inputs: AccountFormInput[], userId: string, codes: string[]) {
+  const { data, error } = await supabaseClient!
+    .from(TABLE_NAME)
+    .insert(inputs.map((input, index) => accountToInsert(input, userId, codes[index])))
+    .select('*');
+
+  if (error) {
+    const fallback = await supabaseClient!
+      .from(TABLE_NAME)
+      .insert(inputs.map((input) => accountToInsertWithLegacyColumns(input, userId)))
+      .select('*');
+
+    if (fallback.error) throw new Error(fallback.error.message);
+    return ((fallback.data || []) as AccountRow[]).map((row, index) => ({
+      ...rowToAccount(row),
+      accountCode: codes[index],
+    }));
+  }
+
+  return ((data || []) as AccountRow[]).map((row, index) => {
+    const created = rowToAccount(row);
+    return { ...created, accountCode: created.accountCode || codes[index] };
+  });
 }
 
 async function updateCloudAccount(accountId: string, input: AccountFormInput, userId: string) {
@@ -352,6 +437,26 @@ function createLocalAccount(input: AccountFormInput, userId?: string): AccountMe
     updatedAt: timestamp,
     storageMode: 'local',
   };
+}
+
+function createLocalAccounts(inputs: AccountFormInput[], userId?: string) {
+  const existing = loadLocalAccounts();
+  const codes = allocateAccountCodes(existing, inputs.length);
+  const timestamp = new Date().toISOString();
+  const accounts = inputs.map<AccountMemoryRecord>((input, index) => ({
+    ...input,
+    id: createId(),
+    accountCode: codes[index],
+    userId,
+    source: 'user',
+    isSample: false,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    storageMode: 'local',
+  }));
+
+  const write = writeLocalRecords(ACCOUNT_STORAGE_KEY, [...accounts, ...existing].sort(sortNewestFirst));
+  return { accounts, write };
 }
 
 function rowToAccount(row: AccountRow): AccountMemoryRecord {
@@ -479,17 +584,31 @@ export function getAccountCode(account: AccountMemoryRecord) {
 }
 
 function getNextAccountCode(accounts: AccountMemoryRecord[]) {
+  return allocateAccountCodes(accounts, 1)[0];
+}
+
+/**
+ * `count` free codes in one pass. Calling the single-code version in a loop
+ * would hand out the same number every time, because nothing it reads has
+ * changed yet.
+ */
+function allocateAccountCodes(accounts: AccountMemoryRecord[], count: number) {
   const used = new Set(
     accounts
       .map((account) => parseAccountCode(account.accountCode))
       .filter((value): value is number => value !== null),
   );
 
-  for (let index = 1; index <= 9999; index += 1) {
-    if (!used.has(index)) return formatAccountCode(index);
+  const codes: string[] = [];
+  let candidate = 1;
+  while (codes.length < count) {
+    while (used.has(candidate)) candidate += 1;
+    if (candidate > 9999) throw new Error('Account code limit reached.');
+    used.add(candidate);
+    codes.push(formatAccountCode(candidate));
   }
 
-  throw new Error('Account code limit reached.');
+  return codes;
 }
 
 function ensureAccountCodes(accounts: AccountMemoryRecord[]) {
@@ -548,7 +667,10 @@ function getErrorMessage(error: unknown) {
 }
 
 function debugAccountStore(message: string, context?: Record<string, unknown>) {
-  if (import.meta.env.DEV) {
+  // Optional chaining because this only ever runs from a catch block, and
+  // outside Vite `import.meta.env` is undefined - a debug line that throws
+  // would turn a recoverable sync failure into an unhandled error.
+  if (import.meta.env?.DEV) {
     console.debug(`[AccountStore] ${message}`, context || {});
   }
 }
