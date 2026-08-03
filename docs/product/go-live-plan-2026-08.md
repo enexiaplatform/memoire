@@ -82,17 +82,32 @@ has inverted its own value proposition. This is the single largest product gap.
 **Fix:** a scheduled daily digest and a Monday weekly scoreboard by email.
 **Effort: 4–6 days** including preferences, unsubscribe and delivery logging.
 
-### P0-3 · Cloud restore does not exist
+### P0-3 · Cloud restore — built 2026-08-02
 
-Settings says it plainly: browser restore rewrites the local copy; restoring
-into a signed-in workspace can be overwritten by cloud sync. The documented
-workaround is "restore while signed out, check, then sign in".
+Settings used to say it plainly: browser restore rewrites the local copy;
+restoring into a signed-in workspace can be overwritten by cloud sync, so
+"restore while signed out, check, then sign in". Honest, and an admission that
+the backup only half worked.
 
-Backup without reliable restore is not a backup. For a tool holding a seller's
-entire book this is the difference between a bad day and a lost customer.
+A restore now goes all the way. It snapshots the workspace it is about to
+replace, clears the app's own keys so a restore replaces rather than merges,
+writes every collection through the guarded path (restoring a full backup is
+exactly when a browser runs out of room), and - for a signed-in user - pushes
+every collection that has a cloud table up to the account and claims ownership,
+awaited, so the next sync agrees with the file instead of overwriting it.
 
-**Fix:** restore into the cloud workspace transactionally, with a pre-restore
-snapshot and a visible record count before/after. **Effort: 3–4 days.**
+It then shows what actually landed: before and after in records, per collection,
+with a column saying whether the account copy accepted it. And it can be undone
+in one click, which the old confirmation said was impossible.
+
+Collections without a cloud table are reported as browser-only rather than
+implied to be safe. The contract fails if a table exists in the cloud registry
+and the restore does not know where to push it.
+
+**Remaining:** accounts, deals, activities, stakeholders and objections sync
+through their own stores rather than the JSON collection registry, so a restore
+puts them in the browser and their own sync carries them up. Routing those
+through the same path is a follow-on. **Effort: 1 day.**
 
 ### P0-4 · No storage-quota handling anywhere
 
@@ -248,7 +263,7 @@ The week that removes the reasons not to launch.
 | 1.2 | ~~Storage write guard + usage meter~~ **done 2026-08-02** | One guarded write path across 24 stores, an undismissable banner, a storage panel in Settings, `verify:storage-safety` |
 | 1.3 | ~~Scale harness + budgets~~ **done 2026-08-02** | `verify:performance-budget` in CI; `measure:surfaces` for the browser side; numbers recorded under P0-5 |
 | 1.4 | Fix Today's cold load — **4,475 → 2,760 ms on 2026-08-02**, target not yet met | Today under 1.5 s at 300 deals, proven with `measure:surfaces` |
-| 1.5 | Cloud restore, transactional | Restore into a signed-in workspace shows counts before/after and cannot be silently overwritten by sync |
+| 1.5 | ~~Cloud restore, transactional~~ **done 2026-08-02** | Snapshot + undo, guarded writes, cloud push per collection, before/after counts in the interface |
 
 **Gate:** a workspace with 300 deals is usable end to end, and a backup taken on
 Monday restores on Friday into the same account.

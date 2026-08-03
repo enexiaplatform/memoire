@@ -134,17 +134,18 @@ export function SyncRecoveryPanel() {
         <p className="font-bold text-gray-700">What restore does, and does not do</p>
         <ul className="mt-1.5 space-y-1">
           <li>
-            <span className="font-semibold">Browser restore</span> - putting a backup back into this browser. This is
-            what Memoire does today. It rewrites the local copy of your workspace.
+            <span className="font-semibold">Browser restore</span> - putting a backup back into this browser. It
+            replaces the local copy of your workspace, collection by collection, and reports what landed.
           </li>
           <li>
-            <span className="font-semibold">Full cloud restore</span> - replacing what is in your account. Memoire does
-            not do this yet. If you are signed in, cloud sync may overwrite a restored browser copy with what the cloud
-            already holds.
+            <span className="font-semibold">Account restore</span> - when you are signed in, every restored collection
+            that lives in your account is pushed there as part of the same operation, so the next sync agrees with the
+            file instead of overwriting it. Accounts, deals, activities, stakeholders and objections sync through their
+            own stores; the restore says per collection whether the account copy accepted it.
           </li>
           <li>
-            To restore into a signed-in workspace safely: restore while signed out, check the records are right, then
-            sign in.
+            A restore can be undone in one click straight afterwards - the workspace it replaced is held until you
+            leave the page.
           </li>
           <li>Demo records are always dropped on restore. They never enter a real workspace.</li>
         </ul>

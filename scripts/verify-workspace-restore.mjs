@@ -73,12 +73,41 @@ import { buildRestorePlan, parseBackupFile } from '../src/utils/workspaceBackup.
 
   const confirmStart = tab.indexOf('const handleConfirmRestore');
   const confirmHandler = tab.slice(confirmStart, tab.indexOf('\n  const handle', confirmStart + 1));
-  assert.match(confirmHandler, /buildRestorePlan/, 'the write path goes through the sanitized plan');
-  assert.match(confirmHandler, /clearMemoireLocalData\(\)/, 'a restore replaces rather than merges');
+  assert.match(confirmHandler, /buildRestorePlan/, 'the preview counts come from the sanitized plan');
+  assert.match(confirmHandler, /restoreWorkspace\(/, 'the write path goes through the restore service');
   assert.ok(
     !/localBrowserData/.test(confirmHandler),
     'the raw envelope never reaches localStorage - only the plan does',
   );
+  // Awaited, not fired and forgotten: a restore that returns before the account
+  // copy is written is the hazard Settings used to warn about, because the next
+  // sync would overwrite the restored records with what the cloud still held.
+  assert.match(confirmHandler, /await restoreWorkspace\(/, 'the restore completes before it reports success');
+}
+
+// 4b. The restore service replaces, pushes and can be taken back.
+{
+  const service = readFileSync(new URL('../src/services/workspaceRestore.ts', import.meta.url), 'utf8');
+
+  assert.match(service, /clearWorkspaceKeys\(\)/, 'a restore replaces rather than merges');
+  assert.match(service, /writeLocalCollection\(/, 'restore writes through the guarded path, so a full browser cannot half-land silently');
+  assert.match(service, /upsertCloudJsonCollection\(/, 'a signed-in restore reaches the account, not only the browser');
+  assert.match(service, /claimLocalCollectionForUser\(/, 'the restored collections are claimed for the user who restored them');
+  assert.match(service, /export function undoRestore/, 'a restore of the wrong file has to be recoverable');
+  assert.match(service, /export function snapshotWorkspace/, 'the workspace being replaced is captured before it is replaced');
+
+  // Every cloud table must be reachable from a restore, or a collection is
+  // silently browser-only after one - which is the bug this replaced.
+  const storeSource = readFileSync(new URL('../src/services/cloudJsonCollectionStore.ts', import.meta.url), 'utf8');
+  const tableUnion = storeSource.match(/export type CloudJsonCollectionTable = ([^;]+);/);
+  assert.ok(tableUnion, 'the cloud collection table union must be readable');
+  const tables = [...tableUnion[1].matchAll(/'([a-z_]+)'/g)].map((match) => match[1]);
+  for (const table of tables) {
+    assert.ok(
+      service.includes(`'${table}'`),
+      `restore does not know where to push ${table}; a collection with a cloud table must have a restore route`,
+    );
+  }
 }
 
 // 5. Restore is refused inside the demo sandbox. Found by running it: a
@@ -89,7 +118,9 @@ import { buildRestorePlan, parseBackupFile } from '../src/utils/workspaceBackup.
   const tab = readFileSync(new URL('../src/features/settings/ExportTab.tsx', import.meta.url), 'utf8');
   assert.match(tab, /const sampleDataActive = hasLocalSampleData\(\)/, 'the tab knows whether the demo is loaded');
   assert.match(tab, /if \(!file \|\| sampleDataActive\) return;/, 'choosing a file is refused in the demo');
-  assert.match(tab, /if \(!pending \|\| sampleDataActive\) return;/, 'confirming is refused in the demo');
+  // The guard also blocks a double-submit while a restore is in flight; what
+  // matters here is that the demo is one of the reasons it refuses.
+  assert.match(tab, /if \(!pending \|\| sampleDataActive[^)]*\) return;/, 'confirming is refused in the demo');
   assert.match(tab, /disabled=\{sampleDataActive\}/, 'the control is visibly disabled, not silently inert');
   assert.match(tab, /Exit the demo first/, 'and it says why');
 }

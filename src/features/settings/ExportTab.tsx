@@ -12,6 +12,7 @@ import {
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { trackProductEvent } from '../../utils/productAnalytics';
 import { recordBackupExport } from '../../services/syncRecoveryLog';
+import { restoreWorkspace, undoRestore, type RestoreResult } from '../../services/workspaceRestore';
 
 const SUPPORT_EMAIL = 'hello@memoire.app';
 const SUPPORT_MAILTO = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Memoire early-access support')}`;
@@ -25,6 +26,10 @@ export function ExportTab() {
   const [pending, setPending] = useState<{ envelope: BackupEnvelope; summary: BackupSummary; fileName: string } | null>(null);
   const [restoreError, setRestoreError] = useState('');
   const [isReading, setIsReading] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  // Kept after the restore so the undo stays offered, and so the operator can
+  // read what actually landed per collection instead of trusting a sentence.
+  const [lastRestore, setLastRestore] = useState<RestoreResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Restoring into the demo sandbox is a trap: the restore clears every
@@ -60,27 +65,49 @@ export function ExportTab() {
     }
   };
 
-  const handleConfirmRestore = () => {
-    if (!pending || sampleDataActive) return;
+  const handleConfirmRestore = async () => {
+    if (!pending || sampleDataActive || isRestoring) return;
     const plan = buildRestorePlan(pending.envelope);
     const confirmed = window.confirm(
       `Replace this browser's Memoire workspace with the backup from ${formatBackupDate(pending.summary.exportedAt)}?\n\n`
       + `${plan.restoredRecords} records will be restored across ${plan.writes.length} stores. `
-      + 'Everything currently in this browser is replaced. This cannot be undone.',
+      + 'Everything currently in this browser is replaced.'
+      + (user
+        ? ' Collections that live in your account are pushed there too, so your other devices match this file.'
+        : '')
+      + ' You can undo it immediately afterwards.',
     );
     if (!confirmed) return;
 
-    clearMemoireLocalData();
-    plan.writes.forEach(({ key, value }) => window.localStorage.setItem(key, value));
+    setIsRestoring(true);
+    setRestoreError('');
+    try {
+      // Awaited on purpose. A restore that returns before the account copy is
+      // written is the exact hazard Settings used to warn about: the next sync
+      // would overwrite what was just restored with what the cloud still held.
+      const result = await restoreWorkspace(pending.envelope, { userId: user?.id });
 
-    trackProductEvent('restore_completed');
+      trackProductEvent('restore_completed');
+      setLastRestore(result);
+      setPending(null);
+      setStatusMessage(result.ok
+        ? `Workspace restored from ${pending.fileName}. ${result.summary}`
+        : `Restore finished with problems. ${result.summary}`);
+    } catch (error) {
+      setRestoreError(`The restore could not be completed: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsRestoring(false);
+    }
+  };
 
-    const dropped = plan.droppedSampleRecords > 0
-      ? ` ${plan.droppedSampleRecords} demo records were left out.`
-      : '';
-    setStatusMessage(`Workspace restored from ${pending.fileName}.${dropped} Reloading...`);
-    setPending(null);
-    window.setTimeout(() => window.location.replace('/app/today'), 600);
+  const handleUndoRestore = () => {
+    if (!lastRestore) return;
+    const ok = undoRestore(lastRestore.snapshot);
+    setLastRestore(null);
+    setStatusMessage(ok
+      ? 'Restore undone. This browser holds what it held before, and the page will reload.'
+      : 'Undo did not complete - this browser refused a write. Check storage in Settings before continuing.');
+    if (ok) window.setTimeout(() => window.location.replace('/app/today'), 600);
   };
 
   const handleExport = async () => {
@@ -277,16 +304,73 @@ export function ExportTab() {
               <button
                 type="button"
                 onClick={handleConfirmRestore}
-                className="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white"
+                disabled={isRestoring}
+                className="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60"
               >
-                Replace workspace with this backup
+                {isRestoring ? 'Restoring...' : 'Replace workspace with this backup'}
               </button>
               <button
                 type="button"
                 onClick={() => setPending(null)}
-                className="text-sm font-bold text-gray-500 hover:underline"
+                disabled={isRestoring}
+                className="text-sm font-bold text-gray-500 hover:underline disabled:opacity-60"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* What actually landed, per collection, in records - and the way back.
+            A restore that reports one sentence asks to be trusted; this reports
+            before and after for every store it touched, and whether the account
+            copy accepted it, so the operator can check rather than believe. */}
+        {lastRestore && (
+          <div className={`mt-6 rounded-lg border p-4 ${lastRestore.ok ? 'border-emerald-200 bg-emerald-50/60' : 'border-amber-200 bg-amber-50/60'}`}>
+            <p className="text-sm font-bold text-navy">
+              {lastRestore.ok ? 'Restore complete' : 'Restore finished with problems'}
+            </p>
+            <p className="mt-1 text-sm leading-6 text-gray-700">{lastRestore.summary}</p>
+
+            <table className="mt-3 w-full text-left text-xs">
+              <thead className="text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th className="pb-1">Collection</th>
+                  <th className="pb-1 text-right">Before</th>
+                  <th className="pb-1 text-right">After</th>
+                  <th className="pb-1 text-right">Account copy</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-black/5">
+                {lastRestore.collections.filter((entry) => (entry.after || 0) > 0 || (entry.before || 0) > 0).map((entry) => (
+                  <tr key={entry.key}>
+                    <td className="py-1 font-semibold text-gray-800">{friendlyStoreName(entry.key)}</td>
+                    <td className="py-1 text-right text-gray-600">{entry.before ?? '—'}</td>
+                    <td className={`py-1 text-right font-bold ${entry.localWritten ? 'text-navy' : 'text-red-700'}`}>
+                      {entry.localWritten ? (entry.after ?? '—') : 'failed'}
+                    </td>
+                    <td className="py-1 text-right text-gray-600">
+                      {entry.cloudPushed === null ? 'this browser' : entry.cloudPushed ? 'pushed' : 'refused'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleUndoRestore}
+                className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50"
+              >
+                Undo this restore
+              </button>
+              <button
+                type="button"
+                onClick={() => window.location.replace('/app/today')}
+                className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
+              >
+                Open the restored workspace
               </button>
             </div>
           </div>
