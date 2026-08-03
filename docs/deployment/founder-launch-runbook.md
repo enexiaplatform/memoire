@@ -51,6 +51,39 @@ Verify: `/api/health` returns `ok: true` with `no_ai_provider_configured` passin
 2. Redeploy, then check Vercel function logs for `client-log` entries after browsing the production app.
 3. Product events: confirm rows appear in Supabase `product_events` after a run-through. Product analytics posts to the dedicated `/api/product-events` endpoint, separately from operational telemetry and from the request-access lead endpoint.
 
+## Step 3b - Email reminders (the daily digest and the Monday review)
+
+Added 2026-08-02. Until these are set, the scheduled send runs and does nothing:
+the cron endpoint refuses an unset `CRON_SECRET` rather than allowing it, and
+the sender reports "not configured" rather than failing. Nothing is emailed to
+anybody until an operator turns it on in Settings either - both preferences
+default to off in the database, not in the interface.
+
+1. Apply the migration `20260802090000_digest_delivery.sql` (Supabase -> SQL
+   editor, or `supabase db push`). It adds the preference columns to
+   `user_profiles` and creates `digest_deliveries`.
+2. Vercel env (Production):
+   - `CRON_SECRET` - any long random string. Vercel sends it as
+     `Authorization: Bearer <value>` on scheduled invocations, and the endpoint
+     refuses every caller that does not present it.
+   - `EMAIL_API_KEY` - the transactional provider's key.
+   - `EMAIL_FROM` - e.g. `Memoire <hello@memoire-official.com>`. The domain has
+     to be verified with the provider first or every send bounces.
+   - `EMAIL_API_URL` - optional. Defaults to Resend's endpoint; set it to use
+     another provider that accepts `{from, to, subject, text, html}`.
+3. Redeploy. `vercel.json` already declares the hourly schedule; the cron
+   appears in the Vercel dashboard after the first deploy that includes it.
+
+Verify: in Vercel -> Cron Jobs, run `/api/send-digests` once by hand and read
+the JSON it returns (`considered`, `sent`, `skipped`, `failed`). Then turn the
+daily digest on for your own account in Settings, set the hour to the next one,
+and wait for it. `digest_deliveries` records every attempt with its outcome, so
+"the email never arrived" has an answer.
+
+Note on cadence: the schedule is hourly and the endpoint decides whose local
+hour has arrived. That is deliberate - the operators this is for are not in one
+timezone, and a 7am digest that lands at midnight is not a digest.
+
 ## Step 4 - Paid early access only (Phase: after cohort evidence)
 
 1. Vercel env: `LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_STORE_ID`, `LEMONSQUEEZY_WEBHOOK_SECRET`, the selected `LEMONSQUEEZY_*_VARIANT_ID`, `BILLING_CHECKOUT_ENABLED=true`.

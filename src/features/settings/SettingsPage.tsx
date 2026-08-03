@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { ExportTab } from './ExportTab';
 import { SyncRecoveryPanel } from './SyncRecoveryPanel';
 import { StoragePanel } from './StoragePanel';
+import { NotificationsPanel } from './NotificationsPanel';
 import { BoundariesTab } from './BoundariesTab';
 import { ProfileTab } from './ProfileTab';
 import { REPLAY_GUIDED_WORKFLOW_EVENT } from '../onboarding/guidedWorkflow';
@@ -81,6 +82,8 @@ export function SettingsPage() {
           </div>
         </div>
       )}
+
+      <NotificationsPanel />
 
       <SyncRecoveryPanel />
 

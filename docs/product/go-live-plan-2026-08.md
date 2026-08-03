@@ -68,19 +68,40 @@ reads local records like every other surface. **Contract:** extend
 `verify-navigation-contract.mjs` so every routed destination renders non-empty
 in browser-only mode. **Effort: 30 minutes.**
 
-### P0-2 · Nothing reaches the user outside the app
+### P0-2 · Reaching the user outside the app — built 2026-08-02
 
-The promise is "nothing goes silent". Every mechanism that delivers on it —
-the daily digest, going-silent detection, overdue commitments, the weekly review
-— only fires if the user opens the app. There is no email, no push, no service
-worker, no scheduled job. `src/utils/dailyDigest.ts` even builds a `subject` and
-a `plainText` body: it was written to be sent and has never been sent.
+The promise is "nothing goes silent", and every mechanism behind it — going-quiet
+detection, overdue commitments, stuck money, the weekly review — only fired while
+somebody was already looking at the app. `src/utils/dailyDigest.ts` even built a
+`subject` and a `plainText` body: written to be sent, never sent.
 
-A follow-through product that can only remind you while you are looking at it
-has inverted its own value proposition. This is the single largest product gap.
+There is now a scheduled send. An hourly Vercel cron works out whose local hour
+has arrived — 7am has to mean 7am where the operator is — builds their digest on
+the server from their own cloud records, and emails it. Monday brings the weekly
+one instead of the daily.
 
-**Fix:** a scheduled daily digest and a Monday weekly scoreboard by email.
-**Effort: 4–6 days** including preferences, unsubscribe and delivery logging.
+Four decisions worth keeping:
+
+- **Off until asked.** Both preferences default to false in the database, not
+  just in the interface. A product that starts emailing on signup has decided
+  the user's inbox is worth its output.
+- **Silence when there is nothing to say.** A morning with nothing overdue sends
+  nothing. An email that arrives daily to report that all is well trains the
+  operator to filter the one that matters.
+- **No tracking, no unescaped customer text.** No pixel, no image, no remote
+  font. The whole trust position is that customer context stays where the
+  operator put it.
+- **Deliberately small.** The server digest answers three questions from columns
+  that exist rather than reproducing the app's full record graph on the server.
+  Two copies of that model would disagree eventually, and the day they did, the
+  email would be lying about the app. It nudges and links in.
+
+**Remaining:** it needs `CRON_SECRET`, `EMAIL_API_KEY` and `EMAIL_FROM` in
+Vercel plus the migration applied — Step 3b of the launch runbook. The guard
+paths (unauthenticated cron, bad unsubscribe token, wrong verb) were exercised
+against a stub; a real send needs a live Supabase and a verified sending domain,
+so first delivery is a launch-week task, not something that could be proven
+here.
 
 ### P0-3 · Cloud restore — built 2026-08-02
 
@@ -274,10 +295,10 @@ The week that makes the promise true.
 
 | # | Work | Done when |
 |---|------|-----------|
-| 2.1 | Delivery infrastructure | Scheduled job runs daily; Supabase Edge Function + `pg_cron` preferred so the Vercel Hobby function budget (8 of 12 used) stays free |
-| 2.2 | Daily digest email | The existing `buildDailyDigest` output sent at a user-chosen hour, only when `hasSignal` is true |
-| 2.3 | Weekly scoreboard email | Monday send of the Review scoreboard: closed last week, quarter attainment, what is late |
-| 2.4 | Preferences + unsubscribe | Per-user channel and hour in Settings; one-click unsubscribe; delivery logged |
+| 2.1 | ~~Delivery infrastructure~~ **done 2026-08-02** | Hourly Vercel cron, `CRON_SECRET`-authenticated, one function (9 of 12 used); the unsubscribe rides the same function on GET |
+| 2.2 | ~~Daily digest email~~ **done 2026-08-02** | Overdue, gone quiet, stuck money — sent at the operator's local hour, only when there is signal |
+| 2.3 | ~~Weekly review email~~ **done 2026-08-02** | Monday: what closed, what is still open |
+| 2.4 | ~~Preferences + unsubscribe~~ **done 2026-08-02** | Off by default, hour and local offset in Settings, one-click unsubscribe with no session, every attempt logged in `digest_deliveries` |
 | 2.5 | Service worker + web push (stretch) | Overdue-commitment push on installed PWA; same worker enables offline in week 3 |
 
 **Gate:** a user who does not open Memoire for three days still learns that a
