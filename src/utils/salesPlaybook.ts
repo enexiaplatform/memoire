@@ -4,11 +4,12 @@ import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeSto
 import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
-import { analyzeMeddicLiteOpportunity, type MeddicLiteFieldKey } from './meddicLite';
-import { getObjectionsForOpportunity } from './objectionLedger';
-import { generateOpportunityActionPlan } from './opportunityActionPlan';
+import { activitiesForOpportunityBroad } from './activityIndex.ts';
+import { analyzeMeddicLiteOpportunity, type MeddicLiteFieldKey } from './meddicLite.ts';
+import { getObjectionsForOpportunity } from './objectionLedger.ts';
+import { generateOpportunityActionPlan } from './opportunityActionPlan.ts';
 import { analyzePersonalSalesLearning } from './personalSalesLearning.ts';
-import { getStakeholdersForOpportunity } from './stakeholderGraph';
+import { getStakeholdersForOpportunity } from './stakeholderGraph.ts';
 import type { WeeklyExecutionReview } from './weeklyExecutionReview';
 import { isBusinessDateOverdue, todayDateKey } from './safeDate.ts';
 
@@ -161,6 +162,16 @@ export function generatePlaybookPatternMarkdown(pattern: SalesPlaybookPattern) {
   ].filter((line) => line !== '').join('\n');
 }
 
+/**
+ * `patterns` is the whole workspace's answer, and it does not depend on which
+ * opportunity is asking - only the selection below does. Until 2026-08-03 this
+ * generated them itself, and its one caller ran it once per deal: at 270 active
+ * opportunities that is 270 full playbook passes, each of which reviews all 270
+ * deals again. Seventy-three thousand MEDDIC reviews to render Today, and 3.3
+ * of its 6.8 second cold load. Callers that map over a book of business pass
+ * the patterns in; the parameter stays optional so a caller looking at one deal
+ * still works on its own.
+ */
 export function formatRelevantPlaybookPatternForBrief(input: {
   opportunity: CrmLiteOpportunity;
   opportunities: CrmLiteOpportunity[];
@@ -168,8 +179,9 @@ export function formatRelevantPlaybookPatternForBrief(input: {
   objections?: ObjectionRecord[];
   activities?: SalesActivityRecord[];
   actionOutcomes?: ActionOutcomeRecord[];
+  patterns?: SalesPlaybookPattern[];
 }) {
-  const patterns = generateSalesPlaybookPatterns({
+  const patterns = input.patterns || generateSalesPlaybookPatterns({
     opportunities: input.opportunities,
     stakeholders: input.stakeholders || [],
     objections: input.objections || [],
@@ -587,14 +599,12 @@ function mergeDuplicatePatterns(patterns: SalesPlaybookPattern[]) {
   return Array.from(byId.values());
 }
 
+/**
+ * Was a filter over every activity, run once per opportunity. See
+ * `activityIndex.ts`: the predicate is unchanged, the scan is not.
+ */
 function getRelatedActivities(opportunity: CrmLiteOpportunity, activities: SalesActivityRecord[]) {
-  const account = normalize(opportunity.accountName);
-  const opportunityName = normalize(opportunity.opportunityName);
-  return activities.filter((activity) => (
-    activity.linkedOpportunityId === opportunity.id
-    || normalize(activity.linkedOpportunityName || activity.opportunityName) === opportunityName
-    || normalize(activity.linkedAccountName || activity.accountName) === account
-  ));
+  return activitiesForOpportunityBroad(opportunity, activities);
 }
 
 function fieldStatus(review: ReturnType<typeof analyzeMeddicLiteOpportunity>, field: MeddicLiteFieldKey) {

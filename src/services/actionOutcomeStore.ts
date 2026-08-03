@@ -6,8 +6,8 @@ import {
   mergeCloudJsonRecords,
   syncCloudJsonCollectionForCurrentUser,
   upsertCloudJsonCollection,
-} from './cloudJsonCollectionStore';
-import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+} from './cloudJsonCollectionStore.ts';
+import { invalidateWorkspaceDataCache } from './workspaceDataCache.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const ACTION_OUTCOME_STORAGE_KEY = 'memoire.actionOutcomes.v1';

@@ -3,13 +3,14 @@ import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import { formatSafeBusinessDate, isBusinessDateOverdue, sanitizeBusinessDate, todayDateKey, toLocalDateKey } from './safeDate.ts';
 import type { StakeholderRecord } from '../services/stakeholderStore';
-import { getObjectionsForOpportunity } from './objectionLedger';
+import { activitiesForOpportunityStrict } from './activityIndex.ts';
+import { getObjectionsForOpportunity } from './objectionLedger.ts';
 import {
   analyzeMeddicLiteOpportunity,
   type MeddicLiteFieldKey,
   type MeddicLiteReview,
-} from './meddicLite';
-import { getStakeholdersForOpportunity } from './stakeholderGraph';
+} from './meddicLite.ts';
+import { getStakeholdersForOpportunity } from './stakeholderGraph.ts';
 
 export type OpportunityActionPriority = 'High' | 'Medium' | 'Low';
 
@@ -348,17 +349,15 @@ function createAction(
   };
 }
 
+/**
+ * The third copy of this join, and the third one to scan every activity once
+ * per opportunity. It differed from MEDDIC's only in lacking a truthy guard on
+ * `linkedOpportunityName`, which changes the answer only for an opportunity
+ * with no name at all - and the store will not load one of those. See
+ * `activityIndex.ts`.
+ */
 function getRelatedActivities(opportunity: CrmLiteOpportunity, activities: SalesActivityRecord[]) {
-  const account = normalize(opportunity.accountName);
-  const opportunityName = normalize(opportunity.opportunityName);
-  return activities.filter((activity) => (
-    activity.linkedOpportunityId === opportunity.id
-    || normalize(activity.linkedOpportunityName) === opportunityName
-    || (
-      normalize(activity.linkedAccountName || activity.accountName) === account
-      && normalize(activity.opportunityName).includes(opportunityName)
-    )
-  ));
+  return activitiesForOpportunityStrict(opportunity, activities);
 }
 
 function dedupeActions(actions: OpportunityRecommendedAction[]) {
@@ -398,10 +397,6 @@ function addDays(days: number) {
   const date = new Date();
   date.setDate(date.getDate() + days);
   return toLocalDateKey(date);
-}
-
-function normalize(value: string) {
-  return value.trim().toLowerCase();
 }
 
 function firstSentence(value: string) {

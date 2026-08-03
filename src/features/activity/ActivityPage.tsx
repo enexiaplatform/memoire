@@ -184,9 +184,33 @@ export function ActivityPage() {
   );
   // Recency questions need every record ever, not the window - a customer last
   // touched in March looks identical to one never touched if you only look at July.
+  //
+  // "Every record ever" was written as 2000-01-01 to 2100-12-31, which is not
+  // free: the ledger walks the plan board a month at a time, so a century-wide
+  // range built twelve years of calendar (its own guard rail) whether or not a
+  // single record fell in it. The range is now the span the records actually
+  // occupy, which is the same answer over far less empty calendar.
+  const allTimeRange = useMemo(() => {
+    const dates = [
+      ...activities.map((activity) => activity.activityDate),
+      ...planRecords.map((record) => record.date),
+      ...opportunities.map((opportunity) => opportunity.nextActionDate),
+      ...obligations.map((obligation) => obligation.dueDate),
+    ].filter((date) => typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date));
+
+    if (dates.length === 0) return { start: today, end: today };
+    const sorted = [...dates].sort();
+    // Today is always inside it: "nothing at all this period" is measured
+    // against now, not against the last record somebody happened to enter.
+    return {
+      start: sorted[0] < today ? sorted[0] : today,
+      end: sorted[sorted.length - 1] > today ? sorted[sorted.length - 1] : today,
+    };
+  }, [activities, obligations, opportunities, planRecords, today]);
+
   const allEntries = useMemo(
-    () => buildActivityLedger({ ...ledgerInput, range: { start: '2000-01-01', end: '2100-12-31' } }),
-    [ledgerInput],
+    () => buildActivityLedger({ ...ledgerInput, range: allTimeRange }),
+    [allTimeRange, ledgerInput],
   );
 
   const analytics = useMemo(

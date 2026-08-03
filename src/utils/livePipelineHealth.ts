@@ -5,7 +5,7 @@ import type { ObjectionRecord } from '../services/objectionStore';
 import type { ActionOutcomeRecord } from '../services/actionOutcomeStore';
 import type { SalesAssetRecord } from '../services/salesAssetStore';
 import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore';
-import { mapOpportunityToPipelineDefenseDeal } from './opportunityToPipelineBrief';
+import { mapOpportunitiesToPipelineDefenseDeals } from './opportunityToPipelineBrief.ts';
 import { buildPipelineDefenseCenter } from './pipelineDefenseCenter.ts';
 
 export type LivePipelineHealthInput = {
@@ -37,15 +37,13 @@ export type LivePipelineHealthInput = {
  */
 export function buildLivePipelineHealth(input: LivePipelineHealthInput) {
   const activeOpportunities = input.opportunities.filter((opportunity) => opportunity.status === 'Active');
-  const deals = activeOpportunities.map((opportunity) => mapOpportunityToPipelineDefenseDeal(
-    opportunity,
-    input.objections || [],
-    input.stakeholders || [],
-    input.activities || [],
-    input.actionOutcomes || [],
-    input.salesAssets || [],
-    activeOpportunities,
-  ));
+  const deals = mapOpportunitiesToPipelineDefenseDeals(activeOpportunities, {
+    objections: input.objections,
+    stakeholders: input.stakeholders,
+    activities: input.activities,
+    actionOutcomes: input.actionOutcomes,
+    salesAssets: input.salesAssets,
+  });
 
   return {
     ...buildPipelineDefenseCenter(deals, input.today, input.opportunityOutcomes || []),

@@ -732,9 +732,20 @@ export function condensePlanLabel(rawLabel: string) {
   return `${(lastSpace > 40 ? clipped.slice(0, lastSpace) : clipped).replace(/[,;:\s]+$/, '')}...`;
 }
 
+/**
+ * Constructed once. `Intl.DateTimeFormat` costs about a millisecond to build
+ * and nothing to reuse, and `buildDays` calls this for every day in a range -
+ * so the Activity page's "everything ever" query was constructing several
+ * thousand identical formatters and spending 4.8 seconds doing it, which was
+ * the whole of that page's cold load. Same mistake, same fix, as `money.ts`
+ * and `safeDate.ts`.
+ */
+const dayLabelFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+const monthLabelFormatter = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
+
 function formatDayLabel(dateKey: string) {
   try {
-    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(parseDateKey(dateKey));
+    return dayLabelFormatter.format(parseDateKey(dateKey));
   } catch {
     return dateKey;
   }
@@ -742,7 +753,7 @@ function formatDayLabel(dateKey: string) {
 
 function formatMonthLabel(dateKey: string) {
   try {
-    return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(parseDateKey(dateKey));
+    return monthLabelFormatter.format(parseDateKey(dateKey));
   } catch {
     return dateKey;
   }

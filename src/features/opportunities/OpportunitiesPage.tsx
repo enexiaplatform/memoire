@@ -116,7 +116,7 @@ import {
 import { canUsePipelineDefenseCloudStore, createCloudBrief } from '../../services/pipelineDefenseCloudStore';
 import {
   generatePipelineDefenseBriefFromOpportunities,
-  mapOpportunityToPipelineDefenseDeal,
+  mapOpportunitiesToPipelineDefenseDeals,
 } from '../../utils/opportunityToPipelineBrief';
 import {
   getRelevantSalesAssetsForOpportunity,
@@ -3183,7 +3183,7 @@ function DefenseBriefPreviewModal({
   onCreate: () => void;
   onClose: () => void;
 }) {
-  const generatedDeals = opportunities.map((opportunity) => mapOpportunityToPipelineDefenseDeal(opportunity, objections, stakeholders, activities, actionOutcomes, salesAssets, opportunities));
+  const generatedDeals = mapOpportunitiesToPipelineDefenseDeals(opportunities, { objections, stakeholders, activities, actionOutcomes, salesAssets });
   const updateMetadata = <Key extends keyof BriefPreviewMetadata>(
     key: Key,
     value: BriefPreviewMetadata[Key],

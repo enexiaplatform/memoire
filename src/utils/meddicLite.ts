@@ -2,10 +2,11 @@ import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
-import { getObjectionsForOpportunity } from './objectionLedger';
+import { activitiesForOpportunityStrict } from './activityIndex.ts';
+import { getObjectionsForOpportunity } from './objectionLedger.ts';
 import { normalizeMeddicRole } from './meddicStakeholderMap.ts';
-import { getStakeholdersForOpportunity } from './stakeholderGraph';
-import { formatCurrencyAmount } from './money';
+import { getStakeholdersForOpportunity } from './stakeholderGraph.ts';
+import { formatCurrencyAmount } from './money.ts';
 
 export type MeddicLiteFieldKey =
   | 'metrics'
@@ -389,17 +390,12 @@ function getRelatedObjections(opportunity: CrmLiteOpportunity, objections: Objec
   return getObjectionsForOpportunity(objections, opportunity);
 }
 
+/**
+ * Was a filter over every activity, run once per opportunity. See
+ * `activityIndex.ts`: the predicate is unchanged, the scan is not.
+ */
 function getRelatedActivities(opportunity: CrmLiteOpportunity, activities: SalesActivityRecord[]) {
-  const account = normalize(opportunity.accountName);
-  const opportunityName = normalize(opportunity.opportunityName);
-  return activities.filter((activity) => (
-    activity.linkedOpportunityId === opportunity.id
-    || (activity.linkedOpportunityName && normalize(activity.linkedOpportunityName) === opportunityName)
-    || (
-      normalize(activity.linkedAccountName || activity.accountName) === account
-      && normalize(activity.opportunityName || '').includes(opportunityName)
-    )
-  ));
+  return activitiesForOpportunityStrict(opportunity, activities);
 }
 
 function fieldStatus(review: Pick<MeddicLiteReview, 'fields'>, key: MeddicLiteFieldKey) {
@@ -442,10 +438,6 @@ function firstSentence(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return '';
   return trimmed.split(/(?<=[.!?])\s+/)[0] || trimmed;
-}
-
-function normalize(value: string) {
-  return value.trim().toLowerCase();
 }
 
 function dedupe(values: string[]) {

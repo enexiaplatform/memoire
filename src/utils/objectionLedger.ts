@@ -9,7 +9,7 @@ import {
   type ObjectionRecord,
   type ObjectionStatus,
   type ObjectionType,
-} from '../services/objectionStore';
+} from '../services/objectionStore.ts';
 
 export type ObjectionCandidate = {
   objectionType: ObjectionType;

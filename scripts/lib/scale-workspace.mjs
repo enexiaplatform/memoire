@@ -8,6 +8,13 @@
  * Records are lean on purpose: real ones carry more text, but text is a storage
  * question, not a compute or render one, and fat records make the harness hit
  * the browser's storage ceiling before it reaches the scale being tested.
+ *
+ * Lean, but not so lean the app throws them away. Until 2026-08-03 the
+ * activities here had no `rawNote`, and `loadLocalActivities` drops any record
+ * without one - so every browser measurement that claimed 900 activities was
+ * taken against zero of them, and the Activity page was being timed on an empty
+ * workspace. A fixture that does not survive the product's own loader measures
+ * nothing. Every record below now carries the fields its store requires.
  */
 
 export function buildScaleWorkspace(scale = { opportunities: 300, activities: 900, accounts: 200, quotes: 250 }) {
@@ -27,6 +34,14 @@ const account = (index) => `Account ${index % SCALE.accounts}`;
   nextActionDate: `2026-08-${String((index % 28) + 1).padStart(2, '0')}`,
   expectedClosePeriod: `Q${(index % 4) + 1}`,
   evidence: 'Technical evaluation done',
+  // Every string field the store guarantees. A fixture missing one does not
+  // measure a slow path, it throws inside it - `technicalCriteria` was absent
+  // and `reviewDecisionCriteria` calls `.trim()` on it unguarded.
+  budgetOwner: index % 4 === 0 ? '' : 'Finance director',
+  procurementPath: index % 6 === 0 ? '' : 'Open tender',
+  technicalCriteria: index % 5 === 0 ? '' : 'Throughput and IQ/OQ documentation',
+  missingContext: index % 3 === 0 ? 'Economic buyer not confirmed' : '',
+  objectionDebt: index % 7 === 0 ? 'Price vs incumbent unresolved' : '',
   forecastEvidenceCategory: ['Defensible', 'Weak but recoverable', 'Hope-based', 'Unsupported'][index % 4],
   decisionRecommendation: ['Advance', 'Rescue', 'Downgrade', 'Close'][index % 4],
   brand: `Brand ${index % 6}`,
@@ -45,14 +60,29 @@ const account = (index) => `Account ${index % SCALE.accounts}`;
   activityDate: `2026-07-${String((index % 28) + 1).padStart(2, '0')}`,
   activityType: ['Meeting', 'Call', 'Email', 'Site visit'][index % 4],
   summary: `Recorded touch ${index} with the customer about the current evaluation.`,
+  // Required by loadLocalActivities. Without it the store silently discards
+  // the record and the whole fixture measures an empty workspace.
+  rawNote: `Recorded touch ${index} with the customer about the current evaluation.`,
   linkedOpportunityId: index % 3 === 0 ? `opp-${index % SCALE.opportunities}` : '',
-  linkedOpportunityName: '',
+  linkedOpportunityName: index % 3 === 0 ? `Deal ${index % SCALE.opportunities}` : '',
+  opportunityName: index % 5 === 0 ? `Deal ${index % SCALE.opportunities}` : '',
+  linkedAccountName: index % 3 === 0 ? account(index) : '',
+  linkStatus: index % 3 === 0 ? 'Linked' : 'Unlinked',
   contactName: 'Contact person',
+  stakeholderName: '',
+  stakeholderRole: '',
+  competitors: [],
+  buyingSignals: [],
+  risks: [],
+  timelineSignals: [],
+  nextActions: [],
   nextAction: index % 4 === 0 ? 'Send revised quote' : '',
-  nextActionDate: index % 4 === 0 ? '2026-08-12' : '',
+  // The record's own field name. `nextActionDate` was never read by anything.
+  dueDate: index % 4 === 0 ? '2026-08-12' : '',
   tags: ['commercial-signal'],
   createdAt: '2026-07-01T00:00:00.000Z',
   updatedAt: '2026-07-01T00:00:00.000Z',
+  storageMode: 'local',
 }));
 
   const accounts = Array.from({ length: SCALE.accounts }, (_, index) => ({

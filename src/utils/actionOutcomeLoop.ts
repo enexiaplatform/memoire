@@ -1,11 +1,11 @@
-import type { ActionOutcomeRecord } from '../services/actionOutcomeStore';
+import type { ActionOutcomeRecord } from '../services/actionOutcomeStore.ts';
 import { todayDateKey, timestampToLocalDateKey } from './safeDate.ts';
-import { actionOutcomeMatchesAction, getActionOutcomesForOpportunity } from '../services/actionOutcomeStore';
+import { actionOutcomeMatchesAction, getActionOutcomesForOpportunity } from '../services/actionOutcomeStore.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
-import { generateOpportunityActionPlan, type OpportunityRecommendedAction } from './opportunityActionPlan';
+import { generateOpportunityActionPlan, type OpportunityRecommendedAction } from './opportunityActionPlan.ts';
 
 export type ActionOutcomeSignal = {
   id: string;

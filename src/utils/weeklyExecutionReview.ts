@@ -1,23 +1,23 @@
-import type { ActionOutcomeRecord } from '../services/actionOutcomeStore';
-import { getActionOutcomesForOpportunity } from '../services/actionOutcomeStore';
+import type { ActionOutcomeRecord } from '../services/actionOutcomeStore.ts';
+import { getActionOutcomesForOpportunity } from '../services/actionOutcomeStore.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import { isBusinessDateOverdue, toLocalDateKey, todayDateKey } from './safeDate.ts';
 import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
-import { getActionOutcomesInPeriod, summarizeActionOutcome } from './actionOutcomeLoop';
+import { getActionOutcomesInPeriod, summarizeActionOutcome } from './actionOutcomeLoop.ts';
 import {
   analyzeMeddicLiteOpportunity,
   type MeddicLiteDealCategory,
   type MeddicLiteFieldKey,
   type MeddicLiteReview,
-} from './meddicLite';
-import { getObjectionsForOpportunity } from './objectionLedger';
+} from './meddicLite.ts';
+import { getObjectionsForOpportunity } from './objectionLedger.ts';
 import {
   generateOpportunityActionPlan,
   type OpportunityRecommendedAction,
-} from './opportunityActionPlan';
-import { getStakeholdersForOpportunity } from './stakeholderGraph';
+} from './opportunityActionPlan.ts';
+import { getStakeholdersForOpportunity } from './stakeholderGraph.ts';
 
 export type ExecutionReviewPeriodType = 'week' | 'month';
 

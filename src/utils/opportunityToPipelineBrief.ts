@@ -12,7 +12,11 @@ import { buildMeddicStakeholderMap } from './meddicStakeholderMap.ts';
 import { generateOpportunityActionPlan, generateOpportunityActionsMarkdown } from './opportunityActionPlan.ts';
 import { formatActionOutcomeForBrief } from './actionOutcomeLoop.ts';
 import { formatExecutionLearningForBrief } from './weeklyExecutionReview.ts';
-import { formatRelevantPlaybookPatternForBrief } from './salesPlaybook.ts';
+import {
+  formatRelevantPlaybookPatternForBrief,
+  generateSalesPlaybookPatterns,
+  type SalesPlaybookPattern,
+} from './salesPlaybook.ts';
 import { formatRelevantProofAssetsForBrief } from './salesAssetSuggestions.ts';
 import { compareSafeBusinessDate, sanitizeBusinessDate } from './safeDate.ts';
 
@@ -23,6 +27,59 @@ export type OpportunityBriefMetadata = {
   scope?: string;
 };
 
+/**
+ * A whole book of deals, mapped once.
+ *
+ * Three places mapped opportunities one at a time, and each mapping regenerated
+ * the workspace-wide playbook from scratch - an analysis that reviews every
+ * deal in the book. At 270 active opportunities that is 270 passes over 270
+ * deals to produce 270 copies of the same answer, and it was the single largest
+ * cost in the product: 3.3 seconds of Today's 6.8 second cold load, measured
+ * 2026-08-03 at the scale the founder's own workspace is already at.
+ *
+ * The per-deal mapper is unchanged and still works alone. This exists so that
+ * "map the book" is a call the caller reaches for instead of a loop they write,
+ * because the loop is where the mistake lives.
+ */
+export function mapOpportunitiesToPipelineDefenseDeals(
+  opportunities: CrmLiteOpportunity[],
+  context: {
+    objections?: ObjectionRecord[];
+    stakeholders?: StakeholderRecord[];
+    activities?: SalesActivityRecord[];
+    actionOutcomes?: ActionOutcomeRecord[];
+    salesAssets?: SalesAssetRecord[];
+  } = {},
+): PipelineDefenseDeal[] {
+  if (opportunities.length === 0) return [];
+
+  const objections = context.objections || [];
+  const stakeholders = context.stakeholders || [];
+  const activities = context.activities || [];
+  const actionOutcomes = context.actionOutcomes || [];
+  const salesAssets = context.salesAssets || [];
+
+  const playbookPatterns = generateSalesPlaybookPatterns({
+    opportunities,
+    stakeholders,
+    objections,
+    activities,
+    actionOutcomes,
+    limit: 20,
+  });
+
+  return opportunities.map((opportunity) => mapOpportunityToPipelineDefenseDeal(
+    opportunity,
+    objections,
+    stakeholders,
+    activities,
+    actionOutcomes,
+    salesAssets,
+    opportunities,
+    playbookPatterns,
+  ));
+}
+
 export function mapOpportunityToPipelineDefenseDeal(
   opportunity: CrmLiteOpportunity,
   objections: ObjectionRecord[] = [],
@@ -31,6 +88,11 @@ export function mapOpportunityToPipelineDefenseDeal(
   actionOutcomes: ActionOutcomeRecord[] = [],
   salesAssets: SalesAssetRecord[] = [],
   allOpportunities: CrmLiteOpportunity[] = [opportunity],
+  /**
+   * The workspace-wide playbook, when the caller is mapping a whole book and
+   * has already computed it. See `mapOpportunitiesToPipelineDefenseDeals`.
+   */
+  playbookPatterns?: SalesPlaybookPattern[],
 ): PipelineDefenseDeal {
   const missingContext = splitTextList(opportunity.missingContext);
   const evidence = splitTextList(opportunity.evidence);
@@ -61,6 +123,7 @@ export function mapOpportunityToPipelineDefenseDeal(
     objections,
     activities,
     actionOutcomes,
+    patterns: playbookPatterns,
   });
   const relevantProofAssets = formatRelevantProofAssetsForBrief({
     opportunity,
@@ -149,7 +212,7 @@ export function generatePipelineDefenseBriefFromOpportunities(
     weekLabel: metadata.weekLabel || getCurrentWeekLabel(),
     salesOwner: metadata.salesOwner || 'Sales owner',
     scope: metadata.scope || 'Selected opportunities',
-    deals: opportunities.map((opportunity) => mapOpportunityToPipelineDefenseDeal(opportunity, objections, stakeholders, activities, actionOutcomes, salesAssets, opportunities)),
+    deals: mapOpportunitiesToPipelineDefenseDeals(opportunities, { objections, stakeholders, activities, actionOutcomes, salesAssets }),
   });
 }
 
