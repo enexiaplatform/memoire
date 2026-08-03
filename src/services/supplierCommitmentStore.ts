@@ -12,7 +12,7 @@ import {
   syncCloudJsonCollectionForCurrentUser,
   sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore';
-import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { invalidateWorkspaceCollection } from './workspaceDataCache';
 import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const SUPPLIER_COMMITMENT_STORAGE_KEY = 'memoire.supplierCommitments.v1';
@@ -76,7 +76,7 @@ function persistSupplierCommitments(records: SupplierCommitmentRecord[], syncClo
     writeLocalRecords(SUPPLIER_COMMITMENT_STORAGE_KEY, sanitized);
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('supplier_commitments', sanitized);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('supplierCommitments');
     }
   }
   return sanitized;

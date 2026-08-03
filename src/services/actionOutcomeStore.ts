@@ -7,7 +7,7 @@ import {
   syncCloudJsonCollectionForCurrentUser,
   sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore.ts';
-import { invalidateWorkspaceDataCache } from './workspaceDataCache.ts';
+import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const ACTION_OUTCOME_STORAGE_KEY = 'memoire.actionOutcomes.v1';
@@ -91,7 +91,7 @@ function persistActionOutcomes(outcomes: ActionOutcomeRecord[], syncCloud: boole
     writeLocalRecords(ACTION_OUTCOME_STORAGE_KEY, sanitized);
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('action_outcomes', sanitized);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('actionOutcomes');
     }
     return true;
   } catch {

@@ -1,5 +1,5 @@
 import { supabaseClient } from '../lib/supabaseClient.ts';
-import { invalidateWorkspaceDataCache } from './workspaceDataCache.ts';
+import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
@@ -185,13 +185,13 @@ export async function createOpportunity(
     try {
       const opportunity = await createCloudOpportunity(normalized, userId as string);
       saveLocalOpportunityRecord({ ...opportunity, storageMode: 'local' });
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('opportunities');
       return { opportunity, mode: 'cloud' };
     } catch (error) {
       reportWorkspaceSyncError();
       const opportunity = createLocalOpportunity(normalized, userId || undefined);
       saveLocalOpportunityRecord(opportunity);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('opportunities');
       debugOpportunityStore('cloud create failed; local copy preserved', { message: getErrorMessage(error) });
       return {
         opportunity,
@@ -203,7 +203,7 @@ export async function createOpportunity(
 
   const opportunity = createLocalOpportunity(normalized, userId || undefined);
   saveLocalOpportunityRecord(opportunity);
-  invalidateWorkspaceDataCache();
+  invalidateWorkspaceCollection('opportunities');
   return { opportunity, mode: 'local' };
 }
 
@@ -218,7 +218,7 @@ export async function updateOpportunity(
     try {
       const updated = await updateCloudOpportunity(opportunity.id, normalized, userId as string);
       saveLocalOpportunityRecord({ ...updated, storageMode: 'local' });
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('opportunities');
       return { opportunity: updated, mode: 'cloud' };
     } catch (error) {
       reportWorkspaceSyncError();
@@ -229,7 +229,7 @@ export async function updateOpportunity(
         storageMode: 'local' as const,
       };
       saveLocalOpportunityRecord(localCopy);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('opportunities');
       debugOpportunityStore('cloud update failed; local copy preserved', { message: getErrorMessage(error) });
       return {
         opportunity: localCopy,
@@ -246,7 +246,7 @@ export async function updateOpportunity(
     storageMode: 'local' as const,
   };
   saveLocalOpportunityRecord(updated);
-  invalidateWorkspaceDataCache();
+  invalidateWorkspaceCollection('opportunities');
   return { opportunity: updated, mode: 'local' };
 }
 
@@ -262,7 +262,7 @@ export async function deleteOpportunity(opportunity: CrmLiteOpportunity, userId?
   }
 
   deleteLocalOpportunity(opportunity.id);
-  invalidateWorkspaceDataCache();
+  invalidateWorkspaceCollection('opportunities');
 }
 
 export function opportunityToFormInput(opportunity: CrmLiteOpportunity): OpportunityFormInput {

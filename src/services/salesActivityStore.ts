@@ -1,6 +1,6 @@
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import type { ClassifiedSalesActivity, SalesActivityType } from '../utils/salesActivityClassifier.ts';
-import { invalidateWorkspaceDataCache } from './workspaceDataCache.ts';
+import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { compareSafeBusinessDate, isBusinessDateInRange, sanitizeBusinessDate } from '../utils/safeDate.ts';
 import {
@@ -163,7 +163,7 @@ export async function flushPendingSalesActivities(
     }
   }
 
-  if (synced > 0) invalidateWorkspaceDataCache();
+  if (synced > 0) invalidateWorkspaceCollection('activities');
   announcePendingSync();
   return { synced, remaining: listPendingSalesActivities().length, error };
 }
@@ -182,7 +182,7 @@ export async function saveSalesActivity(
   if (canUseSalesActivityCloudStore(userId)) {
     try {
       const record = await createCloudActivity(activity, userId as string);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('activities');
       return { record, mode: 'cloud' };
     } catch (error) {
       reportWorkspaceSyncError();
@@ -191,7 +191,7 @@ export async function saveSalesActivity(
       // nothing would ever send it.
       const record = { ...createLocalActivity(activity), pendingSync: true };
       saveLocalActivityRecord(record);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('activities');
       announcePendingSync();
       debugSalesActivityStore('cloud save failed; local copy preserved', { message: getErrorMessage(error) });
       return {
@@ -204,7 +204,7 @@ export async function saveSalesActivity(
 
   const record = createLocalActivity(activity);
   saveLocalActivityRecord(record);
-  invalidateWorkspaceDataCache();
+  invalidateWorkspaceCollection('activities');
   return { record, mode: 'local' };
 }
 
@@ -217,12 +217,12 @@ export async function deleteSalesActivity(activity: SalesActivityRecord, userId?
       .eq('user_id', userId);
 
     if (error) throw new Error(error.message);
-    invalidateWorkspaceDataCache();
+    invalidateWorkspaceCollection('activities');
     return;
   }
 
   deleteLocalActivity(activity.id);
-  invalidateWorkspaceDataCache();
+  invalidateWorkspaceCollection('activities');
 }
 
 export async function updateSalesActivityLink(
@@ -256,12 +256,12 @@ export async function updateSalesActivityLink(
       .single();
 
     if (error) throw new Error(error.message);
-    invalidateWorkspaceDataCache();
+    invalidateWorkspaceCollection('activities');
     return rowToRecord(data as SalesActivityRow);
   }
 
   saveLocalActivityRecord({ ...updated, storageMode: 'local' });
-  invalidateWorkspaceDataCache();
+  invalidateWorkspaceCollection('activities');
   return { ...updated, storageMode: 'local' };
 }
 
@@ -307,12 +307,12 @@ export async function updateSalesActivitySchedule(
       .single();
 
     if (error) throw new Error(error.message);
-    invalidateWorkspaceDataCache();
+    invalidateWorkspaceCollection('activities');
     return rowToRecord(data as SalesActivityRow);
   }
 
   saveLocalActivityRecord({ ...updated, storageMode: 'local' });
-  invalidateWorkspaceDataCache();
+  invalidateWorkspaceCollection('activities');
   return { ...updated, storageMode: 'local' };
 }
 

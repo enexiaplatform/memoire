@@ -6,7 +6,7 @@ import {
   syncCloudJsonCollectionForCurrentUser,
   sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore';
-import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { invalidateWorkspaceCollection } from './workspaceDataCache';
 import {
   getCommercialCheckpointRisk,
   getNextCommercialProgressAction,
@@ -146,7 +146,7 @@ function persistQuotes(quotes: QuoteRecord[], syncCloud: boolean) {
     writeLocalRecords(QUOTE_STORAGE_KEY, sanitized);
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('quotes', sanitized);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('quotes');
     }
     return true;
   } catch {

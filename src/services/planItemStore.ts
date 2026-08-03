@@ -7,7 +7,7 @@ import {
   syncCloudJsonCollectionForCurrentUser,
   sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore';
-import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { invalidateWorkspaceCollection } from './workspaceDataCache';
 import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const PLAN_ITEM_STORAGE_KEY = 'memoire.planItems.v1';
@@ -78,7 +78,7 @@ function persistPlanItems(records: PlanRecord[], syncCloud = true) {
     writeLocalRecords(PLAN_ITEM_STORAGE_KEY, sanitized);
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('plan_items', sanitized);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('planItems');
     }
     window.dispatchEvent(new CustomEvent(PLAN_ITEMS_UPDATED_EVENT, { detail: sanitized }));
   }

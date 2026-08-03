@@ -1,5 +1,5 @@
 import { pipelineDefenseBriefMeta, type PipelineDefenseDeal } from '../data/pipelineDefenseBrief.ts';
-import { invalidateWorkspaceDataCache } from '../services/workspaceDataCache.ts';
+import { invalidateWorkspaceCollection } from '../services/workspaceDataCache.ts';
 import { normalizeImportedDeal } from './importPipelineDefenseBrief.ts';
 import { writeLocalRecords } from '../services/localWriteGuard.ts';
 
@@ -52,7 +52,7 @@ export function savePipelineDefenseBriefStore(store: PipelineDefenseBriefStore) 
   try {
     if (typeof window === 'undefined' || !window.localStorage) return false;
     writeLocalRecords(MULTI_BRIEF_STORAGE_KEY, sanitizeStore(store));
-    invalidateWorkspaceDataCache();
+    invalidateWorkspaceCollection('briefs');
     return true;
   } catch {
     return false;
@@ -63,7 +63,7 @@ export function clearPipelineDefenseBriefStore() {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return false;
     window.localStorage.removeItem(MULTI_BRIEF_STORAGE_KEY);
-    invalidateWorkspaceDataCache();
+    invalidateWorkspaceCollection('briefs');
     return true;
   } catch {
     return false;

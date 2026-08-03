@@ -1,5 +1,5 @@
 import { supabaseClient } from '../lib/supabaseClient.ts';
-import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { invalidateWorkspaceCollection } from './workspaceDataCache';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus';
 import { writeLocalCollection, writeLocalRecords } from './localWriteGuard.ts';
 
@@ -119,20 +119,20 @@ export async function createStakeholder(input: StakeholderFormInput, userId?: st
     try {
       const stakeholder = await createCloudStakeholder(normalized, userId as string);
       saveLocalStakeholderRecord({ ...stakeholder, storageMode: 'local' });
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('stakeholders');
       return { stakeholder, mode: 'cloud' };
     } catch (error) {
       reportWorkspaceSyncError();
       const stakeholder = createLocalStakeholder(normalized, userId || undefined);
       saveLocalStakeholderRecord(stakeholder);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('stakeholders');
       debugStakeholderStore('cloud create failed; local copy preserved', { message: getErrorMessage(error) });
       return { stakeholder, mode: 'local', warning: 'Cloud sync issue - your local copy is preserved.' };
     }
   }
   const stakeholder = createLocalStakeholder(normalized, userId || undefined);
   saveLocalStakeholderRecord(stakeholder);
-  invalidateWorkspaceDataCache();
+  invalidateWorkspaceCollection('stakeholders');
   return { stakeholder, mode: 'local' };
 }
 
@@ -142,20 +142,20 @@ export async function updateStakeholder(stakeholder: StakeholderRecord, input: S
     try {
       const updated = await updateCloudStakeholder(stakeholder.id, normalized, userId as string);
       saveLocalStakeholderRecord({ ...updated, storageMode: 'local' });
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('stakeholders');
       return { stakeholder: updated, mode: 'cloud' };
     } catch (error) {
       reportWorkspaceSyncError();
       const localCopy = { ...stakeholder, ...normalized, updatedAt: new Date().toISOString(), storageMode: 'local' as const };
       saveLocalStakeholderRecord(localCopy);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('stakeholders');
       debugStakeholderStore('cloud update failed; local copy preserved', { message: getErrorMessage(error) });
       return { stakeholder: localCopy, mode: 'local', warning: 'Cloud sync issue - your local copy is preserved.' };
     }
   }
   const updated = { ...stakeholder, ...normalized, updatedAt: new Date().toISOString(), storageMode: 'local' as const };
   saveLocalStakeholderRecord(updated);
-  invalidateWorkspaceDataCache();
+  invalidateWorkspaceCollection('stakeholders');
   return { stakeholder: updated, mode: 'local' };
 }
 
@@ -169,7 +169,7 @@ export async function deleteStakeholder(stakeholder: StakeholderRecord, userId?:
     if (error) throw new Error(error.message);
   }
   deleteLocalStakeholder(stakeholder.id);
-  invalidateWorkspaceDataCache();
+  invalidateWorkspaceCollection('stakeholders');
 }
 
 export function stakeholderToFormInput(stakeholder: StakeholderRecord): StakeholderFormInput {
@@ -241,14 +241,28 @@ function deleteLocalStakeholder(stakeholderId: string) {
   writeLocalCollection(STAKEHOLDER_STORAGE_KEY, JSON.stringify(loadLocalStakeholders().filter((item) => item.id !== stakeholderId)));
 }
 
+/**
+ * Exactly the columns `rowToStakeholder` reads, and no others.
+ *
+ * `select('*')` shipped every import-provenance column - source_file,
+ * source_hash, source_row, source_sheet, source_system, external_source_key,
+ * import_batch_id - on all 1,738 rows, on every workspace load, for a mapper
+ * that has never looked at one of them. Anything added to the mapper has to be
+ * added here too, which is the point: the list is the contract.
+ */
+const STAKEHOLDER_COLUMNS =
+  'id,user_id,name,account_id,account_name,opportunity_id,opportunity_name,'
+  + 'role_title,stakeholder_role,influence_level,relationship_strength,stance,'
+  + 'email,phone,notes,tags,last_interaction_date,created_at,updated_at';
+
 async function loadCloudStakeholders(userId: string) {
   const { data, error } = await supabaseClient!
     .from(TABLE_NAME)
-    .select('*')
+    .select(STAKEHOLDER_COLUMNS)
     .eq('user_id', userId)
     .order('updated_at', { ascending: false });
   if (error) throw new Error(error.message);
-  return ((data || []) as StakeholderRow[]).map(rowToStakeholder);
+  return ((data || []) as unknown as StakeholderRow[]).map(rowToStakeholder);
 }
 
 async function createCloudStakeholder(input: StakeholderFormInput, userId: string) {

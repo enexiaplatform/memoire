@@ -1,5 +1,5 @@
 import { supabaseClient } from '../lib/supabaseClient.ts';
-import { invalidateWorkspaceDataCache } from './workspaceDataCache.ts';
+import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
 
@@ -122,13 +122,13 @@ export async function createAccount(
       const accountCode = getNextAccountCode(cloudAccounts);
       const account = await createCloudAccount(normalized, userId as string, accountCode);
       saveLocalAccountRecord({ ...account, storageMode: 'local' });
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('accounts');
       return { account, mode: 'cloud' };
     } catch (error) {
       reportWorkspaceSyncError();
       const account = createLocalAccount(normalized, userId || undefined);
       saveLocalAccountRecord(account);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('accounts');
       debugAccountStore('cloud create failed; local copy preserved', { message: getErrorMessage(error) });
       return {
         account,
@@ -140,7 +140,7 @@ export async function createAccount(
 
   const account = createLocalAccount(normalized, userId || undefined);
   saveLocalAccountRecord(account);
-  invalidateWorkspaceDataCache();
+  invalidateWorkspaceCollection('accounts');
   return { account, mode: 'local' };
 }
 
@@ -167,7 +167,7 @@ export async function createAccounts(
       const codes = allocateAccountCodes(cloudAccounts, normalized.length);
       const created = await createCloudAccounts(normalized, userId as string, codes);
       const localWrite = saveLocalAccountRecords(created.map((account) => ({ ...account, storageMode: 'local' as const })));
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('accounts');
       return {
         accounts: created,
         mode: 'cloud',
@@ -177,7 +177,7 @@ export async function createAccounts(
       reportWorkspaceSyncError();
       debugAccountStore('cloud bulk create failed; local copies preserved', { message: getErrorMessage(error) });
       const local = createLocalAccounts(normalized, userId || undefined);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('accounts');
       return {
         accounts: local.accounts,
         mode: 'local',
@@ -189,7 +189,7 @@ export async function createAccounts(
   }
 
   const local = createLocalAccounts(normalized, userId || undefined);
-  invalidateWorkspaceDataCache();
+  invalidateWorkspaceCollection('accounts');
   return {
     accounts: local.accounts,
     mode: 'local',
@@ -209,7 +209,7 @@ export async function updateAccount(
       const updated = await updateCloudAccount(account.id, normalized, userId as string);
       updated.accountCode ||= account.accountCode;
       saveLocalAccountRecord({ ...updated, storageMode: 'local' });
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('accounts');
       return { account: updated, mode: 'cloud' };
     } catch (error) {
       reportWorkspaceSyncError();
@@ -220,7 +220,7 @@ export async function updateAccount(
         storageMode: 'local' as const,
       };
       saveLocalAccountRecord(localCopy);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('accounts');
       debugAccountStore('cloud update failed; local copy preserved', { message: getErrorMessage(error) });
       return {
         account: localCopy,
@@ -237,7 +237,7 @@ export async function updateAccount(
     storageMode: 'local' as const,
   };
   saveLocalAccountRecord(updated);
-  invalidateWorkspaceDataCache();
+  invalidateWorkspaceCollection('accounts');
   return { account: updated, mode: 'local' };
 }
 
@@ -253,7 +253,7 @@ export async function deleteAccount(account: AccountMemoryRecord, userId?: strin
   }
 
   deleteLocalAccount(account.id);
-  invalidateWorkspaceDataCache();
+  invalidateWorkspaceCollection('accounts');
 }
 
 export function accountToFormInput(account: AccountMemoryRecord): AccountFormInput {
@@ -341,15 +341,33 @@ function deleteLocalAccount(accountId: string) {
   writeLocalRecords(ACCOUNT_STORAGE_KEY, next);
 }
 
+/**
+ * Exactly the columns `rowToAccount` reads, and no others.
+ *
+ * `select('*')` shipped source_file, source_hash, source_row, source_sheet,
+ * import_batch_id, source_capture_id, status, objections and pain_points on all
+ * 1,083 rows, on every workspace load, for a mapper that reads none of them.
+ * Anything added to the mapper has to be added here too - the list is the
+ * contract between the two.
+ */
+const ACCOUNT_COLUMNS =
+  'id,user_id,account_code,account_name,name,segment,industry,location,'
+  + 'account_potential,relationship_status,key_stakeholders,notes,summary,tags,'
+  + 'territory,state_province,ka_flag,priority,fy26_target_sgd,fy27_target_sgd,'
+  + 'account_master_stage,strategy,strategy_owner,next_follow_up,overdue_status,'
+  + 'source_system,external_source_key,created_at,updated_at';
+
 async function loadCloudAccounts(userId: string): Promise<AccountMemoryRecord[]> {
   const { data, error } = await supabaseClient!
     .from(TABLE_NAME)
-    .select('*')
+    .select(ACCOUNT_COLUMNS)
     .eq('user_id', userId)
     .order('updated_at', { ascending: false });
 
   if (error) throw new Error(error.message);
-  return ensureAccountCodes(((data || []) as AccountRow[]).map(rowToAccount)).accounts;
+  // The projected column list is not a literal type, so the client hands back
+  // its generic row shape; the cast is the same one `select('*')` was getting.
+  return ensureAccountCodes(((data || []) as unknown as AccountRow[]).map(rowToAccount)).accounts;
 }
 
 async function createCloudAccount(input: AccountFormInput, userId: string, accountCode: string) {

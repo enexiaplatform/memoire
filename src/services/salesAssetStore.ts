@@ -1,4 +1,4 @@
-import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { invalidateWorkspaceCollection } from './workspaceDataCache';
 import {
   claimLocalCollectionForUser,
   deleteCloudJsonRecordForCurrentUser,
@@ -116,7 +116,7 @@ function persistSalesAssets(assets: SalesAssetRecord[], syncCloud: boolean) {
     writeLocalRecords(SALES_ASSET_STORAGE_KEY, sanitized);
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('sales_assets', sanitized);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('assets');
     }
     return true;
   } catch {

@@ -1,5 +1,5 @@
 import { supabaseClient } from '../lib/supabaseClient.ts';
-import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { invalidateWorkspaceCollection } from './workspaceDataCache';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
@@ -113,13 +113,13 @@ export async function createOperatingContext(
       if (error) throw new Error(error.message);
       const record = rowToOperatingContext(data as OperatingContextRow);
       saveLocalOperatingContext(record, userId);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('operatingContext');
       return { record, mode: 'cloud' };
     } catch (error) {
       reportWorkspaceSyncError();
       const record = createLocalOperatingContext(normalized, userId || 'guest');
       saveLocalOperatingContext(record, userId || 'guest');
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('operatingContext');
       debugOperatingContext('cloud create failed; local copy preserved', error);
       return { record, mode: 'local', warning: 'Cloud sync issue - your local copy is preserved.' };
     }
@@ -128,7 +128,7 @@ export async function createOperatingContext(
   const scope = userId || 'guest';
   const record = createLocalOperatingContext(normalized, scope);
   saveLocalOperatingContext(record, scope);
-  invalidateWorkspaceDataCache();
+  invalidateWorkspaceCollection('operatingContext');
   return { record, mode: 'local' };
 }
 
@@ -151,13 +151,13 @@ export async function updateOperatingContext(
       if (error) throw new Error(error.message);
       const updated = rowToOperatingContext(data as OperatingContextRow);
       saveLocalOperatingContext(updated, userId);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('operatingContext');
       return { record: updated, mode: 'cloud' };
     } catch (error) {
       reportWorkspaceSyncError();
       const localCopy = toLocalRecord(record, normalized, userId);
       saveLocalOperatingContext(localCopy, userId);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('operatingContext');
       debugOperatingContext('cloud update failed; local copy preserved', error);
       return { record: localCopy, mode: 'local', warning: 'Cloud sync issue - your local copy is preserved.' };
     }
@@ -166,7 +166,7 @@ export async function updateOperatingContext(
   const scope = userId || record.userId || 'guest';
   const updated = toLocalRecord(record, normalized, scope);
   saveLocalOperatingContext(updated, scope);
-  invalidateWorkspaceDataCache();
+  invalidateWorkspaceCollection('operatingContext');
   return { record: updated, mode: 'local' };
 }
 
@@ -181,7 +181,7 @@ export async function deleteOperatingContext(record: OperatingContextRecord, use
   }
 
   deleteLocalOperatingContext(record.id, userId || record.userId || 'guest');
-  invalidateWorkspaceDataCache();
+  invalidateWorkspaceCollection('operatingContext');
 }
 
 export function operatingContextToForm(record: OperatingContextRecord): OperatingContextFormInput {

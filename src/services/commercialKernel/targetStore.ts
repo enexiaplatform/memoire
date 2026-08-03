@@ -1,7 +1,7 @@
 import { FORECAST_QUARTERS, type ForecastQuarter } from '../../domain/commercialKernel/forecast.ts';
 import { supabaseClient } from '../../lib/supabaseClient.ts';
 import { reportWorkspaceSyncError } from '../workspaceSyncStatus.ts';
-import { invalidateWorkspaceDataCache } from '../workspaceDataCache.ts';
+import { invalidateWorkspaceCollection } from '../workspaceDataCache.ts';
 import { writeLocalCollection } from '../localWriteGuard.ts';
 
 export const TARGET_STORAGE_KEY = 'memoire.commercialTargets.v1';
@@ -83,7 +83,7 @@ function persist(targets: CommercialTarget[]): CommercialTarget[] {
   if (window.localStorage.getItem(TARGET_STORAGE_KEY) === serialized) return sorted;
 
   writeLocalCollection(TARGET_STORAGE_KEY, serialized);
-  invalidateWorkspaceDataCache();
+  invalidateWorkspaceCollection('commercialTargets');
   window.dispatchEvent(new CustomEvent(TARGETS_UPDATED_EVENT, { detail: sorted }));
   return sorted;
 }

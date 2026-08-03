@@ -6,7 +6,7 @@ import {
   syncCloudJsonCollectionForCurrentUser,
   sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore';
-import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { invalidateWorkspaceCollection } from './workspaceDataCache';
 import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const WEEKLY_COMMITMENT_STORAGE_KEY = 'memoire.weeklyCommitments.v1';
@@ -85,7 +85,7 @@ function persistWeeklyCommitments(snapshots: WeeklyCommitmentSnapshot[], syncClo
     writeLocalRecords(WEEKLY_COMMITMENT_STORAGE_KEY, sanitized);
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('weekly_commitments', sanitized);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('weeklyCommitments');
     }
     window.dispatchEvent(new CustomEvent(WEEKLY_COMMITMENTS_UPDATED_EVENT, { detail: sanitized }));
   }

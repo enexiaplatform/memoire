@@ -13,7 +13,7 @@ import {
   syncCloudJsonCollectionForCurrentUser,
   sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore.ts';
-import { invalidateWorkspaceDataCache } from './workspaceDataCache.ts';
+import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
 
@@ -142,7 +142,7 @@ function persistOpportunityOutcomes(outcomes: OpportunityOutcomeRecord[], syncCl
     writeLocalRecords(OPPORTUNITY_OUTCOME_STORAGE_KEY, sanitized);
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('opportunity_outcomes', sanitized);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('opportunityOutcomes');
     }
     return true;
   } catch {

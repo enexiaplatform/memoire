@@ -11,7 +11,7 @@ import {
   syncCloudJsonCollectionForCurrentUser,
   sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore';
-import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { invalidateWorkspaceCollection } from './workspaceDataCache';
 import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const ORDER_MILESTONE_STORAGE_KEY = 'memoire.orderMilestones.v1';
@@ -78,7 +78,7 @@ function persistOrderMilestones(records: OrderMilestoneRecord[], syncCloud = tru
     writeLocalRecords(ORDER_MILESTONE_STORAGE_KEY, sanitized);
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('order_milestones', sanitized);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('orderMilestones');
     }
   }
   return sanitized;

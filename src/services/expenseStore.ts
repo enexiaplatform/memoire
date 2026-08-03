@@ -1,4 +1,4 @@
-import { invalidateWorkspaceDataCache } from './workspaceDataCache.ts';
+import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { sanitizeBusinessDate, todayDateKey } from '../utils/safeDate.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
 
@@ -99,7 +99,7 @@ export function saveExpenses(expenses: ExpenseRecord[]) {
       .map(sanitizeExpense)
       .filter((expense): expense is ExpenseRecord => Boolean(expense));
     writeLocalRecords(EXPENSE_STORAGE_KEY, sanitized);
-    invalidateWorkspaceDataCache();
+    invalidateWorkspaceCollection('expenses');
     return true;
   } catch {
     return false;

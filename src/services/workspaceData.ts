@@ -25,8 +25,7 @@ import {
   clearCachedWorkspacePromise,
   getCachedWorkspacePromise,
   getCachedWorkspaceValue,
-  getWorkspaceDataGeneration,
-  invalidateWorkspaceDataCache,
+  getWorkspaceCacheStamp,
   isCachedWorkspaceValueStale,
   setCachedWorkspacePromise,
   setCachedWorkspaceValue,
@@ -81,25 +80,96 @@ type LoadOptions = {
  */
 const WORKSPACE_LOAD_TIMEOUT_MS = 20_000;
 
+/**
+ * Every collection the workspace is made of, and how to fetch one.
+ *
+ * They are listed rather than fetched inline so each can be cached, refreshed
+ * and invalidated on its own. Saving an opportunity used to clear the whole
+ * cache and the next screen refetched all sixteen - including 1,083 accounts and
+ * 1,738 stakeholders, about 3 MB of JSON that the edit had not touched.
+ */
+const collectionLoaders = {
+  activities: (userId?: string | null) => loadSalesActivities(userId),
+  opportunities: (userId?: string | null) => loadOpportunities(userId),
+  accounts: (userId?: string | null) => loadAccounts(userId),
+  briefs: (userId?: string | null) => loadPipelineBriefs(userId),
+  objections: (userId?: string | null) => loadObjections(userId),
+  stakeholders: (userId?: string | null) => loadStakeholders(userId),
+  actionOutcomes: (userId?: string | null) =>
+    (userId ? loadActionOutcomesForUser(userId) : Promise.resolve(loadActionOutcomes())),
+  assets: (userId?: string | null) =>
+    (userId ? loadSalesAssetsForUser(userId) : Promise.resolve(loadSalesAssets())),
+  quotes: (userId?: string | null) => (userId ? loadQuotesForUser(userId) : Promise.resolve(loadQuotes())),
+  operatingContext: (userId?: string | null) => loadOperatingContext(userId),
+  opportunityOutcomes: (userId?: string | null) =>
+    (userId ? loadOpportunityOutcomesForUser(userId) : Promise.resolve(loadOpportunityOutcomes())),
+  expenses: (userId?: string | null) => (userId ? loadExpensesForUser(userId) : Promise.resolve(loadExpenses())),
+  commitments: (userId?: string | null) => loadCommitmentsForWorkspace(userId),
+  threads: (userId?: string | null) => loadThreadsForWorkspace(userId),
+  valueOutcomes: (userId?: string | null) => loadValueOutcomesForWorkspace(userId),
+  accountMerges: (userId?: string | null) => loadAccountMergesForWorkspace(userId),
+} satisfies { [K in keyof SalesWorkspaceData]: (userId?: string | null) => Promise<SalesWorkspaceData[K]> };
+
+export const WORKSPACE_COLLECTIONS = Object.keys(collectionLoaders) as (keyof SalesWorkspaceData)[];
+
+function collectionCacheKey(userId: string | null | undefined, collection: string) {
+  return `ws:${userId || 'local'}:${collection}`;
+}
+
+/**
+ * One collection, from memory if it is still current and from the cloud if not.
+ *
+ * The pending entry is what stops a single visit to Today - which reads the
+ * workspace from four places - fetching the same table four times.
+ */
+function loadCollection<K extends keyof SalesWorkspaceData>(
+  collection: K,
+  userId: string | null | undefined,
+  force: boolean,
+): Promise<SalesWorkspaceData[K]> {
+  const key = collectionCacheKey(userId, collection);
+
+  if (!force) {
+    const cached = getCachedWorkspaceValue<SalesWorkspaceData[K]>(key);
+    if (cached) return Promise.resolve(cached);
+    const inFlight = getCachedWorkspacePromise<SalesWorkspaceData[K]>(key);
+    if (inFlight) return inFlight;
+  }
+
+  const stamp = getWorkspaceCacheStamp(collection);
+  const loader = collectionLoaders[collection] as (id?: string | null) => Promise<SalesWorkspaceData[K]>;
+  const promise = loader(userId).then((value) => {
+    setCachedWorkspaceValue(key, value, stamp);
+    return value;
+  });
+
+  setCachedWorkspacePromise(key, promise);
+  // The catch keeps a failed collection from surfacing as an unhandled
+  // rejection; the caller still sees the original failure through `promise`.
+  void promise.catch(() => undefined).finally(() => clearCachedWorkspacePromise(key, promise));
+
+  return promise;
+}
+
 export async function loadSalesWorkspaceData(userId?: string | null, options: LoadOptions = {}): Promise<SalesWorkspaceData> {
-  const cacheKey = `sales-workspace:${userId || 'local'}`;
+  const blobKey = collectionCacheKey(userId, 'all');
+
   if (!options.force) {
-    const cached = getCachedWorkspaceValue<SalesWorkspaceData>(cacheKey);
+    const cached = getCachedSalesWorkspaceData(userId);
     if (cached) {
       // Serve from memory now, and if the entry has aged past the freshness
       // window, refresh it behind the screen so the next reader gets the newer
       // copy without anyone having waited for it.
-      if (userId && isCachedWorkspaceValueStale(cacheKey)) revalidateInBackground(userId);
+      if (userId && isSalesWorkspaceStale(userId)) revalidateInBackground(userId);
       return cached;
     }
 
-    const pending = getCachedWorkspacePromise<SalesWorkspaceData>(cacheKey);
+    const pending = getCachedWorkspacePromise<SalesWorkspaceData>(blobKey);
     if (pending) return pending;
   }
 
   if (userId) beginWorkspaceSyncCheck();
 
-  const generationAtLoadStart = getWorkspaceDataGeneration();
   // Which of the sixteen loaders have not answered yet. When the watchdog below
   // gives up, this is the difference between "the workspace is slow" and a
   // named store to go and look at.
@@ -109,67 +179,30 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
     return loader.finally(() => unsettled.delete(name));
   };
 
-  const cloudLoad = Promise.all([
-    track('activities', loadSalesActivities(userId)),
-    track('opportunities', loadOpportunities(userId)),
-    track('accounts', loadAccounts(userId)),
-    track('briefs', loadPipelineBriefs(userId)),
-    track('objections', loadObjections(userId)),
-    track('stakeholders', loadStakeholders(userId)),
-    track('actionOutcomes', userId ? loadActionOutcomesForUser(userId) : Promise.resolve(loadActionOutcomes())),
-    track('assets', userId ? loadSalesAssetsForUser(userId) : Promise.resolve(loadSalesAssets())),
-    track('quotes', userId ? loadQuotesForUser(userId) : Promise.resolve(loadQuotes())),
-    track('operatingContext', loadOperatingContext(userId)),
-    track('opportunityOutcomes', userId ? loadOpportunityOutcomesForUser(userId) : Promise.resolve(loadOpportunityOutcomes())),
-    track('expenses', userId ? loadExpensesForUser(userId) : Promise.resolve(loadExpenses())),
-    track('commitments', loadCommitmentsForWorkspace(userId)),
-    track('threads', loadThreadsForWorkspace(userId)),
-    track('valueOutcomes', loadValueOutcomesForWorkspace(userId)),
-    track('accountMerges', loadAccountMergesForWorkspace(userId)),
-  ]).then(([activities, opportunities, accounts, briefs, objections, stakeholders, actionOutcomes, assets, quotes, operatingContext, opportunityOutcomes, expenses, commitments, threads, valueOutcomes, accountMerges]) => {
+  const names = WORKSPACE_COLLECTIONS;
+  const cloudLoad = Promise.all(
+    names.map((name) => track(name, loadCollection(name, userId, Boolean(options.force)))),
+  ).then((results) => {
     if (userId && getWorkspaceSyncStatus().state !== 'error') reportWorkspaceSyncReady();
-    return {
-      activities,
-      opportunities,
-      accounts,
-      briefs,
-      objections,
-      stakeholders,
-      actionOutcomes,
-      assets,
-      quotes,
-      expenses,
-      operatingContext,
-      opportunityOutcomes,
-      commitments,
-      threads,
-      valueOutcomes,
-      accountMerges,
-    };
+    const workspace = {} as SalesWorkspaceData;
+    names.forEach((name, index) => {
+      (workspace as Record<string, unknown>)[name] = results[index];
+    });
+    return workspace;
   });
 
-  // A cloud load that finishes after the watchdog gave up still holds the
-  // freshest answer, so it fills the cache for the next reader instead of being
-  // thrown away.
-  const tracked = cloudLoad.then(
-    (value) => {
-      setCachedWorkspaceValue(cacheKey, value, generationAtLoadStart);
-      return value;
-    },
-    (error) => {
-      invalidateWorkspaceDataCache();
-      if (userId) reportWorkspaceSyncError();
-      throw error;
-    },
-  );
+  const tracked = cloudLoad.catch((error) => {
+    if (userId) reportWorkspaceSyncError();
+    throw error;
+  });
 
   const promise = userId ? withLocalFallback(tracked, unsettled) : tracked;
-  setCachedWorkspacePromise(cacheKey, promise);
+  setCachedWorkspacePromise(blobKey, promise);
 
   try {
     return await promise;
   } finally {
-    clearCachedWorkspacePromise(cacheKey, promise);
+    clearCachedWorkspacePromise(blobKey, promise);
   }
 }
 
@@ -237,8 +270,27 @@ function revalidateInBackground(userId: string) {
     });
 }
 
-export function getCachedSalesWorkspaceData(userId?: string | null) {
-  return getCachedWorkspaceValue<SalesWorkspaceData>(`sales-workspace:${userId || 'local'}`);
+/**
+ * The workspace, only if every collection in it is still cached.
+ *
+ * Assembled rather than stored as one blob so that saving a quote does not cost
+ * the seller their cached accounts. A partial answer is never returned: a screen
+ * drawn from twelve fresh collections and four missing ones would show a deal
+ * with no account and an empty commitment list, which reads as data loss.
+ */
+export function getCachedSalesWorkspaceData(userId?: string | null): SalesWorkspaceData | null {
+  const workspace = {} as SalesWorkspaceData;
+  for (const name of WORKSPACE_COLLECTIONS) {
+    const value = getCachedWorkspaceValue<unknown>(collectionCacheKey(userId, name));
+    if (value === null) return null;
+    (workspace as Record<string, unknown>)[name] = value;
+  }
+  return workspace;
+}
+
+/** True when any collection has aged past the freshness window. */
+function isSalesWorkspaceStale(userId?: string | null) {
+  return WORKSPACE_COLLECTIONS.some((name) => isCachedWorkspaceValueStale(collectionCacheKey(userId, name)));
 }
 
 async function loadPipelineBriefs(userId?: string | null) {

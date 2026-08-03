@@ -5,7 +5,7 @@ import {
   syncCloudJsonCollectionForCurrentUser,
   sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore';
-import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { invalidateWorkspaceCollection } from './workspaceDataCache';
 import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const ACCOUNT_MERGE_STORAGE_KEY = 'memoire.accountMerges.v1';
@@ -116,7 +116,7 @@ function persist(records: AccountMergeRecord[], syncCloud = true) {
     writeLocalRecords(ACCOUNT_MERGE_STORAGE_KEY, sanitized);
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('account_merges', sanitized);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('accountMerges');
     }
     window.dispatchEvent(new CustomEvent(ACCOUNT_MERGES_UPDATED_EVENT, { detail: sanitized }));
   }

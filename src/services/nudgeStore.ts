@@ -5,7 +5,7 @@ import {
   syncCloudJsonCollectionForCurrentUser,
   sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore';
-import { invalidateWorkspaceDataCache } from './workspaceDataCache';
+import { invalidateWorkspaceCollection } from './workspaceDataCache';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
 
@@ -148,7 +148,7 @@ function persistNudges(nudges: NudgeRecord[], userId: string | undefined, syncCl
     writeLocalRecords(storageKey(userId), sanitized);
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('nudges', sanitized);
-      invalidateWorkspaceDataCache();
+      invalidateWorkspaceCollection('nudges');
     }
     return true;
   } catch {

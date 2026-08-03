@@ -1,7 +1,7 @@
 import { supabaseClient } from '../../lib/supabaseClient.ts';
 import { reportClientOperationalEvent } from '../clientTelemetry.ts';
 import { reportWorkspaceSyncError } from '../workspaceSyncStatus.ts';
-import { invalidateWorkspaceDataCache } from '../workspaceDataCache.ts';
+import { invalidateWorkspaceCollection } from '../workspaceDataCache.ts';
 import { writeLocalCollection } from '../localWriteGuard.ts';
 
 export type KernelTable =
@@ -51,6 +51,18 @@ export type KernelCodec<T extends KernelRecord> = {
 
 export function isSyncableRecord(record: KernelRecord) {
   return record.isSample !== true;
+}
+
+/**
+ * Which workspace collection a kernel table feeds, so a write drops that one
+ * rather than every cached table. `commercial_events` is not in the workspace at
+ * all; naming it here keeps its writes from clearing anything that is.
+ */
+function workspaceCollectionForTable(table: KernelTable) {
+  if (table === 'commercial_commitments') return 'commitments';
+  if (table === 'commercial_threads') return 'threads';
+  if (table === 'commercial_value_outcomes') return 'valueOutcomes';
+  return 'commercialEvents';
 }
 
 // ------------------------------------------------------------------ local
@@ -103,7 +115,7 @@ export function writeLocal<T extends KernelRecord>(codec: KernelCodec<T>, record
   if (window.localStorage.getItem(codec.storageKey) === serialized) return sanitized;
 
   writeLocalCollection(codec.storageKey, serialized);
-  invalidateWorkspaceDataCache();
+  invalidateWorkspaceCollection(workspaceCollectionForTable(codec.table));
   window.dispatchEvent(new CustomEvent(codec.updatedEvent, { detail: sanitized }));
 
   return sanitized;
