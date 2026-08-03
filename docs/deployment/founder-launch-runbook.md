@@ -59,30 +59,47 @@ the sender reports "not configured" rather than failing. Nothing is emailed to
 anybody until an operator turns it on in Settings either - both preferences
 default to off in the database, not in the interface.
 
+The schedule is **not** a Vercel Cron. It has to be hourly - the endpoint
+decides whose local hour has arrived, and a once-daily fire could only ever
+serve one timezone - but this project deploys on Vercel's Hobby plan, which
+permits a cron no more frequent than once a day and **rejects the deployment
+outright** if `vercel.json` declares one that runs more often. Discovered
+2026-08-03: an hourly entry sat in `vercel.json` for a day before it was ever
+merged into `master`, and the moment it was, every subsequent push to `master`
+failed at config validation - before Vercel even created a deployment record,
+so there was nothing in the dashboard pointing at why. A GitHub Actions
+workflow (`.github/workflows/send-digests.yml`) calls the same authenticated
+endpoint on the same hourly schedule instead; nothing about the endpoint
+changed.
+
 1. Apply the migration `20260802090000_digest_delivery.sql` (Supabase -> SQL
    editor, or `supabase db push`). It adds the preference columns to
    `user_profiles` and creates `digest_deliveries`.
 2. Vercel env (Production):
-   - `CRON_SECRET` - any long random string. Vercel sends it as
-     `Authorization: Bearer <value>` on scheduled invocations, and the endpoint
-     refuses every caller that does not present it.
+   - `CRON_SECRET` - any long random string. The endpoint refuses every caller
+     that does not send it back as `Authorization: Bearer <value>`.
    - `EMAIL_API_KEY` - the transactional provider's key.
    - `EMAIL_FROM` - e.g. `Memoire <hello@memoire-official.com>`. The domain has
      to be verified with the provider first or every send bounces.
    - `EMAIL_API_URL` - optional. Defaults to Resend's endpoint; set it to use
      another provider that accepts `{from, to, subject, text, html}`.
-3. Redeploy. `vercel.json` already declares the hourly schedule; the cron
-   appears in the Vercel dashboard after the first deploy that includes it.
+3. GitHub repo (Settings -> Secrets and variables -> Actions), on this repo,
+   not Vercel:
+   - **Secret** `CRON_SECRET` - the exact same value as the Vercel env var.
+     Different values and every send is a 401 that never surfaces anywhere but
+     the Actions run log.
+   - **Variable** `PRODUCTION_URL` - optional, defaults to
+     `https://memoire-official.com`. Only needed if the domain differs.
+4. Redeploy. `.github/workflows/send-digests.yml` only fires on the schedule
+   defined in whatever copy of it is on the **default branch** - GitHub ignores
+   the `schedule:` trigger on any other branch - so this step is not optional.
 
-Verify: in Vercel -> Cron Jobs, run `/api/send-digests` once by hand and read
-the JSON it returns (`considered`, `sent`, `skipped`, `failed`). Then turn the
-daily digest on for your own account in Settings, set the hour to the next one,
-and wait for it. `digest_deliveries` records every attempt with its outcome, so
-"the email never arrived" has an answer.
-
-Note on cadence: the schedule is hourly and the endpoint decides whose local
-hour has arrived. That is deliberate - the operators this is for are not in one
-timezone, and a 7am digest that lands at midnight is not a digest.
+Verify: Actions tab -> "Send scheduled digests" -> Run workflow, and read the
+job's log (`considered`, `sent`, `skipped`, `failed` in the response body).
+Then turn the daily digest on for your own account in Settings, set the hour to
+the next one, and wait for it. `digest_deliveries` records every attempt with
+its outcome, so "the email never arrived" has an answer, and a red run in the
+Actions tab is the first place to look before that.
 
 ## Step 4 - Paid early access only (Phase: after cohort evidence)
 

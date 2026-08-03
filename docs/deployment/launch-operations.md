@@ -63,12 +63,17 @@ whether the record reached the account.
 **How you find out:** no digests arrived, or `digest_deliveries` has no rows
 for a day when it should.
 
-The sender is a single hourly Vercel cron. Failures are almost always one of
-three things, in this order:
+The sender is a GitHub Actions workflow (`.github/workflows/send-digests.yml`)
+calling `/api/send-digests` hourly - not a Vercel Cron, because the Hobby plan
+this deploys on refuses any cron more frequent than daily at the config level.
+Failures are almost always one of four things, in this order:
 
-- `CRON_SECRET` unset or changed. The endpoint refuses rather than sends when
-  the secret is missing - that is deliberate - so an unset secret looks
-  identical to a quiet day.
+- The workflow run is red. Check the Actions tab first, not the app - a failed
+  run means the request never reached the endpoint, or the endpoint refused it,
+  and the log says which.
+- `CRON_SECRET` unset, changed, or out of sync between Vercel and the GitHub
+  Actions secret of the same name. They must be identical; a mismatch is a 401
+  on every run, visible in the Actions log but invisible everywhere else.
 - `EMAIL_API_KEY` / `EMAIL_FROM` unset. Check `/api/health`.
 - Genuinely nothing to say. The digest sends only when there is signal; a
   morning with nothing overdue sends nothing, and that is correct behaviour,

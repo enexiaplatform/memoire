@@ -44,11 +44,5 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ],
-  "crons": [
-    {
-      "path": "/api/send-digests",
-      "schedule": "0 * * * *"
-    }
   ]
 }
