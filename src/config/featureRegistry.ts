@@ -589,12 +589,21 @@ const NAVIGATION_GROUP_IDS: { id: NavGroupId; label: string; itemIds: string[] }
   {
     id: 'records',
     label: 'Records',
-    itemIds: ['accounts', 'opportunities', 'money'],
+    // Activity sits here from 2026-08-03. It is still `status: 'global'` and
+    // still owns no records - every row is a captured touch or a plan item that
+    // Capture, Timeline and the deal already own. What changed is how the
+    // operator reads it: they go to Activity to look up a specific piece of
+    // work, by customer, the same way they open Accounts to look up a customer.
+    // That is a Records question, and filing it under "Workspace" next to
+    // Settings hid it. Position in the rail is presentation; status is the
+    // contract, and the contract is unchanged - it is still absent from
+    // PRIMARY_DESTINATION_IDS and still writes nothing.
+    itemIds: ['accounts', 'opportunities', 'money', 'activity'],
   },
   {
     id: 'tools',
     label: 'Workspace',
-    itemIds: ['search-insights', 'activity', 'business-vault', 'settings'],
+    itemIds: ['search-insights', 'business-vault', 'settings'],
   },
 ];
 

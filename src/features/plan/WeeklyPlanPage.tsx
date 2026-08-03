@@ -750,23 +750,24 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
                         className="w-full rounded border border-brand-blue/60 px-1.5 py-0.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue/20"
                       />
                     ) : (
-                    <p className={`text-xs leading-5 ${item.done ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                    <p className={`text-xs leading-5 ${item.done ? 'text-gray-400' : 'text-gray-900'}`}>
+                      {/* The strike lives on the sentence, never on the row.
+                          Ticking an item used to grey the customer's chip and
+                          put a line through it along with the words - a
+                          finished column read as a list of cancelled
+                          customers, and *who the work was for* is the one thing
+                          an operator scans a done week to find. Keeping
+                          `line-through` off this wrapper is what guarantees it:
+                          the chip cannot inherit a decoration its container
+                          does not carry, so the fix does not rest on how a
+                          given engine treats atomic inlines. */}
                       {item.tag && (
-                        item.done ? (
-                          // A finished line does not need to argue about
-                          // attachment any more; greying it keeps the column
-                          // quiet so live work reads first.
-                          <span className="mr-1 rounded bg-gray-100 px-1 py-0.5 text-[10px] font-bold text-gray-400">
-                            {item.tag}
-                          </span>
-                        ) : (
-                          <SubjectChip
-                            relation={resolvePlanItemSubject(item, subjectContext, accountAliases)}
-                            label={item.tag}
-                            size="compact"
-                            className="mr-1"
-                          />
-                        )
+                        <SubjectChip
+                          relation={resolvePlanItemSubject(item, subjectContext, accountAliases)}
+                          label={item.tag}
+                          size="compact"
+                          className="mr-1"
+                        />
                       )}
                       {item.href && !item.done ? (
                         <Link to={item.href} className="font-medium hover:text-brand-blue hover:underline">{item.label}</Link>
@@ -774,13 +775,13 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
                         <button
                           type="button"
                           onClick={() => startEdit(item)}
-                          className="text-left font-medium hover:text-brand-blue"
+                          className={`text-left font-medium hover:text-brand-blue ${item.done ? 'line-through' : ''}`}
                           title="Edit"
                         >
                           {item.label}
                         </button>
                       ) : (
-                        <span className="font-medium">{item.label}</span>
+                        <span className={`font-medium ${item.done ? 'line-through' : ''}`}>{item.label}</span>
                       )}
                       {item.overdue && !item.done && (
                         <span className="ml-1 rounded bg-red-50 px-1 py-0.5 text-[10px] font-bold text-red-700">Overdue</span>

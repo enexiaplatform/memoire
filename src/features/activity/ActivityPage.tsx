@@ -30,6 +30,7 @@ import { supplierCommitmentsAsOwnObligations, type SupplierCommitmentRecord } fr
 import {
   buildActivityLedger,
   relationTypeLabel,
+  type ActivityEntry,
   type ActivityRelationType,
 } from '../../utils/activityLedger';
 import {
@@ -49,6 +50,8 @@ import { SkeletonCard, SkeletonScreen } from '../../components/common/Skeleton';
 import { ActivityHeatmap } from './ActivityHeatmap';
 import { ActivityPivotTable } from './ActivityPivotTable';
 import { ActivityStream, SubjectChip } from './ActivityStream';
+import { ActivityTable } from './ActivityTable';
+import { ActivityDetailDrawer } from './ActivityDetailDrawer';
 
 /**
  * Activity: the calendar, read as a business.
@@ -75,6 +78,13 @@ import { ActivityStream, SubjectChip } from './ActivityStream';
  */
 
 type PeriodId = 'week' | 'month' | 'd30' | 'd90';
+
+/**
+ * Two shapes over one set of rows. Stream groups by state then by day, which is
+ * how a week reads; List is a sortable record list, which is how you look one
+ * thing up. Neither is a different query - both render `visibleEntries`.
+ */
+type LedgerView = 'stream' | 'list';
 
 const periods: { id: PeriodId; label: string; days: number; hint: string }[] = [
   { id: 'week', label: 'This week', days: 7, hint: 'Monday to Sunday.' },
@@ -112,6 +122,8 @@ export function ActivityPage() {
   const [relationFilter, setRelationFilter] = useState<ActivityRelationType | 'all'>('all');
   const [domainFilter, setDomainFilter] = useState<BusinessDomain | 'all'>('all');
   const [search, setSearch] = useState('');
+  const [ledgerView, setLedgerView] = useState<LedgerView>('stream');
+  const [selectedEntry, setSelectedEntry] = useState<ActivityEntry | null>(null);
 
   const refresh = useCallback(async () => {
     const cached = getCachedSalesWorkspaceData(dataUserId);
@@ -269,6 +281,11 @@ export function ActivityPage() {
 
   const activePeriod = periods.find((option) => option.id === period);
   const filtersActive = relationFilter !== 'all' || domainFilter !== 'all' || Boolean(search.trim()) || Boolean(focus);
+  // Both ledger shapes say the same thing when they have nothing to show, so
+  // the wording lives in one place rather than drifting between them.
+  const ledgerEmptyMessage = entries.length === 0
+    ? 'Nothing dated in this period. Capture a touch, or plan a day on Plan, and it appears here attached to whoever it was for.'
+    : 'No rows match these filters.';
 
   return (
     <div className="flex w-full flex-col gap-4 px-4 py-5 sm:px-5 lg:px-6">
@@ -568,16 +585,36 @@ export function ActivityPage() {
                 : `${visibleEntries.length} of ${entries.length} shown.`}
             </p>
           </div>
-          <label className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search subject, customer, person"
-              className="w-64 rounded-lg border border-gray-200 py-2 pl-8 pr-3 text-sm focus:border-brand-blue focus:outline-none"
-            />
-          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Two shapes over the same rows. Stream is grouped by state and
+                then by day, which is how you read a week; List is a sortable
+                record list, which is how you look one thing up. */}
+            <div className="inline-flex rounded-lg border border-gray-200 p-0.5" role="group" aria-label="Ledger view">
+              {(['stream', 'list'] as LedgerView[]).map((view) => (
+                <button
+                  key={view}
+                  type="button"
+                  onClick={() => setLedgerView(view)}
+                  aria-pressed={ledgerView === view}
+                  className={`rounded-md px-3 py-1.5 text-xs font-bold capitalize ${
+                    ledgerView === view ? 'bg-navy text-white' : 'text-gray-600 hover:text-navy'
+                  }`}
+                >
+                  {view}
+                </button>
+              ))}
+            </div>
+            <label className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search subject, customer, person"
+                className="w-64 rounded-lg border border-gray-200 py-2 pl-8 pr-3 text-sm focus:border-brand-blue focus:outline-none"
+              />
+            </label>
+          </div>
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -622,16 +659,17 @@ export function ActivityPage() {
         )}
 
         <div className="mt-4">
-          <ActivityStream
-            entries={visibleEntries}
-            emptyMessage={
-              entries.length === 0
-                ? 'Nothing dated in this period. Capture a touch, or plan a day on Plan, and it appears here attached to whoever it was for.'
-                : 'No rows match these filters.'
-            }
-          />
+          {ledgerView === 'stream' ? (
+            <ActivityStream entries={visibleEntries} emptyMessage={ledgerEmptyMessage} onSelect={setSelectedEntry} />
+          ) : (
+            <ActivityTable entries={visibleEntries} emptyMessage={ledgerEmptyMessage} onSelect={setSelectedEntry} />
+          )}
         </div>
       </section>
+
+      {selectedEntry && (
+        <ActivityDetailDrawer entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
+      )}
     </div>
   );
 }

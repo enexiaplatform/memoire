@@ -154,8 +154,12 @@ export function TodayCommitmentStrip({
                 aria-label={`Mark "${item.label}" ${item.done ? 'not done' : 'done'}`}
               />
               <span className="min-w-0 flex-1">
+                {/* Keeps its colour once ticked, for the same reason as the
+                    plan board: the sentence is what got done, the chip is who
+                    it was for, and greying the customer out is what made a
+                    finished day read as a day of cancelled customers. */}
                 {item.tag && (
-                  <span className={`mr-1.5 rounded px-1 py-0.5 text-[10px] font-bold ${item.done ? 'bg-gray-100 text-gray-400' : planWorkTone(item)}`}>
+                  <span className={`mr-1.5 rounded px-1 py-0.5 text-[10px] font-bold ${planWorkTone(item)}`}>
                     {item.tag}
                   </span>
                 )}

@@ -35,9 +35,12 @@ const HISTORY_PREVIEW = 40;
 export function ActivityStream({
   entries,
   emptyMessage,
+  onSelect,
 }: {
   entries: ActivityEntry[];
   emptyMessage: string;
+  /** Opens the row's detail. The same drawer the list view opens. */
+  onSelect: (entry: ActivityEntry) => void;
 }) {
   const [showAllHistory, setShowAllHistory] = useState(false);
   const open = entries.filter((entry) => entry.bucket === 'open');
@@ -62,6 +65,7 @@ export function ActivityStream({
           title="Open and overdue"
           hint="Dated work that has not been ticked. Sorted soonest first."
           entries={[...open].sort((left, right) => left.date.localeCompare(right.date))}
+          onSelect={onSelect}
         />
       )}
       {history.length > 0 && (
@@ -71,6 +75,7 @@ export function ActivityStream({
             hint="Touches you captured and dated work you finished. Newest first."
             entries={visibleHistory}
             count={sortedHistory.length}
+            onSelect={onSelect}
           />
           {hiddenHistory > 0 && (
             <button
@@ -92,12 +97,14 @@ function StreamSection({
   hint,
   entries,
   count,
+  onSelect,
 }: {
   title: string;
   hint: string;
   entries: ActivityEntry[];
   /** The full size of the section, when only part of it is rendered. */
   count?: number;
+  onSelect: (entry: ActivityEntry) => void;
 }) {
   const groups: { date: string; rows: ActivityEntry[] }[] = [];
   entries.forEach((entry) => {
@@ -125,7 +132,7 @@ function StreamSection({
             </p>
             <ul className="mt-1 space-y-1.5">
               {group.rows.map((entry) => (
-                <StreamRow key={entry.id} entry={entry} />
+                <StreamRow key={entry.id} entry={entry} onSelect={onSelect} />
               ))}
             </ul>
           </li>
@@ -135,7 +142,7 @@ function StreamSection({
   );
 }
 
-function StreamRow({ entry }: { entry: ActivityEntry }) {
+function StreamRow({ entry, onSelect }: { entry: ActivityEntry; onSelect: (entry: ActivityEntry) => void }) {
   const StateIcon = entry.state === 'done' ? Check : entry.state === 'overdue' ? AlertTriangle : Clock;
   const stateTone = entry.state === 'done'
     ? 'bg-emerald-50 text-emerald-600'
@@ -152,7 +159,16 @@ function StreamRow({ entry }: { entry: ActivityEntry }) {
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <SubjectChip relation={entry.relatedTo} />
-          <span className="min-w-0 break-words text-sm font-semibold text-gray-800">{entry.subject}</span>
+          {/* The subject opens the row's detail; the chip beside it still goes
+              to the customer and "Open" still goes to the record it came from.
+              Three targets, three different questions. */}
+          <button
+            type="button"
+            onClick={() => onSelect(entry)}
+            className="min-w-0 break-words text-left text-sm font-semibold text-gray-800 hover:text-brand-blue hover:underline"
+          >
+            {entry.subject}
+          </button>
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-gray-500">
           <span className="inline-flex items-center gap-1 font-semibold text-gray-600">

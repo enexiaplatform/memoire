@@ -5,8 +5,9 @@ import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { SkeletonCard, SkeletonScreen } from '../../components/common/Skeleton';
 import { FunnelBars } from '../../components/charts/FunnelBars';
-import { MiniBarChart } from '../../components/charts/MiniBarChart';
 import { SegmentBar } from '../../components/charts/SegmentBar';
+import { ChartFrame } from '../../components/charts/ChartFrame';
+import { TrendChart } from '../../components/charts/TrendChart';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData, type SalesWorkspaceData } from '../../services/workspaceData';
 import { loadPlanItemsForWorkspace } from '../../services/planItemStore';
@@ -45,6 +46,17 @@ import { formatBaseCurrencyAmount, formatCompactBaseAmount } from '../../utils/m
  * colour vision. These four clear every check in the validator, and the legend
  * labels each one anyway so the ordering never rests on hue.
  */
+/**
+ * Categorical slots for trend series, validated together rather than picked to
+ * taste: blue against orange separates at ΔE 24.7 under protanopia and 33.6 for
+ * full colour vision, both well clear of the floor. Slots are assigned in fixed
+ * order and never cycled - a ninth series folds into "Other" instead.
+ */
+const SERIES = {
+  blue: '#2A78D6',
+  orange: '#EB6834',
+};
+
 const EVIDENCE_COLORS: Record<string, string> = {
   Defensible: '#047857',
   'Weak but recoverable': '#CA8A04',
@@ -86,6 +98,27 @@ export function BusinessLensPage() {
       aliases: buildAccountAliasIndex(workspace.accountMerges),
     })
     : null), [workspace]);
+
+  /**
+   * The slope of the line above, said in words.
+   *
+   * Deliberately not a new metric - it reads the same eight points the chart
+   * plots and reports nothing the chart does not already show. A dashboard that
+   * derives its own figures beside the ones the engine produced is how one
+   * pipeline came to be read four different ways; this only narrates.
+   */
+  const touchTrend = useMemo(() => {
+    const points = model?.weeklyActivity ?? [];
+    if (points.length < 4) return '';
+    const half = Math.floor(points.length / 2);
+    const earlier = points.slice(0, half).reduce((sum, point) => sum + point.count, 0);
+    const later = points.slice(half).reduce((sum, point) => sum + point.count, 0);
+    if (earlier === 0 && later === 0) return '';
+    if (earlier === 0) return 'all of it in the last four weeks';
+    const change = Math.round(((later - earlier) / earlier) * 100);
+    if (Math.abs(change) < 10) return 'holding steady across the two halves';
+    return `${Math.abs(change)}% ${change > 0 ? 'more' : 'fewer'} in the last four weeks than the four before`;
+  }, [model]);
 
   if (authLoading || (loading && !model)) {
     return (
@@ -143,7 +176,20 @@ export function BusinessLensPage() {
 
           {/* Who the business actually is. The sharpest question on the page,
               so it goes first and it is a sentence before it is a chart. */}
-          <Card title="Customer concentration" subtitle={lens.concentration.headline}>
+          <ChartFrame
+            title="Customer concentration"
+            subtitle={lens.concentration.headline}
+            columns={[
+              { key: 'customer', label: 'Customer', numeric: false },
+              { key: 'pipeline', label: 'Open pipeline' },
+              { key: 'share', label: 'Share' },
+            ]}
+            rows={lens.concentration.rows.map((row) => ({
+              customer: row.accountName,
+              pipeline: formatCompactBaseAmount(row.openPipelineBase),
+              share: `${Math.round(row.share * 100)}%`,
+            }))}
+          >
             {lens.concentration.rows.length > 0 ? (
               <>
                 <FunnelBars
@@ -171,10 +217,23 @@ export function BusinessLensPage() {
             ) : (
               <p className="text-sm text-gray-500">No open pipeline to spread across customers yet.</p>
             )}
-          </Card>
+          </ChartFrame>
 
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-            <Card title="Pipeline by stage" subtitle={`Active deals, valued in ${model.reportingCurrency}`}>
+            <ChartFrame
+              title="Pipeline by stage"
+              subtitle={`Active deals, valued in ${model.reportingCurrency}`}
+              columns={[
+                { key: 'stage', label: 'Stage', numeric: false },
+                { key: 'value', label: 'Value' },
+                { key: 'count', label: 'Deals' },
+              ]}
+              rows={model.stageMix.map((row) => ({
+                stage: row.stage,
+                value: formatCompactBaseAmount(row.totalBase),
+                count: `${row.count}`,
+              }))}
+            >
               {model.stageMix.length > 0 ? (
                 <FunnelBars
                   ariaLabel="Open pipeline value by stage"
@@ -188,11 +247,16 @@ export function BusinessLensPage() {
               ) : (
                 <p className="text-sm text-gray-500">No active deals yet.</p>
               )}
-            </Card>
+            </ChartFrame>
 
-            <Card
+            <ChartFrame
               title="Is the pipeline believable?"
               subtitle="Active deals by the evidence behind them, not by how they feel"
+              columns={[
+                { key: 'category', label: 'Evidence', numeric: false },
+                { key: 'count', label: 'Deals' },
+              ]}
+              rows={model.evidenceMix.map((row) => ({ category: row.category, count: `${row.count}` }))}
             >
               {model.evidenceMix.some((row) => row.count > 0) ? (
                 <SegmentBar
@@ -206,25 +270,38 @@ export function BusinessLensPage() {
               ) : (
                 <p className="text-sm text-gray-500">No active deals to judge yet.</p>
               )}
-            </Card>
+            </ChartFrame>
           </div>
 
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-            <Card title="Touches per week" subtitle="The last eight weeks of recorded customer contact">
+            {/* Was eight separate columns. Eight columns answer "how many that
+                week" and hide the only question anybody brings to this card,
+                which is whether it is going up. A line draws the slope. */}
+            <ChartFrame
+              title="Touches per week"
+              subtitle={`The last eight weeks of recorded customer contact${touchTrend ? ` · ${touchTrend}` : ''}`}
+              columns={[
+                { key: 'week', label: 'Week', numeric: false },
+                { key: 'touches', label: 'Touches' },
+              ]}
+              rows={model.weeklyActivity.map((point) => ({ week: point.label, touches: `${point.count}` }))}
+            >
               {model.weeklyActivity.some((point) => point.count > 0) ? (
-                <MiniBarChart
+                <TrendChart
                   ariaLabel="Recorded customer touches per week over the last eight weeks"
-                  height={130}
-                  items={model.weeklyActivity.map((point) => ({
-                    label: point.label,
-                    value: point.count,
-                    valueText: `${point.count}`,
-                  }))}
+                  labels={model.weeklyActivity.map((point) => point.label)}
+                  series={[{
+                    id: 'touches',
+                    label: 'Touches',
+                    color: SERIES.blue,
+                    points: model.weeklyActivity.map((point) => point.count),
+                    valueTexts: model.weeklyActivity.map((point) => `${point.count}`),
+                  }]}
                 />
               ) : (
                 <p className="text-sm text-gray-500">Nothing captured in the last eight weeks.</p>
               )}
-            </Card>
+            </ChartFrame>
 
             <Card title="What closed" subtitle="Recorded outcomes, won against lost">
               <div className="grid grid-cols-2 gap-3">
