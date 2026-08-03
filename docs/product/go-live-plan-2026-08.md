@@ -75,10 +75,10 @@ detection, overdue commitments, stuck money, the weekly review — only fired wh
 somebody was already looking at the app. `src/utils/dailyDigest.ts` even built a
 `subject` and a `plainText` body: written to be sent, never sent.
 
-There is now a scheduled send. An hourly Vercel cron works out whose local hour
-has arrived — 7am has to mean 7am where the operator is — builds their digest on
-the server from their own cloud records, and emails it. Monday brings the weekly
-one instead of the daily.
+There is now a scheduled send. An hourly GitHub Actions workflow calls the
+endpoint, which works out whose local hour has arrived — 7am has to mean 7am
+where the operator is — builds their digest on the server from their own cloud
+records, and emails it. Monday brings the weekly one instead of the daily.
 
 Four decisions worth keeping:
 
@@ -97,11 +97,26 @@ Four decisions worth keeping:
   email would be lying about the app. It nudges and links in.
 
 **Remaining:** it needs `CRON_SECRET`, `EMAIL_API_KEY` and `EMAIL_FROM` in
-Vercel plus the migration applied — Step 3b of the launch runbook. The guard
-paths (unauthenticated cron, bad unsubscribe token, wrong verb) were exercised
+Vercel, the same `CRON_SECRET` as a GitHub Actions secret on this repo, and the
+migration applied — Step 3b of the launch runbook. The guard paths
+(unauthenticated cron, bad unsubscribe token, wrong verb) were exercised
 against a stub; a real send needs a live Supabase and a verified sending domain,
 so first delivery is a launch-week task, not something that could be proven
 here.
+
+**Correction (2026-08-03).** The scheduler above was originally a Vercel Cron
+declared in `vercel.json` at `0 * * * *`. It sat unmerged on the feature branch
+for a day, harmless. The moment it reached `master`, it silently blocked every
+subsequent production deploy: Vercel's Hobby plan permits a cron no more
+frequent than once daily and refuses the deployment at config validation
+before a deployment record exists - so the dashboard showed nothing to explain
+it, and two separate pushes (including an empty commit meant to force a fresh
+webhook) both vanished the same way. Fixed by removing `crons` from
+`vercel.json` entirely and replacing it with
+`.github/workflows/send-digests.yml`, a GitHub Actions workflow on the same
+hourly schedule calling the same authenticated endpoint - the endpoint does
+not know or care who calls it. `verify:digest-delivery` now asserts
+`vercel.json` carries no `crons` key at all, so this cannot silently return.
 
 ### P0-3 · Cloud restore — built 2026-08-02
 

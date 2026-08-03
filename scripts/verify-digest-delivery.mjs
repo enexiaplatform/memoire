@@ -57,10 +57,24 @@ const vercel = JSON.parse(readFileSync('vercel.json', 'utf8'));
   assert.match(endpoint, /if \(!expected\) return false/, 'an unset secret refuses rather than allows');
   assert.match(endpoint, /res\.status\(401\)/, 'an unauthorised caller is refused');
 
-  const crons = vercel.crons || [];
-  assert.equal(crons.length, 1, 'one schedule, hourly, picking whose local hour it is');
-  assert.equal(crons[0].path, '/api/send-digests');
-  assert.equal(crons[0].schedule, '0 * * * *', 'hourly, because 7am has to mean 7am where the operator is');
+  // Not a Vercel Cron. The Hobby plan this deploys on permits a cron no more
+  // frequent than once a day and rejects the whole deployment if vercel.json
+  // declares one that runs more often - discovered 2026-08-03 when an hourly
+  // entry here silently blocked every subsequent production deploy, with no
+  // failed-deployment record to point at. A GitHub Actions workflow on the
+  // same schedule calls the same authenticated endpoint instead.
+  assert.equal(
+    vercel.crons,
+    undefined,
+    'vercel.json must not declare a cron - Hobby rejects anything more frequent than daily, and it fails the deploy silently rather than the build',
+  );
+
+  const workflow = readFileSync('.github/workflows/send-digests.yml', 'utf8');
+  assert.match(workflow, /schedule:\s*\n\s*- cron: '0 \* \* \* \*'/, 'the workflow fires hourly, because 7am has to mean 7am where the operator is');
+  assert.match(workflow, /secrets\.CRON_SECRET/, 'the workflow authenticates with a GitHub Actions secret, not a hardcoded value');
+  assert.match(workflow, /Authorization: Bearer \$\{CRON_SECRET\}/, 'the request carries the same bearer scheme the endpoint checks');
+  assert.match(workflow, /-X POST/, 'the workflow calls the cron verb, not the unsubscribe GET');
+  assert.match(workflow, /\/api\/send-digests/, 'the workflow calls the actual endpoint');
 }
 
 // 3. Silence when there is nothing to say. An email that arrives every morning

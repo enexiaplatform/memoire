@@ -1,0 +1,54 @@
+name: Send scheduled digests
+
+# Not a Vercel Cron. Vercel's Hobby plan - what this project deploys on -
+# permits a cron job no more frequently than once a day, and rejects the whole
+# deployment if vercel.json declares one that runs more often. The digest has
+# to be hourly: the operators this reaches are not in one timezone, and "7am"
+# has to mean 7am where they are, not on the server. Discovered 2026-08-03 when
+# an hourly `crons` entry in vercel.json silently blocked every subsequent
+# production deploy - Vercel refused it at config validation, before a
+# deployment record even existed to show the failure.
+#
+# This workflow calls the same authenticated endpoint on the same schedule
+# instead. Nothing about the endpoint changed: CRON_SECRET still gates it,
+# "silence when there is nothing to say" and the unsubscribe path are
+# unaffected - the endpoint does not know or care who calls it, only that the
+# bearer token matches.
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  send:
+    name: POST /api/send-digests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call the scheduled send
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          # A repository variable, not a secret - the URL is not sensitive.
+          # Falls back to the production domain so this works before anyone
+          # bothers to set it.
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET is not set as a repository secret (Settings -> Secrets and variables -> Actions). Nothing will be sent."
+            exit 1
+          fi
+
+          url="${PRODUCTION_URL:-https://memoire-official.com}/api/send-digests"
+          status=$(curl -sS -o /tmp/response.json -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "$url")
+
+          echo "HTTP $status"
+          cat /tmp/response.json
+          echo
+
+          if [ "$status" != "200" ]; then
+            echo "::error::send-digests returned HTTP $status - see the response body above"
+            exit 1
+          fi
