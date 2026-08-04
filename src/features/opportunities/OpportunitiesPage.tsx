@@ -104,7 +104,7 @@ import { type AccountMemoryRecord } from '../../services/accountStore';
 import { type AccountMergeRecord } from '../../services/accountMergeStore';
 import { SuggestInput } from '../../components/common/SuggestInput';
 import { buildAccountAliasIndex, resolveAccountName, type AccountAliasIndex } from '../../utils/accountAliases';
-import { accountKey, normalizeEntityName } from '../../utils/accountIdentity';
+import { accountKey, normalizeEntityName, sameAccount } from '../../utils/accountIdentity';
 import { checkAccountName, type AccountNameCheck } from '../../utils/accountDuplicates';
 import { analyzeStakeholderCoverage, getStakeholdersForOpportunity } from '../../utils/stakeholderGraph';
 import { buildMeddicStakeholderMap, formatMeddicStakeholderDate } from '../../utils/meddicStakeholderMap.ts';
@@ -1366,6 +1366,7 @@ export function OpportunitiesPage() {
         opportunityOutcomes={editingOpportunity ? opportunityOutcomes : []}
         salesAssets={salesAssets}
         allOpportunities={opportunities}
+        allStakeholders={stakeholders}
         knownAccountNames={knownAccountNames}
         accountAliases={accountAliases}
         accountWarningForced={accountNameConfirmed === form.accountName.trim() && Boolean(accountNameConfirmed)}
@@ -2807,6 +2808,7 @@ function OpportunityPanel({
   opportunityOutcomes,
   salesAssets,
   allOpportunities,
+  allStakeholders,
   knownAccountNames,
   accountAliases,
   accountWarningForced,
@@ -2832,6 +2834,12 @@ function OpportunityPanel({
   salesAssets: SalesAssetRecord[];
   allOpportunities: CrmLiteOpportunity[];
   /** Customers already in the workspace, by their surviving name. */
+  /**
+   * Every stakeholder in the workspace, not just the ones already on this deal.
+   * A new opportunity has none attached yet, and the people fields below are
+   * exactly where the contacts the workspace already knows should be offered.
+   */
+  allStakeholders: StakeholderRecord[];
   knownAccountNames: string[];
   accountAliases: AccountAliasIndex;
   /** True once a save has raised the near-miss, so the field shows it too. */
@@ -2873,6 +2881,51 @@ function OpportunityPanel({
     .filter((name) => normalizeEntityName(name) !== accountQuery)
     .slice(0, 8)
     .map((name) => ({ key: `account-${name}`, primary: name, onPick: () => update('accountName', name) }));
+
+  /**
+   * The people this customer already has on file.
+   *
+   * Decision maker and budget owner were free text, which is how the same
+   * person becomes three people: "Dr. Avery", "Avery", "avery nguyen". Every
+   * one of those names is already in the workspace with a role beside it, so
+   * the field offers them rather than trusting the operator to spell it the
+   * same way twice. It stays typeable - a decision maker the workspace has
+   * never met is a real case, and the whole point of the unattached-subject
+   * queue is that naming them is how they get added.
+   */
+  const stakeholderOptionsFor = (field: 'decisionMaker' | 'budgetOwner') => {
+    const typed = (form[field] || '').trim().toLowerCase();
+    const forAccount = allStakeholders.filter((person) => sameAccount(person.accountName, form.accountName));
+    // Fall back to the whole book only when the account is not named yet;
+    // otherwise a customer's own contacts would compete with everyone else's.
+    const pool = forAccount.length > 0 || form.accountName.trim() ? forAccount : allStakeholders;
+    return pool
+      .filter((person) => person.name.trim())
+      .filter((person) => !typed || person.name.toLowerCase().includes(typed))
+      .filter((person) => person.name.toLowerCase() !== typed)
+      .slice(0, 8)
+      .map((person) => ({
+        key: `${field}-${person.id}`,
+        primary: person.name,
+        secondary: [person.roleTitle, person.stakeholderRole !== 'Unknown' ? person.stakeholderRole : '']
+          .filter(Boolean)
+          .join(' · '),
+        onPick: () => update(field, person.name),
+      }));
+  };
+
+  // What this workspace actually sells, read off the deals already recorded.
+  // Same reasoning as the brand field beside it: a product spelled two ways is
+  // two products in every rollup that groups by it.
+  const productQuery = (form.productOrSolution || '').trim().toLowerCase();
+  const productOptions = Array.from(new Set(
+    allOpportunities.map((opportunity) => (opportunity.productOrSolution || '').trim()).filter(Boolean),
+  ))
+    .filter((name) => !productQuery || name.toLowerCase().includes(productQuery))
+    .filter((name) => name.toLowerCase() !== productQuery)
+    .sort((a, b) => a.localeCompare(b))
+    .slice(0, 8)
+    .map((name) => ({ key: `product-${name}`, primary: name, onPick: () => update('productOrSolution', name) }));
 
   const accountCheck = checkAccountName(form.accountName, knownAccountNames, accountAliases);
 
@@ -3004,7 +3057,12 @@ function OpportunityPanel({
           <Field label="Next action date" type="date" value={form.nextActionDate} onChange={(value) => update('nextActionDate', value)} />
         </div>
 
-        <Field label="Product / solution" value={form.productOrSolution} onChange={(value) => update('productOrSolution', value)} />
+        <SuggestInput
+          label="Product / solution"
+          value={form.productOrSolution}
+          onChange={(value) => update('productOrSolution', value)}
+          options={productOptions}
+        />
         {/* The principal whose line this deal sells. It arrived with the CSV
             import and had no way in by hand, so a deal added manually could
             never join a brand - which made the brand rollup a report on the
@@ -3015,8 +3073,18 @@ function OpportunityPanel({
           onChange={(value) => update('brand', value)}
           suggestions={brandOptions}
         />
-        <Field label="Decision maker" value={form.decisionMaker} onChange={(value) => update('decisionMaker', value)} />
-        <Field label="Budget owner" value={form.budgetOwner} onChange={(value) => update('budgetOwner', value)} />
+        <SuggestInput
+          label="Decision maker"
+          value={form.decisionMaker}
+          onChange={(value) => update('decisionMaker', value)}
+          options={stakeholderOptionsFor('decisionMaker')}
+        />
+        <SuggestInput
+          label="Budget owner"
+          value={form.budgetOwner}
+          onChange={(value) => update('budgetOwner', value)}
+          options={stakeholderOptionsFor('budgetOwner')}
+        />
         <TextArea label="Procurement path" value={form.procurementPath} onChange={(value) => update('procurementPath', value)} />
         <TextArea label="Technical criteria" value={form.technicalCriteria} onChange={(value) => update('technicalCriteria', value)} />
         <TextArea label="Next action" value={form.nextAction} onChange={(value) => update('nextAction', value)} />
