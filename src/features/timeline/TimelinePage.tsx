@@ -3,6 +3,7 @@ import { CalendarDays, Plus } from 'lucide-react';
 import { WeeklyPlanPage } from '../plan/WeeklyPlanPage';
 import { SalesActivityCalendarPage } from '../calendar/SalesActivityCalendarPage';
 import { CommitmentLedgerPanel } from '../commitments/CommitmentLedgerPanel';
+import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 
 export type TimelineView = 'upcoming' | 'history';
 
@@ -48,25 +49,24 @@ export function TimelinePage() {
   const activeHint = views.find((option) => option.value === view)?.hint || '';
 
   return (
-    <div className="w-full px-4 py-5 sm:px-5 lg:px-6">
-      <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-brand-blue" />
-            <h1 className="text-2xl font-bold tracking-tight text-navy">Plan</h1>
-          </div>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-600">{activeHint}</p>
-        </div>
-        <Link
-          to="/app/capture?mode=quick"
-          className="inline-flex items-center gap-1.5 self-start rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
-        >
-          <Plus className="h-4 w-4" />
-          Capture
-        </Link>
-      </header>
+    <PageContainer>
+      <PageHeader
+        eyebrow="Run"
+        icon={<CalendarDays className="h-5 w-5" />}
+        title="Plan"
+        description={activeHint}
+        actions={
+          <Link
+            to="/app/capture?mode=quick"
+            className="inline-flex items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
+          >
+            <Plus className="h-4 w-4" />
+            Capture
+          </Link>
+        }
+      />
 
-      <div className="mt-4 inline-flex rounded-full border border-gray-200 bg-gray-50 p-1" role="tablist" aria-label="Timeline view">
+      <div className="-mt-1 inline-flex rounded-full border border-gray-200 bg-gray-50 p-1" role="tablist" aria-label="Timeline view">
         {views.map((option) => (
           <button
             key={option.value}
@@ -83,7 +83,7 @@ export function TimelinePage() {
         ))}
       </div>
 
-      <div className="mt-4 flex flex-col gap-5">
+      <div className="flex flex-col gap-5">
         {view === 'upcoming' ? (
           <>
             {/* Open commitments lead: they are the promises the week is made
@@ -95,6 +95,6 @@ export function TimelinePage() {
           <SalesActivityCalendarPage embedded />
         )}
       </div>
-    </div>
+    </PageContainer>
   );
 }

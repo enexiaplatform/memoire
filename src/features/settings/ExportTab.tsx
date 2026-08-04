@@ -217,7 +217,7 @@ export function ExportTab() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-lg font-bold text-navy">Export workspace data</h2>
@@ -239,7 +239,7 @@ export function ExportTab() {
         {exportError && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-700">{exportError}</p>}
       </section>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-lg font-bold text-navy">Restore from a backup</h2>

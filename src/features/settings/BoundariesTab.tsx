@@ -60,7 +60,7 @@ function BoundaryCard({
       : 'text-red-600';
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-6">
+    <section className="rounded-xl border border-gray-200 bg-white p-6">
       <h3 className="text-sm font-bold uppercase tracking-wider text-navy">{title}</h3>
       <ul className="mt-4 space-y-3">
         {items.map((item) => (

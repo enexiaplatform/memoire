@@ -135,7 +135,7 @@ export function OperatorProfileSection({
 
 function TraitCard({ trait }: { trait: ProfileTrait }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <div className="rounded-xl border border-gray-200 bg-white p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{trait.label}</p>
         <span

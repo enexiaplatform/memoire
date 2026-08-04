@@ -53,7 +53,7 @@ export function PlanPasteImportPanel({
   const newLines = parsed?.lines.filter((line) => !line.duplicate) || [];
 
   return (
-    <section className="mt-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    <section className="mt-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold text-navy">Paste a week</h2>

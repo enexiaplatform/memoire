@@ -57,6 +57,7 @@ import {
   type CaptureAccountAlias,
   type CaptureCorrectionEvent,
 } from '../../services/captureCorrectionMemoryStore';
+import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type CaptureMode = 'note' | 'quick' | 'email';
@@ -737,24 +738,22 @@ export function DailyCapturePage() {
   )));
 
   return (
-    <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
-      <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Daily Capture</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">What happened today?</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            Capture sales activity in natural language. Memoire classifies it locally into structured activity records.
-          </p>
-        </div>
-        <DataModePill
-          compact
-          isLoading={authLoading}
-          isAuthenticated={isAuthenticated}
-          isSupabaseConfigured={isSupabaseConfigured}
-          cloudAvailable={canUseSalesActivityCloudStore(dataUserId)}
-          hasSampleData={sampleDataActive}
-        />
-      </header>
+    <PageContainer>
+      <PageHeader
+        eyebrow="Capture"
+        title="What happened today?"
+        description="Capture sales activity in natural language. Memoire classifies it locally into structured activity records."
+        actions={
+          <DataModePill
+            compact
+            isLoading={authLoading}
+            isAuthenticated={isAuthenticated}
+            isSupabaseConfigured={isSupabaseConfigured}
+            cloudAvailable={canUseSalesActivityCloudStore(dataUserId)}
+            hasSampleData={sampleDataActive}
+          />
+        }
+      />
 
       {/* One row, always. Three stacked full-width buttons took a third of a
           phone screen before the first field - on the one page where the whole
@@ -798,7 +797,7 @@ export function DailyCapturePage() {
       )}
 
       {captureMode === 'note' && (
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]">
           <label className="block">
             <span className="flex items-center justify-between gap-2">
@@ -905,7 +904,7 @@ export function DailyCapturePage() {
       )}
 
       {captureMode === 'email' && (
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-start gap-3 rounded-lg border border-blue-100 bg-blue-50/60 p-3">
           <Mail className="mt-0.5 h-4 w-4 shrink-0 text-brand-blue" />
           <div>
@@ -1151,7 +1150,7 @@ export function DailyCapturePage() {
           // One grouped panel instead of three separate coloured cards - the
           // seller just logged a note and sees the related records Memoire can
           // spin off as a compact, scannable list, not a wall of prompts.
-          <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-brand-blue" />
               <p className="text-sm font-bold text-navy">Memoire also spotted in this capture</p>
@@ -1207,7 +1206,7 @@ export function DailyCapturePage() {
         <p className="rounded-lg bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-100">{quoteSuggestionMessage}</p>
       )}
 
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-lg font-bold text-navy">Capture Learning Memory</h2>
@@ -1263,7 +1262,7 @@ export function DailyCapturePage() {
         </div>
       </section>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-bold text-navy">Just captured</h2>
@@ -1315,7 +1314,7 @@ export function DailyCapturePage() {
           </div>
         )}
       </section>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -1741,7 +1740,7 @@ function ActivityCard({
   onDelete: () => void;
 }) {
   return (
-    <article className="rounded-lg border border-gray-200 bg-white p-4">
+    <article className="rounded-xl border border-gray-200 bg-white p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">

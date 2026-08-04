@@ -65,6 +65,7 @@ import { compareSafeBusinessDate, formatSafeBusinessDate } from '../../utils/saf
 import { AccountImportPanel } from './AccountImportPanel';
 import { FollowUpComposerPanel } from '../v31/FollowUpComposerPanel';
 import { SkeletonScreen, SkeletonTable } from '../../components/common/Skeleton';
+import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 import type { FollowUpContext } from '../../types/v31';
 import {
   accountEngagementStatuses,
@@ -592,7 +593,7 @@ export function AccountsPage() {
   };
 
   return (
-    <div className="flex w-full max-w-none flex-col gap-4 px-4 py-4 sm:px-5 lg:px-6">
+    <PageContainer>
       {/* Accounts opened on a title, a paragraph, a quiet-customers card, a
           toolbar, an import banner and a seven-metric summary - the book of
           customers itself started below two screens. The founder's read is
@@ -603,50 +604,51 @@ export function AccountsPage() {
           everything that is a *task* about the book - quiet won customers,
           duplicates, unlinked candidates - moves below it, where you go
           looking for work rather than tripping over it. */}
-      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h1 className="text-xl font-bold tracking-tight text-navy">Accounts</h1>
-          <p className="text-sm text-gray-500">
-            {loading
-              ? 'Loading your customers...'
-              : `${visibleRows.length.toLocaleString()} shown of ${summary.totalAccounts.toLocaleString()}`}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={openAddPanel} className="inline-flex items-center justify-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-sm font-bold text-white">
-            <Plus className="h-4 w-4" />
-            Add account
-          </button>
-          <button
-            type="button"
-            onClick={() => setImportOpen((open) => !open)}
-            aria-expanded={importOpen}
-            className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-bold transition ${
-              importOpen ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-gray-300 bg-white text-gray-700 hover:border-brand-blue hover:text-brand-blue'
-            }`}
-          >
-            <Upload className="h-4 w-4" />
-            Import
-          </button>
-          <button
-            type="button"
-            onClick={() => refreshAccounts(true)}
-            disabled={loading || refreshing}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-60"
-            title="Reload accounts from cloud"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
-          <DataModePill
-            compact
-            isLoading={authLoading}
-            isAuthenticated={isAuthenticated}
-            isSupabaseConfigured={isSupabaseConfigured}
-            cloudAvailable={canUseAccountCloudStore(dataUserId)}
-            hasSampleData={sampleDataActive}
-          />
-        </div>
-      </header>
+      <PageHeader
+        eyebrow="Records"
+        title="Accounts"
+        meta={
+          loading
+            ? 'Loading your customers...'
+            : `${visibleRows.length.toLocaleString()} shown of ${summary.totalAccounts.toLocaleString()}`
+        }
+        actions={
+          <>
+            <button type="button" onClick={openAddPanel} className="inline-flex items-center justify-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-sm font-bold text-white">
+              <Plus className="h-4 w-4" />
+              Add account
+            </button>
+            <button
+              type="button"
+              onClick={() => setImportOpen((open) => !open)}
+              aria-expanded={importOpen}
+              className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-bold transition ${
+                importOpen ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-gray-300 bg-white text-gray-700 hover:border-brand-blue hover:text-brand-blue'
+              }`}
+            >
+              <Upload className="h-4 w-4" />
+              Import
+            </button>
+            <button
+              type="button"
+              onClick={() => refreshAccounts(true)}
+              disabled={loading || refreshing}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-60"
+              title="Reload accounts from cloud"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            </button>
+            <DataModePill
+              compact
+              isLoading={authLoading}
+              isAuthenticated={isAuthenticated}
+              isSupabaseConfigured={isSupabaseConfigured}
+              cloudAvailable={canUseAccountCloudStore(dataUserId)}
+              hasSampleData={sampleDataActive}
+            />
+          </>
+        }
+      />
 
       {loadError && (
         <section className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
@@ -714,7 +716,7 @@ export function AccountsPage() {
         ) : accounts.length === 0 && candidates.length === 0 ? (
           <EmptyState onAdd={openAddPanel} onImport={() => setImportOpen(true)} />
         ) : visibleRows.length === 0 ? (
-          <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
+          <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
             <p className="text-sm font-semibold text-gray-900">No accounts match these filters.</p>
             <p className="mt-1 text-sm text-gray-500">Clear search or filters to review all account records.</p>
             {hasActiveFilters && (
@@ -820,7 +822,7 @@ export function AccountsPage() {
           onActivityLogged={() => { void refreshAccounts(true); }}
         />
       )}
-    </div>
+    </PageContainer>
   );
 }
 
@@ -2128,7 +2130,7 @@ function CandidateSection({
 
 function EmptyState({ onAdd, onImport }: { onAdd: () => void; onImport: () => void }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
+    <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
       <p className="text-base font-bold text-navy">No accounts yet.</p>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
         Accounts remember the relationship context behind your deals: stakeholders, notes, linked activity, open next actions, and objection debt.
@@ -2537,7 +2539,7 @@ function AccountHistorySection({
 
   if (timeline.totalCount === 0) {
     return (
-      <section className="rounded-lg border border-gray-200 bg-white p-4">
+      <section className="rounded-xl border border-gray-200 bg-white p-4">
         <p className="text-sm font-bold text-navy">History</p>
         <p className="mt-1 text-xs text-gray-500">
           Nothing recorded for this customer yet. Captures, deals and quotes appear here in the order they happen.
@@ -2547,7 +2549,7 @@ function AccountHistorySection({
   }
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-4">
+    <section className="rounded-xl border border-gray-200 bg-white p-4">
       <div className="flex flex-wrap items-baseline gap-2">
         <p className="text-sm font-bold text-navy">History</p>
         <p className="text-xs text-gray-500">

@@ -64,9 +64,9 @@ export function AccountsPage() {
       </div>
 
       {loading ? (
-        slowLoading ? <RouteLoadingFallback onRetry={loadAccounts} /> : <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading Account Memory...</div>
+        slowLoading ? <RouteLoadingFallback onRetry={loadAccounts} /> : <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading Account Memory...</div>
       ) : visibleAccounts.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
+        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
           <Building2 className="mx-auto h-8 w-8 text-gray-300" />
           <p className="mt-3 text-sm font-semibold text-gray-900">No Account Memory yet</p>
           <p className="mt-1 text-sm text-gray-500">Your accounts will become Living Memory pages once you capture interactions or import account data.</p>
@@ -77,7 +77,7 @@ export function AccountsPage() {
             <Link
               key={account.id}
               to={`/app/accounts?accountId=${encodeURIComponent(account.id)}`}
-              className="group rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition hover:border-brand-blue/40 hover:shadow-md"
+              className="group rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-brand-blue/40 hover:shadow-md"
             >
               <div className="flex items-start gap-4">
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-brand-blue">

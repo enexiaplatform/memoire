@@ -168,9 +168,9 @@ export function ObjectionsPage() {
       </datalist>
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Objection Ledger</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Objection Ledger</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">Opened from Opportunities</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-navy">Objection Ledger</h1>
+          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-gray-600">
             Track unresolved commercial debt across your B2B pipeline: proof required, response plan, owner context, and resolution state.
           </p>
         </div>
@@ -184,7 +184,7 @@ export function ObjectionsPage() {
         />
       </header>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <button type="button" onClick={() => openAddPanel()} className="inline-flex items-center justify-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
             <Plus className="h-4 w-4" />
@@ -217,7 +217,7 @@ export function ObjectionsPage() {
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_420px]">
         <div className="space-y-3">
           {loading ? (
-            <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500">Loading objections...</div>
+            <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500">Loading objections...</div>
           ) : visibleObjections.length === 0 ? (
             <EmptyState onAdd={() => openAddPanel()} />
           ) : (
@@ -244,7 +244,7 @@ export function ObjectionsPage() {
 
 function ObjectionCard({ objection, onOpen }: { objection: ObjectionRecord; onOpen: () => void }) {
   return (
-    <article className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    <article className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{objection.accountName || 'No account'} / {objection.opportunityName || 'No opportunity'}</p>
@@ -288,7 +288,7 @@ function ObjectionPanel({
 }) {
   if (mode === 'closed') {
     return (
-      <aside className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+      <aside className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <AlertTriangle className="h-6 w-6 text-brand-blue" />
         <h2 className="mt-3 text-xl font-bold text-navy">Select or add an objection</h2>
         <p className="mt-2 text-sm leading-6 text-gray-500">Track objections as commercial debt with proof, plan, status, and resolution notes.</p>
@@ -301,7 +301,7 @@ function ObjectionPanel({
   };
 
   return (
-    <aside className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
+    <aside className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:overflow-y-auto">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">{mode === 'add' ? 'Add Objection' : 'Objection Detail'}</p>
@@ -347,7 +347,7 @@ function ObjectionPanel({
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
+    <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
       <p className="text-base font-bold text-navy">No objections captured yet.</p>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">Add objections manually or capture sales activity with risk, competitor, procurement, support, or proof signals.</p>
       <button type="button" onClick={onAdd} className="mt-5 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Add Objection</button>
@@ -356,7 +356,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 }
 
 function Metric({ label, value, tone = 'blue' }: { label: string; value: string | number; tone?: 'blue' | 'green' | 'amber' | 'red' }) {
-  return <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm"><p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p><p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-lg font-black ${toneClass(tone)}`}>{value}</p></div>;
+  return <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm"><p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p><p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-lg font-black ${toneClass(tone)}`}>{value}</p></div>;
 }
 
 function Fact({ label, value }: { label: string; value: string }) {

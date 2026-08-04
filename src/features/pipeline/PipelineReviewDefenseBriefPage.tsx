@@ -1461,7 +1461,7 @@ export function PipelineReviewDefenseBriefPage() {
               ) : (
                 <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
                   {parsedDeals.map((deal) => (
-                    <div key={deal.id} className="rounded-lg border border-gray-200 bg-white p-3">
+                    <div key={deal.id} className="rounded-xl border border-gray-200 bg-white p-3">
                       <p className="text-sm font-bold text-gray-900">{deal.account}</p>
                       <p className="mt-1 text-sm text-gray-500">{deal.opportunity}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
@@ -2591,7 +2591,7 @@ function BriefQualityIssueGroup({
       ) : (
         <div className="space-y-3">
           {issues.map((issue) => (
-            <div key={issue.id} className="rounded-lg border border-gray-200 bg-white p-3">
+            <div key={issue.id} className="rounded-xl border border-gray-200 bg-white p-3">
               {issue.account && <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{issue.account}</p>}
               <p className="mt-1 text-sm font-bold text-gray-900">{issue.label}</p>
               <p className="mt-1 text-sm text-gray-600">{issue.reason}</p>
@@ -2718,7 +2718,7 @@ function ActionPriorityGroup({
           {items.map((item) => {
             const done = doneActionIds.has(item.id);
             return (
-              <article key={item.id} className={`rounded-lg border border-gray-200 bg-white p-4 ${done ? 'opacity-70' : ''}`}>
+              <article key={item.id} className={`rounded-xl border border-gray-200 bg-white p-4 ${done ? 'opacity-70' : ''}`}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <div className="flex flex-wrap gap-2">
@@ -3004,13 +3004,13 @@ function RiskSuggestionPanel({ suggestion, onApply }: { suggestion: DealRiskSugg
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
-        <div className="rounded-lg border border-gray-200 bg-white p-3">
+        <div className="rounded-xl border border-gray-200 bg-white p-3">
           <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Suggested forecast category</p>
           <div className="mt-2">
             <Badge className={categoryClasses[suggestion.forecastEvidenceCategory]}>{suggestion.forecastEvidenceCategory}</Badge>
           </div>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-3">
+        <div className="rounded-xl border border-gray-200 bg-white p-3">
           <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Suggested decision</p>
           <div className="mt-2">
             <Badge className={decisionClasses[suggestion.decisionRecommendation]}>{suggestion.decisionRecommendation}</Badge>
@@ -3018,7 +3018,7 @@ function RiskSuggestionPanel({ suggestion, onApply }: { suggestion: DealRiskSugg
         </div>
       </div>
 
-      <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3">
+      <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
         <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Risk flags</p>
         {suggestion.riskFlags.length === 0 ? (
           <p className="mt-2 text-sm text-gray-500">No rule flags detected.</p>
@@ -3037,12 +3037,12 @@ function RiskSuggestionPanel({ suggestion, onApply }: { suggestion: DealRiskSugg
         )}
       </div>
 
-      <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3">
+      <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
         <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Suggested next action</p>
         <p className="mt-2 text-sm text-gray-700">{suggestion.suggestedAction}</p>
       </div>
 
-      <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3">
+      <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
         <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Explanation</p>
         <ul className="mt-2 space-y-1.5">
           {suggestion.explanation.map((item) => (
@@ -3126,14 +3126,14 @@ function DraftAssistPanel({
       )}
 
       {!result && !error && (
-        <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3">
+        <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
           <p className="text-sm font-semibold text-gray-900">No draft generated yet.</p>
           <p className="mt-1 text-sm text-gray-500">Choose a draft type, then generate a local mock draft.</p>
         </div>
       )}
 
       {result && (
-        <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
+        <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4">
           <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{result.type}</p>

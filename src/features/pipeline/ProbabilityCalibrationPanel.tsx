@@ -41,7 +41,7 @@ export function ProbabilityCalibrationPanel({ calibration }: { calibration: Prob
     }));
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex items-start gap-3">
         <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-blue-100 bg-blue-50 text-brand-blue">
           <Target className="h-4 w-4" />

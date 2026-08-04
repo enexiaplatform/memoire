@@ -75,7 +75,7 @@ function LoadingFallback({
 }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Loading fallback</p>
         <h1 className="mt-2 text-2xl font-bold text-navy">Memoire is taking longer than expected.</h1>
         <p className="mt-3 text-sm leading-6 text-gray-600">

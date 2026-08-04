@@ -65,7 +65,7 @@ export function SyncRecoveryPanel() {
   const failed = syncStatus.state === 'error';
 
   return (
-    <section className="mb-6 rounded-lg border border-gray-200 bg-white p-4" aria-label="Sync and recovery">
+    <section className="mb-6 rounded-xl border border-gray-200 bg-white p-4" aria-label="Sync and recovery">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-navy">Sync &amp; recovery</h2>

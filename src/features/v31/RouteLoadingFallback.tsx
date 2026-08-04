@@ -10,7 +10,7 @@ export function RouteLoadingFallback({ onRetry }: { onRetry: () => void }) {
   };
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Loading fallback</p>
       <h2 className="mt-2 text-xl font-bold text-navy">Memoire is taking longer than expected.</h2>
       <p className="mt-3 max-w-xl text-sm leading-6 text-gray-600">

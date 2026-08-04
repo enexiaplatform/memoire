@@ -61,6 +61,7 @@ import { buildWeeklyTouchSeries, buildWinLossByQuarter } from '../../utils/pipel
 import { Sparkline } from '../../components/charts/Sparkline';
 import { MiniBarChart } from '../../components/charts/MiniBarChart';
 import { SkeletonScreen, SkeletonCard } from '../../components/common/Skeleton';
+import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 import { analyzePersonalSalesLearning, type PersonalSalesLearningAnalysis } from '../../utils/personalSalesLearning.ts';
 import {
   generateMonthlySalesRecap,
@@ -109,26 +110,30 @@ export function SalesReviewsPage() {
   };
 
   return (
-    <div className="flex w-full max-w-none flex-col gap-4 px-4 py-4 sm:px-5 lg:px-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-        <h1 className="text-xl font-bold tracking-tight text-navy">Review</h1>
-        <div className="inline-flex flex-wrap rounded-full border border-gray-200 bg-gray-50 p-1" role="tablist" aria-label="Review section">
-          {reviewTabs.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              role="tab"
-              aria-selected={tab === option.value}
-              onClick={() => selectTab(option.value)}
-              className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
-                tab === option.value ? 'bg-navy text-white' : 'text-gray-600 hover:bg-white'
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </div>
+    <PageContainer>
+      <PageHeader
+        eyebrow="Run"
+        title="Review"
+        description="Close the week: what actually happened, what it cost, and what you commit to next."
+        actions={
+          <div className="inline-flex flex-wrap rounded-full border border-gray-200 bg-gray-50 p-1" role="tablist" aria-label="Review section">
+            {reviewTabs.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="tab"
+                aria-selected={tab === option.value}
+                onClick={() => selectTab(option.value)}
+                className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
+                  tab === option.value ? 'bg-navy text-white' : 'text-gray-600 hover:bg-white'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       {tab === 'review' && (
         <>
@@ -172,7 +177,7 @@ export function SalesReviewsPage() {
       )}
       {tab === 'defense' && <PipelineDefenseArtifactSection />}
       {tab === 'analytics' && <ReviewAnalyticsSection />}
-    </div>
+    </PageContainer>
   );
 }
 
@@ -184,7 +189,7 @@ export function SalesReviewsPage() {
  */
 function PipelineDefenseArtifactSection() {
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+    <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
       <h2 className="text-xl font-bold text-navy">Pipeline Defense Brief</h2>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
         The deal-by-deal story you can defend in a pipeline review: what each opportunity is worth, what evidence supports
@@ -438,7 +443,7 @@ function WeeklyReviewSection({
         </div>
       </header>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <h2 className="text-base font-bold text-navy">What the period was made of</h2>
           <p className="text-xs font-semibold text-gray-500">{period.label}</p>
@@ -673,7 +678,7 @@ function ExecutionRhythmCharts({
   return (
     <section className="grid gap-4 xl:grid-cols-2">
       {hasTouches && (
-        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Follow-up rhythm</p>
           <h2 className="mt-1 text-lg font-bold text-navy">
             {thisWeek} customer touch{thisWeek === 1 ? '' : 'es'} this week
@@ -689,7 +694,7 @@ function ExecutionRhythmCharts({
         </div>
       )}
       {hasOutcomes && (
-        <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Win / loss</p>
           <h2 className="mt-1 text-lg font-bold text-navy">How the last quarters closed</h2>
           <div className="mt-4 grid grid-cols-2 gap-4">
@@ -732,7 +737,7 @@ function ActivityTimelinePanel({ activities, periodLabel }: { activities: SalesA
   if (groups.size === 0) return null;
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
         <div>
           <p className="text-sm font-bold text-navy">Activity timeline</p>
@@ -893,7 +898,7 @@ function RecapContent({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm font-bold text-navy">{capitalize(recap.periodType)} recap</p>
@@ -1293,7 +1298,7 @@ function Panel({ title, items, tone }: { title: string; items: string[]; tone: '
 function BreakdownPanel({ title, data }: { title: string; data: Record<string, number> }) {
   const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <h3 className="text-sm font-bold text-navy">{title}</h3>
       {entries.length === 0 ? (
         <p className="mt-3 text-sm text-gray-500">No data captured.</p>
@@ -1313,7 +1318,7 @@ function BreakdownPanel({ title, data }: { title: string; data: Record<string, n
 
 function AccountBreakdownPanel({ accounts }: { accounts: { accountName: string; count: number }[] }) {
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <h3 className="text-sm font-bold text-navy">By account</h3>
       {accounts.length === 0 ? (
         <p className="mt-3 text-sm text-gray-500">No account names captured.</p>
@@ -1383,7 +1388,7 @@ function ListPanel({
   items: { id: string; title: string; detail: string }[];
 }) {
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <h3 className="text-sm font-bold text-navy">{title}</h3>
       {items.length === 0 ? (
         <p className="mt-3 text-sm text-gray-500">{empty}</p>

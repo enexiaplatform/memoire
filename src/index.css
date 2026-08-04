@@ -104,6 +104,109 @@ code, pre, .mono {
   outline-offset: 3px;
 }
 
+/* ── Keyboard focus ──
+   Audited 2026-08-04: outside the four `Button` variants and this skip link,
+   not one control in the product showed anything when it took keyboard focus.
+   Tailwind's preflight neutralises the platform ring, a handful of surfaces set
+   `focus:outline-none` and never replaced it, and the rest simply never said
+   anything - so tabbing through Opportunities moved an invisible cursor.
+
+   One ring, declared once, on `:focus-visible` so a mouse click never paints it
+   and a Tab key always does. The offset is what makes it readable against the
+   pills and chips this product is built from; on the navy rail the same blue
+   would disappear, so the rail gets a light ring instead. */
+/* No `border-radius` here on purpose: an outline already follows the element's
+   own corners, and setting one would square off every pill in the product for
+   exactly as long as it held focus. */
+:where(a, button, input, select, textarea, summary, [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
+}
+
+aside :where(a, button):focus-visible {
+  outline-color: rgba(255, 255, 255, 0.85);
+}
+
+/* ── Comfortable targets on touch ──
+   The product is deliberately dense on a desktop, and that density is right: an
+   operator scanning a book of deals wants rows, not cards with air. But the
+   same 24-30px chip a mouse hits exactly is a coin-toss under a thumb, and at
+   375px roughly 150 of them are on screen. Measured 2026-08-04: 135 controls
+   under 40px on Activity alone, and the plan-commitment checkbox was 14px.
+
+   The tempting fix is an invisible 44px pseudo-element centred on each control,
+   which grows the target without moving anything. It is a trap here: this
+   product packs chips 8px apart, so every overlay would overlap its neighbour,
+   and in the overlap the later sibling wins - quietly stealing the left-hand
+   chip's right edge. A control you cannot hit is better than one that fires the
+   wrong action.
+
+   So the controls genuinely get taller, and only under a thumb. `min-height`
+   does not apply to non-replaced inline boxes, which draws exactly the right
+   line for free: standalone buttons, pills and icon actions grow, while a link
+   inside a sentence is left alone. */
+@media (pointer: coarse) {
+  button,
+  [role='button'],
+  a[href],
+  summary,
+  select {
+    min-height: 2.5rem;
+  }
+
+  /* An icon-only action is square by intent; height alone would leave a 40x28
+     sliver. */
+  button:empty,
+  a[href]:empty {
+    min-width: 2.5rem;
+  }
+
+  /* The one control where growing the box is right rather than generous: 14px
+     is below what a thumb can hit at all. */
+  input[type='checkbox'],
+  input[type='radio'] {
+    min-height: 1.25rem;
+    min-width: 1.25rem;
+  }
+}
+
+/* Checkboxes rendered by the platform default to a grey-blue that belongs to no
+   palette here. One line puts them on the brand. */
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--brand-blue);
+  cursor: pointer;
+}
+
+/* A disabled control that still shows a pointer reads as broken rather than
+   unavailable. */
+:where(button, a, input, select, textarea)[disabled],
+[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
+/* ── Motion ──
+   Every transition in the product is opt-in per element, so there is nothing to
+   turn off wholesale - but the ones that exist should still respect the
+   setting, and animate-spin on six refresh buttons is exactly what this
+   preference is about. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* An in-page anchor under a fixed header lands its target beneath the header.
+   The shell's bar is 56px on a phone and 64px from `sm` up. */
+[id] {
+  scroll-margin-top: 4.5rem;
+}
+
 /* ── Gradient border card ── */
 .gradient-border-card {
   padding: 2px;

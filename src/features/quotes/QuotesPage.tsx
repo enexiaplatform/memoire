@@ -243,9 +243,9 @@ export function QuotesPage() {
     <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Commercial</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Quotes</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">Opened from Orders</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-navy">Quotes</h1>
+          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-gray-600">
             Track expiry, PO, delivery, payment, and the next commercial action.
           </p>
         </div>
@@ -276,7 +276,7 @@ export function QuotesPage() {
         <QuoteMetric label="Accepted value" value={formatBaseMoney(summary.acceptedValue)} tone={summary.acceptedValue ? 'green' : 'blue'} />
       </section>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="grid flex-1 grid-cols-1 gap-2 md:grid-cols-[minmax(260px,1fr)_180px]">
             <label className="relative">
@@ -305,13 +305,13 @@ export function QuotesPage() {
       </section>
 
       {loading ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
           Loading quotes...
         </div>
       ) : quotes.length === 0 ? (
         <QuoteEmptyState onCreate={openCreatePanel} />
       ) : visibleQuotes.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
+        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
           <p className="text-sm font-semibold text-gray-900">No quotes match these filters.</p>
           <p className="mt-1 text-sm text-gray-500">Clear search or status to review all quotes.</p>
         </div>
@@ -319,7 +319,7 @@ export function QuotesPage() {
         <QuoteTable quotes={visibleQuotes} onOpen={openEditPanel} />
       )}
 
-      <details className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <details className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <summary className="cursor-pointer text-sm font-bold text-navy">Why this matters</summary>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-500">
           Quotes bridge pipeline to commercial money. Keep expiry, PO, delivery, payment, and margin risk visible.
@@ -571,7 +571,7 @@ function QuotePanel({
 
 function QuoteEmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
+    <section className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-brand-blue">
         <CalendarDays className="h-6 w-6" />
       </div>

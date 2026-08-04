@@ -122,14 +122,14 @@ export function OpportunitiesPage() {
       </div>
 
       {loading ? (
-        slowLoading ? <RouteLoadingFallback onRetry={loadOpportunities} /> : <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading Opportunity Memory...</div>
+        slowLoading ? <RouteLoadingFallback onRetry={loadOpportunities} /> : <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading Opportunity Memory...</div>
       ) : opportunities.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
+        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
           <p className="text-sm font-semibold text-gray-900">No pipeline opportunities yet</p>
           <p className="mt-1 text-sm text-gray-500">Capture an account interaction from Today or add deals in Pipeline Defense to start building pipeline quality context.</p>
         </div>
       ) : visibleOpportunities.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
+        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
           <p className="text-sm font-semibold text-gray-900">No opportunities in this stage</p>
           <p className="mt-1 text-sm text-gray-500">Switch stage filters or capture a new interaction with this stage.</p>
         </div>
@@ -168,7 +168,7 @@ export function OpportunitiesPage() {
 
 function PipelineQualitySummary({ analysis }: { analysis: ReturnType<typeof analyzeOpportunityPipelineQuality> }) {
   return (
-    <section className="mb-6 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="mb-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="flex items-center gap-2">

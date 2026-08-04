@@ -247,7 +247,7 @@ export function SalesAssetsPage() {
         onImport={importStarterPack}
       />
 
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           <SummaryCard label="Assets" value={summary.total} />
           <SummaryCard label="Proof assets" value={summary.proofAssets} tone={summary.proofAssets ? 'green' : 'blue'} />
@@ -486,7 +486,7 @@ function AssetPanel({
 }) {
   if (mode === 'closed') {
     return (
-      <aside className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <aside className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-brand-blue">
           <FileText className="h-5 w-5" />
         </div>
@@ -499,7 +499,7 @@ function AssetPanel({
   }
 
   return (
-    <aside className="sticky top-6 h-fit rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+    <aside className="sticky top-6 h-fit rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">{mode === 'add' ? 'New Asset' : 'Edit Asset'}</p>

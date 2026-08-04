@@ -24,6 +24,7 @@ import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { DataModePill } from '../../components/common/DataModePill';
 import { DemoJourneyCard } from '../../components/demo/DemoJourneyCard';
 import { SkeletonScreen, SkeletonCard } from '../../components/common/Skeleton';
+import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 import { isFounderWorkspaceEnabled, isSupabaseConfigured } from '../../lib/demoMode';
 import type { AccountMemoryRecord } from '../../services/accountStore';
 import { opportunityToFormInput, updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
@@ -538,42 +539,40 @@ export function TodayPage() {
   };
 
   return (
-    <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6" onClickCapture={handleTodayLinkCapture}>
-      <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Personal Commercial Control Tower</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Nothing in your business goes silent.</h1>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500">
-            Three steps: get the picture, do today's work, check the watch-list.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => refreshDashboard({ force: true })}
-            disabled={workspaceSyncing}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
-            title="Reload dashboard from cloud"
-          >
-            <RefreshCw className={`h-4 w-4 ${workspaceSyncing ? 'animate-spin' : ''}`} />
-            Cloud sync
-          </button>
-          <DataModePill
-            compact
-            isLoading={authLoading || loading}
-            isAuthenticated={isAuthenticated}
-            isSupabaseConfigured={isSupabaseConfigured}
-            cloudAvailable={isSupabaseConfigured}
-            syncError={message.startsWith('Cloud sync issue') ? message : null}
-            hasSampleData={sampleDataActive}
-          />
-          {message && !message.startsWith('Command center ready') ? (
-            <span className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
-              {message}
-            </span>
-          ) : null}
-        </div>
-      </header>
+    <PageContainer onClickCapture={handleTodayLinkCapture}>
+      <PageHeader
+        eyebrow="Personal Commercial Control Tower"
+        title="Nothing in your business goes silent."
+        description="Three steps: get the picture, do today's work, check the watch-list."
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => refreshDashboard({ force: true })}
+              disabled={workspaceSyncing}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+              title="Reload dashboard from cloud"
+            >
+              <RefreshCw className={`h-4 w-4 ${workspaceSyncing ? 'animate-spin' : ''}`} />
+              Cloud sync
+            </button>
+            <DataModePill
+              compact
+              isLoading={authLoading || loading}
+              isAuthenticated={isAuthenticated}
+              isSupabaseConfigured={isSupabaseConfigured}
+              cloudAvailable={isSupabaseConfigured}
+              syncError={message.startsWith('Cloud sync issue') ? message : null}
+              hasSampleData={sampleDataActive}
+            />
+            {message && !message.startsWith('Command center ready') ? (
+              <span className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
+                {message}
+              </span>
+            ) : null}
+          </>
+        }
+      />
 
       {loading ? (
         <SkeletonScreen label="Loading your Today command center">
@@ -819,7 +818,7 @@ export function TodayPage() {
           )}
         </>
       )}
-    </div>
+    </PageContainer>
   );
 }
 
@@ -2004,7 +2003,7 @@ function ThisWeekSummary({ commandCenter }: { commandCenter: CommandCenter }) {
   const summary = commandCenter.thisWeekSummary;
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex items-center gap-2">
         <CalendarDays className="h-4 w-4 text-brand-blue" />
         <h2 className="text-lg font-bold text-navy">This Week Summary</h2>
@@ -2211,7 +2210,7 @@ function AssetGaps({
 
 function PriorityActionList({ items }: { items: CommandActionItem[] }) {
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -2418,7 +2417,7 @@ function ActionItem({ item }: { item: CommandActionItem }) {
 
 function AtRiskOpportunities({ items }: { items: AtRiskOpportunityItem[] }) {
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex items-center gap-2">
         <AlertTriangle className="h-4 w-4 text-amber-600" />
         <h2 className="text-lg font-bold text-navy">At-Risk Opportunities</h2>
@@ -2459,7 +2458,7 @@ function AtRiskOpportunities({ items }: { items: AtRiskOpportunityItem[] }) {
 
 function AccountsNeedingTouch({ items }: { items: AccountTouchItem[] }) {
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex items-center gap-2">
         <BookOpen className="h-4 w-4 text-brand-blue" />
         <h2 className="text-lg font-bold text-navy">Accounts Needing Touch</h2>
@@ -2493,7 +2492,7 @@ function AccountsNeedingTouch({ items }: { items: AccountTouchItem[] }) {
 
 function RecentActivityFeed({ items }: { items: RecentActivityItem[] }) {
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-navy">Recent Activity Feed</h2>
@@ -2535,7 +2534,7 @@ function QuickActions() {
   ];
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <h2 className="text-lg font-bold text-navy">Quick Actions</h2>
       <div className="mt-4 space-y-2">
         {actions.map((action) => (
@@ -2671,7 +2670,7 @@ function FocusCard({
   tone: 'blue' | 'green' | 'amber' | 'red';
 }) {
   return (
-    <Link to={href} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <Link to={href} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{title}</p>
       <p className={`mt-3 inline-flex rounded-full px-3 py-1 text-2xl font-black ${toneClass(tone)}`}>{value}</p>
       <p className="mt-3 line-clamp-2 text-sm leading-6 text-gray-600">{helper}</p>

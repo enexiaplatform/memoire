@@ -85,7 +85,7 @@ export function CommittedWeekStrip({
                   checked={done}
                   disabled={settled}
                   onChange={(event) => toggleDone(snapshot, item.id, event.target.checked)}
-                  className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                  className="mt-0.5 h-4 w-4 shrink-0"
                 />
                 <span className="min-w-0">
                   <span className={`font-bold ${done ? 'text-emerald-800 line-through' : 'text-gray-900'}`}>

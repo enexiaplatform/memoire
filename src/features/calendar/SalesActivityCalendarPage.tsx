@@ -310,7 +310,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
         </div>
       </header>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm font-bold text-navy">Selected period</p>
@@ -376,7 +376,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
         </details>
       )}
 
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -438,7 +438,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
               if (records.length === 0 && viewMode !== 'day') return null;
 
               return (
-                <section key={dateKey} className="rounded-lg border border-gray-200 bg-white p-4">
+                <section key={dateKey} className="rounded-xl border border-gray-200 bg-white p-4">
                   <div className="mb-3 flex items-center gap-2">
                     <CalendarDays className="h-4 w-4 text-gray-400" />
                     <h3 className="text-sm font-bold text-navy">{formatDateHeading(dateKey)}</h3>

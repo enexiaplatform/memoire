@@ -189,7 +189,7 @@ export function ReviewAnalyticsSection() {
       )}
 
       {loading ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
           Loading dashboard...
         </div>
       ) : !hasData || !model ? (

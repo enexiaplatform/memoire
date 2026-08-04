@@ -151,7 +151,7 @@ function SharedSection({ title, children }: { title: string; children: React.Rea
 function Stat({ label, value, tone = 'default' }: { label: string; value: string; tone?: 'default' | 'green' | 'amber' | 'red' }) {
   const color = tone === 'green' ? 'text-emerald-700' : tone === 'amber' ? 'text-amber-700' : tone === 'red' ? 'text-red-700' : 'text-navy';
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3 text-center shadow-sm">
+    <div className="rounded-xl border border-gray-200 bg-white p-3 text-center shadow-sm">
       <p className={`text-2xl font-bold ${color}`}>{value}</p>
       <p className="mt-1 text-xs font-semibold text-gray-500">{label}</p>
     </div>

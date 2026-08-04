@@ -32,7 +32,7 @@ export function ActivityInsightsBand({ insights }: { insights: ActivityInsights 
   const ratePct = followThrough.rate === null ? null : Math.round(followThrough.rate * 100);
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-brand-blue" />
         <h2 className="text-lg font-bold text-navy">What this period tells you</h2>

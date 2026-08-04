@@ -150,7 +150,7 @@ export function WeeklyCommitmentPanel({
                         checked={checked}
                         disabled={!checked && atCap}
                         onChange={() => toggleSuggestion(suggestion.id)}
-                        className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                        className="mt-0.5 h-4 w-4 shrink-0"
                       />
                       <span>
                         <span className="font-bold text-gray-900">{suggestion.label}</span>
@@ -293,7 +293,7 @@ function PlanVsActual({
   );
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3">
+    <div className="rounded-xl border border-gray-200 bg-white p-3">
       <div className="flex items-center gap-2">
         <Check className="h-4 w-4 text-emerald-700" />
         <h4 className="text-xs font-bold text-navy">Plan vs actual - week of {formatSafeBusinessDate(snapshot.periodStart)}</h4>

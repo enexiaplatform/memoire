@@ -173,7 +173,7 @@ export function SalesPlaybookPage() {
       </header>
 
       {loading ? (
-        <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
+        <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
           <Loader2 className="h-4 w-4 animate-spin" />
           Building playbook patterns...
         </div>
@@ -189,7 +189,7 @@ export function SalesPlaybookPage() {
               }}
             />
           )}
-          <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h2 className="text-lg font-bold text-navy">Pattern Library</h2>
@@ -363,7 +363,7 @@ function PatternDetailPanel({
 }) {
   if (!pattern) {
     return (
-      <aside className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <aside className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <p className="text-sm font-bold text-navy">Select a pattern</p>
         <p className="mt-2 text-sm text-gray-500">Open a playbook pattern to see evidence and reusable action guidance.</p>
       </aside>
@@ -371,7 +371,7 @@ function PatternDetailPanel({
   }
 
   return (
-    <aside className="sticky top-6 h-fit rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+    <aside className="sticky top-6 h-fit rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-brand-blue">
         <BookOpen className="h-5 w-5" />
       </div>

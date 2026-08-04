@@ -150,7 +150,7 @@ export function TodayCommitmentStrip({
                 type="checkbox"
                 checked={item.done}
                 onChange={() => toggleItem(item)}
-                className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                className="mt-0.5 h-4 w-4 shrink-0"
                 aria-label={`Mark "${item.label}" ${item.done ? 'not done' : 'done'}`}
               />
               <span className="min-w-0 flex-1">

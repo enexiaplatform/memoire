@@ -15,6 +15,7 @@ import {
 } from '../../utils/coverageMatrix';
 import { formatBaseCurrencyAmount } from '../../utils/money';
 import { SkeletonCard, SkeletonScreen } from '../../components/common/Skeleton';
+import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 
 /**
  * The Business Vault: every customer against every line you carry.
@@ -92,23 +93,19 @@ export function BusinessVaultPage() {
   if (!opportunities) {
     return (
       <SkeletonScreen label="Reading your coverage">
-        <div className="w-full px-4 py-5 sm:px-5 lg:px-6"><SkeletonCard /></div>
+        <PageContainer><SkeletonCard /></PageContainer>
       </SkeletonScreen>
     );
   }
 
   return (
-    <div className="flex w-full flex-col gap-4 px-4 py-5 sm:px-5 lg:px-6">
-      <header>
-        <div className="flex items-center gap-2">
-          <Grid3x3 className="h-5 w-5 text-brand-blue" />
-          <h1 className="text-2xl font-bold tracking-tight text-navy">Business Vault</h1>
-        </div>
-        <p className="mt-1 max-w-3xl text-sm leading-6 text-gray-600">
-          Every customer against every line you carry. The filled squares are the business you have; the empty ones are
-          the business you have never asked for.
-        </p>
-      </header>
+    <PageContainer>
+      <PageHeader
+        eyebrow="Workspace"
+        icon={<Grid3x3 className="h-5 w-5" />}
+        title="Business Vault"
+        description="Every customer against every line you carry. The filled squares are the business you have; the empty ones are the business you have never asked for."
+      />
 
       {!matrix.hasEnoughBrands ? (
         <EmptyState brandCount={matrix.brands.length} />
@@ -209,7 +206,7 @@ export function BusinessVaultPage() {
           )}
         </>
       )}
-    </div>
+    </PageContainer>
   );
 }
 

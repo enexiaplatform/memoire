@@ -47,6 +47,7 @@ import { MiniBarChart } from '../../components/charts/MiniBarChart';
 import { SegmentBar } from '../../components/charts/SegmentBar';
 import { FunnelBars } from '../../components/charts/FunnelBars';
 import { SkeletonCard, SkeletonScreen } from '../../components/common/Skeleton';
+import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 import { ActivityHeatmap } from './ActivityHeatmap';
 import { ActivityPivotTable } from './ActivityPivotTable';
 import { ActivityStream, SubjectChip } from './ActivityStream';
@@ -263,10 +264,10 @@ export function ActivityPage() {
   if (loading) {
     return (
       <SkeletonScreen label="Reading your activity">
-        <div className="w-full space-y-4 px-4 py-5 sm:px-5 lg:px-6">
+        <PageContainer>
           <SkeletonCard />
           <SkeletonCard lines={5} />
-        </div>
+        </PageContainer>
       </SkeletonScreen>
     );
   }
@@ -288,26 +289,22 @@ export function ActivityPage() {
     : 'No rows match these filters.';
 
   return (
-    <div className="flex w-full flex-col gap-4 px-4 py-5 sm:px-5 lg:px-6">
-      <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <ActivityIcon className="h-5 w-5 text-brand-blue" />
-            <h1 className="text-2xl font-bold tracking-tight text-navy">Activity</h1>
-          </div>
-          <p className="mt-1 max-w-3xl text-sm leading-6 text-gray-600">
-            Every dated thing in the workspace, each one resolved to the single customer, deal, line or domain it was
-            for. The calendar says when; this says who it was for and whether it added up.
-          </p>
-        </div>
-        <Link
-          to="/app/capture?mode=quick"
-          className="inline-flex items-center gap-1.5 self-start rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
-        >
-          <Plus className="h-4 w-4" />
-          Capture
-        </Link>
-      </header>
+    <PageContainer>
+      <PageHeader
+        eyebrow="Records"
+        icon={<ActivityIcon className="h-5 w-5" />}
+        title="Activity"
+        description="Every dated thing in the workspace, each one resolved to the single customer, deal, line or domain it was for. The calendar says when; this says who it was for and whether it added up."
+        actions={
+          <Link
+            to="/app/capture?mode=quick"
+            className="inline-flex items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
+          >
+            <Plus className="h-4 w-4" />
+            Capture
+          </Link>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="inline-flex rounded-full border border-gray-200 bg-gray-50 p-1" role="tablist" aria-label="Period">
@@ -670,7 +667,7 @@ export function ActivityPage() {
       {selectedEntry && (
         <ActivityDetailDrawer entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
       )}
-    </div>
+    </PageContainer>
   );
 }
 
@@ -879,11 +876,8 @@ function GapsPanel({
 
 function ActivityEmptyState() {
   return (
-    <div className="flex w-full flex-col gap-4 px-4 py-5 sm:px-5 lg:px-6">
-      <header className="flex items-center gap-2">
-        <ActivityIcon className="h-5 w-5 text-brand-blue" />
-        <h1 className="text-2xl font-bold tracking-tight text-navy">Activity</h1>
-      </header>
+    <PageContainer>
+      <PageHeader eyebrow="Records" icon={<ActivityIcon className="h-5 w-5" />} title="Activity" />
       <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center">
         <p className="text-base font-bold text-navy">Nothing dated yet.</p>
         <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">
@@ -898,7 +892,7 @@ function ActivityEmptyState() {
           Capture something
         </Link>
       </div>
-    </div>
+    </PageContainer>
   );
 }
 

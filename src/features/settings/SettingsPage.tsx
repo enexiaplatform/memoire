@@ -10,6 +10,7 @@ import { REPLAY_GUIDED_WORKFLOW_EVENT } from '../onboarding/guidedWorkflow';
 import { CURRENCY_NAMES, SUPPORTED_CURRENCIES, getReportingCurrency, setReportingCurrency } from '../../utils/money';
 import { getOpeningCashBalance, setOpeningCashBalance } from '../../utils/cashPosition';
 import { BUSINESS_ACCOUNTING_ENABLED } from '../../config/featureFlags';
+import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'profile' | 'export' | 'boundaries'>('profile');
@@ -20,13 +21,14 @@ export function SettingsPage() {
   });
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
-      <header className="mb-6">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Workspace</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Settings</h1>
-      </header>
+    <PageContainer width="reading">
+      <PageHeader
+        eyebrow="Workspace"
+        title="Settings"
+        description="How this workspace reports money, what it keeps, and how to get your records out of it."
+      />
 
-      <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-navy">Reporting currency</p>
@@ -56,7 +58,7 @@ export function SettingsPage() {
           statement, and that is outside the beta proposition. Any value already
           set is kept. See src/config/featureFlags.ts. */}
       {BUSINESS_ACCOUNTING_ENABLED && (
-        <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-navy">Opening cash balance</p>
@@ -89,7 +91,7 @@ export function SettingsPage() {
 
       <StoragePanel />
 
-      <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-navy">Guided workflow</p>
@@ -107,7 +109,7 @@ export function SettingsPage() {
         </div>
       </div>
 
-      <div className="mb-8 flex space-x-6 border-b border-gray-200">
+      <div className="flex space-x-6 border-b border-gray-200">
         <TabButton active={activeTab === 'profile'} onClick={() => setActiveTab('profile')}>
           Profile
         </TabButton>
@@ -122,7 +124,7 @@ export function SettingsPage() {
       {activeTab === 'profile' && <ProfileTab />}
       {activeTab === 'boundaries' && <BoundariesTab />}
       {activeTab === 'export' && <ExportTab />}
-    </div>
+    </PageContainer>
   );
 }
 

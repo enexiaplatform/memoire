@@ -24,7 +24,7 @@ export function AuthButton() {
   };
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white p-3 text-sm">
+    <div className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-3 text-sm">
       <div className="flex flex-wrap items-center gap-2">
         {loading ? (
           <span className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-bold text-gray-600">

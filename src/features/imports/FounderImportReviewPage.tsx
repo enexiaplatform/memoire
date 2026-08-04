@@ -112,14 +112,14 @@ export function FounderImportReviewPage() {
       )}
 
       {state === 'loading' && batches.length === 0 ? (
-        <section className="rounded-lg border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
+        <section className="rounded-xl border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
           Loading import audit...
         </section>
       ) : batches.length === 0 ? (
         <EmptyImportReview />
       ) : (
         <section className="grid grid-cols-1 gap-5 xl:grid-cols-[360px_1fr]">
-          <aside className="h-fit rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <aside className="h-fit rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <h2 className="text-base font-bold text-navy">Import Batches</h2>
             <div className="mt-4 space-y-2">
               {batches.map((batch) => (
@@ -145,7 +145,7 @@ export function FounderImportReviewPage() {
           <main className="space-y-5">
             {selectedBatch && (
               <>
-                <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+                <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <div className="flex flex-wrap gap-2">

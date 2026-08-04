@@ -4,6 +4,7 @@ import { BarChart3, Loader2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { SkeletonCard, SkeletonScreen } from '../../components/common/Skeleton';
+import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 import { FunnelBars } from '../../components/charts/FunnelBars';
 import { SegmentBar } from '../../components/charts/SegmentBar';
 import { ChartFrame } from '../../components/charts/ChartFrame';
@@ -123,10 +124,10 @@ export function BusinessLensPage() {
   if (authLoading || (loading && !model)) {
     return (
       <SkeletonScreen label="Reading how the business is doing">
-        <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
+        <PageContainer>
           <SkeletonCard />
           <SkeletonCard />
-        </div>
+        </PageContainer>
       </SkeletonScreen>
     );
   }
@@ -147,20 +148,20 @@ export function BusinessLensPage() {
 
   if (!model || !lens) {
     return (
-      <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
+      <PageContainer>
         <Header />
-        <p className="rounded-lg border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
+        <p className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
           <Loader2 className="mx-auto mb-2 h-4 w-4 animate-spin" />
           Reading your workspace.
         </p>
-      </div>
+      </PageContainer>
     );
   }
 
   const hasAnything = model.kpis.openDeals > 0 || model.kpis.activitiesLast30 > 0 || lens.accounts.total > 0;
 
   return (
-    <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
+    <PageContainer>
       <Header />
 
       {!hasAnything ? (
@@ -328,32 +329,25 @@ export function BusinessLensPage() {
           </div>
         </>
       )}
-    </div>
+    </PageContainer>
   );
 }
 
 function Header() {
   return (
-    <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-      <div>
-        <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">
-          <BarChart3 className="h-3.5 w-3.5" />
-          Dashboard
-        </p>
-        <h1 className="mt-2 text-2xl font-bold text-navy">How the business is doing</h1>
-        <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-600">
-          Everything here is read from what your accounts, deals, touches and money already say. Nothing on this
-          page changes a record - it is a way of seeing the six destinations, not a seventh place to work.
-        </p>
-      </div>
-      <DataModePill />
-    </header>
+    <PageHeader
+      eyebrow="Run"
+      icon={<BarChart3 className="h-5 w-5" />}
+      title="How the business is doing"
+      description="Everything here is read from what your accounts, deals, touches and money already say. Nothing on this page changes a record - it is a way of seeing the six destinations, not a seventh place to work."
+      actions={<DataModePill />}
+    />
   );
 }
 
 function EmptyState() {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
+    <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
       <p className="text-base font-bold text-navy">Nothing to show yet.</p>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
         This page reads your workspace rather than asking you to fill it in. Capture a customer interaction and add
@@ -369,7 +363,7 @@ function EmptyState() {
 
 function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <h2 className="text-base font-bold text-navy">{title}</h2>
       {subtitle && <p className="mt-1 text-sm leading-6 text-gray-600">{subtitle}</p>}
       <div className="mt-4">{children}</div>
@@ -390,7 +384,7 @@ function Stat({
 }) {
   const valueTone = tone === 'green' ? 'text-emerald-700' : tone === 'red' ? 'text-red-700' : 'text-navy';
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{label}</p>
       <p className={`mt-1 text-xl font-bold ${valueTone}`}>{value}</p>
       {detail && <p className="mt-0.5 text-xs text-gray-500">{detail}</p>}

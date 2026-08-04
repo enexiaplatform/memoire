@@ -24,6 +24,7 @@ import { buildMoneyFlow, moneyFlowStages } from '../../utils/moneyFlow';
 import { formatBaseCurrencyAmount, formatCurrencyAmount, SUPPORTED_CURRENCIES } from '../../utils/money';
 import { buildRouteHealth, type RouteHealthReport } from '../../utils/routeHealth';
 import { buildOwnObligations } from '../../utils/ownObligations';
+import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 import {
   createExpense,
   deleteExpense,
@@ -116,45 +117,44 @@ export function RevenueViewPage() {
   }, [revenue.actionItems, search]);
 
   return (
-    <div className="flex w-full max-w-none flex-col gap-4 px-4 py-4 sm:px-5 lg:px-6">
-      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h1 className="text-xl font-bold tracking-tight text-navy">Orders</h1>
-          {/* The second sentence is load bearing, not decoration: this page
-              ranks orders by where money is stuck, and Today owns the priority
-              order for the day. Two surfaces claiming to say what to do first
-              is how an operator stops trusting either. */}
-          <p className="max-w-2xl text-sm text-gray-500">
-            Committed orders, followed from contract to money in the bank. Today owns the priority order.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link to="/app/today" className="inline-flex items-center justify-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-sm font-bold text-white">
-            Today
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-          <button
-            type="button"
-            onClick={() => loadRevenue(true)}
-            disabled={syncing}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
-            title="Reload orders from cloud"
-          >
-            <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-          </button>
-          <DataModePill
-            compact
-            isLoading={authLoading || loading}
-            isAuthenticated={isAuthenticated}
-            isSupabaseConfigured={isSupabaseConfigured}
-            cloudAvailable={isSupabaseConfigured}
-            hasSampleData={sampleDataActive}
-          />
-        </div>
-      </header>
+    <PageContainer>
+      {/* The second sentence is load bearing, not decoration: this page ranks
+          orders by where money is stuck, and Today owns the priority order for
+          the day. Two surfaces claiming to say what to do first is how an
+          operator stops trusting either. */}
+      <PageHeader
+        eyebrow="Records"
+        title="Orders"
+        description="Committed orders, followed from contract to money in the bank. Today owns the priority order."
+        actions={
+          <>
+            <Link to="/app/today" className="inline-flex items-center justify-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-sm font-bold text-white">
+              Today
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <button
+              type="button"
+              onClick={() => loadRevenue(true)}
+              disabled={syncing}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
+              title="Reload orders from cloud"
+            >
+              <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+            </button>
+            <DataModePill
+              compact
+              isLoading={authLoading || loading}
+              isAuthenticated={isAuthenticated}
+              isSupabaseConfigured={isSupabaseConfigured}
+              cloudAvailable={isSupabaseConfigured}
+              hasSampleData={sampleDataActive}
+            />
+          </>
+        }
+      />
 
       {loading ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
           Loading revenue view...
         </div>
       ) : !data.opportunities.length && !data.quotes.length ? (
@@ -283,7 +283,7 @@ export function RevenueViewPage() {
           <RouteHealthSection report={routeHealth} />
         </>
       )}
-    </div>
+    </PageContainer>
   );
 }
 
@@ -653,7 +653,7 @@ function MoneyOutSection({
  */
 function RevenueEmptyState() {
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm">
+    <section className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-brand-blue">
         <ReceiptText className="h-6 w-6" />
       </div>

@@ -39,6 +39,7 @@ import { buildInitiativeReview } from '../../utils/initiativeReview';
 import { buildCustomerSignalDigest } from '../../utils/customerSignals';
 import { buildCommercialJourneySnapshot } from '../../utils/commercialJourney';
 import { todayDateKey } from '../../utils/safeDate';
+import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 
 export function AskMemoirePage() {
   const { user } = useAuth();
@@ -368,7 +369,7 @@ export function AskMemoirePage() {
   }, [ask, contextLoading, searchParams, urlQuestionConsumed]);
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
+    <PageContainer width="reading">
       {/* This is Search & Insights, not a chatbot. An open text box with a
           blinking cursor promises unlimited natural-language intelligence;
           Memoire answers a bounded set of questions from the user's own
@@ -380,12 +381,12 @@ export function AskMemoirePage() {
           below the box it describes. Three explanatory blocks before the input
           meant the page opened on an argument about itself; the reader wants to
           type first and be told what is possible second. */}
-      <header className="mb-4">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Search &amp; Insights</p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-navy">Find anything, and ask what it means</h1>
-      </header>
+      {/* The eyebrow carries the surface's own name rather than its rail group,
+          because the title here is a sentence and the name would otherwise
+          appear nowhere on the page you reached by clicking it. */}
+      <PageHeader eyebrow="Search &amp; Insights" title="Find anything, and ask what it means" />
 
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="mb-5 rounded-lg border border-gray-100 bg-gray-50 p-4">
           {slowContextLoading && <RouteLoadingFallback onRetry={loadMemory} />}
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -529,7 +530,7 @@ export function AskMemoirePage() {
         </div>
       </section>
 
-      <section className="mt-5 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+      <section className="mt-5 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center gap-2">
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-brand-blue">
             <Bot className="h-5 w-5" />
@@ -611,7 +612,7 @@ export function AskMemoirePage() {
           <p className="text-sm text-gray-500">Choose a preset or ask a question. Memoire can answer with local rules when the endpoint is unavailable.</p>
         )}
       </section>
-    </div>
+    </PageContainer>
   );
 }
 

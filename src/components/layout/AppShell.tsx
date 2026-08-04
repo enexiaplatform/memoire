@@ -8,6 +8,7 @@ import { DemoModeBanner } from '../demo/DemoModeBanner';
 import { StorageFailureBanner } from '../common/StorageFailureBanner';
 import { OfflineCaptureBanner } from '../common/OfflineCaptureBanner';
 import { prefetchPrimaryAppRoutes } from '../../utils/routePrefetch';
+import { PageContainer } from './PageFrame';
 
 export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -72,16 +73,18 @@ function AppContentLoading() {
   if (!visible) return null;
 
   return (
-    <div className="w-full px-4 py-6 sm:px-5 lg:px-6" aria-label="Loading workspace">
-      <div className="space-y-4">
+    /* Same frame the real page will use, so the skeleton does not shift the
+       moment content replaces it. */
+    <PageContainer>
+      <div className="space-y-4" aria-label="Loading workspace">
         <div className="h-7 w-56 animate-pulse rounded bg-gray-200" />
-        <div className="h-28 w-full animate-pulse rounded-lg border border-gray-200 bg-white" />
+        <div className="h-28 w-full animate-pulse rounded-xl border border-gray-200 bg-white" />
         <div className="grid gap-4 lg:grid-cols-3">
-          <div className="h-36 animate-pulse rounded-lg border border-gray-200 bg-white" />
-          <div className="h-36 animate-pulse rounded-lg border border-gray-200 bg-white" />
-          <div className="h-36 animate-pulse rounded-lg border border-gray-200 bg-white" />
+          <div className="h-36 animate-pulse rounded-xl border border-gray-200 bg-white" />
+          <div className="h-36 animate-pulse rounded-xl border border-gray-200 bg-white" />
+          <div className="h-36 animate-pulse rounded-xl border border-gray-200 bg-white" />
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }
