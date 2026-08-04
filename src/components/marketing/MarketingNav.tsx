@@ -12,6 +12,13 @@ import { useAuthContext } from '../../auth/authContext';
  * /login and /signup both redirect an authenticated session to /app/today. The
  * jump was correct; being invited to make a second account was not.
  *
+ * Only the auth pair changes, which is the convention every product with a
+ * marketing site in front of an app follows - Vercel, Linear, Stripe, Notion
+ * all collapse "Log in / Sign up" into a single "open the app" button and leave
+ * the rest of the nav exactly where it was. Try Demo, Pricing and Request
+ * Access are marketing links, not session controls, so they stay put; hiding
+ * them was an over-correction that made the nav look broken.
+ *
  * `loading` is deliberately treated as "not signed in yet" rather than blocking:
  * this nav sits on the public marketing pages, where the session check is the
  * slowest thing on screen and a nav that pops in late is worse than one that
@@ -35,7 +42,7 @@ export function MarketingNav() {
             <Link to="/demo" className="font-medium text-gray-600 hover:text-gray-900">Try Demo</Link>
             <a href="/#pricing" className="font-medium text-gray-600 hover:text-gray-900">Pricing</a>
             {!signedIn && <Link to="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</Link>}
-            {!signedIn && <Link to="/request-access" className="font-medium text-gray-600 hover:text-gray-900">Request Access</Link>}
+            <Link to="/request-access" className="font-medium text-gray-600 hover:text-gray-900">Request Access</Link>
             <Link
               to={signedIn ? '/app/today' : '/signup'}
               className="rounded-full bg-brand-blue px-4 py-2 font-display font-semibold text-white transition-colors hover:bg-brand-blue-dark active:scale-[0.98]"
@@ -63,7 +70,7 @@ export function MarketingNav() {
           {!signedIn && <Link to="/login" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md">Log in</Link>}
           <Link to="/demo" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Try Demo</Link>
           <a href="/#pricing" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Pricing</a>
-          {!signedIn && <Link to="/request-access" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Request Access</Link>}
+          <Link to="/request-access" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Request Access</Link>
           <Link to={signedIn ? '/app/today' : '/signup'} className="block rounded-full px-3 py-2 text-base font-semibold text-brand-blue hover:bg-blue-50 hover:text-brand-blue-dark">
             {signedIn ? 'Open workspace' : 'Create Account'}
           </Link>

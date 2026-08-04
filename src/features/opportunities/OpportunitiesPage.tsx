@@ -104,6 +104,12 @@ import { type AccountMemoryRecord } from '../../services/accountStore';
 import { type AccountMergeRecord } from '../../services/accountMergeStore';
 import { SuggestInput } from '../../components/common/SuggestInput';
 import { buildAccountAliasIndex, resolveAccountName, type AccountAliasIndex } from '../../utils/accountAliases';
+import {
+  isProcurementRoute,
+  procurementRoutes,
+  PROCUREMENT_ROUTE_GUIDE,
+  routeNeedsADate,
+} from '../../utils/procurementPath';
 import { accountKey, normalizeEntityName, sameAccount } from '../../utils/accountIdentity';
 import { checkAccountName, type AccountNameCheck } from '../../utils/accountDuplicates';
 import { analyzeStakeholderCoverage, getStakeholdersForOpportunity } from '../../utils/stakeholderGraph';
@@ -223,6 +229,10 @@ export function OpportunitiesPage() {
   const [recommendationFilter, setRecommendationFilter] = useState(allFilter);
   const [statusFilter, setStatusFilter] = useState(allFilter);
   const [brandFilter, setBrandFilter] = useState(allFilter);
+  // "Q3 2026" or "Aug 2026", both read off the expected close date rather than
+  // stored. The date is the record; the quarter and the month are two ways of
+  // asking the same question of it, which is why neither is a field.
+  const [closeFilter, setCloseFilter] = useState(allFilter);
   const [quickFilter, setQuickFilter] = useState<OpportunityQuickFilter>('all');
   // Opens on "what closes soonest", which is the question a pipeline list is
   // for. Was "last update, newest first" - an order that answers "what did I
@@ -394,10 +404,11 @@ export function OpportunitiesPage() {
         (forecastFilter === allFilter || opportunity.forecastEvidenceCategory === forecastFilter) &&
         (recommendationFilter === allFilter || opportunity.decisionRecommendation === recommendationFilter) &&
         (statusFilter === allFilter || opportunity.status === statusFilter) &&
-        (brandFilter === allFilter || (opportunity.brand || '').trim() === brandFilter)
+        (brandFilter === allFilter || (opportunity.brand || '').trim() === brandFilter) &&
+        (closeFilter === allFilter || closeFilterOptionsFor(row.closePeriod).includes(closeFilter))
       );
     }).sort((left, right) => compareOpportunityRows(left, right, sortKey, sortDirection));
-  }, [brandFilter, forecastFilter, opportunityRows, quickFilter, recommendationFilter, search, sortDirection, sortKey, stageFilter, statusFilter]);
+  }, [brandFilter, closeFilter, forecastFilter, opportunityRows, quickFilter, recommendationFilter, search, sortDirection, sortKey, stageFilter, statusFilter]);
 
   const visibleOpportunities = useMemo(
     () => visibleOpportunityRows.map((row) => row.opportunity),
@@ -811,12 +822,15 @@ export function OpportunitiesPage() {
   // the operator reads "no deals" as data loss rather than as their own Stage
   // filter from twenty minutes ago. The escape hatch only appears when there is
   // something to escape from.
+  const closeFilterOptions = useMemo(() => buildCloseFilterOptions(opportunityRows), [opportunityRows]);
+
   const hasActiveFilters = search.trim() !== ''
     || stageFilter !== allFilter
     || statusFilter !== allFilter
     || forecastFilter !== allFilter
     || recommendationFilter !== allFilter
     || brandFilter !== allFilter
+    || closeFilter !== allFilter
     || quickFilter !== 'all';
 
   const clearAllFilters = () => {
@@ -826,6 +840,7 @@ export function OpportunitiesPage() {
     setForecastFilter(allFilter);
     setRecommendationFilter(allFilter);
     setBrandFilter(allFilter);
+    setCloseFilter(allFilter);
     setQuickFilter('all');
     setPage(1);
   };
@@ -1141,6 +1156,9 @@ export function OpportunitiesPage() {
             <FilterSelect label="Decision" value={recommendationFilter} onChange={setRecommendationFilter} options={[allFilter, ...decisionRecommendations]} />
             {brandOptions.length > 0
               ? <FilterSelect label="Brand" value={brandFilter} onChange={setBrandFilter} options={[allFilter, ...brandOptions]} />
+              : null}
+            {closeFilterOptions.length > 0
+              ? <FilterSelect label="Close" value={closeFilter} onChange={setCloseFilter} options={[allFilter, ...closeFilterOptions]} />
               : null}
           </div>
           {hasActiveFilters && (
@@ -3053,7 +3071,19 @@ function OpportunityPanel({
             options={SUPPORTED_CURRENCIES}
             onChange={(value) => update('currency', value)}
           />
-          <Field label="Expected close period" value={form.expectedClosePeriod} onChange={(value) => update('expectedClosePeriod', value)} />
+          {/* A date, not a phrase. `resolveClosePeriod` already treats a real
+              date as the strongest signal - "the only form that says which
+              quarter without anybody guessing" - and free text was producing
+              "Q3", "Q3/2026", "August" and "04/08/2026" as four unrelated
+              values for one quarter. The quarter and month groupings on the
+              list are derived from this, so they cost the operator nothing to
+              maintain. */}
+          <Field
+            label="Expected close date"
+            type="date"
+            value={form.expectedClosePeriod}
+            onChange={(value) => update('expectedClosePeriod', value)}
+          />
           <Field label="Next action date" type="date" value={form.nextActionDate} onChange={(value) => update('nextActionDate', value)} />
         </div>
 
@@ -3085,7 +3115,11 @@ function OpportunityPanel({
           onChange={(value) => update('budgetOwner', value)}
           options={stakeholderOptionsFor('budgetOwner')}
         />
-        <TextArea label="Procurement path" value={form.procurementPath} onChange={(value) => update('procurementPath', value)} />
+        <ProcurementPathField
+          value={form.procurementPath}
+          expectedCloseDate={form.expectedClosePeriod}
+          onChange={(value) => update('procurementPath', value)}
+        />
         <TextArea label="Technical criteria" value={form.technicalCriteria} onChange={(value) => update('technicalCriteria', value)} />
         <TextArea label="Next action" value={form.nextAction} onChange={(value) => update('nextAction', value)} />
         <TextArea label="Evidence" value={form.evidence} onChange={(value) => update('evidence', value)} />
@@ -4332,6 +4366,115 @@ function ProbabilityField({ value, onChange }: { value: number | null; onChange:
         ))}
       </select>
     </label>
+  );
+}
+
+const CLOSE_MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * The two ways a close date can be asked about: which quarter, and which month.
+ *
+ * Both are derived from the date rather than stored, so they cannot disagree
+ * with it and there is no second field to keep in step. A row matches the
+ * filter if either reading matches, which is what lets one dropdown carry "Q3
+ * 2026" and "Aug 2026" without the operator choosing a mode first.
+ *
+ * A deal whose close date is unreadable contributes nothing here - it is
+ * findable through the Close column and the "no close date" grouping, and
+ * inventing a quarter for it is how a forecast acquires deals nobody dated.
+ */
+function closeFilterOptionsFor(period: ClosePeriod): string[] {
+  if (period.quarter === null || period.year === null) return [];
+  const quarterLabel = `Q${period.quarter} ${period.year}`;
+  // The month is only real when an actual date was read; a bare "Q3" says
+  // nothing about which month inside it.
+  if (period.basis !== 'date') return [quarterLabel];
+  const parsedMonth = Number((period.raw || '').slice(5, 7));
+  if (!Number.isFinite(parsedMonth) || parsedMonth < 1 || parsedMonth > 12) return [quarterLabel];
+  return [quarterLabel, `${CLOSE_MONTH_LABELS[parsedMonth - 1]} ${period.year}`];
+}
+
+/** Quarters first, then months, each in calendar order. */
+function buildCloseFilterOptions(rows: { closePeriod: ClosePeriod }[]): string[] {
+  const quarters = new Map<string, number>();
+  const months = new Map<string, number>();
+  for (const row of rows) {
+    const period = row.closePeriod;
+    if (period.quarter === null || period.year === null) continue;
+    quarters.set(`Q${period.quarter} ${period.year}`, period.year * 10 + period.quarter);
+    const parsedMonth = Number((period.raw || '').slice(5, 7));
+    if (period.basis === 'date' && parsedMonth >= 1 && parsedMonth <= 12) {
+      months.set(`${CLOSE_MONTH_LABELS[parsedMonth - 1]} ${period.year}`, period.year * 100 + parsedMonth);
+    }
+  }
+  const sorted = (map: Map<string, number>) => [...map.entries()].sort((a, b) => a[1] - b[1]).map(([label]) => label);
+  return [...sorted(quarters), ...sorted(months)];
+}
+
+/**
+ * The route this customer can buy through, and what that route demands.
+ *
+ * It replaces an empty textarea that was almost always left blank. Asked as
+ * prose, "how do they buy" is a paragraph nobody writes; asked as a route, it
+ * is one click and the app can then say what has to exist before a PO can
+ * appear - which is the difference between a field that records the answer and
+ * a field that changes what the seller does next.
+ *
+ * A value written before this was a picker is kept as its own option rather
+ * than discarded, so no existing note is lost.
+ */
+function ProcurementPathField({
+  value,
+  expectedCloseDate,
+  onChange,
+}: {
+  value: string;
+  expectedCloseDate: string;
+  onChange: (value: string) => void;
+}) {
+  const trimmed = value.trim();
+  const legacy = trimmed && !isProcurementRoute(trimmed) ? trimmed : '';
+  const guide = isProcurementRoute(trimmed) ? PROCUREMENT_ROUTE_GUIDE[trimmed] : null;
+  const missingDate = routeNeedsADate(trimmed, expectedCloseDate);
+
+  return (
+    <div>
+      <label className="block">
+        <span className="text-sm font-bold text-navy">Procurement path</span>
+        <select
+          value={legacy || trimmed || 'Not known yet'}
+          onChange={(event) => onChange(event.target.value)}
+          className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+        >
+          {procurementRoutes.map((route) => (
+            <option key={route} value={route}>{route}</option>
+          ))}
+          {legacy && <option value={legacy}>{legacy} (as recorded)</option>}
+        </select>
+      </label>
+
+      {guide && (
+        <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+          <p className="text-xs font-semibold leading-5 text-gray-700">{guide.meaning}</p>
+          <ul className="mt-2 space-y-1">
+            {guide.requires.map((item) => (
+              <li key={item} className="flex items-start gap-1.5 text-xs leading-5 text-gray-600">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-gray-400" />
+                {item}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs leading-5 text-amber-800">{guide.risk}</p>
+        </div>
+      )}
+
+      {missingDate && (
+        <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold leading-5 text-amber-900">
+          This route runs to a date you do not control, and no expected close date is set. Put the closing date in
+          Expected close date so the week can carry it.
+        </p>
+      )}
+    </div>
   );
 }
 

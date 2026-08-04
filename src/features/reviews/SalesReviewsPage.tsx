@@ -17,7 +17,6 @@ import {
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
 import { FollowUpImpactPanel } from '../dashboard/FollowUpImpactPanel';
-import { BrandPerformancePanel } from './BrandPerformancePanel';
 import { WeeklyBusinessReviewPanel } from './WeeklyBusinessReviewPanel';
 import { WeeklyCommitmentPanel } from './WeeklyCommitmentPanel';
 import { buildWeeklyBusinessReview } from '../../utils/weeklyBusinessReview';
@@ -148,10 +147,6 @@ export function SalesReviewsPage() {
               its number by abandoning everything it committed to is not a good
               period, and this is the only place that shows it. */}
           <CommitmentLedgerPanel title="Commitment performance" showComposer={false} />
-
-          {/* Renders only for a workspace carrying several brands. A single-line
-              seller never sees a panel that could only say "100%". */}
-          <BrandPerformancePanel />
 
           <WeeklyReviewSection periodType={periodType} period={period} />
 
@@ -900,17 +895,36 @@ function RecapContent({
         <Panel title="Recommended actions" items={recap.recommendedActions} tone="amber" />
       </section>
 
-      <section className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <BreakdownPanel title="By activity type" data={recap.activityTypeBreakdown} />
-        <AccountBreakdownPanel accounts={accountCounts} />
-        <BreakdownPanel title="By day" data={Object.fromEntries(Object.entries(activityByDay).map(([day, items]) => [day, items.length]))} />
-      </section>
+      {/* Six panels of working out, folded.
+          A review answers two questions - what happened, and what to highlight -
+          and both are answered above by the metric row and the two insight
+          panels. Everything here is the evidence behind those, which is worth
+          having and is not worth scrolling past every week to reach the end of
+          the page. Opening it is one click; being made to read it was the
+          reason the page felt long. */}
+      <details className="rounded-lg border border-gray-200 bg-white shadow-sm">
+        <summary className="cursor-pointer list-none px-5 py-3">
+          <span className="flex flex-wrap items-baseline justify-between gap-2">
+            <span className="text-base font-bold text-navy">The detail behind these numbers</span>
+            <span className="text-xs font-semibold text-gray-500">
+              Breakdowns, open next actions, objections and follow-ups
+            </span>
+          </span>
+        </summary>
+        <div className="space-y-5 border-t border-gray-100 p-5">
+          <section className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+            <BreakdownPanel title="By activity type" data={recap.activityTypeBreakdown} />
+            <AccountBreakdownPanel accounts={accountCounts} />
+            <BreakdownPanel title="By day" data={Object.fromEntries(Object.entries(activityByDay).map(([day, items]) => [day, items.length]))} />
+          </section>
 
-      <section className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <NextActionsPanel actions={recap.openNextActions} />
-        <ObjectionsPanel objections={recap.objectionsCaptured} />
-        <FollowUpsPanel followUps={recap.followUpsCaptured} />
-      </section>
+          <section className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+            <NextActionsPanel actions={recap.openNextActions} />
+            <ObjectionsPanel objections={recap.objectionsCaptured} />
+            <FollowUpsPanel followUps={recap.followUpsCaptured} />
+          </section>
+        </div>
+      </details>
     </div>
   );
 }
