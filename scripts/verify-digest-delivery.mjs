@@ -70,8 +70,27 @@ const vercel = JSON.parse(readFileSync('vercel.json', 'utf8'));
   );
 
   const workflow = readFileSync('.github/workflows/send-digests.yml', 'utf8');
-  assert.match(workflow, /schedule:\s*\n\s*- cron: '0 \* \* \* \*'/, 'the workflow fires hourly, because 7am has to mean 7am where the operator is');
+
+  // The hourly schedule is off as of 2026-08-04 and the workflow is manual-only.
+  //
+  // This assertion used to require the cron to be present. It was pinning a job
+  // that had never succeeded once: the call did not follow the apex domain's 308
+  // to www, and CRON_SECRET was never set as a repository secret, so every run
+  // exited 1 and emailed. A contract that guarantees a broken job keeps running
+  // is guarding the schedule rather than the delivery.
+  //
+  // What is still guarded is everything that has to be true *when* it runs, plus
+  // the way back on: turning the cron back on without the secret in both GitHub
+  // and Vercel just restarts the hourly failure mail.
+  assert.doesNotMatch(
+    workflow,
+    /^\s*schedule:/m,
+    'the digest cron stays off until CRON_SECRET exists in both GitHub and Vercel - re-enabling it without that is an hourly failure email, not a digest',
+  );
+  assert.match(workflow, /workflow_dispatch:/, 'the workflow must still be runnable by hand, so the secret can be proven before the cron goes back on');
+  assert.match(workflow, /TO TURN IT BACK ON/, 'the workflow must carry the steps to re-enable it, or switching it off becomes switching it away');
   assert.match(workflow, /secrets\.CRON_SECRET/, 'the workflow authenticates with a GitHub Actions secret, not a hardcoded value');
+  assert.match(workflow, /curl -sSL/, 'the call follows redirects - the apex domain answers /api/* with a 308 to www, and 308 preserves the POST');
   assert.match(workflow, /Authorization: Bearer \$\{CRON_SECRET\}/, 'the request carries the same bearer scheme the endpoint checks');
   assert.match(workflow, /-X POST/, 'the workflow calls the cron verb, not the unsubscribe GET');
   assert.match(workflow, /\/api\/send-digests/, 'the workflow calls the actual endpoint');

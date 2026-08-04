@@ -89,10 +89,18 @@ changed.
      Different values and every send is a 401 that never surfaces anywhere but
      the Actions run log.
    - **Variable** `PRODUCTION_URL` - optional, defaults to
-     `https://memoire-official.com`. Only needed if the domain differs.
-4. Redeploy. `.github/workflows/send-digests.yml` only fires on the schedule
-   defined in whatever copy of it is on the **default branch** - GitHub ignores
-   the `schedule:` trigger on any other branch - so this step is not optional.
+     `https://www.memoire-official.com`. Only needed if the domain differs. Use
+     the **www** host: the apex answers `/api/*` with a 308, and a caller that
+     does not follow redirects reads that as a failure.
+4. **The hourly schedule is off** (2026-08-04). It was removed after running for
+   a day without ever succeeding - no `CRON_SECRET` existed, so every run
+   emailed a failure and no digest was sent. Once both secrets above are set,
+   run the workflow by hand from the Actions tab and confirm HTTP 200, then
+   restore the `schedule:` block documented at the top of
+   `.github/workflows/send-digests.yml`.
+5. Redeploy. The workflow only fires on the schedule defined in whatever copy of
+   it is on the **default branch** - GitHub ignores the `schedule:` trigger on
+   any other branch - so this step is not optional.
 
 Verify: Actions tab -> "Send scheduled digests" -> Run workflow, and read the
 job's log (`considered`, `sent`, `skipped`, `failed` in the response body).

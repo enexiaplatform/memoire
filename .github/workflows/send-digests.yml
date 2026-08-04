@@ -15,9 +15,35 @@ name: Send scheduled digests
 # unaffected - the endpoint does not know or care who calls it, only that the
 # bearer token matches.
 
+# ---------------------------------------------------------------- OFF
+#
+# The hourly schedule is switched off as of 2026-08-04, and this runs only when
+# somebody starts it by hand.
+#
+# It had never once succeeded. Two faults stacked: the job called the apex
+# domain without following its 308 to www (fixed in 3265e37), and `CRON_SECRET`
+# was never set as a repository secret - so the guard below exited 1 on every
+# run. The result was a failure email every hour, for a digest that could not
+# have been sent even if the request had landed.
+#
+# An hourly job that always fails is worse than no job: it trains whoever
+# receives the mail to ignore this workflow, which is the same inbox that would
+# carry a real CI failure.
+#
+# TO TURN IT BACK ON, both halves of the secret have to exist first, and they
+# have to match:
+#   1. GitHub -> Settings -> Secrets and variables -> Actions -> CRON_SECRET
+#   2. Vercel -> Project Settings -> Environment Variables -> CRON_SECRET
+#      (the endpoint's own guard is `if (!expected) return false`, so with this
+#      missing every caller gets 401 no matter what it sends)
+#   3. Run this workflow once from the Actions tab and confirm HTTP 200
+#   4. Then restore the two lines below:
+#         schedule:
+#           - cron: '0 * * * *'
+#
+# Nothing about the endpoint or the digest itself was removed - /api/send-digests
+# is untouched, still gated, still silent when there is nothing to say.
 on:
-  schedule:
-    - cron: '0 * * * *'
   workflow_dispatch:
 
 jobs:
