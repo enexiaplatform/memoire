@@ -604,6 +604,19 @@ export function createDerivedCompletionRecord(
   };
 }
 
+/**
+ * What a link option is called on screen.
+ *
+ * The stored kind stays `'deal'` because it keys saved plan records and
+ * renaming it would orphan every one of them. The *label* is "Opportunity",
+ * which is what the rail, the route and the record page all call it - a badge
+ * reading DEAL beside a nav item reading Opportunities is the product
+ * disagreeing with itself about what its own records are named.
+ */
+export function planLinkKindLabel(kind: PlanLinkOption['kind']) {
+  return kind === 'deal' ? 'Opportunity' : kind;
+}
+
 export type PlanLinkOption = {
   key: string;
   kind: 'deal' | 'account' | 'brand';
@@ -632,7 +645,9 @@ export function buildPlanLinkOptions(input: {
 }): PlanLinkOption[] {
   const tokens = normalizePlanText(input.draft).split(/\s+/).filter((token) => token.length >= 2);
   if (tokens.length === 0) return [];
-  const limit = input.limit ?? 4;
+  // Six rather than four: two rows are now reserved for the customer, and a
+  // four-row list spent all of them on deals the moment an account had several.
+  const limit = input.limit ?? 6;
   const matches = (name: string) => {
     const normalized = normalizePlanText(name);
     return normalized.length > 0 && tokens.some((token) => normalized.includes(token));
@@ -646,18 +661,15 @@ export function buildPlanLinkOptions(input: {
       kind: 'deal' as const,
       accountName: opportunity.accountName,
       opportunityId: opportunity.id,
-      display: `${opportunity.accountName || 'No account'} / ${opportunity.opportunityName || 'Untitled deal'}`,
+      display: `${opportunity.accountName || 'No account'} / ${opportunity.opportunityName || 'Untitled opportunity'}`,
     }));
 
-  const dealAccounts = new Set(dealOptions.map((option) => normalizePlanText(option.accountName)));
   const accountOptions = [...new Map(
     input.accountNames
       .filter((name) => name.trim().length > 0)
       .map((name) => [normalizePlanText(name), name] as const),
   ).values()]
     .filter((name) => matches(name))
-    // An account whose deal already matched is covered by the deal option.
-    .filter((name) => !dealAccounts.has(normalizePlanText(name)))
     .map((name) => ({
       key: `account-${normalizePlanText(name)}`,
       kind: 'account' as const,
@@ -675,9 +687,20 @@ export function buildPlanLinkOptions(input: {
       display: brand,
     }));
 
-  // Customers first: a line named beside a customer usually means work for that
-  // customer, and the brand option stays one row below rather than competing.
-  return [...dealOptions, ...accountOptions, ...brandOptions].slice(0, limit);
+  // The customer is always offered, even when its deals matched too.
+  //
+  // Excluding it "because a deal already covers it" was wrong in the one case
+  // that matters most: a customer with four live deals filled every slot with
+  // deals, so the account itself - the right link for "restart the thread that
+  // went quiet", which is about the relationship and not about one line item -
+  // became unreachable the moment a customer got busy enough to need it.
+  //
+  // Two account rows are reserved rather than merely ordered first, so a
+  // customer with many deals still shows both kinds of link at once.
+  const RESERVED_ACCOUNT_ROWS = 2;
+  const reservedAccounts = accountOptions.slice(0, RESERVED_ACCOUNT_ROWS);
+  const remainingAccounts = accountOptions.slice(RESERVED_ACCOUNT_ROWS);
+  return [...reservedAccounts, ...dealOptions, ...remainingAccounts, ...brandOptions].slice(0, limit);
 }
 
 function normalizePlanText(value: string) {

@@ -18,26 +18,55 @@ import type { CrmLiteOpportunity, OpportunityStage } from '../services/opportuni
  * `On hold` has no default on purpose. A paused deal's odds depend on why it
  * paused, which is a judgement the stage cannot make.
  */
+export const PROBABILITY_LADDER = [0, 5, 10, 25, 50, 75, 90, 100] as const;
+
+/**
+ * Every stage sits on one of eight rungs, and nothing sits between them.
+ *
+ * The old table used ten different numbers (20, 30, 40, 60 …), which invited a
+ * precision nobody has: the difference between a deal at 30% and one at 40% is
+ * not a thing a seller can know, and pretending otherwise makes the weighted
+ * total look calculated when it is really just typed. Eight rungs are coarse
+ * enough to mean something and are the vocabulary an operator already uses out
+ * loud - "call it fifty-fifty", "that one's a ninety".
+ *
+ * Two pairs share a rung on purpose. Qualification and Technical discussion are
+ * both "they have a real need and we are still proving fit"; Demo and Proposal
+ * are both "they have seen what it does and the ball is in their court". Giving
+ * each its own number would be inventing a distinction to fill a column.
+ *
+ * The ladder is monotonic: no stage is ever worth less than the one before it,
+ * so advancing a deal can never lower the forecast.
+ *
+ * `On hold` has no default on purpose. A paused deal's odds depend on why it
+ * paused, which is a judgement the stage cannot make.
+ */
 export const STAGE_PROBABILITY: Record<OpportunityStage, number | null> = {
+  Lost: 0,
   Lead: 5,
   Discovery: 10,
-  Qualification: 20,
-  'Technical discussion': 30,
-  Demo: 40,
-  Proposal: 60,
+  Qualification: 25,
+  'Technical discussion': 25,
+  Demo: 50,
+  Proposal: 50,
   Negotiation: 75,
+  // Commit to order: the PO is being raised, not being decided.
   Procurement: 90,
   Won: 100,
-  Lost: 0,
   'On hold': null,
 };
 
 /**
  * How far a declared probability may sit above its stage before it is called
- * out. Twenty points is roughly two stages: below that it is a judgement call,
- * above it the number and the evidence are describing different deals.
+ * out: one rung of optimism is a judgement call, two is a different deal.
+ *
+ * Twenty-five rather than twenty because the ladder is coarser than the table
+ * it replaced. The widest single step between rungs is 25 (25→50 and 50→75), so
+ * a tolerance of 20 would have flagged every seller who felt one rung better
+ * than the stage - and a warning that fires on the ordinary case is a warning
+ * people learn to click past.
  */
-export const OPTIMISM_TOLERANCE = 20;
+export const OPTIMISM_TOLERANCE = 25;
 
 export type ProbabilitySource = 'declared' | 'stage' | 'unknown';
 

@@ -72,6 +72,13 @@ export function PlanSuggestionsPanel({
                   <span className={`mr-1 rounded px-1 py-0.5 text-[10px] font-bold ${planSuggestionKindTone(suggestion.kind)}`}>
                     {planSuggestionKindLabel(suggestion.kind)}
                   </span>
+                  {/* Says why this customer beat the other nine hundred. A
+                      ranking the operator cannot see reads as a random pick. */}
+                  {suggestion.isKeyAccount && (
+                    <span className="mr-1 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-bold uppercase text-amber-800" title="Marked as a key account">
+                      KA
+                    </span>
+                  )}
                   <span className="font-bold text-gray-900">{suggestion.tag}</span>
                   <span className="text-gray-700"> - {suggestion.label}</span>
                 </p>

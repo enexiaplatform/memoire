@@ -64,6 +64,8 @@ export type PlanSuggestion = {
   reasonCode?: ReasonCode;
   /** Where to go to act on it, when the alert knows. */
   href?: string;
+  /** The customer is marked KA. Set during ranking, shown on the row. */
+  isKeyAccount?: boolean;
 };
 
 /**
@@ -76,6 +78,18 @@ export type PlanSuggestion = {
 const MAX_SUGGESTIONS = 8;
 const MAX_ALERT_SUGGESTIONS = 5;
 const MAX_LEDGER_SUGGESTIONS = 6;
+
+/**
+ * Slots held for work that names a deal, so the week is never all relationship
+ * maintenance.
+ *
+ * Alerts outrank ledger nudges, and in a book with a thousand accounts the
+ * silence rule fires on far more of them than there are slots - so five
+ * "restart the thread that went quiet" lines filled the whole panel and not one
+ * pipeline follow-up survived. An operator reading that cannot tell whether
+ * they have no deals to move or whether the panel simply never got to them.
+ */
+const MIN_PIPELINE_SUGGESTIONS = 3;
 
 /** How urgency becomes a day. Critical lands as early as the week allows. */
 const ALERT_DAY_OFFSET: Record<Severity, number> = {
@@ -164,6 +178,15 @@ export function buildPlanSuggestions(input: {
   today?: string;
   /** How far back to read the ledger. Defaults to the 14 days before the week. */
   lookbackDays?: number;
+  /**
+   * The customers marked KA. Risks on these win the alert slots.
+   *
+   * Optional, and an empty list changes nothing: with no account marked, every
+   * candidate ranks the same and the order falls back to severity exactly as
+   * before. Marking is the operator's judgement about who matters, and it is
+   * the only input that can make a thousand-account book proposable at all.
+   */
+  keyAccountNames?: string[];
 }): PlanSuggestion[] {
   const lookbackDays = input.lookbackDays ?? 14;
   const lookbackStart = addDays(input.rangeStart, -lookbackDays);
@@ -317,6 +340,11 @@ export function buildPlanSuggestions(input: {
   };
   const severityRank: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
+  const keyAccounts = input.keyAccountNames || [];
+  const isKeyAccount = (name?: string) => (
+    Boolean(name) && keyAccounts.some((candidate) => sameAccount(candidate, name as string))
+  );
+
   const alerts = buildAlertSuggestions({
     recommendations: input.recommendations || [],
     decided,
@@ -324,6 +352,7 @@ export function buildPlanSuggestions(input: {
     rangeStart: input.rangeStart,
     rangeEnd: input.rangeEnd,
     today: input.today,
+    isKeyAccount,
   });
 
   const seen = new Set<string>();
@@ -346,19 +375,50 @@ export function buildPlanSuggestions(input: {
   const alertedOpportunities = new Set(alerts.map((alert) => alert.linkedOpportunityId).filter(Boolean));
   const alertedAccounts = new Set(alerts.map((alert) => alert.tag.toLowerCase()));
 
-  return [
+  const ordered = [
     ...alerts,
     ...ledger.filter((suggestion) => (
       !(suggestion.linkedOpportunityId && alertedOpportunities.has(suggestion.linkedOpportunityId))
       && !alertedAccounts.has(suggestion.tag.toLowerCase())
     )),
   ]
+    .map((suggestion) => ({ ...suggestion, isKeyAccount: isKeyAccount(suggestion.linkedAccountName || suggestion.tag) }))
     .sort((a, b) => (
-      rank[a.kind] - rank[b.kind]
+      // A risk on a customer the operator marked KA outranks the same risk
+      // anywhere else. Without this the silence rule alone, firing across a
+      // thousand accounts, decides the whole week by alphabet and luck.
+      Number(b.isKeyAccount) - Number(a.isKeyAccount)
+      || rank[a.kind] - rank[b.kind]
       || severityRank[a.severity ?? 'low'] - severityRank[b.severity ?? 'low']
       || compareSafeBusinessDate(a.suggestedDate, b.suggestedDate)
-    ))
-    .slice(0, MAX_SUGGESTIONS);
+    ));
+
+  return reservePipelineSlots(ordered, MAX_SUGGESTIONS, MIN_PIPELINE_SUGGESTIONS);
+}
+
+/**
+ * Takes the top of the list, but never lets account-level work take every seat.
+ *
+ * The order above is the honest ranking and is left intact; this only promotes
+ * deal-linked suggestions that were about to be cut, and only as far as the
+ * floor. If the workspace genuinely has no pipeline work owed this week, no
+ * promotion happens and the list is exactly what the ranking produced.
+ */
+function reservePipelineSlots(ordered: PlanSuggestion[], limit: number, floor: number): PlanSuggestion[] {
+  const head = ordered.slice(0, limit);
+  const pipelineInHead = head.filter((suggestion) => suggestion.linkedOpportunityId).length;
+  if (pipelineInHead >= floor) return head;
+
+  const wanted = Math.min(floor - pipelineInHead, limit);
+  const promoted = ordered
+    .slice(limit)
+    .filter((suggestion) => suggestion.linkedOpportunityId)
+    .slice(0, wanted);
+  if (promoted.length === 0) return head;
+
+  // Drop from the tail of the head, keeping the highest-ranked account work.
+  const kept = head.slice(0, Math.max(0, head.length - promoted.length));
+  return [...kept, ...promoted];
 }
 
 /**
@@ -378,6 +438,7 @@ function buildAlertSuggestions(input: {
   rangeStart: string;
   rangeEnd: string;
   today?: string;
+  isKeyAccount: (name?: string) => boolean;
 }): PlanSuggestion[] {
   const severityRank: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
   const seen = new Set<string>();
@@ -389,7 +450,12 @@ function buildAlertSuggestions(input: {
     .filter((recommendation) => !(
       recommendation.opportunityId && input.alreadyOnBoard.has(recommendation.opportunityId)
     ))
-    .sort((a, b) => severityRank[a.severity] - severityRank[b.severity])
+    // Key accounts first, then severity. The cap below is five; which five it
+    // keeps is the whole question when the silence rule can fire on hundreds.
+    .sort((a, b) => (
+      Number(input.isKeyAccount(b.accountName)) - Number(input.isKeyAccount(a.accountName))
+      || severityRank[a.severity] - severityRank[b.severity]
+    ))
     .filter((recommendation) => {
       // One alert per account per rule. A customer with four overdue promises
       // needs one line on the board, not four.

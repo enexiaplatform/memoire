@@ -564,6 +564,11 @@ function accountToRow(input: AccountFormInput) {
     key_stakeholders: input.keyStakeholders,
     notes: input.notes || null,
     tags: input.tags,
+    // The KA mark was read back from the row and never written to it, so it
+    // could only ever arrive by import. Now that the account form can set it,
+    // leaving it out here would save a checkbox that silently does nothing -
+    // the worst version of this bug, because the interface would say it saved.
+    ka_flag: input.kaFlag ?? null,
   };
 }
 

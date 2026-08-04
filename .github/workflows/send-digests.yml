@@ -39,8 +39,18 @@ jobs:
             exit 1
           fi
 
-          url="${PRODUCTION_URL:-https://memoire-official.com}/api/send-digests"
-          status=$(curl -sS -o /tmp/response.json -w '%{http_code}' -X POST \
+          # The canonical host, and `-L` so it stays correct if that ever moves.
+          #
+          # This is what made every run since 2026-08-03 fail: the default was
+          # the apex domain, which answers /api/* with a 308 to www. Without -L
+          # curl reports the 308 and stops, the status check below sees "not
+          # 200" and exits 1 - so the job failed hourly and no digest was ever
+          # sent, while the endpoint itself was healthy the whole time.
+          #
+          # 308 (unlike 301/302) requires the method and body to be preserved,
+          # so following it re-POSTs rather than silently degrading to a GET.
+          url="${PRODUCTION_URL:-https://www.memoire-official.com}/api/send-digests"
+          status=$(curl -sSL -o /tmp/response.json -w '%{http_code}' -X POST \
             -H "Authorization: Bearer ${CRON_SECRET}" \
             "$url")
 

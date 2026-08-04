@@ -46,7 +46,15 @@ import {
   isClosedProbabilityStale,
   isProbabilityOptimistic,
   probabilityGapText,
+  PROBABILITY_LADDER,
 } from '../../utils/stageProbability';
+import {
+  closePeriodGroupKey,
+  closePeriodGroupLabel,
+  resolveClosePeriod,
+  UNKNOWN_RANK,
+  type ClosePeriod,
+} from '../../utils/closePeriod';
 import { classifyOpportunitySilence, type OpportunitySilenceState } from '../../utils/proactiveNudges';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { FollowUpComposerPanel } from '../v31/FollowUpComposerPanel';
@@ -59,6 +67,8 @@ import {
   formatCurrencyAmount as formatMoney,
   getReportingCurrency,
   sumMoneyInBase,
+  SUPPORTED_CURRENCIES,
+  type SupportedCurrency,
 } from '../../utils/money';
 import { buildRevenueHorizon, buildStageFunnel } from '../../utils/pipelineInsights';
 import { FunnelBars } from '../../components/charts/FunnelBars';
@@ -188,16 +198,6 @@ type OpportunitySortKey =
   | 'updatedAt';
 type OpportunityQuickFilter = 'all' | 'imported' | 'stageInferred' | 'fy26' | 'fy27' | 'needsAction' | 'goingSilent';
 
-/**
- * How much of the row to show.
- *
- * `essentials` is the working list: which deal, worth what, how healthy, what
- * next. `all` is the imported spreadsheet in full - the FY splits, the forecast
- * category, the review decision, the sales-flow cell - which matters during a
- * pipeline review and is noise on a Tuesday morning. Everything hidden here is
- * still on the deal itself, one click away in the drawer.
- */
-type OpportunityColumnSet = 'essentials' | 'all';
 const allFilter = 'All';
 const defaultPageSize = 25;
 const founderCoreSourceSystem = 'founder_core_fy26';
@@ -224,13 +224,11 @@ export function OpportunitiesPage() {
   const [statusFilter, setStatusFilter] = useState(allFilter);
   const [brandFilter, setBrandFilter] = useState(allFilter);
   const [quickFilter, setQuickFilter] = useState<OpportunityQuickFilter>('all');
-  const [sortKey, setSortKey] = useState<OpportunitySortKey>('updatedAt');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  // Seventeen columns is a spreadsheet somebody exported, not a list somebody
-  // reads: at 2040px the account name scrolled off before the value arrived.
-  // The default is the eleven that answer "which deal, worth what, how healthy,
-  // what next"; the rest are one click away for the week where they matter.
-  const [columnSet, setColumnSet] = useState<OpportunityColumnSet>('essentials');
+  // Opens on "what closes soonest", which is the question a pipeline list is
+  // for. Was "last update, newest first" - an order that answers "what did I
+  // type most recently".
+  const [sortKey, setSortKey] = useState<OpportunitySortKey>('closePeriod');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
   const [editingOpportunity, setEditingOpportunity] = useState<CrmLiteOpportunity | null>(null);
@@ -403,6 +401,12 @@ export function OpportunitiesPage() {
 
   const visibleOpportunities = useMemo(
     () => visibleOpportunityRows.map((row) => row.opportunity),
+    [visibleOpportunityRows],
+  );
+  // Read over the filtered rows, not the page: a column that appeared on page 1
+  // and vanished on page 2 would look like the table lost the data.
+  const opportunityColumns = useMemo(
+    () => buildOpportunityColumnVisibility(visibleOpportunityRows),
     [visibleOpportunityRows],
   );
   const pageCount = Math.max(1, Math.ceil(visibleOpportunityRows.length / pageSize));
@@ -1255,19 +1259,19 @@ export function OpportunitiesPage() {
         ) : (
           <OpportunityMasterTable
             rows={pagedRows}
+            columns={opportunityColumns}
+            grouped={sortKey === 'closePeriod' && sortDirection === 'asc'}
             totalRows={visibleOpportunityRows.length}
             totalOpportunities={opportunities.length}
             page={page}
             pageCount={pageCount}
             pageSize={pageSize}
-            columnSet={columnSet}
             selectedIds={selectedOpportunityIds}
             sortKey={sortKey}
             sortDirection={sortDirection}
             onSort={handleSort}
             onPageChange={setPage}
             onPageSizeChange={setPageSize}
-            onColumnSetChange={setColumnSet}
             onToggleSelection={toggleOpportunitySelection}
             onOpen={(opportunity) => openEditPanel(opportunity)}
             onDraftFollowUp={(opportunity) => {
@@ -2315,6 +2319,8 @@ type OpportunityMasterRow = {
   lastActivityDate: string;
   lastUpdatedAt: string;
   silence: OpportunitySilenceState;
+  /** `expectedClosePeriod` read onto one absolute quarter axis. */
+  closePeriod: ClosePeriod;
 };
 
 type OpportunityCommercialSummary = {
@@ -2328,249 +2334,370 @@ type OpportunityCommercialSummary = {
   label: string;
 };
 
+/**
+ * Which optional columns have anything in them.
+ *
+ * The master list used to render seventeen columns unconditionally, four of
+ * which are only ever filled by a founder CSV import: FY26, FY27, probability,
+ * and brand/channel. In a workspace that does not use them every row read "Not
+ * set", "Not set", "Not set", "No brand" - roughly 380px of horizontal scroll
+ * spent saying nothing, in a table already too wide to read.
+ *
+ * Deleting them was not an option: they are real fields for the pipeline they
+ * were built for. So a column appears when at least one row in the *filtered*
+ * set has a value for it, and stays gone otherwise. Computed over the filtered
+ * rows rather than the page, so paging never makes a column appear and vanish
+ * underneath the operator.
+ */
+type OpportunityColumnVisibility = {
+  fy26: boolean;
+  fy27: boolean;
+  probability: boolean;
+  brand: boolean;
+};
+
+function buildOpportunityColumnVisibility(rows: OpportunityMasterRow[]): OpportunityColumnVisibility {
+  return {
+    fy26: rows.some((row) => Boolean(row.opportunity.fy26Value)),
+    fy27: rows.some((row) => Boolean(row.opportunity.fy27Value)),
+    // Judged on open deals only. Won is 100% and Lost is 0% by definition, so
+    // counting them would raise this column in every workspace that has ever
+    // closed anything, to tell the operator what the Stage badge already said.
+    probability: rows.some((row) => opportunityBand(row) === 0 && typeof row.opportunity.pipelineProbability === 'number'),
+    brand: rows.some((row) => Boolean((row.opportunity.brand || '').trim() || (row.opportunity.channel || '').trim())),
+  };
+}
+
+/** Rows split into close-quarter runs, for the grouped view. */
+type OpportunityRowGroup = {
+  key: string;
+  label: string;
+  rows: OpportunityMasterRow[];
+  value: number;
+  /** Closed deals show a count but no money - see below. */
+  showValue: boolean;
+};
+
+/**
+ * The heading a row sits under.
+ *
+ * Band comes first, because a group has to mean one thing. Grouping purely by
+ * quarter put four deals under "No close date · 3.23B VND" - two live and
+ * undated, one won, one lost - and that total is not a number about anything.
+ * Closed deals get their own heading at the bottom and no money figure at all,
+ * since a won deal plus a lost deal is not a sum worth printing.
+ */
+function groupHeadingFor(row: OpportunityMasterRow) {
+  const band = opportunityBand(row);
+  if (band === 2) return { key: 'closed', label: 'Closed · won and lost', showValue: false };
+  if (band === 1) return { key: 'on-hold', label: 'On hold', showValue: true };
+  return {
+    key: `close:${closePeriodGroupKey(row.closePeriod)}`,
+    label: closePeriodGroupLabel(row.closePeriod),
+    showValue: true,
+  };
+}
+
+function groupRowsByClosePeriod(rows: OpportunityMasterRow[]): OpportunityRowGroup[] {
+  const groups: OpportunityRowGroup[] = [];
+  rows.forEach((row) => {
+    const heading = groupHeadingFor(row);
+    const last = groups[groups.length - 1];
+    if (last && last.key === heading.key) {
+      last.rows.push(row);
+      last.value += row.opportunity.estimatedValue || 0;
+      return;
+    }
+    groups.push({ ...heading, rows: [row], value: row.opportunity.estimatedValue || 0 });
+  });
+  return groups;
+}
+
 function OpportunityMasterTable({
   rows,
+  columns,
+  grouped,
   totalRows,
   totalOpportunities,
   page,
   pageCount,
   pageSize,
-  columnSet,
   selectedIds,
   sortKey,
   sortDirection,
   onSort,
   onPageChange,
   onPageSizeChange,
-  onColumnSetChange,
   onToggleSelection,
   onOpen,
   onDraftFollowUp,
 }: {
   rows: OpportunityMasterRow[];
+  columns: OpportunityColumnVisibility;
+  /** True when the rows are in close-quarter order and can carry group headings. */
+  grouped: boolean;
   totalRows: number;
   totalOpportunities: number;
   page: number;
   pageCount: number;
   pageSize: number;
-  columnSet: OpportunityColumnSet;
   selectedIds: string[];
   sortKey: OpportunitySortKey;
   sortDirection: SortDirection;
   onSort: (key: OpportunitySortKey) => void;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
-  onColumnSetChange: (columnSet: OpportunityColumnSet) => void;
   onToggleSelection: (opportunityId: string) => void;
   onOpen: (opportunity: CrmLiteOpportunity) => void;
   onDraftFollowUp: (opportunity: CrmLiteOpportunity) => void;
 }) {
-  const showAll = columnSet === 'all';
+  const optionalCount = Number(columns.fy26) + Number(columns.fy27) + Number(columns.probability) + Number(columns.brand);
+  // Nine base columns fit a laptop without horizontal scroll; each optional one
+  // adds its own width back rather than the table reserving space for all four.
+  const minWidth = 1120 + optionalCount * 110;
+  const groups = grouped
+    ? groupRowsByClosePeriod(rows)
+    : [{ key: 'all', label: '', rows, value: 0, showValue: false }];
+  const columnCount = 9 + optionalCount;
 
   return (
     <section className="min-w-0 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-2">
-        <p className="text-xs font-semibold text-gray-500">
-          {totalRows.toLocaleString()} after filters / {totalOpportunities.toLocaleString()} total
-          {selectedIds.length > 0 ? ` / ${selectedIds.length} selected` : ''}
-        </p>
-        <div className="flex items-center gap-3">
-          <div className="inline-flex rounded-full border border-gray-200 bg-gray-50 p-0.5" role="group" aria-label="Columns">
-            {([['essentials', 'Essentials'], ['all', 'All columns']] as const).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => onColumnSetChange(value)}
-                aria-pressed={columnSet === value}
-                className={`rounded-full px-2.5 py-1 text-xs font-bold transition ${
-                  columnSet === value ? 'bg-navy text-white' : 'text-gray-600 hover:text-navy'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500">
-            Rows
-            <select
-              value={pageSize}
-              onChange={(event) => onPageSizeChange(Number(event.target.value))}
-              className="rounded-md border border-gray-200 bg-white px-1.5 py-1 text-xs font-bold text-gray-700"
-            >
-              {[25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
-            </select>
-          </label>
+      <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-base font-bold text-navy">Opportunity Master List</h2>
+          <p className="mt-1 text-xs text-gray-500">
+            {totalRows.toLocaleString()} after filters / {totalOpportunities.toLocaleString()} total
+            {selectedIds.length > 0 ? ` / ${selectedIds.length} selected` : ''}
+            {' · '}
+            {/* Said out loud, because an ordering rule the operator cannot see is
+                one they will read as a bug the first time a won deal is not
+                where they expect it. */}
+            <span className="font-semibold text-gray-600">open pipeline first, closed deals last</span>
+          </p>
         </div>
+        <label className="flex items-center gap-2 text-xs font-semibold text-gray-500">
+          Rows
+          <select
+            value={pageSize}
+            onChange={(event) => onPageSizeChange(Number(event.target.value))}
+            className="rounded-md border border-gray-200 bg-white px-2 py-1.5 text-sm font-bold text-gray-700"
+          >
+            {[25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+          </select>
+        </label>
       </div>
 
-      {/* `relative` contains the absolutely positioned sort-state spans in
-          the header row; without it they escape this scroller and widen the
-          document itself at phone width. */}
-      <div className="relative max-w-full overflow-x-auto">
-        <table className={`w-full border-collapse text-left text-sm ${showAll ? 'min-w-[2040px]' : 'min-w-[1160px]'}`}>
+      <div className="max-w-full overflow-x-auto">
+        <table className="w-full border-collapse text-left text-sm" style={{ minWidth }}>
           <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
             <tr>
-              <th className="sticky left-0 z-20 w-10 border-b border-gray-200 bg-gray-50 px-2 py-2 text-center">Pick</th>
-              <OpportunitySortableHeader label="Account" sortKey="account" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="sticky left-10 z-20 border-r border-gray-200 bg-gray-50" />
-              <OpportunitySortableHeader label="Opportunity" sortKey="opportunity" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              {showAll && <th className="border-b border-gray-200 px-3 py-2">Brand / channel</th>}
-              <OpportunitySortableHeader label="Stage" sortKey="stage" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <OpportunitySortableHeader label="Value" sortKey="value" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              {showAll && <OpportunitySortableHeader label="FY26" sortKey="fy26" activeKey={sortKey} direction={sortDirection} onSort={onSort} />}
-              {showAll && <OpportunitySortableHeader label="FY27" sortKey="fy27" activeKey={sortKey} direction={sortDirection} onSort={onSort} />}
-              <OpportunitySortableHeader label="Prob." sortKey="probability" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <th className="sticky left-0 z-20 w-10 border-b border-gray-200 bg-gray-50 px-2 py-2.5 text-center">
+                <span className="sr-only">Select</span>
+                <span aria-hidden="true">·</span>
+              </th>
+              <OpportunitySortableHeader label="Deal" sortKey="account" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="sticky left-10 z-20 border-r border-gray-200 bg-gray-50" />
               <OpportunitySortableHeader label="Close" sortKey="closePeriod" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              {showAll && <OpportunitySortableHeader label="Forecast evidence" sortKey="forecast" activeKey={sortKey} direction={sortDirection} onSort={onSort} />}
-              {showAll && <OpportunitySortableHeader label="Review decision" sortKey="recommendation" activeKey={sortKey} direction={sortDirection} onSort={onSort} />}
-              {showAll && <th className="border-b border-gray-200 px-3 py-2">Sales flow</th>}
+              <OpportunitySortableHeader label="Stage" sortKey="stage" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <OpportunitySortableHeader label="Value" sortKey="value" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="text-right" />
+              {columns.fy26 && <OpportunitySortableHeader label="FY26" sortKey="fy26" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="text-right" />}
+              {columns.fy27 && <OpportunitySortableHeader label="FY27" sortKey="fy27" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="text-right" />}
+              {columns.probability && <OpportunitySortableHeader label="Prob." sortKey="probability" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="text-right" />}
+              {columns.brand && <th className="border-b border-gray-200 px-3 py-2.5">Brand</th>}
+              <OpportunitySortableHeader label="Health" sortKey="quality" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Next action" sortKey="nextActionDate" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <OpportunitySortableHeader label="Deal quality" sortKey="quality" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <OpportunitySortableHeader label="Last update" sortKey="updatedAt" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <th className="border-b border-gray-200 px-3 py-2 text-right">Open</th>
+              <OpportunitySortableHeader label="Last touch" sortKey="updatedAt" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <th className="border-b border-gray-200 px-2 py-2.5 text-right">
+                <span className="sr-only">Open</span>
+                <span aria-hidden="true">·</span>
+              </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
-            {rows.map((row) => {
-              const { opportunity, quality } = row;
-              const selected = selectedIds.includes(opportunity.id);
-              return (
-                <tr
-                  key={opportunity.id}
-                  onClick={() => onOpen(opportunity)}
-                  className={`group cursor-pointer transition hover:bg-blue-50/60 ${selected ? 'bg-blue-50/40' : 'bg-white'}`}
-                >
-                  <td className={`sticky left-0 z-10 px-2 py-2 text-center group-hover:bg-blue-50 ${selected ? 'bg-blue-50' : 'bg-white'}`}>
-                    <input
-                      type="checkbox"
-                      checked={selected}
-                      onClick={(event) => event.stopPropagation()}
-                      onChange={() => onToggleSelection(opportunity.id)}
-                      aria-label={`Select ${opportunity.accountName} / ${opportunity.opportunityName}`}
-                      // 24px, the WCAG 2.5.8 floor. Padding does not work on a
-                      // checkbox - browsers ignore it on the replaced box - so
-                      // the control itself is the size of the target. The
-                      // sticky column is 40px, which fits it with its padding.
-                      className="h-6 w-6 accent-brand-blue"
-                    />
+
+          {groups.map((group) => (
+            <tbody key={group.key} className="divide-y divide-gray-100">
+              {grouped && (
+                <tr className="bg-gray-50/80">
+                  <td colSpan={columnCount} className="sticky left-0 border-y border-gray-200 px-3 py-1.5">
+                    <span className="flex flex-wrap items-baseline gap-x-2 text-[11px]">
+                      <span className="font-bold uppercase tracking-wide text-navy">{group.label}</span>
+                      <span className="font-semibold text-gray-500">
+                        {group.rows.length} {group.rows.length === 1 ? 'deal' : 'deals'}
+                      </span>
+                      {group.showValue && group.value > 0 && (
+                        <span className="text-gray-500">
+                          {formatMoney(group.value, group.rows[0].opportunity.currency)}
+                        </span>
+                      )}
+                    </span>
                   </td>
-                  <td className={`sticky left-10 z-10 border-r border-gray-100 px-3 py-2 group-hover:bg-blue-50 ${selected ? 'bg-blue-50' : 'bg-white'}`}>
-                    <p className="max-w-[190px] truncate font-bold text-navy" title={opportunity.accountName}>{opportunity.accountName || 'No account'}</p>
-                    {/* In the compact set this line carries what the hidden
-                        brand column used to say, so a distributor can still
-                        read the principal off the row. */}
-                    <p className="max-w-[190px] truncate text-xs text-gray-500">
-                      {showAll
-                        ? (opportunity.productOrSolution || `${opportunity.stage} opportunity`)
-                        : [opportunity.brand, opportunity.productOrSolution].filter(Boolean).join(' · ') || 'No brand recorded'}
-                    </p>
-                  </td>
-                  <td className="px-3 py-2">
-                    <p className="max-w-[250px] truncate font-bold text-gray-900" title={opportunity.opportunityName}>{opportunity.opportunityName || 'Untitled opportunity'}</p>
-                    <p className="max-w-[250px] truncate text-xs text-gray-500">
-                      {opportunity.opportunityType || (opportunity.decisionMaker ? `DM: ${opportunity.decisionMaker}` : 'Decision maker missing')}
-                    </p>
-                  </td>
-                  {showAll && (
-                    <td className="px-3 py-2">
-                      <div className="flex max-w-[190px] flex-wrap gap-1.5">
-                        {opportunity.brand ? <Badge label={opportunity.brand} tone="green" /> : <Badge label="No brand" tone="gray" />}
-                        {opportunity.channel ? <Badge label={opportunity.channel} tone="blue" /> : null}
-                      </div>
+                </tr>
+              )}
+
+              {group.rows.map((row) => {
+                const { opportunity, quality, closePeriod } = row;
+                const selected = selectedIds.includes(opportunity.id);
+                const flow = buildOpportunitySalesFlowGuidance(opportunity);
+                const quiet = row.silence.status === 'silent' || row.silence.status === 'at-risk';
+                return (
+                  <tr
+                    key={opportunity.id}
+                    onClick={() => onOpen(opportunity)}
+                    className={`group cursor-pointer align-top transition hover:bg-blue-50/60 ${selected ? 'bg-blue-50/40' : 'bg-white'}`}
+                  >
+                    <td className={`sticky left-0 z-10 px-2 py-2.5 text-center group-hover:bg-blue-50 ${selected ? 'bg-blue-50' : 'bg-white'}`}>
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={() => onToggleSelection(opportunity.id)}
+                        aria-label={`Select ${opportunity.accountName} / ${opportunity.opportunityName}`}
+                        className="h-4 w-4 accent-brand-blue"
+                      />
+                    </td>
+
+                    {/* Account and opportunity were two columns showing nearly the
+                        same words - "Apex Labs / Validation Expansion decontamination
+                        expansion" beside "Validation Expansion". One column, customer
+                        first, because that is how an operator looks a deal up. */}
+                    <td className={`sticky left-10 z-10 border-r border-gray-100 px-3 py-2.5 group-hover:bg-blue-50 ${selected ? 'bg-blue-50' : 'bg-white'}`}>
+                      <p className="max-w-[230px] truncate font-bold text-navy" title={opportunity.accountName}>
+                        {opportunity.accountName || 'No account'}
+                      </p>
+                      <p
+                        className="max-w-[230px] truncate text-xs text-gray-600"
+                        title={`${opportunity.opportunityName}${opportunity.productOrSolution ? ` · ${opportunity.productOrSolution}` : ''}${opportunity.decisionMaker ? ` · DM: ${opportunity.decisionMaker}` : ''}`}
+                      >
+                        {opportunity.opportunityName || 'Untitled opportunity'}
+                      </p>
+                      {!opportunity.decisionMaker && (
+                        <p className="text-[11px] font-semibold text-amber-700">No decision maker</p>
+                      )}
                       {isFounderImportedOpportunity(opportunity) && (
-                        <p className="mt-1 text-xs font-semibold text-emerald-700">Imported core</p>
+                        <p className="text-[11px] font-semibold text-emerald-700">Imported core</p>
                       )}
                     </td>
-                  )}
-                  <td className="px-3 py-2">
-                    <Badge label={opportunity.stage} />
-                    <p className="mt-0.5 text-xs text-gray-500">
-                      {opportunity.isStageInferred ? 'Inferred stage' : opportunity.status}
-                    </p>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2 font-bold text-gray-800">
-                    {opportunity.estimatedValue ? formatMoney(opportunity.estimatedValue, opportunity.currency) : 'Not set'}
-                  </td>
-                  {showAll && (
-                    <td className="whitespace-nowrap px-3 py-2 font-bold text-emerald-700">
-                      {opportunity.fy26Value ? formatMoney(opportunity.fy26Value, opportunity.currency) : 'Not set'}
+
+                    <td className="whitespace-nowrap px-3 py-2.5">
+                      <ClosePeriodChip period={closePeriod} />
                     </td>
-                  )}
-                  {showAll && (
-                    <td className="whitespace-nowrap px-3 py-2 font-bold text-gray-800">
-                      {opportunity.fy27Value ? formatMoney(opportunity.fy27Value, opportunity.currency) : 'Not set'}
+
+                    {/* Sales flow used to be a column of its own holding a
+                        sentence, which made every row about 120px tall. It is
+                        stage-gate guidance, so it belongs under the stage; the
+                        sentence itself is one hover away and already sits in the
+                        detail panel. */}
+                    <td className="px-3 py-2.5">
+                      <Badge label={opportunity.stage} />
+                      <p className="mt-1 text-[11px] text-gray-500">
+                        {opportunity.isStageInferred ? 'Inferred stage' : opportunity.status}
+                      </p>
+                      <p
+                        className={`mt-0.5 text-[11px] font-semibold ${flow.status === 'Needs action' ? 'text-amber-700' : 'text-gray-500'}`}
+                        title={flow.suggestedAction}
+                      >
+                        {flow.status}
+                        {flow.missingCheckpoints.length > 0 ? ` · ${flow.missingCheckpoints.length} gap${flow.missingCheckpoints.length === 1 ? '' : 's'}` : ''}
+                      </p>
                     </td>
-                  )}
-                  <td className="whitespace-nowrap px-3 py-2">
-                    <p className="font-bold text-gray-800">
-                      {typeof opportunity.pipelineProbability === 'number' ? `${Math.round(opportunity.pipelineProbability)}%` : 'Not set'}
-                    </p>
-                    {opportunity.sourceStageConfidence && (
-                      <p className="text-xs text-gray-500">{opportunity.sourceStageConfidence}</p>
+
+                    <td className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-gray-800">
+                      {opportunity.estimatedValue ? formatMoney(opportunity.estimatedValue, opportunity.currency) : '—'}
+                    </td>
+
+                    {columns.fy26 && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-emerald-700">
+                        {opportunity.fy26Value ? formatMoney(opportunity.fy26Value, opportunity.currency) : '—'}
+                      </td>
                     )}
-                  </td>
-                  <td className="px-3 py-2">
-                    <p className="max-w-[150px] truncate font-semibold text-gray-700" title={opportunity.expectedClosePeriod}>
-                      {opportunity.expectedClosePeriod || 'Missing'}
-                    </p>
-                  </td>
-                  {showAll && <td className="px-3 py-2"><Badge label={opportunity.forecastEvidenceCategory} tone={forecastTone(opportunity.forecastEvidenceCategory)} /></td>}
-                  {showAll && <td className="px-3 py-2"><Badge label={opportunity.decisionRecommendation} tone={decisionTone(opportunity.decisionRecommendation)} /></td>}
-                  {showAll && (
-                    <td className="px-3 py-2">
-                      <OpportunitySalesFlowCell opportunity={opportunity} />
+                    {columns.fy27 && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-gray-800">
+                        {opportunity.fy27Value ? formatMoney(opportunity.fy27Value, opportunity.currency) : '—'}
+                      </td>
+                    )}
+                    {columns.probability && (
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-gray-800">
+                        {typeof opportunity.pipelineProbability === 'number' ? `${Math.round(opportunity.pipelineProbability)}%` : '—'}
+                      </td>
+                    )}
+                    {columns.brand && (
+                      <td className="px-3 py-2.5">
+                        <div className="flex max-w-[150px] flex-wrap gap-1">
+                          {opportunity.brand && <Badge label={opportunity.brand} tone="green" />}
+                          {opportunity.channel && <Badge label={opportunity.channel} tone="blue" />}
+                        </div>
+                      </td>
+                    )}
+
+                    {/* Forecast evidence, review decision and deal quality were
+                        three columns answering one question from three angles.
+                        The verdict leads; the two judgements that produced it sit
+                        under it in the same cell. */}
+                    <td className="px-3 py-2.5">
+                      <Badge
+                        label={quality.status}
+                        tone={quality.status === 'High risk' ? 'red' : quality.status === 'Needs cleanup' ? 'amber' : 'green'}
+                      />
+                      <p className="mt-1 max-w-[160px] truncate text-[11px] text-gray-600" title={`Forecast evidence: ${opportunity.forecastEvidenceCategory} · Review decision: ${opportunity.decisionRecommendation}`}>
+                        {opportunity.forecastEvidenceCategory} · {opportunity.decisionRecommendation}
+                      </p>
+                      <p className="text-[11px] text-gray-500" title={quality.primaryAction}>
+                        {quality.issues.length} gap{quality.issues.length === 1 ? '' : 's'} · {row.linkedActivityCount} {row.linkedActivityCount === 1 ? 'touch' : 'touches'}
+                      </p>
                     </td>
-                  )}
-                  <td className="px-3 py-2">
-                    <p className="max-w-[250px] truncate font-semibold text-gray-800" title={opportunity.nextAction}>
-                      {opportunity.nextAction || 'No next action'}
-                    </p>
-                    <p className={`text-xs font-semibold ${isPastDate(opportunity.nextActionDate) ? 'text-red-600' : 'text-gray-500'}`}>
-                      {formatSafeBusinessDate(opportunity.nextActionDate)}
-                    </p>
-                  </td>
-                  <td className="px-3 py-2">
-                    <Badge label={quality.status} tone={quality.status === 'High risk' ? 'red' : quality.status === 'Needs cleanup' ? 'amber' : 'green'} />
-                    <p className="max-w-[190px] truncate text-xs text-gray-500" title={quality.primaryAction}>
-                      {quality.issues.length} gap{quality.issues.length === 1 ? '' : 's'} / {row.linkedActivityCount} activities
-                    </p>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2">
-                    <p className="font-semibold text-gray-700">{formatOpportunityDate(row.lastUpdatedAt)}</p>
-                    <p className={`text-xs ${row.silence.status === 'silent' ? 'font-bold text-red-600' : row.silence.status === 'at-risk' ? 'font-bold text-amber-600' : 'text-gray-500'}`}>
-                      {row.silence.status === 'silent' || row.silence.status === 'at-risk'
-                        ? `Quiet ${row.silence.daysQuiet}d - no next action`
-                        : row.lastActivityDate ? `Last touch ${formatOpportunityDate(row.lastActivityDate)}` : 'No linked touch'}
-                    </p>
-                    {(row.silence.status === 'silent' || row.silence.status === 'at-risk') && (
+
+                    <td className="px-3 py-2.5">
+                      <p
+                        className={`max-w-[210px] truncate font-semibold ${opportunity.nextAction ? 'text-gray-800' : 'text-amber-700'}`}
+                        title={opportunity.nextAction}
+                      >
+                        {opportunity.nextAction || 'No next action'}
+                      </p>
+                      {opportunity.nextAction && (
+                        <p className={`text-[11px] font-semibold ${isPastDate(opportunity.nextActionDate) ? 'text-red-600' : 'text-gray-500'}`}>
+                          {formatSafeBusinessDate(opportunity.nextActionDate)}
+                        </p>
+                      )}
+                    </td>
+
+                    <td className="whitespace-nowrap px-3 py-2.5">
+                      <p className="text-[11px] font-semibold text-gray-700">{formatOpportunityDate(row.lastUpdatedAt)}</p>
+                      <p className={`text-[11px] ${row.silence.status === 'silent' ? 'font-bold text-red-600' : row.silence.status === 'at-risk' ? 'font-bold text-amber-600' : 'text-gray-500'}`}>
+                        {quiet
+                          ? `Quiet ${row.silence.daysQuiet}d`
+                          : row.lastActivityDate ? `Touch ${formatOpportunityDate(row.lastActivityDate)}` : 'No touch'}
+                      </p>
+                      {quiet && (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onDraftFollowUp(opportunity);
+                          }}
+                          className="mt-1 rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-brand-blue hover:border-brand-blue/40"
+                        >
+                          Draft follow-up
+                        </button>
+                      )}
+                    </td>
+
+                    <td className="px-2 py-2.5 text-right">
                       <button
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          onDraftFollowUp(opportunity);
+                          onOpen(opportunity);
                         }}
-                        className="mt-1 rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-xs font-bold text-brand-blue hover:border-brand-blue/40"
+                        title="Open opportunity details"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue"
                       >
-                        Draft follow-up
+                        <Eye className="h-4 w-4" />
                       </button>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onOpen(opportunity);
-                      }}
-                      title="Open opportunity details"
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          ))}
         </table>
       </div>
 
@@ -2601,6 +2728,42 @@ function OpportunityMasterTable({
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * The close quarter, with the operator's own wording kept underneath it.
+ *
+ * A record saying "Next quarter" is shown as the quarter it resolves to, but the
+ * chip stays visibly softer than one that named a quarter outright, and the raw
+ * text is on the row. The distinction is worth preserving: "Q4 2026" is a date
+ * somebody committed to, "next quarter" is a date we inferred, and a forecast
+ * that treats them as the same number is how a quarter goes missing.
+ */
+function ClosePeriodChip({ period }: { period: ClosePeriod }) {
+  if (period.rank === UNKNOWN_RANK) {
+    return (
+      <span
+        className="inline-flex items-center rounded border border-dashed border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-800"
+        title={period.raw ? `"${period.raw}" could not be read as a close date` : 'No close period on this deal'}
+      >
+        {period.label}
+      </span>
+    );
+  }
+
+  const inferred = period.basis === 'relative' || period.yearInferred || period.basis === 'later';
+  return (
+    <span title={period.raw && period.raw !== period.longLabel ? `Recorded as "${period.raw}"` : period.longLabel}>
+      <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-bold ${
+        inferred ? 'border border-dashed border-blue-200 bg-blue-50/60 text-blue-800' : 'bg-blue-50 text-brand-blue'
+      }`}>
+        {period.label}
+      </span>
+      {inferred && period.raw && (
+        <span className="mt-0.5 block max-w-[110px] truncate text-[10px] text-gray-500">{period.raw}</span>
+      )}
+    </span>
   );
 }
 
@@ -2813,11 +2976,9 @@ function OpportunityPanel({
           />
           <SelectField label="Status" value={form.status} options={opportunityStatuses} onChange={(value) => update('status', value)} />
           <div>
-            <Field
-              label="Probability %"
-              type="number"
-              value={form.pipelineProbability?.toString() ?? ''}
-              onChange={(value) => update('pipelineProbability', value === '' ? null : Number(value))}
+            <ProbabilityField
+              value={form.pipelineProbability ?? null}
+              onChange={(value) => update('pipelineProbability', value)}
             />
             <ProbabilityNotice form={form} />
           </div>
@@ -2827,7 +2988,18 @@ function OpportunityPanel({
             value={form.estimatedValue?.toString() || ''}
             onChange={(value) => update('estimatedValue', value ? Number(value) : null)}
           />
-          <Field label="Currency" value={form.currency} onChange={(value) => update('currency', value)} />
+          {/* A picker, not a text box. Free text is how a workspace ends up
+              with "sgd", "SGD ", "usd" and "US$" as four different currencies
+              that no conversion can add together - and the imported book
+              arrived denominated in SGD, so the wrong value was already the
+              one sitting in the field. A new deal opens on the reporting
+              currency from Settings. */}
+          <SelectField
+            label="Currency"
+            value={normalizeFormCurrency(form.currency)}
+            options={SUPPORTED_CURRENCIES}
+            onChange={(value) => update('currency', value)}
+          />
           <Field label="Expected close period" value={form.expectedClosePeriod} onChange={(value) => update('expectedClosePeriod', value)} />
           <Field label="Next action date" type="date" value={form.nextActionDate} onChange={(value) => update('nextActionDate', value)} />
         </div>
@@ -3078,26 +3250,6 @@ function salesFlowTone(status: OpportunitySalesFlowGuidance['status']): 'blue' |
   if (status === 'Paused') return 'amber';
   if (status === 'Ready to advance') return 'green';
   return 'amber';
-}
-
-function OpportunitySalesFlowCell({ opportunity }: { opportunity: CrmLiteOpportunity }) {
-  const guidance = buildOpportunitySalesFlowGuidance(opportunity);
-  return (
-    <div className="min-w-[190px]">
-      <div className="flex flex-wrap gap-1.5">
-        <Badge label={guidance.step.label} tone="blue" />
-        <Badge label={guidance.status} tone={salesFlowTone(guidance.status)} />
-      </div>
-      <p className="mt-1 max-w-[220px] truncate text-xs font-semibold text-gray-700" title={guidance.suggestedAction}>
-        {guidance.suggestedAction}
-      </p>
-      <p className="mt-1 text-xs text-gray-500">
-        {guidance.missingCheckpoints.length > 0
-          ? `${guidance.missingCheckpoints.length} checkpoint gap${guidance.missingCheckpoints.length === 1 ? '' : 's'}`
-          : `Next: ${guidance.nextStepLabel}`}
-      </p>
-    </div>
-  );
 }
 
 function OpportunityCommercialPanel({
@@ -4067,6 +4219,54 @@ function FilterSelect({ label, value, options, onChange }: { label: string; valu
   );
 }
 
+/**
+ * A currency the picker can actually show.
+ *
+ * Records imported before the field was a picker can hold anything - lowercase,
+ * padded, or a code this build does not carry. Falling back to the reporting
+ * currency keeps the select from rendering blank and silently rewriting the
+ * record to the first option in the list the moment anything else is edited.
+ */
+function normalizeFormCurrency(value: string): SupportedCurrency {
+  const normalized = (value || '').trim().toUpperCase();
+  return (SUPPORTED_CURRENCIES as readonly string[]).includes(normalized)
+    ? (normalized as SupportedCurrency)
+    : getReportingCurrency();
+}
+
+/**
+ * Probability on the eight rungs the stage table uses, and nothing between.
+ *
+ * It was a free number box, which let a deal be saved at 37% - a figure with no
+ * meaning behind it that still lands, weighted, in the pipeline total. A legacy
+ * value off the ladder is kept as its own option rather than snapped, because
+ * quietly rewriting a number the operator typed is worse than showing an odd
+ * one.
+ */
+function ProbabilityField({ value, onChange }: { value: number | null; onChange: (value: number | null) => void }) {
+  const rungs: number[] = [...PROBABILITY_LADDER];
+  const offLadder = value !== null && !rungs.includes(value);
+  const options = offLadder ? [...rungs, value].sort((left, right) => left - right) : rungs;
+
+  return (
+    <label className="block">
+      <span className="text-sm font-bold text-navy">Probability %</span>
+      <select
+        value={value === null ? '' : String(value)}
+        onChange={(event) => onChange(event.target.value === '' ? null : Number(event.target.value))}
+        className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+      >
+        <option value="">Use the stage default</option>
+        {options.map((rung) => (
+          <option key={rung} value={rung}>
+            {rung}%{offLadder && rung === value ? ' (as recorded)' : ''}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function SelectField<Value extends string>({
   label,
   value,
@@ -4348,6 +4548,9 @@ function buildOpportunityMasterRow(
     lastActivityDate: latestActivity?.activityDate || '',
     lastUpdatedAt,
     silence: classifyOpportunitySilence(opportunity, activities),
+    // Resolved once per row rather than inside the comparator, which would
+    // re-parse the same free text on every comparison of every sort.
+    closePeriod: resolveClosePeriod(opportunity.expectedClosePeriod),
   };
 }
 
@@ -4487,19 +4690,50 @@ function matchesOpportunityQuickFilter(row: OpportunityMasterRow, filter: Opport
   }
 }
 
+/**
+ * Which band a deal belongs to. Live pipeline first, parked second, finished
+ * last.
+ *
+ * This is applied ahead of whatever column the operator sorted by, and that is
+ * deliberate. The table used to default to "last update, newest first", which
+ * meant a deal won in May and a deal lost last week sat in the middle of the
+ * working pipeline purely because somebody had touched their records. Making the
+ * band a *default* rather than an invariant would not have fixed it: one click
+ * on "Value" and the biggest number in the workspace - usually a closed deal -
+ * jumps back to row one.
+ *
+ * The Status filter is still there for anyone who wants to look at Won or Lost
+ * on purpose. This only decides what a mixed list opens on.
+ */
+function opportunityBand(row: OpportunityMasterRow) {
+  const { status } = row.opportunity;
+  if (status === 'Won' || status === 'Lost') return 2;
+  if (status === 'On hold') return 1;
+  return 0;
+}
+
 function compareOpportunityRows(
   left: OpportunityMasterRow,
   right: OpportunityMasterRow,
   sortKey: OpportunitySortKey,
   direction: SortDirection,
 ) {
+  const band = opportunityBand(left) - opportunityBand(right);
+  if (band !== 0) return band;
+
   const directionFactor = direction === 'asc' ? 1 : -1;
   const leftValue = getOpportunitySortValue(left, sortKey);
   const rightValue = getOpportunitySortValue(right, sortKey);
-  if (typeof leftValue === 'number' && typeof rightValue === 'number') {
-    return (leftValue - rightValue) * directionFactor;
-  }
-  return String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true }) * directionFactor;
+
+  const primary = typeof leftValue === 'number' && typeof rightValue === 'number'
+    ? (leftValue - rightValue) * directionFactor
+    : String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true }) * directionFactor;
+  if (primary !== 0) return primary;
+
+  // Same quarter, same stage, same whatever: the bigger deal is the one worth
+  // looking at first. Without a tiebreak the order inside a group is whatever
+  // the store happened to return, which changes between reloads.
+  return (right.opportunity.estimatedValue || 0) - (left.opportunity.estimatedValue || 0);
 }
 
 function getOpportunitySortValue(row: OpportunityMasterRow, sortKey: OpportunitySortKey) {
@@ -4520,7 +4754,9 @@ function getOpportunitySortValue(row: OpportunityMasterRow, sortKey: Opportunity
     case 'probability':
       return opportunity.pipelineProbability || 0;
     case 'closePeriod':
-      return opportunity.expectedClosePeriod || 'zzzz';
+      // The resolved quarter, not the raw text. Sorting the strings put "Next
+      // quarter" ahead of "This month" because N comes before T.
+      return row.closePeriod.rank;
     case 'forecast':
       return forecastEvidenceCategories.indexOf(opportunity.forecastEvidenceCategory);
     case 'recommendation':

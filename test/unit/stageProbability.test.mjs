@@ -1,6 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  PROBABILITY_LADDER,
   STAGE_PROBABILITY,
   defaultProbabilityForStage,
   isClosedProbabilityStale,
@@ -34,16 +35,34 @@ describe('stage probability', () => {
     }
   });
 
-  test('the table climbs with the stage', () => {
+  // Never decreasing, rather than always increasing. There are more stages than
+  // rungs, so some stages share one - Qualification with Technical discussion,
+  // Demo with Proposal. What must never happen is a stage worth *less* than the
+  // one before it, which would let advancing a deal lower the forecast.
+  test('the table never goes backwards as the stage advances', () => {
     const ordered = ['Lead', 'Discovery', 'Qualification', 'Technical discussion', 'Demo', 'Proposal', 'Negotiation', 'Procurement', 'Won'];
     for (let index = 1; index < ordered.length; index += 1) {
       assert.ok(
-        STAGE_PROBABILITY[ordered[index]] > STAGE_PROBABILITY[ordered[index - 1]],
-        `${ordered[index]} must be worth more than ${ordered[index - 1]}`,
+        STAGE_PROBABILITY[ordered[index]] >= STAGE_PROBABILITY[ordered[index - 1]],
+        `${ordered[index]} must not be worth less than ${ordered[index - 1]}`,
       );
     }
     assert.equal(STAGE_PROBABILITY.Lost, 0);
     assert.equal(STAGE_PROBABILITY.Won, 100);
+  });
+
+  // The point of the ladder is that there is nothing between the rungs. A stage
+  // quietly given 37% would put a figure in the forecast that no other stage,
+  // and no operator, can say out loud.
+  test('every stage sits on a rung of the ladder', () => {
+    for (const stage of opportunityStages) {
+      const value = STAGE_PROBABILITY[stage];
+      if (value === null) continue;
+      assert.ok(
+        PROBABILITY_LADDER.includes(value),
+        `${stage} is ${value}%, which is not one of ${PROBABILITY_LADDER.join(', ')}`,
+      );
+    }
   });
 
   // A paused deal's odds depend on why it paused, which the stage cannot know.
@@ -91,9 +110,10 @@ describe('probability against the stage', () => {
   });
 
   test('leaves a judgement call inside the tolerance alone', () => {
-    // Proposal runs at 60; 75 is one stage of optimism, not a broken record.
+    // Proposal runs at 50; 75 is one rung of optimism, not a broken record.
     assert.equal(isProbabilityOptimistic(deal({ stage: 'Proposal', pipelineProbability: 75 })), false);
-    assert.equal(isProbabilityOptimistic(deal({ stage: 'Proposal', pipelineProbability: 85 })), true);
+    // Two rungs is the number and the evidence describing different deals.
+    assert.equal(isProbabilityOptimistic(deal({ stage: 'Proposal', pipelineProbability: 90 })), true);
   });
 
   test('a closed deal is judged on being finished, not on optimism', () => {
@@ -115,7 +135,7 @@ describe('probability against the stage', () => {
 
 describe('weighted value', () => {
   test('weights by the resolved probability', () => {
-    assert.equal(weightedValue(deal({ stage: 'Proposal', estimatedValue: 1000 })), 600);
+    assert.equal(weightedValue(deal({ stage: 'Proposal', estimatedValue: 1000 })), 500);
     assert.equal(weightedValue(deal({ stage: 'Proposal', estimatedValue: 1000, pipelineProbability: 20 })), 200);
   });
 

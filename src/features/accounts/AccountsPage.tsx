@@ -1421,6 +1421,26 @@ function AccountEditFields({
         <SelectField label="Potential" value={form.accountPotential} options={accountPotentials} onChange={(value) => update('accountPotential', value)} />
         <SelectField label="Relationship" value={form.relationshipStatus} options={relationshipStatuses} onChange={(value) => update('relationshipStatus', value)} />
       </div>
+      {/* The KA mark arrived with the founder import and was readable but not
+          settable, so the only way to change it was to re-import a spreadsheet.
+          It is the single input that decides which customers the weekly plan
+          proposes out of a book of a thousand, which makes "you cannot edit it
+          here" the wrong answer. */}
+      <label className="flex items-start gap-2.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+        <input
+          type="checkbox"
+          checked={form.kaFlag === true}
+          onChange={(event) => update('kaFlag', event.target.checked)}
+          className="mt-0.5 h-4 w-4 shrink-0"
+        />
+        <span className="min-w-0">
+          <span className="block text-sm font-bold text-navy">Key account</span>
+          <span className="block text-xs leading-5 text-gray-500">
+            Plan suggestions put risks on key accounts first. With a large book, this is what stops the week being
+            proposed by alphabet.
+          </span>
+        </span>
+      </label>
       <Field label="Key stakeholders" value={form.keyStakeholders.join(', ')} onChange={(value) => update('keyStakeholders', parseCommaList(value))} />
       <Field label="Tags" value={form.tags.join(', ')} onChange={(value) => update('tags', parseCommaList(value))} />
       <TextArea label="Notes" value={form.notes} onChange={(value) => update('notes', value)} />

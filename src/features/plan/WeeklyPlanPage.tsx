@@ -40,6 +40,7 @@ import {
   createPersonalPlanRecord,
   formatPlanRangeLabel,
   getPlanItemWriteTarget,
+  planLinkKindLabel,
   shiftPlanAnchor,
   splitBracketTag,
   type PlanItem,
@@ -185,11 +186,24 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
 
   // Every account name the workspace already knows, so a typed plan item can
   // link to the entity it belongs to instead of living as loose text.
+  // The account *records* come first, and they were missing entirely: this list
+  // was assembled only from names that happened to appear on a deal, a touch or
+  // a quote, so a customer the operator had filed but not yet worked could not
+  // be linked to at all - which is exactly the customer a "restart the thread"
+  // item is about.
   const knownAccountNames = useMemo(() => [
+    ...accounts.map((item) => item.accountName),
     ...opportunities.map((item) => item.accountName),
     ...activities.map((item) => item.linkedAccountName || item.accountName),
     ...quotes.map((item) => item.accountName),
-  ], [activities, opportunities, quotes]);
+  ], [accounts, activities, opportunities, quotes]);
+  // The customers marked KA on the account record. With a book this size the
+  // silence rule fires on hundreds at once, and this is the only signal that
+  // says which of them the operator actually wants proposed.
+  const keyAccountNames = useMemo(
+    () => accounts.filter((account) => account.kaFlag === true).map((account) => account.accountName),
+    [accounts],
+  );
   const draftLinkOptions = useMemo(() => (
     draftLink ? [] : buildPlanLinkOptions({ draft, opportunities, accountNames: knownAccountNames, brands: knownBrands })
   ), [draft, draftLink, knownAccountNames, knownBrands, opportunities]);
@@ -417,9 +431,10 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
         rangeStart: board.rangeStart,
         rangeEnd: board.rangeEnd,
         today: todayDateKey(),
+        keyAccountNames,
       })
       : []
-  ), [activities, board.rangeEnd, board.rangeStart, opportunities, periodType, recommendations, records]);
+  ), [activities, board.rangeEnd, board.rangeStart, keyAccountNames, opportunities, periodType, recommendations, records]);
 
   // The customers this week's hand-written lines are about, that the workspace
   // does not know yet. Refused tags stay refused for the session.
@@ -861,18 +876,24 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
                           type="button"
                           onMouseDown={(event) => event.preventDefault()}
                           onClick={() => setDraftLink(option)}
-                          className="flex w-full items-center gap-1.5 px-2 py-1.5 text-left text-[11px] font-semibold text-gray-700 hover:bg-blue-50 hover:text-brand-blue"
+                          title={option.display}
+                          className="flex w-full items-start gap-1.5 px-2 py-1.5 text-left text-[11px] font-semibold text-gray-700 hover:bg-blue-50 hover:text-brand-blue"
                         >
-                          <span className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-bold uppercase ${
+                          <span className={`mt-px shrink-0 rounded px-1 py-0.5 text-[9px] font-bold uppercase ${
                             option.kind === 'deal'
                               ? 'bg-blue-50 text-brand-blue'
                               : option.kind === 'brand'
                                 ? 'bg-violet-50 text-violet-700'
-                                : 'bg-gray-100 text-gray-500'
+                                : 'bg-sky-50 text-sky-700'
                           }`}>
-                            {option.kind}
+                            {planLinkKindLabel(option.kind)}
                           </span>
-                          <span className="truncate">{option.display}</span>
+                          {/* Wraps rather than truncates. The tail of one of
+                              these rows is the part that tells two deals on the
+                              same customer apart - "Samil / Air Sampler" from
+                              "Samil / 3-Manifold" - so an ellipsis on a narrow
+                              day column hid the only distinguishing text. */}
+                          <span className="min-w-0 flex-1 whitespace-normal break-words leading-4">{option.display}</span>
                         </button>
                       ))}
                     </div>
