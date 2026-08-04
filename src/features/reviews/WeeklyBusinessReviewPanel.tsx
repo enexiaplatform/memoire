@@ -61,14 +61,55 @@ export function WeeklyBusinessReviewPanel({
         )}
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
-        {reviewSections(review, activeLanes, commitmentSlot).map((section) => (
-          <div key={section.id} className="contents">{section.node}</div>
-        ))}
-      </div>
+      {(() => {
+        // Two of the six answer the questions a review is actually for - what
+        // closed, and what that makes next week about. Those stay open. The
+        // other four are the supporting read: money position, stalled
+        // initiatives, customer signals and the commitment list, each of which
+        // has a surface that owns it properly. This panel alone was 2,094px of
+        // a 4,546px page, which is how a weekly review turns into a document
+        // nobody finishes.
+        const sections = reviewSections(review, activeLanes, commitmentSlot);
+        const headline = sections.filter((section) => HEADLINE_SECTION_IDS.includes(section.id));
+        const supporting = sections.filter((section) => !HEADLINE_SECTION_IDS.includes(section.id));
+
+        return (
+          <>
+            <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+              {headline.map((section) => (
+                <div key={section.id} className="contents">{section.node}</div>
+              ))}
+            </div>
+
+            {supporting.length > 0 && (
+              <details className="mt-4 rounded-lg border border-gray-200">
+                <summary className="cursor-pointer list-none px-4 py-2.5">
+                  <span className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="text-sm font-bold text-navy">The rest of the picture</span>
+                    <span className="text-xs font-semibold text-gray-500">
+                      Money position, stalled initiatives, customer signals and commitments
+                    </span>
+                  </span>
+                </summary>
+                <div className="grid grid-cols-1 gap-4 border-t border-gray-100 p-4 xl:grid-cols-2">
+                  {supporting.map((section) => (
+                    <div key={section.id} className="contents">{section.node}</div>
+                  ))}
+                </div>
+              </details>
+            )}
+          </>
+        );
+      })()}
     </section>
   );
 }
+
+/**
+ * What closed, and what that makes next week about. Everything else in this
+ * panel is the supporting read and folds away.
+ */
+const HEADLINE_SECTION_IDS = ['outcomes', 'priorities'];
 
 /**
  * The review's six sections as an ordered list so the workspace lens can

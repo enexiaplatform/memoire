@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Copy, Loader2 } from 'lucide-react';
 import { ReviewAnalyticsSection } from './ReviewAnalyticsSection';
@@ -473,8 +473,6 @@ function WeeklyReviewSection({
         </div>
       </section>
 
-      <ExecutionRhythmCharts activities={activities} opportunities={opportunities} />
-
       <WeeklyBusinessReviewPanel
         review={weeklyBusinessReview}
         periodLabel={period.label}
@@ -533,9 +531,14 @@ function WeeklyReviewSection({
         )}
       />
 
-      <FollowUpImpactPanel impact={periodFollowUpImpact} periodLabel={period.label} />
-
-      <ActivityTimelinePanel activities={periodActivities} periodLabel={period.label} />
+      <ReviewFold
+        title="How the period was worked"
+        hint="Rhythm, the day-by-day timeline, follow-up impact and the commercial brief"
+      >
+        <ExecutionRhythmCharts activities={activities} opportunities={opportunities} />
+        <FollowUpImpactPanel impact={periodFollowUpImpact} periodLabel={period.label} />
+        <ActivityTimelinePanel activities={periodActivities} periodLabel={period.label} />
+      </ReviewFold>
 
       <CommercialReviewBriefPanel
         brief={commercialReviewBrief}
@@ -573,30 +576,35 @@ function WeeklyReviewSection({
         <RecommendedDealActionsPanel actions={recommendedDealActions} />
       )}
 
-      {(periodActionOutcomes.length > 0 || actionOutcomeSummary.unresolvedCriticalActions.length > 0) && (
-        <ActionOutcomesPanel
-          periodOutcomes={periodActionOutcomes}
-          unresolvedCriticalActions={actionOutcomeSummary.unresolvedCriticalActions}
-        />
-      )}
+      <ReviewFold
+        title="What to learn from it"
+        hint="Outcomes of the actions you took, execution quality, playbook patterns and the assets you were missing"
+      >
+        {(periodActionOutcomes.length > 0 || actionOutcomeSummary.unresolvedCriticalActions.length > 0) && (
+          <ActionOutcomesPanel
+            periodOutcomes={periodActionOutcomes}
+            unresolvedCriticalActions={actionOutcomeSummary.unresolvedCriticalActions}
+          />
+        )}
 
-      {executionReview.executionSummary.recommendedActionsCount > 0 || executionReview.periodOutcomes.length > 0 ? (
-        <ExecutionReviewPanel
-          review={executionReview}
-          onCopy={copyExecutionReview}
-          copyMessage={executionCopyMessage}
-        />
-      ) : null}
+        {executionReview.executionSummary.recommendedActionsCount > 0 || executionReview.periodOutcomes.length > 0 ? (
+          <ExecutionReviewPanel
+            review={executionReview}
+            onCopy={copyExecutionReview}
+            copyMessage={executionCopyMessage}
+          />
+        ) : null}
 
-      {playbookLearnings.length > 0 && (
-        <SuggestedPlaybookLearningsPanel patterns={playbookLearnings} />
-      )}
+        {playbookLearnings.length > 0 && (
+          <SuggestedPlaybookLearningsPanel patterns={playbookLearnings} />
+        )}
 
-      <PersonalOutcomeLearningPanel learning={personalLearning} />
+        <PersonalOutcomeLearningPanel learning={personalLearning} />
 
-      {assetNeeds.length > 0 && (
-        <AssetNeedsPanel needs={assetNeeds} />
-      )}
+        {assetNeeds.length > 0 && (
+          <AssetNeedsPanel needs={assetNeeds} />
+        )}
+      </ReviewFold>
 
       {loadingActivities ? (
         <SkeletonScreen label="Loading your activity review">
@@ -616,6 +624,30 @@ function WeeklyReviewSection({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * A group of review panels behind one heading.
+ *
+ * Review had seventeen top-level sections, and a review nobody scrolls to the
+ * end of is not a review. What a period summary owes the reader is two things -
+ * what happened, and what to highlight - and both are answered by the scoreboard,
+ * the metric row and the insight panels that stay open. Everything else is the
+ * working behind them: worth keeping, worth being able to reach, not worth
+ * making somebody scroll past every Monday.
+ */
+function ReviewFold({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
+  return (
+    <details className="rounded-lg border border-gray-200 bg-white shadow-sm">
+      <summary className="cursor-pointer list-none px-5 py-3">
+        <span className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="text-base font-bold text-navy">{title}</span>
+          <span className="text-xs font-semibold text-gray-500">{hint}</span>
+        </span>
+      </summary>
+      <div className="space-y-5 border-t border-gray-100 p-5">{children}</div>
+    </details>
   );
 }
 

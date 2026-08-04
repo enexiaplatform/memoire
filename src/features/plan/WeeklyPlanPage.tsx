@@ -634,15 +634,6 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
         )}
       </div>
 
-      <PlanPasteImportPanel days={board.days} records={records} onImport={importPastedWeek} />
-
-      <PlanTagAccountsPanel
-        candidates={tagAccountCandidates}
-        creating={creatingAccount}
-        onCreate={createAccountFromTag}
-        onDismiss={(candidate) => setDismissedTagKeys((current) => [...current, candidate.name])}
-      />
-
       {accountMessage && (
         <p className="mt-3 rounded-lg bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-100">
           {accountMessage}
@@ -654,13 +645,6 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
           {boardMessage}
         </p>
       )}
-
-      <PlanSuggestionsPanel
-        suggestions={suggestions}
-        days={board.days}
-        onAccept={acceptSuggestion}
-        onDismiss={dismissSuggestion}
-      />
 
       {board.totalCount === 0 && suggestions.length === 0 && (
         <div className="mt-6 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
@@ -913,6 +897,26 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
           </section>
         ))}
       </div>
+
+      {/* Everything that proposes work sits below the week, not above it.
+          The calendar is what the operator came to read; a panel of five
+          suggestions and two importers between the header and the days meant
+          scrolling past advice to reach the plan it was advising on. */}
+      <PlanSuggestionsPanel
+        suggestions={suggestions}
+        days={board.days}
+        onAccept={acceptSuggestion}
+        onDismiss={dismissSuggestion}
+      />
+
+      <PlanTagAccountsPanel
+        candidates={tagAccountCandidates}
+        creating={creatingAccount}
+        onCreate={createAccountFromTag}
+        onDismiss={(candidate) => setDismissedTagKeys((current) => [...current, candidate.name])}
+      />
+
+      <PlanPasteImportPanel days={board.days} records={records} onImport={importPastedWeek} />
 
       <p className="mt-4 text-xs leading-5 text-gray-400">
         Items in green were pulled in from a capture - you wrote them once, they landed here on their own. Drag any item

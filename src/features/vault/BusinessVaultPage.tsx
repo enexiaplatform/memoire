@@ -26,16 +26,34 @@ import { SkeletonCard, SkeletonScreen } from '../../components/common/Skeleton';
  * never been filled.
  */
 
+/**
+ * A mark per square, not a block.
+ *
+ * The first version painted every filled cell as a saturated 64px rectangle
+ * with the money written inside it. At the width of a real book that is a wall
+ * of colour with numbers too small to read, and the empty squares - the whole
+ * point of the page - were the quietest thing on it. Thin marks on a light
+ * ground invert that: the grid recedes, the gaps read, and the money moves to
+ * the row total and the tooltip where there is room for it.
+ */
 const stateStyles: Record<CoverageCellState, string> = {
-  won: 'bg-emerald-500 text-white',
-  committed: 'bg-violet-500 text-white',
-  active: 'bg-blue-500 text-white',
-  lost: 'bg-gray-200 text-gray-500',
-  // The empty square is the message of this page, so it has to read as a slot
-  // that is deliberately unfilled rather than as blank card. A dashed outline
-  // over a faint fill does that; a `ring` cannot be dashed at all, which is how
-  // the first attempt ended up invisible on a white card.
-  none: 'border border-dashed border-gray-300 bg-gray-50 text-gray-300',
+  won: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-300',
+  committed: 'bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-300',
+  active: 'bg-blue-50 text-brand-blue ring-1 ring-inset ring-blue-300',
+  lost: 'bg-gray-50 text-gray-400 ring-1 ring-inset ring-gray-200',
+  // The empty square is the message of this page, so it reads as a slot that is
+  // deliberately unfilled rather than as a blank card - and it is the only
+  // square that is clickable into something new.
+  none: 'border border-dashed border-gray-300 bg-white text-gray-300 hover:border-brand-blue hover:bg-blue-50/40',
+};
+
+/** One glyph per state, so the grid is never colour-alone. */
+const stateGlyph: Record<CoverageCellState, string> = {
+  won: '●',
+  committed: '◐',
+  active: '○',
+  lost: '×',
+  none: '+',
 };
 
 export function BusinessVaultPage() {
@@ -99,14 +117,19 @@ export function BusinessVaultPage() {
           <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <div>
+                {/* Says the consequence, not the arithmetic. "12 / 40 squares
+                    filled" is a fact about a grid; "23 customers carry one line
+                    of five" is a fact about the business, and it is the one
+                    that starts a conversation. */}
                 <p className="text-2xl font-black text-navy">
-                  {matrix.filledCells}
-                  <span className="text-base font-bold text-gray-400"> / {matrix.totalCells} squares filled</span>
+                  {matrix.gaps.length}
+                  <span className="text-base font-bold text-gray-400">
+                    {' '}of {matrix.rows.length} customers buy only part of the range
+                  </span>
                 </p>
                 <p className="mt-1 text-sm text-gray-500">
-                  {matrix.rows.length} customers &times; {matrix.brands.length} lines.
-                  {' '}
-                  {matrix.totalCells - matrix.filledCells} combinations you have never taken to the customer.
+                  {matrix.totalCells - matrix.filledCells} of {matrix.totalCells} customer &times; line squares have
+                  never been taken to the customer. Click an empty square to start that opportunity.
                 </p>
               </div>
               <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-bold text-brand-blue">
@@ -192,23 +215,34 @@ export function BusinessVaultPage() {
 
 function MatrixCell({ cell }: { cell: CoverageCell }) {
   const money = cell.wonValueBase || cell.activeValueBase;
-  const title = `${cell.accountName} · ${cell.brand} — ${coverageCellLabel(cell.state)}${
-    money > 0 ? ` · ${formatBaseCurrencyAmount(money, true)}` : ''
-  }`;
+  const title = cell.state === 'none'
+    // An empty square now says what it is for, because "nothing here" is not a
+    // finding an operator can act on - "you have never offered this line to a
+    // customer who already buys from you" is.
+    ? `${cell.accountName} has never been offered ${cell.brand} — start that opportunity`
+    : `${cell.accountName} · ${cell.brand} — ${coverageCellLabel(cell.state)}${
+      money > 0 ? ` · ${formatBaseCurrencyAmount(money, true)}` : ''
+    }`;
+
+  // The empty square is the only one that leads somewhere new: it opens the
+  // opportunity form with the customer and the line already filled in, which is
+  // the entire action this page exists to prompt.
+  const href = cell.href || (cell.state === 'none'
+    ? `/app/opportunities?new=1&account=${encodeURIComponent(cell.accountName)}&brand=${encodeURIComponent(cell.brand)}`
+    : '');
 
   const content = (
-    <span className={`flex h-9 min-w-[64px] items-center justify-center rounded px-1.5 text-[11px] font-bold ${stateStyles[cell.state]}`}>
-      {money > 0 ? formatBaseCurrencyAmount(money, true).replace(/\s*\(.*\)$/, '') : cell.state === 'none' ? '' : '·'}
+    <span
+      aria-label={title}
+      className={`flex h-7 w-full min-w-[44px] items-center justify-center rounded text-[11px] font-bold ${stateStyles[cell.state]}`}
+    >
+      {stateGlyph[cell.state]}
     </span>
   );
 
   return (
     <td className="p-0" title={title}>
-      {cell.href ? (
-        <Link to={cell.href} className="block transition hover:opacity-80">{content}</Link>
-      ) : (
-        content
-      )}
+      {href ? <Link to={href} className="block transition hover:opacity-80">{content}</Link> : content}
     </td>
   );
 }
@@ -226,7 +260,11 @@ function Legend() {
     <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] font-semibold text-gray-500">
       {items.map((item) => (
         <span key={item.state} className="inline-flex items-center gap-1.5">
-          <span className={`inline-block h-3 w-5 rounded ${stateStyles[item.state]}`} />
+          {/* The legend mirrors the mark, glyph and all, so identity in the grid
+              is never carried by colour alone. */}
+          <span className={`inline-flex h-5 w-6 items-center justify-center rounded text-[11px] font-bold ${stateStyles[item.state]}`}>
+            {stateGlyph[item.state]}
+          </span>
           {item.label}
         </span>
       ))}

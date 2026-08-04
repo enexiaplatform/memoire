@@ -38,21 +38,31 @@ export function PlanSuggestionsPanel({
   const alertCount = suggestions.filter((suggestion) => suggestion.kind === 'alert').length;
 
   return (
-    <section className="mt-4 rounded-lg border border-blue-100 bg-blue-50/40 p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Lightbulb className="h-4 w-4 text-brand-blue" />
-        <h2 className="text-sm font-bold text-navy">Suggested for this week ({suggestions.length})</h2>
-        <span className="text-xs text-gray-500">
-          {alertCount > 0
-            ? `${alertCount} from what is at risk right now. Nothing is on your plan until you put it there.`
-            : 'Nothing here is on your plan until you put it there.'}
+    // Folded, and closed by default. These are proposals about a week the
+    // operator has already planned - worth offering, not worth reading past
+    // every time the page opens. The summary carries the only two things that
+    // decide whether to open it: how many, and how many are risks.
+    <details className="mt-4 rounded-lg border border-blue-100 bg-blue-50/40">
+      <summary className="cursor-pointer list-none p-4">
+        <span className="flex flex-wrap items-center gap-2">
+          <Lightbulb className="h-4 w-4 text-brand-blue" />
+          <span className="text-sm font-bold text-navy">Suggested for this week ({suggestions.length})</span>
+          <span className="text-xs text-gray-500">
+            {alertCount > 0
+              ? `${alertCount} from what is at risk right now. Nothing is on your plan until you put it there.`
+              : 'Nothing here is on your plan until you put it there.'}
+          </span>
         </span>
+      </summary>
+
+      <div className="border-t border-blue-100 p-4">
+      <div className="flex justify-end">
         <button
           type="button"
           onClick={() => suggestions.forEach((suggestion) => (
             onAccept(suggestion, dateOverrides[suggestion.key] || suggestion.suggestedDate)
           ))}
-          className="ml-auto inline-flex items-center gap-1 rounded-full border border-brand-blue px-3 py-1 text-xs font-bold text-brand-blue hover:bg-blue-50"
+          className="inline-flex items-center gap-1 rounded-full border border-brand-blue px-3 py-1 text-xs font-bold text-brand-blue hover:bg-blue-50"
         >
           <Plus className="h-3 w-3" />
           Add all {suggestions.length}
@@ -124,6 +134,7 @@ export function PlanSuggestionsPanel({
           );
         })}
       </ul>
-    </section>
+      </div>
+    </details>
   );
 }

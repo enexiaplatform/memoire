@@ -47,7 +47,14 @@ for (const marker of [
   "searchParams.get('import') === 'csv'",
   'openCsvImport();',
   "searchParams.get('new') === '1'",
-  'openAddPanel();',
+  // The call gained a seed argument when the coverage matrix started linking
+  // here: an empty customer x line square opens this form with both already
+  // filled in. The marker pins the new shape and the two params it carries, so
+  // the Vault's only call to action cannot be broken from this side without
+  // the contract saying so.
+  'openAddPanel({',
+  "accountName: searchParams.get('account') || undefined,",
+  "brand: searchParams.get('brand') || undefined,",
   'setSearchParams({}, { replace: true });',
   'markTrialActivationChecklistItemComplete(\'load-demo-or-import-csv\')',
   'markTrialActivationChecklistItemComplete(\'generate-defense-brief\')',

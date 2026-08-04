@@ -146,6 +146,9 @@ export function AccountsPage() {
   const [importOpen, setImportOpen] = useState(false);
   // The exact string the seller has already been warned about and kept.
   const [accountNameConfirmed, setAccountNameConfirmed] = useState('');
+  // Opens the merged-names fold, so the "undo it below" the merge message
+  // promises is actually visible when it is said.
+  const [mergeJustHappened, setMergeJustHappened] = useState(false);
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
@@ -296,6 +299,7 @@ export function AccountsPage() {
       isSample: sampleDataActive,
     }));
     setMessage(`Merged into ${survivorName}. Nothing was deleted - undo it below if this was wrong.`);
+    setMergeJustHappened(true);
   };
 
   const handleDismissDuplicate = (group: DuplicateGroup) => {
@@ -756,7 +760,11 @@ export function AccountsPage() {
       )}
 
       {!loading && accountMerges.some((record) => record.kind === 'merge') && (
-        <MergedAccountsNote merges={accountMerges.filter((record) => record.kind === 'merge')} onUndo={handleUndoMerge} />
+        <MergedAccountsNote
+          merges={accountMerges.filter((record) => record.kind === 'merge')}
+          onUndo={handleUndoMerge}
+          defaultOpen={mergeJustHappened}
+        />
       )}
 
       {candidates.length > 0 && (
@@ -1995,11 +2003,39 @@ function DuplicateAccountsSection({
   );
 }
 
-function MergedAccountsNote({ merges, onUndo }: { merges: AccountMergeRecord[]; onUndo: (recordId: string) => void }) {
+/**
+ * The merges this workspace is carrying, folded away until asked for.
+ *
+ * Undo is a recovery action, not a reading. It belongs within reach of the
+ * merge that might have been wrong, and nowhere else: a book with seventeen
+ * merged names was spending seventeen permanent rows at the top of Accounts on
+ * a button nobody presses twice a year, above the accounts themselves.
+ *
+ * `defaultOpen` is what keeps the recovery honest. Straight after a merge the
+ * message says "undo it below if this was wrong", so the fold opens and the
+ * button is where that sentence promised it would be. On every later visit it
+ * is closed and costs one line.
+ */
+function MergedAccountsNote({
+  merges,
+  onUndo,
+  defaultOpen = false,
+}: {
+  merges: AccountMergeRecord[];
+  onUndo: (recordId: string) => void;
+  defaultOpen?: boolean;
+}) {
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <h2 className="text-sm font-bold text-navy">Merged accounts</h2>
-      <ul className="mt-2 space-y-1.5 text-xs leading-5">
+    <details open={defaultOpen} className="rounded-lg border border-gray-200 bg-white shadow-sm">
+      <summary className="cursor-pointer list-none px-4 py-2.5">
+        <span className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="text-sm font-bold text-navy">Merged names</span>
+          <span className="text-xs font-semibold text-gray-500">
+            {merges.length} {merges.length === 1 ? 'name is' : 'names are'} filed under another account
+          </span>
+        </span>
+      </summary>
+      <ul className="space-y-1.5 border-t border-gray-100 px-4 py-3 text-xs leading-5">
         {merges.map((record) => (
           <li key={record.id} className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-gray-600">
@@ -2013,7 +2049,7 @@ function MergedAccountsNote({ merges, onUndo }: { merges: AccountMergeRecord[]; 
           </li>
         ))}
       </ul>
-    </section>
+    </details>
   );
 }
 

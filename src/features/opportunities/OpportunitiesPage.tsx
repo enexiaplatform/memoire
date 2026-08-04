@@ -443,9 +443,20 @@ export function OpportunitiesPage() {
     setSortDirection(['value', 'fy26', 'fy27', 'probability', 'updatedAt', 'quality'].includes(nextKey) ? 'desc' : 'asc');
   };
 
-  const openAddPanel = () => {
+  /**
+   * `seed` is what makes an empty square on the coverage matrix actionable.
+   * The Vault knows the customer and the line that pairing is missing; without
+   * carrying them here, "you have never offered this" ended at a page that made
+   * the operator retype both.
+   */
+  const openAddPanel = (seed?: { accountName?: string; brand?: string }) => {
     setEditingOpportunity(null);
-    setForm({ ...emptyOpportunityInput, currency: getReportingCurrency() });
+    setForm({
+      ...emptyOpportunityInput,
+      currency: getReportingCurrency(),
+      accountName: seed?.accountName || '',
+      brand: seed?.brand || '',
+    });
     setPanelMode('add');
     setSaveState('idle');
     setMessage('');
@@ -498,7 +509,10 @@ export function OpportunitiesPage() {
     }
 
     if (searchParams.get('new') === '1') {
-      openAddPanel();
+      openAddPanel({
+        accountName: searchParams.get('account') || undefined,
+        brand: searchParams.get('brand') || undefined,
+      });
       setSearchParams({}, { replace: true });
       return;
     }
@@ -1091,7 +1105,7 @@ export function OpportunitiesPage() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={openAddPanel}
+            onClick={() => openAddPanel()}
             className="inline-flex items-center justify-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-sm font-bold text-white"
           >
             <Plus className="h-4 w-4" />
