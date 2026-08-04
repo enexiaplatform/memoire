@@ -344,6 +344,14 @@ export function TodayPage() {
     opportunities: data.opportunities,
     opportunityOutcomes: data.opportunityOutcomes,
   }), [data.activities, data.opportunities, data.opportunityOutcomes]);
+  const businessCockpit = useMemo(() => buildBusinessCockpit({
+    commercialRiskItems: todayCenter.commercialRiskItems,
+    nudges: proactiveNudges.allActiveNudges,
+    opportunities: data.opportunities,
+    quotes: data.quotes,
+    captureInboxCount: todayCenter.captureInbox.length,
+  }), [data.opportunities, data.quotes, proactiveNudges.allActiveNudges, todayCenter.captureInbox.length, todayCenter.commercialRiskItems]);
+  // Built after the cockpit so it can be told what the cockpit already said.
   const morningBrief = useMemo(() => buildMorningBrief({
     nudges: proactiveNudges.todayNudges,
     activities: data.activities,
@@ -351,13 +359,9 @@ export function TodayPage() {
     // Retention is low urgency and lives below the Today nudge cap, so count
     // it from all active nudges - not the capped todayNudges the brief reads.
     retentionCount: proactiveNudges.allActiveNudges.filter((nudge) => nudge.title === 'Paid customer going quiet').length,
-  }), [data.activities, followUpImpact.dealsWaiting, proactiveNudges.allActiveNudges, proactiveNudges.todayNudges]);
-  const businessCockpit = useMemo(() => buildBusinessCockpit({
-    commercialRiskItems: todayCenter.commercialRiskItems,
-    nudges: proactiveNudges.allActiveNudges,
-    opportunities: data.opportunities,
-    captureInboxCount: todayCenter.captureInbox.length,
-  }), [data.opportunities, proactiveNudges.allActiveNudges, todayCenter.captureInbox.length, todayCenter.commercialRiskItems]);
+    claimedNudgeIds: businessCockpit.filter((answer) => answer.actionable).map((answer) => answer.nudgeId).filter(Boolean) as string[],
+    claimedAccounts: businessCockpit.filter((answer) => answer.actionable).map((answer) => answer.accountName).filter(Boolean) as string[],
+  }), [businessCockpit, data.activities, followUpImpact.dealsWaiting, proactiveNudges.allActiveNudges, proactiveNudges.todayNudges]);
   const dashboardInsights = useMemo(() => (
     advancedInsightsOpen ? buildDashboardInsights(data) : null
   ), [advancedInsightsOpen, data]);
@@ -632,7 +636,13 @@ export function TodayPage() {
                   check the watch-list. Reference numbers fold away below, so
                   Today reads as a flow, not a report. */}
               <StepDivider step={1} title="Get the picture" hint="Ten seconds: where the money sits and what changed" />
-              <BusinessCockpitStrip answers={businessCockpit} />
+              <BusinessCockpitStrip
+                answers={businessCockpit}
+                onOpenDeal={(opportunityId) => {
+                  const opportunity = data.opportunities.find((item) => item.id === opportunityId);
+                  if (opportunity) setQuickLookOpportunity(opportunity);
+                }}
+              />
               <MorningBriefCard brief={morningBrief} />
 
               <StepDivider step={2} title="Do today's work" hint="What you committed to, then the three Memoire would start with" />
@@ -660,6 +670,10 @@ export function TodayPage() {
                 onSnoozeNextWeek={handleSnoozeNudgeNextWeek}
                 onClearDismissed={handleClearDismissedNudges}
                 onClearAll={handleClearAllNudgeState}
+                onOpenDeal={(opportunityId) => {
+                  const opportunity = data.opportunities.find((item) => item.id === opportunityId);
+                  if (opportunity) setQuickLookOpportunity(opportunity);
+                }}
               />
 
               {/* The commercial control tower, in the action tier: what is
@@ -1127,6 +1141,46 @@ function StepDivider({ step, title, hint }: { step: number; title: string; hint:
   );
 }
 
+/**
+ * The watch-list, one card per customer.
+ *
+ * Grouping is by account rather than by deal on purpose: the same customer's
+ * trouble arrives labelled with slightly different opportunity names ("QC
+ * workflow" and "QC workflow delivery" were two rows for one conversation), and
+ * an operator ringing that customer wants everything they owe them in one
+ * place, not sorted by which record raised it.
+ */
+type NudgeAccountGroup = {
+  key: string;
+  accountName: string;
+  /** Set when every alarm in the group points at one deal, so it can be opened. */
+  opportunityId?: string;
+  nudges: NudgeRecord[];
+};
+
+function groupNudgesByAccount(nudges: NudgeRecord[]): NudgeAccountGroup[] {
+  const groups = new Map<string, { accountName: string; nudges: NudgeRecord[]; dealIds: Set<string> }>();
+  for (const nudge of nudges) {
+    const accountName = nudge.accountName?.trim() || 'Needs confirmation';
+    const key = accountName.toLowerCase();
+    const group = groups.get(key) || { accountName, nudges: [], dealIds: new Set<string>() };
+    group.nudges.push(nudge);
+    if (nudge.entityType === 'opportunity' && nudge.entityId) {
+      group.dealIds.add(nudge.entityId.replace(/^opportunity-/, ''));
+    }
+    groups.set(key, group);
+  }
+  return [...groups.entries()].map(([key, group]) => ({
+    key,
+    accountName: group.accountName,
+    // Only when the whole group is about one deal. Two deals under one customer
+    // means "the deal" is ambiguous, and opening an arbitrary one of them is
+    // worse than not offering the button.
+    opportunityId: group.dealIds.size === 1 ? [...group.dealIds][0] : undefined,
+    nudges: group.nudges,
+  }));
+}
+
 function ProactiveNudgesPanel({
   center,
   message,
@@ -1137,6 +1191,7 @@ function ProactiveNudgesPanel({
   onSnoozeNextWeek,
   onClearDismissed,
   onClearAll,
+  onOpenDeal,
 }: {
   center: ProactiveNudgeCenter;
   message: string;
@@ -1147,6 +1202,7 @@ function ProactiveNudgesPanel({
   onSnoozeNextWeek: (nudge: NudgeRecord) => void;
   onClearDismissed: () => void;
   onClearAll: () => void;
+  onOpenDeal?: (opportunityId: string) => void;
 }) {
   return (
     <section className="rounded-xl border border-indigo-100 bg-white p-5 shadow-sm">
@@ -1163,66 +1219,104 @@ function ProactiveNudgesPanel({
           No active proactive nudge right now. Capture updates and Pipeline Defense will refresh the signal.
         </p>
       ) : (
+        /* One card per customer, not per alarm.
+           A struggling account raises several at once - Summit Diagnostics was
+           carrying a payment alarm, a silence alarm and a downgrade flag, and
+           the panel drew each as a full card with its own heading, money line,
+           date chip and five buttons. The customer's name appeared three times
+           in one panel and the operator had to work out for themselves that it
+           was one conversation. Grouping says it once and lists what is wrong
+           underneath; every action stays exactly where it was. */
         <div className="mt-4 grid gap-3 xl:grid-cols-2">
-          {center.todayNudges.map((nudge) => (
-            <article key={nudge.id} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <NudgeUrgencyBadge urgency={nudge.urgency} />
-                    <Badge label={nudge.source} tone={nudge.source === 'outcome-learning' ? 'purple' : 'blue'} />
-                  </div>
-                  {/* An alarm's title is a door: it lands on the exact record
-                      that raised it, never on a page top. */}
-                  {nudgeEntityHref(nudge) ? (
-                    <Link
-                      to={nudgeEntityHref(nudge)}
-                      className="mt-3 block text-base font-bold text-navy underline-offset-2 hover:text-brand-blue hover:underline"
-                    >
-                      {nudge.title}
-                    </Link>
-                  ) : (
-                    <h3 className="mt-3 text-base font-bold text-navy">{nudge.title}</h3>
-                  )}
-                  <p className="mt-1 text-xs font-bold uppercase tracking-wide text-gray-400">
-                    {nudge.accountName || 'Needs confirmation'}{nudge.opportunityName ? ` / ${nudge.opportunityName}` : ''}
+          {groupNudgesByAccount(center.todayNudges).map((group) => (
+            <article key={group.key} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-navy">{group.accountName}</h3>
+                  <p className="mt-0.5 text-xs font-semibold text-gray-500">
+                    {group.nudges.length === 1 ? '1 thing to answer' : `${group.nudges.length} things to answer`}
                   </p>
                 </div>
-                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-gray-600 ring-1 ring-gray-200">
-                  {formatNudgeDueDate(nudge)}
-                </span>
-              </div>
-              {/* Some pipeline-defense nudges carry a whole review answer as
-                  their reason; the card points at the risk, the full answer
-                  lives in Pipeline Defense. */}
-              <p className="mt-3 line-clamp-3 text-sm leading-6 text-gray-600" title={nudge.reason}>{nudge.reason}</p>
-              <p className="mt-2 text-sm font-semibold text-navy">Recommended: {nudge.recommendedAction}</p>
-              {formatNudgeMoney(nudge) && (
-                <p className="mt-2 text-xs font-bold text-gray-500">{formatNudgeMoney(nudge)}</p>
-              )}
-              <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-                {nudge.entityType === 'opportunity' && (
-                  <button type="button" onClick={() => onDraftFollowUp(nudge)} className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">
-                    Draft follow-up
+                {group.opportunityId && onOpenDeal && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenDeal(group.opportunityId as string)}
+                    className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-brand-blue hover:border-brand-blue/40"
+                  >
+                    Open the deal
                   </button>
                 )}
-                <button type="button" onClick={() => onMarkDone(nudge)} className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white">
-                  Mark done
-                </button>
-                {/* py-1 is the whole fix: these read as quiet text links and
-                    were 16px tall, which is a miss on a thumb. They keep the
-                    quiet look and become a 24px target, the WCAG 2.5.8 floor. */}
-                <span className="flex items-center gap-x-3 gap-y-1 text-xs font-semibold text-gray-500">
-                  <button type="button" onClick={() => onDismiss(nudge)} className="py-1 underline-offset-2 hover:text-gray-800 hover:underline">
-                    Dismiss
-                  </button>
-                  <button type="button" onClick={() => onSnoozeTomorrow(nudge)} className="py-1 underline-offset-2 hover:text-indigo-700 hover:underline">
-                    Snooze tomorrow
-                  </button>
-                  <button type="button" onClick={() => onSnoozeNextWeek(nudge)} className="py-1 underline-offset-2 hover:text-indigo-700 hover:underline">
-                    Snooze next week
-                  </button>
-                </span>
+              </div>
+
+              {/* Divided rows, not nested cards. A card inside a card pays for
+                  the same border and padding twice and made the grouped panel
+                  taller than the ungrouped one it replaced. */}
+              <div className="mt-3 flex flex-col divide-y divide-gray-200">
+                {group.nudges.map((nudge) => (
+                  <div key={nudge.id} className="py-3 first:pt-0 last:pb-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <NudgeUrgencyBadge urgency={nudge.urgency} />
+                      <Badge label={nudge.source} tone={nudge.source === 'outcome-learning' ? 'purple' : 'blue'} />
+                      <span className="ml-auto text-xs font-bold text-gray-500">{formatNudgeDueDate(nudge)}</span>
+                    </div>
+                    {/* An alarm's title is a door: it lands on the exact record
+                        that raised it, never on a page top. */}
+                    {nudgeEntityHref(nudge) ? (
+                      <Link
+                        to={nudgeEntityHref(nudge)}
+                        className="mt-2 block text-sm font-bold text-navy underline-offset-2 hover:text-brand-blue hover:underline"
+                      >
+                        {nudge.title}
+                      </Link>
+                    ) : (
+                      <p className="mt-2 text-sm font-bold text-navy">{nudge.title}</p>
+                    )}
+                    {/* Only where it adds something: the account is the card's
+                        heading, so repeating it per row is the noise this
+                        grouping removed. */}
+                    {nudge.opportunityName && (
+                      <p className="mt-0.5 text-xs font-bold uppercase tracking-wide text-gray-400">{nudge.opportunityName}</p>
+                    )}
+                    {/* Some pipeline-defense nudges carry a whole review answer
+                        as their reason; the row points at the risk, the full
+                        answer lives in Pipeline Defense. */}
+                    {/* The reason is why the alarm fired; the recommendation is
+                        what to do about it. On a watch-list the second is the
+                        one you act on, so the reason is a hover away and the
+                        recommendation is the line that reads. */}
+                    <p className="mt-1 line-clamp-1 text-xs leading-5 text-gray-500" title={nudge.reason}>{nudge.reason}</p>
+                    <p className="mt-1 text-sm font-semibold text-navy">
+                      {nudge.recommendedAction}
+                      {formatNudgeMoney(nudge) && (
+                        <span className="ml-2 text-xs font-bold text-gray-500">{formatNudgeMoney(nudge)}</span>
+                      )}
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+                      {nudge.entityType === 'opportunity' && (
+                        <button type="button" onClick={() => onDraftFollowUp(nudge)} className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">
+                          Draft follow-up
+                        </button>
+                      )}
+                      <button type="button" onClick={() => onMarkDone(nudge)} className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white">
+                        Mark done
+                      </button>
+                      {/* py-1 is the whole fix: these read as quiet text links and
+                          were 16px tall, which is a miss on a thumb. They keep the
+                          quiet look and become a 24px target, the WCAG 2.5.8 floor. */}
+                      <span className="flex items-center gap-x-3 gap-y-1 text-xs font-semibold text-gray-500">
+                        <button type="button" onClick={() => onDismiss(nudge)} className="py-1 underline-offset-2 hover:text-gray-800 hover:underline">
+                          Dismiss
+                        </button>
+                        <button type="button" onClick={() => onSnoozeTomorrow(nudge)} className="py-1 underline-offset-2 hover:text-indigo-700 hover:underline">
+                          Snooze tomorrow
+                        </button>
+                        <button type="button" onClick={() => onSnoozeNextWeek(nudge)} className="py-1 underline-offset-2 hover:text-indigo-700 hover:underline">
+                          Snooze next week
+                        </button>
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </article>
           ))}

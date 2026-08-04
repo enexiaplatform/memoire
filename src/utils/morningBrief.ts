@@ -23,6 +23,22 @@ type MorningBriefInput = {
    * the brief must still be able to offer the retention question.
    */
   retentionCount?: number;
+  /**
+   * Nudges the cockpit above the brief has already put on screen.
+   *
+   * The brief opened with `nudges[0]` and the cockpit's "which deals are hot"
+   * card picked the same record, formatted the same way - so the top of Today
+   * printed one sentence twice, about 100px apart. The brief keeps its headline
+   * (a count, not a record) and moves on to the next thing the operator has not
+   * already been told.
+   */
+  claimedNudgeIds?: string[];
+  /**
+   * Customers the cockpit already named. A workspace usually raises more than
+   * one alarm per struggling account, so skipping by nudge id alone just moved
+   * the brief onto the *other* alarm about the same customer.
+   */
+  claimedAccounts?: string[];
   today?: string;
 };
 
@@ -35,7 +51,16 @@ export function buildMorningBrief(input: MorningBriefInput): MorningBrief {
   const today = sanitizeBusinessDate(input.today) || todayDateKey();
   const nudges = input.nudges || [];
   const urgent = nudges.filter((nudge) => nudge.urgency === 'critical' || nudge.urgency === 'high');
-  const topNudge = nudges[0];
+  const claimed = new Set(input.claimedNudgeIds || []);
+  const claimedAccounts = new Set((input.claimedAccounts || []).map((name) => name.trim().toLowerCase()).filter(Boolean));
+  const unclaimed = (nudge: NudgeRecord) => (
+    !claimed.has(nudge.id) && !claimedAccounts.has((nudge.accountName || '').trim().toLowerCase())
+  );
+  // No fallback on purpose. If every nudge is already on a card above, the
+  // brief has nothing to add about deals, and the honest move is to say the
+  // other two things it knows rather than repeat the strip. The headline still
+  // carries the count.
+  const topNudge = nudges.find(unclaimed);
 
   const headline = urgent.length > 0
     ? `${urgent.length} ${urgent.length === 1 ? 'deal needs' : 'deals need'} attention before anything else.`
