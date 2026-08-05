@@ -60,9 +60,14 @@ const activity = (id, overrides = {}) => ({
 //    anywhere saying so.
 {
   assert.match(store, /pendingSync\?: boolean/, 'a record knows it is owed to the cloud');
+  // Matched on the marking rather than on the exact call text. This used to pin
+  // `createLocalActivity(activity)` character for character and broke the day
+  // that function took a second argument, which told us nothing about whether
+  // the guarantee still held - and a contract that fails for a reason it does
+  // not care about is one people learn to edit rather than read.
   assert.match(
     store,
-    /const record = \{ \.\.\.createLocalActivity\(activity\), pendingSync: true \};/,
+    /const record = \{ \.\.\.createLocalActivity\([^)]*\), pendingSync: true \};/,
     'a capture that could not reach the cloud is marked, not merely saved locally',
   );
   assert.match(store, /pendingSync: item\.pendingSync === true/, 'and the mark survives a reload');
@@ -76,6 +81,21 @@ const activity = (id, overrides = {}) => ({
     listPendingSalesActivities().map((record) => record.id),
     ['waiting'],
     'only what is owed is counted as waiting',
+  );
+
+  // A demo capture is not owed to anybody's account. Without this the offline
+  // queue becomes the back door the sample/live separation closes at the front:
+  // a touch made in the demo sandbox would sit marked as pending and upload
+  // itself into the first real workspace that signs in on this browser.
+  values.clear();
+  values.set(SALES_ACTIVITY_STORAGE_KEY, JSON.stringify([
+    activity('real-waiting', { pendingSync: true }),
+    activity('demo-waiting', { pendingSync: true, source: 'demo', isSample: true }),
+  ]));
+  assert.deepEqual(
+    listPendingSalesActivities().map((record) => record.id),
+    ['real-waiting'],
+    'a sample capture is never queued for the cloud',
   );
 }
 

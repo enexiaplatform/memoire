@@ -473,7 +473,14 @@ export function DailyCapturePage() {
       rawNote: captureText,
       userId: user?.id,
     });
-    const result = await saveSalesActivity(classified, dataUserId);
+    // Tagged at birth like every other record the demo sandbox can create, so
+    // "clear sample data" actually reaches it. This is the primary demo path:
+    // untagged, every capture a visitor made while trying the product stayed in
+    // their real workspace the moment they signed in on the same browser.
+    const result = await saveSalesActivity(classified, dataUserId, {
+      source: sampleDataActive ? 'demo' : 'user',
+      isSample: sampleDataActive,
+    });
     const memory = recordCaptureCorrections(corrections, user?.id);
     setCaptureCorrections(memory.corrections);
     setAccountAliases(memory.aliases);
@@ -511,7 +518,10 @@ export function DailyCapturePage() {
 
     setSaveState('saving');
     setMessage('Saving quick capture...');
-    const result = await saveSalesActivity(prepared, dataUserId);
+    const result = await saveSalesActivity(prepared, dataUserId, {
+      source: sampleDataActive ? 'demo' : 'user',
+      isSample: sampleDataActive,
+    });
     setActivities((current) => [result.record, ...current.filter((item) => item.id !== result.record.id)]);
     setLastSavedActivity(result.record);
     setQuickForm((current) => ({

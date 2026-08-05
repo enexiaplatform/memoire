@@ -114,9 +114,18 @@ export function mergePendingIntoCloud(
   return [...pending, ...cloud.filter((record) => !pendingIds.has(record.id))].sort(sortNewestFirst);
 }
 
-/** Everything captured on this device that the cloud has not accepted yet. */
+/**
+ * Everything captured on this device that the cloud has not accepted yet.
+ *
+ * Sample records are excluded rather than merely unsent: a demo touch is not
+ * owed to anybody's account, and a record already carrying `pendingSync` from
+ * before captures were tagged would otherwise be uploaded to the first real
+ * workspace that signs in on this browser.
+ */
 export function listPendingSalesActivities(): SalesActivityRecord[] {
-  return loadLocalActivities().filter((record) => record.pendingSync);
+  return loadLocalActivities()
+    .filter((record) => record.pendingSync)
+    .filter((record) => record.source !== 'demo' && record.isSample !== true);
 }
 
 export const PENDING_SYNC_CHANGED_EVENT = 'memoire:pending-sync-changed';
@@ -175,11 +184,42 @@ export function filterSalesActivitiesByPeriod(
   return activities.filter((activity) => isBusinessDateInRange(activity.activityDate, period.start, period.end));
 }
 
+/**
+ * Which workspace a capture belongs to.
+ *
+ * Every other store in this app tags its records at birth, and this one did not:
+ * it wrote `source: 'user', isSample: false` on every touch, unconditionally.
+ * The demo sandbox therefore produced captures that looked exactly like real
+ * ones, and `isSampleRecord` in utils/sampleData.ts - which clears by `source`,
+ * by `isSample`, by a `demo-` id or by a `demo-data` tag - matched none of them.
+ * The sweep over SALES_ACTIVITY_STORAGE_KEY was already wired and already
+ * asserted by the sample/live contract; what was missing was the label it sweeps
+ * on. So anyone who tried the demo and then signed in on the same browser kept
+ * every demo touch in their real workspace, on the product's own primary demo
+ * path, and the "only records marked as demo are removed" banner was true only
+ * because nothing had been marked.
+ */
+export type SalesActivityWorkspaceTag = { source?: 'demo' | 'user'; isSample?: boolean };
+
 export async function saveSalesActivity(
   activity: ClassifiedSalesActivity,
-  userId?: string | null
+  // Explicitly passed rather than optional, so the required tag can follow it.
+  // Every caller already supplies it; `undefined` still means "no account".
+  userId: string | null | undefined,
+  // Required, deliberately. It defaulted to `{}` for one revision and that is
+  // the same bug in a politer form: a caller that forgets it silently writes a
+  // live record, which is exactly what every caller was doing before. Making
+  // the compiler ask the question is the only version of this that cannot rot.
+  workspace: SalesActivityWorkspaceTag,
 ): Promise<{ record: SalesActivityRecord; mode: 'local' | 'cloud'; warning?: string }> {
-  if (canUseSalesActivityCloudStore(userId)) {
+  // A sample capture never reaches the account, whatever id it was handed.
+  // Callers already pass `undefined` for the user in demo mode, so this is a
+  // second lock on the same door - but it is the door that decides whether a
+  // stranger's demo lands in a paying workspace, and `pendingSync` below would
+  // otherwise queue a demo touch for upload the moment a connection returned.
+  const demoOnly = workspace.isSample === true || workspace.source === 'demo';
+
+  if (!demoOnly && canUseSalesActivityCloudStore(userId)) {
     try {
       const record = await createCloudActivity(activity, userId as string);
       invalidateWorkspaceCollection('activities');
@@ -189,7 +229,7 @@ export async function saveSalesActivity(
       // Owed to the cloud, not merely saved locally. Without the flag this
       // capture is indistinguishable from one made while signed out, and
       // nothing would ever send it.
-      const record = { ...createLocalActivity(activity), pendingSync: true };
+      const record = { ...createLocalActivity(activity, workspace), pendingSync: true };
       saveLocalActivityRecord(record);
       invalidateWorkspaceCollection('activities');
       announcePendingSync();
@@ -202,7 +242,7 @@ export async function saveSalesActivity(
     }
   }
 
-  const record = createLocalActivity(activity);
+  const record = createLocalActivity(activity, workspace);
   saveLocalActivityRecord(record);
   invalidateWorkspaceCollection('activities');
   return { record, mode: 'local' };
@@ -410,7 +450,10 @@ async function createCloudActivity(
   return rowToRecord(data as SalesActivityRow);
 }
 
-function createLocalActivity(activity: ClassifiedSalesActivity): SalesActivityRecord {
+function createLocalActivity(
+  activity: ClassifiedSalesActivity,
+  workspace: SalesActivityWorkspaceTag = {},
+): SalesActivityRecord {
   const timestamp = new Date().toISOString();
   const tags = mergeActivitySourceTags(activity.tags, activity);
   return {
@@ -420,8 +463,8 @@ function createLocalActivity(activity: ClassifiedSalesActivity): SalesActivityRe
     nextActions: normalizeNextActions(activity.nextActions),
     tags,
     id: createId(),
-    source: 'user',
-    isSample: false,
+    source: workspace.source ?? 'user',
+    isSample: workspace.isSample === true,
     linkedOpportunityId: '',
     linkedOpportunityName: '',
     linkedAccountName: '',

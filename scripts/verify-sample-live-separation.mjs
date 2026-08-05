@@ -114,4 +114,73 @@ assert.equal(page.includes('createInitialPipelineDefenseDeals'), false, 'Pipelin
   );
 }
 
+// 9. A sweep is only as good as the label it sweeps on.
+//
+// Check 8 has asserted since it was written that clearSampleDataset clears
+// sample activities, and it passed the whole time the bug existed: the sweep ran
+// over SALES_ACTIVITY_STORAGE_KEY and matched nothing, because the capture store
+// wrote `source: 'user', isSample: false` on every touch unconditionally. So
+// every capture made in the demo - the product's primary demo path - stayed in
+// the workspace of whoever signed in next on that browser, under a banner
+// promising that only records marked as demo are removed. Nothing was marked.
+//
+// The label is therefore a contract of its own: every path that creates a touch
+// must say which workspace it belongs to, and a sample touch must never be
+// offered to the account.
+{
+  const store = readFileSync('src/services/salesActivityStore.ts', 'utf8');
+
+  const local = store.slice(store.indexOf('function createLocalActivity'), store.indexOf('function rowToRecord'));
+  assert.ok(local.length > 0, 'createLocalActivity must be findable');
+  assert.equal(
+    /source: 'user',\s*\n\s*isSample: false,/.test(local),
+    false,
+    'a capture must not be hard-coded as a live record - the demo writes through this function too',
+  );
+  assert.match(local, /workspace\.source/, 'a capture takes its source from the workspace it was made in');
+  assert.match(local, /workspace\.isSample/, 'a capture takes its sample flag from the workspace it was made in');
+
+  // A demo touch never reaches the account, whatever user id it is handed, and
+  // never queues itself for upload.
+  const save = store.slice(store.indexOf('export async function saveSalesActivity'), store.indexOf('export async function deleteSalesActivity'));
+  assert.match(save, /workspace\.isSample === true \|\| workspace\.source === 'demo'/, 'saveSalesActivity must refuse the cloud for a sample capture');
+  const pending = store.slice(store.indexOf('export function listPendingSalesActivities'), store.indexOf('export const PENDING_SYNC_CHANGED_EVENT'));
+  assert.match(pending, /source !== 'demo' && record\.isSample !== true/, 'a sample capture is never owed to the cloud');
+
+  // The workspace tag is a required parameter, not an optional one. An optional
+  // tag is this same bug in a politer form: a caller that forgets it writes a
+  // live record, which is what every caller was doing. The compiler now asks.
+  assert.equal(
+    /workspace: SalesActivityWorkspaceTag = \{\}/.test(save),
+    false,
+    'the workspace tag must not default - a forgotten tag must fail the build, not write a live record',
+  );
+  assert.match(save, /workspace: SalesActivityWorkspaceTag,/, 'saveSalesActivity must require the workspace tag');
+
+  // Required is not the same as correct - `{}` would still compile - so every
+  // surface that writes a touch is checked to pass the real flag. This is how
+  // the bug hid for so long: the sweep looked wired and the callers were not.
+  for (const file of [
+    'src/features/dailyCapture/DailyCapturePage.tsx',
+    'src/features/v31/FollowUpComposerPanel.tsx',
+    'src/features/dashboard/TodayCommitmentStrip.tsx',
+  ]) {
+    const source = readFileSync(file, 'utf8');
+    const callSites = [...source.matchAll(/saveSalesActivity\(/g)].map((match) => match.index);
+    assert.ok(callSites.length > 0, `${file} no longer writes touches - drop it from this list`);
+    callSites.forEach((at) => {
+      // The tag is the last argument, so it sits within the call's own text.
+      // A window rather than a parse: the arguments are object literals with
+      // nested braces, and a brace-counter here would be a second parser to
+      // maintain for no extra certainty.
+      const call = source.slice(at, at + 1400);
+      assert.match(
+        call,
+        /isSample: sampleDataActive/,
+        `${file} writes a touch without tagging the workspace it was made in (call at index ${at}) - that capture survives the demo purge`,
+      );
+    });
+  }
+}
+
 console.log('Sample/live separation contract verified.');

@@ -76,6 +76,10 @@ export function FollowUpComposerPanel({ initialContext, onClose, onActivityLogge
     if (!draft || logState === 'saving' || logState === 'saved') return;
     setLogState('saving');
     setLogMessage('');
+    // One read of the flag for both the account id and the workspace tag, so a
+    // follow-up logged in the demo can never be tagged live because the two
+    // calls disagreed about which workspace this is.
+    const sampleDataActive = hasLocalSampleData();
     try {
       const result = await saveSalesActivity({
         accountName: context.accountName,
@@ -88,7 +92,10 @@ export function FollowUpComposerPanel({ initialContext, onClose, onActivityLogge
         tags: ['follow-up'],
         rawNote: `Subject: ${draft.subject}\n\n${draft.body}`,
         activityDate: toLocalDateKey(new Date()),
-      }, hasLocalSampleData() ? undefined : user?.id);
+      }, sampleDataActive ? undefined : user?.id, {
+        source: sampleDataActive ? 'demo' : 'user',
+        isSample: sampleDataActive,
+      });
       setLogState('saved');
       setLogMessage(result.warning || 'Logged as a customer touch - silence tracking updated.');
       trackProductEvent('commercial_risk_acted_on');

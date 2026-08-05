@@ -201,23 +201,13 @@ export function TodayCommitmentStrip({
         // `plan-completion` is the marker; the second tag carries the identity of
         // the exact task, so a touch written from here can always be traced back
         // to the box that produced it.
-        //
-        // The third is a data-safety tag, not a label. `saveSalesActivity` writes
-        // every touch as `source: 'user', isSample: false`, so a touch logged
-        // inside the demo sandbox survives the demo purge and lands in the live
-        // workspace - `isSampleRecord` in utils/sampleData.ts clears by source,
-        // by a `demo-` id, or by this tag, and a capture matches none of the
-        // first two. Tagging is the one purge criterion reachable from here
-        // without changing the store, which Capture and the follow-up composer
-        // both share and which has the same hole.
-        tags: [
-          'plan-completion',
-          `plan:${item.derivedKey || item.id}`,
-          ...(sampleDataActive ? ['demo-data'] : []),
-        ],
+        tags: ['plan-completion', `plan:${item.derivedKey || item.id}`],
         rawNote: `${item.tag ? `[${item.tag}] ` : ''}${item.label}\n\n${text}`,
         activityDate: today,
-      }, userId);
+      }, userId, {
+        source: sampleDataActive ? 'demo' : 'user',
+        isSample: sampleDataActive,
+      });
 
       setLogState('saved');
       // Says where it actually went. A task typed onto a day with no customer
