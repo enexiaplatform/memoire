@@ -157,7 +157,12 @@ export const featureRegistry: FeatureRecord[] = [
     routeBehavior: 'primary',
     navVisible: true,
     analytics: 'active',
-    dataRetention: 'Owns quotes and money checkpoints. Not an accounting ledger.',
+    // Purchase costs joined this list on 2026-08-05 with the Cost Analysis
+    // module. Still not an accounting ledger: one figure per order, no expense
+    // categories, no period, no double entry - it exists to answer "did this
+    // order make money", which is a commercial question about a record already
+    // on the page. The accounting statement remains behind its own flag.
+    dataRetention: 'Owns quotes, money checkpoints and per-order purchase costs. Not an accounting ledger.',
     killOrActivationCondition: 'Never - commercial money flow is the differentiator.',
   },
   {
@@ -304,6 +309,35 @@ export const featureRegistry: FeatureRecord[] = [
       'Retire it if the operator stops opening it between weekly reviews - that would mean the daily loop on Today and the weekly loop in Review already cover the question, and this is only decoration.',
   },
   {
+    id: 'stakeholders',
+    label: 'Stakeholders',
+    // Promoted from `embedded` to a rail item on 2026-08-05, on the operator's
+    // report that the data existed and appeared on no tab they could reach.
+    //
+    // The old reasoning - "a stakeholder is a participant, not a destination" -
+    // was right about the record and wrong about the question. Accounts and
+    // Opportunities each show the people on *that* record, which answers "who is
+    // on this deal". It cannot answer the question this operator actually has:
+    // "who do I know at all, where are my champions, and which accounts have
+    // nobody". That is a Records lookup, exactly like opening Accounts to look
+    // up a customer, and the only surface that answers it was reachable solely
+    // by typing the URL.
+    //
+    // Global rather than a seventh primary destination, and the distinction is
+    // the same one Activity carries: you do not run the day here. The account
+    // and the deal remain where stakeholder work happens; this is the index
+    // over it. PRIMARY_DESTINATION_IDS is unchanged, which is the contract.
+    status: 'global',
+    ownerSurface: 'stakeholders',
+    route: '/app/stakeholders',
+    routeBehavior: 'primary',
+    navVisible: true,
+    analytics: 'active',
+    dataRetention: 'Source of truth for stakeholder records. Also shown on Account and Opportunity.',
+    killOrActivationCondition:
+      'Retire it if the operator never looks people up outside a deal - that would mean the Account and Opportunity panels already cover it, and this is a second door onto the same records.',
+  },
+  {
     id: 'business-vault',
     label: 'Business Vault',
     status: 'global',
@@ -368,19 +402,6 @@ export const featureRegistry: FeatureRecord[] = [
     analytics: 'retained',
     dataRetention: 'Plan items preserved and shown under Plan > Upcoming.',
     killOrActivationCondition: 'Stays embedded - a plan item is a future-dated action, not a module.',
-  },
-  {
-    id: 'stakeholders',
-    label: 'Stakeholders',
-    status: 'embedded',
-    ownerSurface: 'accounts/opportunities',
-    route: '/app/stakeholders',
-    routeBehavior: 'contextual',
-    navVisible: false,
-    analytics: 'deprecated',
-    dataRetention: 'Stakeholder records preserved; shown on Account and Opportunity.',
-    killOrActivationCondition:
-      'Stays embedded - a stakeholder is a participant, not a destination. The route survives as the editor behind the Account and Opportunity panels, because those panels are read-only.',
   },
   {
     id: 'objections',
@@ -559,7 +580,7 @@ export const primaryNavigation: FeatureRecord[] = PRIMARY_DESTINATION_IDS.map((i
 });
 
 /** Always reachable, never a primary destination. */
-export const globalActions: FeatureRecord[] = ['capture', 'search-insights', 'activity', 'business-lens', 'business-vault', 'settings'].map((id) => {
+export const globalActions: FeatureRecord[] = ['capture', 'search-insights', 'activity', 'stakeholders', 'business-lens', 'business-vault', 'settings'].map((id) => {
   const feature = byId.get(id);
   if (!feature) throw new Error(`Feature registry is missing global action "${id}"`);
   return feature;
@@ -598,7 +619,11 @@ const NAVIGATION_GROUP_IDS: { id: NavGroupId; label: string; itemIds: string[] }
     // Settings hid it. Position in the rail is presentation; status is the
     // contract, and the contract is unchanged - it is still absent from
     // PRIMARY_DESTINATION_IDS and still writes nothing.
-    itemIds: ['accounts', 'opportunities', 'money', 'activity'],
+    // Stakeholders sits directly under Accounts from 2026-08-05: a stakeholder
+    // is a person inside a customer, so the two rows read as one pair. Same
+    // contract as Activity above - present in the rail, absent from
+    // PRIMARY_DESTINATION_IDS.
+    itemIds: ['accounts', 'stakeholders', 'opportunities', 'money', 'activity'],
   },
   {
     id: 'tools',

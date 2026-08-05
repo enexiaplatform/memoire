@@ -51,9 +51,9 @@ const app = readFileSync('src/App.tsx', 'utf8');
     [...railIds].sort(),
     [
       'accounts', 'activity', 'business-lens', 'business-vault', 'money',
-      'opportunities', 'review', 'search-insights', 'settings', 'timeline', 'today',
+      'opportunities', 'review', 'search-insights', 'settings', 'stakeholders', 'timeline', 'today',
     ],
-    'the rail is the six primary destinations plus the five routed global surfaces - no more, no less',
+    'the rail is the six primary destinations plus the six routed global surfaces - no more, no less',
   );
 
   // No hard-coded nav target may sneak in beside the registry - that is exactly
@@ -87,12 +87,16 @@ const app = readFileSync('src/App.tsx', 'utf8');
 // coming back is not a page coming back. What must never come back is the
 // retired *surface*, so the check is on the record that owns it: these ids may
 // keep their routes, and must never become visible in navigation.
+// `stakeholders` left this list on 2026-08-05. It is not a retired surface
+// coming back: the *page* was never retired, it was simply unreachable, and an
+// operator reported having stakeholder data that appeared on no tab. It is now
+// a rail item with `status: 'global'` and is still absent from
+// PRIMARY_DESTINATION_IDS, which check 4 below asserts.
 for (const retiredId of [
   'dashboard',
   'pipeline-defense',
   'playbook',
   'assets',
-  'stakeholders',
   'objections',
   'quotes',
   'operating-system',
@@ -123,12 +127,12 @@ for (const retiredId of [
   assert.ok(topNav.includes('to="/app/capture"'), 'Capture must stay a global action in the top bar');
   const globals = registry.match(/export const globalActions[\s\S]*?\]\.map/);
   assert.ok(globals, 'featureRegistry must declare globalActions');
-  for (const id of ['capture', 'search-insights', 'activity', 'business-lens', 'business-vault', 'settings']) {
+  for (const id of ['capture', 'search-insights', 'activity', 'stakeholders', 'business-lens', 'business-vault', 'settings']) {
     assert.ok(globals[0].includes(`'${id}'`), `global action missing from registry: ${id}`);
   }
 
   const primaries = registry.match(/export const PRIMARY_DESTINATION_IDS = \[([\s\S]*?)\] as const;/);
-  for (const lens of ['business-vault', 'activity', 'business-lens']) {
+  for (const lens of ['business-vault', 'activity', 'business-lens', 'stakeholders']) {
     assert.equal(
       primaries[1].includes(lens),
       false,
@@ -179,6 +183,7 @@ for (const retiredId of [
     ['Capture', 'src/features/dailyCapture/DailyCapturePage.tsx'],
     ['Search & Insights', 'src/features/v31/AskMemoirePage.tsx'],
     ['Activity', 'src/features/activity/ActivityPage.tsx'],
+    ['Stakeholders', 'src/features/stakeholders/StakeholdersPage.tsx'],
     ['Dashboard lens', 'src/features/business/BusinessLensPage.tsx'],
     ['Business Vault', 'src/features/vault/BusinessVaultPage.tsx'],
     ['Settings', 'src/features/settings/SettingsPage.tsx'],
@@ -328,6 +333,14 @@ for (const removed of [
 }
 
 // 9. Money is a commercial-flow surface, not an accounting product.
+//
+// The Cost Analysis module added on 2026-08-05 is deliberately not behind this
+// flag and does not breach it: it holds one purchase cost per order and answers
+// "did this order make money", with no expense categories, no accounting period
+// and no ledger. What the flag gates is the cash-basis statement in utils/pnl.ts
+// and the expense book behind it. scripts/verify-order-margin.mjs holds that
+// line from the other side - it fails if the margin model ever starts reading
+// expenses or a cash position.
 {
   const money = readFileSync('src/features/revenue/RevenueViewPage.tsx', 'utf8');
   assert.ok(

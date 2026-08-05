@@ -58,6 +58,7 @@ const CLOUD_TABLE_BY_KEY: Record<string, CloudJsonCollectionTable> = {
   'memoire.planItems.v1': 'plan_items',
   'memoire.accountMerges.v1': 'account_merges',
   'memoire.orderMilestones.v1': 'order_milestones',
+  'memoire.orderCosts.v1': 'order_costs',
   'memoire.supplierCommitments.v1': 'supplier_commitments',
   'memoire.expenses.v1': 'expenses',
 };

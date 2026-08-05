@@ -543,9 +543,16 @@ export function TodayPage() {
   const handleTodayLinkCapture = (event: React.MouseEvent<HTMLDivElement>) => {
     const anchor = (event.target as HTMLElement).closest?.('a');
     if (!anchor || anchor.dataset.quickLookExempt === 'true') return;
-    const match = (anchor.getAttribute('href') || '').match(/^\/app\/opportunities\?opportunityId=([^&]+)$/);
-    if (!match) return;
-    const opportunity = data.opportunities.find((item) => item.id === decodeURIComponent(match[1]));
+    // Any deal link, wherever the id sits in the query and whatever else rides
+    // along with it. The old pattern demanded `?opportunityId=<id>` and nothing
+    // more, so a link that carried a second parameter - or wrote the id
+    // second - fell through and ejected the operator to the Opportunities tab,
+    // which is the exact behaviour this interception exists to prevent.
+    const href = anchor.getAttribute('href') || '';
+    if (!href.startsWith('/app/opportunities?')) return;
+    const opportunityId = new URLSearchParams(href.slice(href.indexOf('?') + 1)).get('opportunityId');
+    if (!opportunityId) return;
+    const opportunity = data.opportunities.find((item) => item.id === opportunityId);
     if (!opportunity) return;
     event.preventDefault();
     event.stopPropagation();
@@ -674,7 +681,20 @@ export function TodayPage() {
                   a card that renders nothing simply leaves the row. */}
               <div className="flex flex-col gap-4 lg:flex-row lg:[&>section]:min-w-0 lg:[&>section]:flex-1">
                 <CommittedWeekStrip userId={sampleDataActive ? undefined : user?.id} sampleDataActive={sampleDataActive} />
-                <TodayCommitmentStrip userId={sampleDataActive ? undefined : user?.id} sampleDataActive={sampleDataActive} />
+                <TodayCommitmentStrip
+                  userId={sampleDataActive ? undefined : user?.id}
+                  sampleDataActive={sampleDataActive}
+                  onOpenDeal={(opportunityId) => {
+                    const opportunity = data.opportunities.find((item) => item.id === opportunityId);
+                    if (opportunity) setQuickLookOpportunity(opportunity);
+                  }}
+                  // Not forced. `saveSalesActivity` already invalidated the
+                  // activities collection, so the cached read misses and that
+                  // one collection is re-fetched while the other fifteen stay
+                  // warm. `force: true` would bypass every per-collection cache
+                  // and pull the whole ~3MB workspace back for one logged note.
+                  onActivityLogged={() => { void refreshDashboard(); }}
+                />
               </div>
               {/* A promise to a named person is work you owe, not a warning
                   about a deal - so it belongs beside the other two commitment

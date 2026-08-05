@@ -605,6 +605,40 @@ export function createDerivedCompletionRecord(
 }
 
 /**
+ * The record that flips a board item's tick, whichever family it belongs to.
+ *
+ * Personal items are their own record and are edited in place; derived items
+ * keep the deal, the quote and the expense untouched and store a completion
+ * stub instead. Every surface with a checkbox on it has to know that difference,
+ * and each one that re-derived the rule was one more place it could drift - so
+ * the rule is written once here and Today and the plan board both call it.
+ *
+ * Returns null when a personal item has no record behind it, which can only
+ * happen if the board and the store are momentarily out of step.
+ */
+export function createPlanItemToggleRecord(
+  item: PlanItem,
+  done: boolean,
+  records: PlanRecord[],
+  options: { source?: 'demo' | 'user'; isSample?: boolean } = {},
+): PlanRecord | null {
+  const now = new Date().toISOString();
+
+  if (item.kind === 'personal') {
+    const existing = records.find((record) => record.id === item.id);
+    if (!existing) return null;
+    return { ...existing, done, doneAt: done ? now : undefined, updatedAt: now };
+  }
+
+  const existing = records.find((record) => record.derivedKey === item.derivedKey);
+  return createDerivedCompletionRecord(item, done, {
+    existing,
+    source: options.source,
+    isSample: options.isSample,
+  });
+}
+
+/**
  * What a link option is called on screen.
  *
  * The stored kind stays `'deal'` because it keys saved plan records and

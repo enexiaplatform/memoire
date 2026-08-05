@@ -35,7 +35,7 @@ import {
   buildDealDerivedKey,
   buildPlanBoard,
   buildPlanLinkOptions,
-  createDerivedCompletionRecord,
+  createPlanItemToggleRecord,
   createDismissedSuggestionRecord,
   createPersonalPlanRecord,
   formatPlanRangeLabel,
@@ -209,24 +209,15 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
   ), [draft, draftLink, knownAccountNames, knownBrands, opportunities]);
 
   const toggleItem = useCallback((item: PlanItem) => {
-    if (item.kind === 'personal') {
-      const existing = records.find((record) => record.id === item.id);
-      if (!existing) return;
-      setRecords(savePlanItem({
-        ...existing,
-        done: !existing.done,
-        doneAt: existing.done ? undefined : new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }));
-      return;
-    }
-
-    const existing = records.find((record) => record.derivedKey === item.derivedKey);
-    setRecords(savePlanItem(createDerivedCompletionRecord(item, !item.done, {
-      existing,
+    const record = createPlanItemToggleRecord(item, !item.done, records, {
       source: sampleDataActive ? 'demo' : 'user',
       isSample: sampleDataActive,
-    })));
+    });
+    if (!record) return;
+    setRecords(savePlanItem(record));
+    // Fires for typed items too. It used to return early for them, so a week
+    // spent on the operator's own work counted as zero commitments kept - and
+    // Today's strip, ticking the identical box, always counted it.
     trackProductEvent('commitment_completed');
   }, [records, sampleDataActive]);
 

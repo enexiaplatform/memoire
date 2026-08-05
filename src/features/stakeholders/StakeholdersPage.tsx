@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Filter, Plus, Save, Search, Trash2, UsersRound, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
+import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { type CrmLiteOpportunity } from '../../services/opportunityStore';
@@ -152,7 +153,7 @@ export function StakeholdersPage() {
   };
 
   return (
-    <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
+    <PageContainer>
       {/* Entity options for the add/edit form: names come from the records the
           workspace already knows, so a typed stakeholder joins the data spine
           instead of inventing a new spelling. */}
@@ -168,23 +169,22 @@ export function StakeholdersPage() {
           ...stakeholders.map((item) => item.opportunityName),
         ].filter(Boolean))].sort().map((name) => <option key={name} value={name} />)}
       </datalist>
-      <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">Opened from Accounts and Opportunities</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-navy">Stakeholders</h1>
-          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-gray-600">
-            Map the people who influence your B2B deals: champions, buyers, procurement, users, blockers, and decision makers.
-          </p>
-        </div>
-        <DataModePill
-          compact
-          isLoading={authLoading}
-          isAuthenticated={isAuthenticated}
-          isSupabaseConfigured={isSupabaseConfigured}
-          cloudAvailable={canUseStakeholderCloudStore(dataUserId)}
-          hasSampleData={sampleDataActive}
-        />
-      </header>
+      <PageHeader
+        eyebrow="Records"
+        title="Stakeholders"
+        meta={loading ? undefined : `${visibleStakeholders.length} shown of ${stakeholders.length}`}
+        description="Everyone who influences a deal, across every customer: champions, buyers, procurement, users and blockers. The account and the deal show the people on that record; this is the whole book."
+        actions={
+          <DataModePill
+            compact
+            isLoading={authLoading}
+            isAuthenticated={isAuthenticated}
+            isSupabaseConfigured={isSupabaseConfigured}
+            cloudAvailable={canUseStakeholderCloudStore(dataUserId)}
+            hasSampleData={sampleDataActive}
+          />
+        }
+      />
 
       <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -239,7 +239,7 @@ export function StakeholdersPage() {
           onDelete={selectedStakeholder ? () => handleDelete(selectedStakeholder) : undefined}
         />
       </section>
-    </div>
+    </PageContainer>
   );
 }
 

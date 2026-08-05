@@ -152,7 +152,28 @@ const anchor = new Date(2026, 6, 22); // Wed of the Mon 2026-07-20 week
     /updateOpportunity|saveOpportunity|deleteOpportunity|updateSalesActivity/,
     'checking an item off must not mutate the deal or the touch it came from',
   );
-  assert.match(toggle, /createDerivedCompletionRecord/, 'a derived tick is stored as its own completion stub');
+  // The rule "a derived tick is stored as its own completion stub" is written
+  // once, in weeklyPlan's shared toggle, and every surface with one of these
+  // checkboxes on it calls that. It used to be re-implemented per surface, and
+  // Today's strip and this board each carried their own copy of the personal-vs-
+  // derived branch - two copies of the one rule that keeps the board from
+  // becoming a second source of truth for a deal.
+  assert.match(toggle, /createPlanItemToggleRecord/, 'the board ticks through the shared plan toggle');
+  const strip = readFileSync(new URL('../src/features/dashboard/TodayCommitmentStrip.tsx', import.meta.url), 'utf8');
+  assert.match(strip, /createPlanItemToggleRecord/, "Today's plan strip ticks through the same shared toggle");
+  assert.doesNotMatch(
+    strip.slice(strip.indexOf('const toggleItem'), strip.indexOf('const openItem')),
+    /updateOpportunity|saveOpportunity|deleteOpportunity|updateSalesActivity/,
+    'ticking on Today must not mutate the deal or the touch it came from either',
+  );
+
+  const model = readFileSync(new URL('../src/utils/weeklyPlan.ts', import.meta.url), 'utf8');
+  const sharedToggle = model.slice(
+    model.indexOf('export function createPlanItemToggleRecord'),
+    model.indexOf('export function planLinkKindLabel'),
+  );
+  assert.ok(sharedToggle.length > 0, 'the shared plan toggle must be findable');
+  assert.match(sharedToggle, /createDerivedCompletionRecord/, 'a derived tick is stored as its own completion stub');
 
   // Every write the board is allowed to make, and the only fields it may set.
   const dealWrites = [...page.matchAll(/opportunityToFormInput\(opportunity\), ([a-zA-Z]+):/g)].map((match) => match[1]);

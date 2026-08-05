@@ -7,6 +7,7 @@ import { ThreadsSection } from '../threads/ThreadsSection';
 import { CoveragePanel } from './CoveragePanel';
 import { TargetPlanPanel } from './TargetPlanPanel';
 import { OrderBookPanel } from './OrderBookPanel';
+import { CostAnalysisPanel } from './CostAnalysisPanel';
 import { SupplierCommitmentsPanel } from './SupplierCommitmentsPanel';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
@@ -175,6 +176,19 @@ export function RevenueViewPage() {
               and the orders they came to chase. They are still here, folded,
               in the order somebody actually reaches for them. */}
           <OrderBookPanel
+            opportunities={data.opportunities}
+            quotes={data.quotes}
+            dataUserId={dataUserId}
+            sampleDataActive={sampleDataActive}
+          />
+
+          {/* The buy side of the same orders, kept as its own module rather
+              than as columns on the book above. The order book answers "where
+              is my money"; mixing "was it worth it" into the same table makes
+              one surface do two jobs, and the chasing job is the one people
+              open this page for. Silent until a first purchase cost exists -
+              plenty of operators never see the buy side at all. */}
+          <CostAnalysisPanel
             opportunities={data.opportunities}
             quotes={data.quotes}
             dataUserId={dataUserId}
