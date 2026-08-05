@@ -4,6 +4,7 @@ import { ThreadsSection } from '../threads/ThreadsSection';
 import {
   AlertTriangle,
   ArrowUpDown,
+  Check,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -106,11 +107,12 @@ import { type AccountMergeRecord } from '../../services/accountMergeStore';
 import { SuggestInput } from '../../components/common/SuggestInput';
 import { buildAccountAliasIndex, resolveAccountName, type AccountAliasIndex } from '../../utils/accountAliases';
 import {
+  buildProcurementReadiness,
   isProcurementRoute,
   procurementRoutes,
-  PROCUREMENT_ROUTE_GUIDE,
   routeNeedsADate,
 } from '../../utils/procurementPath';
+import { explainPipelineRisk } from '../../utils/revenueView';
 import { accountKey, normalizeEntityName, sameAccount } from '../../utils/accountIdentity';
 import { checkAccountName, type AccountNameCheck } from '../../utils/accountDuplicates';
 import { analyzeStakeholderCoverage, getStakeholdersForOpportunity } from '../../utils/stakeholderGraph';
@@ -3020,6 +3022,10 @@ function OpportunityPanel({
         />
       )}
 
+      {/* Read from `form`, not from the saved record, so it answers about what
+          is on screen right now. */}
+      {mode === 'edit' && form.status === 'Active' && <WhyThisDealIsFlagged form={form} />}
+
       <div className="mt-5 space-y-4">
         <div>
           <SuggestInput
@@ -3136,7 +3142,13 @@ function OpportunityPanel({
         <ProcurementPathField
           value={form.procurementPath}
           expectedCloseDate={form.expectedClosePeriod}
+          deal={{
+            decisionMaker: form.decisionMaker,
+            budgetOwner: form.budgetOwner,
+            technicalCriteria: form.technicalCriteria,
+          }}
           onChange={(value) => update('procurementPath', value)}
+          onUseAsNextAction={(action) => onChange({ ...form, nextAction: action })}
         />
         <TextArea label="Technical criteria" value={form.technicalCriteria} onChange={(value) => update('technicalCriteria', value)} />
         <TextArea label="Next action" value={form.nextAction} onChange={(value) => update('nextAction', value)} />
@@ -3776,8 +3788,13 @@ function StakeholderMap({
               <p className="mt-1 text-sm text-gray-500">No stakeholder-specific next action captured.</p>
             ) : (
               <ul className="mt-2 space-y-1 text-xs leading-5 text-gray-600">
-                {meddicMap.stakeholderNextActions.slice(0, 3).map((action) => (
-                  <li key={`${action.stakeholderName}-${action.action}`}>- {action.stakeholderName}: {action.action}{action.dueDate ? ` (${formatSafeBusinessDate(action.dueDate)})` : ''}</li>
+                {/* Two stakeholders can genuinely owe the same next action -
+                    the demo workspace has exactly that - so name plus action is
+                    not unique, and React was warning it may duplicate or drop a
+                    row. The position in an already-sliced, already-ordered list
+                    is. */}
+                {meddicMap.stakeholderNextActions.slice(0, 3).map((action, index) => (
+                  <li key={`${index}-${action.stakeholderName}-${action.action}`}>- {action.stakeholderName}: {action.action}{action.dueDate ? ` (${formatSafeBusinessDate(action.dueDate)})` : ''}</li>
                 ))}
               </ul>
             )}
@@ -4430,7 +4447,43 @@ function buildCloseFilterOptions(rows: { closePeriod: ClosePeriod }[]): string[]
 }
 
 /**
- * The route this customer can buy through, and what that route demands.
+ * Why this deal is on the watch-list, read from the form rather than the record.
+ *
+ * "Weak pipeline" is raised by three unrelated field states and names none of
+ * them. The first operator filled in the decision maker, the budget owner and
+ * the procurement path on a flagged deal, saved, and the warning stayed -
+ * correctly, because none of those is one of the three. From the outside that
+ * is a product ignoring your work.
+ *
+ * Reading `form` rather than the saved opportunity is the point: the banner
+ * clears the moment the right field is filled, before the save, so the
+ * connection between the edit and the flag is impossible to miss.
+ */
+function WhyThisDealIsFlagged({ form }: { form: OpportunityFormInput }) {
+  const explanation = explainPipelineRisk(form);
+
+  if (!explanation) {
+    return (
+      <div className="mt-4 flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-2.5">
+        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
+        <p className="text-xs font-semibold leading-5 text-emerald-900">
+          Nothing here puts this deal on the watch-list. Save to clear it everywhere.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/60 px-3 py-2.5">
+      <p className="text-xs font-bold uppercase tracking-wide text-amber-800">Why this deal is flagged</p>
+      <p className="mt-1 text-xs font-semibold leading-5 text-amber-900">{explanation.reason}</p>
+      <p className="mt-1 text-xs leading-5 text-amber-800">{explanation.clearedBy}</p>
+    </div>
+  );
+}
+
+/**
+ * The route this customer can buy through, and where this deal stands on it.
  *
  * It replaces an empty textarea that was almost always left blank. Asked as
  * prose, "how do they buy" is a paragraph nobody writes; asked as a route, it
@@ -4438,21 +4491,33 @@ function buildCloseFilterOptions(rows: { closePeriod: ClosePeriod }[]): string[]
  * appear - which is the difference between a field that records the answer and
  * a field that changes what the seller does next.
  *
+ * Until 2026-08-05 it then printed the same three sentences at every deal on
+ * the route, whether or not the seller had already done them. That is a poster.
+ * The route's demands are now checked against the fields this deal already
+ * carries - the budget owner, the decision maker, the technical criteria, the
+ * close date - so the panel states a position (two of four, this one next) and
+ * offers the open one as the next action in one click. Requirements only the
+ * customer can answer never show a tick; they show the question to ask.
+ *
  * A value written before this was a picker is kept as its own option rather
  * than discarded, so no existing note is lost.
  */
 function ProcurementPathField({
   value,
   expectedCloseDate,
+  deal,
   onChange,
+  onUseAsNextAction,
 }: {
   value: string;
   expectedCloseDate: string;
+  deal: { decisionMaker: string; budgetOwner: string; technicalCriteria: string };
   onChange: (value: string) => void;
+  onUseAsNextAction: (action: string) => void;
 }) {
   const trimmed = value.trim();
   const legacy = trimmed && !isProcurementRoute(trimmed) ? trimmed : '';
-  const guide = isProcurementRoute(trimmed) ? PROCUREMENT_ROUTE_GUIDE[trimmed] : null;
+  const readiness = buildProcurementReadiness(trimmed, { ...deal, expectedCloseDate });
   const missingDate = routeNeedsADate(trimmed, expectedCloseDate);
 
   return (
@@ -4471,18 +4536,62 @@ function ProcurementPathField({
         </select>
       </label>
 
-      {guide && (
-        <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
-          <p className="text-xs font-semibold leading-5 text-gray-700">{guide.meaning}</p>
-          <ul className="mt-2 space-y-1">
-            {guide.requires.map((item) => (
-              <li key={item} className="flex items-start gap-1.5 text-xs leading-5 text-gray-600">
-                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-gray-400" />
-                {item}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 text-xs leading-5 text-amber-800">{guide.risk}</p>
+      {readiness && (
+        <div className="mt-2 overflow-hidden rounded-lg border border-gray-200 bg-white">
+          <div className="border-b border-gray-100 bg-gray-50 px-3 py-2.5">
+            <p className="text-xs font-semibold leading-5 text-gray-700">{readiness.guide.meaning}</p>
+            <p className="mt-1 text-[11px] font-semibold text-gray-500">{readiness.guide.typicalDuration}</p>
+          </div>
+
+          <div className="px-3 py-2.5">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">
+              Before a PO can exist ({readiness.metCount}/{readiness.items.length})
+            </p>
+            <ul className="mt-2 space-y-1.5">
+              {readiness.items.map((item) => (
+                <li key={item.label} className="flex items-start gap-2">
+                  <span
+                    className={`mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${
+                      item.met ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'
+                    }`}
+                    aria-hidden
+                  >
+                    {item.met ? <Check className="h-2.5 w-2.5" /> : <span className="h-1 w-1 rounded-full bg-current" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className={`block text-xs leading-5 ${item.met ? 'text-gray-500' : 'font-semibold text-gray-800'}`}>
+                      {item.label}
+                    </span>
+                    {/* What the record actually says, so a tick is checkable
+                        rather than something the panel asserts. */}
+                    {item.met && (
+                      <span className="block truncate text-[11px] leading-5 text-emerald-700" title={item.evidence}>
+                        {item.evidence}
+                      </span>
+                    )}
+                    {!item.met && (
+                      <button
+                        type="button"
+                        onClick={() => onUseAsNextAction(item.action)}
+                        className="mt-0.5 inline-flex min-h-[24px] items-center text-[11px] font-bold text-brand-blue hover:underline"
+                      >
+                        Use as next action: {item.action}
+                      </button>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="border-t border-gray-100 bg-blue-50/50 px-3 py-2.5">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-brand-blue">Ask this week</p>
+            <p className="mt-0.5 text-xs leading-5 text-gray-700">&ldquo;{readiness.guide.askThisWeek}&rdquo;</p>
+          </div>
+
+          <p className="border-t border-gray-100 px-3 py-2 text-[11px] leading-5 text-amber-800">
+            {readiness.guide.risk}
+          </p>
         </div>
       )}
 

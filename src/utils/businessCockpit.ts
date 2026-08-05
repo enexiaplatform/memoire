@@ -17,6 +17,14 @@ export type BusinessCockpitAnswer = {
    */
   subject: string;
   answer: string;
+  /**
+   * Why this is flagged, in the operator's own field names, when the answer can
+   * say. A card that names a customer and a risk but not the condition behind
+   * it is a card you cannot act on: the first operator edited three fields on a
+   * flagged deal and the flag stayed, because none of them was the one holding
+   * it up.
+   */
+  detail?: string;
   href: string;
   urgent: boolean;
   /**
@@ -209,6 +217,7 @@ export function buildBusinessCockpit(input: BusinessCockpitInput): BusinessCockp
       answer: moneyItem
         ? `${moneyItem.risk}: ${moneyItem.accountName || 'Needs confirmation'}${typeof moneyItem.amount === 'number' && moneyItem.currency ? ` (${formatCompactCurrencyAmount(moneyItem.amount, moneyItem.currency)})` : ''}`
         : 'No money action is waiting on you.',
+      detail: moneyItem?.reason,
       href: moneyItem?.href || '/app/revenue',
       urgent: Boolean(moneyItem),
       opportunityId: moneyDealId,

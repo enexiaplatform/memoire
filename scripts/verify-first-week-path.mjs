@@ -86,7 +86,7 @@ const brief = (patch = {}) => ({
 }
 
 // 5. The strip is wired into Today: only while incomplete and not dismissed,
-// above the Supporting detail divider, and it reuses the checklist dismissal.
+// above the first collapsed drawer, and it reuses the checklist dismissal.
 const today = readFileSync('src/features/dashboard/DashboardPage.tsx', 'utf8');
 assert.ok(today.includes('<FirstWeekPathStrip'), 'Today must render the strip');
 assert.ok(
@@ -94,8 +94,8 @@ assert.ok(
   'the strip must be gated on real-workspace, incomplete, and not-dismissed',
 );
 assert.ok(
-  today.indexOf('<FirstWeekPathStrip') < today.indexOf('Supporting detail'),
-  'the strip renders in the action tier, above the supporting-detail divider',
+  today.indexOf('<FirstWeekPathStrip') < today.indexOf('The rest of the watch-list'),
+  'the strip renders in the action tier, above the first collapsed drawer',
 );
 assert.ok(today.includes('dismissTrialActivationChecklist()'), 'dismiss reuses the checklist state, no new store');
 

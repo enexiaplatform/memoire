@@ -35,7 +35,57 @@ export type RevenueActionItem = {
   dueDate?: string;
   href: string;
   source: 'Opportunity' | 'Quote';
+  /**
+   * The specific field state that raised this flag, and the field that clears
+   * it.
+   *
+   * "Weak pipeline" is raised by any one of four unrelated conditions, and the
+   * label named none of them. The first operator filled in the decision maker,
+   * the budget owner and the procurement path on a flagged deal, saved, and the
+   * flag stayed - correctly, because none of those four conditions is about
+   * those fields. From the outside that is indistinguishable from a product
+   * that ignores your edits. A warning that cannot be traced to a field is a
+   * warning the operator can only wait out.
+   */
+  reason?: string;
+  /** The edit that clears it, named as the control the operator will look for. */
+  clearedBy?: string;
 };
+
+/**
+ * Why this deal is in the weak-pipeline list, and what clears it.
+ *
+ * Ordered by which answer is most useful to hear first: a deal with no next
+ * action at all is a different problem from one whose evidence is thin, and
+ * saying "no next action" is more actionable than saying "weak".
+ */
+export function explainPipelineRisk(
+  // Takes the three fields it reads, not a whole record, so the deal editor can
+  // ask the same question of the *unsaved* form. That is what lets the banner
+  // clear the moment the right field is filled, instead of after a save and a
+  // page load - which is how "I updated it and it still warns me" starts.
+  opportunity: Pick<CrmLiteOpportunity, 'nextAction' | 'forecastEvidenceCategory' | 'decisionRecommendation'>,
+): { reason: string; clearedBy: string } | null {
+  if (!opportunity.nextAction.trim()) {
+    return {
+      reason: 'This deal has no next action, so nothing will bring it back to you.',
+      clearedBy: 'Write one line in Next action, with a date.',
+    };
+  }
+  if (opportunity.forecastEvidenceCategory === 'Unsupported' || opportunity.forecastEvidenceCategory === 'Hope-based') {
+    return {
+      reason: `Forecast evidence is set to "${opportunity.forecastEvidenceCategory}" - the value is not backed by anything the customer confirmed.`,
+      clearedBy: 'Record what the customer actually confirmed in Evidence, then move Forecast evidence to "Weak but recoverable" or "Defensible".',
+    };
+  }
+  if (['Rescue', 'Downgrade', 'Deprioritize'].includes(opportunity.decisionRecommendation)) {
+    return {
+      reason: `You marked this deal "${opportunity.decisionRecommendation}", which keeps it on the watch-list until the call changes.`,
+      clearedBy: 'Change Decision to Defend or Monitor once it has recovered - or close it out.',
+    };
+  }
+  return null;
+}
 
 export type RevenueViewSummary = {
   won: number;
@@ -122,16 +172,15 @@ function buildPipelineRevenueRisks(opportunities: CrmLiteOpportunity[], quotedOp
   return opportunities
     .filter((opportunity) => opportunity.status === 'Active')
     .filter((opportunity) => !quotedOpportunityIds.has(opportunity.id))
-    .filter((opportunity) => (
-      opportunity.forecastEvidenceCategory === 'Unsupported' ||
-      opportunity.forecastEvidenceCategory === 'Hope-based' ||
-      ['Rescue', 'Downgrade', 'Deprioritize'].includes(opportunity.decisionRecommendation) ||
-      !opportunity.nextAction.trim()
-    ))
-    .map((opportunity) => {
+    .flatMap((opportunity) => {
+      // One predicate, used both to raise the flag and to say why - so the
+      // sentence on screen can never drift from the condition behind it.
+      const explanation = explainPipelineRisk(opportunity);
+      if (!explanation) return [];
+
       const amount = opportunity.estimatedValue || opportunity.fy26Value || 0;
       const currency = opportunity.currency || BASE_CURRENCY;
-      return {
+      return [{
         id: `opportunity-${opportunity.id}`,
         accountName: opportunity.accountName || 'No account',
         label: opportunity.opportunityName || 'Untitled opportunity',
@@ -144,7 +193,9 @@ function buildPipelineRevenueRisks(opportunities: CrmLiteOpportunity[], quotedOp
         dueDate: opportunity.nextActionDate,
         href: `/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}`,
         source: 'Opportunity' as const,
-      };
+        reason: explanation.reason,
+        clearedBy: explanation.clearedBy,
+      }];
     });
 }
 

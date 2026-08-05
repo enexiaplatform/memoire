@@ -633,8 +633,17 @@ export function TodayPage() {
           ) : (
             <>
               {/* The day as three numbered steps: see the picture, do the work,
-                  check the watch-list. Reference numbers fold away below, so
-                  Today reads as a flow, not a report. */}
+                  check the watch-list. One surface per step, and everything
+                  that restates a step folds away below.
+
+                  Step 3 used to be four panels - the nudge watch-list, "Going
+                  silent", the commitment ledger and a grid of quietest threads.
+                  All four are derived from the same records and three of them
+                  answer the same question ("what has gone quiet"), so a
+                  workspace with one struggling customer printed that customer
+                  four times under one heading. The watch-list is now one panel;
+                  the other readings of it are one click down, and the ledger
+                  moved up to step 2 where promises are actually kept. */}
               <StepDivider step={1} title="Get the picture" hint="Ten seconds: where the money sits and what changed" />
               <BusinessCockpitStrip
                 answers={businessCockpit}
@@ -645,7 +654,7 @@ export function TodayPage() {
               />
               <MorningBriefCard brief={morningBrief} />
 
-              <StepDivider step={2} title="Do today's work" hint="What you committed to, then the three Memoire would start with" />
+              <StepDivider step={2} title="Do today's work" hint="What you owe, then the three Memoire would start with" />
               {/* What the operator committed to sits as one row: the week's
                   frozen promise beside today's dated plan column (shared
                   box-for-box with the Plan board). Pairing them says these are
@@ -657,6 +666,15 @@ export function TodayPage() {
                 <CommittedWeekStrip userId={sampleDataActive ? undefined : user?.id} sampleDataActive={sampleDataActive} />
                 <TodayCommitmentStrip userId={sampleDataActive ? undefined : user?.id} sampleDataActive={sampleDataActive} />
               </div>
+              {/* A promise to a named person is work you owe, not a warning
+                  about a deal - so it belongs beside the other two commitment
+                  surfaces rather than under the watch-list, where it spent its
+                  time being read as a fourth alarm. */}
+              <CommitmentLedgerPanel
+                title="Commitments"
+                accountNames={knownAccountNames}
+                limit={4}
+              />
               <TodayTopThreeActions actions={todayCenter.topActions} />
 
               <StepDivider step={3} title="Check the watch-list" hint="What Memoire flags before it can surprise you" />
@@ -676,32 +694,6 @@ export function TodayPage() {
                 }}
               />
 
-              {/* The commercial control tower, in the action tier: what is
-                  going silent and why, then the promises the day is made of.
-                  Both read the Commercial Kernel, so a commitment ticked here
-                  is the same record as one ticked on Timeline. */}
-              <CommercialRiskPanel recommendations={kernelRecommendations} />
-
-              <CommitmentLedgerPanel
-                title="Commitments"
-                accountNames={knownAccountNames}
-                limit={4}
-              />
-
-              {commercialThreads.length > 0 && (
-                <section aria-label="Commercial threads">
-                  <div className="mb-2 flex items-baseline justify-between">
-                    <h2 className="text-sm font-bold text-navy">Commercial threads</h2>
-                    <span className="text-xs text-gray-400">Quietest first</span>
-                  </div>
-                  <div className="grid gap-3 xl:grid-cols-2">
-                    {quietestThreads.map((thread) => (
-                      <ThreadQuickLook key={thread.id} thread={thread} compact />
-                    ))}
-                  </div>
-                </section>
-              )}
-
               {/* First-week guidance on a real workspace only: while the loop is
                   not yet established and not dismissed. Folds away for good once
                   all three are done. The demo has its own DemoJourneyCard, so the
@@ -713,22 +705,42 @@ export function TodayPage() {
                 />
               )}
 
-              {/* Supporting detail: the numbers behind today's priorities.
-                  Collapsed by default - reference, not the first thing you act
-                  on. The contract-asserted sections keep their render order
-                  inside the fold. */}
+              {/* The same watch-list read three other ways, plus the numbers
+                  behind today's priorities. Collapsed by default - every one of
+                  these is a second view of something already on the page above,
+                  and a second view is reference, not a first action. The
+                  contract-asserted sections keep their render order inside the
+                  fold. */}
               <details
                 className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
                 onToggle={(event) => setSupportingDetailOpen(event.currentTarget.open)}
               >
                 <summary className="cursor-pointer text-sm font-bold text-navy">
-                  Supporting detail
-                  <span className="ml-2 text-xs font-semibold text-gray-400">The numbers behind today's priorities</span>
+                  The rest of the watch-list
+                  <span className="ml-2 text-xs font-semibold text-gray-400">
+                    Threads going quiet, forecast readiness, stuck money, capture inbox
+                  </span>
                 </summary>
                 {/* Mounted only when opened - these reference sections (and their
                     charts) stay out of the initial render cost. */}
                 {supportingDetailOpen && (
                   <div className="mt-4 flex flex-col gap-4">
+                    {/* Reads the Commercial Kernel: the same silence the nudge
+                        panel reports, with the rule and threshold behind it. */}
+                    <CommercialRiskPanel recommendations={kernelRecommendations} />
+                    {commercialThreads.length > 0 && (
+                      <section aria-label="Commercial threads">
+                        <div className="mb-2 flex items-baseline justify-between">
+                          <h2 className="text-sm font-bold text-navy">Commercial threads</h2>
+                          <span className="text-xs text-gray-400">Quietest first</span>
+                        </div>
+                        <div className="grid gap-3 xl:grid-cols-2">
+                          {quietestThreads.map((thread) => (
+                            <ThreadQuickLook key={thread.id} thread={thread} compact />
+                          ))}
+                        </div>
+                      </section>
+                    )}
                     <ForecastDefenseReadiness center={todayCenter} />
                     <PipelineGlanceSection opportunities={data.opportunities} activities={data.activities} />
                     <TodayPipelineReadiness center={todayCenter} />
@@ -743,7 +755,10 @@ export function TodayPage() {
                 onToggle={(event) => setAdvancedInsightsOpen(event.currentTarget.open)}
               >
                 <summary className="cursor-pointer text-sm font-bold text-navy">
-                  Supporting execution detail
+                  Everything else Memoire tracks
+                  <span className="ml-2 text-xs font-semibold text-gray-400">
+                    Measured history, the timeblocked day, patterns, assets, objections
+                  </span>
                 </summary>
                 {dashboardInsights && commandCenter && (
                   <div className="mt-4 flex flex-col gap-4">
@@ -1081,12 +1096,12 @@ function ForecastDefenseReadiness({ center }: { center: ReturnType<typeof buildU
 function TodayTopThreeActions({ actions }: { actions: TodayCommandAction[] }) {
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Top 3 Today Actions</p>
-          <h2 className="mt-1 text-xl font-bold text-navy">Do these before the deals go quiet.</h2>
-        </div>
-        <span className="text-xs font-semibold text-gray-500">Ranked across defense, revenue, opportunities, and capture</span>
+      {/* One line, not a three-line masthead. The step divider directly above
+          already says this is today's work, and repeating it at 20px was the
+          page shouting its own table of contents back at the reader. */}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h2 className="text-sm font-bold text-navy">What Memoire would start with</h2>
+        <span className="text-xs text-gray-400">Ranked across defense, revenue, opportunities and capture</span>
       </div>
       {actions.length === 0 ? (
         <p className="mt-4 rounded-lg bg-gray-50 p-4 text-sm font-semibold text-gray-600">No urgent action found. Capture a sales update to refresh Today.</p>
@@ -1380,7 +1395,11 @@ function TodayCommercialRisk({ items }: { items: RevenueActionItem[] }) {
       <div className="mt-3 divide-y divide-gray-100">
         {items.length === 0 ? <p className="py-3 text-sm text-gray-500">No commercial risk needs follow-up.</p> : items.slice(0, 4).map((item) => (
           <Link key={item.id} to={item.href} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <div><p className="text-sm font-bold text-navy">{item.nextAction}</p><p className="mt-1 text-xs text-gray-500">{item.accountName || 'Needs confirmation'} / {item.label || 'Needs confirmation'} · {item.risk}</p></div>
+            <div>
+              <p className="text-sm font-bold text-navy">{item.nextAction}</p>
+              <p className="mt-1 text-xs text-gray-500">{item.accountName || 'Needs confirmation'} / {item.label || 'Needs confirmation'} · {item.risk}</p>
+              {item.reason && <p className="mt-1 text-xs leading-5 text-gray-500">{item.reason}</p>}
+            </div>
             <span className="text-xs font-bold text-gray-700">{formatCurrencyAmount(item.amount, item.currency)}</span>
           </Link>
         ))}

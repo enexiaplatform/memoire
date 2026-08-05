@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { Check, CloudOff } from 'lucide-react';
 import { ExportTab } from './ExportTab';
 import { SyncRecoveryPanel } from './SyncRecoveryPanel';
 import { StoragePanel } from './StoragePanel';
@@ -7,18 +8,58 @@ import { NotificationsPanel } from './NotificationsPanel';
 import { BoundariesTab } from './BoundariesTab';
 import { ProfileTab } from './ProfileTab';
 import { REPLAY_GUIDED_WORKFLOW_EVENT } from '../onboarding/guidedWorkflow';
-import { CURRENCY_NAMES, SUPPORTED_CURRENCIES, getReportingCurrency, setReportingCurrency } from '../../utils/money';
-import { getOpeningCashBalance, setOpeningCashBalance } from '../../utils/cashPosition';
+import { CURRENCY_NAMES, SUPPORTED_CURRENCIES, getReportingCurrency } from '../../utils/money';
+import { getOpeningCashBalance } from '../../utils/cashPosition';
+import {
+  hydrateWorkspacePreferences,
+  saveOpeningCashBalancePreference,
+  saveReportingCurrencyPreference,
+  type PreferenceSaveResult,
+} from '../../services/workspacePreferences';
+import { useAuth } from '../../hooks/useAuth';
 import { BUSINESS_ACCOUNTING_ENABLED } from '../../config/featureFlags';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 
 export function SettingsPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'profile' | 'export' | 'boundaries'>('profile');
   const [reportingCurrency, setReportingCurrencyState] = useState(() => getReportingCurrency());
+  const [currencySave, setCurrencySave] = useState<PreferenceSaveResult | null>(null);
   const [openingBalance, setOpeningBalanceState] = useState(() => {
     const stored = getOpeningCashBalance();
     return stored === null ? '' : String(stored);
   });
+  const [balanceSave, setBalanceSave] = useState<PreferenceSaveResult | null>(null);
+
+  // The account is the record; this browser is the cache. Reading it back on
+  // open is what makes the picker show what was actually saved rather than
+  // whatever this particular browser happens to remember.
+  useEffect(() => {
+    let active = true;
+    void hydrateWorkspacePreferences(user?.id).then((preferences) => {
+      if (!active) return;
+      setReportingCurrencyState(preferences.reportingCurrency);
+      setOpeningBalanceState(preferences.openingCashBalance === null ? '' : String(preferences.openingCashBalance));
+    });
+    return () => { active = false; };
+  }, [user?.id]);
+
+  const handleCurrencyChange = async (next: string) => {
+    // Optimistic, because the select must not fight the cursor - but the result
+    // below is what the operator is told, and it is the durable write's answer.
+    setReportingCurrencyState(next as typeof reportingCurrency);
+    setCurrencySave(null);
+    const result = await saveReportingCurrencyPreference(next, user?.id);
+    setCurrencySave(result);
+    setReportingCurrencyState(getReportingCurrency());
+  };
+
+  const handleOpeningBalanceChange = async (raw: string) => {
+    setBalanceSave(null);
+    const trimmed = raw.trim();
+    const parsed = trimmed === '' ? null : Number(trimmed.replace(/,/g, ''));
+    setBalanceSave(await saveOpeningCashBalancePreference(parsed, user?.id));
+  };
 
   return (
     <PageContainer width="reading">
@@ -40,10 +81,7 @@ export function SettingsPage() {
             <span className="sr-only">Reporting currency</span>
             <select
               value={reportingCurrency}
-              onChange={(event) => {
-                setReportingCurrency(event.target.value);
-                setReportingCurrencyState(getReportingCurrency());
-              }}
+              onChange={(event) => { void handleCurrencyChange(event.target.value); }}
               className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
             >
               {SUPPORTED_CURRENCIES.map((currency) => (
@@ -52,6 +90,7 @@ export function SettingsPage() {
             </select>
           </label>
         </div>
+        <SaveState result={currencySave} savedLabel={`Saved. Totals are reported in ${reportingCurrency} everywhere.`} />
       </div>
 
       {/* Opening cash balance only means something next to a profit-and-loss
@@ -75,13 +114,14 @@ export function SettingsPage() {
                 onChange={(event) => {
                   const next = event.target.value;
                   setOpeningBalanceState(next);
-                  setOpeningCashBalance(next.trim() === '' ? null : Number(next.replace(/,/g, '')));
+                  void handleOpeningBalanceChange(next);
                 }}
                 placeholder="e.g. 100000000"
                 className="w-44 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
               />
             </label>
           </div>
+          <SaveState result={balanceSave} savedLabel="Saved to your account." />
         </div>
       )}
 
@@ -125,6 +165,37 @@ export function SettingsPage() {
       {activeTab === 'boundaries' && <BoundariesTab />}
       {activeTab === 'export' && <ExportTab />}
     </PageContainer>
+  );
+}
+
+/**
+ * What actually happened to a preference, said once, under the control that
+ * changed it.
+ *
+ * The distinction it draws is the one the old silent writer hid: "saved" and
+ * "saved in this browser only" look identical until you open Memoire somewhere
+ * else, and by then the setting has already appeared to revert.
+ */
+function SaveState({ result, savedLabel }: { result: PreferenceSaveResult | null; savedLabel: string }) {
+  if (!result) return null;
+
+  if (!result.problem) {
+    return (
+      <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+        <Check className="h-3.5 w-3.5" />
+        {savedLabel}
+      </p>
+    );
+  }
+
+  const blocked = !result.savedLocally && !result.savedToAccount;
+  return (
+    <p
+      className={`mt-3 inline-flex items-start gap-1.5 text-xs font-semibold ${blocked ? 'text-red-700' : 'text-amber-800'}`}
+    >
+      <CloudOff className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+      {result.problem}
+    </p>
   );
 }
 

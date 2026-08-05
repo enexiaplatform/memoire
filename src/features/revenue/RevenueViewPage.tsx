@@ -415,9 +415,21 @@ function RevenueActionTable({ items }: { items: RevenueActionItem[] }) {
                 <p className="mt-1 text-xs font-semibold text-gray-400">{item.source} / {item.status}</p>
               </td>
               <td className="whitespace-nowrap px-3 py-3 font-bold text-gray-800">{formatMoney(item.amount, item.currency)}</td>
-              <td className="px-3 py-3"><Badge label={item.risk} tone={riskTone(item.risk)} /></td>
+              <td className="px-3 py-3">
+                <Badge label={item.risk} tone={riskTone(item.risk)} />
+                {/* The condition, not just the label. "Weak pipeline" is raised
+                    by four unrelated field states and named none of them, so a
+                    seller who edited the wrong one saw the flag survive a save
+                    that was, from their side, exactly the fix. */}
+                {item.reason && (
+                  <p className="mt-1.5 max-w-[280px] text-xs leading-5 text-gray-500">{item.reason}</p>
+                )}
+              </td>
               <td className="px-3 py-3">
                 <p className="max-w-[260px] truncate text-gray-700" title={item.nextAction}>{item.nextAction}</p>
+                {item.clearedBy && (
+                  <p className="mt-1 max-w-[280px] text-xs leading-5 text-brand-blue">{item.clearedBy}</p>
+                )}
               </td>
               <td className="px-3 py-3 text-right">
                 <Link to={item.href} className="inline-flex rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">Open</Link>

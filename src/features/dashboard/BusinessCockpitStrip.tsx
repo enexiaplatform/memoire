@@ -86,6 +86,12 @@ function CockpitCard({
       <p className={`mt-1.5 text-sm font-semibold leading-5 ${answer.urgent ? 'text-amber-900' : 'text-gray-700'}`}>
         {answer.answer}
       </p>
+      {/* The condition behind the flag, named as the field that holds it. A
+          risk label alone ("Weak pipeline") sends people editing whatever looks
+          related, and the flag survives every one of those edits. */}
+      {answer.detail && (
+        <p className="mt-1 text-xs leading-5 text-gray-500">{answer.detail}</p>
+      )}
       {/* Says what the click does before it is clicked. The old card carried no
           affordance at all, so a tile that opened a drawer and one that left the
           page looked identical. */}

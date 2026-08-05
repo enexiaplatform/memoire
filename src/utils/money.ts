@@ -126,15 +126,32 @@ export function getReportingCurrency(): SupportedCurrency {
   }
 }
 
-export function setReportingCurrency(currency: string) {
+/**
+ * Writes the browser's copy of the reporting currency.
+ *
+ * It returns whether the write landed, and that return is the whole point. This
+ * used to be a bare `try { setItem } catch { }` with the catch commented
+ * "ignore storage failures", which is the exact shape of the bug the first
+ * operator hit: they picked SGD, the
+ * select showed SGD, the next load showed VND, and nothing anywhere said the
+ * save had been refused. A workspace of a few hundred records fills the ~5MB
+ * localStorage ceiling, and `setItem` then throws QuotaExceededError on the
+ * next write - which was this one.
+ *
+ * The durable copy lives on the account (see services/workspacePreferences.ts).
+ * This is the cache in front of it, and a cache that fails silently is worse
+ * than no cache.
+ */
+export function setReportingCurrency(currency: string): boolean {
   const normalized = normalizeCurrency(currency);
-  if (!isSupportedCurrency(normalized)) return;
+  if (!isSupportedCurrency(normalized)) return false;
   try {
     localStorage.setItem(REPORTING_CURRENCY_KEY, normalized);
-    if (typeof window !== 'undefined') window.dispatchEvent(new Event(REPORTING_CURRENCY_CHANGED_EVENT));
   } catch {
-    // ignore storage failures
+    return false;
   }
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(REPORTING_CURRENCY_CHANGED_EVENT));
+  return true;
 }
 
 export function sumMoneyInBase(values: MoneyValue[]) {

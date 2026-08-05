@@ -393,6 +393,29 @@ function daysBetweenBusinessDates(start: string, end: string) {
   return Math.floor(elapsed / 86_400_000);
 }
 
+/**
+ * The opening sentence of a longer text, and nothing else.
+ *
+ * The manager-ready brief is several hundred words - stakeholder evidence,
+ * missing evidence, execution learning, playbook patterns, proof assets - and
+ * it was being used verbatim as a nudge reason. A watch-list row that runs for
+ * twelve lines stops being a list, and the operator scrolls past the four
+ * one-line warnings underneath it. The full answer already has a home: the
+ * Pipeline Defense brief the row links to.
+ */
+function firstSentence(text: string | undefined, maxLength = 180) {
+  const trimmed = (text || '').trim().replace(/\s+/g, ' ');
+  if (!trimmed) return '';
+  const stop = trimmed.search(/[.!?](\s|$)/);
+  const sentence = stop >= 0 ? trimmed.slice(0, stop + 1) : trimmed;
+  if (sentence.length <= maxLength) return sentence;
+  // No sentence break inside the budget: cut on a word so the row never ends
+  // mid-token.
+  const cut = sentence.slice(0, maxLength);
+  const lastSpace = cut.lastIndexOf(' ');
+  return `${(lastSpace > 40 ? cut.slice(0, lastSpace) : cut).trimEnd()}...`;
+}
+
 function buildPipelineDefenseNudges(briefs: PipelineDefenseBrief[], today: string) {
   return briefs.flatMap((brief) => (brief.deals || []).flatMap((deal) => {
     const item = buildManagerReadyDealBrief(deal, today);
@@ -407,7 +430,8 @@ function buildPipelineDefenseNudges(briefs: PipelineDefenseBrief[], today: strin
         accountName: item.account,
         opportunityName: item.opportunity,
         title: `${item.decision} before review`,
-        reason: item.pipelineReviewAnswer || `${item.opportunity} needs a ${item.decision.toLowerCase()} decision before review.`,
+        reason: firstSentence(item.pipelineReviewAnswer)
+          || `${item.opportunity} needs a ${item.decision.toLowerCase()} decision before review.`,
         recommendedAction: item.nextAction,
         urgency: item.decision === 'Downgrade' ? 'high' : 'medium',
         dueDate: deal.nextActionDate,
@@ -818,6 +842,17 @@ function capTodayNudges(nudges: NudgeRecord[], limit: number) {
   return output;
 }
 
+/**
+ * One warning per thing, per deal.
+ *
+ * The key used to include the reason text, which made it useless for the case
+ * it exists to stop: the same warning is generated twice - once from the live
+ * opportunity and once from the saved Pipeline Defense brief - with different
+ * prose each time. On the demo workspace that printed "Downgrade before review
+ * / QC workflow" twice in a row under one heading, one of them carrying the
+ * entire manager brief. The title is what the operator reads as "the thing", so
+ * the title is what identifies it.
+ */
 function dedupeNudges(nudges: NudgeRecord[]) {
   const seen = new Map<string, NudgeRecord>();
   nudges.forEach((nudge) => {
@@ -825,7 +860,7 @@ function dedupeNudges(nudges: NudgeRecord[]) {
       nudge.source,
       nudge.entityType,
       nudge.entityId || normalize(nudge.accountName || nudge.opportunityName || 'system'),
-      normalize(nudge.reason),
+      normalize(nudge.title),
     ].join('|');
     const existing = seen.get(key);
     if (!existing || compareNudges(nudge, existing) < 0) seen.set(key, nudge);
@@ -838,6 +873,9 @@ function compareNudges(left: NudgeRecord, right: NudgeRecord) {
     || overdueRank(right) - overdueRank(left)
     || sourceRank(right.source) - sourceRank(left.source)
     || compareSafeBusinessDate(left.dueDate, right.dueDate)
+    // Between two copies of one warning, the shorter reason wins. The long one
+    // is always the copy that pasted a whole brief into a watch-list row.
+    || left.reason.length - right.reason.length
     || left.title.localeCompare(right.title);
 }
 

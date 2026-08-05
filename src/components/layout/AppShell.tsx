@@ -8,17 +8,32 @@ import { DemoModeBanner } from '../demo/DemoModeBanner';
 import { StorageFailureBanner } from '../common/StorageFailureBanner';
 import { OfflineCaptureBanner } from '../common/OfflineCaptureBanner';
 import { prefetchPrimaryAppRoutes } from '../../utils/routePrefetch';
+import { hydrateWorkspacePreferences } from '../../services/workspacePreferences';
+import { useAuth } from '../../hooks/useAuth';
 import { PageContainer } from './PageFrame';
 
 export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { pathname } = useLocation();
+  const { user } = useAuth();
 
   // Warm every nav destination's chunk once the first screen has settled, so a
   // tab switch renders from memory instead of downloading a page first.
   useEffect(() => {
     prefetchPrimaryAppRoutes();
   }, []);
+
+  // Fill the browser's preference cache from the account before the first page
+  // paints a number.
+  //
+  // Every money figure is formatted through a *synchronous* read of the
+  // reporting currency - it has to be, because it runs once per value on screen
+  // and cannot become a promise. So the account's answer has to be in the cache
+  // by the time a page renders, or a second device opens the whole workspace in
+  // VND and the setting looks like it never saved.
+  useEffect(() => {
+    void hydrateWorkspacePreferences(user?.id);
+  }, [user?.id]);
 
   // Reset scroll on navigation. Without this a new page opened mid-content
   // (e.g. jumping from a long Opportunities list to Accounts) - it looked like

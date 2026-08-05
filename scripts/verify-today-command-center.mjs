@@ -75,19 +75,21 @@ assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 0, 'A navigation ite
 
 const todayPage = readFileSync('src/features/dashboard/DashboardPage.tsx', 'utf8');
 // The named sections all still exist on Today.
-for (const section of ['Forecast-defense readiness', 'Top 3 Today Actions', 'Pipeline Review Readiness', 'Commercial Risk', 'Capture Inbox']) {
+for (const section of ['Forecast-defense readiness', 'What Memoire would start with', 'Pipeline Review Readiness', 'Commercial Risk', 'Capture Inbox']) {
   assert.ok(todayPage.includes(section), `Today missing ${section}`);
 }
-// Altitude: the action tier (cockpit -> brief -> top 3 -> nudges) renders
-// first, then a "Supporting detail" divider, then the reference scoreboards.
+// Altitude: the action tier (cockpit -> brief -> commitments -> top 3 ->
+// watch-list) renders first, then the fold, then the reference scoreboards.
 // Asserted on the JSX usage sites (not display text, which also appears in the
 // function definitions) so the order reflects what actually renders.
 const renderOrder = [
   '<BusinessCockpitStrip',
   '<MorningBriefCard',
+  '<CommitmentLedgerPanel',
   '<TodayTopThreeActions',
   '<ProactiveNudgesPanel',
-  'Supporting detail',
+  'The rest of the watch-list',
+  '<CommercialRiskPanel',
   '<ForecastDefenseReadiness',
   '<PipelineGlanceSection',
   '<TodayPipelineReadiness',
@@ -99,11 +101,24 @@ renderOrder.forEach((marker, index) => {
   assert.ok(at >= 0, `Today render missing ${marker}`);
   if (index > 0) assert.ok(at > todayPage.indexOf(renderOrder[index - 1]), `Today render order incorrect at ${marker}`);
 });
-// The measured-history panel folds into the supporting-execution details block,
-// below the action tier - not a first-screen section.
+
+// Step 3 is one panel. It used to be four - the nudge watch-list, "Going
+// silent", the commitment ledger and a grid of quietest threads - all derived
+// from the same records, three of them answering "what has gone quiet". A
+// workspace with one struggling customer printed that customer four times under
+// a single heading, which is the specific thing operators call "over and busy".
+for (const secondReading of ['<CommercialRiskPanel', '<ThreadQuickLook']) {
+  assert.ok(
+    todayPage.indexOf(secondReading) > todayPage.indexOf('The rest of the watch-list'),
+    `${secondReading} is a second reading of the watch-list and must sit inside the fold`,
+  );
+}
+
+// The measured-history panel folds into the second details block, below the
+// action tier - not a first-screen section.
 assert.ok(
-  todayPage.indexOf('<FollowUpImpactPanel') > todayPage.indexOf('Supporting execution detail'),
-  'FollowUpImpactPanel must fold into Supporting execution detail',
+  todayPage.indexOf('<FollowUpImpactPanel') > todayPage.indexOf('Everything else Memoire tracks'),
+  'FollowUpImpactPanel must fold into the second drawer',
 );
 
 const model = readFileSync('src/utils/todayCommandCenter.ts', 'utf8');

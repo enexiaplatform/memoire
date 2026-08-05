@@ -121,16 +121,24 @@ export function getOpeningCashBalance(): number | null {
   }
 }
 
-export function setOpeningCashBalance(value: number | null) {
+/**
+ * The browser's copy of the opening balance. Returns whether the write landed,
+ * for the same reason `setReportingCurrency` does: a preference that reports
+ * success while the browser refused the write is how a setting silently
+ * reverts. The durable copy is on the account -
+ * services/workspacePreferences.ts.
+ */
+export function setOpeningCashBalance(value: number | null): boolean {
   try {
-    if (typeof localStorage === 'undefined') return;
+    if (typeof localStorage === 'undefined') return false;
     if (value === null || !Number.isFinite(value)) {
       localStorage.removeItem(OPENING_BALANCE_KEY);
-      return;
+      return true;
     }
     localStorage.setItem(OPENING_BALANCE_KEY, String(value));
+    return true;
   } catch {
-    // ignore storage failures
+    return false;
   }
 }
 

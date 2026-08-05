@@ -86,7 +86,7 @@ for (const [file, label] of [
 {
   const settings = readFileSync('src/features/settings/SettingsPage.tsx', 'utf8');
   assert.ok(
-    settings.includes('getReportingCurrency()') && settings.includes('setReportingCurrency('),
+    settings.includes('getReportingCurrency()') && settings.includes('saveReportingCurrencyPreference('),
     'Settings must own the reporting-currency choice',
   );
   assert.equal(
@@ -94,6 +94,50 @@ for (const [file, label] of [
     false,
     'a second place to set reporting currency is back',
   );
+}
+
+// 8. The choice survives the browser it was made in, and never claims to have
+// saved when it did not.
+//
+// It lived only in localStorage, and `setReportingCurrency` swallowed the
+// QuotaExceededError a full workspace produces - so the select showed SGD, the
+// next load showed VND, and nothing said why.
+{
+  const money = readFileSync('src/utils/money.ts', 'utf8');
+  assert.ok(
+    /export function setReportingCurrency\(currency: string\): boolean/.test(money),
+    'the local write must report whether it landed',
+  );
+  assert.equal(
+    /catch \{\s*\/\/ ignore storage failures/.test(money),
+    false,
+    'a refused preference write must never be swallowed',
+  );
+
+  const preferences = readFileSync('src/services/workspacePreferences.ts', 'utf8');
+  assert.ok(preferences.includes("from(TABLE_NAME)"), 'the durable copy must live on the account row');
+  assert.ok(
+    preferences.includes('reporting_currency') && preferences.includes('opening_cash_balance'),
+    'both reporting preferences must be persisted to the account',
+  );
+  assert.ok(
+    preferences.includes('export async function hydrateWorkspacePreferences'),
+    'the browser cache must be fillable from the account',
+  );
+
+  const shell = readFileSync('src/components/layout/AppShell.tsx', 'utf8');
+  assert.ok(
+    shell.includes('hydrateWorkspacePreferences'),
+    'preferences must be hydrated before a page paints a money value',
+  );
+
+  const migration = readFileSync('supabase/migrations/20260805090000_workspace_reporting_preferences.sql', 'utf8');
+  for (const column of ['reporting_currency', 'opening_cash_balance', 'daily_digest_enabled']) {
+    assert.ok(
+      new RegExp(`GRANT UPDATE \\([^)]*${column}`, 's').test(migration),
+      `${column} must be client-writable, or the save fails silently on the grant`,
+    );
+  }
 }
 
 console.log('Currency and locale contract verified.');
