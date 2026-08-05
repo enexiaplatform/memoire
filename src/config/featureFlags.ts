@@ -19,9 +19,10 @@
  * while a seller who does starts wanting an accounting product Memoire will
  * never be.
  *
- * Expense records are untouched by this flag. They stay in storage, keep
- * syncing, and are still included in export and restore - only the surface is
- * hidden, so switching this on returns every record intact.
+ * Expense records are untouched by this flag. They stay in storage, sync to the
+ * account like every other collection, and are still included in export and
+ * restore - only the surface is hidden, so switching this on returns every
+ * record intact.
  */
 export const BUSINESS_ACCOUNTING_ENABLED =
   import.meta.env.VITE_ENABLE_BUSINESS_ACCOUNTING === 'true';

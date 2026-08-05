@@ -113,6 +113,7 @@ import {
   routeNeedsADate,
 } from '../../utils/procurementPath';
 import { explainPipelineRisk } from '../../utils/revenueView';
+import { stageForStatus, statusForStage } from '../../utils/opportunityOutcome';
 import { accountKey, normalizeEntityName, sameAccount } from '../../utils/accountIdentity';
 import { checkAccountName, type AccountNameCheck } from '../../utils/accountDuplicates';
 import { analyzeStakeholderCoverage, getStakeholdersForOpportunity } from '../../utils/stakeholderGraph';
@@ -3065,11 +3066,21 @@ function OpportunityPanel({
               onChange({
                 ...form,
                 stage: value,
+                // Stage and Status both name the outcome, and letting them
+                // disagree is how a deal ends up won on the board and open in
+                // the forecast. Moving to Won/Lost/On hold closes the deal;
+                // moving back into the pipeline re-opens it.
+                status: statusForStage(value, form.status),
                 pipelineProbability: untouched && stageDefault !== null ? stageDefault : form.pipelineProbability,
               });
             }}
           />
-          <SelectField label="Status" value={form.status} options={opportunityStatuses} onChange={(value) => update('status', value)} />
+          <SelectField
+            label="Status"
+            value={form.status}
+            options={opportunityStatuses}
+            onChange={(value) => onChange({ ...form, status: value, stage: stageForStatus(value, form.stage) })}
+          />
           <div>
             <ProbabilityField
               value={form.pipelineProbability ?? null}

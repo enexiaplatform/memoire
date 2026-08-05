@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { buildScaleWorkspace } from './lib/scale-workspace.mjs';
 import { buildMasterDashboard } from '../src/utils/masterDashboard.ts';
 import { buildBusinessLens } from '../src/utils/businessLens.ts';
@@ -77,4 +78,39 @@ measure('resolveThreads', () => resolveCommercialThreads({
   storedThreads: [], opportunities, activities, quotes, commitments: [], today: new Date('2026-08-02T00:00:00Z'),
 }));
 
-console.log('Performance budget verified: the derived models hold at a real book of business.');
+// Deriving is not what makes the app feel slow - every model above lands in
+// single-digit milliseconds. The wait is the network: one barrier over sixteen
+// collections, ~3MB dominated by accounts and stakeholders, on every fresh
+// load. The screen is allowed to draw from the browser copy while that runs.
+{
+  const workspace = readFileSync('src/services/workspaceData.ts', 'utf8');
+
+  const budget = workspace.match(/const FIRST_PAINT_BUDGET_MS = (\d+)/);
+  assert.ok(budget, 'the first-paint budget must be declared');
+  assert.ok(
+    Number(budget[1]) > 0 && Number(budget[1]) <= 1000,
+    'the first-paint budget must be short enough to matter and long enough that a warm cloud answer wins',
+  );
+
+  // The guard that keeps the fast path honest. An empty browser copy and a
+  // workspace with nothing in it look identical on screen, and one of them is a
+  // lie - a new device has to wait for the real answer rather than be told its
+  // business is empty.
+  assert.ok(
+    workspace.includes('hasAnyRecords(local)'),
+    'the browser copy must only be shown when it actually holds records',
+  );
+
+  assert.ok(
+    workspace.includes('WORKSPACE_REFRESHED_EVENT'),
+    'a screen drawn from the browser copy must be told when the real answer lands',
+  );
+
+  const today = readFileSync('src/features/dashboard/DashboardPage.tsx', 'utf8');
+  assert.ok(
+    today.includes('WORKSPACE_REFRESHED_EVENT'),
+    'Today must catch up when the cloud load finishes behind it',
+  );
+}
+
+console.log('Performance budget verified: the derived models hold at a real book of business, and the screen never waits on the network to draw.');

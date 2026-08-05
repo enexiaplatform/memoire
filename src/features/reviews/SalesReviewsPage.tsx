@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Copy, Loader2 } from 'lucide-react';
 import { ReviewAnalyticsSection } from './ReviewAnalyticsSection';
 import { ReviewScoreboardPanel } from './ReviewScoreboardPanel';
+import { BrandPerformancePanel } from './BrandPerformancePanel';
 import { CommercialRiskPanel } from '../threads/CommercialRiskPanel';
 import { ThreadsSection } from '../threads/ThreadsSection';
 import { useCommercialThreads } from '../threads/useCommercialThreads';
@@ -154,6 +155,16 @@ export function SalesReviewsPage() {
           <CommitmentLedgerPanel title="Commitment performance" showComposer={false} />
 
           <WeeklyReviewSection periodType={periodType} period={period} />
+
+          {/* Which line is carrying the number.
+              The brand field has been on every deal, the rollup has been
+              computed and this panel has been written since the brand round -
+              and it was mounted nowhere, so a distributor filled in Brand on
+              deal after deal and the product never once answered with it.
+              Renders nothing until the workspace actually carries brands, so a
+              single-line seller does not get a chart that says "one brand,
+              100%". */}
+          <BrandPerformancePanel />
 
           {/* Forward-looking work, deliberately last and folded. These are the
               two panels Review used to open on; they are what to do about the

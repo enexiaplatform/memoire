@@ -2,6 +2,7 @@ import { supabaseClient } from '../lib/supabaseClient.ts';
 import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
+import { reconcileOpportunityOutcome } from '../utils/opportunityOutcome.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const OPPORTUNITY_STORAGE_KEY = 'memoire.opportunities.v1';
@@ -303,14 +304,16 @@ function loadLocalOpportunities(): CrmLiteOpportunity[] {
     const parsed = JSON.parse(raw) as Partial<CrmLiteOpportunity>[];
     return parsed
       .filter((item) => item.id && item.accountName && item.opportunityName)
-      .map<CrmLiteOpportunity>((item) => ({
+      .map<CrmLiteOpportunity>((item) => {
+        const outcome = reconciledOutcome(item.stage, item.status);
+        return {
         id: item.id || createId(),
         userId: item.userId,
         source: normalizeSource(item.source),
         isSample: item.isSample === true,
         accountName: item.accountName || '',
         opportunityName: item.opportunityName || '',
-        stage: normalizeStage(item.stage),
+        stage: outcome.stage,
         estimatedValue: normalizeNumber(item.estimatedValue),
         currency: item.currency || 'VND',
         expectedClosePeriod: item.expectedClosePeriod || '',
@@ -326,7 +329,7 @@ function loadLocalOpportunities(): CrmLiteOpportunity[] {
         objectionDebt: item.objectionDebt || '',
         forecastEvidenceCategory: normalizeForecastCategory(item.forecastEvidenceCategory),
         decisionRecommendation: normalizeDecisionRecommendation(item.decisionRecommendation),
-        status: normalizeStatus(item.status),
+        status: outcome.status,
         // The imported dimensions. These were absent here while the cloud
         // reader carried all of them, so every local read quietly returned a
         // thinner opportunity than the one that was stored - and because
@@ -350,7 +353,8 @@ function loadLocalOpportunities(): CrmLiteOpportunity[] {
         createdAt: item.createdAt || new Date().toISOString(),
         updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
         storageMode: 'local',
-      }))
+        };
+      })
       .sort(sortNewestFirst);
   } catch {
     return [];
@@ -432,6 +436,7 @@ function rowToOpportunity(row: OpportunityRow): CrmLiteOpportunity {
   const linkedAccountName = row.account?.account_name || row.account?.name || '';
   const storedAccountName = row.account_name?.trim() || '';
   const opportunityName = row.opportunity_name || row.title || '';
+  const outcome = reconciledOutcome(row.stage, row.status);
 
   return {
     id: row.id,
@@ -440,7 +445,7 @@ function rowToOpportunity(row: OpportunityRow): CrmLiteOpportunity {
     isSample: false,
     accountName: isLegacyAccountPlaceholder(storedAccountName) ? linkedAccountName : storedAccountName || linkedAccountName,
     opportunityName,
-    stage: normalizeStage(row.stage),
+    stage: outcome.stage,
     estimatedValue: normalizeNumber(row.estimated_value),
     currency: row.currency || 'VND',
     expectedClosePeriod: row.expected_close_period || '',
@@ -456,7 +461,7 @@ function rowToOpportunity(row: OpportunityRow): CrmLiteOpportunity {
     objectionDebt: row.objection_debt || row.blocker || '',
     forecastEvidenceCategory: normalizeForecastCategory(row.forecast_evidence_category),
     decisionRecommendation: normalizeDecisionRecommendation(row.decision_recommendation),
-    status: normalizeStatus(row.status),
+    status: outcome.status,
     brand: row.brand || '',
     channel: row.channel || '',
     opportunityType: row.opportunity_type || '',
@@ -540,6 +545,7 @@ function opportunityToRow(input: OpportunityFormInput) {
 }
 
 function normalizeOpportunityInput(input: OpportunityFormInput): OpportunityFormInput {
+  const outcome = reconciledOutcome(input.stage, input.status);
   return {
     ...emptyOpportunityInput,
     ...input,
@@ -547,12 +553,26 @@ function normalizeOpportunityInput(input: OpportunityFormInput): OpportunityForm
     opportunityName: input.opportunityName.trim(),
     estimatedValue: normalizeNumber(input.estimatedValue),
     currency: (input.currency || 'VND').trim().toUpperCase(),
-    stage: normalizeStage(input.stage),
+    stage: outcome.stage,
     forecastEvidenceCategory: normalizeForecastCategory(input.forecastEvidenceCategory),
     decisionRecommendation: normalizeDecisionRecommendation(input.decisionRecommendation),
-    status: normalizeStatus(input.status),
+    status: outcome.status,
     nextActionDate: sanitizeBusinessDate(input.nextActionDate),
   };
+}
+
+/**
+ * The one place stage and status are made to agree.
+ *
+ * Applied on every write *and* on both read paths, because a workspace already
+ * holds records where they disagree - a deal dragged to Won on the board while
+ * Status stayed Active. Reconciling on read repairs those as they load, so no
+ * migration has to touch anybody's rows and no figure is ever computed from a
+ * record that says two things at once. See utils/opportunityOutcome.ts for the
+ * rule and why it resolves the way it does.
+ */
+function reconciledOutcome(stage: unknown, status: unknown) {
+  return reconcileOpportunityOutcome(normalizeStage(stage), normalizeStatus(status));
 }
 
 function normalizeStage(value: unknown): OpportunityStage {

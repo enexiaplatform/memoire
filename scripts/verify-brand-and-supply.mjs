@@ -35,6 +35,23 @@ import {
   assert.equal(report.totalActiveBase, 400);
 }
 
+// 1b. And the rollup is on a page. Brand had a field on every deal, a
+//     derivation, a written panel and a contract - and the panel was mounted
+//     nowhere, so an operator set Brand on deal after deal and the product
+//     never once answered with it. A capability that asks for input and returns
+//     nothing is worse than one that was never built: it spends the user's
+//     effort and their trust.
+{
+  const panel = 'src/features/reviews/BrandPerformancePanel.tsx';
+  assert.ok(existsSync(panel), 'the brand rollup panel must exist');
+  const mounted = ['src/features/reviews/SalesReviewsPage.tsx', 'src/features/reviews/ReviewAnalyticsSection.tsx']
+    .some((file) => existsSync(file) && readFileSync(file, 'utf8').includes('<BrandPerformancePanel'));
+  assert.ok(mounted, 'the brand rollup must be rendered on Review, not just written');
+
+  const field = readFileSync('src/features/opportunities/OpportunitiesPage.tsx', 'utf8');
+  assert.ok(field.includes('Brand / principal'), 'and the deal editor must still be where a brand is set');
+}
+
 // 2. Deals with no brand are named, never absorbed. A rollup that quietly hides
 //    the unbranded remainder would report a share of pipeline that does not add
 //    up to the pipeline.

@@ -55,7 +55,7 @@ import {
   type NudgeRecord,
 } from '../../services/nudgeStore';
 import { type SalesAssetRecord } from '../../services/salesAssetStore';
-import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData, WORKSPACE_REFRESHED_EVENT } from '../../services/workspaceData';
 import { FollowUpComposerPanel } from '../v31/FollowUpComposerPanel';
 import { DealQuickLookDrawer } from './DealQuickLookDrawer';
 import { FollowUpImpactPanel } from './FollowUpImpactPanel';
@@ -246,6 +246,16 @@ export function TodayPage() {
       refreshDashboard();
     }
   }, [authLoading, isAuthenticated, refreshDashboard]);
+
+  // Today may have been drawn from the browser copy so it could appear at once
+  // rather than after the slowest of sixteen cloud round trips. When the real
+  // answer lands, take it - by then it is a warm cache hit, so this costs a
+  // render and no network.
+  useEffect(() => {
+    const onRefreshed = () => { void refreshDashboard(); };
+    window.addEventListener(WORKSPACE_REFRESHED_EVENT, onRefreshed);
+    return () => window.removeEventListener(WORKSPACE_REFRESHED_EVENT, onRefreshed);
+  }, [refreshDashboard]);
 
   useEffect(() => {
     if (sampleDataActive) {

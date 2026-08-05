@@ -3,6 +3,7 @@ import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { RevenueActionItem } from './revenueView.ts';
 import { formatCompactCurrencyAmount } from './money.ts';
+import { resolveOpportunityByName, resolveQuoteOpportunityId } from './opportunityResolution.ts';
 import { isBusinessDateOverdue, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 
 export type BusinessCockpitAnswer = {
@@ -96,10 +97,14 @@ export function nudgeEntityHref(nudge: NudgeRecord | undefined): string {
  *
  * A cockpit answer can arrive as an opportunity, as a quote, or as a nudge that
  * names either. All three are the operator's *deal*, so all three resolve to
- * one: a quote carries `opportunityId` when it was linked, and falls back to
- * matching the deal by the account and opportunity name it was written with -
- * the same name-first join the rest of the workspace uses, because
- * `opportunityId` is not always written.
+ * one.
+ *
+ * The matching itself now lives in `opportunityResolution` and is shared with
+ * the revenue view, which used to key on `quote.opportunityId` alone - so the
+ * two surfaces disagreed about which deals had been quoted, and the strictly
+ * less tolerant one was the one deciding what to warn about. What stays here is
+ * only this file's job: turning a cockpit-shaped candidate into the account and
+ * deal names the shared resolver takes.
  */
 function resolveOpportunityId(
   candidate: { opportunityId?: string; quoteId?: string; accountName?: string; opportunityName?: string } | undefined,
@@ -113,21 +118,9 @@ function resolveOpportunityId(
   const quote = candidate.quoteId
     ? quotes.find((item) => item.id === candidate.quoteId || item.quoteId === candidate.quoteId)
     : undefined;
-  const linked = quote?.opportunityId;
-  if (linked && opportunities.some((item) => item.id === linked)) return linked;
+  if (quote) return resolveQuoteOpportunityId(quote, opportunities);
 
-  const account = (quote?.accountName || candidate.accountName || '').trim().toLowerCase();
-  const deal = (quote?.opportunityName || candidate.opportunityName || '').trim().toLowerCase();
-  if (!account) return undefined;
-  const matches = opportunities.filter((item) => (item.accountName || '').trim().toLowerCase() === account);
-  if (matches.length === 0) return undefined;
-  if (deal) {
-    const exact = matches.find((item) => (item.opportunityName || '').trim().toLowerCase() === deal);
-    if (exact) return exact.id;
-  }
-  // One deal with that customer is not a guess. Several is, so the answer keeps
-  // its link rather than opening an arbitrary one of them.
-  return matches.length === 1 ? matches[0].id : undefined;
+  return resolveOpportunityByName(candidate.accountName, candidate.opportunityName, opportunities);
 }
 
 /** The record id inside a `/app/...?xId=` deep link, whatever the surface. */

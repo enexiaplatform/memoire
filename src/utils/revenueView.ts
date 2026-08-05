@@ -1,4 +1,4 @@
-import type { CrmLiteOpportunity } from '../services/opportunityStore';
+import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import {
   getQuoteCommercialStage,
   getQuoteRisk,
@@ -6,8 +6,9 @@ import {
   type CommercialStage,
   type QuoteRecord,
   type QuoteRisk,
-} from '../services/quoteStore';
-import { BASE_CURRENCY, convertMoney, sumMoneyInBase } from './money';
+} from '../services/quoteStore.ts';
+import { BASE_CURRENCY, convertMoney, sumMoneyInBase } from './money.ts';
+import { buildQuotedOpportunityIds } from './opportunityResolution.ts';
 import { isBusinessDateOverdue, todayDateKey } from './safeDate.ts';
 
 export type RevenueRiskKind =
@@ -117,12 +118,11 @@ export function buildRevenueView({
   const pendingPayment = sumQuotes(quotes.filter((quote) => getQuoteCommercialStage(quote) === 'Pending payment'));
   const paid = sumQuotes(quotes.filter((quote) => getQuoteCommercialStage(quote) === 'Paid'));
   const quoteRisks = buildQuoteRevenueRisks(quotes);
-  const quotedOpportunityIds = new Set(
-    quotes
-      .filter((quote) => quote.status === 'Sent' || quote.status === 'Revised' || quote.status === 'Accepted')
-      .map((quote) => quote.opportunityId)
-      .filter((opportunityId): opportunityId is string => Boolean(opportunityId)),
-  );
+  // Resolved, not read straight off the quote. `opportunityId` is optional and
+  // blank on anything imported or created before the picker existed, so keying
+  // on it alone left quoted deals sitting in the weak-pipeline list telling
+  // their seller to go and quote them.
+  const quotedOpportunityIds = buildQuotedOpportunityIds(quotes, opportunities);
   const pipelineRisks = buildPipelineRevenueRisks(opportunities, quotedOpportunityIds);
   const actionItems = [...quoteRisks, ...pipelineRisks]
     .sort((left, right) => riskRank(right.risk) - riskRank(left.risk) || right.baseAmount - left.baseAmount)

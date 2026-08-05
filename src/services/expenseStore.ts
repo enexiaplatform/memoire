@@ -1,13 +1,31 @@
 import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { sanitizeBusinessDate, todayDateKey } from '../utils/safeDate.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
+import {
+  claimLocalCollectionForUser,
+  deleteCloudJsonRecordForCurrentUser,
+  loadCloudJsonCollection,
+  mergeCloudJsonRecords,
+  sendOwedCloudJsonRecords,
+  syncCloudJsonCollectionForCurrentUser,
+} from './cloudJsonCollectionStore.ts';
 
-// Money-out half of the money-spine. Local-first by design: it persists to
-// localStorage under the `memoire.` prefix so the existing export and
-// clear-local flows pick it up automatically. Cloud sync mirrors the quote
-// store's JSON-collection pattern and is a documented follow-up (needs the
-// `expenses` Supabase table + union entry) - deliberately deferred so this
-// increment ships without a schema migration.
+/**
+ * Money-out half of the money-spine: local-first, and now backed by the
+ * account.
+ *
+ * It was local-only until 2026-08-05, and the note here said so - cloud sync
+ * "deliberately deferred so this increment ships without a schema migration".
+ * What that deferral actually cost only shows up downstream: cash position, own
+ * obligations, the P&L and the money half of the daily digest all read these
+ * records, so a second device reported different cash on hand with nothing on
+ * screen explaining it, and the server-built digest - which can only see cloud
+ * rows - was computing every user's money picture against no expenses at all.
+ *
+ * Same JSON-collection pattern as quotes and supplier commitments: the browser
+ * copy stays the read path, the account is the record, and a merged read pushes
+ * up only what the cloud is missing.
+ */
 export const EXPENSE_STORAGE_KEY = 'memoire.expenses.v1';
 
 export const expenseCategories = [
@@ -85,25 +103,58 @@ export function loadExpenses(): ExpenseRecord[] {
   }
 }
 
-// The workspace loader calls stores by (userId?) signature. Expenses are
-// local-first, so the cloud id is accepted but unused for now.
-export async function loadExpensesForUser(_userId: string) {
-  void _userId;
-  return loadExpenses();
+/**
+ * The account's expenses, merged with whatever this browser holds.
+ *
+ * A failed cloud read falls back to the browser copy rather than reporting an
+ * empty book: "you have no expenses" and "I could not reach your expenses" look
+ * identical on a P&L, and only one of them is safe to act on.
+ */
+export async function loadExpensesForUser(userId: string): Promise<ExpenseRecord[]> {
+  if (!userId) return loadExpenses();
+  try {
+    const local = loadExpenses();
+    const cloud = await loadCloudJsonCollection<ExpenseRecord>('expenses', userId);
+    // Only adopt this browser's records into the account the first time, and
+    // only if the browser has not already been claimed by someone else -
+    // otherwise signing in on a shared machine would upload the last person's
+    // spending.
+    const recordsToMerge = claimLocalCollectionForUser('expenses', userId) ? local.filter(isUserRecord) : [];
+    const merged = mergeCloudJsonRecords(recordsToMerge, cloud)
+      .map(sanitizeExpense)
+      .filter((expense): expense is ExpenseRecord => Boolean(expense));
+    persistExpenses(merged, false);
+    sendOwedCloudJsonRecords('expenses', userId, merged, cloud);
+    return merged;
+  } catch {
+    return loadExpenses();
+  }
 }
 
 export function saveExpenses(expenses: ExpenseRecord[]) {
   if (typeof window === 'undefined') return false;
   try {
-    const sanitized = expenses
-      .map(sanitizeExpense)
-      .filter((expense): expense is ExpenseRecord => Boolean(expense));
-    writeLocalRecords(EXPENSE_STORAGE_KEY, sanitized);
-    invalidateWorkspaceCollection('expenses');
+    persistExpenses(expenses);
     return true;
   } catch {
     return false;
   }
+}
+
+function persistExpenses(expenses: ExpenseRecord[], syncCloud = true) {
+  const sanitized = expenses
+    .map(sanitizeExpense)
+    .filter((expense): expense is ExpenseRecord => Boolean(expense));
+  writeLocalRecords(EXPENSE_STORAGE_KEY, sanitized);
+  if (syncCloud) {
+    syncCloudJsonCollectionForCurrentUser('expenses', sanitized);
+    invalidateWorkspaceCollection('expenses');
+  }
+  return sanitized;
+}
+
+function isUserRecord(expense: ExpenseRecord) {
+  return expense.source !== 'demo' && expense.isSample !== true;
 }
 
 export function createExpense(input: ExpenseInput) {
@@ -146,7 +197,12 @@ export function markExpensePaid(expense: ExpenseRecord) {
 }
 
 export function deleteExpense(expenseId: string) {
-  return saveExpenses(loadExpenses().filter((item) => item.id !== expenseId));
+  const saved = saveExpenses(loadExpenses().filter((item) => item.id !== expenseId));
+  // A local filter alone is not a delete once the record is on the account: the
+  // next merged read would find the cloud copy and put it straight back. The
+  // tombstone is what makes the removal travel.
+  deleteCloudJsonRecordForCurrentUser('expenses', expenseId);
+  return saved;
 }
 
 function sanitizeExpense(raw: Partial<ExpenseRecord> | null): ExpenseRecord | null {

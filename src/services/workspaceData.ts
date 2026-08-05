@@ -81,6 +81,13 @@ type LoadOptions = {
 const WORKSPACE_LOAD_TIMEOUT_MS = 20_000;
 
 /**
+ * Fired once when a cloud load finishes *after* the screen was already drawn
+ * from the browser copy. Surfaces that want to catch up re-read the workspace,
+ * which is a warm cache hit by then.
+ */
+export const WORKSPACE_REFRESHED_EVENT = 'memoire:workspace-refreshed';
+
+/**
  * Every collection the workspace is made of, and how to fetch one.
  *
  * They are listed rather than fetched inline so each can be cached, refreshed
@@ -196,7 +203,7 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
     throw error;
   });
 
-  const promise = userId ? withLocalFallback(tracked, unsettled) : tracked;
+  const promise = userId ? withLocalFallback(tracked, unsettled, userId) : tracked;
   setCachedWorkspacePromise(blobKey, promise);
 
   try {
@@ -207,20 +214,80 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
 }
 
 /**
- * Resolves with the browser copy if the cloud load has not answered in time.
+ * How long the cloud gets to answer before the browser copy is shown instead,
+ * with the cloud load continuing behind it.
  *
- * The cloud load is not cancelled - it may still finish and populate the cache
- * for the next reader. What it loses is the right to keep the screen waiting.
+ * This is a first-paint budget, not a timeout. Every surface loads the whole
+ * workspace as one barrier - sixteen collections, and on a real book about 3 MB
+ * of JSON dominated by accounts and stakeholders - so the screen waited on the
+ * slowest of sixteen round trips before it could draw anything. Measured
+ * against this project's Supabase region that is ~1.3s from cold, on every
+ * fresh page load, for records that had not changed since the last one.
+ *
+ * Splitting the *collections* was the obvious idea and is the wrong one: the
+ * Today derivations read accounts and stakeholders as well as deals, so a
+ * first-paint subset would draw a workspace where nobody has a champion and no
+ * account has history - wrong answers, confidently rendered. Splitting on
+ * *time* is safe, because the browser copy is a complete workspace that was
+ * true a moment ago rather than a partial one that was never true.
+ *
+ * 400ms is chosen to be past a warm cloud answer (~140ms round trip) and short
+ * of the point where a person decides the app is slow, so a fast connection
+ * never sees the fallback at all.
+ */
+const FIRST_PAINT_BUDGET_MS = 400;
+
+/**
+ * Resolves with the browser copy rather than making the screen wait, and lets
+ * the cloud load finish behind it.
+ *
+ * Two deadlines, one mechanism. At `FIRST_PAINT_BUDGET_MS` the browser copy is
+ * shown *if there is one worth showing* and the cloud keeps loading into the
+ * cache for the next reader. At `WORKSPACE_LOAD_TIMEOUT_MS` the cloud has
+ * clearly failed, and the same fallback happens loudly - the sync pill says the
+ * cloud is unavailable and "Cloud sync" retries.
+ *
+ * The "worth showing" test matters more than the timing. An empty browser copy
+ * and a workspace with nothing in it look identical on screen, and one of them
+ * is a lie; a new device, or one that has cleared its site data, has to wait for
+ * the real answer rather than be told its business is empty.
  */
 function withLocalFallback(
   cloudLoad: Promise<SalesWorkspaceData>,
   unsettled: Set<string>,
+  userId: string,
 ): Promise<SalesWorkspaceData> {
   return new Promise((resolve, reject) => {
     let settled = false;
+
+    const firstPaint = setTimeout(() => {
+      if (settled) return;
+      void loadSalesWorkspaceData(null).then((local) => {
+        if (settled) return;
+        if (!hasAnyRecords(local)) return;
+        settled = true;
+        clearTimeout(timer);
+        // Deliberately quiet: nothing has gone wrong. The cloud load is still
+        // running and fills the per-collection cache behind this screen;
+        // announcing a sync problem here would train the operator to distrust a
+        // pill that is usually right.
+        //
+        // When it lands, say so once. Without this the operator sits on a
+        // workspace that was true a moment ago and never sees it catch up until
+        // they navigate - which is the difference between "fast" and "stale".
+        void cloudLoad.then(() => {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent(WORKSPACE_REFRESHED_EVENT, { detail: { userId } }));
+          }
+        }).catch(() => undefined);
+        resolve(local);
+      }).catch(() => undefined);
+    }, FIRST_PAINT_BUDGET_MS);
+
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
+      clearTimeout(firstPaint);
       console.warn(
         `[Memoire] Cloud workspace load exceeded ${WORKSPACE_LOAD_TIMEOUT_MS}ms; showing the browser copy. Still waiting on: ${
           Array.from(unsettled).join(', ') || 'nothing (the merge itself stalled)'
@@ -233,17 +300,33 @@ function withLocalFallback(
     cloudLoad.then(
       (value) => {
         clearTimeout(timer);
+        clearTimeout(firstPaint);
         if (settled) return;
         settled = true;
         resolve(value);
       },
       (error) => {
         clearTimeout(timer);
+        clearTimeout(firstPaint);
         if (settled) return;
         settled = true;
         reject(error);
       },
     );
+  });
+}
+
+/**
+ * Whether a browser copy is worth showing instead of waiting.
+ *
+ * "Any record at all" rather than "every collection populated": a real
+ * workspace legitimately has no expenses or no supplier commitments, and
+ * demanding all sixteen would mean nobody ever gets the fast path.
+ */
+function hasAnyRecords(workspace: SalesWorkspaceData) {
+  return WORKSPACE_COLLECTIONS.some((name) => {
+    const value = (workspace as Record<string, unknown>)[name];
+    return Array.isArray(value) && value.length > 0;
   });
 }
 

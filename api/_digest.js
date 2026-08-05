@@ -55,7 +55,7 @@ function dateKey(value) {
  * every query rather than assumed.
  */
 export async function loadDigestInputs(supabase, userId, today) {
-  const [opportunities, activities, quotes] = await Promise.all([
+  const [opportunities, activities, quotes, expenses] = await Promise.all([
     supabase
       .from('opportunities')
       .select('id, account_name, opportunity_name, title, stage, status, next_action, next_action_date, estimated_value, currency, updated_at')
@@ -72,13 +72,25 @@ export async function loadDigestInputs(supabase, userId, today) {
       .select('id, payload, updated_at')
       .eq('user_id', userId)
       .limit(1000),
+    // Money out. The digest asks "what is stuck", and until the expenses table
+    // existed it could only ever answer about money coming in - so an operator
+    // with a supplier payment two weeks past due got a mail telling them
+    // nothing needed them today.
+    supabase
+      .from('expenses')
+      .select('id, payload, updated_at')
+      .eq('user_id', userId)
+      .limit(1000),
   ]);
 
   return {
     opportunities: opportunities.data || [],
     activities: activities.data || [],
     quotes: (quotes.data || []).map((row) => ({ id: row.id, ...(row.payload || {}) })),
-    errors: [opportunities.error, activities.error, quotes.error].filter(Boolean).map((error) => error.message),
+    expenses: (expenses.data || []).map((row) => ({ id: row.id, ...(row.payload || {}) })),
+    errors: [opportunities.error, activities.error, quotes.error, expenses.error]
+      .filter(Boolean)
+      .map((error) => error.message),
   };
 }
 
@@ -136,7 +148,16 @@ export function buildDailyDigest(input, today) {
     return Boolean(paymentLate || deliveryLate);
   });
 
-  const hasSignal = overdue.length > 0 || quiet.length > 0 || stuckMoney.length > 0;
+  // What the operator owes and has not paid. An obligation past its own due
+  // date is the same kind of fact as a customer payment that has not arrived,
+  // and it is the one the app has always shown and the email never has.
+  const owedPayments = (input.expenses || []).filter((expense) => {
+    if (expense.__deleted === true || expense.status !== 'Upcoming') return false;
+    const due = dateKey(expense.dueDate);
+    return Boolean(due) && due < today;
+  });
+
+  const hasSignal = overdue.length > 0 || quiet.length > 0 || stuckMoney.length > 0 || owedPayments.length > 0;
 
   const lines = [];
   if (overdue.length > 0) {
@@ -158,6 +179,12 @@ export function buildDailyDigest(input, today) {
       lines.push(`  · ${quote.accountName || 'No account'} — ${quote.title || quote.quoteId || 'quote'}`);
     });
   }
+  if (owedPayments.length > 0) {
+    lines.push(`${owedPayments.length} payment${owedPayments.length === 1 ? '' : 's'} you owe ${owedPayments.length === 1 ? 'is' : 'are'} past due:`);
+    owedPayments.slice(0, 5).forEach((expense) => {
+      lines.push(`  · ${expense.vendor || expense.label || 'Payment'} — due ${dateKey(expense.dueDate)}`);
+    });
+  }
 
   return {
     kind: 'daily',
@@ -166,10 +193,15 @@ export function buildDailyDigest(input, today) {
       ? `Memoire: ${overdue.length} overdue, ${quiet.length} going quiet`
       : 'Memoire: nothing needs you today',
     headline: hasSignal
-      ? 'Three questions, answered from your own records.'
-      : 'Nothing is overdue, nothing has gone quiet, no money is late.',
+      ? 'Four questions, answered from your own records.'
+      : 'Nothing is overdue, nothing has gone quiet, no money is late in either direction.',
     lines,
-    counts: { overdue: overdue.length, quiet: quiet.length, stuckMoney: stuckMoney.length },
+    counts: {
+      overdue: overdue.length,
+      quiet: quiet.length,
+      stuckMoney: stuckMoney.length,
+      owedPayments: owedPayments.length,
+    },
   };
 }
 
