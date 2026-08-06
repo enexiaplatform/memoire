@@ -1,8 +1,9 @@
-import test from 'node:test';
+import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   BACKUP_FORMAT_VERSION,
   buildRestorePlan,
+  describeCloudExportGaps,
   parseBackupFile,
   summarizeBackup,
 } from '../../src/utils/workspaceBackup.ts';
@@ -150,4 +151,36 @@ test('summary counts records per store for the preview', () => {
 
   const settings = summary.entries.find((entry) => entry.key === 'memoire.settings.v1');
   assert.equal(settings.recordCount, null, 'a non-collection has no record count to claim');
+});
+
+describe('an export that came back short says so', () => {
+  test('a whole export warns about nothing', () => {
+    assert.equal(describeCloudExportGaps({ manifest: { complete: true, tables: {} } }), '');
+  });
+
+  test('a signed-out export carries no cloud half and is not a broken backup', () => {
+    assert.equal(describeCloudExportGaps(null), '');
+    assert.equal(describeCloudExportGaps({}), '');
+    assert.equal(describeCloudExportGaps({ manifest: {} }), '');
+  });
+
+  test('the tables that could not be read are named', () => {
+    const warning = describeCloudExportGaps({
+      manifest: {
+        complete: false,
+        tables: {
+          accounts: { rows: 12 },
+          quotes: { rows: 0, warning: 'quotes: permission denied' },
+          order_costs: { rows: 0, warning: 'order_costs: permission denied' },
+        },
+      },
+    });
+
+    assert.equal(warning, 'Quotes and Order costs could not be read from your account.');
+  });
+
+  test('an incomplete export with no named table still says something is missing', () => {
+    const warning = describeCloudExportGaps({ manifest: { complete: false, tables: {} } });
+    assert.equal(warning, 'Part of your account data could not be read.');
+  });
 });

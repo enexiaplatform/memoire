@@ -215,7 +215,13 @@ export function PipelineReviewDefenseBriefPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const activeBrief = getActivePipelineDefenseBrief(store);
-  const deals = activeBrief?.deals || [];
+  // Memoised for its identity, not its cost. `activeBrief?.deals || []` hands
+  // back a brand-new empty array on every render whenever there is no brief,
+  // and the deep-link effect below lists `deals` in its dependencies - so that
+  // effect re-ran on every single render of this page. It happens to return
+  // early on an empty list, which is the only reason this was a warning and not
+  // a loop.
+  const deals = useMemo(() => activeBrief?.deals || [], [activeBrief]);
 
   // Deep link from Today alarms: ?dealId= opens that deal card for editing and
   // scrolls it into view, so the alarm lands on the handling spot. The scroll

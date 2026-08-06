@@ -28,7 +28,17 @@ const expectedExportTables = [
   'review_packs',
   'sales_assets',
   'action_outcomes',
-  'deals',
+  'quotes',
+  'opportunity_outcomes',
+  'expenses',
+  'order_costs',
+  'order_milestones',
+  'supplier_commitments',
+  'commercial_targets',
+  'account_merges',
+  'nudges',
+  'operating_context',
+  'activity_log',
   'captures',
   'entities',
   'relationships',
@@ -58,12 +68,24 @@ requireIncludes(exportTab, 'if (response.ok)', 'settings export UI must branch o
 requireIncludes(exportTab, 'throw new Error(errorMessage)', 'settings export UI must stop export when cloud export fails');
 requireIncludes(exportTab, 'cloudData', 'settings export UI must include cloudData when export succeeds');
 
+// The token check here used to be written out by hand, a second copy of what
+// api/_auth.js already owns. It now shares that helper, so the property to
+// assert is that it does - and that the irreversible call is made against the
+// id the token proved rather than the one the request body asked for.
 const deleteAccount = read('api/delete-account.ts');
-requireIncludes(deleteAccount, 'supabaseUser.auth.getUser()', 'delete-account must fetch the authenticated user before deletion');
-requireIncludes(deleteAccount, 'authData.user.id !== userId', 'delete-account must block mismatched user IDs');
-requireIncludes(deleteAccount, "res.status(403).json({ error: 'Forbidden' })", 'delete-account must return 403 for mismatched user IDs');
+requireIncludes(deleteAccount, 'verifyUserToken(authToken, claimedUserId)', 'delete-account must verify the token belongs to the requested user');
+requireIncludes(deleteAccount, "if (!user) return res.status(401).json({ error: 'Unauthorized' });", 'delete-account must reject an unverified caller');
+requireIncludes(deleteAccount, 'enforceRateLimit(req', 'delete-account must rate-limit deletion attempts');
 requireIncludes(deleteAccount, 'getSupabaseServiceRoleKey()', 'delete-account service-role use must stay isolated after user verification');
-requireIncludes(deleteAccount, 'supabase.auth.admin.deleteUser(userId)', 'delete-account must delete only the verified userId');
+requireIncludes(deleteAccount, 'supabase.auth.admin.deleteUser(user.id)', 'delete-account must delete the verified user, not the id the body claimed');
+
+// The binding inside the shared helper is what makes the above safe, so it is
+// asserted rather than trusted. It was previously skipped whenever the expected
+// id was not a string, which a caller controls.
+const authHelper = read('api/_auth.js');
+requireIncludes(authHelper, 'requireUserId = true', 'verifyUserToken must bind the token to an account by default');
+requireIncludes(authHelper, "if (requireUserId && (typeof expectedUserId !== 'string' || !expectedUserId.trim())) return null;", 'verifyUserToken must refuse a missing or non-string expected user id');
+requireIncludes(authHelper, "if (typeof expectedUserId === 'string' && data.user.id !== expectedUserId) return null;", 'verifyUserToken must reject a token that belongs to a different account');
 
 const authProvider = read('src/auth/AuthProvider.tsx');
 for (const marker of [

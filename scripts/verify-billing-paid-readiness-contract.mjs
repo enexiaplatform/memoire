@@ -39,7 +39,12 @@ const billingApi = read('api/billing.ts');
 for (const marker of [
   "if (req.method !== 'POST') return res.status(405).end();",
   "if (!billingConfigured()) return res.status(503).json({ error: 'Billing is not configured.' });",
-  'verifyUserToken(authToken, userId)',
+  // The token must be checked against the account the body claims, and every
+  // query after it must filter by the id the token *proved* rather than the one
+  // the body asserted - the client below holds the service-role key, which has
+  // no row level security underneath it to catch a mistake here.
+  'verifyUserToken(authToken, claimedUserId)',
+  'const userId = user.id;',
   "return res.status(401).json({ error: 'Unauthorized' })",
   "if (action === 'checkout')",
   "process.env.BILLING_CHECKOUT_ENABLED !== 'true'",

@@ -95,11 +95,36 @@ export function buildCheckoutBody({ storeId, variantId, userId, email, redirectU
   };
 }
 
+/**
+ * The webhook body, read raw so the signature can be checked over the exact
+ * bytes Lemon Squeezy signed.
+ *
+ * Bounded and error-handled, neither of which it was. This endpoint is public
+ * by necessity - a webhook cannot carry a session - and the signature check that
+ * protects it happens only *after* the whole body has been read, so anything
+ * that can be done before that point can be done by anyone. Unbounded, that is
+ * "hold this function open and feed it until it runs out of memory". A real
+ * subscription event is a couple of kilobytes.
+ */
+const MAX_WEBHOOK_BODY_BYTES = 1_000_000;
+
 export function readRawBody(req) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let raw = '';
-    req.on('data', (chunk) => { raw += chunk.toString(); });
+    let bytes = 0;
+    req.on('data', (chunk) => {
+      bytes += chunk.length;
+      if (bytes > MAX_WEBHOOK_BODY_BYTES) {
+        // Destroying the request is what actually stops the sender; resolving a
+        // truncated body would fail the signature check but keep reading.
+        req.destroy();
+        reject(new Error('Webhook payload too large.'));
+        return;
+      }
+      raw += chunk.toString();
+    });
     req.on('end', () => resolve(raw));
+    req.on('error', (error) => reject(error));
   });
 }
 

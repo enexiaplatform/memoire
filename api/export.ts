@@ -20,6 +20,28 @@ export type ExportResult = {
   warning: string;
 };
 
+/**
+ * Every table this account's data lives in.
+ *
+ * This list had drifted from the database in both directions, and both hurt.
+ *
+ * It named `deals`, a table the schema never got and no code has ever read.
+ * Every cloud export therefore came back with a warning for it and a manifest
+ * that said `complete: false` - on every export, for every user, since the
+ * table was listed. Nothing surfaced that, so the one signal an export has for
+ * "this backup is missing something" had been stuck on for months and meant
+ * nothing by the time it might have mattered.
+ *
+ * More seriously, it had stopped at the thirteen collections that existed when
+ * it was written. Ten more had shipped since, and they are not marginal: quotes,
+ * expenses, order costs, order milestones, supplier commitments and outcomes are
+ * the entire money side of the product. A distributor who exported their
+ * workspace before changing laptops got their pipeline and none of what it cost
+ * them.
+ *
+ * Adding a cloud collection now means adding it here. Anything owned by a user
+ * and stored on the account belongs in the file they are told is their backup.
+ */
 export const exportTables = [
   { table: 'user_profiles', ownerColumn: 'id' },
   { table: 'usage_monthly', ownerColumn: 'user_id' },
@@ -41,13 +63,27 @@ export const exportTables = [
   { table: 'commercial_commitments', ownerColumn: 'user_id' },
   { table: 'commercial_events', ownerColumn: 'user_id' },
   { table: 'commercial_value_outcomes', ownerColumn: 'user_id' },
-  { table: 'deals', ownerColumn: 'user_id' },
+  // The money side. A backup of a distributor's workspace that carries what they
+  // sold and not what it cost them is not a backup of their business.
+  { table: 'quotes', ownerColumn: 'user_id' },
+  { table: 'opportunity_outcomes', ownerColumn: 'user_id' },
+  { table: 'expenses', ownerColumn: 'user_id' },
+  { table: 'order_costs', ownerColumn: 'user_id' },
+  { table: 'order_milestones', ownerColumn: 'user_id' },
+  { table: 'supplier_commitments', ownerColumn: 'user_id' },
+  { table: 'commercial_targets', ownerColumn: 'user_id' },
+  // Judgements the operator made that no other row records: which names are the
+  // same customer, which nudges they have already answered, how they work.
+  { table: 'account_merges', ownerColumn: 'user_id' },
+  { table: 'nudges', ownerColumn: 'user_id' },
+  { table: 'operating_context', ownerColumn: 'user_id' },
   { table: 'captures', ownerColumn: 'user_id' },
   { table: 'entities', ownerColumn: 'user_id' },
   { table: 'relationships', ownerColumn: 'user_id' },
   { table: 'contacts', ownerColumn: 'user_id' },
   { table: 'interactions', ownerColumn: 'user_id' },
   { table: 'actions', ownerColumn: 'user_id' },
+  { table: 'activity_log', ownerColumn: 'user_id' },
 ] as const;
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {

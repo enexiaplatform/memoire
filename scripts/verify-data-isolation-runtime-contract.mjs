@@ -54,14 +54,37 @@ const expectedTables = [
   ['commercial_commitments', 'user_id'],
   ['commercial_events', 'user_id'],
   ['commercial_value_outcomes', 'user_id'],
-  ['deals', 'user_id'],
+  // The money side. An export missing these hands a distributor their pipeline
+  // and nothing about what it cost them.
+  ['quotes', 'user_id'],
+  ['opportunity_outcomes', 'user_id'],
+  ['expenses', 'user_id'],
+  ['order_costs', 'user_id'],
+  ['order_milestones', 'user_id'],
+  ['supplier_commitments', 'user_id'],
+  ['commercial_targets', 'user_id'],
+  ['account_merges', 'user_id'],
+  ['nudges', 'user_id'],
+  ['operating_context', 'user_id'],
   ['captures', 'user_id'],
   ['entities', 'user_id'],
   ['relationships', 'user_id'],
   ['contacts', 'user_id'],
   ['interactions', 'user_id'],
   ['actions', 'user_id'],
+  ['activity_log', 'user_id'],
 ];
+
+/**
+ * Tables the export must NOT name.
+ *
+ * `deals` was listed for months against a schema that never had it, so every
+ * export came back with a warning and a manifest reading `complete: false`.
+ * A list that names a table nobody created is not a harmless extra entry - it
+ * permanently asserts the backup is incomplete, which is the one thing that
+ * signal exists to say.
+ */
+const forbiddenTables = ['deals'];
 
 let cleanup = () => {};
 
@@ -79,6 +102,13 @@ try {
     const match = exportTables.find((entry) => entry.table === table);
     assert(Boolean(match), `exportTables missing ${table}`);
     assert(match?.ownerColumn === ownerColumn, `${table} should use owner column ${ownerColumn}`);
+  }
+
+  for (const table of forbiddenTables) {
+    assert(
+      !exportTables.some((entry) => entry.table === table),
+      `exportTables must not name ${table}: it does not exist, so listing it marks every export incomplete`,
+    );
   }
 
   const cleanResults = exportTables.map((entry) => ({

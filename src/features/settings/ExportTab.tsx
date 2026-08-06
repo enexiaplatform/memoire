@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import {
   BACKUP_FORMAT_VERSION,
   buildRestorePlan,
+  describeCloudExportGaps,
   parseBackupFile,
   type BackupEnvelope,
   type BackupSummary,
@@ -22,6 +23,10 @@ export function ExportTab() {
   const [isExporting, setIsExporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  // Distinct from both of the above: the file downloaded, and it is short. That
+  // is neither a success to confirm nor a failure to retry, and rendering it as
+  // either one is how a partial backup gets filed away as a good one.
+  const [exportWarning, setExportWarning] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [pending, setPending] = useState<{ envelope: BackupEnvelope; summary: BackupSummary; fileName: string } | null>(null);
   const [restoreError, setRestoreError] = useState('');
@@ -113,12 +118,13 @@ export function ExportTab() {
   const handleExport = async () => {
     setIsExporting(true);
     setExportError(null);
+    setExportWarning('');
     setStatusMessage('');
 
     try {
       const localData = collectLocalMemoireData();
       let cloudData: unknown = null;
-      const cloudWarning = '';
+      let cloudWarning = '';
 
       if (user) {
         const { data: { session } } = await supabase.auth.getSession();
@@ -133,6 +139,12 @@ export function ExportTab() {
 
         if (response.ok) {
           cloudData = await response.json();
+          // The endpoint has always returned a manifest saying whether it got
+          // every table. Nothing read it: `cloudWarning` was a const set to ''
+          // and passed to a check that could never fire, so a partial export
+          // downloaded looking exactly like a whole one. A backup is the one
+          // artefact in this product that has to say when it is short.
+          cloudWarning = describeCloudExportGaps(cloudData);
         } else {
           const errorBody = await response.json().catch(() => null);
           const errorMessage =
@@ -166,7 +178,8 @@ export function ExportTab() {
       recordBackupExport();
       trackProductEvent('backup_exported');
 
-      setStatusMessage(cloudWarning || 'Workspace export downloaded.');
+      setStatusMessage('Workspace export downloaded.');
+      setExportWarning(cloudWarning);
     } catch (error) {
       setExportError(error instanceof Error ? error.message : 'Memoire could not generate the workspace export.');
     } finally {
@@ -236,6 +249,11 @@ export function ExportTab() {
           </button>
         </div>
         {statusMessage && <p className="mt-4 rounded-lg bg-blue-50 p-3 text-sm font-semibold text-blue-700">{statusMessage}</p>}
+        {exportWarning && (
+          <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-900">
+            This backup is incomplete. {exportWarning} Retry the export before relying on this file, and contact support if it stays short.
+          </p>
+        )}
         {exportError && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-700">{exportError}</p>}
       </section>
 

@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseServiceRoleKey, getSupabaseUrl } from './_env.js';
 import {
@@ -82,7 +83,26 @@ function isAuthorizedCron(req: ApiRequest) {
   if (!expected) return false;
   const header = req.headers?.authorization;
   const provided = Array.isArray(header) ? header[0] : header;
-  return provided === `Bearer ${expected}`;
+  if (typeof provided !== 'string') return false;
+  return timingSafeEqualString(provided, `Bearer ${expected}`);
+}
+
+/**
+ * Compared byte by byte to a fixed length, the same way the Lemon Squeezy
+ * webhook signature is. `===` on a secret returns as soon as it finds a
+ * difference, and the time it took to say no is a measurement of how much of
+ * the guess was right.
+ */
+function timingSafeEqualString(provided: string, expected: string) {
+  const providedBytes = Buffer.from(provided, 'utf8');
+  const expectedBytes = Buffer.from(expected, 'utf8');
+  // Hashing first so the compare is over equal-length inputs. timingSafeEqual
+  // throws on a length mismatch, and branching on the length before the compare
+  // would leak the secret's length.
+  return timingSafeEqual(
+    createHash('sha256').update(providedBytes).digest(),
+    createHash('sha256').update(expectedBytes).digest(),
+  );
 }
 
 async function handleCron(req: ApiRequest, res: ApiResponse) {
@@ -137,22 +157,44 @@ async function handleCron(req: ApiRequest, res: ApiResponse) {
  * The weekly one wins on the day it is due: two emails in the same hour is how
  * a product teaches somebody to filter it. Monday is the send day because a
  * review of last week is only useful before this one is spent.
+ *
+ * The `digest_last_daily_sent_on` clause is what actually enforces "one email".
+ * It used to check only the daily stamp, which the weekly send did not write -
+ * so a Monday that ran twice inside the same local hour, which is exactly what a
+ * cron retry or a duplicate delivery is, found the weekly already sent, fell
+ * through to the daily, and sent the second email the rule exists to prevent.
+ * The unique index on digest_deliveries does not catch it either: the two rows
+ * differ by `kind`. Sending the weekly therefore stamps both columns, and this
+ * reads both.
  */
-function dueKind(profile: ProfileRow, now: Date): 'daily' | 'weekly' | null {
+export function dueKind(profile: ProfileRow, now: Date): 'daily' | 'weekly' | null {
   const offset = profile.digest_utc_offset_minutes || 0;
   const localHour = localHourInZone(offset, now);
   if (localHour !== profile.digest_send_hour) return null;
 
   const today = todayInZone(offset, now);
   const localDay = new Date(now.getTime() + offset * 60_000).getUTCDay();
+  const alreadyMailedToday = profile.digest_last_weekly_sent_on === today
+    || profile.digest_last_daily_sent_on === today;
 
-  if (profile.weekly_review_enabled && localDay === 1 && profile.digest_last_weekly_sent_on !== today) {
-    return 'weekly';
-  }
-  if (profile.daily_digest_enabled && profile.digest_last_daily_sent_on !== today) {
-    return 'daily';
-  }
+  if (alreadyMailedToday) return null;
+  if (profile.weekly_review_enabled && localDay === 1) return 'weekly';
+  if (profile.daily_digest_enabled) return 'daily';
   return null;
+}
+
+/**
+ * Which stamps a send of this kind writes.
+ *
+ * A weekly send writes both, because from the operator's side it is "today's
+ * Memoire email" and a daily one on top of it is a second copy of the same
+ * morning. A daily send writes only its own: it must not suppress the weekly
+ * review, which lands on a different day.
+ */
+export function sentColumnsFor(kind: 'daily' | 'weekly', today: string) {
+  return kind === 'weekly'
+    ? { digest_last_weekly_sent_on: today, digest_last_daily_sent_on: today }
+    : { digest_last_daily_sent_on: today };
 }
 
 async function sendOne(
@@ -201,8 +243,7 @@ async function markSent(
   kind: 'daily' | 'weekly',
   today: string,
 ) {
-  const column = kind === 'weekly' ? 'digest_last_weekly_sent_on' : 'digest_last_daily_sent_on';
-  await supabase.from('user_profiles').update({ [column]: today }).eq('id', userId);
+  await supabase.from('user_profiles').update(sentColumnsFor(kind, today)).eq('id', userId);
 }
 
 async function logDelivery(
@@ -243,7 +284,16 @@ async function handleUnsubscribe(req: ApiRequest, res: ApiResponse) {
       auth: { persistSession: false },
     });
   } catch (error) {
-    return htmlResponse(res, 500, (error as Error).message);
+    // The detail goes to the server log, not into the page. This branch fires
+    // on a missing environment variable and its message names which one, which
+    // is a configuration hint served to whoever opened the link - and it was
+    // being interpolated into HTML unescaped on top of that.
+    console.error(JSON.stringify({
+      level: 'error',
+      message: 'Unsubscribe could not reach the database',
+      error: (error as Error).message,
+    }));
+    return htmlResponse(res, 500, 'Something went wrong turning these off. Settings can do it too.');
   }
 
   const column = kind === 'weekly' ? 'weekly_review_enabled' : 'daily_digest_enabled';
@@ -271,6 +321,19 @@ function htmlResponse(res: ApiResponse, status: number, message: string) {
     `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">`
     + `<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:520px;margin:14vh auto;padding:0 24px;line-height:1.6;color:#0F172A">`
     + `<p style="font-weight:800;font-size:20px;margin:0 0 12px">Memoire</p>`
-    + `<p style="margin:0">${message}</p></div>`,
+    + `<p style="margin:0">${escapeHtml(message)}</p></div>`,
   );
+}
+
+// Every caller passes a fixed sentence today. This is here so that stays true
+// by construction rather than by everyone remembering - one page in the product
+// is built by string concatenation instead of by React, and it is the one served
+// to an unauthenticated visitor holding a token.
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }

@@ -179,6 +179,52 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
   return { writes, droppedSampleRecords, restoredRecords };
 }
 
+/**
+ * What the cloud half of an export could not read, in the operator's words.
+ *
+ * `/api/export` has always answered with a manifest - `complete`, a row count
+ * per table, and a warning for any table that errored. Nothing read it. The
+ * Settings screen declared `const cloudWarning = ''` and then branched on it, so
+ * the check could not fire and a partial export downloaded looking exactly like
+ * a whole one. That is the single worst way for a backup to fail: silently, and
+ * only discovered on the day it is needed.
+ *
+ * Naming the tables matters more than a generic apology. "Quotes and Order costs
+ * could not be read" lets the operator judge whether the gap touches anything
+ * they care about today; "something went wrong" does not.
+ *
+ * Returns an empty string when the export is whole, so the caller can treat the
+ * result as "is there anything to warn about".
+ */
+export function describeCloudExportGaps(cloudData: unknown): string {
+  if (!cloudData || typeof cloudData !== 'object') return '';
+  const manifest = (cloudData as { manifest?: unknown }).manifest;
+  if (!manifest || typeof manifest !== 'object') return '';
+  // Absent is not incomplete: a signed-out export carries no cloud half at all,
+  // and an older response shape should not be reported as a broken backup.
+  if ((manifest as { complete?: unknown }).complete !== false) return '';
+
+  const tables = (manifest as { tables?: unknown }).tables;
+  const missing = tables && typeof tables === 'object'
+    ? Object.entries(tables as Record<string, unknown>)
+      .filter(([, value]) => Boolean(value && typeof value === 'object' && (value as { warning?: unknown }).warning))
+      .map(([table]) => friendlyTableName(table))
+    : [];
+
+  if (missing.length === 0) return 'Part of your account data could not be read.';
+  return `${joinWithAnd(missing)} could not be read from your account.`;
+}
+
+/** "order_costs" is a column name; the operator recorded order costs. */
+function friendlyTableName(table: string) {
+  return table.replace(/_/g, ' ').replace(/^./, (character) => character.toUpperCase());
+}
+
+function joinWithAnd(values: string[]) {
+  if (values.length === 1) return values[0];
+  return `${values.slice(0, -1).join(', ')} and ${values[values.length - 1]}`;
+}
+
 export function isWorkspaceKey(key: string) {
   return key.startsWith(BACKUP_KEY_PREFIX);
 }

@@ -12,9 +12,15 @@ export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).end();
   if (!billingConfigured()) return res.status(503).json({ error: 'Billing is not configured.' });
 
-  const { action, userId, authToken, variantId } = req.body || {};
-  const user = await verifyUserToken(authToken, userId);
+  const { action, userId: claimedUserId, authToken, variantId } = req.body || {};
+  const user = await verifyUserToken(authToken, claimedUserId);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  // Everything below runs with the service-role key, which has no RLS to fall
+  // back on. The id it filters by is therefore the one the token proved, never
+  // the one the body asserted - they are equal by the check above, and reading
+  // the proven one means they stay equal if that check is ever loosened.
+  const userId = user.id;
 
   const supabase = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey());
   const appUrl = process.env.VITE_APP_URL || 'http://localhost:5173';

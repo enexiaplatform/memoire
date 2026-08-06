@@ -1,5 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
-import { getSupabaseAnonKey, getSupabaseServiceRoleKey, getSupabaseUrl } from './_env.js';
+import { verifyUserToken } from './_auth.js';
+import { getSupabaseServiceRoleKey, getSupabaseUrl } from './_env.js';
+import { enforceRateLimit, rateLimitExceeded } from './_rateLimit.js';
+
+/**
+ * The one endpoint here that destroys data, and the only one whose mistakes
+ * cannot be undone.
+ *
+ * It used to hand-roll the token check that api/_auth.js already owns - the same
+ * three steps, written out again, and therefore a second place to keep correct.
+ * It now shares the helper, which also means it inherits the mandatory
+ * token-to-account binding rather than repeating a version of it.
+ */
 
 interface ApiRequest {
   method?: string;
@@ -7,37 +19,37 @@ interface ApiRequest {
     userId?: unknown;
     authToken?: unknown;
   };
+  headers?: Record<string, string | string[] | undefined>;
+  socket?: { remoteAddress?: string };
 }
 
 interface ApiResponse {
   status: (code: number) => ApiResponse;
   json: (body: unknown) => void;
   end: () => void;
+  setHeader: (name: string, value: string) => void;
 }
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { userId, authToken } = req.body || {};
-  if (!userId || !authToken) return res.status(400).json({ error: 'Auth required' });
-  if (typeof userId !== 'string' || typeof authToken !== 'string') {
+  const { userId: claimedUserId, authToken } = req.body || {};
+  if (!claimedUserId || !authToken) return res.status(400).json({ error: 'Auth required' });
+  if (typeof claimedUserId !== 'string' || typeof authToken !== 'string') {
     return res.status(400).json({ error: 'Invalid auth payload' });
   }
 
-  const supabaseUser = createClient(
-    getSupabaseUrl(),
-    getSupabaseAnonKey(),
-    { global: { headers: { Authorization: `Bearer ${authToken}` } } }
-  );
-
-  const { data: authData, error: authError } = await supabaseUser.auth.getUser();
-  if (authError || !authData.user) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  // Deleting an account is a once-ever action, so anything past the first
+  // attempt or two in an hour is a retry loop or somebody probing with stolen
+  // tokens. Applied before the token is verified, because verification is
+  // itself a call to Supabase.
+  const rateLimit = enforceRateLimit(req, 'delete-account', claimedUserId, 3, 60 * 60 * 1000);
+  if (!rateLimit.allowed) {
+    return rateLimitExceeded(res, rateLimit, 'Too many deletion attempts. Please try again later.');
   }
 
-  if (authData.user.id !== userId) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
+  const user = await verifyUserToken(authToken, claimedUserId);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   const supabase = createClient(
     getSupabaseUrl(),
@@ -47,8 +59,9 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   try {
     // With service_role and ON DELETE CASCADE on the schema, deleting the user from auth.users
     // will delete all their data in capturing tables automatically if foreign keys are set up.
-    // Ensure we delete from auth schema
-    const { error } = await supabase.auth.admin.deleteUser(userId);
+    // The id comes off the verified user rather than the request body: this call
+    // is irreversible and runs with a key that has no RLS beneath it.
+    const { error } = await supabase.auth.admin.deleteUser(user.id);
 
     if (error) throw error;
 

@@ -214,6 +214,15 @@ export function buildOrderMargins(input: {
   const extrasBase = covered.reduce((sum, margin) => sum + margin.extrasBase, 0);
   const grossMarginBase = revenueBase - costBase;
 
+  // The goods-only comparison is drawn from the orders that actually have a
+  // goods price, not from every costed order. Including one whose only recorded
+  // cost is freight would put its full revenue into the denominator against a
+  // goods cost of zero, and quietly lift the "before landed cost" figure the
+  // real margin is being read against.
+  const withGoodsPrice = covered.filter((margin) => margin.costAmount !== null);
+  const goodsPricedRevenueBase = withGoodsPrice.reduce((sum, margin) => sum + margin.revenueBase, 0);
+  const goodsPricedGoodsBase = withGoodsPrice.reduce((sum, margin) => sum + margin.goodsBase, 0);
+
   return {
     // Tracked reads the *records*, not the orders. A cost entered against an
     // order that has since been lost still means this operator prices their
@@ -231,7 +240,9 @@ export function buildOrderMargins(input: {
     extrasBase,
     grossMarginBase,
     marginPct: revenueBase > 0 ? Math.round((grossMarginBase / revenueBase) * 100) : null,
-    goodsMarginPct: revenueBase > 0 ? Math.round(((revenueBase - goodsBase) / revenueBase) * 100) : null,
+    goodsMarginPct: goodsPricedRevenueBase > 0
+      ? Math.round(((goodsPricedRevenueBase - goodsPricedGoodsBase) / goodsPricedRevenueBase) * 100)
+      : null,
     thinnest: covered
       .filter((margin) => margin.marginPct !== null)
       .sort((left, right) => (left.marginPct as number) - (right.marginPct as number))[0] || null,
@@ -302,9 +313,23 @@ function buildOneOrderMargin(
     costBase,
     marginBase,
     marginPct,
-    goodsMarginPct: order.amountBase > 0 ? Math.round(((order.amountBase - goodsBase) / order.amountBase) * 100) : null,
+    // Null, not 100%, when the goods price is the half that is missing.
+    // `goodsBase` is 0 for an order carrying only freight and duty, and the
+    // arithmetic then reads "you kept all of it on the goods" - which is the
+    // figure the operator is meant to compare the real margin against, invented
+    // out of a field they never filled in. The whole point of this number is to
+    // show what recording landed cost changed; it cannot do that without a
+    // goods price to have been wrong about.
+    goodsMarginPct: goodsAmount !== null && order.amountBase > 0
+      ? Math.round(((order.amountBase - goodsBase) / order.amountBase) * 100)
+      : null,
     meetsTarget,
-    targetGapBase: Math.max(0, (order.amountBase * targetPct) / 100 - marginBase),
+    // Only orders with a denominator carry a gap. A zero-value order used to
+    // contribute its entire cost to the workspace's shortfall while being
+    // excluded from `belowTargetCount` for having no margin to judge - so the
+    // page reported "0 orders below target" above a target gap of several
+    // hundred million, and the two numbers were describing different sets.
+    targetGapBase: marginPct === null ? 0 : Math.max(0, (order.amountBase * targetPct) / 100 - marginBase),
     // What it had to sell for, at this cost, to keep the target. Undefined at a
     // 100% target - there is no price at which cost is nothing.
     priceForTargetBase: targetPct < 100 ? costBase / (1 - targetPct / 100) : null,

@@ -20,6 +20,10 @@ function requireIncludes(text, marker, label) {
   if (!text.includes(marker)) fail(label);
 }
 
+function requireCondition(condition, label) {
+  if (!condition) fail(label);
+}
+
 const readiness = read('scripts/lib/production-readiness-runtime.mjs');
 const health = read('api/health.ts');
 const clientLogEndpoint = read('api/client-log.ts');
@@ -171,6 +175,44 @@ const vercel = read('vercel.json');
 for (const marker of ['"source": "/api/(.*)"', '"key": "Cache-Control"', '"value": "no-store"']) {
   requireIncludes(vercel, marker, `API runtime cache contract missing ${marker}`);
 }
+
+/**
+ * The response headers, asserted rather than assumed.
+ *
+ * A CSP is the one security control in this product that is invisible when it
+ * works and invisible when it is deleted, so it gets a contract. The two
+ * source-allowances below are checked by name because they are the ones the app
+ * genuinely needs and would otherwise be "tightened" by somebody reading the
+ * policy without loading the page: index.css pulls its typefaces from Google
+ * Fonts with a CSS @import that survives the build, and React inline `style`
+ * attributes need 'unsafe-inline' in style-src. Removing either breaks the
+ * interface rather than the tests, which is the wrong way round.
+ */
+const vercelConfig = JSON.parse(vercel);
+const siteHeaders = vercelConfig.headers?.find((entry) => entry.source === '/(.*)')?.headers ?? [];
+const headerValue = (key) => siteHeaders.find((header) => header.key === key)?.value ?? '';
+
+for (const key of ['Content-Security-Policy', 'Strict-Transport-Security', 'X-Frame-Options', 'X-Content-Type-Options', 'Referrer-Policy']) {
+  requireCondition(Boolean(headerValue(key)), `site responses must send ${key}`);
+}
+
+const csp = headerValue('Content-Security-Policy');
+for (const directive of [
+  "default-src 'self'",
+  "script-src 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  'https://fonts.googleapis.com',
+  'https://fonts.gstatic.com',
+  'https://*.supabase.co',
+]) {
+  requireCondition(csp.includes(directive), `Content-Security-Policy missing ${directive}`);
+}
+requireCondition(
+  !/script-src[^;]*unsafe-(inline|eval)/.test(csp),
+  "Content-Security-Policy must not allow unsafe-inline or unsafe-eval in script-src - the build emits no inline script, so nothing needs it",
+);
 
 const contractDoc = read('docs/deployment/production-readiness-contract-coverage-2026-06-17.md');
 for (const marker of ['A1 remains open', 'A7 remains open', 'scripts/verify-production-readiness-contract.mjs']) {

@@ -23,7 +23,13 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: 'Missing webhook signature.' });
   }
 
-  const rawBody = await readRawBody(req);
+  let rawBody: string;
+  try {
+    rawBody = await readRawBody(req);
+  } catch {
+    return res.status(400).json({ error: 'Webhook payload could not be read.' });
+  }
+
   if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
     return res.status(400).json({ error: 'Invalid webhook signature.' });
   }

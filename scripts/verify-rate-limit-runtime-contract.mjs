@@ -93,6 +93,38 @@ enforceRateLimit(addressReq, addressScope, '', 1, 60_000);
 const addressBlocked = enforceRateLimit(addressReq, addressScope, '', 1, 60_000);
 assert(addressBlocked.allowed === false, 'missing identity should fall back to forwarded client address');
 
+// The ceiling behind the identity bucket. Every public endpoint here lets the
+// caller pick their own identity, so a limit keyed only on that is no limit at
+// all: rotate the email, get a fresh bucket. These three assertions are the
+// difference between "the same person cannot submit twice" and "this endpoint
+// cannot be used to fill a table".
+const rotatingScope = `runtime-rotating-${runId}`;
+const rotatingReq = makeReq('198.51.100.99');
+let rotatingBlockedAt = 0;
+for (let attempt = 1; attempt <= 12; attempt += 1) {
+  const result = enforceRateLimit(rotatingReq, rotatingScope, `fresh-identity-${attempt}`, 2, 60_000);
+  if (!result.allowed && rotatingBlockedAt === 0) rotatingBlockedAt = attempt;
+}
+assert(rotatingBlockedAt > 0, 'rotating the identity must still hit the client-address ceiling');
+assert(rotatingBlockedAt > 2, 'the address ceiling must be looser than the per-identity limit');
+
+// A caller who writes their own x-forwarded-for must not be able to walk out of
+// that ceiling. The platform header wins wherever it is present.
+const spoofScope = `runtime-spoof-${runId}`;
+let spoofBlocked = false;
+for (let attempt = 1; attempt <= 12; attempt += 1) {
+  const spoofReq = {
+    headers: {
+      'x-vercel-forwarded-for': '203.0.113.200',
+      'x-forwarded-for': `10.1.1.${attempt}`,
+    },
+    socket: { remoteAddress: '198.51.100.25' },
+  };
+  const result = enforceRateLimit(spoofReq, spoofScope, `spoof-identity-${attempt}`, 2, 60_000);
+  if (!result.allowed) spoofBlocked = true;
+}
+assert(spoofBlocked, 'a forged x-forwarded-for must not create a fresh address bucket');
+
 if (failures.length > 0) {
   console.error('Rate-limit runtime contract verification failed:');
   for (const failure of failures) console.error(`- ${failure}`);
