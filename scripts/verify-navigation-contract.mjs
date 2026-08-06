@@ -50,10 +50,10 @@ const app = readFileSync('src/App.tsx', 'utf8');
   assert.deepEqual(
     [...railIds].sort(),
     [
-      'accounts', 'activity', 'business-lens', 'business-vault', 'money',
+      'accounts', 'activity', 'business-lens', 'business-vault', 'cost-analysis', 'money',
       'opportunities', 'review', 'search-insights', 'settings', 'stakeholders', 'timeline', 'today',
     ],
-    'the rail is the six primary destinations plus the six routed global surfaces - no more, no less',
+    'the rail is the six primary destinations plus the seven routed global surfaces - no more, no less',
   );
 
   // No hard-coded nav target may sneak in beside the registry - that is exactly
@@ -127,12 +127,12 @@ for (const retiredId of [
   assert.ok(topNav.includes('to="/app/capture"'), 'Capture must stay a global action in the top bar');
   const globals = registry.match(/export const globalActions[\s\S]*?\]\.map/);
   assert.ok(globals, 'featureRegistry must declare globalActions');
-  for (const id of ['capture', 'search-insights', 'activity', 'stakeholders', 'business-lens', 'business-vault', 'settings']) {
+  for (const id of ['capture', 'search-insights', 'activity', 'stakeholders', 'cost-analysis', 'business-lens', 'business-vault', 'settings']) {
     assert.ok(globals[0].includes(`'${id}'`), `global action missing from registry: ${id}`);
   }
 
   const primaries = registry.match(/export const PRIMARY_DESTINATION_IDS = \[([\s\S]*?)\] as const;/);
-  for (const lens of ['business-vault', 'activity', 'business-lens', 'stakeholders']) {
+  for (const lens of ['business-vault', 'activity', 'business-lens', 'stakeholders', 'cost-analysis']) {
     assert.equal(
       primaries[1].includes(lens),
       false,
@@ -184,6 +184,7 @@ for (const retiredId of [
     ['Search & Insights', 'src/features/v31/AskMemoirePage.tsx'],
     ['Activity', 'src/features/activity/ActivityPage.tsx'],
     ['Stakeholders', 'src/features/stakeholders/StakeholdersPage.tsx'],
+    ['Cost Analysis', 'src/features/revenue/CostAnalysisPage.tsx'],
     ['Dashboard lens', 'src/features/business/BusinessLensPage.tsx'],
     ['Business Vault', 'src/features/vault/BusinessVaultPage.tsx'],
     ['Settings', 'src/features/settings/SettingsPage.tsx'],

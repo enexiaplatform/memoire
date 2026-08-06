@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Activity, BarChart3, BookOpen, CalendarDays, ClipboardList, Network, Package, Search, Settings, Sun, Target, UsersRound } from 'lucide-react';
+import { Activity, BarChart3, BookOpen, CalendarDays, ClipboardList, Coins, Network, Package, Search, Settings, Sun, Target, UsersRound } from 'lucide-react';
 
 /**
  * One icon per rail destination, shared by the sidebar and the phone tab bar so
@@ -19,6 +19,7 @@ export function navIcon(featureId: string, className = 'h-[18px] w-[18px]'): Rea
     case 'stakeholders': return <UsersRound className={className} />;
     case 'opportunities': return <Target className={className} />;
     case 'money': return <Package className={className} />;
+    case 'cost-analysis': return <Coins className={className} />;
     case 'search-insights': return <Search className={className} />;
     case 'activity': return <Activity className={className} />;
     case 'business-vault': return <Network className={className} />;

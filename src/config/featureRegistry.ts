@@ -309,6 +309,35 @@ export const featureRegistry: FeatureRecord[] = [
       'Retire it if the operator stops opening it between weekly reviews - that would mean the daily loop on Today and the weekly loop in Review already cover the question, and this is only decoration.',
   },
   {
+    id: 'cost-analysis',
+    label: 'Cost Analysis',
+    // Shipped 2026-08-05 as a block inside Orders, under the order book it
+    // prices. Promoted to the rail the next day for one reason, and it is worth
+    // recording honestly: the founder went looking for it in the navigation,
+    // found no row, and reported the feature missing. It was on screen the
+    // whole time, one scroll below where they were standing.
+    //
+    // "It is further down the page you were already on" is a correct argument
+    // that loses to what people actually do. A capability nobody can find is
+    // not a capability, and the cost of being wrong here is asymmetric: a
+    // seventh row in Records costs a little scanning, an unfindable module
+    // costs the whole feature.
+    //
+    // Global, not a primary destination. It owns purchase costs and nothing
+    // else, derives its orders from the same buildOrderBook the order book
+    // uses, and is not a place you run the day from - you come here to ask
+    // whether the work was worth doing. PRIMARY_DESTINATION_IDS is untouched.
+    status: 'global',
+    ownerSurface: 'cost-analysis',
+    route: '/app/cost-analysis',
+    routeBehavior: 'primary',
+    navVisible: true,
+    analytics: 'active',
+    dataRetention: 'Owns one purchase cost per committed order. Derives every other figure.',
+    killOrActivationCondition:
+      'Retire it if operators never record a purchase cost - that would mean the buy side is somebody else\'s job in this trade, and the whole module is an empty column.',
+  },
+  {
     id: 'stakeholders',
     label: 'Stakeholders',
     // Promoted from `embedded` to a rail item on 2026-08-05, on the operator's
@@ -580,7 +609,7 @@ export const primaryNavigation: FeatureRecord[] = PRIMARY_DESTINATION_IDS.map((i
 });
 
 /** Always reachable, never a primary destination. */
-export const globalActions: FeatureRecord[] = ['capture', 'search-insights', 'activity', 'stakeholders', 'business-lens', 'business-vault', 'settings'].map((id) => {
+export const globalActions: FeatureRecord[] = ['capture', 'search-insights', 'activity', 'stakeholders', 'cost-analysis', 'business-lens', 'business-vault', 'settings'].map((id) => {
   const feature = byId.get(id);
   if (!feature) throw new Error(`Feature registry is missing global action "${id}"`);
   return feature;
@@ -623,7 +652,9 @@ const NAVIGATION_GROUP_IDS: { id: NavGroupId; label: string; itemIds: string[] }
     // is a person inside a customer, so the two rows read as one pair. Same
     // contract as Activity above - present in the rail, absent from
     // PRIMARY_DESTINATION_IDS.
-    itemIds: ['accounts', 'stakeholders', 'opportunities', 'money', 'activity'],
+    // Cost Analysis sits directly under Orders from 2026-08-06, the same way
+    // Stakeholders sits under Accounts: the buy side of the orders above it.
+    itemIds: ['accounts', 'stakeholders', 'opportunities', 'money', 'cost-analysis', 'activity'],
   },
   {
     id: 'tools',

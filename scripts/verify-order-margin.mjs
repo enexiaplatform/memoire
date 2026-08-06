@@ -72,12 +72,41 @@ const bookOf = (opportunities) => buildOrderBook({
     );
   }
 
-  const page = readFileSync(new URL('../src/features/revenue/RevenueViewPage.tsx', import.meta.url), 'utf8');
-  assert.match(page, /<CostAnalysisPanel/, 'Orders must render the cost analysis module');
-  assert.ok(
-    page.indexOf('<CostAnalysisPanel') > page.indexOf('<OrderBookPanel'),
-    'the order book leads the page; cost analysis sits under the orders it prices',
+  // The module always renders its own heading. It used to `return null` when
+  // the book held no committed order, so a workspace below the commitment
+  // threshold saw the order book explain its emptiness and saw nothing at all
+  // where cost analysis should be - which reads as a feature that never
+  // shipped, and sent the founder hunting the nav for a page that does not
+  // exist. A section with nothing to say still says which section it is.
+  const costPanel = readFileSync(new URL('../src/features/revenue/CostAnalysisPanel.tsx', import.meta.url), 'utf8');
+  assert.equal(
+    /if \(orders\.length === 0\) return null;/.test(costPanel),
+    false,
+    'cost analysis must not vanish on a workspace with no committed orders - it must say why it is empty',
   );
+  assert.match(costPanel, /function NoCommittedOrders/, 'the empty state must exist');
+
+  // Cost analysis is its own destination from 2026-08-06. It first shipped as a
+  // block under the order book, which was defensible and lost to what the
+  // operator actually did: they looked for it in the rail, found nothing, and
+  // reported the feature missing while it sat one scroll below them. Orders is
+  // therefore back to a single job, and this page is the other one.
+  const page = readFileSync(new URL('../src/features/revenue/RevenueViewPage.tsx', import.meta.url), 'utf8');
+  assert.equal(
+    page.includes('CostAnalysisPanel'),
+    false,
+    'cost analysis has its own destination - rendering it on Orders too would be two doors onto one module',
+  );
+
+  const costPage = readFileSync(new URL('../src/features/revenue/CostAnalysisPage.tsx', import.meta.url), 'utf8');
+  assert.match(costPage, /<CostAnalysisPanel/, 'the cost analysis page must render the module');
+  assert.match(costPage, /eyebrow="Records"/, 'it sits in the Records group and must say so');
+
+  const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
+  assert.match(app, /<Route path="cost-analysis"/, 'cost analysis needs a route');
+
+  const registry = readFileSync(new URL('../src/config/featureRegistry.ts', import.meta.url), 'utf8');
+  assert.match(registry, /id: 'cost-analysis'/, 'the rail renders from the registry, so the destination must be declared there');
 }
 
 // 1c. Margin does not depend on milestone ticks, which is why the module can

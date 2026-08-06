@@ -3,7 +3,7 @@ import { Coins, Pencil, Search } from 'lucide-react';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { QuoteRecord } from '../../services/quoteStore';
 import { deleteOrderCost, loadOrderCostsForWorkspace, saveOrderCost } from '../../services/orderCostStore';
-import { buildOrderBook, type CommittedOrder } from '../../utils/orderToCash';
+import { buildOrderBook, COMMIT_PROBABILITY_THRESHOLD, type CommittedOrder } from '../../utils/orderToCash';
 import {
   buildOrderMargins,
   marginTone,
@@ -21,13 +21,15 @@ import {
 } from '../../utils/money';
 
 /**
- * Cost analysis: the buy side of the order book, and the only thing on this page
- * that says whether the work was worth doing.
+ * Cost analysis: the buy side of the order book.
  *
  * Orders answers "where is my money" - which orders are committed, where each
  * one is stuck, when it will land. It deliberately says nothing about cost, and
  * it stays that way: an order book that mixes chasing with pricing is two jobs
- * on one table. This is the second job, kept as its own module underneath.
+ * on one table. This is the second job, and as of 2026-08-06 it has its own
+ * destination rather than sitting under the book - see CostAnalysisPage for why
+ * "it is further down the page you were already on" turned out to lose to what
+ * an operator actually does when looking for a feature.
  *
  * What it is *not* is the accounting profit-and-loss statement in utils/pnl.ts.
  * That one is cash-basis over a period - money collected against money paid,
@@ -137,8 +139,6 @@ export function CostAnalysisPanel({
     setEditingId('');
   };
 
-  if (orders.length === 0) return null;
-
   return (
     <section className="min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5">
@@ -148,8 +148,8 @@ export function CostAnalysisPanel({
             <h2 className="text-lg font-bold text-navy">Cost analysis</h2>
           </div>
           <p className="mt-1 max-w-2xl text-sm text-gray-500">
-            What these orders cost you, against what you sold them for. Orders above tracks where the money is;
-            this tracks whether it was worth it. Yours only — nothing here changes an order or reaches a customer.
+            One purchase cost per committed order, and the margin it leaves. Record the cost on the orders you know;
+            leave the rest blank and they stay out of every figure here.
           </p>
         </div>
         {margins.tracked && (
@@ -167,7 +167,9 @@ export function CostAnalysisPanel({
         )}
       </div>
 
-      {!margins.tracked ? (
+      {orders.length === 0 ? (
+        <NoCommittedOrders />
+      ) : !margins.tracked ? (
         <StartHere
           open={entryOpen}
           orderCount={orders.length}
@@ -180,7 +182,7 @@ export function CostAnalysisPanel({
         </>
       )}
 
-      {(margins.tracked || entryOpen) && (
+      {orders.length > 0 && (margins.tracked || entryOpen) && (
         <>
           <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3">
             <label className="relative w-full sm:w-[320px]">
@@ -315,6 +317,28 @@ export function CostAnalysisPanel({
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * The module before there is anything to price.
+ *
+ * It used to return null here, which was a real mistake and the one the founder
+ * hit: a workspace with no committed order showed the order book explaining its
+ * own emptiness and showed *nothing at all* where cost analysis should be. From
+ * the outside that is indistinguishable from a feature that was never shipped,
+ * and it sent them looking through the nav for a page that does not exist.
+ *
+ * A section that has nothing to say still says which section it is, and why it
+ * is empty - the same courtesy the order book above it already extends.
+ */
+function NoCommittedOrders() {
+  return (
+    <div className="m-5 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-5 text-sm leading-6 text-gray-500">
+      Nothing to price yet. Cost analysis reads the committed orders from the order book — a deal at
+      {' '}{COMMIT_PROBABILITY_THRESHOLD}% or more, in procurement, or already won. Once one lands there you can record
+      what the goods cost you, and this works out the margin per order, per customer and per line you carry.
+    </div>
   );
 }
 

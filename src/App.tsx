@@ -44,6 +44,7 @@ const SalesAssetsPage = lazy(() =>
 );
 const QuotesPage = lazy(() => import('./features/quotes/QuotesPage').then((module) => ({ default: module.QuotesPage })));
 const RevenueViewPage = lazy(() => import('./features/revenue/RevenueViewPage').then((module) => ({ default: module.RevenueViewPage })));
+const CostAnalysisPage = lazy(() => import('./features/revenue/CostAnalysisPage').then((module) => ({ default: module.CostAnalysisPage })));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const SalesReviewsPage = lazy(() =>
   import('./features/reviews/SalesReviewsPage').then((module) => ({ default: module.SalesReviewsPage })),
@@ -119,6 +120,10 @@ function App() {
             <Route path="capture" element={<DailyCapturePage />} />
             <Route path="ask" element={<AskMemoirePage />} />
             <Route path="activity" element={<ActivityRouteEntry />} />
+            {/* The buy side of the order book. Its own destination since
+                2026-08-06 - see the registry entry for why it left the Orders
+                page it used to sit inside. */}
+            <Route path="cost-analysis" element={<CostAnalysisPage />} />
             <Route path="business" element={<BusinessLensPage />} />
             <Route path="vault" element={<BusinessVaultPage />} />
             <Route path="settings" element={<SettingsPage />} />
