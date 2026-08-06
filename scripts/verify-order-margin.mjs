@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { buildOrderBook } from '../src/utils/orderToCash.ts';
-import { buildOrderMargins, createOrderCostRecord, marginTone, rollupOrderMargins } from '../src/utils/orderMargin.ts';
+import {
+  buildOrderMargins,
+  createOrderCostRecord,
+  DEFAULT_TARGET_MARGIN_PCT,
+  marginTone,
+  rollupMarginByMonth,
+  rollupOrderMargins,
+} from '../src/utils/orderMargin.ts';
 
 // The order book knows what every order sells for and nothing about what it
 // cost. That gap is why a distributor could read this page all day and still not
@@ -201,12 +208,22 @@ const bookOf = (opportunities) => buildOrderBook({
   assert.equal(marginTone(35), 'healthy');
   assert.equal(marginTone(null), 'unknown', 'an unpriced order is unknown, never healthy');
 
-  // The two thresholds are fixed and printed on the surface. An operator cannot
-  // argue with a colour whose rule is not written down, and a rule that moves
-  // with the data is worse - a thin order and a shifted definition look the same.
+  // Amber is the operator's own target from 2026-08-06, not a fixed 10%. That is
+  // a deliberate distinction and not a softening of the rule below: below cost
+  // stays a fact nobody has to agree with, and below target is a judgement made
+  // by the one person who knows what their trade keeps. What neither line does
+  // is move on its own.
+  assert.equal(marginTone(15, 20), 'thin', 'the amber line is the declared target');
+  assert.equal(marginTone(15, 10), 'healthy', 'a lower target passes the same order');
+  assert.equal(marginTone(-1, 0), 'loss', 'below cost is a loss at any target');
+
+  // Both thresholds are printed on the surface. An operator cannot argue with a
+  // colour whose rule is not written down, and a rule that moves with the data
+  // is worse - a thin order and a shifted definition look the same.
   const panel = readFileSync(new URL('../src/features/revenue/CostAnalysisPanel.tsx', import.meta.url), 'utf8');
-  assert.match(panel, /under 10% kept/i, 'the amber threshold must be stated on the surface');
+  assert.match(panel, /under the \{targetPct\}% you set as your target/i, 'the amber threshold must be stated on the surface');
   assert.match(panel, /below what it cost/i, 'the red threshold must be stated on the surface');
+  assert.match(panel, /Neither line is learned from your data/i, 'the surface must say the thresholds are not adaptive');
   const model = readFileSync(new URL('../src/utils/orderMargin.ts', import.meta.url), 'utf8');
   assert.equal(
     /percentile|median|average|adaptive/i.test(model.slice(model.indexOf('export function marginTone'))),
@@ -284,6 +301,191 @@ const bookOf = (opportunities) => buildOrderBook({
   assert.equal(orion.marginPct, null, 'unknown is never reported as zero percent');
   assert.equal(orion.revenueBase, 0, 'its revenue is not counted against a cost that does not exist');
   assert.equal(groups[groups.length - 1].key, 'Orion', 'unknown groups sort last rather than being hidden');
+}
+
+// 6c. Landed cost, not the invoice from the principal.
+//
+//     The failure this closes is the most expensive one on the page and the
+//     hardest to see: a distributor pays the principal in USD and then pays a
+//     forwarder, a customs broker and an engineer in dong, and a margin worked
+//     out on the goods price alone reads healthy on an order that lost money.
+//     The two currencies are separate by design - one currency across the whole
+//     record forces a hand conversion, and a hand conversion is a stale rate
+//     baked into a number nobody can audit.
+{
+  const orders = bookOf([opportunity('a', { estimatedValue: 1_000_000, currency: 'VND' })]).orders;
+  const goodsOnly = buildOrderMargins({
+    orders,
+    costRecords: [createOrderCostRecord({ opportunityId: 'a', amount: 700_000, currency: 'VND' })],
+  }).byOrder.get('a');
+  assert.equal(goodsOnly.marginPct, 30);
+  assert.equal(goodsOnly.hasExtras, false);
+  assert.equal(goodsOnly.extrasBase, 0, 'no extras recorded means none counted, never an estimate');
+  assert.equal(goodsOnly.goodsMarginPct, goodsOnly.marginPct, 'with no extras the two readings are the same number');
+
+  const landed = buildOrderMargins({
+    orders,
+    costRecords: [createOrderCostRecord({
+      opportunityId: 'a',
+      amount: 700_000,
+      currency: 'VND',
+      freightAmount: 100_000,
+      dutyAmount: 80_000,
+      otherAmount: 20_000,
+      extrasCurrency: 'VND',
+    })],
+  }).byOrder.get('a');
+  assert.equal(landed.extrasBase, 200_000);
+  assert.equal(landed.costBase, 900_000, 'landed cost is goods plus freight plus duty plus other');
+  assert.equal(landed.marginPct, 10, 'the margin an operator acts on is the landed one');
+  assert.equal(landed.goodsMarginPct, 30, 'what the goods price alone would have said is kept, because that gap is the finding');
+
+  // Extras in a second currency are converted before they are added. Domestic
+  // freight in dong against goods in USD is the ordinary import, not an edge.
+  const mixed = buildOrderMargins({
+    orders,
+    costRecords: [createOrderCostRecord({
+      opportunityId: 'a',
+      amount: 20,
+      currency: 'USD',
+      freightAmount: 50_000,
+      extrasCurrency: 'VND',
+    })],
+  }).byOrder.get('a');
+  assert.equal(mixed.extrasBase, 50_000, 'extras convert from their own currency, not from the goods currency');
+  assert.ok(mixed.goodsBase > 100_000, 'the goods still convert from theirs');
+  assert.equal(mixed.costBase, mixed.goodsBase + mixed.extrasBase);
+
+  // A record with only freight against it is still a priced order. Refusing to
+  // count it would lose the one cost the operator actually knew.
+  const extrasOnly = buildOrderMargins({
+    orders,
+    costRecords: [createOrderCostRecord({ opportunityId: 'a', amount: null, currency: 'VND', freightAmount: 50_000 })],
+  });
+  assert.equal(extrasOnly.tracked, true);
+  assert.equal(extrasOnly.byOrder.get('a').hasCost, true);
+
+  // Records written before landed cost existed still read. Their extras are
+  // absent rather than zero-with-a-currency-nobody-chose.
+  const legacy = buildOrderMargins({
+    orders,
+    costRecords: [{
+      id: 'oc-a',
+      opportunityId: 'a',
+      amount: 400_000,
+      currency: 'VND',
+      supplier: '',
+      note: '',
+      createdAt: '2026-08-05T00:00:00.000Z',
+      updatedAt: '2026-08-05T00:00:00.000Z',
+    }],
+  }).byOrder.get('a');
+  assert.equal(legacy.hasCost, true, 'a cost recorded before this change still counts');
+  assert.equal(legacy.extrasBase, 0);
+  assert.equal(legacy.marginPct, 60, 'and reads exactly as it did before');
+}
+
+// 6d. A margin is graded against a number the operator states, and the shortfall
+//     is money rather than points.
+//
+//     "You kept 14%" is trivia. "14% against the 20% you aim for, and the gap is
+//     340m" is a decision about who gets the next quote. The target-back
+//     arithmetic exists for the same reason: a target is only actionable as a
+//     price or a purchase price, never as a percentage.
+{
+  const orders = bookOf([opportunity('a', { estimatedValue: 1_000_000, currency: 'VND' })]).orders;
+  const costRecords = [createOrderCostRecord({ opportunityId: 'a', amount: 900_000, currency: 'VND' })];
+
+  const atDefault = buildOrderMargins({ orders, costRecords });
+  assert.equal(atDefault.targetPct, DEFAULT_TARGET_MARGIN_PCT, 'a stated default, not a learned one');
+
+  const graded = buildOrderMargins({ orders, costRecords, targetPct: 20 });
+  const margin = graded.byOrder.get('a');
+  assert.equal(margin.marginPct, 10);
+  assert.equal(margin.meetsTarget, false);
+  assert.equal(margin.targetGapBase, 100_000, 'the shortfall is money: 20% of 1m is 200k, it kept 100k');
+  assert.equal(margin.priceForTargetBase, 1_125_000, 'at a 900k cost, 20% needs a 1.125m price');
+  assert.equal(margin.costForTargetBase, 800_000, 'at a 1m price, 20% needs an 800k landed cost');
+  assert.equal(graded.belowTargetCount, 1);
+  assert.equal(graded.targetGapBase, 100_000);
+
+  const easier = buildOrderMargins({ orders, costRecords, targetPct: 5 });
+  assert.equal(easier.byOrder.get('a').meetsTarget, true, 'the same order passes a lower target');
+  assert.equal(easier.targetGapBase, 0, 'a met target leaves no gap, never a negative one');
+  assert.equal(easier.belowTargetCount, 0);
+
+  // An unpriced order is not a pass. Unknown must never read as met.
+  const unpriced = buildOrderMargins({
+    orders: bookOf([opportunity('a'), opportunity('b')]).orders,
+    costRecords,
+  });
+  assert.equal(unpriced.byOrder.get('b').meetsTarget, false);
+  assert.equal(unpriced.byOrder.get('b').targetGapBase, 0, 'an unknown order contributes no shortfall either');
+}
+
+// 6e. The blind spot is stated in money.
+//
+//     Coverage as a count is easy to read past. The value flowing through the
+//     orders nobody has costed is the sentence that gets them costed, and it is
+//     the number that decides whether any figure above is worth acting on.
+{
+  const margins = buildOrderMargins({
+    orders: bookOf([
+      opportunity('priced', { estimatedValue: 1_000_000 }),
+      opportunity('blind-a', { estimatedValue: 4_000_000 }),
+      opportunity('blind-b', { estimatedValue: 5_000_000 }),
+    ]).orders,
+    costRecords: [createOrderCostRecord({ opportunityId: 'priced', amount: 600_000, currency: 'VND' })],
+  });
+  assert.equal(margins.uncoveredCount, 2);
+  assert.equal(margins.uncoveredRevenueBase, 9_000_000, 'what the blind spot is worth, not just how many rows it has');
+  assert.equal(margins.revenueBase, 1_000_000, 'and it still contributes nothing to the totals');
+}
+
+// 6f. Margin by month, so the direction is visible.
+//
+//     A book that kept 24% last quarter and 12% this one reads as healthy in a
+//     single total. A month with nothing costed must read as nothing recorded
+//     and never as zero margin - that is the whole reason this returns a null
+//     percentage rather than a zero.
+{
+  // `orderDate` is the freshest quote's date, else when the deal last moved.
+  const orders = bookOf([
+    opportunity('july', { estimatedValue: 1_000_000, updatedAt: '2026-07-12T00:00:00.000Z' }),
+    opportunity('august', { estimatedValue: 2_000_000, updatedAt: '2026-08-02T00:00:00.000Z' }),
+    opportunity('undated', { estimatedValue: 9_000_000 }),
+  ]).orders;
+  const margins = buildOrderMargins({
+    orders,
+    costRecords: [
+      createOrderCostRecord({ opportunityId: 'july', amount: 600_000, currency: 'VND' }),
+      createOrderCostRecord({ opportunityId: 'august', amount: 1_000_000, currency: 'VND' }),
+      createOrderCostRecord({ opportunityId: 'undated', amount: 1_000_000, currency: 'VND' }),
+    ],
+  });
+  const months = rollupMarginByMonth({ orders, margins, monthCount: 6, today: '2026-08-05' });
+
+  assert.equal(months.length, 6, 'the window is the window, empty months included');
+  assert.equal(months[months.length - 1].key, '2026-08', 'it ends with the current month');
+  assert.equal(months[0].key, '2026-03');
+
+  const empty = months[0];
+  assert.equal(empty.marginPct, null, 'a month with nothing costed is unknown, never 0%');
+  assert.equal(empty.coveredCount, 0);
+
+  const july = months.find((month) => month.key === '2026-07');
+  assert.equal(july.revenueBase, 1_000_000);
+  assert.equal(july.marginPct, 40);
+  const august = months.find((month) => month.key === '2026-08');
+  assert.equal(august.revenueBase, 2_000_000);
+  assert.equal(august.marginPct, 50);
+
+  // An order with no date at all belongs to no month, and is left out rather
+  // than swept into the current one - a bar that never happened is worse than a
+  // bar that is missing, because only one of them is arguable.
+  const placed = months.reduce((sum, month) => sum + month.revenueBase, 0);
+  assert.equal(placed, 3_000_000, 'an undated order is not folded into the newest month');
+  assert.equal(margins.revenueBase, 12_000_000, 'though it still counts in the book totals');
 }
 
 // 7. Storage contract: another JSON collection with a real table behind it, and

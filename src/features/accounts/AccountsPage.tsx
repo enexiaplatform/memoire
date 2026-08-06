@@ -66,6 +66,7 @@ import { AccountImportPanel } from './AccountImportPanel';
 import { FollowUpComposerPanel } from '../v31/FollowUpComposerPanel';
 import { SkeletonScreen, SkeletonTable } from '../../components/common/Skeleton';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
+import { RecordStamp } from '../../components/common/RecordStamp';
 import type { FollowUpContext } from '../../types/v31';
 import {
   accountEngagementStatuses,
@@ -1281,6 +1282,13 @@ function AccountDetailPanel({
           <h2 className="mt-2 text-xl font-bold text-navy">{mode === 'add' ? 'New account' : selectedMemory?.account.accountName}</h2>
           {selectedMemory && (
             <p className="mt-1 font-mono text-xs font-bold text-gray-400">{getAccountCode(selectedMemory.account)}</p>
+          )}
+          {selectedMemory && (
+            <RecordStamp
+              className="mt-1"
+              createdAt={selectedMemory.account.createdAt}
+              updatedAt={selectedMemory.account.updatedAt}
+            />
           )}
         </div>
         <button type="button" onClick={onClose} aria-label="Close" className="rounded-full border border-gray-200 p-2 text-gray-500 hover:bg-gray-50">

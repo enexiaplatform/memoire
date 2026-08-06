@@ -4,6 +4,7 @@ import { Filter, Plus, Save, Search, Trash2, UsersRound, X } from 'lucide-react'
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
+import { RecordStamp } from '../../components/common/RecordStamp';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { type CrmLiteOpportunity } from '../../services/opportunityStore';
@@ -231,6 +232,7 @@ export function StakeholdersPage() {
         <StakeholderPanel
           mode={panelMode}
           form={form}
+          record={selectedStakeholder}
           saveState={saveState}
           message={message}
           onChange={setForm}
@@ -251,6 +253,7 @@ function StakeholderCard({ stakeholder, onOpen }: { stakeholder: StakeholderReco
           <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{stakeholder.accountName || 'Unassigned account'}</p>
           <h2 className="mt-1 text-lg font-bold text-navy">{stakeholder.name}</h2>
           <p className="mt-1 text-sm text-gray-500">{stakeholder.roleTitle || stakeholder.opportunityName || 'No title captured'}</p>
+          <RecordStamp className="mt-1" createdAt={stakeholder.createdAt} updatedAt={stakeholder.updatedAt} label="Added" />
         </div>
         <div className="flex flex-wrap gap-2">
           <Badge label={stakeholder.stakeholderRole} tone={stakeholder.stakeholderRole === 'Blocker' ? 'red' : stakeholder.stakeholderRole === 'Champion' ? 'green' : 'blue'} />
@@ -271,6 +274,7 @@ function StakeholderCard({ stakeholder, onOpen }: { stakeholder: StakeholderReco
 function StakeholderPanel({
   mode,
   form,
+  record,
   saveState,
   message,
   onChange,
@@ -280,6 +284,8 @@ function StakeholderPanel({
 }: {
   mode: 'closed' | 'add' | 'edit';
   form: StakeholderFormInput;
+  /** The saved record behind the form, for the provenance line. Null while adding. */
+  record: StakeholderRecord | null;
   saveState: SaveState;
   message: string;
   onChange: (form: StakeholderFormInput) => void;
@@ -320,6 +326,9 @@ function StakeholderPanel({
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">{mode === 'add' ? 'Add Stakeholder' : 'Stakeholder Detail'}</p>
           <h2 className="mt-2 text-xl font-bold text-navy">{mode === 'add' ? 'New stakeholder' : form.name}</h2>
+          {mode === 'edit' && record && (
+            <RecordStamp className="mt-1" createdAt={record.createdAt} updatedAt={record.updatedAt} label="Added" />
+          )}
         </div>
         <button type="button" onClick={onClose} aria-label="Close" className="rounded-full border border-gray-200 p-2 text-gray-500 hover:bg-gray-50"><X className="h-4 w-4" /></button>
       </div>

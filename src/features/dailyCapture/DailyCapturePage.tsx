@@ -34,6 +34,7 @@ import {
   planItemDoneRecord,
 } from '../../utils/capturePlanReconciliation';
 import type { PlanItem, PlanRecord } from '../../utils/weeklyPlan';
+import { applyActivityLogChoice, isExcludedFromActivityLedger } from '../../utils/activityLogChoice';
 import { trackProductEvent } from '../../utils/productAnalytics';
 import { markPipelineReviewHabitStepComplete } from '../../utils/pipelineReviewHabit';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
@@ -309,6 +310,17 @@ export function DailyCapturePage() {
   const [newAlias, setNewAlias] = useState('');
   const [newAliasAccount, setNewAliasAccount] = useState('');
   const [copiedId, setCopiedId] = useState('');
+  /**
+   * Whether this capture counts as business activity.
+   *
+   * Ticked, because that is what Capture is for - it is the front door to the
+   * activity ledger, and every figure on Activity is derived from what lands
+   * here. Untick it for the notes that are yours rather than a customer's: the
+   * record is still saved and still listed below, it just stays out of Activity
+   * and out of everything counted from it. The mirror of the opt-in tick on
+   * Today, and the reason it is opt-out here rather than opt-in.
+   */
+  const [logToActivity, setLogToActivity] = useState(true);
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
@@ -464,7 +476,10 @@ export function DailyCapturePage() {
       ...withCaptureSourceMetadata(preview, activeSourceItem),
       rawNote: captureText,
       activityDate: activeActivityDate,
-      tags: mergeSourceTags(normalizeTags(['rule-parsed', ...preview.tags]), activeSourceItem),
+      tags: applyActivityLogChoice(
+        mergeSourceTags(normalizeTags(['rule-parsed', ...preview.tags]), activeSourceItem),
+        logToActivity,
+      ),
     };
     const corrections = buildCaptureCorrectionEvents({
       original: originalParsedDraft || localPreview || classified,
@@ -509,12 +524,16 @@ export function DailyCapturePage() {
       setSaveState('error');
       return;
     }
-    const prepared = buildQuickCaptureActivity(quickForm);
-    if (!prepared) {
+    const built = buildQuickCaptureActivity(quickForm);
+    if (!built) {
       setMessage('Add an account and a short update before saving quick capture.');
       setSaveState('error');
       return;
     }
+    const prepared: ClassifiedSalesActivity = {
+      ...built,
+      tags: applyActivityLogChoice(built.tags, logToActivity),
+    };
 
     setSaveState('saving');
     setMessage('Saving quick capture...');
@@ -798,6 +817,8 @@ export function DailyCapturePage() {
           selectedTemplateId={quickTemplateId}
           saveState={saveState}
           message={message}
+          logToActivity={logToActivity}
+          onLogToActivityChange={setLogToActivity}
           onTemplateSelect={applyQuickTemplate}
           onChange={setQuickForm}
           onSave={handleQuickSave}
@@ -871,6 +892,7 @@ export function DailyCapturePage() {
               {saveState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Activity
             </button>
+            <LogToActivityChoice checked={logToActivity} onChange={setLogToActivity} />
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
               <div className="flex items-center gap-2">
                 <Bot className="h-4 w-4 text-brand-blue" />
@@ -1029,6 +1051,7 @@ export function DailyCapturePage() {
               {saveState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Reviewed Evidence
             </button>
+            <LogToActivityChoice checked={logToActivity} onChange={setLogToActivity} />
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
               <div className="flex items-center gap-2">
                 <Bot className="h-4 w-4 text-brand-blue" />
@@ -1276,7 +1299,7 @@ export function DailyCapturePage() {
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-bold text-navy">Just captured</h2>
-            <p className="mt-1 text-sm text-gray-500">Your last few touches, to confirm they landed. The full timeline lives in Activity.</p>
+            <p className="mt-1 text-sm text-gray-500">Your last few touches, to confirm they landed. The whole ledger lives on Activity.</p>
           </div>
           <button
             type="button"
@@ -1313,18 +1336,60 @@ export function DailyCapturePage() {
                 onDelete={() => handleDelete(activity)}
               />
             ))}
+            {/* Activity is `/app/activity`. This link said "in Activity" and
+                went to `/app/timeline`, which the navigation calls Plan - so an
+                operator checking that their capture had reached Activity was
+                sent to a different page and reasonably concluded it had not.
+                One destination, named the way the rail names it. */}
             <Link
-              to="/app/timeline?view=history"
+              to="/app/activity"
               className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50/60 px-4 py-2.5 text-sm font-bold text-brand-blue hover:bg-gray-50"
             >
               {activities.length > RECENT_CAPTURE_LIMIT
                 ? `See all ${activities.length} in Activity`
-                : 'Open the Activity timeline'}
+                : 'Open Activity'}
             </Link>
           </div>
         )}
       </section>
     </PageContainer>
+  );
+}
+
+/**
+ * The one decision Capture asks the operator to make about a note, and the
+ * answer it assumes.
+ *
+ * Ticked by default because a capture *is* an activity - that is the whole
+ * shape of the product, and asking permission every time to do the obvious
+ * thing would be the same mistake as an opt-in save button. The unticked case
+ * is real and narrow: notes to yourself, a thought about a supplier, the thing
+ * typed here because this was the nearest text box. Those still save; they just
+ * stop counting as work done for a customer.
+ */
+function LogToActivityChoice({ checked, onChange }: { checked: boolean; onChange: (next: boolean) => void }) {
+  return (
+    <div className={`rounded-lg border px-3 py-2.5 ${checked ? 'border-gray-200 bg-white' : 'border-amber-200 bg-amber-50'}`}>
+      <label className="flex cursor-pointer items-start gap-2">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(event) => onChange(event.target.checked)}
+          className="mt-0.5 h-4 w-4 shrink-0"
+        />
+        <span className="min-w-0">
+          <span className="flex items-center gap-1.5 text-xs font-bold text-gray-700">
+            <NotebookPen className="h-3.5 w-3.5 shrink-0 text-brand-blue" />
+            Log this to Activity
+          </span>
+          <span className="mt-0.5 block text-[11px] leading-4 text-gray-500">
+            {checked
+              ? 'Counts as work done, on Activity and in every figure derived from it.'
+              : 'Saved and listed here, but kept out of Activity and out of every figure it feeds.'}
+          </span>
+        </span>
+      </label>
+    </div>
   );
 }
 
@@ -1334,12 +1399,16 @@ function QuickCapturePanel({
   selectedTemplateId,
   saveState,
   message,
+  logToActivity,
+  onLogToActivityChange,
   onTemplateSelect,
   onChange,
   onSave,
   accountSuggestions,
   opportunityRecords,
 }: {
+  logToActivity: boolean;
+  onLogToActivityChange: (next: boolean) => void;
   form: QuickCaptureForm;
   templates: typeof quickTemplates;
   selectedTemplateId: string;
@@ -1414,15 +1483,18 @@ function QuickCapturePanel({
             Use this immediately after a meeting, dealer call, proposal, objection, or procurement update. It saves as a normal sales activity.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={saveState === 'saving'}
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-navy px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {saveState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Save Quick Capture
-        </button>
+        <div className="w-full shrink-0 space-y-2 sm:w-[280px]">
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saveState === 'saving'}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-navy px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {saveState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Save Quick Capture
+          </button>
+          <LogToActivityChoice checked={logToActivity} onChange={onLogToActivityChange} />
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -1766,6 +1838,15 @@ function ActivityCard({
             }`}>
               {activity.storageMode === 'cloud' ? 'Cloud' : 'Local'}
             </span>
+            {/* Said out loud on the card, because a capture that is deliberately
+                not counted looks identical to one that is - and the operator who
+                unticked the box three notes ago is exactly the person who needs
+                reminding which of these Activity can see. */}
+            {isExcludedFromActivityLedger(activity) && (
+              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
+                Not in Activity
+              </span>
+            )}
           </div>
           <h3 className="mt-3 text-base font-bold text-navy">{activity.summary}</h3>
           <p className="mt-2 text-xs font-bold text-gray-500">

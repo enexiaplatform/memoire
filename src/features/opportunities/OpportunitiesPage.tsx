@@ -105,6 +105,7 @@ import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../servi
 import { type AccountMemoryRecord } from '../../services/accountStore';
 import { type AccountMergeRecord } from '../../services/accountMergeStore';
 import { SuggestInput } from '../../components/common/SuggestInput';
+import { RecordStamp } from '../../components/common/RecordStamp';
 import { buildAccountAliasIndex, resolveAccountName, type AccountAliasIndex } from '../../utils/accountAliases';
 import {
   buildProcurementReadiness,
@@ -935,13 +936,15 @@ export function OpportunitiesPage() {
 
     // Closing a deal from the plain form skipped the retro entirely, so the
     // workspace filled up with Won and Lost rows that could never answer "why".
-    // The status dropdown is not the place to close a deal; the retro below is,
-    // and it is one click away.
+    // The status dropdown is not the place to close a deal; the close-out is -
+    // and since picking Won or Lost now opens it directly under Status, this
+    // message can point at something on screen rather than at a collapsed
+    // section the operator had no reason to know existed.
     const closing = form.status === 'Won' || form.status === 'Lost';
     const alreadyClosed = editingOpportunity?.status === 'Won' || editingOpportunity?.status === 'Lost';
     if (closing && !alreadyClosed && !hasRecordedOutcomeReason) {
       setSaveState('error');
-      setMessage(`Marking this ${form.status} needs a reason. Use "Mark outcome" below - it records what happened and closes the deal for you.`);
+      setMessage(`Marking this ${form.status} needs a reason. Fill "Why did this happen?" in the close-out just under Status, then press "Save outcome retro" - that records what happened and closes the deal for you.`);
       return;
     }
 
@@ -2968,6 +2971,21 @@ function OpportunityPanel({
 
   const accountCheck = checkAccountName(form.accountName, knownAccountNames, accountAliases);
 
+  /**
+   * A deal the seller is closing right now, or one already closed.
+   *
+   * The close-out form used to live only inside the deep-analysis `<details>`
+   * below, which is shut by default. Setting Status to Lost therefore
+   * produced a save error telling the operator to use a form they
+   * could not see - the deal simply refused to close, with no way out on
+   * screen. So a closed deal wears its close-out at the top level, beside the
+   * status that made it closed, and the collapsed copy below is skipped rather
+   * than rendered twice.
+   */
+  const closingThisDeal = mode === 'edit'
+    && currentOpportunity !== null
+    && (form.status === 'Won' || form.status === 'Lost');
+
   return (
     <>
       <button
@@ -2983,6 +3001,9 @@ function OpportunityPanel({
           <h2 className="mt-2 text-xl font-bold text-navy">
             {mode === 'add' ? 'New deal record' : editingOpportunity?.opportunityName}
           </h2>
+          {mode === 'edit' && editingOpportunity && (
+            <RecordStamp className="mt-1" createdAt={editingOpportunity.createdAt} updatedAt={editingOpportunity.updatedAt} />
+          )}
           {editingOpportunity?.accountName && (
             <div className="mt-3 flex flex-wrap gap-2">
               <Link
@@ -3122,6 +3143,15 @@ function OpportunityPanel({
           <Field label="Next action date" type="date" value={form.nextActionDate} onChange={(value) => update('nextActionDate', value)} />
         </div>
 
+        {closingThisDeal && currentOpportunity && (
+          <OpportunityOutcomeRetroPanel
+            opportunity={currentOpportunity}
+            outcomes={getOpportunityOutcomesForOpportunity(opportunityOutcomes, currentOpportunity)}
+            closing
+            onSaveOutcome={(draft) => onSaveOpportunityOutcome(currentOpportunity, draft)}
+          />
+        )}
+
         <SuggestInput
           label="Product / solution"
           value={form.productOrSolution}
@@ -3212,7 +3242,10 @@ function OpportunityPanel({
               })}
             />
           )}
-          {currentOpportunity && (
+          {/* Only when it is not already open above. A closed deal shows its
+              close-out beside the status; an active one keeps it down here with
+              the rest of the analysis. */}
+          {currentOpportunity && !closingThisDeal && (
             <OpportunityOutcomeRetroPanel
               opportunity={currentOpportunity}
               outcomes={getOpportunityOutcomesForOpportunity(opportunityOutcomes, currentOpportunity)}
@@ -4169,18 +4202,34 @@ function RecommendedActionPlanPanel({
 function OpportunityOutcomeRetroPanel({
   opportunity,
   outcomes,
+  closing = false,
   onSaveOutcome,
 }: {
   opportunity: CrmLiteOpportunity;
   outcomes: OpportunityOutcomeRecord[];
+  /** Rendered beside Status because this deal is being closed, not filed away. */
+  closing?: boolean;
   onSaveOutcome: (draft: OpportunityOutcomeDraft) => void;
 }) {
   const [draft, setDraft] = useState<OpportunityOutcomeDraft>(() => buildOpportunityOutcomeDraft(opportunity));
-  const [open, setOpen] = useState(outcomes.length === 0);
+  const [open, setOpen] = useState(closing || outcomes.length === 0);
 
+  /**
+   * Re-seed when the deal changes or the status being closed at changes - not
+   * on every render.
+   *
+   * `opportunity` here is `{ ...editingOpportunity, ...form }`, rebuilt fresh by
+   * the panel on every keystroke and on every save message, so an effect keyed
+   * on the object itself reset this form constantly. Harmless while it lived
+   * inside a collapsed section nobody opened; the moment closing a deal opens it
+   * automatically, a failed save re-rendered the panel and erased the reason the
+   * seller had just typed to satisfy it.
+   */
+  const reseedKey = `${opportunity.id}:${opportunity.status}`;
   useEffect(() => {
     setDraft(buildOpportunityOutcomeDraft(opportunity));
-  }, [opportunity]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reseedKey]);
 
   const update = <Key extends keyof OpportunityOutcomeDraft>(key: Key, value: OpportunityOutcomeDraft[Key]) => {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -4192,10 +4241,16 @@ function OpportunityOutcomeRetroPanel({
     <section className="mt-5 rounded-lg border border-indigo-100 bg-indigo-50/70 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-700">Closed-loop learning</p>
-          <h3 className="mt-1 text-base font-bold text-navy">Record win/loss/delay retro</h3>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-700">
+            {closing ? `Close this deal — ${opportunity.status}` : 'Closed-loop learning'}
+          </p>
+          <h3 className="mt-1 text-base font-bold text-navy">
+            {closing ? 'Say why, and this closes' : 'Record win/loss/delay retro'}
+          </h3>
           <p className="mt-1 text-sm leading-6 text-indigo-900/75">
-            Mark the outcome and capture what Memoire should learn. This is not a heavy CRM close process.
+            {closing
+              ? 'This is the reason the save asked for. Fill it in and press Save outcome retro — that writes the outcome and sets the deal to closed for you.'
+              : 'Mark the outcome and capture what Memoire should learn. This is not a heavy CRM close process.'}
           </p>
         </div>
         <button
@@ -4203,7 +4258,7 @@ function OpportunityOutcomeRetroPanel({
           onClick={() => setOpen((current) => !current)}
           className="rounded-full border border-indigo-200 bg-white px-3 py-1.5 text-xs font-bold text-indigo-700"
         >
-          {open ? 'Hide retro form' : 'Mark outcome'}
+          {open ? 'Hide retro form' : closing ? 'Close this deal' : 'Mark outcome'}
         </button>
       </div>
 

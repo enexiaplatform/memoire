@@ -4,6 +4,7 @@ import type { SalesActivityRecord } from '../services/salesActivityStore';
 import { accountKey, sameAccount } from './accountIdentity.ts';
 import { resolveAccountName, type AccountAliasIndex } from './accountAliases.ts';
 import { classifyBusinessDomain, type BusinessDomain } from './businessDomain.ts';
+import { isExcludedFromActivityLedger } from './activityLogChoice.ts';
 import { readDomain } from './planWorkKind.ts';
 import type { OwnObligation } from './ownObligations.ts';
 import {
@@ -193,6 +194,12 @@ export function buildActivityLedger(input: {
   const context = buildActivityLedgerContext(input);
 
   const events = input.activities
+    // A capture the operator explicitly kept out of the ledger is not business
+    // activity, and counting it would put their own notes-to-self in the same
+    // total as work done for a customer. It still exists in Capture and in
+    // Timeline > History; it just is not counted here or in anything derived
+    // from here. See `utils/activityLogChoice.ts`.
+    .filter((activity) => !isExcludedFromActivityLedger(activity))
     .filter((activity) => isBusinessDateInRange(activity.activityDate, range.start, range.end))
     .map((activity) => buildEventEntry(activity, context, input.accountAliases));
 

@@ -22,11 +22,16 @@ export const ORDER_COST_STORAGE_KEY = 'memoire.orderCosts.v1';
  * head or in a supplier's email, and until it is written down the order book
  * can say what an order is worth but not whether it was worth doing.
  *
- * Owned records rather than derived, therefore, and deliberately one per order:
- * a cost book with several lines per order is an accounting product, and this
- * exists precisely so that a distributor who wants one number can have it
- * without acquiring one. Same JSON-collection pattern as milestones and quotes,
- * so it costs no API function - the Hobby ceiling is twelve and api/ is at it.
+ * Owned records rather than derived, and deliberately one row per order. It
+ * carries four figures - goods, freight, duty and other - because a landed cost
+ * is what a margin has to be worked out from, but four named fields is still not
+ * a cost ledger: there is no line-item table, no allocation, no accrual. A cost
+ * book with several lines per order is an accounting product, and this exists
+ * precisely so that a distributor who wants to know what an order really cost
+ * can find out without acquiring one. Same JSON-collection pattern as milestones
+ * and quotes, so it costs no API function - the Hobby ceiling is twelve and api/
+ * is at it, and the new fields ride inside the existing JSON payload rather than
+ * asking a live database for four more columns.
  */
 export function loadOrderCosts(): OrderCostRecord[] {
   if (!canUseStorage()) return [];
@@ -64,6 +69,10 @@ export function saveOrderCost(input: {
   opportunityId: string;
   amount: number | null;
   currency: string;
+  freightAmount?: number | null;
+  dutyAmount?: number | null;
+  otherAmount?: number | null;
+  extrasCurrency?: string;
   supplier?: string;
   note?: string;
   source?: 'demo' | 'user';
@@ -115,15 +124,24 @@ function sanitizeOrderCostRecord(value: unknown): OrderCostRecord | null {
   const opportunityId = typeof candidate.opportunityId === 'string' ? candidate.opportunityId.trim() : '';
   if (!opportunityId) return null;
   const now = new Date().toISOString();
-  const amount = typeof candidate.amount === 'number' && Number.isFinite(candidate.amount) ? candidate.amount : null;
+  const currency = typeof candidate.currency === 'string' && candidate.currency
+    ? candidate.currency.trim().toUpperCase()
+    : 'VND';
 
   return {
     id: typeof candidate.id === 'string' && candidate.id ? candidate.id : `oc-${opportunityId}`,
     opportunityId,
-    amount,
-    currency: typeof candidate.currency === 'string' && candidate.currency
-      ? candidate.currency.trim().toUpperCase()
-      : 'VND',
+    amount: numberOrNull(candidate.amount),
+    currency,
+    freightAmount: numberOrNull(candidate.freightAmount),
+    dutyAmount: numberOrNull(candidate.dutyAmount),
+    otherAmount: numberOrNull(candidate.otherAmount),
+    // A record written before landed cost existed has no extras currency. It
+    // inherits the goods currency rather than a default, so reading back a cost
+    // that has never had freight against it cannot invent a conversion.
+    extrasCurrency: typeof candidate.extrasCurrency === 'string' && candidate.extrasCurrency
+      ? candidate.extrasCurrency.trim().toUpperCase()
+      : currency,
     supplier: typeof candidate.supplier === 'string' ? candidate.supplier : '',
     note: typeof candidate.note === 'string' ? candidate.note : '',
     createdAt: typeof candidate.createdAt === 'string' && candidate.createdAt ? candidate.createdAt : now,
@@ -132,6 +150,10 @@ function sanitizeOrderCostRecord(value: unknown): OrderCostRecord | null {
     isSample: candidate.isSample === true,
     __deleted: candidate.__deleted === true ? true : undefined,
   };
+}
+
+function numberOrNull(value: unknown) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
 function isUserRecord(record: OrderCostRecord) {

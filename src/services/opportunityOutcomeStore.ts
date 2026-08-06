@@ -91,9 +91,23 @@ export type OpportunityOutcomeDraft = Pick<
   | 'lessonLearned'
 >;
 
+/**
+ * The outcome the deal's own status already implies.
+ *
+ * The draft used to open on "Won" whatever the deal said, which is the wrong
+ * default in the one case that matters: a seller who has just set Status to Lost
+ * and been asked for a reason is then handed a form that says Won. Nothing
+ * stopped them changing it, and plenty of them would not have noticed.
+ */
+function outcomeForStatus(status: OpportunityStatus): OpportunityOutcome {
+  if (status === 'Lost') return 'Lost';
+  if (status === 'On hold') return 'Delayed';
+  return 'Won';
+}
+
 export function buildOpportunityOutcomeDraft(opportunity: CrmLiteOpportunity, patch: Partial<OpportunityOutcomeDraft> = {}): OpportunityOutcomeDraft {
   return {
-    outcome: patch.outcome || 'Won',
+    outcome: patch.outcome || outcomeForStatus(opportunity.status),
     outcomeDate: sanitizeBusinessDate(patch.outcomeDate) || todayDateKey(),
     finalAmount: typeof patch.finalAmount === 'number' ? patch.finalAmount : opportunity.estimatedValue,
     currency: patch.currency || opportunity.currency || 'VND',
