@@ -31,6 +31,14 @@ import { WEEKLY_COMMITMENT_STORAGE_KEY } from '../services/weeklyCommitmentStore
 // SAMPLE_ARRAY_STORAGE_KEYS: that list runs legacy term matching, which would
 // delete a real plan item whose label happens to read "Tender opportunity".
 import { PLAN_ITEM_STORAGE_KEY } from '../services/planItemStore';
+// Cleared by tag only, for the same reason as plan items: these hold ticks,
+// costs and commitments whose wording an operator could genuinely repeat, so
+// the legacy term sweep must never see them.
+import { ORDER_MILESTONE_STORAGE_KEY } from '../services/orderMilestoneStore';
+import { ORDER_COST_STORAGE_KEY } from '../services/orderCostStore';
+import { SUPPLIER_COMMITMENT_STORAGE_KEY } from '../services/supplierCommitmentStore';
+import { ACCOUNT_MERGE_STORAGE_KEY } from '../services/accountMergeStore';
+import { NUDGE_STORAGE_KEY } from '../services/nudgeStore';
 import type { WeeklyCommitmentSnapshot } from './weeklyCommitment';
 import { getCurrentPipelineReviewWeekId } from './pipelineReviewHabit';
 
@@ -168,6 +176,22 @@ export function clearSampleDataset() {
   // same store. Without this, demo ticks survived "clear sample demo data" and
   // showed up in a browser-only workspace's real plan.
   removeSampleRecords(PLAN_ITEM_STORAGE_KEY);
+  // Five collections that tagged their demo records correctly and were never
+  // swept - the same bug as the untagged captures, running the other way. A
+  // label nobody reads and a broom that reaches nothing fail identically, and
+  // both failed while the sample/live contract passed, because it checked a
+  // hand-written list of keys rather than asking which stores can hold a demo
+  // record at all. It asks that now.
+  //
+  // Every one of these is reachable inside the demo: the order book's milestone
+  // ticks, the purchase costs under Cost analysis, the supplier commitments on
+  // Orders, a merge made from Accounts, and any nudge dismissed or snoozed on
+  // Today. All of it stayed in the workspace of whoever signed in next.
+  removeSampleRecords(ORDER_MILESTONE_STORAGE_KEY);
+  removeSampleRecords(ORDER_COST_STORAGE_KEY);
+  removeSampleRecords(SUPPLIER_COMMITMENT_STORAGE_KEY);
+  removeSampleRecords(ACCOUNT_MERGE_STORAGE_KEY);
+  removeSampleRecords(NUDGE_STORAGE_KEY);
   removeSampleBriefs();
   clearDemoJourneyCompletion();
   clearDailyExecutionState('demo');

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import {
   createBriefFromLiveDeals,
   createEmptyPipelineDefenseBriefStore,
@@ -181,6 +181,42 @@ assert.equal(page.includes('createInitialPipelineDefenseDeals'), false, 'Pipelin
       );
     });
   }
+}
+
+// 10. Every store that can hold a demo record is swept - discovered, not listed.
+//
+// Checks 8 and 9 both name their collections by hand, and a hand-written list is
+// how this whole class of bug survives: it is complete on the day it is written
+// and silently incomplete from the next collection onwards. Five stores tagged
+// their demo records correctly and were never cleared - order milestones, order
+// costs, supplier commitments, account merges and nudges - so a demo tick, a
+// demo purchase cost and a demo merge all stayed in the next workspace to sign
+// in on that browser, while this file reported the separation verified.
+//
+// The rule is derived instead: if a store carries an `isSample` flag it can hold
+// a demo record, and if it can hold one it must be cleared when the demo ends.
+{
+  const sample = readFileSync('src/utils/sampleData.ts', 'utf8');
+  const clearBlock = sample.slice(
+    sample.indexOf('export function clearSampleDataset'),
+    sample.indexOf('export function sanitizeLegacySampleDataset'),
+  );
+
+  const unswept = [];
+  for (const file of readdirSync('src/services').filter((name) => name.endsWith('.ts'))) {
+    const source = readFileSync(`src/services/${file}`, 'utf8');
+    const key = source.match(/export const ([A-Z_]*STORAGE_KEY) = '[^']+'/);
+    // `isSample` is the marker that this store's records can belong to the demo
+    // sandbox. A store without it cannot hold one, and needs no sweep.
+    if (!key || !source.includes('isSample')) continue;
+    if (!clearBlock.includes(key[1])) unswept.push(`${key[1]} (${file})`);
+  }
+
+  assert.deepEqual(
+    unswept,
+    [],
+    `these stores can hold demo records and clearSampleDataset never clears them, so a demo survives into the next workspace: ${unswept.join(', ')}`,
+  );
 }
 
 console.log('Sample/live separation contract verified.');
