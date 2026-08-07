@@ -50,10 +50,10 @@ const app = readFileSync('src/App.tsx', 'utf8');
   assert.deepEqual(
     [...railIds].sort(),
     [
-      'accounts', 'activity', 'business-lens', 'business-vault', 'cost-analysis', 'money',
+      'accounts', 'activity', 'business-lens', 'business-vault', 'cash-collection', 'cost-analysis', 'money',
       'opportunities', 'review', 'search-insights', 'settings', 'stakeholders', 'timeline', 'today',
     ],
-    'the rail is the six primary destinations plus the seven routed global surfaces - no more, no less',
+    'the rail is the six primary destinations plus the eight routed global surfaces - no more, no less',
   );
 
   // No hard-coded nav target may sneak in beside the registry - that is exactly

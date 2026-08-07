@@ -338,6 +338,30 @@ export const featureRegistry: FeatureRecord[] = [
       'Retire it if operators never record a purchase cost - that would mean the buy side is somebody else\'s job in this trade, and the whole module is an empty column.',
   },
   {
+    id: 'cash-collection',
+    label: 'Cash Collection',
+    // Its own destination beside Orders rather than a tab inside it, decided by
+    // the founder on 2026-08-06 and worth recording in their terms: an order is
+    // where you track the goods, a receivable is where you chase the money, and
+    // conflating them means the page has to be two things at once for two
+    // different moods. A delivery that is perfectly on time can sit behind an
+    // invoice that is ninety days late.
+    //
+    // Owns payment receipts and any schedule the operator corrects. Everything
+    // else - the due dates, the aging, what is owed - is derived from the
+    // payment terms already written on the quote, so this page has an answer
+    // the day it ships with nothing re-entered.
+    status: 'global',
+    ownerSurface: 'cash-collection',
+    route: '/app/cash-collection',
+    routeBehavior: 'primary',
+    navVisible: true,
+    analytics: 'active',
+    dataRetention: 'Owns payment receipts and corrected schedules, one row per order. Derives every due date.',
+    killOrActivationCondition:
+      'Retire it if operators record no payments - that would mean collection happens somewhere else entirely and this is a ledger nobody reconciles.',
+  },
+  {
     id: 'stakeholders',
     label: 'Stakeholders',
     // Promoted from `embedded` to a rail item on 2026-08-05, on the operator's
@@ -654,7 +678,12 @@ const NAVIGATION_GROUP_IDS: { id: NavGroupId; label: string; itemIds: string[] }
     // PRIMARY_DESTINATION_IDS.
     // Cost Analysis sits directly under Orders from 2026-08-06, the same way
     // Stakeholders sits under Accounts: the buy side of the orders above it.
-    itemIds: ['accounts', 'stakeholders', 'opportunities', 'money', 'cost-analysis', 'activity'],
+    // Cash Collection sits directly under Orders from 2026-08-06: the money
+    // side of the orders above it, kept as its own row because chasing a
+    // payment and fulfilling an order are different jobs on different clocks.
+    // Cost Analysis moved down to sit beside it - it is no longer about orders
+    // at all, it prices a quote before one exists.
+    itemIds: ['accounts', 'stakeholders', 'opportunities', 'money', 'cash-collection', 'cost-analysis', 'activity'],
   },
   {
     id: 'tools',

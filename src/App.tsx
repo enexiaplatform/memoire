@@ -45,6 +45,7 @@ const SalesAssetsPage = lazy(() =>
 const QuotesPage = lazy(() => import('./features/quotes/QuotesPage').then((module) => ({ default: module.QuotesPage })));
 const RevenueViewPage = lazy(() => import('./features/revenue/RevenueViewPage').then((module) => ({ default: module.RevenueViewPage })));
 const CostAnalysisPage = lazy(() => import('./features/revenue/CostAnalysisPage').then((module) => ({ default: module.CostAnalysisPage })));
+const CashCollectionPage = lazy(() => import('./features/revenue/CashCollectionPage').then((module) => ({ default: module.CashCollectionPage })));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const SalesReviewsPage = lazy(() =>
   import('./features/reviews/SalesReviewsPage').then((module) => ({ default: module.SalesReviewsPage })),
@@ -124,6 +125,11 @@ function App() {
                 2026-08-06 - see the registry entry for why it left the Orders
                 page it used to sit inside. */}
             <Route path="cost-analysis" element={<CostAnalysisPage />} />
+            {/* Separate from Orders on purpose, at the founder's call on
+                2026-08-06: an order is a thing you fulfil and a receivable is a
+                thing you chase, and a delivery that is on time can sit behind
+                money that is ninety days late. */}
+            <Route path="cash-collection" element={<CashCollectionPage />} />
             <Route path="business" element={<BusinessLensPage />} />
             <Route path="vault" element={<BusinessVaultPage />} />
             <Route path="settings" element={<SettingsPage />} />

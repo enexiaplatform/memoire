@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
+import { QuotePricingPanel } from './QuotePricingPanel';
+import { isQuotingStage } from '../../utils/quotePricing';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { trackProductEvent, type AnalyticsDataMode } from '../../utils/productAnalytics';
@@ -1413,6 +1415,8 @@ export function OpportunitiesPage() {
         accountAliases={accountAliases}
         accountWarningForced={accountNameConfirmed === form.accountName.trim() && Boolean(accountNameConfirmed)}
         quotes={editingOpportunity ? getQuotesForOpportunity(quotes, editingOpportunity) : []}
+        dataUserId={dataUserId}
+        sampleDataActive={sampleDataActive}
         onChange={setForm}
         onActionOutcomesChange={setActionOutcomes}
         onSaveOpportunityOutcome={handleSaveOpportunityOutcome}
@@ -2855,6 +2859,8 @@ function OpportunityPanel({
   accountAliases,
   accountWarningForced,
   quotes,
+  dataUserId,
+  sampleDataActive,
   onChange,
   onActionOutcomesChange,
   onSaveOpportunityOutcome,
@@ -2887,6 +2893,9 @@ function OpportunityPanel({
   /** True once a save has raised the near-miss, so the field shows it too. */
   accountWarningForced: boolean;
   quotes: QuoteRecord[];
+  /** Whose workspace the purchase cost below is written into. */
+  dataUserId?: string;
+  sampleDataActive: boolean;
   onChange: (form: OpportunityFormInput) => void;
   onActionOutcomesChange: (outcomes: ActionOutcomeRecord[]) => void;
   onSaveOpportunityOutcome: (opportunity: CrmLiteOpportunity, draft: OpportunityOutcomeDraft) => void;
@@ -3149,6 +3158,21 @@ function OpportunityPanel({
             outcomes={getOpportunityOutcomesForOpportunity(opportunityOutcomes, currentOpportunity)}
             closing
             onSaveOutcome={(draft) => onSaveOpportunityOutcome(currentOpportunity, draft)}
+          />
+        )}
+
+        {/* Pricing, at the moment a price is being decided.
+            Above the deep-analysis fold on purpose: this is not analysis of a
+            deal that already happened, it is the number about to be sent, and a
+            capability shut inside a collapsed <details> is one the founder
+            already reported as missing once. Shown only once the deal is
+            actually being quoted - a Lead does not need a landed-cost form. */}
+        {mode === 'edit' && currentOpportunity && isQuotingStage(currentOpportunity, quotes.length) && (
+          <QuotePricingPanel
+            opportunity={currentOpportunity}
+            quotes={quotes}
+            dataUserId={dataUserId}
+            sampleDataActive={sampleDataActive}
           />
         )}
 

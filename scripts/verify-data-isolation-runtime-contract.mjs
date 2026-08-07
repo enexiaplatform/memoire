@@ -60,6 +60,7 @@ const expectedTables = [
   ['opportunity_outcomes', 'user_id'],
   ['expenses', 'user_id'],
   ['order_costs', 'user_id'],
+  ['order_receivables', 'user_id'],
   ['order_milestones', 'user_id'],
   ['supplier_commitments', 'user_id'],
   ['commercial_targets', 'user_id'],

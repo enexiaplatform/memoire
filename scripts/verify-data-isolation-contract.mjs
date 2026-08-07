@@ -32,6 +32,7 @@ const expectedExportTables = [
   'opportunity_outcomes',
   'expenses',
   'order_costs',
+  'order_receivables',
   'order_milestones',
   'supplier_commitments',
   'commercial_targets',

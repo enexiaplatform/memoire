@@ -7,6 +7,14 @@ import {
   type SupportedCurrency,
 } from '../utils/money.ts';
 import { getOpeningCashBalance, setOpeningCashBalance } from '../utils/cashPosition.ts';
+import {
+  getFinancingRatePct,
+  getTargetMarginPct,
+  setFinancingRatePct,
+  setTargetMarginPct,
+} from '../utils/pricingAssumptions.ts';
+import { normalizeTargetPct } from '../utils/orderMargin.ts';
+import { normalizeRatePct } from '../utils/quotePricing.ts';
 
 /**
  * The two settings that describe how a person reads their own numbers, kept on
@@ -51,6 +59,10 @@ type AccountWrite = 'saved' | 'no-account' | 'failed';
 export type WorkspacePreferences = {
   reportingCurrency: SupportedCurrency;
   openingCashBalance: number | null;
+  /** The margin every quote is priced back from. */
+  targetMarginPct: number;
+  /** What the operator's own money costs while a customer takes their time. */
+  financingRatePct: number;
 };
 
 function canUseAccountStore(userId?: string | null) {
@@ -73,17 +85,41 @@ export async function hydrateWorkspacePreferences(userId?: string | null): Promi
   const current: WorkspacePreferences = {
     reportingCurrency: getReportingCurrency(),
     openingCashBalance: getOpeningCashBalance(),
+    targetMarginPct: getTargetMarginPct(),
+    financingRatePct: getFinancingRatePct(),
   };
   if (!canUseAccountStore(userId)) return current;
 
   try {
     const { data, error } = await supabaseClient!
       .from(TABLE_NAME)
-      .select('reporting_currency, opening_cash_balance')
+      .select('reporting_currency, opening_cash_balance, target_margin_pct, financing_annual_rate_pct')
       .eq('id', userId as string)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!data) return current;
+
+    // Same rule as the cash balance below: a column the account has never
+    // carried leaves the browser's answer alone. Somebody who set a 25% target
+    // before these columns existed keeps 25% rather than being reset to the
+    // default, and their next save writes it up.
+    const storedTarget = data.target_margin_pct;
+    if (storedTarget !== null && storedTarget !== undefined) {
+      const parsed = normalizeTargetPct(storedTarget);
+      if (parsed !== current.targetMarginPct) {
+        setTargetMarginPct(parsed);
+        current.targetMarginPct = parsed;
+      }
+    }
+
+    const storedRate = data.financing_annual_rate_pct;
+    if (storedRate !== null && storedRate !== undefined) {
+      const parsed = normalizeRatePct(storedRate);
+      if (parsed !== current.financingRatePct) {
+        setFinancingRatePct(parsed);
+        current.financingRatePct = parsed;
+      }
+    }
 
     const storedCurrency = String(data.reporting_currency || '').trim().toUpperCase();
     if (isSupported(storedCurrency) && storedCurrency !== current.reportingCurrency) {
@@ -136,6 +172,32 @@ export async function saveOpeningCashBalancePreference(
     savedLocally,
     await writeToAccount({ opening_cash_balance: normalized }, userId),
     'opening cash balance',
+  );
+}
+
+export async function saveTargetMarginPreference(
+  value: unknown,
+  userId?: string | null,
+): Promise<PreferenceSaveResult> {
+  const normalized = normalizeTargetPct(value);
+  const savedLocally = setTargetMarginPct(normalized);
+  return finish(
+    savedLocally,
+    await writeToAccount({ target_margin_pct: normalized }, userId),
+    'target margin',
+  );
+}
+
+export async function saveFinancingRatePreference(
+  value: unknown,
+  userId?: string | null,
+): Promise<PreferenceSaveResult> {
+  const normalized = normalizeRatePct(value);
+  const savedLocally = setFinancingRatePct(normalized);
+  return finish(
+    savedLocally,
+    await writeToAccount({ financing_annual_rate_pct: normalized }, userId),
+    'financing rate',
   );
 }
 

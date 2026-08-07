@@ -69,6 +69,7 @@ export const exportTables = [
   { table: 'opportunity_outcomes', ownerColumn: 'user_id' },
   { table: 'expenses', ownerColumn: 'user_id' },
   { table: 'order_costs', ownerColumn: 'user_id' },
+  { table: 'order_receivables', ownerColumn: 'user_id' },
   { table: 'order_milestones', ownerColumn: 'user_id' },
   { table: 'supplier_commitments', ownerColumn: 'user_id' },
   { table: 'commercial_targets', ownerColumn: 'user_id' },

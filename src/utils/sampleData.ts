@@ -36,6 +36,7 @@ import { PLAN_ITEM_STORAGE_KEY } from '../services/planItemStore';
 // the legacy term sweep must never see them.
 import { ORDER_MILESTONE_STORAGE_KEY } from '../services/orderMilestoneStore';
 import { ORDER_COST_STORAGE_KEY } from '../services/orderCostStore';
+import { ORDER_RECEIVABLE_STORAGE_KEY } from '../services/orderReceivableStore';
 import { SUPPLIER_COMMITMENT_STORAGE_KEY } from '../services/supplierCommitmentStore';
 import { ACCOUNT_MERGE_STORAGE_KEY } from '../services/accountMergeStore';
 import { NUDGE_STORAGE_KEY } from '../services/nudgeStore';
@@ -189,6 +190,7 @@ export function clearSampleDataset() {
   // Today. All of it stayed in the workspace of whoever signed in next.
   removeSampleRecords(ORDER_MILESTONE_STORAGE_KEY);
   removeSampleRecords(ORDER_COST_STORAGE_KEY);
+  removeSampleRecords(ORDER_RECEIVABLE_STORAGE_KEY);
   removeSampleRecords(SUPPLIER_COMMITMENT_STORAGE_KEY);
   removeSampleRecords(ACCOUNT_MERGE_STORAGE_KEY);
   removeSampleRecords(NUDGE_STORAGE_KEY);

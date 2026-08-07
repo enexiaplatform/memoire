@@ -15,7 +15,7 @@ import {
   type OrderMargin,
   type OrderMarginSummary,
 } from '../../utils/orderMargin';
-import { getTargetMarginPct, setTargetMarginPct } from '../../utils/marginTarget';
+import { getTargetMarginPct, setTargetMarginPct } from '../../utils/pricingAssumptions';
 import {
   formatBaseCurrencyAmount,
   formatCompactBaseAmount,

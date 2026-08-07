@@ -12,10 +12,13 @@ import { CURRENCY_NAMES, SUPPORTED_CURRENCIES, getReportingCurrency } from '../.
 import { getOpeningCashBalance } from '../../utils/cashPosition';
 import {
   hydrateWorkspacePreferences,
+  saveFinancingRatePreference,
   saveOpeningCashBalancePreference,
   saveReportingCurrencyPreference,
+  saveTargetMarginPreference,
   type PreferenceSaveResult,
 } from '../../services/workspacePreferences';
+import { getFinancingRatePct, getTargetMarginPct } from '../../utils/pricingAssumptions';
 import { useAuth } from '../../hooks/useAuth';
 import { BUSINESS_ACCOUNTING_ENABLED } from '../../config/featureFlags';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
@@ -30,6 +33,10 @@ export function SettingsPage() {
     return stored === null ? '' : String(stored);
   });
   const [balanceSave, setBalanceSave] = useState<PreferenceSaveResult | null>(null);
+  const [targetMargin, setTargetMarginState] = useState(() => String(getTargetMarginPct()));
+  const [targetMarginSave, setTargetMarginSave] = useState<PreferenceSaveResult | null>(null);
+  const [financingRate, setFinancingRateState] = useState(() => String(getFinancingRatePct()));
+  const [financingRateSave, setFinancingRateSave] = useState<PreferenceSaveResult | null>(null);
 
   // The account is the record; this browser is the cache. Reading it back on
   // open is what makes the picker show what was actually saved rather than
@@ -40,6 +47,8 @@ export function SettingsPage() {
       if (!active) return;
       setReportingCurrencyState(preferences.reportingCurrency);
       setOpeningBalanceState(preferences.openingCashBalance === null ? '' : String(preferences.openingCashBalance));
+      setTargetMarginState(String(preferences.targetMarginPct));
+      setFinancingRateState(String(preferences.financingRatePct));
     });
     return () => { active = false; };
   }, [user?.id]);
@@ -59,6 +68,16 @@ export function SettingsPage() {
     const trimmed = raw.trim();
     const parsed = trimmed === '' ? null : Number(trimmed.replace(/,/g, ''));
     setBalanceSave(await saveOpeningCashBalancePreference(parsed, user?.id));
+  };
+
+  const handleTargetMarginChange = async (raw: string) => {
+    setTargetMarginSave(null);
+    setTargetMarginSave(await saveTargetMarginPreference(raw, user?.id));
+  };
+
+  const handleFinancingRateChange = async (raw: string) => {
+    setFinancingRateSave(null);
+    setFinancingRateSave(await saveFinancingRatePreference(raw, user?.id));
   };
 
   return (
@@ -124,6 +143,68 @@ export function SettingsPage() {
           <SaveState result={balanceSave} savedLabel="Saved to your account." />
         </div>
       )}
+
+      {/* The two numbers every quote is priced from.
+          Both used to live in this browser only, on the reasoning that a target
+          margin merely annotated a report. That stopped being true when cost
+          analysis moved into the quoting flow: these now decide the price a
+          seller puts in front of a customer, and a figure that reads 20% on the
+          laptop and 15% on the phone is not an inconsistent report - it is two
+          different quotes for the same order. */}
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <p className="text-sm font-semibold text-navy">Pricing assumptions</p>
+        <p className="mt-1 text-sm text-gray-500">
+          What every quote is priced back from. Cost Analysis on a deal uses both to work out the price that holds your
+          margin after the terms you are offering.
+        </p>
+
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-navy">Target margin</p>
+            <p className="mt-1 text-sm text-gray-500">
+              The share of the selling price you expect to keep. Every figure is graded against it.
+            </p>
+          </div>
+          <label className="flex items-center gap-2">
+            <span className="sr-only">Target margin percent</span>
+            <input
+              inputMode="decimal"
+              value={targetMargin}
+              onChange={(event) => {
+                setTargetMarginState(event.target.value);
+                void handleTargetMarginChange(event.target.value);
+              }}
+              className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+            />
+            <span className="text-sm font-semibold text-gray-500">%</span>
+          </label>
+        </div>
+        <SaveState result={targetMarginSave} savedLabel="Saved. Every quote is graded against this." />
+
+        <div className="mt-5 flex flex-col gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-navy">Cost of money</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Your overdraft or facility rate, per year. Giving a customer 60 days to pay is lending them money at this
+              rate, and the suggested price includes what that costs you.
+            </p>
+          </div>
+          <label className="flex items-center gap-2">
+            <span className="sr-only">Annual financing rate percent</span>
+            <input
+              inputMode="decimal"
+              value={financingRate}
+              onChange={(event) => {
+                setFinancingRateState(event.target.value);
+                void handleFinancingRateChange(event.target.value);
+              }}
+              className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+            />
+            <span className="text-sm font-semibold text-gray-500">% / yr</span>
+          </label>
+        </div>
+        <SaveState result={financingRateSave} savedLabel="Saved. Credit terms are priced at this rate." />
+      </div>
 
       <NotificationsPanel />
 

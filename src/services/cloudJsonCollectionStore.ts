@@ -3,7 +3,7 @@ import { reportClientOperationalEvent } from './clientTelemetry.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { writeLocalCollection } from './localWriteGuard.ts';
 
-export type CloudJsonCollectionTable = 'review_packs' | 'sales_assets' | 'action_outcomes' | 'opportunity_outcomes' | 'quotes' | 'nudges' | 'weekly_commitments' | 'plan_items' | 'account_merges' | 'order_milestones' | 'order_costs' | 'supplier_commitments' | 'expenses';
+export type CloudJsonCollectionTable = 'review_packs' | 'sales_assets' | 'action_outcomes' | 'opportunity_outcomes' | 'quotes' | 'nudges' | 'weekly_commitments' | 'plan_items' | 'account_merges' | 'order_milestones' | 'order_costs' | 'order_receivables' | 'supplier_commitments' | 'expenses';
 
 export type CloudJsonRecord = {
   id: string;
