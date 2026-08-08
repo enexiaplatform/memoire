@@ -143,6 +143,7 @@ import {
   generatePipelineDefenseBriefFromOpportunities,
   mapOpportunitiesToPipelineDefenseDeals,
 } from '../../utils/opportunityToPipelineBrief';
+import { analyzePipelineDefenseDeal } from '../../utils/pipelineDefenseRules';
 import {
   getRelevantSalesAssetsForOpportunity,
   suggestSalesAssetsForOpportunity,
@@ -3298,6 +3299,18 @@ function OpportunityPanel({
             onChange={(value) => update('decisionRecommendation', value)}
           />
         </div>
+
+        {currentOpportunity && (
+          <ForecastCallPanel
+            opportunity={currentOpportunity}
+            objections={objections}
+            stakeholders={stakeholders}
+            activities={linkedActivities}
+            actionOutcomes={actionOutcomes}
+            salesAssets={salesAssets}
+            onApply={(patch) => onChange({ ...form, ...patch })}
+          />
+        )}
       </div>
 
       {mode === 'edit' && (
@@ -4671,6 +4684,152 @@ function buildCloseFilterOptions(rows: { closePeriod: ClosePeriod }[]): string[]
  * clears the moment the right field is filled, before the save, so the
  * connection between the edit and the flag is impossible to miss.
  */
+/**
+ * The two forecast fields, joined to the record they are a judgement about.
+ *
+ * The founder's question was the right one: what do "Forecast evidence" and
+ * "Decision recommendation" mean, and are they connected to anything? They are
+ * connected to a great deal - Revenue discounts a value whose evidence is
+ * Hope-based, the watch-list is built from the recommendation, the review brief
+ * groups by both, and every closed deal snapshots them so the workspace can
+ * eventually say "when you called a deal Defensible, you won 62% of them". None
+ * of that was visible from two bare dropdowns, so they read as vocabulary.
+ *
+ * Worse, the workspace already *computes* what both should be, from this deal's
+ * own evidence, stakeholders and objections - the same rules the Pipeline
+ * Defense brief runs. That answer existed and was never shown at the field
+ * where the operator is being asked to give it. So it is shown here, with the
+ * reasons behind it, and one press to accept it.
+ *
+ * The suggestion never writes itself. A forecast call the product made on the
+ * operator's behalf is a call nobody owns, and the calibration built on it
+ * would be measuring the rules rather than the seller.
+ */
+function ForecastCallPanel({
+  opportunity,
+  objections,
+  stakeholders,
+  activities,
+  actionOutcomes,
+  salesAssets,
+  onApply,
+}: {
+  opportunity: CrmLiteOpportunity;
+  objections: ObjectionRecord[];
+  stakeholders: StakeholderRecord[];
+  activities: SalesActivityRecord[];
+  actionOutcomes: ActionOutcomeRecord[];
+  salesAssets: SalesAssetRecord[];
+  onApply: (patch: Partial<OpportunityFormInput>) => void;
+}) {
+  // Reads the merged `{ ...saved, ...form }` record, so filling Evidence and
+  // watching the suggestion move is one gesture rather than a save and a reload.
+  //
+  // Mapped through the book-level function with a book of one, rather than the
+  // per-deal mapper: `verify-surface-scale` forbids this page from reaching for
+  // the single-deal mapper at all, because that is the shape a loop takes, and
+  // a loop here would regenerate the workspace playbook once per row.
+  const suggestion = useMemo(() => {
+    const [deal] = mapOpportunitiesToPipelineDefenseDeals([opportunity], {
+      objections,
+      stakeholders,
+      activities,
+      actionOutcomes,
+      salesAssets,
+    });
+    return deal ? analyzePipelineDefenseDeal(deal) : null;
+  }, [actionOutcomes, activities, objections, opportunity, salesAssets, stakeholders]);
+
+  if (!suggestion) return null;
+
+  const evidenceDiffers = suggestion.forecastEvidenceCategory !== opportunity.forecastEvidenceCategory;
+  const decisionDiffers = suggestion.decisionRecommendation !== opportunity.decisionRecommendation;
+  // High-severity first: those are the ones that moved the suggestion.
+  const reasons = [...suggestion.riskFlags]
+    .sort((left, right) => severityRank(right.severity) - severityRank(left.severity))
+    .slice(0, 3);
+
+  const consequences = [
+    opportunity.forecastEvidenceCategory === 'Hope-based' || opportunity.forecastEvidenceCategory === 'Unsupported'
+      ? 'Revenue treats this value as unbacked and counts it as at risk.'
+      : 'Revenue counts this value as backed by something the customer confirmed.',
+    ['Rescue', 'Downgrade', 'Deprioritize'].includes(opportunity.decisionRecommendation)
+      ? `"${opportunity.decisionRecommendation}" keeps this deal on the watch-list until the call changes.`
+      : `"${opportunity.decisionRecommendation}" keeps this deal off the watch-list.`,
+    `When this deal closes, "${opportunity.forecastEvidenceCategory}" is stored with the outcome — that is what Review's win rate per category is built from.`,
+  ];
+
+  return (
+    <section className="rounded-xl border border-blue-100 bg-blue-50/40 p-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-brand-blue">What the record supports</p>
+        <p className="text-[11px] text-gray-500">Read from this deal — evidence, stakeholders, objections, next action</p>
+      </div>
+
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        <SuggestedCall
+          label="Forecast evidence"
+          value={suggestion.forecastEvidenceCategory}
+          differs={evidenceDiffers}
+          onApply={() => onApply({ forecastEvidenceCategory: suggestion.forecastEvidenceCategory })}
+        />
+        <SuggestedCall
+          label="Decision"
+          value={suggestion.decisionRecommendation}
+          differs={decisionDiffers}
+          onApply={() => onApply({ decisionRecommendation: suggestion.decisionRecommendation })}
+        />
+      </div>
+
+      {reasons.length > 0 && (
+        <ul className="mt-2 space-y-0.5">
+          {reasons.map((flag) => (
+            <li key={flag.id} className="text-[11px] leading-5 text-gray-600">• {flag.reason}</li>
+          ))}
+        </ul>
+      )}
+
+      <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-gray-500">What your call changes</p>
+      <ul className="mt-1 space-y-0.5">
+        {consequences.map((line) => (
+          <li key={line} className="text-[11px] leading-5 text-gray-600">• {line}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function severityRank(severity: 'low' | 'medium' | 'high') {
+  return severity === 'high' ? 2 : severity === 'medium' ? 1 : 0;
+}
+
+function SuggestedCall({ label, value, differs, onApply }: {
+  label: string;
+  value: string;
+  differs: boolean;
+  onApply: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-lg bg-white px-2.5 py-1.5 ring-1 ring-blue-100">
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">{label}</p>
+        <p className="truncate text-xs font-bold text-navy">{value}</p>
+      </div>
+      {differs ? (
+        <button
+          type="button"
+          onClick={onApply}
+          className="shrink-0 rounded-full border border-brand-blue/30 px-2.5 py-1 text-[11px] font-bold text-brand-blue hover:bg-blue-50"
+        >
+          Use this
+        </button>
+      ) : (
+        <span className="shrink-0 text-[11px] font-semibold text-emerald-700">Matches yours</span>
+      )}
+    </div>
+  );
+}
+
 function WhyThisDealIsFlagged({ form }: { form: OpportunityFormInput }) {
   const explanation = explainPipelineRisk(form);
 
