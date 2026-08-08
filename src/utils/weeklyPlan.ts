@@ -677,49 +677,93 @@ export function buildPlanLinkOptions(input: {
   brands?: string[];
   limit?: number;
 }): PlanLinkOption[] {
-  const tokens = normalizePlanText(input.draft).split(/\s+/).filter((token) => token.length >= 2);
+  const query = normalizePlanText(input.draft);
+  const tokens = query.split(/\s+/).filter((token) => token.length >= 2);
   if (tokens.length === 0) return [];
   // Six rather than four: two rows are now reserved for the customer, and a
   // four-row list spent all of them on deals the moment an account had several.
   const limit = input.limit ?? 6;
-  const matches = (name: string) => {
+
+  /**
+   * The tokens that actually distinguish one customer from another.
+   *
+   * Nearly every company in this book is registered as "CÔNG TY TNHH ...", so a
+   * matcher that treats `cong`, `ty` and `tnhh` as evidence says every customer
+   * matches every query - and with six slots on screen, the one the operator
+   * typed loses them to whoever happened to be loaded first. That is the
+   * "I searched for it and it is not there" bug: it was there, in position
+   * forty.
+   */
+  const distinctive = tokens.filter((token) => !PLAN_LINK_STOP_TOKENS.has(token));
+  const searchTokens = distinctive.length > 0 ? distinctive : tokens;
+
+  /**
+   * How well a name answers what was typed, or 0 for no match at all.
+   *
+   * Ordered by how much of the typed text the name accounts for: the whole
+   * phrase beats several words, several words beat one. Shorter names break
+   * ties, because a query that matches both "Samil" and "Samil Pharmaceutical
+   * Vietnam JSC" is more likely to have meant the shorter, and the longer one is
+   * still one row down.
+   */
+  const scoreName = (name: string) => {
     const normalized = normalizePlanText(name);
-    return normalized.length > 0 && tokens.some((token) => normalized.includes(token));
+    if (!normalized) return 0;
+    const matched = searchTokens.filter((token) => normalized.includes(token));
+    if (matched.length === 0) return 0;
+    const phraseBonus = query.length >= 3 && normalized.includes(query) ? 1000 : 0;
+    const coverage = matched.reduce((total, token) => total + token.length, 0);
+    return phraseBonus + matched.length * 20 + coverage - Math.min(normalized.length / 10, 9);
   };
 
   const dealOptions = input.opportunities
     .filter((opportunity) => opportunity.status === 'Active')
-    .filter((opportunity) => matches(opportunity.accountName) || matches(opportunity.opportunityName))
     .map((opportunity) => ({
-      key: `deal-${opportunity.id}`,
-      kind: 'deal' as const,
-      accountName: opportunity.accountName,
-      opportunityId: opportunity.id,
-      display: `${opportunity.accountName || 'No account'} / ${opportunity.opportunityName || 'Untitled opportunity'}`,
-    }));
+      score: Math.max(scoreName(opportunity.accountName), scoreName(opportunity.opportunityName)),
+      option: {
+        key: `deal-${opportunity.id}`,
+        kind: 'deal' as const,
+        accountName: opportunity.accountName,
+        opportunityId: opportunity.id,
+        display: `${opportunity.accountName || 'No account'} / ${opportunity.opportunityName || 'Untitled opportunity'}`,
+      },
+    }))
+    .filter((entry) => entry.score > 0)
+    .sort((left, right) => right.score - left.score)
+    .map((entry) => entry.option);
 
   const accountOptions = [...new Map(
     input.accountNames
       .filter((name) => name.trim().length > 0)
       .map((name) => [normalizePlanText(name), name] as const),
   ).values()]
-    .filter((name) => matches(name))
     .map((name) => ({
-      key: `account-${normalizePlanText(name)}`,
-      kind: 'account' as const,
-      accountName: name,
-      display: name,
-    }));
+      score: scoreName(name),
+      option: {
+        key: `account-${normalizePlanText(name)}`,
+        kind: 'account' as const,
+        accountName: name,
+        display: name,
+      },
+    }))
+    .filter((entry) => entry.score > 0)
+    .sort((left, right) => right.score - left.score)
+    .map((entry) => entry.option);
 
   const brandOptions = [...new Set((input.brands || []).map((brand) => brand.trim()).filter(Boolean))]
-    .filter((brand) => matches(brand))
     .map((brand) => ({
-      key: `brand-${normalizePlanText(brand)}`,
-      kind: 'brand' as const,
-      accountName: '',
-      brand,
-      display: brand,
-    }));
+      score: scoreName(brand),
+      option: {
+        key: `brand-${normalizePlanText(brand)}`,
+        kind: 'brand' as const,
+        accountName: '',
+        brand,
+        display: brand,
+      },
+    }))
+    .filter((entry) => entry.score > 0)
+    .sort((left, right) => right.score - left.score)
+    .map((entry) => entry.option);
 
   // The customer is always offered, even when its deals matched too.
   //
@@ -736,6 +780,54 @@ export function buildPlanLinkOptions(input: {
   const remainingAccounts = accountOptions.slice(RESERVED_ACCOUNT_ROWS);
   return [...reservedAccounts, ...dealOptions, ...remainingAccounts, ...brandOptions].slice(0, limit);
 }
+
+/**
+ * The composer text with the customer's name taken out of it, once that name has
+ * become a link.
+ *
+ * Picking "CÔNG TY TNHH SAMIL PHARMACEUTICAL" from the list used to leave the
+ * word the operator typed to find it - "Samil" - sitting in the text box, so the
+ * saved line read "Samil" *and* wore a Samil chip. The name is now recorded
+ * twice, in two forms that can disagree, and the board reads as a stutter. The
+ * link is the customer; the text should be the work.
+ *
+ * Only words that belong to the picked name are removed, so "Send price + CoA
+ * for Pymepharco" keeps everything except the customer.
+ */
+export function stripPlanLinkFromDraft(draft: string, linkedName: string): string {
+  const nameTokens = new Set(normalizePlanText(linkedName).split(/\s+/).filter(Boolean));
+  if (nameTokens.size === 0) return draft.trim();
+
+  const wordKey = (word: string) => normalizePlanText(word).replace(/[^a-z0-9]/g, '');
+  const kept = draft.split(/\s+/).filter((word) => {
+    const key = wordKey(word);
+    return key.length === 0 || !nameTokens.has(key);
+  });
+
+  // Connectives and stray punctuation are left dangling by the removal - "Send
+  // price for", "Follow up -" - and reading one back is worse than nothing.
+  const danglingAtEnd = () => {
+    const last = kept[kept.length - 1];
+    const key = wordKey(last);
+    return key.length === 0 || DANGLING_WORDS.has(key);
+  };
+  while (kept.length > 0 && danglingAtEnd()) kept.pop();
+
+  return kept.join(' ').replace(/\s+([,.;:])/g, '$1').trim();
+}
+
+const DANGLING_WORDS = new Set(['for', 'to', 'with', 'at', 'of', 'cho', 'voi', 'den', 'tai', 'cua', 'and', 'va']);
+
+/**
+ * Words that appear in a company's legal name and tell you nothing about which
+ * company it is. Deliberately only the legal-form boilerplate - a trade word
+ * like "duoc" or "thiet bi" narrows a book of pharma and instrument customers
+ * usefully, and dropping it would throw away a real signal.
+ */
+const PLAN_LINK_STOP_TOKENS = new Set([
+  'cong', 'ty', 'tnhh', 'mtv', 'cp', 'co', 'phan', 'chi', 'nhanh', 'lien', 'doanh',
+  'tap', 'doan', 'the', 'and', 'ltd', 'llc', 'jsc', 'inc', 'corp', 'company', 'joint', 'stock',
+]);
 
 function normalizePlanText(value: string) {
   return value

@@ -62,7 +62,11 @@ assert.equal(today.importedAccountsHidden, 1);
 
 const page = readFileSync('src/features/accounts/AccountsPage.tsx', 'utf8');
 for (const marker of [
-  "useState<HygieneFilter>('Active work')", 'if (searchText) return searchable.includes(searchText);', 'Imported account — no sales memory yet',
+  // What this guards is that a search bypasses the hygiene filters entirely -
+  // an imported account with no sales memory is hidden from active work but
+  // must still be findable by name. The matcher itself is `matchesSearchQuery`,
+  // which folds Vietnamese diacritics and matches word by word.
+  "useState<HygieneFilter>('Active work')", 'if (searchText) return matchesSearchQuery(searchable, searchText);', 'Imported account — no sales memory yet',
   'Capture update', 'Create opportunity', 'Mark strategic', 'Archive account', 'Unarchive account', 'No pipeline evidence',
 ]) assert.ok(page.includes(marker), `Accounts hygiene UI missing: ${marker}`);
 for (const filter of ['Active', 'Needs follow-up', 'Strategic', 'Dormant', 'Imported only', 'Archived', 'All']) {

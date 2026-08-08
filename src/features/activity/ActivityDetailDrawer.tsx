@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, Check, Clock, X } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Check, Clock, Trash2, X } from 'lucide-react';
 import type { ActivityEntry, ActivityOrigin } from '../../utils/activityLedger.ts';
 import { relationTypeLabel } from '../../utils/activityLedger.ts';
 import { formatSafeBusinessDate } from '../../utils/safeDate.ts';
@@ -16,6 +16,15 @@ import { SubjectChip } from '../../components/common/SubjectChip';
  * real record lives so I can go and change it there". Every field below is read
  * from the entry, and the only two things that leave are the subject chip and
  * the explicit "Open the record" link.
+ *
+ * With one exception: deletion. A row written by mistake - a touch captured
+ * twice, a plan line typed on the wrong day - was unremovable from here, and the
+ * only delete in the product sat inside a modal on the history calendar that an
+ * operator reading the ledger had no reason to find. So the two origins this
+ * workspace actually owns the record for, a captured touch and a typed plan
+ * line, can be deleted where they are read. Derived rows (a deal's next action,
+ * an obligation) still cannot: they are a *view* of another record, and removing
+ * the view without the record would be a lie.
  */
 const ORIGIN_COPY: Record<ActivityOrigin, { label: string; detail: string }> = {
   capture: {
@@ -36,7 +45,23 @@ const ORIGIN_COPY: Record<ActivityOrigin, { label: string; detail: string }> = {
   },
 };
 
-export function ActivityDetailDrawer({ entry, onClose }: { entry: ActivityEntry; onClose: () => void }) {
+export function ActivityDetailDrawer({
+  entry,
+  onClose,
+  onDelete,
+}: {
+  entry: ActivityEntry;
+  onClose: () => void;
+  /**
+   * Removes the record this row was derived from. Omitted for the origins the
+   * ledger only borrows, which is what greys the button out with a reason.
+   */
+  onDelete?: () => void | Promise<void>;
+}) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
@@ -133,15 +158,77 @@ export function ActivityDetailDrawer({ entry, onClose }: { entry: ActivityEntry;
             </div>
           </section>
 
-          {entry.href && (
-            <Link
-              to={entry.href}
-              onClick={onClose}
-              className="inline-flex items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
-            >
-              Open the record
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            {entry.href && (
+              <Link
+                to={entry.href}
+                onClick={onClose}
+                className="inline-flex items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
+              >
+                Open the record
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            )}
+            {onDelete && !confirmingDelete && (
+              <button
+                type="button"
+                onClick={() => { setDeleteError(''); setConfirmingDelete(true); }}
+                className="inline-flex items-center gap-1.5 rounded-full border border-red-200 px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </button>
+            )}
+          </div>
+
+          {/* Two presses, not a browser confirm dialog. This deletes a record
+              the operator wrote, and the sentence saying so is worth more than
+              an OS alert nobody reads. */}
+          {onDelete && confirmingDelete && (
+            <div className="rounded-lg border border-red-100 bg-red-50 p-3">
+              <p className="text-sm font-bold text-red-800">
+                Delete this {entry.origin === 'capture' ? 'captured touch' : 'plan item'}?
+              </p>
+              <p className="mt-1 text-xs leading-5 text-red-900/80">
+                It disappears from the ledger, the calendar and every count built on it. This cannot be undone.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={async () => {
+                    setDeleting(true);
+                    setDeleteError('');
+                    try {
+                      await onDelete();
+                      onClose();
+                    } catch {
+                      setDeleteError('That could not be deleted. Check the connection and try again.');
+                      setDeleting(false);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-red-700 px-4 py-2 text-sm font-bold text-white hover:bg-red-800 disabled:bg-gray-300"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {deleting ? 'Deleting...' : 'Yes, delete it'}
+                </button>
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={() => setConfirmingDelete(false)}
+                  className="rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-700"
+                >
+                  Keep it
+                </button>
+              </div>
+              {deleteError && <p className="mt-2 text-xs font-semibold text-red-800">{deleteError}</p>}
+            </div>
+          )}
+
+          {!onDelete && (
+            <p className="text-xs leading-5 text-gray-500">
+              This row is a view of another record, so it cannot be deleted here. Open the record and remove it there.
+            </p>
           )}
         </div>
       </aside>

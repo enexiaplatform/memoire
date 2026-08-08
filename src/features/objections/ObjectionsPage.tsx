@@ -22,6 +22,7 @@ import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../servi
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import { analyzeObjectionLedger, objectionStatusTone } from '../../utils/objectionLedger';
 import { formatSafeBusinessDate } from '../../utils/safeDate.ts';
+import { matchesSearchQuery } from '../../utils/textSearch';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 const allFilter = 'All';
@@ -89,7 +90,7 @@ export function ObjectionsPage() {
         objection.tags.join(' '),
       ].join(' ').toLowerCase();
       return (
-        (!searchText || searchable.includes(searchText)) &&
+        matchesSearchQuery(searchable, searchText) &&
         (accountFilter === allFilter || objection.accountName === accountFilter) &&
         (opportunityFilter === allFilter || objection.opportunityName === opportunityFilter) &&
         (typeFilter === allFilter || objection.objectionType === typeFilter) &&

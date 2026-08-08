@@ -23,15 +23,19 @@ import {
   type StakeholderRecord,
 } from '../../services/stakeholderStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
+import { useWorkspaceRefresh } from '../../hooks/useWorkspaceRefresh';
+import { formatCount } from '../../utils/numberFormat';
 import { summarizeStakeholderCoverage } from '../../utils/stakeholderGraph';
 import {
   getStakeholderNextActionFromNotes,
   setStakeholderNextActionInNotes,
   stripStakeholderNextActionFromNotes,
 } from '../../utils/meddicStakeholderMap.ts';
+import { matchesSearchQuery } from '../../utils/textSearch';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 const allFilter = 'All';
+const pageSizeOptions = [25, 50, 100] as const;
 
 export function StakeholdersPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
@@ -51,6 +55,8 @@ export function StakeholdersPage() {
   const [form, setForm] = useState<StakeholderFormInput>(emptyStakeholderInput);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [message, setMessage] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const refreshStakeholders = async () => {
     const cachedData = getCachedSalesWorkspaceData(dataUserId);
@@ -73,6 +79,10 @@ export function StakeholdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataUserId]);
 
+  // Drawn from the browser copy at first paint; take the cloud answer when it
+  // lands rather than reporting an empty relationship map all session.
+  useWorkspaceRefresh(() => { void refreshStakeholders(); });
+
   useEffect(() => {
     const accountName = searchParams.get('accountName') || allFilter;
     const opportunityName = searchParams.get('opportunityName') || '';
@@ -94,7 +104,7 @@ export function StakeholdersPage() {
         stakeholder.tags.join(' '),
       ].join(' ').toLowerCase();
       return (
-        (!searchText || searchable.includes(searchText)) &&
+        matchesSearchQuery(searchable, searchText) &&
         (accountFilter === allFilter || stakeholder.accountName === accountFilter) &&
         (roleFilter === allFilter || stakeholder.stakeholderRole === roleFilter) &&
         (stanceFilter === allFilter || stakeholder.stance === stanceFilter) &&
@@ -102,6 +112,26 @@ export function StakeholdersPage() {
       );
     });
   }, [accountFilter, influenceFilter, query, roleFilter, stakeholders, stanceFilter]);
+
+  /**
+   * Paged, because this list rendered every match.
+   *
+   * At 1,000 stakeholders that was 22,625 DOM nodes on a page 266,417 pixels
+   * tall, and the renderer stopped answering - screenshots of this surface timed
+   * out repeatedly. Opportunities already pages at 25 rows and costs 2,076 nodes
+   * for the same job, so this is that pattern rather than a new one.
+   */
+  const pageCount = Math.max(1, Math.ceil(visibleStakeholders.length / pageSize));
+  const pagedStakeholders = useMemo(
+    () => visibleStakeholders.slice((page - 1) * pageSize, page * pageSize),
+    [page, pageSize, visibleStakeholders],
+  );
+
+  // Filtering to three matches while sitting on page 12 shows an empty list that
+  // reads as "no results". Any change to what is being filtered goes to page 1.
+  useEffect(() => {
+    setPage(1);
+  }, [accountFilter, influenceFilter, pageSize, query, roleFilter, stanceFilter]);
 
   const openAddPanel = (seed: Partial<StakeholderFormInput> = {}) => {
     setSelectedStakeholder(null);
@@ -206,13 +236,14 @@ export function StakeholdersPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
         <Metric label="Total" value={summary.totalStakeholders} />
         <Metric label="Champions" value={summary.champions} tone="green" />
         <Metric label="Economic buyers" value={summary.economicBuyers} tone="blue" />
         <Metric label="Blockers" value={summary.blockers} tone="red" />
         <Metric label="High influence" value={summary.highInfluence} tone="amber" />
         <Metric label="Missing champion" value={summary.accountsWithMissingChampion} tone="amber" />
+        <Metric label="No account" value={summary.unattachedStakeholders} tone={summary.unattachedStakeholders > 0 ? 'amber' : 'green'} />
         <Metric label="Opp risk" value={summary.opportunitiesWithStakeholderRisk} tone="red" />
       </section>
 
@@ -223,9 +254,50 @@ export function StakeholdersPage() {
           ) : visibleStakeholders.length === 0 ? (
             <EmptyState onAdd={() => openAddPanel()} />
           ) : (
-            visibleStakeholders.map((stakeholder) => (
-              <StakeholderCard key={stakeholder.id} stakeholder={stakeholder} onOpen={() => openEditPanel(stakeholder)} />
-            ))
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-gray-500">
+                <p>
+                  Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, visibleStakeholders.length)} of{' '}
+                  {formatCount(visibleStakeholders.length)}
+                </p>
+                <label className="flex items-center gap-2">
+                  <span>Per page</span>
+                  <select
+                    value={pageSize}
+                    onChange={(event) => setPageSize(Number(event.target.value))}
+                    className="rounded-lg border border-gray-300 bg-white px-2 py-1 font-semibold text-gray-700 outline-none"
+                  >
+                    {pageSizeOptions.map((size) => <option key={size} value={size}>{size}</option>)}
+                  </select>
+                </label>
+              </div>
+
+              {pagedStakeholders.map((stakeholder) => (
+                <StakeholderCard key={stakeholder.id} stakeholder={stakeholder} onOpen={() => openEditPanel(stakeholder)} />
+              ))}
+
+              {pageCount > 1 && (
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setPage((current) => Math.max(1, current - 1))}
+                    disabled={page === 1}
+                    className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-300"
+                  >
+                    Previous
+                  </button>
+                  <p className="text-xs font-semibold text-gray-500">Page {page} of {pageCount}</p>
+                  <button
+                    type="button"
+                    onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
+                    disabled={page === pageCount}
+                    className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 disabled:cursor-not-allowed disabled:text-gray-300"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -256,9 +328,9 @@ function StakeholderCard({ stakeholder, onOpen }: { stakeholder: StakeholderReco
           <RecordStamp className="mt-1" createdAt={stakeholder.createdAt} updatedAt={stakeholder.updatedAt} label="Added" />
         </div>
         <div className="flex flex-wrap gap-2">
-          <Badge label={stakeholder.stakeholderRole} tone={stakeholder.stakeholderRole === 'Blocker' ? 'red' : stakeholder.stakeholderRole === 'Champion' ? 'green' : 'blue'} />
-          <Badge label={stakeholder.influenceLevel} tone={stakeholder.influenceLevel === 'High' ? 'amber' : 'gray'} />
-          <Badge label={stakeholder.stance} tone={stakeholder.stance === 'Supportive' ? 'green' : stakeholder.stance === 'Resistant' ? 'red' : 'gray'} />
+          <Badge dimension="Role" label={stakeholder.stakeholderRole} tone={stakeholder.stakeholderRole === 'Blocker' ? 'red' : stakeholder.stakeholderRole === 'Champion' ? 'green' : 'blue'} />
+          <Badge dimension="Influence" label={stakeholder.influenceLevel} tone={stakeholder.influenceLevel === 'High' ? 'amber' : 'gray'} />
+          <Badge dimension="Stance" label={stakeholder.stance} tone={stakeholder.stance === 'Supportive' ? 'green' : stakeholder.stance === 'Resistant' ? 'red' : 'gray'} />
         </div>
       </div>
       <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
@@ -391,7 +463,15 @@ function Fact({ label, value }: { label: string; value: string }) {
   return <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p><p className="mt-1 text-sm text-gray-700">{value}</p></div>;
 }
 
-function Badge({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green' | 'amber' | 'red' | 'gray' }) {
+/**
+ * A badge says which dimension it is reporting, not just its value.
+ *
+ * Three of these sit in a row on every card, and for an imported stakeholder all
+ * three read "Unknown" - three identical chips, none of which said whether it
+ * was the role, the influence or the stance that nobody had filled in. The
+ * dimension is the half a reader cannot infer.
+ */
+function Badge({ dimension, label, tone = 'blue' }: { dimension: string; label: string; tone?: 'blue' | 'green' | 'amber' | 'red' | 'gray' }) {
   const toneMap = {
     blue: 'border-blue-100 bg-blue-50 text-brand-blue',
     green: 'border-emerald-100 bg-emerald-50 text-emerald-700',
@@ -399,7 +479,12 @@ function Badge({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green
     red: 'border-red-100 bg-red-50 text-red-700',
     gray: 'border-gray-200 bg-gray-50 text-gray-600',
   }[tone];
-  return <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${toneMap}`}>{label}</span>;
+  return (
+    <span className={`inline-flex items-baseline gap-1 rounded-full border px-2.5 py-1 text-xs ${toneMap}`}>
+      <span className="font-semibold opacity-70">{dimension}</span>
+      <span className="font-bold">{label}</span>
+    </span>
+  );
 }
 
 function FilterSelect({ label, value, options, onChange }: { label: string; value: string; options: readonly string[]; onChange: (value: string) => void }) {

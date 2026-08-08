@@ -17,6 +17,7 @@ import type { OpportunityOutcomeRecord } from '../../services/opportunityOutcome
 import type { QuoteRecord } from '../../services/quoteStore';
 import type { SalesActivityRecord } from '../../services/salesActivityStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData, type SalesWorkspaceData } from '../../services/workspaceData';
+import { useWorkspaceRefresh } from '../../hooks/useWorkspaceRefresh';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { formatBaseCurrencyAmount as formatBaseMoney, formatCurrencyAmount as formatMoney } from '../../utils/money';
 import { buildRevenueView, type RevenueActionItem, type RevenueRiskKind } from '../../utils/revenueView';
@@ -34,6 +35,7 @@ import {
   markExpensePaid,
   type ExpenseRecord,
 } from '../../services/expenseStore';
+import { matchesSearchQuery } from '../../utils/textSearch';
 
 type RevenueData = {
   opportunities: CrmLiteOpportunity[];
@@ -101,19 +103,22 @@ export function RevenueViewPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, dataUserId]);
 
+  // Drawn from the browser copy at first paint; take the cloud answer when it lands.
+  useWorkspaceRefresh(() => { void loadRevenue(); });
+
   const revenue = useMemo(() => buildRevenueView(data), [data]);
   const moneyFlow = useMemo(() => buildMoneyFlow(data), [data]);
   const routeHealth = useMemo(() => buildRouteHealth({ opportunities: data.opportunities }), [data.opportunities]);
   const visibleActions = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return revenue.actionItems;
-    return revenue.actionItems.filter((item) => [
+    return revenue.actionItems.filter((item) => matchesSearchQuery([
       item.accountName,
       item.label,
       item.risk,
       item.nextAction,
       item.status,
-    ].join(' ').toLowerCase().includes(query));
+    ].join(' '), query));
   }, [revenue.actionItems, search]);
 
   return (

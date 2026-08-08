@@ -12,6 +12,7 @@ import {
 } from '../../services/salesActivityStore';
 import { opportunityToFormInput, updateOpportunity } from '../../services/opportunityStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
+import { useWorkspaceRefresh } from '../../hooks/useWorkspaceRefresh';
 import { type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { type QuoteRecord } from '../../services/quoteStore';
 import { type ExpenseRecord } from '../../services/expenseStore';
@@ -43,6 +44,7 @@ import {
   planLinkKindLabel,
   shiftPlanAnchor,
   splitBracketTag,
+  stripPlanLinkFromDraft,
   type PlanItem,
   type PlanLinkOption,
   type PlanPeriod,
@@ -138,6 +140,9 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
   }, [dataUserId, sampleDataActive]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  // Drawn from the browser copy at first paint; take the cloud answer when it lands.
+  useWorkspaceRefresh(() => { void refresh(); });
 
   const obligations = useMemo(
     () => buildOwnObligations({
@@ -840,6 +845,11 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
                       </button>
                     </span>
                   )}
+                  {draftLink && !draft.trim() && (
+                    <p className="mt-1 text-[11px] font-semibold text-gray-500">
+                      Linked. Now type what you will do — “Send price + CoA”.
+                    </p>
+                  )}
                   {draftLinkOptions.length > 0 && (
                     <div className="mt-1.5 overflow-hidden rounded-md border border-gray-100 bg-white shadow-sm">
                       <p className="border-b border-gray-100 bg-gray-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-gray-400">
@@ -850,7 +860,16 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
                           key={option.key}
                           type="button"
                           onMouseDown={(event) => event.preventDefault()}
-                          onClick={() => setDraftLink(option)}
+                          onClick={() => {
+                            setDraftLink(option);
+                            // The name is now the chip. Leaving it in the box
+                            // too is how a line ends up saying "Samil" beside a
+                            // Samil tag.
+                            // Only the customer's own name, never the deal
+                            // title: "3-Manifold" is what the work is about and
+                            // has to survive in the text.
+                            setDraft((current) => stripPlanLinkFromDraft(current, option.accountName || option.brand || option.display));
+                          }}
                           title={option.display}
                           className="flex w-full items-start gap-1.5 px-2 py-1.5 text-left text-[11px] font-semibold text-gray-700 hover:bg-blue-50 hover:text-brand-blue"
                         >

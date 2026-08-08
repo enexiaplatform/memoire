@@ -15,11 +15,12 @@ import {
 import { useAuthContext } from '../../auth/authContext';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
+import { useWorkspaceRefresh } from '../../hooks/useWorkspaceRefresh';
 import { loadAccounts, type AccountMemoryRecord } from '../../services/accountStore';
-import { loadPlanItemsForWorkspace, PLAN_ITEMS_UPDATED_EVENT } from '../../services/planItemStore';
+import { deletePlanItem, loadPlanItemsForWorkspace, PLAN_ITEMS_UPDATED_EVENT } from '../../services/planItemStore';
 import { loadSupplierCommitmentsForWorkspace } from '../../services/supplierCommitmentStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
-import type { SalesActivityRecord } from '../../services/salesActivityStore';
+import { deleteSalesActivity, type SalesActivityRecord } from '../../services/salesActivityStore';
 import type { QuoteRecord } from '../../services/quoteStore';
 import type { ExpenseRecord } from '../../services/expenseStore';
 import type { AccountMergeRecord } from '../../services/accountMergeStore';
@@ -53,6 +54,7 @@ import { ActivityPivotTable } from './ActivityPivotTable';
 import { ActivityStream, SubjectChip } from './ActivityStream';
 import { ActivityTable } from './ActivityTable';
 import { ActivityDetailDrawer } from './ActivityDetailDrawer';
+import { matchesSearchQuery } from '../../utils/textSearch';
 
 /**
  * Activity: the calendar, read as a business.
@@ -153,6 +155,43 @@ export function ActivityPage() {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  /**
+   * Removes the record a ledger row was written from.
+   *
+   * Only the two origins this workspace owns outright. `entry.id` carries the
+   * origin in its prefix (`event-` for a captured touch, `task-` for a plan
+   * line), which is the same key the ledger builds rows from, so nothing has to
+   * be re-derived to find the record behind the row.
+   */
+  const deleteEntry = useCallback(async (entry: ActivityEntry) => {
+    if (entry.id.startsWith('event-')) {
+      const activityId = entry.id.slice('event-'.length);
+      const activity = activities.find((item) => item.id === activityId);
+      if (!activity) return;
+      await deleteSalesActivity(activity, dataUserId);
+      setActivities((current) => current.filter((item) => item.id !== activityId));
+      return;
+    }
+
+    if (entry.origin === 'typed' && entry.id.startsWith('task-')) {
+      const recordId = entry.id.slice('task-'.length);
+      setPlanRecords(deletePlanItem(recordId));
+    }
+  }, [activities, dataUserId]);
+
+  /**
+   * A row whose record this page can actually remove: a captured touch, or a
+   * line typed straight onto the plan board. Everything else is a mirror of a
+   * deal, an obligation or a capture's dated next action, and is edited where it
+   * was written.
+   */
+  const canDeleteEntry = (entry: ActivityEntry) => (
+    entry.id.startsWith('event-') || (entry.origin === 'typed' && entry.id.startsWith('task-'))
+  );
+
+  // Drawn from the browser copy at first paint; take the cloud answer when it lands.
+  useWorkspaceRefresh(() => { void refresh(); });
+
   // Ticking a box on Today or the plan board changes what this page says about
   // follow-through, so it listens rather than going stale until a reload.
   useEffect(() => {
@@ -252,7 +291,7 @@ export function ActivityPage() {
     return entries.filter((entry) => {
       if (relationFilter !== 'all' && entry.relatedTo.type !== relationFilter) return false;
       if (domainFilter !== 'all' && entry.domain !== domainFilter) return false;
-      if (needle && !`${entry.subject} ${entry.relatedTo.name} ${entry.who} ${entry.type}`.toLowerCase().includes(needle)) return false;
+      if (needle && !matchesSearchQuery(`${entry.subject} ${entry.relatedTo.name} ${entry.who} ${entry.type}`, needle)) return false;
       if (!focus) return true;
       if (focus.kind === 'day') return entry.date === focus.date;
       if (focus.kind === 'subject') return activitySubjectKey(entry) === focus.subjectKey;
@@ -665,7 +704,11 @@ export function ActivityPage() {
       </section>
 
       {selectedEntry && (
-        <ActivityDetailDrawer entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
+        <ActivityDetailDrawer
+          entry={selectedEntry}
+          onClose={() => setSelectedEntry(null)}
+          onDelete={canDeleteEntry(selectedEntry) ? () => deleteEntry(selectedEntry) : undefined}
+        />
       )}
     </PageContainer>
   );

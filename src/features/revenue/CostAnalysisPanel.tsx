@@ -22,6 +22,7 @@ import {
   formatCurrencyAmount,
   SUPPORTED_CURRENCIES,
 } from '../../utils/money';
+import { matchesSearchQuery } from '../../utils/textSearch';
 
 /**
  * Cost analysis: the buy side of the order book.
@@ -136,8 +137,7 @@ export function CostAnalysisPanel({
     return orders
       .filter((order) => !showOnlyMissing || !margins.byOrder.get(order.opportunityId)?.hasCost)
       .filter((order) => !groupFocus || groupKeyFor(groupBy, order, brandByOrder, margins) === groupFocus)
-      .filter((order) => !query || [order.accountName, order.orderName, order.orderRef]
-        .join(' ').toLowerCase().includes(query))
+      .filter((order) => matchesSearchQuery([order.accountName, order.orderName, order.orderRef].join(' '), query))
       // Orders without a cost first - they are the work this module is asking
       // for - then the thinnest margins, which are the ones worth arguing about.
       .sort((left, right) => {

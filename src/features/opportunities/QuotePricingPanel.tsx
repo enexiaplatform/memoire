@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Calculator, ExternalLink } from 'lucide-react';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
-import type { QuoteRecord } from '../../services/quoteStore';
+import { updateQuote, type QuoteRecord } from '../../services/quoteStore';
 import { loadOrderCostsForWorkspace, saveOrderCost } from '../../services/orderCostStore';
 import { buildCreditScenarios, buildQuotePricing } from '../../utils/quotePricing';
 import { getFinancingRatePct, getTargetMarginPct } from '../../utils/pricingAssumptions';
-import { parsePaymentTerm } from '../../utils/paymentTerms';
+import { describeInstallment, parsePaymentTerm, type ParsedPaymentTerm } from '../../utils/paymentTerms';
 import {
   SUPPORTED_CURRENCIES,
   convertMoney,
@@ -87,12 +87,13 @@ export function QuotePricingPanel({
   // The terms on the freshest quote, falling back to nothing. A deal with no
   // quote yet is priced on whatever the operator is about to offer, so the
   // field below is editable rather than read-only.
-  const quotedTerm = useMemo(() => {
-    const freshest = [...quotes].sort((left, right) => (right.quoteDate || '').localeCompare(left.quoteDate || ''))[0];
-    return freshest?.paymentTerm || '';
-  }, [quotes]);
+  const freshestQuote = useMemo(() => (
+    [...quotes].sort((left, right) => (right.quoteDate || '').localeCompare(left.quoteDate || ''))[0] || null
+  ), [quotes]);
+  const quotedTerm = freshestQuote?.paymentTerm || '';
   const [term, setTerm] = useState(quotedTerm);
   useEffect(() => { setTerm(quotedTerm); }, [quotedTerm]);
+  const [termSaved, setTermSaved] = useState('');
 
   const [deliveryLagDays, setDeliveryLagDays] = useState('0');
 
@@ -184,7 +185,7 @@ export function QuotePricingPanel({
         <TextField
           label="Payment terms you will offer"
           value={term}
-          onChange={setTerm}
+          onChange={(value) => { setTerm(value); setTermSaved(''); }}
           placeholder="30% deposit, 70% net 45"
         />
         <NumberField
@@ -193,6 +194,30 @@ export function QuotePricingPanel({
           onChange={setDeliveryLagDays}
         />
       </div>
+
+      {/* What the sentence was understood to mean, in the same words a
+          collection call would use.
+          Terms are typed as free text on purpose - that is how a distributor
+          writes them and how they say them on the phone - but free text with no
+          echo leaves the operator asking, reasonably, whether the product
+          understood any of it. It reads the sentence into dated slices, and
+          those slices are what Cash Collection chases and what the financing
+          cost above is calculated from, so showing them is not decoration: it is
+          the operator's only chance to catch a misread before it becomes a due
+          date. */}
+      <PaymentTermReadout
+        term={term}
+        parsed={parsedTerm}
+        quote={freshestQuote}
+        saved={termSaved}
+        onSaveToQuote={() => {
+          if (!freshestQuote) return;
+          const { id, createdAt, updatedAt, ...input } = freshestQuote;
+          void id; void createdAt; void updatedAt;
+          updateQuote(freshestQuote, { ...input, paymentTerm: term });
+          setTermSaved('Saved on the quote. Cash Collection reads these dates from here.');
+        }}
+      />
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button
@@ -255,13 +280,6 @@ export function QuotePricingPanel({
             </div>
           )}
 
-          {parsedTerm.confidence === 'assumed' && term.trim() !== '' && (
-            <p className="mt-2 text-xs leading-5 text-amber-800">
-              Memoire could not read “{term}” as a schedule, so it assumed one payment on delivery. The financing
-              figure above is a floor, not a quote.
-            </p>
-          )}
-
           <details className="mt-4 rounded-lg border border-blue-100 bg-white p-3">
             <summary className="cursor-pointer text-xs font-bold text-navy">
               What each set of terms would have to sell for
@@ -304,6 +322,88 @@ export function QuotePricingPanel({
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * What Memoire read out of the terms sentence, and where those dates end up.
+ *
+ * Three states, and the difference between them is the whole point: `stated`
+ * means the schedule came from the words, `partial` that the rest was completed
+ * to 100%, `assumed` that nothing usable was found and one payment on delivery
+ * is standing in. A due date the product inferred and a due date the customer
+ * agreed to are different kinds of fact.
+ */
+function PaymentTermReadout({
+  term,
+  parsed,
+  quote,
+  saved,
+  onSaveToQuote,
+}: {
+  term: string;
+  parsed: ParsedPaymentTerm;
+  quote: QuoteRecord | null;
+  saved: string;
+  onSaveToQuote: () => void;
+}) {
+  const tone = parsed.confidence === 'assumed'
+    ? 'border-amber-200 bg-amber-50 text-amber-900'
+    : parsed.confidence === 'partial'
+      ? 'border-blue-100 bg-white text-gray-700'
+      : 'border-emerald-100 bg-emerald-50/60 text-emerald-900';
+
+  const unsaved = term.trim() !== (quote?.paymentTerm || '').trim();
+
+  return (
+    <div className={`mt-3 rounded-lg border p-3 ${tone}`}>
+      <p className="text-[10px] font-bold uppercase tracking-wide">Memoire read these terms as</p>
+      {term.trim() === '' ? (
+        <p className="mt-1 text-xs leading-5">
+          Nothing typed yet. Write them the way you say them — “30% deposit, 70% net 45”, “50/50”, “Net 30”, “COD” —
+          and the schedule appears here.
+        </p>
+      ) : (
+        <>
+          <ul className="mt-1.5 space-y-0.5 text-xs font-semibold leading-5">
+            {parsed.installments.map((installment) => (
+              <li key={installment.id}>• {installment.label} — {describeInstallment(installment)}</li>
+            ))}
+          </ul>
+          <p className="mt-1.5 text-[11px] leading-5">
+            {parsed.confidence === 'stated'
+              ? 'Read straight from your words.'
+              : parsed.confidence === 'partial'
+                ? 'Part of this was read from your words; the remainder was completed to 100% on delivery.'
+                : `Nothing usable was found in “${term}”, so one payment on delivery is standing in. Try a shape like “30% deposit, 70% net 45”.`}
+            {' '}These are the dates Cash Collection chases and the financing cost above is priced from.
+          </p>
+        </>
+      )}
+
+      {/* The field above was a what-if: it priced the deal and then forgot the
+          terms, so an operator who typed them here believed they were recorded
+          and nothing downstream ever saw them. Terms live on the quote. */}
+      {quote ? (
+        unsaved ? (
+          <button
+            type="button"
+            onClick={onSaveToQuote}
+            className="mt-2 rounded-full border border-current px-3 py-1.5 text-[11px] font-bold"
+          >
+            Save these terms onto the quote
+          </button>
+        ) : (
+          <p className="mt-2 text-[11px] font-semibold">These are the terms recorded on the quote.</p>
+        )
+      ) : (
+        <p className="mt-2 text-[11px] leading-5">
+          No quote on this deal yet, so these terms are a what-if. Record them on the quote (Money → Quotes) and
+          receivables follow from them.
+        </p>
+      )}
+      {saved && <p className="mt-1.5 text-[11px] font-bold">{saved}</p>}
+    </div>
   );
 }
 

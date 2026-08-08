@@ -18,6 +18,7 @@ import {
 } from '../../utils/orderToCash';
 import { formatBaseCurrencyAmount, formatCompactBaseAmount, formatCurrencyAmount } from '../../utils/money';
 import { formatSafeBusinessDate } from '../../utils/safeDate';
+import { matchesSearchQuery } from '../../utils/textSearch';
 
 /**
  * The order book, read the way an ERP reads one.
@@ -74,10 +75,7 @@ export function OrderBookPanel({
       if (stageFilter === 'overdue' && !order.overdue) return false;
       if (stageFilter !== 'all' && stageFilter !== 'overdue' && order.orderStage !== stageFilter) return false;
       if (!query) return true;
-      return [order.accountName, order.orderName, order.orderRef, order.paymentTerm]
-        .join(' ')
-        .toLowerCase()
-        .includes(query);
+      return matchesSearchQuery([order.accountName, order.orderName, order.orderRef, order.paymentTerm].join(' '), query);
     });
   }, [book.orders, search, stageFilter]);
 

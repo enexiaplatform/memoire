@@ -30,6 +30,7 @@ import {
   type SalesPlaybookPatternCategory,
   type SalesPlaybookSeverity,
 } from '../../utils/salesPlaybook';
+import { matchesSearchQuery } from '../../utils/textSearch';
 
 const allFilter = 'All';
 
@@ -124,7 +125,7 @@ export function SalesPlaybookPage() {
         pattern.relatedOpportunities.join(' '),
       ].join(' ').toLowerCase();
       return (
-        (!query || searchable.includes(query)) &&
+        matchesSearchQuery(searchable, query) &&
         (categoryFilter === allFilter || pattern.category === categoryFilter) &&
         (severityFilter === allFilter || pattern.severity === severityFilter)
       );

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ThreadsSection } from '../threads/ThreadsSection';
 import {
@@ -50,6 +50,7 @@ import {
   isProbabilityOptimistic,
   probabilityGapText,
   PROBABILITY_LADDER,
+  resolveProbability,
 } from '../../utils/stageProbability';
 import {
   closePeriodGroupKey,
@@ -104,6 +105,7 @@ import {
   type OpportunityOutcomeRecord,
 } from '../../services/opportunityOutcomeStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
+import { useWorkspaceRefresh } from '../../hooks/useWorkspaceRefresh';
 import { type AccountMemoryRecord } from '../../services/accountStore';
 import { type AccountMergeRecord } from '../../services/accountMergeStore';
 import { SuggestInput } from '../../components/common/SuggestInput';
@@ -186,6 +188,9 @@ import {
   type OpportunitySalesFlowGuidance,
 } from '../../utils/salesFlowGuidance';
 import { buildCommercialJourneySnapshot, formatJourneyCommitment } from '../../utils/commercialJourney';
+import { formatCount } from '../../utils/numberFormat';
+import { useModalDrawer } from '../../hooks/useModalDrawer';
+import { matchesSearchQuery } from '../../utils/textSearch';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type BriefPreviewMetadata = {
@@ -306,6 +311,8 @@ export function OpportunitiesPage() {
   const accountAliases = useMemo(() => buildAccountAliasIndex(accountMerges), [accountMerges]);
   /** The account spelling the seller has explicitly stood behind on a save. */
   const [accountNameConfirmed, setAccountNameConfirmed] = useState('');
+  /** Bumped each time a save is refused for want of a close-out reason. */
+  const [closeOutNudge, setCloseOutNudge] = useState(0);
 
   /**
    * Every customer the workspace already knows, by the name that survived any
@@ -358,6 +365,10 @@ export function OpportunitiesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataUserId]);
 
+  // Drawn from the browser copy at first paint; take the cloud answer when it
+  // lands rather than holding a partial pipeline for the rest of the session.
+  useWorkspaceRefresh(() => { void refreshOpportunities(); });
+
   const quality = useMemo(() => analyzePipelineQuality(opportunities, activities, objections), [activities, objections, opportunities]);
   const importedEnrichment = useMemo(() => summarizeImportedOpportunityEnrichment(opportunities), [opportunities]);
   const importedPipelineSummary = useMemo(() => buildImportedPipelineSummary(opportunities), [opportunities]);
@@ -405,7 +416,7 @@ export function OpportunitiesPage() {
       ].join(' ').toLowerCase();
 
       return (
-        (!query || searchable.includes(query)) &&
+        matchesSearchQuery(searchable, query) &&
         matchesOpportunityQuickFilter(row, quickFilter) &&
         (stageFilter === allFilter || opportunity.stage === stageFilter) &&
         (forecastFilter === allFilter || opportunity.forecastEvidenceCategory === forecastFilter) &&
@@ -555,7 +566,8 @@ export function OpportunitiesPage() {
         setSaveState('idle');
         setMessage('');
       }
-      setSearchParams({}, { replace: true });
+      // Deliberately left in the URL: it is what makes the open drawer a link
+      // somebody can send. `closePanel` clears it.
       return;
     }
 
@@ -878,12 +890,21 @@ export function OpportunitiesPage() {
     setMessage('MEDDIC and proof gaps marked as checked for this week.');
   };
 
+  /**
+   * Opening a deal puts it in the URL, the way opening an account does.
+   *
+   * Accounts have carried `?accountId=` for a while; deals carried nothing, so
+   * the one record a seller most wants to send someone - "look at this deal" -
+   * could not be linked, bookmarked or reopened, and the browser's Back button
+   * left the page instead of closing the drawer.
+   */
   const openEditPanel = (opportunity: CrmLiteOpportunity) => {
     setEditingOpportunity(opportunity);
     setForm(opportunityToForm(opportunity));
     setPanelMode('edit');
     setSaveState('idle');
     setMessage('');
+    setSearchParams({ opportunityId: opportunity.id });
   };
 
   const closePanel = () => {
@@ -891,6 +912,9 @@ export function OpportunitiesPage() {
     setEditingOpportunity(null);
     setSaveState('idle');
     setMessage('');
+    // Only clear it if it is ours, so closing the drawer does not wipe an
+    // import or filter param that arrived on the same URL.
+    if (searchParams.get('opportunityId')) setSearchParams({}, { replace: true });
   };
 
   /**
@@ -947,6 +971,12 @@ export function OpportunitiesPage() {
     if (closing && !alreadyClosed && !hasRecordedOutcomeReason) {
       setSaveState('error');
       setMessage(`Marking this ${form.status} needs a reason. Fill "Why did this happen?" in the close-out just under Status, then press "Save outcome retro" - that records what happened and closes the deal for you.`);
+      // Pointing at a form is not the same as showing it. The Save button sits
+      // at the foot of a long drawer and the close-out is near the top, so an
+      // operator who read this message was told to find something a screen and
+      // a half above them - and reported it as missing. The nudge scrolls the
+      // close-out into view and puts the cursor in the box being asked for.
+      setCloseOutNudge((count) => count + 1);
       return;
     }
 
@@ -1108,7 +1138,7 @@ export function OpportunitiesPage() {
           <>
             {loading
               ? 'Loading pipeline...'
-              : `${visibleOpportunityRows.length.toLocaleString()} shown of ${opportunities.length.toLocaleString()}`}
+              : `${formatCount(visibleOpportunityRows.length)} shown of ${formatCount(opportunities.length)}`}
             {lastWorkspaceRefreshAt ? ` · synced ${formatOpportunityDate(lastWorkspaceRefreshAt)}` : ''}
           </>
         }
@@ -1414,6 +1444,7 @@ export function OpportunitiesPage() {
         knownAccountNames={knownAccountNames}
         accountAliases={accountAliases}
         accountWarningForced={accountNameConfirmed === form.accountName.trim() && Boolean(accountNameConfirmed)}
+        closeOutNudge={closeOutNudge}
         quotes={editingOpportunity ? getQuotesForOpportunity(quotes, editingOpportunity) : []}
         dataUserId={dataUserId}
         sampleDataActive={sampleDataActive}
@@ -2285,14 +2316,14 @@ function ImportedPipelineForecastPanel({
         </button>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
-        <Metric label="Imported" value={summary.importedCount.toLocaleString()} tone="green" />
+        <Metric label="Imported" value={formatCount(summary.importedCount)} tone="green" />
         <Metric label="FY26" value={formatBaseMoney(summary.fy26Total)} tone="green" />
         <Metric label="FY27" value={formatBaseMoney(summary.fy27Total)} tone="blue" />
-        <Metric label="Stage inferred" value={summary.stageInferredCount.toLocaleString()} tone={summary.stageInferredCount ? 'amber' : 'green'} />
-        <Metric label="With brand" value={summary.withBrandCount.toLocaleString()} tone="blue" />
-        <Metric label="With channel" value={summary.withChannelCount.toLocaleString()} tone="blue" />
-        <Metric label="Probability" value={summary.withProbabilityCount.toLocaleString()} tone="blue" />
-        <Metric label="Needs action" value={summary.needsActionCount.toLocaleString()} tone={summary.needsActionCount ? 'red' : 'green'} />
+        <Metric label="Stage inferred" value={formatCount(summary.stageInferredCount)} tone={summary.stageInferredCount ? 'amber' : 'green'} />
+        <Metric label="With brand" value={formatCount(summary.withBrandCount)} tone="blue" />
+        <Metric label="With channel" value={formatCount(summary.withChannelCount)} tone="blue" />
+        <Metric label="Probability" value={formatCount(summary.withProbabilityCount)} tone="blue" />
+        <Metric label="Needs action" value={formatCount(summary.needsActionCount)} tone={summary.needsActionCount ? 'red' : 'green'} />
       </div>
       {(summary.topBrands.length > 0 || summary.topChannels.length > 0) && (
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
@@ -2513,7 +2544,7 @@ function OpportunityMasterTable({
         <div>
           <h2 className="text-base font-bold text-navy">Opportunity Master List</h2>
           <p className="mt-1 text-xs text-gray-500">
-            {totalRows.toLocaleString()} after filters / {totalOpportunities.toLocaleString()} total
+            {formatCount(totalRows)} after filters / {formatCount(totalOpportunities)} total
             {selectedIds.length > 0 ? ` / ${selectedIds.length} selected` : ''}
             {' · '}
             {/* Said out loud, because an ordering rule the operator cannot see is
@@ -2536,7 +2567,11 @@ function OpportunityMasterTable({
 
       <div className="max-w-full overflow-x-auto">
         <table className="w-full border-collapse text-left text-sm" style={{ minWidth }}>
-          <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
+          <thead
+            // Below the app header and the sticky filter bar, not behind them.
+            style={{ top: 'calc(var(--app-header-h) + var(--filter-bar-h))' }}
+            className="sticky z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500"
+          >
             <tr>
               <th className="sticky left-0 z-20 w-10 border-b border-gray-200 bg-gray-50 px-2 py-2.5 text-center">
                 <span className="sr-only">Select</span>
@@ -2662,9 +2697,16 @@ function OpportunityMasterTable({
                       </td>
                     )}
                     {columns.probability && (
-                      <td className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-gray-800">
-                        {typeof opportunity.pipelineProbability === 'number' ? `${Math.round(opportunity.pipelineProbability)}%` : '—'}
-                      </td>
+                      /* Through `resolveProbability`, like every weighted figure
+                         in the product. The cell used to print the declared
+                         number and an em-dash otherwise, so a deal contributing
+                         its stage default to the forecast showed no probability
+                         at all here - the column and the forecast were reading
+                         two different values off the same record. The stage-
+                         derived case is marked, because "25% because I said so"
+                         and "25% because it is in Qualification" are not the
+                         same claim. */
+                      <ProbabilityCell opportunity={opportunity} />
                     )}
                     {columns.brand && (
                       <td className="px-3 py-2.5">
@@ -2750,7 +2792,7 @@ function OpportunityMasterTable({
 
       <div className="flex flex-col gap-3 border-t border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-gray-500">
-          Showing {totalRows === 0 ? 0 : ((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, totalRows)} of {totalRows.toLocaleString()}
+          Showing {totalRows === 0 ? 0 : ((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, totalRows)} of {formatCount(totalRows)}
         </p>
         <div className="flex items-center gap-2">
           <button
@@ -2858,6 +2900,7 @@ function OpportunityPanel({
   knownAccountNames,
   accountAliases,
   accountWarningForced,
+  closeOutNudge,
   quotes,
   dataUserId,
   sampleDataActive,
@@ -2892,6 +2935,8 @@ function OpportunityPanel({
   accountAliases: AccountAliasIndex;
   /** True once a save has raised the near-miss, so the field shows it too. */
   accountWarningForced: boolean;
+  /** Increments when a save was refused for want of a close-out reason. */
+  closeOutNudge: number;
   quotes: QuoteRecord[];
   /** Whose workspace the purchase cost below is written into. */
   dataUserId?: string;
@@ -2907,6 +2952,11 @@ function OpportunityPanel({
   // Declared before the early return below: a hook after a conditional return is
   // a different hook order on every open and close of this panel.
   const [accountFieldLeft, setAccountFieldLeft] = useState(false);
+  const { ref: drawerRef, dialogProps } = useModalDrawer({
+    onClose,
+    label: mode === 'add' ? 'Add opportunity' : 'Opportunity details',
+    enabled: mode !== 'closed',
+  });
 
   if (mode === 'closed') {
     return null;
@@ -2928,7 +2978,10 @@ function OpportunityPanel({
   // twice. Matches anywhere in the name, diacritics ignored.
   const accountQuery = normalizeEntityName(form.accountName);
   const accountOptions = knownAccountNames
-    .filter((name) => !accountQuery || normalizeEntityName(name).includes(accountQuery))
+    // Word-by-word rather than one contiguous run: this book is Vietnamese, and
+    // a customer filed as "CÔNG TY CỔ PHẦN DƯỢC PHẨM CỬU LONG" has to be
+    // findable by "duoc cuu long" - the way anyone actually types it.
+    .filter((name) => matchesSearchQuery(name, form.accountName))
     .filter((name) => normalizeEntityName(name) !== accountQuery)
     .slice(0, 8)
     .map((name) => ({ key: `account-${name}`, primary: name, onPick: () => update('accountName', name) }));
@@ -3003,7 +3056,7 @@ function OpportunityPanel({
         onClick={onClose}
         className="fixed inset-y-0 left-0 right-0 top-16 z-40 bg-slate-950/25 backdrop-blur-[1px] lg:left-[220px]"
       />
-      <aside className="fixed bottom-0 right-0 top-16 z-50 w-full overflow-y-auto border-l border-gray-200 bg-white p-5 shadow-2xl sm:max-w-[760px]">
+      <aside ref={drawerRef} {...dialogProps} className="fixed bottom-0 right-0 top-16 z-50 w-full overflow-y-auto border-l border-gray-200 bg-white p-5 shadow-2xl sm:max-w-[760px]">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">{mode === 'add' ? 'Add Opportunity' : 'Edit Opportunity'}</p>
@@ -3121,8 +3174,10 @@ function OpportunityPanel({
           <Field
             label="Estimated value"
             type="number"
+            min={0}
+            step={1000}
             value={form.estimatedValue?.toString() || ''}
-            onChange={(value) => update('estimatedValue', value ? Number(value) : null)}
+            onChange={(value) => update('estimatedValue', value ? Math.max(0, Number(value)) : null)}
           />
           {/* A picker, not a text box. Free text is how a workspace ends up
               with "sgd", "SGD ", "usd" and "US$" as four different currencies
@@ -3157,6 +3212,7 @@ function OpportunityPanel({
             opportunity={currentOpportunity}
             outcomes={getOpportunityOutcomesForOpportunity(opportunityOutcomes, currentOpportunity)}
             closing
+            nudge={closeOutNudge}
             onSaveOutcome={(draft) => onSaveOpportunityOutcome(currentOpportunity, draft)}
           />
         )}
@@ -3221,9 +3277,26 @@ function OpportunityPanel({
         <TextArea label="Missing context" value={form.missingContext} onChange={(value) => update('missingContext', value)} />
         <TextArea label="Objection debt" value={form.objectionDebt} onChange={(value) => update('objectionDebt', value)} />
 
+        {/* Two fields the founder read as jargon, so they now say what they
+            ask. Both drive real behaviour - Revenue discounts a value whose
+            evidence is "Hope-based", and the review brief groups deals by the
+            recommendation - which makes a mis-set one expensive, and a
+            not-understood one mis-set by definition. */}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <SelectField label="Forecast evidence" value={form.forecastEvidenceCategory} options={forecastEvidenceCategories} onChange={(value) => update('forecastEvidenceCategory', value)} />
-          <SelectField label="Decision recommendation" value={form.decisionRecommendation} options={decisionRecommendations} onChange={(value) => update('decisionRecommendation', value)} />
+          <SelectField
+            label="Forecast evidence"
+            hint="How much of this value the customer has actually confirmed. Hope-based and Unsupported are discounted on Revenue."
+            value={form.forecastEvidenceCategory}
+            options={forecastEvidenceCategories}
+            onChange={(value) => update('forecastEvidenceCategory', value)}
+          />
+          <SelectField
+            label="Decision recommendation"
+            hint="What you intend to do about it: Defend (protect it), Rescue (fix it), Downgrade (cut the number), Monitor (watch), Deprioritize (stop working it)."
+            value={form.decisionRecommendation}
+            options={decisionRecommendations}
+            onChange={(value) => update('decisionRecommendation', value)}
+          />
         </div>
       </div>
 
@@ -4227,16 +4300,37 @@ function OpportunityOutcomeRetroPanel({
   opportunity,
   outcomes,
   closing = false,
+  nudge = 0,
   onSaveOutcome,
 }: {
   opportunity: CrmLiteOpportunity;
   outcomes: OpportunityOutcomeRecord[];
   /** Rendered beside Status because this deal is being closed, not filed away. */
   closing?: boolean;
+  /**
+   * Bumped by a save that was refused for want of a reason. Each bump opens this
+   * form, scrolls it into view and puts the cursor in the box, because the
+   * message asking for it is rendered a screen away at the foot of the drawer.
+   */
+  nudge?: number;
   onSaveOutcome: (draft: OpportunityOutcomeDraft) => void;
 }) {
   const [draft, setDraft] = useState<OpportunityOutcomeDraft>(() => buildOpportunityOutcomeDraft(opportunity));
   const [open, setOpen] = useState(closing || outcomes.length === 0);
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const reasonRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    if (nudge === 0) return;
+    setOpen(true);
+    // After the open above has painted, or the box being focused does not exist
+    // yet.
+    const timer = window.setTimeout(() => {
+      sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      reasonRef.current?.focus();
+    }, 60);
+    return () => window.clearTimeout(timer);
+  }, [nudge]);
 
   /**
    * Re-seed when the deal changes or the status being closed at changes - not
@@ -4262,7 +4356,7 @@ function OpportunityOutcomeRetroPanel({
   const outcomeNeedsReason = draft.outcome === 'Won' || draft.outcome === 'Lost';
 
   return (
-    <section className="mt-5 rounded-lg border border-indigo-100 bg-indigo-50/70 p-4">
+    <section ref={sectionRef} className="mt-5 rounded-lg border border-indigo-100 bg-indigo-50/70 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-700">
@@ -4301,7 +4395,13 @@ function OpportunityOutcomeRetroPanel({
             <SelectField label="Reason category" value={draft.reasonCategory} options={opportunityOutcomeReasonCategories} onChange={(value) => update('reasonCategory', value)} />
             <Field label="Which stakeholder mattered?" value={draft.decisiveStakeholder || ''} onChange={(value) => update('decisiveStakeholder', value)} />
           </div>
-          <TextArea label="Why did this happen?" value={draft.reasonText} onChange={(value) => update('reasonText', value)} />
+          <TextArea
+            label="Why did this happen?"
+            hint="In your own words: what actually decided it. This is the box the save asks for."
+            inputRef={reasonRef}
+            value={draft.reasonText}
+            onChange={(value) => update('reasonText', value)}
+          />
           <TextArea label="Which objection mattered?" value={draft.objectionThatMattered || ''} onChange={(value) => update('objectionThatMattered', value)} />
           <TextArea label="What evidence was missing?" value={draft.evidenceThatWasMissing || ''} onChange={(value) => update('evidenceThatWasMissing', value)} />
           <TextArea label="What should I do differently next time?" value={draft.lessonLearned || ''} onChange={(value) => update('lessonLearned', value)} />
@@ -4470,6 +4570,28 @@ function normalizeFormCurrency(value: string): SupportedCurrency {
  * quietly rewriting a number the operator typed is worse than showing an odd
  * one.
  */
+function ProbabilityCell({ opportunity }: { opportunity: CrmLiteOpportunity }) {
+  const { value, source } = resolveProbability(opportunity);
+  if (value === null) {
+    return (
+      <td className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-gray-800" title="No probability declared, and this stage has no default.">
+        &mdash;
+      </td>
+    );
+  }
+  return (
+    <td
+      className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-gray-800"
+      title={source === 'stage'
+        ? `From the ${opportunity.stage} stage. Nobody has declared a number on this deal.`
+        : 'Declared on this deal.'}
+    >
+      {Math.round(value)}%
+      {source === 'stage' && <span className="ml-1 font-semibold text-gray-400">(stage)</span>}
+    </td>
+  );
+}
+
 function ProbabilityField({ value, onChange }: { value: number | null; onChange: (value: number | null) => void }) {
   const rungs: number[] = [...PROBABILITY_LADDER];
   const offLadder = value !== null && !rungs.includes(value);
@@ -4700,15 +4822,19 @@ function SelectField<Value extends string>({
   value,
   options,
   onChange,
+  hint,
 }: {
   label: string;
   value: Value;
   options: readonly Value[];
   onChange: (value: Value) => void;
+  /** One plain line saying what the field is asking, when the label cannot. */
+  hint?: string;
 }) {
   return (
     <label className="block">
       <span className="text-sm font-bold text-navy">{label}</span>
+      {hint && <span className="mt-0.5 block text-xs font-normal leading-5 text-gray-500">{hint}</span>}
       <select
         value={value}
         onChange={(event) => onChange(event.target.value as Value)}
@@ -4813,6 +4939,8 @@ function Field({
   type = 'text',
   required = false,
   suggestions,
+  min,
+  step,
 }: {
   label: string;
   value: string;
@@ -4821,16 +4949,27 @@ function Field({
   required?: boolean;
   /** Existing values in the workspace, so a repeated name is picked not retyped. */
   suggestions?: string[];
+  /** Number fields only. A deal is not worth minus four hundred thousand. */
+  min?: number;
+  step?: number;
 }) {
   const listId = suggestions && suggestions.length > 0 ? `field-${label.replace(/\W+/g, '-').toLowerCase()}` : undefined;
   return (
     <label className="block">
       <span className="text-sm font-bold text-navy">{label}{required ? ' *' : ''}</span>
+      {/* The asterisk in the label was the only thing saying "required": the
+          input carried no `required` attribute, so nothing enforced it and no
+          screen reader announced it. An asterisk is a convention, not a
+          contract. */}
       <input
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         list={listId}
+        required={required}
+        aria-required={required || undefined}
+        min={min}
+        step={step}
         className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
       />
       {listId && (
@@ -4842,11 +4981,20 @@ function Field({
   );
 }
 
-function TextArea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+function TextArea({ label, value, onChange, hint, inputRef }: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  /** One plain line saying what belongs in the box, when the label cannot. */
+  hint?: string;
+  inputRef?: RefObject<HTMLTextAreaElement | null>;
+}) {
   return (
     <label className="block">
       <span className="text-sm font-bold text-navy">{label}</span>
+      {hint && <span className="mt-0.5 block text-xs font-normal leading-5 text-gray-500">{hint}</span>}
       <textarea
+        ref={inputRef}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         rows={3}

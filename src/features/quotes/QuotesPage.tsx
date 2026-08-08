@@ -37,6 +37,9 @@ import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { formatBaseCurrencyAmount as formatBaseMoney, formatCurrencyAmount as formatMoney } from '../../utils/money';
 import { formatSafeBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
+import { formatCount } from '../../utils/numberFormat';
+import { describeInstallment, parsePaymentTerm } from '../../utils/paymentTerms';
+import { matchesSearchQuery } from '../../utils/textSearch';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -95,13 +98,13 @@ export function QuotesPage() {
     const query = search.trim().toLowerCase();
     return quotes
       .filter((quote) => (
-        (!query || [
+        matchesSearchQuery([
           quote.quoteId,
           quote.title,
           quote.accountName,
           quote.opportunityName,
           quote.nextAction,
-        ].join(' ').toLowerCase().includes(query)) &&
+        ].join(' '), query) &&
         (statusFilter === 'All' || quote.status === statusFilter)
       ))
       .sort((a, b) => quoteSortRank(b) - quoteSortRank(a) || b.updatedAt.localeCompare(a.updatedAt));
@@ -352,7 +355,7 @@ function QuoteTable({ quotes, onOpen }: { quotes: QuoteRecord[]; onOpen: (quote:
     <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
       <div className="border-b border-gray-200 px-4 py-3">
         <h2 className="text-base font-bold text-navy">Quote list</h2>
-        <p className="mt-1 text-xs text-gray-500">{quotes.length.toLocaleString()} quotes after filters</p>
+        <p className="mt-1 text-xs text-gray-500">{formatCount(quotes.length)} {quotes.length === 1 ? 'quote' : 'quotes'} after filters</p>
       </div>
       <div className="max-w-full overflow-x-auto">
         <table className="w-full min-w-[980px] border-collapse text-left text-sm">
@@ -510,7 +513,15 @@ function QuotePanel({
             <TextInput label="Currency" value={form.currency} onChange={(value) => onChange('currency', value)} />
             <NumberInput label="Gross margin %" value={form.grossMarginEstimate} onChange={(value) => onChange('grossMarginEstimate', value)} />
             <NumberInput label="Discount %" value={form.discount} onChange={(value) => onChange('discount', value)} />
-            <TextInput label="Payment term" value={form.paymentTerm} placeholder="Example: 30 days after PO" onChange={(value) => onChange('paymentTerm', value)} />
+            {/* Free text, and it stays free text - that is how a distributor
+                writes terms and how they say them on the phone. What was
+                missing is the echo: the sentence is read into dated slices that
+                Cash Collection then chases, and until now nothing on screen
+                said whether it had been understood. */}
+            <div className="md:col-span-2">
+              <TextInput label="Payment term" value={form.paymentTerm} placeholder="Example: 30% deposit, 70% net 45" onChange={(value) => onChange('paymentTerm', value)} />
+              <PaymentTermEcho term={form.paymentTerm} />
+            </div>
             <SelectInput label="Status" value={form.status} onChange={(value) => onChange('status', value as QuoteStatus)}>
               {quoteStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
             </SelectInput>
@@ -593,6 +604,44 @@ function FormSection({ title, children }: { title: string; children: React.React
       <h3 className="text-sm font-bold text-navy">{title}</h3>
       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">{children}</div>
     </section>
+  );
+}
+
+/**
+ * What the terms sentence was understood to mean, under the box it was typed in.
+ *
+ * The same readout the deal's pricing panel shows, for the same reason: these
+ * slices become the receivable dates on Cash Collection, so a misread is a
+ * collection call made on a date nobody agreed to. Shown here at the moment the
+ * sentence is written, which is the only moment it is cheap to fix.
+ */
+function PaymentTermEcho({ term }: { term: string }) {
+  const parsed = useMemo(() => parsePaymentTerm(term), [term]);
+  if (!term.trim()) {
+    return (
+      <p className="mt-1.5 text-xs leading-5 text-gray-500">
+        Write it the way you say it — “30% deposit, 70% net 45”, “50/50”, “Net 30”, “COD”. Memoire turns it into
+        dated instalments for Cash Collection.
+      </p>
+    );
+  }
+
+  return (
+    <div className={`mt-1.5 rounded-lg border px-3 py-2 ${
+      parsed.confidence === 'assumed' ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-emerald-100 bg-emerald-50/60 text-emerald-900'
+    }`}>
+      <p className="text-[10px] font-bold uppercase tracking-wide">Read as</p>
+      <ul className="mt-1 space-y-0.5 text-xs font-semibold leading-5">
+        {parsed.installments.map((installment) => (
+          <li key={installment.id}>• {installment.label} — {describeInstallment(installment)}</li>
+        ))}
+      </ul>
+      {parsed.confidence === 'assumed' && (
+        <p className="mt-1 text-[11px] leading-5">
+          Nothing usable was found in that sentence, so one payment on delivery is standing in.
+        </p>
+      )}
+    </div>
   );
 }
 

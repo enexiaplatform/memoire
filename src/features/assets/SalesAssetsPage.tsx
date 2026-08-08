@@ -28,6 +28,7 @@ import {
 import { starterAssetPacks, type StarterAssetPack } from '../../utils/starterAssetPacks';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
 import { reportWorkspaceSyncError } from '../../services/workspaceSyncStatus';
+import { matchesSearchQuery } from '../../utils/textSearch';
 
 const allFilter = 'All';
 
@@ -89,7 +90,7 @@ export function SalesAssetsPage() {
         asset.tags.join(' '),
       ].join(' ').toLowerCase();
       return (
-        (!query || searchable.includes(query)) &&
+        matchesSearchQuery(searchable, query) &&
         (assetTypeFilter === allFilter || asset.assetType === assetTypeFilter) &&
         (!tagQuery || asset.tags.some((tag) => tag.toLowerCase().includes(tagQuery)) || asset.useCase.toLowerCase().includes(tagQuery))
       );

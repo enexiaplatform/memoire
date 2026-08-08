@@ -26,6 +26,8 @@ import { type ObjectionRecord } from '../../services/objectionStore';
 import { getQuoteCommercialStage, getQuoteRisk, quoteRiskTone, type QuoteRecord } from '../../services/quoteStore';
 import { type OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
+import { useWorkspaceRefresh } from '../../hooks/useWorkspaceRefresh';
+import { useWorkspaceSyncStatus } from '../../services/workspaceSyncStatus';
 import { buildPostWonCustomers } from '../../utils/postWonCustomers';
 import {
   buildAccountMemory,
@@ -78,6 +80,9 @@ import {
   type AccountEngagementStatus,
   type AccountHygienePreference,
 } from '../../utils/accountHygiene.ts';
+import { formatCount } from '../../utils/numberFormat';
+import { useModalDrawer } from '../../hooks/useModalDrawer';
+import { matchesSearchQuery } from '../../utils/textSearch';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type SortDirection = 'asc' | 'desc';
@@ -124,6 +129,7 @@ export function AccountsPage() {
   );
   const [loading, setLoading] = useState(!cachedWorkspace);
   const [refreshing, setRefreshing] = useState(false);
+  const syncStatus = useWorkspaceSyncStatus();
   const [lastLoadedAt, setLastLoadedAt] = useState('');
   const [loadError, setLoadError] = useState('');
   const [query, setQuery] = useState('');
@@ -194,6 +200,10 @@ export function AccountsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataUserId]);
 
+  // This page may have been drawn from the browser copy. Take the cloud answer
+  // when it lands - by then it is a warm cache hit, so this costs a render.
+  useWorkspaceRefresh(() => { void refreshAccounts(false); });
+
   // A merged-away account keeps its record - the merge is reversible precisely
   // because nothing was deleted - but it stops occupying a row of its own, and
   // its deals and activities are counted under the survivor instead.
@@ -256,14 +266,47 @@ export function AccountsPage() {
    * Creating them one at a time is the same objection the plan board had: the
    * workspace already knows every name, so making the operator click through
    * them individually is work the app invented for itself.
+   *
+   * What it must not do is take this screen's word for which names are missing.
+   * "Missing" here means "not in `accounts`", and `accounts` is whatever the last
+   * load produced - which, when the cloud has not answered, is nothing at all.
+   * One click then writes a second copy of every customer in the book. So the
+   * cloud is re-read first and the candidate list recomputed against that answer;
+   * the button creates what is still genuinely absent, and nothing otherwise.
    */
   const handleCreateAllCandidates = async () => {
     setSaveState('saving');
-    setMessage(`Creating ${candidates.length} accounts...`);
+    setMessage('Checking which customers are really missing...');
+
+    let confirmed: AccountCandidate[];
+    try {
+      const fresh = await loadSalesWorkspaceData(dataUserId, { force: true });
+      setAccounts(fresh.accounts);
+      setOpportunities(fresh.opportunities);
+      setActivities(fresh.activities);
+      confirmed = mergeAccountCandidates(
+        deriveAccountCandidatesFromOpportunities(fresh.opportunities),
+        deriveAccountCandidatesFromActivities(fresh.activities),
+        fresh.accounts,
+        accountAliases,
+      );
+    } catch {
+      setSaveState('error');
+      setMessage('Could not reach your account list to check for duplicates, so nothing was created. Try again once sync is back.');
+      return;
+    }
+
+    if (confirmed.length === 0) {
+      setSaveState('saved');
+      setMessage('Nothing to create - every one of those names already exists as an account.');
+      return;
+    }
+
+    setMessage(`Creating ${confirmed.length} accounts...`);
 
     let created = 0;
     let failed = 0;
-    for (const candidate of candidates) {
+    for (const candidate of confirmed) {
       try {
         const result = await createAccount({
           ...emptyAccountInput,
@@ -380,8 +423,8 @@ export function AccountsPage() {
         account.tags.join(' '),
         row.latestActivity?.summary || '',
         row.latestContact,
-      ].join(' ').toLowerCase();
-      if (searchText) return searchable.includes(searchText);
+      ].join(' ');
+      if (searchText) return matchesSearchQuery(searchable, searchText);
       return (
         (hygieneFilter === 'All'
           ? true
@@ -611,7 +654,7 @@ export function AccountsPage() {
         meta={
           loading
             ? 'Loading your customers...'
-            : `${visibleRows.length.toLocaleString()} shown of ${summary.totalAccounts.toLocaleString()}`
+            : `${formatCount(visibleRows.length)} shown of ${formatCount(summary.totalAccounts)}`
         }
         actions={
           <>
@@ -774,6 +817,18 @@ export function AccountsPage() {
         <CandidateSection
           candidates={candidates}
           unlinkedOpportunityCount={unlinkedOpportunityCount}
+          // A name looks unlinked when the account list is missing, and the
+          // account list is missing whenever the cloud has not answered. Bulk
+          // creation is off until it has - the single-account buttons stay, so
+          // deliberate one-at-a-time work is still possible.
+          bulkBlockedReason={
+            syncStatus.state === 'error'
+              ? 'Cloud sync is down, so this list may be showing customers that already exist. Bulk creation is off until sync is back.'
+              : refreshing || loading
+                ? 'Still loading your account list.'
+                : ''
+          }
+          busy={saveState === 'saving'}
           onCreate={handleCreateCandidate}
           onCreateAll={handleCreateAllCandidates}
         />
@@ -895,7 +950,7 @@ function AccountMemorySummary({ summary }: { summary: ReturnType<typeof buildAcc
           <p className={`text-lg font-bold leading-tight ${
             stat.tone === 'green' ? 'text-emerald-700' : stat.tone === 'amber' ? 'text-amber-700' : 'text-navy'
           }`}>
-            {stat.value.toLocaleString()}
+            {formatCount(stat.value)}
           </p>
         </div>
       ))}
@@ -960,7 +1015,7 @@ function QuickFilterBar({
             }`}
           >
             <span>{option.label}</span>
-            {typeof count === 'number' && <span className="rounded-full bg-white/80 px-1.5 py-0.5 font-mono text-[11px]">{count.toLocaleString()}</span>}
+            {typeof count === 'number' && <span className="rounded-full bg-white/80 px-1.5 py-0.5 font-mono text-[11px]">{formatCount(count)}</span>}
           </button>
         );
       })}
@@ -987,7 +1042,7 @@ function ImportedCoreBanner({
           <div>
             <p className="text-sm font-bold text-emerald-950">Founder core data is loaded</p>
             <p className="mt-1 text-sm leading-6 text-emerald-800">
-              {summary.importedAccounts.toLocaleString()} imported accounts, {summary.keyAccounts.toLocaleString()} key accounts, {formatBaseMoney(summary.fy26Target)} FY26 target.
+              {formatCount(summary.importedAccounts)} imported accounts, {formatCount(summary.keyAccounts)} key accounts, {formatBaseMoney(summary.fy26Target)} FY26 target.
             </p>
           </div>
         </div>
@@ -1053,7 +1108,7 @@ function AccountMasterTable({
   return (
     <section className="min-w-0 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-2">
-        <p className="text-xs font-semibold text-gray-500">{totalRows.toLocaleString()} accounts after filters</p>
+        <p className="text-xs font-semibold text-gray-500">{formatCount(totalRows)} {totalRows === 1 ? 'account' : 'accounts'} after filters</p>
         <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500">
           Rows
           <select
@@ -1070,7 +1125,11 @@ function AccountMasterTable({
           sort-state spans inside this scroller instead of inside <main>. */}
       <div className="relative max-w-full overflow-x-auto">
         <table className="w-full min-w-[1240px] border-collapse text-left text-sm">
-          <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
+          <thead
+            // Below the app header and the sticky filter bar, not behind them.
+            style={{ top: 'calc(var(--app-header-h) + var(--filter-bar-h))' }}
+            className="sticky z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500"
+          >
             <tr>
               <SortableHeader label="Code" sortKey="accountCode" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <SortableHeader label="Account" sortKey="accountName" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
@@ -1163,7 +1222,7 @@ function AccountMasterTable({
 
       <div className="flex flex-col gap-3 border-t border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-gray-500">
-          Showing {totalRows === 0 ? 0 : ((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, totalRows)} of {totalRows.toLocaleString()}
+          Showing {totalRows === 0 ? 0 : ((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, totalRows)} of {formatCount(totalRows)}
         </p>
         <div className="flex items-center gap-2">
           <button
@@ -1259,6 +1318,14 @@ function AccountDetailPanel({
   onUnarchive?: () => void;
   onMarkStrategic?: () => void;
 }) {
+  // Above the early return: hooks cannot be conditional, and this component
+  // stays mounted with `mode === 'closed'`.
+  const { ref: drawerRef, dialogProps } = useModalDrawer({
+    onClose,
+    label: mode === 'add' ? 'Add account' : 'Account details',
+    enabled: mode !== 'closed',
+  });
+
   if (mode === 'closed') {
     return null;
   }
@@ -1275,7 +1342,7 @@ function AccountDetailPanel({
         onClick={onClose}
         className="fixed inset-y-0 left-0 right-0 top-16 z-40 bg-slate-950/25 backdrop-blur-[1px] lg:left-[220px]"
       />
-      <aside className="fixed bottom-0 right-0 top-16 z-50 w-full overflow-y-auto border-l border-gray-200 bg-white p-5 shadow-2xl sm:max-w-[620px]">
+      <aside ref={drawerRef} {...dialogProps} className="fixed bottom-0 right-0 top-16 z-50 w-full overflow-y-auto border-l border-gray-200 bg-white p-5 shadow-2xl sm:max-w-[620px]">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">{mode === 'add' ? 'Add Account' : 'Account Memory'}</p>
@@ -2075,16 +2142,21 @@ function MergedAccountsNote({
 function CandidateSection({
   candidates,
   unlinkedOpportunityCount,
+  bulkBlockedReason,
+  busy,
   onCreate,
   onCreateAll,
 }: {
   candidates: AccountCandidate[];
   unlinkedOpportunityCount: number;
+  bulkBlockedReason: string;
+  busy: boolean;
   onCreate: (candidate: AccountCandidate) => void;
   onCreateAll: () => void;
 }) {
   const [showAll, setShowAll] = useState(false);
   const visible = showAll ? candidates : candidates.slice(0, 6);
+  const bulkDisabled = Boolean(bulkBlockedReason) || busy;
 
   return (
     <section className="rounded-lg border border-amber-200 bg-amber-50/70 p-4">
@@ -2096,18 +2168,26 @@ function CandidateSection({
               : 'Work without a customer record'}
           </p>
           <p className="mt-0.5 text-xs text-amber-900/80">
-            {candidates.length} {candidates.length === 1 ? 'name' : 'names'} carry deals or touches but exist nowhere as an account.
-            Until they do, there are no stakeholders, no history and no owner behind them.
+            {/* The two counts differ on purpose - several deals can share one
+                customer - and reading "11 deals" beside "Create all 10" as a
+                contradiction is a fair reading, so say which is which. */}
+            Those sit under {candidates.length} {candidates.length === 1 ? 'customer name' : 'customer names'} that
+            exist nowhere as an account. Until they do, there are no stakeholders, no history and no owner behind them.
           </p>
         </div>
         <button
           type="button"
           onClick={onCreateAll}
-          className="ml-auto rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white hover:bg-navy/90"
+          disabled={bulkDisabled}
+          title={bulkBlockedReason || undefined}
+          className="ml-auto rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white hover:bg-navy/90 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600"
         >
-          Create all {candidates.length}
+          {busy ? 'Creating...' : `Create all ${candidates.length} accounts`}
         </button>
       </div>
+      {bulkBlockedReason && !busy && (
+        <p className="mt-2 text-xs font-semibold text-amber-900">{bulkBlockedReason}</p>
+      )}
 
       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
         {visible.map((candidate) => (
@@ -2204,7 +2284,7 @@ function MiniMetric({ label, value, tone = 'blue' }: { label: string; value: str
   return (
     <div className="rounded-lg border border-emerald-100 bg-white px-3 py-2">
       <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-800/70">{label}</p>
-      <p className={`mt-1 text-sm font-black ${toneClass}`}>{typeof value === 'number' ? value.toLocaleString() : value}</p>
+      <p className={`mt-1 text-sm font-black ${toneClass}`}>{typeof value === 'number' ? formatCount(value) : value}</p>
     </div>
   );
 }
