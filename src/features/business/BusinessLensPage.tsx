@@ -305,7 +305,7 @@ export function BusinessLensPage() {
               )}
             </ChartFrame>
 
-            <Card title="What closed" subtitle="Recorded outcomes, won against lost">
+            <Card title="What closed" subtitle="Deals marked Won or Lost, and what they were worth">
               <div className="grid grid-cols-2 gap-3">
                 <Stat
                   label="Won"
@@ -320,6 +320,16 @@ export function BusinessLensPage() {
                   tone="red"
                 />
               </div>
+              {/* A figure carried from a forecast and a figure taken off a
+                  signed order are different kinds of fact, and the card is the
+                  only place that difference can be declared. */}
+              {model.outcomes.won.missingRetro + model.outcomes.lost.missingRetro > 0 && (
+                <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+                  {formatCount(model.outcomes.won.missingRetro + model.outcomes.lost.missingRetro)} of these closed
+                  without a retro, so they are counted at the value forecast on the deal rather than the figure
+                  actually signed. Open the deal and record the outcome to correct it.
+                </p>
+              )}
               <p className="mt-3 text-xs leading-5 text-gray-500">
                 Why each one ended that way lives in the deal's retro.{' '}
                 <Link to="/app/reviews" className="font-bold text-brand-blue underline">

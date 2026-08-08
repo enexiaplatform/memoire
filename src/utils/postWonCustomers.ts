@@ -32,6 +32,11 @@ type PostWonInput = {
 const DEFAULT_QUIET_AFTER_DAYS = 45;
 const DAY_MS = 86_400_000;
 
+/** Matches a retro to its deal without counting the same win twice. */
+function normalizeName(value: string) {
+  return (value || '').trim().toLowerCase();
+}
+
 /**
  * The pivot promise turned on existing customers: a deal that WON and then went
  * quiet is exactly the "silence" the app exists to catch, yet it is the app's
@@ -66,9 +71,30 @@ export function buildPostWonCustomers(input: PostWonInput): PostWonCustomers {
     wonByAccount.set(key, existing);
   };
 
+  // The retros first, because they carry the figure actually signed and the
+  // date it was signed on.
+  const retroKeys = new Set<string>();
   input.opportunityOutcomes
     .filter((outcome) => outcome.outcome === 'Won')
-    .forEach((outcome) => addWon(outcome.accountName, outcome.finalAmount, outcome.currency, outcome.outcomeDate));
+    .forEach((outcome) => {
+      retroKeys.add(`${accountKey(outcome.accountName)}::${normalizeName(outcome.opportunityName)}`);
+      addWon(outcome.accountName, outcome.finalAmount, outcome.currency, outcome.outcomeDate);
+    });
+
+  // Then the deals marked Won that never got one. A deal can reach Won without
+  // a retro - imported that way, or closed before the retro existed - and
+  // reading only the retros meant those customers were never watched at all:
+  // won, delivered, and then silent, with nothing on any screen to say so.
+  // Which is the exact silence this whole model exists to catch.
+  input.opportunities
+    .filter((opportunity) => opportunity.status === 'Won')
+    .filter((opportunity) => !retroKeys.has(`${accountKey(opportunity.accountName)}::${normalizeName(opportunity.opportunityName)}`))
+    .forEach((opportunity) => addWon(
+      opportunity.accountName,
+      opportunity.estimatedValue ?? opportunity.fy26Value ?? null,
+      opportunity.currency,
+      opportunity.expectedClosePeriod || opportunity.updatedAt.slice(0, 10),
+    ));
 
   input.quotes
     .filter((quote) => !quote.__deleted && quote.deliveryStatus === 'Delivered' && quote.paymentStatus === 'Paid')

@@ -1,6 +1,9 @@
 import type { CrmLiteOpportunity, ForecastEvidenceCategory, OpportunityStage } from '../services/opportunityStore.ts';
 import { forecastEvidenceCategories, opportunityStages } from '../services/opportunityStore.ts';
-import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore.ts';
+import {
+  getOpportunityOutcomesForOpportunity,
+  type OpportunityOutcomeRecord,
+} from '../services/opportunityOutcomeStore.ts';
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import type { ExpenseRecord } from '../services/expenseStore.ts';
@@ -50,8 +53,9 @@ export type MasterDashboardModel = {
   evidenceMix: EvidenceMixRow[];
   weeklyActivity: WeeklyActivityPoint[];
   outcomes: {
-    won: { count: number; totalBase: number };
-    lost: { count: number; totalBase: number };
+    /** `missingRetro`: closed deals still valued at their forecast, not a signed figure. */
+    won: { count: number; totalBase: number; missingRetro: number };
+    lost: { count: number; totalBase: number; missingRetro: number };
   };
   /**
    * How the operating loop is actually being run this week, and the proof that
@@ -121,7 +125,10 @@ export function buildMasterDashboard(input: MasterDashboardInput): MasterDashboa
     }))
     .filter((row) => row.count > 0);
 
-  const outcomes = { won: bucketOutcomes(input.opportunityOutcomes, 'Won'), lost: bucketOutcomes(input.opportunityOutcomes, 'Lost') };
+  const outcomes = {
+    won: bucketClosedDeals(input.opportunities, input.opportunityOutcomes, 'Won'),
+    lost: bucketClosedDeals(input.opportunities, input.opportunityOutcomes, 'Lost'),
+  };
   const moneyFlow = buildMoneyFlow({ opportunities: input.opportunities, quotes: input.quotes, today: todayKey });
   const cash = buildCashPosition({
     quotes: input.quotes,
@@ -245,12 +252,44 @@ function buildExecution(input: {
   };
 }
 
-function bucketOutcomes(records: OpportunityOutcomeRecord[], outcome: 'Won' | 'Lost') {
-  const matching = records.filter((record) => record.outcome === outcome);
-  return {
-    count: matching.length,
-    totalBase: sumMoney(matching.map((record) => ({ amount: record.finalAmount, currency: record.currency }))),
-  };
+/**
+ * What actually closed, counted from the deals rather than from the retros.
+ *
+ * This read the retro records alone, which made "Won" mean two different things
+ * in two rooms: Opportunities showed deals marked Won, and this card showed 0
+ * SGD beside them. Both were "correct" - the card was counting outcome records,
+ * and a deal can reach Won without one (imported that way, or already closed
+ * before the retro was ever asked for). Correct is not the bar. A dashboard
+ * that reports zero revenue to an operator looking at their own won deals is
+ * simply wrong about the business, and it is the kind of wrong that ends
+ * trust in every other number on the page.
+ *
+ * So the deal is the source of truth for *what closed*, and the retro is the
+ * better source for *how much* - `finalAmount` is the figure actually signed,
+ * where `estimatedValue` was only ever a forecast. Retro first, deal value as
+ * the fallback, and `missingRetro` counts the ones that can still only be
+ * answered by the forecast, so the card can say so instead of implying a
+ * precision it does not have.
+ */
+function bucketClosedDeals(
+  opportunities: CrmLiteOpportunity[],
+  records: OpportunityOutcomeRecord[],
+  outcome: 'Won' | 'Lost',
+) {
+  const closed = opportunities.filter((opportunity) => opportunity.status === outcome);
+  let missingRetro = 0;
+
+  const amounts = closed.map((opportunity) => {
+    const retro = getOpportunityOutcomesForOpportunity(records, opportunity)
+      .find((record) => record.outcome === outcome);
+    if (retro && typeof retro.finalAmount === 'number') {
+      return { amount: retro.finalAmount, currency: retro.currency || opportunity.currency };
+    }
+    missingRetro += 1;
+    return { amount: opportunity.estimatedValue ?? opportunity.fy26Value ?? null, currency: opportunity.currency };
+  });
+
+  return { count: closed.length, totalBase: sumMoney(amounts), missingRetro };
 }
 
 function buildWeeklyActivity(activities: SalesActivityRecord[], today: Date): WeeklyActivityPoint[] {
