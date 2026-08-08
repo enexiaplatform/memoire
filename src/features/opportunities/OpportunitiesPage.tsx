@@ -42,6 +42,8 @@ import {
   updateOpportunity,
   type CrmLiteOpportunity,
   type OpportunityFormInput,
+  type OpportunityStage,
+  type OpportunityStatus,
 } from '../../services/opportunityStore';
 import { analyzePipelineQuality, analyzeOpportunityQuality } from '../../utils/opportunityQuality';
 import {
@@ -144,6 +146,12 @@ import {
   mapOpportunitiesToPipelineDefenseDeals,
 } from '../../utils/opportunityToPipelineBrief';
 import { analyzePipelineDefenseDeal } from '../../utils/pipelineDefenseRules';
+import {
+  composeRetroAnswer,
+  evidenceGapPresets,
+  lessonPresets,
+  reasonPresetsFor,
+} from '../../utils/outcomeRetroPresets';
 import {
   getRelevantSalesAssetsForOpportunity,
   suggestSalesAssetsForOpportunity,
@@ -3035,6 +3043,29 @@ function OpportunityPanel({
   const accountCheck = checkAccountName(form.accountName, knownAccountNames, accountAliases);
 
   /**
+   * Moves the deal to a stage, from either control that can do it.
+   *
+   * Two rules travel with the move and neither is optional, which is why this is
+   * one function rather than two copies: the probability follows the stage
+   * unless the seller has already put their own number on it - their judgement
+   * outranks the convention, a blank field does not - and Status follows too,
+   * because Stage and Status both name the outcome and letting them disagree is
+   * how a deal ends up won on the board and open in the forecast.
+   */
+  const changeStage = (value: OpportunityStage) => {
+    const stageDefault = defaultProbabilityForStage(value);
+    const untouched = form.pipelineProbability === null
+      || form.pipelineProbability === undefined
+      || form.pipelineProbability === defaultProbabilityForStage(form.stage);
+    onChange({
+      ...form,
+      stage: value,
+      status: statusForStage(value, form.status),
+      pipelineProbability: untouched && stageDefault !== null ? stageDefault : form.pipelineProbability,
+    });
+  };
+
+  /**
    * A deal the seller is closing right now, or one already closed.
    *
    * The close-out form used to live only inside the deep-analysis `<details>`
@@ -3134,30 +3165,19 @@ function OpportunityPanel({
         </div>
         <Field label="Opportunity" value={form.opportunityName} onChange={(value) => update('opportunityName', value)} required />
 
+        {/* The ladder, drawn. A stage is a position on a route, and a dropdown
+            renders that as eleven words in a list - you cannot see that
+            Proposal is two steps from Procurement, or that a deal has not moved
+            since Discovery. The bar is also the faster control: moving a deal
+            on is one tap on the step ahead of it. */}
+        <StageProgress stage={form.stage} status={form.status} onPick={changeStage} />
+
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <SelectField
             label="Stage"
             value={form.stage}
             options={opportunityStages}
-            onChange={(value) => {
-              // Moving a deal forward carries its probability with it, unless
-              // the seller has already put their own number on it. Their
-              // judgement outranks the convention; a blank field does not.
-              const stageDefault = defaultProbabilityForStage(value);
-              const untouched = form.pipelineProbability === null
-                || form.pipelineProbability === undefined
-                || form.pipelineProbability === defaultProbabilityForStage(form.stage);
-              onChange({
-                ...form,
-                stage: value,
-                // Stage and Status both name the outcome, and letting them
-                // disagree is how a deal ends up won on the board and open in
-                // the forecast. Moving to Won/Lost/On hold closes the deal;
-                // moving back into the pipeline re-opens it.
-                status: statusForStage(value, form.status),
-                pipelineProbability: untouched && stageDefault !== null ? stageDefault : form.pipelineProbability,
-              });
-            }}
+            onChange={changeStage}
           />
           <SelectField
             label="Status"
@@ -3350,6 +3370,8 @@ function OpportunityPanel({
             <OpportunityOutcomeRetroPanel
               opportunity={currentOpportunity}
               outcomes={getOpportunityOutcomesForOpportunity(opportunityOutcomes, currentOpportunity)}
+              stakeholders={stakeholders}
+              objections={objections}
               onSaveOutcome={(draft) => onSaveOpportunityOutcome(currentOpportunity, draft)}
             />
           )}
@@ -3391,6 +3413,8 @@ function OpportunityPanel({
           outcomes={getOpportunityOutcomesForOpportunity(opportunityOutcomes, currentOpportunity)}
           closing
           nudge={closeOutNudge}
+          stakeholders={stakeholders}
+          objections={objections}
           onSaveOutcome={(draft) => onSaveOpportunityOutcome(currentOpportunity, draft)}
         />
       )}
@@ -4322,12 +4346,17 @@ function OpportunityOutcomeRetroPanel({
   outcomes,
   closing = false,
   nudge = 0,
+  stakeholders = [],
+  objections = [],
   onSaveOutcome,
 }: {
   opportunity: CrmLiteOpportunity;
   outcomes: OpportunityOutcomeRecord[];
-  /** Rendered beside Status because this deal is being closed, not filed away. */
+  /** Rendered beside the save because this deal is being closed, not filed away. */
   closing?: boolean;
+  /** This deal's own people and objections, offered instead of retyped. */
+  stakeholders?: StakeholderRecord[];
+  objections?: ObjectionRecord[];
   /**
    * Bumped by a save that was refused for want of a reason. Each bump opens this
    * form, scrolls it into view and puts the cursor in the box, because the
@@ -4340,6 +4369,50 @@ function OpportunityOutcomeRetroPanel({
   const [open, setOpen] = useState(closing || outcomes.length === 0);
   const sectionRef = useRef<HTMLElement | null>(null);
   const reasonRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // What was tapped, kept apart from what was typed, so the stored answer can
+  // be recomposed from both without either overwriting the other.
+  const [reasonPicks, setReasonPicks] = useState<string[]>([]);
+  const [reasonNote, setReasonNote] = useState('');
+  const [gapPicks, setGapPicks] = useState<string[]>([]);
+  const [gapNote, setGapNote] = useState('');
+  const [lessonPicks, setLessonPicks] = useState<string[]>([]);
+  const [lessonNote, setLessonNote] = useState('');
+
+  const reasonPresets = reasonPresetsFor(draft.outcome);
+
+  /**
+   * Files the deal under the category the first picked reason implies.
+   *
+   * "Price" is a bucket, not an answer, and asking for it separately spends a
+   * decision on something the answer already contains. Only the first pick sets
+   * it, and only while the operator has not chosen a category themselves - a
+   * bucket that keeps changing under a deliberate choice is worse than no help.
+   */
+  const applyReasonPicks = (picks: string[]) => {
+    setReasonPicks(picks);
+    setDraft((current) => {
+      const impliedCategory = reasonPresets.find((preset) => preset.label === picks[0])?.category;
+      return {
+        ...current,
+        reasonText: composeRetroAnswer(picks, reasonNote),
+        reasonCategory: impliedCategory && current.reasonCategory === 'Other' ? impliedCategory : current.reasonCategory,
+      };
+    });
+  };
+
+  // The people and the objections this deal already has on file. A retro is the
+  // worst moment to ask someone to spell a name they recorded weeks ago.
+  const stakeholderOptions = Array.from(new Set([
+    opportunity.decisionMaker,
+    opportunity.budgetOwner,
+    ...stakeholders.map((person) => person.name),
+  ].map((name) => (name || '').trim()).filter(Boolean)));
+
+  const objectionOptions = Array.from(new Set([
+    ...objections.map((objection) => (objection.objectionText || objection.objectionType || '').trim()),
+    'No objection decided it',
+  ].filter(Boolean)));
 
   useEffect(() => {
     if (nudge === 0) return;
@@ -4366,7 +4439,17 @@ function OpportunityOutcomeRetroPanel({
    */
   const reseedKey = `${opportunity.id}:${opportunity.status}`;
   useEffect(() => {
-    setDraft(buildOpportunityOutcomeDraft(opportunity));
+    const seeded = buildOpportunityOutcomeDraft(opportunity);
+    setDraft(seeded);
+    // A reason carried over from a previous retro cannot be split back into the
+    // buttons that might have written it, so it lands in the typed line, where
+    // it stays visible and editable rather than silently lost.
+    setReasonPicks([]);
+    setReasonNote(seeded.reasonText);
+    setGapPicks([]);
+    setGapNote(seeded.evidenceThatWasMissing || '');
+    setLessonPicks([]);
+    setLessonNote(seeded.lessonLearned || '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reseedKey]);
 
@@ -4403,7 +4486,7 @@ function OpportunityOutcomeRetroPanel({
 
       {open && (
         <div className="mt-4 grid gap-3">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <SelectField label="Outcome" value={draft.outcome} options={opportunityOutcomeOptions} onChange={(value) => update('outcome', value)} />
             <Field label="Outcome date" type="date" value={draft.outcomeDate} onChange={(value) => update('outcomeDate', value)} />
             <Field
@@ -4412,20 +4495,75 @@ function OpportunityOutcomeRetroPanel({
               value={draft.finalAmount?.toString() || ''}
               onChange={(value) => update('finalAmount', value ? Number(value) : null)}
             />
-            <Field label="Currency" value={draft.currency} onChange={(value) => update('currency', value)} />
-            <SelectField label="Reason category" value={draft.reasonCategory} options={opportunityOutcomeReasonCategories} onChange={(value) => update('reasonCategory', value)} />
-            <Field label="Which stakeholder mattered?" value={draft.decisiveStakeholder || ''} onChange={(value) => update('decisiveStakeholder', value)} />
           </div>
-          <TextArea
+
+          {/* The one question the save insists on, asked as a choice.
+              Multi-select rather than one dropdown, because a deal is rarely
+              lost for one reason - "price was too high" and "we never reached
+              the decision maker" are usually the same story - and a form that
+              forces a single cause gets the shallowest one. */}
+          <QuickPickField
             label="Why did this happen?"
-            hint="In your own words: what actually decided it. This is the box the save asks for."
-            inputRef={reasonRef}
-            value={draft.reasonText}
-            onChange={(value) => update('reasonText', value)}
+            hint="Tap what applies. Add a line only if none of these says it."
+            options={reasonPresets.map((preset) => preset.label)}
+            picks={reasonPicks}
+            note={reasonNote}
+            noteRef={reasonRef}
+            notePlaceholder="Anything the buttons do not cover"
+            onPicksChange={applyReasonPicks}
+            onNoteChange={(value) => { setReasonNote(value); update('reasonText', composeRetroAnswer(reasonPicks, value)); }}
           />
-          <TextArea label="Which objection mattered?" value={draft.objectionThatMattered || ''} onChange={(value) => update('objectionThatMattered', value)} />
-          <TextArea label="What evidence was missing?" value={draft.evidenceThatWasMissing || ''} onChange={(value) => update('evidenceThatWasMissing', value)} />
-          <TextArea label="What should I do differently next time?" value={draft.lessonLearned || ''} onChange={(value) => update('lessonLearned', value)} />
+
+          {/* Filed automatically from the reason picked, and still changeable.
+              It is a bucket, not an answer, so it should not cost a decision. */}
+          <SelectField
+            label="Filed under"
+            hint="Set from what you picked above. Change it if the bucket is wrong."
+            value={draft.reasonCategory}
+            options={opportunityOutcomeReasonCategories}
+            onChange={(value) => update('reasonCategory', value)}
+          />
+
+          <details className="rounded-lg border border-indigo-100 bg-white/70 p-3">
+            <summary className="cursor-pointer text-xs font-bold text-indigo-800">
+              Add detail — who decided, which objection, what was missing, what to do differently
+            </summary>
+            <div className="mt-3 grid gap-3">
+              {/* The people and objections already on this deal, offered rather
+                  than retyped: the same reason every other name field in this
+                  product offers what the workspace knows. */}
+              <PickOrTypeField
+                label="Which stakeholder mattered?"
+                options={stakeholderOptions}
+                value={draft.decisiveStakeholder || ''}
+                onChange={(value) => update('decisiveStakeholder', value)}
+              />
+              <PickOrTypeField
+                label="Which objection mattered?"
+                options={objectionOptions}
+                value={draft.objectionThatMattered || ''}
+                onChange={(value) => update('objectionThatMattered', value)}
+              />
+              <QuickPickField
+                label="What evidence was missing?"
+                options={evidenceGapPresets}
+                picks={gapPicks}
+                note={gapNote}
+                notePlaceholder="Something else that was never established"
+                onPicksChange={(picks) => { setGapPicks(picks); update('evidenceThatWasMissing', composeRetroAnswer(picks, gapNote)); }}
+                onNoteChange={(value) => { setGapNote(value); update('evidenceThatWasMissing', composeRetroAnswer(gapPicks, value)); }}
+              />
+              <QuickPickField
+                label="What should I do differently next time?"
+                options={lessonPresets}
+                picks={lessonPicks}
+                note={lessonNote}
+                notePlaceholder="Your own lesson"
+                onPicksChange={(picks) => { setLessonPicks(picks); update('lessonLearned', composeRetroAnswer(picks, lessonNote)); }}
+                onNoteChange={(value) => { setLessonNote(value); update('lessonLearned', composeRetroAnswer(lessonPicks, value)); }}
+              />
+            </div>
+          </details>
           <div className="flex flex-wrap items-center gap-2">
             {/* Won and Lost are the two outcomes the whole learning loop reads
                 from, and a category alone says nothing a report can use -
@@ -5143,6 +5281,210 @@ function Field({
         <datalist id={listId}>
           {suggestions!.map((option) => <option key={option} value={option} />)}
         </datalist>
+      )}
+    </label>
+  );
+}
+
+/**
+ * The stage ladder, drawn as the route it is.
+ *
+ * The eight stages a deal walks through, in order, plus the three states it can
+ * end in. A dropdown lists eleven words and says nothing about distance: it
+ * cannot show that Proposal is two steps short of Procurement, or that a deal
+ * has been sitting at Discovery since June. A bar shows both at a glance, and
+ * doubles as the fastest way to move a deal - one tap on the step ahead.
+ *
+ * The three terminal states get their own colour rather than a position,
+ * because they are not further along the route; they are how it ended.
+ */
+const stageLadder: OpportunityStage[] = opportunityStages.filter(
+  (stage) => stage !== 'Won' && stage !== 'Lost' && stage !== 'On hold',
+);
+
+function StageProgress({ stage, status, onPick }: {
+  stage: OpportunityStage;
+  status: OpportunityStatus;
+  onPick: (stage: OpportunityStage) => void;
+}) {
+  const ladderIndex = stageLadder.indexOf(stage);
+  const closedTone = stage === 'Won' || status === 'Won'
+    ? { fill: 'bg-emerald-500', caption: 'Won — the whole route was walked', text: 'text-emerald-700' }
+    : stage === 'Lost' || status === 'Lost'
+      ? { fill: 'bg-red-300', caption: 'Lost — closed out', text: 'text-red-700' }
+      : stage === 'On hold' || status === 'On hold'
+        ? { fill: 'bg-amber-300', caption: 'On hold — paused, not closed', text: 'text-amber-700' }
+        : null;
+
+  const stageDefault = defaultProbabilityForStage(stage);
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">Where this deal stands</p>
+        <p className={`text-[11px] font-semibold ${closedTone ? closedTone.text : 'text-gray-500'}`}>
+          {closedTone
+            ? closedTone.caption
+            : `Step ${ladderIndex + 1} of ${stageLadder.length} · ${stage}${stageDefault === null ? '' : ` · normally ${stageDefault}%`}`}
+        </p>
+      </div>
+
+      <div className="mt-2 flex gap-1">
+        {stageLadder.map((step, index) => {
+          const reached = closedTone ? true : index <= ladderIndex;
+          const current = !closedTone && index === ladderIndex;
+          return (
+            <button
+              key={step}
+              type="button"
+              title={`Move to ${step}`}
+              aria-label={`Move this deal to ${step}`}
+              aria-current={current ? 'step' : undefined}
+              onClick={() => onPick(step)}
+              className="group min-w-0 flex-1"
+            >
+              <span
+                className={`block h-2 rounded-full transition ${
+                  reached ? (closedTone ? closedTone.fill : 'bg-brand-blue') : 'bg-gray-200 group-hover:bg-blue-200'
+                } ${current ? 'ring-2 ring-brand-blue/30' : ''}`}
+              />
+              {/* The names are long and the columns are narrow, so only the
+                  step you are on is spelled out under the bar; the rest are
+                  reachable by hover, title and the select beside it. */}
+              <span
+                className={`mt-1 block truncate text-[9px] leading-3 ${
+                  current ? 'font-bold text-navy' : 'text-transparent group-hover:text-gray-500'
+                }`}
+              >
+                {step}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A question answered by tapping, with a line to type when tapping is not
+ * enough.
+ *
+ * Multi-select on purpose. The single-choice version of this asks "what was
+ * the reason", and deals do not have one - the honest answer is usually two,
+ * and a form that only takes one gets whichever came to mind first.
+ *
+ * The typed line is always present rather than hidden behind an "Other" option,
+ * because an operator who wants to add a sentence should not first have to find
+ * permission to.
+ */
+function QuickPickField({
+  label,
+  hint,
+  options,
+  picks,
+  note,
+  notePlaceholder,
+  noteRef,
+  onPicksChange,
+  onNoteChange,
+}: {
+  label: string;
+  hint?: string;
+  options: string[];
+  picks: string[];
+  note: string;
+  notePlaceholder?: string;
+  noteRef?: RefObject<HTMLTextAreaElement | null>;
+  onPicksChange: (picks: string[]) => void;
+  onNoteChange: (note: string) => void;
+}) {
+  const toggle = (option: string) => {
+    onPicksChange(picks.includes(option) ? picks.filter((item) => item !== option) : [...picks, option]);
+  };
+
+  return (
+    <div className="block">
+      <span className="text-sm font-bold text-navy">{label}</span>
+      {hint && <span className="mt-0.5 block text-xs font-normal leading-5 text-gray-500">{hint}</span>}
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {options.map((option) => {
+          const picked = picks.includes(option);
+          return (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={picked}
+              onClick={() => toggle(option)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                picked
+                  ? 'bg-navy text-white'
+                  : 'border border-gray-300 bg-white text-gray-700 hover:border-brand-blue hover:text-brand-blue'
+              }`}
+            >
+              {option}
+            </button>
+          );
+        })}
+      </div>
+      <textarea
+        ref={noteRef}
+        value={note}
+        onChange={(event) => onNoteChange(event.target.value)}
+        rows={2}
+        placeholder={notePlaceholder}
+        className="mt-2 w-full resize-y rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm leading-6 outline-none placeholder:text-gray-400 focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+      />
+    </div>
+  );
+}
+
+/**
+ * One answer, chosen from what the deal already knows or typed if it does not.
+ *
+ * The dropdown holds the names and objections already on this record; picking
+ * "Someone else" turns it into a text field. A retro is the worst moment to ask
+ * an operator to spell a stakeholder they filed six weeks ago.
+ */
+function PickOrTypeField({ label, options, value, onChange }: {
+  label: string;
+  options: string[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const OTHER = '__other__';
+  const known = options.includes(value);
+  const [typing, setTyping] = useState(false);
+  const showText = typing || (value.trim().length > 0 && !known);
+
+  return (
+    <label className="block">
+      <span className="text-sm font-bold text-navy">{label}</span>
+      {options.length > 0 && (
+        <select
+          value={showText ? OTHER : value}
+          onChange={(event) => {
+            if (event.target.value === OTHER) { setTyping(true); onChange(''); return; }
+            setTyping(false);
+            onChange(event.target.value);
+          }}
+          className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+        >
+          <option value="">Not recorded</option>
+          {options.map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
+          <option value={OTHER}>Someone or something else…</option>
+        </select>
+      )}
+      {(showText || options.length === 0) && (
+        <input
+          type="text"
+          value={value}
+          autoFocus={typing}
+          onChange={(event) => onChange(event.target.value)}
+          className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+        />
       )}
     </label>
   );
