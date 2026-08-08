@@ -45,3 +45,18 @@ export function sameAccount(left: string, right: string): boolean {
   const leftKey = accountKey(left);
   return Boolean(leftKey && leftKey === accountKey(right));
 }
+
+/**
+ * Drops the Vietnamese legal form from the front of a company name.
+ *
+ * Only for display, and only when something is left: "CÔNG TY TNHH" on its own
+ * stays as it is rather than becoming an empty chip. The canonical name is what
+ * everything else - matching, merging, the tooltip - keeps using.
+ */
+const LEGAL_PREFIX = /^(c[ôo]ng\s+ty\s+(?:c[ổo]\s*ph[ầa]n|tnhh(?:\s+mtv)?|li[êe]n\s+doanh)?|c[ôo]ng\s+ty|cty)\s+/i;
+
+export function withoutLegalPrefix(name: string) {
+  const trimmed = (name || '').trim();
+  const stripped = trimmed.replace(LEGAL_PREFIX, '').trim();
+  return stripped || trimmed;
+}

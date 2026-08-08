@@ -17,6 +17,7 @@ import { buildMasterDashboard } from '../../utils/masterDashboard';
 import { buildBusinessLens, QUIET_ACCOUNT_DAYS } from '../../utils/businessLens';
 import { buildAccountAliasIndex } from '../../utils/accountAliases';
 import { formatBaseCurrencyAmount, formatCompactBaseAmount } from '../../utils/money';
+import { formatCount } from '../../utils/numberFormat';
 
 /**
  * The business, seen whole.
@@ -170,8 +171,8 @@ export function BusinessLensPage() {
         <>
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Stat label="Open pipeline" value={formatBaseCurrencyAmount(model.kpis.openPipelineBase, true)} detail={`${model.kpis.openDeals} active ${model.kpis.openDeals === 1 ? 'deal' : 'deals'}`} />
-            <Stat label="Customers" value={lens.accounts.total.toLocaleString()} detail={`${lens.accounts.active} touched in ${QUIET_ACCOUNT_DAYS} days`} />
-            <Stat label="Touches, last 30 days" value={model.kpis.activitiesLast30.toLocaleString()} detail={`${model.kpis.openQuotes} open ${model.kpis.openQuotes === 1 ? 'quote' : 'quotes'}`} />
+            <Stat label="Customers" value={formatCount(lens.accounts.total)} detail={`${lens.accounts.active} touched in ${QUIET_ACCOUNT_DAYS} days`} />
+            <Stat label="Touches, last 30 days" value={formatCount(model.kpis.activitiesLast30)} detail={`${model.kpis.openQuotes} open ${model.kpis.openQuotes === 1 ? 'quote' : 'quotes'}`} />
             <Stat label="Realized profit" value={formatBaseCurrencyAmount(model.money.realizedProfitBase, true)} detail="Collected, less paid costs" tone={model.money.realizedProfitBase < 0 ? 'red' : 'green'} />
           </section>
 
@@ -308,13 +309,13 @@ export function BusinessLensPage() {
               <div className="grid grid-cols-2 gap-3">
                 <Stat
                   label="Won"
-                  value={model.outcomes.won.count.toLocaleString()}
+                  value={formatCount(model.outcomes.won.count)}
                   detail={formatBaseCurrencyAmount(model.outcomes.won.totalBase, true)}
                   tone="green"
                 />
                 <Stat
                   label="Lost"
-                  value={model.outcomes.lost.count.toLocaleString()}
+                  value={formatCount(model.outcomes.lost.count)}
                   detail={formatBaseCurrencyAmount(model.outcomes.lost.totalBase, true)}
                   tone="red"
                 />

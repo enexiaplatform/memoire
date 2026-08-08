@@ -39,6 +39,7 @@ import {
   type InitiativeDecision,
 } from '../../utils/initiativeExperiment';
 import { listInitiativeActivityLinks, readLinkedActivityIds, toggleLinkedActivity } from '../../utils/initiativeActivityLink';
+import { useModalDrawer } from '../../hooks/useModalDrawer';
 
 type Filter = 'active' | 'initiative' | 'play' | 'all';
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -332,6 +333,8 @@ function OperatingPanel({
   onDelete: () => void;
   onClose: () => void;
 }) {
+  const { ref: drawerRef, dialogProps } = useModalDrawer({ onClose, label: 'Operating priority', enabled: mode !== 'closed' });
+
   if (mode === 'closed') return null;
   const update = <Key extends keyof OperatingContextFormInput>(key: Key, value: OperatingContextFormInput[Key]) => {
     onChange({ ...form, [key]: value });
@@ -341,7 +344,7 @@ function OperatingPanel({
   return (
     <>
       <button type="button" aria-label="Close operating priority" onClick={onClose} className="fixed inset-y-0 left-0 right-0 top-16 z-40 bg-slate-950/25 lg:left-[220px]" />
-      <aside className="fixed bottom-0 right-0 top-16 z-50 w-full overflow-y-auto border-l border-gray-200 bg-white p-5 shadow-2xl sm:max-w-[620px]">
+      <aside ref={drawerRef} {...dialogProps} className="fixed bottom-0 right-0 top-16 z-50 w-full overflow-y-auto border-l border-gray-200 bg-white p-5 shadow-2xl sm:max-w-[620px]">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">{mode === 'add' ? 'New priority' : 'Operating priority'}</p>

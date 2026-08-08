@@ -1,4 +1,5 @@
 import { supabaseClient } from '../../lib/supabaseClient.ts';
+import { fetchAllRows } from '../supabasePaging.ts';
 import { reportClientOperationalEvent } from '../clientTelemetry.ts';
 import { reportWorkspaceSyncError } from '../workspaceSyncStatus.ts';
 import { invalidateWorkspaceCollection } from '../workspaceDataCache.ts';
@@ -129,15 +130,16 @@ export async function loadCloudRecords<T extends KernelRecord>(
 ): Promise<T[]> {
   if (!supabaseClient) return [];
 
-  const { data, error } = await supabaseClient
+  // Paged: see `fetchAllRows`. Commitments are written one per promise made, so
+  // this table grows with use rather than with an import.
+  const data = await fetchAllRows<Record<string, unknown>>((from, to) => supabaseClient!
     .from(codec.table)
     .select('*')
     .eq('user_id', userId)
-    .order(codec.orderColumn, { ascending: false });
+    .order(codec.orderColumn, { ascending: false })
+    .range(from, to) as never);
 
-  if (error) throw new Error(error.message);
-
-  return ((data || []) as Record<string, unknown>[])
+  return data
     .map(codec.fromRow)
     .filter((record): record is T => Boolean(record));
 }

@@ -104,10 +104,32 @@ export function getStakeholderRisks(stakeholders: StakeholderRecord[], opportuni
 }
 
 export function summarizeStakeholderCoverage(stakeholders: StakeholderRecord[], opportunities: CrmLiteOpportunity[]) {
-  const accountNames = new Set(stakeholders.map((stakeholder) => stakeholder.accountName).filter(Boolean));
+  /**
+   * Which accounts are supposed to have a champion.
+   *
+   * This used to be "every account name that appears on a stakeholder row",
+   * which quietly excludes exactly the accounts most likely to be missing one.
+   * On the imported book the stakeholder rows carry no account name at all, so
+   * the set was empty and the tile read MISSING CHAMPION 0 beside CHAMPIONS 1 -
+   * "nothing to worry about" and "one champion across your whole book", side by
+   * side, both from the same function.
+   *
+   * An account with an open deal needs a champion whether or not anybody has
+   * been recorded against it, so the universe comes from the deals as well.
+   */
+  const accountNames = new Set([
+    ...stakeholders.map((stakeholder) => stakeholder.accountName),
+    ...opportunities.filter((opportunity) => opportunity.status === 'Active').map((opportunity) => opportunity.accountName),
+  ].filter(Boolean));
   const accountsWithMissingChampion = Array.from(accountNames).filter((accountName) => (
     !getStakeholdersForAccount(stakeholders, accountName).some((stakeholder) => stakeholder.stakeholderRole === 'Champion')
   )).length;
+  /**
+   * Stakeholders nobody can attribute. They count towards "Total" and towards
+   * nothing else - not coverage, not risk - so without naming them the totals
+   * and the coverage tiles look like they are describing different books.
+   */
+  const unattachedStakeholders = stakeholders.filter((stakeholder) => !stakeholder.accountName.trim()).length;
   const opportunitiesWithStakeholderRisk = opportunities.filter((opportunity) => (
     analyzeStakeholderCoverage(stakeholders, opportunity).warnings.length > 0
   )).length;
@@ -119,6 +141,7 @@ export function summarizeStakeholderCoverage(stakeholders: StakeholderRecord[], 
     blockers: stakeholders.filter((stakeholder) => normalizeMeddicRole(stakeholder.stakeholderRole) === 'Blocker' || stakeholder.stance === 'Resistant').length,
     highInfluence: stakeholders.filter((stakeholder) => stakeholder.influenceLevel === 'High').length,
     accountsWithMissingChampion,
+    unattachedStakeholders,
     opportunitiesWithStakeholderRisk,
     strategicMapped: stakeholders.filter((stakeholder) => strategicRoles.includes(normalizeMeddicRole(stakeholder.stakeholderRole) as StakeholderRole)).length,
   };

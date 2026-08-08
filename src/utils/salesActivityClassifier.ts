@@ -345,11 +345,18 @@ export function suggestOpportunityFromNote(
   opportunities: CaptureExtractionContext['opportunities'] = []
 ) {
   const noteTokens = meaningfulTokens(rawNote);
+  const normalizedNote = normalize(rawNote);
   const best = opportunities
     .map((opportunity) => {
       const opportunityTokens = meaningfulTokens(`${opportunity.opportunityName} ${opportunity.productOrSolution || ''}`);
       const overlap = opportunityTokens.filter((token) => noteTokens.includes(token)).length;
-      const accountMentioned = normalize(rawNote).includes(normalize(opportunity.accountName));
+      // The guard is the whole point: `normalize('')` is `''`, and every string
+      // contains the empty string. Without it, any deal whose account name is
+      // blank scored 2 against every note ever typed - which is the threshold -
+      // so an unrelated deal was offered first, labelled High confidence, with
+      // "note mentions opportunity" as its stated reason.
+      const opportunityAccount = normalize(opportunity.accountName);
+      const accountMentioned = Boolean(opportunityAccount) && normalizedNote.includes(opportunityAccount);
       const partial = hasPartialPhrase(rawNote, opportunity.opportunityName);
       return { opportunity, score: overlap + (accountMentioned ? 2 : 0) + (partial ? 3 : 0) };
     })
@@ -378,14 +385,39 @@ export function extractDueDate(rawNote: string, activityDate: string) {
 
   const slashDate = rawNote.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
   if (slashDate) {
-    const month = Number(slashDate[1]);
-    const day = Number(slashDate[2]);
-    const year = slashDate[3] ? normalizeYear(slashDate[3]) : anchor.getFullYear();
-    const candidate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return sanitizeBusinessDate(candidate);
+    const parsed = readSlashDate(slashDate[1], slashDate[2], slashDate[3], anchor.getFullYear());
+    if (parsed) return sanitizeBusinessDate(parsed);
   }
 
   return '';
+}
+
+/**
+ * A slash date, read the way the rest of the product writes one: day first.
+ *
+ * This used to read `12/08/2026` as December 8th. The date input sitting beside
+ * the note in the same capture form renders that same day as `08/12/2026`, so the
+ * parser and the field two inches away from it disagreed by four months - on a
+ * product whose whole claim is that a deal will not go quiet on you. Day-first is
+ * what this operator types and what every other surface shows.
+ *
+ * The ordering is only assumed when the numbers are genuinely ambiguous. A first
+ * part above 12 can only be a day, and a second part above 12 can only be a
+ * month, so `12/25` is read as December 25th rather than refused - a note is not
+ * a form and people paste both.
+ */
+function readSlashDate(firstPart: string, secondPart: string, yearPart: string | undefined, fallbackYear: number) {
+  const first = Number(firstPart);
+  const second = Number(secondPart);
+  if (!Number.isFinite(first) || !Number.isFinite(second)) return '';
+
+  const dayFirst = second <= 12;
+  const day = dayFirst ? first : second;
+  const month = dayFirst ? second : first;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return '';
+
+  const year = yearPart ? normalizeYear(yearPart) : fallbackYear;
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 function todayDate() {
@@ -414,7 +446,12 @@ function extractFirstMatch(rawNote: string, patterns: RegExp[]) {
 }
 
 function extractContact(rawNote: string) {
-  const match = rawNote.match(/\b(?:with|call(?:ed)?|met)\s+((?:Dr\.?|Mr\.?|Ms\.?|Mrs\.?)\s+[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,2})(?:\s+at\b|\s+from\b|[.,;]|$)/i);
+  // Deliberately case-sensitive after the verb: the trailing groups are what
+  // stop "Ms. Huyen is the buyer" from capturing "Huyen is the", and only
+  // capitalisation can tell a name from the rest of the sentence. Requiring a
+  // full stop or "at"/"from" behind the name instead - which is what this did -
+  // meant the commonest sentence a seller writes resolved to nobody.
+  const match = rawNote.match(/\b(?:[Ww]ith|[Cc]all(?:ed)?|[Mm]et)\s+((?:Dr|Mr|Ms|Mrs)\.?\s+[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,2})\b/);
   const name = match?.[1]?.trim() || '';
   const role = name.match(/^(Dr\.?|Doctor)\b/i) ? 'Doctor' : '';
   return { name, role };

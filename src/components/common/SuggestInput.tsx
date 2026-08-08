@@ -90,6 +90,10 @@ export function SuggestInput({
         // to survive long enough to be clicked.
         onBlur={() => { setOpen(false); onBlurred?.(); }}
         onKeyDown={(event) => { if (event.key === 'Escape') setOpen(false); }}
+        // The asterisk beside the label was the only thing marking this
+        // required, which enforces nothing and announces nothing.
+        required={required}
+        aria-required={required || undefined}
         autoComplete="off"
         className={styles.input}
       />

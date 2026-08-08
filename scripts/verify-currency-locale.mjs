@@ -121,8 +121,16 @@ for (const [file, label] of [
     'both reporting preferences must be persisted to the account',
   );
   assert.ok(
-    preferences.includes('export async function hydrateWorkspacePreferences'),
+    preferences.includes('export function hydrateWorkspacePreferences'),
     'the browser cache must be fillable from the account',
+  );
+  // Single-flight. The shell hydrates on mount and Settings hydrates on open,
+  // and React re-mounts both in development, so one visit to Today asked
+  // `user_profiles` for the same row three times - 1.60s, 1.75s and 1.85s,
+  // sequentially, for an identical answer.
+  assert.ok(
+    preferences.includes('hydrationsInFlight'),
+    'concurrent callers must share one read of the account row, not race three',
   );
 
   const shell = readFileSync('src/components/layout/AppShell.tsx', 'utf8');

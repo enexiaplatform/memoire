@@ -128,6 +128,7 @@ import {
   formatNudgeMoney,
   type ProactiveNudgeCenter,
 } from '../../utils/proactiveNudges.ts';
+import { formatCount } from '../../utils/numberFormat';
 
 type DashboardData = {
   activities: SalesActivityRecord[];
@@ -564,6 +565,10 @@ export function TodayPage() {
       <PageHeader
         eyebrow="Personal Commercial Control Tower"
         title="Nothing in your business goes silent."
+        // The page title is a sentence, which is right on the page and useless in
+        // a tab strip. This is what the tab, the history entry and the screen
+        // reader's navigation announcement say.
+        documentTitle="Today"
         description="Three steps: get the picture, do today's work, check the watch-list."
         actions={
           <>
@@ -1109,7 +1114,7 @@ function ForecastDefenseReadiness({ center }: { center: ReturnType<typeof buildU
         )}
       </div>
       {center.importedAccountsHidden > 0 && (
-        <p className="mt-3 text-xs font-semibold text-gray-500">{center.importedAccountsHidden.toLocaleString()} imported accounts are available in search but hidden from active work.</p>
+        <p className="mt-3 text-xs font-semibold text-gray-500">{formatCount(center.importedAccountsHidden)} imported accounts are available in search but hidden from active work.</p>
       )}
       {(center.learningNudge || center.learningLowDataMessage) && (
         <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/80 p-4">
@@ -1370,7 +1375,7 @@ function ProactiveNudgesPanel({
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         {center.hiddenImportedAccountCount > 0 ? (
           <p className="text-xs font-semibold text-gray-500">
-            {center.hiddenImportedAccountCount.toLocaleString()} imported accounts are still searchable but do not create urgent nudges.
+            {formatCount(center.hiddenImportedAccountCount)} imported accounts are still searchable but do not create urgent nudges.
           </p>
         ) : <span />}
         <span className="flex items-center gap-3 text-xs font-semibold text-gray-400">

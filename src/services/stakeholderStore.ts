@@ -2,6 +2,7 @@ import { supabaseClient } from '../lib/supabaseClient.ts';
 import { invalidateWorkspaceCollection } from './workspaceDataCache';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus';
 import { writeLocalCollection, writeLocalRecords } from './localWriteGuard.ts';
+import { fetchAllRows } from './supabasePaging.ts';
 
 export const STAKEHOLDER_STORAGE_KEY = 'memoire.stakeholders.v1';
 
@@ -256,13 +257,18 @@ const STAKEHOLDER_COLUMNS =
   + 'email,phone,notes,tags,last_interaction_date,created_at,updated_at';
 
 async function loadCloudStakeholders(userId: string) {
-  const { data, error } = await supabaseClient!
+  // Paged, because an unbounded select stops at PostgREST's 1000-row cap and
+  // returns 200. This book holds 1,738 stakeholders and the app was showing
+  // exactly 1000 of them - the missing 738 took MISSING CHAMPION, the coverage
+  // matrix and every stakeholder count on every surface down with them.
+  const data = await fetchAllRows((from, to) => supabaseClient!
     .from(TABLE_NAME)
     .select(STAKEHOLDER_COLUMNS)
     .eq('user_id', userId)
-    .order('updated_at', { ascending: false });
-  if (error) throw new Error(error.message);
-  return ((data || []) as unknown as StakeholderRow[]).map(rowToStakeholder);
+    .order('updated_at', { ascending: false })
+    .range(from, to));
+
+  return (data as unknown as StakeholderRow[]).map(rowToStakeholder);
 }
 
 async function createCloudStakeholder(input: StakeholderFormInput, userId: string) {

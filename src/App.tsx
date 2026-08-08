@@ -191,6 +191,21 @@ function App() {
             <Route path="deals/:id" element={<Navigate to="/app/opportunities" replace />} />
             <Route path="deals/:id/edit" element={<Navigate to="/app/opportunities" replace />} />
             <Route path="search" element={<Navigate to="/app/ask" replace />} />
+
+            {/* Singular/plural. `/app/plan` and `/app/dashboard` redirected and
+                `/app/review` 404'd, which is a coin toss the operator has to
+                lose once to learn. The rail writes the plural; both are typed. */}
+            <Route path="review" element={<LegacyRedirect to="/app/reviews" />} />
+            <Route path="account" element={<LegacyRedirect to="/app/accounts" />} />
+            <Route path="opportunity" element={<LegacyRedirect to="/app/opportunities" />} />
+            <Route path="stakeholder" element={<LegacyRedirect to="/app/stakeholders" />} />
+            <Route path="quote" element={<LegacyRedirect to="/app/quotes" />} />
+            <Route path="objection" element={<LegacyRedirect to="/app/objections" />} />
+
+            {/* Anything else under /app is still a Memoire page as far as the
+                operator is concerned, so it keeps the shell - rail, header, a
+                way back - rather than dropping to a bare document. */}
+            <Route path="*" element={<NotFoundPage />} />
           </Route>
 
           <Route path="*" element={<NotFoundPage />} />

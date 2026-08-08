@@ -4,6 +4,7 @@ import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
 import { reconcileOpportunityOutcome } from '../utils/opportunityOutcome.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
+import { fetchAllRows } from './supabasePaging.ts';
 
 export const OPPORTUNITY_STORAGE_KEY = 'memoire.opportunities.v1';
 
@@ -374,14 +375,16 @@ function deleteLocalOpportunity(opportunityId: string) {
 }
 
 async function loadCloudOpportunities(userId: string): Promise<CrmLiteOpportunity[]> {
-  const { data, error } = await supabaseClient!
+  // Paged: see `fetchAllRows`. A pipeline is not something to read the first
+  // thousand of.
+  const data = await fetchAllRows<OpportunityRow>((from, to) => supabaseClient!
     .from(TABLE_NAME)
     .select('*,account:account_id(id,name,account_name)')
     .eq('user_id', userId)
-    .order('updated_at', { ascending: false });
+    .order('updated_at', { ascending: false })
+    .range(from, to) as never);
 
-  if (error) throw new Error(error.message);
-  return ((data || []) as OpportunityRow[]).map(rowToOpportunity);
+  return data.map(rowToOpportunity);
 }
 
 async function createCloudOpportunity(input: OpportunityFormInput, userId: string) {

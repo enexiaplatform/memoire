@@ -17,6 +17,7 @@ import {
   type TargetProgress,
 } from '../../utils/outcomeScoreboard';
 import { formatBaseCurrencyAmount, formatCompactBaseAmount } from '../../utils/money';
+import { formatCount } from '../../utils/numberFormat';
 
 /**
  * The head of Review, and the reason to open it.
@@ -200,7 +201,7 @@ function Movement({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-baseline justify-between gap-2">
       <dt className="truncate text-gray-500">{label}</dt>
-      <dd className="font-bold text-navy">{value.toLocaleString()}</dd>
+      <dd className="font-bold text-navy">{formatCount(value)}</dd>
     </div>
   );
 }

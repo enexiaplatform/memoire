@@ -41,6 +41,11 @@ export function prefetchAppRoute(route: string) {
  * a tab, on every device, paid for its own chunk at click time.
  */
 export function prefetchPrimaryAppRoutes() {
+  // Warming nine route chunks is a good trade on a desktop connection and a bad
+  // one on a metered phone, where it is bandwidth spent on tabs that may never
+  // be opened. Where the browser will say, ask it.
+  if (prefersLessData()) return;
+
   const routes = [
     '/app/capture',
     '/app/accounts',
@@ -54,6 +59,23 @@ export function prefetchPrimaryAppRoutes() {
   ];
 
   scheduleRoutePrefetch(routes);
+}
+
+/**
+ * Whether this browser has asked for less to be downloaded.
+ *
+ * `saveData` is Data Saver switched on explicitly; `effectiveType` is the
+ * browser's own read of the link. Neither is standard everywhere, so an absent
+ * `connection` means prefetch as normal - the check exists to honour a stated
+ * preference, not to guess at one.
+ */
+function prefersLessData() {
+  const connection = (navigator as Navigator & {
+    connection?: { saveData?: boolean; effectiveType?: string };
+  }).connection;
+  if (!connection) return false;
+  if (connection.saveData) return true;
+  return connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g';
 }
 
 function scheduleRoutePrefetch(routes: string[]) {

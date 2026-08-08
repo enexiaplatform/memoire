@@ -1,18 +1,36 @@
 import { ArrowLeft, LayoutDashboard } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { BrandWordmark } from '../components/brand/BrandWordmark';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useAuth } from '../hooks/useAuth';
 
 export function NotFoundPage() {
   const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  useDocumentTitle('Page not found');
+
+  /**
+   * A mistyped route inside the app is still somewhere in the app.
+   *
+   * Rendered full-bleed, this page took the rail and the header with it, so
+   * `/app/review` - a plausible guess at `/app/reviews` - dropped the operator
+   * out of the product entirely and offered "Return home" as the way back. Under
+   * `/app` it renders inside the shell instead and keeps the way out visible.
+   */
+  const insideApp = location.pathname.startsWith('/app');
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 text-slate-950">
+    <main className={insideApp
+      ? 'flex w-full items-center justify-center px-4 py-16 text-slate-950'
+      : 'flex min-h-screen items-center justify-center bg-slate-50 px-4 text-slate-950'}
+    >
       <section className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-        <Link to="/" aria-label="Memoire home">
-          <BrandWordmark className="text-2xl" />
-        </Link>
-        <p className="mt-8 text-xs font-bold uppercase tracking-[0.2em] text-brand-blue">404</p>
+        {!insideApp && (
+          <Link to="/" aria-label="Memoire home">
+            <BrandWordmark className="text-2xl" />
+          </Link>
+        )}
+        <p className={`text-xs font-bold uppercase tracking-[0.2em] text-brand-blue ${insideApp ? '' : 'mt-8'}`}>404</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">This page could not be found.</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
           The link may be outdated, or the page may have moved.

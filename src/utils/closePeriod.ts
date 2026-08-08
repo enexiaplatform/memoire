@@ -187,13 +187,27 @@ function readYear(normalized: string): number | null {
 function readDate(text: string) {
   // Only accept forms that unambiguously carry a day, so "2026" alone does not
   // silently become 1 January.
-  if (!/\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{2,4}/.test(text)) return null;
-  const parsed = Date.parse(text);
-  if (Number.isNaN(parsed)) return null;
-  const date = new Date(parsed);
+  const iso = text.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return fromParts(Number(iso[2]), Number(iso[1]));
+
+  // Day first, matching the date inputs this product renders and the way its
+  // operator writes one. `Date.parse` reads a slash date as month first, so it
+  // put "12/08/2026" in Q4 instead of Q3.
+  const slash = text.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/);
+  if (!slash) return null;
+  const first = Number(slash[1]);
+  const second = Number(slash[2]);
+  const month = second <= 12 ? second : first;
+  if (month < 1 || month > 12) return null;
+
+  const rawYear = Number(slash[3]);
+  return fromParts(month, slash[3].length <= 2 ? 2000 + rawYear : rawYear);
+}
+
+function fromParts(month: number, year: number) {
   return {
-    quarter: (Math.floor(date.getMonth() / 3) + 1) as 1 | 2 | 3 | 4,
-    year: date.getFullYear(),
+    quarter: (Math.floor((month - 1) / 3) + 1) as 1 | 2 | 3 | 4,
+    year,
   };
 }
 

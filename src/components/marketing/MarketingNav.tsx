@@ -40,7 +40,7 @@ export function MarketingNav() {
           </div>
           <div className="hidden md:flex items-center space-x-6">
             <Link to="/demo" className="font-medium text-gray-600 hover:text-gray-900">Try Demo</Link>
-            <a href="/#pricing" className="font-medium text-gray-600 hover:text-gray-900">Pricing</a>
+            <Link to="/pricing" className="font-medium text-gray-600 hover:text-gray-900">Pricing</Link>
             {!signedIn && <Link to="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</Link>}
             <Link to="/request-access" className="font-medium text-gray-600 hover:text-gray-900">Request Access</Link>
             <Link
@@ -69,7 +69,7 @@ export function MarketingNav() {
         <div className="md:hidden bg-white border-b border-gray-100 px-2 pt-2 pb-3 space-y-1 sm:px-3 shadow-lg">
           {!signedIn && <Link to="/login" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md">Log in</Link>}
           <Link to="/demo" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Try Demo</Link>
-          <a href="/#pricing" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Pricing</a>
+          <Link to="/pricing" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Pricing</Link>
           <Link to="/request-access" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Request Access</Link>
           <Link to={signedIn ? '/app/today' : '/signup'} className="block rounded-full px-3 py-2 text-base font-semibold text-brand-blue hover:bg-blue-50 hover:text-brand-blue-dark">
             {signedIn ? 'Open workspace' : 'Create Account'}

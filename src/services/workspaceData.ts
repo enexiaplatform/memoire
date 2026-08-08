@@ -36,6 +36,7 @@ import {
   reportWorkspaceSyncError,
   reportWorkspaceSyncReady,
 } from './workspaceSyncStatus';
+import { describeLocalShortfall, isLocalCopyComplete, recordWorkspaceCensus } from './workspaceCensus';
 
 export type SalesWorkspaceData = {
   activities: SalesActivityRecord[];
@@ -195,6 +196,9 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
     names.forEach((name, index) => {
       (workspace as Record<string, unknown>)[name] = results[index];
     });
+    // What the cloud actually held, so the next first paint can tell a complete
+    // browser copy from a fragment of one.
+    if (userId) recordWorkspaceCensus(userId, workspace as unknown as Record<string, unknown>);
     return workspace;
   });
 
@@ -247,10 +251,14 @@ const FIRST_PAINT_BUDGET_MS = 400;
  * clearly failed, and the same fallback happens loudly - the sync pill says the
  * cloud is unavailable and "Cloud sync" retries.
  *
- * The "worth showing" test matters more than the timing. An empty browser copy
- * and a workspace with nothing in it look identical on screen, and one of them
- * is a lie; a new device, or one that has cleared its site data, has to wait for
- * the real answer rather than be told its business is empty.
+ * The "worth showing" test matters more than the timing, and "any record at all"
+ * was not it. Nothing mirrors a cloud load back into localStorage - only records
+ * created or edited on this device are written there - so a signed-in seller's
+ * browser copy is a handful of recent edits, not a workspace. That test passed
+ * for a copy holding eleven of 126 deals and no accounts or stakeholders at all,
+ * and the screen then held that fragment for the rest of the session while every
+ * request behind it returned 200. `isLocalCopyComplete` compares the copy against
+ * what the cloud was last seen to hold; short of that, the screen waits.
  */
 function withLocalFallback(
   cloudLoad: Promise<SalesWorkspaceData>,
@@ -264,7 +272,15 @@ function withLocalFallback(
       if (settled) return;
       void loadSalesWorkspaceData(null).then((local) => {
         if (settled) return;
-        if (!hasAnyRecords(local)) return;
+        if (!isLocalCopyComplete(userId, local as unknown as Record<string, unknown>)) {
+          if (import.meta.env.DEV) {
+            console.debug(
+              '[Memoire] First paint waited for the cloud; the browser copy is short on:',
+              describeLocalShortfall(userId, local as unknown as Record<string, unknown>),
+            );
+          }
+          return;
+        }
         settled = true;
         clearTimeout(timer);
         // Deliberately quiet: nothing has gone wrong. The cloud load is still
@@ -293,8 +309,22 @@ function withLocalFallback(
           Array.from(unsettled).join(', ') || 'nothing (the merge itself stalled)'
         }`,
       );
-      reportWorkspaceSyncError('Cloud sync did not answer. Showing this browser\'s copy.');
-      loadSalesWorkspaceData(null).then(resolve, reject);
+      loadSalesWorkspaceData(null).then((local) => {
+        // A red pill above a screen reading "0 accounts" is still a screen that
+        // says the business is gone, and a seller reads the number before the
+        // pill. An incomplete copy is refused and the surface reports a failed
+        // load instead, which is the true statement.
+        if (!isLocalCopyComplete(userId, local as unknown as Record<string, unknown>)) {
+          reportWorkspaceSyncError('Cloud sync did not answer, and this browser does not hold a full copy.');
+          reject(new Error(
+            'Cloud sync did not answer and this browser only holds part of your workspace, '
+            + 'so Memoire will not show a partial one. Check your connection and try again.',
+          ));
+          return;
+        }
+        reportWorkspaceSyncError('Cloud sync did not answer. Showing this browser\'s copy.');
+        resolve(local);
+      }, reject);
     }, WORKSPACE_LOAD_TIMEOUT_MS);
 
     cloudLoad.then(
@@ -313,20 +343,6 @@ function withLocalFallback(
         reject(error);
       },
     );
-  });
-}
-
-/**
- * Whether a browser copy is worth showing instead of waiting.
- *
- * "Any record at all" rather than "every collection populated": a real
- * workspace legitimately has no expenses or no supplier commitments, and
- * demanding all sixteen would mean nobody ever gets the fast path.
- */
-function hasAnyRecords(workspace: SalesWorkspaceData) {
-  return WORKSPACE_COLLECTIONS.some((name) => {
-    const value = (workspace as Record<string, unknown>)[name];
-    return Array.isArray(value) && value.length > 0;
   });
 }
 

@@ -1,6 +1,7 @@
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { MarketingNav } from '../../components/marketing/MarketingNav';
 import { Footer } from '../../components/marketing/Footer';
+import { CONTACT_EMAIL } from '../../config/contact';
 
 type LegalDocument = {
   title: string;
@@ -54,7 +55,7 @@ const documents: Record<string, LegalDocument> = {
         title: 'Your choices',
         paragraphs: [
           'You can use local mode, sign out, export available workspace data, clear local browser data, or request account deletion from Settings.',
-          'Questions about privacy can be sent to hello@memoire.app.',
+          `Questions about privacy can be sent to ${CONTACT_EMAIL}.`,
         ],
       },
     ],
@@ -94,7 +95,7 @@ const documents: Record<string, LegalDocument> = {
       },
       {
         title: 'Contact',
-        paragraphs: ['Questions about these terms can be sent to hello@memoire.app.'],
+        paragraphs: [`Questions about these terms can be sent to ${CONTACT_EMAIL}.`],
       },
     ],
   },

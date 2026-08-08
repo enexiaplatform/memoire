@@ -34,6 +34,7 @@ import {
 import { SubjectChip } from '../../components/common/SubjectChip';
 import { ActivityInsightsBand } from './ActivityInsightsBand';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
+import { useWorkspaceRefresh } from '../../hooks/useWorkspaceRefresh';
 import { businessDomains, businessDomainTone, classifyBusinessDomain, type BusinessDomain } from '../../utils/businessDomain';
 import { buildCommercialJourneySnapshot, formatJourneyCommitment } from '../../utils/commercialJourney';
 import { buildActivityStateTrail, type ActivityTrailChipKind } from '../../utils/activityStateTrail';
@@ -139,6 +140,9 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
   useEffect(() => {
     refreshActivities();
   }, [refreshActivities]);
+
+  // Drawn from the browser copy at first paint; take the cloud answer when it lands.
+  useWorkspaceRefresh(() => { void refreshActivities(); });
 
   // The plan's completion marks, so the insights band can read follow-through -
   // which captured next actions were actually ticked done. Stays in step live

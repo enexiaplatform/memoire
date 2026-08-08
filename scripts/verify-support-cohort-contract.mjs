@@ -117,7 +117,7 @@ for (const marker of [
 
 const exportTab = read('src/features/settings/ExportTab.tsx');
 for (const marker of [
-  "const SUPPORT_EMAIL = 'hello@memoire.app';",
+  "const SUPPORT_EMAIL = CONTACT_EMAIL;",
   "mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Memoire early-access support')}",
   'Support package',
   'For early-access support, include what you were doing, the approximate time, the visible error message,',

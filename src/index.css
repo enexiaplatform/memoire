@@ -21,6 +21,40 @@
 }
 
 /* ── Enexia Design System — Global Base ── */
+
+/*
+ * Reserve the scrollbar's width whether or not the page needs one.
+ *
+ * Without this, navigating from a page that scrolls to one that does not
+ * widens the viewport by the scrollbar's ~15px and every fixed element jumps
+ * sideways - the Capture button measured at x=1047 on one page and x=1062 on
+ * the next. It reads as the layout breaking on navigation, and it is one
+ * property.
+ */
+html {
+  scrollbar-gutter: stable;
+}
+
+/*
+ * The two sticky bands a list page stacks, named once.
+ *
+ * The app header sticks at the top and the filter bar sticks under it, and the
+ * table's own `<thead>` stuck at `top: 0` - which is behind both of them. So
+ * scrolling past row 25 lost the column headers entirely, on the two surfaces
+ * where the columns are the whole point. Hard-coding the sum at each call site
+ * is how those three numbers drift apart; this is one place to change them.
+ */
+:root {
+  --app-header-h: 56px;
+  --filter-bar-h: 46px;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --app-header-h: 64px;
+  }
+}
+
 body {
   font-family: 'Inter', system-ui, sans-serif;
   background: #F8FAFC;

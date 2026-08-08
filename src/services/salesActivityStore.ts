@@ -1,4 +1,5 @@
 import { supabaseClient } from '../lib/supabaseClient.ts';
+import { fetchAllRows } from './supabasePaging.ts';
 import type { ClassifiedSalesActivity, SalesActivityType } from '../utils/salesActivityClassifier.ts';
 import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
@@ -424,15 +425,17 @@ function deleteLocalActivity(activityId: string) {
 }
 
 async function loadCloudActivities(userId: string): Promise<SalesActivityRecord[]> {
-  const { data, error } = await supabaseClient!
+  // Paged: see `fetchAllRows`. Activity is the fastest-growing table here, so
+  // this is the one that would have met the cap next.
+  const data = await fetchAllRows<SalesActivityRow>((from, to) => supabaseClient!
     .from(TABLE_NAME)
     .select('*')
     .eq('user_id', userId)
     .order('activity_date', { ascending: false })
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range(from, to) as never);
 
-  if (error) throw new Error(error.message);
-  return ((data || []) as SalesActivityRow[]).map(rowToRecord);
+  return data.map(rowToRecord);
 }
 
 async function createCloudActivity(

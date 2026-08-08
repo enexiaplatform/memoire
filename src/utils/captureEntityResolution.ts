@@ -136,8 +136,18 @@ function resolveAccountFromCorrection(
     || cleanEntity(accountCorrection.correctedValue);
 }
 
+/**
+ * The named person in a note.
+ *
+ * The lookahead used to demand that the name be followed by "at"/"from", a
+ * comma, a full stop or the end of the note, which meant "Ms. Huyen is the
+ * buyer" resolved to nobody - the most ordinary sentence a seller writes. Any
+ * word boundary is enough; the honorific and the capitalisation are what
+ * identify the name, and the greedy trailing groups are already bounded to three
+ * words.
+ */
 function resolveContact(rawNote: string, candidate: string) {
-  const explicit = rawNote.match(/\b((?:Ms|Mr|Mrs|Dr)\.?\s+[A-Z][A-Za-z'-]+(?:\s+[A-Z][A-Za-z'-]+){0,2})(?=\s+(?:at|from)\b|[.,;]|$)/i)?.[1] || '';
+  const explicit = rawNote.match(/\b((?:Ms|Mr|Mrs|Dr)\.?\s+[A-Z][A-Za-z'-]+(?:\s+[A-Z][A-Za-z'-]+){0,2})\b/)?.[1] || '';
   if (explicit) return normalizeHonorific(cleanEntity(explicit));
   if (candidate && includesPhrase(rawNote, candidate) && !looksLikeOrganization(candidate)) return cleanEntity(candidate);
   return '';

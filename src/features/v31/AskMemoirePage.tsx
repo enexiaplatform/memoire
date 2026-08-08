@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Bot, ExternalLink, Send, Sparkles } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -50,6 +50,13 @@ export function AskMemoirePage() {
   const [question, setQuestion] = useState(() => searchParams.get('question')?.trim() || 'What should I do next?');
   const [urlQuestionConsumed, setUrlQuestionConsumed] = useState(false);
   const [answer, setAnswer] = useState<AskMemoireAnswer | null>(null);
+  /**
+   * The answer renders below the question form and the preset list, which on a
+   * laptop puts it off the bottom of the screen. Pressing Ask therefore looked
+   * like pressing a dead button: the page did not move, and the thing that had
+   * changed was somewhere the operator could not see.
+   */
+  const answerSectionRef = useRef<HTMLElement>(null);
   const [loading, setLoading] = useState(false);
   const [contextLoading, setContextLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -328,6 +335,7 @@ export function AskMemoirePage() {
       setAnswer(withAnswerCards(answerFromMemory(nextQuestion, contextPacket), nextQuestion, contextPacket));
     } finally {
       setLoading(false);
+      answerSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [
     question,
@@ -517,7 +525,7 @@ export function AskMemoirePage() {
             <li>Who needs follow-up?</li>
             <li>Where is money stuck?</li>
             <li>What changed this week?</li>
-            <li>Summarise this account.</li>
+            <li>Summarize this account.</li>
             <li>Which opportunities have no next action?</li>
             <li>Which commitments are overdue?</li>
             <li>What am I waiting for from customers?</li>
@@ -530,7 +538,15 @@ export function AskMemoirePage() {
         </div>
       </section>
 
-      <section className="mt-5 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      {/* `aria-live` so the answer is announced rather than silently appearing,
+          and `scroll-mt` so the heading is not tucked under the sticky header
+          when this is scrolled to. */}
+      <section
+        ref={answerSectionRef}
+        aria-live="polite"
+        aria-busy={loading}
+        className="mt-5 scroll-mt-24 rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+      >
         <div className="mb-4 flex items-center gap-2">
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-brand-blue">
             <Bot className="h-5 w-5" />

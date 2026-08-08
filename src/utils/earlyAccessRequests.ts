@@ -1,5 +1,6 @@
+import { CONTACT_EMAIL } from '../config/contact.ts';
 export const EARLY_ACCESS_REQUESTS_KEY = 'memoire.earlyAccessRequests.v1';
-export const EARLY_ACCESS_CONTACT_EMAIL = 'hello@memoire.app';
+export const EARLY_ACCESS_CONTACT_EMAIL = CONTACT_EMAIL;
 
 export const earlyAccessRoles = [
   'Account Executive / Sales Rep',

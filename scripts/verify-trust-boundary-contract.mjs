@@ -41,9 +41,21 @@ for (const marker of [
   'human review',
   'does not silently update external systems',
   'does not currently provide enterprise SSO, team administration, or native CRM writeback',
-  'hello@memoire.app',
+  // The address itself is no longer typed here. It was typed literally in five
+  // places - both legal documents, the marketing footer, the Settings export
+  // panel and the early-access form - all of them `hello@memoire.app`, on a
+  // product served from memoire-official.com. What this contract cares about is
+  // that the legal page tells the reader where to write, and that there is
+  // exactly one place to change the answer.
+  'CONTACT_EMAIL',
 ]) {
   requireIncludes(legalPage, marker, `legal page missing trust-boundary marker: ${marker}`);
+}
+
+const contact = read('src/config/contact.ts');
+requireIncludes(contact, 'export const CONTACT_EMAIL', 'the contact address must have one home');
+if (!/export const CONTACT_EMAIL = '[^'@\s]+@[^'@\s]+\.[a-z]{2,}';/.test(contact)) {
+  failures.push('CONTACT_EMAIL must be a single well-formed address');
 }
 
 const boundariesTab = read('src/features/settings/BoundariesTab.tsx');

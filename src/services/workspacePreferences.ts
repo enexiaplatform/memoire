@@ -81,7 +81,26 @@ function isSupported(value: unknown): value is SupportedCurrency {
  * who set SGD in this browser before the column existed keeps SGD rather than
  * being reset to the column default, and the next save writes it up.
  */
-export async function hydrateWorkspacePreferences(userId?: string | null): Promise<WorkspacePreferences> {
+export function hydrateWorkspacePreferences(userId?: string | null): Promise<WorkspacePreferences> {
+  // Single-flight. The app shell hydrates on mount and Settings hydrates on
+  // open, and React re-mounts both in development, so one visit to Today asked
+  // `user_profiles` for the same row three times - measured at 1.60s, 1.75s and
+  // 1.85s, sequentially, for an identical answer. Callers still each get a
+  // promise; only one query goes out.
+  const key = userId || 'local';
+  const existing = hydrationsInFlight.get(key);
+  if (existing) return existing;
+
+  const promise = readWorkspacePreferences(userId).finally(() => {
+    hydrationsInFlight.delete(key);
+  });
+  hydrationsInFlight.set(key, promise);
+  return promise;
+}
+
+const hydrationsInFlight = new Map<string, Promise<WorkspacePreferences>>();
+
+async function readWorkspacePreferences(userId?: string | null): Promise<WorkspacePreferences> {
   const current: WorkspacePreferences = {
     reportingCurrency: getReportingCurrency(),
     openingCashBalance: getOpeningCashBalance(),

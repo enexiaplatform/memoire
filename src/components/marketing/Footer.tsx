@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { BrandWordmark } from '../brand/BrandWordmark';
+import { CONTACT_EMAIL, CONTACT_MAILTO } from '../../config/contact';
 
 export function Footer() {
   return (
@@ -9,8 +10,8 @@ export function Footer() {
           <Link to="/" className="mb-4 block" aria-label="Memoire home">
             <BrandWordmark className="text-2xl" />
           </Link>
-          <a href="mailto:hello@memoire.app" className="mb-4 inline-block text-gray-500 hover:text-gray-900">
-            hello@memoire.app
+          <a href={CONTACT_MAILTO} className="mb-4 inline-block text-gray-500 hover:text-gray-900">
+            {CONTACT_EMAIL}
           </a>
         </div>
         

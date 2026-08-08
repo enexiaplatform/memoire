@@ -5,6 +5,7 @@ import {
   measureLocalStorageUsage,
   type StorageUsage,
 } from '../../services/localWriteGuard';
+import { formatBytes, formatCount } from '../../utils/numberFormat';
 
 /**
  * What this workspace costs the browser, and how close that is to the wall.
@@ -70,7 +71,7 @@ export function StoragePanel() {
           {formatBytes(usage.memoireBytes)}
         </p>
         <p className="text-sm font-semibold text-gray-500">
-          of about 5 MB · {percent}% used · {totalRecords.toLocaleString()} record{totalRecords === 1 ? '' : 's'}
+          of about 5 MB · {percent}% used · {formatCount(totalRecords)} record{totalRecords === 1 ? '' : 's'}
         </p>
       </div>
 
@@ -117,7 +118,7 @@ export function StoragePanel() {
                   <td className="truncate py-1 font-mono text-[11px] text-gray-600" title={row.key}>
                     {row.key.replace(/^memoire\./, '').replace(/\.v\d+$/, '')}
                   </td>
-                  <td className="py-1 text-right font-semibold text-gray-700">{row.records === null ? '—' : row.records.toLocaleString()}</td>
+                  <td className="py-1 text-right font-semibold text-gray-700">{row.records === null ? '—' : formatCount(row.records)}</td>
                   <td className="py-1 text-right font-semibold text-gray-700">{formatBytes(row.bytes)}</td>
                 </tr>
               ))}
@@ -129,8 +130,3 @@ export function StoragePanel() {
   );
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}

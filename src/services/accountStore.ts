@@ -2,6 +2,7 @@ import { supabaseClient } from '../lib/supabaseClient.ts';
 import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
+import { fetchAllRows } from './supabasePaging.ts';
 
 export const ACCOUNT_STORAGE_KEY = 'memoire.accounts.v1';
 
@@ -358,16 +359,19 @@ const ACCOUNT_COLUMNS =
   + 'source_system,external_source_key,created_at,updated_at';
 
 async function loadCloudAccounts(userId: string): Promise<AccountMemoryRecord[]> {
-  const { data, error } = await supabaseClient!
+  // Paged, because an unbounded select stops at PostgREST's 1000-row cap and
+  // returns 200. This book holds 1,086 accounts; the app showed the first
+  // thousand of them and called that the customer list.
+  const data = await fetchAllRows((from, to) => supabaseClient!
     .from(TABLE_NAME)
     .select(ACCOUNT_COLUMNS)
     .eq('user_id', userId)
-    .order('updated_at', { ascending: false });
+    .order('updated_at', { ascending: false })
+    .range(from, to));
 
-  if (error) throw new Error(error.message);
   // The projected column list is not a literal type, so the client hands back
   // its generic row shape; the cast is the same one `select('*')` was getting.
-  return ensureAccountCodes(((data || []) as unknown as AccountRow[]).map(rowToAccount)).accounts;
+  return ensureAccountCodes((data as unknown as AccountRow[]).map(rowToAccount)).accounts;
 }
 
 async function createCloudAccount(input: AccountFormInput, userId: string, accountCode: string) {

@@ -179,7 +179,10 @@ export function LandingPage() {
                 Personal Commercial Control Tower
               </p>
               <h1 className="mt-6 font-display text-5xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
-                Nothing in your business
+                {/* The trailing space is load-bearing. A block-level span after
+                    text joins in the accessibility tree, so this line was
+                    announced as "businessgoes silent". */}
+                Nothing in your business{' '}
                 <span className="block brand-gradient-text">goes silent.</span>
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300">

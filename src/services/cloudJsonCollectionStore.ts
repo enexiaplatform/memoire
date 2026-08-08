@@ -1,4 +1,5 @@
 import { supabaseClient } from '../lib/supabaseClient.ts';
+import { fetchAllRows } from './supabasePaging.ts';
 import { reportClientOperationalEvent } from './clientTelemetry.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { writeLocalCollection } from './localWriteGuard.ts';
@@ -26,15 +27,15 @@ export async function loadCloudJsonCollection<T extends CloudJsonRecord>(
 ): Promise<T[]> {
   if (!supabaseClient) return [];
 
-  const { data, error } = await supabaseClient
+  // Paged: see `fetchAllRows`.
+  const data = await fetchAllRows<CloudJsonRow>((from, to) => supabaseClient!
     .from(table)
     .select('id, payload, updated_at')
     .eq('user_id', userId)
-    .order('updated_at', { ascending: false });
+    .order('updated_at', { ascending: false })
+    .range(from, to) as never);
 
-  if (error) throw new Error(error.message);
-
-  return ((data || []) as CloudJsonRow[]).flatMap((row) => {
+  return data.flatMap((row) => {
     if (!row.payload || typeof row.payload !== 'object') return [];
     return [{ ...(row.payload as T), id: row.id }];
   });

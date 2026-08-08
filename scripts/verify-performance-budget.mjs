@@ -92,13 +92,30 @@ measure('resolveThreads', () => resolveCommercialThreads({
     'the first-paint budget must be short enough to matter and long enough that a warm cloud answer wins',
   );
 
-  // The guard that keeps the fast path honest. An empty browser copy and a
-  // workspace with nothing in it look identical on screen, and one of them is a
-  // lie - a new device has to wait for the real answer rather than be told its
-  // business is empty.
+  // The guard that keeps the fast path honest.
+  //
+  // This used to assert `hasAnyRecords(local)` - "the browser copy holds at
+  // least one record somewhere". That is not the same claim as "the browser
+  // copy is a workspace", and the difference shipped: nothing mirrors a cloud
+  // load into localStorage, so a signed-in seller's copy held eleven of 126
+  // deals and no accounts or stakeholders at all. It passed the test, the
+  // screen drew it, and the operator spent a session looking at a workspace
+  // reporting zero customers while every request behind it returned 200.
+  //
+  // The copy is now measured against what the cloud was last seen to hold.
   assert.ok(
-    workspace.includes('hasAnyRecords(local)'),
-    'the browser copy must only be shown when it actually holds records',
+    workspace.includes('isLocalCopyComplete('),
+    'the browser copy may only be shown when it is complete against the last known cloud census',
+  );
+  assert.ok(
+    !workspace.includes('hasAnyRecords'),
+    'the any-record test must not come back: it cannot tell a workspace from a fragment of one',
+  );
+
+  const census = readFileSync('src/services/workspaceCensus.ts', 'utf8');
+  assert.ok(
+    census.includes('if (!census) return false'),
+    'a device that has never completed a cloud load must wait for one, not show what it happens to have',
   );
 
   assert.ok(
@@ -106,11 +123,52 @@ measure('resolveThreads', () => resolveCommercialThreads({
     'a screen drawn from the browser copy must be told when the real answer lands',
   );
 
-  const today = readFileSync('src/features/dashboard/DashboardPage.tsx', 'utf8');
+  // Every surface, not just Today. Today was the only listener, so Accounts,
+  // Opportunities and Stakeholders held their first paint for the whole session.
+  const refreshHook = readFileSync('src/hooks/useWorkspaceRefresh.ts', 'utf8');
   assert.ok(
-    today.includes('WORKSPACE_REFRESHED_EVENT'),
-    'Today must catch up when the cloud load finishes behind it',
+    refreshHook.includes('WORKSPACE_REFRESHED_EVENT'),
+    'the shared refresh hook must listen for the cloud answer',
   );
+
+  for (const surface of [
+    'src/features/dashboard/DashboardPage.tsx',
+    'src/features/accounts/AccountsPage.tsx',
+    'src/features/opportunities/OpportunitiesPage.tsx',
+    'src/features/stakeholders/StakeholdersPage.tsx',
+    'src/features/activity/ActivityPage.tsx',
+    'src/features/plan/WeeklyPlanPage.tsx',
+    'src/features/revenue/RevenueViewPage.tsx',
+    'src/features/calendar/SalesActivityCalendarPage.tsx',
+  ]) {
+    const source = readFileSync(surface, 'utf8');
+    assert.ok(
+      source.includes('WORKSPACE_REFRESHED_EVENT') || source.includes('useWorkspaceRefresh'),
+      `${surface} must catch up when the cloud load finishes behind it`,
+    );
+  }
+}
+
+// Every collection read from the cloud must be paged.
+//
+// PostgREST caps an unbounded select at db-max-rows and answers 200, so the app
+// showed exactly 1000 of 1,738 stakeholders and called it the whole book. A cap
+// that arrives as a success is invisible to everything downstream.
+{
+  for (const store of [
+    'src/services/accountStore.ts',
+    'src/services/stakeholderStore.ts',
+    'src/services/opportunityStore.ts',
+    'src/services/salesActivityStore.ts',
+    'src/services/cloudJsonCollectionStore.ts',
+    'src/services/commercialKernel/kernelRepository.ts',
+  ]) {
+    const source = readFileSync(store, 'utf8');
+    assert.ok(
+      /fetchAllRows[<(]/.test(source),
+      `${store} must read every row, not the first page the server feels like returning`,
+    );
+  }
 }
 
 console.log('Performance budget verified: the derived models hold at a real book of business, and the screen never waits on the network to draw.');

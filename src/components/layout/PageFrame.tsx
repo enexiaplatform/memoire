@@ -1,4 +1,6 @@
 import type { MouseEventHandler, ReactNode } from 'react';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
+
 
 /**
  * The one page frame every surface opens with.
@@ -53,6 +55,11 @@ export type PageHeaderProps = {
   /** Optional glyph beside the title. */
   icon?: ReactNode;
   className?: string;
+  /**
+   * What the browser tab says, when the page's own title is too terse to be
+   * useful out of context ("Today" is fine; "Review" alone is not).
+   */
+  documentTitle?: string;
 };
 
 export function PageHeader({
@@ -63,7 +70,10 @@ export function PageHeader({
   actions,
   icon,
   className = '',
+  documentTitle,
 }: PageHeaderProps) {
+  useDocumentTitle(documentTitle || title);
+
   return (
     <header className={`flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6 ${className}`}>
       <div className="min-w-0">

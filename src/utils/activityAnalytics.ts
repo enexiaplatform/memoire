@@ -384,7 +384,17 @@ function buildHeadline(input: {
 
   const [top] = input.subjects;
   if (top && top.count > 1) {
-    parts.push(`${top.name} took the most of it (${Math.round(top.share * 100)}%).`);
+    /**
+     * "Busiest single subject", not "took the most of it".
+     *
+     * These are subjects - one customer, one deal, one internal line - and the
+     * Business Domain chart directly below this sentence groups the same period
+     * by domain. Both are right and they share vocabulary: the sentence read
+     * "Internal took the most of it (12%)" above a chart showing Internal at 35%
+     * and Sales at 57%, which reads as the product contradicting itself on one
+     * screen. Naming the denominator is the whole fix.
+     */
+    parts.push(`Your busiest single subject was ${top.name}, at ${Math.round(top.share * 100)}% of these items.`);
   }
 
   if (input.followThrough.settled > 0 && input.followThrough.rate !== null) {

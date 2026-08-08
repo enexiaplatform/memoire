@@ -14,8 +14,9 @@ import { hasLocalSampleData } from '../../utils/dataMode';
 import { trackProductEvent } from '../../utils/productAnalytics';
 import { recordBackupExport } from '../../services/syncRecoveryLog';
 import { restoreWorkspace, undoRestore, type RestoreResult } from '../../services/workspaceRestore';
+import { CONTACT_EMAIL } from '../../config/contact';
 
-const SUPPORT_EMAIL = 'hello@memoire.app';
+const SUPPORT_EMAIL = CONTACT_EMAIL;
 const SUPPORT_MAILTO = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Memoire early-access support')}`;
 
 export function ExportTab() {

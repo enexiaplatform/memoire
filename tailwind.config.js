@@ -7,6 +7,27 @@ export default {
   theme: {
     extend: {
       colors: {
+        /**
+         * The neutral scale, with its two lightest text greys darkened to pass
+         * WCAG AA.
+         *
+         * Tailwind's `gray-400` is #9CA3AF, which is 2.54:1 on white against the
+         * 4.5:1 a body-size text needs. It is used in 330 places here, and one
+         * of them is the style for a completed plan item - so most of a finished
+         * week rendered at 12px in a grey nobody can read, and the Plan board
+         * alone failed 29 contrast checks.
+         *
+         * Retinting the token rather than editing 330 call sites is deliberate:
+         * every one of them means "the quiet grey", and the bug is what that
+         * grey resolves to. #6C747F holds the cool hue and clears 4.5:1 on white
+         * (4.73) and on the page background #F8FAFC (4.52).
+         *
+         * `gray-300` is deliberately left alone: it is mostly `border-gray-300`
+         * on inputs, and WCAG's text rule does not apply to a hairline.
+         */
+        gray: {
+          400: '#6C747F',
+        },
         // Legacy memoire scale kept for Landing/History pages (Prompts 08/09 already use indigo)
         memoire: {
           50: '#f0f4ff',

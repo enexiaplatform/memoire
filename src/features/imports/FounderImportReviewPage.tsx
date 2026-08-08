@@ -10,6 +10,7 @@ import {
   type ImportBatchRecord,
   type ImportRowResultRecord,
 } from '../../services/importAuditStore';
+import { formatCount } from '../../utils/numberFormat';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -194,7 +195,7 @@ export function FounderImportReviewPage() {
                       <div className="flex items-start gap-3">
                         <RotateCcw className="mt-0.5 h-4 w-4 text-gray-500" />
                         <p className="text-sm leading-6 text-gray-600">
-                          Rollback is handled by the local import script with `--rollback-batch={selectedBatch.id}` after server-only credentials are set.
+                          Rolling this batch back is a server-side operation and is not available from here.
                         </p>
                       </div>
                     </div>
@@ -208,7 +209,7 @@ export function FounderImportReviewPage() {
                       <h2 className="text-base font-bold text-navy">Row Result Audit</h2>
                     </div>
                     <p className="mt-1 text-xs text-gray-500">
-                      {rowResults.length.toLocaleString()} safe row results loaded. {formatRowSummary(rowSummary)}
+                      {formatCount(rowResults.length)} safe row results loaded. {formatRowSummary(rowSummary)}
                     </p>
                   </div>
                   <div className="max-h-[520px] overflow-auto">
@@ -270,7 +271,7 @@ function Metric({ label, value, tone = 'blue' }: { label: string; value: number;
   return (
     <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
       <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{label}</p>
-      <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-lg font-black ${toneClass}`}>{value.toLocaleString()}</p>
+      <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-lg font-black ${toneClass}`}>{formatCount(value)}</p>
     </div>
   );
 }

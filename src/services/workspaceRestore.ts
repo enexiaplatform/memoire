@@ -7,6 +7,7 @@ import {
 import { writeLocalCollection } from './localWriteGuard.ts';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache.ts';
 import { buildRestorePlan, isWorkspaceKey, type BackupEnvelope } from '../utils/workspaceBackup.ts';
+import { formatCount } from '../utils/numberFormat.ts';
 
 /**
  * Putting a backup back, all the way back.
@@ -248,7 +249,7 @@ function buildSummary(input: {
     return `${input.localFailures} of ${input.collectionCount} collections could not be written to this browser. The workspace is part-restored - undo, free some space, and try again.`;
   }
 
-  const base = `${input.restoredRecords.toLocaleString()} records restored across ${input.collectionCount} collections`;
+  const base = `${formatCount(input.restoredRecords)} records restored across ${input.collectionCount} collections`;
   const dropped = input.droppedSampleRecords > 0
     ? `, ${input.droppedSampleRecords} demo record${input.droppedSampleRecords === 1 ? '' : 's'} left out`
     : '';

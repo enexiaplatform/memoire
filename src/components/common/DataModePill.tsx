@@ -1,5 +1,9 @@
+import { useContext } from 'react';
 import { Cloud, CloudOff, DatabaseZap, Loader2 } from 'lucide-react';
-import { getDataModeInfo, type DataModeInfo, type DataModeInput } from '../../utils/dataMode';
+import { AuthContext } from '../../auth/authContext';
+import { isSupabaseConfigured } from '../../lib/demoMode';
+import { getDataModeInfo, hasLocalSampleData, type DataModeInfo, type DataModeInput } from '../../utils/dataMode';
+import { useWorkspaceSyncStatus } from '../../services/workspaceSyncStatus';
 
 type DataModePillProps = Partial<DataModeInput> & {
   modeInfo?: DataModeInfo;
@@ -14,19 +18,39 @@ const toneClasses: Record<DataModeInfo['severity'], string> = {
   error: 'border-red-200 bg-red-50 text-red-700',
 };
 
+/**
+ * Where the records on this screen actually live.
+ *
+ * Every input used to come from props, and out of twenty call sites three passed
+ * `syncError` and several passed no auth state at all. `Boolean(undefined)` is
+ * false, so those pages rendered a green "Cloud + browser" while sync was down,
+ * and two rendered "Browser only" for a signed-in seller - three different
+ * answers to one question, none of them read from the thing that knows.
+ *
+ * So the pill asks for itself. Props still win where a surface genuinely knows
+ * better than the global status - a page mid-save, a brief with its own cloud
+ * handle - but omitting one no longer invents a reassuring answer.
+ */
 export function DataModePill({
   modeInfo,
   compact = false,
   showDescription = false,
   ...input
 }: DataModePillProps) {
+  // Read rather than required: this component appears on surfaces that render
+  // outside the provider in tests and on the marketing shell.
+  const auth = useContext(AuthContext);
+  const syncStatus = useWorkspaceSyncStatus();
+
   const info = modeInfo || getDataModeInfo({
-    isAuthenticated: Boolean(input.isAuthenticated),
-    isSupabaseConfigured: Boolean(input.isSupabaseConfigured),
+    isAuthenticated: input.isAuthenticated ?? Boolean(auth?.isAuthenticated),
+    isSupabaseConfigured: input.isSupabaseConfigured ?? isSupabaseConfigured,
     cloudAvailable: input.cloudAvailable,
-    syncError: input.syncError,
-    hasSampleData: input.hasSampleData,
-    isLoading: input.isLoading,
+    // An explicit `null` from a caller means "I checked and it is fine", which
+    // is why this is `??` and not `||`.
+    syncError: input.syncError ?? (syncStatus.state === 'error' ? syncStatus.message || 'Cloud sync is unavailable.' : null),
+    hasSampleData: input.hasSampleData ?? hasLocalSampleData(),
+    isLoading: input.isLoading ?? (syncStatus.state === 'checking' || Boolean(auth?.loading)),
   });
 
   return (
