@@ -6,13 +6,15 @@ import {
   billingConfigured,
   buildCheckoutBody,
   lemonSqueezyRequest,
+  purchasablePlans,
+  variantIdForPlan,
 } from './_lemonsqueezy.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).end();
   if (!billingConfigured()) return res.status(503).json({ error: 'Billing is not configured.' });
 
-  const { action, userId: claimedUserId, authToken, variantId } = req.body || {};
+  const { action, userId: claimedUserId, authToken, plan } = req.body || {};
   const user = await verifyUserToken(authToken, claimedUserId);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
@@ -25,11 +27,36 @@ export default async function handler(req: any, res: any) {
   const supabase = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey());
   const appUrl = process.env.VITE_APP_URL || 'http://localhost:5173';
 
+  // What the billing screen renders from. Everything it needs to decide whether
+  // to offer a plan, and what to say if it cannot, in one round trip - so the UI
+  // never shows a buy button that the checkout guard below would refuse.
+  if (action === 'status') {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('subscription_tier, subscription_status, lemonsqueezy_customer_id, lemonsqueezy_subscription_id')
+      .eq('id', userId)
+      .single();
+
+    return res.json({
+      checkoutEnabled: process.env.BILLING_CHECKOUT_ENABLED === 'true',
+      plans: purchasablePlans(),
+      tier: profile?.subscription_tier || 'free',
+      status: profile?.subscription_status || 'free',
+      hasBillingAccount: Boolean(
+        profile?.lemonsqueezy_subscription_id || profile?.lemonsqueezy_customer_id,
+      ),
+    });
+  }
+
   if (action === 'checkout') {
     if (process.env.BILLING_CHECKOUT_ENABLED !== 'true') {
       return res.status(503).json({ error: 'Checkout is not enabled.' });
     }
 
+    // The client names a plan, never a variant id - it has no way to know one.
+    // Resolving it here keeps the store's configuration server-side, and the
+    // allow-list below still decides, so an unconfigured plan cannot be bought.
+    const variantId = variantIdForPlan(plan);
     const allowedVariants = allowedVariantIds();
     if (!variantId || !allowedVariants.includes(String(variantId))) {
       return res.status(400).json({ error: 'Invalid price.' });

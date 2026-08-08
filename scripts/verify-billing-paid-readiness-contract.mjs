@@ -47,6 +47,10 @@ for (const marker of [
   'const userId = user.id;',
   "return res.status(401).json({ error: 'Unauthorized' })",
   "if (action === 'checkout')",
+  // The browser names a plan; the variant it costs is resolved here. Sending a
+  // variant id to the client would mean a billing identifier in the bundle.
+  "if (action === 'status')",
+  'const variantId = variantIdForPlan(plan);',
   "process.env.BILLING_CHECKOUT_ENABLED !== 'true'",
   "return res.status(503).json({ error: 'Checkout is not enabled.' })",
   'const allowedVariants = allowedVariantIds();',
@@ -115,6 +119,38 @@ for (const marker of [
       fail(`${file} must not reference Stripe`);
     }
   }
+}
+
+// The checkout entry point is the signed-in billing tab, not a public page.
+// The client half must stay free of any billing identifier: Lemon Squeezy has
+// no publishable key, so anything that looks like one here is a leak.
+{
+  const billingClientLib = read('src/lib/billing.ts');
+  for (const marker of [
+    "fetch('/api/billing'",
+    'export async function fetchBillingStatus',
+    'export async function startCheckout',
+    'export async function openBillingPortal',
+  ]) {
+    requireIncludes(billingClientLib, marker, `billing client missing marker: ${marker}`);
+  }
+  if (/VITE_[A-Z_]*(?:STRIPE|LEMONSQUEEZY)[A-Z_]*|variantId/.test(billingClientLib)) {
+    fail('src/lib/billing.ts must not carry a billing key or variant id into the browser');
+  }
+
+  const billingTab = read('src/features/settings/BillingTab.tsx');
+  for (const marker of [
+    'fetchBillingStatus',
+    'startCheckout',
+    'openBillingPortal',
+    // Cancelling is not losing access. The screen must say what the webhook does.
+    'until the period you have already paid for runs out',
+  ]) {
+    requireIncludes(billingTab, marker, `billing tab missing marker: ${marker}`);
+  }
+
+  const settingsPage = read('src/features/settings/SettingsPage.tsx');
+  requireIncludes(settingsPage, '<BillingTab />', 'settings page does not mount the billing tab');
 }
 
 const pricing = read('src/features/pricing/PricingPage.tsx');

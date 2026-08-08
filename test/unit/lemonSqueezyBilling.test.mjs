@@ -4,8 +4,10 @@ import { createHmac } from 'node:crypto';
 import {
   allowedVariantIds,
   buildCheckoutBody,
+  purchasablePlans,
   subscriptionStateFor,
   tierForVariantId,
+  variantIdForPlan,
   verifyWebhookSignature,
 } from '../../api/_lemonsqueezy.js';
 
@@ -193,5 +195,56 @@ describe('checkout body', () => {
   test('an unknown email is omitted rather than sent empty', () => {
     const body = buildCheckoutBody({ storeId: '1', variantId: '2', userId: 'u', email: '', redirectUrl: 'https://x/y' });
     assert.equal(body.data.attributes.checkout_data.email, undefined);
+  });
+});
+
+describe('plan to variant resolution', () => {
+  // The browser holds no variant id - there is no VITE_* billing key to put one
+  // in - so it names a plan and the server decides what that costs.
+  test('resolves each plan to its configured variant', () => {
+    withEnv(
+      { LEMONSQUEEZY_PERSONAL_VARIANT_ID: '111', LEMONSQUEEZY_TEAM_VARIANT_ID: '222' },
+      () => {
+        assert.equal(variantIdForPlan('personal'), '111');
+        assert.equal(variantIdForPlan('team'), '222');
+      },
+    );
+  });
+
+  test('refuses a plan name the store has no variant for', () => {
+    withEnv(
+      { LEMONSQUEEZY_PERSONAL_VARIANT_ID: '111', LEMONSQUEEZY_TEAM_VARIANT_ID: undefined },
+      () => {
+        assert.equal(variantIdForPlan('team'), null);
+        assert.equal(variantIdForPlan('enterprise'), null);
+        assert.equal(variantIdForPlan(undefined), null);
+      },
+    );
+  });
+
+  test('offers only the plans that are actually configured', () => {
+    withEnv(
+      { LEMONSQUEEZY_PERSONAL_VARIANT_ID: '111', LEMONSQUEEZY_TEAM_VARIANT_ID: undefined },
+      () => {
+        assert.deepEqual(purchasablePlans(), ['personal']);
+      },
+    );
+    withEnv(
+      { LEMONSQUEEZY_PERSONAL_VARIANT_ID: undefined, LEMONSQUEEZY_TEAM_VARIANT_ID: undefined },
+      () => {
+        assert.deepEqual(purchasablePlans(), []);
+      },
+    );
+  });
+
+  // A resolved variant is still put through the allow-list in api/billing.ts,
+  // so this pair is what keeps an unconfigured plan unbuyable end to end.
+  test('a resolved variant is one the allow-list already contains', () => {
+    withEnv(
+      { LEMONSQUEEZY_PERSONAL_VARIANT_ID: '111', LEMONSQUEEZY_TEAM_VARIANT_ID: '222' },
+      () => {
+        assert.equal(allowedVariantIds().includes(variantIdForPlan('personal')), true);
+      },
+    );
   });
 });

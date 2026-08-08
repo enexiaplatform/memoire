@@ -7,6 +7,7 @@ import { StoragePanel } from './StoragePanel';
 import { NotificationsPanel } from './NotificationsPanel';
 import { BoundariesTab } from './BoundariesTab';
 import { ProfileTab } from './ProfileTab';
+import { BillingTab } from './BillingTab';
 import { REPLAY_GUIDED_WORKFLOW_EVENT } from '../onboarding/guidedWorkflow';
 import { CURRENCY_NAMES, SUPPORTED_CURRENCIES, getReportingCurrency } from '../../utils/money';
 import { getOpeningCashBalance } from '../../utils/cashPosition';
@@ -25,7 +26,7 @@ import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 
 export function SettingsPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'profile' | 'export' | 'boundaries'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'billing' | 'export' | 'boundaries'>('profile');
   const [reportingCurrency, setReportingCurrencyState] = useState(() => getReportingCurrency());
   const [currencySave, setCurrencySave] = useState<PreferenceSaveResult | null>(null);
   const [openingBalance, setOpeningBalanceState] = useState(() => {
@@ -234,6 +235,9 @@ export function SettingsPage() {
         <TabButton active={activeTab === 'profile'} onClick={() => setActiveTab('profile')}>
           Profile
         </TabButton>
+        <TabButton active={activeTab === 'billing'} onClick={() => setActiveTab('billing')}>
+          Plan & Billing
+        </TabButton>
         <TabButton active={activeTab === 'boundaries'} onClick={() => setActiveTab('boundaries')}>
           Data & Privacy
         </TabButton>
@@ -243,6 +247,7 @@ export function SettingsPage() {
       </div>
 
       {activeTab === 'profile' && <ProfileTab />}
+      {activeTab === 'billing' && <BillingTab />}
       {activeTab === 'boundaries' && <BoundariesTab />}
       {activeTab === 'export' && <ExportTab />}
     </PageContainer>

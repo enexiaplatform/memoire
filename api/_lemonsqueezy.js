@@ -25,6 +25,28 @@ export function allowedVariantIds() {
     .map(String);
 }
 
+/**
+ * The plans a browser is allowed to name.
+ *
+ * The browser never learns a variant id. There is no VITE_* billing key - the
+ * paid-readiness contract fails the build if one appears - so the client asks
+ * for a *plan* and the server resolves which variant that is. Configuration
+ * stays server-side, and a plan the store has no variant for simply is not
+ * offered rather than rendering a button that 400s.
+ */
+export const PURCHASABLE_PLANS = ['personal', 'team'];
+
+export function variantIdForPlan(plan) {
+  const key = String(plan ?? '').trim().toLowerCase();
+  if (key === 'personal') return String(process.env.LEMONSQUEEZY_PERSONAL_VARIANT_ID ?? '').trim() || null;
+  if (key === 'team') return String(process.env.LEMONSQUEEZY_TEAM_VARIANT_ID ?? '').trim() || null;
+  return null;
+}
+
+export function purchasablePlans() {
+  return PURCHASABLE_PLANS.filter((plan) => variantIdForPlan(plan));
+}
+
 export function tierForVariantId(variantId) {
   const id = String(variantId ?? '').trim();
   const teamId = String(process.env.LEMONSQUEEZY_TEAM_VARIANT_ID ?? '').trim();

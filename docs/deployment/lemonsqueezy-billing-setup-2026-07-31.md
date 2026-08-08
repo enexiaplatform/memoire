@@ -21,7 +21,9 @@ Three consequences run through the rest of this document:
 | Piece | Location |
 | --- | --- |
 | Shared client, signature check, status mapping | `api/_lemonsqueezy.js` |
-| Checkout and customer portal | `api/billing.ts` |
+| Checkout, portal and billing status | `api/billing.ts` |
+| Browser half - no key, no variant id | `src/lib/billing.ts` |
+| The screen an operator buys from | `src/features/settings/BillingTab.tsx` |
 | Webhook receiver | `api/lemonsqueezy-webhook.ts` |
 | Billing columns | `supabase/migrations/20260731090000_lemonsqueezy_billing_columns.sql` |
 | Contract | `scripts/verify-billing-paid-readiness-contract.mjs` |
@@ -56,10 +58,28 @@ LEMONSQUEEZY_TEAM_VARIANT_ID=
 
 `/api/health` reports `lemonsqueezy_api_key`, `lemonsqueezy_store`, `lemonsqueezy_webhook_secret` and `billing_checkout_disabled` as optional checks, so an operator can confirm both that billing is configured and that checkout is still off.
 
+## Where an operator buys
+
+**Settings > Plan & Billing**, signed in. Not `/pricing`.
+
+The public pricing page still quotes ranges rather than a price, and the exposure guard in `billing-checkout-exposure-guard-2026-06-17.md` holds it there until B1 selects an actual offer. Moving the entry point onto `/pricing` is a separate, deliberate change: it means editing that guard, `verify-billing-paid-readiness-contract.mjs` and `verify-commercial-readiness.mjs`, all three of which currently assert that page stays disconnected.
+
+The tab reads `action: 'status'` first and renders from the answer, so it never shows a button the server would refuse:
+
+| Server answer | What the operator sees |
+| --- | --- |
+| 503 - not configured | "Paid plans are not set up on this deployment." |
+| `checkoutEnabled: false` | Plans described, no buy button |
+| `checkoutEnabled: true`, plans configured | Upgrade button per configured plan |
+| `status: cancelled` | Kept until the paid period ends - matching what the webhook does |
+| `hasBillingAccount` | "Manage billing" into Lemon Squeezy's portal |
+
+**The browser names a plan, never a variant.** `/api/billing` takes `plan: 'personal' | 'team'` and resolves it against `LEMONSQUEEZY_*_VARIANT_ID` server-side, then still puts the result through the existing allow-list. A plan with no variant configured is not offered and cannot be bought. This is what keeps the rule above intact - there is no billing identifier of any kind in the browser bundle.
+
 ## How a payment becomes access
 
 ```text
-/api/billing (checkout) → hosted Lemon Squeezy checkout → payment
+Settings > Plan & Billing → /api/billing (checkout) → hosted Lemon Squeezy checkout → payment
   → subscription_created webhook → user_profiles.subscription_tier → api/_plan.js
 ```
 
