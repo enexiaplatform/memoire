@@ -971,7 +971,7 @@ export function OpportunitiesPage() {
     const alreadyClosed = editingOpportunity?.status === 'Won' || editingOpportunity?.status === 'Lost';
     if (closing && !alreadyClosed && !hasRecordedOutcomeReason) {
       setSaveState('error');
-      setMessage(`Marking this ${form.status} needs a reason. Fill "Why did this happen?" in the close-out just under Status, then press "Save outcome retro" - that records what happened and closes the deal for you.`);
+      setMessage(`Marking this ${form.status} needs a reason. The close-out is directly above this message: fill "Why did this happen?" and press "Save outcome retro" - that records what happened and closes the deal for you.`);
       // Pointing at a form is not the same as showing it. The Save button sits
       // at the foot of a long drawer and the close-out is near the top, so an
       // operator who read this message was told to find something a screen and
@@ -3208,15 +3208,6 @@ function OpportunityPanel({
           <Field label="Next action date" type="date" value={form.nextActionDate} onChange={(value) => update('nextActionDate', value)} />
         </div>
 
-        {closingThisDeal && currentOpportunity && (
-          <OpportunityOutcomeRetroPanel
-            opportunity={currentOpportunity}
-            outcomes={getOpportunityOutcomesForOpportunity(opportunityOutcomes, currentOpportunity)}
-            closing
-            nudge={closeOutNudge}
-            onSaveOutcome={(draft) => onSaveOpportunityOutcome(currentOpportunity, draft)}
-          />
-        )}
 
         {/* Pricing, at the moment a price is being decided.
             Above the deep-analysis fold on purpose: this is not analysis of a
@@ -3385,6 +3376,23 @@ function OpportunityPanel({
           <LinkedActivitiesTimeline activities={linkedActivities} />
           </div>
         </details>
+      )}
+
+      {/* The close-out sits immediately above the save it is a condition of.
+          It used to render near Status, a screen and a half up, and the save
+          that demands it prints its refusal down here - so the operator read
+          "fill in the close-out" with no close-out anywhere in sight and
+          reported the form as missing, twice. Scrolling them to it was not
+          enough: the fix is that the demand and the answer share a viewport.
+          The nudge below still runs, but now it has almost nothing to move. */}
+      {closingThisDeal && currentOpportunity && (
+        <OpportunityOutcomeRetroPanel
+          opportunity={currentOpportunity}
+          outcomes={getOpportunityOutcomesForOpportunity(opportunityOutcomes, currentOpportunity)}
+          closing
+          nudge={closeOutNudge}
+          onSaveOutcome={(draft) => onSaveOpportunityOutcome(currentOpportunity, draft)}
+        />
       )}
 
       {message && (

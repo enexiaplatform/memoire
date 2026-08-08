@@ -33,9 +33,16 @@ for (const panel of ['<StakeholderMap', '<MeddicLitePanel', '<OpportunityCommerc
 // It was folded away with the rest, which produced the worst outcome altitude
 // can produce: picking Won or Lost failed the save with a message pointing at a
 // form inside a section that was shut, so the deal could not be closed at all
-// and nothing on screen said how. A deal being closed therefore wears its
-// close-out beside the status that closed it, and the folded copy is skipped
-// rather than rendered a second time - two of the same form on one drawer is
+// and nothing on screen said how.
+//
+// Being outside the fold turned out not to be enough on its own. It first went
+// beside Status, near the top of a drawer four screens tall, while the save
+// that demands it prints its refusal at the very bottom - and the founder
+// reported the form as missing a second time, from the bottom of the drawer,
+// looking at the message that named it. So the requirement is stronger than
+// "not folded": the closing copy renders **between the fold and the save**, so
+// the demand and the answer occupy one viewport. The folded copy is still
+// skipped rather than rendered twice - two of the same form on one drawer is
 // two drafts of the same reason.
 {
   const closingAt = page.indexOf('const closingThisDeal');
@@ -46,11 +53,22 @@ for (const panel of ['<StakeholderMap', '<MeddicLitePanel', '<OpportunityCommerc
     'the close-out surfaces on the status the operator picked, not on a saved record',
   );
 
+  const foldEnd = page.indexOf('</details>', analysisAt);
+  const saveAt = page.indexOf("'Save Opportunity'");
+  assert.ok(foldEnd > analysisAt, 'the deep analysis fold must close');
+  assert.ok(saveAt > foldEnd, 'the save button sits after the fold');
+
   const retroRenders = page.split('<OpportunityOutcomeRetroPanel').length - 1;
-  assert.equal(retroRenders, 2, 'exactly two render sites: one above the fold while closing, one inside it otherwise');
-  assert.ok(page.indexOf('<OpportunityOutcomeRetroPanel') < analysisAt, 'the closing copy renders above the fold');
-  assert.ok(page.lastIndexOf('<OpportunityOutcomeRetroPanel') > analysisAt, 'the filed-away copy stays inside it');
-  assert.match(page, /currentOpportunity && !closingThisDeal && \(/, 'the folded copy is skipped while the close-out is open above');
+  assert.equal(retroRenders, 2, 'exactly two render sites: one beside the save while closing, one inside the fold otherwise');
+
+  const foldedCopy = page.indexOf('<OpportunityOutcomeRetroPanel');
+  const closingCopy = page.lastIndexOf('<OpportunityOutcomeRetroPanel');
+  assert.ok(foldedCopy > analysisAt && foldedCopy < foldEnd, 'the filed-away copy stays inside the fold');
+  assert.ok(
+    closingCopy > foldEnd && closingCopy < saveAt,
+    'the closing copy renders outside the fold and above the save it is a condition of',
+  );
+  assert.match(page, /currentOpportunity && !closingThisDeal && \(/, 'the folded copy is skipped while the close-out is open');
 }
 
 // 4. The head shows the money-spine trio (money / risk / blocker) and next commitment.
