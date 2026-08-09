@@ -17,6 +17,7 @@ const routePrefetchers: Record<string, () => Promise<unknown>> = {
   '/app/business': () => import('../features/business/BusinessLensPage'),
   '/app/activity': () => import('../features/activity/ActivityPage'),
   '/app/vault': () => import('../features/vault/BusinessVaultPage'),
+  '/app/portfolio-coverage': () => import('../features/coverage/PortfolioCoveragePage'),
 };
 
 const prefetchedRoutes = new Set<string>();

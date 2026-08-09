@@ -1,291 +1,503 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Grid3x3 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Layers, ListTree, Network, Plus, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { hasLocalSampleData } from '../../utils/dataMode';
-import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
-import type { AccountMergeRecord } from '../../services/accountMergeStore';
-import type { CrmLiteOpportunity } from '../../services/opportunityStore';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData, type SalesWorkspaceData } from '../../services/workspaceData';
+import { deleteKnowledgeNote, loadKnowledgeNotes, loadKnowledgeNotesForWorkspace, saveKnowledgeNote } from '../../services/knowledgeNoteStore';
 import { buildAccountAliasIndex } from '../../utils/accountAliases';
+import { buildKnowledgeGraph, type KnowledgeGap, type KnowledgeNodeType } from '../../utils/knowledgeGraph';
+import { buildGraphView } from '../../utils/knowledgeLayout';
 import {
-  buildCoverageMatrix,
-  coverageCellLabel,
-  type CoverageCell,
-  type CoverageCellState,
-} from '../../utils/coverageMatrix';
-import { formatBaseCurrencyAmount } from '../../utils/money';
+  createKnowledgeRecordId,
+  type KnowledgeRecord,
+} from '../../utils/knowledgeNotes';
 import { SkeletonCard, SkeletonScreen } from '../../components/common/Skeleton';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
+import { KnowledgeGraphCanvas } from './KnowledgeGraphCanvas';
+import { KnowledgeDrawer } from './KnowledgeDrawer';
+import { NewKnowledgeModal, type KnowledgePrefill } from './NewKnowledgeModal';
+import { VaultLibrary } from './VaultLibrary';
+import { VaultTimeline } from './VaultTimeline';
+import { MapAsList } from './MapAsList';
+import { nodeIcon, nodeVisual } from './nodeVisuals';
 
 /**
- * The Business Vault: every customer against every line you carry.
+ * The Business Vault: persistent business memory.
  *
- * The first version of this page drew the same records as a force-directed
- * graph. It was accurate and useless - it showed an operator their own customer
- * list arranged in a circle. This shows the one thing the records contain that
- * nobody can hold in their head: which of the customer x line squares have
- * never been filled.
+ * What this page used to be, and why it changed. Until 2026-08-09 it drew a
+ * customer x line coverage matrix - genuinely useful commercial planning, and
+ * not a vault. It answered "which squares have I never filled", which is one
+ * good question, and it had no answer at all for the question the name
+ * promises: what does this business know?
+ *
+ * A CRM records who, what, how much and when. Those four are already covered by
+ * Accounts, Opportunities, Orders and Plan. What no surface here held was the
+ * other half of an operator's knowledge - why things are the way they are, how
+ * they connect, what has been learned, what the evidence was, and what is still
+ * unknown. That half lives in people's heads and leaves when they do.
+ *
+ * So the Vault is now three readings of one derived graph:
+ *
+ *   Library   what you know, searchable, with what changed and what is missing.
+ *   Map       how it connects, one neighbourhood at a time.
+ *   Timeline  how the knowledge arrived.
+ *
+ * The coverage matrix was not deleted. It moved to /app/portfolio-coverage
+ * under Accounts, where a grid of customers against lines belongs, and the
+ * Library links to it.
  */
 
-/**
- * A mark per square, not a block.
- *
- * The first version painted every filled cell as a saturated 64px rectangle
- * with the money written inside it. At the width of a real book that is a wall
- * of colour with numbers too small to read, and the empty squares - the whole
- * point of the page - were the quietest thing on it. Thin marks on a light
- * ground invert that: the grid recedes, the gaps read, and the money moves to
- * the row total and the tooltip where there is room for it.
- */
-const stateStyles: Record<CoverageCellState, string> = {
-  won: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-300',
-  committed: 'bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-300',
-  active: 'bg-blue-50 text-brand-blue ring-1 ring-inset ring-blue-300',
-  lost: 'bg-gray-50 text-gray-400 ring-1 ring-inset ring-gray-200',
-  // The empty square is the message of this page, so it reads as a slot that is
-  // deliberately unfilled rather than as a blank card - and it is the only
-  // square that is clickable into something new.
-  none: 'border border-dashed border-gray-300 bg-white text-gray-300 hover:border-brand-blue hover:bg-blue-50/40',
-};
+type VaultView = 'library' | 'map' | 'timeline';
 
-/** One glyph per state, so the grid is never colour-alone. */
-const stateGlyph: Record<CoverageCellState, string> = {
-  won: '●',
-  committed: '◐',
-  active: '○',
-  lost: '×',
-  none: '+',
-};
+const VIEWS: { id: VaultView; label: string; icon: (className: string) => React.ReactNode }[] = [
+  { id: 'library', label: 'Library', icon: (className) => <ListTree className={className} /> },
+  { id: 'map', label: 'Map', icon: (className) => <Network className={className} /> },
+  { id: 'timeline', label: 'Timeline', icon: (className) => <Layers className={className} /> },
+];
 
 export function BusinessVaultPage() {
   const { user } = useAuthContext();
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
-  // `null` is this page's "still loading" state, so seeding it from the cache
-  // is what stops the grid appearing empty on every arrival.
+
   const cachedWorkspace = getCachedSalesWorkspaceData(dataUserId);
-  const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[] | null>(
-    cachedWorkspace?.opportunities || null,
-  );
-  const [accountMerges, setAccountMerges] = useState<AccountMergeRecord[]>(cachedWorkspace?.accountMerges || []);
+  const [workspace, setWorkspace] = useState<SalesWorkspaceData | null>(cachedWorkspace);
+  const [knowledge, setKnowledge] = useState<KnowledgeRecord[]>(() => loadKnowledgeNotes());
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [typeFilter, setTypeFilter] = useState<KnowledgeNodeType | 'all'>('all');
+  const [hiddenTypes, setHiddenTypes] = useState<Set<KnowledgeNodeType>>(() => new Set());
+  const [prefill, setPrefill] = useState<KnowledgePrefill | null>(null);
+  const [wideEnoughToDock, setWideEnoughToDock] = useState(() => matches('(min-width: 1536px)'));
+  const [wideEnoughToDraw, setWideEnoughToDraw] = useState(() => matches('(min-width: 1024px)'));
+
+  const view = (searchParams.get('view') as VaultView) || 'library';
+  const selectedId = searchParams.get('node') || '';
+  const query = searchParams.get('q') || '';
 
   useEffect(() => {
     let cancelled = false;
-    void loadSalesWorkspaceData(dataUserId).then((workspace) => {
-      if (cancelled) return;
-      setOpportunities(workspace.opportunities);
-      setAccountMerges(workspace.accountMerges);
+    void loadSalesWorkspaceData(dataUserId).then((next) => {
+      if (!cancelled) setWorkspace(next);
+    });
+    void loadKnowledgeNotesForWorkspace(dataUserId, sampleDataActive).then((next) => {
+      if (!cancelled) setKnowledge(next);
     });
     return () => { cancelled = true; };
-  }, [dataUserId]);
+  }, [dataUserId, sampleDataActive]);
 
-  // A customer merged in Accounts has to be one row here. Without the merges
-  // this page drew the same customer twice, splitting their squares across two
-  // rows and inventing gaps in both.
-  const matrix = useMemo(
-    () => buildCoverageMatrix({
-      opportunities: opportunities || [],
-      accountAliases: buildAccountAliasIndex(accountMerges),
-    }),
-    [opportunities, accountMerges],
+  // The drawer docks beside the map on a wide screen and overlays on a narrow
+  // one. Tracked rather than done in CSS alone because the docked panel is not
+  // a dialog - it should not trap focus or lock the page scroll.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    // 1536, not 1280. A 360px panel out of a 1280 screen leaves the map about
+    // 600px wide, and a customer's neighbourhood fitted into 600px renders its
+    // own name at 8px. Below this width the drawer overlays and the map keeps
+    // the room.
+    const dock = window.matchMedia('(min-width: 1536px)');
+    // Below a laptop, the drawn map is the wrong shape entirely: on a 375px
+    // phone the fit puts node titles under 8px, and zooming to read them shows
+    // two cards at a time. The same neighbourhood is shown as a list instead.
+    const draw = window.matchMedia('(min-width: 1024px)');
+    const update = () => {
+      setWideEnoughToDock(dock.matches);
+      setWideEnoughToDraw(draw.matches);
+    };
+    dock.addEventListener('change', update);
+    draw.addEventListener('change', update);
+    return () => {
+      dock.removeEventListener('change', update);
+      draw.removeEventListener('change', update);
+    };
+  }, []);
+
+  const graph = useMemo(() => buildKnowledgeGraph({
+    accounts: workspace?.accounts || [],
+    opportunities: workspace?.opportunities || [],
+    stakeholders: workspace?.stakeholders || [],
+    activities: workspace?.activities || [],
+    objections: workspace?.objections || [],
+    quotes: workspace?.quotes || [],
+    outcomes: workspace?.opportunityOutcomes || [],
+    knowledge,
+    accountAliases: buildAccountAliasIndex(workspace?.accountMerges || []),
+  }), [workspace, knowledge]);
+
+  const selectedNode = selectedId ? graph.byId.get(selectedId) : undefined;
+
+  const graphView = useMemo(
+    () => buildGraphView({ graph, focusId: selectedNode?.id, hiddenTypes }),
+    [graph, selectedNode?.id, hiddenTypes],
   );
 
-  if (!opportunities) {
+  const patchParams = useCallback((patch: Record<string, string | null>) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      for (const [key, value] of Object.entries(patch)) {
+        if (value === null || value === '') next.delete(key);
+        else next.set(key, value);
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const select = useCallback((nodeId: string) => patchParams({ node: nodeId }), [patchParams]);
+  const closeDrawer = useCallback(() => patchParams({ node: null }), [patchParams]);
+
+  const openMap = useCallback((nodeId?: string) => {
+    patchParams({ view: 'map', node: nodeId ?? selectedId ?? null });
+  }, [patchParams, selectedId]);
+
+  /**
+   * Every write carries the workspace it was made in.
+   *
+   * Not cosmetic. An untagged record written inside the public demo is
+   * indistinguishable from a real one: the cloud sync would offer it to the
+   * account, and "clear sample data" would leave it behind for whoever signs in
+   * on this browser next. A dismissed gap surviving that way is the worst of
+   * the three - it silently suppresses a question the new operator never saw.
+   */
+  const tagForWorkspace = useCallback(
+    (record: KnowledgeRecord): KnowledgeRecord => (sampleDataActive
+      ? { ...record, source: 'demo', isSample: true }
+      : { ...record, source: 'user' }),
+    [sampleDataActive],
+  );
+
+  const persist = useCallback((record: KnowledgeRecord) => {
+    setKnowledge(saveKnowledgeNote(tagForWorkspace(record)));
+  }, [tagForWorkspace]);
+
+  const restoreDimension = useCallback((resolutionId: string) => {
+    setKnowledge(deleteKnowledgeNote(resolutionId));
+  }, []);
+
+  const answerGap = useCallback((gap: KnowledgeGap) => {
+    setPrefill({
+      kind: 'note',
+      title: '',
+      subjectNodeId: gap.nodeId,
+      gapKey: gap.key,
+    });
+  }, []);
+
+  /**
+   * "Not relevant" writes a record rather than hiding a row.
+   *
+   * A dismissal held in component state comes back on the next load, and one
+   * held in localStorage alone comes back on the next device. It is a decision
+   * about this business - "we do not need to know who signs at this customer" -
+   * so it is stored like any other piece of knowledge, and it can be found and
+   * undone later.
+   */
+  const dismissGap = useCallback((gap: KnowledgeGap) => {
+    const now = new Date().toISOString();
+    setKnowledge(saveKnowledgeNote(tagForWorkspace({
+      id: createKnowledgeRecordId(),
+      kind: 'question',
+      noteType: 'fact',
+      title: gap.question,
+      body: 'Marked not relevant for this record.',
+      subjects: [{ nodeId: gap.nodeId, label: gap.nodeLabel }],
+      relation: 'not relevant at',
+      evidence: [],
+      status: 'dismissed',
+      gapKey: gap.key,
+      occurredAt: now.slice(0, 10),
+      tags: [],
+      createdAt: now,
+      updatedAt: now,
+    })));
+  }, [tagForWorkspace]);
+
+  if (!workspace) {
     return (
-      <SkeletonScreen label="Reading your coverage">
+      <SkeletonScreen label="Reading your business memory">
         <PageContainer><SkeletonCard /></PageContainer>
       </SkeletonScreen>
     );
   }
 
+  const hasAnything = graph.nodes.length > 0;
+
   return (
     <PageContainer>
       <PageHeader
         eyebrow="Workspace"
-        icon={<Grid3x3 className="h-5 w-5" />}
+        icon={<Network className="h-5 w-5" />}
         title="Business Vault"
-        description="Every customer against every line you carry. The filled squares are the business you have; the empty ones are the business you have never asked for."
+        description="Your long-term memory of customers, markets, people, products and decisions - and an honest account of what you still do not know."
+        actions={
+          <button
+            type="button"
+            onClick={() => setPrefill({ kind: 'note', subjectNodeId: selectedId || undefined })}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-navy px-3.5 py-2 text-sm font-bold text-white transition hover:bg-navy/90"
+          >
+            <Plus className="h-4 w-4" /> New knowledge
+          </button>
+        }
       />
 
-      {!matrix.hasEnoughBrands ? (
-        <EmptyState brandCount={matrix.brands.length} />
+      {!hasAnything ? (
+        <EmptyState />
       ) : (
         <>
-          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-wrap items-baseline justify-between gap-3">
-              <div>
-                {/* Says the consequence, not the arithmetic. "12 / 40 squares
-                    filled" is a fact about a grid; "23 customers carry one line
-                    of five" is a fact about the business, and it is the one
-                    that starts a conversation. */}
-                <p className="text-2xl font-black text-navy">
-                  {matrix.gaps.length}
-                  <span className="text-base font-bold text-gray-400">
-                    {' '}of {matrix.rows.length} customers buy only part of the range
-                  </span>
-                </p>
-                <p className="mt-1 text-sm text-gray-500">
-                  {matrix.totalCells - matrix.filledCells} of {matrix.totalCells} customer &times; line squares have
-                  never been taken to the customer. Click an empty square to start that opportunity.
-                </p>
-              </div>
-              <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-bold text-brand-blue">
-                {Math.round(matrix.penetration * 100)}% covered
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Stat label="Knowledge nodes" value={graph.stats.nodeCount} hint="customers, people, products, notes" />
+            <Stat label="Connections" value={graph.stats.edgeCount} hint="recorded relationships" />
+            <Stat label="Open gaps" value={graph.stats.openGapCount} hint="things worth knowing, unrecorded" tone="warn" />
+            <Stat label="Changed this week" value={graph.stats.changedThisWeek} hint="nodes with new records" />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div role="tablist" aria-label="Business Vault views" className="inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
+              {VIEWS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={view === item.id}
+                  onClick={() => patchParams({ view: item.id })}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-bold transition ${
+                    view === item.id ? 'bg-navy text-white' : 'text-gray-600 hover:text-navy'
+                  }`}
+                >
+                  {item.icon('h-3.5 w-3.5')}
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            {selectedNode && (
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${nodeVisual(selectedNode.type).chip}`}>
+                {nodeIcon(selectedNode.type, 'h-3 w-3')}
+                {selectedNode.label}
+                <button
+                  type="button"
+                  onClick={closeDrawer}
+                  aria-label={`Clear ${selectedNode.label}`}
+                  className="rounded-full p-0.5 transition hover:bg-white/70"
+                >
+                  <X className="h-3 w-3" />
+                </button>
               </span>
-            </div>
+            )}
+          </div>
 
-            <div className="mt-4 overflow-x-auto">
-              <table className="border-separate border-spacing-1 text-left text-sm">
-                <thead>
-                  <tr>
-                    <th className="sticky left-0 z-10 bg-white pr-3 text-[11px] font-bold uppercase tracking-wide text-gray-400">
-                      Customer
-                    </th>
-                    {matrix.brands.map((brand) => (
-                      <th key={brand} className="px-1 pb-1 text-center text-[11px] font-bold text-navy">
-                        <span className="block max-w-[92px] truncate" title={brand}>{brand}</span>
-                      </th>
-                    ))}
-                    <th className="pl-3 text-right text-[11px] font-bold uppercase tracking-wide text-gray-400">
-                      Relationship
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {matrix.rows.map((row) => (
-                    <tr key={row.accountName}>
-                      <td className="sticky left-0 z-10 max-w-[190px] truncate bg-white pr-3 font-bold text-navy" title={row.accountName}>
-                        <Link
-                          to={`/app/accounts?accountName=${encodeURIComponent(row.accountName)}`}
-                          className="hover:text-brand-blue hover:underline"
-                        >
-                          {row.accountName}
-                        </Link>
-                      </td>
-                      {row.cells.map((cell) => <MatrixCell key={cell.brand} cell={cell} />)}
-                      <td className="whitespace-nowrap pl-3 text-right text-xs font-bold text-gray-600">
-                        {row.relationshipValueBase > 0 ? formatBaseCurrencyAmount(row.relationshipValueBase, true) : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          {view === 'library' && (
+            <VaultLibrary
+              graph={graph}
+              query={query}
+              typeFilter={typeFilter}
+              onQueryChange={(value) => patchParams({ q: value || null })}
+              onTypeFilterChange={setTypeFilter}
+              onSelect={select}
+              onOpenMap={openMap}
+              onAnswerGap={answerGap}
+              onDismissGap={dismissGap}
+            />
+          )}
 
-            <Legend />
-          </section>
-
-          {matrix.gaps.length > 0 && (
-            <section className="rounded-xl border border-amber-200 bg-amber-50/50 p-5 shadow-sm">
-              <h2 className="text-lg font-bold text-navy">The gaps worth closing first</h2>
-              <p className="mt-1 max-w-3xl text-sm text-gray-600">
-                Customers who already buy from you and carry only part of the range. A line missing at a customer who
-                already trusts you is a shorter conversation than a new logo.
-              </p>
-              <ul className="mt-3 space-y-2">
-                {matrix.gaps.map((gap) => (
-                  <li key={gap.accountName} className="rounded-lg border border-amber-100 bg-white px-3.5 py-2.5">
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <Link
-                        to={`/app/accounts?accountName=${encodeURIComponent(gap.accountName)}`}
-                        className="font-bold text-navy hover:text-brand-blue hover:underline"
-                      >
-                        {gap.accountName}
-                      </Link>
-                      <span className="text-xs font-bold text-gray-500">
-                        {formatBaseCurrencyAmount(gap.relationshipValueBase, true)} · {gap.brandsTouched} of {matrix.brands.length} lines
-                      </span>
+          {view === 'map' && (
+            <div className="flex gap-4">
+              <div className="min-w-0 flex-1 space-y-2">
+                {wideEnoughToDraw ? (
+                  <>
+                    <MapLegend
+                      graph={graph}
+                      hiddenTypes={hiddenTypes}
+                      onToggle={(type) => setHiddenTypes((current) => {
+                        const next = new Set(current);
+                        if (next.has(type)) next.delete(type);
+                        else next.add(type);
+                        return next;
+                      })}
+                    />
+                    <div className="h-[calc(100vh-300px)] min-h-[480px] w-full">
+                      <KnowledgeGraphCanvas
+                        view={graphView}
+                        focusId={selectedNode?.id || ''}
+                        onSelect={select}
+                        summary={mapSummary(graphView.nodes.length, selectedNode?.label)}
+                      />
                     </div>
-                    <p className="mt-1 text-xs font-semibold text-amber-900">
-                      Never offered: {gap.missingBrands.join(', ')}
+                    <p className="text-xs text-gray-500">
+                      {selectedNode
+                        ? `${graphView.shownNeighborCount} of ${graphView.neighborCount} relationships shown around ${selectedNode.label}. Drag to pan, scroll to zoom, or use the Library tab for a keyboard-friendly list.`
+                        : 'Showing the parts of the business with the most recorded around them. Select anything to centre the map on it.'}
                     </p>
-                  </li>
-                ))}
-              </ul>
-            </section>
+                  </>
+                ) : (
+                  <MapAsList view={graphView} focusLabel={selectedNode?.label} onSelect={select} />
+                )}
+              </div>
+
+              {selectedNode && wideEnoughToDock && (
+                <KnowledgeDrawer
+                  docked
+                  node={selectedNode}
+                  graph={graph}
+                  onClose={closeDrawer}
+                  onSelectNode={select}
+                  onAnswerGap={answerGap}
+                  onDismissGap={dismissGap}
+                  onAddKnowledge={(node) => setPrefill({ kind: 'note', subjectNodeId: node.id })}
+                  onShowOnMap={openMap}
+                  onRestoreDimension={restoreDimension}
+                />
+              )}
+            </div>
+          )}
+
+          {view === 'timeline' && (
+            <VaultTimeline
+              graph={graph}
+              focusNode={selectedNode}
+              onSelect={select}
+              onClearFocus={closeDrawer}
+            />
           )}
         </>
       )}
+
+      {selectedNode && !(view === 'map' && wideEnoughToDock) && (
+        <KnowledgeDrawer
+          docked={false}
+          node={selectedNode}
+          graph={graph}
+          onClose={closeDrawer}
+          onSelectNode={select}
+          onAnswerGap={answerGap}
+          onDismissGap={dismissGap}
+          onAddKnowledge={(node) => setPrefill({ kind: 'note', subjectNodeId: node.id })}
+          onShowOnMap={openMap}
+          onRestoreDimension={restoreDimension}
+        />
+      )}
+
+      <NewKnowledgeModal
+        // Remounted per prefill so the form opens with the gap's subject already
+        // chosen rather than whatever was typed last time.
+        key={prefill ? `${prefill.kind}:${prefill.gapKey || prefill.subjectNodeId || 'blank'}` : 'closed'}
+        open={Boolean(prefill)}
+        graph={graph}
+        prefill={prefill}
+        onClose={() => setPrefill(null)}
+        onSave={persist}
+      />
     </PageContainer>
   );
 }
 
-function MatrixCell({ cell }: { cell: CoverageCell }) {
-  const money = cell.wonValueBase || cell.activeValueBase;
-  const title = cell.state === 'none'
-    // An empty square now says what it is for, because "nothing here" is not a
-    // finding an operator can act on - "you have never offered this line to a
-    // customer who already buys from you" is.
-    ? `${cell.accountName} has never been offered ${cell.brand} — start that opportunity`
-    : `${cell.accountName} · ${cell.brand} — ${coverageCellLabel(cell.state)}${
-      money > 0 ? ` · ${formatBaseCurrencyAmount(money, true)}` : ''
-    }`;
-
-  // The empty square is the only one that leads somewhere new: it opens the
-  // opportunity form with the customer and the line already filled in, which is
-  // the entire action this page exists to prompt.
-  const href = cell.href || (cell.state === 'none'
-    ? `/app/opportunities?new=1&account=${encodeURIComponent(cell.accountName)}&brand=${encodeURIComponent(cell.brand)}`
-    : '');
-
-  const content = (
-    <span
-      aria-label={title}
-      className={`flex h-7 w-full min-w-[44px] items-center justify-center rounded text-[11px] font-bold ${stateStyles[cell.state]}`}
-    >
-      {stateGlyph[cell.state]}
-    </span>
-  );
-
-  return (
-    <td className="p-0" title={title}>
-      {href ? <Link to={href} className="block transition hover:opacity-80">{content}</Link> : content}
-    </td>
-  );
+function matches(query: string) {
+  return typeof window !== 'undefined' && window.matchMedia(query).matches;
 }
 
-function Legend() {
-  const items: { state: CoverageCellState; label: string }[] = [
-    { state: 'won', label: 'Won' },
-    { state: 'committed', label: 'Committed to order' },
-    { state: 'active', label: 'In play' },
-    { state: 'lost', label: 'Tried and lost' },
-    { state: 'none', label: 'Never taken to them' },
-  ];
-
+function Stat({ label, value, hint, tone }: { label: string; value: number; hint: string; tone?: 'warn' }) {
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] font-semibold text-gray-500">
-      {items.map((item) => (
-        <span key={item.state} className="inline-flex items-center gap-1.5">
-          {/* The legend mirrors the mark, glyph and all, so identity in the grid
-              is never carried by colour alone. */}
-          <span className={`inline-flex h-5 w-6 items-center justify-center rounded text-[11px] font-bold ${stateStyles[item.state]}`}>
-            {stateGlyph[item.state]}
-          </span>
-          {item.label}
-        </span>
-      ))}
+    <div className={`rounded-xl border p-3 shadow-sm ${tone === 'warn' && value > 0 ? 'border-orange-200 bg-orange-50/50' : 'border-gray-200 bg-white'}`}>
+      <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{label}</p>
+      <p className={`mt-0.5 text-2xl font-black tabular-nums ${tone === 'warn' && value > 0 ? 'text-orange-900' : 'text-navy'}`}>
+        {value}
+      </p>
+      <p className="mt-0.5 text-[11px] leading-4 text-gray-500">{hint}</p>
     </div>
   );
 }
 
-function EmptyState({ brandCount }: { brandCount: number }) {
+function MapLegend({
+  graph,
+  hiddenTypes,
+  onToggle,
+}: {
+  graph: ReturnType<typeof buildKnowledgeGraph>;
+  hiddenTypes: Set<KnowledgeNodeType>;
+  onToggle: (type: KnowledgeNodeType) => void;
+}) {
+  const present = (Object.entries(graph.counts) as [KnowledgeNodeType, number][])
+    .filter(([, count]) => count > 0)
+    .sort((left, right) => right[1] - left[1]);
+
   return (
-    <section className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
-      <h2 className="text-lg font-bold text-navy">
-        {brandCount === 0 ? 'No lines recorded yet.' : 'Only one line recorded so far.'}
-      </h2>
+    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-2 shadow-sm">
+      <span className="mr-1 text-[11px] font-bold uppercase tracking-wide text-gray-400">Show</span>
+      {present.map(([type, count]) => {
+        const hidden = hiddenTypes.has(type);
+        return (
+          <button
+            key={type}
+            type="button"
+            onClick={() => onToggle(type)}
+            aria-pressed={!hidden}
+            className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-bold transition ${
+              hidden ? 'bg-gray-50 text-gray-400 line-through' : nodeVisual(type).chip
+            }`}
+          >
+            {nodeIcon(type, 'h-3 w-3')}
+            {typeLabel(type)}
+            <span className="tabular-nums opacity-60">{count}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function typeLabel(type: KnowledgeNodeType) {
+  return {
+    account: 'Customers',
+    person: 'People',
+    opportunity: 'Deals',
+    brand: 'Principals',
+    product: 'Products',
+    industry: 'Markets',
+    competitor: 'Competitors',
+    objection: 'Objections',
+    note: 'Knowledge',
+    question: 'Questions',
+  }[type];
+}
+
+function mapSummary(nodeCount: number, focus?: string) {
+  return focus
+    ? `Knowledge map centred on ${focus}, showing ${nodeCount} related things.`
+    : `Knowledge map showing ${nodeCount} of the most connected things in this workspace.`;
+}
+
+/**
+ * The empty Vault.
+ *
+ * One primary action, and it is Capture rather than anything inside this page.
+ * A Vault with nothing in it cannot be filled from here: the map is derived, so
+ * the honest first step is recording one real conversation and watching the
+ * customer, the person and the product it names appear.
+ */
+function EmptyState() {
+  return (
+    <section className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center">
+      <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-brand-blue">
+        <Network className="h-6 w-6" />
+      </span>
+      <h2 className="mt-3 text-lg font-bold text-navy">Nothing to remember yet</h2>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">
-        This page compares the lines you carry against the customers you sell to, so it needs at least two. Set the
-        brand on your deals and every customer becomes a row here - with the squares you have never filled showing
-        through.
+        Your map grows as Memoire learns how your customers, products, people and decisions connect. Capture one real
+        conversation and the customer, the person and the product in it become the first things you know.
       </p>
-      <Link
-        to="/app/opportunities"
-        className="mt-4 inline-flex rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
-      >
-        Open deals
-      </Link>
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+        <Link
+          to="/app/capture"
+          className="inline-flex rounded-lg bg-navy px-4 py-2 text-sm font-bold text-white transition hover:bg-navy/90"
+        >
+          Capture a conversation
+        </Link>
+        <Link
+          to="/app/accounts"
+          className="inline-flex rounded-lg border border-gray-300 px-4 py-2 text-sm font-bold text-gray-600 transition hover:border-brand-blue hover:text-brand-blue"
+        >
+          Import your accounts
+        </Link>
+      </div>
     </section>
   );
 }
