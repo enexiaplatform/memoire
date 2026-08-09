@@ -1,8 +1,16 @@
 import { useMemo, useState } from 'react';
-import { Check, Plus, X } from 'lucide-react';
+import { Check, CornerDownLeft, Plus, X } from 'lucide-react';
 import { Modal } from '../../components/ui/Modal';
 import { todayDateKey } from '../../utils/safeDate';
-import { searchKnowledgeNodes, type KnowledgeGraph, type KnowledgeNode } from '../../utils/knowledgeGraph';
+import {
+  authorableNodeTypes,
+  authorableNodeTypeHints,
+  authoredNodeId,
+  knowledgeNodeTypeLabels,
+  searchKnowledgeNodes,
+  type AuthorableNodeType,
+  type KnowledgeGraph,
+} from '../../utils/knowledgeGraph';
 import {
   createKnowledgeRecordId,
   knowledgeNoteTypeLabels,
@@ -11,6 +19,20 @@ import {
   type KnowledgeRecord,
 } from '../../utils/knowledgeNotes';
 import { nodeIcon, nodeVisual } from './nodeVisuals';
+
+/**
+ * A subject the operator is about to bring into existence.
+ *
+ * Held apart from a `KnowledgeNode` because it does not exist yet: it has no
+ * weight, no connections and no memory, and pretending otherwise would mean
+ * building a fake node just to render a chip.
+ */
+type DraftSubject = {
+  nodeId: string;
+  label: string;
+  type: AuthorableNodeType;
+  typeLabel?: string;
+};
 
 /**
  * Writing something down, in under thirty seconds.
@@ -47,8 +69,14 @@ export function NewKnowledgeModal({ open, graph, prefill, onClose, onSave }: Pro
   const [title, setTitle] = useState(prefill?.title || '');
   const [body, setBody] = useState('');
   const [noteType, setNoteType] = useState<KnowledgeRecord['noteType']>('insight');
-  const [subjects, setSubjects] = useState<KnowledgeNode[]>(seedSubject ? [seedSubject] : []);
+  const [subjects, setSubjects] = useState<DraftSubject[]>(
+    seedSubject
+      ? [{ nodeId: seedSubject.id, label: seedSubject.label, type: 'topic' }]
+      : [],
+  );
   const [subjectQuery, setSubjectQuery] = useState('');
+  const [creatingType, setCreatingType] = useState<AuthorableNodeType | null>(null);
+  const [customTypeLabel, setCustomTypeLabel] = useState('');
   const [occurredAt, setOccurredAt] = useState(todayDateKey());
   const [evidenceLabel, setEvidenceLabel] = useState('');
   const [error, setError] = useState('');
@@ -66,12 +94,36 @@ export function NewKnowledgeModal({ open, graph, prefill, onClose, onSave }: Pro
     );
   }, [graph.nodes, subjectQuery]);
 
+  const trimmedQuery = subjectQuery.trim();
+  const alreadyNamed = useMemo(
+    () => graph.nodes.some((node) => node.label.toLowerCase() === trimmedQuery.toLowerCase())
+      || subjects.some((subject) => subject.label.toLowerCase() === trimmedQuery.toLowerCase()),
+    [graph.nodes, subjects, trimmedQuery],
+  );
+  const canCreate = trimmedQuery.length > 1 && !alreadyNamed;
+
+  const addDraftSubject = () => {
+    if (!creatingType || !trimmedQuery) return;
+    const typeLabel = creatingType === 'topic' ? customTypeLabel.trim() : '';
+    setSubjects((current) => [...current, {
+      nodeId: authoredNodeId(creatingType, trimmedQuery),
+      label: trimmedQuery,
+      type: creatingType,
+      typeLabel: typeLabel || undefined,
+    }]);
+    setSubjectQuery('');
+    setCreatingType(null);
+    setCustomTypeLabel('');
+  };
+
   const reset = () => {
     setTitle('');
     setBody('');
     setNoteType('insight');
     setSubjects([]);
     setSubjectQuery('');
+    setCreatingType(null);
+    setCustomTypeLabel('');
     setOccurredAt(todayDateKey());
     setEvidenceLabel('');
     setError('');
@@ -101,7 +153,11 @@ export function NewKnowledgeModal({ open, graph, prefill, onClose, onSave }: Pro
       noteType,
       title: trimmed,
       body: body.trim(),
-      subjects: subjects.map((node) => ({ nodeId: node.id, label: node.label })),
+      subjects: subjects.map((subject) => ({
+        nodeId: subject.nodeId,
+        label: subject.label,
+        typeLabel: subject.typeLabel,
+      })),
       relation: isQuestion ? 'open question at' : relationForType(noteType),
       evidence,
       status: isQuestion ? 'open' : 'answered',
@@ -154,17 +210,18 @@ export function NewKnowledgeModal({ open, graph, prefill, onClose, onSave }: Pro
           <span className="text-xs font-bold uppercase tracking-wide text-gray-500">What is it about?</span>
           {subjects.length > 0 && (
             <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {subjects.map((node) => (
+              {subjects.map((subject) => (
                 <span
-                  key={node.id}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${nodeVisual(node.type).chip}`}
+                  key={subject.nodeId}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${nodeVisual(existingType(graph, subject)).chip}`}
                 >
-                  {nodeIcon(node.type, 'h-3 w-3')}
-                  {node.label}
+                  {nodeIcon(existingType(graph, subject), 'h-3 w-3')}
+                  {subject.label}
+                  {subject.typeLabel && <span className="font-normal opacity-70">{subject.typeLabel}</span>}
                   <button
                     type="button"
-                    aria-label={`Remove ${node.label}`}
-                    onClick={() => setSubjects((current) => current.filter((item) => item.id !== node.id))}
+                    aria-label={`Remove ${subject.label}`}
+                    onClick={() => setSubjects((current) => current.filter((item) => item.nodeId !== subject.nodeId))}
                     className="rounded-full p-0.5 transition hover:bg-white/70"
                   >
                     <X className="h-3 w-3" />
@@ -183,14 +240,15 @@ export function NewKnowledgeModal({ open, graph, prefill, onClose, onSave }: Pro
           {suggestions.length > 0 && (
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {suggestions
-                .filter((node) => !subjects.some((subject) => subject.id === node.id))
+                .filter((node) => !subjects.some((subject) => subject.nodeId === node.id))
                 .map((node) => (
                   <button
                     key={node.id}
                     type="button"
                     onClick={() => {
-                      setSubjects((current) => [...current, node]);
+                      setSubjects((current) => [...current, { nodeId: node.id, label: node.label, type: 'topic' }]);
                       setSubjectQuery('');
+                      setCreatingType(null);
                     }}
                     className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 px-2.5 py-1 text-xs font-semibold text-gray-600 transition hover:border-brand-blue hover:text-brand-blue"
                   >
@@ -198,6 +256,70 @@ export function NewKnowledgeModal({ open, graph, prefill, onClose, onSave }: Pro
                     {node.label}
                   </button>
                 ))}
+            </div>
+          )}
+
+          {/*
+            * Writing down something the workspace has never heard of.
+            *
+            * Until now a subject could only be picked from what already
+            * existed, which quietly meant the Vault could hold knowledge about
+            * customers and deals and nothing else: the standard a customer has
+            * to meet, the job your product does for them, the plant you are
+            * selling into - none of those has a record anywhere in the product,
+            * so none of them could be named at all.
+            *
+            * Customers, people and deals are deliberately absent from the type
+            * list. They have surfaces that create them, and a second door onto
+            * the same thing is how a workspace ends up with two of a customer.
+            */}
+          {canCreate && (
+            <div className="mt-2 rounded-lg border border-dashed border-gray-300 bg-gray-50/70 p-2.5">
+              <p className="text-xs font-semibold text-gray-600">
+                Nothing here is called &ldquo;{subjectQuery.trim()}&rdquo;. What kind of thing is it?
+              </p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {authorableNodeTypes.map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setCreatingType(type)}
+                    aria-pressed={creatingType === type}
+                    title={authorableNodeTypeHints[type]}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold transition ${
+                      creatingType === type
+                        ? 'bg-navy text-white'
+                        : 'border border-gray-300 bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue'
+                    }`}
+                  >
+                    {nodeIcon(type, 'h-3 w-3')}
+                    {type === 'topic' ? 'Something else' : knowledgeNodeTypeLabels[type]}
+                  </button>
+                ))}
+              </div>
+
+              {creatingType && (
+                <div className="mt-2 space-y-2">
+                  <p className="text-[11px] leading-4 text-gray-500">{authorableNodeTypeHints[creatingType]}</p>
+                  {creatingType === 'topic' && (
+                    <input
+                      value={customTypeLabel}
+                      onChange={(event) => setCustomTypeLabel(event.target.value)}
+                      placeholder="What do you call this kind of thing? e.g. Tender, Trade show, Framework"
+                      aria-label="Your own name for this kind of thing"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-xs text-navy focus:border-brand-blue focus:outline-none"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={addDraftSubject}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-navy px-3 py-1.5 text-xs font-bold text-white transition hover:bg-navy/90"
+                  >
+                    <CornerDownLeft className="h-3.5 w-3.5" />
+                    Add &ldquo;{subjectQuery.trim()}&rdquo;
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -288,6 +410,17 @@ export function NewKnowledgeModal({ open, graph, prefill, onClose, onSave }: Pro
       </div>
     </Modal>
   );
+}
+
+/**
+ * The colour and icon a chip should wear.
+ *
+ * A subject that already exists shows its real type; one about to be created
+ * shows the type just chosen for it. Reading it off the graph first matters
+ * because picking an existing customer must not paint it as a topic.
+ */
+function existingType(graph: KnowledgeGraph, subject: DraftSubject) {
+  return graph.byId.get(subject.nodeId)?.type || subject.type;
 }
 
 /** The verb the edge will carry on the map. */

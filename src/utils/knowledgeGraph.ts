@@ -41,6 +41,26 @@ export const knowledgeNodeTypes = [
   'product',
   'industry',
   'competitor',
+  // The four an operator writes themselves. None of them can be derived: no
+  // record in this workspace says which rule a customer has to satisfy, which
+  // job your product does for them, or which of their sites you are selling
+  // into - and yet those are the things a seller who has been in a trade ten
+  // years actually knows.
+  //
+  // Generic on purpose. The temptation was to read them out of the text on a
+  // deal, matching words like "GMP" or "sterility", and that is exactly how a
+  // B2B product quietly becomes a pharma product: it would work for one book
+  // and return nothing at all for a software reseller or a freight forwarder,
+  // silently, with no error to explain the empty map.
+  'standard',
+  'application',
+  'site',
+  // The escape hatch, and it is load-bearing. Any fixed list of types is wrong
+  // for somebody's trade, so this one carries the operator's own word for the
+  // thing (`typeLabel`) while the graph keeps a bounded set it can draw and
+  // reason about. If a word keeps recurring here, that is the evidence for
+  // promoting it to a type of its own.
+  'topic',
   'objection',
   'note',
   'question',
@@ -52,10 +72,17 @@ export const knowledgeNodeTypeLabels: Record<KnowledgeNodeType, string> = {
   account: 'Customer',
   person: 'Person',
   opportunity: 'Deal',
-  brand: 'Principal',
+  // "Principal" is distribution's word. It is exactly right for a dealer and
+  // means nothing to a company selling its own software, so the rail says the
+  // word both understand. The field behind it is still `opportunity.brand`.
+  brand: 'Brand',
   product: 'Product',
   industry: 'Market',
   competitor: 'Competitor',
+  standard: 'Standard',
+  application: 'Application',
+  site: 'Site',
+  topic: 'Topic',
   objection: 'Objection',
   note: 'Knowledge',
   question: 'Open question',
@@ -66,14 +93,43 @@ export const knowledgeNodeTypePlurals: Record<KnowledgeNodeType, string> = {
   account: 'Customers',
   person: 'People',
   opportunity: 'Deals',
-  brand: 'Principals',
+  brand: 'Brands',
   product: 'Products',
   industry: 'Markets',
   competitor: 'Competitors',
+  standard: 'Standards',
+  application: 'Applications',
+  site: 'Sites',
+  topic: 'Other',
   objection: 'Objections',
   note: 'Knowledge',
   question: 'Open questions',
 };
+
+/**
+ * What an operator may bring into existence by writing it down.
+ *
+ * Deliberately not the whole list. A customer, a person, a deal, a brand and a
+ * product all have an owner surface that already creates them, and a second
+ * door onto the same thing is how a workspace ends up with two Bidiphars. What
+ * is offered here is only what nothing else in the product can record.
+ */
+export const authorableNodeTypes = ['standard', 'application', 'site', 'competitor', 'topic'] as const;
+export type AuthorableNodeType = (typeof authorableNodeTypes)[number];
+
+/** One line each, because a type nobody understands is a type nobody picks. */
+export const authorableNodeTypeHints: Record<AuthorableNodeType, string> = {
+  standard: 'A rule they have to satisfy - ISO 9001, SOC 2, CE, HACCP',
+  application: 'The job your product does for them',
+  site: 'A place they operate - a plant, a branch, a depot',
+  competitor: 'Someone else selling into the same account',
+  topic: 'Anything else. You name what kind of thing it is.',
+};
+
+/** The id a newly written node gets, so the same name never becomes two nodes. */
+export function authoredNodeId(type: AuthorableNodeType, label: string) {
+  return `${type}:${normalizeSearchText(label)}`;
+}
 
 export type KnowledgeNode = {
   id: string;
@@ -751,7 +807,8 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraph 
         id: subject.nodeId,
         type: nodeTypeFromId(subject.nodeId),
         label: subject.label,
-        subtitle: 'Known only from your own notes',
+        // The operator's own word for it, when they had to reach for one.
+        subtitle: subject.typeLabel?.trim() || 'Known only from your own notes',
         href: '',
         weight: 0.5,
         updatedAt: dateOf(record.updatedAt),

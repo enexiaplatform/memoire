@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   accountNodeId,
+  authorableNodeTypes,
+  authoredNodeId,
   buildKnowledgeGraph,
   competitorNodeId,
   inverseRelation,
@@ -266,6 +268,78 @@ describe('the Business Vault knowledge graph', () => {
     assert.equal(graph.backlinks.get(accountNodeId('Bidiphar')).length, 1, 'the customer knows it is mentioned');
     assert.ok(graph.edges.some((edge) => edge.relation === 'learned at'));
     assert.ok((graph.memory.get(accountNodeId('Bidiphar')) || []).some((entry) => entry.kind === 'note'));
+  });
+
+  it('lets an operator write down a thing no record in the workspace could produce', () => {
+    // A standard a customer must satisfy, the job the product does for them,
+    // the site they run it at - nothing in a CRM holds any of these, and they
+    // are the things a seller of ten years actually knows.
+    const knowledge = [
+      sanitizeKnowledgeRecord({
+        id: 'kn-std',
+        kind: 'note',
+        title: 'They audit every new supplier against ISO 9001 before a first order',
+        subjects: [{ nodeId: authoredNodeId('standard', 'ISO 9001'), label: 'ISO 9001' }],
+        updatedAt: '2026-08-09T00:00:00.000Z',
+      }),
+      sanitizeKnowledgeRecord({
+        id: 'kn-site',
+        kind: 'note',
+        title: 'The northern plant buys separately from head office',
+        subjects: [{ nodeId: authoredNodeId('site', 'Northern plant'), label: 'Northern plant' }],
+        updatedAt: '2026-08-09T00:00:00.000Z',
+      }),
+    ];
+
+    const graph = buildKnowledgeGraph({ ...empty, accounts: [account()], knowledge, today: TODAY });
+    assert.equal(graph.byId.get(authoredNodeId('standard', 'ISO 9001')).type, 'standard');
+    assert.equal(graph.byId.get(authoredNodeId('site', 'Northern plant')).type, 'site');
+    assert.equal(graph.counts.standard, 1);
+    assert.equal(graph.counts.site, 1);
+  });
+
+  it('keeps an escape hatch, and remembers the operator\'s own word for it', () => {
+    // Any fixed list of node types is wrong for somebody's trade. A freight
+    // forwarder's "customs regime" and a machine builder's "tender" are not on
+    // our list and never will be; what matters is that they can still be
+    // written down, and still read back in the words they were written in.
+    assert.ok(authorableNodeTypes.includes('topic'), 'the escape hatch must be offered');
+
+    const knowledge = [sanitizeKnowledgeRecord({
+      id: 'kn-topic',
+      kind: 'note',
+      title: 'Two of our best accounts were first met at this show',
+      subjects: [{
+        nodeId: authoredNodeId('topic', 'Hannover Messe 2027'),
+        label: 'Hannover Messe 2027',
+        typeLabel: 'Trade show',
+      }],
+      updatedAt: '2026-08-09T00:00:00.000Z',
+    })];
+
+    const graph = buildKnowledgeGraph({ ...empty, accounts: [account()], knowledge, today: TODAY });
+    const node = graph.byId.get(authoredNodeId('topic', 'Hannover Messe 2027'));
+    assert.equal(node.type, 'topic', 'it lands in the bounded set the graph can draw');
+    assert.equal(node.subtitle, 'Trade show', 'and carries the word the operator reached for');
+
+    // Two hits, not one: the thing itself and the note written about it. That
+    // is the point of a vault rather than a list - searching a name should
+    // surface what you know about it, not only the name.
+    const hits = searchKnowledgeNodes(graph.nodes, 'hannover messe');
+    assert.deepEqual(
+      hits.map((hit) => hit.type).sort(),
+      ['note', 'topic'],
+      'the topic and the knowledge recorded against it both answer to its name',
+    );
+  });
+
+  it('gives the same name one node however many notes mention it', () => {
+    const subject = { nodeId: authoredNodeId('standard', 'ISO 9001'), label: 'ISO 9001' };
+    const knowledge = ['kn-a', 'kn-b'].map((id) => sanitizeKnowledgeRecord({
+      id, kind: 'note', title: `Note ${id}`, subjects: [subject], updatedAt: '2026-08-09T00:00:00.000Z',
+    }));
+    const graph = buildKnowledgeGraph({ ...empty, accounts: [account()], knowledge, today: TODAY });
+    assert.equal(graph.counts.standard, 1, 'two notes about one standard is still one standard');
   });
 
   it('finds a Vietnamese customer typed without its accents', () => {

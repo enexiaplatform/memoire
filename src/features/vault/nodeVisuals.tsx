@@ -3,11 +3,15 @@ import {
   Building2,
   Boxes,
   CircleQuestionMark,
+  Crosshair,
+  Factory,
   Globe,
   Lightbulb,
   Package,
+  ScrollText,
   ShieldAlert,
   Swords,
+  Tag,
   Target,
   UserRound,
 } from 'lucide-react';
@@ -85,6 +89,37 @@ const VISUALS: Record<KnowledgeNodeType, NodeVisual> = {
     wash: '#FFFBEB',
     chip: 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200',
     icon: (className) => <ShieldAlert className={className} />,
+  },
+  standard: {
+    accent: '#3F51B5',
+    wash: '#EEF2FF',
+    chip: 'bg-indigo-50 text-indigo-800 ring-1 ring-inset ring-indigo-200',
+    icon: (className) => <ScrollText className={className} />,
+  },
+  application: {
+    accent: '#0E7490',
+    wash: '#ECFEFF',
+    chip: 'bg-cyan-50 text-cyan-800 ring-1 ring-inset ring-cyan-200',
+    icon: (className) => <Crosshair className={className} />,
+  },
+  site: {
+    accent: '#B45309',
+    wash: '#FFFBEB',
+    chip: 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200',
+    icon: (className) => <Factory className={className} />,
+  },
+  /**
+   * The escape hatch wears the quietest clothes in the set.
+   *
+   * A node whose kind the product did not anticipate should not arrive louder
+   * than a customer with three live deals. Neutral slate, a plain tag, and the
+   * operator's own word for it printed underneath.
+   */
+  topic: {
+    accent: '#64748B',
+    wash: '#F8FAFC',
+    chip: 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-300',
+    icon: (className) => <Tag className={className} />,
   },
   note: {
     accent: '#6D28D9',

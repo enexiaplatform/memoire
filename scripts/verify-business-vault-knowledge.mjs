@@ -187,7 +187,74 @@ const registry = readFileSync('src/config/featureRegistry.ts', 'utf8');
   assert.match(drawer, /restore/, 'a dismissed gap can be taken back');
 }
 
-// 7. Storage: one owned collection, a real table behind it, and it is backed up.
+// 7. Memoire is for B2B, not for one trade in it.
+//
+//    The founder's own book is pharma and lab supply, so every example that
+//    comes to hand is a pharma example. That is how a general product quietly
+//    becomes a niche one - not by a decision, but by a placeholder.
+//
+//    Two rules, both narrow enough to check:
+{
+  const graphSource = readFileSync('src/utils/knowledgeGraph.ts', 'utf8');
+
+  // (a) The escape hatch stays. Any fixed list of node types is wrong for
+  //     somebody's trade; `topic` is where the trade nobody anticipated gets
+  //     to name the thing in its own words. Losing it is a real regression,
+  //     and it would not fail anything else.
+  assert.match(graphSource, /'topic',/, 'the Vault must keep a node type for things its list did not anticipate');
+  assert.match(
+    graphSource,
+    /authorableNodeTypes = \[[^\]]*'topic'/s,
+    'the escape hatch has to be offered when writing knowledge, not merely exist in the type union',
+  );
+  assert.match(
+    readFileSync(`${vaultDir}/NewKnowledgeModal.tsx`, 'utf8'),
+    /Something else/,
+    'the escape hatch needs a name a person would pick',
+  );
+
+  // (b) No node may be derived by matching words in free text. Reading "GMP"
+  //     or "sterility" out of a deal's technical criteria would fill this
+  //     founder's map beautifully and return nothing at all for a software
+  //     reseller or a freight forwarder - silently, with no error to explain
+  //     the empty page. Derivation reads structured fields only.
+  const derivationCode = graphSource.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  for (const trade of ['gmp', 'sterility', 'oncology', 'annex', 'pharma', 'cleanroom']) {
+    assert.equal(
+      new RegExp(trade, 'i').test(derivationCode),
+      false,
+      `the graph derivation names "${trade}" - one trade's vocabulary in the engine is how this stops working for every other trade`,
+    );
+  }
+
+  // (c) The example copy an operator reads before typing anything has to be
+  //     recognisable to any B2B seller. Checked on the placeholders only:
+  //     a *list* of examples spanning several industries (ISO, SOC 2, HACCP,
+  //     CE) is exactly right and must not trip this.
+  const modalCode = readFileSync(`${vaultDir}/NewKnowledgeModal.tsx`, 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+  // Every literal inside every placeholder, not just the first. These are
+  // ternaries - one example for a note and another for a question - and a
+  // regex that stops at the opening quote checks half the copy while reporting
+  // success on all of it.
+  const placeholders = [...modalCode.matchAll(/placeholder=(?:"([^"]*)"|\{([\s\S]*?)\})/g)]
+    .flatMap((match) => (match[1]
+      ? [match[1]]
+      : [...match[2].matchAll(/'([^']*)'/g)].map((literal) => literal[1])));
+  assert.ok(placeholders.length >= 4, `expected the capture form to still carry its examples, found ${placeholders.length}`);
+  for (const placeholder of placeholders) {
+    for (const trade of ['GMP', 'sterility', 'oncology', 'Annex', 'QA meeting', 'contact plate']) {
+      assert.equal(
+        placeholder.toLowerCase().includes(trade.toLowerCase()),
+        false,
+        `a capture-form example is written in one trade's language ("${trade}" in "${placeholder}") - it is the only instruction the field gives, so it decides what people believe the feature is for`,
+      );
+    }
+  }
+}
+
+// 8. Storage: one owned collection, a real table behind it, and it is backed up.
 {
   const cloudStore = readFileSync('src/services/cloudJsonCollectionStore.ts', 'utf8');
   assert.match(cloudStore, /'knowledge_notes'/, 'knowledge notes are a registered JSON collection');

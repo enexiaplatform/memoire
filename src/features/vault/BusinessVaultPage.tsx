@@ -6,7 +6,7 @@ import { hasLocalSampleData } from '../../utils/dataMode';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData, type SalesWorkspaceData } from '../../services/workspaceData';
 import { deleteKnowledgeNote, loadKnowledgeNotes, loadKnowledgeNotesForWorkspace, saveKnowledgeNote } from '../../services/knowledgeNoteStore';
 import { buildAccountAliasIndex } from '../../utils/accountAliases';
-import { buildKnowledgeGraph, type KnowledgeGap, type KnowledgeNodeType } from '../../utils/knowledgeGraph';
+import { buildKnowledgeGraph, knowledgeNodeTypePlurals, type KnowledgeGap, type KnowledgeNodeType } from '../../utils/knowledgeGraph';
 import { buildGraphView } from '../../utils/knowledgeLayout';
 import {
   createKnowledgeRecordId,
@@ -446,28 +446,13 @@ function MapLegend({
             }`}
           >
             {nodeIcon(type, 'h-3 w-3')}
-            {typeLabel(type)}
+            {knowledgeNodeTypePlurals[type]}
             <span className="tabular-nums opacity-60">{count}</span>
           </button>
         );
       })}
     </div>
   );
-}
-
-function typeLabel(type: KnowledgeNodeType) {
-  return {
-    account: 'Customers',
-    person: 'People',
-    opportunity: 'Deals',
-    brand: 'Principals',
-    product: 'Products',
-    industry: 'Markets',
-    competitor: 'Competitors',
-    objection: 'Objections',
-    note: 'Knowledge',
-    question: 'Questions',
-  }[type];
 }
 
 function mapSummary(nodeCount: number, focus?: string) {

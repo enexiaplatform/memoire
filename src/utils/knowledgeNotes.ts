@@ -54,6 +54,16 @@ export type KnowledgeStatus = (typeof knowledgeStatuses)[number];
 export type KnowledgeSubjectRef = {
   nodeId: string;
   label: string;
+  /**
+   * The operator's own word for what kind of thing this is.
+   *
+   * Only set on a subject they brought into existence themselves, and only
+   * when they reached past the offered types into "something else". Any fixed
+   * list of node types is wrong for somebody's trade; this is where the trade
+   * that was not anticipated gets to say what it calls the thing, without the
+   * graph having to grow a type it cannot draw.
+   */
+  typeLabel?: string;
 };
 
 export const knowledgeEvidenceKinds = ['activity', 'opportunity', 'quote', 'outcome', 'account', 'stated'] as const;
@@ -151,9 +161,11 @@ function sanitizeSubjects(value: unknown): KnowledgeSubjectRef[] {
     const nodeId = typeof subject.nodeId === 'string' ? subject.nodeId.trim() : '';
     if (!nodeId || seen.has(nodeId)) return [];
     seen.add(nodeId);
+    const typeLabel = typeof subject.typeLabel === 'string' ? subject.typeLabel.trim() : '';
     return [{
       nodeId,
       label: typeof subject.label === 'string' && subject.label.trim() ? subject.label.trim() : nodeId,
+      typeLabel: typeLabel || undefined,
     }];
   });
 }
