@@ -1,11 +1,10 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, Grid3x3, Network, Search } from 'lucide-react';
+import { ArrowUpRight, ChevronRight, Clock, CircleQuestionMark, Grid3x3, Network, Waypoints } from 'lucide-react';
 import { formatSafeBusinessDate } from '../../utils/safeDate';
 import { formatCompactBaseAmount } from '../../utils/money';
 import {
   describeMatch,
-  knowledgeHealthBandLabels,
   knowledgeNodeTypeLabels,
   knowledgeNodeTypePlurals,
   searchKnowledgeNodes,
@@ -14,6 +13,8 @@ import {
   type KnowledgeNode,
   type KnowledgeNodeType,
 } from '../../utils/knowledgeGraph';
+import { buildGraphView } from '../../utils/knowledgeLayout';
+import { KnowledgeGraphCanvas } from './KnowledgeGraphCanvas';
 import { nodeIcon, nodeVisual } from './nodeVisuals';
 
 /**
@@ -21,16 +22,33 @@ import { nodeIcon, nodeVisual } from './nodeVisuals';
  *
  * Not a file manager. A list of everything, alphabetically, is technically a
  * library and practically a filing cabinet nobody opens. What an operator needs
- * on arrival is four answers: what changed, what is missing, what is worth
- * looking at, and - the moment they have a name in mind - a search that finds
- * it on the first try.
+ * on arrival is four answers - what the business looks like, what changed, what
+ * is missing, and what is worth opening next - and then, the moment they have a
+ * name in mind, a search that finds it on the first try.
+ *
+ * The map is live here rather than a card advertising one. A picture of a map
+ * with a button under it asks the operator to take a step before they have been
+ * given a reason to; the real thing, small, gives them the reason and the step
+ * at once. It is deliberately reduced - seven relations, no second ring, pills
+ * instead of cards - because this is a way in, and the Map tab is where the
+ * business is actually studied.
  */
 
 type Props = {
   graph: KnowledgeGraph;
   query: string;
   typeFilter: KnowledgeNodeType | 'all';
-  onQueryChange: (value: string) => void;
+  selectedId: string;
+  /**
+   * Whether this screen is wide enough for a drawn map.
+   *
+   * The same signal the Map tab uses. Measured on a 375px phone the inline
+   * canvas fits to 341x300, which puts node titles at 6.8px and clips three of
+   * eight off the sides - a picture of a map that cannot be read or used. The
+   * doors it offers are the same ones "Continue exploring" lists as text right
+   * below, so on a phone the panel keeps its heading and drops the canvas.
+   */
+  canDrawMap: boolean;
   onTypeFilterChange: (value: KnowledgeNodeType | 'all') => void;
   onSelect: (nodeId: string) => void;
   onOpenMap: (nodeId?: string) => void;
@@ -42,26 +60,27 @@ export function VaultLibrary({
   graph,
   query,
   typeFilter,
-  onQueryChange,
+  selectedId,
+  canDrawMap,
   onTypeFilterChange,
   onSelect,
   onOpenMap,
   onAnswerGap,
   onDismissGap,
 }: Props) {
+  const searching = query.trim().length > 0;
+
   const pool = useMemo(
     () => (typeFilter === 'all' ? graph.nodes : graph.nodes.filter((node) => node.type === typeFilter)),
     [graph.nodes, typeFilter],
   );
-
   const results = useMemo(() => searchKnowledgeNodes(pool, query, 60), [pool, query]);
-  const searching = query.trim().length > 0 || typeFilter !== 'all';
 
   const recentlyChanged = useMemo(
     () => [...graph.nodes]
       .filter((node) => node.updatedAt)
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || right.weight - left.weight)
-      .slice(0, 6),
+      .slice(0, 5),
     [graph.nodes],
   );
 
@@ -77,21 +96,15 @@ export function VaultLibrary({
     [graph.counts],
   );
 
-  return (
-    <div className="space-y-5">
-      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
-            placeholder="Search your business memory - a customer, a person, a product, a competitor..."
-            aria-label="Search your business memory"
-            className="w-full rounded-lg border border-gray-300 py-2.5 pl-9 pr-3 text-sm text-navy placeholder:text-gray-400 focus:border-brand-blue focus:outline-none"
-          />
-        </div>
+  const mapView = useMemo(
+    () => (canDrawMap ? buildGraphView({ graph, focusId: selectedId || undefined, compact: true }) : null),
+    [graph, selectedId, canDrawMap],
+  );
 
-        <div className="mt-3 flex flex-wrap gap-1.5">
+  if (searching) {
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-wrap gap-1.5">
           <FilterChip active={typeFilter === 'all'} onClick={() => onTypeFilterChange('all')}>
             Everything <span className="tabular-nums opacity-60">{graph.nodes.length}</span>
           </FilterChip>
@@ -102,9 +115,7 @@ export function VaultLibrary({
             </FilterChip>
           ))}
         </div>
-      </div>
 
-      {searching ? (
         <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <h2 className="text-sm font-bold text-navy">
             {results.length === 0
@@ -126,45 +137,167 @@ export function VaultLibrary({
             </ul>
           )}
         </section>
-      ) : (
-        <>
-          <MapPreview graph={graph} onOpenMap={onOpenMap} />
+      </div>
+    );
+  }
 
-          <div className="grid gap-5 lg:grid-cols-2">
-            <GapsPanel graph={graph} onSelect={onSelect} onAnswerGap={onAnswerGap} onDismissGap={onDismissGap} />
-
-            <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-              <h2 className="text-sm font-bold text-navy">Recently changed</h2>
-              <p className="mt-0.5 text-xs text-gray-500">What the workspace learned most recently.</p>
-              <ul className="mt-2.5 divide-y divide-gray-100">
-                {recentlyChanged.map((node) => (
-                  <li key={node.id}>
-                    <NodeRow node={node} graph={graph} query="" onSelect={onSelect} />
-                  </li>
-                ))}
-              </ul>
-            </section>
+  return (
+    <div className="space-y-4">
+      {/* The map and the four counts, side by side. The counts read as a column
+          beside the picture rather than a banner above it, which is what stops
+          the page opening on a row of numbers before it has shown anything. */}
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-2 px-4 pb-2 pt-4">
+            <div>
+              <h2 className="flex items-center gap-2 text-sm font-bold text-navy">
+                <Network className="h-4 w-4 text-brand-blue" />
+                Your business map
+              </h2>
+              <p className="mt-0.5 text-xs text-gray-500">
+                {selectedId && graph.byId.get(selectedId)
+                  ? `Around ${graph.byId.get(selectedId)!.label}. Open the full map to go further out.`
+                  : 'Explore how customers, products, people and opportunities connect.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onOpenMap()}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-bold text-navy transition hover:border-brand-blue hover:text-brand-blue"
+            >
+              Open full map <ArrowUpRight className="h-3.5 w-3.5" />
+            </button>
           </div>
-
-          <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <div>
-                <h2 className="text-sm font-bold text-navy">Continue exploring</h2>
-                <p className="mt-0.5 text-xs text-gray-500">
-                  The most connected things you know. Open one to see its neighbourhood.
-                </p>
-              </div>
+          {mapView ? (
+            <div className="h-[300px] w-full">
+              <KnowledgeGraphCanvas
+                compact
+                view={mapView}
+                focusId={selectedId}
+                onSelect={onSelect}
+                summary={`Knowledge map${selectedId && graph.byId.get(selectedId) ? ` centred on ${graph.byId.get(selectedId)!.label}` : ''}, showing ${mapView.nodes.length} related things. The list below is the same content as text.`}
+              />
             </div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              {exploring.map((node) => (
-                <ExploreCard key={node.id} node={node} graph={graph} onSelect={onSelect} />
-              ))}
-            </div>
-          </section>
+          ) : (
+            <p className="px-4 pb-4 text-xs leading-5 text-gray-500">
+              {graph.stats.nodeCount} things you know, joined by {graph.stats.edgeCount} recorded relationships. The
+              drawn map needs a wider screen - open it from the Map tab to read the same neighbourhood as a list.
+            </p>
+          )}
+        </section>
 
-          <CoverageCard />
-        </>
-      )}
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+          <StatCard
+            icon={<Waypoints className="h-4 w-4" />}
+            tone="blue"
+            label="Knowledge nodes"
+            value={graph.stats.nodeCount}
+            hint="Customers, people, products, notes"
+          />
+          <StatCard
+            icon={<CircleQuestionMark className="h-4 w-4" />}
+            tone="orange"
+            label="Open knowledge gaps"
+            value={graph.stats.openGapCount}
+            hint="Things worth knowing, unrecorded"
+          />
+          <StatCard
+            icon={<Clock className="h-4 w-4" />}
+            tone="emerald"
+            label="Recently updated"
+            value={graph.stats.changedThisWeek}
+            hint="In the last 7 days"
+          />
+          <StatCard
+            icon={<Network className="h-4 w-4" />}
+            tone="violet"
+            label="Active connections"
+            value={graph.stats.edgeCount}
+            hint="Recorded relationships"
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <h2 className="flex items-center gap-2 text-sm font-bold text-navy">
+            <Clock className="h-4 w-4 text-brand-blue" />
+            Recently changed
+          </h2>
+          <ul className="mt-2 divide-y divide-gray-100">
+            {recentlyChanged.map((node) => (
+              <li key={node.id}>
+                <NodeRow node={node} graph={graph} query="" onSelect={onSelect} />
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <GapsPanel graph={graph} onSelect={onSelect} onAnswerGap={onAnswerGap} onDismissGap={onDismissGap} />
+      </div>
+
+      <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-bold text-navy">Continue exploring</h2>
+        <p className="mt-0.5 text-xs text-gray-500">
+          The most connected things you know. Open one to see its neighbourhood.
+        </p>
+        {/* One scrolling row rather than a grid: these are doors, and a grid of
+            eight equal cards reads as a decision to make. */}
+        <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
+          {exploring.map((node) => (
+            <button
+              key={node.id}
+              type="button"
+              onClick={() => onSelect(node.id)}
+              className="group inline-flex shrink-0 items-center gap-2 rounded-lg border border-gray-200 py-2 pl-2.5 pr-2 text-left transition hover:border-brand-blue hover:shadow-sm"
+            >
+              <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${nodeVisual(node.type).chip}`}>
+                {nodeIcon(node.type, 'h-3.5 w-3.5')}
+              </span>
+              <span className="max-w-[150px] truncate text-sm font-bold text-navy group-hover:text-brand-blue">
+                {node.label}
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-gray-400 group-hover:text-brand-blue" />
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <CoverageCard />
+    </div>
+  );
+}
+
+const STAT_TONES: Record<string, string> = {
+  blue: 'bg-blue-50 text-brand-blue',
+  orange: 'bg-orange-50 text-orange-700',
+  emerald: 'bg-emerald-50 text-emerald-700',
+  violet: 'bg-violet-50 text-violet-700',
+};
+
+function StatCard({
+  icon,
+  tone,
+  label,
+  value,
+  hint,
+}: {
+  icon: React.ReactNode;
+  tone: keyof typeof STAT_TONES;
+  label: string;
+  value: number;
+  hint: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-3.5 shadow-sm">
+      <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${STAT_TONES[tone]}`}>
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{label}</p>
+        <p className="text-2xl font-black leading-tight tabular-nums text-navy">{value}</p>
+        <p className="text-[11px] leading-4 text-gray-500">{hint}</p>
+      </div>
     </div>
   );
 }
@@ -240,92 +373,9 @@ function NodeRow({
   );
 }
 
-function ExploreCard({
-  node,
-  graph,
-  onSelect,
-}: {
-  node: KnowledgeNode;
-  graph: KnowledgeGraph;
-  onSelect: (nodeId: string) => void;
-}) {
-  const health = graph.health.get(node.id);
-  const visual = nodeVisual(node.type);
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(node.id)}
-      className="group rounded-lg border border-gray-200 bg-white p-3 text-left transition hover:-translate-y-0.5 hover:border-brand-blue hover:shadow-card motion-reduce:hover:translate-y-0"
-      style={{ borderLeftColor: visual.accent, borderLeftWidth: 3 }}
-    >
-      <span className="flex items-center gap-1.5">
-        <span style={{ color: visual.accent }}>{nodeIcon(node.type, 'h-3.5 w-3.5')}</span>
-        <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">
-          {knowledgeNodeTypeLabels[node.type]}
-        </span>
-      </span>
-      <span className="mt-1 block truncate text-sm font-bold text-navy group-hover:text-brand-blue" title={node.label}>
-        {node.label}
-      </span>
-      <span className="mt-1 block text-xs text-gray-500">
-        {node.connectionCount} connection{node.connectionCount === 1 ? '' : 's'}
-        {node.memoryCount > 0 ? ` · ${node.memoryCount} ${node.memoryCount === 1 ? 'memory' : 'memories'}` : ''}
-      </span>
-      {health && (
-        <span className="mt-1.5 block text-[11px] font-bold text-gray-400">
-          {knowledgeHealthBandLabels[health.band]} · {health.known}/{health.total} known
-        </span>
-      )}
-    </button>
-  );
-}
-
-function MapPreview({ graph, onOpenMap }: { graph: KnowledgeGraph; onOpenMap: (nodeId?: string) => void }) {
-  const hubs = graph.nodes.filter((node) => node.connectionCount > 0).slice(0, 5);
-
-  return (
-    <section className="overflow-hidden rounded-xl border border-gray-200 bg-gradient-to-br from-white via-white to-slate-50 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3 p-4">
-        <div>
-          <h2 className="flex items-center gap-2 text-sm font-bold text-navy">
-            <Network className="h-4 w-4 text-brand-blue" />
-            Your business map
-          </h2>
-          <p className="mt-1 max-w-xl text-sm leading-6 text-gray-600">
-            {graph.stats.nodeCount} things you know, joined by {graph.stats.edgeCount} recorded relationships. Open a
-            customer and the rest of the map steps back.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => onOpenMap()}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-navy px-3 py-2 text-xs font-bold text-white transition hover:bg-navy/90"
-        >
-          Open the map <ArrowUpRight className="h-3.5 w-3.5" />
-        </button>
-      </div>
-      {hubs.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 border-t border-gray-100 bg-white/60 px-4 py-3">
-          {hubs.map((node) => (
-            <button
-              key={node.id}
-              type="button"
-              onClick={() => onOpenMap(node.id)}
-              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition hover:brightness-95 ${nodeVisual(node.type).chip}`}
-            >
-              {nodeIcon(node.type, 'h-3 w-3')}
-              {node.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
 export function GapsPanel({
   graph,
-  limit = 6,
+  limit = 5,
   onSelect,
   onAnswerGap,
   onDismissGap,
@@ -341,7 +391,10 @@ export function GapsPanel({
   return (
     <section className="rounded-xl border border-orange-200 bg-orange-50/40 p-4 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-sm font-bold text-navy">Knowledge gaps</h2>
+        <h2 className="flex items-center gap-2 text-sm font-bold text-navy">
+          <CircleQuestionMark className="h-4 w-4 text-orange-500" />
+          Knowledge gaps
+        </h2>
         {graph.gaps.length > limit && (
           <span className="text-xs font-semibold text-gray-500">{graph.gaps.length} in total</span>
         )}

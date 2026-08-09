@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Layers, ListTree, Network, Plus, X } from 'lucide-react';
+import { Layers, ListTree, Network, Plus, Search, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData, type SalesWorkspaceData } from '../../services/workspaceData';
@@ -229,13 +229,42 @@ export function BusinessVaultPage() {
         title="Business Vault"
         description="Your long-term memory of customers, markets, people, products and decisions - and an honest account of what you still do not know."
         actions={
-          <button
-            type="button"
-            onClick={() => setPrefill({ kind: 'note', subjectNodeId: selectedId || undefined })}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-navy px-3.5 py-2 text-sm font-bold text-white transition hover:bg-navy/90"
-          >
-            <Plus className="h-4 w-4" /> New knowledge
-          </button>
+          <>
+            {/* In the header, not inside the Library.
+                Search is how an operator arrives at this page with a name
+                already in mind, and putting the box inside one of three tabs
+                means two of them cannot be searched from - you have to know to
+                go back to Library first, which is a rule about our layout
+                rather than about the work. Typing here answers from the whole
+                vault whichever tab is open. */}
+            <label className="relative block w-full sm:w-[320px] lg:w-[360px]">
+              <span className="sr-only">Search your business memory</span>
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                value={query}
+                onChange={(event) => patchParams({ q: event.target.value || null, view: event.target.value ? 'library' : null })}
+                placeholder="Search your business memory..."
+                className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-8 text-sm text-navy placeholder:text-gray-400 focus:border-brand-blue focus:outline-none"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => patchParams({ q: null })}
+                  aria-label="Clear search"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-gray-400 transition hover:text-navy"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </label>
+            <button
+              type="button"
+              onClick={() => setPrefill({ kind: 'note', subjectNodeId: selectedId || undefined })}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-blue px-3.5 py-2 text-sm font-bold text-white transition hover:bg-brand-blue-dark"
+            >
+              <Plus className="h-4 w-4" /> New knowledge
+            </button>
+          </>
         }
       />
 
@@ -243,13 +272,6 @@ export function BusinessVaultPage() {
         <EmptyState />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat label="Knowledge nodes" value={graph.stats.nodeCount} hint="customers, people, products, notes" />
-            <Stat label="Connections" value={graph.stats.edgeCount} hint="recorded relationships" />
-            <Stat label="Open gaps" value={graph.stats.openGapCount} hint="things worth knowing, unrecorded" tone="warn" />
-            <Stat label="Changed this week" value={graph.stats.changedThisWeek} hint="nodes with new records" />
-          </div>
-
           <div className="flex flex-wrap items-center gap-2">
             <div role="tablist" aria-label="Business Vault views" className="inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
               {VIEWS.map((item) => (
@@ -290,7 +312,8 @@ export function BusinessVaultPage() {
               graph={graph}
               query={query}
               typeFilter={typeFilter}
-              onQueryChange={(value) => patchParams({ q: value || null })}
+              selectedId={selectedId}
+              canDrawMap={wideEnoughToDraw}
               onTypeFilterChange={setTypeFilter}
               onSelect={select}
               onOpenMap={openMap}
@@ -392,18 +415,6 @@ export function BusinessVaultPage() {
 
 function matches(query: string) {
   return typeof window !== 'undefined' && window.matchMedia(query).matches;
-}
-
-function Stat({ label, value, hint, tone }: { label: string; value: number; hint: string; tone?: 'warn' }) {
-  return (
-    <div className={`rounded-xl border p-3 shadow-sm ${tone === 'warn' && value > 0 ? 'border-orange-200 bg-orange-50/50' : 'border-gray-200 bg-white'}`}>
-      <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{label}</p>
-      <p className={`mt-0.5 text-2xl font-black tabular-nums ${tone === 'warn' && value > 0 ? 'text-orange-900' : 'text-navy'}`}>
-        {value}
-      </p>
-      <p className="mt-0.5 text-[11px] leading-4 text-gray-500">{hint}</p>
-    </div>
-  );
 }
 
 function MapLegend({

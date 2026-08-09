@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Locate, Minus, Plus } from 'lucide-react';
+import { Crosshair, Minus, Plus } from 'lucide-react';
 import { nodeSizeFor, type GraphView, type PositionedEdge, type PositionedNode } from '../../utils/knowledgeLayout';
 import { nodeVisual } from './nodeVisuals';
 import { knowledgeNodeTypeLabels } from '../../utils/knowledgeGraph';
@@ -42,9 +42,15 @@ type Props = {
   onSelect: (nodeId: string) => void;
   /** Announced to screen readers as the graph's text equivalent. */
   summary: string;
+  /**
+   * Drawn to sit inside a page: pills instead of cards, no dotted ground, and
+   * the controls reduced to what fits. The layout has to be built with
+   * `compact` too - see `buildGraphView`.
+   */
+  compact?: boolean;
 };
 
-export function KnowledgeGraphCanvas({ view, focusId, onSelect, summary }: Props) {
+export function KnowledgeGraphCanvas({ view, focusId, onSelect, summary, compact = false }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 900, height: 560 });
   const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
@@ -67,14 +73,14 @@ export function KnowledgeGraphCanvas({ view, focusId, onSelect, summary }: Props
   const fit = useCallback(() => {
     // The bounds already include each card's own box, so the padding here is
     // breathing room rather than a guess at how big a node draws.
-    const padding = 34;
+    const padding = compact ? 18 : 34;
     const width = Math.max(view.bounds.maxX - view.bounds.minX + padding * 2, 320);
     const height = Math.max(view.bounds.maxY - view.bounds.minY + padding * 2, 240);
     const scale = clamp(Math.min(size.width / width, size.height / height), MIN_FIT_SCALE, 1.15);
     const centerX = (view.bounds.minX + view.bounds.maxX) / 2;
     const centerY = (view.bounds.minY + view.bounds.maxY) / 2;
     setTransform({ scale, x: -centerX * scale, y: -centerY * scale });
-  }, [size.width, size.height, view.bounds]);
+  }, [size.width, size.height, view.bounds, compact]);
 
   // Re-frames whenever the neighbourhood changes, which is what makes selecting
   // a node feel like the map moving to it rather than the map being replaced.
@@ -99,7 +105,7 @@ export function KnowledgeGraphCanvas({ view, focusId, onSelect, summary }: Props
     return () => node.removeEventListener('wheel', onWheel);
   }, []);
 
-  const labelled = useMemo(() => labellableEdges(view), [view]);
+  const labelled = useMemo(() => labellableEdges(view, compact), [view, compact]);
 
   const adjacency = useMemo(() => {
     const map = new Map<string, Set<string>>();
@@ -166,18 +172,20 @@ export function KnowledgeGraphCanvas({ view, focusId, onSelect, summary }: Props
   });
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-xl border border-gray-200 bg-white">
+    <div className={`relative h-full w-full overflow-hidden ${compact ? '' : 'rounded-xl border border-gray-200 bg-white'}`}>
       {/* A faint grid gives the pan something to move against. Without it,
           dragging an empty white field feels like nothing is happening. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.55]"
-        style={{
-          backgroundImage: 'radial-gradient(#CBD5E1 1px, transparent 1px)',
-          backgroundSize: '26px 26px',
-          backgroundPosition: `${transform.x % 26}px ${transform.y % 26}px`,
-        }}
-      />
+      {!compact && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.55]"
+          style={{
+            backgroundImage: 'radial-gradient(#CBD5E1 1px, transparent 1px)',
+            backgroundSize: '26px 26px',
+            backgroundPosition: `${transform.x % 26}px ${transform.y % 26}px`,
+          }}
+        />
+      )}
       <div ref={containerRef} className="absolute inset-0">
         <svg
           className={`h-full w-full touch-none ${dragging ? 'cursor-grabbing' : 'cursor-grab'}`}
@@ -226,13 +234,21 @@ export function KnowledgeGraphCanvas({ view, focusId, onSelect, summary }: Props
                    where there are only a handful of lines and an unlabelled one
                    is just a line. Labelling every edge of a busy neighbourhood
                    is what turns a map back into a diagram. */
+                compact={compact}
+                /*
+                 * Hover overrides the fit test on purpose.
+                 *
+                 * `labelled` drops any label that would sit under a card, which
+                 * is right for the labels that are always on - and wrong for
+                 * the one the operator is pointing at. On the inline map the
+                 * ring is tight enough that nothing passes the test, so without
+                 * this exception a compact map has no way to say what its lines
+                 * mean. A label the reader summoned is worth a moment of
+                 * overlap; one they did not is not.
+                 */
                 showLabel={
-                  labelled.has(edge.id)
-                  && (
-                    edge.primary
-                    || !focusId
-                    || Boolean(hovered && (edge.from.node.id === hovered || edge.to.node.id === hovered))
-                  )
+                  Boolean(hovered && (edge.from.node.id === hovered || edge.to.node.id === hovered))
+                  || (labelled.has(edge.id) && (edge.primary || !focusId))
                 }
               />
             ))}
@@ -250,14 +266,29 @@ export function KnowledgeGraphCanvas({ view, focusId, onSelect, summary }: Props
         </svg>
       </div>
 
-      <div className="absolute bottom-3 right-3 flex items-center gap-1 rounded-lg border border-gray-200 bg-white/95 p-1 shadow-sm backdrop-blur">
-        <ControlButton label="Zoom out" onClick={() => zoomBy(0.85)}><Minus className="h-4 w-4" /></ControlButton>
-        <span className="w-11 text-center text-[11px] font-bold tabular-nums text-gray-500">
-          {Math.round(transform.scale * 100)}%
-        </span>
-        <ControlButton label="Zoom in" onClick={() => zoomBy(1.18)}><Plus className="h-4 w-4" /></ControlButton>
+      {/* Top right, where the design puts them and where they stop colliding
+          with the node that ends up lowest on the ring. "Fit view" is spelled
+          out rather than left as a crosshair: it is the control people reach
+          for once they have panned somewhere they cannot get back from. */}
+      <div className="absolute right-3 top-3 flex items-center gap-1 rounded-lg border border-gray-200 bg-white/95 p-1 shadow-sm backdrop-blur">
+        <ControlButton label="Recentre on the selected node" onClick={fit}>
+          <Crosshair className="h-4 w-4" />
+        </ControlButton>
+        <button
+          type="button"
+          onClick={fit}
+          className="rounded-md px-2 py-1 text-[11px] font-bold text-gray-600 transition hover:bg-gray-100 hover:text-navy"
+        >
+          Fit view
+        </button>
         <span className="mx-0.5 h-5 w-px bg-gray-200" />
-        <ControlButton label="Fit the map to view" onClick={fit}><Locate className="h-4 w-4" /></ControlButton>
+        <ControlButton label="Zoom out" onClick={() => zoomBy(0.85)}><Minus className="h-4 w-4" /></ControlButton>
+        {!compact && (
+          <span className="w-11 text-center text-[11px] font-bold tabular-nums text-gray-500">
+            {Math.round(transform.scale * 100)}%
+          </span>
+        )}
+        <ControlButton label="Zoom in" onClick={() => zoomBy(1.18)}><Plus className="h-4 w-4" /></ControlButton>
       </div>
     </div>
   );
@@ -283,7 +314,7 @@ function ControlButton({ label, onClick, children }: { label: string; onClick: (
  * Shared by the drawing and by the collision pass below, because a label placed
  * at one point and tested at another is a label that hides behind a card.
  */
-function edgeGeometry(edge: PositionedEdge) {
+function edgeGeometry(edge: PositionedEdge, compact = false) {
   const from = anchor(edge.from, edge.to);
   const to = anchor(edge.to, edge.from);
 
@@ -306,7 +337,7 @@ function edgeGeometry(edge: PositionedEdge) {
     length,
     labelX: 0.25 * from.x + 0.5 * controlX + 0.25 * to.x,
     labelY: 0.25 * from.y + 0.5 * controlY + 0.25 * to.y,
-    plateWidth: edge.relation.length * 6.2 + 14,
+    plateWidth: edge.relation.length * (compact ? 5.0 : 6.2) + (compact ? 10 : 14),
   };
 }
 
@@ -322,7 +353,7 @@ const LABEL_HEIGHT = 16;
  * are wholly clear. A relation nobody can read is worse than an unlabelled
  * line; the word is still in the drawer either way.
  */
-function labellableEdges(view: GraphView) {
+function labellableEdges(view: GraphView, compact: boolean) {
   const cards = view.nodes.map((node) => {
     const size = nodeSizeFor(node);
     return { minX: node.x - size.width / 2, maxX: node.x + size.width / 2, minY: node.y - size.height / 2, maxY: node.y + size.height / 2 };
@@ -331,13 +362,13 @@ function labellableEdges(view: GraphView) {
   const clear = new Set<string>();
   for (const edge of view.edges) {
     if (!edge.relation) continue;
-    const geometry = edgeGeometry(edge);
-    if (geometry.length <= geometry.plateWidth + 16) continue;
+    const geometry = edgeGeometry(edge, compact);
+    if (geometry.length <= geometry.plateWidth + (compact ? 8 : 16)) continue;
     const plate = {
       minX: geometry.labelX - geometry.plateWidth / 2,
       maxX: geometry.labelX + geometry.plateWidth / 2,
-      minY: geometry.labelY - LABEL_HEIGHT / 2,
-      maxY: geometry.labelY + LABEL_HEIGHT / 2,
+      minY: geometry.labelY - (compact ? 12 : LABEL_HEIGHT) / 2,
+      maxY: geometry.labelY + (compact ? 12 : LABEL_HEIGHT) / 2,
     };
     const hits = cards.some((card) =>
       plate.minX < card.maxX && plate.maxX > card.minX && plate.minY < card.maxY && plate.maxY > card.minY);
@@ -346,9 +377,19 @@ function labellableEdges(view: GraphView) {
   return clear;
 }
 
-function Edge({ edge, lit, showLabel }: { edge: PositionedEdge; lit: Set<string> | null; showLabel: boolean }) {
+function Edge({
+  edge,
+  lit,
+  showLabel,
+  compact,
+}: {
+  edge: PositionedEdge;
+  lit: Set<string> | null;
+  showLabel: boolean;
+  compact: boolean;
+}) {
   const dimmed = Boolean(lit) && !(lit!.has(edge.from.node.id) && lit!.has(edge.to.node.id));
-  const { from, to, controlX, controlY, labelX, labelY, plateWidth } = edgeGeometry(edge);
+  const { from, to, controlX, controlY, labelX, labelY, plateWidth } = edgeGeometry(edge, compact);
   const label = edge.relation;
 
   return (
@@ -368,14 +409,14 @@ function Edge({ edge, lit, showLabel }: { edge: PositionedEdge; lit: Set<string>
         <g style={{ transform: `translate(${labelX}px, ${labelY}px)` }}>
           <rect
             x={-plateWidth / 2}
-            y={-8}
+            y={compact ? -6 : -8}
             width={plateWidth}
-            height={16}
-            rx={8}
+            height={compact ? 12 : 16}
+            rx={compact ? 6 : 8}
             fill="#FFFFFF"
             stroke="#E2E8F0"
           />
-          <text textAnchor="middle" y={3.5} fontSize={10} fontWeight={600} fill="#475569">
+          <text textAnchor="middle" y={compact ? 2.8 : 3.5} fontSize={compact ? 8.5 : 10} fontWeight={600} fill="#475569">
             {label}
           </text>
         </g>
@@ -397,12 +438,14 @@ function Node({
   onSelect: (id: string) => void;
   onHover: (id: string) => void;
 }) {
-  const { node, ring } = positioned;
+  const { node, ring, compact } = positioned;
   const size = nodeSizeFor(positioned);
   const visual = nodeVisual(node.type);
   const halfWidth = size.width / 2;
   const halfHeight = size.height / 2;
-  const titleMax = selected ? 26 : ring >= 2 ? 18 : 22;
+  const titleMax = compact
+    ? (selected ? 21 : ring >= 2 ? 16 : 19)
+    : (selected ? 26 : ring >= 2 ? 18 : 22);
 
   const metric = nodeMetric(node);
   const describedAs = `${node.label}. ${knowledgeNodeTypeLabels[node.type]}. ${metric || 'No records yet'}${positioned.relation ? `. ${positioned.relation}` : ''}`;
@@ -466,37 +509,62 @@ function Node({
         y={-halfHeight}
         width={size.width}
         height={size.height}
-        rx={11}
+        rx={compact ? halfHeight : 11}
         fill={selected ? visual.wash : '#FFFFFF'}
         stroke={selected ? visual.accent : '#E2E8F0'}
         strokeWidth={selected ? 1.5 : 1}
       />
-      {/* The type accent, as a bar rather than a coloured card: ten pastel cards
-          is a rainbow, ten 3px bars is a legend. */}
-      <rect x={-halfWidth} y={-halfHeight + 9} width={3} height={size.height - 18} rx={1.5} fill={visual.accent} />
 
-      <g style={{ color: visual.accent, transform: `translate(${-halfWidth + 14}px, ${-halfHeight + 11}px)` }}>
-        {visual.icon('')}
-      </g>
+      {compact ? (
+        /* A pill: type carried by the icon's colour alone, because there is no
+           room for a second line and a truncated type label reads as damage.
+           The full type is still spoken by `aria-label` and written in the
+           drawer, so nothing is colour-only for anyone who cannot use it. */
+        <>
+          <g style={{ color: visual.accent, transform: `translate(${-halfWidth + 11}px, ${-7}px)` }}>
+            {visual.icon('h-3.5 w-3.5')}
+          </g>
+          <text
+            x={-halfWidth + 32}
+            y={4}
+            fontSize={selected ? 12 : 11}
+            fontWeight={700}
+            fill="#0F172A"
+            style={{ fontFamily: 'Outfit, sans-serif' }}
+          >
+            {truncate(node.label, titleMax)}
+          </text>
+        </>
+      ) : (
+        <>
+          {/* The type accent, as a bar rather than a coloured card: ten pastel
+              cards is a rainbow, ten 3px bars is a legend. */}
+          <rect x={-halfWidth} y={-halfHeight + 9} width={3} height={size.height - 18} rx={1.5} fill={visual.accent} />
 
-      <text
-        x={-halfWidth + 34}
-        y={-halfHeight + 22}
-        fontSize={selected ? 14 : 12.5}
-        fontWeight={700}
-        fill="#0F172A"
-        style={{ fontFamily: 'Outfit, sans-serif' }}
-      >
-        {truncate(node.label, titleMax)}
-      </text>
-      <text x={-halfWidth + 34} y={-halfHeight + 37} fontSize={10} fontWeight={600} fill="#64748B" letterSpacing={0.4}>
-        {knowledgeNodeTypeLabels[node.type].toUpperCase()}
-      </text>
+          <g style={{ color: visual.accent, transform: `translate(${-halfWidth + 14}px, ${-halfHeight + 11}px)` }}>
+            {visual.icon('')}
+          </g>
 
-      {(selected || ring < 2) && metric && (
-        <text x={-halfWidth + 14} y={halfHeight - 12} fontSize={10.5} fontWeight={600} fill="#475569">
-          {truncate(metric, selected ? 34 : 26)}
-        </text>
+          <text
+            x={-halfWidth + 34}
+            y={-halfHeight + 22}
+            fontSize={selected ? 14 : 12.5}
+            fontWeight={700}
+            fill="#0F172A"
+            style={{ fontFamily: 'Outfit, sans-serif' }}
+          >
+            {truncate(node.label, titleMax)}
+          </text>
+          <text x={-halfWidth + 34} y={-halfHeight + 37} fontSize={10} fontWeight={600} fill="#64748B" letterSpacing={0.4}>
+            {knowledgeNodeTypeLabels[node.type].toUpperCase()}
+          </text>
+
+          {(selected || ring < 2) && metric && (
+            <text x={-halfWidth + 14} y={halfHeight - 12} fontSize={10.5} fontWeight={600} fill="#475569">
+              {truncate(metric, selected ? 34 : 26)}
+            </text>
+          )}
+        </>
       )}
     </g>
   );
