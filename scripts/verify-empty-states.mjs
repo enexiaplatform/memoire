@@ -96,6 +96,18 @@ const DESTINATIONS = [
     id: 'business-vault',
     file: 'src/features/vault/BusinessVaultPage.tsx',
     marker: 'function EmptyState',
+    says: /Nothing to remember yet/,
+    // Capture, not anything on this page. The Vault is derived, so an empty one
+    // cannot be filled from inside itself - the honest first step is recording
+    // one real conversation and watching the customer, the person and the
+    // product in it become the first things you know.
+    fills: /to="\/app\/capture"/,
+  },
+  {
+    // The grid that used to be the Vault, at its own address since 2026-08-09.
+    id: 'portfolio-coverage',
+    file: 'src/features/coverage/PortfolioCoveragePage.tsx',
+    marker: 'function EmptyState',
     says: /No lines recorded yet/,
     fills: /to="\/app\/opportunities"/,
   },
