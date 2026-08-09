@@ -1,0 +1,306 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Grid3x3 } from 'lucide-react';
+import { useAuthContext } from '../../auth/authContext';
+import { hasLocalSampleData } from '../../utils/dataMode';
+import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
+import type { AccountMergeRecord } from '../../services/accountMergeStore';
+import type { CrmLiteOpportunity } from '../../services/opportunityStore';
+import { buildAccountAliasIndex } from '../../utils/accountAliases';
+import {
+  buildCoverageMatrix,
+  coverageCellLabel,
+  type CoverageCell,
+  type CoverageCellState,
+} from '../../utils/coverageMatrix';
+import { formatBaseCurrencyAmount } from '../../utils/money';
+import { SkeletonCard, SkeletonScreen } from '../../components/common/Skeleton';
+import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
+
+/**
+ * Portfolio Coverage: every customer against every line you carry.
+ *
+ * This grid was the whole of the Business Vault until 2026-08-09, and it is
+ * kept intact rather than reworked - the marks, the empty squares, the ranked
+ * gap list and the click-through into a pre-filled opportunity all behave
+ * exactly as they did. What changed is only where it lives.
+ *
+ * The reason is that it was answering a different question from the one its old
+ * home promised. This is cross-sell planning over customers: rows are accounts,
+ * columns are lines, and the finding is a square you have never taken to a
+ * customer who already trusts you. That belongs beside Accounts. Business
+ * memory - what you know, how it connects, what you do not know - is a
+ * different job, and it now has the Vault to itself.
+ */
+
+/**
+ * A mark per square, not a block.
+ *
+ * The first version painted every filled cell as a saturated 64px rectangle
+ * with the money written inside it. At the width of a real book that is a wall
+ * of colour with numbers too small to read, and the empty squares - the whole
+ * point of the page - were the quietest thing on it. Thin marks on a light
+ * ground invert that: the grid recedes, the gaps read, and the money moves to
+ * the row total and the tooltip where there is room for it.
+ */
+const stateStyles: Record<CoverageCellState, string> = {
+  won: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-300',
+  committed: 'bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-300',
+  active: 'bg-blue-50 text-brand-blue ring-1 ring-inset ring-blue-300',
+  lost: 'bg-gray-50 text-gray-400 ring-1 ring-inset ring-gray-200',
+  // The empty square is the message of this page, so it reads as a slot that is
+  // deliberately unfilled rather than as a blank card - and it is the only
+  // square that is clickable into something new.
+  none: 'border border-dashed border-gray-300 bg-white text-gray-300 hover:border-brand-blue hover:bg-blue-50/40',
+};
+
+/** One glyph per state, so the grid is never colour-alone. */
+const stateGlyph: Record<CoverageCellState, string> = {
+  won: '●',
+  committed: '◐',
+  active: '○',
+  lost: '×',
+  none: '+',
+};
+
+export function PortfolioCoveragePage() {
+  const { user } = useAuthContext();
+  const sampleDataActive = hasLocalSampleData();
+  const dataUserId = sampleDataActive ? undefined : user?.id;
+  // `null` is this page's "still loading" state, so seeding it from the cache
+  // is what stops the grid appearing empty on every arrival.
+  const cachedWorkspace = getCachedSalesWorkspaceData(dataUserId);
+  const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[] | null>(
+    cachedWorkspace?.opportunities || null,
+  );
+  const [accountMerges, setAccountMerges] = useState<AccountMergeRecord[]>(cachedWorkspace?.accountMerges || []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadSalesWorkspaceData(dataUserId).then((workspace) => {
+      if (cancelled) return;
+      setOpportunities(workspace.opportunities);
+      setAccountMerges(workspace.accountMerges);
+    });
+    return () => { cancelled = true; };
+  }, [dataUserId]);
+
+  // A customer merged in Accounts has to be one row here. Without the merges
+  // this page drew the same customer twice, splitting their squares across two
+  // rows and inventing gaps in both.
+  const matrix = useMemo(
+    () => buildCoverageMatrix({
+      opportunities: opportunities || [],
+      accountAliases: buildAccountAliasIndex(accountMerges),
+    }),
+    [opportunities, accountMerges],
+  );
+
+  if (!opportunities) {
+    return (
+      <SkeletonScreen label="Reading your coverage">
+        <PageContainer><SkeletonCard /></PageContainer>
+      </SkeletonScreen>
+    );
+  }
+
+  return (
+    <PageContainer>
+      <PageHeader
+        eyebrow="Accounts"
+        icon={<Grid3x3 className="h-5 w-5" />}
+        title="Portfolio Coverage"
+        documentTitle="Portfolio Coverage"
+        description="Every customer against every line you carry. The filled squares are the business you have; the empty ones are the business you have never asked for."
+        actions={
+          <Link
+            to="/app/accounts"
+            className="inline-flex rounded-lg border border-gray-300 px-3 py-2 text-sm font-bold text-navy transition hover:border-brand-blue hover:text-brand-blue"
+          >
+            Back to Accounts
+          </Link>
+        }
+      />
+
+      {!matrix.hasEnoughBrands ? (
+        <EmptyState brandCount={matrix.brands.length} />
+      ) : (
+        <>
+          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <div>
+                {/* Says the consequence, not the arithmetic. "12 / 40 squares
+                    filled" is a fact about a grid; "23 customers carry one line
+                    of five" is a fact about the business, and it is the one
+                    that starts a conversation. */}
+                <p className="text-2xl font-black text-navy">
+                  {matrix.gaps.length}
+                  <span className="text-base font-bold text-gray-400">
+                    {' '}of {matrix.rows.length} customers buy only part of the range
+                  </span>
+                </p>
+                <p className="mt-1 text-sm text-gray-500">
+                  {matrix.totalCells - matrix.filledCells} of {matrix.totalCells} customer &times; line squares have
+                  never been taken to the customer. Click an empty square to start that opportunity.
+                </p>
+              </div>
+              <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-bold text-brand-blue">
+                {Math.round(matrix.penetration * 100)}% covered
+              </span>
+            </div>
+
+            <div className="mt-4 overflow-x-auto">
+              <table className="border-separate border-spacing-1 text-left text-sm">
+                <thead>
+                  <tr>
+                    <th className="sticky left-0 z-10 bg-white pr-3 text-[11px] font-bold uppercase tracking-wide text-gray-400">
+                      Customer
+                    </th>
+                    {matrix.brands.map((brand) => (
+                      <th key={brand} className="px-1 pb-1 text-center text-[11px] font-bold text-navy">
+                        <span className="block max-w-[92px] truncate" title={brand}>{brand}</span>
+                      </th>
+                    ))}
+                    <th className="pl-3 text-right text-[11px] font-bold uppercase tracking-wide text-gray-400">
+                      Relationship
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {matrix.rows.map((row) => (
+                    <tr key={row.accountName}>
+                      <td className="sticky left-0 z-10 max-w-[190px] truncate bg-white pr-3 font-bold text-navy" title={row.accountName}>
+                        <Link
+                          to={`/app/accounts?accountName=${encodeURIComponent(row.accountName)}`}
+                          className="hover:text-brand-blue hover:underline"
+                        >
+                          {row.accountName}
+                        </Link>
+                      </td>
+                      {row.cells.map((cell) => <MatrixCell key={cell.brand} cell={cell} />)}
+                      <td className="whitespace-nowrap pl-3 text-right text-xs font-bold text-gray-600">
+                        {row.relationshipValueBase > 0 ? formatBaseCurrencyAmount(row.relationshipValueBase, true) : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <Legend />
+          </section>
+
+          {matrix.gaps.length > 0 && (
+            <section className="rounded-xl border border-amber-200 bg-amber-50/50 p-5 shadow-sm">
+              <h2 className="text-lg font-bold text-navy">The gaps worth closing first</h2>
+              <p className="mt-1 max-w-3xl text-sm text-gray-600">
+                Customers who already buy from you and carry only part of the range. A line missing at a customer who
+                already trusts you is a shorter conversation than a new logo.
+              </p>
+              <ul className="mt-3 space-y-2">
+                {matrix.gaps.map((gap) => (
+                  <li key={gap.accountName} className="rounded-lg border border-amber-100 bg-white px-3.5 py-2.5">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <Link
+                        to={`/app/accounts?accountName=${encodeURIComponent(gap.accountName)}`}
+                        className="font-bold text-navy hover:text-brand-blue hover:underline"
+                      >
+                        {gap.accountName}
+                      </Link>
+                      <span className="text-xs font-bold text-gray-500">
+                        {formatBaseCurrencyAmount(gap.relationshipValueBase, true)} · {gap.brandsTouched} of {matrix.brands.length} lines
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs font-semibold text-amber-900">
+                      Never offered: {gap.missingBrands.join(', ')}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </>
+      )}
+    </PageContainer>
+  );
+}
+
+function MatrixCell({ cell }: { cell: CoverageCell }) {
+  const money = cell.wonValueBase || cell.activeValueBase;
+  const title = cell.state === 'none'
+    // An empty square now says what it is for, because "nothing here" is not a
+    // finding an operator can act on - "you have never offered this line to a
+    // customer who already buys from you" is.
+    ? `${cell.accountName} has never been offered ${cell.brand} — start that opportunity`
+    : `${cell.accountName} · ${cell.brand} — ${coverageCellLabel(cell.state)}${
+      money > 0 ? ` · ${formatBaseCurrencyAmount(money, true)}` : ''
+    }`;
+
+  // The empty square is the only one that leads somewhere new: it opens the
+  // opportunity form with the customer and the line already filled in, which is
+  // the entire action this page exists to prompt.
+  const href = cell.href || (cell.state === 'none'
+    ? `/app/opportunities?new=1&account=${encodeURIComponent(cell.accountName)}&brand=${encodeURIComponent(cell.brand)}`
+    : '');
+
+  const content = (
+    <span
+      aria-label={title}
+      className={`flex h-7 w-full min-w-[44px] items-center justify-center rounded text-[11px] font-bold ${stateStyles[cell.state]}`}
+    >
+      {stateGlyph[cell.state]}
+    </span>
+  );
+
+  return (
+    <td className="p-0" title={title}>
+      {href ? <Link to={href} className="block transition hover:opacity-80">{content}</Link> : content}
+    </td>
+  );
+}
+
+function Legend() {
+  const items: { state: CoverageCellState; label: string }[] = [
+    { state: 'won', label: 'Won' },
+    { state: 'committed', label: 'Committed to order' },
+    { state: 'active', label: 'In play' },
+    { state: 'lost', label: 'Tried and lost' },
+    { state: 'none', label: 'Never taken to them' },
+  ];
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] font-semibold text-gray-500">
+      {items.map((item) => (
+        <span key={item.state} className="inline-flex items-center gap-1.5">
+          {/* The legend mirrors the mark, glyph and all, so identity in the grid
+              is never carried by colour alone. */}
+          <span className={`inline-flex h-5 w-6 items-center justify-center rounded text-[11px] font-bold ${stateStyles[item.state]}`}>
+            {stateGlyph[item.state]}
+          </span>
+          {item.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({ brandCount }: { brandCount: number }) {
+  return (
+    <section className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
+      <h2 className="text-lg font-bold text-navy">
+        {brandCount === 0 ? 'No lines recorded yet.' : 'Only one line recorded so far.'}
+      </h2>
+      <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">
+        This page compares the lines you carry against the customers you sell to, so it needs at least two. Set the
+        brand on your deals and every customer becomes a row here - with the squares you have never filled showing
+        through.
+      </p>
+      <Link
+        to="/app/opportunities"
+        className="mt-4 inline-flex rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
+      >
+        Open deals
+      </Link>
+    </section>
+  );
+}

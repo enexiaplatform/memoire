@@ -75,6 +75,9 @@ const BusinessVaultPage = lazy(() =>
 const ActivityPage = lazy(() =>
   import('./features/activity/ActivityPage').then((module) => ({ default: module.ActivityPage })),
 );
+const PortfolioCoveragePage = lazy(() =>
+  import('./features/coverage/PortfolioCoveragePage').then((module) => ({ default: module.PortfolioCoveragePage })),
+);
 
 function App() {
   return (
@@ -137,6 +140,13 @@ function App() {
             {/* Contextual surfaces: opened from a record, a search result or a
                 deep link, never from the nav rail. */}
             <Route path="quotes" element={<QuotesPage />} />
+            {/* The customer x line grid. It was the Business Vault until
+                2026-08-09; the Vault is now business memory, and a grid of
+                accounts against lines belongs beside Accounts. Contextual
+                rather than a fifteenth rail row: reached from the Accounts
+                header and from the Vault's Library, both of which are places
+                someone is already asking a coverage question. */}
+            <Route path="portfolio-coverage" element={<PortfolioCoveragePage />} />
             {/* The Account and Opportunity pages show stakeholders and
                 objections in place. These two routes are the editors behind
                 those panels - reachable from the record, never from the rail.

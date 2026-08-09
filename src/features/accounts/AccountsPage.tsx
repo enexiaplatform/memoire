@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Archive, ArchiveRestore, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, Database, Eye, Filter, Plus, RefreshCw, Save, Search, Star, Trash2, Upload, X } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, Database, Eye, Filter, Grid3x3, Plus, RefreshCw, Save, Search, Star, Trash2, Upload, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { ThreadsSection } from '../threads/ThreadsSection';
 import { DataModePill } from '../../components/common/DataModePill';
@@ -673,6 +673,17 @@ export function AccountsPage() {
               <Upload className="h-4 w-4" />
               Import
             </button>
+            {/* Portfolio Coverage was the Business Vault until 2026-08-09. It
+                asks a question about *these* records - which of your lines has
+                each customer never been offered - so its door belongs on the
+                page whose rows it is made of, not in a fifteenth rail row. */}
+            <Link
+              to="/app/portfolio-coverage"
+              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-gray-300 bg-white px-3.5 py-1.5 text-sm font-bold text-gray-700 transition hover:border-brand-blue hover:text-brand-blue"
+            >
+              <Grid3x3 className="h-4 w-4" />
+              Coverage
+            </Link>
             <button
               type="button"
               onClick={() => refreshAccounts(true)}
