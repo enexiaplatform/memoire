@@ -26,7 +26,10 @@ import {
 const PLAN_COPY: Record<BillingPlan, { name: string; description: string }> = {
   personal: {
     name: 'Personal',
-    description: 'Unlimited capture, unlimited records, and AI search across everything you have written down.',
+    // Not "AI search". Memoire has no AI service - Search & Insights answers
+    // from your own history on your own device, and selling it as AI would be
+    // charging for something that does not exist.
+    description: 'Unlimited capture, unlimited records, and Search & Insights across everything you have written down.',
   },
   team: {
     name: 'Team',
@@ -119,8 +122,8 @@ export function BillingTab() {
         ) : (
           <p className="mt-1 text-sm leading-6 text-gray-500">
             {paid
-              ? 'Active. Unlimited capture, unlimited records, and AI search.'
-              : '30 captures a month, up to 50 records, and no AI search.'}
+              ? 'Active. Unlimited capture, unlimited records, and Search & Insights.'
+              : '30 captures a month, up to 50 records, and no Search & Insights.'}
           </p>
         )}
       </div>

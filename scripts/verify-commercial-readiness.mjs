@@ -53,23 +53,48 @@ const checks = [
       );
     },
   },
+  // The public pages quote the offer; they never take the payment. Checkout
+  // needs a session token, so the buy button lives in Settings > Billing - a
+  // checkout call in a marketing bundle would be a second payment path with no
+  // authenticated user behind it. The price markers keep the two pages from
+  // drifting apart, and from drifting away from what Lemon Squeezy charges.
   {
-    name: 'landing page keeps public checkout inactive',
+    name: 'landing page quotes the real personal price and keeps checkout out of the marketing bundle',
     file: 'src/pages/LandingPage.tsx',
     assert: (text) =>
-      text.includes('No payment checkout is active here.') &&
-      text.includes('No payment checkout is active.') &&
+      text.includes('$10') &&
+      text.includes('Lemon Squeezy') &&
+      text.includes('Settings under Billing') &&
       !text.includes('startCheckout') &&
       !text.includes('useCheckout'),
   },
   {
-    name: 'pricing page keeps checkout disconnected',
+    name: 'pricing page quotes the real personal price and keeps checkout disconnected',
     file: 'src/features/pricing/PricingPage.tsx',
     assert: (text) =>
-      text.includes('Pricing is still being validated.') &&
-      text.includes('no payment checkout is active') &&
+      text.includes('$10') &&
+      text.includes('Lemon Squeezy') &&
+      text.includes('Settings under Billing') &&
       !text.includes('startCheckout') &&
       !text.includes('useCheckout'),
+  },
+  // Only two plans are purchasable, and Team is not one of them yet. A public
+  // page offering a price for it would be selling something the store has no
+  // variant for.
+  {
+    name: 'pricing page does not put a price on the team plan',
+    file: 'src/features/pricing/PricingPage.tsx',
+    assert: (text) => /name:\s*'Team',\s*\n\s*price:\s*'Later',/.test(text),
+  },
+  // Memoire has no AI service (scripts/verify-no-ai-dependency.mjs). The public
+  // pages once advertised "AI assist optional", which promised something that
+  // does not exist. Any AI claim here is a false claim.
+  {
+    name: 'landing page makes no AI capability claim',
+    file: 'src/pages/LandingPage.tsx',
+    assert: (text) =>
+      !/\bAI[- ](assist|search|powered|generated)/i.test(text) &&
+      text.includes('nothing is sent to an AI service'),
   },
 ];
 

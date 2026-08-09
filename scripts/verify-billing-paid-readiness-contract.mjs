@@ -153,21 +153,38 @@ for (const marker of [
   requireIncludes(settingsPage, '<BillingTab />', 'settings page does not mount the billing tab');
 }
 
+// The public price list now quotes a live offer, so what it must say changed:
+// the price has to be the one the store charges, the merchant of record has to
+// be named, and Team must stay unpriced until it has a variant. What did not
+// change is where the money is taken - not here.
 const pricing = read('src/features/pricing/PricingPage.tsx');
 for (const marker of [
-  'Early pricing hypothesis',
-  'Pricing is still being validated.',
-  'no payment checkout is active',
+  '$10',
+  'per month',
+  'Lemon Squeezy',
+  'merchant of record',
+  'Memoire never sees your card',
+  'Settings under Billing',
   'Request guided access',
   'Try demo first',
-  'Not available yet',
-  'No team checkout today',
-  'No CRM writeback today',
+  'Not available yet, and not sold yet.',
 ]) {
   requireIncludes(pricing, marker, `pricing page missing paid-readiness marker: ${marker}`);
 }
 if (pricing.includes('useCheckout') || pricing.includes('startCheckout')) {
-  fail('pricing page must not call checkout while B1-B6 are open');
+  fail('pricing page must not take payment - checkout needs a session, so it lives in Settings > Billing');
+}
+
+// The free tier the page advertises must be the one the app enforces. These
+// numbers are quoted to a paying visitor; a drift here is a false offer.
+{
+  const planLimits = read('src/hooks/usePlanLimits.ts');
+  const serverPlan = read('api/_plan.js');
+  requireIncludes(planLimits, 'captures_per_month: 30', 'free capture limit moved - the pricing page still advertises 30');
+  requireIncludes(planLimits, 'max_entities: 50', 'free record limit moved - the pricing page still advertises 50');
+  requireIncludes(serverPlan, 'FREE_CAPTURES_PER_MONTH = 30', 'server free capture limit drifted from the advertised 30');
+  requireIncludes(pricing, 'const FREE_CAPTURES_PER_MONTH = 30;', 'pricing page must quote the enforced free capture limit');
+  requireIncludes(pricing, 'const FREE_MAX_RECORDS = 50;', 'pricing page must quote the enforced free record limit');
 }
 
 const exposureGuard = read('docs/deployment/billing-checkout-exposure-guard-2026-06-17.md');
@@ -263,7 +280,9 @@ const commercialVerifier = read('scripts/verify-commercial-readiness.mjs');
 for (const marker of [
   'billing env flag defaults off',
   'billing API blocks checkout when flag is not enabled',
-  'pricing page keeps checkout disconnected',
+  'pricing page quotes the real personal price and keeps checkout disconnected',
+  'landing page quotes the real personal price and keeps checkout out of the marketing bundle',
+  'landing page makes no AI capability claim',
 ]) {
   requireIncludes(commercialVerifier, marker, `commercial verifier missing checkout exposure marker: ${marker}`);
 }

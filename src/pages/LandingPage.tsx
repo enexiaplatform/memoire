@@ -7,139 +7,184 @@ import {
   BellRing,
   Check,
   ClipboardCheck,
-  Database,
+  Coins,
+  Download,
   FileText,
   Inbox,
-  LockKeyhole,
+  Network,
   ShieldCheck,
-  Sparkles,
+  Smartphone,
   Sun,
   X,
 } from 'lucide-react';
 import { MarketingNav } from '../components/marketing/MarketingNav';
 import { Footer } from '../components/marketing/Footer';
 
+/**
+ * The public page, and the only claim it is allowed to make is one the app can
+ * keep. Two rules have already been broken here once and are worth naming:
+ *
+ * 1. No AI. Memoire has no AI service, no key and no endpoint - capture parses
+ *    on the device and Ask computes from your own history. This page used to
+ *    offer optional AI help in the capture box, which was a promise of
+ *    something that does not exist. scripts/verify-no-ai-dependency.mjs guards
+ *    the code; the commercial-readiness contract guards this copy.
+ * 2. No invented pricing. The plans below are the two Lemon Squeezy variants
+ *    the server will actually resolve (`personal`, `team`) and the free tier
+ *    that src/hooks/usePlanLimits.ts really enforces. A tier that is not in
+ *    PLAN_LIMITS does not belong on this page.
+ *
+ * Checkout is deliberately not on this page. The checkout call needs a session
+ * token, so the buy button lives in Settings > Billing where there is one -
+ * and scripts/verify-commercial-readiness.mjs fails the build if a checkout
+ * call ever appears in this file.
+ */
+
 const trustChips = [
-  { icon: ShieldCheck, text: 'No CRM writeback — ever' },
-  { icon: Database, text: 'Works from CSV exports you already have' },
-  { icon: LockKeyhole, text: 'Demo data stays in this browser' },
-  { icon: Sparkles, text: 'Rule-based first, AI assist optional' },
+  { icon: ShieldCheck, text: 'No AI service — answers are computed on your device' },
+  { icon: Network, text: 'No CRM writeback — ever' },
+  { icon: Download, text: 'Export everything, delete anytime' },
+  { icon: Smartphone, text: 'Installs like an app, keeps working offline' },
 ];
 
 const loopSteps = [
   {
     label: 'Capture',
     title: 'Type it once, messy is fine',
-    text: 'A note, a pasted email, a meeting recap — Memoire turns it into structured evidence.',
+    text: 'A note, a pasted email, a meeting recap — Memoire pulls out the account, the amount and the next action.',
   },
   {
     label: 'Today',
     title: 'Start where the risk is',
-    text: 'One screen with the top actions, silent deals, and nudges that actually need you.',
+    text: 'One screen with the top actions, the deals going silent, and the nudges that actually need you.',
   },
   {
-    label: 'Money',
+    label: 'Orders & cash',
     title: 'Follow the money',
-    text: 'Quote to order to invoice to cash — see where every euro or dollar is stuck.',
+    text: 'Quote to order to delivery to payment — see exactly where every euro or dollar is stuck.',
   },
   {
     label: 'Review',
     title: 'Walk in with answers',
-    text: 'Defend, rescue, or downgrade every deal with proof — before someone asks.',
+    text: 'Defend, rescue or downgrade every deal with proof attached — before someone asks.',
   },
 ];
 
 const notCrmPoints = [
-  ['No CRM writeback', 'Review and prepare without ever changing source CRM records.'],
-  ['Read-only working copy', 'CSV imports from CRM, Excel, Notion, or private pipeline sheets.'],
-  ['Private demo sandbox', 'Try sample data locally before sign-in; account work syncs where configured.'],
-  ['Private preparation', 'Build your deal story before walking into forecast review.'],
+  ['No CRM writeback', 'Review and prepare without ever changing a source CRM record.'],
+  ['Read-only working copy', 'CSV import from CRM, Excel, Notion, or your own pipeline sheet.'],
+  ['Private demo sandbox', 'Sample data stays in this browser. Nothing is uploaded to try it.'],
+  ['Private preparation', 'Build your story before you walk into the forecast review.'],
 ] as const;
 
 const bestFor = [
-  'B2B salespeople with weekly or monthly pipeline reviews',
-  'Founder-led sellers and solo operators who own their own follow-up',
-  'Consultants, freelancers, agencies, and creators selling client work',
-  'Pharma, life science, lab, industrial, and complex technical sales',
-  'Reps who run CRM plus Excel, Notion, private notes, or memory',
-  'People managing long-cycle deals with procurement and technical stakeholders',
+  'B2B sellers who own their own follow-up, with weekly or monthly reviews',
+  'Founder-led sellers, consultants, freelancers and agency owners',
+  'Trading, distribution and supply businesses that quote, deliver, then chase payment',
+  'Pharma, life science, lab, industrial and other complex technical sales',
+  'Anyone running CRM plus Excel, plus Notion, plus private notes, plus memory',
+  'Long-cycle deals with procurement and several technical stakeholders',
 ];
 
 const notIdealFor = [
-  'Enterprise teams requiring SSO, admin controls, and formal security review today',
-  'Teams needing full Salesforce or HubSpot native sync right now',
-  'Anyone wanting a system of record or a manager forecasting dashboard',
-  'Invoicing, inventory, ecommerce, marketplace, or delivery management',
+  'Enterprise teams needing SSO, admin controls and a formal security review today',
+  'Teams needing native Salesforce or HubSpot two-way sync right now',
+  'Anyone wanting a company system of record or a manager forecasting dashboard',
+  'Accounting, payroll, inventory, ecommerce or marketplace operations',
   'Quick transactional selling with no meaningful follow-up loop',
 ];
 
 const pricingPlans = [
   {
-    name: 'Solo',
-    price: '$15–25',
-    cadence: '/month',
-    description: 'For one person managing their own follow-up and business memory.',
-    items: ['Pipeline review workspace', 'Capture and calendar', 'CSV refresh', 'Defense brief', 'Playbook and assets'],
-    highlighted: true,
+    name: 'Free',
+    price: '$0',
+    cadence: 'forever',
+    description: 'Enough to run a real week and decide for yourself.',
+    items: [
+      '30 captures a month',
+      'Up to 50 records',
+      'Today, Plan, Orders, Cash Collection, Review',
+      'Export your data whenever you want',
+    ],
+    note: 'Search & Insights is not included on Free.',
+    highlighted: false,
   },
   {
-    name: 'Pro',
-    price: '$29–49',
-    cadence: '/month',
-    description: 'For power users with deeper review history and exports.',
-    items: ['More review pack history', 'Advanced exports', 'Deeper automation later', 'Richer proof assets', 'Priority workflow polish'],
-    highlighted: false,
+    name: 'Personal',
+    price: '$10',
+    cadence: 'per month',
+    description: 'For one operator running the whole commercial loop themselves.',
+    items: [
+      'Unlimited capture, unlimited records',
+      'Search & Insights over everything you have written down',
+      'Cost Analysis, Cash Collection and the Business Vault',
+      'Pipeline Defense Briefs and shareable review packs',
+      'Daily digest email and full data export',
+    ],
+    note: 'Cancel anytime — you keep access until the period you paid for ends.',
+    highlighted: true,
   },
   {
     name: 'Team',
     price: 'Later',
     cadence: '',
-    description: 'For managers and teams, after the individual workflow is validated.',
-    items: ['Shared review standards later', 'Team security review later', 'CRM sync later', 'Manager workflows later'],
+    description: 'A shared workspace for the people you sell alongside.',
+    items: [
+      'Shared workspace and review standards',
+      'Manager workflows',
+      'Team security review',
+      'CRM sync',
+    ],
+    note: 'Not on sale yet. The individual loop gets finished first.',
     highlighted: false,
   },
 ];
 
 const faqs = [
   {
+    question: 'What does $10 a month actually buy?',
+    answer:
+      'Unlimited capture and unlimited records instead of the free ceiling of 30 captures a month and 50 records, plus Search & Insights across your whole workspace. Everything else — Today, Plan, Orders, Cash Collection, Cost Analysis, Review, the Business Vault — is on both plans.',
+  },
+  {
+    question: 'How do I pay, and who takes the payment?',
+    answer:
+      'Create a free account first. When you want more room, open Settings and go to the Billing tab — the upgrade runs through Lemon Squeezy, which is the merchant of record and the seller on your invoice. Memoire never sees your card. Cards, invoices and cancellation all live in the Lemon Squeezy portal, reachable from the same tab.',
+  },
+  {
+    question: 'Does Memoire use AI?',
+    answer:
+      'No. There is no AI service behind Memoire, no AI key, and no AI endpoint. Capture parses your text on your own device with rules you can see and correct, and Search & Insights answers from your measured history. Your customer names, prices and notes are never sent to a model.',
+  },
+  {
     question: 'Is Memoire a CRM?',
     answer:
-      'No. Your CRM tracks records for the company. Memoire helps the individual salesperson think, remember, prepare, and defend their pipeline.',
+      'No. Your CRM keeps records for the company. Memoire is the private layer where you think, remember, prepare and defend — and where a quote is followed all the way to the money landing in your account.',
   },
   {
     question: 'Does Memoire write back to my CRM?',
     answer:
-      'No CRM writeback is built today. Memoire works from CSV imports and local/cloud working data so you can review safely without changing CRM records.',
+      'No CRM writeback exists. Memoire works from CSV import and its own working data, so you can review safely without touching a source record.',
   },
   {
     question: 'Where is my data stored?',
     answer:
-      'Demo sandbox data stays local in your browser. Signed-in account work uses cloud sync where configured, with local fallback behavior shown inside the app.',
+      'Demo sandbox data stays in this browser and is never uploaded. A signed-in account syncs to cloud storage, and the app tells you inside when it is running on local fallback instead. You can export everything, and deleting your account deletes it.',
   },
   {
-    question: 'Can I use CSV exports from Salesforce, HubSpot, or Excel?',
+    question: 'Can I start from CSV exports from Salesforce, HubSpot or Excel?',
     answer:
-      'Yes. The current workflow is designed around CSV import and refresh from CRM exports, spreadsheets, or private pipeline working copies.',
-  },
-  {
-    question: 'Does AI send my data externally?',
-    answer:
-      'Most review logic is rule-based. Capture AI assist is optional and only uses a configured server-side endpoint. Do not use AI assist with confidential data unless your provider is approved.',
-  },
-  {
-    question: 'Who is Memoire for?',
-    answer:
-      'People who sell without a sales team: B2B salespeople, founder-led sellers, consultants, freelancers, agency owners, and creators managing meaningful client, buyer, or partnership follow-up.',
-  },
-  {
-    question: 'Is Memoire for C2B or C2C selling?',
-    answer:
-      'Only when there is a real sales-memory loop: client context, proposal or partnership follow-up, objections, stakeholders, and next actions. Memoire is not built for ecommerce, inventory, marketplace listings, or one-off transactions.',
+      'Yes. Accounts and opportunities both import from CSV, with a review step before anything is written, so you can bring a real pipeline in and refresh it later.',
   },
   {
     question: 'What is the Pipeline Defense Brief?',
     answer:
-      'A manager-ready summary of which deals can be defended, rescued, downgraded, or monitored — plus the proof and next actions needed for review.',
+      'A manager-ready summary of which deals you can defend, rescue, downgrade or monitor — with the proof, the gaps and the next actions attached. You can share it as a read-only link instead of rebuilding it in a slide.',
+  },
+  {
+    question: 'Who is Memoire for?',
+    answer:
+      'People who sell without a sales team behind them: B2B sellers, founder-led sellers, consultants, freelancers, agency owners, and small trading or supply operators who quote, deliver and then have to chase the payment themselves.',
   },
 ];
 
@@ -150,13 +195,13 @@ export function LandingPage() {
         <title>Memoire - Personal Commercial Control Tower for B2B Sellers</title>
         <meta
           name="description"
-          content="Memoire is a personal commercial control tower for complex B2B sellers: every customer interaction becomes a continuous commercial thread, from conversation and quotation to delivery and cash, so nothing goes silent."
+          content="Memoire is a personal commercial control tower for complex B2B sellers: every customer interaction becomes a continuous commercial thread, from conversation and quotation to delivery and cash, so nothing goes silent. Free to start, $10 a month for one person."
         />
         <meta name="robots" content="noindex, nofollow" />
         <meta property="og:title" content="Memoire - Personal Commercial Control Tower for B2B Sellers" />
         <meta
           property="og:description"
-          content="Never enter a pipeline review unprepared. Capture messy notes and emails, find risks in Today, and copy manager-ready Pipeline Defense answers."
+          content="Never enter a pipeline review unprepared. Capture messy notes and emails, find the risk in Today, follow every quote to cash, and copy manager-ready answers."
         />
         <meta property="og:type" content="website" />
       </Helmet>
@@ -186,27 +231,27 @@ export function LandingPage() {
                 <span className="block brand-gradient-text">goes silent.</span>
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300">
-                Memoire works beside your CRM, spreadsheets, and notes — not instead of them.
-                Capture every meeting, quote, delivery, and payment. See where the money sits.
+                Memoire works beside your CRM, spreadsheets and notes — not instead of them.
+                Capture every meeting, quote, delivery and payment. See where the money is stuck.
                 Walk into every review with answers.
               </p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                 <Link
-                  to="/demo"
+                  to="/signup"
                   className="group inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-3.5 font-display text-base font-bold text-navy shadow-lg shadow-black/30 transition hover:bg-slate-100 active:scale-[0.98]"
                 >
-                  Try the live demo
+                  Start free
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </Link>
                 <Link
-                  to="/request-access"
+                  to="/demo"
                   className="inline-flex items-center justify-center rounded-full border border-white/25 px-7 py-3.5 font-display text-base font-bold text-white transition hover:bg-white/10"
                 >
-                  Request access
+                  Try the live demo
                 </Link>
               </div>
               <p className="mt-5 text-sm leading-6 text-slate-400">
-                Private beta · No credit card · Demo data never leaves this browser
+                Free plan, no card · $10/month when you outgrow it · Demo data never leaves this browser
               </p>
             </div>
 
@@ -257,7 +302,7 @@ export function LandingPage() {
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-10 gap-y-4">
             {trustChips.map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-2.5 text-sm font-semibold text-slate-600">
-                <Icon className="h-4 w-4 text-brand-blue" />
+                <Icon className="h-4 w-4 flex-none text-brand-blue" />
                 {text}
               </div>
             ))}
@@ -298,8 +343,8 @@ export function LandingPage() {
                 Your CRM keeps records for the company. Memoire prepares <span className="brand-gradient-text">you</span>.
               </h2>
               <p className="mt-5 text-base leading-7 text-slate-300">
-                CRM fields, spreadsheets, and private notes hold the official record. Memoire is your private
-                working layer for evidence, objections, proof gaps, stakeholders, and review answers.
+                CRM fields, spreadsheets and private notes hold the official record. Memoire is your private
+                working layer for evidence, objections, proof gaps, stakeholders, money and review answers.
               </p>
               <Link to="/demo" className="mt-7 inline-flex items-center gap-2 font-display text-sm font-bold text-cyan-300 transition hover:text-cyan-200">
                 See the difference in the demo
@@ -323,11 +368,11 @@ export function LandingPage() {
             eyebrow="Capture"
             icon={Inbox}
             title="Type it once. Messy is fine."
-            text="Paste a note, an email thread, or a meeting recap. Memoire extracts the account, amount, objection, and next action — and files the proof where you can find it again."
+            text="Paste a note, an email thread or a meeting recap. Memoire reads out the account, the amount, the objection and the next action — on your device, with rules you can see, and shows you the result to correct before anything is saved."
             bullets={[
-              'Structured evidence from unstructured notes',
-              'Proof asset vault: proposals, objection responses, compliance notes',
-              'No forms, no required fields, no data entry ritual',
+              'Structured records out of unstructured notes — nothing invented',
+              'Live typeahead over your own customers and deals as you type',
+              'No forms, no required fields, no data-entry ritual',
             ]}
             visual={<CaptureMock />}
           />
@@ -340,9 +385,9 @@ export function LandingPage() {
             eyebrow="Today"
             icon={Sun}
             title="Start where the risk is."
-            text="Today is a command center, not a dashboard. It surfaces the deals going silent, the overdue promises, and the top three actions that matter — before they surprise you."
+            text="Today is a command center, not a dashboard. It surfaces the deals going silent, the promises you made and have not kept, and the three actions that matter — before they surprise you."
             bullets={[
-              'Silence detection on every deal and client',
+              'Silence detection on every deal and every customer',
               'Proactive nudges: stale actions, missing roles, weak evidence',
               'One glance, one action — never forty widgets',
             ]}
@@ -353,14 +398,14 @@ export function LandingPage() {
         {/* ── Narrative: Money ── */}
         <section className="bg-white px-4 py-20 sm:px-6 lg:px-8">
           <NarrativeBlock
-            eyebrow="Money"
+            eyebrow="Orders & cash"
             icon={Banknote}
-            title="See where the money sits."
-            text="Every activity connects to a money state: quoted, ordered, invoiced, paid. Won a deal? Memoire watches the delivery and the invoice so winning is not where your attention ends."
+            title="See where the money is stuck."
+            text="A quote becomes an order, an order becomes a delivery, a delivery becomes an invoice, and an invoice becomes cash — or does not. Memoire keeps watching after you win, because winning is not where your attention should end."
             bullets={[
-              'Quote → order → invoice → cash, in one view',
-              'Post-won watch: delivery and payment never go quiet',
-              'Your own obligations tracked, not just what clients owe you',
+              'Quote to order to delivery to payment, in one order book',
+              'Cash Collection: aging built from the payment terms already on the quote',
+              'Cost Analysis: landed cost and real margin, priced before you send the quote',
             ]}
             visual={<MoneyMock />}
           />
@@ -373,23 +418,47 @@ export function LandingPage() {
             eyebrow="Review & learn"
             icon={FileText}
             title="Walk in with answers."
-            text="Sort deals into defend, rescue, or downgrade — with proof, gaps, and next actions attached. Then log outcomes and learn what your follow-ups actually revived."
+            text="Sort every deal into defend, rescue, or downgrade — with the proof, the gaps and the next actions attached. Share the pack as a read-only link instead of rebuilding it in a slide, then log what actually happened."
             bullets={[
               'Pipeline Defense Brief: manager-ready answers in minutes',
-              'MEDDIC stakeholder map with real evidence, not guessed labels',
-              'Objection debt and outcome learning — history, not prediction',
+              'MEDDIC stakeholder map built from real evidence, not guessed labels',
+              'Win/loss and objection history — what your follow-ups actually revived',
             ]}
             visual={<ReviewMock />}
           />
         </section>
 
-        {/* ── Audience ── */}
+        {/* ── Memory band ── */}
         <section className="bg-white px-4 py-20 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-6xl">
+            <SectionHeader
+              eyebrow="It remembers so you do not have to"
+              title="A month of work, still answerable in six months."
+              text="Everything you capture keeps its thread. Two surfaces exist purely to give it back to you."
+            />
+            <div className="mt-12 grid gap-6 lg:grid-cols-2">
+              <MemoryCard
+                icon={Network}
+                title="Business Vault"
+                text="Your accounts, people, deals, orders and commitments drawn as one connected map — built from what you already captured, not from a form you have to fill in. Find the thread you half-remember, and see which customers nobody has touched."
+              />
+              <MemoryCard
+                icon={Coins}
+                title="Search & Insights"
+                text="Ask what is at risk, where the money sits, which objection keeps costing you, or what happened with a customer last quarter. Every answer is computed from your own history on your own device — nothing is sent to an AI service."
+                badge="Personal"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* ── Audience ── */}
+        <section className="bg-page px-4 py-20 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">
             <SectionHeader
               eyebrow="Honest fit"
               title="Built for people who sell without a sales team."
-              text="Memoire is deliberately narrow. If it is not for you, we would rather you know on this page."
+              text="Memoire is deliberately narrow. If it is not for you, we would rather you found out on this page than after paying."
             />
             <div className="mt-12 grid gap-6 lg:grid-cols-2">
               <div className="rounded-card border border-emerald-200 bg-emerald-50/50 p-7">
@@ -419,14 +488,14 @@ export function LandingPage() {
         </section>
 
         {/* ── Pricing ── */}
-        <section id="pricing" className="bg-page px-4 py-20 sm:px-6 lg:px-8">
+        <section id="pricing" className="bg-white px-4 py-20 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">
             <SectionHeader
-              eyebrow="Early pricing hypothesis — not final"
-              title="Pricing is being validated with early users."
-              text="No payment checkout is active here. These are working assumptions for customer discovery."
+              eyebrow="Pricing"
+              title="One person, one price. $10 a month."
+              text="Start free and stay free until the free ceiling gets in your way. There is no trial to forget to cancel."
             />
-            <div className="mt-12 grid gap-6 lg:grid-cols-3">
+            <div className="mt-12 grid items-start gap-6 lg:grid-cols-3">
               {pricingPlans.map((plan) =>
                 plan.highlighted ? (
                   <div key={plan.name} className="gradient-border-card shadow-elevated">
@@ -435,7 +504,7 @@ export function LandingPage() {
                     </div>
                   </div>
                 ) : (
-                  <div key={plan.name} className="flex flex-col rounded-card border border-slate-200 bg-white p-7 shadow-card">
+                  <div key={plan.name} className="flex h-full flex-col rounded-card border border-slate-200 bg-white p-7 shadow-card">
                     <PlanBody plan={plan} />
                   </div>
                 ),
@@ -447,7 +516,7 @@ export function LandingPage() {
                   to="/signup"
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-blue px-7 py-3.5 font-display text-sm font-bold text-white transition hover:bg-brand-blue-dark active:scale-[0.98]"
                 >
-                  Create early-access account
+                  Create your free account
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
@@ -457,20 +526,21 @@ export function LandingPage() {
                   Request guided access
                 </Link>
               </div>
-              <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-slate-500">
-                No payment checkout is active. Create an account directly, or request guided access for workflow support.
+              <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-slate-500">
+                Upgrading happens inside the app, in Settings under Billing. Payment is taken by Lemon Squeezy,
+                which is the seller on your invoice and handles tax where you are — Memoire never sees your card.
               </p>
             </div>
           </div>
         </section>
 
         {/* ── FAQ ── */}
-        <section className="bg-white px-4 py-20 sm:px-6 lg:px-8">
+        <section className="bg-page px-4 py-20 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl">
             <SectionHeader
-              eyebrow="Privacy & FAQ"
-              title="Built for sensitive pipeline preparation."
-              text="Customer, tender, pricing, competitor, and forecast data is sensitive. Memoire is careful about it — and about what it claims."
+              eyebrow="Questions"
+              title="Built for sensitive commercial work."
+              text="Customer, tender, pricing, competitor and forecast data is sensitive. Memoire is careful with it — and careful about what it claims."
             />
             <div className="mt-10 divide-y divide-slate-200 rounded-card border border-slate-200 bg-white">
               {faqs.map((faq) => (
@@ -496,26 +566,27 @@ export function LandingPage() {
             <div className="absolute left-1/2 top-1/2 h-[420px] w-[820px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(25,118,210,0.30),transparent)] blur-2xl" />
           </div>
           <div className="relative mx-auto max-w-3xl text-center">
-            <p className="text-sm font-bold uppercase tracking-[0.22em] text-cyan-300">Early access</p>
+            <p className="text-sm font-bold uppercase tracking-[0.22em] text-cyan-300">Start today</p>
             <h2 className="mt-4 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">
               Bring a stronger story to your <span className="brand-gradient-text">next review</span>.
             </h2>
             <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-slate-300">
-              Try the demo sandbox, create an early-access account, or request guided support for your real workflow.
+              Create a free account and capture your first week, or open the demo sandbox and look around first.
+              Nothing is charged until you decide it is worth $10.
             </p>
             <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
               <Link
-                to="/demo"
+                to="/signup"
                 className="group inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-3.5 font-display text-base font-bold text-navy transition hover:bg-slate-100 active:scale-[0.98]"
               >
-                Try the live demo
+                Start free
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
               <Link
-                to="/signup"
+                to="/demo"
                 className="inline-flex items-center justify-center rounded-full border border-white/25 px-7 py-3.5 font-display text-base font-bold text-white transition hover:bg-white/10"
               >
-                Create account
+                Try the live demo
               </Link>
             </div>
           </div>
@@ -583,6 +654,35 @@ function NarrativeBlock({
   );
 }
 
+function MemoryCard({
+  icon: Icon,
+  title,
+  text,
+  badge,
+}: {
+  icon: typeof Inbox;
+  title: string;
+  text: string;
+  badge?: string;
+}) {
+  return (
+    <div className="flex h-full flex-col rounded-card border border-slate-200 bg-white p-7 shadow-card transition hover:-translate-y-1 hover:shadow-elevated">
+      <div className="flex items-center gap-3">
+        <span className="brand-gradient inline-flex h-10 w-10 items-center justify-center rounded-full text-white">
+          <Icon className="h-5 w-5" />
+        </span>
+        <h3 className="font-display text-xl font-bold text-slate-950">{title}</h3>
+        {badge && (
+          <span className="ml-auto rounded-full bg-blue-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-brand-blue">
+            {badge}
+          </span>
+        )}
+      </div>
+      <p className="mt-4 text-sm leading-6 text-slate-600">{text}</p>
+    </div>
+  );
+}
+
 /* ── Hero mock pieces ── */
 
 function HeroMetric({ label, value, tone }: { label: string; value: string; tone: 'blue' | 'amber' | 'emerald' }) {
@@ -636,7 +736,7 @@ function MockFrame({ children, label }: { children: ReactNode; label: string }) 
 
 function CaptureMock() {
   return (
-    <MockFrame label="Capture · evidence input">
+    <MockFrame label="Capture · on-device parsing">
       <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm leading-6 text-slate-500">
         "Called Delta Labs — Minh likes the proposal but procurement wants a 3-week lead time guarantee. Sending local support proof Friday. ~$14k."
       </div>
@@ -655,7 +755,7 @@ function CaptureMock() {
       </div>
       <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-emerald-700">
         <ClipboardCheck className="h-3.5 w-3.5" />
-        Structured evidence saved — review before it counts
+        Parsed on this device — check it before it counts
       </div>
     </MockFrame>
   );
@@ -690,7 +790,7 @@ function MoneyMock() {
     { label: 'Paid', value: '$12.9k', width: 'w-2/5', color: 'bg-spectrum-green' },
   ];
   return (
-    <MockFrame label="Money · where it sits">
+    <MockFrame label="Orders · where the money sits">
       <div className="space-y-3">
         {stages.map((stage) => (
           <div key={stage.label}>
@@ -749,15 +849,15 @@ function ReviewMock() {
 function PlanBody({ plan }: { plan: (typeof pricingPlans)[number] }) {
   return (
     <>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h3 className="font-display text-xl font-bold text-slate-950">{plan.name}</h3>
         {plan.highlighted && (
-          <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-brand-blue">Start here</span>
+          <span className="flex-none rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-brand-blue">Most people</span>
         )}
       </div>
       <p className="mt-3">
         <span className="font-display text-4xl font-extrabold text-slate-950">{plan.price}</span>
-        <span className="text-sm font-semibold text-slate-500">{plan.cadence}</span>
+        {plan.cadence && <span className="ml-1.5 text-sm font-semibold text-slate-500">{plan.cadence}</span>}
       </p>
       <p className="mt-3 text-sm leading-6 text-slate-600">{plan.description}</p>
       <ul className="mt-6 flex-1 space-y-2.5">
@@ -768,6 +868,7 @@ function PlanBody({ plan }: { plan: (typeof pricingPlans)[number] }) {
           </li>
         ))}
       </ul>
+      <p className="mt-5 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-500">{plan.note}</p>
     </>
   );
 }
