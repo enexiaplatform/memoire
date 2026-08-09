@@ -41,9 +41,22 @@ declare global {
 }
 
 export function GoogleAuthButton({
-  label: _label = 'Continue with Google',
   redirectTo,
 }: {
+  /**
+   * Accepted, and deliberately not read.
+   *
+   * Google Identity Services renders its own button and owns the words on it;
+   * the render option below picks which of Google's phrasings, and that is the
+   * only lever there is. So there is nothing here for a caller's label to
+   * apply to. The prop stays in the type
+   * because Login and Signup each pass a different one, and removing it would
+   * break two call sites to delete a string nobody reads.
+   *
+   * It was destructured as `_label` for one commit. This project sets no
+   * underscore ignore pattern on `no-unused-vars`, so that failed `npm run
+   * lint` and took the whole build gate with it.
+   */
   label?: string;
   redirectTo?: string;
 }) {

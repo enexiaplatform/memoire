@@ -16,6 +16,18 @@ function requireIncludes(text, marker, label) {
   if (!text.includes(marker)) fail(label);
 }
 
+/**
+ * For the properties that no single substring can pin.
+ *
+ * A plain `includes` check is satisfied by any occurrence anywhere - a type
+ * declaration, a function's own name, a comment explaining the rule. That is
+ * how the Google button's contract came to pass while the behaviour it named
+ * had already been deleted.
+ */
+function requireMatches(text, pattern, label) {
+  if (!pattern.test(text)) fail(label);
+}
+
 const app = read('src/App.tsx');
 for (const route of [
   'path="/login"',
@@ -103,13 +115,62 @@ for (const marker of [
   requireIncludes(verifyPage, marker, `verify-email page missing marker: ${marker}`);
 }
 
+// Google sign-in, as it actually works since the move to Identity Services.
+//
+// This block used to require `signInWithGoogle(redirectTo)` and the literal
+// string "Continue with Google". Both were correct against the Supabase OAuth
+// redirect flow and both stopped describing the code the day that flow was
+// replaced - the helper is gone, and the words on the button are now Google's
+// to write, not ours. The contract went red and stayed red, which is the worst
+// state for one of these: a gate that fails for a reason nobody has to fix
+// teaches everyone to stop reading it.
+//
+// So it pins the three things that still have to be true, and each is a
+// property rather than a spelling.
+//
+// Every marker below is a *call site*, and each was mutation-tested: change the
+// code it names and this contract goes red. That test is why two earlier
+// candidates were dropped. `createNoncePair()` matched the function's own
+// declaration, and `text: 'continue_with'` matched the option union declared
+// above the component - so breaking either call left the marker sitting in the
+// file and the gate green. A marker that a type declaration or a comment can
+// satisfy is not a contract, it is a spell-check.
 const googleButton = read('src/components/auth/GoogleAuthButton.tsx');
 for (const marker of [
-  'signInWithGoogle(redirectTo)',
-  'Continue with Google',
+  // 1. Sign-in goes through the ID token, not a redirect handshake.
+  'signInWithIdToken',
+  // 2. With a nonce, freshly generated per attempt. This is the whole security
+  //    argument for accepting an ID token in the browser: without it, a token
+  //    lifted from another origin replays here. Both halves are named - hashed
+  //    for Google, raw for Supabase - because dropping either breaks the check
+  //    while leaving code that still looks like it does something.
+  'const { nonce, hashedNonce } = await createNoncePair();',
+  'nonce: hashedNonce',
+  // 3. The caller's destination survives sign-in. It is the only reason
+  //    `redirectTo` is a prop at all, and losing it drops the operator on
+  //    /app/today instead of the deal they were opening.
+  'getAuthDestination(redirectTo)',
+  'setPendingAuthRedirect(destination)',
+  // Deliberately not pinned: the button's wording. `text: 'continue_with'` is
+  // already enforced by the option type declared in the component, so a wrong
+  // value fails `tsc` before it reaches here, and a second check on it would
+  // only be a string this file has to keep in step for no added guarantee.
 ]) {
   requireIncludes(googleButton, marker, `Google auth button missing marker: ${marker}`);
 }
+
+// The raw nonce has to reach Supabase, inside the `signInWithIdToken` call.
+//
+// Checked with a pattern rather than a substring because the only honest
+// marker for it is the bare word `nonce`, which appears four times in this
+// file. Supabase treats the field as optional, so deleting it compiles, passes
+// every test, and silently removes the replay protection that is the entire
+// reason a browser is allowed to hand over an ID token at all.
+requireMatches(
+  googleButton,
+  /signInWithIdToken\(\{[^}]*\bnonce,/s,
+  'Google auth button no longer passes the raw nonce to signInWithIdToken - ID-token sign-in without it accepts a token replayed from another origin',
+);
 
 const health = read('scripts/lib/production-readiness-runtime.mjs');
 for (const marker of [
