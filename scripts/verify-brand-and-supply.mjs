@@ -124,29 +124,30 @@ import {
   assert.match(money, /<SupplierCommitmentsPanel/, 'Orders & Cash owns the supply relationship');
 }
 
-// 6. The Vault answers a question rather than drawing a picture. The first
-//    version was a force-directed graph of accounts and deals: accurate, and
-//    worthless, because an operator already knows their own customer list. What
-//    they cannot hold in their head is which customer x line squares have never
-//    been filled, so that is what the page shows - and the empty squares have
-//    to stay legible, because they are the entire message.
+// 6. The customer x line grid survives, wherever it lives.
+//
+//    It was the Business Vault until 2026-08-09 and it is now Portfolio
+//    Coverage under Accounts. The move is a product decision recorded in
+//    `verify-business-vault-knowledge.mjs`; what this contract cares about is
+//    the capability, which is real and must not be lost in a rename. The empty
+//    squares have to stay legible, because they are the entire message.
+//
+//    History worth keeping: this block used to ban a node graph outright, after
+//    the Vault's first version drew accounts and deals as a force-directed map
+//    that was accurate and worthless. That ban is lifted - the Vault now draws a
+//    contextual knowledge map with named relations and derived gaps, which is a
+//    different thing answering a different question - and the conditions that
+//    made the old graph worthless are pinned in its own contract instead.
 {
+  const coverage = readFileSync(new URL('../src/features/coverage/PortfolioCoveragePage.tsx', import.meta.url), 'utf8');
+  assert.match(coverage, /buildCoverageMatrix/, 'the coverage page renders the coverage matrix');
+  assert.match(coverage, /Never taken to them/, 'the empty square keeps a label of its own');
+
   const vault = readFileSync(new URL('../src/features/vault/BusinessVaultPage.tsx', import.meta.url), 'utf8');
-  assert.match(vault, /buildCoverageMatrix/, 'the Vault renders the coverage matrix');
-  // Implementation signals only. The prose above them is allowed to say the
-  // word "force" - the page explains its own history, and a contract that
-  // fails on the explanation would teach people to delete the explanation.
-  for (const marker of ['function runLayout', '<line', 'strokeWidth']) {
-    assert.equal(
-      vault.includes(marker),
-      false,
-      `the node-graph layout must not come back (found ${marker}) - it was replaced for showing only what the operator already knew`,
-    );
-  }
   assert.equal(
-    existsSync(new URL('../src/utils/businessGraph.ts', import.meta.url)),
+    vault.includes('buildCoverageMatrix'),
     false,
-    'the graph derivation is retired, not left lying around to be re-imported',
+    'the Vault is business memory now; the grid has its own surface and must not be drawn twice',
   );
 
   const matrix = buildCoverageMatrix({

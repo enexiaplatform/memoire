@@ -405,9 +405,36 @@ export const featureRegistry: FeatureRecord[] = [
     // a product decision, not a side effect of shipping a map.
     navVisible: true,
     analytics: 'active',
+    // Owns exactly one collection - the knowledge notes and open questions an
+    // operator writes themselves - and derives every other node from records
+    // that already have an owner surface. That is still a lens, not a seventh
+    // destination: you do not run the day here, and the one thing it stores is
+    // the thing no other surface has a field for.
+    dataRetention: 'Owns knowledge notes and open questions. Every node, relation and gap is derived from existing records.',
+    killOrActivationCondition:
+      'Two retirements are recorded here, and the third answer is the current one. It was a force-directed map of accounts and deals - accurate and worthless, because it showed an operator the one thing they already know. It became a customer x line coverage matrix - genuinely useful, and not a vault; that grid now lives at /app/portfolio-coverage under Accounts, unchanged. It is now business memory: what you know, how it connects, and what you still do not. Retire it if the knowledge gaps stop changing what the operator goes and asks - that would mean the six destinations already hold everything worth remembering.',
+  },
+  {
+    id: 'portfolio-coverage',
+    label: 'Portfolio Coverage',
+    // Was the Business Vault's entire content until 2026-08-09. Moved rather
+    // than rebuilt: the matrix, its marks, its ranked gap list and its
+    // click-into-a-new-opportunity all behave exactly as before.
+    //
+    // Contextual rather than a fifteenth rail row, and the discoverability
+    // lesson from Stakeholders and Cost Analysis is answered by giving it two
+    // doors instead of a row: the Accounts page header, and the Business
+    // Vault's Library. Both are places someone is already asking "what have I
+    // not sold this customer".
+    status: 'embedded',
+    ownerSurface: 'accounts',
+    route: '/app/portfolio-coverage',
+    routeBehavior: 'contextual',
+    navVisible: false,
+    analytics: 'active',
     dataRetention: 'Derived coverage matrix. Owns no records.',
     killOrActivationCondition:
-      'Was a force-directed map of accounts and deals; that drew the business accurately and was worthless, because it showed the operator the one thing they already know. It is now customer x line coverage, where the empty squares are the information. Retire it if those squares stop starting conversations.',
+      'Retire it if the empty squares stop starting conversations. It is deliberately not merged into the Vault: cross-sell planning over a grid and business memory are different jobs, and one page doing both is how the Vault lost its own meaning in the first place.',
   },
 
   // -------------------------------------------------------------- embedded

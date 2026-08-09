@@ -6,6 +6,8 @@ import { buildBusinessLens } from '../src/utils/businessLens.ts';
 import { buildOrderBook } from '../src/utils/orderToCash.ts';
 import { buildOutcomeScoreboard } from '../src/utils/outcomeScoreboard.ts';
 import { resolveCommercialThreads } from '../src/domain/commercialKernel/deriveThreads.ts';
+import { buildKnowledgeGraph } from '../src/utils/knowledgeGraph.ts';
+import { buildGraphView } from '../src/utils/knowledgeLayout.ts';
 
 /**
  * The derived models, measured against a real book of business.
@@ -35,6 +37,13 @@ const BUDGETS = {
   orderBook: 250,
   outcomeScoreboard: 250,
   resolveThreads: 600,
+  // The Business Vault derives every node, relation, memory entry and gap in
+  // one pass over the workspace. It is the largest single derivation in the
+  // product, so it gets the largest budget - and the tripwire matters more here
+  // than anywhere else, because a graph is exactly the shape of thing where an
+  // innocent-looking nested lookup turns quadratic.
+  knowledgeGraph: 150,
+  knowledgeGraphView: 40,
 };
 
 const { opportunities, activities, accounts, quotes, outcomes } = buildScaleWorkspace(SCALE);
@@ -77,6 +86,42 @@ measure('outcomeScoreboard', () => buildOutcomeScoreboard({
 measure('resolveThreads', () => resolveCommercialThreads({
   storedThreads: [], opportunities, activities, quotes, commitments: [], today: new Date('2026-08-02T00:00:00Z'),
 }));
+
+// The Vault, at the same scale. Stakeholders and objections are synthesised
+// here rather than added to the shared fixture, which other harnesses write
+// into a browser's localStorage.
+const stakeholders = accounts.map((account, index) => ({
+  id: `sh-${index}`, accountId: '', accountName: account.accountName, opportunityId: `opp-${index}`,
+  opportunityName: '', name: `Person ${index}`, roleTitle: 'QA Manager',
+  stakeholderRole: index % 3 === 0 ? 'Champion' : 'Technical Buyer', influenceLevel: 'High',
+  relationshipStrength: 'Strong', stance: 'Supportive', email: '', phone: '', notes: '', tags: [],
+  lastInteractionDate: '', createdAt: '2026-07-01T00:00:00.000Z', updatedAt: '2026-07-01T00:00:00.000Z',
+  storageMode: 'local',
+}));
+
+const objections = opportunities.slice(0, 60).map((opportunity, index) => ({
+  id: `obj-${index}`, accountId: '', accountName: opportunity.accountName, opportunityId: opportunity.id,
+  opportunityName: opportunity.opportunityName, stakeholderId: '', stakeholderName: '', sourceActivityId: '',
+  objectionType: ['Price', 'Lead time', 'Technical fit', 'Compliance / validation'][index % 4],
+  objectionText: 'Raised in the field', impact: 'Medium', status: 'Open', requiredProof: '', responsePlan: '',
+  resolutionNote: '', dueDate: '', resolvedAt: '', tags: [],
+  createdAt: '2026-07-10T00:00:00.000Z', updatedAt: '2026-07-10T00:00:00.000Z', storageMode: 'local',
+}));
+
+let knowledgeGraph;
+measure('knowledgeGraph', () => {
+  knowledgeGraph = buildKnowledgeGraph({
+    accounts, opportunities, stakeholders, activities, objections, quotes, outcomes, today: '2026-08-02',
+  });
+});
+
+// The view is recomputed on every selection, so it is the one that has to be
+// cheap. It reads a capped neighbourhood, never the whole graph.
+measure('knowledgeGraphView', () => {
+  buildGraphView({ graph: knowledgeGraph, focusId: knowledgeGraph.nodes[0]?.id });
+});
+
+console.log(`  knowledge graph: ${knowledgeGraph.nodes.length} nodes, ${knowledgeGraph.edges.length} relations, ${knowledgeGraph.gaps.length} open gaps`);
 
 // Deriving is not what makes the app feel slow - every model above lands in
 // single-digit milliseconds. The wait is the network: one barrier over sixteen

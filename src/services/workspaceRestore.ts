@@ -63,6 +63,7 @@ const CLOUD_TABLE_BY_KEY: Record<string, CloudJsonCollectionTable> = {
   'memoire.orderReceivables.v1': 'order_receivables',
   'memoire.supplierCommitments.v1': 'supplier_commitments',
   'memoire.expenses.v1': 'expenses',
+  'memoire.knowledgeNotes.v1': 'knowledge_notes',
 };
 
 export type RestoreCollectionResult = {

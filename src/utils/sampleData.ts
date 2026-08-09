@@ -40,6 +40,10 @@ import { ORDER_RECEIVABLE_STORAGE_KEY } from '../services/orderReceivableStore';
 import { SUPPLIER_COMMITMENT_STORAGE_KEY } from '../services/supplierCommitmentStore';
 import { ACCOUNT_MERGE_STORAGE_KEY } from '../services/accountMergeStore';
 import { NUDGE_STORAGE_KEY } from '../services/nudgeStore';
+// Business memory written during a demo. Cleared by tag only, like the rest of
+// this group: a knowledge note is free text an operator could genuinely repeat
+// word for word, so the legacy term sweep must never see it.
+import { KNOWLEDGE_NOTE_STORAGE_KEY } from '../services/knowledgeNoteStore';
 import type { WeeklyCommitmentSnapshot } from './weeklyCommitment';
 import { getCurrentPipelineReviewWeekId } from './pipelineReviewHabit';
 
@@ -192,6 +196,11 @@ export function clearSampleDataset() {
   removeSampleRecords(ORDER_COST_STORAGE_KEY);
   removeSampleRecords(ORDER_RECEIVABLE_STORAGE_KEY);
   removeSampleRecords(SUPPLIER_COMMITMENT_STORAGE_KEY);
+  // Anything written in the Business Vault during a demo: a knowledge note, an
+  // open question, or a gap marked not relevant. All three are reachable from
+  // the sandbox, and a dismissal surviving into a real workspace would silently
+  // suppress a gap the new operator never saw.
+  removeSampleRecords(KNOWLEDGE_NOTE_STORAGE_KEY);
   removeSampleRecords(ACCOUNT_MERGE_STORAGE_KEY);
   removeSampleRecords(NUDGE_STORAGE_KEY);
   removeSampleBriefs();
