@@ -15,10 +15,10 @@ import { nodeIcon, nodeVisual } from './nodeVisuals';
 /**
  * Writing something down, in under thirty seconds.
  *
- * Deliberately not a document editor. A commercial operator writing "they will
- * not qualify a second supplier until the Annex 1 audit closes" wants to type
- * one sentence, say who it is about, and get back to work - and a rich-text
- * canvas turns that into a decision about formatting.
+ * Deliberately not a document editor. A commercial operator writing "they
+ * always buy through the parent company" wants to type one sentence, say who
+ * it is about, and get back to work - and a rich-text canvas turns that into a
+ * decision about formatting.
  *
  * Two fields are required and everything else has a sensible default, because
  * the failure mode of a knowledge system is not badly-structured notes, it is
@@ -133,9 +133,19 @@ export function NewKnowledgeModal({ open, graph, prefill, onClose, onSave }: Pro
             id="knowledge-title"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
+            /*
+             * The example a new operator reads before writing anything, so it
+             * has to be true of B2B in general rather than of one trade.
+             *
+             * It used to read "they will not qualify a second supplier until
+             * the audit closes". That is a real sentence and it belongs to
+             * regulated manufacturing; to anyone selling software, machinery or
+             * services it teaches that this box is for somebody else's job.
+             * Buying through a parent company happens everywhere.
+             */
             placeholder={isQuestion
-              ? 'Who signs off capital purchases at this account?'
-              : 'They will not qualify a second supplier until the audit closes'}
+              ? 'Who signs off a purchase this size here?'
+              : 'Procurement runs through the parent company, not the site'}
             className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-navy focus:border-brand-blue focus:outline-none"
           />
         </div>
@@ -250,7 +260,7 @@ export function NewKnowledgeModal({ open, graph, prefill, onClose, onSave }: Pro
               id="knowledge-evidence"
               value={evidenceLabel}
               onChange={(event) => setEvidenceLabel(event.target.value)}
-              placeholder="Said in the QA meeting, 8 Aug"
+              placeholder="Said on the call, 8 Aug"
               className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-navy focus:border-brand-blue focus:outline-none"
             />
           </div>

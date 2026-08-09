@@ -5,9 +5,9 @@
  * products, objections and outcomes are already written somewhere, and deriving
  * them means the Vault is never a second copy of the business that can disagree
  * with the first one. But a CRM stores who, what, how much and when. It has
- * nowhere to put "they will not qualify a second supplier until the Annex 1
- * audit closes" - a fact that outlives the deal it was learned on, applies to
- * the next three, and today survives only in somebody's head.
+ * nowhere to put "they always buy through the parent company, never the site"
+ * - a fact that outlives the deal it was learned on, applies to the next three,
+ * and today survives only in somebody's head.
  *
  * Two shapes, one record, because they are the same thing at two stages:
  *
