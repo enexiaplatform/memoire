@@ -1,32 +1,141 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuthContext } from '../../auth/authContext';
+import { supabaseClient } from '../../lib/supabaseClient';
+
+const GOOGLE_SCRIPT_ID = 'memoire-google-identity-services';
+const PIPELINE_AUTH_REDIRECT_KEY = 'memoire.pipelineDefenseAuthRedirect.v1';
+const DEFAULT_AUTH_ROUTE = '/app/today';
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+
+type GoogleCredentialResponse = {
+  credential?: string;
+};
+
+type GoogleAccounts = {
+  id: {
+    initialize: (config: {
+      client_id: string;
+      callback: (response: GoogleCredentialResponse) => void;
+      nonce: string;
+      use_fedcm_for_prompt?: boolean;
+    }) => void;
+    renderButton: (
+      parent: HTMLElement,
+      options: {
+        type: 'standard';
+        theme: 'outline';
+        size: 'large';
+        shape: 'pill';
+        text: 'continue_with';
+        logo_alignment: 'left';
+        width: number;
+      },
+    ) => void;
+  };
+};
+
+declare global {
+  interface Window {
+    google?: { accounts: GoogleAccounts };
+  }
+}
 
 export function GoogleAuthButton({
-  label = 'Continue with Google',
+  label: _label = 'Continue with Google',
   redirectTo,
 }: {
   label?: string;
   redirectTo?: string;
 }) {
-  const { loading, error, signInWithGoogle } = useAuthContext();
+  const { error } = useAuthContext();
+  const buttonRef = useRef<HTMLDivElement>(null);
   const [actionError, setActionError] = useState('');
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
-  const handleSignIn = async () => {
-    setActionError('');
-    const result = await signInWithGoogle(redirectTo);
-    if (result.error) setActionError(result.error);
-  };
+  useEffect(() => {
+    let cancelled = false;
+
+    async function initializeGoogle() {
+      if (!googleClientId) {
+        setActionError('Google sign-in is not configured.');
+        return;
+      }
+      if (!supabaseClient) {
+        setActionError('Cloud sign-in is not configured.');
+        return;
+      }
+
+      try {
+        await loadGoogleIdentityServices();
+        if (cancelled || !buttonRef.current || !window.google) return;
+
+        const { nonce, hashedNonce } = await createNoncePair();
+        if (cancelled || !buttonRef.current || !window.google) return;
+
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          nonce: hashedNonce,
+          use_fedcm_for_prompt: true,
+          callback: async (response) => {
+            if (!response.credential || !supabaseClient) {
+              setActionError('Google did not return a valid sign-in credential.');
+              return;
+            }
+
+            setIsSigningIn(true);
+            setActionError('');
+            const destination = getAuthDestination(redirectTo);
+            setPendingAuthRedirect(destination);
+
+            try {
+              const { error: signInError } = await supabaseClient.auth.signInWithIdToken({
+                provider: 'google',
+                token: response.credential,
+                nonce,
+              });
+
+              if (signInError) {
+                setActionError(signInError.message || 'Could not sign in with Google.');
+                setIsSigningIn(false);
+              }
+            } catch (signInFailure) {
+              setActionError(signInFailure instanceof Error ? signInFailure.message : 'Could not sign in with Google.');
+              setIsSigningIn(false);
+            }
+          },
+        });
+
+        buttonRef.current.replaceChildren();
+        window.google.accounts.id.renderButton(buttonRef.current, {
+          type: 'standard',
+          theme: 'outline',
+          size: 'large',
+          shape: 'pill',
+          text: 'continue_with',
+          logo_alignment: 'left',
+          width: Math.min(400, Math.max(240, buttonRef.current.clientWidth || 320)),
+        });
+      } catch (scriptError) {
+        if (!cancelled) {
+          setActionError(scriptError instanceof Error ? scriptError.message : 'Could not load Google sign-in.');
+        }
+      }
+    }
+
+    void initializeGoogle();
+    return () => {
+      cancelled = true;
+    };
+  }, [redirectTo]);
 
   return (
     <div className="space-y-2">
-      <button
-        type="button"
-        onClick={handleSignIn}
-        disabled={loading}
-        className="flex w-full items-center justify-center rounded-full border border-gray-300 bg-white px-4 py-3 font-display text-sm font-bold text-gray-800 transition-colors hover:border-brand-blue hover:bg-blue-50/50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {loading ? 'Opening secure sign-in...' : label}
-      </button>
+      <div
+        ref={buttonRef}
+        aria-busy={isSigningIn}
+        className={isSigningIn ? 'pointer-events-none flex min-h-11 w-full justify-center opacity-60' : 'flex min-h-11 w-full justify-center'}
+      />
+      {isSigningIn && <p className="text-center text-xs text-gray-500">Signing in securely...</p>}
       {(actionError || error) && (
         <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700">
           {actionError || error}
@@ -34,4 +143,52 @@ export function GoogleAuthButton({
       )}
     </div>
   );
+}
+
+function loadGoogleIdentityServices() {
+  if (window.google?.accounts?.id) return Promise.resolve();
+
+  return new Promise<void>((resolve, reject) => {
+    const existing = document.getElementById(GOOGLE_SCRIPT_ID) as HTMLScriptElement | null;
+    if (existing) {
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('Could not load Google sign-in.')), { once: true });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = GOOGLE_SCRIPT_ID;
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Could not load Google sign-in.'));
+    document.head.appendChild(script);
+  });
+}
+
+async function createNoncePair() {
+  const randomBytes = crypto.getRandomValues(new Uint8Array(32));
+  const nonce = btoa(String.fromCharCode(...randomBytes));
+  const encodedNonce = new TextEncoder().encode(nonce);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', encodedNonce);
+  const hashedNonce = Array.from(new Uint8Array(hashBuffer))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+  return { nonce, hashedNonce };
+}
+
+function getAuthDestination(requestedDestination?: string) {
+  if (requestedDestination?.startsWith('/app/')) return requestedDestination;
+  const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (currentPath.startsWith('/app/')) return currentPath;
+  return DEFAULT_AUTH_ROUTE;
+}
+
+function setPendingAuthRedirect(target: string) {
+  try {
+    window.localStorage.setItem(PIPELINE_AUTH_REDIRECT_KEY, target);
+  } catch {
+    // AuthProvider can still complete the session if localStorage is unavailable.
+  }
 }
