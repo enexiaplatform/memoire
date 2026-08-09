@@ -13,7 +13,7 @@ export type AuthContextValue = {
   isAuthenticated: boolean;
   signIn: (email: string, password: string) => Promise<{ error: { message: string } | null }>;
   signUp: (email: string, password: string, displayName?: string) => Promise<{ error: { message: string } | null }>;
-  signInWithGoogle: (redirectTo?: string) => Promise<{ error: string | null }>;
+  signInWithGoogle: (idToken: string, nonce: string, redirectTo?: string) => Promise<{ error: string | null }>;
   requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
   updatePassword: (password: string) => Promise<{ error: string | null }>;
   updateDisplayName: (displayName: string) => Promise<{ error: string | null }>;
