@@ -158,6 +158,7 @@ for (const marker of [
 // be named, and Team must stay unpriced until it has a variant. What did not
 // change is where the money is taken - not here.
 const pricing = read('src/features/pricing/PricingPage.tsx');
+const landing = read('src/pages/LandingPage.tsx');
 for (const marker of [
   '$10',
   'per month',
@@ -175,16 +176,23 @@ if (pricing.includes('useCheckout') || pricing.includes('startCheckout')) {
   fail('pricing page must not take payment - checkout needs a session, so it lives in Settings > Billing');
 }
 
-// The free tier the page advertises must be the one the app enforces. These
-// numbers are quoted to a paying visitor; a drift here is a false offer.
+// The trial the public pages advertise has to be the one the app applies, and
+// the free tier they used to advertise has to stay gone. Its limits were quoted
+// to visitors for months while no code enforced them; the length of the trial
+// is now the only number on these pages that a rule has to back up.
+//
+// The behaviour of the rule itself is covered by verify-trial-entitlement.mjs.
 {
-  const planLimits = read('src/hooks/usePlanLimits.ts');
-  const serverPlan = read('api/_plan.js');
-  requireIncludes(planLimits, 'captures_per_month: 30', 'free capture limit moved - the pricing page still advertises 30');
-  requireIncludes(planLimits, 'max_entities: 50', 'free record limit moved - the pricing page still advertises 50');
-  requireIncludes(serverPlan, 'FREE_CAPTURES_PER_MONTH = 30', 'server free capture limit drifted from the advertised 30');
-  requireIncludes(pricing, 'const FREE_CAPTURES_PER_MONTH = 30;', 'pricing page must quote the enforced free capture limit');
-  requireIncludes(pricing, 'const FREE_MAX_RECORDS = 50;', 'pricing page must quote the enforced free record limit');
+  const entitlement = read('src/utils/entitlement.ts');
+  requireIncludes(entitlement, 'export const TRIAL_DAYS = 7;', 'trial length moved - the public pages still say seven days');
+  requireIncludes(pricing, "import { TRIAL_DAYS } from '../../utils/entitlement';", 'pricing page must take the trial length from the rule, not retype it');
+  requireIncludes(landing, "import { TRIAL_DAYS } from '../utils/entitlement';", 'landing page must take the trial length from the rule, not retype it');
+
+  for (const [label, text] of [['pricing page', pricing], ['landing page', landing]]) {
+    if (/\b30 captures\b|\b50 records\b|Free tier|free tier after it\.\s*$/i.test(text) && !/no free tier/i.test(text)) {
+      fail(`${label} still advertises the free tier that no code enforced`);
+    }
+  }
 }
 
 const exposureGuard = read('docs/deployment/billing-checkout-exposure-guard-2026-06-17.md');

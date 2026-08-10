@@ -40,9 +40,11 @@ import { buildCustomerSignalDigest } from '../../utils/customerSignals';
 import { buildCommercialJourneySnapshot } from '../../utils/commercialJourney';
 import { todayDateKey } from '../../utils/safeDate';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
+import { useEntitlement } from '../../hooks/useEntitlement';
 
 export function AskMemoirePage() {
   const { user } = useAuth();
+  const { canSearch } = useEntitlement();
   const [searchParams] = useSearchParams();
   const [scope, setScope] = useState<AskMemoireContext['scope']>((searchParams.get('scope') as AskMemoireContext['scope']) || 'all');
   const [selectedAccountId, setSelectedAccountId] = useState(searchParams.get('accountId') || '');
@@ -210,6 +212,12 @@ export function AskMemoirePage() {
   );
 
   const ask = useCallback(async (nextQuestion = question) => {
+    // Every preset button and the form all funnel through here, so this is the
+    // only place the subscription has to be checked.
+    if (!canSearch) {
+      setError('Search & Insights is part of a subscription. Your trial has ended, but everything you captured is still here to read and export - subscribe in Settings to ask again.');
+      return;
+    }
     if (!nextQuestion.trim()) {
       setError('Ask a question or choose a preset first.');
       return;
@@ -338,6 +346,7 @@ export function AskMemoirePage() {
       answerSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [
+    canSearch,
     question,
     scope,
     selectedAccountId,

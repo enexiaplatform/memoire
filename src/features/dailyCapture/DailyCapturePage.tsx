@@ -59,6 +59,7 @@ import {
   type CaptureCorrectionEvent,
 } from '../../services/captureCorrectionMemoryStore';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
+import { useEntitlement } from '../../hooks/useEntitlement';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type CaptureMode = 'note' | 'quick' | 'email';
@@ -261,6 +262,9 @@ const quickTemplates: {
 
 export function DailyCapturePage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
+  // Capture is the entry point of the whole loop, so it is where an ended
+  // trial has to be felt. Reading, Plan, Orders and export all stay open.
+  const entitlement = useEntitlement();
   const [searchParams] = useSearchParams();
   const searchParamsKey = searchParams.toString();
   const [rawNote, setRawNote] = useState('');
@@ -458,6 +462,14 @@ export function DailyCapturePage() {
   }, [searchParams, searchParamsKey]);
 
   const handleSave = async () => {
+    // Guarded here rather than only on the buttons: both Save buttons and any
+    // future call site funnel through this function, and a disabled button is
+    // a courtesy while this is the rule.
+    if (!entitlement.canWrite) {
+      setMessage('Your trial has ended, so new captures are paused. Your existing work is still here to read and export - subscribe in Settings to start capturing again.');
+      setSaveState('error');
+      return;
+    }
     const captureText = activeCaptureText.trim();
     if (captureText.length < 8 || !preview) {
       setMessage('Capture a short sales activity first.');
@@ -886,7 +898,7 @@ export function DailyCapturePage() {
             <button
               type="button"
               onClick={handleSave}
-              disabled={saveState === 'saving'}
+              disabled={saveState === 'saving' || !entitlement.canWrite}
               className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-navy px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saveState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -1045,7 +1057,7 @@ export function DailyCapturePage() {
             <button
               type="button"
               onClick={handleSave}
-              disabled={saveState === 'saving'}
+              disabled={saveState === 'saving' || !entitlement.canWrite}
               className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-navy px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saveState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}

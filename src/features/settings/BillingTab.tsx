@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
+import { useEntitlement } from '../../hooks/useEntitlement';
+import { describeTrialRemaining, TRIAL_DAYS } from '../../utils/entitlement';
 import {
   fetchBillingStatus,
   openBillingPortal,
@@ -37,8 +39,17 @@ const PLAN_COPY: Record<BillingPlan, { name: string; description: string }> = {
   },
 };
 
+/** "16 August 2026" - long form, because a trial end date is worth being unambiguous about. */
+function formatTrialEnd(iso: string | null) {
+  if (!iso) return 'the end of your trial';
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return 'the end of your trial';
+  return parsed.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 export function BillingTab() {
   const { isAuthenticated } = useAuthContext();
+  const entitlement = useEntitlement();
   const [status, setStatus] = useState<BillingStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyAction, setBusyAction] = useState<string>('');
@@ -110,7 +121,11 @@ export function BillingTab() {
       <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
         <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Current plan</p>
         <p className="mt-1 text-lg font-bold text-navy">
-          {paid ? PLAN_COPY[status.tier as BillingPlan].name : 'Free'}
+          {paid
+            ? PLAN_COPY[status.tier as BillingPlan].name
+            : entitlement.state === 'expired'
+              ? 'Trial ended'
+              : `Trial · ${describeTrialRemaining(entitlement)}`}
         </p>
         {/* Cancelling is not the same as losing access: the period is paid for.
             The webhook keeps the tier until Lemon Squeezy sends the expiry, so
@@ -123,7 +138,9 @@ export function BillingTab() {
           <p className="mt-1 text-sm leading-6 text-gray-500">
             {paid
               ? 'Active. Unlimited capture, unlimited records, and Search & Insights.'
-              : '30 captures a month, up to 50 records, and no Search & Insights.'}
+              : entitlement.state === 'expired'
+                ? 'Capture and Search & Insights are paused. Everything you already wrote down stays readable and exportable.'
+                : `Full access until ${formatTrialEnd(entitlement.trialEndsAt)}. No card was needed to start, and none is held.`}
           </p>
         )}
       </div>
@@ -150,7 +167,8 @@ export function BillingTab() {
             ))
           ) : (
             <p className="rounded-lg border border-gray-200 px-4 py-3 text-sm leading-6 text-gray-500">
-              Paid plans are configured but checkout is not open yet. Nothing you have written down is behind them today.
+              Paid plans are configured but checkout is not open yet, so your {TRIAL_DAYS}-day trial stays open until it
+              is — nothing you have written down gets locked behind a button you cannot press.
             </p>
           )}
           <p className="text-[11px] leading-5 text-gray-400">

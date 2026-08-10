@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { MarketingNav } from '../components/marketing/MarketingNav';
 import { Footer } from '../components/marketing/Footer';
+import { TRIAL_DAYS } from '../utils/entitlement';
 
 /**
  * The public page. Three rules, each of which has already been broken here once.
@@ -31,8 +32,9 @@ import { Footer } from '../components/marketing/Footer';
  *    does not exist. scripts/verify-no-ai-dependency.mjs guards the code; the
  *    commercial-readiness contract guards this copy.
  * 2. No invented pricing. The plans below are the two Lemon Squeezy variants
- *    the server will actually resolve (`personal`, `team`) and the free tier
- *    that src/hooks/usePlanLimits.ts really enforces.
+ *    the server will actually resolve (`personal`, `team`). There is no free
+ *    tier: the one that used to be advertised here declared limits that no
+ *    code applied. src/utils/entitlement.ts now decides, and it is wired up.
  * 3. Nothing here may narrow the product. The mocks below are structurally
  *    real - the flag names ("Payment overdue", "Deal going silent"), the seven
  *    order stages, "0 of 5 steps done", the aging buckets and the knowledge-gap
@@ -99,32 +101,18 @@ const notIdealFor = [
 
 const pricingPlans = [
   {
-    name: 'Free',
-    price: '$0',
-    cadence: 'forever',
-    description: 'Enough to run a real week and decide for yourself.',
-    items: [
-      '30 captures a month',
-      'Up to 50 records',
-      'Today, Plan, Orders, Cash Collection, Review',
-      'CSV import and full data export',
-    ],
-    note: 'Search & Insights is not included on Free.',
-    highlighted: false,
-  },
-  {
     name: 'Personal',
     price: '$10',
     cadence: 'per month',
-    description: 'For one operator running the whole commercial loop.',
+    description: 'Everything Memoire does, for one operator running the whole commercial loop.',
     items: [
-      'Unlimited capture, unlimited records',
+      'Unlimited capture and unlimited records',
       'Search & Insights over everything you have written down',
-      'Cost Analysis, Cash Collection and the Business Vault',
+      'Orders, Cash Collection and Cost Analysis',
       'Pipeline Defense Briefs and shareable review packs',
-      'Daily digest email and full data export',
+      'Business Vault, daily digest email and full data export',
     ],
-    note: 'Cancel anytime — you keep access until the period you paid for ends.',
+    note: `Starts with a ${TRIAL_DAYS}-day free trial — no card to begin. Cancel anytime; you keep access until the period you paid for ends.`,
     highlighted: true,
   },
   {
@@ -147,12 +135,12 @@ const faqs = [
   {
     question: 'What does $10 a month actually buy?',
     answer:
-      'Unlimited capture and unlimited records instead of the free ceiling of 30 captures a month and 50 records, plus Search & Insights across your whole workspace. Everything else — Today, Plan, Orders, Cash Collection, Cost Analysis, Review, the Business Vault — is on both plans.',
+      'Everything. There is no smaller plan holding features back — Today, Plan, Orders, Cash Collection, Cost Analysis, Review, the Business Vault and Search & Insights are all included. The seven-day trial is the full product too, so what you try is what you buy.',
   },
   {
     question: 'How do I pay, and who takes the payment?',
     answer:
-      'Create a free account first. When you want more room, open Settings and go to the Billing tab — the upgrade runs through Lemon Squeezy, which is the merchant of record and the seller on your invoice. Memoire never sees your card. Cards, invoices and cancellation all live in the Lemon Squeezy portal, reachable from the same tab.',
+      'Start the trial with just an email — no card. When you are ready, open Settings and go to the Billing tab; the upgrade runs through Lemon Squeezy, which is the merchant of record and the seller on your invoice. Memoire never sees your card. Cards, invoices and cancellation all live in the Lemon Squeezy portal, reachable from the same tab.',
   },
   {
     question: 'Does Memoire use AI?',
@@ -183,7 +171,7 @@ export function LandingPage() {
         <title>Memoire - Personal Commercial Control Tower for B2B Sellers</title>
         <meta
           name="description"
-          content="Memoire is a personal commercial control tower for complex B2B sellers: every customer interaction becomes a continuous commercial thread, from conversation and quotation to delivery and cash, so nothing goes silent. Free to start, $10 a month for one person."
+          content="Memoire is a personal commercial control tower for complex B2B sellers: every customer interaction becomes a continuous commercial thread, from conversation and quotation to delivery and cash, so nothing goes silent. Seven days free, then $10 a month for one person."
         />
         <meta name="robots" content="noindex, nofollow" />
         <meta property="og:title" content="Memoire - Personal Commercial Control Tower for B2B Sellers" />
@@ -239,7 +227,7 @@ export function LandingPage() {
                 </Link>
               </div>
               <p className="mt-5 text-sm leading-6 text-slate-400">
-                Free plan, no card · $10 a month when you outgrow it · Demo data never leaves this browser
+                {TRIAL_DAYS} days free, no card · Then $10 a month · Demo data never leaves this browser
               </p>
             </div>
 
@@ -538,9 +526,9 @@ export function LandingPage() {
             <SectionHeader
               eyebrow="Pricing"
               title="One person, one price. $10 a month."
-              text="Start free and stay free until the free ceiling gets in your way. There is no trial to forget to cancel."
+              text={`Seven days free to run a real week on your own work — no card to start. After that it is $10 a month, and there is no smaller plan pretending to be enough.`}
             />
-            <div className="mt-12 grid items-start gap-6 lg:grid-cols-3">
+            <div className="mx-auto mt-12 grid max-w-4xl items-start gap-6 lg:grid-cols-2">
               {pricingPlans.map((plan) =>
                 plan.highlighted ? (
                   <div key={plan.name} className="gradient-border-card shadow-elevated">
@@ -561,7 +549,7 @@ export function LandingPage() {
                   to="/signup"
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-blue px-7 py-3.5 font-display text-sm font-bold text-white transition hover:bg-brand-blue-dark active:scale-[0.98]"
                 >
-                  Create your free account
+                  Start your free trial
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
@@ -616,8 +604,8 @@ export function LandingPage() {
               Find out what went quiet <span className="brand-gradient-text">while you can still fix it</span>.
             </h2>
             <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-slate-300">
-              Create a free account and capture your first week, or open the demo sandbox and look around first.
-              Nothing is charged until you decide it is worth $10.
+              Take {TRIAL_DAYS} days to capture a real week of your own work, or open the demo sandbox and look
+              around first. No card to start, and nothing is charged until you decide it is worth $10.
             </p>
             <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
               <Link

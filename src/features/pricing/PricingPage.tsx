@@ -1,39 +1,38 @@
-import { ArrowRight, Check, Minus } from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { MarketingNav } from '../../components/marketing/MarketingNav';
 import { Footer } from '../../components/marketing/Footer';
+import { TRIAL_DAYS } from '../../utils/entitlement';
 
 /**
  * The public price list. It quotes one real number, and the number has to be
  * the one the store will actually charge.
  *
- * Two things are deliberate here. The plans are the two Lemon Squeezy variants
- * `api/_lemonsqueezy.js` can resolve (`personal`, `team`) plus the free tier
- * `src/hooks/usePlanLimits.ts` really enforces - nothing else may appear. And
- * there is no checkout button: the checkout call needs a session token, so the
- * buy path is Settings > Billing, and this page's job is to send people to
+ * Two things are deliberate here. The offer is the one Lemon Squeezy variant
+ * `api/_lemonsqueezy.js` can resolve today (`personal`) plus the trial that
+ * `src/utils/entitlement.ts` really applies - nothing else may appear. There is
+ * no free tier: the one this page used to advertise quoted capture and record
+ * ceilings that no code enforced.
+ *
+ * And there is no checkout button: the checkout call needs a session token, so
+ * the buy path is Settings > Billing, and this page's job is to send people to
  * sign up rather than to take a payment from an anonymous visitor.
  */
 
-const FREE_CAPTURES_PER_MONTH = 30;
-const FREE_MAX_RECORDS = 50;
-
 const plans = [
   {
-    name: 'Free',
+    name: `${TRIAL_DAYS}-day trial`,
     price: '$0',
-    cadence: 'forever',
-    description: 'A real workspace, not a countdown. Enough to run your week and judge it for yourself.',
+    cadence: `for ${TRIAL_DAYS} days`,
+    description: 'The whole product, on your own work, with nothing held back to make a point.',
     items: [
-      `${FREE_CAPTURES_PER_MONTH} captures a month`,
-      `Up to ${FREE_MAX_RECORDS} records`,
-      'Today, Plan, Orders, Cash Collection and Review',
-      'CSV import for accounts and opportunities',
-      'Full data export whenever you want it',
+      'Every feature the paid plan has',
+      'Starts on an email address - no card',
+      'Nothing charged when it ends',
+      'Your data stays readable and exportable either way',
     ],
-    absent: ['Search & Insights — not included on Free'],
-    note: 'No card, and no trial that expires behind your back.',
+    note: 'There is no free tier after it. A plan that is permanently almost-enough helps nobody.',
     highlighted: false,
   },
   {
@@ -50,7 +49,6 @@ const plans = [
       'Pipeline Defense Briefs and shareable review packs',
       'Daily digest email',
     ],
-    absent: [],
     note: 'Cancel anytime - you keep everything until the period you already paid for runs out.',
     highlighted: true,
   },
@@ -65,7 +63,6 @@ const plans = [
       'Team security review',
       'CRM sync',
     ],
-    absent: [],
     note: 'The individual loop gets finished before anything is charged for a team.',
     highlighted: false,
   },
@@ -80,7 +77,7 @@ export function PricingPage() {
         <title>Pricing - Memoire</title>
         <meta
           name="description"
-          content="Memoire is free to start and $10 a month for one person: unlimited capture, unlimited records, and Search & Insights across everything you have written down."
+          content="Memoire is $10 a month for one person, after a seven-day free trial with no card: unlimited capture, unlimited records, and Search & Insights across everything you have written down."
         />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
@@ -93,9 +90,9 @@ export function PricingPage() {
               One person, one price. <span className="brand-gradient-text">$10 a month.</span>
             </h1>
             <p className="mt-5 text-base leading-7 text-slate-600">
-              Start on the free plan and stay there until its ceiling gets in your way. When it does, upgrading takes
-              one click inside the app. Payment is handled by Lemon Squeezy, which is the merchant of record and the
-              seller on your invoice - Memoire never sees your card.
+              Seven days of the whole product on your own work, started with an email and no card. After that it is
+              $10 a month, and upgrading takes one click inside the app. Payment is handled by Lemon Squeezy, which is
+              the merchant of record and the seller on your invoice - Memoire never sees your card.
             </p>
           </header>
 
@@ -127,12 +124,6 @@ export function PricingPage() {
                       {item}
                     </li>
                   ))}
-                  {plan.absent.map((item) => (
-                    <li key={item} className="flex gap-2.5 text-sm leading-6 text-slate-400">
-                      <Minus className="mt-1 h-4 w-4 shrink-0 text-slate-300" />
-                      {item}
-                    </li>
-                  ))}
                 </ul>
                 <p className="mt-5 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-500">{plan.note}</p>
               </article>
@@ -142,16 +133,16 @@ export function PricingPage() {
           <section className="mt-10 rounded-xl border border-blue-200 bg-blue-50 p-8 text-center">
             <h2 className="font-display text-2xl font-bold">Try it on your own week before you pay for it.</h2>
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-              The demo runs on sample data that never leaves your browser. A free account runs on your real work, with
-              no card and no expiry. Upgrade from Settings under Billing on the day it earns the $10, and cancel from
-              the same place if it stops.
+              The demo runs on sample data that never leaves your browser. The trial runs on your real work, with no
+              card taken. Upgrade from Settings under Billing on the day it earns the $10, and cancel from the same
+              place if it stops.
             </p>
             <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
               <Link
                 to="/signup"
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-blue px-5 py-3 text-sm font-bold text-white hover:bg-brand-blue-dark active:scale-[0.98]"
               >
-                Start free
+                Start the trial
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link

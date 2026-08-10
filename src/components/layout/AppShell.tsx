@@ -7,6 +7,7 @@ import { OnboardingModal } from './OnboardingModal';
 import { DemoModeBanner } from '../demo/DemoModeBanner';
 import { StorageFailureBanner } from '../common/StorageFailureBanner';
 import { OfflineCaptureBanner } from '../common/OfflineCaptureBanner';
+import { TrialStatusBanner } from '../common/TrialStatusBanner';
 import { prefetchPrimaryAppRoutes } from '../../utils/routePrefetch';
 import { hydrateWorkspacePreferences } from '../../services/workspacePreferences';
 import { useAuth } from '../../hooks/useAuth';
@@ -65,6 +66,10 @@ export function AppShell() {
             but it is safe, and the one above it is not. */}
         <OfflineCaptureBanner />
         <DemoModeBanner />
+        {/* Last of the banners: the trial is the only one of these that is not
+            about the state of the data in front of you. It also stays silent
+            for most of the trial - see the component. */}
+        <TrialStatusBanner />
         <div className="flex-1">
           <Suspense fallback={<AppContentLoading />}>
             <Outlet />
