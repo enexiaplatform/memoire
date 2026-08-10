@@ -96,14 +96,53 @@ const checks = [
       !/\bAI[- ](assist|search|powered|generated)/i.test(text) &&
       text.includes('nothing is sent to an AI service'),
   },
+  // Memoire is sold globally. The mocks on the marketing pages must be
+  // structurally real but generically populated - an earlier version pasted the
+  // demo workspace in verbatim, and a worldwide product went out looking like a
+  // tool for one country's pharmaceutical trade: VND amounts, and the demo's own
+  // pharma and food-testing accounts.
+  //
+  // The account list is read from the demo fixture rather than hard-coded, so
+  // renaming a sample account cannot quietly retire this guard.
+  {
+    name: 'marketing pages do not paste the demo workspace verbatim',
+    file: 'src/pages/LandingPage.tsx',
+    assert: (text, { sampleAccountNames }) => {
+      // The doc comment naming the mistake is the one allowed mention.
+      const body = text.replace(/\/\*[\s\S]*?\*\//g, '');
+      return !sampleAccountNames.some((name) => body.includes(name));
+    },
+  },
+  {
+    name: 'marketing pages quote no single market currency',
+    file: 'src/pages/LandingPage.tsx',
+    // The dollar figures are illustrative and stay; a local currency code or
+    // symbol means somebody's own workspace was copied onto a global page.
+    assert: (text) => !/\b(VND|IDR|THB|PHP|MYR|INR|KRW|JPY)\b|[₫₹₩¥]/.test(text),
+  },
 ];
 
+/**
+ * Names of the accounts the demo sandbox ships with. Pulled from the fixture so
+ * the guard above tracks it automatically.
+ */
+function readSampleAccountNames() {
+  const sample = readFileSync(resolve(root, 'src/utils/sampleData.ts'), 'utf8');
+  const names = new Set();
+  for (const match of sample.matchAll(/accountName: '([^']+)'/g)) names.add(match[1]);
+  if (names.size === 0) {
+    throw new Error('verify-commercial-readiness: found no sample account names - the fixture shape changed');
+  }
+  return [...names];
+}
+
 const failures = [];
+const context = { sampleAccountNames: readSampleAccountNames() };
 
 for (const check of checks) {
   const path = resolve(root, check.file);
   const text = readFileSync(path, 'utf8');
-  if (!check.assert(text)) {
+  if (!check.assert(text, context)) {
     failures.push(`${check.name} (${check.file})`);
   }
 }

@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   ArrowRight,
   Banknote,
-  BellRing,
   Check,
   ClipboardCheck,
   Download,
@@ -24,22 +23,24 @@ import { MarketingNav } from '../components/marketing/MarketingNav';
 import { Footer } from '../components/marketing/Footer';
 
 /**
- * The public page, and the only claim it is allowed to make is one the app can
- * keep. Three rules, two of which have already been broken here once:
+ * The public page. Three rules, each of which has already been broken here once.
  *
  * 1. No AI. Memoire has no AI service, no key and no endpoint - capture parses
- *    on the device and Ask computes from your own history. This page used to
- *    offer optional AI help in the capture box, which was a promise of
- *    something that does not exist. scripts/verify-no-ai-dependency.mjs guards
- *    the code; the commercial-readiness contract guards this copy.
+ *    on the device and Ask computes from your own history. This page once
+ *    offered optional AI help in the capture box, which promised something that
+ *    does not exist. scripts/verify-no-ai-dependency.mjs guards the code; the
+ *    commercial-readiness contract guards this copy.
  * 2. No invented pricing. The plans below are the two Lemon Squeezy variants
  *    the server will actually resolve (`personal`, `team`) and the free tier
  *    that src/hooks/usePlanLimits.ts really enforces.
- * 3. The mocks are portraits, not decoration. Every figure, badge and flag name
- *    below was read off the running demo workspace - "Payment overdue", "Deal
- *    going silent", "0 of 5 steps done", "9/11 known", the VND amounts, the
- *    account names. If a label here does not exist in the product, the mock is
- *    lying about the product, which is worse than having no mock.
+ * 3. Nothing here may narrow the product. The mocks below are structurally
+ *    real - the flag names ("Payment overdue", "Deal going silent"), the seven
+ *    order stages, "0 of 5 steps done", the aging buckets and the knowledge-gap
+ *    questions are all strings the product renders. The account names, figures
+ *    and currency are *illustrative* and must stay industry-neutral and
+ *    international. An earlier version pasted the demo workspace in verbatim
+ *    and shipped a global product looking like a tool for one country's pharma
+ *    trade. Real structure, neutral content - the two are not the same thing.
  *
  * Checkout is deliberately not on this page. The checkout call needs a session
  * token, so the buy button lives in Settings > Billing where there is one -
@@ -62,108 +63,38 @@ const trustChips = [
 const painPoints = [
   {
     quote: 'I sent the quote three weeks ago. Then nothing.',
-    cost: 'The deal did not die. It just stopped being anybody\'s job.',
+    cost: 'The deal did not die. It stopped being anybody\'s job.',
     flag: 'Deal going silent',
   },
   {
-    quote: 'We delivered in July. Did anyone actually invoice it?',
+    quote: 'We delivered last month. Did anyone invoice it?',
     cost: 'Winning felt like the finish line, so nobody watched the rest.',
     flag: 'To invoice',
   },
   {
-    quote: 'That money was due last month and I only just noticed.',
-    cost: 'Cash you already earned, sitting in somebody else\'s account.',
+    quote: 'That money was due weeks ago and I only just noticed.',
+    cost: 'Cash you already earned, sitting in someone else\'s account.',
     flag: 'Payment overdue',
-  },
-  {
-    quote: 'The quote expires Friday and I have not chased the PO.',
-    cost: 'A re-quote at a worse price, or the whole thing starts again.',
-    flag: 'Quote expiring soon',
   },
   {
     quote: 'My manager asked why this slipped. I had nothing.',
     cost: 'You knew the answer in June. You just could not find it.',
     flag: 'Missing forecast evidence',
   },
-  {
-    quote: 'Who actually signs at this customer?',
-    cost: 'Deals stall at the last metre when nobody named the signer.',
-    flag: 'Open knowledge gap',
-  },
-] as const;
-
-const loopSteps = [
-  {
-    label: 'Capture',
-    title: 'Type it once, messy is fine',
-    text: 'A note, a pasted email, a meeting recap. The account, the amount and the next action come out the other side.',
-  },
-  {
-    label: 'Today',
-    title: 'Start where the risk is',
-    text: 'The three things worth doing first, ranked across money, defense and follow-up — with the reason attached.',
-  },
-  {
-    label: 'Orders & cash',
-    title: 'Follow it to the bank',
-    text: 'Contract, deposit, delivery, invoice, payment. Seven steps, and you can see which one every order is stuck on.',
-  },
-  {
-    label: 'Review',
-    title: 'Walk in with answers',
-    text: 'Defend, rescue or downgrade every deal with the proof and the gaps already written up.',
-  },
-];
-
-const outcomes = [
-  {
-    icon: Timer,
-    stat: 'Ten seconds',
-    title: 'to know where you stand',
-    text: 'Today opens on what moves money, what is hot, what is stuck and what needs confirming — before you have finished your coffee.',
-  },
-  {
-    icon: BellRing,
-    stat: 'Five, capped',
-    title: 'things that could embarrass you',
-    text: 'The watch-list is deliberately short. It surfaces what could surprise you in review, and refuses to grow into a second inbox.',
-  },
-  {
-    icon: Banknote,
-    stat: 'Every order',
-    title: 'followed past the win',
-    text: 'Delivery, invoice and payment each have a step that has to be ticked. An order that stops moving says how many days it has been still.',
-  },
-  {
-    icon: FileText,
-    stat: 'Already written',
-    title: 'when the meeting starts',
-    text: 'The defense brief builds itself from what you captured: what to defend, what to rescue, what to downgrade, and the evidence still missing.',
-  },
-];
-
-const notCrmPoints = [
-  ['No CRM writeback', 'Review and prepare without ever changing a source CRM record.'],
-  ['Read-only working copy', 'CSV import from CRM, Excel, Notion, or your own pipeline sheet.'],
-  ['Private demo sandbox', 'Sample data stays in this browser. Nothing is uploaded to try it.'],
-  ['Private preparation', 'Build your story before you walk into the forecast review.'],
 ] as const;
 
 const bestFor = [
-  'B2B sellers who own their own follow-up, with weekly or monthly reviews',
-  'Founder-led sellers, consultants, freelancers and agency owners',
-  'Trading, distribution and supply businesses that quote, deliver, then chase payment',
-  'Pharma, life science, lab, industrial and other complex technical sales',
-  'Anyone running CRM plus Excel, plus Notion, plus private notes, plus memory',
-  'Long-cycle deals with procurement and several technical stakeholders',
+  'B2B sellers who own their own follow-up',
+  'Founder-led sellers, consultants and agency owners',
+  'Trading, distribution and supply — quote, deliver, then chase payment',
+  'Long-cycle deals with procurement and several stakeholders',
 ];
 
 const notIdealFor = [
-  'Enterprise teams needing SSO, admin controls and a formal security review today',
-  'Teams needing native Salesforce or HubSpot two-way sync right now',
-  'Anyone wanting a company system of record or a manager forecasting dashboard',
-  'Accounting, payroll, inventory, ecommerce or marketplace operations',
-  'Quick transactional selling with no meaningful follow-up loop',
+  'Enterprise teams needing SSO and a formal security review today',
+  'Anyone wanting a company system of record or a manager dashboard',
+  'Accounting, payroll, inventory or ecommerce operations',
+  'Quick transactional selling with no follow-up loop',
 ];
 
 const pricingPlans = [
@@ -185,7 +116,7 @@ const pricingPlans = [
     name: 'Personal',
     price: '$10',
     cadence: 'per month',
-    description: 'For one operator running the whole commercial loop themselves.',
+    description: 'For one operator running the whole commercial loop.',
     items: [
       'Unlimited capture, unlimited records',
       'Search & Insights over everything you have written down',
@@ -229,34 +160,19 @@ const faqs = [
       'No. There is no AI service behind Memoire, no key, and no endpoint. Capture parses your text on your own device with rules you can see and correct, and Search & Insights answers from your measured history. Your customer names, prices and notes are never sent to a model.',
   },
   {
-    question: 'Is Memoire a CRM?',
+    question: 'Is Memoire a CRM, and does it change my CRM?',
     answer:
-      'No. Your CRM keeps records for the company. Memoire is the private layer where you think, remember, prepare and defend — and where a quote is followed all the way to the money landing in your account.',
+      'It is not, and it does not. Your CRM keeps records for the company; Memoire is the private layer where you think, remember, prepare and defend — and where a quote is followed all the way to the money landing in your account. No CRM writeback exists: it works from CSV import and its own working data.',
   },
   {
-    question: 'Does Memoire write back to my CRM?',
+    question: 'Does it handle my currency and my market?',
     answer:
-      'No CRM writeback exists. Memoire works from CSV import and its own working data, so you can review safely without touching a source record.',
-  },
-  {
-    question: 'Does it handle my currency?',
-    answer:
-      'Yes. Orders, quotes and collection all carry their own currency, with a base currency for the totals — the screenshots on this page are a real workspace running in VND. Landed cost can even sit in a different currency from the sale.',
+      'Yes. Quotes, orders and collection each carry their own currency with a base currency for the totals, and landed cost can sit in a different currency from the sale. Dates, number formats and payment terms follow your locale — Memoire is used the same way whether you invoice in dollars, euros, pounds or anything else.',
   },
   {
     question: 'Where is my data stored?',
     answer:
       'Demo sandbox data stays in this browser and is never uploaded. A signed-in account syncs to cloud storage, and the app tells you inside when it is running on local fallback instead. You can export everything, and deleting your account deletes it.',
-  },
-  {
-    question: 'Can I start from CSV exports from Salesforce, HubSpot or Excel?',
-    answer:
-      'Yes. Accounts and opportunities both import from CSV, with a review step before anything is written, so you can bring a real pipeline in and refresh it later.',
-  },
-  {
-    question: 'What is the Pipeline Defense Brief?',
-    answer:
-      'A manager-ready summary of which deals you can defend, rescue, downgrade or monitor — with the proof, the gaps and the next actions attached. You can share it as a read-only link instead of rebuilding it in a slide.',
   },
 ];
 
@@ -327,7 +243,7 @@ export function LandingPage() {
               </p>
             </div>
 
-            {/* Hero product portrait: the ranked list Today actually opens on. */}
+            {/* The ranked list Today opens on. */}
             <div className="relative mx-auto w-full max-w-xl">
               <BrowserFrame label="Today · Memoire">
                 <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
@@ -350,35 +266,34 @@ export function LandingPage() {
                     severity="Critical"
                     category="Revenue"
                     title="Confirm payment release date with finance."
-                    subject="Summit Diagnostics / QC workflow delivery"
-                    reason="Payment overdue: Pending payment."
-                    due="Due Aug 9, 2026"
-                    amount="650,000,000 VND"
+                    subject="Meridian Group / Q3 supply contract"
+                    reason="Payment overdue: pending payment."
+                    due="Due Aug 9"
+                    amount="$74,000"
                   />
                   <RankedAction
                     rank="#2"
                     severity="Critical"
                     category="Pipeline Defense"
-                    title="De-risk QC workflow"
-                    subject="Summit Diagnostics / QC workflow"
+                    title="De-risk the platform rollout."
+                    subject="Caldera Systems / Platform rollout"
                     reason="Downgrade: decision maker is still unresolved."
                     due="Missing evidence"
-                    amount="650,000,000 VND"
+                    amount="$186,000"
                   />
                   <RankedAction
                     rank="#3"
                     severity="High"
                     category="Opportunity"
-                    title="Schedule procurement clarification call."
-                    subject="Orion Pharma / Procurement review"
+                    title="Schedule the procurement clarification call."
+                    subject="Halden Industrial / Procurement review"
                     reason="High impact objection remains open."
-                    due="Due Aug 17, 2026"
-                    amount="900,000,000 VND"
+                    due="Due Aug 17"
+                    amount="$96,000"
                   />
                 </div>
               </BrowserFrame>
 
-              {/* Floating review card */}
               <div className="absolute -bottom-10 -left-6 hidden w-60 rounded-xl border border-white/10 bg-navy-light p-4 shadow-2xl shadow-black/50 lg:block">
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-200">Review pack</p>
@@ -415,13 +330,12 @@ export function LandingPage() {
                 Nothing in your pipeline fails loudly.
               </h2>
               <p className="mt-4 text-base leading-7 text-slate-300">
-                Deals do not blow up. They go quiet, and by the time you notice, the answer is
-                a re-quote, a late payment, or a review you cannot defend. Every line below is a
-                flag Memoire raises by name.
+                Deals go quiet, and by the time you notice, the answer is a re-quote, a late payment,
+                or a review you cannot defend. Each one below is a flag Memoire raises by name.
               </p>
             </div>
 
-            <div className="mt-14 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {painPoints.map((pain) => (
                 <div
                   key={pain.flag}
@@ -431,8 +345,7 @@ export function LandingPage() {
                   <p className="mt-3 flex-1 text-sm leading-6 text-slate-400">{pain.cost}</p>
                   <div className="mt-5 flex items-center gap-2 border-t border-white/10 pt-4">
                     <AlertTriangle className="h-3.5 w-3.5 flex-none text-amber-300" />
-                    <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Memoire flags</span>
-                    <span className="ml-auto rounded-full bg-amber-400/10 px-2.5 py-1 text-[11px] font-bold text-amber-200">
+                    <span className="rounded-full bg-amber-400/10 px-2.5 py-1 text-[11px] font-bold text-amber-200">
                       {pain.flag}
                     </span>
                   </div>
@@ -442,41 +355,7 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* ── The loop ── */}
-        <section className="bg-white px-4 py-20 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-6xl">
-            <SectionHeader
-              eyebrow="One working loop"
-              title="Every activity connects to money. Every glance becomes an action."
-              text="Memoire is built around one loop — not forty features. Four moves, repeated weekly, and nothing slips."
-            />
-            <div className="relative mt-14">
-              {/* The rail that makes four cards read as one sequence. */}
-              {/* Sits on the centre line of the numbered badges: 24px of card
-                  padding plus half of the 36px circle. */}
-              <div className="pointer-events-none absolute left-0 right-0 top-[42px] hidden h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent lg:block" />
-              <div className="relative grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                {loopSteps.map((step, index) => (
-                  <div
-                    key={step.label}
-                    className="relative rounded-card border border-slate-200 bg-white p-6 shadow-card transition hover:-translate-y-1 hover:shadow-elevated"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="brand-gradient inline-flex h-9 w-9 flex-none items-center justify-center rounded-full font-display text-sm font-extrabold text-white">
-                        {index + 1}
-                      </span>
-                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">{step.label}</p>
-                    </div>
-                    <h3 className="mt-4 font-display text-lg font-bold text-slate-950">{step.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{step.text}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Narrative: Capture ── */}
+        {/* ── Capture ── */}
         <section id="features" className="bg-page px-4 py-20 sm:px-6 lg:px-8">
           <NarrativeBlock
             eyebrow="Capture"
@@ -486,20 +365,20 @@ export function LandingPage() {
             bullets={[
               'Structured records out of unstructured notes — nothing invented',
               'Live typeahead over your own customers and deals as you type',
-              'It suggests the deal to link, the quote to advance — you decide',
+              'It suggests the deal to link and the quote to advance — you decide',
             ]}
             visual={<CaptureMock />}
           />
         </section>
 
-        {/* ── Narrative: Today ── */}
+        {/* ── Today ── */}
         <section className="bg-white px-4 py-20 sm:px-6 lg:px-8">
           <NarrativeBlock
             flip
             eyebrow="Today"
             icon={Sun}
             title="Start where the risk is."
-            text="Today is a command center, not a dashboard. Three steps: get the picture, do today's work, check the watch-list. The watch-list is capped at five, because a list that grows without limit is a list nobody reads."
+            text="Today is a command center, not a dashboard: get the picture, do the work, check the watch-list. The watch-list is capped at five, because a list that grows without limit is a list nobody reads."
             bullets={[
               'Every flag carries a "Why am I seeing this?" you can open',
               'Silence detection on every deal, customer and initiative',
@@ -528,34 +407,34 @@ export function LandingPage() {
               </h2>
               <p className="mt-5 text-base leading-7 text-slate-300">
                 A contract becomes a deposit, a deposit becomes a delivery, a delivery becomes an invoice,
-                an invoice becomes cash — or sits there for twenty-five days while everyone assumes
+                an invoice becomes cash — or sits there for weeks while everyone assumes
                 somebody else is chasing it.
               </p>
             </div>
 
-            <div className="mt-14 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="mt-12 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
               <OrderBookMock />
               <CashAgingMock />
             </div>
 
-            <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            <div className="mt-6 grid gap-4 sm:grid-cols-3">
               <MoneyPoint
                 title="Seven steps, one order"
-                text="Contract, deposit, delivery, invoice, payment. Status comes from what the records already prove; you tick only the steps no document will ever prove."
+                text="Status comes from what the records already prove. You tick only the steps no document will ever prove."
               />
               <MoneyPoint
-                title="Aging you did not have to build"
-                text="Due dates are derived from the payment terms already written on the quote, so collection has an answer the day you start."
+                title="Aging you did not build"
+                text="Due dates derive from the payment terms already on the quote, so collection has an answer on day one."
               />
               <MoneyPoint
                 title="Margin before you send it"
-                text="Cost Analysis lands goods, freight and duty against the sale — in its own currency if you buy in one and sell in another."
+                text="Cost Analysis lands goods, freight and duty against the sale — in its own currency if you buy and sell in different ones."
               />
             </div>
           </div>
         </section>
 
-        {/* ── Narrative: Review ── */}
+        {/* ── Review ── */}
         <section className="bg-page px-4 py-20 sm:px-6 lg:px-8">
           <NarrativeBlock
             eyebrow="Review & learn"
@@ -571,103 +450,65 @@ export function LandingPage() {
           />
         </section>
 
-        {/* ── Memory band ── */}
+        {/* ── Memory ── */}
         <section className="bg-white px-4 py-20 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">
             <SectionHeader
               eyebrow="It remembers so you do not have to"
               title="A month of work, still answerable in six months."
-              text="Everything you capture keeps its thread. Two surfaces exist purely to give it back to you — including the part most tools never admit: what you still do not know."
+              text="Including the part most tools never admit: what you still do not know."
             />
-            <div className="mt-14 grid gap-6 lg:grid-cols-2">
-              <div className="flex flex-col">
+            <div className="mt-12 grid items-start gap-10 lg:grid-cols-[1fr_1fr]">
+              <VaultMock />
+              <div className="flex flex-col gap-6">
                 <MemoryHeading
                   icon={Network}
                   title="Business Vault"
-                  text="Your customers, people, products and deals drawn as one connected map, built from what you already captured. It also keeps an honest account of the gaps — and ranks them by what the relationship is worth."
+                  text="Your customers, people, products and deals drawn as one connected map, built from what you already captured — and an honest account of the gaps, ranked by what the relationship is worth."
                 />
-                <div className="mt-6 flex-1">
-                  <VaultMock />
-                </div>
-              </div>
-              <div className="flex flex-col">
                 <MemoryHeading
                   icon={Search}
                   title="Search & Insights"
                   badge="Personal"
-                  text="Ask what is at risk, where the money sits, or whether your follow-ups actually worked. Every answer is computed from your own history on your own device — nothing is sent to an AI service."
+                  text="Ask what is at risk, where the money sits, or whether your follow-ups worked. Every answer is computed from your own history on your own device — nothing is sent to an AI service."
                 />
-                <div className="mt-6 flex-1">
-                  <AskMock />
+                <div className="rounded-card border border-slate-200 bg-page p-5">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Ask, in your own words</p>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {[
+                      'Which deals may go silent?',
+                      'Where is the money?',
+                      'Did my follow-ups work?',
+                      'What do I owe today?',
+                    ].map((preset) => (
+                      <span key={preset} className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-800">
+                        {preset}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ── Outcomes ── */}
+        {/* ── Not a CRM, and not for everyone ──
+            These were two sections. The "Not a CRM" half had four cards under
+            it that restated the trust strip ("No CRM writeback") and the FAQ
+            ("any currency") - filler holding up one genuinely good line. The
+            line stays as the headline; the cards are gone, and the two
+            qualification sections are now one. */}
         <section className="bg-page px-4 py-20 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-5xl">
             <SectionHeader
-              eyebrow="What changes in your week"
-              title="Less remembering. Less explaining. Less money left sitting."
-              text="Not a productivity claim — these are the four things the product is actually built to change."
-            />
-            <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {outcomes.map(({ icon: Icon, stat, title, text }) => (
-                <div key={title} className="rounded-card border border-slate-200 bg-white p-6 shadow-card">
-                  <span className="brand-gradient inline-flex h-10 w-10 items-center justify-center rounded-full text-white">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <p className="mt-5 font-display text-2xl font-extrabold leading-tight text-slate-950">{stat}</p>
-                  <p className="font-display text-sm font-bold text-brand-blue">{title}</p>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">{text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── Not a CRM ── */}
-        <section className="bg-navy px-4 py-20 text-white sm:px-6 lg:px-8">
-          <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[0.9fr_1.1fr]">
-            <div>
-              <p className="text-sm font-bold uppercase tracking-[0.22em] text-cyan-300">Not a CRM</p>
-              <h2 className="mt-4 font-display text-3xl font-bold tracking-tight sm:text-4xl">
-                Your CRM keeps records for the company. Memoire prepares <span className="brand-gradient-text">you</span>.
-              </h2>
-              <p className="mt-5 text-base leading-7 text-slate-300">
-                CRM fields, spreadsheets and private notes hold the official record. Memoire is your private
-                working layer for evidence, objections, proof gaps, stakeholders, money and review answers.
-              </p>
-              <Link to="/demo" className="mt-7 inline-flex items-center gap-2 font-display text-sm font-bold text-cyan-300 transition hover:text-cyan-200">
-                See the difference in the demo
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {notCrmPoints.map(([title, text]) => (
-                <div key={title} className="rounded-card border border-white/10 bg-white/5 p-5">
-                  <h3 className="font-display font-bold text-white">{title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">{text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── Audience ── */}
-        <section className="bg-white px-4 py-20 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-6xl">
-            <SectionHeader
-              eyebrow="Honest fit"
-              title="Built for people who sell without a sales team."
-              text="Memoire is deliberately narrow. If it is not for you, we would rather you found out on this page than after paying."
+              eyebrow="Not a CRM, and not for everyone"
+              title="Your CRM keeps records for the company. Memoire prepares you."
+              text="Memoire is your private working layer for evidence, objections, stakeholders, money and review answers — and it is deliberately narrow. If it is not for you, we would rather you found out here than after paying."
             />
             <div className="mt-12 grid gap-6 lg:grid-cols-2">
               <div className="rounded-card border border-emerald-200 bg-emerald-50/50 p-7">
-                <h3 className="font-display text-xl font-bold text-slate-950">Best for</h3>
-                <ul className="mt-5 space-y-3">
+                <h3 className="font-display text-lg font-bold text-slate-950">Best for</h3>
+                <ul className="mt-4 space-y-3">
                   {bestFor.map((item) => (
                     <li key={item} className="flex gap-3 text-sm leading-6 text-slate-700">
                       <Check className="mt-0.5 h-4 w-4 flex-none text-emerald-600" />
@@ -677,8 +518,8 @@ export function LandingPage() {
                 </ul>
               </div>
               <div className="rounded-card border border-slate-200 bg-slate-50 p-7">
-                <h3 className="font-display text-xl font-bold text-slate-500">Not ideal yet for</h3>
-                <ul className="mt-5 space-y-3">
+                <h3 className="font-display text-lg font-bold text-slate-500">Not ideal yet for</h3>
+                <ul className="mt-4 space-y-3">
                   {notIdealFor.map((item) => (
                     <li key={item} className="flex gap-3 text-sm leading-6 text-slate-500">
                       <X className="mt-0.5 h-4 w-4 flex-none text-slate-400" />
@@ -692,7 +533,7 @@ export function LandingPage() {
         </section>
 
         {/* ── Pricing ── */}
-        <section id="pricing" className="bg-page px-4 py-20 sm:px-6 lg:px-8">
+        <section id="pricing" className="bg-white px-4 py-20 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">
             <SectionHeader
               eyebrow="Pricing"
@@ -739,12 +580,12 @@ export function LandingPage() {
         </section>
 
         {/* ── FAQ ── */}
-        <section className="bg-white px-4 py-20 sm:px-6 lg:px-8">
+        <section className="bg-page px-4 py-20 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl">
             <SectionHeader
               eyebrow="Questions"
               title="Built for sensitive commercial work."
-              text="Customer, tender, pricing, competitor and forecast data is sensitive. Memoire is careful with it — and careful about what it claims."
+              text="Customer, tender, pricing and forecast data is sensitive. Memoire is careful with it — and careful about what it claims."
             />
             <div className="mt-10 divide-y divide-slate-200 rounded-card border border-slate-200 bg-white">
               {faqs.map((faq) => (
@@ -882,7 +723,7 @@ function MemoryHeading({
           </span>
         )}
       </div>
-      <p className="mt-4 text-sm leading-6 text-slate-600">{text}</p>
+      <p className="mt-3 text-sm leading-6 text-slate-600">{text}</p>
     </div>
   );
 }
@@ -897,9 +738,14 @@ function MoneyPoint({ title, text }: { title: string; text: string }) {
 }
 
 /* ── Product portraits ──────────────────────────────────────────────────────
- * Every label, badge and figure below is read off the running demo workspace.
- * They are deliberately not screenshots: a screenshot goes stale silently and
- * cannot adapt to a phone, while these reflow, stay crisp and cost no bytes.
+ * Structurally real, deliberately generic. Every label, badge, stage name and
+ * counter below is a string the product renders - "Payment overdue", "0 of 5
+ * steps done", "9/11 known", the aging buckets, the gap questions. The account
+ * names, figures and currency are invented and kept industry-neutral, because
+ * a landing page that shows one market's customers sells to one market.
+ *
+ * Not screenshots: a screenshot goes stale silently and cannot reflow onto a
+ * phone, while these stay crisp, adapt, and cost no bytes.
  */
 
 /** The chrome that makes a mock read as a product screen rather than a card. */
@@ -999,8 +845,8 @@ function CaptureMock() {
   return (
     <MockFrame label="Capture · on-device parsing">
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-slate-600">
-        "Called Orion Pharma — Ms. Lan likes the proposal but procurement wants a 3-week lead time guarantee.
-        Sending local support proof Friday. ~900tr, 50% with PO."
+        "Called Halden Industrial — Dana Reyes likes the proposal but procurement wants a 3-week lead time
+        guarantee. Sending the support proof Friday. ~96k, 50% with PO."
       </div>
       <div className="mt-3 flex items-center gap-2">
         <div className="h-px flex-1 bg-slate-100" />
@@ -1009,12 +855,12 @@ function CaptureMock() {
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2">
         {[
-          ['Account', 'Orion Pharma'],
-          ['Amount', '900,000,000 VND'],
+          ['Account', 'Halden Industrial'],
+          ['Amount', '$96,000'],
           ['Objection', 'Lead time'],
           ['Payment term', '50% with PO'],
           ['Next action', 'Proof by Friday'],
-          ['Stakeholder', 'Ms. Lan'],
+          ['Stakeholder', 'Dana Reyes'],
         ].map(([k, v]) => (
           <div key={k} className="rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2">
             <p className="text-[10px] font-bold uppercase tracking-wide text-blue-400">{k}</p>
@@ -1042,22 +888,22 @@ function NudgeMock() {
 
       <div className="mt-4 rounded-lg border border-slate-200">
         <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-3.5 py-2">
-          <p className="text-xs font-bold text-slate-900">Summit Diagnostics</p>
-          <span className="text-[11px] font-bold text-rose-600">4 things to answer</span>
+          <p className="text-xs font-bold text-slate-900">Caldera Systems</p>
+          <span className="text-[11px] font-bold text-rose-600">3 things to answer</span>
         </div>
         <div className="divide-y divide-slate-100">
-          <NudgeRow severity="Critical" kind="revenue" flag="Payment overdue" detail="Confirm payment release date with finance." amount="650M VND" />
-          <NudgeRow severity="Critical" kind="opportunity" flag="Deal going silent" detail="No customer touch since Jul 25, and no next action scheduled." amount="650M VND" />
-          <NudgeRow severity="High" kind="pipeline-defense" flag="Missing forecast evidence" detail="Evidence is not strong enough to defend in review." amount="650M VND" />
+          <NudgeRow severity="Critical" kind="revenue" flag="Payment overdue" detail="Confirm the payment release date with finance." amount="$186,000" />
+          <NudgeRow severity="Critical" kind="opportunity" flag="Deal going silent" detail="No customer touch since Jul 25, and no next action scheduled." amount="$186,000" />
+          <NudgeRow severity="High" kind="pipeline-defense" flag="Missing forecast evidence" detail="Evidence is not strong enough to defend in review." amount="$186,000" />
         </div>
       </div>
 
       <div className="mt-3 rounded-lg border border-slate-200">
         <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-3.5 py-2">
-          <p className="text-xs font-bold text-slate-900">Apex Labs</p>
+          <p className="text-xs font-bold text-slate-900">Halden Industrial</p>
           <span className="text-[11px] font-bold text-amber-600">1 thing to answer</span>
         </div>
-        <NudgeRow severity="High" kind="revenue" flag="Quote expiring soon" detail="Confirm revised quote approval before expiry." amount="2.4B VND" />
+        <NudgeRow severity="High" kind="revenue" flag="Quote expiring soon" detail="Confirm the revised quote before it expires." amount="$96,000" />
       </div>
 
       <p className="mt-3 text-center text-xs font-semibold text-slate-400">
@@ -1096,7 +942,7 @@ function NudgeRow({
 
 function OrderBookMock() {
   const stages = [
-    { label: 'To confirm', count: '2', value: '1.4B', active: true },
+    { label: 'To confirm', count: '2', value: '$112k', active: true },
     { label: 'Deposit due', count: '0', value: '—', active: false },
     { label: 'To deliver', count: '0', value: '—', active: false },
     { label: 'To invoice', count: '0', value: '—', active: false },
@@ -1107,7 +953,7 @@ function OrderBookMock() {
     <BrowserFrame tone="dark" label="Orders · order book">
       <div className="flex items-baseline justify-between gap-3">
         <p className="font-display text-sm font-bold text-white">Contract to cash</p>
-        <p className="text-[11px] font-semibold text-slate-400">Awaiting: 1.4B VND</p>
+        <p className="text-[11px] font-semibold text-slate-400">Awaiting: $112,000</p>
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -1129,18 +975,18 @@ function OrderBookMock() {
 
       <div className="mt-4 space-y-2">
         <OrderRow
-          account="Orion Pharma"
-          reference="Q-DEMO-ORION-01 · Procurement review"
-          value="900,000,000 VND"
+          account="Meridian Group"
+          reference="PO-4471 · Q3 supply contract"
+          value="$74,000"
           term="50% with PO, 50% after delivery"
           next="Contract / PO"
           waiting="6d"
           steps={0}
         />
         <OrderRow
-          account="Northstar Foods"
-          reference="ORD-DITWON · Line audit service"
-          value="480,000,000 VND"
+          account="Northwind Trading"
+          reference="ORD-2208 · Line audit service"
+          value="$38,000"
           term="No payment term"
           next="Contract / PO"
           waiting="25d"
@@ -1204,23 +1050,23 @@ function OrderRow({
 
 function CashAgingMock() {
   const buckets = [
-    { label: 'Not yet due', value: '0', width: 'w-0' },
-    { label: '1-30 days late', value: '1.4B', width: 'w-full' },
-    { label: '31-60 days late', value: '0', width: 'w-0' },
-    { label: '61-90 days late', value: '0', width: 'w-0' },
-    { label: 'Over 90 days', value: '0', width: 'w-0' },
+    { label: 'Not yet due', value: '$0', width: 'w-0' },
+    { label: '1-30 days late', value: '$112k', width: 'w-full' },
+    { label: '31-60 days late', value: '$0', width: 'w-0' },
+    { label: '61-90 days late', value: '$0', width: 'w-0' },
+    { label: 'Over 90 days', value: '$0', width: 'w-0' },
   ];
   return (
     <BrowserFrame tone="dark" label="Cash collection · aging">
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
           <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Still owed</p>
-          <p className="mt-1 font-display text-xl font-extrabold text-white">1.4B VND</p>
+          <p className="mt-1 font-display text-xl font-extrabold text-white">$112,000</p>
           <p className="text-[10px] text-slate-500">2 orders open</p>
         </div>
         <div className="rounded-lg border border-rose-400/30 bg-rose-400/10 p-3">
           <p className="text-[10px] font-bold uppercase tracking-wide text-rose-200">Past due</p>
-          <p className="mt-1 font-display text-xl font-extrabold text-rose-100">1.4B VND</p>
+          <p className="mt-1 font-display text-xl font-extrabold text-rose-100">$112,000</p>
           <p className="text-[10px] text-rose-200/70">Money you agreed would be here</p>
         </div>
       </div>
@@ -1228,7 +1074,7 @@ function CashAgingMock() {
       <div className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2.5">
         <p className="text-[10px] font-bold uppercase tracking-wide text-amber-200">Chase this one first</p>
         <p className="mt-1 text-xs font-semibold leading-5 text-amber-50">
-          Orion Pharma — 900,000,000 VND past due by 6 days on Q-DEMO-ORION-01.
+          Meridian Group — $74,000 past due by 6 days on PO-4471.
         </p>
       </div>
 
@@ -1272,7 +1118,7 @@ function DefenseMock() {
       <div className="mt-3 space-y-2">
         <div className="rounded-lg border border-amber-200 bg-amber-50/40 p-3.5">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-bold text-slate-900">Northstar Foods / Lab workflow</p>
+            <p className="text-sm font-bold text-slate-900">Northwind Trading / Line audit</p>
             <span className="flex-none rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold uppercase text-amber-800">
               Rescue
             </span>
@@ -1282,8 +1128,8 @@ function DefenseMock() {
           </p>
           <div className="mt-2.5 space-y-1.5 border-t border-amber-200/60 pt-2.5">
             {[
-              ['High', 'Identify champion for Lab workflow'],
-              ['Medium', 'Confirm economic buyer'],
+              ['High', 'Identify a champion inside the account'],
+              ['Medium', 'Confirm the economic buyer'],
             ].map(([weight, action]) => (
               <div key={action} className="flex items-center gap-2">
                 <span className="flex-none rounded bg-white px-1.5 py-0.5 text-[9px] font-bold uppercase text-slate-500 ring-1 ring-slate-200">
@@ -1297,7 +1143,7 @@ function DefenseMock() {
 
         <div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-3.5">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-bold text-slate-900">Apex Labs / Validation expansion</p>
+            <p className="text-sm font-bold text-slate-900">Meridian Group / Q3 supply</p>
             <span className="flex-none rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold uppercase text-emerald-800">
               Defend
             </span>
@@ -1336,8 +1182,20 @@ function VaultMock() {
         Ranked by what the relationship is worth
       </p>
       <div className="mt-2 space-y-2">
-        <GapRow account="Apex Labs" worth="2.9B VND" known="9/11" question="Who signs at Apex Labs?" why="Deals stall at the last metre when nobody named the signer." />
-        <GapRow account="Orion Pharma" worth="2.1B VND" known="8/11" question="Who is your champion inside Orion Pharma?" why="Without one, every objection has to be answered by you, in the room." />
+        <GapRow
+          account="Caldera Systems"
+          worth="$186,000"
+          known="9/11"
+          question="Who signs at Caldera Systems?"
+          why="Deals stall at the last metre when nobody named the signer."
+        />
+        <GapRow
+          account="Halden Industrial"
+          worth="$96,000"
+          known="8/11"
+          question="Who is your champion inside Halden Industrial?"
+          why="Without one, every objection has to be answered by you, in the room."
+        />
       </div>
 
       <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] leading-5 text-slate-600">
@@ -1373,50 +1231,6 @@ function GapRow({
       <p className="mt-1.5 text-sm font-bold text-slate-900">{question}</p>
       <p className="mt-0.5 text-[11px] leading-5 text-slate-500">{why}</p>
     </div>
-  );
-}
-
-function AskMock() {
-  return (
-    <MockFrame label="Search & Insights · all memory">
-      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-3">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Ask</p>
-        <p className="mt-1 text-sm font-semibold text-slate-800">Why is Summit Diagnostics going quiet?</p>
-      </div>
-
-      <p className="mt-3 text-[10px] font-bold uppercase tracking-wide text-slate-400">Or start from a preset</p>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {[
-          'Which deals may go silent?',
-          'Where is the money?',
-          'Did my follow-ups work?',
-          'What changed recently?',
-          'What do I owe today?',
-        ].map((preset) => (
-          <span key={preset} className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-800">
-            {preset}
-          </span>
-        ))}
-      </div>
-
-      <div className="mt-4 rounded-lg border border-slate-200 p-3.5">
-        <div className="flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-700">
-            Answered from your measured history
-          </p>
-        </div>
-        <p className="mt-2 text-xs leading-5 text-slate-600">
-          No customer touch since Jul 25. One follow-up sent, still unanswered. Payment on the QC workflow
-          delivery is 6 days overdue, and the decision maker is still unresolved.
-        </p>
-      </div>
-
-      <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-800">
-        <ShieldCheck className="h-3.5 w-3.5 flex-none" />
-        Built on this device — nothing is sent to an AI service
-      </div>
-    </MockFrame>
   );
 }
 
