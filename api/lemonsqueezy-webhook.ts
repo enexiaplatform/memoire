@@ -60,7 +60,7 @@ export default async function handler(req: any, res: any) {
     case 'subscription_expired': {
       // Only write ids the payload actually carries. A later event missing one
       // must not erase the mapping support uses to find the subscription.
-      const update: Record<string, unknown> = subscriptionStateFor(attributes.status, attributes.variant_id);
+      const update: Record<string, unknown> = subscriptionStateFor(attributes);
       if (attributes.customer_id) update.lemonsqueezy_customer_id = String(attributes.customer_id);
       if (event?.data?.id) update.lemonsqueezy_subscription_id = String(event.data.id);
 

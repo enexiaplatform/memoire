@@ -1,139 +1,171 @@
 import type { UserProfile } from '../types';
 
 /**
- * What an account is allowed to do, and for how much longer.
+ * What an account is allowed to do, and what it should be told about why.
  *
- * This replaced a free tier that never existed. A `PLAN_LIMITS` table in
- * `src/hooks/usePlanLimits.ts` declared 30 captures a month and 50 records, the
- * billing tab quoted those numbers, and the landing page advertised them - but
- * the hook was imported by nothing, `api/_plan.js` was called by no endpoint,
- * and `usage_monthly` was never written to. Every signed-in account had
- * everything. A limit nobody enforces is a lie with a number in it, so the hook
- * is gone rather than repointed.
+ * ## The model
  *
- * So the trial is derived, not declared, and there is exactly one function that
- * decides. Two properties matter:
+ * The trial is Lemon Squeezy's, not ours. The operator enters a card, Lemon
+ * Squeezy holds the first payment for seven days and reports the subscription
+ * as `on_trial` with a `trial_ends_at`, then charges and flips it to `active`.
+ * Cancelling before that date charges nothing. This module reads the result; it
+ * does not decide it.
  *
- * 1. **No migration.** `user_profiles.created_at` already exists and is already
- *    readable by `authenticated`, so the trial window is arithmetic on a column
- *    the profile query already returns. Nothing is written when a trial starts
- *    or ends, which means there is no state to get out of sync and no backfill
- *    to run for accounts that existed before this shipped.
- * 2. **Nobody loses access retroactively.** Counting from `created_at` alone
- *    would have expired every existing account the moment this deployed - two
- *    of them signed up weeks earlier and would have found the door locked with
- *    no warning and no chance to subscribe. The window therefore starts at the
- *    *later* of the account's creation and the day the trial model shipped.
+ * That is a deliberate move away from what came first here, which counted seven
+ * days from `created_at` and asked for no card. Both are defensible products,
+ * but only one of them converts on its own, and the founder chose that one.
+ * What survived the change is the shape: one function decides, everything else
+ * asks it.
  *
- * The honest limit of this module: it decides what the interface offers, not
- * what the database permits. Direct writes still go to Supabase under RLS,
- * which does not know about trials, so this is a product gate rather than a
- * security boundary. Closing that gap means RLS policies, and until they exist
- * nothing here should be described as a paywall.
+ * ## What it refuses to do
+ *
+ * 1. **Lock anyone out while checkout is shut.** No card can be taken with
+ *    `BILLING_CHECKOUT_ENABLED` off, so gating an account then would be an
+ *    outage we caused rather than a limit anybody hit. `checkoutOpen` defaults
+ *    to false so a caller that forgets it fails towards the operator.
+ * 2. **Cut off accounts that predate the change.** They signed up under a
+ *    product that asked nothing of them; taking their workspace away without
+ *    warning is not a pricing decision, it is a broken promise. See
+ *    LEGACY_ACCESS_BEFORE - it is a knob, and it is the founder's to turn.
+ * 3. **Stop anyone exporting.** A lapsed subscription stops you adding to the
+ *    workspace. It must never stop you taking your own work out of it.
+ *
+ * ## The honest limit
+ *
+ * This decides what the interface offers, not what the database permits. Writes
+ * go from the browser to PostgREST under RLS, which knows nothing about
+ * subscriptions, so this is a product gate rather than a security boundary.
+ * Closing that gap means RLS policies; until they exist, nothing here should be
+ * described as a paywall.
  */
 
+/** Marketing copy quotes this. Lemon Squeezy is configured to match it. */
 export const TRIAL_DAYS = 7;
 
 /**
- * The day the trial replaced the free tier.
+ * Accounts created before this keep full access without a subscription.
  *
- * Accounts created before this get their full seven days starting here rather
- * than a window that closed before they were told it opened. Moving this date
- * forward would hand everybody a fresh trial, so it is a constant, not a knob.
+ * They signed up when the product asked for no card and enforced no limits.
+ * Gating them retroactively would be the first thing they ever heard from us
+ * about money. Set this to null once they have been contacted and converted -
+ * that is a commercial decision, not a code cleanup.
  */
-export const TRIAL_MODEL_START = '2026-08-10T00:00:00.000Z';
+export const LEGACY_ACCESS_BEFORE: string | null = '2026-08-10T00:00:00.000Z';
 
+const PAID_TIERS = new Set(['personal', 'team']);
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Tiers that have been paid for. Mirrors PAID_TIERS in api/_plan.js. */
-const PAID_TIERS = new Set(['personal', 'team']);
-
 export type EntitlementState =
-  /** Demo sandbox or local-only use: there is no account, so there is nothing to bill. */
+  /** Demo sandbox, local-only use, or a profile still loading. Nothing to bill. */
   | 'unbilled'
-  /** A live subscription, including one cancelled but not yet expired. */
-  | 'paid'
-  /** Inside the trial window. */
+  /** Signed up, no subscription, and checkout is open: needs to start a trial. */
+  | 'needs_trial'
+  /** Lemon Squeezy reports `on_trial`. Full access, and a card is on file. */
   | 'trial'
-  /** The trial window has closed and no subscription replaced it. */
-  | 'expired';
+  /** A live or cancelled-but-not-yet-expired subscription. */
+  | 'paid'
+  /** Created before the trial model. Full access, by decision rather than payment. */
+  | 'legacy';
 
 export type Entitlement = {
   state: EntitlementState;
-  /** Whole days remaining, rounded up, so the last day reads "1 day left" not "0". */
+  /** Whole days until the card is charged. Zero unless `state` is 'trial'. */
   daysLeft: number;
-  /** End of the trial window as an ISO instant. Null when no trial applies. */
+  /** When the trial ends, straight from Lemon Squeezy. Null when there is no trial. */
   trialEndsAt: string | null;
+  /** True while the subscription is cancelled but the paid period has not run out. */
+  endingSoon: boolean;
   /** Capture, and anything that creates a record. */
   canWrite: boolean;
   /** Search & Insights. */
   canSearch: boolean;
-  /**
-   * Always true. An expired trial stops you adding to the workspace; it must
-   * never stop you taking your own work out of it.
-   */
+  /** Always true. See the note above. */
   canExport: true;
 };
 
-function startOfTrial(createdAt: string | undefined | null): number {
-  const modelStart = Date.parse(TRIAL_MODEL_START);
-  const created = createdAt ? Date.parse(createdAt) : Number.NaN;
-  // An unparseable created_at means we cannot prove the account is old, so it
-  // is treated as new: a fresh window is the generous reading, and the
-  // alternative is locking somebody out over a malformed timestamp.
-  if (!Number.isFinite(created)) return modelStart;
-  return Math.max(created, modelStart);
-}
+const OPEN = (state: EntitlementState, extra: Partial<Entitlement> = {}): Entitlement => ({
+  state,
+  daysLeft: 0,
+  trialEndsAt: null,
+  endingSoon: false,
+  canWrite: true,
+  canSearch: true,
+  canExport: true,
+  ...extra,
+});
+
+type ProfileFacts = Pick<
+  UserProfile,
+  'subscription_tier' | 'subscription_status' | 'created_at'
+> & { subscription_trial_ends_at?: string | null };
 
 /**
  * Resolves what this account may do right now.
  *
- * `profile` is null while the profile is still loading, and for demo or
- * local-only use. All three are treated as `unbilled` - permissive - because
- * the alternative is a workspace that locks itself for a moment on every load.
+ * `profile` is null while it is still loading, and for demo or local-only use.
+ * All of those are permissive, because a workspace that locks itself during its
+ * own loading order is a bug rather than a policy.
  */
 export function resolveEntitlement(
-  profile: Pick<UserProfile, 'subscription_tier' | 'created_at'> | null,
+  profile: ProfileFacts | null,
   { now = new Date(), checkoutOpen = false }: { now?: Date; checkoutOpen?: boolean } = {},
 ): Entitlement {
-  if (!profile) {
-    return { state: 'unbilled', daysLeft: 0, trialEndsAt: null, canWrite: true, canSearch: true, canExport: true };
-  }
+  if (!profile) return OPEN('unbilled');
 
   if (PAID_TIERS.has(profile.subscription_tier)) {
-    return { state: 'paid', daysLeft: 0, trialEndsAt: null, canWrite: true, canSearch: true, canExport: true };
-  }
+    const endsAt = profile.subscription_trial_ends_at ?? null;
 
-  const endsAt = startOfTrial(profile.created_at) + TRIAL_DAYS * DAY_MS;
-  const remainingMs = endsAt - now.getTime();
-  const trialEndsAt = new Date(endsAt).toISOString();
-
-  if (remainingMs <= 0) {
-    // The one case where an ended trial does not close anything: there is no
-    // way to buy yet. Taking the workspace away from somebody who cannot pay
-    // for its return is an outage we inflicted, not a limit they hit.
-    if (!checkoutOpen) {
-      return { state: 'trial', daysLeft: 0, trialEndsAt, canWrite: true, canSearch: true, canExport: true };
+    if (profile.subscription_status === 'on_trial') {
+      const remainingMs = endsAt ? Date.parse(endsAt) - now.getTime() : Number.NaN;
+      return OPEN('trial', {
+        // A trial with no usable end date still has access; it just has nothing
+        // to count down. Showing "NaN days" would be worse than showing none.
+        daysLeft: Number.isFinite(remainingMs) ? Math.max(0, Math.ceil(remainingMs / DAY_MS)) : 0,
+        trialEndsAt: endsAt,
+      });
     }
-    return { state: 'expired', daysLeft: 0, trialEndsAt, canWrite: false, canSearch: false, canExport: true };
+
+    return OPEN('paid', {
+      trialEndsAt: endsAt,
+      endingSoon: profile.subscription_status === 'cancelled',
+    });
   }
+
+  // No subscription from here down.
+
+  if (LEGACY_ACCESS_BEFORE && isBefore(profile.created_at, LEGACY_ACCESS_BEFORE)) {
+    return OPEN('legacy');
+  }
+
+  // Nothing to buy means nothing to withhold.
+  if (!checkoutOpen) return OPEN('unbilled');
 
   return {
-    state: 'trial',
-    daysLeft: Math.ceil(remainingMs / DAY_MS),
-    trialEndsAt,
-    canWrite: true,
-    canSearch: true,
+    state: 'needs_trial',
+    daysLeft: 0,
+    trialEndsAt: null,
+    endingSoon: false,
+    canWrite: false,
+    canSearch: false,
     canExport: true,
   };
+}
+
+/**
+ * True only when `value` is a date we can read and it precedes `cutoff`.
+ *
+ * An unreadable `created_at` is not treated as legacy: the generous reading
+ * there would hand free access to anyone whose timestamp failed to parse, and
+ * the ungenerous one only asks them to start a trial they can start.
+ */
+function isBefore(value: string | undefined | null, cutoff: string): boolean {
+  const parsed = value ? Date.parse(value) : Number.NaN;
+  return Number.isFinite(parsed) && parsed < Date.parse(cutoff);
 }
 
 /** "3 days left", "Last day" - what a banner can print directly. */
 export function describeTrialRemaining(entitlement: Entitlement): string {
   if (entitlement.state !== 'trial') return '';
-  // daysLeft is 0 only in the held-open case above, where the window has passed
-  // but checkout cannot take the money. "Last day" is the honest thing to show:
-  // it is true, and it does not promise days that are not coming.
   if (entitlement.daysLeft <= 1) return 'Last day';
   return `${entitlement.daysLeft} days left`;
 }

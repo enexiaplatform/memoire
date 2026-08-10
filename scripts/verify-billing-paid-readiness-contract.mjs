@@ -71,7 +71,14 @@ for (const marker of [
   'timingSafeEqual(expected, received)',
   'custom: { user_id: userId }',
   'export function subscriptionStateFor(',
-  "return { subscription_status: 'free', subscription_tier: 'free' };",
+  // The unentitled answer must clear every subscription column, including the
+  // trial end date - a stale one would let an expired account keep counting down.
+  "return { subscription_status: 'free', subscription_tier: 'free', subscription_trial_ends_at: null };",
+  // on_trial must not be folded into active. See subscriptionStateFor.
+  "subscription_status: normalized === 'on_trial' ? 'on_trial' : 'active',",
+  // The date is stored only while the trial is running, so an account that has
+  // converted stops counting down towards a moment that already passed.
+  "subscription_trial_ends_at: normalized === 'on_trial' ? trialEndsAt : null,",
 ]) {
   requireIncludes(billingClient, marker, `Lemon Squeezy client missing marker: ${marker}`);
 }
@@ -89,7 +96,7 @@ for (const marker of [
   "case 'subscription_updated':",
   "case 'subscription_cancelled':",
   "case 'subscription_expired':",
-  'subscriptionStateFor(attributes.status, attributes.variant_id)',
+  'subscriptionStateFor(attributes)',
   'lemonsqueezy_customer_id',
   'lemonsqueezy_subscription_id',
   "case 'order_created':",
@@ -164,7 +171,7 @@ for (const marker of [
   'per month',
   'Lemon Squeezy',
   'merchant of record',
-  'Memoire never sees your card',
+  'Memoire never sees your card number',
   'Settings under Billing',
   'Request guided access',
   'Try demo first',

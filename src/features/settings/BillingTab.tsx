@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { useEntitlement } from '../../hooks/useEntitlement';
-import { describeTrialRemaining, TRIAL_DAYS } from '../../utils/entitlement';
+import { describeTrialRemaining, TRIAL_DAYS, type Entitlement } from '../../utils/entitlement';
 import {
   fetchBillingStatus,
   openBillingPortal,
@@ -38,6 +38,43 @@ const PLAN_COPY: Record<BillingPlan, { name: string; description: string }> = {
     description: 'Everything in Personal, for a workspace shared with the people you sell alongside.',
   },
 };
+
+/**
+ * The one line at the top of the tab. Every branch is a state Lemon Squeezy can
+ * actually report, so none of them can be reached by a bug in this file alone.
+ */
+function planHeadline(entitlement: Entitlement, status: BillingStatus): string {
+  switch (entitlement.state) {
+    case 'trial':
+      return `Free trial · ${describeTrialRemaining(entitlement)}`;
+    case 'paid':
+      return PLAN_COPY[status.tier as BillingPlan]?.name ?? 'Subscribed';
+    case 'needs_trial':
+      return 'No subscription';
+    case 'legacy':
+      return 'Early access';
+    default:
+      return 'No subscription';
+  }
+}
+
+function planDetail(entitlement: Entitlement): string {
+  if (entitlement.endingSoon) {
+    return 'Cancelled. You keep everything until the period you have already paid for runs out.';
+  }
+  switch (entitlement.state) {
+    case 'trial':
+      return `Full access. Your card is charged on ${formatTrialEnd(entitlement.trialEndsAt)} unless you cancel before then, and cancelling during the trial costs nothing.`;
+    case 'paid':
+      return 'Active. Unlimited capture, unlimited records, and Search & Insights.';
+    case 'needs_trial':
+      return 'Capture and Search & Insights are paused. Everything you already wrote down stays readable and exportable.';
+    case 'legacy':
+      return 'You joined before Memoire started charging, so your workspace is open while we sort out a plan with you.';
+    default:
+      return 'Nothing is being charged for this workspace.';
+  }
+}
 
 /** "16 August 2026" - long form, because a trial end date is worth being unambiguous about. */
 function formatTrialEnd(iso: string | null) {
@@ -120,29 +157,13 @@ export function BillingTab() {
     <Panel>
       <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
         <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Current plan</p>
-        <p className="mt-1 text-lg font-bold text-navy">
-          {paid
-            ? PLAN_COPY[status.tier as BillingPlan].name
-            : entitlement.state === 'expired'
-              ? 'Trial ended'
-              : `Trial · ${describeTrialRemaining(entitlement)}`}
-        </p>
+        <p className="mt-1 text-lg font-bold text-navy">{planHeadline(entitlement, status)}</p>
         {/* Cancelling is not the same as losing access: the period is paid for.
             The webhook keeps the tier until Lemon Squeezy sends the expiry, so
             this screen has to say the same thing or it reads as a bug. */}
-        {status.status === 'cancelled' ? (
-          <p className="mt-1 text-sm leading-6 text-amber-800">
-            Cancelled. You keep everything until the period you have already paid for runs out.
-          </p>
-        ) : (
-          <p className="mt-1 text-sm leading-6 text-gray-500">
-            {paid
-              ? 'Active. Unlimited capture, unlimited records, and Search & Insights.'
-              : entitlement.state === 'expired'
-                ? 'Capture and Search & Insights are paused. Everything you already wrote down stays readable and exportable.'
-                : `Full access until ${formatTrialEnd(entitlement.trialEndsAt)}. No card was needed to start, and none is held.`}
-          </p>
-        )}
+        <p className={`mt-1 text-sm leading-6 ${entitlement.endingSoon ? 'text-amber-800' : 'text-gray-500'}`}>
+          {planDetail(entitlement)}
+        </p>
       </div>
 
       {!paid && status.plans.length > 0 && (
@@ -153,6 +174,10 @@ export function BillingTab() {
                 <div>
                   <p className="text-sm font-bold text-navy">{PLAN_COPY[plan].name}</p>
                   <p className="mt-1 max-w-md text-sm leading-6 text-gray-500">{PLAN_COPY[plan].description}</p>
+                  <p className="mt-1 max-w-md text-xs leading-5 text-gray-400">
+                    {TRIAL_DAYS} days free first. Your card is taken now and charged when the trial ends —
+                    cancel before then and nothing is taken.
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -161,14 +186,16 @@ export function BillingTab() {
                   className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90 disabled:opacity-50"
                 >
                   {busyAction === plan && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {busyAction === plan ? 'Opening checkout...' : `Upgrade to ${PLAN_COPY[plan].name}`}
+                  {busyAction === plan
+                    ? 'Opening checkout...'
+                    : `Start ${TRIAL_DAYS}-day free trial`}
                 </button>
               </div>
             ))
           ) : (
             <p className="rounded-lg border border-gray-200 px-4 py-3 text-sm leading-6 text-gray-500">
-              Paid plans are configured but checkout is not open yet, so your {TRIAL_DAYS}-day trial stays open until it
-              is — nothing you have written down gets locked behind a button you cannot press.
+              Paid plans are configured but checkout is not open yet, so your workspace stays fully open until it is.
+              Nothing gets locked behind a button you cannot press.
             </p>
           )}
           <p className="text-[11px] leading-5 text-gray-400">

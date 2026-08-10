@@ -1,6 +1,11 @@
 export type EntityType = 'contact' | 'company' | 'deal' | 'meeting' | 'insight' | 'competitor';
 
-export type SubscriptionStatus = 'free' | 'active' | 'cancelled';
+/**
+ * `on_trial` is deliberately distinct from `active`: both have full access, but
+ * only one of them has a card about to be charged and a date worth showing.
+ * See subscriptionStateFor in api/_lemonsqueezy.js.
+ */
+export type SubscriptionStatus = 'free' | 'on_trial' | 'active' | 'cancelled';
 export type SubscriptionTier = 'free' | 'personal' | 'team';
 
 export interface UserProfile {
@@ -11,6 +16,11 @@ export interface UserProfile {
   lemonsqueezy_subscription_id: string | null;
   subscription_status: SubscriptionStatus;
   subscription_tier: SubscriptionTier;
+  /**
+   * When the Lemon Squeezy trial ends. Null when there is no trial. Written
+   * only by the subscription webhook - the client has no UPDATE grant on it.
+   */
+  subscription_trial_ends_at?: string | null;
   acknowledged_at?: string | null;
   acknowledged_hiring_boundary_at?: string | null;
   anonymize_default?: boolean;

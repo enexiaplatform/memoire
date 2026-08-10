@@ -28,8 +28,8 @@ const plans = [
     description: 'The whole product, on your own work, with nothing held back to make a point.',
     items: [
       'Every feature the paid plan has',
-      'Starts on an email address - no card',
-      'Nothing charged when it ends',
+      'Card taken up front, charged only when it ends',
+      'Cancel inside the trial and you pay nothing',
       'Your data stays readable and exportable either way',
     ],
     note: 'There is no free tier after it. A plan that is permanently almost-enough helps nobody.',
@@ -77,7 +77,7 @@ export function PricingPage() {
         <title>Pricing - Memoire</title>
         <meta
           name="description"
-          content="Memoire is $10 a month for one person, after a seven-day free trial with no card: unlimited capture, unlimited records, and Search & Insights across everything you have written down."
+          content="Memoire is $10 a month for one person, after a seven-day free trial you can cancel without paying: unlimited capture, unlimited records, and Search & Insights across everything you have written down."
         />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
@@ -90,9 +90,10 @@ export function PricingPage() {
               One person, one price. <span className="brand-gradient-text">$10 a month.</span>
             </h1>
             <p className="mt-5 text-base leading-7 text-slate-600">
-              Seven days of the whole product on your own work, started with an email and no card. After that it is
-              $10 a month, and upgrading takes one click inside the app. Payment is handled by Lemon Squeezy, which is
-              the merchant of record and the seller on your invoice - Memoire never sees your card.
+              Seven days of the whole product on your own work. Lemon Squeezy takes the card up front and holds the
+              first payment until the trial ends, so cancelling inside the seven days costs nothing. After that it is
+              $10 a month. Lemon Squeezy is the merchant of record and the seller on your invoice, and
+              Memoire never sees your card number.
             </p>
           </header>
 
@@ -133,9 +134,9 @@ export function PricingPage() {
           <section className="mt-10 rounded-xl border border-blue-200 bg-blue-50 p-8 text-center">
             <h2 className="font-display text-2xl font-bold">Try it on your own week before you pay for it.</h2>
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-              The demo runs on sample data that never leaves your browser. The trial runs on your real work, with no
-              card taken. Upgrade from Settings under Billing on the day it earns the $10, and cancel from the same
-              place if it stops.
+              The demo runs on sample data that never leaves your browser and needs no account at all. The trial runs
+              on your real work. Start it from Settings under Billing, and cancel from the same place - inside the
+              seven days that costs nothing.
             </p>
             <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
               <Link

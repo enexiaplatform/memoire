@@ -55,21 +55,49 @@ export function tierForVariantId(variantId) {
 }
 
 /**
- * Maps a Lemon Squeezy subscription status onto the two columns Memoire keeps.
+ * Maps a Lemon Squeezy subscription onto the columns Memoire keeps.
  *
- * `subscription_tier` is the entitlement gate (api/_plan.js reads only this).
- * `subscription_status` describes the relationship. A cancelled subscription
- * has been paid for until it expires, so it keeps its tier until Lemon Squeezy
- * sends the expiry - cancelling is not the same as losing access today.
+ * `subscription_tier` is the entitlement gate. `subscription_status` describes
+ * the relationship, and it keeps three distinctions the workspace has to be
+ * able to make:
+ *
+ * - **on_trial is not active.** It used to be folded into 'active', which meant
+ *   a workspace could not tell somebody paying from somebody three days into a
+ *   trial that is about to charge their card. Both have full access; only one
+ *   of them needs to be told a payment is coming.
+ * - **cancelled is not expired.** A cancelled subscription has been paid for
+ *   until its period ends, so it keeps its tier until Lemon Squeezy sends the
+ *   expiry. Cancelling is not the same as losing access today.
+ * - **past_due keeps access.** Lemon Squeezy is still retrying the card;
+ *   locking the operator out mid-retry punishes them for a bank's timing.
+ *
+ * Takes the whole attributes object because a subscription now contributes
+ * three columns rather than two, and the next one should not change the shape
+ * of every call site again.
  */
-export function subscriptionStateFor(status, variantId) {
-  const normalized = String(status ?? '').trim().toLowerCase();
+export function subscriptionStateFor(attributes = {}) {
+  const normalized = String(attributes?.status ?? '').trim().toLowerCase();
   if (!ENTITLED_STATUSES.has(normalized)) {
-    return { subscription_status: 'free', subscription_tier: 'free' };
+    return { subscription_status: 'free', subscription_tier: 'free', subscription_trial_ends_at: null };
   }
+
+  // Cancelling during a trial leaves `trial_ends_at` set and the status
+  // 'cancelled', so the date is carried through on every entitled status rather
+  // than only on 'on_trial' - it is what tells the operator when access stops.
+  const trialEndsAt = attributes?.trial_ends_at ? String(attributes.trial_ends_at) : null;
+
+  if (!RELATIONSHIP_ACTIVE_STATUSES.has(normalized)) {
+    return {
+      subscription_status: 'cancelled',
+      subscription_tier: tierForVariantId(attributes?.variant_id),
+      subscription_trial_ends_at: trialEndsAt,
+    };
+  }
+
   return {
-    subscription_status: RELATIONSHIP_ACTIVE_STATUSES.has(normalized) ? 'active' : 'cancelled',
-    subscription_tier: tierForVariantId(variantId),
+    subscription_status: normalized === 'on_trial' ? 'on_trial' : 'active',
+    subscription_tier: tierForVariantId(attributes?.variant_id),
+    subscription_trial_ends_at: normalized === 'on_trial' ? trialEndsAt : null,
   };
 }
 

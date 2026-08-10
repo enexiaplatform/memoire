@@ -5,134 +5,209 @@ import { existsSync, readFileSync } from 'node:fs';
  * The trial is the only thing between a signed-in account and the whole
  * product, so its edges are exercised rather than asserted about.
  *
- * Two rules it must never break:
- *   1. Nobody loses access they already had.
- *   2. Nobody is locked out of a product they have no way to buy.
+ * Three rules it must never break:
+ *   1. Nobody is locked out of a product they have no way to buy.
+ *   2. Nobody who signed up before Memoire charged is cut off without a word.
+ *   3. Nobody is ever stopped from exporting their own work.
  *
- * This imports the shipped module rather than re-implementing it. Node strips
- * the types on the way in, so a change to the real rule is a change to what
- * runs here - a copy of the logic would drift and keep passing.
+ * This imports the shipped modules rather than re-implementing them. Node
+ * strips the types on the way in, so a change to the real rule is a change to
+ * what runs here - a copy of the logic would drift and keep passing.
  */
 
-const { TRIAL_DAYS, TRIAL_MODEL_START, resolveEntitlement, describeTrialRemaining } =
+const { TRIAL_DAYS, LEGACY_ACCESS_BEFORE, resolveEntitlement, describeTrialRemaining } =
   await import('../src/utils/entitlement.ts');
+const { subscriptionStateFor } = await import('../api/_lemonsqueezy.js');
 
 const DAY_MS = 86_400_000;
-const start = Date.parse(TRIAL_MODEL_START);
-const day = (n) => new Date(start + n * DAY_MS);
+const now = new Date('2026-09-01T00:00:00.000Z');
+const inDays = (n) => new Date(now.getTime() + n * DAY_MS).toISOString();
 
-assert.equal(TRIAL_DAYS, 7, 'trial length changed - the marketing pages say seven days');
-assert.ok(Number.isFinite(start), 'TRIAL_MODEL_START must be a parseable instant');
+assert.equal(TRIAL_DAYS, 7, 'trial length changed - the marketing pages and the Lemon Squeezy variant say seven days');
 
-const free = (createdAt) => ({ subscription_tier: 'free', created_at: createdAt });
+const account = (over = {}) => ({
+  subscription_tier: 'free',
+  subscription_status: 'free',
+  created_at: '2026-08-20T00:00:00.000Z',
+  subscription_trial_ends_at: null,
+  ...over,
+});
 
-// 1. A new account gets its full window, and the boundary falls where it should.
+// ── The webhook's half: what Lemon Squeezy statuses become ──────────────────
+
+// 1. on_trial must stay distinct from active. Folding them together is what
+//    made it impossible to tell somebody paying from somebody about to be
+//    charged, and it is the whole reason this column exists.
 {
-  const fresh = free(TRIAL_MODEL_START);
-  assert.equal(resolveEntitlement(fresh, { now: day(0), checkoutOpen: true }).state, 'trial');
-  assert.equal(resolveEntitlement(fresh, { now: day(6.9), checkoutOpen: true }).state, 'trial', 'day seven is still trial');
-  assert.equal(resolveEntitlement(fresh, { now: day(7.1), checkoutOpen: true }).state, 'expired');
-  assert.equal(resolveEntitlement(fresh, { now: day(0), checkoutOpen: true }).daysLeft, 7);
-  assert.equal(resolveEntitlement(fresh, { now: day(6.5), checkoutOpen: true }).daysLeft, 1, 'the last part-day reads as one, never zero');
+  const trial = subscriptionStateFor({ status: 'on_trial', variant_id: '1', trial_ends_at: inDays(5) });
+  assert.equal(trial.subscription_status, 'on_trial');
+  assert.equal(trial.subscription_tier, 'personal');
+  assert.equal(trial.subscription_trial_ends_at, inDays(5), 'the trial end date must survive the webhook');
+
+  const active = subscriptionStateFor({ status: 'active', variant_id: '1', trial_ends_at: inDays(5) });
+  assert.equal(active.subscription_status, 'active');
+  assert.equal(active.subscription_trial_ends_at, null, 'an active subscription is no longer on trial');
 }
 
-// 2. THE REGRESSION THIS EXISTS FOR. Accounts that predate the trial must not
-//    open already expired - counting from created_at alone would have shut out
-//    every existing user the moment this deployed. These two timestamps are the
-//    real ones from the two free accounts in production when it shipped.
-for (const createdAt of ['2026-07-11T08:58:13.112Z', '2026-07-31T09:10:29.895Z']) {
-  const existing = free(createdAt);
-  assert.equal(
-    resolveEntitlement(existing, { now: day(0), checkoutOpen: true }).state,
-    'trial',
-    `an account created ${createdAt} must still get a full window`,
+// 2. past_due keeps access - Lemon Squeezy is still retrying the card, and
+//    locking the operator out mid-retry punishes them for a bank's timing.
+{
+  const pastDue = subscriptionStateFor({ status: 'past_due', variant_id: '1' });
+  assert.equal(pastDue.subscription_tier, 'personal', 'past_due must not drop the tier');
+}
+
+// 3. cancelled keeps its tier until Lemon Squeezy sends the expiry, and carries
+//    the date access actually stops.
+{
+  const cancelled = subscriptionStateFor({ status: 'cancelled', variant_id: '1', trial_ends_at: inDays(3) });
+  assert.equal(cancelled.subscription_status, 'cancelled');
+  assert.equal(cancelled.subscription_tier, 'personal');
+  assert.equal(cancelled.subscription_trial_ends_at, inDays(3));
+
+  const expired = subscriptionStateFor({ status: 'expired', variant_id: '1' });
+  assert.deepEqual(expired, { subscription_status: 'free', subscription_tier: 'free', subscription_trial_ends_at: null });
+}
+
+// ── The client's half: what those columns permit ────────────────────────────
+
+// 4. A trial has full access and counts down from Lemon Squeezy's date.
+{
+  const trial = resolveEntitlement(
+    account({ subscription_tier: 'personal', subscription_status: 'on_trial', subscription_trial_ends_at: inDays(3) }),
+    { now, checkoutOpen: true },
   );
-  assert.equal(resolveEntitlement(existing, { now: day(6.9), checkoutOpen: true }).state, 'trial');
-  assert.equal(resolveEntitlement(existing, { now: day(7.1), checkoutOpen: true }).state, 'expired');
+  assert.equal(trial.state, 'trial');
+  assert.equal(trial.canWrite, true);
+  assert.equal(trial.canSearch, true);
+  assert.equal(trial.daysLeft, 3);
+  assert.equal(describeTrialRemaining(trial), '3 days left');
 }
 
-// 3. THE OTHER ONE. An ended trial must not lock anybody out while checkout is
-//    shut, because there would be no way to buy their way back in.
+// 5. A trial with an unusable end date still works. "NaN days left" would be
+//    worse than no countdown, and losing access over a bad string is worse still.
+for (const bad of [null, undefined, 'not-a-date']) {
+  const odd = resolveEntitlement(
+    account({ subscription_tier: 'personal', subscription_status: 'on_trial', subscription_trial_ends_at: bad }),
+    { now, checkoutOpen: true },
+  );
+  assert.equal(odd.state, 'trial', `trial_ends_at ${String(bad)} must not remove access`);
+  assert.equal(odd.canWrite, true);
+  assert.equal(Number.isFinite(odd.daysLeft), true, 'daysLeft must always be a number');
+}
+
+// 6. RULE ONE. Nobody is gated while checkout is shut, because no card can be
+//    taken then - it would be an outage we caused, not a limit anybody hit.
 {
-  const ended = free(TRIAL_MODEL_START);
-  const shut = resolveEntitlement(ended, { now: day(30), checkoutOpen: false });
-  assert.equal(shut.state, 'trial', 'trial must stay open while checkout cannot take money');
-  assert.equal(shut.canWrite, true);
+  const stranded = account({ created_at: '2026-08-20T00:00:00.000Z' });
+  const shut = resolveEntitlement(stranded, { now, checkoutOpen: false });
+  assert.equal(shut.canWrite, true, 'a closed checkout must never gate a workspace');
   assert.equal(shut.canSearch, true);
 
-  const open = resolveEntitlement(ended, { now: day(30), checkoutOpen: true });
-  assert.equal(open.state, 'expired');
+  const open = resolveEntitlement(stranded, { now, checkoutOpen: true });
+  assert.equal(open.state, 'needs_trial');
   assert.equal(open.canWrite, false);
   assert.equal(open.canSearch, false);
 }
 
-// 4. `checkoutOpen` defaults to closed, so a caller that forgets it fails safe
-//    towards the operator rather than towards the paywall.
+// 7. checkoutOpen defaults to closed, so a caller that forgets it fails towards
+//    the operator rather than towards the paywall.
 {
-  const ended = free(TRIAL_MODEL_START);
-  assert.equal(resolveEntitlement(ended, { now: day(30) }).state, 'trial', 'omitting checkoutOpen must not expire anyone');
-  assert.equal(resolveEntitlement(ended).state, 'trial', 'the no-options call must not expire anyone either');
+  assert.equal(resolveEntitlement(account(), { now }).canWrite, true, 'omitting checkoutOpen must not gate anyone');
+  assert.equal(resolveEntitlement(account()).canWrite, true, 'the no-options call must not gate anyone either');
 }
 
-// 5. Paid tiers ignore the window entirely, however old the account is.
-for (const tier of ['personal', 'team']) {
-  const paid = { subscription_tier: tier, created_at: '2026-04-18T16:44:16.750Z' };
-  const result = resolveEntitlement(paid, { now: day(999), checkoutOpen: true });
-  assert.equal(result.state, 'paid', `${tier} must never expire`);
-  assert.equal(result.canWrite, true);
-  assert.equal(result.canSearch, true);
+// 8. RULE TWO. Accounts from before Memoire charged keep access. These are the
+//    real creation timestamps of the two free accounts in production.
+{
+  assert.ok(LEGACY_ACCESS_BEFORE, 'legacy access was removed - existing accounts would be cut off without a word');
+  for (const createdAt of ['2026-07-11T08:58:13.112Z', '2026-07-31T09:10:29.895Z']) {
+    const legacy = resolveEntitlement(account({ created_at: createdAt }), { now, checkoutOpen: true });
+    assert.equal(legacy.state, 'legacy', `the account created ${createdAt} must keep access`);
+    assert.equal(legacy.canWrite, true);
+    assert.equal(legacy.canSearch, true);
+  }
+  // Someone who signed up after the change does not get it.
+  const newcomer = resolveEntitlement(account({ created_at: '2026-08-20T00:00:00.000Z' }), { now, checkoutOpen: true });
+  assert.equal(newcomer.state, 'needs_trial', 'legacy access must not leak to accounts created after the change');
 }
 
-// 6. No profile - demo, local-only, or still loading - is permissive. A
-//    workspace that locks itself during its own loading order is a bug.
+// 9. An unreadable created_at is not legacy - the generous reading there would
+//    hand free access to any malformed timestamp.
 {
-  const none = resolveEntitlement(null, { now: day(999), checkoutOpen: true });
+  const broken = resolveEntitlement(account({ created_at: 'not-a-date' }), { now, checkoutOpen: true });
+  assert.equal(broken.state, 'needs_trial');
+}
+
+// 10. Paid and cancelled-but-not-expired both keep working.
+{
+  const paid = resolveEntitlement(
+    account({ subscription_tier: 'personal', subscription_status: 'active' }),
+    { now, checkoutOpen: true },
+  );
+  assert.equal(paid.state, 'paid');
+  assert.equal(paid.canWrite, true);
+  assert.equal(paid.endingSoon, false);
+
+  const cancelled = resolveEntitlement(
+    account({ subscription_tier: 'personal', subscription_status: 'cancelled' }),
+    { now, checkoutOpen: true },
+  );
+  assert.equal(cancelled.state, 'paid', 'cancelling is not losing access today');
+  assert.equal(cancelled.canWrite, true);
+  assert.equal(cancelled.endingSoon, true, 'the screen has to be able to say it is ending');
+}
+
+// 11. No profile - demo, local-only, or still loading - is permissive. A
+//     workspace that locks itself during its own loading order is a bug.
+{
+  const none = resolveEntitlement(null, { now, checkoutOpen: true });
   assert.equal(none.state, 'unbilled');
   assert.equal(none.canWrite, true);
   assert.equal(none.canSearch, true);
 }
 
-// 7. Export survives every state. An expired trial holds nobody's data hostage.
+// 12. RULE THREE. Export survives every state there is.
 {
-  const states = [
-    resolveEntitlement(null, { now: day(0) }),
-    resolveEntitlement(free(TRIAL_MODEL_START), { now: day(30), checkoutOpen: true }),
-    resolveEntitlement(free(TRIAL_MODEL_START), { now: day(1), checkoutOpen: true }),
-    resolveEntitlement({ subscription_tier: 'personal', created_at: TRIAL_MODEL_START }, { now: day(30), checkoutOpen: true }),
+  const everyState = [
+    resolveEntitlement(null, { now }),
+    resolveEntitlement(account(), { now, checkoutOpen: true }),
+    resolveEntitlement(account({ created_at: '2026-07-11T08:58:13.112Z' }), { now, checkoutOpen: true }),
+    resolveEntitlement(account({ subscription_tier: 'personal', subscription_status: 'on_trial', subscription_trial_ends_at: inDays(2) }), { now, checkoutOpen: true }),
+    resolveEntitlement(account({ subscription_tier: 'personal', subscription_status: 'active' }), { now, checkoutOpen: true }),
   ];
-  for (const state of states) assert.equal(state.canExport, true, 'export must survive every entitlement state');
+  assert.equal(new Set(everyState.map((s) => s.state)).size, 5, 'the states under test must all be distinct');
+  for (const state of everyState) {
+    assert.equal(state.canExport, true, `export must survive ${state.state}`);
+  }
 }
 
-// 8. A malformed created_at starts a fresh window rather than locking someone
-//    out over a bad timestamp.
-for (const bad of ['not-a-date', '', null, undefined]) {
-  assert.equal(resolveEntitlement(free(bad), { now: day(1), checkoutOpen: true }).state, 'trial', `created_at ${String(bad)} must not expire an account`);
-}
-
-// 9. The banner copy never prints "0 days left".
+// 13. The banner never prints "0 days left", and says nothing when there is no trial.
 {
-  assert.equal(describeTrialRemaining(resolveEntitlement(free(TRIAL_MODEL_START), { now: day(6.5), checkoutOpen: true })), 'Last day');
-  assert.equal(describeTrialRemaining(resolveEntitlement(free(TRIAL_MODEL_START), { now: day(30), checkoutOpen: false })), 'Last day', 'the held-open state must not read as zero');
-  assert.equal(describeTrialRemaining(resolveEntitlement(free(TRIAL_MODEL_START), { now: day(1), checkoutOpen: true })), '6 days left');
-  assert.equal(describeTrialRemaining(resolveEntitlement({ subscription_tier: 'personal', created_at: TRIAL_MODEL_START })), '', 'paid accounts print nothing');
+  const lastDay = resolveEntitlement(
+    account({ subscription_tier: 'personal', subscription_status: 'on_trial', subscription_trial_ends_at: inDays(0.5) }),
+    { now, checkoutOpen: true },
+  );
+  assert.equal(describeTrialRemaining(lastDay), 'Last day');
+  assert.equal(describeTrialRemaining(resolveEntitlement(account({ subscription_tier: 'personal', subscription_status: 'active' }), { now })), '');
+  assert.equal(describeTrialRemaining(resolveEntitlement(account(), { now, checkoutOpen: true })), '');
 }
 
-// 10. The server mirror must agree on both constants and keep both safeguards.
+// 14. The server mirror agrees on the constants that decide who gets in.
 {
   const server = readFileSync('api/_plan.js', 'utf8');
   assert.ok(server.includes(`export const TRIAL_DAYS = ${TRIAL_DAYS};`), 'api/_plan.js trial length drifted from the client rule');
-  assert.ok(server.includes(`'${TRIAL_MODEL_START}'`), 'api/_plan.js trial model start drifted from the client rule');
-  assert.ok(/Math\.max\(created, modelStart\)/.test(server), 'api/_plan.js lost the retroactive-expiry floor');
+  assert.ok(server.includes(`'${LEGACY_ACCESS_BEFORE}'`), 'api/_plan.js legacy cutoff drifted from the client rule');
+  assert.ok(/if \(!checkoutOpen\) return open\('unbilled'\);/.test(server), 'api/_plan.js lost the closed-checkout safeguard');
 }
 
-// 11. The dead free tier must stay dead: it advertised limits nothing enforced.
+// 15. The dead free tier stays dead: it advertised limits nothing enforced.
 assert.equal(
   existsSync('src/hooks/usePlanLimits.ts'),
   false,
   'usePlanLimits.ts is back - it declared capture and record limits that no code applied',
 );
 
-// 12. The gates are actually wired. A rule nothing consults is the exact
+// 16. The gates are actually wired. A rule nothing consults is the exact
 //     failure this whole module replaced.
 {
   const capture = readFileSync('src/features/dailyCapture/DailyCapturePage.tsx', 'utf8');
@@ -142,7 +217,24 @@ assert.equal(
   assert.ok(ask.includes('if (!canSearch) {'), 'Search & Insights no longer checks canSearch before answering');
 
   const shell = readFileSync('src/components/layout/AppShell.tsx', 'utf8');
-  assert.ok(shell.includes('<TrialStatusBanner />'), 'the workspace no longer tells anyone their trial is ending');
+  assert.ok(shell.includes('<TrialStatusBanner />'), 'the workspace no longer tells anyone what their subscription is doing');
 }
 
-console.log('Trial entitlement contract verified (12 groups, against the shipped module).');
+// 17. The trial column has to survive the round trip: written by the webhook,
+//     readable by the browser. user_profiles grants are column-scoped, so a
+//     migration that adds the column without the grant leaves it invisible.
+{
+  const migration = readFileSync('supabase/migrations/20260810120000_subscription_trial_ends_at.sql', 'utf8');
+  assert.ok(/add column if not exists subscription_trial_ends_at/.test(migration), 'the trial column migration lost its column');
+  assert.ok(
+    /grant select \(subscription_trial_ends_at\) on public\.user_profiles to authenticated/.test(migration),
+    'user_profiles grants are column-scoped - without this grant the client cannot read the trial end date',
+  );
+  assert.equal(
+    /grant update \(subscription_trial_ends_at\)/.test(migration),
+    false,
+    'the browser must never be able to move its own trial end date',
+  );
+}
+
+console.log('Trial entitlement contract verified (17 groups, against the shipped modules).');

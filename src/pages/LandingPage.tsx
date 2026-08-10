@@ -34,7 +34,9 @@ import { TRIAL_DAYS } from '../utils/entitlement';
  * 2. No invented pricing. The plans below are the two Lemon Squeezy variants
  *    the server will actually resolve (`personal`, `team`). There is no free
  *    tier: the one that used to be advertised here declared limits that no
- *    code applied. src/utils/entitlement.ts now decides, and it is wired up.
+ *    code applied. The trial is Lemon Squeezy's - card up front, charged when
+ *    it ends - and src/utils/entitlement.ts reads the result rather than
+ *    inventing one.
  * 3. Nothing here may narrow the product. The mocks below are structurally
  *    real - the flag names ("Payment overdue", "Deal going silent"), the seven
  *    order stages, "0 of 5 steps done", the aging buckets and the knowledge-gap
@@ -112,7 +114,7 @@ const pricingPlans = [
       'Pipeline Defense Briefs and shareable review packs',
       'Business Vault, daily digest email and full data export',
     ],
-    note: `Starts with a ${TRIAL_DAYS}-day free trial — no card to begin. Cancel anytime; you keep access until the period you paid for ends.`,
+    note: `Starts with a ${TRIAL_DAYS}-day free trial. Your card is taken up front and charged when the trial ends — cancel before then and nothing is taken.`,
     highlighted: true,
   },
   {
@@ -135,12 +137,12 @@ const faqs = [
   {
     question: 'What does $10 a month actually buy?',
     answer:
-      'Everything. There is no smaller plan holding features back — Today, Plan, Orders, Cash Collection, Cost Analysis, Review, the Business Vault and Search & Insights are all included. The seven-day trial is the full product too, so what you try is what you buy.',
+      'Everything. There is no smaller plan holding features back — Today, Plan, Orders, Cash Collection, Cost Analysis, Review, the Business Vault and Search & Insights are all included. The seven-day trial is the same full product, so what you try is exactly what you buy.',
   },
   {
     question: 'How do I pay, and who takes the payment?',
     answer:
-      'Start the trial with just an email — no card. When you are ready, open Settings and go to the Billing tab; the upgrade runs through Lemon Squeezy, which is the merchant of record and the seller on your invoice. Memoire never sees your card. Cards, invoices and cancellation all live in the Lemon Squeezy portal, reachable from the same tab.',
+      'You start the trial from Settings, in the Billing tab. Lemon Squeezy takes the card and holds the first payment for seven days, then charges $10 — it is the merchant of record and the seller on your invoice, and Memoire never sees your card number. Cancelling inside the seven days costs nothing, and cancellation lives in the same Lemon Squeezy portal as your cards and invoices.',
   },
   {
     question: 'Does Memoire use AI?',
@@ -227,7 +229,7 @@ export function LandingPage() {
                 </Link>
               </div>
               <p className="mt-5 text-sm leading-6 text-slate-400">
-                {TRIAL_DAYS} days free, no card · Then $10 a month · Demo data never leaves this browser
+                {TRIAL_DAYS} days free, then $10 a month · Cancel in the trial and pay nothing · Demo data stays in this browser
               </p>
             </div>
 
@@ -526,7 +528,7 @@ export function LandingPage() {
             <SectionHeader
               eyebrow="Pricing"
               title="One person, one price. $10 a month."
-              text={`Seven days free to run a real week on your own work — no card to start. After that it is $10 a month, and there is no smaller plan pretending to be enough.`}
+              text={`Seven days free to run a real week on your own work. Card up front, charged only when the trial ends — cancel before then and you pay nothing. After that it is $10 a month, and there is no smaller plan pretending to be enough.`}
             />
             <div className="mx-auto mt-12 grid max-w-4xl items-start gap-6 lg:grid-cols-2">
               {pricingPlans.map((plan) =>
@@ -604,8 +606,8 @@ export function LandingPage() {
               Find out what went quiet <span className="brand-gradient-text">while you can still fix it</span>.
             </h2>
             <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-slate-300">
-              Take {TRIAL_DAYS} days to capture a real week of your own work, or open the demo sandbox and look
-              around first. No card to start, and nothing is charged until you decide it is worth $10.
+              Take {TRIAL_DAYS} days to capture a real week of your own work, or open the demo sandbox first — that
+              one needs no account at all. Cancel inside the trial and you are charged nothing.
             </p>
             <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
               <Link
