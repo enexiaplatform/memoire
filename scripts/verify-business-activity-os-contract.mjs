@@ -1,3 +1,6 @@
+// Fixtures below are denominated in VND; see the helper for why this is
+// pinned rather than rewritten.
+import './lib/pin-reporting-currency.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { businessDomains, classifyBusinessDomain } from '../src/utils/businessDomain.ts';
@@ -62,12 +65,21 @@ assert.ok(timeline.includes('<SalesActivityCalendarPage embedded />'), 'Timeline
 // 6. Positioning: the hero carries the current category and promise. The
 // money-spine framing survives as the boundary rule; only the category name
 // changed, from Business Activity OS to Personal Commercial Control Tower.
-const hero = readFileSync(new URL('../src/components/marketing/HeroSection.tsx', import.meta.url), 'utf8');
+//
+// This used to read src/components/marketing/HeroSection.tsx, which no page
+// imported - so the contract was guarding a promise in a file no visitor could
+// ever see, which is the same class of bug as a limit nothing enforces. It now
+// reads the hero that actually renders.
+const hero = readFileSync(new URL('../src/pages/LandingPage.tsx', import.meta.url), 'utf8');
 assert.ok(
-  hero.includes('From conversation to cash, nothing goes silent.'),
-  'Hero must carry the current promise',
+  hero.includes('Nothing in your business') && hero.includes('goes silent.'),
+  'the landing hero must carry the current promise',
 );
-assert.ok(hero.includes('personal commercial control tower'), 'Hero must name the current category');
+assert.ok(
+  hero.includes('from conversation and quotation to delivery and cash, so nothing goes silent'),
+  'the money-spine framing must survive in the page description',
+);
+assert.ok(hero.includes('Personal Commercial Control Tower'), 'the hero must name the current category');
 assert.equal(
   hero.includes('Business Activity OS'),
   false,

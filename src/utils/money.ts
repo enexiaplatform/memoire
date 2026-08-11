@@ -111,18 +111,32 @@ const REPORTING_CURRENCY_KEY = 'memoire_reporting_currency';
 export const REPORTING_CURRENCY_CHANGED_EVENT = 'memoire:reporting-currency-changed';
 
 /**
+ * What a workspace reports in before anyone chooses.
+ *
+ * Deliberately not BASE_CURRENCY. The anchor is an implementation detail of the
+ * rate table; this is the first number a new operator sees, and it used to
+ * inherit the anchor - so a product sold worldwide opened every new workspace
+ * in Vietnamese Dong. Changing the anchor would mean rewriting every rate;
+ * changing this means changing this.
+ *
+ * Existing workspaces are unaffected: they have a stored value, and this is
+ * only the fallback when there is none.
+ */
+export const DEFAULT_REPORTING_CURRENCY: SupportedCurrency = 'USD';
+
+/**
  * The user-selectable currency that aggregates and charts are reported in.
- * BASE_CURRENCY (VND) stays the exchange-rate anchor; this is display-only and
- * defaults to VND. Safe in non-browser contexts (contract scripts): no
- * localStorage means the default.
+ * BASE_CURRENCY (VND) stays the exchange-rate anchor; this is display-only.
+ * Safe in non-browser contexts (contract scripts): no localStorage means the
+ * default.
  */
 export function getReportingCurrency(): SupportedCurrency {
   try {
-    if (typeof localStorage === 'undefined') return BASE_CURRENCY;
+    if (typeof localStorage === 'undefined') return DEFAULT_REPORTING_CURRENCY;
     const stored = normalizeCurrency(localStorage.getItem(REPORTING_CURRENCY_KEY));
-    return isSupportedCurrency(stored) ? (stored as SupportedCurrency) : BASE_CURRENCY;
+    return isSupportedCurrency(stored) ? (stored as SupportedCurrency) : DEFAULT_REPORTING_CURRENCY;
   } catch {
-    return BASE_CURRENCY;
+    return DEFAULT_REPORTING_CURRENCY;
   }
 }
 

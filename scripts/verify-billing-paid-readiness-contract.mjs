@@ -174,7 +174,9 @@ for (const marker of [
   'Memoire never sees your card number',
   'Settings under Billing',
   'Request guided access',
-  'Try demo first',
+  // The public demo is gone - it handed any visitor a populated sample
+  // workspace. The trial on real work is the try-before-you-buy path now.
+  'Start the trial',
   'Not available yet, and not sold yet.',
 ]) {
   requireIncludes(pricing, marker, `pricing page missing paid-readiness marker: ${marker}`);

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { MarketingNav } from '../components/marketing/MarketingNav';
 import { Footer } from '../components/marketing/Footer';
+import { CashAgingChart, CoverageHeatmap, OrderToCashFunnel } from '../components/marketing/charts';
 import { TRIAL_DAYS } from '../utils/entitlement';
 
 /**
@@ -162,7 +163,7 @@ const faqs = [
   {
     question: 'Where is my data stored?',
     answer:
-      'Demo sandbox data stays in this browser and is never uploaded. A signed-in account syncs to cloud storage, and the app tells you inside when it is running on local fallback instead. You can export everything, and deleting your account deletes it.',
+      'Your workspace syncs to cloud storage under your account, and the app tells you inside when it is running on local fallback instead. Nothing is shared with other users, nothing is sent to an AI service, and no CRM is written to. You can export everything at any time, and deleting your account deletes it.',
   },
 ];
 
@@ -222,14 +223,14 @@ export function LandingPage() {
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </Link>
                 <Link
-                  to="/demo"
+                  to="/use-cases"
                   className="inline-flex items-center justify-center rounded-full border border-white/25 px-7 py-3.5 font-display text-base font-bold text-white transition hover:bg-white/10"
                 >
-                  Try the live demo
+                  See it for your business
                 </Link>
               </div>
               <p className="mt-5 text-sm leading-6 text-slate-400">
-                {TRIAL_DAYS} days free, then $10 a month · Cancel in the trial and pay nothing · Demo data stays in this browser
+                {TRIAL_DAYS} days free, then $10 a month · Cancel in the trial and pay nothing · Your data is never shared
               </p>
             </div>
 
@@ -404,7 +405,11 @@ export function LandingPage() {
 
             <div className="mt-12 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
               <OrderBookMock />
-              <CashAgingMock />
+              <OrderToCashFunnel />
+            </div>
+
+            <div className="mt-6">
+              <CashAgingChart />
             </div>
 
             <div className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -449,8 +454,11 @@ export function LandingPage() {
               text="Including the part most tools never admit: what you still do not know."
             />
             <div className="mt-12 grid items-start gap-10 lg:grid-cols-[1fr_1fr]">
-              <VaultMock />
-              <div className="flex flex-col gap-6">
+              <div className="min-w-0 space-y-6">
+                <VaultMock />
+                <CoverageHeatmap />
+              </div>
+              <div className="flex min-w-0 flex-col gap-6">
                 <MemoryHeading
                   icon={Network}
                   title="Business Vault"
@@ -606,8 +614,8 @@ export function LandingPage() {
               Find out what went quiet <span className="brand-gradient-text">while you can still fix it</span>.
             </h2>
             <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-slate-300">
-              Take {TRIAL_DAYS} days to capture a real week of your own work, or open the demo sandbox first — that
-              one needs no account at all. Cancel inside the trial and you are charged nothing.
+              Take {TRIAL_DAYS} days to capture a real week of your own work and see what it caught. Cancel inside the
+              trial and you are charged nothing.
             </p>
             <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
               <Link
@@ -618,10 +626,10 @@ export function LandingPage() {
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
               <Link
-                to="/demo"
+                to="/use-cases"
                 className="inline-flex items-center justify-center rounded-full border border-white/25 px-7 py-3.5 font-display text-base font-bold text-white transition hover:bg-white/10"
               >
-                Try the live demo
+                See it for your business
               </Link>
             </div>
           </div>
@@ -679,8 +687,8 @@ function NarrativeBlock({
             </li>
           ))}
         </ul>
-        <Link to="/demo" className="mt-7 inline-flex items-center gap-2 font-display text-sm font-bold text-brand-blue transition hover:text-brand-blue-dark">
-          Try it in the demo
+        <Link to="/use-cases" className="mt-7 inline-flex items-center gap-2 font-display text-sm font-bold text-brand-blue transition hover:text-brand-blue-dark">
+          See this for your business
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
@@ -1035,57 +1043,6 @@ function OrderRow({
         ))}
       </div>
     </div>
-  );
-}
-
-function CashAgingMock() {
-  const buckets = [
-    { label: 'Not yet due', value: '$0', width: 'w-0' },
-    { label: '1-30 days late', value: '$112k', width: 'w-full' },
-    { label: '31-60 days late', value: '$0', width: 'w-0' },
-    { label: '61-90 days late', value: '$0', width: 'w-0' },
-    { label: 'Over 90 days', value: '$0', width: 'w-0' },
-  ];
-  return (
-    <BrowserFrame tone="dark" label="Cash collection · aging">
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Still owed</p>
-          <p className="mt-1 font-display text-xl font-extrabold text-white">$112,000</p>
-          <p className="text-[10px] text-slate-500">2 orders open</p>
-        </div>
-        <div className="rounded-lg border border-rose-400/30 bg-rose-400/10 p-3">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-rose-200">Past due</p>
-          <p className="mt-1 font-display text-xl font-extrabold text-rose-100">$112,000</p>
-          <p className="text-[10px] text-rose-200/70">Money you agreed would be here</p>
-        </div>
-      </div>
-
-      <div className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2.5">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-amber-200">Chase this one first</p>
-        <p className="mt-1 text-xs font-semibold leading-5 text-amber-50">
-          Meridian Group — $74,000 past due by 6 days on PO-4471.
-        </p>
-      </div>
-
-      <p className="mt-4 text-[10px] font-bold uppercase tracking-wide text-slate-400">How late the money is</p>
-      <div className="mt-2 space-y-2">
-        {buckets.map((bucket) => (
-          <div key={bucket.label} className="flex items-center gap-3">
-            <span className="w-28 flex-none text-[10px] font-semibold text-slate-400">{bucket.label}</span>
-            <div className="h-1.5 flex-1 rounded-full bg-white/10">
-              <div className={`h-1.5 rounded-full bg-rose-400 ${bucket.width}`} />
-            </div>
-            <span className="w-12 flex-none text-right text-[10px] font-bold text-slate-300">{bucket.value}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-3">
-        <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Average wait</span>
-        <span className="font-display text-sm font-extrabold text-white">13 days past agreed</span>
-      </div>
-    </BrowserFrame>
   );
 }
 

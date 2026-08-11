@@ -3,9 +3,15 @@ import { readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(path, 'utf8');
 
+// The public demo is gone. It handed any visitor a fully populated sample
+// workspace - a whole company's accounts, deals, orders and payment terms - and
+// taught the wrong first move: browsing somebody else's data instead of
+// capturing your own. The try-before-you-buy path is the trial on real work.
+//
+// What this file still guards is the half that mattered: the public positioning
+// copy, and the in-app proof path that the demo used to walk people through.
 const landing = read('src/pages/LandingPage.tsx');
-const demoEntry = read('src/features/demo/DemoEntryPage.tsx');
-const demoGuide = read('src/features/demo/DemoGuidePage.tsx');
+const useCases = read('src/features/useCases/UseCasesPage.tsx');
 const demoJourney = read('src/utils/demoJourney.ts');
 const onboarding = read('src/components/layout/OnboardingModal.tsx');
 const checklist = read('src/utils/trialActivationChecklist.ts');
@@ -22,7 +28,7 @@ for (const marker of [
   'manager-ready answers',
   'defend, rescue, or downgrade',
 ]) {
-  assert.ok(`${landing}\n${demoEntry}\n${demoGuide}`.includes(marker), `Public/demo positioning missing ${marker}`);
+  assert.ok(`${landing}\n${useCases}`.includes(marker), `Public positioning missing ${marker}`);
 }
 
 for (const forbidden of [
@@ -30,24 +36,31 @@ for (const forbidden of [
   'manage all your customer data',
   'full revenue platform',
 ]) {
-  assert.equal(`${landing}\n${demoEntry}\n${demoGuide}`.includes(forbidden), false, `Public/demo copy still contains forbidden claim: ${forbidden}`);
+  assert.equal(`${landing}\n${useCases}`.includes(forbidden), false, `Public copy still contains forbidden claim: ${forbidden}`);
 }
 
+// The demo guide's talk-track markers went with the page. What replaces them is
+// the Use Cases page: the same job of showing a visitor which problem this
+// solves, without loading a sample company into their browser to do it.
 for (const marker of [
-  'What to show first',
-  'What pain this proves',
-  'Exact talk track',
-  'What not to show',
-  'Demo success criteria',
-  'Open Today',
-  'Top 3 actions',
-  'Proactive Nudges',
-  'Paste Email / Thread',
-  'Copy manager brief',
-  'MEDDIC Stakeholder Map',
-  'Outcome Learning',
+  'Use cases',
+  'B2B sellers who answer for their own pipeline',
+  'Founder-led sellers, consultants and agency owners',
+  'Trading, distribution and supply',
+  'Long-cycle sales with procurement and a committee',
+  'Not what Memoire is for',
 ]) {
-  assert.ok(demoGuide.includes(marker), `Demo guide missing ${marker}`);
+  assert.ok(useCases.includes(marker), `Use cases page missing ${marker}`);
+}
+
+// No public route may hand out a populated sample workspace again.
+for (const file of ['src/pages/LandingPage.tsx', 'src/features/pricing/PricingPage.tsx', 'src/components/marketing/MarketingNav.tsx']) {
+  // Matches a routed link only, so prose about the removed demo is fine.
+  assert.equal(
+    /to="\/demo"|href="\/demo"/.test(read(file)),
+    false,
+    `${file} still links to the removed public demo`,
+  );
 }
 
 for (const marker of [

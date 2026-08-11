@@ -1134,9 +1134,6 @@ export function PipelineReviewDefenseBriefPage() {
                 Prepare pipeline review
               </button>
               <a href="#manager-summary" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-100">Generate manager brief</a>
-              <a href="/app/demo-guide" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">
-                Run 5-minute demo
-              </a>
             </div>
             <div className="mt-3 no-print">
               <DataModePill

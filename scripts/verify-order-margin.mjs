@@ -1,3 +1,6 @@
+// Fixtures below are denominated in VND; see the helper for why this is
+// pinned rather than rewritten.
+import './lib/pin-reporting-currency.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { buildOrderBook } from '../src/utils/orderToCash.ts';

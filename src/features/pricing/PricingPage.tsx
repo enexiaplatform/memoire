@@ -134,8 +134,8 @@ export function PricingPage() {
           <section className="mt-10 rounded-xl border border-blue-200 bg-blue-50 p-8 text-center">
             <h2 className="font-display text-2xl font-bold">Try it on your own week before you pay for it.</h2>
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-              The demo runs on sample data that never leaves your browser and needs no account at all. The trial runs
-              on your real work. Start it from Settings under Billing, and cancel from the same place - inside the
+              The trial runs on your real work, not on a sample company - seven days is enough to capture a week and
+              see what it caught. Start it from Settings under Billing, and cancel from the same place; inside the
               seven days that costs nothing.
             </p>
             <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
@@ -145,12 +145,6 @@ export function PricingPage() {
               >
                 Start the trial
                 <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                to="/demo"
-                className="inline-flex items-center justify-center rounded-full border border-blue-200 bg-white px-5 py-3 text-sm font-bold text-brand-blue hover:bg-blue-100 active:scale-[0.98]"
-              >
-                Try demo first
               </Link>
               <Link
                 to="/request-access"

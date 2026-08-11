@@ -44,9 +44,6 @@ export function DemoModeBanner() {
           <Link to="/signup" className="rounded-full bg-amber-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-950">
             Create account
           </Link>
-          <Link to="/app/demo-guide" className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100">
-            Demo guide
-          </Link>
           <button type="button" onClick={resetDemo} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100">
             Reset demo
           </button>

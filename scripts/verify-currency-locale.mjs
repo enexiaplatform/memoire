@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import {
   BASE_CURRENCY,
+  DEFAULT_REPORTING_CURRENCY,
   convertMoney,
   formatCompactCurrencyAmount,
   formatCurrencyAmount,
@@ -13,22 +14,49 @@ import {
 // convertMoney defaulted to the VND rate anchor while the formatters labelled
 // the result with the reporting currency. The number was VND; the label was not.
 // In these scripts there is no localStorage, so the reporting currency is the
-// default (VND) - the assertions below pin the mechanism, not one user's setting.
+// default - the assertions below pin the mechanism, not one user's setting.
+
+// 0. The anchor and the default are two different decisions, and conflating
+//    them is what opened every new workspace worldwide in Vietnamese Dong.
+//    BASE_CURRENCY is the rate table's pivot; DEFAULT_REPORTING_CURRENCY is the
+//    first thing a new operator reads.
+{
+  assert.equal(BASE_CURRENCY, 'VND', 'the rate table is anchored on VND - changing this means rewriting every rate');
+  assert.equal(
+    DEFAULT_REPORTING_CURRENCY,
+    'USD',
+    'a globally sold product must not open a new workspace in one market’s currency',
+  );
+  assert.notEqual(
+    DEFAULT_REPORTING_CURRENCY,
+    BASE_CURRENCY,
+    'the display default has collapsed back onto the rate anchor',
+  );
+}
 
 // 1. Conversion defaults to the reporting currency, never a mismatched anchor.
 {
-  // Reporting currency here is the default (VND), so SGD converts up into VND.
-  assert.equal(convertMoney(200_000, 'SGD'), 4_000_000_000, '200k SGD is 4bn VND at the pinned rate');
+  // Reporting currency here is the default (USD), so SGD converts into USD:
+  // 200k SGD x 20,000 VND/SGD / 26,000 VND/USD.
+  assert.equal(
+    Math.round(convertMoney(200_000, 'SGD')),
+    Math.round((200_000 * 20_000) / 26_000),
+    '200k SGD must convert into the default reporting currency at the pinned rates',
+  );
   // ...and the same value asked for explicitly in SGD stays 200k - the identity
   // that was broken when the default target and the label disagreed.
   assert.equal(convertMoney(200_000, 'SGD', 'SGD'), 200_000);
   assert.equal(convertMoney(1, 'VND', 'VND'), 1);
+  // The anchor still converts correctly when it is asked for by name.
+  assert.equal(convertMoney(200_000, 'SGD', 'VND'), 4_000_000_000, '200k SGD is 4bn VND at the pinned rate');
 }
 
 // 2. An unsupported currency is excluded, not silently treated as the anchor.
-// ('XYZ' stands in for any code outside SUPPORTED_CURRENCIES.)
+// ('XYZ' stands in for any code outside SUPPORTED_CURRENCIES.) The target is
+// named rather than left to the ambient default, so this pins the exclusion
+// rather than whichever currency the product happens to open in.
 assert.equal(convertMoney(100, 'XYZ'), null);
-assert.equal(sumMoney([{ amount: 100, currency: 'XYZ' }, { amount: 5, currency: 'VND' }]), 5);
+assert.equal(sumMoney([{ amount: 100, currency: 'XYZ' }, { amount: 5, currency: 'VND' }], 'VND'), 5);
 
 // 3. Money formats in English, whatever the machine locale. The browser locale
 // rendered Vietnamese units ("Tr", "N") inside English copy.
@@ -43,16 +71,21 @@ assert.equal(sumMoney([{ amount: 100, currency: 'XYZ' }, { amount: 5, currency: 
 
 // 4. formatMoneyWithBase never prints a converted figure under a wrong label.
 {
-  // Source == reporting: no echo of the same number under a "base" label.
-  const same = formatMoneyWithBase(650_000_000, 'VND');
-  assert.equal(same, '650,000,000 VND', 'same-currency money must not repeat itself');
+  // Source == reporting: no echo of the same number under a "base" label. Uses
+  // the reporting currency by name so this keeps testing the rule rather than
+  // whichever currency the product happens to default to.
+  const same = formatMoneyWithBase(650_000, DEFAULT_REPORTING_CURRENCY);
+  assert.equal(same, `650,000 ${DEFAULT_REPORTING_CURRENCY}`, 'same-currency money must not repeat itself');
   assert.equal(same.includes('Base:'), false);
 
   // Source != reporting: the converted figure carries the currency it is in.
   const converted = formatMoneyWithBase(200_000, 'SGD');
   assert.ok(converted.startsWith('200,000 SGD · '), `must lead with the deal's own currency, got: ${converted}`);
-  assert.ok(converted.includes('4,000,000,000 VND'), `converted figure must be VND-labelled, got: ${converted}`);
-  assert.equal(/4,000,000,000 SGD/.test(converted), false, 'the reported bug: a VND figure labelled SGD');
+  assert.ok(
+    converted.includes(`(Base: ${DEFAULT_REPORTING_CURRENCY})`),
+    `converted figure must be labelled with the reporting currency, got: ${converted}`,
+  );
+  assert.equal(/[\d,]+ SGD \(Base/.test(converted), false, 'the reported bug: a converted figure labelled with the source currency');
 
   // Unsupported currency: honest, not a fabricated conversion.
   assert.equal(formatMoneyWithBase(100, 'XYZ'), '100 XYZ · Needs confirmation');

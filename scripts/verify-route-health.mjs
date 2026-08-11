@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildRouteHealth, MIN_TOTAL_DECIDED, UNSPECIFIED_ROUTE } from '../src/utils/routeHealth.ts';
+import { EXCHANGE_RATES_TO_VND, getReportingCurrency } from '../src/utils/money.ts';
 
 const opp = (patch = {}) => ({
   id: `o-${Math.random().toString(36).slice(2)}`, accountName: 'Acct', opportunityName: 'Deal',
@@ -45,15 +46,27 @@ const opp = (patch = {}) => ({
   assert.equal(threeDecided.hasEnoughData, true);
 }
 
-// 4. Active value in base currency; sorted by money at stake descending.
+// 4. Active value converted into the reporting currency; sorted by money at
+// stake descending. Expressed through the rate table rather than a hardcoded
+// figure, so it stays true when the reporting default moves - it used to assert
+// a VND total and broke the day a global product stopped opening in VND.
 {
+  const reporting = getReportingCurrency();
+  const inReporting = (amount, from) =>
+    (amount * EXCHANGE_RATES_TO_VND[from]) / EXCHANGE_RATES_TO_VND[reporting];
   const report = buildRouteHealth({ opportunities: [
     opp({ productOrSolution: 'Small', estimatedValue: 1000, currency: 'VND', status: 'Active' }),
-    opp({ productOrSolution: 'Big', estimatedValue: 100, currency: 'USD', status: 'Active' }), // 100 * 26000 = 2.6M VND
+    opp({ productOrSolution: 'Big', estimatedValue: 100, currency: 'USD', status: 'Active' }),
   ] });
-  assert.equal(report.routes[0].route, 'Big', 'higher base value sorts first');
-  assert.equal(report.routes[0].activeValueBase, 2_600_000);
-  assert.equal(report.routes[1].activeValueBase, 1000);
+  assert.equal(report.routes[0].route, 'Big', 'higher value sorts first whatever the reporting currency');
+  assert.ok(
+    Math.abs(report.routes[0].activeValueBase - inReporting(100, 'USD')) < 1e-6,
+    'the bigger route must convert into the reporting currency',
+  );
+  assert.ok(
+    Math.abs(report.routes[1].activeValueBase - inReporting(1000, 'VND')) < 1e-6,
+    'the smaller route must convert into the reporting currency',
+  );
 }
 
 // 5. Report-level density gate.

@@ -18,12 +18,11 @@ const ResetPasswordPage = lazy(() =>
   import('./features/auth/ResetPasswordPage').then((module) => ({ default: module.ResetPasswordPage })),
 );
 const PricingPage = lazy(() => import('./features/pricing/PricingPage').then((module) => ({ default: module.PricingPage })));
-const DemoEntryPage = lazy(() => import('./features/demo/DemoEntryPage').then((module) => ({ default: module.DemoEntryPage })));
+const UseCasesPage = lazy(() => import('./features/useCases/UseCasesPage').then((module) => ({ default: module.UseCasesPage })));
 const EarlyAccessRequestPage = lazy(() =>
   import('./features/earlyAccess/EarlyAccessRequestPage').then((module) => ({ default: module.EarlyAccessRequestPage })),
 );
 const LegalPage = lazy(() => import('./features/legal/LegalPage').then((module) => ({ default: module.LegalPage })));
-const DemoGuidePage = lazy(() => import('./features/demo/DemoGuidePage').then((module) => ({ default: module.DemoGuidePage })));
 const SharedBriefPage = lazy(() => import('./features/pipeline/SharedBriefPage').then((module) => ({ default: module.SharedBriefPage })));
 const ValidationFeedbackPage = lazy(() =>
   import('./features/validation/ValidationFeedbackPage').then((module) => ({ default: module.ValidationFeedbackPage })),
@@ -93,7 +92,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/demo" element={<DemoEntryPage />} />
+          <Route path="/use-cases" element={<UseCasesPage />} />
           <Route path="/request-access" element={<EarlyAccessRequestPage />} />
           <Route path="/privacy" element={<Navigate to="/legal/privacy" replace />} />
           <Route path="/terms" element={<Navigate to="/legal/terms" replace />} />
@@ -161,7 +160,6 @@ function App() {
             <Route path="operating-system" element={<OperatingSystemPage />} />
             <Route path="pipeline-defense" element={<PipelineReviewDefenseBriefPage />} />
             <Route path="pipeline-defense/review-pack/:id" element={<PipelineReviewPackPage />} />
-            <Route path="demo-guide" element={<DemoGuidePage />} />
 
             {/* Hidden until the workspace has real outcome evidence. The routes
                 stay resolvable so existing records are never stranded. */}

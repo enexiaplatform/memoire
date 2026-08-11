@@ -111,10 +111,10 @@ export function buildTrialActivationChecklist(input: {
     },
     {
       id: 'load-demo-or-import-csv',
-      title: 'Load proof-path demo',
-      description: 'Use the local demo sandbox if you do not have real evidence ready yet.',
-      href: input.sampleDataActive ? '/app/today' : '/demo',
-      cta: input.sampleDataActive ? 'Demo loaded' : 'Load demo',
+      title: 'Bring your pipeline in',
+      description: 'Import accounts and opportunities from a CSV export, or keep capturing by hand.',
+      href: input.sampleDataActive ? '/app/today' : '/app/accounts',
+      cta: input.sampleDataActive ? 'Data loaded' : 'Import CSV',
       done: Boolean(manual['load-demo-or-import-csv'] || input.sampleDataActive || hasCsvImport),
     },
     {

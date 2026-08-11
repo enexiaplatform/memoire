@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ClipboardList, Copy, Download, MessageSquareText, Trash2 } from 'lucide-react';
+import { ClipboardList, Copy, Download, MessageSquareText, Trash2 } from 'lucide-react';
 import {
   buildDemoFeedbackSummary,
   generateInterviewScriptText,
@@ -132,10 +132,6 @@ export function ValidationFeedbackPage() {
           <p className="mt-3 text-sm leading-6 text-gray-600">
             This is rule-based from copied demo feedback, not analytics. Use it as a directional signal after 5-10 real user conversations.
           </p>
-          <Link to="/app/demo-guide" className="mt-4 inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
-            Open Demo Guide
-            <ArrowRight className="h-4 w-4" />
-          </Link>
         </article>
 
         <article className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -252,10 +248,7 @@ export function ValidationFeedbackPage() {
         {feedback.length === 0 ? (
           <div className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-6 text-center">
             <p className="text-sm font-bold text-navy">No validation feedback captured yet.</p>
-            <p className="mt-2 text-sm text-gray-500">Run the demo with a real user, then submit feedback from the Demo Guide or Pipeline Defense.</p>
-            <Link to="/app/demo-guide" className="mt-4 inline-flex rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-              Open Demo Guide
-            </Link>
+            <p className="mt-2 text-sm text-gray-500">Submit feedback from Pipeline Defense after a real user conversation.</p>
           </div>
         ) : (
           <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-2">

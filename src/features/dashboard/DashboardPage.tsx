@@ -2713,10 +2713,6 @@ function ValidationCta({ message, onCopyInterviewScript }: { message: string; on
           {message && <p className="mt-2 text-sm font-semibold text-emerald-700">{message}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link to="/app/demo-guide" className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-            Open Demo Guide
-            <ArrowRight className="h-4 w-4" />
-          </Link>
           <Link to="/app/validation-feedback" className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-bold text-emerald-800">
             Open Feedback Log
           </Link>
@@ -2747,10 +2743,6 @@ function DemoCommercializationCta({ onOpenDemoSandbox }: { onOpenDemoSandbox: ()
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link to="/app/demo-guide" className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-            Run 5-minute Memoire Demo
-            <ArrowRight className="h-4 w-4" />
-          </Link>
           <button type="button" onClick={onOpenDemoSandbox} className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
             Load Demo Sandbox
           </button>

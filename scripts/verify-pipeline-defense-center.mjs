@@ -1,3 +1,6 @@
+// Fixtures below are denominated in VND; see the helper for why this is
+// pinned rather than rewritten.
+import './lib/pin-reporting-currency.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildManagerReadyDealBrief, buildPipelineDefenseCenter } from '../src/utils/pipelineDefenseCenter.ts';

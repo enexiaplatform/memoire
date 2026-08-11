@@ -96,12 +96,6 @@ export function LoginPage() {
           <Button type="submit" loading={submitting} className="w-full">
             Sign in
           </Button>
-          <Link
-            to="/demo"
-            className="block w-full rounded-full border border-amber-200 bg-amber-50 px-4 py-3 text-center font-display text-sm font-semibold text-amber-700 transition-colors hover:bg-amber-100 active:scale-[0.98]"
-          >
-            Open Demo Workspace
-          </Link>
         </form>
 
         <p className="text-center text-sm text-gray-500 mt-6">

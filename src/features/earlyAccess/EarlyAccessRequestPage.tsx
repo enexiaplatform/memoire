@@ -82,9 +82,6 @@ export function EarlyAccessRequestPage() {
             <BrandWordmark className="text-2xl" />
           </Link>
           <div className="flex flex-wrap justify-end gap-2">
-            <Link to="/demo" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue hover:bg-blue-100">
-              Try Demo
-            </Link>
             <Link to="/login" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">
               Log in
             </Link>
@@ -192,9 +189,6 @@ export function EarlyAccessRequestPage() {
                   {submitting ? 'Submitting...' : 'Submit Request'}
                   <ArrowRight className="h-4 w-4" />
                 </button>
-                <Link to="/demo" className="inline-flex justify-center rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">
-                  Return to Demo
-                </Link>
               </div>
             </>
           ) : (
@@ -260,9 +254,6 @@ function EarlyAccessSummary({
           <Mail className="h-4 w-4" />
           Email as fallback
         </a>
-        <Link to="/demo" className="inline-flex justify-center rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">
-          Return to Demo
-        </Link>
         <Link to="/signup" className="inline-flex justify-center rounded-full bg-navy px-5 py-3 text-sm font-bold text-white hover:bg-navy/90">
           Create account now
         </Link>

@@ -15,9 +15,15 @@ import { useAuthContext } from '../../auth/authContext';
  * Only the auth pair changes, which is the convention every product with a
  * marketing site in front of an app follows - Vercel, Linear, Stripe, Notion
  * all collapse "Log in / Sign up" into a single "open the app" button and leave
- * the rest of the nav exactly where it was. Try Demo, Pricing and Request
+ * the rest of the nav exactly where it was. Use Cases, Pricing and Request
  * Access are marketing links, not session controls, so they stay put; hiding
  * them was an over-correction that made the nav look broken.
+ *
+ * "Try Demo" used to sit here and is gone on purpose. It handed any visitor a
+ * fully populated sample workspace - a whole company's accounts, deals, orders
+ * and payment terms - which showed more of the product's internals than a
+ * marketing page should, and taught the wrong first move: browsing someone
+ * else's data rather than capturing your own.
  *
  * `loading` is deliberately treated as "not signed in yet" rather than blocking:
  * this nav sits on the public marketing pages, where the session check is the
@@ -39,7 +45,7 @@ export function MarketingNav() {
             </Link>
           </div>
           <div className="hidden md:flex items-center space-x-6">
-            <Link to="/demo" className="font-medium text-gray-600 hover:text-gray-900">Try Demo</Link>
+            <Link to="/use-cases" className="font-medium text-gray-600 hover:text-gray-900">Use Cases</Link>
             <Link to="/pricing" className="font-medium text-gray-600 hover:text-gray-900">Pricing</Link>
             {!signedIn && <Link to="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</Link>}
             <Link to="/request-access" className="font-medium text-gray-600 hover:text-gray-900">Request Access</Link>
@@ -68,7 +74,7 @@ export function MarketingNav() {
       {isOpen && (
         <div className="md:hidden bg-white border-b border-gray-100 px-2 pt-2 pb-3 space-y-1 sm:px-3 shadow-lg">
           {!signedIn && <Link to="/login" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md">Log in</Link>}
-          <Link to="/demo" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Try Demo</Link>
+          <Link to="/use-cases" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Use Cases</Link>
           <Link to="/pricing" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Pricing</Link>
           <Link to="/request-access" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Request Access</Link>
           <Link to={signedIn ? '/app/today' : '/signup'} className="block rounded-full px-3 py-2 text-base font-semibold text-brand-blue hover:bg-blue-50 hover:text-brand-blue-dark">
