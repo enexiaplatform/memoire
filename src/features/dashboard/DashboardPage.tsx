@@ -2739,7 +2739,11 @@ function DemoCommercializationCta({ onOpenDemoSandbox }: { onOpenDemoSandbox: ()
             Memoire does not replace your CRM. It helps you review and defend your pipeline with a private, read-only working copy.
           </p>
           <p className="mt-2 max-w-3xl text-xs font-semibold leading-5 text-gray-500">
-            Local-first by default. CSV import stays in your browser. No CRM writeback. AI assist is optional where configured.
+            {/* "AI assist is optional where configured" stood here until
+                2026-08-11, two months after the AI was removed. Same false
+                claim as the legal page and the Boundaries tab, on a third
+                surface - see scripts/verify-trust-boundary-contract.mjs. */}
+            Local-first by default. CSV import stays in your browser. No CRM writeback. Nothing is sent to an AI service.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

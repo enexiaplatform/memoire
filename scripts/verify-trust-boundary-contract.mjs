@@ -28,19 +28,44 @@ for (const marker of [
   requireIncludes(app, marker, `public legal route missing marker: ${marker}`);
 }
 
+// The three AI markers that used to sit in this list were removed on
+// 2026-08-11, and they are the reason this comment is long.
+//
+// They required the privacy policy to carry an "AI-assisted features" section
+// describing text being sent to "the configured server-side AI provider", and
+// to warn against submitting confidential customer information to it. All of
+// that was true when written. The AI was removed in June; the disclosure was
+// not, because this contract insisted on it. For two months the legal page told
+// every reader that their notes might leave the device, while
+// verify-no-ai-dependency.mjs proved on every build that they could not.
+//
+// A marker contract pins whatever it was given. When behaviour is deliberately
+// removed, its contract is part of what has to go with it - otherwise the
+// contract is the thing keeping the false claim alive.
+//
+// The replacements below are the inverse assertion, so the same class of drift
+// cannot happen in the other direction: if an AI provider is ever reintroduced,
+// these fail until the legal copy is updated to say so.
 const legalPage = read('src/features/legal/LegalPage.tsx');
 for (const marker of [
   'Privacy Policy',
   'Terms of Service',
   'Product and Data Boundaries',
-  'AI-assisted features',
-  'configured server-side AI provider',
-  'Do not submit confidential customer information',
+  'Memoire has no AI provider, no AI API key and no AI endpoint.',
+  'Nothing you write is sent to a language model',
+  'Memoire is not an AI product.',
   'early-access product',
   'not as a system of record, legal record, or guaranteed forecast',
   'human review',
   'does not silently update external systems',
   'does not currently provide enterprise SSO, team administration, or native CRM writeback',
+  // Three data flows that do exist. The policy described none of them while it
+  // was busy describing one that did not: the product takes card details
+  // through a processor, sends digests containing account names through an
+  // email provider, and puts shared-brief content in a URL anyone can read.
+  'Lemon Squeezy',
+  'transactional email provider',
+  'the part after the # - which browsers do not send to any server',
   // The address itself is no longer typed here. It was typed literally in five
   // places - both legal documents, the marketing footer, the Settings export
   // panel and the early-access form - all of them `hello@memoire.app`, on a
@@ -63,7 +88,10 @@ for (const marker of [
   'Data and Product Boundaries',
   'where human review is required',
   'No CRM writeback, enterprise SSO, team administration, or manager scoring is available today.',
-  'AI-assisted text may be sent to the configured provider only when you explicitly use that feature.',
+  // Was 'AI-assisted text may be sent to the configured provider only when you
+  // explicitly use that feature.' - see the note above the legal-page markers.
+  // This is the same false claim on the surface a paying operator reads.
+  'Nothing you write is sent to an AI service.',
   'View full product boundaries',
   'to="/legal/boundaries"',
 ]) {
@@ -113,15 +141,17 @@ for (const marker of [
   requireIncludes(pipelineDefense, marker, `Pipeline Defense draft boundary missing marker: ${marker}`);
 }
 
+// A dated review record, kept as written. What this now checks is that it
+// cannot be mistaken for a description of the product: its "Product Truth"
+// section lists AI data flows that were removed in June, and a reader who
+// missed the supersession note would take them for current.
 const boundaryDoc = read('docs/product/ai-disclosure-boundary-hardening-2026-06-17.md');
 for (const marker of [
   'A8/R10 trust readiness',
   'does not replace legal review',
-  'Ask Memoire may send selected sales context',
-  'Daily Capture AI Assist may send the full note',
-  'Quick Capture quick-note structuring may send the submitted note',
-  'Quick Capture email-thread structuring is local parsing',
-  'Pipeline Defense Draft Assist uses the local mock provider only',
+  'Superseded 2026-08-11: there is no AI',
+  'Product Truth (as of 2026-06-17, no longer accurate - see above)',
+  'scripts/verify-no-ai-dependency.mjs',
   'Legal review for the actual jurisdiction and business entity.',
 ]) {
   requireIncludes(boundaryDoc, marker, `AI disclosure hardening doc missing marker: ${marker}`);

@@ -9,7 +9,12 @@ const notItems = [
 
 const boundaries = [
   'No CRM writeback, enterprise SSO, team administration, or manager scoring is available today.',
-  'AI-assisted text may be sent to the configured provider only when you explicitly use that feature.',
+  // This line said "AI-assisted text may be sent to the configured provider
+  // only when you explicitly use that feature" until 2026-08-11 - written when
+  // there was a provider, and left behind when it was removed. It told a paying
+  // operator their notes might leave the device, which is the opposite of what
+  // happens and the opposite of what the product is sold on.
+  'Nothing you write is sent to an AI service. There is no AI provider, key or endpoint in Memoire; capture parses on this device and Search & Insights computes from your own records.',
   'Local browser data can be lost when browser storage is cleared. Keep exports of business-critical information.',
 ];
 

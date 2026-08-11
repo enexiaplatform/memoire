@@ -22,7 +22,31 @@ Reviewed surfaces:
 - `src/features/pipeline/PipelineReviewDefenseBriefPage.tsx`
 - `src/services/draftAssistProvider.ts`
 
-## Product Truth
+## Superseded 2026-08-11: there is no AI
+
+Everything in the "Product Truth" list below was true when this was written and
+none of it is true now. The AI provider, its key, its endpoints and the client
+modules that called them were removed; `scripts/verify-no-ai-dependency.mjs`
+fails the build if any of them come back. Capture parses on the device by rule
+and Search & Insights computes from the operator's own records.
+
+This document stays as written because it is a dated review record. It is not a
+description of the product, and it must not be read as one.
+
+What outlived it was the disclosure copy this pass introduced. The privacy
+policy, the terms, the public boundaries page and the in-app Boundaries tab all
+went on telling users their text might be sent to "the configured server-side
+AI provider" for two months after that stopped being possible - and
+`scripts/verify-trust-boundary-contract.mjs` required those exact words, so the
+false claim was not merely unnoticed, it was enforced. All four were corrected
+on 2026-08-11, and the same contract now requires the true statement instead.
+
+The lesson is narrow and worth keeping: a marker contract pins whatever it was
+given. When the behaviour it describes is deliberately removed, the contract is
+part of what has to be removed with it, or it turns into the thing that keeps
+the lie alive.
+
+## Product Truth (as of 2026-06-17, no longer accurate - see above)
 
 AI/provider boundaries as of this pass:
 

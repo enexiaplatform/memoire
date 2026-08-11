@@ -15,48 +15,72 @@ type LegalDocument = {
 const documents: Record<string, LegalDocument> = {
   privacy: {
     title: 'Privacy Policy',
-    updated: 'June 15, 2026',
-    intro: 'This policy explains how Memoire handles account, sales-workspace, local browser, and optional AI data.',
+    updated: 'August 11, 2026',
+    intro:
+      'This policy explains what Memoire stores, what leaves your browser and where it goes. Every claim here describes what the product actually does today, not what it may do later.',
     sections: [
       {
         title: 'Data you provide',
         paragraphs: [
-          'Memoire may store account information, pipeline records, activities, stakeholders, objections, review briefs, and other content you enter.',
-          'Some product areas work locally in your browser. Signed-in cloud features may store supported records in Supabase under your account.',
+          'Memoire may store account information, pipeline records, activities, stakeholders, objections, quotes, orders, receivables, review briefs, and other content you enter.',
+          'Signed in, supported records sync to a database held under your account. Not signed in, Memoire runs on browser storage only, and the app says so inside when it is doing that.',
         ],
       },
       {
-        title: 'Local and demo data',
+        title: 'Local and sample data',
         paragraphs: [
-          'Local-only and demo records stay in the browser profile where they were created unless you explicitly export or migrate them.',
+          'Local-only and sample records stay in the browser profile where they were created unless you explicitly export or migrate them.',
           'Clearing browser storage, changing browser profiles, or using another device can remove or hide local-only records.',
         ],
       },
       {
-        title: 'Privacy-minimized product analytics',
+        title: 'No AI service',
         paragraphs: [
-          'Memoire records a small set of product funnel events such as demo started, demo completed, account created, CSV import completed, and review pack saved.',
-          'These events use a random browser identifier and include only the event name, app route, and data mode. They do not include sales notes, customer names, deal content, email addresses, or CRM records.',
+          'Memoire has no AI provider, no AI API key and no AI endpoint. Capture parses what you paste on your own device, using rules. Search & Insights answers from records already in your workspace, computed in your browser.',
+          'Nothing you write is sent to a language model, by us or on our behalf, and none of it is used to train one. This is enforced by an automated check that fails our build if an AI dependency, endpoint or key is added back.',
         ],
       },
       {
-        title: 'AI-assisted features',
+        title: 'Product analytics',
         paragraphs: [
-          'Most pipeline review logic is rule-based. When you explicitly use an AI-assisted feature, the submitted text and limited context may be sent to the configured server-side AI provider.',
-          'Do not submit confidential customer information to an AI-assisted feature unless your organization has approved that provider and use case.',
+          'Memoire records a short list of product events - for example capture saved, commitment completed, review completed, CSV import completed, sync failed, signup completed.',
+          'Each event carries only the event name, a random identifier generated in your browser, the app path you were on with any query string removed, and which storage mode the workspace was in. It carries no notes, no customer or contact names, no deal content, no amounts and no email address.',
+          'There is currently no setting to turn these off. Rather than offer a switch that does nothing, we keep the payload small enough that turning it off would protect nothing.',
+        ],
+      },
+      {
+        title: 'Email digests',
+        paragraphs: [
+          'The daily digest and the Monday review are off unless you turn them on in Settings, and each can be turned off again there or from the unsubscribe link in any digest.',
+          'When they are on, the email is built from your own records and does contain account names and quote titles - that is what makes it useful. It is delivered by a transactional email provider, which necessarily receives the message in order to send it.',
+        ],
+      },
+      {
+        title: 'Payment',
+        paragraphs: [
+          'Subscriptions are handled by Lemon Squeezy, which acts as merchant of record. Your card details go to Lemon Squeezy and never reach Memoire; we do not see them, receive them or store them.',
+          'Memoire sends Lemon Squeezy your email address and an internal account identifier, and stores back only the customer and subscription identifiers and the resulting entitlement.',
+        ],
+      },
+      {
+        title: 'Links you share',
+        paragraphs: [
+          'A shared review brief carries its content in the fragment of the link - the part after the # - which browsers do not send to any server. The brief is never uploaded; it is decoded in whichever browser opens it.',
+          'The consequence is that anyone holding the link can read it, and there is no password and no expiry. Share it the way you would share the document itself.',
         ],
       },
       {
         title: 'Service providers and security',
         paragraphs: [
-          'Memoire may rely on hosting, authentication, database, and AI infrastructure providers to operate configured features.',
+          'Memoire relies on Supabase for its database and authentication, Vercel for hosting, Lemon Squeezy for subscriptions, a transactional email provider for digests you have enabled, and Google for sign-in if you choose to sign in with Google. There is no AI provider in this list because there is none in the product.',
           'No online service can promise absolute security. Use appropriate judgment before entering sensitive tender, pricing, personal, or regulated information.',
         ],
       },
       {
         title: 'Your choices',
         paragraphs: [
-          'You can use local mode, sign out, export available workspace data, clear local browser data, or request account deletion from Settings.',
+          'You can use Memoire without signing in, accepting the limits of browser-only storage; sign out; export your workspace at any time; clear local browser data; turn digests off; or delete your account from Settings, which deletes the account and its records.',
+          'Export is never withheld. A lapsed subscription stops you adding to a workspace; it must never stop you taking your own work out of it.',
           `Questions about privacy can be sent to ${CONTACT_EMAIL}.`,
         ],
       },
@@ -64,7 +88,7 @@ const documents: Record<string, LegalDocument> = {
   },
   terms: {
     title: 'Terms of Service',
-    updated: 'June 12, 2026',
+    updated: 'August 11, 2026',
     intro: 'These terms govern use of the Memoire early-access and personal sales workspace.',
     sections: [
       {
@@ -72,6 +96,14 @@ const documents: Record<string, LegalDocument> = {
         paragraphs: [
           'Memoire is currently an early-access product. Features, limits, storage behavior, and availability may change as the product is validated.',
           'The service is provided as a sales preparation and memory tool, not as a system of record, legal record, or guaranteed forecast.',
+        ],
+      },
+      {
+        title: 'Subscription and payment',
+        paragraphs: [
+          'The Personal plan is $10 per month for one person. It begins with a 7-day free trial: a card is taken up front, nothing is charged during the trial, and the first charge is taken when the trial ends. Cancel before then and you are not charged.',
+          'Cancelling after that stops the next renewal; access continues until the end of the period already paid for. There is no free tier. The Team plan is not on sale and has no price.',
+          'Lemon Squeezy processes payments as merchant of record, and its own terms and refund handling apply to the transaction. Write to us at the address below about anything to do with a charge.',
         ],
       },
       {
@@ -84,7 +116,7 @@ const documents: Record<string, LegalDocument> = {
       {
         title: 'Outputs and decisions',
         paragraphs: [
-          'Risk signals, MEDDIC-lite reviews, recommended actions, summaries, and AI-assisted suggestions require human review.',
+          'Risk signals, MEDDIC-lite reviews, recommended actions and summaries are computed by rule from the records you entered. They are not produced by a language model, and they require human review all the same: a rule applied to an incomplete record returns a confident answer about the wrong thing.',
           'You remain responsible for sales decisions, customer communications, forecasts, and information shared with managers or third parties.',
         ],
       },
@@ -103,7 +135,7 @@ const documents: Record<string, LegalDocument> = {
   },
   boundaries: {
     title: 'Product and Data Boundaries',
-    updated: 'June 15, 2026',
+    updated: 'August 11, 2026',
     intro: 'Memoire is a personal preparation layer for B2B and solo sales work. It is not an employer scoring, CRM, invoicing, inventory, ecommerce, marketplace, or project-delivery system.',
     sections: [
       {
@@ -119,13 +151,14 @@ const documents: Record<string, LegalDocument> = {
           'Memoire is not a professional certification, hiring score, credit signal, legal record, or replacement for your company CRM.',
           'Memoire does not currently provide enterprise SSO, team administration, or native CRM writeback.',
           'Memoire does not manage invoices, inventory, ecommerce listings, marketplace fulfillment, or client project delivery.',
+          'Memoire is not an AI product. It has no AI provider, no AI key and no AI endpoint, and nothing you write is sent to a language model. Capture parses on your device and Search & Insights computes from your own records.',
         ],
       },
       {
         title: 'Human review',
         paragraphs: [
-          'All generated classifications, risk signals, summaries, recommendations, and drafts should be reviewed before use.',
-          'Memoire does not silently update external systems or send customer communication on your behalf.',
+          'Every classification, risk signal, summary and recommendation is derived by rule from records you entered. Review them before use: a rule reading an incomplete record still returns an answer.',
+          'Memoire does not silently update external systems or send customer communication on your behalf. The only messages it sends are the digests you have switched on, and they go to you.',
         ],
       },
     ],
