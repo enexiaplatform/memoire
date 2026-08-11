@@ -1,0 +1,107 @@
+# Public Search Visibility
+
+Date: 2026-08-11
+Decision owner: founder
+Supersedes: the noindex clauses in
+`docs/product/commercial-release-gate-2026-06-16.md`,
+`docs/product/cohort-release-evidence-packet-2026-06-17.md` and
+`docs/deployment/production-infrastructure-controls-2026-06-16.md`.
+
+## Decision
+
+The marketing pages are open to search engines and to answer engines. The
+workspace, the auth screens, the shared-brief links and the API are not.
+
+This is the "if go" branch of the plan already written down in
+`docs/product/product-strategy-gtm-2026-07-02.md`: *remove noindex, publish
+pricing without hypothesis framing, start the SEO engine.* Pricing was made
+real in the Lemon Squeezy work of 2026-08-10. This is the rest of it.
+
+## What was true before
+
+`noindex, nofollow` was asserted in three places at once, which was correct
+while the product was invite-only and deliberately hard to find:
+
+1. `index.html`, as a `<meta name="robots">`.
+2. Three marketing pages, each repeating it in its own `<Helmet>`.
+3. `vercel.json`, as `X-Robots-Tag` on `/(.*)` - every route on the deployment.
+
+`scripts/verify-commercial-readiness.mjs` held (3) in place.
+
+## What is true now
+
+| Surface | Indexable | Enforced by |
+| --- | --- | --- |
+| `/`, `/pricing`, `/use-cases`, `/request-access`, `/legal/*` | Yes | `<PageSeo />` per page; no header |
+| `/app/*` | No | `X-Robots-Tag` header **and** `<NoIndex />` in `AppShell` |
+| `/share/*` | No | `X-Robots-Tag` header **and** `<NoIndex />` in `SharedBriefPage` |
+| `/login`, `/signup`, `/verify-email`, `/forgot-password`, `/reset-password` | No | `X-Robots-Tag` header |
+| `/api/*` | No | `X-Robots-Tag` header |
+| Any unmatched URL (soft 404) | No | `<NoIndex />` in `NotFoundPage` |
+
+Two locks on the two surfaces that would actually hurt. The header is the one
+that binds for a crawler that never runs JavaScript; the meta tag is the one
+that survives a route moving to a path the header pattern does not match.
+
+## Prerendering
+
+The bigger half of this work, and the part that is not about Google.
+
+Memoire is a single-page app. Googlebot renders JavaScript, so an SPA has always
+been survivable for search. The answer engines are not: GPTBot, ClaudeBot and
+PerplexityBot fetch HTML and do not execute it. To all three, this site was a
+blank `<div id="root">` with a title.
+
+`scripts/prerender.mjs` now runs after `vite build` and writes real HTML for the
+six marketing routes. The browser still boots the same SPA over the top.
+
+One consequence worth knowing about: `dist/index.html` is now the rendered
+landing page, so the SPA fallback moved to `dist/spa-fallback.html` and
+`vercel.json` rewrites to that. Pointing the fallback back at `index.html` would
+flash the marketing hero at a signed-in operator on every cold `/app` load.
+`verify:seo` and `verify:commercial` both fail if it moves back.
+
+## GEO
+
+Three things, none of them tricks:
+
+- **`/llms.txt`** - a plain-language brief written for a model rather than for a
+  reader: what the product does, what it refuses to do, who it is for, what it
+  costs. It exists because the alternative is a model inferring those answers
+  from marketing copy, and inference is where the free tier that does not exist
+  gets invented.
+- **`robots.txt` names the AI crawlers individually** and allows them on the
+  public pages. The trade is explicit: the marketing copy may end up in model
+  weights. It is public sales material. The workspace is not, and no crawler can
+  reach it.
+- **JSON-LD on every public page** - `Organization`, `WebSite`,
+  `SoftwareApplication` with a real `Offer`, `FAQPage`, `BreadcrumbList`,
+  `ItemList`. The price in the markup comes from `PERSONAL_MONTHLY_PRICE_USD`,
+  the same constant the visible price is built from, and `verify:seo` fails if
+  the two disagree.
+
+## What still needs a human
+
+None of it blocks the deploy; all of it is outside the repository.
+
+1. **Google Search Console** - verify the property (`www.memoire-official.com`),
+   submit `https://www.memoire-official.com/sitemap.xml`, and request indexing
+   for `/`. Nothing in a repo can do this.
+2. **Bing Webmaster Tools** - same, and it accepts the Search Console export.
+3. **The Open Graph card is still an SVG.** Slack, Discord and iMessage render
+   it; X does not. Exporting `public/social-card.svg` to a 1200x630 PNG and
+   changing `SITE_OG_IMAGE` in `src/config/seo.ts` is the whole fix.
+4. **The privacy policy still describes AI-assisted features.** It was written
+   before the no-AI contract and now contradicts both `llms.txt` and
+   `scripts/verify-no-ai-dependency.mjs`. It is a legal document that promises a
+   data flow that does not exist; that is a separate correction, and it should
+   not wait long.
+
+## Reversing this
+
+If the site needs to leave the index again - a security incident, a positioning
+reset - the one-line version is to put `X-Robots-Tag: noindex, nofollow` back on
+`/(.*)` in `vercel.json`. That alone is sufficient: headers beat meta tags, and
+it takes effect on the next deploy without a code change. `verify:seo` will then
+fail, which is the intended alarm, and this document is what tells the next
+person the failure was deliberate.

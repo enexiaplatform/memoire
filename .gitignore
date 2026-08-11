@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# The SSR bundle scripts/prerender.mjs builds and then deletes. It only
+# survives on disk when a prerender run failed part-way through.
+.prerender
+
 # Environment variables
 .env
 .env.local

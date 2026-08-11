@@ -6,6 +6,7 @@ import { MobileTabBar } from './MobileTabBar';
 import { OnboardingModal } from './OnboardingModal';
 import { DemoModeBanner } from '../demo/DemoModeBanner';
 import { StorageFailureBanner } from '../common/StorageFailureBanner';
+import { NoIndex } from '../marketing/PageSeo';
 import { OfflineCaptureBanner } from '../common/OfflineCaptureBanner';
 import { TrialStatusBanner } from '../common/TrialStatusBanner';
 import { prefetchPrimaryAppRoutes } from '../../utils/routePrefetch';
@@ -45,6 +46,10 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      {/* One tag for every `/app/*` route. The public pages became indexable on
+          2026-08-11; the workspace did not, and it never should - these pages
+          render one person's accounts, deals and amounts. */}
+      <NoIndex />
       <a href="#app-main-content" className="skip-link">
         Skip to main content
       </a>

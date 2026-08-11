@@ -43,6 +43,18 @@ import type { UserProfile } from '../types';
 export const TRIAL_DAYS = 7;
 
 /**
+ * The monthly price of the `personal` plan, in USD.
+ *
+ * The number itself is quoted as `$10` in prose on two marketing pages, which
+ * is fine - prose is written for a reader. This constant exists because the
+ * same number now also goes out as a machine-readable `Offer` in the landing
+ * page's JSON-LD, and a structured price that disagrees with the visible price
+ * is the one kind of mismatch Google penalises outright. One constant, and
+ * `scripts/verify-seo-contract.mjs` checks the prose still agrees with it.
+ */
+export const PERSONAL_MONTHLY_PRICE_USD = 10;
+
+/**
  * Accounts created before this keep full access without a subscription.
  *
  * They signed up when the product asked for no card and enforced no limits.

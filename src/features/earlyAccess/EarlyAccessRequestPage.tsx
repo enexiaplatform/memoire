@@ -3,6 +3,7 @@ import type { ChangeEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, ClipboardCheck, Copy, Mail, ShieldCheck } from 'lucide-react';
 import { BrandWordmark } from '../../components/brand/BrandWordmark';
+import { PageSeo } from '../../components/marketing/PageSeo';
 import { copyTextToClipboard } from '../../utils/clipboard';
 import {
   buildEarlyAccessMailto,
@@ -76,6 +77,16 @@ export function EarlyAccessRequestPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
+      {/* Indexed, but never prerendered: this page is a form whose module pulls
+          in the analytics and request utilities, so it renders in the browser
+          only. Google runs the JS; the answer engines that do not will read the
+          title and description below and nothing more, which is the whole
+          content of a form page anyway. */}
+      <PageSeo
+        path="/request-access"
+        title="Request Early Access - Memoire"
+        description="Tell us what your follow-up currently falls through and we will get back to you. Memoire is a personal commercial control tower for B2B sellers who own their own pipeline."
+      />
       <section className="border-b border-slate-200 bg-white px-4 py-5">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
           <Link to="/" aria-label="Memoire home">

@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -21,8 +20,15 @@ import {
 } from 'lucide-react';
 import { MarketingNav } from '../components/marketing/MarketingNav';
 import { Footer } from '../components/marketing/Footer';
+import { PageSeo } from '../components/marketing/PageSeo';
 import { CashAgingChart, CoverageHeatmap, OrderToCashFunnel } from '../components/marketing/charts';
-import { TRIAL_DAYS } from '../utils/entitlement';
+import {
+  faqPageSchema,
+  organizationSchema,
+  softwareApplicationSchema,
+  websiteSchema,
+} from '../config/structuredData';
+import { PERSONAL_MONTHLY_PRICE_USD, TRIAL_DAYS } from '../utils/entitlement';
 
 /**
  * The public page. Three rules, each of which has already been broken here once.
@@ -170,20 +176,28 @@ const faqs = [
 export function LandingPage() {
   return (
     <div className="min-h-screen bg-white text-slate-950">
-      <Helmet>
-        <title>Memoire - Personal Commercial Control Tower for B2B Sellers</title>
-        <meta
-          name="description"
-          content="Memoire is a personal commercial control tower for complex B2B sellers: every customer interaction becomes a continuous commercial thread, from conversation and quotation to delivery and cash, so nothing goes silent. Seven days free, then $10 a month for one person."
-        />
-        <meta name="robots" content="noindex, nofollow" />
-        <meta property="og:title" content="Memoire - Personal Commercial Control Tower for B2B Sellers" />
-        <meta
-          property="og:description"
-          content="Never enter a pipeline review unprepared. Capture messy notes and emails, find the risk in Today, follow every quote to cash, and copy manager-ready answers."
-        />
-        <meta property="og:type" content="website" />
-      </Helmet>
+      {/* The home page carries the site-wide graph - Organization, WebSite and
+          the product itself - because it is the URL every other reference
+          points at. The FAQ block below is the same `faqs` array the page
+          renders, not a second copy written for crawlers: an answer engine that
+          finds the structured answer and the visible answer disagreeing trusts
+          neither. */}
+      <PageSeo
+        path="/"
+        title="Memoire - Personal Commercial Control Tower for B2B Sellers"
+        description={`Memoire is a personal commercial control tower for complex B2B sellers: every customer interaction becomes a continuous commercial thread, from conversation and quotation to delivery and cash, so nothing goes silent. ${TRIAL_DAYS} days free, then $${PERSONAL_MONTHLY_PRICE_USD} a month for one person.`}
+        socialDescription="Never enter a pipeline review unprepared. Capture messy notes and emails, find the risk in Today, follow every quote to cash, and copy manager-ready answers."
+        jsonLd={[
+          organizationSchema(),
+          websiteSchema(),
+          softwareApplicationSchema({
+            monthlyPriceUsd: PERSONAL_MONTHLY_PRICE_USD,
+            trialDays: TRIAL_DAYS,
+            featureList: pricingPlans[0].items,
+          }),
+          faqPageSchema(faqs),
+        ]}
+      />
 
       <MarketingNav />
 

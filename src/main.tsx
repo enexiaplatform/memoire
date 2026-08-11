@@ -8,6 +8,21 @@ import './index.css';
 
 installGlobalErrorReporter();
 
+// Hand the head back to Helmet.
+//
+// The marketing routes are prerendered (scripts/prerender.mjs), so their title,
+// description, canonical, Open Graph tags and JSON-LD are already in the
+// document when this file runs. Helmet cannot see them - it only tracks tags it
+// created itself - so it adds a second copy of each, and the rendered DOM ends
+// up with two canonical links and two robots directives. Identical ones today,
+// which is harmless; the risk is the day they stop being identical, because
+// Google resolves a conflicting pair by ignoring both.
+//
+// Removing them here is safe: the crawler that never runs JavaScript reads the
+// original HTML and keeps the whole head, and Helmet replaces every one of
+// these within the same tick.
+document.querySelectorAll('[data-prerendered-seo]').forEach((tag) => tag.remove());
+
 // Legacy sample-data cleanup only matters when the demo flag is set. The cheap
 // flag check keeps the heavy sampleData module (and the domain stores it pulls
 // in) out of the critical path for anonymous public-page visitors.

@@ -1,0 +1,131 @@
+# Memoire - https://www.memoire-official.com
+#
+# The site was noindex everywhere until 2026-08-11 (see
+# docs/product/commercial-release-gate-2026-06-16.md). It is now open to search
+# and to answer engines, with one rule: the marketing pages are public, and
+# nothing behind the login is.
+#
+# The Disallow list below is not a security control. /app is protected by auth
+# and RLS; these lines exist so a crawler does not waste its budget on pages it
+# will only ever be redirected away from, and so a shared brief link that leaks
+# into a public page never becomes a search result. vercel.json sends
+# X-Robots-Tag: noindex on the same paths, which is the part that binds.
+
+User-agent: *
+Allow: /
+
+# Behind the login. Nothing here renders without a session.
+Disallow: /app
+Disallow: /app/
+
+# Auth screens: thin, duplicated, and useless as a search result.
+Disallow: /login
+Disallow: /signup
+Disallow: /verify-email
+Disallow: /forgot-password
+Disallow: /reset-password
+
+# Read-only links one person sends to their manager. They carry deal names and
+# amounts, and they need no password.
+Disallow: /share/
+Disallow: /validate/
+
+# JSON endpoints, never a page.
+Disallow: /api/
+
+# ---------------------------------------------------------------------------
+# Answer engines.
+#
+# These are listed explicitly rather than left to the wildcard above because
+# several of them are two crawlers wearing one name: a training crawler and a
+# retrieval crawler that fetches a page live to answer a question about it.
+# Both are allowed here. A product whose entire pitch is "you will not remember
+# this in three months" is one people ask an assistant about before they visit,
+# and the assistant can only quote a page it is permitted to read.
+#
+# The trade is real and it is being made knowingly: allowing the training
+# crawlers means the marketing copy may end up in a model's weights. That copy
+# is public sales material. The workspace is not, and no crawler can reach it.
+
+User-agent: GPTBot
+Allow: /
+Disallow: /app/
+Disallow: /share/
+Disallow: /api/
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /app/
+Disallow: /share/
+Disallow: /api/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /app/
+Disallow: /share/
+Disallow: /api/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /app/
+Disallow: /share/
+Disallow: /api/
+
+User-agent: Claude-User
+Allow: /
+Disallow: /app/
+Disallow: /share/
+Disallow: /api/
+
+User-agent: Claude-SearchBot
+Allow: /
+Disallow: /app/
+Disallow: /share/
+Disallow: /api/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /app/
+Disallow: /share/
+Disallow: /api/
+
+User-agent: Perplexity-User
+Allow: /
+Disallow: /app/
+Disallow: /share/
+Disallow: /api/
+
+# Google's separate opt-in for Gemini and AI Overviews. Blocking it removes the
+# product from AI Overviews without improving ordinary ranking, so it is
+# allowed on the same terms as everything else.
+User-agent: Google-Extended
+Allow: /
+Disallow: /app/
+Disallow: /share/
+Disallow: /api/
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /app/
+Disallow: /share/
+Disallow: /api/
+
+User-agent: meta-externalagent
+Allow: /
+Disallow: /app/
+Disallow: /share/
+Disallow: /api/
+
+User-agent: Bytespider
+Allow: /
+Disallow: /app/
+Disallow: /share/
+Disallow: /api/
+
+User-agent: cohere-ai
+Allow: /
+Disallow: /app/
+Disallow: /share/
+Disallow: /api/
+
+Sitemap: https://www.memoire-official.com/sitemap.xml

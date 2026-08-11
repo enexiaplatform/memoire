@@ -158,6 +158,10 @@ Target:
 
 - Open public signup and/or paid conversion beyond known users.
 - Decide whether to relax `X-Robots-Tag: noindex, nofollow`.
+  **Decided 2026-08-11: relaxed.** The marketing pages are indexable; `/app`,
+  `/share`, the auth screens and `/api` keep the header. The rest of Gate C is
+  unaffected - this was a visibility decision, not a selling decision. See
+  `docs/deployment/public-search-visibility-2026-08-11.md`.
 
 Required before public selling:
 

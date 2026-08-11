@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
@@ -14,6 +13,8 @@ import {
 import { MarketingNav } from '../../components/marketing/MarketingNav';
 import { Footer } from '../../components/marketing/Footer';
 import { CoverageHeatmap, OrderToCashFunnel } from '../../components/marketing/charts';
+import { PageSeo } from '../../components/marketing/PageSeo';
+import { breadcrumbSchema, itemListSchema } from '../../config/structuredData';
 import { TRIAL_DAYS } from '../../utils/entitlement';
 
 /**
@@ -120,14 +121,29 @@ const notFor = [
 export function UseCasesPage() {
   return (
     <div className="min-h-screen bg-white text-slate-950">
-      <Helmet>
-        <title>Use Cases - Memoire</title>
-        <meta
-          name="description"
-          content="Four jobs Memoire is built for: B2B sellers who answer for their own pipeline, founder-led sellers, trading and supply businesses chasing cash, and long-cycle sales with a buying committee."
-        />
-        <meta name="robots" content="noindex, nofollow" />
-      </Helmet>
+      {/* The `useCases` array is the page and the structured data both. An
+          answer engine asked "is there a tool for a distributor chasing
+          payment" is matching against the four `title` strings below - which is
+          why they name a job rather than an industry. */}
+      <PageSeo
+        path="/use-cases"
+        title="Use Cases - Who Memoire Is For | Memoire"
+        description="Four jobs Memoire is built for: B2B sellers who answer for their own pipeline, founder-led sellers, trading and supply businesses chasing cash, and long-cycle sales with a buying committee."
+        jsonLd={[
+          itemListSchema({
+            name: 'Who Memoire is for',
+            description: 'The four commercial jobs Memoire is built around.',
+            items: useCases.map((useCase) => ({
+              name: useCase.title,
+              description: useCase.problem,
+            })),
+          }),
+          breadcrumbSchema([
+            { name: 'Memoire', path: '/' },
+            { name: 'Use Cases', path: '/use-cases' },
+          ]),
+        ]}
+      />
 
       <MarketingNav />
 

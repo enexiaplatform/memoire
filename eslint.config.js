@@ -25,4 +25,14 @@ export default defineConfig([
       'react-hooks/purity': 'off',
     },
   },
+  {
+    // The prerender entry runs in Node at build time and is never part of the
+    // browser module graph, so the Fast Refresh rule - which exists to keep
+    // HMR from losing component state - has nothing to protect here. It
+    // deliberately exports route lists and a render function alongside JSX.
+    files: ['src/prerender.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])

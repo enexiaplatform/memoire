@@ -25,10 +25,19 @@ const checks = [
     file: 'docs/product/cohort-release-evidence-packet-2026-06-17.md',
     assert: (text) => text.includes('BILLING_CHECKOUT_ENABLED=false') && text.includes('paid checkout inactive'),
   },
+  // The packet is a dated evidence record, so its original noindex clauses stay
+  // on the page. What this now checks is that the record does not read as still
+  // binding: the marketing pages went into the index on 2026-08-11, and a
+  // checklist that still says "keep noindex active" with no supersession note
+  // would send the next operator to undo the launch.
   {
-    name: 'cohort release packet keeps noindex active',
+    name: 'cohort release packet records that noindex was superseded on the public pages',
     file: 'docs/product/cohort-release-evidence-packet-2026-06-17.md',
-    assert: (text) => text.includes('Keep noindex active') && text.includes('Confirm noindex remains active'),
+    assert: (text) =>
+      text.includes('Keep noindex active') &&
+      text.includes('Superseded 2026-08-11: search visibility') &&
+      text.includes('docs/deployment/public-search-visibility-2026-08-11.md') &&
+      text.includes('Confirm noindex remains active on `/app`, `/share` and the auth screens.'),
   },
   {
     name: 'cohort release packet blocks high-risk invite failures',

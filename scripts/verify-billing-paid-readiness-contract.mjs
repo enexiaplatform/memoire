@@ -194,8 +194,19 @@ if (pricing.includes('useCheckout') || pricing.includes('startCheckout')) {
 {
   const entitlement = read('src/utils/entitlement.ts');
   requireIncludes(entitlement, 'export const TRIAL_DAYS = 7;', 'trial length moved - the public pages still say seven days');
-  requireIncludes(pricing, "import { TRIAL_DAYS } from '../../utils/entitlement';", 'pricing page must take the trial length from the rule, not retype it');
-  requireIncludes(landing, "import { TRIAL_DAYS } from '../utils/entitlement';", 'landing page must take the trial length from the rule, not retype it');
+  // Matched as an import *of* TRIAL_DAYS rather than as one exact import line.
+  // The line grew a second name on 2026-08-11 - the price became a constant too,
+  // because it now also ships as a machine-readable Offer in the page's JSON-LD
+  // - and an assertion that breaks when a co-import is added is testing the
+  // punctuation rather than the rule.
+  const importsTrialDays = (text, from) =>
+    new RegExp(`import \\{[^}]*\\bTRIAL_DAYS\\b[^}]*\\} from '${from}';`).test(text);
+  if (!importsTrialDays(pricing, '\\.\\./\\.\\./utils/entitlement')) {
+    fail('pricing page must take the trial length from the rule, not retype it');
+  }
+  if (!importsTrialDays(landing, '\\.\\./utils/entitlement')) {
+    fail('landing page must take the trial length from the rule, not retype it');
+  }
 
   for (const [label, text] of [['pricing page', pricing], ['landing page', landing]]) {
     if (/\b30 captures\b|\b50 records\b|Free tier|free tier after it\.\s*$/i.test(text) && !/no free tier/i.test(text)) {

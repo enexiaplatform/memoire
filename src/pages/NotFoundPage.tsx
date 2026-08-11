@@ -1,6 +1,7 @@
 import { ArrowLeft, LayoutDashboard } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { BrandWordmark } from '../components/brand/BrandWordmark';
+import { NoIndex } from '../components/marketing/PageSeo';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useAuth } from '../hooks/useAuth';
 
@@ -20,6 +21,14 @@ export function NotFoundPage() {
   const insideApp = location.pathname.startsWith('/app');
 
   return (
+    <>
+    {/* A single-page app cannot return a 404 status: the host rewrites every
+        unmatched URL to index.html, which is a 200. Without this, every typo,
+        every dead inbound link and every stale bookmark becomes an indexable
+        page that says "this page could not be found" - a soft 404, and Google
+        counts them against the whole site. The meta tag is the only 404 signal
+        this architecture can send. */}
+    <NoIndex />
     <main className={insideApp
       ? 'flex w-full items-center justify-center px-4 py-16 text-slate-950'
       : 'flex min-h-screen items-center justify-center bg-slate-50 px-4 text-slate-950'}
@@ -50,5 +59,6 @@ export function NotFoundPage() {
         </div>
       </section>
     </main>
+    </>
   );
 }

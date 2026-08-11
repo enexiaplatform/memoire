@@ -6,6 +6,12 @@ Roadmap session: Session 3 - Production Infrastructure Controls
 
 ## Decision
 
+> **Point 1 was superseded on 2026-08-11.** The blanket
+> `X-Robots-Tag: noindex, nofollow` on `/(.*)` is gone; the header now applies
+> to `/app`, `/share`, `/validate`, the auth screens and `/api` only, and the
+> marketing pages are in the index. Points 2-5 are unchanged. See
+> `docs/deployment/public-search-visibility-2026-08-11.md`.
+
 For the first 5-10 person controlled early-access cohort, Memoire should use a layered control model:
 
 1. Keep `X-Robots-Tag: noindex, nofollow` active.

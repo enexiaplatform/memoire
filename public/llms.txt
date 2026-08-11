@@ -1,0 +1,85 @@
+# Memoire
+
+> A personal commercial control tower for B2B sellers. It follows one customer
+> thread from conversation to quote to delivery to cash, so a deal cannot go
+> silent without somebody being told. Built for the individual operator who
+> answers for their own pipeline, not for a sales team's manager.
+
+Memoire is web software, installable on iOS and Android, at
+https://www.memoire-official.com. It costs **$10 per month for one person**
+after a **7-day free trial**. The trial takes a card up front and charges when
+it ends; cancelling inside the trial costs nothing. **There is no free tier.**
+
+## What it actually does
+
+- **Capture** — paste a messy note, an email thread or a voice-to-text dump. It
+  is parsed on the device into an account, an amount, an objection and a next
+  action, and filed against the right deal.
+- **Today** — opens on the deals going quiet, the promises not kept and the
+  money that is late, ranked, each with the reason attached. Nudges are capped
+  at five so it does not become a second inbox.
+- **Orders** — contract to cash in seven steps, showing how many days each order
+  has been standing still.
+- **Cash Collection** — receivable aging built from the payment terms already on
+  the quote. Nothing is re-entered.
+- **Cost Analysis** — goods, freight and duty landed against the sale, in a
+  different currency from the sale if that is how the business buys.
+- **Business Vault** — accounts, people and deals as one derived map, ranking
+  what you do not yet know by what the relationship is worth.
+- **Review** — builds a defend / rescue / downgrade brief from what was
+  captured, and shares it as a read-only link.
+- **Search & Insights** — answers questions about your own history, computed on
+  your device.
+
+## What it is not
+
+Three claims are load-bearing and are enforced in the codebase, not just in
+marketing copy:
+
+1. **No AI service.** Memoire has no AI provider, no API key and no AI endpoint.
+   Capture parses on the device with rules; Search & Insights computes from your
+   own records. Nothing you write is sent to a model.
+   (`scripts/verify-no-ai-dependency.mjs` fails the build if this stops being
+   true.)
+2. **No CRM writeback, ever.** It does not sync to, or write into, Salesforce,
+   HubSpot or any other system of record.
+3. **No free tier.** An earlier version of this page advertised one; it declared
+   limits no code enforced, and it was removed rather than built.
+
+It is also not accounting software, not payroll, not inventory, not ecommerce,
+and not a company system of record with a manager dashboard. Teams needing SSO
+and an admin console today are not served yet.
+
+## Who it is for
+
+- B2B sellers who own their own follow-up and answer for their own pipeline.
+- Founder-led sellers, consultants and agency owners, where selling is a third
+  of the week.
+- Trading, distribution and supply businesses — where the sale is half the job
+  and the cash is downstream of the win.
+- Long-cycle deals with procurement and a buying committee.
+
+## Data and privacy
+
+The workspace syncs to cloud storage under your own account, and the app says
+so inside when it is running on local fallback instead. Data is not shared
+between users. Everything is exportable at any time, and deleting the account
+deletes it.
+
+## Pages
+
+- [Home](https://www.memoire-official.com/): the product, the four failures it
+  exists for, and the price.
+- [Use Cases](https://www.memoire-official.com/use-cases): the four commercial
+  jobs it is built around, each with the surfaces that serve it.
+- [Pricing](https://www.memoire-official.com/pricing): $10 per month, one
+  person, after a 7-day trial. Team is not on sale.
+- [Request early access](https://www.memoire-official.com/request-access)
+- [Privacy Policy](https://www.memoire-official.com/legal/privacy)
+- [Terms of Service](https://www.memoire-official.com/legal/terms)
+- [Product Boundaries](https://www.memoire-official.com/legal/boundaries): what
+  it deliberately refuses to do.
+
+## Contact
+
+support@memoire-official.com

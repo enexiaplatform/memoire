@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
+import { NoIndex } from '../../components/marketing/PageSeo';
 import { decodeSharedBriefFragment, type CompactSharedBrief } from '../../utils/shareableBriefLink';
 
 // Public, read-only view of a Pipeline Defense brief shared by link. The brief
@@ -16,6 +17,12 @@ export function SharedBriefPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* The brief lives in the URL fragment, which a crawler never sends to a
+          server and never sees - but the URL itself is shared by email and
+          chat, and anything shared that way eventually gets crawled. A page
+          that renders one seller's deal names and amounts to anyone holding the
+          link must be excluded from search explicitly, not by luck. */}
+      <NoIndex />
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <div className="flex items-center gap-2">

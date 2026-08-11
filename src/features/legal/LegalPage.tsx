@@ -1,6 +1,8 @@
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { MarketingNav } from '../../components/marketing/MarketingNav';
 import { Footer } from '../../components/marketing/Footer';
+import { PageSeo } from '../../components/marketing/PageSeo';
+import { breadcrumbSchema } from '../../config/structuredData';
 import { CONTACT_EMAIL } from '../../config/contact';
 
 type LegalDocument = {
@@ -138,6 +140,22 @@ export function LegalPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
+      {/* Legal pages are indexed on purpose. They are low-value as traffic and
+          high-value as evidence: "does this store my customer data" is a
+          question a buyer asks an answer engine before they ever visit, and the
+          only page that answers it truthfully is this one. */}
+      <PageSeo
+        path={`/legal/${document}`}
+        title={`${content.title} - Memoire`}
+        description={content.intro}
+        type="article"
+        jsonLd={[
+          breadcrumbSchema([
+            { name: 'Memoire', path: '/' },
+            { name: content.title, path: `/legal/${document}` },
+          ]),
+        ]}
+      />
       <MarketingNav />
       <main className="px-4 pb-20 pt-28 sm:px-6">
         <article className="mx-auto max-w-3xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10">

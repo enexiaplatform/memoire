@@ -42,15 +42,52 @@ const checks = [
     file: 'docs/product/commercial-release-gate-2026-06-16.md',
     assert: (text) => text.includes('BILLING_CHECKOUT_ENABLED=false') && text.includes('B1-B6'),
   },
+  // Inverted on 2026-08-11, when the public-selling go decision was taken (see
+  // docs/deployment/public-search-visibility-2026-08-11.md). Until then this
+  // asserted `X-Robots-Tag: noindex, nofollow` on `/(.*)` - every route,
+  // including the marketing pages.
+  //
+  // The guard did not go away, it changed sides. What must never regress is the
+  // *shape*: the public pages are indexable and the private ones are not. A
+  // blanket noindex would silently un-launch the site; a missing noindex on
+  // /app or /share would put one operator's deal names in a search result.
   {
-    name: 'deployment remains noindexed before public selling',
+    name: 'public routes are indexable and private ones are not',
     file: 'vercel.json',
     assert: () => {
       const config = readJson('vercel.json');
-      return config.headers?.some((entry) =>
+      const headers = config.headers ?? [];
+
+      const blanketNoindex = headers.some((entry) =>
         entry.source === '/(.*)' &&
-        entry.headers?.some((header) => header.key === 'X-Robots-Tag' && header.value === 'noindex, nofollow'),
+        entry.headers?.some((header) => header.key === 'X-Robots-Tag'),
       );
+      if (blanketNoindex) return false;
+
+      const noindexed = new Set(
+        headers
+          .filter((entry) =>
+            entry.headers?.some(
+              (header) => header.key === 'X-Robots-Tag' && header.value === 'noindex, nofollow',
+            ),
+          )
+          .map((entry) => entry.source),
+      );
+
+      return ['/app/:path*', '/share/:path*', '/api/(.*)'].every((source) => noindexed.has(source));
+    },
+  },
+  // A single-page app serves the same HTML for every URL, so the SPA fallback
+  // must not be the landing page: `/app/today` would flash the marketing hero
+  // at a signed-in operator on every cold load. The prerender step writes the
+  // shell to its own file for exactly this.
+  {
+    name: 'the SPA fallback is the shell, not the prerendered landing page',
+    file: 'vercel.json',
+    assert: () => {
+      const config = readJson('vercel.json');
+      const fallback = config.rewrites?.find((entry) => entry.source === '/(.*)');
+      return fallback?.destination === '/spa-fallback.html';
     },
   },
   // The public pages quote the offer; they never take the payment. Checkout

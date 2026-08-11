@@ -31,6 +31,22 @@ Not allowed from this packet:
 - Removing noindex.
 - Team selling, enterprise commitments, CRM writeback, or public SLA promises.
 
+### Superseded 2026-08-11: search visibility
+
+The noindex clauses in the two lists above no longer bind. The founder took the
+public-search decision on 2026-08-11 and the marketing pages are now indexable;
+`/app`, `/share`, the auth screens and `/api` are not. This packet stays as
+written because it is a dated evidence record, not a live checklist - what it
+recorded was true of the cohort gate it was written for.
+
+Everything else here still binds. Removing noindex was one clause; paid
+checkout, team selling and SLA promises were not part of the decision and are
+unchanged.
+
+See `docs/deployment/public-search-visibility-2026-08-11.md` for the posture
+that replaced it, and `scripts/verify-seo-contract.mjs` for what now holds it in
+place.
+
 ## Required Pre-Invite Evidence
 
 | Gate | Evidence Required | Source Artifact | Status | Evidence Link Or Notes |
@@ -76,7 +92,9 @@ Do not risk-accept A1, A2, A3, A4, A6, A7, or A10 for real user data without a s
 ## Operator Run Order
 
 1. Run `npm run verify:production-readiness`, `npm run verify:health-runtime`, and `npm run verify:commercial-operating-loop`, then run production or protected-preview `/api/health` and save the result.
-2. Confirm noindex remains active.
+2. Confirm noindex remains active on `/app`, `/share` and the auth screens. (The
+   marketing pages were opened to search on 2026-08-11 - see the supersession
+   note under Release Scope. Step 2 is now `npm run verify:seo`.)
 3. Confirm `BILLING_CHECKOUT_ENABLED=false`, then run `npm run verify:commercial` and `npm run verify:billing-paid-readiness`.
 4. Run `npm run verify:ai-rate-limits` and `npm run verify:rate-limit-runtime`, then apply or verify the expensive-endpoint protection strategy and capture one deployed endpoint 429 proof.
 5. Run `npm run verify:data-isolation` and `npm run verify:data-isolation-runtime`, then run the two-account QA matrix.

@@ -1,9 +1,10 @@
 import { ArrowRight, Check } from 'lucide-react';
-import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { MarketingNav } from '../../components/marketing/MarketingNav';
 import { Footer } from '../../components/marketing/Footer';
-import { TRIAL_DAYS } from '../../utils/entitlement';
+import { PageSeo } from '../../components/marketing/PageSeo';
+import { breadcrumbSchema, softwareApplicationSchema } from '../../config/structuredData';
+import { PERSONAL_MONTHLY_PRICE_USD, TRIAL_DAYS } from '../../utils/entitlement';
 
 /**
  * The public price list. It quotes one real number, and the number has to be
@@ -72,15 +73,28 @@ export function PricingPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
       {/* Without this the tab said whatever index.html says, which is the
-          landing page's name on a page that is not the landing page. */}
-      <Helmet>
-        <title>Pricing - Memoire</title>
-        <meta
-          name="description"
-          content="Memoire is $10 a month for one person, after a seven-day free trial you can cancel without paying: unlimited capture, unlimited records, and Search & Insights across everything you have written down."
-        />
-        <meta name="robots" content="noindex, nofollow" />
-      </Helmet>
+          landing page's name on a page that is not the landing page.
+
+          The `Offer` is repeated here rather than left on the home page alone
+          because this is the URL a price query resolves to, and a page that
+          quotes a price in prose without one is a page whose price gets
+          paraphrased instead of quoted. */}
+      <PageSeo
+        path="/pricing"
+        title={`Pricing - $${PERSONAL_MONTHLY_PRICE_USD} a Month for One Person | Memoire`}
+        description={`Memoire is $${PERSONAL_MONTHLY_PRICE_USD} a month for one person, after a ${TRIAL_DAYS}-day free trial you can cancel without paying: unlimited capture, unlimited records, and Search & Insights across everything you have written down.`}
+        jsonLd={[
+          softwareApplicationSchema({
+            monthlyPriceUsd: PERSONAL_MONTHLY_PRICE_USD,
+            trialDays: TRIAL_DAYS,
+            featureList: plans[1].items,
+          }),
+          breadcrumbSchema([
+            { name: 'Memoire', path: '/' },
+            { name: 'Pricing', path: '/pricing' },
+          ]),
+        ]}
+      />
       <MarketingNav />
       <main className="px-4 pb-20 pt-28 sm:px-6">
         <div className="mx-auto max-w-6xl">

@@ -5,13 +5,27 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20260613" />
     <link rel="shortcut icon" type="image/svg+xml" href="/favicon.svg?v=20260613" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="robots" content="noindex, nofollow" />
-    <meta name="description" content="Memoire follows every customer thread from conversation to quote to delivery to cash, so nothing goes silent. Free to start, $10 a month for one person." />
+    <!-- Indexable since 2026-08-11. This head is the default for every route
+         the router serves; each public page then overrides title, description,
+         canonical and robots through src/components/marketing/PageSeo.tsx, and
+         every private surface overrides robots back to noindex through
+         <NoIndex />. vercel.json sends the same directives as headers, which is
+         what protects /app and /share from a crawler that never runs the JS.
+         max-snippet:-1 lets an answer engine quote a whole paragraph rather
+         than a truncated fragment. -->
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <!-- No canonical here on purpose. This file is a template: the prerender
+         step bakes each public page's real canonical in, and the copy that
+         survives as the SPA fallback (app.html) serves only /app routes and
+         404s - a canonical there would point every not-found URL at the home
+         page. See scripts/prerender.mjs. -->
+    <meta name="description" content="Memoire follows every customer thread from conversation to quote to delivery to cash, so nothing goes silent. $10 a month for one person, after a 7-day free trial." />
     <meta name="theme-color" content="#020617" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/app-icon.svg" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Memoire" />
+    <link rel="alternate" type="application/xml" title="Sitemap" href="/sitemap.xml" />
 
     <!-- Link previews. A product whose feature is "send this brief to your
          manager" was pasting into Slack and email as a blank card: no image, no
@@ -22,7 +36,8 @@
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Memoire" />
     <meta property="og:title" content="Memoire - Personal Commercial Control Tower for B2B Sellers" />
-    <meta property="og:description" content="Memoire follows every customer thread from conversation to quote to delivery to cash, so nothing goes silent. Free to start, $10 a month for one person." />
+    <meta property="og:description" content="Memoire follows every customer thread from conversation to quote to delivery to cash, so nothing goes silent. $10 a month for one person, after a 7-day free trial." />
+    <meta property="og:locale" content="en_US" />
     <meta property="og:url" content="https://www.memoire-official.com/" />
     <meta property="og:image" content="https://www.memoire-official.com/social-card.svg" />
     <meta property="og:image:width" content="1200" />
