@@ -48,7 +48,7 @@ export function MarketingNav() {
             <Link to="/use-cases" className="font-medium text-gray-600 hover:text-gray-900">Use Cases</Link>
             <Link to="/pricing" className="font-medium text-gray-600 hover:text-gray-900">Pricing</Link>
             {!signedIn && <Link to="/login" className="text-gray-600 hover:text-gray-900 font-medium">Log in</Link>}
-            <Link to="/request-access" className="font-medium text-gray-600 hover:text-gray-900">Request Access</Link>
+            <Link to="/request-access" className="font-medium text-gray-600 hover:text-gray-900">Talk to us</Link>
             <Link
               to={signedIn ? '/app/today' : '/signup'}
               className="rounded-full bg-brand-blue px-4 py-2 font-display font-semibold text-white transition-colors hover:bg-brand-blue-dark active:scale-[0.98]"
@@ -76,7 +76,7 @@ export function MarketingNav() {
           {!signedIn && <Link to="/login" className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md">Log in</Link>}
           <Link to="/use-cases" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Use Cases</Link>
           <Link to="/pricing" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Pricing</Link>
-          <Link to="/request-access" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Request Access</Link>
+          <Link to="/request-access" className="block rounded-md px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900">Talk to us</Link>
           <Link to={signedIn ? '/app/today' : '/signup'} className="block rounded-full px-3 py-2 text-base font-semibold text-brand-blue hover:bg-blue-50 hover:text-brand-blue-dark">
             {signedIn ? 'Open workspace' : 'Create Account'}
           </Link>

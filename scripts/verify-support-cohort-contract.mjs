@@ -118,9 +118,13 @@ for (const marker of [
 const exportTab = read('src/features/settings/ExportTab.tsx');
 for (const marker of [
   "const SUPPORT_EMAIL = CONTACT_EMAIL;",
-  "mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Memoire early-access support')}",
+  // The subject line and the copy below dropped "early-access" on 2026-08-11,
+  // when that positioning was retired: the product sells a subscription to
+  // anyone who signs up, so a support address that calls itself early-access
+  // describes a programme that no longer exists.
+  "mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Memoire support')}",
   'Support package',
-  'For early-access support, include what you were doing, the approximate time, the visible error message,',
+  'When you write to support, include what you were doing, the approximate time, the visible error message,',
   'and whether you were signed in or using local/demo mode.',
   'Download an export first if support needs',
   'Contact support',

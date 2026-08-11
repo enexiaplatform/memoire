@@ -54,8 +54,15 @@ for (const marker of [
   'Memoire has no AI provider, no AI API key and no AI endpoint.',
   'Nothing you write is sent to a language model',
   'Memoire is not an AI product.',
-  'early-access product',
+  // Was 'early-access product'. The early-access framing was retired on
+  // 2026-08-11: the product charges $10 a month and anyone can sign up, so
+  // terms describing an invite-only trial period described a programme that had
+  // already ended. What the terms must still carry is the honest limit - this
+  // is a preparation tool, not a system of record - and now the commercial
+  // terms too, which they had never mentioned at all.
   'not as a system of record, legal record, or guaranteed forecast',
+  'Refunds are not offered on completed charges.',
+  'Statutory rights that apply where you live are not affected by this paragraph.',
   'human review',
   'does not silently update external systems',
   'does not currently provide enterprise SSO, team administration, or native CRM writeback',

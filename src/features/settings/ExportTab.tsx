@@ -17,7 +17,7 @@ import { restoreWorkspace, undoRestore, type RestoreResult } from '../../service
 import { CONTACT_EMAIL } from '../../config/contact';
 
 const SUPPORT_EMAIL = CONTACT_EMAIL;
-const SUPPORT_MAILTO = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Memoire early-access support')}`;
+const SUPPORT_MAILTO = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Memoire support')}`;
 
 export function ExportTab() {
   const { user } = useAuth();
@@ -399,7 +399,7 @@ export function ExportTab() {
       <section className="rounded-lg border border-blue-100 bg-blue-50/50 p-6 shadow-sm sm:p-8">
         <h2 className="text-lg font-bold text-navy">Support package</h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
-          For early-access support, include what you were doing, the approximate time, the visible error message,
+          When you write to support, include what you were doing, the approximate time, the visible error message,
           and whether you were signed in or using local/demo mode. Download an export first if support needs
           workspace evidence for sync, deletion, or data-recovery issues.
         </p>

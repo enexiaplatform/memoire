@@ -52,7 +52,10 @@ function planHeadline(entitlement: Entitlement, status: BillingStatus): string {
     case 'needs_trial':
       return 'No subscription';
     case 'legacy':
-      return 'Early access';
+      // Was 'Early access'. These accounts are not in an early-access
+      // programme - there isn't one - they signed up before the product asked
+      // for a card and keep what they were given. See LEGACY_ACCESS_BEFORE.
+      return 'Legacy access';
     default:
       return 'No subscription';
   }

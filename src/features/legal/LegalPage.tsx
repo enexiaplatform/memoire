@@ -89,13 +89,13 @@ const documents: Record<string, LegalDocument> = {
   terms: {
     title: 'Terms of Service',
     updated: 'August 11, 2026',
-    intro: 'These terms govern use of the Memoire early-access and personal sales workspace.',
+    intro: 'These terms govern use of Memoire, a personal sales workspace for one operator.',
     sections: [
       {
-        title: 'Early-access product',
+        title: 'What this service is',
         paragraphs: [
-          'Memoire is currently an early-access product. Features, limits, storage behavior, and availability may change as the product is validated.',
-          'The service is provided as a sales preparation and memory tool, not as a system of record, legal record, or guaranteed forecast.',
+          'Memoire is provided as a sales preparation and memory tool, not as a system of record, legal record, or guaranteed forecast.',
+          'Features, limits, storage behavior, and availability may change. Anything that would remove access to work you have already entered will be announced before it happens, and export is always available.',
         ],
       },
       {
@@ -103,7 +103,8 @@ const documents: Record<string, LegalDocument> = {
         paragraphs: [
           'The Personal plan is $10 per month for one person. It begins with a 7-day free trial: a card is taken up front, nothing is charged during the trial, and the first charge is taken when the trial ends. Cancel before then and you are not charged.',
           'Cancelling after that stops the next renewal; access continues until the end of the period already paid for. There is no free tier. The Team plan is not on sale and has no price.',
-          'Lemon Squeezy processes payments as merchant of record, and its own terms and refund handling apply to the transaction. Write to us at the address below about anything to do with a charge.',
+          'Refunds are not offered on completed charges. The trial exists so the decision is made before any money moves: you get the whole product for seven days, and cancelling inside that window costs nothing. Statutory rights that apply where you live are not affected by this paragraph.',
+          'Lemon Squeezy processes payments as merchant of record, and its own terms apply to the transaction. Write to us at the address below about anything to do with a charge.',
         ],
       },
       {
@@ -123,7 +124,7 @@ const documents: Record<string, LegalDocument> = {
       {
         title: 'Availability and liability',
         paragraphs: [
-          'Early-access service may be interrupted or contain errors. Keep independent copies of business-critical information.',
+          'The service may be interrupted or contain errors. Keep independent copies of business-critical information.',
           'To the extent permitted by law, Memoire is not liable for lost opportunities, lost local browser data, inaccurate outputs, or decisions made from generated recommendations.',
         ],
       },
@@ -212,7 +213,7 @@ export function LegalPage() {
 
           <div className="mt-10 border-t border-slate-200 pt-6">
             <Link to="/request-access" className="text-sm font-bold text-brand-blue hover:text-brand-blue-dark">
-              Request early access
+              Talk to us
             </Link>
           </div>
         </article>

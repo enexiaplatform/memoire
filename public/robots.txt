@@ -28,7 +28,11 @@ Disallow: /reset-password
 # Read-only links one person sends to their manager. They carry deal names and
 # amounts, and they need no password.
 Disallow: /share/
-Disallow: /validate/
+
+# There is deliberately no /validate rule here. The founder console lives at
+# /app/validation-feedback, which the /app rule above already covers - and a
+# Disallow for a path that does not exist reads like a second private surface
+# to anyone auditing this file.
 
 # JSON endpoints, never a page.
 Disallow: /api/

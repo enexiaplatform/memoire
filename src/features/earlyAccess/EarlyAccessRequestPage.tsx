@@ -42,7 +42,7 @@ export function EarlyAccessRequestPage() {
       return;
     }
     if (!consent) {
-      setCopyMessage('Please confirm that Memoire may use these details to follow up about early access.');
+      setCopyMessage('Please confirm that Memoire may use these details to reply to you.');
       return;
     }
 
@@ -77,15 +77,15 @@ export function EarlyAccessRequestPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
-      {/* Indexed, but never prerendered: this page is a form whose module pulls
-          in the analytics and request utilities, so it renders in the browser
-          only. Google runs the JS; the answer engines that do not will read the
-          title and description below and nothing more, which is the whole
-          content of a form page anyway. */}
+      {/* Prerendered like the rest of the marketing site. It was going to be
+          the exception - it is a form, and its modules pull in the analytics
+          and submission utilities - but every browser API those touch is inside
+          a function body, so nothing runs at import time. See
+          src/prerender.tsx. */}
       <PageSeo
         path="/request-access"
-        title="Request Early Access - Memoire"
-        description="Tell us what your follow-up currently falls through and we will get back to you. Memoire is a personal commercial control tower for B2B sellers who own their own pipeline."
+        title="Talk to Us - Memoire"
+        description="Tell us where your follow-up falls through and we will reply within two business days. You do not need permission to use Memoire - signing up starts the trial straight away."
       />
       <section className="border-b border-slate-200 bg-white px-4 py-5">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
@@ -102,25 +102,34 @@ export function EarlyAccessRequestPage() {
 
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-[0.85fr_1.15fr]">
         <section className="rounded-xl border border-blue-100 bg-blue-50 p-6 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Early access</p>
+          {/* This page said "Memoire is in early access. Request access."
+              until 2026-08-11, while /signup was open to anyone and the button
+              beside it in the nav said "Create Account". It described a gate no
+              code applied - the same shape as the free tier that was advertised
+              for months with no limit behind it.
+
+              The form stays, because what it asks - what you sell, what you use
+              now, where follow-up falls through - is worth reading. Only the
+              claim that you need permission is gone. */}
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Talk to us</p>
           <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-navy">
-            Request access to Memoire.
+            Tell us where your follow-up falls through.
           </h1>
           <p className="mt-4 text-sm leading-6 text-blue-950">
-            Memoire is in early access. Tell us how you manage sales follow-up, pipeline reviews, or client/partner deal memory today and what workflow you want to try.
+            You do not need permission to use Memoire - <Link to="/signup" className="font-bold underline">create an account</Link> and the trial starts. This is the other conversation: how you handle follow-up, pipeline reviews and deal memory today, and whether this is built for it.
           </p>
           <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
             <div className="flex items-start gap-3">
               <ShieldCheck className="mt-0.5 h-5 w-5 flex-none" />
               <p>
-                Do not include confidential customer data. This request is only for product access and use-case context.
+                Do not include confidential customer data. This form is only for use-case context.
               </p>
             </div>
           </div>
           <div className="mt-5 rounded-lg border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600">
             <p className="font-bold text-slate-900">What happens next</p>
             <p className="mt-1">
-              We review your workflow and reply to your work email within 2 business days. Submitting does not add you to a marketing list.
+              We read what you wrote and reply to your work email within 2 business days. Submitting does not add you to a marketing list, and it is not a queue - your account works the moment you create one.
             </p>
           </div>
         </section>
@@ -178,7 +187,7 @@ export function EarlyAccessRequestPage() {
                     className="mt-1 h-4 w-4 rounded border-slate-300 text-brand-blue"
                   />
                   <span className="text-sm leading-6 text-slate-600">
-                    Memoire may use these details to review this request and contact me about early access. See the{' '}
+                    Memoire may use these details to reply to me about this message. See the{' '}
                     <Link to="/legal/privacy" className="font-semibold text-brand-blue">Privacy Policy</Link>.
                   </span>
                 </label>
