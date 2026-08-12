@@ -185,7 +185,12 @@ export function LandingPage() {
       <PageSeo
         path="/"
         title="Memoire - Personal Commercial Control Tower for B2B Sellers"
-        description={`Memoire is a personal commercial control tower for complex B2B sellers: every customer interaction becomes a continuous commercial thread, from conversation and quotation to delivery and cash, so nothing goes silent. ${TRIAL_DAYS} days free, then $${PERSONAL_MONTHLY_PRICE_USD} a month for one person.`}
+        /* Google shows about 155 characters. The previous description was 262,
+           so the two things a searcher decides on - the price and the trial -
+           were both in the part that got cut, and the visible half ended
+           mid-clause on "from conversation ...". Everything that has to survive
+           truncation is now in the first sentence. */
+        description={`Follow every customer thread from conversation to quote to delivery to cash, so nothing goes silent. $${PERSONAL_MONTHLY_PRICE_USD}/month, ${TRIAL_DAYS}-day free trial.`}
         socialDescription="Never enter a pipeline review unprepared. Capture messy notes and emails, find the risk in Today, follow every quote to cash, and copy manager-ready answers."
         jsonLd={[
           organizationSchema(),

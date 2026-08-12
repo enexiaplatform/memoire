@@ -82,7 +82,9 @@ export function PricingPage() {
       <PageSeo
         path="/pricing"
         title={`Pricing - $${PERSONAL_MONTHLY_PRICE_USD} a Month for One Person | Memoire`}
-        description={`Memoire is $${PERSONAL_MONTHLY_PRICE_USD} a month for one person, after a ${TRIAL_DAYS}-day free trial you can cancel without paying: unlimited capture, unlimited records, and Search & Insights across everything you have written down.`}
+        /* Under 155 characters so a search result shows the whole thing - see
+           the note on the landing page's description. */
+        description={`$${PERSONAL_MONTHLY_PRICE_USD} a month for one person, after a ${TRIAL_DAYS}-day free trial you can cancel without paying. Unlimited capture and records. No free tier.`}
         jsonLd={[
           softwareApplicationSchema({
             monthlyPriceUsd: PERSONAL_MONTHLY_PRICE_USD,

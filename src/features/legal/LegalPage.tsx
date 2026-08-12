@@ -9,6 +9,15 @@ type LegalDocument = {
   title: string;
   updated: string;
   intro: string;
+  /**
+   * The search-result description.
+   *
+   * Separate from `intro` because the two are written for different readers.
+   * `intro` is the first thing on the page and can take a full sentence to set
+   * up the document; this has about 155 characters before Google cuts it, so
+   * it has to say the whole thing or say less.
+   */
+  metaDescription: string;
   sections: { title: string; paragraphs: string[] }[];
 };
 
@@ -16,6 +25,8 @@ const documents: Record<string, LegalDocument> = {
   privacy: {
     title: 'Privacy Policy',
     updated: 'August 11, 2026',
+    metaDescription:
+      'What Memoire stores, what leaves your browser, and where it goes. No AI service, no CRM writeback, and every real data flow named.',
     intro:
       'This policy explains what Memoire stores, what leaves your browser and where it goes. Every claim here describes what the product actually does today, not what it may do later.',
     sections: [
@@ -89,6 +100,8 @@ const documents: Record<string, LegalDocument> = {
   terms: {
     title: 'Terms of Service',
     updated: 'August 11, 2026',
+    metaDescription:
+      'The terms for Memoire: $10 a month for one person, a 7-day trial, no free tier, and no refunds on completed charges.',
     intro: 'These terms govern use of Memoire, a personal sales workspace for one operator.',
     sections: [
       {
@@ -137,6 +150,8 @@ const documents: Record<string, LegalDocument> = {
   boundaries: {
     title: 'Product and Data Boundaries',
     updated: 'August 11, 2026',
+    metaDescription:
+      'What Memoire deliberately is not: no CRM, no invoicing, no inventory, no AI, no manager scoring, and no writeback to your company systems.',
     intro: 'Memoire is a personal preparation layer for B2B and solo sales work. It is not an employer scoring, CRM, invoicing, inventory, ecommerce, marketplace, or project-delivery system.',
     sections: [
       {
@@ -181,7 +196,7 @@ export function LegalPage() {
       <PageSeo
         path={`/legal/${document}`}
         title={`${content.title} - Memoire`}
-        description={content.intro}
+        description={content.metaDescription}
         type="article"
         jsonLd={[
           breadcrumbSchema([

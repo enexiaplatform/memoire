@@ -85,7 +85,7 @@ export function EarlyAccessRequestPage() {
       <PageSeo
         path="/request-access"
         title="Talk to Us - Memoire"
-        description="Tell us where your follow-up falls through and we will reply within two business days. You do not need permission to use Memoire - signing up starts the trial straight away."
+        description="Tell us where your follow-up falls through and we reply within two business days. No permission needed to use Memoire - signing up starts the trial."
       />
       <section className="border-b border-slate-200 bg-white px-4 py-5">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">

@@ -2,8 +2,29 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20260613" />
-    <link rel="shortcut icon" type="image/svg+xml" href="/favicon.svg?v=20260613" />
+    <!-- Icons. Four declarations, each earning its place, and none of them
+         carrying a cache-busting query any more: Google requires a favicon URL
+         to be stable, and `?v=20260613` is a URL that changes.
+
+         The .ico is first and lives at the root because that is the path
+         clients probe by convention - before this file existed, /favicon.ico
+         fell through the SPA rewrite and answered with the HTML shell: a 200,
+         of type text/html, to a request for an image.
+
+         The PNG is what a search result actually renders; Google documents
+         "any valid favicon format" but does not list SVG, and the observed
+         behaviour is that a raster is what gets picked up.
+
+         The SVG stays for browsers, which render it sharper at any size.
+
+         apple-touch-icon must be a PNG - iOS does not accept SVG here, so the
+         previous /app-icon.svg produced no home-screen icon at all.
+
+         All of them are generated from the same source by
+         `npm run generate:favicons`. -->
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- Indexable since 2026-08-11. This head is the default for every route
          the router serves; each public page then overrides title, description,
@@ -22,7 +43,7 @@
     <meta name="description" content="Memoire follows every customer thread from conversation to quote to delivery to cash, so nothing goes silent. $10 a month for one person, after a 7-day free trial." />
     <meta name="theme-color" content="#020617" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="/app-icon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon-180.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Memoire" />
     <link rel="alternate" type="application/xml" title="Sitemap" href="/sitemap.xml" />

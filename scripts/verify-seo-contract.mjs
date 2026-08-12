@@ -50,6 +50,29 @@ const read = (path) => readFileSync(path, 'utf8');
     'index.html must not hard-code a canonical: it is also the SPA fallback, and a canonical there points every 404 at the home page',
   );
   assert.ok(html.includes('/sitemap.xml'), 'index.html must point at the sitemap');
+
+  // Icons. The search result showed a generic globe because /favicon.ico did
+  // not exist - the SPA rewrite answered it with the HTML shell, a 200 of type
+  // text/html to a request for an image - and because the only icon declared
+  // was an SVG, which Google's own format list does not mention.
+  assert.ok(
+    /<link rel="icon" href="\/favicon\.ico"/.test(html),
+    'index.html must declare the root .ico: it is the path clients probe by convention',
+  );
+  assert.ok(
+    /<link rel="icon" type="image\/png"[^>]*href="\/favicon-96\.png"/.test(html),
+    'index.html must declare a PNG icon of at least 48px - a raster is what a search result renders',
+  );
+  assert.ok(
+    /<link rel="apple-touch-icon"[^>]*href="\/favicon-180\.png"/.test(html),
+    'the apple-touch-icon must be a PNG; iOS ignores SVG here and shows no home-screen icon at all',
+  );
+  for (const [, href] of html.matchAll(/<link rel="(?:shortcut )?icon"[^>]*href="([^"]+)"/g)) {
+    assert.ok(
+      !href.includes('?'),
+      `favicon URLs must be stable, and a cache-busting query is not: ${href}`,
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -258,6 +281,16 @@ const read = (path) => readFileSync(path, 'utf8');
     const robots = head.match(/<meta\s+data-prerendered-seo\s+name="robots"\s+content="([^"]+)"/);
     assert.ok(!robots[1].includes('noindex'), `${route} must be indexable, got "${robots[1]}"`);
 
+    // Google renders roughly 155 characters. The home page shipped 262, which
+    // put the price and the trial - the two facts a searcher decides on - in
+    // the half that got cut, and ended the visible half mid-clause.
+    const description = head.match(/<meta\s+data-prerendered-seo\s+name="description"\s+content="([^"]+)"/);
+    assert.ok(description, `${route} has no meta description`);
+    assert.ok(
+      description[1].length <= 160,
+      `${route} description is ${description[1].length} chars; Google truncates around 155`,
+    );
+
     // Nothing head-shaped may be left behind in the body, where it means
     // nothing at all.
     assert.ok(
@@ -304,6 +337,23 @@ const read = (path) => readFileSync(path, 'utf8');
 
   assert.ok(existsSync('dist/robots.txt'), 'robots.txt must be published');
   assert.ok(existsSync('dist/llms.txt'), 'llms.txt must be published');
+
+  // The icons are shipped, and are the format they claim to be. Declaring
+  // /favicon.ico in the head while no such file exists is worse than declaring
+  // nothing: the rewrite answers with HTML and the crawler records a failure.
+  const magic = (file) => readFileSync(file).subarray(0, 4);
+  assert.ok(existsSync('dist/favicon.ico'), 'favicon.ico must be published, or the SPA rewrite answers with HTML');
+  const ico = magic('dist/favicon.ico');
+  assert.ok(
+    ico[0] === 0 && ico[1] === 0 && ico[2] === 1 && ico[3] === 0,
+    'dist/favicon.ico is not an ICO file',
+  );
+  for (const size of [16, 32, 48, 96, 180, 192, 512]) {
+    const file = `dist/favicon-${size}.png`;
+    assert.ok(existsSync(file), `${file} must be published (npm run generate:favicons)`);
+    const png = magic(file);
+    assert.ok(png[0] === 0x89 && png[1] === 0x50, `${file} is not a PNG`);
+  }
 }
 
 console.log('SEO contract verified: public pages indexable and prerendered, private surfaces excluded.');

@@ -75,10 +75,32 @@ assert.ok(
   hero.includes('Nothing in your business') && hero.includes('goes silent.'),
   'the landing hero must carry the current promise',
 );
-assert.ok(
-  hero.includes('from conversation and quotation to delivery and cash, so nothing goes silent'),
-  'the money-spine framing must survive in the page description',
-);
+// The framing, not one phrasing of it.
+//
+// This asserted the exact sentence "from conversation and quotation to delivery
+// and cash, so nothing goes silent" until 2026-08-12, when the description was
+// cut from 262 characters to 129 - Google truncates around 155, so the price
+// and the trial were both landing in the half nobody saw. The rewrite kept
+// every stage of the spine and lost four words, and the contract failed for the
+// four words.
+//
+// What has to survive is the sequence: a conversation becomes a quote, becomes
+// a delivery, becomes cash, and none of it goes quiet in between. How that is
+// worded is a copy decision.
+{
+  const description = hero.match(/description=\{`([^`]+)`\}/);
+  assert.ok(description, 'the landing page must give PageSeo a description');
+  assert.match(
+    description[1],
+    /conversation\b.*\bquot\w*\b.*\bdeliver\w*\b.*\bcash\b/i,
+    'the money-spine must run conversation -> quote -> delivery -> cash in the page description',
+  );
+  assert.match(
+    description[1],
+    /nothing goes silent/i,
+    'the page description must keep the promise the spine exists for',
+  );
+}
 assert.ok(hero.includes('Personal Commercial Control Tower'), 'the hero must name the current category');
 assert.equal(
   hero.includes('Business Activity OS'),

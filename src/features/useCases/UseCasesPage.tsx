@@ -128,7 +128,7 @@ export function UseCasesPage() {
       <PageSeo
         path="/use-cases"
         title="Use Cases - Who Memoire Is For | Memoire"
-        description="Four jobs Memoire is built for: B2B sellers who answer for their own pipeline, founder-led sellers, trading and supply businesses chasing cash, and long-cycle sales with a buying committee."
+        description="Four jobs Memoire is built for: B2B sellers who own their follow-up, founder-led sellers, trading and supply chasing cash, and long buying committees."
         jsonLd={[
           itemListSchema({
             name: 'Who Memoire is for',
