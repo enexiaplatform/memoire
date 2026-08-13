@@ -83,8 +83,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [applySession]);
 
+  /**
+   * Keyed on the account id, not on the `user` object.
+   *
+   * Supabase delivers a freshly deserialized `User` on every session event -
+   * the bootstrap resolving, INITIAL_SESSION, a token refresh - so the object's
+   * identity changes even when the account has not. Depending on it re-ran this
+   * effect three times on one visit to Today, and `cancelled` only suppresses
+   * the state update: the request is already out the door. Measured on
+   * production: three identical `select=*` reads of the same row fired in the
+   * same millisecond and queued against each other at 421ms, 693ms and 1031ms,
+   * and the whole workspace load sat behind them.
+   *
+   * The id is the real dependency, because it is what the query filters on.
+   */
+  const userId = user?.id ?? null;
+
   useEffect(() => {
-    if (!supabaseClient || !user) {
+    if (!supabaseClient || !userId) {
       setProfile(null);
       setProfileLoading(false);
       setProfileError(null);
@@ -95,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfileLoading(true);
     setProfileError(null);
 
-    loadUserProfile(user.id)
+    loadUserProfile(userId)
       .then((nextProfile) => {
         if (cancelled || !mountedRef.current) return;
         setProfile(nextProfile);
@@ -114,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [userId]);
 
   const value = useMemo<AuthContextValue>(() => ({
     user,
@@ -395,7 +411,29 @@ function getInitialSession() {
   return sessionBootstrapPromise;
 }
 
-async function loadUserProfile(userId: string) {
+const profileLoadsInFlight = new Map<string, Promise<UserProfile | null>>();
+
+/**
+ * Single-flight, the same way `hydrateWorkspacePreferences` is.
+ *
+ * Keying the effect above on the account id is what stops the duplicate calls;
+ * this is the guard that keeps them stopped. React re-mounts providers in
+ * development, a second provider could mount tomorrow, and the answer to "what
+ * is this account's profile" is the same for every caller asking at the same
+ * moment. Callers still each get a promise; only one query goes out.
+ */
+function loadUserProfile(userId: string): Promise<UserProfile | null> {
+  const existing = profileLoadsInFlight.get(userId);
+  if (existing) return existing;
+
+  const promise = fetchUserProfile(userId).finally(() => {
+    profileLoadsInFlight.delete(userId);
+  });
+  profileLoadsInFlight.set(userId, promise);
+  return promise;
+}
+
+async function fetchUserProfile(userId: string) {
   if (!supabaseClient) return null;
 
   const { data, error } = await withTimeout(
