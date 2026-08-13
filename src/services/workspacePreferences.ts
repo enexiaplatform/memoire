@@ -141,9 +141,33 @@ async function readWorkspacePreferences(userId?: string | null): Promise<Workspa
     }
 
     const storedCurrency = String(data.reporting_currency || '').trim().toUpperCase();
-    if (isSupported(storedCurrency) && storedCurrency !== current.reportingCurrency) {
-      setReportingCurrency(storedCurrency);
-      current.reportingCurrency = storedCurrency as SupportedCurrency;
+    if (isSupported(storedCurrency)) {
+      if (storedCurrency !== current.reportingCurrency) {
+        setReportingCurrency(storedCurrency);
+        current.reportingCurrency = storedCurrency as SupportedCurrency;
+      }
+    } else {
+      /**
+       * The account has never carried a reporting currency, and this browser
+       * has one. Write it up now rather than waiting for a save that may never
+       * come.
+       *
+       * The rule below - "a column the account has never carried leaves the
+       * browser's answer alone" - is right, but for currency it is only half a
+       * rule. Every other preference is a number that is wrong in one place;
+       * this one re-denominates every figure in the product. Measured on
+       * production 2026-08-13: all four accounts had `reporting_currency` NULL
+       * while the founder's browser held SGD, so the same pipeline read
+       * "2.5M SGD" in that browser and would have read a converted USD figure
+       * in any other one - two different numbers for one business, each
+       * labelled as the base.
+       *
+       * It can only ever fill a blank: this branch is unreachable once the
+       * column has a supported value. Deliberately not awaited - the basis to
+       * render with is already decided, and a failed write leaves the column
+       * null for the next load to try again.
+       */
+      void writeToAccount({ reporting_currency: current.reportingCurrency }, userId);
     }
 
     const storedBalance = data.opening_cash_balance;
