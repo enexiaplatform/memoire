@@ -55,6 +55,11 @@ requireIncludes(exportApi, "verifyUserToken(authToken, userId)", 'export API mus
 requireIncludes(exportApi, 'getSupabaseAnonKey()', 'export API must query through the authenticated anon client for RLS');
 requireIncludes(exportApi, '.eq(ownerColumn, userId)', 'export API must filter every table by owner column');
 requireIncludes(exportApi, 'findExportContamination(results, userId)', 'export API must run contamination guard before responding');
+// An unbounded select stops at `db-max-rows` and still answers 200, so a backup
+// that is missing rows looks identical to a complete one. The export must page.
+requireIncludes(exportApi, 'await fetchAllRows((from, to) =>', 'export API must page every table rather than reading the first db-max-rows rows');
+requireIncludes(exportApi, '.range(from, to)', 'export API paging must ask for an explicit row range');
+requireIncludes(exportApi, 'if (batch.length < PAGE_SIZE) return rows;', 'export API paging must stop on a short page and keep going on a full one');
 requireIncludes(exportApi, 'Export contamination guard blocked response', 'export API must log blocked contamination');
 requireIncludes(exportApi, 'Export failed integrity checks', 'export API must fail closed on contamination');
 requireIncludes(exportApi, 'manifest', 'export API must return a manifest');
