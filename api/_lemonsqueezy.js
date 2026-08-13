@@ -160,10 +160,22 @@ const MAX_WEBHOOK_BODY_BYTES = 1_000_000;
 
 export function readRawBody(req) {
   return new Promise((resolve, reject) => {
-    let raw = '';
+    // Chunks are collected as bytes and decoded once at the end, not decoded
+    // one at a time as they arrive.
+    //
+    // A chunk boundary does not respect a character boundary. `chunk.toString()`
+    // per chunk decodes each one as if it were complete UTF-8, so a multi-byte
+    // character split across two chunks becomes two replacement characters -
+    // and the signature is computed over the exact bytes Lemon Squeezy signed,
+    // so the body no longer matches and the delivery is rejected as forged.
+    // Every non-ASCII name a customer can have is a candidate: a Vietnamese
+    // billing name in a payload large enough to arrive in more than one chunk
+    // would take the payment and never grant the subscription.
+    const chunks = [];
     let bytes = 0;
     req.on('data', (chunk) => {
-      bytes += chunk.length;
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      bytes += buffer.length;
       if (bytes > MAX_WEBHOOK_BODY_BYTES) {
         // Destroying the request is what actually stops the sender; resolving a
         // truncated body would fail the signature check but keep reading.
@@ -171,9 +183,9 @@ export function readRawBody(req) {
         reject(new Error('Webhook payload too large.'));
         return;
       }
-      raw += chunk.toString();
+      chunks.push(buffer);
     });
-    req.on('end', () => resolve(raw));
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', (error) => reject(error));
   });
 }

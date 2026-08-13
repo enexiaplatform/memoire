@@ -1,4 +1,5 @@
 import { supabaseClient } from '../lib/supabaseClient.ts';
+import { fetchAllRows } from './supabasePaging.ts';
 import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
@@ -256,13 +257,17 @@ function deleteLocalObjection(objectionId: string) {
 }
 
 async function loadCloudObjections(userId: string) {
-  const { data, error } = await supabaseClient!
+  // Paged: see `fetchAllRows`. One row is written per objection an operator
+  // logs, so this grows for the whole life of the account - and a playbook that
+  // quietly stops at the first thousand answers is a playbook that is wrong
+  // about what has been said to this business.
+  const data = await fetchAllRows<ObjectionRow>((from, to) => supabaseClient!
     .from(TABLE_NAME)
     .select('*')
     .eq('user_id', userId)
-    .order('updated_at', { ascending: false });
-  if (error) throw new Error(error.message);
-  return ((data || []) as ObjectionRow[]).map(rowToObjection);
+    .order('updated_at', { ascending: false })
+    .range(from, to) as never);
+  return data.map(rowToObjection);
 }
 
 async function createCloudObjection(input: ObjectionFormInput, userId: string) {
