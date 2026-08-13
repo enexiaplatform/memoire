@@ -1,5 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import '../support/reportingCurrency.mjs';
 import {
   DEFAULT_FINANCING_ANNUAL_RATE_PCT,
   buildCreditScenarios,

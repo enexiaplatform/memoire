@@ -1,5 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import '../support/reportingCurrency.mjs';
 import { buildBusinessLens, QUIET_ACCOUNT_DAYS } from '../../src/utils/businessLens.ts';
 import { buildAccountAliasIndex } from '../../src/utils/accountAliases.ts';
 

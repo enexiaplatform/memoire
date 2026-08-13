@@ -1,5 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import '../support/reportingCurrency.mjs';
 import { buildOwnObligations } from '../../src/utils/ownObligations.ts';
 
 const expense = (label, status, dueDate, amount = 10_000_000) => ({

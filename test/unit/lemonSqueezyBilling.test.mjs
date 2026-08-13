@@ -8,6 +8,7 @@ import {
   subscriptionStateFor,
   tierForVariantId,
   variantIdForPlan,
+  readRawBody,
   verifyWebhookSignature,
 } from '../../api/_lemonsqueezy.js';
 
@@ -69,25 +70,43 @@ describe('subscription status maps to entitlement', () => {
     LEMONSQUEEZY_TEAM_VARIANT_ID: '222',
   };
 
-  test('active and trialing subscriptions get the variant tier', () => {
+  // The whole Lemon Squeezy `attributes` object is passed, not a status and a
+  // variant id, because a subscription contributes three columns now and the
+  // trial date is one of them.
+  const stateOf = (attributes) => subscriptionStateFor(attributes);
+
+  test('an active subscription gets the variant tier and no trial date', () => {
     withEnv(env, () => {
-      assert.deepEqual(subscriptionStateFor('active', '111'), {
+      assert.deepEqual(stateOf({ status: 'active', variant_id: '111' }), {
         subscription_status: 'active',
         subscription_tier: 'personal',
+        subscription_trial_ends_at: null,
       });
-      assert.deepEqual(subscriptionStateFor('on_trial', '222'), {
-        subscription_status: 'active',
-        subscription_tier: 'team',
-      });
+    });
+  });
+
+  // on_trial is deliberately not folded into 'active': both have full access,
+  // but only one of them is about to have a card charged.
+  test('a trial is entitled but is reported as a trial, with its end date', () => {
+    withEnv(env, () => {
+      assert.deepEqual(
+        stateOf({ status: 'on_trial', variant_id: '222', trial_ends_at: '2026-08-20T00:00:00Z' }),
+        {
+          subscription_status: 'on_trial',
+          subscription_tier: 'team',
+          subscription_trial_ends_at: '2026-08-20T00:00:00Z',
+        },
+      );
     });
   });
 
   // Dunning is not a reason to cut access, and the runbook says so too.
   test('past_due keeps paid access', () => {
     withEnv(env, () => {
-      assert.deepEqual(subscriptionStateFor('past_due', '111'), {
+      assert.deepEqual(stateOf({ status: 'past_due', variant_id: '111' }), {
         subscription_status: 'active',
         subscription_tier: 'personal',
+        subscription_trial_ends_at: null,
       });
     });
   });
@@ -95,10 +114,23 @@ describe('subscription status maps to entitlement', () => {
   // The period is already paid for. Access ends at expiry, not at cancellation.
   test('cancelled keeps the tier but marks the relationship ended', () => {
     withEnv(env, () => {
-      assert.deepEqual(subscriptionStateFor('cancelled', '222'), {
+      assert.deepEqual(stateOf({ status: 'cancelled', variant_id: '222' }), {
         subscription_status: 'cancelled',
         subscription_tier: 'team',
+        subscription_trial_ends_at: null,
       });
+    });
+  });
+
+  // Cancelling mid-trial leaves the date set, and it is what tells the operator
+  // when access actually stops.
+  test('cancelling during a trial carries the trial end date through', () => {
+    withEnv(env, () => {
+      assert.equal(
+        stateOf({ status: 'cancelled', variant_id: '111', trial_ends_at: '2026-08-18T00:00:00Z' })
+          .subscription_trial_ends_at,
+        '2026-08-18T00:00:00Z',
+      );
     });
   });
 
@@ -106,8 +138,8 @@ describe('subscription status maps to entitlement', () => {
     withEnv(env, () => {
       for (const status of ['expired', 'unpaid', 'paused']) {
         assert.deepEqual(
-          subscriptionStateFor(status, '222'),
-          { subscription_status: 'free', subscription_tier: 'free' },
+          stateOf({ status, variant_id: '222' }),
+          { subscription_status: 'free', subscription_tier: 'free', subscription_trial_ends_at: null },
           `${status} must remove paid access`,
         );
       }
@@ -118,19 +150,26 @@ describe('subscription status maps to entitlement', () => {
   test('unknown, empty and missing statuses fail closed', () => {
     withEnv(env, () => {
       for (const status of ['something_new', '', null, undefined]) {
-        assert.deepEqual(subscriptionStateFor(status, '111'), {
+        assert.deepEqual(stateOf({ status, variant_id: '111' }), {
           subscription_status: 'free',
           subscription_tier: 'free',
+          subscription_trial_ends_at: null,
         });
       }
+      assert.deepEqual(stateOf(), {
+        subscription_status: 'free',
+        subscription_tier: 'free',
+        subscription_trial_ends_at: null,
+      });
     });
   });
 
   test('status matching is case and whitespace tolerant', () => {
     withEnv(env, () => {
-      assert.deepEqual(subscriptionStateFor(' Active ', '111'), {
+      assert.deepEqual(stateOf({ status: ' Active ', variant_id: '111' }), {
         subscription_status: 'active',
         subscription_tier: 'personal',
+        subscription_trial_ends_at: null,
       });
     });
   });
@@ -245,6 +284,58 @@ describe('plan to variant resolution', () => {
       () => {
         assert.equal(allowedVariantIds().includes(variantIdForPlan('personal')), true);
       },
+    );
+  });
+});
+
+/**
+ * The webhook body is read off a stream and the signature is checked over the
+ * exact bytes Lemon Squeezy signed, so how those bytes are reassembled is part
+ * of whether a paying customer gets what they paid for.
+ */
+describe('raw webhook body reassembly', () => {
+  // A stream that hands out exactly the chunks it is given, so a character can
+  // be split across two of them the way a real socket splits one.
+  const streamOf = (chunks) => {
+    const listeners = new Map();
+    const emitter = {
+      on(event, handler) {
+        listeners.set(event, handler);
+        return emitter;
+      },
+      destroy() {
+        emitter.destroyed = true;
+      },
+      destroyed: false,
+    };
+    queueMicrotask(() => {
+      for (const chunk of chunks) {
+        if (emitter.destroyed) return;
+        listeners.get('data')?.(chunk);
+      }
+      if (!emitter.destroyed) listeners.get('end')?.();
+    });
+    return emitter;
+  };
+
+  test('a multi-byte character split across two chunks survives', async () => {
+    const body = JSON.stringify({ name: 'Trần Quốc Bảo', amount: '€49' });
+    const bytes = Buffer.from(body, 'utf8');
+    // Split inside the three bytes of "ầ" - decoding each chunk on its own
+    // would turn it into replacement characters and break the signature.
+    const split = bytes.indexOf(Buffer.from('ầ', 'utf8')) + 1;
+
+    const raw = await readRawBody(streamOf([bytes.subarray(0, split), bytes.subarray(split)]));
+
+    assert.equal(raw, body);
+    assert.equal(verifyWebhookSignature(raw, sign(body), SECRET), true);
+  });
+
+  test('a body over the size ceiling is refused rather than truncated', async () => {
+    const oversized = Buffer.alloc(1_000_001, 'a');
+    await assert.rejects(
+      readRawBody(streamOf([oversized])),
+      /too large/i,
     );
   });
 });

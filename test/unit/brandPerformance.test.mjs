@@ -1,5 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import '../support/reportingCurrency.mjs';
 import { buildBrandPerformance, UNBRANDED_LABEL } from '../../src/utils/brandPerformance.ts';
 
 describe('brand performance: which line is carrying the number', () => {
