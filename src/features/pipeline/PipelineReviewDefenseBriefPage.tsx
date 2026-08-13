@@ -107,6 +107,7 @@ import { convertMoney } from '../../utils/money';
 import { buildForecastCalibration, buildProbabilityCalibration } from '../../utils/forecastCalibration';
 import { ForecastCalibrationPanel } from './ForecastCalibrationPanel';
 import { ProbabilityCalibrationPanel } from './ProbabilityCalibrationPanel';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 const categoryClasses: Record<ForecastEvidenceCategory, string> = {
   Defensible: 'border-emerald-200 bg-emerald-50 text-emerald-700',
@@ -165,6 +166,11 @@ type DealRiskAnalysisSummary = {
 type CloudSyncStatus = 'local' | 'loading' | 'ready' | 'local-only' | 'error';
 
 export function PipelineReviewDefenseBriefPage() {
+  // These two are the only /app pages that do not go through PageFrame, so
+  // they are the only two the browser tab never named - both showed the
+  // landing page's headline. The frame itself is a separate question; the
+  // title is not, and it is what the history list and a screen reader read.
+  useDocumentTitle('Pipeline defense');
   const { user, loading: accountLoading, isAuthenticated } = useAuthContext();
   const [localMigrationStore] = useState<PipelineDefenseBriefStore>(() => loadPipelineDefenseBriefStore());
   const [store, setStore] = useState<PipelineDefenseBriefStore>(localMigrationStore);

@@ -11,10 +11,16 @@ import {
   type ImportRowResultRecord,
 } from '../../services/importAuditStore';
 import { formatCount } from '../../utils/numberFormat';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
 
 export function FounderImportReviewPage() {
+  // These two are the only /app pages that do not go through PageFrame, so
+  // they are the only two the browser tab never named - both showed the
+  // landing page's headline. The frame itself is a separate question; the
+  // title is not, and it is what the history list and a screen reader read.
+  useDocumentTitle('Core Data Import Review');
   const { user, loading: authLoading } = useAuthContext();
   const [batches, setBatches] = useState<ImportBatchRecord[]>([]);
   const [rowResults, setRowResults] = useState<ImportRowResultRecord[]>([]);
