@@ -25,6 +25,19 @@ for (const marker of [
   'aria-label="Memoire workspace"',
   '<Suspense fallback={<AppContentLoading />}>',
   'aria-label="Loading workspace"',
+  // A route change has to move focus, not just the scroll position. Without
+  // this, activating a rail link left focus on that link: the next Tab carried
+  // on through the rail instead of entering the page that had just replaced
+  // itself, and nothing announced the navigation at all. `main` had carried
+  // tabIndex={-1} the whole time; nothing was sending anyone to it.
+  'ref={mainRef}',
+  'mainRef.current?.focus();',
+  // Never on arrival - that focus belongs to the browser, and taking it would
+  // fight the skip link on the one load where the skip link matters most.
+  'if (isFirstRender.current) {',
+  // And never out from under a caret: the capture typeahead navigates while a
+  // field still has focus.
+  'if (typing) return;',
 ]) {
   requireIncludes(appShell, marker, `AppShell accessibility marker missing: ${marker}`);
 }

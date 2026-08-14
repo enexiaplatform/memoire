@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopNav } from './TopNav';
 import { MobileTabBar } from './MobileTabBar';
@@ -44,6 +44,48 @@ export function AppShell() {
     window.scrollTo(0, 0);
   }, [pathname]);
 
+  /**
+   * Move keyboard focus to the new page.
+   *
+   * Scrolling to the top moves the *eye*. For anyone driving this by keyboard
+   * or screen reader, nothing moved at all: measured on production, activating
+   * a rail link left focus sitting on that link, so the next Tab carried on
+   * through the rail rather than entering the page that had just replaced
+   * itself - and with no `aria-live` anywhere, nothing said a navigation had
+   * happened either. The whole product was one silent swap.
+   *
+   * `main` already carries `tabIndex={-1}` and the skip link already targets
+   * it, so the landing place existed; nothing was sending anyone to it.
+   * `outline-none` on the same element is deliberate and stays - a focus ring
+   * drawn around the entire page reads as damage, and this focus is a reading
+   * position rather than a control.
+   *
+   * Two things it refuses to do. It does not fire on the first render: focus
+   * on arrival belongs to the browser, and stealing it would fight the skip
+   * link on the very load where that link matters most. And it leaves a typing
+   * operator alone - a surface that navigates while a field has focus (the
+   * capture typeahead does) must not have the caret pulled out from under it.
+   */
+  const mainRef = useRef<HTMLElement>(null);
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    const active = document.activeElement as HTMLElement | null;
+    const typing = Boolean(active) && (
+      active instanceof HTMLInputElement
+      || active instanceof HTMLTextAreaElement
+      || active?.isContentEditable === true
+    );
+    if (typing) return;
+
+    mainRef.current?.focus();
+  }, [pathname]);
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* One tag for every `/app/*` route. The public pages became indexable on
@@ -58,6 +100,7 @@ export function AppShell() {
       {/* pb-16 on small screens keeps the last row of any page clear of the
           phone tab bar; the bar itself adds the safe-area inset below that. */}
       <main
+        ref={mainRef}
         id="app-main-content"
         tabIndex={-1}
         aria-label="Memoire workspace"
