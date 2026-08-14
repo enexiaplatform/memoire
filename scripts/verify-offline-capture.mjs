@@ -172,6 +172,30 @@ const activity = (id, overrides = {}) => ({
   assert.match(worker, /if \(request\.method !== 'GET'\) return;/, 'and nothing that writes is ever replayed');
   assert.match(worker, /networkFirstShell/, 'HTML is network-first, so an online operator runs what was deployed');
   assert.match(worker, /caches\.match\(APP_SHELL\)/, 'with the cached shell as the offline fallback');
+
+  // Which document the shell IS was never pinned, and that is how it drifted.
+  // The prerender step made dist/index.html the marketing landing page and moved
+  // the SPA shell to spa-fallback.html; the worker kept precaching '/index.html'
+  // and served the sales pitch to operators with no signal. Naming the file is
+  // the whole assertion - `caches.match(APP_SHELL)` above was true either way.
+  assert.match(
+    worker,
+    /const APP_SHELL = '\/spa-fallback\.html';/,
+    'the offline shell is the SPA fallback, the one document correct for every route',
+  );
+  assert.doesNotMatch(
+    worker,
+    /APP_SHELL = '\/index\.html'/,
+    'and never index.html, which the prerender step turned into the landing page',
+  );
+  // The shell must be refreshed from its own URL. Writing the current
+  // navigation's response under the shell key made the offline fallback
+  // "whatever page you looked at last" - land on / once and marketing is the app.
+  assert.match(
+    worker,
+    /void fetch\(APP_SHELL\)/,
+    'the cached shell is refreshed from the shell URL, not from the page being navigated to',
+  );
   assert.match(
     worker,
     /keys\.filter\(\(key\) => key !== CACHE\)\.map\(\(key\) => caches\.delete\(key\)\)/,

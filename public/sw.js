@@ -21,8 +21,26 @@
  *   origin holds, so a bad shell cannot outlive a deploy.
  */
 
-const CACHE = 'memoire-shell-v1';
-const APP_SHELL = '/index.html';
+/**
+ * The shell is `/spa-fallback.html`, not `/index.html`.
+ *
+ * It was `/index.html` and that was right until the site opened to search. The
+ * prerender step then made `dist/index.html` the *landing page* - 101KB of
+ * marketing with a "Start free" button - and moved the empty SPA shell to
+ * `spa-fallback.html`, which is where `vercel.json` already rewrites every
+ * unmatched route. This worker was not moved with it.
+ *
+ * So `install` precached the marketing page as the offline app shell, and an
+ * operator with no signal who tapped the installed icon was shown the sales
+ * pitch for a product they had already bought - the exact failure described at
+ * the top of this file, reintroduced by a change to a different part of the
+ * build.
+ *
+ * Cache name bumped so the poisoned entry is deleted on activation rather than
+ * waiting for a navigation to overwrite it.
+ */
+const CACHE = 'memoire-shell-v2';
+const APP_SHELL = '/spa-fallback.html';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -71,16 +89,33 @@ self.addEventListener('fetch', (event) => {
 async function networkFirstShell(request) {
   try {
     const response = await fetch(request);
-    if (response.ok) {
-      const cache = await caches.open(CACHE);
-      await cache.put(APP_SHELL, response.clone());
-    }
+    // The shell is refreshed from its own URL, never from whatever page this
+    // navigation happened to be for. Storing the response itself is how the
+    // offline fallback became "the last page you looked at": land on `/` once
+    // and the marketing page becomes the app again. `/spa-fallback.html` is
+    // the only document that is correct for every route.
+    if (response.ok) refreshShell();
     return response;
   } catch (error) {
     const cached = await caches.match(APP_SHELL);
     if (cached) return cached;
     throw error;
   }
+}
+
+/**
+ * Kept off the navigation's critical path: the operator is already looking at
+ * the page they asked for, and a failed refresh just leaves the previous shell
+ * in place for the next load to try again.
+ */
+function refreshShell() {
+  void fetch(APP_SHELL)
+    .then(async (shell) => {
+      if (!shell.ok) return;
+      const cache = await caches.open(CACHE);
+      await cache.put(APP_SHELL, shell);
+    })
+    .catch(() => undefined);
 }
 
 async function cacheFirst(request) {
