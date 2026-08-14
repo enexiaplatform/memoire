@@ -19,14 +19,29 @@ export default {
          *
          * Retinting the token rather than editing 330 call sites is deliberate:
          * every one of them means "the quiet grey", and the bug is what that
-         * grey resolves to. #6C747F holds the cool hue and clears 4.5:1 on white
-         * (4.73) and on the page background #F8FAFC (4.52).
+         * grey resolves to.
+         *
+         * #6C747F was chosen against white (4.73) and the page background
+         * (4.52), and those were the only two surfaces checked. The product also
+         * puts this grey on tinted chips - blue-50, red-50, amber-50 - which are
+         * a shade darker than the page, and on those it landed at 4.32-4.34.
+         * Measured against production on 2026-08-13: "Dismiss" on Today, the
+         * dates on Plan and the "Opportunity" label on Orders were all failing
+         * by that margin, and stock `gray-500` (#6B7280) failed the same way at
+         * 4.42.
+         *
+         * #646B75 is the same cool hue one step darker, and it clears 4.5:1 on
+         * every surface this product paints: white 5.38, page 5.14, blue-50
+         * 4.95, red-50 4.92, amber-50 5.19, emerald-50 5.11. Both tokens now
+         * resolve to it, so "the quiet grey" is one colour rather than two that
+         * fail differently.
          *
          * `gray-300` is deliberately left alone: it is mostly `border-gray-300`
          * on inputs, and WCAG's text rule does not apply to a hairline.
          */
         gray: {
-          400: '#6C747F',
+          400: '#646B75',
+          500: '#646B75',
         },
         // Legacy memoire scale kept for Landing/History pages (Prompts 08/09 already use indigo)
         memoire: {

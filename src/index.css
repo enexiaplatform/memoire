@@ -15,7 +15,10 @@
   --border: #E5E7EB;
   --fg1: #0F172A;
   --fg2: #374151;
-  --fg3: #6B7280;
+  /* Declared but currently unused. Kept in step with the gray-400/500 token so
+     the first call site to reach for it does not reintroduce a grey that fails
+     on the tinted chip backgrounds - see tailwind.config.js. */
+  --fg3: #646B75;
   --brand-gradient: linear-gradient(135deg, #43A047, #00ACC1, #1976D2, #3949AB, #7B1FA2, #C2185B, #FF5722);
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 }
