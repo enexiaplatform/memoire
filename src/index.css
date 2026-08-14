@@ -20,6 +20,42 @@
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ── Text tints that clear WCAG AA ──
+   Measured against production on 2026-08-13, across twelve app routes.
+
+   Two colours were failing 4.5:1 as text, and both failed by a hair, which is
+   why nothing had noticed: brand blue on the tinted chip background came out at
+   4.23 and on the page background at 4.40, and emerald-600 at 3.61 on grey with
+   white-on-emerald at 3.77 - that last one is `Mark done`, the primary verb on
+   Today.
+
+   Retinting here rather than at 418 call sites is the same argument the
+   `gray-400` token makes in tailwind.config.js: every one of those call sites
+   means "the brand blue, as text", and the bug is what that resolves to.
+
+   Scoped to `text-*` deliberately. `bg-brand-blue` (22 uses),
+   `border-brand-blue` (195) and `ring-brand-blue` (85) already clear the 3:1
+   that a fill, a hairline and a focus ring need, and the wordmark gradient and
+   the charts carry #1976D2 as a literal - so the brand's blue is untouched and
+   only the reading of it changes. Verified before changing: of 672 elements
+   rendering brand blue as text across those twelve routes, every single one
+   sits on a light background, so darkening cannot hurt one of them.
+
+   #1565C0 is not a new colour; it is `--brand-blue-dark`, already in the
+   palette above. It reaches 5.28 on the chip, 5.75 on white, 5.49 on the page. */
+.text-brand-blue {
+  color: var(--brand-blue-dark);
+}
+
+/* emerald-700. 5.48 with white on it, 5.25 as text on grey. */
+.text-emerald-600 {
+  color: #047857;
+}
+
+.bg-emerald-600 {
+  background-color: #047857;
+}
+
 /* ── Enexia Design System — Global Base ── */
 
 /*
