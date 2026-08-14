@@ -9,7 +9,6 @@ import {
   generateFollowUpDraft,
   getMissingFollowUpContext,
 } from './followUpComposer';
-import { FOLLOWUP_DRAFT_READY_EVENT } from '../onboarding/guidedWorkflow';
 import { useAuthContext } from '../../auth/authContext';
 import { saveSalesActivity } from '../../services/salesActivityStore';
 import { hasLocalSampleData } from '../../utils/dataMode';
@@ -62,7 +61,6 @@ export function FollowUpComposerPanel({ initialContext, onClose, onActivityLogge
     setDraft(nextDraft);
     setDraftStatus('Draft ready');
     setCopyMessage('');
-    window.dispatchEvent(new CustomEvent(FOLLOWUP_DRAFT_READY_EVENT, { detail: { draft: nextDraft } }));
   };
 
   const copyDraft = async () => {

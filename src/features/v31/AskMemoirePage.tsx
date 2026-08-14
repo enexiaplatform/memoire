@@ -9,7 +9,6 @@ import { detectBrokenLoops, type BrokenLoop } from './brokenLoops';
 import { calculateMemoryHealth } from './memoryHealth';
 import { buildWhatChangedDigest, formatMemoryChangeSeverity } from './whatChangedDigest';
 import { detectSalesPatterns, salesPatternSeverityLabel } from './salesPatternDetector';
-import { ASK_ANSWER_READY_EVENT, ASK_GUIDED_QUESTION_EVENT } from '../onboarding/guidedWorkflow';
 import { RouteLoadingFallback } from './RouteLoadingFallback';
 import { useSlowLoadingFallback } from './useSlowLoadingFallback';
 import { hasLocalSampleData } from '../../utils/dataMode';
@@ -359,21 +358,6 @@ export function AskMemoirePage() {
     salesPatterns,
     rawWorkspace,
   ]);
-
-  useEffect(() => {
-    if (!answer) return;
-    window.dispatchEvent(new Event(ASK_ANSWER_READY_EVENT));
-  }, [answer]);
-
-  useEffect(() => {
-    const handleGuidedQuestion = (event: Event) => {
-      const nextQuestion = (event as CustomEvent<{ question?: string }>).detail?.question || 'What should I do next?';
-      ask(nextQuestion);
-    };
-
-    window.addEventListener(ASK_GUIDED_QUESTION_EVENT, handleGuidedQuestion as EventListener);
-    return () => window.removeEventListener(ASK_GUIDED_QUESTION_EVENT, handleGuidedQuestion as EventListener);
-  }, [ask]);
 
   // Deep-linked questions (e.g. from the Today morning brief) run once the
   // workspace context has loaded, so the answer uses real memory.

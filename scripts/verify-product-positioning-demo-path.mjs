@@ -13,7 +13,6 @@ const read = (path) => readFileSync(path, 'utf8');
 const landing = read('src/pages/LandingPage.tsx');
 const useCases = read('src/features/useCases/UseCasesPage.tsx');
 const demoJourney = read('src/utils/demoJourney.ts');
-const onboarding = read('src/components/layout/OnboardingModal.tsx');
 const checklist = read('src/utils/trialActivationChecklist.ts');
 const pipelineCenter = read('src/utils/pipelineDefenseCenter.ts');
 const opportunityMapper = read('src/utils/opportunityToPipelineBrief.ts');
@@ -63,6 +62,13 @@ for (const file of ['src/pages/LandingPage.tsx', 'src/features/pricing/PricingPa
   );
 }
 
+// The demo path, and the sentence that names it.
+//
+// The sentence used to be read out of `OnboardingModal.tsx`, which was deleted
+// on 2026-08-14 as dead code - it mounted inactive and had never been shown to
+// a new account. It is now `DEMO_JOURNEY_PATH_SUMMARY`, declared beside the
+// steps it describes and rendered on the demo card, so this check reads one
+// file instead of two and the string has a reader rather than only a test.
 for (const marker of [
   'review-today',
   'paste-evidence',
@@ -70,8 +76,12 @@ for (const marker of [
   'finish-review-pack',
   'Today - Capture - Pipeline Defense',
 ]) {
-  assert.ok(`${demoJourney}\n${onboarding}`.includes(marker), `Demo/onboarding path missing ${marker}`);
+  assert.ok(demoJourney.includes(marker), `Demo path missing ${marker}`);
 }
+assert.ok(
+  read('src/components/demo/DemoJourneyCard.tsx').includes('DEMO_JOURNEY_PATH_SUMMARY'),
+  'the demo path summary must be shown to the person in the demo, not just held for this contract',
+);
 
 assert.ok(checklist.indexOf('Capture first evidence') < checklist.indexOf('Review Today command center'), 'Onboarding checklist must point to Capture before Today');
 assert.ok(checklist.indexOf('Review Today command center') < checklist.indexOf('Prepare Pipeline Defense Brief'), 'Onboarding checklist must point to Today before Pipeline Defense');

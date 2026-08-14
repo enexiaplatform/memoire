@@ -77,6 +77,9 @@ const ActivityPage = lazy(() =>
 const PortfolioCoveragePage = lazy(() =>
   import('./features/coverage/PortfolioCoveragePage').then((module) => ({ default: module.PortfolioCoveragePage })),
 );
+const FirstRunPage = lazy(() =>
+  import('./features/onboarding/FirstRunPage').then((module) => ({ default: module.FirstRunPage })),
+);
 
 function App() {
   return (
@@ -98,6 +101,20 @@ function App() {
           <Route path="/terms" element={<Navigate to="/legal/terms" replace />} />
           <Route path="/legal/:document" element={<LegalPage />} />
           <Route path="/share/brief" element={<SharedBriefPage />} />
+
+          {/* The welcome. Protected like the rest of `/app`, but deliberately
+              outside the shell: a first-run screen framed by a navigation rail
+              of eleven destinations the person has no reason to understand yet
+              is the confusion it exists to prevent. React Router ranks this
+              static path above the shell's catch-all child. */}
+          <Route
+            path="/app/start"
+            element={
+              <ProtectedRoute>
+                <FirstRunPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Protected app routes */}
           <Route

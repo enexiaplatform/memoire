@@ -6,6 +6,18 @@ export const DEMO_JOURNEY_UPDATED_EVENT = 'memoire:demo-journey-updated';
 
 export type DemoJourneyStepId = 'review-today' | 'paste-evidence' | 'open-defense' | 'finish-review-pack';
 
+/**
+ * The demo's route to its point, in one line.
+ *
+ * This sentence used to live in the guided-workflow modal, which was the only
+ * place the demo's shape was written down in words rather than as four step
+ * records. That modal was dead code - it mounted inactive and could only be
+ * woken from Settings - and deleting it took the sentence with it. It belongs
+ * here, beside the steps it describes, and it is rendered on the demo card so
+ * it is a promise to a reader rather than a string kept alive for a contract.
+ */
+export const DEMO_JOURNEY_PATH_SUMMARY = 'Today - Capture - Pipeline Defense - Review Pack';
+
 export type DemoJourneyCompletion = {
   completedAt: string;
   reason: string;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowRight,
@@ -111,6 +111,7 @@ import {
   loadTrialActivationChecklistState,
 } from '../../utils/trialActivationChecklist';
 import { buildFirstWeekPath, type FirstWeekPath } from '../../utils/firstWeekPath';
+import { firstRunUserKey, readFirstRunState, shouldOpenFirstRun } from '../../utils/firstRun';
 import { buildLivePipelineHealth } from '../../utils/livePipelineHealth';
 import { generateInterviewScriptText } from '../../utils/demoFeedback';
 import { markDemoJourneyStepComplete } from '../../utils/demoJourney';
@@ -559,6 +560,25 @@ export function TodayPage() {
     event.stopPropagation();
     setQuickLookOpportunity(opportunity);
   };
+
+  // A brand-new account arrives here, and Today is built for a workspace that
+  // has records: without this it opened as a column of empty modules under a
+  // headline promising nothing would go silent, with no answer to "silent about
+  // what". The welcome is one screen and one keystroke from over, and the
+  // decision to show it is `shouldOpenFirstRun` - a workspace with any record is
+  // already underway and is never sent there, whatever the stored flag says.
+  //
+  // Gated on the load having finished, because "no records yet" and "the cloud
+  // has not answered yet" look identical mid-flight, and only one of them is a
+  // new user.
+  if (!authLoading && !loading && shouldOpenFirstRun({
+    userKey: firstRunUserKey(user),
+    hasAnyRecord: data.activities.length > 0 || data.opportunities.length > 0 || data.accounts.length > 0,
+    sampleDataActive,
+    state: readFirstRunState(),
+  })) {
+    return <Navigate to="/app/start" replace />;
+  }
 
   return (
     <PageContainer onClickCapture={handleTodayLinkCapture}>

@@ -5,6 +5,14 @@ import { buildFirstWeekPath } from '../src/utils/firstWeekPath.ts';
 // The First Week Path is the ONLY onboarding mechanism for a real workspace.
 // Six overlapping ones used to compete for "the first thing to do"; this
 // contract keeps that consolidation from unravelling.
+//
+// "One mechanism" is about the *answer*, not the number of places it is shown.
+// Since 2026-08-14 three surfaces render it - the welcome at /app/start names
+// the five steps, the strip on Today shows progress in context, and the coach in
+// the corner carries it onto every other route - and all three call
+// `buildFirstWeekPath`. That is checked below and in
+// `verify-first-run-onboarding.mjs`; a fourth surface with its own idea of the
+// first week is the thing that must never come back.
 
 const activity = (patch = {}) => ({
   id: `a-${Math.random().toString(36).slice(2)}`, accountName: 'Apex', opportunityName: 'Deal',
@@ -98,6 +106,20 @@ assert.ok(
   'the strip renders in the action tier, above the first collapsed drawer',
 );
 assert.ok(today.includes('dismissTrialActivationChecklist()'), 'dismiss reuses the checklist state, no new store');
+
+// 5b. Every surface that shows the path derives it from the builder. None may
+// keep its own list of what the first week is - that divergence is how the six
+// competing mechanisms started, each individually reasonable.
+for (const [surface, file] of [
+  ['the welcome', 'src/features/onboarding/FirstRunPage.tsx'],
+  ['the corner coach', 'src/features/onboarding/GettingStartedCoach.tsx'],
+]) {
+  const source = readFileSync(file, 'utf8');
+  assert.ok(
+    source.includes('buildFirstWeekPath') || source.includes('useFirstWeekPath'),
+    `${surface} states its own version of the first week instead of reading the path`,
+  );
+}
 
 // 6. The competing onboarding mechanisms are gone, and Today no longer asks a
 // new user to configure a sales system before experiencing any value.

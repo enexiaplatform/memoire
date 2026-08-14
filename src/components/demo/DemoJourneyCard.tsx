@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, ClipboardList, Home, LogIn, UserPlus } from 'lucide-react';
 import {
+  DEMO_JOURNEY_PATH_SUMMARY,
   DEMO_JOURNEY_UPDATED_EVENT,
   demoJourneySteps,
   getDemoJourneyProgress,
@@ -39,7 +40,12 @@ export function DemoJourneyCard({ compact = false }: { compact?: boolean }) {
             <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
               {completion
                 ? 'You turned sample pipeline data into a manager-ready Pipeline Defense Brief.'
-                : 'Follow three focused steps to see the value before exploring the wider app.'}
+                // Counted rather than written out: the copy said "three focused
+                // steps" above a grid of four.
+                : `Follow ${demoJourneySteps.length} focused steps to see the value before exploring the wider app.`}
+            </p>
+            <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+              {DEMO_JOURNEY_PATH_SUMMARY}
             </p>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Check, CloudOff } from 'lucide-react';
 import { ExportTab } from './ExportTab';
 import { SyncRecoveryPanel } from './SyncRecoveryPanel';
@@ -8,7 +9,8 @@ import { NotificationsPanel } from './NotificationsPanel';
 import { BoundariesTab } from './BoundariesTab';
 import { ProfileTab } from './ProfileTab';
 import { BillingTab } from './BillingTab';
-import { REPLAY_GUIDED_WORKFLOW_EVENT } from '../onboarding/guidedWorkflow';
+import { restartFirstRun } from '../../utils/firstRun';
+import { resetTrialActivationChecklist } from '../../utils/trialActivationChecklist';
 import { CURRENCY_NAMES, SUPPORTED_CURRENCIES, getReportingCurrency } from '../../utils/money';
 import { getOpeningCashBalance } from '../../utils/cashPosition';
 import {
@@ -26,6 +28,7 @@ import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 
 export function SettingsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'profile' | 'billing' | 'export' | 'boundaries'>('profile');
   const [reportingCurrency, setReportingCurrencyState] = useState(() => getReportingCurrency());
   const [currencySave, setCurrencySave] = useState<PreferenceSaveResult | null>(null);
@@ -213,20 +216,31 @@ export function SettingsPage() {
 
       <StoragePanel />
 
+      {/* The way back in. Onboarding that cannot be reopened is onboarding you
+          have to get right on the one pass, and nobody does. This clears the
+          answer and the dismissal, so the welcome and the corner guide both
+          come back on the next visit to Today - with one caveat stated on the
+          button, because `shouldOpenFirstRun` will not send a workspace that
+          already has records back to the welcome. */}
       <div className="rounded-xl border border-gray-200 bg-white p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-navy">Guided workflow</p>
+            <p className="text-sm font-semibold text-navy">Getting started</p>
             <p className="mt-1 text-sm text-gray-500">
-              Replay the guided workflow when you want to walk through a complete Memory-to-Action flow.
+              Bring back the five-step guide in the corner of the workspace. If your workspace is still empty, the
+              welcome screen comes back too.
             </p>
           </div>
           <button
             type="button"
-            onClick={() => window.dispatchEvent(new Event(REPLAY_GUIDED_WORKFLOW_EVENT))}
+            onClick={() => {
+              restartFirstRun();
+              resetTrialActivationChecklist();
+              navigate('/app/today');
+            }}
             className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
           >
-            Replay guided workflow
+            Show the guide again
           </button>
         </div>
       </div>

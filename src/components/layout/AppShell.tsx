@@ -3,7 +3,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopNav } from './TopNav';
 import { MobileTabBar } from './MobileTabBar';
-import { OnboardingModal } from './OnboardingModal';
+import { GettingStartedCoach } from '../../features/onboarding/GettingStartedCoach';
 import { DemoModeBanner } from '../demo/DemoModeBanner';
 import { StorageFailureBanner } from '../common/StorageFailureBanner';
 import { NoIndex } from '../marketing/PageSeo';
@@ -124,7 +124,10 @@ export function AppShell() {
         </div>
       </main>
       <MobileTabBar onOpenMenu={() => setMobileNavOpen(true)} menuOpen={mobileNavOpen} />
-      <OnboardingModal />
+      {/* Guidance rides the shell rather than a page, because the whole point is
+          that it survives walking from Today to Capture to do the thing it just
+          asked for. It renders nothing on a workspace that is past it. */}
+      <GettingStartedCoach />
     </div>
   );
 }
