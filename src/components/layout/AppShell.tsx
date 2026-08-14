@@ -60,11 +60,18 @@ export function AppShell() {
    * drawn around the entire page reads as damage, and this focus is a reading
    * position rather than a control.
    *
-   * Two things it refuses to do. It does not fire on the first render: focus
-   * on arrival belongs to the browser, and stealing it would fight the skip
-   * link on the very load where that link matters most. And it leaves a typing
-   * operator alone - a surface that navigates while a field has focus (the
-   * capture typeahead does) must not have the caret pulled out from under it.
+   * It does not fire on the first render: focus on arrival belongs to the
+   * browser, and stealing it would fight the skip link on the very load where
+   * that link matters most.
+   *
+   * It carried a second guard for a while - skip the move if a field has the
+   * caret - and that guard was tested against production and does nothing.
+   * Every field in this product belongs to a page, and changing route unmounts
+   * that page, which blurs the field before this effect runs; `activeElement`
+   * is already `body` by the time anything could check it. A guard that could
+   * fire would have to live on a field the shell itself owns, and the header,
+   * the rail and the tab bar between them own none. Removed rather than left
+   * in as a comment describing protection nobody has.
    */
   const mainRef = useRef<HTMLElement>(null);
   const isFirstRender = useRef(true);
@@ -74,14 +81,6 @@ export function AppShell() {
       isFirstRender.current = false;
       return;
     }
-
-    const active = document.activeElement as HTMLElement | null;
-    const typing = Boolean(active) && (
-      active instanceof HTMLInputElement
-      || active instanceof HTMLTextAreaElement
-      || active?.isContentEditable === true
-    );
-    if (typing) return;
 
     mainRef.current?.focus();
   }, [pathname]);
