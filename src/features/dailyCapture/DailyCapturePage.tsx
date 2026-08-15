@@ -1781,25 +1781,25 @@ function StructuredPreviewEditor({
       <PreviewInput
         label="Competitors"
         value={(preview.competitors || []).join(', ')}
-        placeholder="Incumbent Vendor"
+        placeholder="e.g. Incumbent Vendor"
         onChange={(value) => onChange('competitors', parseList(value))}
       />
       <PreviewInput
         label="Buying signal"
         value={(preview.buyingSignals || []).join(', ')}
-        placeholder="Budget approved"
+        placeholder="e.g. Budget approved"
         onChange={(value) => onChange('buyingSignals', parseList(value))}
       />
       <PreviewInput
         label="Risk / objection"
         value={(preview.risks || []).join(', ')}
-        placeholder="Competitor still active"
+        placeholder="e.g. Competitor still active"
         onChange={(value) => onChange('risks', parseList(value))}
       />
       <PreviewInput
         label="Timeline signal"
         value={(preview.timelineSignals || []).join(', ')}
-        placeholder="Next quarter"
+        placeholder="e.g. Next quarter"
         onChange={(value) => onChange('timelineSignals', parseList(value))}
       />
       <PreviewInput

@@ -244,7 +244,11 @@ export function StakeholdersPage() {
         <Metric label="High influence" value={summary.highInfluence} tone="amber" />
         <Metric label="Missing champion" value={summary.accountsWithMissingChampion} tone="amber" />
         <Metric label="No account" value={summary.unattachedStakeholders} tone={summary.unattachedStakeholders > 0 ? 'amber' : 'green'} />
-        <Metric label="Opp risk" value={summary.opportunitiesWithStakeholderRisk} tone="red" />
+        {/* Every other tile in this row counts stakeholders. This one counts
+            deals, so on a workspace with no stakeholders at all it read
+            "Opp risk 1" in red beside six zeros and looked like a contradiction
+            rather than the point it was making. */}
+        <Metric label="Deals with nobody named" value={summary.opportunitiesWithStakeholderRisk} tone="red" />
       </section>
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_420px]">

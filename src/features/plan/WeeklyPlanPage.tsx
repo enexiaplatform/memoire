@@ -87,6 +87,7 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
   // and something else on another.
   const { recommendations } = useCommercialThreads();
   const [periodType, setPeriodType] = useState<PlanPeriod>('week');
+  const [showWeekend, setShowWeekend] = useState(false);
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
@@ -510,7 +511,15 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
     );
   }
 
-  const visibleDays = periodType === 'week'
+  // Empty weekend days stay hidden - most weeks do not use them and two dead
+  // columns cost a third of the board. But hidden and unreachable are different
+  // things: with Saturday and Sunday both empty there was no way to plan
+  // anything onto them, while the suggestion list below happily offered
+  // "Sun Aug 16" as a date. The toggle is the missing half.
+  const hiddenWeekendDays = periodType === 'week'
+    ? board.days.filter((day) => day.isWeekend && day.items.length === 0).length
+    : 0;
+  const visibleDays = periodType === 'week' && !showWeekend
     ? board.days.filter((day) => !day.isWeekend || day.items.length > 0)
     : board.days;
 
@@ -617,6 +626,15 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
 
       <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-600">
         <span className="font-bold text-navy">{board.doneCount} / {board.totalCount} done</span>
+        {periodType === 'week' && (hiddenWeekendDays > 0 || showWeekend) && (
+          <button
+            type="button"
+            onClick={() => setShowWeekend((value) => !value)}
+            className="font-semibold text-brand-blue underline-offset-2 hover:underline"
+          >
+            {showWeekend ? 'Hide the empty weekend' : 'Show the weekend'}
+          </button>
+        )}
         {board.derivedCount - board.captureCount > 0 && (
           <span>{board.derivedCount - board.captureCount} from your pipeline and obligations</span>
         )}

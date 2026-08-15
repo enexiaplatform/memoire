@@ -53,6 +53,12 @@ const COLLAPSED_KEY = 'memoire.gettingStarted.collapsed.v1';
  */
 const SUPPRESSED_ROUTES = ['/app/start', '/app/today'];
 
+/** Whether the next step would send the reader to the page they are already on. */
+function isSelfReferential(href: string | undefined, pathname: string) {
+  if (!href) return false;
+  return href.split('?')[0].replace(/\/$/, '') === pathname.replace(/\/$/, '');
+}
+
 export function GettingStartedCoach() {
   const { pathname } = useLocation();
   const sampleDataActive = useDemoWorkspaceMode();
@@ -75,6 +81,12 @@ export function GettingStartedCoach() {
     || sampleDataActive
     || Boolean(dismissedAt)
     || SUPPRESSED_ROUTES.includes(pathname)
+    // A card floating over the page to send you somewhere you already are.
+    // On Capture it sat on top of the Confirm-and-correct panel - covering the
+    // right-hand column of the very fields it was asking to be filled - under a
+    // button reading "Capture". Suppressing by target rather than by route so
+    // the next step this happens to is covered too.
+    || isSelfReferential(path.nextStep?.href, pathname)
     || (path.complete && !graduating);
 
   const dismiss = () => {
