@@ -157,7 +157,16 @@ const opportunityPatterns = [
 
 const accountPatterns = [
   /\b(?:account|customer|client|company)\s*[:-]\s*([^.\n;]+)/i,
-  /\b(?:met|visited|called)\s+([A-Z][A-Za-z0-9&.' -]{2,60}?)\s+(?:today|yesterday|this\s+(?:morning|afternoon|week)|on\s+\d)/i,
+  // "Called Minh at Dai Viet Steel today" - the company is what follows "at",
+  // and the name in front of it is a person. Without this, the pattern below
+  // captured the lot and created an account called "Minh at Dai Viet Steel";
+  // the next note about the same customer named a different colleague and
+  // created a second one. Case-sensitive, because the capital letter is the
+  // only thing separating a company from the words around it.
+  /\b(?:[Mm]et|[Vv]isited|[Cc]alled|[Ss]aw|[Ee]mailed|[Ss]poke\s+(?:to|with))\s+(?:with\s+)?(?:Dr\.?|Mr\.?|Ms\.?|Mrs\.?)?\s*[A-Z][A-Za-z.'-]{1,30}(?:\s+[A-Z][A-Za-z.'-]{1,30}){0,3}\s+(?:at|from|of)\s+([A-Z][A-Za-z0-9&.' -]{2,60}?)(?=\s+(?:today|yesterday|this\s+\w+|last\s+\w+|about\b|on\s+\d)|[.\n;,]|$)/,
+  // Case-sensitive: `/i` made the leading `[A-Z]` meaningless, so "Met the
+  // buyer today" proposed an account called "the buyer".
+  /\b(?:[Mm]et|[Vv]isited|[Cc]alled)\s+([A-Z][A-Za-z0-9&.' -]{2,60}?)\s+(?:today|yesterday|this\s+(?:morning|afternoon|week)|on\s+\d)/,
   /\b(?:met|meeting|spoke|call|called)\s+with\s+(?:Dr\.?|Mr\.?|Ms\.?|Mrs\.?)?\s*[A-Z][A-Za-z.' -]{1,60}\s+at\s+([A-Z][A-Z0-9&.-]{1,20})(?:\b|[.\n;,])/i,
   /\bat\s+([A-Z][A-Z0-9&.-]{1,20})(?:\b|[.\n;,])/,
   /\b(?:from|with|for)\s+([A-Z][A-Za-z0-9&.,' -]{2,60})(?:[.\n;,]|$)/,
@@ -194,7 +203,9 @@ export function classifySalesActivity(
   const fallbackNextAction = extractNextAction(cleanedNote);
   const firstAction = nextActions[0];
   const nextAction = firstAction?.title || fallbackNextAction;
-  const dueDate = firstAction?.dueDate || extractDueDate(cleanedNote, activityDate);
+  // Scoped to the promise. See `commitmentScope`: the whole note also contains
+  // the day the touch happened, and that is not a deadline.
+  const dueDate = firstAction?.dueDate || extractDueDate(commitmentScope(cleanedNote), activityDate);
   const competitors = extractCompetitors(cleanedNote);
   const buyingSignals = extractBuyingSignals(cleanedNote);
   const timelineSignals = extractTimelineSignals(cleanedNote);
@@ -218,7 +229,12 @@ export function classifySalesActivity(
     timelineSignals,
     nextActions,
     activityType,
-    summary: summarize(cleanedNote, activityType, entities.accountName),
+    // When the rules read nothing out of the note, the summary is the only
+    // structured trace of it there is, so it keeps the whole note rather than
+    // the opening sentence. See `summarize`.
+    summary: summarize(cleanedNote, activityType, entities.accountName, {
+      keepWhole: !nextAction && !dueDate && !entities.accountName,
+    }),
     nextAction,
     dueDate,
     tags,
@@ -366,6 +382,31 @@ export function suggestOpportunityFromNote(
   return null;
 }
 
+/**
+ * Words that start the part of a note where a promise lives.
+ *
+ * A note is two things in one paragraph: what happened, and what happens next.
+ * Only the second half can carry a due date, and reading the whole note for one
+ * is how "Called Minh at Dai Viet Steel today. ... I need to send the quote
+ * before Friday." came out dated today - the `today` describing the call was
+ * taken as the deadline for the quote, and the plan then showed the commitment
+ * on the wrong day. It is the exact failure the product exists to prevent.
+ */
+const COMMITMENT_CUE = /\b(?:need(?:s)? to|have to|has to|must|will|going to|next actions?|to do|follow[- ]up|deadline|due|by|before|send|share|prepare|schedule|confirm|reply|update|clarify|deliver|chase|revert|quote back)\b/i;
+
+/**
+ * The part of a note that could contain a promise, or nothing.
+ *
+ * Deliberately returns `''` rather than the whole note when no cue is found: a
+ * note with no commitment in it has no due date, and guessing one is worse than
+ * leaving the field empty for the operator to fill.
+ */
+export function commitmentScope(rawNote: string) {
+  const match = rawNote.match(COMMITMENT_CUE);
+  if (!match || match.index === undefined) return '';
+  return rawNote.slice(match.index);
+}
+
 export function extractDueDate(rawNote: string, activityDate: string) {
   const lower = rawNote.toLowerCase();
   const anchor = parseDateKey(activityDate);
@@ -377,7 +418,10 @@ export function extractDueDate(rawNote: string, activityDate: string) {
   const nextWeekdayMatch = lower.match(/\bnext\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/);
   if (nextWeekdayMatch) return nextWeekday(anchor, nextWeekdayMatch[1]);
 
-  const weekdayMatch = lower.match(/\b(?:by|on|this)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/);
+  // "before Friday" is how a commitment is usually written and it was in none
+  // of these, so the phrase produced no date at all and the fallback below
+  // picked up the "today" that belonged to the narration instead.
+  const weekdayMatch = lower.match(/\b(?:by|on|this|before|after|ahead of|prior to|due|end of|no later than|not later than)\s+(?:end\s+of\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/);
   if (weekdayMatch) return upcomingWeekday(anchor, weekdayMatch[1]);
 
   const isoDate = rawNote.match(/\b(20\d{2}-\d{2}-\d{2})\b/)?.[1];
@@ -424,15 +468,44 @@ function todayDate() {
   return todayDateKey();
 }
 
-function summarize(rawNote: string, activityType: SalesActivityType, accountName: string) {
+/**
+ * The one or two sentences worth keeping.
+ *
+ * It used to keep the first sentence and nothing else, which is the wrong half
+ * of most notes: a note opens with what happened and closes with what was
+ * promised, and the promise is the part somebody comes back for. "Gọi cho anh
+ * Minh... 250 triệu. Hẹn gửi báo giá trước thứ Sáu." was stored without the
+ * sentence containing the commitment - and on a note the parser could not
+ * otherwise read, that summary was the only record of it left.
+ *
+ * So the sentence carrying the promise is kept alongside the opening one, when
+ * it is not already that sentence. Still bounded: a summary is a summary.
+ */
+function summarize(
+  rawNote: string,
+  activityType: SalesActivityType,
+  accountName: string,
+  options: { keepWhole?: boolean } = {},
+) {
   const noteForSummary = rawNote.match(/\bBody excerpt:\s*([\s\S]+)/i)?.[1]?.trim() || rawNote;
   const protectedNote = noteForSummary.replace(/\b(Ms|Mr|Mrs|Dr)\.\s+/gi, '$1<dot> ');
-  const firstSentence = protectedNote
+  const sentences = protectedNote
     .split(/\n|(?<=[.!?])\s+/)
-    .map((line) => line.trim())
-    .find(Boolean)?.replace(/\b(Ms|Mr|Mrs|Dr)<dot>/gi, '$1.') || noteForSummary;
-  const compact = firstSentence.replace(/\s+/g, ' ').trim();
-  const summary = compact.length > 180 ? `${compact.slice(0, 177)}...` : compact;
+    .map((line) => line.replace(/\b(Ms|Mr|Mrs|Dr)<dot>/gi, '$1.').trim())
+    .filter(Boolean);
+
+  const firstSentence = sentences[0] || noteForSummary;
+  const promiseSentence = sentences.slice(1).find((sentence) => COMMITMENT_CUE.test(sentence)) || '';
+  // Compressing to the opening sentence is only safe because the fields beside
+  // it hold the rest. Where the rules found no customer, no next step and no
+  // date - which is what a note in any language the rules do not model looks
+  // like - that assumption is false and the compression is data loss.
+  const joined = options.keepWhole
+    ? sentences.join(' ') || noteForSummary
+    : promiseSentence ? `${firstSentence} ${promiseSentence}` : firstSentence;
+
+  const compact = joined.replace(/\s+/g, ' ').trim();
+  const summary = compact.length > 240 ? `${compact.slice(0, 237)}...` : compact;
   if (summary) return summary;
   return accountName ? `${activityType} with ${accountName}` : activityType;
 }

@@ -235,3 +235,60 @@ describe('order book: where the order is standing', () => {
     assert.equal(order.overdue, true);
   });
 });
+
+describe('order book: where the payment terms come from', () => {
+  const costRecord = (opportunityId, paymentTerm) => ({
+    id: `oc-${opportunityId}`,
+    opportunityId,
+    amount: 700_000,
+    currency: 'VND',
+    freightAmount: null,
+    dutyAmount: null,
+    otherAmount: null,
+    extrasCurrency: 'VND',
+    supplier: '',
+    paymentTerm,
+    note: '',
+    createdAt: '',
+    updatedAt: '',
+  });
+
+  test('terms recorded while pricing are used when no quote carries any', () => {
+    // The operator types "30% deposit, 70% net 45" on the deal, watches Memoire
+    // read it into two dated slices, and saves. Before this the terms lived in
+    // component state only, and the order book said "No payment term" for an
+    // order whose price had been calculated from them.
+    const book = buildOrderBook({
+      opportunities: [opportunity('a', { status: 'Won' })],
+      quotes: [],
+      milestoneRecords: [],
+      costRecords: [costRecord('a', '30% deposit, 70% net 45')],
+      today: '2026-07-28',
+    });
+
+    assert.equal(book.orders[0].paymentTerm, '30% deposit, 70% net 45');
+  });
+
+  test('a quote the customer has seen outranks the working assumption', () => {
+    const book = buildOrderBook({
+      opportunities: [opportunity('a', { status: 'Won' })],
+      quotes: [quote('q1', 'a', { paymentTerm: 'Net 30' })],
+      milestoneRecords: [],
+      costRecords: [costRecord('a', '30% deposit, 70% net 45')],
+      today: '2026-07-28',
+    });
+
+    assert.equal(book.orders[0].paymentTerm, 'Net 30');
+  });
+
+  test('a caller that never loaded costs behaves exactly as before', () => {
+    const book = buildOrderBook({
+      opportunities: [opportunity('a', { status: 'Won' })],
+      quotes: [],
+      milestoneRecords: [],
+      today: '2026-07-28',
+    });
+
+    assert.equal(book.orders[0].paymentTerm, '');
+  });
+});

@@ -501,7 +501,9 @@ export function ActivityPage() {
         <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-bold text-navy">Who it was for</h2>
           <p className="mt-1 text-xs text-gray-500">
-            Salesforce calls this the related record. Here it is the difference between work that reaches the business
+            {/* Named a competitor most readers have never opened. The sentence
+                works without it. */}
+            Which customer or deal each touch was against — the difference between work that reaches the business
             and work that does not.
           </p>
           <div className="mt-3">

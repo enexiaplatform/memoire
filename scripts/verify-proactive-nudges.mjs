@@ -438,7 +438,19 @@ for (const marker of ['pipeline-defense', 'outcome-learning', 'snoozedUntil', 'd
 assert.equal(/push|email|notification/i.test(store), false, 'nudge store should not add push/email notification behavior');
 
 const todayUi = readFileSync('src/features/dashboard/DashboardPage.tsx', 'utf8');
-for (const marker of ['Proactive Nudges', 'Mark done', 'Dismiss', 'Snooze tomorrow', 'Snooze next week', 'Clear dismissed local nudges', 'Clear all local nudge state']) {
+// The two reset controls are asserted by their handlers, not by their labels:
+// the labels were internal jargon ("Clear all local nudge state") and pinning
+// the contract to that wording is what makes rewriting it look like a
+// regression. The behaviour is what has to stay.
+for (const marker of [
+  'Proactive Nudges',
+  'Mark done',
+  'Dismiss',
+  'Snooze tomorrow',
+  'Snooze next week',
+  'onClick={onClearDismissed}',
+  'onClick={onClearAll}',
+]) {
   assert.ok(todayUi.includes(marker), `Today proactive nudge UI missing ${marker}`);
 }
 

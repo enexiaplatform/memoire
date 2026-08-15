@@ -1,7 +1,12 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { extractDueDate, suggestOpportunityFromNote } from '../../src/utils/salesActivityClassifier.ts';
+import {
+  classifySalesActivity,
+  commitmentScope,
+  extractDueDate,
+  suggestOpportunityFromNote,
+} from '../../src/utils/salesActivityClassifier.ts';
 import { resolveCaptureEntities } from '../../src/utils/captureEntityResolution.ts';
 import { formatCount, formatBytes } from '../../src/utils/numberFormat.ts';
 
@@ -41,6 +46,40 @@ describe('a slash date in a note is read the way the operator wrote it', () => {
   });
 });
 
+describe('a deadline is read off the promise, not off the story', () => {
+  const SATURDAY = '2026-08-15';
+
+  test('the day the call happened is not the day the quote is due', () => {
+    // "Called Minh at Dai Viet Steel today. ... I need to send the quote before
+    // Friday." came out dated today, because the whole note was scanned and the
+    // `today` describing the call matched first. The plan then showed the
+    // commitment on the wrong day, which is the one thing this product sells.
+    const note = 'Called Minh at Dai Viet Steel today. They are interested in 12 tons of steel tube. I need to send the quote before Friday.';
+    assert.equal(extractDueDate(commitmentScope(note), SATURDAY), '2026-08-21');
+  });
+
+  test('"before Friday" is a deadline, and Friday is the next one', () => {
+    // 15 August 2026 is itself a Saturday, so the answer must be the 21st.
+    assert.equal(extractDueDate('send it before Friday', SATURDAY), '2026-08-21');
+    assert.equal(extractDueDate('reply ahead of Monday', SATURDAY), '2026-08-17');
+    assert.equal(extractDueDate('deliver no later than Wednesday', SATURDAY), '2026-08-19');
+  });
+
+  test('a note that only narrates has no deadline in it', () => {
+    assert.equal(commitmentScope('Met the buyer today.'), '');
+    assert.equal(extractDueDate(commitmentScope('Met the buyer today.'), SATURDAY), '');
+  });
+
+  test('a promise made for today still reads as today', () => {
+    assert.equal(extractDueDate(commitmentScope('Need to send the quote today.'), SATURDAY), '2026-08-15');
+  });
+
+  test('the scope starts at the promise, wherever it sits in the paragraph', () => {
+    const note = 'Met the buyer today. Need to clarify the tender timeline next week.';
+    assert.equal(extractDueDate(commitmentScope(note), SATURDAY), '2026-08-22');
+  });
+});
+
 describe('the named person in a note', () => {
   const resolve = (rawNote) => resolveCaptureEntities({ rawNote, accounts: [], opportunities: [] });
 
@@ -60,6 +99,60 @@ describe('the named person in a note', () => {
 
   test('an ordinary sentence with no honorific names nobody', () => {
     assert.equal(resolve('Sent the revised pricing sheet through.').contactName, '');
+  });
+
+  test('a bare first name in front of a company is a person', () => {
+    // Most of the world writes "Called Minh at Dai Viet Steel", not "Ms. Minh".
+    // Requiring the honorific left the note with no contact and, worse, filed
+    // "Minh at Dai Viet Steel" as the customer - so the next note naming a
+    // different colleague at the same company opened a second account.
+    const resolution = resolve('Called Minh at Dai Viet Steel today. Need to send the quote before Friday.');
+    assert.equal(resolution.contactName, 'Minh');
+    assert.equal(resolution.accountName, 'Dai Viet Steel');
+  });
+
+  test('the same shape with "from" reads the same way', () => {
+    const resolution = resolve('Met Sarah from Northwind Logistics yesterday about the renewal.');
+    assert.equal(resolution.contactName, 'Sarah');
+    assert.equal(resolution.accountName, 'Northwind Logistics');
+  });
+
+  test('a time is not a company, so the name in front of it is not a contact', () => {
+    assert.equal(resolve('Called Minh at 9am to reschedule.').contactName, '');
+  });
+});
+
+describe('the summary keeps the part somebody comes back for', () => {
+  test('the sentence carrying the promise survives alongside the opening one', () => {
+    const note = 'Called Minh at Dai Viet Steel today. They are interested in 12 tons. I need to send the quote before Friday.';
+    const summary = classifySalesActivity(note, '2026-08-15').summary;
+    assert.match(summary, /Called Minh at Dai Viet Steel today/);
+    assert.match(summary, /send the quote before Friday/);
+  });
+
+  test('a note the rules could not read is kept whole, not cut to its first sentence', () => {
+    // Compressing to the opening sentence only works because the structured
+    // fields hold the rest. With nothing extracted, the summary is the record,
+    // and the promise was in the sentence being thrown away.
+    const note = 'Gọi cho anh Minh bên Thép Đại Việt, báo giá khoảng 250 triệu. Hẹn gửi báo giá trước thứ Sáu tuần này.';
+    const result = classifySalesActivity(note, '2026-08-15');
+    assert.equal(result.accountName, '', 'precondition: the rules read nothing out of this note');
+    assert.match(result.summary, /Hẹn gửi báo giá trước thứ Sáu/);
+  });
+});
+
+describe('a description of somebody is not a customer', () => {
+  const resolve = (rawNote) => resolveCaptureEntities({ rawNote, accounts: [], opportunities: [] });
+
+  test('"the buyer" does not become an account', () => {
+    // The pattern carried `/i`, which made its leading `[A-Z]` decorative. A
+    // phantom account then counted as a customer on the dashboard, produced its
+    // own thread, and generated its own weekly suggestions.
+    assert.equal(resolve('Met the buyer today.').accountName, '');
+  });
+
+  test('a properly capitalised company still resolves', () => {
+    assert.equal(resolve('Met Acme Corp today').accountName, 'Acme Corp');
   });
 });
 

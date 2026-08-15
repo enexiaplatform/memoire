@@ -149,6 +149,18 @@ function resolveAccountFromCorrection(
 function resolveContact(rawNote: string, candidate: string) {
   const explicit = rawNote.match(/\b((?:Ms|Mr|Mrs|Dr)\.?\s+[A-Z][A-Za-z'-]+(?:\s+[A-Z][A-Za-z'-]+){0,2})\b/)?.[1] || '';
   if (explicit) return normalizeHonorific(cleanEntity(explicit));
+
+  // A bare first name, identified by its position rather than by a title: it
+  // sits between a contact verb and the company it belongs to. Requiring an
+  // honorific left "Called Minh at Dai Viet Steel" with no contact at all,
+  // while the company half of the same sentence was being filed as the account
+  // name - so the one note produced no person and a wrong customer. The company
+  // must start with a capital too, which is what stops "called Minh at 9am".
+  const positional = rawNote.match(
+    /\b(?:[Mm]et|[Vv]isited|[Cc]alled|[Ss]aw|[Ee]mailed|[Ss]poke\s+(?:to|with))\s+(?:with\s+)?([A-Z][A-Za-z'-]{1,30}(?:\s+[A-Z][A-Za-z'-]{1,30}){0,2})\s+(?:at|from|of)\s+[A-Z]/,
+  )?.[1] || '';
+  if (positional && !looksLikeOrganization(positional)) return cleanEntity(positional);
+
   if (candidate && includesPhrase(rawNote, candidate) && !looksLikeOrganization(candidate)) return cleanEntity(candidate);
   return '';
 }
@@ -202,7 +214,17 @@ function extractExplicitAccount(rawNote: string) {
   const patterns = [
     /\b(?:spoke|met|meeting|call(?:ed)?)\s+with\s+(?:Ms|Mr|Mrs|Dr)\.?\s+[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,2}\s+(?:at|from)\s+([A-Z][A-Za-z0-9&.' -]{1,60})/i,
     /\bcall\s+(?:Ms|Mr|Mrs|Dr)\.?\s+[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,2}\s+from\s+([A-Z][A-Za-z0-9&.' -]{1,60})/i,
-    /\b(?:met|visited)\s+([A-Z][A-Za-z0-9&.' -]{1,60}?)\s+(?:today|yesterday|with\b)/i,
+    // The same shape without an honorific. Most of the world does not write
+    // one: "Called Minh at Dai Viet Steel", "Met Sarah from Northwind". The two
+    // patterns above only fire on "Ms."/"Mr.", so these notes fell through to
+    // the catch-all below and filed the person and the company as one account.
+    // Case-sensitive on purpose - see the classifier's account patterns.
+    /\b(?:[Mm]et|[Vv]isited|[Cc]alled|[Ss]aw|[Ee]mailed|[Ss]poke\s+(?:to|with))\s+(?:with\s+)?[A-Z][A-Za-z.'-]{1,30}(?:\s+[A-Z][A-Za-z.'-]{1,30}){0,3}\s+(?:at|from|of)\s+([A-Z][A-Za-z0-9&.' -]{1,60}?)(?=\s+(?:today|yesterday|this\s+\w+|last\s+\w+|about\b|on\s+\d)|[.\n;,]|$)/,
+    // Case-sensitive in the captured half: with `/i` the `[A-Z]` matched
+    // anything, so "Met the buyer today." filed a customer called "the buyer"
+    // - and a phantom account like that then shows up as a real customer on
+    // Today, in the account count, and in the week's suggestions.
+    /\b(?:[Mm]et|[Vv]isited)\s+([A-Z][A-Za-z0-9&.' -]{1,60}?)\s+(?:today|yesterday|with\b)/,
     /\bfollow\s*up\s+(?:with\s+)?([A-Z][A-Za-z0-9&.' -]{1,60}?)\s+(?:on|about|regarding)\b/i,
     /\b(?:account|customer|client|company)\s*[:-]\s*([^.;\n]+)/i,
   ];

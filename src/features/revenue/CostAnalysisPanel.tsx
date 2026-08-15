@@ -105,8 +105,8 @@ export function CostAnalysisPanel({
   // contract asserts that equality rather than leaving it as a comment, and this
   // saves a second cloud read of a collection the panel above already holds.
   const orders = useMemo(
-    () => buildOrderBook({ opportunities, quotes, milestoneRecords: [] }).orders,
-    [opportunities, quotes],
+    () => buildOrderBook({ opportunities, quotes, milestoneRecords: [], costRecords }).orders,
+    [costRecords, opportunities, quotes],
   );
 
   const margins = useMemo(

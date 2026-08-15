@@ -6,6 +6,7 @@ import { MobileTabBar } from './MobileTabBar';
 import { GettingStartedCoach } from '../../features/onboarding/GettingStartedCoach';
 import { DemoModeBanner } from '../demo/DemoModeBanner';
 import { StorageFailureBanner } from '../common/StorageFailureBanner';
+import { SharedBrowserNotice } from '../common/SharedBrowserNotice';
 import { NoIndex } from '../marketing/PageSeo';
 import { OfflineCaptureBanner } from '../common/OfflineCaptureBanner';
 import { TrialStatusBanner } from '../common/TrialStatusBanner';
@@ -108,6 +109,9 @@ export function AppShell() {
         {/* Above the demo banner on purpose: unsaved data outranks every
             other thing this shell has to say. */}
         <StorageFailureBanner />
+        {/* Directly under it: an emptier workspace than expected reads as data
+            loss until something says the records that went were not yours. */}
+        <SharedBrowserNotice />
         {/* Below the unsaved-data alert and above the demo notice: a waiting
             capture is real data in a state the operator should know about,
             but it is safe, and the one above it is not. */}

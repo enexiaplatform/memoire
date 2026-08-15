@@ -588,20 +588,24 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
           customer used to read as the same undifferentiated admin. */}
       {board.totalCount > 0 && (
         <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+          {/* Label first, count second - the same shape as the filter chips on
+              Accounts and Opportunities. Written the other way round these read
+              "2 customer", which is a count looking for a plural it never gets:
+              the word is the kind of work, not the thing being counted. */}
           <span className="font-bold uppercase tracking-wide text-gray-400">This week serves</span>
           {board.workSplit.customer > 0 && (
             <span className="rounded-full bg-blue-50 px-2.5 py-1 font-bold text-brand-blue">
-              {board.workSplit.customer} customer
+              Customer {board.workSplit.customer}
             </span>
           )}
           {board.workSplit.principal > 0 && (
             <span className="rounded-full bg-violet-50 px-2.5 py-1 font-bold text-violet-700">
-              {board.workSplit.principal} principal
+              Principal {board.workSplit.principal}
             </span>
           )}
           {board.workSplit.internal > 0 && (
             <span className="rounded-full bg-gray-100 px-2.5 py-1 font-bold text-gray-600">
-              {board.workSplit.internal} internal
+              Internal {board.workSplit.internal}
               {/* The domain breakdown only earns its place when it says
                   something the count did not. A week whose internal work is all
                   admin would otherwise read "3 internal - 3 internal". */}

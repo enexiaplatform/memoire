@@ -54,6 +54,19 @@ export type RevenueActionItem = {
 };
 
 /**
+ * Whether anything at all is scheduled to move this deal.
+ *
+ * Either half counts: a line of text says what happens next, a date says when.
+ * One shared predicate because the flag, the plan suggestions and the deal
+ * drawer each used to decide this for themselves, and they disagreed.
+ */
+export function hasScheduledNextAction(
+  opportunity: Pick<CrmLiteOpportunity, 'nextAction' | 'nextActionDate'>,
+): boolean {
+  return Boolean(opportunity.nextAction?.trim() || opportunity.nextActionDate?.trim());
+}
+
+/**
  * Why this deal is in the weak-pipeline list, and what clears it.
  *
  * Ordered by which answer is most useful to hear first: a deal with no next
@@ -61,16 +74,22 @@ export type RevenueActionItem = {
  * saying "no next action" is more actionable than saying "weak".
  */
 export function explainPipelineRisk(
-  // Takes the three fields it reads, not a whole record, so the deal editor can
+  // Takes the four fields it reads, not a whole record, so the deal editor can
   // ask the same question of the *unsaved* form. That is what lets the banner
   // clear the moment the right field is filled, instead of after a save and a
   // page load - which is how "I updated it and it still warns me" starts.
-  opportunity: Pick<CrmLiteOpportunity, 'nextAction' | 'forecastEvidenceCategory' | 'decisionRecommendation'>,
+  opportunity: Pick<CrmLiteOpportunity, 'nextAction' | 'nextActionDate' | 'forecastEvidenceCategory' | 'decisionRecommendation'>,
 ): { reason: string; clearedBy: string } | null {
-  if (!opportunity.nextAction.trim()) {
+  // A date on its own is enough to clear this one. The flag exists to catch a
+  // deal that nothing will bring back, and a dated action is exactly the thing
+  // that brings it back - it is what Plan and Today read. Reading only the text
+  // field put a deal with "Next action - Aug 21" at the top of its own drawer
+  // directly above "This deal has no next action", and sent three near-identical
+  // suggestions to the week's plan for it.
+  if (!hasScheduledNextAction(opportunity)) {
     return {
       reason: 'This deal has no next action, so nothing will bring it back to you.',
-      clearedBy: 'Write one line in Next action, with a date.',
+      clearedBy: 'Write one line in Next action, or give it a next action date.',
     };
   }
   if (opportunity.forecastEvidenceCategory === 'Unsupported' || opportunity.forecastEvidenceCategory === 'Hope-based') {

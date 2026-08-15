@@ -18,7 +18,11 @@ assert.equal(primary.accountName, 'Pymepharco');
 assert.equal(primary.contactName, 'Ms. Nhu');
 assert.equal(primary.opportunityName, '');
 assert.ok(['Customer meeting', 'Demo / technical discussion'].includes(primary.activityType));
-assert.equal(primary.summary, 'Met Pymepharco today with Ms. Nhu.');
+// Opening sentence plus the promise - see verify-safe-date-and-capture.mjs.
+assert.equal(
+  primary.summary,
+  'Met Pymepharco today with Ms. Nhu. Need to send DCM comparison quote by next Friday.',
+);
 assert.equal(primary.nextAction, 'Send DCM comparison quote');
 assert.equal(primary.dueDate, '2026-06-19');
 assert.equal(isValidBusinessDate(primary.dueDate), true);

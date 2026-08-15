@@ -97,6 +97,21 @@ export type OrderCostRecord = {
   extrasCurrency: string;
   /** Who you bought from. Free text - this is not a vendor record. */
   supplier: string;
+  /**
+   * The terms being offered on this order, as the operator typed them.
+   *
+   * They belong here because this is where they are worked out: the financing
+   * cost that decides the price is computed from them, at a point in the deal
+   * where there is usually no quote yet. Before this field they lived only in
+   * component state, so an operator who typed "30% deposit, 70% net 45", watched
+   * Memoire read it back correctly, and pressed Save purchase cost, lost them -
+   * and the order book went on saying "No payment term" while the schedule the
+   * price had been calculated from existed nowhere.
+   *
+   * A quote still wins where one exists: a document the customer has seen
+   * outranks a working assumption.
+   */
+  paymentTerm: string;
   note: string;
   createdAt: string;
   updatedAt: string;
@@ -346,6 +361,7 @@ export function createOrderCostRecord(input: {
   otherAmount?: number | null;
   extrasCurrency?: string;
   supplier?: string;
+  paymentTerm?: string;
   note?: string;
   existing?: OrderCostRecord;
   source?: 'demo' | 'user';
@@ -368,6 +384,9 @@ export function createOrderCostRecord(input: {
     // acquire a currency the operator never chose.
     extrasCurrency: (input.extrasCurrency || input.existing?.extrasCurrency || currency).trim().toUpperCase(),
     supplier: (input.supplier || '').trim(),
+    // Kept when the caller does not mention it, so saving a cost from a surface
+    // that has no terms field cannot erase terms recorded from one that does.
+    paymentTerm: (input.paymentTerm ?? input.existing?.paymentTerm ?? '').trim(),
     note: (input.note || '').trim(),
     createdAt: input.existing?.createdAt || now,
     updatedAt: now,

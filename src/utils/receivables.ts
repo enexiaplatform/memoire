@@ -89,6 +89,8 @@ export type ReceivableInstallmentState = {
   /** Positive once the due date has passed and something is still outstanding. */
   daysOverdue: number;
   overdue: boolean;
+  /** How late this slice is, judged on its own due date. */
+  bucket: AgingBucket;
 };
 
 /**
@@ -174,14 +176,26 @@ export function buildReceivables(input: {
   const orders = (input.orders || []).map((order) => buildOneReceivable(order, byOrder.get(order.opportunityId), today));
   const open = orders.filter((order) => !order.settled);
 
+  // Aged slice by slice, not order by order.
+  //
+  // The whole order used to be dropped into the bucket its earliest unpaid
+  // instalment fell in. On 30% on order / 70% net 45 that reported the entire
+  // 250,000,000 as "Due within 7 days" and left "Not yet due" at zero, while
+  // the summary above it correctly said 75,000,000 was due in 30 days and the
+  // schedule below it correctly showed 75,000,000 now and 175,000,000 in six
+  // weeks. Three answers, one screen. Terms exist precisely so the money is not
+  // owed all at once, so the buckets have to read them.
   const aging = agingBuckets.map((bucket) => {
-    const inBucket = open.filter((order) => order.bucket === bucket && order.outstandingBase > 0);
-    return {
-      bucket,
-      label: agingBucketLabels[bucket],
-      count: inBucket.length,
-      amountBase: inBucket.reduce((sum, order) => sum + order.outstandingBase, 0),
-    };
+    let amountBase = 0;
+    const orderIds = new Set<string>();
+    for (const order of open) {
+      for (const installment of order.installments) {
+        if (installment.bucket !== bucket || installment.outstandingBase <= 0.005) continue;
+        amountBase += installment.outstandingBase;
+        orderIds.add(order.opportunityId);
+      }
+    }
+    return { bucket, label: agingBucketLabels[bucket], count: orderIds.size, amountBase };
   });
 
   const overdueOrders = open.filter((order) => order.overdueBase > 0);
@@ -263,6 +277,7 @@ function buildOneReceivable(
       settled: outstandingBase <= 0.005,
       daysOverdue: overdue ? daysLate : 0,
       overdue,
+      bucket: bucketFor(overdue ? daysLate : null, entry.dueDate, today, outstandingBase),
     };
   });
 

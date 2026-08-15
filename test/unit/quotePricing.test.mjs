@@ -143,6 +143,32 @@ describe('quote pricing: what the credit actually costs', () => {
       Math.round(pricing.costPerCreditDayBase),
     );
   });
+
+  test('the price a day adds and the interest a day costs are both reported', () => {
+    // Two different true numbers. The card shows one and the reader derives the
+    // other from the tile beside it, so the difference has to be stated rather
+    // than left to look like a mistake: interest is what the day costs, the
+    // price is that interest with the target margin put back on it.
+    const pricing = buildQuotePricing({
+      cost: cost({ goodsAmount: 1_000_000_000 }),
+      installments: [{ id: 'a', label: 'x', percent: 100, amount: null, trigger: 'invoice', offsetDays: 30 }],
+      targetPct: 20,
+      financingRatePct: 12,
+    });
+
+    const expectedInterest = 1_000_000_000 * 0.12 / 365;
+    assert.ok(Math.abs(pricing.interestPerCreditDayBase - expectedInterest) < 1);
+    assert.ok(Math.abs(pricing.costPerCreditDayBase - expectedInterest / 0.8) < 1);
+    assert.ok(
+      pricing.costPerCreditDayBase > pricing.interestPerCreditDayBase,
+      'holding the margin costs more than the interest alone',
+    );
+    // And the interest tile must reconcile with the period figure it sits next to.
+    assert.ok(
+      Math.abs(pricing.financingCostBase / pricing.creditDays - pricing.interestPerCreditDayBase) < 1,
+      'cost of credit over the period must be the per-day interest times the days',
+    );
+  });
 });
 
 describe('quote pricing: grading a price that is on the table', () => {

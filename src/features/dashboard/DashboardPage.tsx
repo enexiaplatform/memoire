@@ -339,6 +339,10 @@ export function TodayPage() {
     opportunityOutcomes: data.opportunityOutcomes,
     operatingContexts: data.operatingContext,
     persistedNudges: nudgeState,
+    // This page renders the capture inbox above, and ranks the same captures in
+    // "what Memoire would start with". A third card in the watch-list was the
+    // same note a third time, with a third opinion about how urgent it is.
+    captureInboxShown: true,
   }), [accountHygienePreferences, data.accounts, data.activities, data.briefs, data.objections, data.operatingContext, data.opportunities, data.opportunityOutcomes, data.quotes, data.stakeholders, nudgeState, revenueView.actionItems]);
   const decidedActionIds = useMemo(() => (
     new Set(dailyExecutionState.decisions.map((decision) => decision.actionId))
@@ -1399,11 +1403,13 @@ function ProactiveNudgesPanel({
           </p>
         ) : <span />}
         <span className="flex items-center gap-3 text-xs font-semibold text-gray-400">
+          {/* "Local nudge state" is what the code calls it. What the reader is
+              deciding is whether the ones they waved away should come back. */}
           <button type="button" onClick={onClearDismissed} className="underline-offset-2 hover:text-gray-700 hover:underline">
-            Clear dismissed local nudges
+            Bring back the ones I dismissed
           </button>
           <button type="button" onClick={onClearAll} className="underline-offset-2 hover:text-red-700 hover:underline">
-            Clear all local nudge state
+            Reset every nudge on this device
           </button>
         </span>
       </div>

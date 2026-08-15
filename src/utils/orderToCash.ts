@@ -1,5 +1,6 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { QuoteRecord } from '../services/quoteStore';
+import type { OrderCostRecord } from './orderMargin.ts';
 import { compareSafeBusinessDate, isValidBusinessDate, timestampToLocalDateKey, todayDateKey } from './safeDate.ts';
 import { sumMoneyInBase } from './money.ts';
 
@@ -176,9 +177,20 @@ export function buildOrderBook(input: {
   opportunities: CrmLiteOpportunity[];
   quotes: QuoteRecord[];
   milestoneRecords: OrderMilestoneRecord[];
+  /**
+   * The buy side, which is also where terms are worked out before a quote
+   * exists. Optional: a caller that has not loaded costs still gets an order
+   * book, it just falls back to the quote for terms as it always did.
+   */
+  costRecords?: OrderCostRecord[];
   today?: string;
 }): OrderBook {
   const today = input.today || todayDateKey();
+  const termByOrder = new Map(
+    (input.costRecords || [])
+      .filter((record) => record.__deleted !== true && record.paymentTerm?.trim())
+      .map((record) => [record.opportunityId, record.paymentTerm.trim()]),
+  );
   const liveMilestones = input.milestoneRecords.filter((record) => record.__deleted !== true);
   const manualByOrder = new Map<string, Map<OrderMilestoneKey, OrderMilestoneRecord>>();
   liveMilestones.forEach((record) => {
@@ -225,7 +237,9 @@ export function buildOrderBook(input: {
         amount,
         currency,
         amountBase: typeof amount === 'number' ? sumMoneyInBase([{ amount, currency }]) : 0,
-        paymentTerm: freshestQuote?.paymentTerm?.trim() || '',
+        // A quote the customer has seen outranks a working assumption, but an
+        // assumption the operator recorded outranks nothing at all.
+        paymentTerm: freshestQuote?.paymentTerm?.trim() || termByOrder.get(opportunity.id) || '',
         quoteCount: quotes.length,
         orderDate,
         lastMovedAt,

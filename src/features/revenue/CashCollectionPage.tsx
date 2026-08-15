@@ -15,6 +15,8 @@ import {
   saveOrderReceivableTerms,
 } from '../../services/orderReceivableStore';
 import { hasLocalSampleData } from '../../utils/dataMode';
+import { loadOrderCostsForWorkspace } from '../../services/orderCostStore';
+import type { OrderCostRecord } from '../../utils/orderMargin';
 import { buildOrderBook } from '../../utils/orderToCash';
 import {
   agingBucketLabels,
@@ -54,6 +56,7 @@ export function CashCollectionPage() {
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>(cached?.opportunities || []);
   const [quotes, setQuotes] = useState<QuoteRecord[]>(cached?.quotes || []);
   const [records, setRecords] = useState<OrderReceivableRecord[]>([]);
+  const [costRecords, setCostRecords] = useState<OrderCostRecord[]>([]);
   const [loading, setLoading] = useState(!cached);
   const [syncing, setSyncing] = useState(false);
   const [filter, setFilter] = useState<'open' | 'overdue' | 'all'>('open');
@@ -67,11 +70,16 @@ export function CashCollectionPage() {
     void Promise.all([
       loadSalesWorkspaceData(dataUserId),
       loadOrderReceivablesForWorkspace(dataUserId, sampleDataActive),
-    ]).then(([workspace, receivableRecords]) => {
+      // Terms recorded at quoting time live on the cost record when no quote
+      // has been raised yet. Without them this page shows a schedule it
+      // invented for an order whose terms the operator had already typed.
+      loadOrderCostsForWorkspace(dataUserId, sampleDataActive),
+    ]).then(([workspace, receivableRecords, costs]) => {
       if (cancelled) return;
       setOpportunities(workspace.opportunities);
       setQuotes(workspace.quotes);
       setRecords(receivableRecords);
+      setCostRecords(costs);
       setLoading(false);
     });
     return () => { cancelled = true; };
@@ -87,9 +95,9 @@ export function CashCollectionPage() {
 
   const today = todayDateKey();
   const summary = useMemo(() => {
-    const book = buildOrderBook({ opportunities, quotes, milestoneRecords: [], today });
+    const book = buildOrderBook({ opportunities, quotes, milestoneRecords: [], costRecords, today });
     return buildReceivables({ orders: book.orders, records, today });
-  }, [opportunities, quotes, records, today]);
+  }, [costRecords, opportunities, quotes, records, today]);
 
   const reload = async () => {
     setSyncing(true);
@@ -265,6 +273,17 @@ function AgingBand({ summary }: { summary: ReturnType<typeof buildReceivables> }
   );
 }
 
+/**
+ * What is actually due on the next date, when that is less than the order.
+ *
+ * Stays silent on a single-instalment order: "250M VND / 250M due Sep 29" says
+ * the same thing twice.
+ */
+function nextSliceLabel(order: OrderReceivable): string {
+  const partial = order.nextDueBase > 0 && order.nextDueBase < order.outstandingBase - 0.005;
+  return partial ? formatCompactBaseAmount(order.nextDueBase) : 'All';
+}
+
 function ReceivableRow({
   order,
   expanded,
@@ -318,13 +337,18 @@ function ReceivableRow({
           <p className={`text-sm font-bold ${order.overdueBase > 0 ? 'text-red-700' : 'text-navy'}`}>
             {formatCompactBaseAmount(order.outstandingBase)}
           </p>
+          {/* The amount above is everything still owed on the order; the date
+              belongs to the next slice of it. Printing them as one line read
+              "250M VND, due Aug 15" on terms where only 75M was due that day.
+              So the slice is named with its own amount whenever it is not the
+              whole of what is outstanding. */}
           <p className="text-xs text-gray-500">
             {order.settled
               ? 'Collected'
               : order.daysOverdue !== null
                 ? `${order.daysOverdue} days late`
                 : order.nextDueDate
-                  ? `Due ${formatSafeBusinessDate(order.nextDueDate)}`
+                  ? `${nextSliceLabel(order)} due ${formatSafeBusinessDate(order.nextDueDate)}`
                   : 'No date'}
           </p>
         </div>

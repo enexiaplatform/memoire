@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type React from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CalendarDays, Eye, Plus, Search, Trash2, X } from 'lucide-react';
+import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
@@ -243,34 +244,35 @@ export function QuotesPage() {
   };
 
   return (
-    <div className="flex w-full max-w-none flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6">
-      <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">Opened from Orders</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-navy">Quotes</h1>
-          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-gray-600">
-            Track expiry, PO, delivery, payment, and the next commercial action.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={openCreatePanel}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
-          >
-            <Plus className="h-4 w-4" />
-            Create quote
-          </button>
-          <DataModePill
-            compact
-            isLoading={authLoading || loading}
-            isAuthenticated={isAuthenticated}
-            isSupabaseConfigured={isSupabaseConfigured}
-            cloudAvailable={isSupabaseConfigured}
-            hasSampleData={sampleDataActive}
-          />
-        </div>
-      </header>
+    // The page frame, like every other destination. Rolling its own header left
+    // this route with no document title at all, so the browser tab fell back to
+    // the marketing one - the only page in the app where it did.
+    <PageContainer>
+      <PageHeader
+        eyebrow="Opened from Orders"
+        title="Quotes"
+        description="Track expiry, PO, delivery, payment, and the next commercial action."
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={openCreatePanel}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
+            >
+              <Plus className="h-4 w-4" />
+              Create quote
+            </button>
+            <DataModePill
+              compact
+              isLoading={authLoading || loading}
+              isAuthenticated={isAuthenticated}
+              isSupabaseConfigured={isSupabaseConfigured}
+              cloudAvailable={isSupabaseConfigured}
+              hasSampleData={sampleDataActive}
+            />
+          </>
+        }
+      />
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <QuoteMetric label="Sent quotes" value={summary.sentQuotes} tone={summary.sentQuotes ? 'blue' : 'green'} />
@@ -346,7 +348,7 @@ export function QuotesPage() {
           onDelete={editingQuote ? () => removeQuote(editingQuote) : undefined}
         />
       )}
-    </div>
+    </PageContainer>
   );
 }
 

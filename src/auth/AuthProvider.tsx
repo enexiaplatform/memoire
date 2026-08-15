@@ -3,6 +3,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import type { UserProfile } from '../types';
 import { pipelineSupabaseConfigMessage, supabaseClient } from '../lib/supabaseClient.ts';
 import { clearDemoWorkspaceForAccount, clearDemoWorkspaceMode } from '../lib/demoMode';
+import { claimLocalWorkspace } from '../services/localWorkspaceOwner.ts';
 import { AuthContext, type AuthContextValue } from './authContext';
 import { getFriendlyAuthErrorMessage, logAuthDebug, logAuthWarning } from './authErrors';
 import { getPasswordPolicyError } from './passwordPolicy';
@@ -25,6 +26,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const mountedRef = useRef(true);
 
   const applySession = useCallback((nextSession: Session | null) => {
+    // Before any store is read. If this browser still holds another account's
+    // records, they go now - see localWorkspaceOwner. Synchronous on purpose:
+    // an await here is a window in which a page renders somebody else's
+    // customers.
+    if (nextSession?.user?.id) claimLocalWorkspace(nextSession.user.id);
+
     setSession(nextSession);
     setUser(nextSession?.user ?? null);
     if (!nextSession?.user) {

@@ -182,12 +182,25 @@ export function mergeCloudJsonRecords<T extends CloudJsonRecord>(local: T[], clo
     .sort((a, b) => getUpdatedAt(b).localeCompare(getUpdatedAt(a)));
 }
 
+/**
+ * Whether this browser's copy of `table` may be merged into `userId`'s cloud.
+ *
+ * It used to record the new owner before deciding, so a rejected claim still
+ * took the key: the rightful owner came back, read its own name gone, and
+ * stopped offering its local rows to the cloud - records captured offline had
+ * no way home. Ownership now moves only when the claim succeeds.
+ *
+ * The wider isolation is not this function's job any more. Another account's
+ * records are removed from the browser at sign-in by `claimLocalWorkspace`, so
+ * by the time anything calls this there is nothing here to steal.
+ */
 export function claimLocalCollectionForUser(table: CloudJsonCollectionTable, userId: string) {
   if (typeof window === 'undefined') return false;
   const key = getOwnerKey(table);
   const owner = window.localStorage.getItem(key);
+  if (owner && owner !== userId) return false;
   writeLocalCollection(key, userId);
-  return !owner || owner === userId;
+  return true;
 }
 
 function isUserRecord<T extends CloudJsonRecord>(record: T) {

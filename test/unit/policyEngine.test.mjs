@@ -226,6 +226,36 @@ describe('opportunity and quote rules', () => {
     assert.deepEqual(run({ opportunities: [opportunity()] }), []);
   });
 
+  test('a dated next action clears the warning even with no line written beside it', () => {
+    // The date is what brings the deal back: it is what Plan and Today read.
+    // Requiring the prose too reported "no dated next action" on a deal whose
+    // own drawer was showing the date, four rows higher.
+    const results = run({ opportunities: [opportunity({ nextAction: '', nextActionDate: '2026-07-30' })] });
+    assert.equal(codes(results).includes('OPPORTUNITY_WITHOUT_FUTURE_ACTION'), false);
+  });
+
+  test('a line with no date is still nothing scheduled', () => {
+    const results = run({ opportunities: [opportunity({ nextAction: 'Chase the buyer', nextActionDate: '' })] });
+    assert.equal(codes(results).includes('OPPORTUNITY_WITHOUT_FUTURE_ACTION'), true);
+  });
+
+  test('the thread and the deal do not both report that nothing is scheduled', () => {
+    // One gap, two record types, two rows on the week's plan asking for the
+    // same edit. The deal-level warning is the one that survives.
+    const results = run({
+      threads: [thread({ openCommitmentCount: 0, opportunityId: 'opp-1' })],
+      opportunities: [opportunity({ nextActionDate: '' })],
+    });
+
+    assert.equal(codes(results).includes('OPPORTUNITY_WITHOUT_FUTURE_ACTION'), true);
+    assert.equal(codes(results).includes('THREAD_WITHOUT_NEXT_COMMITMENT'), false);
+  });
+
+  test('a thread with no deal behind it still reports its own gap', () => {
+    const results = run({ threads: [thread({ openCommitmentCount: 0, opportunityId: null })] });
+    assert.equal(codes(results).includes('THREAD_WITHOUT_NEXT_COMMITMENT'), true);
+  });
+
   test('won and lost opportunities are not audited', () => {
     assert.deepEqual(run({ opportunities: [opportunity({ status: 'Won', evidence: '', nextAction: '' })] }), []);
   });

@@ -34,6 +34,17 @@ export type ProactiveNudgeInput = {
   persistedNudges?: NudgeRecord[];
   today?: string;
   limit?: number;
+  /**
+   * The surface already shows the capture inbox as a card of its own.
+   *
+   * Today does, and it ranks the same unlinked capture a second time in "what
+   * Memoire would start with" - so one note ten minutes old produced three
+   * cards on one screen, and the two that carried an urgency disagreed about
+   * it: High in the ranked list, Low in the watch-list. The watch-list is meant
+   * to be the few things that could embarrass someone in a review, and a
+   * capture the operator has not finished typing is not one of them.
+   */
+  captureInboxShown?: boolean;
 };
 
 export type ProactiveNudgeCenter = {
@@ -53,7 +64,7 @@ export function buildProactiveNudges(input: ProactiveNudgeInput): ProactiveNudge
     ...buildMeddicStakeholderNudges(input, today),
     ...buildPipelineDefenseNudges(input.briefs || [], today),
     ...buildObjectionNudges(input.objections || []),
-    ...buildCaptureNudges(input.activities || [], today),
+    ...(input.captureInboxShown ? [] : buildCaptureNudges(input.activities || [], today)),
     ...buildAccountSignalNudges(input, today),
     ...buildRetentionNudges(input, today),
     ...buildOutcomeLearningNudges(input, today),

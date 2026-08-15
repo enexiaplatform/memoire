@@ -768,7 +768,13 @@ export function AccountsPage() {
           <SkeletonScreen label="Loading your account master">
             <SkeletonTable rows={6} columns={4} />
           </SkeletonScreen>
-        ) : accounts.length === 0 && candidates.length === 0 ? (
+        // A name picked out of a capture is a candidate, not an account, so it
+        // must not decide which empty state this is. With one candidate and no
+        // accounts the page used to say "No accounts match these filters" over
+        // a workspace that simply had no accounts in it yet - blaming filters
+        // the reader had never touched, and hiding the one thing that would
+        // have helped: the button to create the first one.
+        ) : accounts.length === 0 ? (
           <EmptyState onAdd={openAddPanel} onImport={() => setImportOpen(true)} />
         ) : visibleRows.length === 0 ? (
           <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
@@ -1132,15 +1138,13 @@ function AccountMasterTable({
         </label>
       </div>
 
-      {/* See OrderBookPanel: `relative` keeps the absolutely positioned
-          sort-state spans inside this scroller instead of inside <main>. */}
-      <div className="relative max-w-full overflow-x-auto">
+      {/* `record-table-scroller` also keeps the absolutely positioned sort-state
+          spans inside this scroller instead of inside <main>, which is what the
+          `relative` it carries is for. See index.css for why the header sticks
+          to this element rather than to the page. */}
+      <div className="record-table-scroller">
         <table className="w-full min-w-[1240px] border-collapse text-left text-sm">
-          <thead
-            // Below the app header and the sticky filter bar, not behind them.
-            style={{ top: 'calc(var(--app-header-h) + var(--filter-bar-h))' }}
-            className="sticky z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500"
-          >
+          <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
             <tr>
               <SortableHeader label="Code" sortKey="accountCode" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <SortableHeader label="Account" sortKey="accountName" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
@@ -2193,7 +2197,7 @@ function CandidateSection({
           title={bulkBlockedReason || undefined}
           className="ml-auto rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white hover:bg-navy/90 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600"
         >
-          {busy ? 'Creating...' : `Create all ${candidates.length} accounts`}
+          {busy ? 'Creating...' : `Create ${candidates.length === 1 ? 'this account' : `all ${candidates.length} accounts`}`}
         </button>
       </div>
       {bulkBlockedReason && !busy && (

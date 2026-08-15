@@ -482,7 +482,15 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraph 
       id: nodeId,
       type: 'opportunity',
       label: opportunity.opportunityName || 'Untitled deal',
-      subtitle: [opportunity.accountName, opportunity.stage, opportunity.status].filter(Boolean).join(' · '),
+      // Stage and status say the same word on every closed deal - "Won · Won",
+      // "Lost · Lost" - because closing sets both. Only worth printing twice
+      // when they actually differ, which is what an on-hold deal at Proposal
+      // looks like.
+      subtitle: [
+        opportunity.accountName,
+        opportunity.stage,
+        opportunity.status === opportunity.stage ? '' : opportunity.status,
+      ].filter(Boolean).join(' · '),
       href: `/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}`,
       weight: isOpen ? 3 : 1,
       updatedAt: dateOf(opportunity.updatedAt),

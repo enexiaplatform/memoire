@@ -396,6 +396,17 @@ export function DailyCapturePage() {
   }, [accountAliases, accounts, activeActivityDate, activeCaptureText, activeSourceItem, captureCorrections, captureMode, opportunities]);
   const preview = structuredDraft || localPreview;
   const needsConfirmation = !preview?.accountName;
+  // Nothing at all came out of the rules. The grid below then reads as eight
+  // rows of "Not captured", which looks like the product is broken rather than
+  // like a note it could not parse - and the rules are English-shaped, so this
+  // is the ordinary case for most of the world's notes, not an edge one.
+  const parsedNothing = Boolean(preview)
+    && !preview?.accountName
+    && !preview?.contactName
+    && !preview?.opportunityName
+    && !preview?.nextAction
+    && !preview?.dueDate
+    && preview?.activityType === 'Other';
 
   const refreshActivities = async () => {
     const cachedData = getCachedSalesWorkspaceData(dataUserId);
@@ -938,6 +949,7 @@ export function DailyCapturePage() {
                 {needsConfirmation && <span className="rounded-full bg-white px-2.5 py-1 text-amber-700 ring-1 ring-amber-200">Needs confirmation</span>}
               </div>
             </div>
+            <UnparsedNoteNotice show={parsedNothing} />
             <StructuredPreviewEditor preview={preview} onChange={updateDraft} accountSuggestions={accountNameSuggestions} opportunitySuggestions={opportunityNameSuggestions} />
             {opportunities.length > 0 && (
               <PreviewOpportunitySuggestions preview={previewToRecord(preview)} opportunities={opportunities} />
@@ -1101,6 +1113,7 @@ export function DailyCapturePage() {
                 {needsConfirmation && <span className="rounded-full bg-white px-2.5 py-1 text-amber-700 ring-1 ring-amber-200">Needs confirmation</span>}
               </div>
             </div>
+            <UnparsedNoteNotice show={parsedNothing} />
             <StructuredPreviewEditor preview={preview} onChange={updateDraft} accountSuggestions={accountNameSuggestions} opportunitySuggestions={opportunityNameSuggestions} />
             {opportunities.length > 0 && (
               <PreviewOpportunitySuggestions preview={previewToRecord(preview)} opportunities={opportunities} />
@@ -1688,6 +1701,32 @@ function QuickTextArea({
         className="mt-1 w-full resize-y bg-transparent text-sm font-semibold leading-6 text-emerald-950 outline-none placeholder:text-emerald-300"
       />
     </label>
+  );
+}
+
+/**
+ * Says the rules read nothing, instead of showing eight rows of "Not captured".
+ *
+ * The parser is written around English sentence shapes - "Called X at Y",
+ * "need to send the quote by Friday". A note in any other language comes back
+ * empty, and the panel then presents that as a grid of blank fields under a
+ * heading claiming the note has been structured. The operator cannot tell
+ * whether the product failed, their note was wrong, or nothing was there.
+ *
+ * The note itself is never at risk: it is stored verbatim either way. What is
+ * missing is only the structure, and the fields below are how it gets added.
+ */
+function UnparsedNoteNotice({ show }: { show: boolean }) {
+  if (!show) return null;
+  return (
+    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+      <p className="text-xs font-bold text-amber-900">Nothing could be read out of this note.</p>
+      <p className="mt-0.5 text-xs leading-5 text-amber-900">
+        The parsing rules recognise English sentence patterns, so a note written another way comes back
+        empty. Your note is saved exactly as typed — fill in the customer and the next step below and it
+        counts the same as one Memoire read for itself.
+      </p>
+    </div>
   );
 }
 

@@ -286,7 +286,11 @@ function summarizeContext(accounts: Account[], opportunities: Opportunity[], int
   }
   return [
     accounts[0] ? `Account: ${accounts[0].name}. ${accounts[0].summary || ''}` : '',
-    opportunities[0] ? `Current opportunity: ${opportunities[0].title} at ${opportunities[0].stage}.` : '',
+    // "at Proposal" reads; "at won" does not, because Won is not a place the
+    // deal is sitting at - it is what happened to it.
+    opportunities[0]
+      ? `Current opportunity: ${opportunities[0].title} — ${opportunities[0].stage}.`
+      : '',
     interactions[0] ? `Last interaction: ${interactions[0].summary}` : '',
     objections.length > 0 ? `Objections: ${objections.map((objection) => objection.title).join('; ')}` : '',
     actions.find((action) => action.status === 'open') ? `Next action: ${actions.find((action) => action.status === 'open')?.title}` : '',

@@ -2574,13 +2574,12 @@ function OpportunityMasterTable({
         </label>
       </div>
 
-      <div className="max-w-full overflow-x-auto">
+      {/* See index.css: the header sticks to this scroller, not to the page.
+          A 110px page offset inside a horizontally scrolling wrapper pinned it
+          over the first rows instead. */}
+      <div className="record-table-scroller">
         <table className="w-full border-collapse text-left text-sm" style={{ minWidth }}>
-          <thead
-            // Below the app header and the sticky filter bar, not behind them.
-            style={{ top: 'calc(var(--app-header-h) + var(--filter-bar-h))' }}
-            className="sticky z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500"
-          >
+          <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
             <tr>
               <th className="sticky left-0 z-20 w-10 border-b border-gray-200 bg-gray-50 px-2 py-2.5 text-center">
                 <span className="sr-only">Select</span>

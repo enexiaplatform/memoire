@@ -11,7 +11,17 @@ import { ProfileTab } from './ProfileTab';
 import { BillingTab } from './BillingTab';
 import { restartFirstRun } from '../../utils/firstRun';
 import { resetTrialActivationChecklist } from '../../utils/trialActivationChecklist';
-import { CURRENCY_NAMES, SUPPORTED_CURRENCIES, getReportingCurrency } from '../../utils/money';
+import {
+  BASE_CURRENCY,
+  CURRENCY_NAMES,
+  EXCHANGE_RATES_AS_OF,
+  SUPPORTED_CURRENCIES,
+  getExchangeRateToBase,
+  getReportingCurrency,
+  isExchangeRateOverridden,
+  setExchangeRateOverride,
+  type SupportedCurrency,
+} from '../../utils/money';
 import { getOpeningCashBalance } from '../../utils/cashPosition';
 import {
   hydrateWorkspacePreferences,
@@ -115,6 +125,8 @@ export function SettingsPage() {
         </div>
         <SaveState result={currencySave} savedLabel={`Saved. Totals are reported in ${reportingCurrency} everywhere.`} />
       </div>
+
+      <ExchangeRatesCard reportingCurrency={reportingCurrency} />
 
       {/* Opening cash balance only means something next to a profit-and-loss
           statement, and that is outside the beta proposition. Any value already
@@ -276,6 +288,89 @@ export function SettingsPage() {
  * "saved in this browser only" look identical until you open Memoire somewhere
  * else, and by then the setting has already appeared to revert.
  */
+/**
+ * The rates every converted total on every page is produced at.
+ *
+ * They were hard-coded, undated and invisible. A workspace whose deals are in
+ * one currency and whose reporting is in another had every figure it owns
+ * silently restated at a number set by hand months earlier, with nothing on
+ * screen naming it - and the arithmetic elsewhere in this product argues about
+ * single points of margin, which is smaller than the drift.
+ *
+ * So: shown, dated, and correctable. One row per currency the workspace could
+ * meet, the shipped rate as the default, and the operator's own bank rate
+ * winning wherever they enter one.
+ */
+function ExchangeRatesCard({ reportingCurrency }: { reportingCurrency: SupportedCurrency }) {
+  const [open, setOpen] = useState(false);
+  const [, setVersion] = useState(0);
+
+  const rateOf = (currency: SupportedCurrency) => (
+    getExchangeRateToBase(currency) / getExchangeRateToBase(reportingCurrency)
+  );
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-navy">Exchange rates</p>
+          <p className="mt-1 text-sm text-gray-500">
+            A deal in another currency is converted at these rates before it is added to any total.
+            They are planning rates set on {EXCHANGE_RATES_AS_OF}, not a live feed, and they are stored
+            in this browser. Enter your own where you know better.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          className="shrink-0 rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-navy hover:bg-gray-50"
+        >
+          {open ? 'Hide rates' : 'Show rates'}
+        </button>
+      </div>
+
+      {open && (
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {SUPPORTED_CURRENCIES.filter((currency) => currency !== reportingCurrency).map((currency) => (
+            <label key={currency} className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2">
+              <span className="text-sm font-semibold text-navy">
+                1 {currency}
+                {isExchangeRateOverridden(currency) && (
+                  <span className="ml-1.5 text-xs font-bold text-brand-blue">yours</span>
+                )}
+              </span>
+              <span className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  defaultValue={Number(rateOf(currency).toPrecision(8))}
+                  onBlur={(event) => {
+                    const entered = Number(event.target.value);
+                    if (!Number.isFinite(entered) || entered <= 0) return;
+                    // Stored against the anchor currency, so changing the
+                    // reporting currency later does not silently rescale it.
+                    const toBase = entered * getExchangeRateToBase(reportingCurrency);
+                    setExchangeRateOverride(currency, toBase);
+                    setVersion((value) => value + 1);
+                  }}
+                  className="w-32 rounded-md border border-gray-300 px-2 py-1 text-right text-sm font-semibold text-navy outline-none focus:border-brand-blue"
+                  aria-label={`Rate for 1 ${currency} in ${reportingCurrency}`}
+                />
+                <span className="w-10 text-xs font-bold text-gray-500">{reportingCurrency}</span>
+              </span>
+            </label>
+          ))}
+          <p className="sm:col-span-2 text-xs text-gray-500">
+            Rates are held against {BASE_CURRENCY}, the pivot every conversion goes through. Clearing a
+            field and re-entering the shipped number restores it.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SaveState({ result, savedLabel }: { result: PreferenceSaveResult | null; savedLabel: string }) {
   if (!result) return null;
 

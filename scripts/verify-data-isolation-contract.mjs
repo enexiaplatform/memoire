@@ -99,8 +99,28 @@ for (const marker of [
   'await clearDemoWorkspaceForAccount();',
   'completePendingCloudWorkspace(nextSession?.user ?? null)',
   'window.localStorage.removeItem(PIPELINE_AUTH_REDIRECT_KEY)',
+  // Records left by a previous account are removed before the new session is
+  // published to React, because every store reads the browser synchronously.
+  'if (nextSession?.user?.id) claimLocalWorkspace(nextSession.user.id);',
 ]) {
   requireIncludes(authProvider, marker, `auth provider missing demo/account cleanup marker: ${marker}`);
+}
+
+// A second account on the same browser used to inherit the first account's
+// collections, because the stores write to one un-namespaced key each and
+// signing out leaves them there. Ownership of the whole local workspace is now
+// decided in one place, at sign-in.
+const workspaceOwner = read('src/services/localWorkspaceOwner.ts');
+for (const marker of [
+  'export function claimLocalWorkspace',
+  'if (previousOwner === userId)',
+  'if (!previousOwner)',
+  'const removedKeys = purgeWorkspaceKeys(storage);',
+  "'memoire.supabase.',",
+  "if (!key.startsWith('memoire')) return false;",
+  "eventName: 'local_workspace_purged'",
+]) {
+  requireIncludes(workspaceOwner, marker, `local workspace owner missing isolation marker: ${marker}`);
 }
 
 const demoMode = read('src/lib/demoMode.ts');
@@ -124,6 +144,9 @@ for (const marker of [
   // collection unclaimed and silent.
   'writeLocalCollection(getOwnerKey(table), userId)',
   'claimLocalCollectionForUser',
+  // A rejected claim must not take the key on its way out: the rightful owner
+  // needs it to keep offering its own offline records to the cloud.
+  'if (owner && owner !== userId) return false;',
   "eventName: 'cloud_json_sync_failed'",
 ]) {
   requireIncludes(cloudJson, marker, `cloud JSON store missing isolation marker: ${marker}`);

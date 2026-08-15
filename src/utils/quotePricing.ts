@@ -121,10 +121,22 @@ export type QuotePricing = {
   /** The price that would hit it if the customer paid on the day. */
   priceIfPaidImmediatelyBase: number;
   /**
-   * What one more day of credit costs at the suggested price. The exchange rate
-   * between "can we have another two weeks" and money.
+   * What one more day of credit adds to the *price*, at the target margin. The
+   * exchange rate between "can we have another two weeks" and money.
    */
   costPerCreditDayBase: number;
+  /**
+   * What one more day of credit costs in interest alone, before the margin is
+   * put back on top.
+   *
+   * Both numbers are correct and they are not the same number, which is the
+   * problem this field solves. A reviewer reading "cost of credit 2.5M over
+   * 45.5 days" next to "one more day costs 68.5K" divides the first pair, gets
+   * 54.9K, and concludes one of the tiles is wrong - because nothing on the
+   * card said one was interest and the other was price. Now the tile can show
+   * its own working.
+   */
+  interestPerCreditDayBase: number;
 
   /** Everything below is null until a price is actually proposed. */
   proposedPriceBase: number | null;
@@ -192,7 +204,10 @@ export function buildQuotePricing(input: {
   const suggestedPriceBase = trueCostBase / marginDivisor;
   const priceIfPaidImmediatelyBase = landedCostBase / marginDivisor;
 
-  const costPerCreditDayBase = landedCostBase * (financingRatePct / 100) / DAYS_PER_YEAR / marginDivisor;
+  const interestPerCreditDayBase = landedCostBase * (financingRatePct / 100) / DAYS_PER_YEAR;
+  // Grossed up by the margin: an extra day costs interest, and holding the
+  // target means charging for that interest too.
+  const costPerCreditDayBase = interestPerCreditDayBase / marginDivisor;
 
   const proposedPriceBase = finiteOrNull(input.proposedPriceBase);
   const priced = proposedPriceBase !== null && proposedPriceBase > 0;
@@ -216,6 +231,7 @@ export function buildQuotePricing(input: {
     suggestedPriceBase,
     priceIfPaidImmediatelyBase,
     costPerCreditDayBase,
+    interestPerCreditDayBase,
     proposedPriceBase: priced ? proposedPriceBase : null,
     grossMarginBase,
     grossMarginPct,

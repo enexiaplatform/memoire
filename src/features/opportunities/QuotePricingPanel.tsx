@@ -136,10 +136,17 @@ export function QuotePricingPanel({
       otherAmount: numberOrNull(draft.otherAmount),
       extrasCurrency: draft.extrasCurrency,
       supplier: draft.supplier,
+      // Saved with the cost, not only onto a quote. The price on this card is
+      // calculated from these terms, and before this they lived in component
+      // state: type them, watch them parse, press save, lose them - while the
+      // order book went on reporting "No payment term".
+      paymentTerm: term,
       source: sampleDataActive ? 'demo' : 'user',
       isSample: sampleDataActive,
     });
-    setSaved('Purchase cost saved. Cost Analysis reads the same figure once this order lands.');
+    setSaved(term.trim()
+      ? 'Purchase cost and terms saved. The order book and Cash Collection read them from here until a quote replaces them.'
+      : 'Purchase cost saved. Cost Analysis reads the same figure once this order lands.');
     window.setTimeout(() => setSaved(''), 4000);
   };
 
@@ -253,10 +260,15 @@ export function QuotePricingPanel({
               detail={`Holds ${targetPct}% after financing`}
               tone="blue"
             />
+            {/* Says which of the two per-day numbers this is. The tile beside
+                it reports interest over the whole credit period, and a reader
+                who divides that by the days gets a different figure - correctly,
+                because this one is grossed up to hold the margin. Unlabelled,
+                the pair reads as an arithmetic error. */}
             <Figure
-              label="One more day costs"
+              label="One more day adds"
               value={formatCompactBaseAmount(pricing.costPerCreditDayBase)}
-              detail="Extra price per day of credit given"
+              detail={`To the price, to hold ${targetPct}% · interest alone ${formatCompactBaseAmount(pricing.interestPerCreditDayBase)}/day`}
             />
           </div>
 
@@ -397,9 +409,13 @@ function PaymentTermReadout({
           <p className="mt-2 text-[11px] font-semibold">These are the terms recorded on the quote.</p>
         )
       ) : (
+        // There is no "Money" section to send anyone to - the copy named a part
+        // of the interface that does not exist - and the terms are no longer a
+        // what-if either: Save purchase cost keeps them, and the order book and
+        // Cash Collection read them until a quote replaces them.
         <p className="mt-2 text-[11px] leading-5">
-          No quote on this deal yet, so these terms are a what-if. Record them on the quote (Money → Quotes) and
-          receivables follow from them.
+          No quote on this deal yet. Save purchase cost keeps these terms on the deal, and the order book and
+          Cash Collection use them until a quote carries its own.
         </p>
       )}
       {saved && <p className="mt-1.5 text-[11px] font-bold">{saved}</p>}

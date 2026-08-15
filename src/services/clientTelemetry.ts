@@ -4,7 +4,10 @@ type ClientOperationalEvent = {
     | 'pipeline_defense_cloud_sync_failed'
     | 'client_render_error'
     // A write this browser refused: the record did not land locally either.
-    | 'local_write_failed';
+    | 'local_write_failed'
+    // Records belonging to a different account were cleared out of this
+    // browser before the new one could read them.
+    | 'local_workspace_purged';
   component: string;
   operation: string;
   table?: string;

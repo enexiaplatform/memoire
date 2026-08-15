@@ -145,10 +145,38 @@ export function evaluateCommercialPolicies(input: PolicyInput): Recommendation[]
     ...coverageRules(input.coverage, thresholds, calculatedAt),
   ];
 
-  return recommendations.sort((left, right) => {
+  return dropDuplicateNextStepWarnings(recommendations).sort((left, right) => {
     const bySeverity = SEVERITY_ORDER[left.severity] - SEVERITY_ORDER[right.severity];
     return bySeverity !== 0 ? bySeverity : left.accountName.localeCompare(right.accountName);
   });
+}
+
+/**
+ * One gap, said once.
+ *
+ * A thread with no open commitment and the opportunity behind it with no dated
+ * next action are the same sentence about the same deal, written from two
+ * record types: "nothing is scheduled to move this". Both fired, both reached
+ * the week's plan, and both proposed a row the operator would satisfy with a
+ * single edit. On a workspace with one deal that was two of the four suggested
+ * items; on a real book it is the reason a suggestion list stops being read.
+ *
+ * The opportunity-level warning is the one kept: it names the deal, it carries
+ * the date that is missing, and its link opens the field that clears it.
+ */
+function dropDuplicateNextStepWarnings(recommendations: Recommendation[]): Recommendation[] {
+  const opportunitiesAlreadyWarned = new Set(
+    recommendations
+      .filter((item) => item.reasonCode === 'OPPORTUNITY_WITHOUT_FUTURE_ACTION' && item.opportunityId)
+      .map((item) => item.opportunityId as string),
+  );
+  if (opportunitiesAlreadyWarned.size === 0) return recommendations;
+
+  return recommendations.filter((item) => !(
+    item.reasonCode === 'THREAD_WITHOUT_NEXT_COMMITMENT'
+    && item.opportunityId
+    && opportunitiesAlreadyWarned.has(item.opportunityId)
+  ));
 }
 
 // ------------------------------------------------------------ commitments
@@ -355,16 +383,20 @@ function opportunityRules(
       });
     }
 
-    const hasFutureAction = Boolean(opportunity.nextAction?.trim())
-      && Boolean(opportunity.nextActionDate?.trim())
-      && opportunity.nextActionDate >= todayKey;
+    // The date is what decides this, not the wording beside it. Requiring both
+    // meant a deal dated three days out - which Plan and Today were already
+    // showing - was reported as having "no dated next action", directly under a
+    // card in the same drawer reading "Next action - Aug 21, 2026". A rule that
+    // contradicts the record it is describing teaches people to ignore it.
+    const nextActionDate = opportunity.nextActionDate?.trim();
+    const hasFutureAction = Boolean(nextActionDate) && nextActionDate >= todayKey;
 
     if (!hasFutureAction) {
       out.push({
         id: `${opportunity.id}:no-future-action`,
         reasonCode: 'OPPORTUNITY_WITHOUT_FUTURE_ACTION',
-        reasonText: opportunity.nextActionDate && opportunity.nextActionDate < todayKey
-          ? `${opportunity.opportunityName}'s next action was dated ${formatDate(opportunity.nextActionDate)} and has passed.`
+        reasonText: nextActionDate && nextActionDate < todayKey
+          ? `${opportunity.opportunityName}'s next action was dated ${formatDate(nextActionDate)} and has passed.`
           : `${opportunity.opportunityName} has no dated next action.`,
         sourceRecordIds: [opportunity.id],
         threshold: 1,

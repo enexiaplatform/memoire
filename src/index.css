@@ -94,6 +94,46 @@ html {
   }
 }
 
+/*
+ * The scroll region a record table lives in.
+ *
+ * The wide tables sit in a wrapper that scrolls horizontally, and the `<thead>`
+ * was made `position: sticky` with the two bands above it as its `top` offset,
+ * so it would sit under them instead of behind them. That reasoning holds only
+ * if the page is the scrollport, and it is not: `overflow-x: auto` makes the
+ * wrapper a scroll container on BOTH axes - CSS has no way to scroll one axis
+ * and leave the other visible - so the wrapper became the sticky containing
+ * block, and a 110px offset inside a wrapper only as tall as its own content
+ * pinned the header near the bottom of the table, on top of the rows.
+ *
+ * Measured on Accounts with one account: the table began at 394px, the row ran
+ * 443-496, and the header was painted at 447-496. `elementFromPoint` in the
+ * middle of the row returned a header sort icon. The page said "Showing 1-1
+ * of 1" above what looked like an empty grid, and no amount of scrolling
+ * recovered the row.
+ *
+ * So the wrapper is made the scrollport it already was, deliberately: it takes
+ * a height, the header sticks to the top of it at offset zero, and a long list
+ * scrolls under its own column headers. Short lists never reach the cap and
+ * render as an ordinary table.
+ *
+ * The background belongs on the cells rather than on the `<thead>`: a sticky
+ * table section does not reliably paint its own background in every engine, and
+ * a transparent header with rows moving underneath it is the same bug wearing a
+ * different coat.
+ */
+.record-table-scroller {
+  position: relative;
+  max-width: 100%;
+  overflow: auto;
+  max-height: clamp(20rem, calc(100vh - var(--app-header-h) - var(--filter-bar-h) - 9rem), 60rem);
+  overscroll-behavior: contain;
+}
+
+.record-table-scroller thead th {
+  background-color: #F9FAFB;
+}
+
 body {
   font-family: 'Inter', system-ui, sans-serif;
   background: #F8FAFC;

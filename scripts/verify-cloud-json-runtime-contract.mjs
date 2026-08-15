@@ -128,7 +128,14 @@ try {
   assert(ownerStore.get('memoire.cloud-owner.review_packs.v1') === 'user-a', 'claim should write review_packs owner marker');
   assert(claimLocalCollectionForUser('review_packs', 'user-a') === true, 'same owner should keep local collection claim');
   assert(claimLocalCollectionForUser('review_packs', 'user-b') === false, 'different owner should not claim stale local collection');
-  assert(ownerStore.get('memoire.cloud-owner.review_packs.v1') === 'user-b', 'new owner marker should be recorded after stale claim attempt');
+  // A rejected claim must NOT take the marker. It used to: the write happened
+  // before the decision, so user-b's refused attempt renamed the collection to
+  // user-b anyway. User-a then read a marker that was not theirs, stopped
+  // offering its own local rows to the cloud, and anything captured offline had
+  // no way home. Records belonging to another account are removed from the
+  // browser at sign-in now (localWorkspaceOwner), so nothing is left here to
+  // take in the first place.
+  assert(ownerStore.get('memoire.cloud-owner.review_packs.v1') === 'user-a', 'a refused claim must leave the owner marker with the rightful owner');
   assert(claimLocalCollectionForUser('sales_assets', 'user-b') === true, 'owner markers should be isolated by table');
   assert(ownerStore.get('memoire.cloud-owner.sales_assets.v1') === 'user-b', 'sales_assets owner marker should be table-specific');
 } finally {

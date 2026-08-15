@@ -53,7 +53,13 @@ assert.equal(extractDueDate('Send quote by 02/31/2026', '2026-02-01'), '');
 const note = 'Met Pymepharco today with Ms. Nhu. They are evaluating Merck EM RTU. Need to send DCM comparison quote by next Friday. Tender decision expected end of July.';
 const result = classifySalesActivity(note, '2026-06-18');
 
-assert.equal(result.summary, 'Met Pymepharco today with Ms. Nhu.');
+// The opening sentence AND the one carrying the promise. Keeping only the first
+// threw away the half somebody comes back for - on a note whose commitment the
+// rules could not otherwise read, the summary was the last trace of it.
+assert.equal(
+  result.summary,
+  'Met Pymepharco today with Ms. Nhu. Need to send DCM comparison quote by next Friday.',
+);
 assert.equal(result.accountName, 'Pymepharco');
 assert.equal(result.contactName, 'Ms. Nhu');
 assert.equal(result.opportunityName, '');

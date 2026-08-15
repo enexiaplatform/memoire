@@ -224,6 +224,59 @@ describe('receivables: how late the money is', () => {
     assert.equal(summary.aging.length, 6, 'every bucket is drawn, including the empty ones');
   });
 
+  test('a split order lands in two buckets, not one', () => {
+    // 30% on order, 70% forty-five days after it. On 2026-08-15 the deposit is
+    // due today and the balance is six weeks out. Bucketing the whole order by
+    // its earliest slice reported all 250,000,000 as due within the week and
+    // left "not yet due" empty, while the schedule underneath said otherwise.
+    const summary = buildReceivables({
+      orders: [order('split', {
+        orderDate: '2026-08-15',
+        paymentTerm: '30% deposit, 70% net 45',
+        amountBase: 250_000_000,
+      })],
+      records: [],
+      today: '2026-08-15',
+    });
+
+    const bucket = (key) => summary.aging.find((entry) => entry.bucket === key);
+    assert.equal(bucket('due-soon').amountBase, 75_000_000);
+    assert.equal(bucket('due-soon').count, 1);
+    assert.equal(bucket('current').amountBase, 175_000_000);
+    assert.equal(bucket('current').count, 1);
+    assert.equal(
+      summary.aging.reduce((sum, entry) => sum + entry.amountBase, 0),
+      summary.totalOutstandingBase,
+      'the buckets have to add up to what is owed',
+    );
+  });
+
+  test('a part-paid split order ages only what is still outstanding', () => {
+    const summary = buildReceivables({
+      orders: [order('split', {
+        orderDate: '2026-08-15',
+        paymentTerm: '30% deposit, 70% net 45',
+        amountBase: 250_000_000,
+      })],
+      records: [{
+        id: 'rec-1',
+        opportunityId: 'split',
+        installments: [],
+        receipts: [{ id: 'r-1', amount: 75_000_000, currency: 'VND', receivedOn: '2026-08-15', reference: '', note: '' }],
+        deliveredOn: '',
+        invoicedOn: '',
+        note: '',
+        createdAt: '',
+        updatedAt: '',
+      }],
+      today: '2026-08-15',
+    });
+
+    const bucket = (key) => summary.aging.find((entry) => entry.bucket === key);
+    assert.equal(bucket('due-soon').amountBase, 0, 'the deposit has been paid');
+    assert.equal(bucket('current').amountBase, 175_000_000);
+  });
+
   test('the order to ring first is the biggest, not merely the oldest', () => {
     const summary = buildReceivables({
       orders: [

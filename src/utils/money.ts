@@ -1,3 +1,5 @@
+import { writeLocalCollection } from '../services/localWriteGuard.ts';
+
 export const SUPPORTED_CURRENCIES = [
   'VND', 'USD', 'EUR', 'GBP', 'SGD', 'JPY', 'KRW', 'CNY', 'HKD', 'TWD',
   'THB', 'MYR', 'IDR', 'PHP', 'INR', 'AUD', 'NZD', 'CAD', 'CHF', 'AED', 'SAR',
@@ -41,8 +43,19 @@ export const BASE_CURRENCY: SupportedCurrency = 'VND';
 // the browser rendered Vietnamese compact units ("4 Tr") inside English copy.
 const MONEY_LOCALE = 'en';
 
-// Static planning rates. These are deliberately centralized so they can be
-// replaced by workspace-configured or live rates without changing consumers.
+/**
+ * When the shipped rates below were last set by hand.
+ *
+ * Shown wherever a converted total is, because a total quietly produced at an
+ * undated rate is a number nobody can check. A workspace selling across
+ * currencies moves several percent a quarter against these, which is more than
+ * the margin most of this product's arithmetic is arguing about.
+ */
+export const EXCHANGE_RATES_AS_OF = '2026-08-01';
+
+// Static planning rates, overridable per workspace - see `setExchangeRateOverride`.
+// The pivot is BASE_CURRENCY; nothing here is a live feed, and the interface
+// says so rather than implying one.
 export const EXCHANGE_RATES_TO_VND: Readonly<Record<SupportedCurrency, number>> = {
   VND: 1,
   USD: 26_000,
@@ -93,7 +106,68 @@ export function convertMoney(
   if (!isSupportedCurrency(normalizedFrom)) return null;
   const supportedFrom = normalizedFrom as SupportedCurrency;
 
-  return numericAmount * EXCHANGE_RATES_TO_VND[supportedFrom] / EXCHANGE_RATES_TO_VND[toCurrency];
+  return numericAmount * getExchangeRateToBase(supportedFrom) / getExchangeRateToBase(toCurrency);
+}
+
+const RATE_OVERRIDE_KEY = 'memoire.exchangeRateOverrides.v1';
+/** Fired when a rate changes, so every figure on screen can be recomputed. */
+export const EXCHANGE_RATES_CHANGED_EVENT = 'memoire:exchange-rates-changed';
+
+/**
+ * The rates this workspace actually converts at.
+ *
+ * Shipped defaults, with whatever the operator has corrected on top. Somebody
+ * running a real book knows their own bank rate and it is not the one hard-coded
+ * in a file six months ago; refusing to let them say so means every total on
+ * every page is wrong by an amount only they can see.
+ *
+ * Kept in this browser rather than on the account, and labelled that way in
+ * Settings. Adding a column to `user_profiles` for it would be the better home,
+ * and is a migration rather than a code change.
+ */
+export function getExchangeRateOverrides(): Partial<Record<SupportedCurrency, number>> {
+  if (typeof localStorage === 'undefined') return {};
+  try {
+    const parsed = JSON.parse(localStorage.getItem(RATE_OVERRIDE_KEY) || '{}');
+    if (!parsed || typeof parsed !== 'object') return {};
+    const out: Partial<Record<SupportedCurrency, number>> = {};
+    for (const [currency, rate] of Object.entries(parsed as Record<string, unknown>)) {
+      const normalized = normalizeCurrency(currency);
+      if (!isSupportedCurrency(normalized)) continue;
+      const numeric = Number(rate);
+      if (!Number.isFinite(numeric) || numeric <= 0) continue;
+      out[normalized as SupportedCurrency] = numeric;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+export function getExchangeRateToBase(currency: SupportedCurrency): number {
+  // The anchor is 1 by definition and must never be overridable: a workspace
+  // that set it to anything else would rescale every figure it owns.
+  if (currency === BASE_CURRENCY) return 1;
+  return getExchangeRateOverrides()[currency] ?? EXCHANGE_RATES_TO_VND[currency];
+}
+
+export function isExchangeRateOverridden(currency: SupportedCurrency): boolean {
+  return currency !== BASE_CURRENCY && getExchangeRateOverrides()[currency] !== undefined;
+}
+
+/** Passing `null` restores the shipped rate for that currency. */
+export function setExchangeRateOverride(currency: SupportedCurrency, rate: number | null): boolean {
+  if (typeof localStorage === 'undefined' || currency === BASE_CURRENCY) return false;
+  const overrides = getExchangeRateOverrides();
+  if (rate === null) delete overrides[currency];
+  else if (Number.isFinite(rate) && rate > 0) overrides[currency] = rate;
+  else return false;
+
+  const written = writeLocalCollection(RATE_OVERRIDE_KEY, JSON.stringify(overrides));
+  if (written.ok && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(EXCHANGE_RATES_CHANGED_EVENT));
+  }
+  return written.ok;
 }
 
 /**

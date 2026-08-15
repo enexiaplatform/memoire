@@ -350,7 +350,9 @@ function Header() {
       eyebrow="Run"
       icon={<BarChart3 className="h-5 w-5" />}
       title="How the business is doing"
-      description="Everything here is read from what your accounts, deals, touches and money already say. Nothing on this page changes a record - it is a way of seeing the six destinations, not a seventh place to work."
+      // Counted six when the rail held six. It holds fourteen now, and a number
+      // in prose that nothing updates is a number that goes quietly wrong.
+      description="Everything here is read from what your accounts, deals, touches and money already say. Nothing on this page changes a record - it is a way of seeing the destinations in the rail, not another place to work."
       actions={<DataModePill />}
     />
   );
