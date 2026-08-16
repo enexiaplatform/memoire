@@ -157,7 +157,11 @@ export function parsePaymentTerm(text: unknown): ParsedPaymentTerm {
     };
   }
 
-  if (/\b(advance|prepaid|prepayment|100% before)\b/.test(normalized)) {
+  // `cia` and `pia` are how an export invoice states cash in advance, and they
+  // are as common in cross-border terms as `cod`. Without them the term fell
+  // through to the assumed schedule, which says "on delivery" - the opposite of
+  // what the customer agreed, on the one term that protects the seller.
+  if (/\b(advance|prepaid|prepayment|cia|pia|100% before)\b/.test(normalized)) {
     return {
       installments: [{ id: 'pt-1', label: 'In advance', percent: 100, amount: null, trigger: 'order', offsetDays: 0 }],
       confidence: 'stated',

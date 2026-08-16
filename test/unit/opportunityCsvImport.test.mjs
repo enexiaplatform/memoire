@@ -54,6 +54,19 @@ describe('parseOpportunityCsv', () => {
     );
   });
 
+  test('an export written in the comma-decimal convention keeps its value', () => {
+    // "85.000,50" is eighty-five thousand euros in Germany, Austria, the
+    // Netherlands, Italy, Spain, the Nordics and most of Latin America. It used
+    // to import as 85.0005, and "1.250.000" imported as "Missing value."
+    const { rows } = parseOpportunityCsv([
+      'Account Name,Opportunity Name,Estimated Value,Currency',
+      'Kessler Antriebe GmbH,Retrofit line B,"85.000,50",EUR',
+      'Nordwind Marine AS,Deck crane spares,"1.250.000",SEK',
+    ].join('\n'));
+    assert.equal(rows[0].input.estimatedValue, 85000.5);
+    assert.equal(rows[1].input.estimatedValue, 1250000);
+  });
+
   test('supported currencies carry no warning', () => {
     const { rows } = parseOpportunityCsv(csv);
     assert.equal(rows[0].input.currency, 'EUR');

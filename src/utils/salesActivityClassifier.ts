@@ -557,13 +557,36 @@ function readNamedMonthDate(rawNote: string, anchor: Date) {
 }
 
 /**
- * A slash date, read the way the rest of the product writes one: day first.
+ * Whether this operator writes the month first.
  *
- * This used to read `12/08/2026` as December 8th. The date input sitting beside
- * the note in the same capture form renders that same day as `08/12/2026`, so the
- * parser and the field two inches away from it disagreed by four months - on a
- * product whose whole claim is that a deal will not go quiet on you. Day-first is
- * what this operator types and what every other surface shows.
+ * Only the United States and a handful of places that follow it write 12/08 for
+ * December 8th; the rest of the world writes the day first, and the product
+ * assumed that for everybody. That was right for the operator it was written
+ * for and four months wrong for a seller in Chicago typing a date into the same
+ * box - the identical failure the note below describes, pointed the other way.
+ *
+ * The browser's own locale is the signal, because it is what that person's
+ * machine already uses to render every other date they see. No new question at
+ * signup, and the capture screen still shows the parsed date for confirmation
+ * before anything is saved.
+ */
+function prefersMonthFirstDates() {
+  // A browser, specifically: Node reports `en-US` on its own `navigator`, and
+  // the contract scripts and the prerender step run there. Day-first stays the
+  // documented default for everything that is not somebody's browser.
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  const locales = [navigator.language, ...(navigator.languages || [])].filter(Boolean);
+  return locales.some((locale) => /^en-(US|PH)\b/i.test(locale));
+}
+
+/**
+ * A slash date, read the way this operator writes one.
+ *
+ * This used to read `12/08/2026` as December 8th for everybody. The date input
+ * sitting beside the note in the same capture form renders that same day as
+ * `08/12/2026`, so the parser and the field two inches away from it disagreed by
+ * four months - on a product whose whole claim is that a deal will not go quiet
+ * on you.
  *
  * The ordering is only assumed when the numbers are genuinely ambiguous. A first
  * part above 12 can only be a day, and a second part above 12 can only be a
@@ -575,7 +598,8 @@ function readSlashDate(firstPart: string, secondPart: string, yearPart: string |
   const second = Number(secondPart);
   if (!Number.isFinite(first) || !Number.isFinite(second)) return '';
 
-  const dayFirst = second <= 12;
+  const ambiguous = first <= 12 && second <= 12;
+  const dayFirst = ambiguous ? !prefersMonthFirstDates() : second <= 12;
   const day = dayFirst ? first : second;
   const month = dayFirst ? second : first;
   if (month < 1 || month > 12 || day < 1 || day > 31) return '';

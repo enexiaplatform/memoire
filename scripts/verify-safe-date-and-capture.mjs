@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { classifySalesActivity, extractCompetitors, extractDueDate } from '../src/utils/salesActivityClassifier.ts';
 import {
   compareSafeBusinessDate,
@@ -109,6 +110,24 @@ assert.ok(!JSON.stringify(result).includes('1900-'));
   assert.deepEqual(extractCompetitors('We are competing against SAP on this one.'), ['SAP']);
   assert.deepEqual(extractCompetitors('Shortlist is us vs. Acme Industrial.'), ['Acme Industrial']);
   assert.deepEqual(extractCompetitors('Incumbent Vendor is still in the loop.'), ['Incumbent Vendor']);
+}
+
+// An ambiguous slash date is read the way the operator's own machine writes
+// dates. Day-first was assumed for everybody, which is right for most of the
+// world and four months wrong for a seller in Chicago - the same failure the
+// comment in `readSlashDate` describes, pointed the other way. The hint is the
+// browser locale and it is scoped to a browser: Node reports `en-US` on its own
+// `navigator`, and these scripts and the prerender step run there.
+{
+  const source = readFileSync('src/utils/salesActivityClassifier.ts', 'utf8');
+  assert.ok(source.includes('function prefersMonthFirstDates()'), 'the month-first hint must exist');
+  assert.ok(
+    /typeof window === 'undefined'/.test(source.slice(source.indexOf('function prefersMonthFirstDates()'), source.indexOf('function readSlashDate'))),
+    'the locale hint must only apply in a browser, or the contracts and the prerender flip with it',
+  );
+  // Unambiguous parts are unchanged by any of it.
+  assert.equal(extractDueDate('send it 25/12/2026', '2026-08-01'), '2026-12-25');
+  assert.equal(extractDueDate('send it 12/08/2026', '2026-08-01'), '2026-08-12', 'day-first stays the default off-browser');
 }
 
 // The customer in a note, when the sentence is written the way people write it.

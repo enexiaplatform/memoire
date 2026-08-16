@@ -12,6 +12,7 @@ import {
   type OpportunityStatus,
 } from '../services/opportunityStore.ts';
 import { getReportingCurrency, isSupportedCurrency } from './money.ts';
+import { parseLocalizedAmount } from './numberFormat.ts';
 
 export type OpportunityCsvPreviewRow = {
   id: string;
@@ -775,10 +776,13 @@ function normalizeStatus(statusRaw: string): OpportunityStatus {
   return inferStatus(statusRaw);
 }
 
+/**
+ * Reads the amount in whichever convention the exporting country writes money.
+ * See `parseLocalizedAmount`: this used to assume the Anglo one, so a German
+ * export of "85.000,50" arrived as 85.0005 and "1.250.000" as no value at all.
+ */
 function normalizeValue(value: string) {
-  if (!value) return null;
-  const parsed = Number(value.replace(/[^\d.-]/g, ''));
-  return Number.isFinite(parsed) ? parsed : null;
+  return parseLocalizedAmount(value);
 }
 
 /**

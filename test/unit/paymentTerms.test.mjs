@@ -78,6 +78,14 @@ describe('payment terms: reading what the operator wrote', () => {
       parsePaymentTerm('100% in advance').installments.map((i) => [i.trigger, i.offsetDays]),
       [['order', 0]],
     );
+    // How an export invoice writes it. Without these the term fell through to
+    // the assumed schedule - "on delivery", the opposite of what was agreed, on
+    // the one term that protects the seller.
+    for (const stated of ['CIA', 'PIA', 'cash in advance']) {
+      const parsed = parsePaymentTerm(stated);
+      assert.equal(parsed.confidence, 'stated', `${stated} is a stated term, not an assumption`);
+      assert.deepEqual(parsed.installments.map((i) => [i.trigger, i.offsetDays]), [['order', 0]], stated);
+    }
   });
 
   test('an unreadable sentence is assumed, not guessed', () => {

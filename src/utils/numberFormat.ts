@@ -60,3 +60,50 @@ export function formatBytes(bytes: number | null | undefined): string {
   }
   return `${formatDecimal(value, value < 10 ? 1 : 0)} ${units[unit]}`;
 }
+
+/**
+ * An amount as somebody's spreadsheet wrote it, in whichever convention their
+ * country uses.
+ *
+ * The importer read amounts with `Number(value.replace(/[^\d.-]/g, ''))`, which
+ * assumes the Anglo convention and quietly mangles the rest of the world: a
+ * German export of eighty-five thousand euros, "85.000,50", became 85.0005, and
+ * "1.250.000" SEK became nothing at all - "Missing value." on a row that had
+ * one. Half of Europe, all of Latin America and Indonesia write money that way,
+ * and this product is sold in dollars to whoever will buy it.
+ *
+ * The rule is the one a person uses reading it: the LAST separator is the
+ * decimal point, unless it is followed by exactly three digits and nothing else
+ * in the number contradicts it - "1.250" is one thousand two hundred and fifty,
+ * "1.25" is one and a quarter. Separators that repeat are grouping by
+ * definition, since a number has one decimal point.
+ */
+export function parseLocalizedAmount(raw: string | number | null | undefined): number | null {
+  if (typeof raw === 'number') return Number.isFinite(raw) ? raw : null;
+  if (typeof raw !== 'string') return null;
+
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  const negative = /^\(.*\)$/.test(trimmed) || trimmed.startsWith('-');
+  const digitsAndSeparators = trimmed.replace(/[^\d.,]/g, '');
+  if (!digitsAndSeparators) return null;
+
+  const lastDot = digitsAndSeparators.lastIndexOf('.');
+  const lastComma = digitsAndSeparators.lastIndexOf(',');
+  const decimalAt = Math.max(lastDot, lastComma);
+  const decimalChar = decimalAt < 0 ? '' : digitsAndSeparators[decimalAt];
+  const repeated = decimalChar
+    ? digitsAndSeparators.split(decimalChar).length - 1 > 1
+    : false;
+  const tail = decimalAt < 0 ? '' : digitsAndSeparators.slice(decimalAt + 1);
+  const isGrouping = !decimalChar || repeated || /^\d{3}$/.test(tail);
+
+  const normalized = isGrouping
+    ? digitsAndSeparators.replace(/[.,]/g, '')
+    : `${digitsAndSeparators.slice(0, decimalAt).replace(/[.,]/g, '')}.${tail}`;
+
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed)) return null;
+  return negative ? -parsed : parsed;
+}
