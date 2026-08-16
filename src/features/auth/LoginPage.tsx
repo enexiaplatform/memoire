@@ -78,6 +78,11 @@ export function LoginPage() {
             <Input
               label="Email address"
               type="email"
+              // Password managers fill and save on these two attributes. Every
+              // other auth screen in the product sets them; the two everybody
+              // has to pass through did not, so the browser offered nothing to
+              // fill on sign-in and nothing to save on sign-up.
+              autoComplete="email"
               placeholder="jane@company.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -86,6 +91,7 @@ export function LoginPage() {
             <Input
               label="Password"
               type="password"
+              autoComplete="current-password"
               placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

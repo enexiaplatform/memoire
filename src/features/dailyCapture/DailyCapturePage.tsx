@@ -1289,8 +1289,11 @@ export function DailyCapturePage() {
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Account aliases</p>
             <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-              <input value={newAlias} onChange={(event) => setNewAlias(event.target.value)} placeholder="Alias, e.g. PME" className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-              <input value={newAliasAccount} onChange={(event) => setNewAliasAccount(event.target.value)} placeholder="Canonical account" className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+              {/* A placeholder is not a label: it is gone the moment there is a
+                  value in the box, and a screen reader announces these two as
+                  "edit text, blank" either way. */}
+              <input aria-label="Alias" value={newAlias} onChange={(event) => setNewAlias(event.target.value)} placeholder="Alias, e.g. PME" className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+              <input aria-label="Canonical account name" value={newAliasAccount} onChange={(event) => setNewAliasAccount(event.target.value)} placeholder="Canonical account" className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm" />
               <button type="button" onClick={handleAddAlias} disabled={!newAlias.trim() || !newAliasAccount.trim()} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Add</button>
             </div>
             <div className="mt-3 space-y-2">

@@ -82,6 +82,17 @@ for (const marker of [
   requireIncludes(signupPage, marker, `signup page missing marker: ${marker}`);
 }
 
+// A password manager fills and saves on these attributes, and the two screens
+// every customer has to pass through were the two without them: sign-in offered
+// nothing to fill, sign-up offered nothing to save, while the recovery screens
+// beside them had it right all along.
+for (const marker of ['autoComplete="email"', 'autoComplete="current-password"']) {
+  requireIncludes(loginPage, marker, `login page missing marker: ${marker}`);
+}
+for (const marker of ['autoComplete="name"', 'autoComplete="email"', 'autoComplete="new-password"']) {
+  requireIncludes(signupPage, marker, `signup page missing marker: ${marker}`);
+}
+
 const forgotPage = read('src/features/auth/ForgotPasswordPage.tsx');
 for (const marker of [
   'requestPasswordReset(email.trim())',

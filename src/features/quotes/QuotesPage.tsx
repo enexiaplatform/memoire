@@ -307,6 +307,7 @@ export function QuotesPage() {
               />
             </label>
             <select
+              aria-label="Filter quotes by status"
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as 'All' | QuoteStatus)}
               className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-brand-blue"

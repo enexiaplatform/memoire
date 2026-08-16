@@ -75,6 +75,8 @@ export function SignupPage() {
             <Input
               label="Full name"
               type="text"
+              // See LoginPage: a password manager fills and saves on these.
+              autoComplete="name"
               placeholder="Jane Smith"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
@@ -83,6 +85,7 @@ export function SignupPage() {
             <Input
               label="Email address"
               type="email"
+              autoComplete="email"
               placeholder="jane@company.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -91,6 +94,7 @@ export function SignupPage() {
             <Input
               label="Password"
               type="password"
+              autoComplete="new-password"
               placeholder="Create a strong password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
