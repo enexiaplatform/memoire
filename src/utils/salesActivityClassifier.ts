@@ -147,6 +147,11 @@ const activityRules: { type: SalesActivityType; tags: string[]; pattern: RegExp 
 const nextActionPatterns = [
   /\b(?:need to|next action is to|action is to|i will|we will|to do:?)\s+([^.\n;]+)/i,
   /\b(?:send|share|prepare|schedule|confirm|call|follow up|follow-up|reply|update)\s+([^.\n;]+)/i,
+  // The gerund, which is how a note written in a hurry states the promise:
+  // "Sending the support proof Friday." Nothing above reads it, so the note on
+  // the product's own landing page - the one a buyer is shown before they sign
+  // up - produced no next action at all.
+  /\b(?:[Ss]ending|[Ss]haring|[Pp]reparing|[Ss]cheduling|[Cc]onfirming|[Cc]alling|[Rr]eplying|[Uu]pdating|[Cc]hasing|[Ff]ollowing up)\s+([^.\n;]+)/,
 ];
 
 const opportunityPatterns = [
@@ -174,6 +179,11 @@ const accountPatterns = [
   // Case-sensitive: `/i` made the leading `[A-Z]` meaningless, so "Met the
   // buyer today" proposed an account called "the buyer".
   /\b(?:[Mm]et|[Vv]isited|[Cc]alled)\s+([A-Z][A-Za-z0-9&.' -]{2,60}?)\s+(?:today|yesterday|this\s+(?:morning|afternoon|week)|on\s+\d)/,
+  // The same verbs when a dash or a comma ends the clause instead of a time
+  // word: "Called Halden Industrial - Dana Reyes likes the proposal". That is
+  // the note printed on the product's own landing page, and it attached to
+  // nobody. A run of capitalised words, so it stops before the person does.
+  /\b(?:[Mm]et|[Vv]isited|[Cc]alled)\s+([A-Z][A-Za-z0-9&.'-]{1,30}(?:\s+[A-Z][A-Za-z0-9&.'-]{1,30}){0,3})\s*(?:[-–—,:]|\.\s|$)/,
   /\b(?:met|meeting|spoke|call|called)\s+with\s+(?:Dr\.?|Mr\.?|Ms\.?|Mrs\.?)?\s*[A-Z][A-Za-z.' -]{1,60}\s+at\s+([A-Z][A-Z0-9&.-]{1,20})(?:\b|[.\n;,])/i,
   /\bat\s+([A-Z][A-Z0-9&.-]{1,20})(?:\b|[.\n;,])/,
   // The weakest fallback, and it used to run to the end of the sentence: it
@@ -302,10 +312,18 @@ export function extractNextActions(rawNote: string, activityDate: string): Sales
     .filter(Boolean);
 
   const actions = candidates
-    .map((candidate) => candidate.match(/\b(send|share|prepare|schedule|confirm|call|follow up|follow-up|reply|update|clarify)\b[\s\S]*/i)?.[0] || '')
+    // The gerund is in here too: "Sending the support proof Friday" is a
+    // promise, and until it was read the Plan got nothing from a note written
+    // that way - including the note on the product's own landing page.
+    .map((candidate) => candidate.match(/\b(send|share|prepare|schedule|confirm|call|follow up|follow-up|reply|update|clarify|sending|sharing|preparing|scheduling|confirming|calling|replying|updating|chasing|following up)\b[^.\n;]*/i)?.[0] || '')
     .filter(Boolean)
     .map((sourceText) => {
-      const dueDate = extractDueDate(sourceText, activityDate);
+      // A weekday with no preposition in front of it - "Sending the support
+      // proof Friday" - is a deadline when it is inside the promise itself.
+      // Only here: across a whole note a bare weekday is as often the day the
+      // meeting happened as the day something is due.
+      const dueDate = extractDueDate(sourceText, activityDate)
+        || bareWeekdayDueDate(sourceText, activityDate);
       return {
         title: cleanActionTitle(sourceText),
         dueDate: dueDate || undefined,
@@ -434,7 +452,7 @@ export function suggestOpportunityFromNote(
  * taken as the deadline for the quote, and the plan then showed the commitment
  * on the wrong day. It is the exact failure the product exists to prevent.
  */
-const COMMITMENT_CUE = /\b(?:need(?:s)? to|have to|has to|must|will|going to|next actions?|to do|follow[- ]up|deadline|due|by|before|send|share|prepare|schedule|confirm|reply|update|clarify|deliver|chase|revert|quote back)\b/i;
+const COMMITMENT_CUE = /\b(?:need(?:s)? to|have to|has to|must|will|going to|next actions?|to do|follow[- ]up|deadline|due|by|before|send(?:ing)?|shar(?:e|ing)|prepar(?:e|ing)|schedul(?:e|ing)|confirm(?:ing)?|repl(?:y|ying)|updat(?:e|ing)|clarify|deliver|chas(?:e|ing)|revert|quote back)\b/i;
 
 /**
  * The part of a note that could contain a promise, or nothing.
@@ -627,7 +645,16 @@ function extractContact(rawNote: string) {
   // full stop or "at"/"from" behind the name instead - which is what this did -
   // meant the commonest sentence a seller writes resolved to nobody.
   const match = rawNote.match(/\b(?:[Ww]ith|[Cc]all(?:ed)?|[Mm]et)\s+((?:Dr|Mr|Ms|Mrs)\.?\s+[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,2})\b/);
-  const name = match?.[1]?.trim() || '';
+  // A person named by what they did, which is how a note mentions the person
+  // who matters: "Dana Reyes likes the proposal", "Anke Vogt asked for the
+  // BOM". Two capitalised words and a verb of opinion or request - narrow on
+  // purpose, because a wrong name on a stakeholder map is worse than none.
+  const byVerb = match
+    ? null
+    // No full stop inside a name, or "Called Nordwind Marine. They want ..."
+    // reads the sentence boundary as part of the person: "Marine. They".
+    : rawNote.match(/\b([A-Z][A-Za-z'-]{1,20}\s+[A-Z][A-Za-z'-]{1,20})\s+(?:likes?|wants?|asked|asks|said|says|prefers?|raised|confirmed|agreed|needs?|is\s+the\s+)/);
+  const name = (match?.[1] || byVerb?.[1] || '').trim();
   const role = name.match(/^(Dr\.?|Doctor)\b/i) ? 'Doctor' : '';
   return { name, role };
 }
@@ -640,6 +667,24 @@ function extractNextAction(rawNote: string) {
   return '';
 }
 
+
+/**
+ * A weekday at the end of a promise, with no preposition in front of it.
+ *
+ * "Sending the support proof Friday" is a deadline; the rules in
+ * `extractDueDate` only read a weekday when something like "by" or "before"
+ * introduces it. This is applied to the action phrase alone and never to a
+ * whole note, because across a note a bare weekday is as often the day the
+ * meeting happened as the day something is owed.
+ */
+function bareWeekdayDueDate(actionText: string, activityDate: string) {
+  const words = actionText.toLowerCase().replace(/[.!?,]+$/, '').trim().split(/\s+/);
+  const last = words[words.length - 1] || '';
+  const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  if (!weekdays.includes(last)) return '';
+  return upcomingWeekday(parseDateKey(activityDate), last);
+}
+
 function cleanExtractedPhrase(value: string) {
   return value
     .replace(/^(to|the|a|an)\s+/i, '')
@@ -649,9 +694,18 @@ function cleanExtractedPhrase(value: string) {
     .slice(0, 140);
 }
 
+/** "Sending the quote" is the same promise as "Send the quote", and a list of work reads in the imperative. */
+const GERUND_TO_IMPERATIVE: Record<string, string> = {
+  sending: 'Send', sharing: 'Share', preparing: 'Prepare', scheduling: 'Schedule',
+  confirming: 'Confirm', calling: 'Call', replying: 'Reply', updating: 'Update', chasing: 'Chase',
+};
+
 function cleanActionTitle(value: string) {
   return cleanSentence(value)
     .replace(/^(need to|to|please|we should|i should)\s+/i, '')
+    .replace(/^(sending|sharing|preparing|scheduling|confirming|calling|replying|updating|chasing)\b/i,
+      (verb) => GERUND_TO_IMPERATIVE[verb.toLowerCase()] || verb)
+    .replace(/^following up\b/i, 'Follow up')
     .replace(/\s+\b(?:by|on|before)\s+(?:(?:next|this)\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week|month|quarter)\b.*$/i, '')
     .replace(/\s+\b(?:next|this)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week|month|quarter)\b.*$/i, '')
     // The same trim for a date written as a month, now that one is read as a

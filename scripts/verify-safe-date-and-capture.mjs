@@ -144,4 +144,29 @@ assert.ok(!JSON.stringify(result).includes('1900-'));
   assert.equal(accountOf('Meeting with Pan-Asia Components tomorrow about phase 2.'), 'Pan-Asia Components');
 }
 
+// The note printed on the product's own landing page, which a buyer reads
+// before they sign up. It advertises the account, the person, the objection and
+// the next action coming out of that sentence; three of the four came out empty
+// - the em-dash form of "Called <Customer>" attached to nobody, a person named
+// by what they did was not read at all, and a promise written as a gerund
+// ("Sending the proof Friday") produced no action and no date. A demo the
+// product cannot reproduce on its own screen is the first thing a new operator
+// finds out.
+{
+  const landing = classifySalesActivity(
+    'Called Halden Industrial - Dana Reyes likes the proposal but procurement wants a 3-week lead time guarantee. Sending the support proof Friday. ~96k, 50% with PO.',
+    '2026-08-16',
+  );
+  assert.equal(landing.accountName, 'Halden Industrial');
+  assert.equal(landing.contactName, 'Dana Reyes');
+  assert.equal(landing.nextAction, 'Send the support proof Friday');
+  assert.equal(landing.dueDate, '2026-08-21', 'Friday, from inside the promise');
+  assert.ok(landing.risks.includes('Lead time concern'));
+
+  // The bare weekday counts inside the promise and nowhere else: across a whole
+  // note it is as often the day the meeting happened.
+  const narration = classifySalesActivity('Met them Friday and it went well.', '2026-08-16');
+  assert.equal(narration.dueDate, '', 'a weekday in the narration is not a deadline');
+}
+
 console.log('Safe date and capture extraction regression verified.');

@@ -39,6 +39,17 @@ export function evaluateProductionReadiness(env = process.env, options = {}) {
     warning('app_url_matches_request_host', !requestHost || !appUrlHost || requestHost === appUrlHost),
     warning('demo_mode_disabled', env.VITE_ENABLE_DEMO_MODE !== 'true'),
     warning('founder_workspace_disabled', env.VITE_ENABLE_FOUNDER_WORKSPACE !== 'true'),
+    // The digest is a listed feature of the paid plan, and three separate
+    // pieces of configuration have to exist before one can be sent: the two the
+    // sending endpoint needs, and the shared secret the scheduled job
+    // authenticates with. Health reported `ok: true` while none of them were
+    // set and the scheduled sender had failed on every run since it was
+    // written, because nothing here looked. `optional`, because an operator may
+    // deliberately not offer digests - but visible, so "on" and "will arrive"
+    // can stop being two different things.
+    optional('digest_email_api_key', hasEnv(env, 'EMAIL_API_KEY')),
+    optional('digest_email_from', hasEnv(env, 'EMAIL_FROM')),
+    optional('digest_cron_secret', hasEnv(env, 'CRON_SECRET')),
     optional('lemonsqueezy_api_key', hasEnv(env, 'LEMONSQUEEZY_API_KEY')),
     optional('lemonsqueezy_store', hasEnv(env, 'LEMONSQUEEZY_STORE_ID')),
     optional('lemonsqueezy_webhook_secret', hasEnv(env, 'LEMONSQUEEZY_WEBHOOK_SECRET')),

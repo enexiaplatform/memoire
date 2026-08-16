@@ -187,4 +187,25 @@ const vercel = JSON.parse(readFileSync('vercel.json', 'utf8'));
   );
 }
 
+// A toggle that reads "on" is a promise that an email arrives. Three pieces of
+// configuration have to exist before one can be sent - the provider key and
+// from-address the endpoint uses, and the shared secret the scheduled job
+// authenticates with - and `/api/health` reported `ok: true` while none of them
+// were set and the scheduled sender had failed on every run since it was
+// written. Health names them now, and Settings reads health before it offers
+// the switch.
+{
+  const readiness = readFileSync('scripts/lib/production-readiness-runtime.mjs', 'utf8');
+  for (const check of ['digest_email_api_key', 'digest_email_from', 'digest_cron_secret']) {
+    assert.ok(readiness.includes(`'${check}'`), `health must report ${check}`);
+  }
+
+  const panel = readFileSync('src/features/settings/NotificationsPanel.tsx', 'utf8');
+  assert.ok(panel.includes("fetch('/api/health'"), 'Settings must ask whether this deployment can send');
+  assert.ok(
+    panel.includes('Sending is not configured on this deployment yet'),
+    'an operator turning the digest on when nothing can send must be told so',
+  );
+}
+
 console.log('Digest delivery verified: opt-in only, authenticated, silent when there is nothing to say, and stoppable from the email.');

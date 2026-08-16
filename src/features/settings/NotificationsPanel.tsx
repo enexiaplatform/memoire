@@ -33,8 +33,32 @@ export function NotificationsPanel() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  /**
+   * Whether this deployment can actually send one.
+   *
+   * A toggle that says "on" is a promise that an email arrives at 07:00. The
+   * sending endpoint needs an email provider key and a from-address, and the
+   * scheduled job that calls it authenticates with a shared secret; with any of
+   * the three missing, nothing is ever sent and the switch still reads "on".
+   * `/api/health` already knows - it just was not asked.
+   */
+  const [senderReady, setSenderReady] = useState<boolean | null>(null);
 
   const browserOffset = -new Date().getTimezoneOffset();
+
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured) return;
+    let active = true;
+    void fetch('/api/health', { headers: { accept: 'application/json' } })
+      .then((response) => (response.ok || response.status === 503 ? response.json() : null))
+      .then((body) => {
+        if (!active || !body || !Array.isArray(body.checks)) return;
+        const ok = (name: string) => body.checks.some((check: { name: string; ok: boolean }) => check.name === name && check.ok);
+        setSenderReady(ok('digest_email_api_key') && ok('digest_email_from') && ok('digest_cron_secret'));
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [user]);
 
   useEffect(() => {
     let active = true;
@@ -121,6 +145,13 @@ export function NotificationsPanel() {
             Memoire only reaches you when you open it. These two emails are the exception, and they only arrive when
             there is something to say - a morning with nothing overdue sends nothing.
           </p>
+
+          {senderReady === false && (
+            <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-900 ring-1 ring-amber-200">
+              Sending is not configured on this deployment yet, so turning these on will record your preference and
+              nothing will arrive. Your settings are kept and start working the moment it is.
+            </p>
+          )}
 
           <div className="mt-4 space-y-3">
             <Toggle
