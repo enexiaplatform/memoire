@@ -113,4 +113,33 @@ const deal = (patch = {}) => ({
   assert.ok(dashboard.includes('pipelineHealth: livePipelineHealth'), 'the live health must actually reach the command center');
 }
 
+// A total spanning more than one deal goes through the money engine.
+//
+// The Opportunity Master List's quarter heading added the raw amounts and
+// labelled the sum with the first row's currency, so a quarter holding
+// 42,000,000 JPY and 120,000 USD read "42,120,000 JPY" - about 30% short, in a
+// currency the number was not in. The same raw comparison ranked the sortable
+// Value column by the size of the number rather than the size of the deal.
+{
+  const opportunities = readFileSync('src/features/opportunities/OpportunitiesPage.tsx', 'utf8');
+  assert.ok(
+    /value: sumMoneyInBase\(/.test(opportunities),
+    'the group heading total must be summed in the reporting currency',
+  );
+  assert.equal(
+    /last\.value \+= row\.opportunity\.estimatedValue/.test(opportunities),
+    false,
+    'a cross-currency group total must never be a raw addition',
+  );
+  assert.equal(
+    /formatMoney\(group\.value/.test(opportunities),
+    false,
+    'a converted total must not be labelled with one row’s currency',
+  );
+  assert.ok(
+    /case 'value':\s*\n\s*return convertMoney\(/.test(opportunities),
+    'sorting by value must compare converted amounts',
+  );
+}
+
 console.log('One metrics engine contract verified.');

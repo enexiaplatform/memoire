@@ -68,6 +68,7 @@ import { buildReviveFollowUpContext } from '../../utils/followUpFromOpportunity'
 import type { FollowUpContext } from '../../types/v31';
 import { analyzeMeddicLiteOpportunity, type MeddicLiteDealCategory, type MeddicLiteStatus } from '../../utils/meddicLite';
 import {
+  convertMoney,
   formatBaseCurrencyAmount as formatBaseMoney,
   formatCompactBaseAmount,
   formatCurrencyAmount as formatMoney,
@@ -2492,12 +2493,24 @@ function groupRowsByClosePeriod(rows: OpportunityMasterRow[]): OpportunityRowGro
     const last = groups[groups.length - 1];
     if (last && last.key === heading.key) {
       last.rows.push(row);
-      last.value += row.opportunity.estimatedValue || 0;
       return;
     }
-    groups.push({ ...heading, rows: [row], value: row.opportunity.estimatedValue || 0 });
+    groups.push({ ...heading, rows: [row], value: 0 });
   });
-  return groups;
+
+  // Through the money engine, because a quarter holds whatever currencies the
+  // deals in it were agreed in. This used to add the raw amounts together and
+  // label the answer with the first row's currency, so a quarter holding
+  // 42,000,000 JPY and 120,000 USD read "42,120,000 JPY" - a number that is
+  // neither total, and in a currency it is not in. The heading is now the same
+  // reporting-currency sum every other aggregate in the product prints.
+  return groups.map((group) => ({
+    ...group,
+    value: sumMoneyInBase(group.rows.map((row) => ({
+      amount: row.opportunity.estimatedValue,
+      currency: row.opportunity.currency,
+    }))),
+  }));
 }
 
 function OpportunityMasterTable({
@@ -2615,7 +2628,7 @@ function OpportunityMasterTable({
                       </span>
                       {group.showValue && group.value > 0 && (
                         <span className="text-gray-500">
-                          {formatMoney(group.value, group.rows[0].opportunity.currency)}
+                          {formatBaseMoney(group.value)}
                         </span>
                       )}
                     </span>
@@ -5816,8 +5829,10 @@ function compareOpportunityRows(
 
   // Same quarter, same stage, same whatever: the bigger deal is the one worth
   // looking at first. Without a tiebreak the order inside a group is whatever
-  // the store happened to return, which changes between reloads.
-  return (right.opportunity.estimatedValue || 0) - (left.opportunity.estimatedValue || 0);
+  // the store happened to return, which changes between reloads. Compared in
+  // the reporting currency, or "bigger" would mean the longer number.
+  return (convertMoney(right.opportunity.estimatedValue, right.opportunity.currency) || 0)
+    - (convertMoney(left.opportunity.estimatedValue, left.opportunity.currency) || 0);
 }
 
 function getOpportunitySortValue(row: OpportunityMasterRow, sortKey: OpportunitySortKey) {
@@ -5829,12 +5844,15 @@ function getOpportunitySortValue(row: OpportunityMasterRow, sortKey: Opportunity
       return opportunity.opportunityName;
     case 'stage':
       return opportunityStages.indexOf(opportunity.stage);
+    // Converted before they are compared. Sorting the raw amounts ranks by the
+    // size of the number rather than the size of the deal, so 4,000,000 JPY
+    // outranks 120,000 USD - about seven times its worth.
     case 'value':
-      return opportunity.estimatedValue || 0;
+      return convertMoney(opportunity.estimatedValue, opportunity.currency) || 0;
     case 'fy26':
-      return opportunity.fy26Value || 0;
+      return convertMoney(opportunity.fy26Value, opportunity.currency) || 0;
     case 'fy27':
-      return opportunity.fy27Value || 0;
+      return convertMoney(opportunity.fy27Value, opportunity.currency) || 0;
     case 'probability':
       return opportunity.pipelineProbability || 0;
     case 'closePeriod':
