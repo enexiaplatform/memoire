@@ -3,6 +3,7 @@ import type { QuoteRecord } from '../services/quoteStore';
 import type { OrderCostRecord } from './orderMargin.ts';
 import { compareSafeBusinessDate, isValidBusinessDate, timestampToLocalDateKey, todayDateKey } from './safeDate.ts';
 import { sumMoneyInBase } from './money.ts';
+import { parsePaymentTerm } from './paymentTerms.ts';
 
 /**
  * The order book: every opportunity the customer has committed to order, walked
@@ -204,8 +205,18 @@ export function buildOrderBook(input: {
     .map((opportunity) => {
       const quotes = linkedQuotes(opportunity, input.quotes);
       const manual = manualByOrder.get(opportunity.id);
-      const milestones = orderMilestoneKeys.map((key) =>
-        deriveMilestone(key, quotes, manual?.get(key), today));
+      // An order on net terms has no deposit, so it cannot be waiting for one.
+      // The deposit is a fixed step in the road to cash and nothing can prove
+      // it, so every Net 30 order - the ordinary shape of B2B outside
+      // deposit-heavy markets - sat at "Deposit due" from the day it was won,
+      // counted in the deposit bucket, with Today proposing a deposit that was
+      // never part of the deal. The terms are already parsed for the collection
+      // schedule; this reads the same answer.
+      const term = freshestPaymentTerm(quotes, termByOrder.get(opportunity.id));
+      const expectsDeposit = term ? parsePaymentTerm(term).installments.some((part) => part.trigger === 'order') : true;
+      const milestones = orderMilestoneKeys
+        .filter((key) => key !== 'deposit' || expectsDeposit)
+        .map((key) => deriveMilestone(key, quotes, manual?.get(key), today));
 
       const doneCount = milestones.filter((milestone) => milestone.done).length;
       const nextMilestone = milestones.find((milestone) => !milestone.done) || null;
@@ -321,6 +332,11 @@ function linkedQuotes(opportunity: CrmLiteOpportunity, quotes: QuoteRecord[]): Q
       quote.opportunityId === opportunity.id
       || (account && name && normalize(quote.accountName) === account && normalize(quote.opportunityName || '') === name))
     .sort((a, b) => (b.quoteDate || b.createdAt || '').localeCompare(a.quoteDate || a.createdAt || ''));
+}
+
+/** The terms this order actually runs on: the freshest quote's, or the one recorded against the order. */
+function freshestPaymentTerm(quotes: QuoteRecord[], recorded: string | undefined): string {
+  return quotes[0]?.paymentTerm?.trim() || recorded?.trim() || '';
 }
 
 function deriveMilestone(

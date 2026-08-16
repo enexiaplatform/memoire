@@ -241,3 +241,25 @@ describe('payment terms: naming a slice for what it waits on', () => {
     assert.deepEqual(parsed.installments.map((i) => i.label), ['Deposit', 'Balance']);
   });
 });
+
+describe('an order on net terms has no deposit', () => {
+  test('net terms produce no order-triggered installment', () => {
+    for (const term of ['Net 30', 'net 45 days', 'payment within 14 days of invoice']) {
+      assert.equal(
+        parsePaymentTerm(term).installments.some((part) => part.trigger === 'order'),
+        false,
+        `${term} must not imply a deposit`,
+      );
+    }
+  });
+
+  test('deposit terms still do', () => {
+    for (const term of ['50% deposit, balance net 60', '30% with order', 'CIA']) {
+      assert.equal(
+        parsePaymentTerm(term).installments.some((part) => part.trigger === 'order'),
+        true,
+        `${term} is money owed before delivery`,
+      );
+    }
+  });
+});

@@ -187,4 +187,35 @@ const quote = (id, opportunityId, overrides = {}) => ({
   }
 }
 
+// 8. An order on net terms has no deposit, so it cannot be waiting for one.
+//
+// The deposit is a step in the road to cash that no document can prove, so
+// every Net 30 order - the ordinary shape of B2B outside deposit-heavy
+// markets - sat at "Deposit due" from the day it was won, counted in the
+// deposit bucket, with the next step a payment that was never part of the deal.
+// The terms are already parsed for the collection schedule; the road reads the
+// same answer.
+{
+  const netTerms = buildOrderBook({
+    opportunities: [opportunity('a', { status: 'Won' })],
+    quotes: [quote('q1', 'a', { quoteDate: '2026-07-01', poStatus: 'Received', paymentTerm: 'Net 30' })],
+    milestoneRecords: [],
+    today: '2026-07-28',
+  });
+  const [netOrder] = netTerms.orders;
+  assert.equal(netOrder.milestones.some((milestone) => milestone.key === 'deposit'), false);
+  assert.equal(netOrder.orderStage, 'To deliver', 'the next step is the first one that is actually owed');
+
+  const withDeposit = buildOrderBook({
+    opportunities: [opportunity('a', { status: 'Won' })],
+    quotes: [quote('q1', 'a', {
+      quoteDate: '2026-07-01', poStatus: 'Received', paymentTerm: '30% deposit, 70% net 30',
+    })],
+    milestoneRecords: [],
+    today: '2026-07-28',
+  });
+  assert.equal(withDeposit.orders[0].milestones.some((milestone) => milestone.key === 'deposit'), true);
+  assert.equal(withDeposit.orders[0].orderStage, 'Deposit due');
+}
+
 console.log('Order-to-cash contract verified: committed orders only, quote evidence outranks hand ticks, every order has a status, a date and an age.');
