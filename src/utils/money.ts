@@ -277,11 +277,40 @@ function numberFormatter(compact: boolean, maximumFractionDigits: number) {
   return formatter;
 }
 
+/**
+ * How many decimals a currency is actually written with.
+ *
+ * This was `currency === 'VND' ? 0 : 2` - the home market special-cased and
+ * every other zero-decimal market wrong. A seller reporting in JPY read a
+ * converted total on Today as "3,714,285.71 JPY", and the yen has no
+ * hundredths; the same held for KRW and IDR. CLDR already knows the minor units
+ * for every code in SUPPORTED_CURRENCIES (VND, JPY, KRW and IDR are 0, the rest
+ * 2), so it is asked once per currency rather than kept as a second list here
+ * for someone to forget when a currency is added.
+ */
+const currencyFractionDigits = new Map<string, number>();
+
+function fractionDigitsFor(currency: string) {
+  const cached = currencyFractionDigits.get(currency);
+  if (cached !== undefined) return cached;
+  let digits = 2;
+  try {
+    digits = new Intl.NumberFormat(MONEY_LOCALE, { style: 'currency', currency }).resolvedOptions()
+      .maximumFractionDigits ?? 2;
+  } catch {
+    // An unknown code is formatted as an ordinary number; two decimals is the
+    // safe assumption and never invents precision the amount did not have.
+    digits = 2;
+  }
+  currencyFractionDigits.set(currency, digits);
+  return digits;
+}
+
 /** Item-level formatter: always preserves the supplied currency code. */
 export function formatCurrencyAmount(value?: number | null, currency: string = BASE_CURRENCY) {
   const numericValue = toFiniteAmount(value);
   const normalizedCurrency = normalizeCurrency(currency) || BASE_CURRENCY;
-  const formattedValue = numberFormatter(false, normalizedCurrency === 'VND' ? 0 : 2).format(numericValue);
+  const formattedValue = numberFormatter(false, fractionDigitsFor(normalizedCurrency)).format(numericValue);
 
   return `${formattedValue} ${normalizedCurrency}`;
 }

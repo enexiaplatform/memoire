@@ -265,4 +265,38 @@ const migrationSql = migrationFiles
   );
 }
 
+// 8. Every surface that asks "what is promised?" reads both ledgers.
+//
+// `createCommitment` has one caller - the "Record a commitment" composer - so
+// the kernel ledger only ever held promises somebody typed twice. A capture
+// with a due date lands on the Plan instead, and while the two were read apart,
+// Today, Plan, the account card and the policy engine all answered "nothing is
+// promised" over a workspace that had promises in it. The merge is what keeps
+// them one voice, so both read sites must go through it.
+{
+  const derive = readFileSync('src/domain/commercialKernel/derivePlanCommitments.ts', 'utf8');
+  assert.ok(
+    derive.includes('getDatedCaptureActions'),
+    'derived promises must come from the same function the Plan board derives its days from',
+  );
+  // Calls, not mentions: the module's own comment names `createCommitment` when
+  // it explains why this file exists.
+  assert.equal(
+    /\b(?:createCommitment|writeLocal|syncRecordsForCurrentUser)\s*\(/.test(derive),
+    false,
+    'derived, not migrated: a promise read off the Plan must never be written into the ledger',
+  );
+
+  for (const [file, label] of [
+    ['src/features/commitments/useCommitmentLedger.ts', 'the Commitments panel'],
+    ['src/features/threads/useCommercialThreads.ts', 'threads and the policy engine'],
+  ]) {
+    const source = readFileSync(file, 'utf8');
+    assert.ok(
+      source.includes('mergePlanCommitments('),
+      `${label} must read the Plan's promises alongside the recorded ledger`,
+    );
+  }
+}
+
 console.log('Commercial Kernel contract verified: relational, RLS-protected, explainable, derived not migrated.');

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { clearSampleDataset, SAMPLE_DATA_UPDATED_EVENT, isSampleDataLoaded } from '../../utils/sampleData';
+import { clearDemoWorkspaceMode } from '../../lib/demoMode';
 
 export function DemoModeBanner() {
   const navigate = useNavigate();
@@ -26,10 +27,27 @@ export function DemoModeBanner() {
     window.location.reload();
   };
 
+  /**
+   * Leaving the demo has to leave all of it.
+   *
+   * This used to drop the sample records and nothing else, so the browser kept
+   * the `interactive-demo` workspace flag it was opened with. The banner went
+   * away, but `isDemoWorkspaceActive()` stayed true: the rail still introduced
+   * the workspace as "Demo workspace / Local sample data" and the top bar still
+   * read "Demo browser", over records that were now the operator's own real
+   * ones - the data-mode pill saying "Browser only" two inches away. A label
+   * whose whole job is telling you whether what you are reading is real must
+   * not be the thing that is wrong.
+   *
+   * Nothing captured is lost by closing the door: local records written with
+   * nobody signed in stay adoptable, and the next sign-in claims them
+   * (see services/localWorkspaceOwner).
+   */
   const exitDemo = () => {
     const confirmed = window.confirm('Exit demo mode and clear sample demo data from this browser? Only records marked as demo/sample are removed. Cloud data will not be changed.');
     if (!confirmed) return;
     clearSampleDataset();
+    clearDemoWorkspaceMode();
     setDemoActive(false);
     navigate('/');
   };

@@ -1,9 +1,12 @@
 -- Row level security: one auth.uid() per query, and one policy per action.
 --
--- NOT YET APPLIED to the live database. Reviewed and written on 2026-08-13 as
--- part of the post-go-live audit; it changes the access path on every table the
--- product owns, so it waits for an explicit go-ahead rather than riding along
--- with an application deploy.
+-- Written on 2026-08-13 as part of the post-go-live audit and held back,
+-- because it changes the access path on every table the product owns. APPLIED
+-- to the live database on 2026-08-16 on an explicit go-ahead, after checking
+-- that every policy name below still matched a live one and that no `anon`
+-- policy was being dropped. Verified after: no policy in `public` evaluates
+-- `auth.uid()` per row, and no table carries two permissive policies for the
+-- same role and command.
 --
 -- Two findings from `get_advisors`, both on live tables:
 --

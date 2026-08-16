@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Check, ChevronDown, Clock3, Plus, RotateCcw, X } from 'lucide-react';
 import type { CommercialCommitment, CommitmentParty } from '../../domain/commercialKernel/types';
+import { isPlanDerivedCommitment } from '../../domain/commercialKernel/derivePlanCommitments';
 import { formatSafeBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
 import { useCommitmentLedger } from './useCommitmentLedger';
 
@@ -188,7 +190,13 @@ function CommitmentGroup({
         {label} ({items.length})
       </p>
       <ul className="mt-1.5 space-y-1.5">
-        {visible.map((commitment) => (
+        {visible.map((commitment) => {
+          // A promise derived from the Plan is shown, never edited here: the
+          // plan item is the record, and it is ticked and moved on the Plan.
+          // Offering a tick that writes nowhere would be a worse lie than the
+          // empty panel this replaced.
+          const fromPlan = isPlanDerivedCommitment(commitment);
+          return (
           <li key={commitment.id} className="rounded-lg border border-gray-100 p-2.5">
             <div className="flex flex-wrap items-start gap-2">
               <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ${partyTone[commitment.commitmentParty]}`}>
@@ -196,34 +204,43 @@ function CommitmentGroup({
               </span>
               <p className="min-w-0 flex-1 text-sm leading-5 text-gray-900">
                 {commitment.commitmentText}
-                <span className="ml-1.5 text-xs text-gray-400">· {commitment.accountName}</span>
+                {commitment.accountName && <span className="ml-1.5 text-xs text-gray-400">· {commitment.accountName}</span>}
               </p>
-              <div className="flex shrink-0 items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => ledger.complete(commitment.id)}
-                  title="Mark as kept"
-                  className="rounded-full p-1.5 text-gray-400 hover:bg-emerald-50 hover:text-emerald-700"
+              {fromPlan ? (
+                <Link
+                  to="/app/timeline?view=upcoming"
+                  className="shrink-0 rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-bold text-gray-500 hover:bg-gray-50 hover:text-brand-blue"
                 >
-                  <Check className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onReschedule(rescheduling === commitment.id ? '' : commitment.id)}
-                  title="Move the date"
-                  className="rounded-full p-1.5 text-gray-400 hover:bg-blue-50 hover:text-brand-blue"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => ledger.cancel(commitment.id)}
-                  title="Cancel this commitment"
-                  className="rounded-full p-1.5 text-gray-300 hover:bg-gray-100 hover:text-gray-700"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
+                  On your Plan
+                </Link>
+              ) : (
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => ledger.complete(commitment.id)}
+                    title="Mark as kept"
+                    className="rounded-full p-1.5 text-gray-400 hover:bg-emerald-50 hover:text-emerald-700"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onReschedule(rescheduling === commitment.id ? '' : commitment.id)}
+                    title="Move the date"
+                    className="rounded-full p-1.5 text-gray-400 hover:bg-blue-50 hover:text-brand-blue"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => ledger.cancel(commitment.id)}
+                    title="Cancel this commitment"
+                    className="rounded-full p-1.5 text-gray-300 hover:bg-gray-100 hover:text-gray-700"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
 
             <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-500">
@@ -250,7 +267,8 @@ function CommitmentGroup({
               />
             )}
           </li>
-        ))}
+          );
+        })}
       </ul>
       {limit && items.length > visible.length && (
         <p className="mt-1.5 text-[11px] text-gray-400">

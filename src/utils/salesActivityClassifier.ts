@@ -298,11 +298,34 @@ export function extractNextActions(rawNote: string, activityDate: string): Sales
   return dedupeByTitle(actions).slice(0, 5);
 }
 
+/**
+ * Words that follow "versus" far more often than a competitor's name does. A
+ * note that opens a clause with a capital ("Versus The incumbent") must not
+ * name an account after an article.
+ */
+const competitorStopWords = new Set([
+  'the', 'a', 'an', 'our', 'ours', 'their', 'theirs', 'his', 'her', 'its',
+  'this', 'that', 'these', 'those', 'us', 'them', 'it', 'we', 'they',
+  'another', 'other', 'others', 'local', 'current', 'existing', 'previous',
+  'one', 'two', 'three', 'last', 'next', 'same', 'both', 'everyone', 'someone',
+]);
+
 export function extractCompetitors(rawNote: string) {
   const found = new Set<string>();
-  const competitorPattern = /\b(?:competitor|competing against|versus|vs\.?)\s+([A-Z][A-Z0-9&.-]{2,30})\b/gi;
+  // Case-sensitive on purpose, the same rule the account patterns above already
+  // learned: `/i` made the leading `[A-Z]` meaningless, so "our lead time is 10
+  // weeks versus the local supplier" recorded a competitor called "the" - on
+  // the deal, in the tags, and in every competitor count derived from them. The
+  // capital is the only thing separating a company from the words around it, so
+  // the keyword carries its own casing and the name stays capitalised. Up to
+  // three capitalised words, because "Nordic Freight" is one competitor and the
+  // old ALL-CAPS-only tail could not hold it.
+  const competitorPattern = /\b(?:[Cc]ompetitor|[Cc]ompeting against|[Cc]ompar(?:ing|ed)\s+(?:us\s+|it\s+|this\s+)?(?:against|to|with)|[Bb]enchmark(?:ing|ed)\s+against|[Uu]p against|[Vv]ersus|[Vv][Ss]\.?)\s+([A-Z][A-Za-z0-9&'-]{1,30}(?:\s+[A-Z][A-Za-z0-9&'-]{1,30}){0,2})/g;
   for (const match of rawNote.matchAll(competitorPattern)) {
-    found.add(match[1].trim().replace(/[.,;:]$/, ''));
+    const candidate = match[1].trim().replace(/[.,;:]$/, '');
+    const [firstWord] = candidate.split(/\s+/);
+    if (competitorStopWords.has(firstWord.toLowerCase())) continue;
+    found.add(candidate);
   }
   for (const competitor of knownCompetitors) {
     if (new RegExp(`\\b${escapeRegExp(competitor)}\\b`, 'i').test(rawNote)) {
@@ -427,12 +450,72 @@ export function extractDueDate(rawNote: string, activityDate: string) {
   const isoDate = rawNote.match(/\b(20\d{2}-\d{2}-\d{2})\b/)?.[1];
   if (isoDate) return sanitizeBusinessDate(isoDate);
 
+  const namedMonthDate = readNamedMonthDate(rawNote, anchor);
+  if (namedMonthDate) return namedMonthDate;
+
   const slashDate = rawNote.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
   if (slashDate) {
     const parsed = readSlashDate(slashDate[1], slashDate[2], slashDate[3], anchor.getFullYear());
     if (parsed) return sanitizeBusinessDate(parsed);
   }
 
+  return '';
+}
+
+const MONTH_WORDS = [
+  'january', 'february', 'march', 'april', 'may', 'june',
+  'july', 'august', 'september', 'october', 'november', 'december',
+];
+
+const MONTH_PATTERN = '(jan|feb|mar|apr|may|jun|jul|aug|sept|sep|oct|nov|dec)[a-z]*\\.?';
+
+/**
+ * A month written as a word: "by 21 August", "before Sept 3", "due March 2nd".
+ *
+ * This was the one deadline format the parser could not read, and outside
+ * day/month-number countries it is how a deadline is written in an email. The
+ * cost was silent and exactly the failure this product exists to prevent: the
+ * note "send a revised quote by 21 August" produced a next action with no date,
+ * so nothing landed on the Plan, nothing was watched, and the operator was told
+ * their commitment was recorded.
+ *
+ * A year is rarely written, so it is inferred: this year, unless that date has
+ * already passed, which is how a note written in December means next January.
+ */
+function readNamedMonthDate(rawNote: string, anchor: Date) {
+  // `(?!\d)` on the day, so "expected March 2027" - a month and a year, with no
+  // day in it at all - is not read as the 20th of March.
+  const dayFirst = rawNote.match(new RegExp(`\\b(\\d{1,2})(?!\\d)(?:st|nd|rd|th)?\\s+${MONTH_PATTERN}(?:,?\\s+(\\d{4}))?`, 'i'));
+  const monthFirst = rawNote.match(new RegExp(`\\b${MONTH_PATTERN}\\s+(\\d{1,2})(?!\\d)(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?`, 'i'));
+
+  const readMatch = (monthToken: string, dayPart: string, yearPart?: string) => {
+    // "may" is also the commonest modal verb in a sales note ("they may 3 or 4
+    // units"), so as a month it has to be written as one: capitalised.
+    if (monthToken.toLowerCase().startsWith('may') && !monthToken.startsWith('May')) return '';
+    const month = MONTH_WORDS.findIndex((name) => name.startsWith(monthToken.toLowerCase().replace(/\.$/, '').slice(0, 3)));
+    const day = Number(dayPart);
+    if (month < 0 || !Number.isFinite(day) || day < 1 || day > 31) return '';
+
+    const year = yearPart ? Number(yearPart) : anchor.getUTCFullYear();
+    const candidate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const sanitized = sanitizeBusinessDate(candidate);
+    if (!sanitized) return '';
+    if (yearPart || sanitized >= formatDate(anchor)) return sanitized;
+    return sanitizeBusinessDate(`${year + 1}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+  };
+
+  // Whichever form is written first in the note wins, so "21 August" is not
+  // out-read by a stray "August 2026" later in the same sentence.
+  const dayFirstAt = dayFirst?.index ?? Number.MAX_SAFE_INTEGER;
+  const monthFirstAt = monthFirst?.index ?? Number.MAX_SAFE_INTEGER;
+  if (dayFirst && dayFirstAt <= monthFirstAt) {
+    const read = readMatch(dayFirst[2], dayFirst[1], dayFirst[3]);
+    if (read) return read;
+  }
+  if (monthFirst) {
+    const read = readMatch(monthFirst[1], monthFirst[2], monthFirst[3]);
+    if (read) return read;
+  }
   return '';
 }
 
@@ -552,6 +635,10 @@ function cleanActionTitle(value: string) {
     .replace(/^(need to|to|please|we should|i should)\s+/i, '')
     .replace(/\s+\b(?:by|on|before)\s+(?:(?:next|this)\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week|month|quarter)\b.*$/i, '')
     .replace(/\s+\b(?:next|this)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week|month|quarter)\b.*$/i, '')
+    // The same trim for a date written as a month, now that one is read as a
+    // deadline: the title carries the promise, the due date carries the day,
+    // and "Send the revised quote by 21 August · due Aug 21, 2026" says it twice.
+    .replace(new RegExp(`\\s+\\b(?:by|on|before|due)\\s+(?:the\\s+)?(?:\\d{1,2}(?:st|nd|rd|th)?\\s+${MONTH_PATTERN}|${MONTH_PATTERN}\\s+\\d{1,2}(?:st|nd|rd|th)?)(?:,?\\s+\\d{4})?.*$`, 'i'), '')
     .replace(/\s+\b(?:by|on|before)\s*$/i, '')
     .trim()
     .replace(/^(send)\s+(.+)$/i, (_, verb: string, object: string) => `${capitalize(verb)} ${object}`)

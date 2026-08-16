@@ -70,8 +70,14 @@ export function buildFirstWeekPath(input: {
   const realCommitments = (input.commitments || []).filter(
     (commitment) => !commitment.isSample && commitment.source !== 'demo',
   );
+  // A promise needs a date, which is what this step's own hint says: "what
+  // happens next, by whom, and by when". An undated next action ticked the step
+  // off while Today's Commitments panel - two inches below the same strip - read
+  // "Nothing is promised right now", because nothing undated is ever watched or
+  // lands on a day in the Plan. Marking that step done is the product telling a
+  // new operator their commitment is being kept an eye on when it is not.
   const committed = realCommitments.length > 0
-    || input.activities.some((activity) => Boolean(activity.nextAction?.trim()));
+    || input.activities.some((activity) => Boolean(activity.nextAction?.trim() && activity.dueDate?.trim()));
   const closed = realCommitments.some(
     (commitment) => commitment.done === true || commitment.status === 'completed',
   );

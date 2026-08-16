@@ -72,8 +72,20 @@ const brief = (patch = {}) => ({
   const linked = buildFirstWeekPath({ activities: [activity()], opportunities: [], briefs: [] });
   assert.equal(linked.nextStep?.id, 'commit', 'after linking, the next commitment is the gap');
 
-  const committed = buildFirstWeekPath({
+  // A next action with no date does not advance the path. The step promises
+  // "what happens next, by whom, and by when"; an undated line is never watched,
+  // never lands on a day in the Plan, and ticking the step off beside a
+  // Commitments panel reading "Nothing is promised right now" is the product
+  // contradicting itself on one screen.
+  const undated = buildFirstWeekPath({
     activities: [activity({ nextAction: 'Send revised quote' })],
+    opportunities: [opportunity()],
+    briefs: [],
+  });
+  assert.equal(undated.nextStep?.id, 'commit', 'an undated next action is not a promise Memoire can watch');
+
+  const committed = buildFirstWeekPath({
+    activities: [activity({ nextAction: 'Send revised quote', dueDate: '2026-08-21' })],
     opportunities: [opportunity()],
     briefs: [],
   });
@@ -83,7 +95,7 @@ const brief = (patch = {}) => ({
 // 4. All five real milestones: the path completes and the strip folds away.
 {
   const path = buildFirstWeekPath({
-    activities: [activity({ nextAction: 'Send revised quote' })],
+    activities: [activity({ nextAction: 'Send revised quote', dueDate: '2026-08-21' })],
     opportunities: [opportunity()],
     briefs: [brief()],
     commitments: [{ status: 'completed' }],

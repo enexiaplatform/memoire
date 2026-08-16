@@ -35,9 +35,23 @@ describe('buildFirstWeekPath', () => {
     assert.equal(path.nextStep?.id, 'commit');
   });
 
-  test('a captured next action counts as the next commitment', () => {
+  test('an undated next action is not yet a commitment', () => {
     const path = buildFirstWeekPath({
       activities: [activity({ accountName: 'Northstar', nextAction: 'Send revised quote' })],
+      opportunities: [],
+      briefs: [],
+    });
+    assert.equal(
+      path.steps.find((step) => step.id === 'commit').done,
+      false,
+      'the step promises "by when"; an undated line never lands on a day or gets watched',
+    );
+    assert.equal(path.nextStep?.id, 'commit');
+  });
+
+  test('a captured next action with a date counts as the next commitment', () => {
+    const path = buildFirstWeekPath({
+      activities: [activity({ accountName: 'Northstar', nextAction: 'Send revised quote', dueDate: '2026-07-17' })],
       opportunities: [],
       briefs: [],
     });
@@ -47,7 +61,7 @@ describe('buildFirstWeekPath', () => {
 
   test('completing a commitment advances to the review step', () => {
     const path = buildFirstWeekPath({
-      activities: [activity({ accountName: 'Northstar', nextAction: 'Send revised quote' })],
+      activities: [activity({ accountName: 'Northstar', nextAction: 'Send revised quote', dueDate: '2026-07-17' })],
       opportunities: [opportunity()],
       briefs: [],
       commitments: [{ done: true }],
@@ -74,7 +88,7 @@ describe('buildFirstWeekPath', () => {
 
   test('all five real milestones complete the path', () => {
     const path = buildFirstWeekPath({
-      activities: [activity({ accountName: 'Northstar', nextAction: 'Send revised quote' })],
+      activities: [activity({ accountName: 'Northstar', nextAction: 'Send revised quote', dueDate: '2026-07-17' })],
       opportunities: [opportunity()],
       briefs: [brief()],
       commitments: [{ status: 'completed' }],

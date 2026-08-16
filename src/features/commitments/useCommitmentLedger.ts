@@ -14,6 +14,15 @@ import {
   type CreateCommitmentInput,
 } from '../../domain/commercialKernel/commands';
 import type { CommercialCommitment, CommercialScope } from '../../domain/commercialKernel/types';
+import { mergePlanCommitments } from '../../domain/commercialKernel/derivePlanCommitments';
+import { loadPlanItemsForWorkspace, PLAN_ITEMS_UPDATED_EVENT } from '../../services/planItemStore';
+import {
+  getCachedSalesWorkspaceData,
+  loadSalesWorkspaceData,
+  WORKSPACE_REFRESHED_EVENT,
+} from '../../services/workspaceData';
+import type { SalesActivityRecord } from '../../services/salesActivityStore';
+import type { PlanRecord } from '../../utils/weeklyPlan';
 import { todayDateKey } from '../../utils/safeDate.ts';
 import { trackFirstTimeEvent, trackProductEvent } from '../../utils/productAnalytics';
 
@@ -42,28 +51,70 @@ export function useCommitmentLedger() {
     [dataUserId, sampleDataActive],
   );
 
-  const [commitments, setCommitments] = useState<CommercialCommitment[]>(() => loadCommitments());
+  const [recorded, setRecorded] = useState<CommercialCommitment[]>(() => loadCommitments());
+  const [planItems, setPlanItems] = useState<PlanRecord[]>([]);
+  const [activities, setActivities] = useState<SalesActivityRecord[]>(
+    () => getCachedSalesWorkspaceData(dataUserId)?.activities || [],
+  );
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+
+  // The dated promises a capture made live on the captures themselves - the
+  // Plan board derives its days from them rather than storing a row - so the
+  // ledger has to read the same workspace. The load is the shared, cached one
+  // every `/app` surface already asks for; it joins that request rather than
+  // starting a second.
+  useEffect(() => {
+    let active = true;
+    const readWorkspace = () => {
+      void loadSalesWorkspaceData(dataUserId)
+        .then((data) => { if (active) setActivities(data.activities); })
+        .catch(() => undefined);
+    };
+    readWorkspace();
+    window.addEventListener(WORKSPACE_REFRESHED_EVENT, readWorkspace);
+    return () => { active = false; window.removeEventListener(WORKSPACE_REFRESHED_EVENT, readWorkspace); };
+  }, [dataUserId]);
 
   useEffect(() => {
     let active = true;
     void loadCommitmentsForWorkspace(dataUserId, sampleDataActive)
       .then((records) => {
         if (!active) return;
-        setCommitments(records);
+        setRecorded(records);
       })
       .finally(() => {
         if (active) setLoading(false);
       });
+    void loadPlanItemsForWorkspace(dataUserId, sampleDataActive)
+      .then((records) => { if (active) setPlanItems(records); })
+      .catch(() => undefined);
 
     const onUpdate = (event: Event) => {
       const detail = (event as CustomEvent<CommercialCommitment[]>).detail;
-      if (Array.isArray(detail)) setCommitments(detail);
+      if (Array.isArray(detail)) setRecorded(detail);
+    };
+    const onPlanItems = (event: Event) => {
+      const detail = (event as CustomEvent<PlanRecord[]>).detail;
+      if (Array.isArray(detail)) setPlanItems(detail);
     };
     window.addEventListener(COMMITMENTS_UPDATED_EVENT, onUpdate);
-    return () => { active = false; window.removeEventListener(COMMITMENTS_UPDATED_EVENT, onUpdate); };
+    window.addEventListener(PLAN_ITEMS_UPDATED_EVENT, onPlanItems);
+    return () => {
+      active = false;
+      window.removeEventListener(COMMITMENTS_UPDATED_EVENT, onUpdate);
+      window.removeEventListener(PLAN_ITEMS_UPDATED_EVENT, onPlanItems);
+    };
   }, [dataUserId, sampleDataActive]);
+
+  // What is promised, not what was typed into this panel. A dated promise that
+  // reached the Plan from a capture is a promise; leaving it out is how every
+  // surface in the product came to answer "Nothing is promised right now" over
+  // a workspace that had one.
+  const commitments = useMemo(
+    () => mergePlanCommitments(recorded, { activities, planItems, includeSampleRecords: sampleDataActive }),
+    [activities, planItems, recorded, sampleDataActive],
+  );
 
   const groups = useMemo<CommitmentGroups>(() => {
     const today = todayDateKey();

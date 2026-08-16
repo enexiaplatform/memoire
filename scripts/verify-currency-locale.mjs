@@ -69,6 +69,20 @@ assert.equal(sumMoney([{ amount: 100, currency: 'XYZ' }, { amount: 5, currency: 
   assert.equal(full, '200,000 SGD', 'grouping must be English (comma), not locale-dependent');
 }
 
+// 3b. A currency is written with the decimals it actually has. This was
+// `currency === 'VND' ? 0 : 2` - the home market special-cased and every other
+// zero-decimal market wrong - so a seller reporting in JPY read a converted
+// total on Today as "3,714,285.71 JPY", and the yen has no hundredths.
+{
+  assert.equal(formatCurrencyAmount(3_714_285.714, 'JPY'), '3,714,286 JPY', 'the yen has no hundredths');
+  assert.equal(formatCurrencyAmount(1_368_000.5, 'KRW'), '1,368,001 KRW', 'the won has no hundredths');
+  assert.equal(formatCurrencyAmount(500_000_000.4, 'IDR'), '500,000,000 IDR', 'the rupiah is written whole');
+  assert.equal(formatCurrencyAmount(650_000_000, 'VND'), '650,000,000 VND', 'the anchor keeps its whole units');
+  // ...and the two-decimal currencies keep their cents.
+  assert.equal(formatCurrencyAmount(3_714_285.714, 'USD'), '3,714,285.71 USD');
+  assert.equal(formatCurrencyAmount(1_234.5, 'EUR'), '1,234.5 EUR');
+}
+
 // 4. formatMoneyWithBase never prints a converted figure under a wrong label.
 {
   // Source == reporting: no echo of the same number under a "base" label. Uses

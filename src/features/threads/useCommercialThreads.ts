@@ -19,6 +19,9 @@ import {
 } from '../../services/commercialKernel/targetStore';
 import { COMMITMENTS_UPDATED_EVENT } from '../../services/commercialKernel/commitmentStore';
 import { THREADS_UPDATED_EVENT } from '../../services/commercialKernel/threadStore';
+import { mergePlanCommitments } from '../../domain/commercialKernel/derivePlanCommitments';
+import { loadPlanItemsForWorkspace, PLAN_ITEMS_UPDATED_EVENT } from '../../services/planItemStore';
+import type { PlanRecord } from '../../utils/weeklyPlan';
 
 /**
  * Resolves the workspace's commercial threads and the recommendations the
@@ -37,6 +40,7 @@ export function useCommercialThreads() {
   const [loading, setLoading] = useState(() => !getCachedSalesWorkspaceData(dataUserId));
   const [refreshToken, setRefreshToken] = useState(0);
   const [targets, setTargets] = useState<CommercialTarget[]>(() => loadTargets());
+  const [planItems, setPlanItems] = useState<PlanRecord[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -65,17 +69,43 @@ export function useCommercialThreads() {
     // stayed empty over a demo pipeline full of deals.
   }, [dataUserId, sampleDataActive, refreshToken]);
 
+  // The Plan holds the promises a capture made, and the ledger holds the ones
+  // recorded by hand. A thread that asks "what is scheduled to move this?" has
+  // to see both, or it warns about silence over a promise due on Tuesday.
+  useEffect(() => {
+    let active = true;
+    void loadPlanItemsForWorkspace(dataUserId, sampleDataActive)
+      .then((records) => { if (active) setPlanItems(records); })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [dataUserId, sampleDataActive, refreshToken]);
+
   // A commitment ticked anywhere changes both the thread's waiting party and
   // the recommendations about it, so the kernel's own events drive the refresh.
   useEffect(() => {
     const bump = () => setRefreshToken((token) => token + 1);
+    const onPlanItems = (event: Event) => {
+      const detail = (event as CustomEvent<PlanRecord[]>).detail;
+      if (Array.isArray(detail)) setPlanItems(detail);
+    };
     window.addEventListener(COMMITMENTS_UPDATED_EVENT, bump);
     window.addEventListener(THREADS_UPDATED_EVENT, bump);
+    window.addEventListener(PLAN_ITEMS_UPDATED_EVENT, onPlanItems);
     return () => {
       window.removeEventListener(COMMITMENTS_UPDATED_EVENT, bump);
       window.removeEventListener(THREADS_UPDATED_EVENT, bump);
+      window.removeEventListener(PLAN_ITEMS_UPDATED_EVENT, onPlanItems);
     };
   }, []);
+
+  const commitments = useMemo(
+    () => mergePlanCommitments(workspace?.commitments || [], {
+      activities: workspace?.activities || [],
+      planItems,
+      includeSampleRecords: sampleDataActive,
+    }),
+    [planItems, sampleDataActive, workspace],
+  );
 
   const threads = useMemo<ResolvedThread[]>(() => {
     if (!workspace) return [];
@@ -84,9 +114,9 @@ export function useCommercialThreads() {
       opportunities: workspace.opportunities,
       activities: workspace.activities,
       quotes: workspace.quotes,
-      commitments: workspace.commitments,
+      commitments,
     });
-  }, [workspace]);
+  }, [commitments, workspace]);
 
   // Coverage feeds the two quarter-level rules. Built here rather than in the
   // Money page so Today can raise a coverage warning without Money being open -
@@ -106,7 +136,7 @@ export function useCommercialThreads() {
     if (!workspace) return [];
     return evaluateCommercialPolicies({
       threads,
-      commitments: workspace.commitments,
+      commitments,
       opportunities: workspace.opportunities,
       quotes: workspace.quotes,
       coverage,
@@ -114,7 +144,7 @@ export function useCommercialThreads() {
       // record must never raise a real risk.
       includeSampleRecords: sampleDataActive,
     });
-  }, [coverage, sampleDataActive, threads, workspace]);
+  }, [commitments, coverage, sampleDataActive, threads, workspace]);
 
   return { threads, recommendations, coverage, workspace, loading };
 }
