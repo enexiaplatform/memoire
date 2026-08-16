@@ -37,11 +37,10 @@ import {
 import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import {
-  CURRENCY_NAMES,
   formatBaseCurrencyAmount as formatBaseMoney,
   formatCurrencyAmount as formatMoney,
   getReportingCurrency,
-  SUPPORTED_CURRENCIES,
+  listSelectableCurrencies,
 } from '../../utils/money';
 import { formatSafeBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
 import { formatCount } from '../../utils/numberFormat';
@@ -531,8 +530,8 @@ function QuotePanel({
                 total rather than converted - the quote is on screen and absent
                 from Accepted value. */}
             <SelectInput label="Currency" value={form.currency} onChange={(value) => onChange('currency', value)}>
-              {SUPPORTED_CURRENCIES.map((code) => (
-                <option key={code} value={code}>{code} — {CURRENCY_NAMES[code]}</option>
+              {listSelectableCurrencies().map(({ code, name, hasRate }) => (
+                <option key={code} value={code}>{code} — {name}{hasRate ? '' : ' · needs a rate'}</option>
               ))}
             </SelectInput>
             <NumberInput label="Gross margin %" value={form.grossMarginEstimate} onChange={(value) => onChange('grossMarginEstimate', value)} />

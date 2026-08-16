@@ -12,6 +12,7 @@ import {
 } from '../../services/commercialKernel/targetStore';
 import {
   buildOutcomeScoreboard,
+  deriveOutcomesFromClosedDeals,
   type ScoreboardPeriodKind,
   type ScoreboardRange,
   type TargetProgress,
@@ -73,7 +74,13 @@ export function ReviewScoreboardPanel({
 
   const board = useMemo(() => buildOutcomeScoreboard({
     period,
-    outcomes: workspace?.opportunityOutcomes || [],
+    // Retros first, and the closed deals nobody wrote one for alongside them -
+    // otherwise this reads "nothing closed" over a won deal, while the Business
+    // page counts it. See `deriveOutcomesFromClosedDeals`.
+    outcomes: [
+      ...(workspace?.opportunityOutcomes || []),
+      ...deriveOutcomesFromClosedDeals(workspace?.opportunities || [], workspace?.opportunityOutcomes || []),
+    ],
     quotes: workspace?.quotes || [],
     activities: workspace?.activities || [],
     targets,

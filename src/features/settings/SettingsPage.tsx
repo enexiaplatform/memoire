@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, CloudOff } from 'lucide-react';
@@ -13,12 +13,15 @@ import { restartFirstRun } from '../../utils/firstRun';
 import { resetTrialActivationChecklist } from '../../utils/trialActivationChecklist';
 import {
   BASE_CURRENCY,
-  CURRENCY_NAMES,
   EXCHANGE_RATES_AS_OF,
   SUPPORTED_CURRENCIES,
+  getCurrencyName,
+  getExchangeRateOverrides,
   getExchangeRateToBase,
   getReportingCurrency,
+  hasExchangeRate,
   isExchangeRateOverridden,
+  listSelectableCurrencies,
   setExchangeRateOverride,
   type SupportedCurrency,
 } from '../../utils/money';
@@ -42,6 +45,9 @@ export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'profile' | 'billing' | 'export' | 'boundaries'>('profile');
   const [reportingCurrency, setReportingCurrencyState] = useState(() => getReportingCurrency());
   const [currencySave, setCurrencySave] = useState<PreferenceSaveResult | null>(null);
+  /** A currency chosen before it has a rate: held here until one is given. */
+  const [pendingCurrency, setPendingCurrency] = useState('');
+  const selectableCurrencies = useMemo(() => listSelectableCurrencies(), [pendingCurrency, reportingCurrency]);
   const [openingBalance, setOpeningBalanceState] = useState(() => {
     const stored = getOpeningCashBalance();
     return stored === null ? '' : String(stored);
@@ -68,6 +74,16 @@ export function SettingsPage() {
   }, [user?.id]);
 
   const handleCurrencyChange = async (next: string) => {
+    // Reporting in a currency nothing can be converted into would read as zero
+    // on every total, so the rate is asked for first and the currency is applied
+    // the moment it exists. Deals and quotes are free to be in any currency -
+    // an amount stated in krona is a fact; a total in krona is arithmetic.
+    if (!hasExchangeRate(next)) {
+      setPendingCurrency(next);
+      setCurrencySave(null);
+      return;
+    }
+    setPendingCurrency('');
     // Optimistic, because the select must not fight the cursor - but the result
     // below is what the operator is told, and it is the durable write's answer.
     setReportingCurrencyState(next as typeof reportingCurrency);
@@ -113,16 +129,25 @@ export function SettingsPage() {
           <label className="flex items-center gap-2">
             <span className="sr-only">Reporting currency</span>
             <select
-              value={reportingCurrency}
+              value={pendingCurrency || reportingCurrency}
               onChange={(event) => { void handleCurrencyChange(event.target.value); }}
               className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
             >
-              {SUPPORTED_CURRENCIES.map((currency) => (
-                <option key={currency} value={currency}>{currency} — {CURRENCY_NAMES[currency]}</option>
+              {selectableCurrencies.map((currency) => (
+                <option key={currency.code} value={currency.code}>
+                  {currency.code} — {currency.name}{currency.hasRate ? '' : ' · needs a rate'}
+                </option>
               ))}
             </select>
           </label>
         </div>
+        {pendingCurrency && (
+          <PendingCurrencyRate
+            currency={pendingCurrency}
+            onCancel={() => setPendingCurrency('')}
+            onSaved={() => { void handleCurrencyChange(pendingCurrency); }}
+          />
+        )}
         <SaveState result={currencySave} savedLabel={`Saved. Totals are reported in ${reportingCurrency} everywhere.`} />
       </div>
 
@@ -301,11 +326,85 @@ export function SettingsPage() {
  * meet, the shipped rate as the default, and the operator's own bank rate
  * winning wherever they enter one.
  */
+/**
+ * The rate for a currency the product does not ship one for.
+ *
+ * Twenty-one currencies come with a planning rate and the rest of the world does
+ * not, so an operator in Stockholm choosing SEK is asked what a krona is worth
+ * before their totals are denominated in it. Refusing the choice would be worse
+ * - it is their money - and applying it without a rate would be worse still:
+ * every converted total would silently read zero.
+ */
+function PendingCurrencyRate({
+  currency,
+  onCancel,
+  onSaved,
+}: {
+  currency: string;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const [rate, setRate] = useState('');
+  const [error, setError] = useState('');
+  const anchorRate = getExchangeRateToBase(BASE_CURRENCY);
+
+  const save = () => {
+    const perUnit = Number(rate.replace(/[^\d.]/g, ''));
+    if (!Number.isFinite(perUnit) || perUnit <= 0) {
+      setError('Enter how many US dollars one unit of this currency is worth.');
+      return;
+    }
+    // Stated against USD because that is the currency this product is priced in
+    // and the one an operator can look up in a second; stored against the
+    // anchor, like every other rate in the table.
+    const toBase = perUnit * getExchangeRateToBase('USD') / anchorRate;
+    if (!setExchangeRateOverride(currency, toBase)) {
+      setError('That rate could not be saved in this browser.');
+      return;
+    }
+    setError('');
+    onSaved();
+  };
+
+  return (
+    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+      <p className="text-sm font-semibold text-amber-900">
+        {currency} — {getCurrencyName(currency)} does not ship with a rate
+      </p>
+      <p className="mt-1 text-sm leading-6 text-amber-900/80">
+        Tell Memoire what one {currency} is worth in US dollars and every total switches to {currency}. It is a
+        planning rate you can change here whenever your bank's does, and nothing else about your records changes.
+      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <label className="flex items-center gap-2 text-sm">
+          <span className="font-semibold text-amber-900">1 {currency} =</span>
+          <input
+            value={rate}
+            onChange={(event) => setRate(event.target.value)}
+            inputMode="decimal"
+            aria-label={`US dollars per ${currency}`}
+            className="w-28 rounded border border-amber-300 bg-white px-2 py-1.5 text-sm"
+            placeholder="0.095"
+          />
+          <span className="font-semibold text-amber-900">USD</span>
+        </label>
+        <button type="button" onClick={save} className="rounded-full bg-amber-900 px-3 py-1.5 text-xs font-bold text-white">
+          Use {currency}
+        </button>
+        <button type="button" onClick={onCancel} className="text-xs font-semibold text-amber-900 hover:underline">
+          Cancel
+        </button>
+      </div>
+      {error && <p className="mt-2 text-sm font-semibold text-red-700">{error}</p>}
+    </div>
+  );
+}
+
 function ExchangeRatesCard({ reportingCurrency }: { reportingCurrency: SupportedCurrency }) {
   const [open, setOpen] = useState(false);
   const [, setVersion] = useState(0);
 
-  const rateOf = (currency: SupportedCurrency) => (
+  const rateOf = (currency: SupportedCurrency | string) => (
     getExchangeRateToBase(currency) / getExchangeRateToBase(reportingCurrency)
   );
 
@@ -331,7 +430,12 @@ function ExchangeRatesCard({ reportingCurrency }: { reportingCurrency: Supported
 
       {open && (
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {SUPPORTED_CURRENCIES.filter((currency) => currency !== reportingCurrency).map((currency) => (
+          {/* Shipped rates, plus any currency this operator has priced
+              themselves - otherwise the krona they just gave a rate to would
+              have nowhere to be corrected when their bank's rate moves. */}
+          {[...new Set([...SUPPORTED_CURRENCIES as readonly string[], ...Object.keys(getExchangeRateOverrides())])]
+            .filter((currency) => currency !== reportingCurrency)
+            .map((currency) => (
             <label key={currency} className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2">
               <span className="text-sm font-semibold text-navy">
                 1 {currency}

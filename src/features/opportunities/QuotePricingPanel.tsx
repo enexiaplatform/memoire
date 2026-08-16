@@ -8,7 +8,7 @@ import { buildCreditScenarios, buildQuotePricing } from '../../utils/quotePricin
 import { getFinancingRatePct, getTargetMarginPct } from '../../utils/pricingAssumptions';
 import { describeInstallment, parsePaymentTerm, type ParsedPaymentTerm } from '../../utils/paymentTerms';
 import {
-  SUPPORTED_CURRENCIES,
+  listSelectableCurrencies,
   convertMoney,
   formatBaseCurrencyAmount,
   formatCompactBaseAmount,
@@ -499,7 +499,7 @@ function CurrencyField({ label, value, onChange }: { label: string; value: strin
         onChange={(event) => onChange(event.target.value)}
         className="mt-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
       >
-        {SUPPORTED_CURRENCIES.map((currency) => (
+        {listSelectableCurrencies().map(({ code: currency }) => (
           <option key={currency} value={currency}>{currency}</option>
         ))}
       </select>

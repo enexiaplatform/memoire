@@ -97,6 +97,76 @@ export type ScoreboardTarget = {
   fiscalYearStartMonth?: number;
 };
 
+/**
+ * A deal closed without anybody writing the retro.
+ *
+ * The scoreboard counts outcome records, and only the close-out flow writes
+ * one - so a pipeline imported from a CRM with its Won and Lost rows, or a deal
+ * closed before the retro existed, produced "Nothing closed this week" over a
+ * workspace holding a won deal. The Dashboard already refuses to do that, in
+ * `bucketClosedDeals`: "a dashboard that reports zero revenue to an operator
+ * looking at their own won deals is simply wrong about the business, and it is
+ * the kind of wrong that ends trust in every other number on the page."
+ *
+ * Same rule here, so the two pages cannot disagree: the deal says *what*
+ * closed, the retro says *how much* when there is one, and the forecast stands
+ * in when there is not. Derived at read time - nothing is written, and the day
+ * somebody records the retro their figure takes over.
+ */
+export function deriveOutcomesFromClosedDeals(
+  opportunities: ClosedDealInput[],
+  outcomes: OpportunityOutcomeRecord[],
+): OpportunityOutcomeRecord[] {
+  const recorded = new Set(outcomes.map((outcome) => outcome.opportunityId));
+  return opportunities
+    .filter((deal) => (deal.status === 'Won' || deal.status === 'Lost') && !recorded.has(deal.id))
+    .map((deal) => {
+      const closedOn = isValidBusinessDate(deal.expectedCloseDate || '')
+        ? String(deal.expectedCloseDate)
+        : timestampToLocalDateKey(deal.updatedAt) || todayDateKey();
+      return {
+        id: `derived-outcome-${deal.id}`,
+        opportunityId: deal.id,
+        accountName: deal.accountName || '',
+        opportunityName: deal.opportunityName || '',
+        outcome: deal.status as OpportunityOutcomeRecord['outcome'],
+        outcomeDate: closedOn,
+        finalAmount: typeof deal.estimatedValue === 'number' ? deal.estimatedValue : null,
+        currency: deal.currency || '',
+        forecastEvidenceCategoryBeforeOutcome: deal.forecastEvidenceCategory,
+        decisionRecommendationBeforeOutcome: deal.decisionRecommendation,
+        stageBeforeOutcome: deal.stage,
+        pipelineProbabilityBeforeOutcome: null,
+        // Left empty on purpose: this is a close with no reason behind it, and
+        // the learning surfaces read `reasonText` to decide what can be learned
+        // from. Counting the money must not invent an explanation for it.
+        reasonCategory: 'Other' as OpportunityOutcomeRecord['reasonCategory'],
+        reasonText: '',
+        createdAt: deal.updatedAt || `${closedOn}T00:00:00.000Z`,
+        updatedAt: deal.updatedAt || `${closedOn}T00:00:00.000Z`,
+        storageMode: 'local' as const,
+        ...(deal.isSample ? { isSample: true } : {}),
+        ...(deal.source === 'demo' ? { source: 'demo' as const } : {}),
+      };
+    });
+}
+
+type ClosedDealInput = {
+  id: string;
+  accountName?: string;
+  opportunityName?: string;
+  status: string;
+  stage: OpportunityOutcomeRecord['stageBeforeOutcome'];
+  estimatedValue?: number | null;
+  currency?: string;
+  expectedCloseDate?: string;
+  updatedAt?: string;
+  forecastEvidenceCategory: OpportunityOutcomeRecord['forecastEvidenceCategoryBeforeOutcome'];
+  decisionRecommendation: OpportunityOutcomeRecord['decisionRecommendationBeforeOutcome'];
+  isSample?: boolean;
+  source?: string;
+};
+
 export type ScoreboardInput = {
   period: ScoreboardRange;
   outcomes: OpportunityOutcomeRecord[];

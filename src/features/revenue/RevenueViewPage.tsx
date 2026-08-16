@@ -22,7 +22,7 @@ import { hasLocalSampleData } from '../../utils/dataMode';
 import { formatBaseCurrencyAmount as formatBaseMoney, formatCurrencyAmount as formatMoney } from '../../utils/money';
 import { buildRevenueView, type RevenueActionItem, type RevenueRiskKind } from '../../utils/revenueView';
 import { buildMoneyFlow, moneyFlowStages } from '../../utils/moneyFlow';
-import { formatBaseCurrencyAmount, formatCurrencyAmount, SUPPORTED_CURRENCIES } from '../../utils/money';
+import { formatBaseCurrencyAmount, formatCurrencyAmount, listSelectableCurrencies } from '../../utils/money';
 import { buildRouteHealth, type RouteHealthReport } from '../../utils/routeHealth';
 import { buildOwnObligations } from '../../utils/ownObligations';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
@@ -522,7 +522,7 @@ function MoneyOutSection({
                 onChange={(event) => setForm((prev) => ({ ...prev, currency: event.target.value }))}
                 className="rounded-lg border border-gray-300 px-2 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
               >
-                {SUPPORTED_CURRENCIES.map((currency) => <option key={currency} value={currency}>{currency}</option>)}
+                {listSelectableCurrencies().map(({ code }) => <option key={code} value={code}>{code}</option>)}
               </select>
             </label>
           </div>

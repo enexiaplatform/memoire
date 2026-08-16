@@ -142,4 +142,29 @@ const deal = (patch = {}) => ({
   );
 }
 
+// What closed is one fact, and two pages must not disagree about it.
+//
+// The Business page counts a Won deal and says out loud when it is valued at
+// the forecast rather than a signed figure. The review scoreboard counted retro
+// records only, and only the close-out flow writes one - so a pipeline imported
+// from a CRM, or any deal closed before the retro existed, read as "Nothing
+// closed this week" on one page and a win on the other.
+{
+  const scoreboard = readFileSync('src/utils/outcomeScoreboard.ts', 'utf8');
+  assert.ok(
+    /export function deriveOutcomesFromClosedDeals/.test(scoreboard),
+    'a closed deal with no retro must still count as closed',
+  );
+  assert.ok(
+    /reasonText: ''/.test(scoreboard),
+    'counting the money must not invent the reason behind it',
+  );
+
+  const panel = readFileSync('src/features/reviews/ReviewScoreboardPanel.tsx', 'utf8');
+  assert.ok(
+    /deriveOutcomesFromClosedDeals\(/.test(panel),
+    'the review scoreboard must read closed deals, not only the retros written for them',
+  );
+}
+
 console.log('One metrics engine contract verified.');

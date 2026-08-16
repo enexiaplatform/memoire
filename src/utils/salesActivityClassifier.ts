@@ -304,6 +304,23 @@ export function extractB2BEntities(rawNote: string, context: CaptureExtractionCo
   };
 }
 
+/**
+ * Whether the verb that started this candidate is standing behind a negation.
+ *
+ * "No reply yet", "no update from them", "they never replied", "still waiting,
+ * no confirmation" - all of them contain a verb this file otherwise reads as a
+ * promise. The check looks at the few words in front of the match in the
+ * original note, because by the time a candidate is sliced out the negation has
+ * been left behind.
+ */
+function isNegatedAction(sourceText: string, rawNote: string) {
+  const at = rawNote.indexOf(sourceText);
+  if (at < 0) return false;
+  const before = rawNote.slice(Math.max(0, at - 24), at).toLowerCase();
+  return /\b(no|not|never|without|didn'?t|hasn'?t|haven'?t|couldn'?t|wouldn'?t|awaiting|still awaiting)\s*$/.test(before.replace(/[,;:\-\s]+$/, ' ').trimEnd() + ' ')
+    || /\b(no|not|never|without|didn'?t|hasn'?t|haven'?t)\s+\w{0,12}$/.test(before);
+}
+
 export function extractNextActions(rawNote: string, activityDate: string): SalesActivityNextAction[] {
   const actionSection = rawNote.match(/\b(?:need to|next actions?:?|to do:?)\s+(.+)$/i)?.[1] || rawNote;
   const candidates = actionSection
@@ -317,6 +334,10 @@ export function extractNextActions(rawNote: string, activityDate: string): Sales
     // that way - including the note on the product's own landing page.
     .map((candidate) => candidate.match(/\b(send|share|prepare|schedule|confirm|call|follow up|follow-up|reply|update|clarify|sending|sharing|preparing|scheduling|confirming|calling|replying|updating|chasing|following up)\b[^.\n;]*/i)?.[0] || '')
     .filter(Boolean)
+    // A month of ordinary notes turned "No reply yet." into a commitment called
+    // "reply yet", sitting on the Plan with a date. A verb behind a negation is
+    // a report of what did not happen, not a promise that it will.
+    .filter((sourceText) => !isNegatedAction(sourceText, rawNote))
     .map((sourceText) => {
       // A weekday with no preposition in front of it - "Sending the support
       // proof Friday" - is a deadline when it is inside the promise itself.
@@ -685,8 +706,13 @@ function extractContact(rawNote: string) {
 
 function extractNextAction(rawNote: string) {
   for (const pattern of nextActionPatterns) {
-    const match = rawNote.match(pattern)?.[1]?.trim();
-    if (match) return cleanActionTitle(match);
+    const found = rawNote.match(pattern);
+    const match = found?.[1]?.trim();
+    if (!match) continue;
+    // Same rule as the list above: a verb behind a negation is a report, not a
+    // promise. "No reply yet." produced a next action called "yet".
+    if (typeof found?.index === 'number' && isNegatedAction(found[0], rawNote)) continue;
+    return cleanActionTitle(match);
   }
   return '';
 }
@@ -738,8 +764,11 @@ function cleanActionTitle(value: string) {
     .replace(new RegExp(`\\s+\\b(?:by|on|before|due)\\s+(?:the\\s+)?(?:\\d{1,2}(?:st|nd|rd|th)?\\s+${MONTH_PATTERN}|${MONTH_PATTERN}\\s+\\d{1,2}(?:st|nd|rd|th)?)(?:,?\\s+\\d{4})?.*$`, 'i'), '')
     .replace(/\s+\b(?:by|on|before)\s*$/i, '')
     .trim()
-    .replace(/^(send)\s+(.+)$/i, (_, verb: string, object: string) => `${capitalize(verb)} ${object}`)
-    .replace(/^(follow up)\s+(.+)$/i, (_, verb: string, object: string) => `${capitalize(verb)} ${object}`)
+    // Every promise reads as an instruction, not just the two verbs that had a
+    // rule of their own. A month of captures produced a list where "Send the
+    // reference list" sat above "confirm the discount decision" and "prepare
+    // the quote" - the same kind of thing, written three ways.
+    .replace(/^[a-z]/, (letter) => letter.toUpperCase())
     .slice(0, 160);
 }
 
@@ -856,6 +885,3 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function capitalize(value: string) {
-  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
-}

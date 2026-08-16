@@ -20,7 +20,7 @@ import {
   formatBaseCurrencyAmount,
   formatCompactBaseAmount,
   formatCurrencyAmount,
-  SUPPORTED_CURRENCIES,
+  listSelectableCurrencies,
 } from '../../utils/money';
 import { matchesSearchQuery } from '../../utils/textSearch';
 
@@ -1012,7 +1012,7 @@ function CurrencyField({ label, value, onChange }: { label: string; value: strin
         onChange={(event) => onChange(event.target.value)}
         className="mt-1 block rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm font-semibold tracking-normal text-gray-800 outline-none focus:border-brand-blue"
       >
-        {SUPPORTED_CURRENCIES.map((code) => <option key={code} value={code}>{code}</option>)}
+        {listSelectableCurrencies().map(({ code }) => <option key={code} value={code}>{code}</option>)}
       </select>
     </label>
   );

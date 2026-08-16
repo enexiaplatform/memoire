@@ -137,7 +137,20 @@ export function derivePlanCommitments(input: DerivedInput): CommercialCommitment
       isSample: item.isSample,
     }));
 
-  return [...fromCaptures, ...fromPlan];
+  // The Plan board already refuses to show the same promise twice - "the
+  // operator already planned this by hand - keep their words, drop ours" - and
+  // a panel that lists what the Plan hides is the same disagreement this file
+  // exists to end. Written by hand wins, on the same customer and the same day.
+  const byHand = new Set(fromPlan.map((commitment) => promiseKey(commitment)));
+  return [...fromPlan, ...fromCaptures.filter((commitment) => !byHand.has(promiseKey(commitment)))]
+    // Oldest promise first, because that is the one that has been waiting
+    // longest and the panel renders them in the order it is handed.
+    .sort((left, right) => left.currentDueDate.localeCompare(right.currentDueDate));
+}
+
+function promiseKey(commitment: CommercialCommitment) {
+  const text = commitment.commitmentText.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  return `${commitment.accountName.toLowerCase().trim()}|${commitment.currentDueDate}|${text}`;
 }
 
 /**

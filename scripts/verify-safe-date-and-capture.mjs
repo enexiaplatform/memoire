@@ -130,6 +130,24 @@ assert.ok(!JSON.stringify(result).includes('1900-'));
   assert.equal(extractDueDate('send it 12/08/2026', '2026-08-01'), '2026-08-12', 'day-first stays the default off-browser');
 }
 
+// A verb behind a negation is a report of what did not happen. Found by keeping
+// a month of ordinary notes: "Emailed Bayside Freight about the telematics
+// rollout. No reply yet." produced a commitment called "reply yet", dated, on
+// the Plan, waiting to be chased.
+{
+  const nextActionOf = (note) => classifySalesActivity(note, '2026-08-16').nextAction;
+  assert.equal(nextActionOf('Emailed Bayside Freight about the rollout. No reply yet.'), '');
+  assert.equal(nextActionOf('Called them twice, no update from procurement.'), '');
+  assert.equal(nextActionOf('They never replied to the quote.'), '');
+  assert.equal(nextActionOf('Still awaiting confirmation from finance.'), '');
+  // ...and a promise in the same breath as a negation is still a promise.
+  assert.equal(
+    nextActionOf('No decision yet, but I will send the revised BOM Wednesday.'),
+    'Send the revised BOM Wednesday',
+  );
+  assert.equal(nextActionOf('Next: send the updated quote next Tuesday.'), 'Send the updated quote');
+}
+
 // The customer in a note, when the sentence is written the way people write it.
 {
   const accountOf = (note) => classifySalesActivity(note, '2026-08-16').accountName;

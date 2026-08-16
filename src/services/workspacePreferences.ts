@@ -1,8 +1,8 @@
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import {
   BASE_CURRENCY,
-  SUPPORTED_CURRENCIES,
   getReportingCurrency,
+  hasExchangeRate,
   setReportingCurrency,
   type SupportedCurrency,
 } from '../utils/money.ts';
@@ -69,8 +69,14 @@ function canUseAccountStore(userId?: string | null) {
   return Boolean(userId && supabaseClient);
 }
 
+/**
+ * A currency this workspace can report in: one with a rate behind it, shipped
+ * or given by the operator. It used to be the shipped list alone, so a seller
+ * who priced their own krona in Settings had the save refused with "SEK is not
+ * a currency Memoire reports in" - about their own money.
+ */
 function isSupported(value: unknown): value is SupportedCurrency {
-  return (SUPPORTED_CURRENCIES as readonly string[]).includes(String(value || '').trim().toUpperCase());
+  return hasExchangeRate(String(value || '').trim().toUpperCase());
 }
 
 /**

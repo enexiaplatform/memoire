@@ -141,9 +141,16 @@ const quote = (patch = {}) => ({
     false,
     'a currency the rate table cannot read is dropped from every total - it is picked, not typed',
   );
+  // Every ISO code, not the twenty-one this file ships a rate for: an operator
+  // in Stockholm quotes in krona. The ones without a shipped rate are marked and
+  // convert as soon as they are given one in Settings.
   assert.ok(
-    /<SelectInput label="Currency"/.test(page) && /SUPPORTED_CURRENCIES\.map/.test(page),
-    'the currency picker must offer the supported list',
+    /<SelectInput label="Currency"/.test(page) && /listSelectableCurrencies\(\)\.map/.test(page),
+    'the currency picker must offer every selectable currency',
+  );
+  assert.ok(
+    /needs a rate/.test(page),
+    'a currency with no rate must say so in the picker rather than look convertible',
   );
   assert.ok(
     /\? opportunity\?\.currency/.test(page),

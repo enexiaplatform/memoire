@@ -73,6 +73,7 @@ import {
   formatCompactBaseAmount,
   formatCurrencyAmount as formatMoney,
   getReportingCurrency,
+  listSelectableCurrencies,
   sumMoneyInBase,
   SUPPORTED_CURRENCIES,
   type SupportedCurrency,
@@ -3235,7 +3236,7 @@ function OpportunityPanel({
           <SelectField
             label="Currency"
             value={normalizeFormCurrency(form.currency)}
-            options={SUPPORTED_CURRENCIES}
+            options={listSelectableCurrencies().map(({ code }) => code)}
             onChange={(value) => update('currency', value)}
           />
           {/* A date, not a phrase. `resolveClosePeriod` already treats a real

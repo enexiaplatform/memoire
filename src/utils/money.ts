@@ -90,6 +90,84 @@ export function isSupportedCurrency(currency?: string | null) {
 }
 
 /**
+ * Every currency this product will let somebody record money in.
+ *
+ * `SUPPORTED_CURRENCIES` above is not that list - it is the list of currencies
+ * this file ships a planning rate for, and it is twenty-one codes covering Asia
+ * Pacific and the majors. An operator in Stockholm, Warsaw, Mexico City or São
+ * Paulo could not name their own currency at all: not on a deal, not on a quote,
+ * and not as the currency they report in. Their own money was the one thing the
+ * product could not hold.
+ *
+ * So the picker asks the platform instead. Every ISO-4217 code the runtime knows
+ * is selectable; the twenty-one with a shipped rate convert immediately, and any
+ * other converts as soon as the operator gives it a rate in Settings. Until they
+ * do, an amount in it is shown as written and left out of converted totals -
+ * which is what already happens, said out loud, rather than a number invented
+ * from a rate nobody has.
+ */
+let isoCurrencyCache: string[] | null = null;
+
+export function listIsoCurrencyCodes(): string[] {
+  if (isoCurrencyCache) return isoCurrencyCache;
+  let codes: string[] = [];
+  try {
+    const supportedValuesOf = (Intl as unknown as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf;
+    codes = typeof supportedValuesOf === 'function' ? supportedValuesOf('currency') : [];
+  } catch {
+    codes = [];
+  }
+  // A runtime without `supportedValuesOf` still has to offer the shipped list.
+  isoCurrencyCache = codes.length > 0 ? codes : [...SUPPORTED_CURRENCIES];
+  return isoCurrencyCache;
+}
+
+const currencyNameCache = new Map<string, string>();
+
+/** "Swedish Krona", from the platform's own data rather than a table to maintain. */
+export function getCurrencyName(currency: string): string {
+  const code = normalizeCurrency(currency);
+  const cached = currencyNameCache.get(code);
+  if (cached) return cached;
+  let name = CURRENCY_NAMES[code as SupportedCurrency] || '';
+  if (!name) {
+    try {
+      name = new Intl.DisplayNames([MONEY_LOCALE], { type: 'currency' }).of(code) || code;
+    } catch {
+      name = code;
+    }
+  }
+  currencyNameCache.set(code, name);
+  return name;
+}
+
+/** A rate exists for this currency: shipped with the product, or set by the operator. */
+export function hasExchangeRate(currency?: string | null) {
+  const code = normalizeCurrency(currency);
+  if (!code) return false;
+  if (isSupportedCurrency(code)) return true;
+  return getExchangeRateOverrides()[code] !== undefined;
+}
+
+export type SelectableCurrency = { code: string; name: string; hasRate: boolean };
+
+/** The picker's list: what converts today first, then everything else by code. */
+export function listSelectableCurrencies(): SelectableCurrency[] {
+  const seen = new Set<string>();
+  const rows: SelectableCurrency[] = [];
+  for (const code of [...SUPPORTED_CURRENCIES, ...listIsoCurrencyCodes()]) {
+    const normalized = normalizeCurrency(code);
+    if (!/^[A-Z]{3}$/.test(normalized) || seen.has(normalized)) continue;
+    seen.add(normalized);
+    rows.push({ code: normalized, name: getCurrencyName(normalized), hasRate: hasExchangeRate(normalized) });
+  }
+  return rows.sort((left, right) => {
+    if (left.hasRate !== right.hasRate) return left.hasRate ? -1 : 1;
+    return left.code.localeCompare(right.code);
+  });
+}
+
+/**
  * Converts into the reporting currency by default - the same currency every
  * money label names. It used to default to BASE_CURRENCY (VND) while the
  * formatters labelled the result with the reporting currency, so a seller
@@ -103,7 +181,10 @@ export function convertMoney(
 ) {
   const numericAmount = toFiniteAmount(amount);
   const normalizedFrom = normalizeCurrency(fromCurrency);
-  if (!isSupportedCurrency(normalizedFrom)) return null;
+  // A rate, not a membership list: a currency the operator has given a rate to
+  // converts like any other, and one nobody has priced still returns null
+  // rather than a fabricated figure.
+  if (!hasExchangeRate(normalizedFrom) || !hasExchangeRate(toCurrency)) return null;
   const supportedFrom = normalizedFrom as SupportedCurrency;
 
   return numericAmount * getExchangeRateToBase(supportedFrom) / getExchangeRateToBase(toCurrency);
@@ -125,18 +206,20 @@ export const EXCHANGE_RATES_CHANGED_EVENT = 'memoire:exchange-rates-changed';
  * Settings. Adding a column to `user_profiles` for it would be the better home,
  * and is a migration rather than a code change.
  */
-export function getExchangeRateOverrides(): Partial<Record<SupportedCurrency, number>> {
+export function getExchangeRateOverrides(): Record<string, number> {
   if (typeof localStorage === 'undefined') return {};
   try {
     const parsed = JSON.parse(localStorage.getItem(RATE_OVERRIDE_KEY) || '{}');
     if (!parsed || typeof parsed !== 'object') return {};
-    const out: Partial<Record<SupportedCurrency, number>> = {};
+    const out: Record<string, number> = {};
     for (const [currency, rate] of Object.entries(parsed as Record<string, unknown>)) {
       const normalized = normalizeCurrency(currency);
-      if (!isSupportedCurrency(normalized)) continue;
+      // Any ISO code, not just the ones shipped with a rate - the whole point of
+      // the override is to price a currency this file does not carry.
+      if (!/^[A-Z]{3}$/.test(normalized)) continue;
       const numeric = Number(rate);
       if (!Number.isFinite(numeric) || numeric <= 0) continue;
-      out[normalized as SupportedCurrency] = numeric;
+      out[normalized] = numeric;
     }
     return out;
   } catch {
@@ -144,19 +227,22 @@ export function getExchangeRateOverrides(): Partial<Record<SupportedCurrency, nu
   }
 }
 
-export function getExchangeRateToBase(currency: SupportedCurrency): number {
+export function getExchangeRateToBase(currency: SupportedCurrency | string): number {
   // The anchor is 1 by definition and must never be overridable: a workspace
   // that set it to anything else would rescale every figure it owns.
   if (currency === BASE_CURRENCY) return 1;
-  return getExchangeRateOverrides()[currency] ?? EXCHANGE_RATES_TO_VND[currency];
+  // NaN for a currency nobody has priced, which is why every caller goes
+  // through `hasExchangeRate` first rather than dividing by it.
+  return getExchangeRateOverrides()[currency as SupportedCurrency]
+    ?? EXCHANGE_RATES_TO_VND[currency as SupportedCurrency];
 }
 
-export function isExchangeRateOverridden(currency: SupportedCurrency): boolean {
+export function isExchangeRateOverridden(currency: SupportedCurrency | string): boolean {
   return currency !== BASE_CURRENCY && getExchangeRateOverrides()[currency] !== undefined;
 }
 
 /** Passing `null` restores the shipped rate for that currency. */
-export function setExchangeRateOverride(currency: SupportedCurrency, rate: number | null): boolean {
+export function setExchangeRateOverride(currency: SupportedCurrency | string, rate: number | null): boolean {
   if (typeof localStorage === 'undefined' || currency === BASE_CURRENCY) return false;
   const overrides = getExchangeRateOverrides();
   if (rate === null) delete overrides[currency];
@@ -208,7 +294,10 @@ export function getReportingCurrency(): SupportedCurrency {
   try {
     if (typeof localStorage === 'undefined') return DEFAULT_REPORTING_CURRENCY;
     const stored = normalizeCurrency(localStorage.getItem(REPORTING_CURRENCY_KEY));
-    return isSupportedCurrency(stored) ? (stored as SupportedCurrency) : DEFAULT_REPORTING_CURRENCY;
+    // A rate, not the shipped list: an operator who priced their own currency
+    // reports in it. One that has lost its rate falls back rather than
+    // denominating every total in something nothing converts into.
+    return hasExchangeRate(stored) ? (stored as SupportedCurrency) : DEFAULT_REPORTING_CURRENCY;
   } catch {
     return DEFAULT_REPORTING_CURRENCY;
   }
@@ -232,7 +321,10 @@ export function getReportingCurrency(): SupportedCurrency {
  */
 export function setReportingCurrency(currency: string): boolean {
   const normalized = normalizeCurrency(currency);
-  if (!isSupportedCurrency(normalized)) return false;
+  // Refused only when nothing could be converted into it. Settings asks for the
+  // rate before it gets here; this is the guard that stops a workspace ending up
+  // denominated in a currency with no arithmetic behind it.
+  if (!hasExchangeRate(normalized)) return false;
   try {
     localStorage.setItem(REPORTING_CURRENCY_KEY, normalized);
   } catch {

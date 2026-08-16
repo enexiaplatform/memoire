@@ -116,9 +116,12 @@ describe('mergePlanCommitments', () => {
       activities: [activity()],
       planItems: [planItem()],
     });
+    // Recorded ledger first, then the Plan's promises oldest-first: the panel
+    // renders them in the order it is handed, and the one that has been waiting
+    // longest belongs at the top of its group.
     assert.deepEqual(
       merged.map((commitment) => commitment.commitmentText),
-      ['Chase the PO', 'Send the revised quote', 'Confirm the ship date'],
+      ['Chase the PO', 'Confirm the ship date', 'Send the revised quote'],
     );
   });
 
@@ -126,5 +129,24 @@ describe('mergePlanCommitments', () => {
     const merged = mergePlanCommitments([recorded({ sourceId: 'a1' })], { activities: [activity()] });
     assert.equal(merged.length, 1, 'the same promise must not be counted twice');
     assert.equal(isPlanDerivedCommitment(merged[0]), false, 'the recorded one wins - it is the editable record');
+  });
+});
+
+describe('one promise, once', () => {
+  test('a hand-written plan item hides the capture promise it duplicates', async () => {
+    const { derivePlanCommitments } = await import('../../src/domain/commercialKernel/derivePlanCommitments.ts');
+    const derived = derivePlanCommitments({
+      activities: [{
+        id: 'a9', activityDate: '2026-08-16', activityType: 'Customer meeting', summary: 's',
+        accountName: 'Bayside Freight', nextAction: 'Send the pilot proposal', dueDate: '2026-07-31',
+        tags: [], createdAt: '2026-07-27T08:00:00.000Z', updatedAt: '2026-07-27T08:00:00.000Z',
+      }],
+      planItems: [{
+        id: 'p9', date: '2026-07-31', label: 'Send the pilot proposal', tag: 'customer', done: false,
+        linkedAccountName: 'Bayside Freight', createdAt: '2026-07-27T08:00:00.000Z', updatedAt: '2026-07-27T08:00:00.000Z',
+      }],
+    });
+    assert.equal(derived.length, 1, 'the Plan board hides the duplicate; this panel must too');
+    assert.equal(derived[0].sourceId, 'p9', 'the operator’s own wording is the one kept');
   });
 });
