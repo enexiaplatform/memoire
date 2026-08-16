@@ -11,7 +11,7 @@ import {
   getCommercialCheckpointRisk,
   getNextCommercialProgressAction,
 } from '../utils/commercialFulfillment';
-import { sumMoneyInBase } from '../utils/money';
+import { getReportingCurrency, sumMoneyInBase } from '../utils/money';
 import { compareSafeBusinessDate, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from '../utils/safeDate.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
 
@@ -82,6 +82,21 @@ export const quoteStatuses: QuoteStatus[] = ['Draft', 'Sent', 'Revised', 'Accept
 export const purchaseOrderStatuses: PurchaseOrderStatus[] = ['Pending', 'Received'];
 export const deliveryStatuses: DeliveryStatus[] = ['Not scheduled', 'Scheduled', 'Delivered'];
 export const paymentStatuses: PaymentStatus[] = ['Not due', 'Due', 'Paid'];
+
+/**
+ * A blank quote, in the currency this workspace actually reports in.
+ *
+ * `emptyQuoteInput` below is a module constant and so had to name a currency at
+ * import time; it named VND, the home market. Every other money form in the
+ * product opens in the reporting currency, so a seller reporting in JPY who
+ * created a quote got a form pre-set to Dong - and since the amount is
+ * pre-filled from the linked deal, a 120,000 USD deal produced a quote reading
+ * "120,000 VND", about four dollars. Read at call time, because the reporting
+ * currency can change in Settings while the page is open.
+ */
+export function createEmptyQuoteInput(): QuoteInput {
+  return { ...emptyQuoteInput, currency: getReportingCurrency() };
+}
 
 export const emptyQuoteInput: QuoteInput = {
   quoteId: '',

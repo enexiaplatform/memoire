@@ -111,4 +111,37 @@ assert.ok(!JSON.stringify(result).includes('1900-'));
   assert.deepEqual(extractCompetitors('Incumbent Vendor is still in the loop.'), ['Incumbent Vendor']);
 }
 
+// The customer in a note, when the sentence is written the way people write it.
+{
+  const accountOf = (note) => classifySalesActivity(note, '2026-08-16').accountName;
+
+  // A contact introduced with their job title. The company follows the role,
+  // not the name, and the note attached to nobody until it did.
+  assert.equal(
+    accountOf('Met Kenji Sato, procurement manager at Sakura Manufacturing, on site today.'),
+    'Sakura Manufacturing',
+  );
+  assert.equal(
+    accountOf('Met Sarah Doyle, the operations manager of Bayside Freight, yesterday.'),
+    'Bayside Freight',
+  );
+
+  // The weak fallback used to read to the end of the sentence, so these two
+  // proposed "Northstar Foods went out yesterday" and "John, our own logistics
+  // lead, about the shipment" - both created as customers, each with a thread
+  // and a merge candidate of its own.
+  assert.equal(accountOf('Quote for Northstar Foods went out yesterday.'), 'Northstar Foods');
+  assert.equal(accountOf('Received the revised pricing from Kessler Antriebe this week.'), 'Kessler Antriebe');
+  assert.equal(
+    accountOf('Spoke with John, our own logistics lead, about the shipment.'),
+    '',
+    'a colleague named after "with" is not a customer',
+  );
+  assert.equal(accountOf('Met the buyer today and agreed nothing.'), '', 'an article is not a company');
+
+  // ...and the shapes that already worked still do.
+  assert.equal(accountOf('Called Aiko Tanaka at Meridian Logistics today about the tender.'), 'Meridian Logistics');
+  assert.equal(accountOf('Meeting with Pan-Asia Components tomorrow about phase 2.'), 'Pan-Asia Components');
+}
+
 console.log('Safe date and capture extraction regression verified.');

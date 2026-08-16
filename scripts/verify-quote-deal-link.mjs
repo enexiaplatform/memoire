@@ -114,4 +114,41 @@ const quote = (patch = {}) => ({
   );
 }
 
+// The money on a quote is in a currency the workspace chose, and the deal's
+// currency travels with the deal's amount.
+//
+// The blank form was a free-text box hardcoded to VND - the home market - while
+// every other money form in the product opens in the reporting currency. Since
+// linking a deal pre-fills its amount, picking a 120,000 USD deal produced a
+// quote reading "120,000 VND": about four dollars, counted into Accepted value
+// and chased by Cash Collection as if it were the sale.
+{
+  const store = readFileSync('src/services/quoteStore.ts', 'utf8');
+  assert.ok(
+    /export function createEmptyQuoteInput\(\)/.test(store)
+      && /currency: getReportingCurrency\(\)/.test(store),
+    'a blank quote must open in the reporting currency, read at call time',
+  );
+
+  const page = readFileSync('src/features/quotes/QuotesPage.tsx', 'utf8');
+  assert.equal(
+    /emptyQuoteInput/.test(page.replace(/createEmptyQuoteInput/g, '')),
+    false,
+    'the quote panel must not fall back to the module constant’s currency',
+  );
+  assert.equal(
+    /<TextInput label="Currency"/.test(page),
+    false,
+    'a currency the rate table cannot read is dropped from every total - it is picked, not typed',
+  );
+  assert.ok(
+    /<SelectInput label="Currency"/.test(page) && /SUPPORTED_CURRENCIES\.map/.test(page),
+    'the currency picker must offer the supported list',
+  );
+  assert.ok(
+    /\? opportunity\?\.currency/.test(page),
+    'a linked deal’s currency must travel with the amount pre-filled from it',
+  );
+}
+
 console.log('Quote-to-deal link contract verified: the written link first, the names after, ambiguity refused.');

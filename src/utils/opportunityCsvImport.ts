@@ -10,7 +10,8 @@ import {
   type OpportunityFormInput,
   type OpportunityStage,
   type OpportunityStatus,
-} from '../services/opportunityStore';
+} from '../services/opportunityStore.ts';
+import { getReportingCurrency, isSupportedCurrency } from './money.ts';
 
 export type OpportunityCsvPreviewRow = {
   id: string;
@@ -567,8 +568,17 @@ function mapRawRowToOpportunityInput(raw: Record<string, string>, fieldMap: Reco
     accountName,
     opportunityName,
     stage: normalizeStage(stageRaw),
-    estimatedValue: normalizeValue(firstValue(raw, ['value', 'amount'])),
-    currency: normalizeCurrency(firstValue(raw, ['currency'])),
+    // Through the confirmed mapping, like every other field on this record.
+    // These two read the raw header directly, so they only ever found a column
+    // literally called "value", "amount" or "currency" - and the confirmed
+    // mapping, which the operator is asked to review on the screen before this
+    // runs, was discarded for exactly the field that carries the money. A CSV
+    // headed "Estimated Value" - the wording Salesforce, HubSpot and most Excel
+    // exports use, and an alias this file already auto-detects - imported every
+    // deal with "Missing value.", so a new operator's whole pipeline landed
+    // worth nothing.
+    estimatedValue: normalizeValue(valueForField(raw, fieldMap, 'estimatedValue')),
+    currency: normalizeCurrency(valueForField(raw, fieldMap, 'currency')),
     expectedClosePeriod: closePeriod,
     productOrSolution: product,
     nextAction,
@@ -591,8 +601,8 @@ function buildWarnings(input: OpportunityFormInput, raw: Record<string, string>)
   if (firstValue(raw, ['stage']) && !opportunityStages.includes(firstValue(raw, ['stage']) as OpportunityStage)) {
     warnings.push(`Unknown stage mapped to ${input.stage}.`);
   }
-  if (firstValue(raw, ['currency']) && input.currency === 'VND' && firstValue(raw, ['currency']).toUpperCase() !== 'VND') {
-    warnings.push('Unsupported currency mapped to VND.');
+  if (input.currency && !isSupportedCurrency(input.currency)) {
+    warnings.push(`${input.currency} is not in the rate table, so this value stays out of converted totals.`);
   }
   return warnings;
 }
@@ -771,9 +781,20 @@ function normalizeValue(value: string) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+/**
+ * The currency the row was written in, or the one this workspace reports in.
+ *
+ * This used to rewrite any code the rate table does not carry as VND, so a row
+ * reading "340,000 NOK" was imported as 340,000 Dong - about a hundredth of the
+ * money, stated as fact and added to every total. An unsupported code is kept
+ * as written instead: the amount is real, only its conversion is unknown, and
+ * the money engine already declines to convert what it cannot price
+ * ("Needs confirmation") rather than inventing a figure. An empty cell falls
+ * back to the reporting currency, not to one market's.
+ */
 function normalizeCurrency(value: string) {
   const normalized = value.trim().toUpperCase();
-  return /^[A-Z]{3}$/.test(normalized) ? normalized : 'VND';
+  return /^[A-Z]{3}$/.test(normalized) ? normalized : getReportingCurrency();
 }
 
 function appendNote(value: string, note: string) {

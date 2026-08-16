@@ -84,6 +84,11 @@ const documents: Record<string, LegalDocument> = {
         title: 'Service providers and security',
         paragraphs: [
           'Memoire relies on Supabase for its database and authentication, Vercel for hosting, Lemon Squeezy for subscriptions, a transactional email provider for digests you have enabled, and Google for sign-in if you choose to sign in with Google. There is no AI provider in this list because there is none in the product.',
+          // A B2B buyer asks where their customer list physically sits before
+          // they put it anywhere, and "our provider is Supabase" is not an
+          // answer to that question.
+          'The database holding synced workspaces runs in Supabase\'s Mumbai region (ap-south-1). Serving is global: the application itself is delivered from the hosting network\'s nearest edge, so a request made in Europe or Japan is answered near you while the records themselves stay in that one database region. If you are subject to rules about where your customer data may be stored, read that sentence before you sign in rather than after.',
+          'How long it is kept: for as long as the workspace exists. Deleting your account from Settings removes the account and every record keyed to it in the same operation - it is one cascading delete, not a flag that hides your rows. Copies can persist for a short window afterwards in the database provider\'s own routine backups, which we do not read and cannot selectively edit. Records you never synced live only in the browser you wrote them in, and clearing that browser removes them.',
           'No online service can promise absolute security. Use appropriate judgment before entering sensitive tender, pricing, personal, or regulated information.',
         ],
       },

@@ -2464,6 +2464,13 @@ type OpportunityRowGroup = {
   value: number;
   /** Closed deals show a count but no money - see below. */
   showValue: boolean;
+  /**
+   * Deals in this group carrying money the rate table cannot price. They are
+   * counted in `rows` and cannot be in `value`, and a heading that says
+   * "3 deals · 42,000,000 JPY" while one of them is 340,000 NOK is understating
+   * the quarter without saying so.
+   */
+  unpriced: number;
 };
 
 /**
@@ -2495,7 +2502,7 @@ function groupRowsByClosePeriod(rows: OpportunityMasterRow[]): OpportunityRowGro
       last.rows.push(row);
       return;
     }
-    groups.push({ ...heading, rows: [row], value: 0 });
+    groups.push({ ...heading, rows: [row], value: 0, unpriced: 0 });
   });
 
   // Through the money engine, because a quarter holds whatever currencies the
@@ -2510,6 +2517,8 @@ function groupRowsByClosePeriod(rows: OpportunityMasterRow[]): OpportunityRowGro
       amount: row.opportunity.estimatedValue,
       currency: row.opportunity.currency,
     }))),
+    unpriced: group.rows.filter((row) => (row.opportunity.estimatedValue || 0) > 0
+      && convertMoney(row.opportunity.estimatedValue, row.opportunity.currency) === null).length,
   }));
 }
 
@@ -2557,7 +2566,7 @@ function OpportunityMasterTable({
   const minWidth = 1120 + optionalCount * 110;
   const groups = grouped
     ? groupRowsByClosePeriod(rows)
-    : [{ key: 'all', label: '', rows, value: 0, showValue: false }];
+    : [{ key: 'all', label: '', rows, value: 0, showValue: false, unpriced: 0 }];
   const columnCount = 9 + optionalCount;
 
   return (
@@ -2629,6 +2638,11 @@ function OpportunityMasterTable({
                       {group.showValue && group.value > 0 && (
                         <span className="text-gray-500">
                           {formatBaseMoney(group.value)}
+                        </span>
+                      )}
+                      {group.showValue && group.unpriced > 0 && (
+                        <span className="text-amber-700">
+                          · {group.unpriced} not converted
                         </span>
                       )}
                     </span>

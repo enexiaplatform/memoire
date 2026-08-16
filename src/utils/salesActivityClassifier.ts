@@ -164,12 +164,31 @@ const accountPatterns = [
   // created a second one. Case-sensitive, because the capital letter is the
   // only thing separating a company from the words around it.
   /\b(?:[Mm]et|[Vv]isited|[Cc]alled|[Ss]aw|[Ee]mailed|[Ss]poke\s+(?:to|with))\s+(?:with\s+)?(?:Dr\.?|Mr\.?|Ms\.?|Mrs\.?)?\s*[A-Z][A-Za-z.'-]{1,30}(?:\s+[A-Z][A-Za-z.'-]{1,30}){0,3}\s+(?:at|from|of)\s+([A-Z][A-Za-z0-9&.' -]{2,60}?)(?=\s+(?:today|yesterday|this\s+\w+|last\s+\w+|about\b|on\s+\d)|[.\n;,]|$)/,
+  // The same sentence with the person's job title in the middle of it: "Met
+  // Kenji Sato, procurement manager at Sakura Manufacturing". The pattern above
+  // needs the company to follow the name directly, so an appositive - which is
+  // how anybody introduces a contact they have just met - left the whole note
+  // attached to nobody. The role is required to be lowercase and short, so this
+  // reads a job title rather than swallowing half a sentence.
+  /\b(?:[Mm]et|[Vv]isited|[Cc]alled|[Ss]aw|[Ee]mailed|[Ss]poke\s+(?:to|with))\s+(?:with\s+)?(?:Dr\.?|Mr\.?|Ms\.?|Mrs\.?)?\s*[A-Z][A-Za-z.'-]{1,30}(?:\s+[A-Z][A-Za-z.'-]{1,30}){0,3}\s*,\s*[a-z][a-z/&' -]{2,40}?\s+(?:at|from|of)\s+([A-Z][A-Za-z0-9&.' -]{2,60}?)(?=\s+(?:today|yesterday|this\s+\w+|last\s+\w+|about\b|on\s+\d)|[.\n;,]|$)/,
   // Case-sensitive: `/i` made the leading `[A-Z]` meaningless, so "Met the
   // buyer today" proposed an account called "the buyer".
   /\b(?:[Mm]et|[Vv]isited|[Cc]alled)\s+([A-Z][A-Za-z0-9&.' -]{2,60}?)\s+(?:today|yesterday|this\s+(?:morning|afternoon|week)|on\s+\d)/,
   /\b(?:met|meeting|spoke|call|called)\s+with\s+(?:Dr\.?|Mr\.?|Ms\.?|Mrs\.?)?\s*[A-Z][A-Za-z.' -]{1,60}\s+at\s+([A-Z][A-Z0-9&.-]{1,20})(?:\b|[.\n;,])/i,
   /\bat\s+([A-Z][A-Z0-9&.-]{1,20})(?:\b|[.\n;,])/,
-  /\b(?:from|with|for)\s+([A-Z][A-Za-z0-9&.,' -]{2,60})(?:[.\n;,]|$)/,
+  // The weakest fallback, and it used to run to the end of the sentence: it
+  // read up to the next comma or full stop, so "Quote for Northstar Foods went
+  // out yesterday." proposed a customer called "Northstar Foods went out
+  // yesterday", and "Spoke with John, our own logistics lead, about the
+  // shipment." proposed one called "John, our own logistics lead, about the
+  // shipment". Both were created as accounts, with a thread and a merge
+  // candidate each. A company name is a run of capitalised words, so the run is
+  // what is taken, and it stops at the first ordinary word.
+  /\b(?:from|for)\s+([A-Z][A-Za-z0-9&.'-]{1,30}(?:\s+[A-Z][A-Za-z0-9&.'-]{1,30}){0,4})/,
+  // "with" needs at least two capitalised words: "with John" is a colleague far
+  // more often than it is a company, and one wrong account is more expensive to
+  // undo than one missed suggestion is to type.
+  /\bwith\s+([A-Z][A-Za-z0-9&.'-]{1,30}(?:\s+[A-Z][A-Za-z0-9&.'-]{1,30}){1,4})/,
 ];
 
 const knownCompetitors = ['Incumbent Vendor', 'Global Vendor', 'Legacy Supplier', 'Competing Platform', 'Other Vendor'];

@@ -14,7 +14,7 @@ import {
   createQuote,
   deliveryStatuses,
   deleteQuote,
-  emptyQuoteInput,
+  createEmptyQuoteInput,
   getQuoteCommercialStage,
   getQuoteRisk,
   getNextCommercialProgressAction,
@@ -36,7 +36,13 @@ import {
 } from '../../services/quoteStore';
 import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { hasLocalSampleData } from '../../utils/dataMode';
-import { formatBaseCurrencyAmount as formatBaseMoney, formatCurrencyAmount as formatMoney } from '../../utils/money';
+import {
+  CURRENCY_NAMES,
+  formatBaseCurrencyAmount as formatBaseMoney,
+  formatCurrencyAmount as formatMoney,
+  getReportingCurrency,
+  SUPPORTED_CURRENCIES,
+} from '../../utils/money';
 import { formatSafeBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
 import { formatCount } from '../../utils/numberFormat';
 import { describeInstallment, parsePaymentTerm } from '../../utils/paymentTerms';
@@ -61,7 +67,7 @@ export function QuotesPage() {
   const [statusFilter, setStatusFilter] = useState<'All' | QuoteStatus>('All');
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<QuoteRecord | null>(null);
-  const [form, setForm] = useState<QuoteInput>(emptyQuoteInput);
+  const [form, setForm] = useState<QuoteInput>(createEmptyQuoteInput);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [message, setMessage] = useState('');
   const sampleDataActive = hasLocalSampleData();
@@ -114,7 +120,7 @@ export function QuotesPage() {
   const openCreatePanel = () => {
     setEditingQuote(null);
     setForm({
-      ...emptyQuoteInput,
+      ...createEmptyQuoteInput(),
       quoteDate: todayKey(),
       accountName: requestedAccountName,
       opportunityId: requestedOpportunityId,
@@ -130,7 +136,7 @@ export function QuotesPage() {
 
     setEditingQuote(null);
     setForm({
-      ...emptyQuoteInput,
+      ...createEmptyQuoteInput(),
       quoteDate: todayKey(),
       accountName: requestedAccountName,
       opportunityId: requestedOpportunityId,
@@ -184,7 +190,7 @@ export function QuotesPage() {
   const closePanel = () => {
     setPanelOpen(false);
     setEditingQuote(null);
-    setForm(emptyQuoteInput);
+    setForm(createEmptyQuoteInput());
     setSaveState('idle');
   };
 
@@ -239,7 +245,14 @@ export function QuotesPage() {
       opportunityName: opportunity?.opportunityName || '',
       accountName: opportunity?.accountName || current.accountName,
       amount: current.amount ?? opportunity?.estimatedValue ?? null,
-      currency: current.currency || opportunity?.currency || 'VND',
+      // The deal's currency travels with the deal's amount, or it does not
+      // travel at all. `current.currency` is always set - the blank form opens
+      // in the reporting currency - so the old `current.currency || ...` meant
+      // the deal's own currency could never win: picking a 120,000 USD deal
+      // pre-filled 120,000 under whatever the form already said.
+      currency: (current.amount === null || current.amount === undefined
+        ? opportunity?.currency
+        : '') || current.currency || getReportingCurrency(),
     }));
   };
 
@@ -512,7 +525,15 @@ function QuotePanel({
 
           <FormSection title="Commercial terms">
             <NumberInput label="Amount" value={form.amount} onChange={(value) => onChange('amount', value)} />
-            <TextInput label="Currency" value={form.currency} onChange={(value) => onChange('currency', value)} />
+            {/* Picked, not typed. As free text it accepted "usd" and "US$",
+                and a code the rate table does not know is dropped from every
+                total rather than converted - the quote is on screen and absent
+                from Accepted value. */}
+            <SelectInput label="Currency" value={form.currency} onChange={(value) => onChange('currency', value)}>
+              {SUPPORTED_CURRENCIES.map((code) => (
+                <option key={code} value={code}>{code} — {CURRENCY_NAMES[code]}</option>
+              ))}
+            </SelectInput>
             <NumberInput label="Gross margin %" value={form.grossMarginEstimate} onChange={(value) => onChange('grossMarginEstimate', value)} />
             <NumberInput label="Discount %" value={form.discount} onChange={(value) => onChange('discount', value)} />
             {/* Free text, and it stays free text - that is how a distributor
