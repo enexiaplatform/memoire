@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import { NoIndex } from '../../components/marketing/PageSeo';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { decodeSharedBriefFragment, type CompactSharedBrief } from '../../utils/shareableBriefLink';
 
 // Public, read-only view of a Pipeline Defense brief shared by link. The brief
@@ -12,6 +13,12 @@ export function SharedBriefPage() {
     () => decodeSharedBriefFragment(typeof window === 'undefined' ? '' : window.location.hash),
     [],
   );
+
+  // The manager opens this in a tab beside five others. Without a title of its
+  // own it inherited the one the marketing page ships in the HTML - so a review
+  // brief sent to somebody's boss sat in their tab strip advertising the
+  // product to them.
+  useDocumentTitle(brief ? `${brief.title} · shared brief` : 'Shared brief');
 
   if (!brief) return <SharedBriefError />;
 
