@@ -216,4 +216,25 @@ console.log(`  knowledge graph: ${knowledgeGraph.nodes.length} nodes, ${knowledg
   }
 }
 
+// A collection every surface asks for is read once per load, not once per asker.
+//
+// Plan items answer "what is promised", so the Plan stopped being their only
+// reader: the First Week strip, the Commitments panel and the thread derivation
+// all ask. Measured against production on 2026-08-16, one visit to Today issued
+// five identical `plan_items` requests - five cloud reads, five merges and five
+// writes back to localStorage for an identical answer. Same failure, and same
+// fix, as the profile row that was fetched three times before the workspace
+// could start.
+{
+  const planItems = readFileSync('src/services/planItemStore.ts', 'utf8');
+  assert.ok(
+    /loadsInFlight\.get\(/.test(planItems) && /loadsInFlight\.set\(/.test(planItems),
+    'concurrent readers of plan items must share one request, not race five',
+  );
+  assert.ok(
+    /loadsInFlight\.delete\(/.test(planItems),
+    'the in-flight entry must be released when it settles, or a ticked item would never be re-read',
+  );
+}
+
 console.log('Performance budget verified: the derived models hold at a real book of business, and the screen never waits on the network to draw.');

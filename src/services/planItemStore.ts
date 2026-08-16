@@ -48,13 +48,29 @@ export async function loadPlanItemsForUser(userId: string) {
   return merged;
 }
 
+const loadsInFlight = new Map<string, Promise<PlanRecord[]>>();
+
+/**
+ * Single-flight, the same rule `hydrateWorkspacePreferences` already follows.
+ *
+ * Plan items answer "what is promised", so the surfaces that ask are no longer
+ * only the Plan: the First Week strip, the Commitments panel and the thread
+ * derivation all read them, and one visit to Today asked `plan_items` for the
+ * same rows five times - five cloud reads, five merges and five writes back to
+ * localStorage for an identical answer. Callers still each get a promise; one
+ * request goes out.
+ */
 export async function loadPlanItemsForWorkspace(userId?: string | null, sampleDataActive = false) {
   if (!userId || sampleDataActive) return loadPlanItems();
-  try {
-    return await loadPlanItemsForUser(userId);
-  } catch {
-    return loadPlanItems();
-  }
+
+  const existing = loadsInFlight.get(userId);
+  if (existing) return existing;
+
+  const promise = loadPlanItemsForUser(userId)
+    .catch(() => loadPlanItems())
+    .finally(() => { loadsInFlight.delete(userId); });
+  loadsInFlight.set(userId, promise);
+  return promise;
 }
 
 export function savePlanItem(record: PlanRecord, options: { syncCloud?: boolean } = {}): PlanRecord[] {
