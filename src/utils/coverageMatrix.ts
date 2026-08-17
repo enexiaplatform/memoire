@@ -152,7 +152,18 @@ export function buildCoverageMatrix(input: {
   const filledCells = rows.reduce((sum, row) => sum + row.brandsTouched, 0);
 
   const gaps: CoverageGap[] = rows
-    .filter((row) => row.missingBrands.length > 0 && row.relationshipValueBase > 0)
+    // Gated on having a deal, not on that deal being convertible.
+    //
+    // The filter was `relationshipValueBase > 0`, and that figure comes from
+    // `sumMoneyInBase`, which drops an amount it cannot convert. So a customer
+    // whose deals are all in a currency nobody has priced summed to zero and
+    // vanished from this list entirely - not ranked last, absent - while being
+    // exactly the "customer already worth real money carrying only part of the
+    // range" the list is for. `brandsTouched` says the same thing the filter
+    // meant (this is a real relationship, not a bare name) and cannot be zeroed
+    // by a missing rate. The sort still uses the value, so an unpriced customer
+    // ranks low rather than disappearing.
+    .filter((row) => row.missingBrands.length > 0 && row.brandsTouched > 0)
     .slice(0, input.gapLimit ?? 5)
     .map((row) => ({
       accountName: row.accountName,

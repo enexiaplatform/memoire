@@ -165,3 +165,25 @@ describe('coverage matrix: squares explain themselves', () => {
     assert.equal(dpLab.cells.find((cell) => cell.brand === 'Cobetter').href, '');
   });
 });
+
+describe('a customer whose deals are in an unpriced currency', () => {
+  /**
+   * The gap list was filtered on `relationshipValueBase > 0`, and that comes
+   * from `sumMoneyInBase`, which drops what it cannot convert. So the customer
+   * vanished from the list rather than ranking last - while being exactly the
+   * "already worth real money, carries only part of the range" case it is for.
+   */
+  test('still appears in the coverage gaps', () => {
+    const matrix = buildCoverageMatrix({
+      opportunities: [
+        // SEK ships no planning rate, so every figure for this account is 0.
+        deal('n1', { accountName: 'Nordic Labs', brand: 'Alpha', estimatedValue: 90_000, currency: 'SEK' }),
+        deal('t1', { accountName: 'Truong Son', brand: 'Alpha', estimatedValue: 100_000_000, currency: 'VND' }),
+        deal('t2', { accountName: 'Truong Son', brand: 'Beta', estimatedValue: 50_000_000, currency: 'VND' }),
+      ],
+    });
+
+    const names = matrix.gaps.map((gap) => gap.accountName);
+    assert.ok(names.includes('Nordic Labs'), 'it used to be dropped entirely');
+  });
+});
