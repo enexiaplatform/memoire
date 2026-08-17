@@ -274,7 +274,16 @@ function classifyDealMovement(
   context: ReturnType<typeof buildOpportunityExecutionContext>,
   periodOutcomes: ActionOutcomeRecord[],
 ): ExecutionDealMovementItem {
-  const periodOpportunityOutcomes = periodOutcomes.filter((outcome) => context.outcomes.some((item) => item.id === outcome.id));
+  const periodOpportunityOutcomes = periodOutcomes
+    .filter((outcome) => context.outcomes.some((item) => item.id === outcome.id))
+    // Sorted here so the name below is true. The order was inherited from
+    // `getActionOutcomesInPeriod`, which is a plain filter over
+    // `loadActionOutcomes` - and neither of those sorts. `context.outcomes` is
+    // sorted newest-first by `getActionOutcomesForOpportunity`, but this array
+    // takes its order from the other side of the filter, so "latest" was
+    // whatever storage happened to return first. It is quoted back to the
+    // operator as the last thing that happened on the deal.
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
   const latestPeriodOutcome = periodOpportunityOutcomes[0];
   const hasImproved = periodOpportunityOutcomes.some((outcome) => ['Improved', 'Resolved'].includes(outcome.outcomeType));
   const hasWorsened = periodOpportunityOutcomes.some((outcome) => ['Worsened', 'Downgrade recommended'].includes(outcome.outcomeType));
