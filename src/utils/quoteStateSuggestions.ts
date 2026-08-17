@@ -1,5 +1,6 @@
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 
 export type QuoteStateSuggestionKind = 'payment-paid' | 'delivery-delivered' | 'po-received';
 
@@ -101,6 +102,8 @@ function quoteLabel(quote: QuoteRecord) {
   return `${quote.accountName} / ${quote.title || quote.opportunityName || quote.quoteId}`;
 }
 
+/** The canonical fold - see accountIdentity.ts. A bare lowercase is diacritic-
+ * and punctuation-sensitive, so it split one customer in two. */
 function normalize(value?: string) {
-  return (value || '').trim().toLowerCase();
+  return normalizeEntityName(value || '');
 }

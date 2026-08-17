@@ -11,6 +11,7 @@ import { readInitiativeExperiment, type InitiativeDecision } from './initiativeE
 import { classifyInitiativeHealth, type InitiativeHealth } from './proactiveNudges.ts';
 import { formatBaseCurrencyAmount, sumMoneyInBase } from './money.ts';
 import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 
 export type StalledInitiativeItem = {
   id: string;
@@ -231,8 +232,10 @@ export function buildCommitmentLedger(
   return items.sort((a, b) => statusRank[a.status] - statusRank[b.status] || compareSafeBusinessDate(a.date, b.date));
 }
 
+/** The canonical fold - see accountIdentity.ts. A bare lowercase is diacritic-
+ * and punctuation-sensitive, so it split one customer in two. */
 function normalizeName(value?: string) {
-  return (value || '').trim().toLowerCase();
+  return normalizeEntityName(value || '');
 }
 
 function buildNextWeekPriorities(

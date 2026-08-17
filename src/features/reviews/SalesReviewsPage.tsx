@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { normalizeEntityName } from '../../utils/accountIdentity.ts';
 import { ArrowRight, Copy, Loader2 } from 'lucide-react';
 import { ReviewAnalyticsSection } from './ReviewAnalyticsSection';
 import { ReviewScoreboardPanel } from './ReviewScoreboardPanel';
@@ -1543,6 +1544,7 @@ function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+/** The canonical fold - see accountIdentity.ts. */
 function normalize(value: string) {
-  return value.trim().toLowerCase();
+  return normalizeEntityName(value);
 }

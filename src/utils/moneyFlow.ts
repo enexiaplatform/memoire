@@ -6,6 +6,7 @@ import {
 } from './commercialFulfillment.ts';
 import { convertMoney, sumMoneyInBase } from './money.ts';
 import { compareSafeBusinessDate, isBusinessDateOverdue, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 
 export const moneyFlowStages = ['Opportunity', 'Quoted', 'Pending PO', 'Pending delivery', 'Pending payment', 'Paid'] as const;
 
@@ -144,6 +145,8 @@ export function formatMoneyFlowAmount(thread: Pick<MoneyFlowThread, 'amount' | '
   return convertMoney(thread.amount, thread.currency) === null ? '' : `${thread.amount.toLocaleString()} ${thread.currency}`;
 }
 
+/** The canonical fold - see accountIdentity.ts. A bare lowercase is diacritic-
+ * and punctuation-sensitive, so it split one customer in two. */
 function normalize(value?: string) {
-  return (value || '').trim().toLowerCase();
+  return normalizeEntityName(value || '');
 }

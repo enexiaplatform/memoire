@@ -1,4 +1,5 @@
 import type { ActionOutcomeRecord } from '../services/actionOutcomeStore';
+import { normalizeEntityName } from './accountIdentity.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { NextWeekPriority } from './weeklyBusinessReview.ts';
 import {
@@ -340,6 +341,7 @@ function activityMatchesItem(activity: SalesActivityRecord, item: WeeklyCommitme
     || normalizeName(activity.linkedAccountName) === itemAccount;
 }
 
+/** The canonical fold - see accountIdentity.ts. */
 function normalizeName(value?: string) {
-  return (value || '').trim().toLowerCase();
+  return normalizeEntityName(value || '');
 }

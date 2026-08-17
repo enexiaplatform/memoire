@@ -12,6 +12,7 @@ import { analyzePersonalSalesLearning } from './personalSalesLearning.ts';
 import { getStakeholdersForOpportunity } from './stakeholderGraph.ts';
 import type { WeeklyExecutionReview } from './weeklyExecutionReview';
 import { isBusinessDateOverdue, todayDateKey } from './safeDate.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 
 export type SalesPlaybookPatternCategory =
   | 'Objection Pattern'
@@ -628,8 +629,10 @@ function severityRank(severity: SalesPlaybookSeverity) {
   }[severity];
 }
 
+/** The canonical fold - see accountIdentity.ts. A bare lowercase is diacritic-
+ * and punctuation-sensitive, so it split one customer in two. */
 function normalize(value = '') {
-  return value.trim().toLowerCase();
+  return normalizeEntityName(value);
 }
 
 function unique(items: string[]) {

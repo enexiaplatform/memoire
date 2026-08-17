@@ -1,4 +1,5 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
+import { normalizeEntityName } from './accountIdentity.ts';
 import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesAssetInput, SalesAssetRecord, SalesAssetType } from '../services/salesAssetStore';
 import type { SalesPlaybookPattern } from './salesPlaybook';
@@ -386,6 +387,7 @@ function unique(items: string[]) {
   return Array.from(new Set(items.map((item) => item.trim()).filter(Boolean)));
 }
 
+/** The canonical fold - see accountIdentity.ts. */
 function normalize(value = '') {
-  return value.trim().toLowerCase();
+  return normalizeEntityName(value);
 }

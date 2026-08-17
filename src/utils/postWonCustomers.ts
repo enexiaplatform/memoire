@@ -1,4 +1,5 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore.ts';
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
@@ -33,8 +34,16 @@ const DEFAULT_QUIET_AFTER_DAYS = 45;
 const DAY_MS = 86_400_000;
 
 /** Matches a retro to its deal without counting the same win twice. */
+/**
+ * The canonical fold - see accountIdentity.ts.
+ *
+ * This one was half-right, which is worse than wrong: the retro key below pairs
+ * `accountKey(...)` - already canonical - with this bare lowercase on the
+ * opportunity name. A mixed key looks correct and matches nothing when the deal
+ * name carries accents.
+ */
 function normalizeName(value: string) {
-  return (value || '').trim().toLowerCase();
+  return normalizeEntityName(value || '');
 }
 
 /**

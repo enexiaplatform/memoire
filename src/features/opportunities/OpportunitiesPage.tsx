@@ -5728,8 +5728,15 @@ function quoteActionRank(quote: QuoteRecord) {
   return 1;
 }
 
+/**
+ * The canonical fold - see accountIdentity.ts.
+ *
+ * This file already used `normalizeEntityName` for the account typeahead and
+ * this helper for matching a quote back to its deal, so one screen decided that
+ * two spellings were the same customer in one place and not the other.
+ */
 function normalizeText(value?: string) {
-  return (value || '').trim().toLowerCase();
+  return normalizeEntityName(value || '');
 }
 
 function buildImportedPipelineSummary(opportunities: CrmLiteOpportunity[]): ImportedPipelineSummary {

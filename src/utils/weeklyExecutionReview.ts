@@ -18,6 +18,7 @@ import {
   type OpportunityRecommendedAction,
 } from './opportunityActionPlan.ts';
 import { getStakeholdersForOpportunity } from './stakeholderGraph.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 
 export type ExecutionReviewPeriodType = 'week' | 'month';
 
@@ -484,8 +485,10 @@ function formatMovementList(items: ExecutionDealMovementItem[]) {
   return items.slice(0, 4).map((item) => `${item.accountName} / ${item.opportunityName}`).join('; ');
 }
 
+/** The canonical fold - see accountIdentity.ts. A bare lowercase is diacritic-
+ * and punctuation-sensitive, so it split one customer in two. */
 function normalize(value = '') {
-  return value.trim().toLowerCase();
+  return normalizeEntityName(value);
 }
 
 function dedupe<T>(items: T[]) {

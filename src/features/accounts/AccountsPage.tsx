@@ -83,6 +83,7 @@ import {
 import { formatCount } from '../../utils/numberFormat';
 import { useModalDrawer } from '../../hooks/useModalDrawer';
 import { matchesSearchQuery } from '../../utils/textSearch';
+import { normalizeEntityName } from '../../utils/accountIdentity.ts';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type SortDirection = 'asc' | 'desc';
@@ -2458,8 +2459,10 @@ function healthRank(value: AccountMemory['health']) {
   return { 'At risk': 4, 'Needs attention': 3, Dormant: 2, Healthy: 1 }[value];
 }
 
+/** The canonical fold - see accountIdentity.ts. A bare lowercase is diacritic-
+ * and punctuation-sensitive, so it split one customer in two. */
 function normalizeName(value: string) {
-  return value.trim().toLowerCase();
+  return normalizeEntityName(value);
 }
 
 function buildAccountsSummary(rows: AccountMasterRow[]) {

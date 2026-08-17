@@ -2,6 +2,7 @@ import type { SalesActivityRecord } from '../services/salesActivityStore';
 import { sanitizeBusinessDate } from './safeDate.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
+import { normalizeEntityName } from './accountIdentity.ts';
 import {
   emptyObjectionInput,
   type ObjectionFormInput,
@@ -179,8 +180,10 @@ function countBy(values: string[]) {
   }, {});
 }
 
+/** The canonical fold - see accountIdentity.ts. A bare lowercase is diacritic-
+ * and punctuation-sensitive, so it split one customer in two. */
 function normalizeName(value: string) {
-  return value.trim().toLowerCase();
+  return normalizeEntityName(value);
 }
 
 function normalizeTag(value: string) {

@@ -7,6 +7,7 @@ import type { DailyExecutionDecision } from './dailyExecution';
 import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
 import type { RevenueActionItem, RevenueRiskKind } from './revenueView';
 import { buildOpportunitySalesFlowGuidance } from './salesFlowGuidance.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 import { compareSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, isValidBusinessDate, todayDateKey, toLocalDateKey, timestampToLocalDateKey } from './safeDate.ts';
 
 export type CommandPriority = 'Critical' | 'High' | 'Medium' | 'Low';
@@ -687,8 +688,16 @@ function priorityRank(priority: CommandPriority) {
   }[priority];
 }
 
+/**
+ * The canonical fold - see accountIdentity.ts.
+ *
+ * This grouped the account list and attached activities to it, so a plain
+ * lowercase split one customer into two rows whenever the accents or a trailing
+ * full stop differed, and the touches landed on whichever row matched. It also
+ * keyed the accounts-touched count below, which the difference inflated.
+ */
 function normalizeName(value: string) {
-  return value.trim().toLowerCase();
+  return normalizeEntityName(value);
 }
 
 function daysSince(dateKey: string) {

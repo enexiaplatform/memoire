@@ -1,4 +1,5 @@
 import type { AccountMemoryRecord } from '../services/accountStore.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
@@ -91,6 +92,7 @@ function daysBetweenBusinessDates(start: string, end: string) {
   return Math.floor(elapsed / 86_400_000);
 }
 
+/** The canonical fold - see accountIdentity.ts. */
 function normalize(value?: string) {
-  return (value || '').trim().toLowerCase();
+  return normalizeEntityName(value || '');
 }

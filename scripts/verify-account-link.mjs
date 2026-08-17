@@ -270,6 +270,36 @@ const merge = (canonical, mergedNames) => ({
     'these match customer names with a local lowercase instead of '
     + `normalizeEntityName, so a diacritic or a full stop breaks the link: ${offenders.join(', ')}`,
   );
+
+  /**
+   * The same rule, hidden one level down.
+   *
+   * The check above looks for the lowercase applied straight to a name field, and
+   * `salesCommandCenter` slipped past it by putting the expression in a helper
+   * called `normalizeName` and calling *that* on the names. Seven more files were
+   * doing the same. So a normaliser whose whole body is a bare
+   * `trim().toLowerCase()` is itself the finding, whatever it is called.
+   *
+   * Enum normalisers - normalizeStage, normalizeStatus, normalizeHorizon - do not
+   * match: they map to a fixed list rather than returning the lowercase, so their
+   * bodies are more than this one expression.
+   */
+  const bareLowercaseHelper = /function\s+normalize[A-Za-z]*\s*\([^)]*\)\s*\{\s*return\s+[^;]*\.trim\(\)\.toLowerCase\(\)\s*;\s*\}/;
+
+  const helperOffenders = [...collect('src/utils'), ...collect('src/features')]
+    .filter((file) => {
+      const code = readSourceFile(file, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/.*$/gm, '');
+      return bareLowercaseHelper.test(code);
+    });
+
+  assert.deepEqual(
+    helperOffenders,
+    [],
+    'these define a name normaliser whose whole body is a bare lowercase; it '
+    + `must delegate to normalizeEntityName: ${helperOffenders.join(', ')}`,
+  );
 }
 
 console.log('Account link contract verified, and names are matched in exactly one way.');
