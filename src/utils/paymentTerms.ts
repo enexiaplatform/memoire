@@ -80,7 +80,7 @@ export type ParsedPaymentTerm = {
   sourceText: string;
 };
 
-const DEFAULT_INSTALLMENT_LABEL = 'Balance';
+export const DEFAULT_INSTALLMENT_LABEL = 'Balance';
 
 /**
  * Reads a terms sentence into a schedule.

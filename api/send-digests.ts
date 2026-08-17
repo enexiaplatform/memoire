@@ -118,15 +118,12 @@ async function handleCron(req: ApiRequest, res: ApiResponse) {
   }
 
   const now = new Date();
-  const { data, error } = await supabase
-    .from('user_profiles')
-    .select('id, email, display_name, daily_digest_enabled, weekly_review_enabled, digest_send_hour, digest_utc_offset_minutes, digest_last_daily_sent_on, digest_last_weekly_sent_on, digest_unsubscribe_token')
-    .or('daily_digest_enabled.eq.true,weekly_review_enabled.eq.true')
-    .limit(500);
-
-  if (error) return res.status(500).json({ error: error.message });
-
-  const profiles = (data || []) as ProfileRow[];
+  let profiles: ProfileRow[];
+  try {
+    profiles = await loadSubscribedProfiles(supabase);
+  } catch (loadError) {
+    return res.status(500).json({ error: (loadError as Error).message });
+  }
   const results = { considered: profiles.length, sent: 0, skipped: 0, failed: 0 };
 
   for (const profile of profiles) {
@@ -149,6 +146,48 @@ async function handleCron(req: ApiRequest, res: ApiResponse) {
   }
 
   return res.status(200).json(results);
+}
+
+/**
+ * Everyone who has asked for an email, not the first five hundred of them.
+ *
+ * This was one `.limit(500)` with no ordering. PostgREST answers that with a
+ * 200 and five hundred rows and says nothing about the rest, so past that many
+ * subscribers an arbitrary subset of operators would simply stop receiving the
+ * digest - no error, no log line, and the run would report `considered: 500`
+ * as if that were everybody. It is the same silent-truncation shape that cost
+ * this project 739 stakeholders out of a backup, in the one place where the
+ * symptom is an email that never arrives and therefore cannot be noticed.
+ *
+ * Ordered by `id` because paging without a total order is not paging: `id` is
+ * the primary key, so it cannot tie. See src/services/supabasePaging.ts.
+ */
+const PROFILE_PAGE_SIZE = 500;
+const MAX_PROFILE_PAGES = 200;
+
+async function loadSubscribedProfiles(supabase: ServiceClient): Promise<ProfileRow[]> {
+  const rows: ProfileRow[] = [];
+
+  for (let page = 0; page < MAX_PROFILE_PAGES; page += 1) {
+    const from = page * PROFILE_PAGE_SIZE;
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('id, email, display_name, daily_digest_enabled, weekly_review_enabled, digest_send_hour, digest_utc_offset_minutes, digest_last_daily_sent_on, digest_last_weekly_sent_on, digest_unsubscribe_token')
+      .or('daily_digest_enabled.eq.true,weekly_review_enabled.eq.true')
+      .order('id', { ascending: true })
+      .range(from, from + PROFILE_PAGE_SIZE - 1);
+
+    if (error) throw new Error(error.message);
+
+    const batch = (data || []) as ProfileRow[];
+    rows.push(...batch);
+    if (batch.length < PROFILE_PAGE_SIZE) return rows;
+  }
+
+  // 100,000 subscribers is far beyond anything this holds; reaching it means a
+  // query that never shortens, and sending to a truncated list quietly is the
+  // failure this function exists to prevent.
+  throw new Error(`digest recipient list did not finish after ${MAX_PROFILE_PAGES} pages`);
 }
 
 /**

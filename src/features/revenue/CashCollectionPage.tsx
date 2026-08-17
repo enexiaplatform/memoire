@@ -26,7 +26,7 @@ import {
   type OrderReceivableRecord,
 } from '../../utils/receivables';
 import { describeInstallment, parsePaymentTerm } from '../../utils/paymentTerms';
-import { formatBaseCurrencyAmount, formatCompactBaseAmount } from '../../utils/money';
+import { formatBaseCurrencyAmount, formatCompactBaseAmount, getReportingCurrency } from '../../utils/money';
 import { formatSafeBusinessDate, todayDateKey } from '../../utils/safeDate';
 
 /**
@@ -343,7 +343,12 @@ function ReceivableRow({
               So the slice is named with its own amount whenever it is not the
               whole of what is outstanding. */}
           <p className="text-xs text-gray-500">
-            {order.settled
+            {/* Never "Collected" for an order nobody could value: outstanding is
+                zero because the currency has no rate, not because the money
+                arrived. */}
+            {order.valueUnavailable
+              ? `Not valued · ${order.currency}`
+              : order.settled
               ? 'Collected'
               : order.daysOverdue !== null
                 ? `${order.daysOverdue} days late`
@@ -504,6 +509,19 @@ function ReceivableRow({
 
 function TermProvenance({ order }: { order: OrderReceivable }) {
   const parsed = parsePaymentTerm(order.paymentTerm);
+
+  // Said before anything about the schedule, because none of the schedule's
+  // money means anything without a rate to read it in.
+  if (order.valueUnavailable) {
+    return (
+      <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 font-semibold text-amber-900" role="status">
+        This order is in {order.currency}, and no exchange rate is set for it — so Memoire cannot
+        say what is owed in {getReportingCurrency()}. The order is kept open rather than counted as
+        collected. <Link to="/app/settings" className="underline">Set a rate in Settings</Link> and
+        the schedule below fills in.
+      </p>
+    );
+  }
 
   if (order.termConfidence === 'operator') {
     return (

@@ -382,3 +382,121 @@ describe('receivables: writing a receipt down', () => {
     assert.equal(second.receipts.length, 2);
   });
 });
+
+describe('receivables: a schedule that does not cover the order', () => {
+  /**
+   * The parser completes a partial term - "30% deposit" leaves the rest
+   * understood - but an operator override skipped that completion, and
+   * `sanitizeInstallments` permits an entry with neither a percent nor an
+   * amount. Either way the schedule was worth less than the order, and the
+   * missing part was owed by nobody: pay the part that was scheduled and the
+   * order went settled and left the collections list.
+   */
+  test('an override worth half the order is completed to the whole of it', () => {
+    const summary = buildReceivables({
+      orders: [order('half', { amount: 1_000_000, amountBase: 1_000_000 })],
+      records: [record('half', {
+        installments: [{ id: 'i1', label: 'Deposit', percent: 50, trigger: 'order', offsetDays: 0 }],
+      })],
+      today: TODAY,
+    });
+
+    const row = summary.orders[0];
+    assert.equal(row.installments.length, 2, 'the remainder is scheduled, not dropped');
+    assert.equal(row.installments.reduce((sum, i) => sum + i.dueBase, 0), 1_000_000);
+    assert.equal(row.outstandingBase, 1_000_000);
+    assert.equal(row.settled, false);
+  });
+
+  test('paying the scheduled half no longer settles the whole order', () => {
+    const summary = buildReceivables({
+      orders: [order('part', { amount: 1_000_000, amountBase: 1_000_000 })],
+      records: [record('part', {
+        installments: [{ id: 'i1', label: 'Deposit', percent: 50, trigger: 'order', offsetDays: 0 }],
+        receipts: [receipt(500_000, '2026-06-15')],
+      })],
+      today: TODAY,
+    });
+
+    const row = summary.orders[0];
+    assert.equal(row.receivedBase, 500_000);
+    assert.equal(row.outstandingBase, 500_000, 'the other half is still owed');
+    assert.equal(row.settled, false);
+    assert.equal(row.overpaidBase, 0, 'covering half an order is not an overpayment');
+  });
+
+  test('an installment with neither a percent nor an amount does not zero the order', () => {
+    const summary = buildReceivables({
+      orders: [order('null', { amount: 1_000_000, amountBase: 1_000_000 })],
+      records: [record('null', {
+        installments: [{ id: 'i1', label: 'Balance', trigger: 'delivery', offsetDays: 0 }],
+      })],
+      today: TODAY,
+    });
+
+    assert.equal(summary.orders[0].outstandingBase, 1_000_000);
+    assert.equal(summary.orders[0].settled, false);
+  });
+
+  test('a fixed installment amount is read in the order currency, not the reporting one', () => {
+    // Reporting currency is VND here; USD converts at 26,000. A USD order with a
+    // fixed 4,000 slice is 104,000,000 VND of the 260,000,000 it is worth - it
+    // used to be counted as 4,000 VND, four thousandths of a percent of it.
+    const summary = buildReceivables({
+      orders: [order('fx', { currency: 'USD', amount: 10_000, amountBase: 260_000_000 })],
+      records: [record('fx', {
+        installments: [{ id: 'i1', label: 'Deposit', amount: 4_000, trigger: 'order', offsetDays: 0 }],
+      })],
+      today: TODAY,
+    });
+
+    const row = summary.orders[0];
+    const deposit = row.installments.find((entry) => entry.label === 'Deposit');
+    assert.equal(deposit.dueBase, 104_000_000);
+    assert.equal(row.outstandingBase, 260_000_000, 'and the balance still completes the order');
+  });
+});
+
+describe('receivables: an order in a currency nobody has priced', () => {
+  /**
+   * `amountBase` comes from `sumMoneyInBase`, which drops what it cannot convert
+   * rather than inventing a rate - so the order arrives worth zero, every
+   * instalment is a percentage of zero, and the order reported itself collected.
+   * Reachable through the UI today: the currency picker offers every ISO code
+   * so that operators outside the twenty-one shipped rates can use the product.
+   */
+  test('is kept open and flagged, not reported as collected', () => {
+    const summary = buildReceivables({
+      orders: [order('sek', { currency: 'SEK', amount: 90_000, amountBase: 0 })],
+      records: [],
+      today: TODAY,
+    });
+
+    const row = summary.orders[0];
+    assert.equal(row.valueUnavailable, true);
+    assert.equal(row.settled, false, 'nothing collected it - there is just no rate to read it in');
+    assert.equal(summary.openCount, 1, 'it stays in the collections list');
+  });
+
+  test('a priced currency is unaffected', () => {
+    const summary = buildReceivables({
+      orders: [order('vnd', { currency: 'VND', amount: 1_000_000, amountBase: 1_000_000 })],
+      records: [],
+      today: TODAY,
+    });
+
+    assert.equal(summary.orders[0].valueUnavailable, false);
+    assert.equal(summary.orders[0].outstandingBase, 1_000_000);
+  });
+
+  test('an order genuinely worth nothing is not mistaken for an unpriced one', () => {
+    const summary = buildReceivables({
+      orders: [order('zero', { currency: 'VND', amount: 0, amountBase: 0 })],
+      records: [],
+      today: TODAY,
+    });
+
+    assert.equal(summary.orders[0].valueUnavailable, false);
+    assert.equal(summary.orders[0].settled, true);
+  });
+});

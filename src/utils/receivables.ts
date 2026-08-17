@@ -1,7 +1,14 @@
 import type { CommittedOrder } from './orderToCash.ts';
-import { getReportingCurrency, sumMoneyInBase, type SupportedCurrency } from './money.ts';
+import {
+  convertMoney,
+  getReportingCurrency,
+  hasExchangeRate,
+  sumMoneyInBase,
+  type SupportedCurrency,
+} from './money.ts';
 import { sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 import {
+  DEFAULT_INSTALLMENT_LABEL,
   installmentAmount,
   installmentDueDate,
   parsePaymentTerm,
@@ -138,6 +145,21 @@ export type OrderReceivable = {
   settled: boolean;
   /** Received more than the order is worth. Kept visible rather than clamped away. */
   overpaidBase: number;
+  /**
+   * The order is in a currency nobody has priced, so none of the figures above
+   * mean anything for it.
+   *
+   * `amountBase` comes from `sumMoneyInBase`, which drops an amount it cannot
+   * convert rather than inventing a rate - so an order in such a currency
+   * arrives here worth zero. Every instalment is then a percentage of zero,
+   * nothing is outstanding, and the order reported itself `settled`: fully
+   * collected, gone from the aging table, gone from the count, gone from "who do
+   * I ring today". Left out of a *total* is the documented behaviour and is
+   * defensible; **reported as paid** is a different claim, and it is false. The
+   * currency picker offers every ISO code on purpose, so any operator outside
+   * the twenty-one shipped rates could reach this by selling in their own money.
+   */
+  valueUnavailable: boolean;
   href: string;
 };
 
@@ -231,6 +253,12 @@ function buildOneReceivable(
   const installments = override.length > 0 ? override : parsed.installments;
   const orderValueBase = order.amountBase;
 
+  // Asked of the currency rather than inferred from a zero, so an order that is
+  // genuinely worth nothing is not mistaken for one that cannot be valued.
+  const valueUnavailable = typeof order.amount === 'number'
+    && order.amount !== 0
+    && !hasExchangeRate(order.currency);
+
   const deliveredOn = sanitizeBusinessDate(record?.deliveredOn) || '';
   const invoicedOn = sanitizeBusinessDate(record?.invoicedOn) || '';
   const orderDate = sanitizeBusinessDate(order.orderDate) || today;
@@ -240,19 +268,76 @@ function buildOneReceivable(
   // due date on the page by a number the operator never supplied.
   const deliveryLagDays = deliveredOn ? Math.max(0, daysBetween(orderDate, deliveredOn) ?? 0) : 0;
 
-  const scheduled = installments
-    .map((installment) => ({
-      id: installment.id,
-      label: installment.label,
-      dueDate: installmentDueDate(installment, orderDate, {
-        deliveryLagDays,
-        deliveryDate: deliveredOn,
-        invoiceDate: invoicedOn,
-      }),
-      dueBase: installmentAmount(installment, orderValueBase),
-    }))
-    // Applied oldest first, so a receipt covers what has been owed longest.
-    .sort((left, right) => compareDueDates(left.dueDate, right.dueDate));
+  const dueDateOf = (installment: PaymentInstallment) => installmentDueDate(installment, orderDate, {
+    deliveryLagDays,
+    deliveryDate: deliveredOn,
+    invoiceDate: invoicedOn,
+  });
+
+  /**
+   * A slice's value in the reporting currency, which is what `dueBase` means.
+   *
+   * `installmentAmount` returns a percentage slice of `orderValueBase` - already
+   * converted - but hands back a *fixed* `amount` untouched. An operator writing
+   * a fixed slice writes it in the money the order is in, so on a VND order read
+   * in USD, "50,000,000" was compared against a USD order value as if it were
+   * fifty million dollars. Percentages were right and fixed amounts were not, in
+   * the same list, under the same column heading.
+   */
+  const dueBaseOf = (installment: PaymentInstallment) => {
+    if (typeof installment.amount !== 'number' || !Number.isFinite(installment.amount)) {
+      return installmentAmount(installment, orderValueBase);
+    }
+    const converted = convertMoney(installment.amount, order.currency);
+    // Unconvertible means the order is in a currency nobody has priced. The
+    // figure as written is closer to the truth than zero, and zero would drop
+    // the slice out of what is owed entirely.
+    return converted === null ? installment.amount : converted;
+  };
+
+  const scheduled = installments.map((installment) => ({
+    id: installment.id,
+    label: installment.label,
+    dueDate: dueDateOf(installment),
+    dueBase: dueBaseOf(installment),
+  }));
+
+  /**
+   * The schedule always covers the whole order.
+   *
+   * `parsePaymentTerm` completes a partial sentence - "30% deposit" leaves the
+   * rest understood - but that completion lived in the parser, so a schedule
+   * arriving any other way skipped it. An operator override totalling 50%, or
+   * one whose percentages did not parse and came back as null (which
+   * `sanitizeInstallments` permits), produced a schedule worth less than the
+   * order. Everything downstream reads `outstandingBase` off these slices, so
+   * the missing half was not owed by anybody: once the customer paid the half
+   * that was scheduled the order went `settled: true` and left the collections
+   * list, which is the one screen whose entire job is to not let that happen.
+   *
+   * Enforced here rather than in the parser so it holds for every source of a
+   * schedule, including the ones that do not exist yet.
+   */
+  const scheduledTotal = scheduled.reduce((sum, entry) => sum + entry.dueBase, 0);
+  if (orderValueBase > 0 && scheduledTotal < orderValueBase - 0.005) {
+    const remainder: PaymentInstallment = {
+      id: `pt-remainder-${scheduled.length + 1}`,
+      label: DEFAULT_INSTALLMENT_LABEL,
+      percent: null,
+      amount: null,
+      trigger: 'delivery',
+      offsetDays: 0,
+    };
+    scheduled.push({
+      id: remainder.id,
+      label: remainder.label,
+      dueDate: dueDateOf(remainder),
+      dueBase: orderValueBase - scheduledTotal,
+    });
+  }
+
+  // Applied oldest first, so a receipt covers what has been owed longest.
+  scheduled.sort((left, right) => compareDueDates(left.dueDate, right.dueDate));
 
   const receivedBase = sumMoneyInBase(
     (record?.receipts || [])
@@ -307,11 +392,14 @@ function buildOneReceivable(
     nextDueDate: nextOpen?.dueDate || '',
     nextDueBase: nextOpen?.outstandingBase || 0,
     bucket: bucketFor(daysOverdue, nextOpen?.dueDate || '', today, outstandingBase),
-    settled: outstandingBase <= 0.005,
+    // An order nobody could value is not an order that has been paid. It stays
+    // open, and the page says why instead of showing a figure it does not have.
+    settled: outstandingBase <= 0.005 && !valueUnavailable,
     // Not clamped to zero. A customer who has paid more than the order is worth
     // is a fact somebody has to deal with, and hiding it is how it survives to
     // the next audit.
     overpaidBase: Math.max(0, receivedBase - states.reduce((sum, state) => sum + state.dueBase, 0)),
+    valueUnavailable,
     href: `/app/cash-collection?orderId=${encodeURIComponent(order.opportunityId)}`,
   };
 }
