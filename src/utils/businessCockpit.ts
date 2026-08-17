@@ -5,6 +5,7 @@ import type { RevenueActionItem } from './revenueView.ts';
 import { formatCompactCurrencyAmount } from './money.ts';
 import { resolveOpportunityByName, resolveQuoteOpportunityId } from './opportunityResolution.ts';
 import { isBusinessDateOverdue, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 
 export type BusinessCockpitAnswer = {
   id: 'money' | 'deals' | 'follow-ups' | 'initiatives' | 'capture';
@@ -152,7 +153,7 @@ export function buildBusinessCockpit(input: BusinessCockpitInput): BusinessCockp
   // trouble usually raised a nudge too - and the morning brief underneath opens
   // with whichever nudge is top. Finding that twin is what stops the brief
   // repeating this card's sentence one line below it.
-  const moneyAccount = (moneyItem?.accountName || '').trim().toLowerCase();
+  const moneyAccount = normalizeEntityName(moneyItem?.accountName || '');
   const moneyNudge = moneyItem
     ? nudges.find((nudge) => {
       const nudgeId = (nudge.entityId || '').replace(/^(opportunity|quote)-/, '');
@@ -166,7 +167,7 @@ export function buildBusinessCockpit(input: BusinessCockpitInput): BusinessCockp
         }, opportunities, quotes);
         if (nudgeDealId && nudgeDealId === moneyDealId) return true;
       }
-      return Boolean(moneyAccount) && (nudge.accountName || '').trim().toLowerCase() === moneyAccount;
+      return Boolean(moneyAccount) && normalizeEntityName(nudge.accountName || '') === moneyAccount;
     })
     : undefined;
   const hotDealNudge = nudges.find((nudge) => {

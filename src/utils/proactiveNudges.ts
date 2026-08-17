@@ -6,6 +6,7 @@ import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore.ts';
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 import type { StakeholderRecord } from '../services/stakeholderStore.ts';
 import type { PipelineDefenseBrief } from './pipelineDefenseStorage.ts';
 import type { RevenueActionItem } from './revenueView.ts';
@@ -386,8 +387,22 @@ function buildSilenceRiskNudges(input: ProactiveNudgeInput, today: string) {
   });
 }
 
+/**
+ * The last time anybody touched this customer.
+ *
+ * Matched with `normalizeEntityName`, not a local `toLowerCase().trim()`. The
+ * local version was diacritic- and punctuation-sensitive, so an activity on
+ * "Cong ty Duoc Pham Cuu Long" did not reach a deal filed as
+ * "CÔNG TY DƯỢC PHẨM CỬU LONG", and "VNVC." did not reach "VNVC". The touch was
+ * then invisible here and the deal was measured from its creation date instead:
+ * a deal met yesterday reported "silent, 108 days quiet" and raised a critical
+ * "Deal going silent" nudge saying no customer touch had ever been recorded.
+ *
+ * A false alarm is not a small bug in a nudge. It is the thing that teaches an
+ * operator to stop reading them.
+ */
 function findLastTouchDate(opportunity: CrmLiteOpportunity, activities: SalesActivityRecord[]) {
-  const normalize = (value?: string) => (value || '').trim().toLowerCase();
+  const normalize = (value?: string) => normalizeEntityName(value || '');
   const accountKey = normalize(opportunity.accountName);
   return activities
     .filter((activity) => activity.linkedOpportunityId === opportunity.id

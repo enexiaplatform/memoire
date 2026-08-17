@@ -5,6 +5,7 @@ import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
 import { normalizeMeddicRole } from './meddicStakeholderMap.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 
 export type CaptureNudge = {
   id: string;
@@ -162,8 +163,9 @@ function priorityRank(priority: CaptureNudge['priority']) {
   return priority === 'High' ? 3 : priority === 'Medium' ? 2 : 1;
 }
 
+/** The canonical rule, not a local lowercase - see accountIdentity.ts. */
 function normalize(value: string) {
-  return value.trim().toLowerCase();
+  return normalizeEntityName(value);
 }
 
 function todayKey() {

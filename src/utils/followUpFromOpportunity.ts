@@ -1,6 +1,7 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { FollowUpContext } from '../types/v31';
+import { normalizeEntityName } from './accountIdentity.ts';
 
 // Builds a revive-focused Follow-up Composer context from a quiet deal:
 // latest interaction summary and pain points come from activities linked by
@@ -9,7 +10,8 @@ export function buildReviveFollowUpContext(
   opportunity: CrmLiteOpportunity,
   activities: SalesActivityRecord[],
 ): FollowUpContext {
-  const normalize = (value?: string) => (value || '').trim().toLowerCase();
+  // See accountIdentity: the canonical rule, not a local lowercase.
+  const normalize = (value?: string) => normalizeEntityName(value || '');
   const accountKey = normalize(opportunity.accountName);
   const relatedActivities = activities
     .filter((activity) => activity.linkedOpportunityId === opportunity.id

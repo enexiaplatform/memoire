@@ -1,6 +1,7 @@
 import type { NudgeRecord } from '../services/nudgeStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import { isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 
 export type MorningBriefQuestion = {
   label: string;
@@ -52,9 +53,11 @@ export function buildMorningBrief(input: MorningBriefInput): MorningBrief {
   const nudges = input.nudges || [];
   const urgent = nudges.filter((nudge) => nudge.urgency === 'critical' || nudge.urgency === 'high');
   const claimed = new Set(input.claimedNudgeIds || []);
-  const claimedAccounts = new Set((input.claimedAccounts || []).map((name) => name.trim().toLowerCase()).filter(Boolean));
+  // Both sides on the canonical key. Normalising only one of them would be worse
+  // than normalising neither: the comparison would never match at all.
+  const claimedAccounts = new Set((input.claimedAccounts || []).map((name) => normalizeEntityName(name)).filter(Boolean));
   const unclaimed = (nudge: NudgeRecord) => (
-    !claimed.has(nudge.id) && !claimedAccounts.has((nudge.accountName || '').trim().toLowerCase())
+    !claimed.has(nudge.id) && !claimedAccounts.has(normalizeEntityName(nudge.accountName || ''))
   );
   // No fallback on purpose. If every nudge is already on a card above, the
   // brief has nothing to add about deals, and the honest move is to say the

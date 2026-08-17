@@ -1,4 +1,5 @@
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 
 /**
  * Finding the touches that belong to a deal, without reading every touch again
@@ -48,8 +49,15 @@ type ActivityIndex = {
  */
 const indexes = new WeakMap<SalesActivityRecord[], ActivityIndex>();
 
+/**
+ * The canonical rule, not a local lowercase - see accountIdentity.ts.
+ *
+ * This one keys the whole activity index, so a diacritic- or punctuation-
+ * sensitive key meant an account's touches were filed under a name no lookup
+ * would ever ask for.
+ */
 function normalize(value: string) {
-  return value.trim().toLowerCase();
+  return normalizeEntityName(value);
 }
 
 function push(map: Map<string, SalesActivityRecord[]>, key: string, activity: SalesActivityRecord) {

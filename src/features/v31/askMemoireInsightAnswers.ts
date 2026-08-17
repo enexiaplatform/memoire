@@ -14,6 +14,7 @@ import { initiativeDecisionLabel } from '../../utils/initiativeExperiment.ts';
 import { type SignalDigest } from '../../utils/customerSignals.ts';
 import { formatBaseCurrencyAmount, formatCurrencyAmount } from '../../utils/money.ts';
 import { formatSafeBusinessDate, isValidBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
+import { normalizeEntityName } from '../../utils/accountIdentity.ts';
 
 export type InsightQuestionKind =
   | 'follow_up_impact'
@@ -91,11 +92,15 @@ export function resolveDealForQuestion(
     const scoped = opportunities.find((opportunity) => opportunity.id === selectedOpportunityId);
     if (scoped) return scoped;
   }
-  const normalized = question.toLowerCase();
+  // The question goes through the same fold as the names it is searched for.
+  // Normalising only the names would be worse than normalising neither: a folded
+  // "cong ty duoc pham" cannot be found inside a raw-lowercased question that
+  // still carries its accents.
+  const normalized = normalizeEntityName(question);
   const candidates = opportunities
     .map((opportunity) => {
-      const oppName = (opportunity.opportunityName || '').trim().toLowerCase();
-      const accName = (opportunity.accountName || '').trim().toLowerCase();
+      const oppName = normalizeEntityName(opportunity.opportunityName || '');
+      const accName = normalizeEntityName(opportunity.accountName || '');
       let score = 0;
       // Opportunity names are more specific than account names, so they win.
       if (oppName.length >= 3 && normalized.includes(oppName)) score = Math.max(score, oppName.length + 1000);

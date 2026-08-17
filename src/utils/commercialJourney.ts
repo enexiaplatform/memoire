@@ -4,6 +4,7 @@ import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import { buildMoneyFlow } from './moneyFlow.ts';
 import { classifyOpportunitySilence } from './proactiveNudges.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 import { compareSafeBusinessDate, formatSafeBusinessDate, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 
 export const soloJourneyStages = ['Audience', 'Conversation', 'Offer', 'Sale', 'Fulfillment', 'Payment', 'Retention'] as const;
@@ -161,6 +162,7 @@ export function formatJourneyCommitment(commitment: CommercialJourneySnapshot['n
   return commitment.date ? `${commitment.action} - ${formatSafeBusinessDate(commitment.date)}` : commitment.action;
 }
 
+/** The canonical rule, not a local lowercase - see accountIdentity.ts. */
 function normalize(value?: string) {
-  return (value || '').trim().toLowerCase();
+  return normalizeEntityName(value || '');
 }

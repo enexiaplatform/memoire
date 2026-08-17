@@ -4,6 +4,7 @@ import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import { FORECAST_QUARTERS, quarterForDate, daysLeftInQuarter, type ForecastQuarter } from '../domain/commercialKernel/forecast.ts';
 import { sumMoneyInBase } from './money.ts';
 import { isValidBusinessDate, timestampToLocalDateKey, todayDateKey } from './safeDate.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 
 /**
  * The scoreboard: what last week and last month actually produced, against the
@@ -251,7 +252,10 @@ export function buildOutcomeScoreboard(input: ScoreboardInput): OutcomeScoreboar
       quotesSent: periodQuotes.length,
       quotesAccepted: periodQuotes.filter((quote) => quote.status === 'Accepted').length,
       touches: periodActivities.length,
-      accountsTouched: new Set(periodActivities.map((activity) => (activity.accountName || '').trim().toLowerCase()).filter(Boolean)).size,
+      // Counted on the canonical key: a lowercase alone left "CÔNG TY X" and
+      // "Cong ty X" as two accounts touched, inflating the one number on this
+      // scoreboard that says how much of the book was worked.
+      accountsTouched: new Set(periodActivities.map((activity) => normalizeEntityName(activity.accountName || '')).filter(Boolean)).size,
       dealsDecided: decided,
     },
     quarter,

@@ -2,6 +2,7 @@ import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import { sumMoneyInBase } from './money.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 import {
   compareSafeBusinessDate,
   isValidBusinessDate,
@@ -219,6 +220,15 @@ function addDays(dateKey: string, days: number) {
   return shifted.toISOString().slice(0, 10);
 }
 
+/**
+ * Names matched with the canonical rule, not a local lowercase.
+ *
+ * A `toLowerCase().trim()` key is diacritic- and punctuation-sensitive, so
+ * "Cong ty Duoc Pham Cuu Long" did not reach "CÔNG TY DƯỢC PHẨM CỬU LONG" and
+ * "VNVC." did not reach "VNVC" - and in this book that is the ordinary case, not
+ * the edge one. Every miss is a record that silently fails to link to its deal.
+ * `accountIdentity.ts` was extracted to be the one place this is decided.
+ */
 function normalize(value?: string) {
-  return (value || '').trim().toLowerCase();
+  return normalizeEntityName(value || '');
 }

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { ThreadQuickLook } from './ThreadQuickLook';
 import { useCommercialThreads } from './useCommercialThreads';
 import type { ResolvedThread } from '../../domain/commercialKernel/deriveThreads';
+import { normalizeEntityName } from '../../utils/accountIdentity.ts';
 
 export type ThreadFilter = {
   /** Show only threads for this customer. */
@@ -41,8 +42,10 @@ export function ThreadsSection({
       result = result.filter((thread) => thread.status === 'active' || thread.status === 'waiting');
     }
     if (filter.accountName) {
-      const key = filter.accountName.trim().toLowerCase();
-      result = result.filter((thread) => thread.accountName.trim().toLowerCase() === key);
+      // Canonical key: a plain lowercase filtered "CÔNG TY X" to nothing when
+      // the thread was filed without the accents.
+      const key = normalizeEntityName(filter.accountName);
+      result = result.filter((thread) => normalizeEntityName(thread.accountName) === key);
     }
     if (filter.moneyInMotionOnly) {
       result = result.filter(

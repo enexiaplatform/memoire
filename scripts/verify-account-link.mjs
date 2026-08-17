@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync as readSourceFile } from 'node:fs';
 import { readFileSync } from 'node:fs';
 import { buildAccountAliasIndex, resolveAccountName } from '../src/utils/accountAliases.ts';
 import { compareAccountNames, findSimilarAccountName } from '../src/utils/accountDuplicates.ts';
@@ -219,4 +220,56 @@ const merge = (canonical, mergedNames) => ({
   );
 }
 
-console.log('Account link contract verified.');
+/**
+ * One rule decides that two spellings are the same customer.
+ *
+ * `accountIdentity.ts` was extracted so that "every surface counts the same
+ * relationships" - its own words. Six files had quietly kept their own
+ * `toLowerCase().trim()` anyway: proactiveNudges, followUpFromOpportunity,
+ * followUpImpact, commercialJourney, activityIndex and captureNudges, plus an
+ * inline pair in businessCockpit.
+ *
+ * That key is diacritic- and punctuation-sensitive, so in this book the ordinary
+ * spelling difference broke the link. The sharpest consequence was in
+ * `classifyOpportunitySilence`: an activity on "Cong ty Duoc Pham Cuu Long" did
+ * not reach a deal filed as "CÔNG TY DƯỢC PHẨM CỬU LONG", so a deal met
+ * yesterday reported "silent, 108 days quiet" and raised a critical "Deal going
+ * silent" nudge saying no touch had ever been recorded. A false alarm is what
+ * teaches an operator to stop reading the true ones.
+ *
+ * Comments are stripped first: every one of those files now explains this in
+ * prose that contains the offending expression.
+ */
+{
+  const collect = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) return collect(path);
+    return /\.tsx?$/.test(entry.name) ? [path] : [];
+  });
+
+  // Matched on the lowercase applied *directly to a name*, not on the two things
+  // merely appearing in the same file. The looser version flagged seventeen more
+  // files that lowercase a status or a tag and happen to mention accountName
+  // elsewhere, which is how a check becomes noise and then becomes ignored.
+  const namedFieldLowercase = new RegExp(
+    '(accountName|opportunityName|stakeholderName|linkedAccountName|linkedOpportunityName)'
+    + '[^;\\n]{0,30}\\)?\\.trim\\(\\)\\.toLowerCase\\(\\)',
+  );
+
+  const offenders = [...collect('src/utils'), ...collect('src/features')]
+    .filter((file) => {
+      const code = readSourceFile(file, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/.*$/gm, '');
+      return namedFieldLowercase.test(code);
+    });
+
+  assert.deepEqual(
+    offenders,
+    [],
+    'these match customer names with a local lowercase instead of '
+    + `normalizeEntityName, so a diacritic or a full stop breaks the link: ${offenders.join(', ')}`,
+  );
+}
+
+console.log('Account link contract verified, and names are matched in exactly one way.');
