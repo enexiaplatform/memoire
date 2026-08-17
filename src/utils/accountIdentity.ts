@@ -1,3 +1,5 @@
+import { normalizeSearchText } from './textSearch.ts';
+
 /**
  * The one way the app decides two account names are the same account.
  *
@@ -20,17 +22,34 @@
  */
 const normalizedNames = new Map<string, string>();
 
+/**
+ * The rule itself is `normalizeSearchText`, not a second copy of it.
+ *
+ * This function used to have its own, and the two disagreed in the one place
+ * that matters most for a Vietnamese book: it had no `đ/Đ → d` fold. `Đ` has no
+ * combining mark, so NFD leaves it standing, and the old ASCII keep-set then
+ * deleted it and put a space in its place. `ĐỨC PHÁT` keyed as `uc phat` -
+ * missing the first letter of the word - so it was a *different customer* from
+ * `DUC PHAT`, while search folded both to `duc phat` and found them together.
+ * Deals, touches and coverage split in two for one account, and the surface that
+ * could find the record was the one that disagreed about who it belonged to.
+ * Vietnamese company names beginning Đông, Đại, Đức, Đồng, Đạt are ordinary.
+ *
+ * The keep-set is also Unicode now, which matters here even more than it does
+ * in search: every CJK and Thai name normalised to the empty string, and an
+ * empty key is not "no match" to a `Map` - it is *one shared bucket*, so
+ * unrelated customers were grouped into a single account, reported as duplicates
+ * of each other, and counted as touched when any one of them was.
+ *
+ * This file's own opening comment says the point is that "every surface counts
+ * the same relationships". One rule, one place, is how that stays true.
+ */
 export function normalizeEntityName(value: string): string {
   const input = value || '';
   const cached = normalizedNames.get(input);
   if (cached !== undefined) return cached;
 
-  const normalized = input
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
+  const normalized = normalizeSearchText(input);
   normalizedNames.set(input, normalized);
   return normalized;
 }
