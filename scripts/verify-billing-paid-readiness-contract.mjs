@@ -114,6 +114,46 @@ for (const marker of [
   }
 }
 
+/**
+ * The entitlement write must be checked, and a failed one must not answer 200.
+ *
+ * This was `await supabase.from('user_profiles').update(...)` with the result
+ * discarded, followed unconditionally by `{ received: true }`. Every failure
+ * path - a database error, or a filter matching no row - therefore ended with
+ * the card charged, Lemon Squeezy told the event was handled so it never
+ * retried, the profile still reading `free`, and no record anywhere that it had
+ * happened. There is no louder version of this failure to fall back on: the
+ * only person who finds out is the customer who paid.
+ *
+ * Comments are stripped before the check. The handler explains this reasoning in
+ * prose that names the same calls, and a contract its own justification can
+ * satisfy is not a contract.
+ */
+{
+  const code = webhook
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+
+  for (const marker of [
+    // Destructured, so the outcome cannot be ignored by construction.
+    'const { data, error } = await supabase',
+    // Without this an update matching no row is a success that changed nothing.
+    ".select('id')",
+    // A transient failure has to come back, and only a non-2xx brings it back.
+    "return res.status(500).json({ error: 'Could not record subscription state.' })",
+  ]) {
+    if (!code.includes(marker)) {
+      fail(`Lemon Squeezy webhook must not discard the entitlement write: missing ${marker}`);
+    }
+  }
+
+  const failureIndex = code.indexOf("return res.status(500)");
+  const receivedIndex = code.indexOf('res.json({ received: true })', code.indexOf("case 'subscription_created':"));
+  if (failureIndex === -1 || receivedIndex === -1 || failureIndex > receivedIndex) {
+    fail('Lemon Squeezy webhook must refuse the delivery before reporting it received');
+  }
+}
+
 // Stripe is gone. A reintroduced import or key would mean two payment paths,
 // one of which nobody is watching.
 {
