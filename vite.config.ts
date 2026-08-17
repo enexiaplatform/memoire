@@ -4,6 +4,29 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  /**
+   * An allowlist of what may reach a browser, not a prefix.
+   *
+   * Vite inlines every `VITE_`-prefixed variable into `import.meta.env`, and
+   * Vercel, seeing a Vite project, publishes its own system variables under
+   * that same prefix. The result shipped to every visitor of the production
+   * site: `VITE_VERCEL_GIT_COMMIT_AUTHOR_NAME`, the repository owner's login,
+   * the repo id and slug, the deployment id, and the entire text of the last
+   * commit message - build metadata about the person who runs the business,
+   * downloaded by anyone who opens the page.
+   *
+   * Each prefix below is a variable this product actually reads. Anything else
+   * - including a secret somebody names `VITE_` by mistake tomorrow - stays out
+   * of the bundle unless it is added here on purpose.
+   */
+  envPrefix: [
+    'VITE_APP_',
+    'VITE_SUPABASE_',
+    'VITE_GOOGLE_',
+    'VITE_ENABLE_',
+    'VITE_CLIENT_',
+    'VITE_FOUNDER_',
+  ],
   build: {
     rollupOptions: {
       output: {

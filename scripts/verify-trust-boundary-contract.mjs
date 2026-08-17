@@ -180,6 +180,25 @@ requireIncludes(releaseGate, 'scripts/verify-trust-boundary-contract.mjs', 'rele
 const packet = read('docs/product/cohort-release-evidence-packet-2026-06-17.md');
 requireIncludes(packet, 'scripts/verify-trust-boundary-contract.mjs', 'cohort packet does not reference trust-boundary verifier');
 
+// What may be compiled into the JavaScript a visitor downloads.
+//
+// Vite inlines every `VITE_`-prefixed variable, and Vercel publishes its own
+// system variables under that prefix - so the production bundle carried the git
+// author's name, the repository owner's login, the repo id and slug, the
+// deployment id and the full text of the last commit message. An allowlist of
+// prefixes is what keeps build metadata, and any secret somebody names `VITE_`
+// by mistake, out of the browser.
+{
+  const viteConfig = read('vite.config.ts');
+  requireIncludes(viteConfig, 'envPrefix:', 'vite config must declare an env allowlist rather than the default prefix');
+  if (/envPrefix:\s*\[[^\]]*'VITE_'/.test(viteConfig)) {
+    fail('an allowlist containing the bare VITE_ prefix exposes every Vercel system variable again');
+  }
+  for (const prefix of ['VITE_SUPABASE_', 'VITE_APP_']) {
+    requireIncludes(viteConfig, `'${prefix}'`, `the app reads ${prefix}* and it must stay in the allowlist`);
+  }
+}
+
 if (failures.length > 0) {
   console.error('Trust-boundary contract verification failed:');
   for (const failure of failures) console.error(`- ${failure}`);
