@@ -365,3 +365,38 @@ describe('shiftPlanAnchor', () => {
     assert.equal(getPlanRange('month', shiftPlanAnchor(anchor, 'month', 1)).start, '2026-08-01');
   });
 });
+
+describe('paging the plan from the end of a long month', () => {
+  /**
+   * `setMonth(getMonth() + 1)` on the 31st asks for the 31st of a month that may
+   * only have 30 days, and JavaScript rolls that forward into the month after.
+   * So the arrow skipped a month, and backwards it could not move at all - three
+   * or four days in every month, with nothing on screen to say so.
+   */
+  const rangeAfterShift = (iso, direction) => {
+    const [year, month, day] = iso.split('-').map(Number);
+    const shifted = shiftPlanAnchor(new Date(year, month - 1, day), 'month', direction);
+    return getPlanRange('month', shifted).start;
+  };
+
+  test('forward from the 31st lands on the next month, not the one after', () => {
+    assert.equal(rangeAfterShift('2026-08-31', 1), '2026-09-01', 'September used to be skipped');
+    assert.equal(rangeAfterShift('2026-03-31', 1), '2026-04-01', 'April used to be skipped');
+    assert.equal(rangeAfterShift('2026-01-31', 1), '2026-02-01', 'February used to be skipped');
+  });
+
+  test('backward from the 31st actually moves', () => {
+    assert.equal(rangeAfterShift('2026-03-31', -1), '2026-02-01', 'this used to return March again');
+    assert.equal(rangeAfterShift('2026-05-31', -1), '2026-04-01', 'and this used to return May again');
+  });
+
+  test('a year boundary still crosses correctly', () => {
+    assert.equal(rangeAfterShift('2026-01-31', -1), '2025-12-01');
+    assert.equal(rangeAfterShift('2026-12-31', 1), '2027-01-01');
+  });
+
+  test('the week step is unchanged and still crosses month ends', () => {
+    const shifted = shiftPlanAnchor(new Date(2026, 7, 31), 'week', 1);
+    assert.equal(getPlanRange('week', shifted).start, '2026-09-07');
+  });
+});
