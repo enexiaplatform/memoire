@@ -120,10 +120,18 @@ export function summarizeStakeholderCoverage(stakeholders: StakeholderRecord[], 
    * An account with an open deal needs a champion whether or not anybody has
    * been recorded against it, so the universe comes from the deals as well.
    */
-  const accountNames = new Set([
+  // Deduped on the canonical key, kept in the spelling first seen. A raw Set
+  // counted "CÔNG TY X" and "Cong ty X" as two accounts, so one customer with no
+  // champion contributed two to the missing-champion count below.
+  const accountNamesByKey = new Map<string, string>();
+  [
     ...stakeholders.map((stakeholder) => stakeholder.accountName),
     ...opportunities.filter((opportunity) => opportunity.status === 'Active').map((opportunity) => opportunity.accountName),
-  ].filter(Boolean));
+  ].filter(Boolean).forEach((name) => {
+    const key = normalizeEntityName(name);
+    if (key && !accountNamesByKey.has(key)) accountNamesByKey.set(key, name);
+  });
+  const accountNames = new Set(accountNamesByKey.values());
   const accountsWithMissingChampion = Array.from(accountNames).filter((accountName) => (
     !getStakeholdersForAccount(stakeholders, accountName).some((stakeholder) => stakeholder.stakeholderRole === 'Champion')
   )).length;

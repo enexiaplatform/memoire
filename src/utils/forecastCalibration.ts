@@ -1,4 +1,5 @@
 import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 import type { CrmLiteOpportunity, ForecastEvidenceCategory } from '../services/opportunityStore.ts';
 import { sumMoneyInBase } from './money.ts';
 
@@ -291,7 +292,11 @@ function dedupeByOpportunity(outcomes: OpportunityOutcomeRecord[]) {
   [...outcomes]
     .sort((a, b) => a.outcomeDate.localeCompare(b.outcomeDate) || a.updatedAt.localeCompare(b.updatedAt))
     .forEach((outcome) => {
-      byOpportunity.set(outcome.opportunityId || `${outcome.accountName}|${outcome.opportunityName}`, outcome);
+      // The fallback key is folded: an outcome recorded twice for one deal, once
+      // with the accents and once without, would otherwise be two deals and the
+      // re-close this function exists to collapse would double count.
+      const fallbackKey = `${normalizeEntityName(outcome.accountName)}|${normalizeEntityName(outcome.opportunityName)}`;
+      byOpportunity.set(outcome.opportunityId || fallbackKey, outcome);
     });
   return Array.from(byOpportunity.values());
 }
