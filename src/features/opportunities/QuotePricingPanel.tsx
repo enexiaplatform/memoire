@@ -272,7 +272,18 @@ export function QuotePricingPanel({
             />
           </div>
 
-          {pricing.proposedPriceBase !== null && (
+          {/* A cost with no rate behind it has to be said before any margin is,
+              because every margin below is price minus that cost. This branch
+              used to fall through to the one under it, which read the whole
+              price as margin and offered it back as room to discount. */}
+          {pricing.costUnavailable ? (
+            <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2.5 text-xs font-semibold leading-5 text-amber-900" role="status">
+              This cost is in a currency with no exchange rate set, so Memoire cannot say what the
+              order costs in {pricing.reportingCurrency} — and will not guess a margin from it.{' '}
+              <Link to="/app/settings" className="underline">Set a rate in Settings</Link> and the
+              price, the margin and the cost of the terms all fill in.
+            </div>
+          ) : pricing.proposedPriceBase !== null && (
             <div
               className={`mt-3 rounded-lg px-3 py-2.5 text-xs font-semibold leading-5 ${
                 pricing.meetsTarget ? 'bg-emerald-50 text-emerald-900' : 'bg-amber-50 text-amber-900'

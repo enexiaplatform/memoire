@@ -382,3 +382,57 @@ describe('quote pricing: when the panel should appear', () => {
     assert.equal(isQuotingStage({ stage: undefined, status: undefined }, 0), false);
   });
 });
+
+describe('quote pricing: a cost in a currency nobody has priced', () => {
+  /**
+   * `hasCost` was the guard for "unknown is not a pass", and it did not catch
+   * this: the operator did enter a cost, so hasCost was true, and sumMoneyInBase
+   * still returned zero rather than invent a rate. Everything downstream then
+   * read a free order - margin the whole price, target cleared, and the entire
+   * proposed price offered back as room to discount.
+   */
+  test('withholds every margin rather than reading the whole price as kept', () => {
+    const pricing = buildQuotePricing({
+      cost: {
+        goodsAmount: 50_000,
+        goodsCurrency: 'SEK', // ships no rate, and none has been set
+        freightAmount: null,
+        dutyAmount: null,
+        otherAmount: null,
+        extrasCurrency: 'SEK',
+      },
+      installments: [{ id: 'i1', label: 'Net 30', percent: 100, amount: null, trigger: 'invoice', offsetDays: 30 }],
+      targetPct: 20,
+      proposedPriceBase: 900_000_000,
+    });
+
+    assert.equal(pricing.costUnavailable, true);
+    assert.equal(pricing.hasCost, true, 'the operator did enter a cost - that was never the question');
+    assert.equal(pricing.grossMarginPct, null, 'it used to read 100');
+    assert.equal(pricing.netMarginPct, null);
+    assert.equal(pricing.meetsTarget, false, 'unknown is not a pass');
+    assert.equal(pricing.headroomBase, 0, 'never advise a discount against a cost that could not be read');
+    assert.equal(pricing.shortfallBase, 0);
+  });
+
+  test('a priced currency is judged exactly as before', () => {
+    const pricing = buildQuotePricing({
+      cost: {
+        goodsAmount: 100_000_000,
+        goodsCurrency: 'VND',
+        freightAmount: null,
+        dutyAmount: null,
+        otherAmount: null,
+        extrasCurrency: 'VND',
+      },
+      installments: [{ id: 'i1', label: 'On order', percent: 100, amount: null, trigger: 'order', offsetDays: 0 }],
+      targetPct: 20,
+      proposedPriceBase: 200_000_000,
+    });
+
+    assert.equal(pricing.costUnavailable, false);
+    assert.equal(pricing.grossMarginPct, 50);
+    assert.equal(pricing.meetsTarget, true);
+    assert.ok(pricing.headroomBase > 0);
+  });
+});

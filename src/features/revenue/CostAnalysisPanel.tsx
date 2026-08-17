@@ -587,7 +587,8 @@ function BlindSpot({ margins, onShowMissing }: { margins: OrderMarginSummary; on
           {margins.uncoveredCount} committed order{margins.uncoveredCount === 1 ? '' : 's'} worth{' '}
           {formatBaseCurrencyAmount(margins.uncoveredRevenueBase, true)}
         </span>{' '}
-        carr{margins.uncoveredCount === 1 ? 'ies' : 'y'} no cost, so nothing above says anything about
+        carr{margins.uncoveredCount === 1 ? 'ies' : 'y'} no cost Memoire can read — none recorded, or
+        recorded in a currency with no exchange rate — so nothing above says anything about
         {margins.uncoveredCount === 1 ? ' it' : ' them'}.
       </p>
       <button

@@ -1,4 +1,4 @@
-import { sumMoneyInBase, type SupportedCurrency } from './money.ts';
+import { hasExchangeRate, sumMoneyInBase, type SupportedCurrency } from './money.ts';
 import { getReportingCurrency } from './money.ts';
 import { weightedCreditDays, type PaymentInstallment } from './paymentTerms.ts';
 
@@ -99,6 +99,23 @@ export type QuotePricing = {
   reportingCurrency: SupportedCurrency;
   /** True once any part of the buy side has been entered. */
   hasCost: boolean;
+  /**
+   * The buy side was entered in a currency nobody has priced, so the cost is
+   * zero here for want of a rate rather than because the goods were free.
+   *
+   * `hasCost` was the guard for "unknown is not a pass", and it did not catch
+   * this: the operator *did* enter a cost, so `hasCost` was true, and
+   * `sumMoneyInBase` still returned zero because it will not invent a rate.
+   * Everything downstream then read a free order - `landedCostBase` 0, margin
+   * the whole of the price, `meetsTarget` true, and `headroomBase` the entire
+   * proposed price, which on this screen means "you have this much room to
+   * discount". Not a hidden fact: advice to give money away, on a deal whose
+   * cost the product could not read.
+   *
+   * A distributor buying from a supplier outside the twenty-one shipped rates
+   * reaches this by picking their supplier's currency, which the picker offers.
+   */
+  costUnavailable: boolean;
   goodsBase: number;
   extrasBase: number;
   /** Goods plus extras. What the order costs before anyone waits to be paid. */
@@ -187,6 +204,12 @@ export function buildQuotePricing(input: {
     : 0;
   const landedCostBase = goodsBase + extrasBase;
 
+  // Asked of the currency rather than inferred from a zero, so a genuinely free
+  // line is not confused with one that could not be converted.
+  const extrasCurrency = input.cost?.extrasCurrency || input.cost?.goodsCurrency;
+  const costUnavailable = (goodsAmount !== null && !hasExchangeRate(input.cost?.goodsCurrency))
+    || (hasExtras && !hasExchangeRate(extrasCurrency));
+
   const creditDays = weightedCreditDays(input.installments || [], {
     deliveryLagDays: Math.max(0, Math.round(input.deliveryLagDays ?? 0)),
   });
@@ -212,14 +235,19 @@ export function buildQuotePricing(input: {
   const proposedPriceBase = finiteOrNull(input.proposedPriceBase);
   const priced = proposedPriceBase !== null && proposedPriceBase > 0;
 
-  const grossMarginBase = priced ? proposedPriceBase - landedCostBase : null;
-  const netMarginBase = priced ? proposedPriceBase - trueCostBase : null;
-  const grossMarginPct = priced ? roundPct((grossMarginBase as number) / proposedPriceBase) : null;
-  const netMarginPct = priced ? roundPct((netMarginBase as number) / proposedPriceBase) : null;
+  // Every margin here is `price - cost`, so a cost of zero from a missing rate
+  // makes all of them read as the whole price kept. Withheld rather than
+  // computed, the same rule `hasCost` already applies to a cost never entered.
+  const canJudge = priced && !costUnavailable;
+  const grossMarginBase = canJudge ? proposedPriceBase - landedCostBase : null;
+  const netMarginBase = canJudge ? proposedPriceBase - trueCostBase : null;
+  const grossMarginPct = canJudge ? roundPct((grossMarginBase as number) / proposedPriceBase) : null;
+  const netMarginPct = canJudge ? roundPct((netMarginBase as number) / proposedPriceBase) : null;
 
   return {
     reportingCurrency,
     hasCost,
+    costUnavailable,
     goodsBase,
     extrasBase,
     landedCostBase,
@@ -242,9 +270,11 @@ export function buildQuotePricing(input: {
       : null,
     // Unknown is not a pass: an unpriced or uncosted quote never reports that it
     // meets the target, the same rule the order margin model follows.
-    meetsTarget: priced && hasCost && netMarginPct !== null && netMarginPct >= targetPct,
-    shortfallBase: priced && hasCost ? Math.max(0, suggestedPriceBase - proposedPriceBase) : 0,
-    headroomBase: priced && hasCost ? Math.max(0, proposedPriceBase - suggestedPriceBase) : 0,
+    meetsTarget: canJudge && hasCost && netMarginPct !== null && netMarginPct >= targetPct,
+    shortfallBase: canJudge && hasCost ? Math.max(0, suggestedPriceBase - proposedPriceBase) : 0,
+    // Headroom is a recommendation to discount. It must never be derived from a
+    // cost the product could not read.
+    headroomBase: canJudge && hasCost ? Math.max(0, proposedPriceBase - suggestedPriceBase) : 0,
   };
 }
 

@@ -301,3 +301,25 @@ describe('order margin: writing the buy side down', () => {
     assert.equal(record.freightAmount, null);
   });
 });
+
+describe('order margin: a cost in a currency nobody has priced', () => {
+  test('is not counted as covered and reports no margin', () => {
+    const summary = buildOrderMargins({
+      orders: [order('sek', { amount: 500_000_000, amountBase: 500_000_000 })],
+      // SEK ships no planning rate and none has been set for this workspace.
+      costRecords: [cost('sek', { amount: 40_000, currency: 'SEK' })],
+    });
+
+    const margin = summary.byOrder.get('sek');
+    assert.equal(margin.costUnavailable, true);
+    assert.equal(margin.marginPct, null, 'it used to read 100');
+    assert.equal(margin.goodsMarginPct, null);
+    assert.equal(margin.meetsTarget, false);
+    assert.equal(margin.targetGapBase, 0);
+    assert.equal(margin.priceForTargetBase, null, 'it used to say "you needed to sell it for nothing"');
+
+    assert.equal(summary.coveredCount, 0, 'a cost nobody can value is not coverage');
+    assert.equal(summary.uncoveredCount, 1, 'it belongs in the blind spot, because that is what it is');
+    assert.equal(summary.marginPct, null, 'and it cannot inflate the workspace margin');
+  });
+});

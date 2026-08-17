@@ -1,5 +1,5 @@
 import type { CommittedOrder } from './orderToCash.ts';
-import { getReportingCurrency, sumMoneyInBase, type SupportedCurrency } from './money.ts';
+import { getReportingCurrency, hasExchangeRate, sumMoneyInBase, type SupportedCurrency } from './money.ts';
 import { sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 
 /**
@@ -152,6 +152,20 @@ export type OrderMargin = {
    * landed cost: it is the percentage the operator thought they were keeping.
    */
   goodsMarginPct: number | null;
+  /**
+   * The cost was recorded in a currency nobody has priced, so `costBase` is zero
+   * for want of a rate rather than because the order was free.
+   *
+   * `sumMoneyInBase` drops an amount it cannot convert. That is the right call
+   * for a total, and it is a disaster for a numerator: cost fell to zero, margin
+   * became the whole of revenue, `marginPct` read 100 and `meetsTarget` came back
+   * true. A distributor whose supplier invoices in a currency this product ships
+   * no rate for was shown a perfect margin on every order they bought.
+   *
+   * Every conclusion below is withheld when this is set. The raw `*Base` figures
+   * are left as they are - they are honestly zero - and the surface says why.
+   */
+  costUnavailable: boolean;
   /** Keeping at least the target. False for an unpriced order - unknown is not a pass. */
   meetsTarget: boolean;
   /** Money this order is short of the target. Zero when it meets or beats it. */
@@ -190,7 +204,10 @@ export type OrderMarginSummary = {
   belowTargetCount: number;
   /** The money between what these orders kept and what the target asked for. */
   targetGapBase: number;
-  /** Committed orders with no purchase cost against them at all. */
+  /**
+   * Committed orders nothing above can speak about: no purchase cost recorded,
+   * or one recorded in a currency nobody has priced.
+   */
   uncoveredCount: number;
   /**
    * What those orders are worth.
@@ -221,8 +238,12 @@ export function buildOrderMargins(input: {
     );
   });
 
-  const covered = [...byOrder.values()].filter((margin) => margin.hasCost);
-  const uncovered = [...byOrder.values()].filter((margin) => !margin.hasCost);
+  // A cost that could not be converted is not coverage. Counting it would let an
+  // order contribute its whole revenue and none of its cost to the workspace
+  // roll-up, which is how a blind spot turns into a flattering margin. It belongs
+  // with the orders nothing above can speak about, because that is what it is.
+  const covered = [...byOrder.values()].filter((margin) => margin.hasCost && !margin.costUnavailable);
+  const uncovered = [...byOrder.values()].filter((margin) => !margin.hasCost || margin.costUnavailable);
   const revenueBase = covered.reduce((sum, margin) => sum + margin.revenueBase, 0);
   const costBase = covered.reduce((sum, margin) => sum + margin.costBase, 0);
   const goodsBase = covered.reduce((sum, margin) => sum + margin.goodsBase, 0);
@@ -302,6 +323,7 @@ function buildOneOrderMargin(
     marginBase: null,
     marginPct: null,
     goodsMarginPct: null,
+    costUnavailable: false,
     meetsTarget: false,
     targetGapBase: 0,
     priceForTargetBase: null,
@@ -315,10 +337,19 @@ function buildOneOrderMargin(
     ? sumMoneyInBase([{ amount: (freightAmount || 0) + (dutyAmount || 0) + (otherAmount || 0), currency: extrasCurrency }])
     : 0;
   const costBase = goodsBase + extrasBase;
+
+  // Asked of the currency, not inferred from a zero: a cost genuinely recorded as
+  // nothing is a different fact from one that could not be converted.
+  const costUnavailable = (goodsAmount !== null && !hasExchangeRate(costCurrency))
+    || (hasExtras && !hasExchangeRate(extrasCurrency));
+
   const marginBase = order.amountBase - costBase;
   // An order with no value recorded has no denominator. Reporting 0% or 100%
-  // there would be a number invented out of a missing field.
-  const marginPct = order.amountBase > 0 ? Math.round((marginBase / order.amountBase) * 100) : null;
+  // there would be a number invented out of a missing field - and so would
+  // reporting a margin against a cost that fell to zero for want of a rate.
+  const marginPct = order.amountBase > 0 && !costUnavailable
+    ? Math.round((marginBase / order.amountBase) * 100)
+    : null;
   const meetsTarget = marginPct !== null && marginPct >= targetPct;
 
   return {
@@ -335,9 +366,10 @@ function buildOneOrderMargin(
     // out of a field they never filled in. The whole point of this number is to
     // show what recording landed cost changed; it cannot do that without a
     // goods price to have been wrong about.
-    goodsMarginPct: goodsAmount !== null && order.amountBase > 0
+    goodsMarginPct: goodsAmount !== null && order.amountBase > 0 && !costUnavailable
       ? Math.round(((order.amountBase - goodsBase) / order.amountBase) * 100)
       : null,
+    costUnavailable,
     meetsTarget,
     // Only orders with a denominator carry a gap. A zero-value order used to
     // contribute its entire cost to the workspace's shortfall while being
@@ -347,7 +379,9 @@ function buildOneOrderMargin(
     targetGapBase: marginPct === null ? 0 : Math.max(0, (order.amountBase * targetPct) / 100 - marginBase),
     // What it had to sell for, at this cost, to keep the target. Undefined at a
     // 100% target - there is no price at which cost is nothing.
-    priceForTargetBase: targetPct < 100 ? costBase / (1 - targetPct / 100) : null,
+    // Zero cost from a missing rate would answer "you needed to sell it for
+    // nothing", so an unvalued cost has no answer here either.
+    priceForTargetBase: targetPct < 100 && !costUnavailable ? costBase / (1 - targetPct / 100) : null,
     costForTargetBase: order.amountBase > 0 ? (order.amountBase * (100 - targetPct)) / 100 : null,
   };
 }
@@ -469,7 +503,10 @@ export function rollupOrderMargins(input: {
     };
 
     group.orderCount += 1;
-    if (margin?.hasCost) {
+    // Same rule as the workspace roll-up: a cost that could not be converted
+    // would add the whole of this order's revenue and none of its cost, and the
+    // supplier would read as the most profitable one you have.
+    if (margin?.hasCost && !margin.costUnavailable) {
       group.coveredCount += 1;
       group.revenueBase += margin.revenueBase;
       group.costBase += margin.costBase;
@@ -548,7 +585,9 @@ export function rollupMarginByMonth(input: {
 
     period.orderCount += 1;
     const margin = input.margins.byOrder.get(order.opportunityId);
-    if (!margin?.hasCost) return;
+    // Revenue without its cost would draw a month that looks like the best one
+    // this business ever had. See the roll-up above.
+    if (!margin?.hasCost || margin.costUnavailable) return;
     period.coveredCount += 1;
     period.revenueBase += margin.revenueBase;
     period.costBase += margin.costBase;

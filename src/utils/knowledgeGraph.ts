@@ -147,6 +147,16 @@ export type KnowledgeNode = {
   /** Last date anything about this node changed. */
   updatedAt: string;
   valueBase: number;
+  /**
+   * Deals under this node that carry a value the operator actually typed.
+   *
+   * Not derivable from `valueBase`, which is `sumMoneyInBase` and therefore zero
+   * both for a deal with no number on it and for one recorded in a currency
+   * nobody has priced. The coverage question read that zero as "no value
+   * recorded" and asked the operator for a figure they had already entered,
+   * under the line "A deal with no number cannot be forecast or defended".
+   */
+  recordedValueCount: number;
   openDealCount: number;
   memoryCount: number;
   connectionCount: number;
@@ -355,14 +365,18 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraph 
   const memory = new Map<string, KnowledgeMemoryEntry[]>();
 
   const upsert = (
-    node: Omit<KnowledgeNode, 'connectionCount' | 'memoryCount' | 'searchText' | 'facts'>
-      & { searchExtra?: string; facts?: Record<string, string> },
+    node: Omit<KnowledgeNode, 'connectionCount' | 'memoryCount' | 'searchText' | 'facts' | 'recordedValueCount'>
+      // Only the opportunity nodes carry a recorded value; every other kind of
+      // node inherits whatever the deals hanging off it contribute, so the field
+      // is optional here rather than a zero repeated at ten call sites.
+      & { searchExtra?: string; facts?: Record<string, string>; recordedValueCount?: number },
   ) => {
     const existing = nodes.get(node.id);
     const searchText = normalizeSearchText([node.label, node.subtitle, node.searchExtra, node.tags.join(' ')].filter(Boolean).join(' '));
     if (!existing) {
       nodes.set(node.id, {
         ...node,
+        recordedValueCount: node.recordedValueCount ?? 0,
         facts: cleanFacts(node.facts),
         connectionCount: 0,
         memoryCount: 0,
@@ -378,6 +392,7 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraph 
     existing.href = node.href || existing.href;
     existing.weight += node.weight;
     existing.valueBase += node.valueBase;
+    existing.recordedValueCount += node.recordedValueCount ?? 0;
     existing.openDealCount += node.openDealCount;
     existing.tags = existing.tags.length ? existing.tags : node.tags;
     existing.updatedAt = laterDate(existing.updatedAt, node.updatedAt);
@@ -476,6 +491,10 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraph 
     const accountNode = registerAccountName(opportunity.accountName);
     const nodeId = opportunityNodeId(opportunity.id);
     const value = sumMoneyInBase([{ amount: opportunity.estimatedValue, currency: opportunity.currency }]);
+    // Asked of the field, not of the converted figure - see `recordedValueCount`.
+    const hasRecordedValue = typeof opportunity.estimatedValue === 'number'
+      && Number.isFinite(opportunity.estimatedValue)
+      && opportunity.estimatedValue !== 0;
     const isOpen = opportunity.status === 'Active';
 
     upsert({
@@ -495,6 +514,7 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraph 
       weight: isOpen ? 3 : 1,
       updatedAt: dateOf(opportunity.updatedAt),
       valueBase: value,
+      recordedValueCount: hasRecordedValue ? 1 : 0,
       openDealCount: isOpen ? 1 : 0,
       tags: [],
       searchExtra: [opportunity.productOrSolution, opportunity.brand, opportunity.evidence, opportunity.decisionMaker].filter(Boolean).join(' '),
@@ -520,6 +540,7 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraph 
         weight: isOpen ? 2 : 0.5,
         updatedAt: dateOf(opportunity.updatedAt),
         valueBase: value,
+        recordedValueCount: hasRecordedValue ? 1 : 0,
         openDealCount: isOpen ? 1 : 0,
         tags: [],
       });
@@ -1020,7 +1041,7 @@ function describeDimensions(
       dimension('recent-contact', 'When you last spoke', `When did you last speak to anyone at ${label}?`, recent, friendlyDate(lastTouch?.date), `Nothing captured in ${RECENT_CONTACT_DAYS} days is how a relationship goes quiet without anyone noticing.`, 1),
       dimension('competition', 'Who else is in there', `Who else is selling into ${label}?`, Boolean(competitor), competitor?.node.label || '', 'A price you cannot explain is usually a competitor you did not know about.', 1),
       dimension('objections', 'What could stop it', `What has ${label} pushed back on?`, Boolean(objection), objection?.node.label || '', 'The objection you have not written down is the one you answer badly twice.', 1),
-      dimension('value', 'What the relationship is worth', `What is ${label} worth to you?`, node.valueBase > 0, node.valueBase > 0 ? 'From the deals on record' : '', 'Without a number, this customer cannot be ranked against any other.', 1),
+      dimension('value', 'What the relationship is worth', `What is ${label} worth to you?`, node.recordedValueCount > 0, node.recordedValueCount > 0 ? (node.valueBase > 0 ? 'From the deals on record' : 'Recorded, but in a currency with no rate set') : '', 'Without a number, this customer cannot be ranked against any other.', 1),
     ];
   }
 
@@ -1043,7 +1064,7 @@ function describeDimensions(
     const product = has((neighbor) => neighbor.node.type === 'product' || neighbor.node.type === 'brand');
     const objection = has((neighbor) => neighbor.node.type === 'objection');
     return [
-      dimension('value', 'What it is worth', `What is ${label} worth?`, node.valueBase > 0, node.valueBase > 0 ? 'Estimated value on the deal' : '', 'A deal with no number cannot be forecast or defended.', 1.5),
+      dimension('value', 'What it is worth', `What is ${label} worth?`, node.recordedValueCount > 0, node.recordedValueCount > 0 ? (node.valueBase > 0 ? 'Estimated value on the deal' : 'Recorded, but in a currency with no rate set') : '', 'A deal with no number cannot be forecast or defended.', 1.5),
       dimension('people', 'Who is on it', `Who are the people behind ${label}?`, people.length > 0, people.length ? `${people.length} recorded` : '', 'A deal with nobody named is a deal nobody is running.', 1.5),
       dimension('money', 'Who owns the budget', `Who owns the budget for ${label}?`, Boolean(node.facts.budgetOwner), node.facts.budgetOwner || '', 'The person who wants it and the person who pays for it are rarely the same person.', 1.5),
       dimension('route', 'How it gets bought', `What is the procurement route for ${label}?`, Boolean(node.facts.procurementPath), node.facts.procurementPath || '', 'A tender discovered in the last week is a deal you lose on paperwork.', 1),
