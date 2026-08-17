@@ -1,4 +1,5 @@
 import type { PipelineDefenseDeal } from '../data/pipelineDefenseBrief.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import { formatMoneyWithBase } from './money.ts';
@@ -328,8 +329,13 @@ function normalizeLabel(value: string) {
   return value.trim().replace(/\s+/g, ' ');
 }
 
+/**
+ * The canonical fold - see accountIdentity.ts. Lowercased and stripped
+ * punctuation but did not fold diacritics, and this matches a learning warning
+ * back to the deal it is about.
+ */
 function normalize(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  return normalizeEntityName(value);
 }
 
 function slugify(value: string) {

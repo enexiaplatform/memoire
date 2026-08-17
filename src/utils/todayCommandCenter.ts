@@ -17,6 +17,7 @@ import { normalizeMeddicRole } from './meddicStakeholderMap.ts';
 import { buildPostWonCustomers, type WonCustomerNudge } from './postWonCustomers.ts';
 import { buildOwnObligations, type OwnObligation } from './ownObligations.ts';
 import { formatCompactBaseAmount } from './money.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 
 export type TodayActionSource = 'Pipeline Defense' | 'Revenue' | 'Opportunity' | 'Capture' | 'Customer' | 'Obligation';
 export type TodayActionUrgency = 'Critical' | 'High' | 'Medium' | 'Low';
@@ -419,6 +420,13 @@ function cleanOrConfirm(value: string | null | undefined) {
   return value?.trim() || 'Needs confirmation';
 }
 
+/**
+ * The canonical fold - see accountIdentity.ts.
+ *
+ * This lowercased and stripped punctuation but did NOT fold diacritics, so every
+ * accented letter became a space: "CONG TY DUOC PHAM" with its accents came out
+ * as "c ng ty d c ph m". Folding punctuation is not folding accents.
+ */
 function normalize(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  return normalizeEntityName(value);
 }

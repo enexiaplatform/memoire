@@ -373,6 +373,61 @@ const merge = (canonical, mergedNames) => ({
     'these lowercase a name instead of folding it with normalizeEntityName, so '
     + `a diacritic makes two records of one: ${lowercaseOffenders.join(', ')}`,
   );
+
+  /**
+   * The fifth: a normaliser that strips to ASCII without folding the accents
+   * first.
+   *
+   * `value.toLowerCase().replace(/[^a-z0-9]+/g, ' ')` looks careful - it is
+   * folding punctuation - and is the worst of the lot, because every accented
+   * letter is not folded but *deleted*. "CÔNG TY DƯỢC PHẨM" comes out as
+   * "c ng ty d c ph m", which is not a mangled version of the name so much as a
+   * different string entirely, and any token filter on top of it then finds
+   * nothing at all.
+   *
+   * This shape was fixed twice without being generalised - once in the
+   * initiative files, once in activityOpportunityLinker - and turned up a third
+   * time in todayCommandCenter, on the product's front door. Hence a check.
+   *
+   * Stripping to ASCII *after* an NFD fold is correct and must not be flagged,
+   * so the test is on the absence of the fold in the same file.
+   */
+  const asciiStripWithoutFold = /\.toLowerCase\(\)\s*\.\s*replace\(\s*\/\[\^a-z0-9/;
+
+  const foldOffenders = [...collect('src/utils'), ...collect('src/features')]
+    .filter((file) => {
+      const source = readSourceFile(file, 'utf8');
+      const code = source
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/.*$/gm, '');
+      if (!asciiStripWithoutFold.test(code)) return false;
+      // A file that folds first is doing it properly.
+      if (/normalize\('NFD'\)/.test(code)) return false;
+
+      // Every occurrence, with enough before it to carry the enclosing
+      // function's name - which is on the line above, not on the matched one.
+      const occurrences = [...code.matchAll(/[\s\S]{0,140}\.toLowerCase\(\)\s*\.\s*replace\(\s*\/\[\^a-z0-9[^\n]*/g)]
+        .map((match) => match[0]);
+
+      return occurrences.some((context) => {
+        // Slug and id builders join with '-'. They name anchors and record ids,
+        // not customers, so an accent-free slug is the point rather than a bug.
+        if (/-'\)|'-'|slug/i.test(context)) return false;
+        // CSV *header* normalisers match a column title against an ASCII alias
+        // table ('accountname', 'company', ...). A Vietnamese header cannot
+        // match that table however it is folded, and the mapping UI exists for
+        // exactly that case - a different problem, not this one.
+        if (/header/i.test(context)) return false;
+        return true;
+      });
+    });
+
+  assert.deepEqual(
+    foldOffenders,
+    [],
+    'these strip a name to ASCII without folding the accents first, which '
+    + `deletes them rather than folding them: ${foldOffenders.join(', ')}`,
+  );
 }
 
 console.log('Account link contract verified, and names are matched in exactly one way.');

@@ -82,6 +82,7 @@ import { createDemoFeedback, type PipelineBriefUsefulness } from '../../utils/de
 import { markDemoJourneyComplete, markDemoJourneyStepComplete } from '../../utils/demoJourney';
 import { copyTextToClipboard } from '../../utils/clipboard';
 import { todayDateKey } from '../../utils/safeDate';
+import { normalizeEntityName } from '../../utils/accountIdentity.ts';
 import { trackProductEvent } from '../../utils/productAnalytics';
 import {
   createReviewPackSnapshot,
@@ -1902,8 +1903,10 @@ function buildPipelineNudgesByDeal(
   return byDeal;
 }
 
+/** The canonical fold - see accountIdentity.ts. Stripping to ASCII without
+ * folding first deletes the accents rather than folding them. */
 function normalizeDealName(value = '') {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  return normalizeEntityName(value);
 }
 
 function ManagerBriefFact({ label, value }: { label: string; value: string }) {

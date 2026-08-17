@@ -99,8 +99,11 @@ function splitStructuredObjections(value: string) {
     .filter(Boolean);
 }
 
+/** The canonical fold - see accountIdentity.ts. This decides whether a captured
+ * opportunity title is one already on file, so a deleted accent creates a
+ * duplicate deal. */
 function normalizeTitle(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  return normalizeEntityName(value);
 }
 
 export function saveLocalStructuredCapture(rawNote: string, structured: StructuredSalesCapture) {

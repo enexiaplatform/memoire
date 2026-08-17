@@ -854,8 +854,13 @@ function normalizeDuplicateKey(accountName: string, opportunityName: string) {
   return `${normalizeEntityName(accountName)}|${normalizeEntityName(opportunityName)}`;
 }
 
+/**
+ * The canonical fold - see accountIdentity.ts. This decides whether an imported
+ * row is the same deal as one already in the book, so a mangled name means the
+ * refresh treats an existing opportunity as new.
+ */
 function normalizeText(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return normalizeEntityName(value);
 }
 
 function meaningfulTokens(value: string) {

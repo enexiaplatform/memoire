@@ -984,6 +984,15 @@ function slugify(value: string) {
   return normalize(value).replace(/\s+/g, '-').slice(0, 40) || 'item';
 }
 
+/**
+ * The canonical fold - see accountIdentity.ts.
+ *
+ * Lowercased and stripped punctuation but did not fold diacritics, so every
+ * accented letter became a space and a Vietnamese initiative title tokenised to
+ * fragments shorter than the `length >= 4` filter it feeds - which means no
+ * tokens, which means no activity ever matched. Folding punctuation is not
+ * folding accents.
+ */
 function normalize(value = '') {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  return normalizeEntityName(value);
 }
