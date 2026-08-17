@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import {
   buildEmailThreadIngestion,
   buildIngestionSourceTags,
@@ -144,4 +144,56 @@ for (const forbidden of ['gmail.users', 'calendar.events', 'google.calendar', 'z
   assert.equal(scannedFiles.includes(forbidden), false, `External integration marker should not exist: ${forbidden}`);
 }
 
-console.log('Ingestion foundation regression verified.');
+/**
+ * One CSV reader, and only one.
+ *
+ * There were three - opportunityCsvImport, accountCsvImport and
+ * importPipelineDefenseBrief - and all three said `if (char === '"') { inQuotes
+ * = !inQuotes; }`, treating a quote as a delimiter wherever it appeared. A quote
+ * is only a delimiter at the start of a field; anywhere else it is a character,
+ * and it is the character a distributor writes constantly because it means
+ * inches. `Truong Son,5" butterfly valve,85000,EUR` opened a quoted field that
+ * never closed, so every comma and newline after it became data: two rows became
+ * one, the 85,000 EUR was lost, the currency fell back to the default, the
+ * second customer vanished - and the row came back `isValid: true` with no
+ * error and no warning.
+ *
+ * The copies existed on purpose. accountCsvImport carried a comment explaining
+ * that keeping the reader private let the import paths "diverge". They never
+ * diverged; they shared a bug, and it could not be fixed once. So the rule is
+ * not "parse CSV correctly" - it is "there is one place where that is decided".
+ */
+{
+  const readerFiles = collectSourceFiles('src');
+  const offenders = readerFiles
+    .filter((file) => file !== 'src/utils/csvParse.ts')
+    .filter((file) => {
+      const source = readFileSync(file, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/.*$/gm, '');
+      return /\binQuotes\b/.test(source);
+    });
+
+  assert.deepEqual(
+    offenders,
+    [],
+    'these files hand-roll CSV quote handling instead of importing '
+    + `src/utils/csvParse.ts, which is how the same bug lived in three copies: ${offenders.join(', ')}`,
+  );
+
+  const reader = readFileSync('src/utils/csvParse.ts', 'utf8');
+  assert.ok(
+    reader.includes('export function parseCsvRows') && reader.includes('export function splitCsvLine'),
+    'csvParse must export both readers, or a caller will write its own again',
+  );
+}
+
+function collectSourceFiles(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) return collectSourceFiles(path);
+    return /\.tsx?$/.test(entry.name) ? [path] : [];
+  });
+}
+
+console.log('Ingestion foundation regression verified, and CSV is read in exactly one place.');

@@ -9,6 +9,7 @@ import {
 } from '../services/accountStore.ts';
 import { accountKey, normalizeEntityName } from './accountIdentity.ts';
 import { resolveAccountName, type AccountAliasIndex } from './accountAliases.ts';
+import { parseCsvRows } from './csvParse.ts';
 
 /**
  * Bringing an existing book of customers in.
@@ -300,48 +301,9 @@ function buildWarnings(input: AccountFormInput, raw: Record<string, string>): st
   return warnings;
 }
 
-/**
- * The same reader the opportunity import uses: quoted fields, escaped quotes,
- * CRLF. Duplicated here rather than shared because the opportunity module keeps
- * it private, and reaching into it to export a helper would tie two import
- * paths together that should be free to diverge.
+/*
+ * The reader used to be copied in here, with a comment explaining that keeping
+ * it separate let the two import paths "diverge". They never did diverge; they
+ * shared a bug, in triplicate, and it could not be fixed once. It now lives in
+ * utils/csvParse.ts.
  */
-function parseCsvRows(text: string): string[][] {
-  const rows: string[][] = [];
-  let current = '';
-  let row: string[] = [];
-  let inQuotes = false;
-
-  for (let index = 0; index < text.length; index += 1) {
-    const char = text[index];
-    const next = text[index + 1];
-
-    if (char === '"' && inQuotes && next === '"') {
-      current += '"';
-      index += 1;
-      continue;
-    }
-    if (char === '"') {
-      inQuotes = !inQuotes;
-      continue;
-    }
-    if (char === ',' && !inQuotes) {
-      row.push(current);
-      current = '';
-      continue;
-    }
-    if ((char === '\n' || char === '\r') && !inQuotes) {
-      if (char === '\r' && next === '\n') index += 1;
-      row.push(current);
-      rows.push(row);
-      row = [];
-      current = '';
-      continue;
-    }
-    current += char;
-  }
-
-  row.push(current);
-  rows.push(row);
-  return rows.filter((cells) => cells.length > 0);
-}

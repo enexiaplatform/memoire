@@ -6,6 +6,7 @@ import {
   type PipelineDefenseDeal,
 } from '../data/pipelineDefenseBrief.ts';
 import { sanitizeBusinessDate } from './safeDate.ts';
+import { splitCsvLine } from './csvParse.ts';
 
 export type ImportFormat = 'csv' | 'markdown' | 'unknown';
 
@@ -169,31 +170,11 @@ function splitHeading(heading: string) {
   ];
 }
 
-function splitCsvLine(line: string) {
-  const values: string[] = [];
-  let current = '';
-  let inQuotes = false;
-
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    const next = line[index + 1];
-
-    if (char === '"' && next === '"') {
-      current += '"';
-      index += 1;
-    } else if (char === '"') {
-      inQuotes = !inQuotes;
-    } else if (char === ',' && !inQuotes) {
-      values.push(current.trim());
-      current = '';
-    } else {
-      current += char;
-    }
-  }
-
-  values.push(current.trim());
-  return values;
-}
+/*
+ * The third copy of the same reader lived here, and had the same fault plus one
+ * of its own: `char === '"' && next === '"'` collapsed a doubled quote to a
+ * literal even *outside* a quoted field. It now shares utils/csvParse.ts.
+ */
 
 function splitMultiValue(value?: string | string[]) {
   if (Array.isArray(value)) return value;

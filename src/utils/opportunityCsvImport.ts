@@ -12,6 +12,7 @@ import {
   type OpportunityStatus,
 } from '../services/opportunityStore.ts';
 import { getReportingCurrency, isSupportedCurrency } from './money.ts';
+import { parseCsvRows } from './csvParse.ts';
 import { parseLocalizedAmount } from './numberFormat.ts';
 
 export type OpportunityCsvPreviewRow = {
@@ -608,49 +609,10 @@ function buildWarnings(input: OpportunityFormInput, raw: Record<string, string>)
   return warnings;
 }
 
-function parseCsvRows(text: string) {
-  const rows: string[][] = [];
-  let current = '';
-  let row: string[] = [];
-  let inQuotes = false;
-
-  for (let index = 0; index < text.length; index += 1) {
-    const char = text[index];
-    const next = text[index + 1];
-
-    if (char === '"' && inQuotes && next === '"') {
-      current += '"';
-      index += 1;
-      continue;
-    }
-
-    if (char === '"') {
-      inQuotes = !inQuotes;
-      continue;
-    }
-
-    if (char === ',' && !inQuotes) {
-      row.push(current);
-      current = '';
-      continue;
-    }
-
-    if ((char === '\n' || char === '\r') && !inQuotes) {
-      if (char === '\r' && next === '\n') index += 1;
-      row.push(current);
-      rows.push(row);
-      row = [];
-      current = '';
-      continue;
-    }
-
-    current += char;
-  }
-
-  row.push(current);
-  rows.push(row);
-  return rows;
-}
+// The reader lives in utils/csvParse.ts now. It was private here, and copied
+// into accountCsvImport and importPipelineDefenseBrief, and all three treated a
+// quote as a delimiter wherever it appeared - so a product name containing an
+// inch mark swallowed the rest of the file. See that file for the measurement.
 
 function normalizeHeader(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]/g, '');
