@@ -12,7 +12,7 @@ import type { PlanRecord } from '../../utils/weeklyPlan';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { buildMasterDashboard, type MasterDashboardModel } from '../../utils/masterDashboard';
 import { formatCompactCurrencyAmount } from '../../utils/money';
-import { formatSafeBusinessDate } from '../../utils/safeDate.ts';
+import { formatSafeBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
 import { buildDailyDigest, buildDigestMailtoLink } from '../../utils/dailyDigest';
 import { getUserDisplayName } from '../../utils/userDisplay';
 import { copyTextToClipboard } from '../../utils/clipboard';
@@ -118,7 +118,9 @@ export function ReviewAnalyticsSection() {
     setExportMessage('');
     try {
       const zip = new JSZip();
-      const dateKey = new Date().toISOString().slice(0, 10);
+      // Local day, not UTC: the export is named for the day the operator took
+      // it, and before 7am in UTC+7 the UTC date is still yesterday.
+      const dateKey = todayDateKey();
       addDashboardCsvFiles(zip, model);
 
       const charts: Array<[string, SVGSVGElement | null]> = [

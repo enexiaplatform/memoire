@@ -85,3 +85,43 @@ describe('the composer text after a link is picked', () => {
     );
   });
 });
+
+describe('search in scripts that are not Latin', () => {
+  /**
+   * The keep-set used to be `a-z0-9`, which discarded every character of CJK,
+   * Thai, Cyrillic, Greek and Arabic. This product ships planning rates for CNY,
+   * TWD, THB, KRW and JPY, so those customers are expected, not hypothetical.
+   */
+  test('a record named in Chinese survives normalization and is findable', () => {
+    const name = '上海医药集团';
+    assert.equal(normalizeSearchText(name), '上海医药集团', 'it used to normalize to nothing at all');
+    assert.equal(matchesSearchQuery(name, '上海'), true);
+    assert.equal(matchesSearchQuery(name, '医药'), true);
+  });
+
+  test('a query in Chinese does not match every record in the book', () => {
+    // The bad one. A query that normalized to '' was zero tokens, which
+    // `matchesSearchQuery` reads as an empty query - so it matched everything,
+    // and nothing told the operator their query had been thrown away.
+    assert.equal(matchesSearchQuery('Truong Son Long An', '上海'), false);
+    assert.equal(matchesSearchQuery('Beinco', 'บริษัท'), false);
+  });
+
+  test('Thai keeps its vowel marks rather than being cut into fragments', () => {
+    // These are \p{M}, not \p{L}. Stripping them left `บร ษ ท`, which matched
+    // itself only because the query was mangled identically.
+    assert.equal(normalizeSearchText('บริษัท'), 'บริษัท');
+    assert.equal(matchesSearchQuery('บริษัท ไทยพาณิชย์', 'ไทยพาณิชย์'), true);
+  });
+
+  test('Cyrillic and Greek are letters too', () => {
+    assert.equal(matchesSearchQuery('Газпром нефть', 'нефть'), true);
+    assert.equal(matchesSearchQuery('Ελληνικά Πετρέλαια', 'Πετρέλαια'), true);
+  });
+
+  test('and the Vietnamese fold is untouched by any of it', () => {
+    const name = 'CÔNG TY CỔ PHẦN DƯỢC PHẨM CỬU LONG';
+    assert.equal(normalizeSearchText(name), 'cong ty co phan duoc pham cuu long');
+    assert.equal(matchesSearchQuery(name, 'duoc pham cuu long'), true);
+  });
+});

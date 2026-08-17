@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { classifySalesActivity, extractCompetitors, extractDueDate } from '../src/utils/salesActivityClassifier.ts';
 import {
   compareSafeBusinessDate,
@@ -206,4 +206,53 @@ assert.ok(!JSON.stringify(result).includes('1900-'));
   assert.equal(narration.dueDate, '', 'a weekday in the narration is not a deadline');
 }
 
-console.log('Safe date and capture extraction regression verified.');
+/**
+ * Nobody derives "today" from a UTC timestamp.
+ *
+ * `safeDate.ts` exists because `new Date().toISOString().slice(0, 10)` is the
+ * UTC calendar day, and for a seller in UTC+7 that is *yesterday* until 7am
+ * local. Two call sites had drifted back to it: the pipeline defense brief
+ * titled itself with it - and that brief gets sent to a manager, so it arrived
+ * dated the day before the review it was prepared for - and the dashboard export
+ * named its zip with it.
+ *
+ * Neither was reachable by a test: both produce a plausible date, just the wrong
+ * one, and only for part of the day, and only outside UTC. This is the only
+ * check that can see it.
+ */
+{
+  const offenders = collectSourceFiles('src')
+    .filter((file) => file !== 'src/utils/safeDate.ts')
+    .filter((file) => {
+      const source = readFileSync(file, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/.*$/gm, '');
+      // Deliberately only the unambiguous form: `new Date()` with no argument
+      // is "now", and its UTC calendar day is a different day from the
+      // operator's for part of every day outside UTC.
+      //
+      // `someDate.toISOString().slice(0, 10)` is NOT matched, and must not be:
+      // seventeen files do that to a Date built from a UTC-anchored value, where
+      // it round-trips correctly. Telling them apart needs the provenance of the
+      // Date, which a regex does not have - so this checks the one shape that is
+      // wrong on sight rather than guessing at the rest.
+      return /new Date\(\s*\)\s*\.\s*toISOString\(\)\s*\.\s*(slice|substring)\(\s*0\s*,\s*10\s*\)/.test(source);
+    });
+
+  assert.deepEqual(
+    offenders,
+    [],
+    'these take the UTC calendar day where they mean the operator\'s local one; use '
+    + `todayDateKey() from utils/safeDate: ${offenders.join(', ')}`,
+  );
+}
+
+function collectSourceFiles(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) return collectSourceFiles(path);
+    return /\.tsx?$/.test(entry.name) ? [path] : [];
+  });
+}
+
+console.log('Safe date and capture extraction regression verified, and nobody derives today from UTC.');

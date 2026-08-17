@@ -81,6 +81,7 @@ import { markTrialActivationChecklistItemComplete } from '../../utils/trialActiv
 import { createDemoFeedback, type PipelineBriefUsefulness } from '../../utils/demoFeedback';
 import { markDemoJourneyComplete, markDemoJourneyStepComplete } from '../../utils/demoJourney';
 import { copyTextToClipboard } from '../../utils/clipboard';
+import { todayDateKey } from '../../utils/safeDate';
 import { trackProductEvent } from '../../utils/productAnalytics';
 import {
   createReviewPackSnapshot,
@@ -620,7 +621,10 @@ export function PipelineReviewDefenseBriefPage() {
     const generated = generatePipelineDefenseBriefFromOpportunities(
       liveDeals,
       {
-        title: `Pipeline Defense Brief - ${new Date().toISOString().slice(0, 10)}`,
+        // Local day, not UTC. This brief gets a title and then gets sent to a
+        // manager; generated at 6am in UTC+7 the UTC date is still yesterday, so
+        // it arrived dated the day before the review it was prepared for.
+        title: `Pipeline Defense Brief - ${todayDateKey()}`,
         scope: `Top ${liveDeals.length} active deals by value`,
       },
       [],
