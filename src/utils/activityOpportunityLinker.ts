@@ -1,4 +1,5 @@
 import type { SalesActivityRecord } from '../services/salesActivityStore';
+import { normalizeEntityName } from './accountIdentity.ts';
 import type { CrmLiteOpportunity, OpportunityFormInput } from '../services/opportunityStore';
 import { opportunityToFormInput } from '../services/opportunityStore';
 
@@ -230,12 +231,15 @@ function appendUnique(current: string, addition: string) {
   return [current.trim(), cleanAddition].filter(Boolean).join('\n');
 }
 
+/**
+ * The canonical fold - see accountIdentity.ts.
+ *
+ * This was the closest of all the local copies and still wrong in the one way
+ * that matters here: it folded the combining marks but not `\u0111`. `\u0110` carries no
+ * combining mark, so NFD leaves it standing and the `[^a-z0-9\s]` strip then
+ * deleted it - "\u0110\u1ee9c" normalised to "uc", missing the first letter of the word,
+ * and this function decides whether a capture belongs to a deal.
+ */
 function normalize(value: string) {
-  return value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return normalizeEntityName(value);
 }

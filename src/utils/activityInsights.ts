@@ -129,7 +129,7 @@ export function buildActivityInsights(input: {
 function buildCoverage(activities: SalesActivityRecord[], aliases?: AccountAliasIndex): ActivityCoverage {
   return {
     accountsTouched: new Set(
-      activities.map((activity) => accountOf(activity, aliases)).filter(Boolean).map((name) => name.toLowerCase()),
+      activities.map((activity) => normalizeEntityName(accountOf(activity, aliases))).filter(Boolean),
     ).size,
     opportunitiesTouched: new Set(
       // Canonical, so one deal spelled two ways is not counted as two touched.
@@ -207,7 +207,7 @@ function buildQuietAccounts(activities: SalesActivityRecord[], today: string, al
   activities.forEach((activity) => {
     const account = accountOf(activity, aliases);
     if (!account || !isValidBusinessDate(activity.activityDate)) return;
-    const key = account.toLowerCase();
+    const key = normalizeEntityName(account);
     const existing = lastTouchByAccount.get(key);
     if (!existing || compareSafeBusinessDate(activity.activityDate, existing.lastTouch) > 0) {
       lastTouchByAccount.set(key, { account, lastTouch: activity.activityDate });
