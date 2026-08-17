@@ -1,10 +1,11 @@
-import type { CrmLiteOpportunity } from '../services/opportunityStore';
+import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
-import { opportunityStages } from '../services/opportunityStore';
-import type { SalesActivityRecord } from '../services/salesActivityStore';
-import { sumMoneyInBase } from './money';
-import { classifyOpportunitySilence } from './proactiveNudges';
-import { isValidBusinessDate, toLocalDateKey } from './safeDate';
+import { resolveProbability } from './stageProbability.ts';
+import { opportunityStages } from '../services/opportunityStore.ts';
+import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
+import { sumMoneyInBase } from './money.ts';
+import { classifyOpportunitySilence } from './proactiveNudges.ts';
+import { isValidBusinessDate, toLocalDateKey } from './safeDate.ts';
 
 export interface PipelineHealthSummary {
   activeCount: number;
@@ -115,9 +116,22 @@ export function buildRevenueHorizon(opportunities: CrmLiteOpportunity[]): Revenu
   for (const opportunity of opportunities.filter(isActive)) {
     const label = normalizeHorizon(opportunity.expectedClosePeriod || '');
     const raw = sumMoneyInBase([opportunityMoney(opportunity)]);
-    const probability = typeof opportunity.pipelineProbability === 'number'
-      ? Math.min(100, Math.max(0, opportunity.pipelineProbability))
-      : 50;
+    /**
+     * The stage ladder, not a flat 50.
+     *
+     * A deal with no declared probability used to be weighted at 50% whatever
+     * stage it was in, while `resolveProbability` - which the rest of the
+     * product uses, and which carries a reasoned table - says a Lead is 5% and
+     * Discovery is 10%. This chart is "Expected revenue: when the money lands",
+     * so it was over-weighting the earliest pipeline by up to ten times and
+     * under-weighting Negotiation and Procurement. An On hold deal, which the
+     * ladder deliberately gives no probability at all, was counted at half its
+     * value as money arriving on a date.
+     *
+     * Unknown now contributes nothing to the weighted bar and keeps its full
+     * value in the pale one, which is the contrast the chart already draws.
+     */
+    const probability = resolveProbability(opportunity).value ?? 0;
     const entry = buckets.get(label) || { raw: 0, weighted: 0, count: 0 };
     entry.raw += raw;
     entry.weighted += raw * (probability / 100);
