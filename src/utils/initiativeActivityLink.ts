@@ -1,5 +1,6 @@
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import { compareSafeBusinessDate, isValidBusinessDate } from './safeDate.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 
 const PAYLOAD_KEY = 'linkedActivityIds';
 
@@ -85,6 +86,17 @@ export function listInitiativeActivityLinks(
   return [...linked, ...mentioned.slice(0, Math.max(0, limit - linked.length))];
 }
 
+/**
+ * Folded the canonical way, so a Vietnamese initiative title survives being
+ * tokenised.
+ *
+ * This stripped to `[a-z0-9]` without folding diacritics first, so every accented
+ * letter became a space: "CÔNG TY DƯỢC PHẨM" came out as "c ng ty d c ph m", and
+ * the `length >= 4` filter above then left **no tokens at all**. It fails closed
+ * rather than open - an empty token list matches nothing rather than everything -
+ * so the symptom was quiet: an initiative named in Vietnamese never surfaced a
+ * single mentioned activity, and looked simply unused.
+ */
 function normalize(value?: string) {
-  return (value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  return normalizeEntityName(value || '');
 }

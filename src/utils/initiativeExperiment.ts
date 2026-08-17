@@ -1,5 +1,6 @@
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import { compareSafeBusinessDate, isValidBusinessDate } from './safeDate.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 
 export const initiativeDecisions = ['undecided', 'continue', 'adjust', 'stop'] as const;
 
@@ -94,6 +95,11 @@ function cleanText(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+/**
+ * The canonical fold - see initiativeActivityLink for the same note. Stripping
+ * to `[a-z0-9]` without folding diacritics first turned every Vietnamese title
+ * into fragments shorter than the token filter, so it matched nothing.
+ */
 function normalize(value?: string) {
-  return (value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  return normalizeEntityName(value || '');
 }
