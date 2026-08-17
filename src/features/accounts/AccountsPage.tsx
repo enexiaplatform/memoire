@@ -2545,8 +2545,9 @@ function parseCommaList(value: string) {
   return value.split(',').map((item) => item.trim()).filter(Boolean);
 }
 
+/** The canonical fold - see accountIdentity.ts. */
 function sameName(left: string, right: string) {
-  return left.trim().toLowerCase() === right.trim().toLowerCase();
+  return normalizeEntityName(left) === normalizeEntityName(right);
 }
 
 function quoteActionRank(quote: QuoteRecord) {

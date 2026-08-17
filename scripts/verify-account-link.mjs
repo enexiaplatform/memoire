@@ -300,6 +300,39 @@ const merge = (canonical, mergedNames) => ({
     'these define a name normaliser whose whole body is a bare lowercase; it '
     + `must delegate to normalizeEntityName: ${helperOffenders.join(', ')}`,
   );
+
+  /**
+   * And the third disguise: a *comparison* helper.
+   *
+   * `sameText`, `sameName` - two arguments, lowercased and compared, returning a
+   * boolean rather than a key. Neither of the checks above sees it: the
+   * lowercase is applied to a parameter called `a`, not to a field called
+   * accountName, and the function is not named normalize-anything.
+   *
+   * Four files hid here, and one of them compares *people*:
+   * `meddicStakeholderMap.sameText` attaches an objection to the person who
+   * raised it and their activities to them, so "Nguyễn Văn Đức" and
+   * "Nguyen Van Duc" - one champion typed twice - left that champion looking
+   * untouched and unchallenged, which is the evidence the "Champion missing" and
+   * "Economic buyer unknown" nudges are built on.
+   */
+  const bareLowercaseComparison =
+    /function\s+\w+\s*\([^)]*\)\s*\{\s*return\s+[^;]*\.trim\(\)\.toLowerCase\(\)\s*===\s*[^;]*\.trim\(\)\.toLowerCase\(\)\s*;?\s*\}/;
+
+  const comparisonOffenders = [...collect('src/utils'), ...collect('src/features')]
+    .filter((file) => {
+      const code = readSourceFile(file, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/.*$/gm, '');
+      return bareLowercaseComparison.test(code);
+    });
+
+  assert.deepEqual(
+    comparisonOffenders,
+    [],
+    'these compare two names by lowercasing both; the comparison must go '
+    + `through normalizeEntityName: ${comparisonOffenders.join(', ')}`,
+  );
 }
 
 console.log('Account link contract verified, and names are matched in exactly one way.');

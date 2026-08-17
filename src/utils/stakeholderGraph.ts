@@ -1,4 +1,5 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
+import { normalizeEntityName } from './accountIdentity.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord, StakeholderRole } from '../services/stakeholderStore';
 import { normalizeMeddicRole } from './meddicStakeholderMap.ts';
@@ -147,6 +148,10 @@ export function summarizeStakeholderCoverage(stakeholders: StakeholderRecord[], 
   };
 }
 
+/** The canonical fold - see accountIdentity.ts. This decides which stakeholders
+ * belong to an account and to a deal, so a diacritic emptied the map. */
 function sameText(a: string, b: string) {
-  return Boolean(a && b && a.trim().toLowerCase() === b.trim().toLowerCase());
+  const left = normalizeEntityName(a);
+  const right = normalizeEntityName(b);
+  return Boolean(left && right && left === right);
 }

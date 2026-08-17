@@ -1,4 +1,5 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 import type { ObjectionRecord } from '../services/objectionStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import type {
@@ -316,8 +317,24 @@ function matchesActivity(activity: SalesActivityRecord, opportunity: CrmLiteOppo
   );
 }
 
+/**
+ * Two names for the same person.
+ *
+ * Folded the canonical way - see accountIdentity.ts. A bare lowercase is
+ * diacritic-sensitive, and this compares *people*: "Nguyễn Văn Đức" and
+ * "Nguyen Van Duc" are one champion typed twice, which is what happens when a
+ * name is entered on a form once and typed into a capture note later.
+ *
+ * The two callers are what makes it matter. One attaches an objection to the
+ * person who raised it; the other attaches their activities. A miss leaves a
+ * champion looking untouched and unchallenged, and the MEDDIC map reads that as
+ * a relationship with no proof behind it - which is what the "Champion missing"
+ * and "Economic buyer unknown" nudges are built on.
+ */
 function sameText(a = '', b = '') {
-  return Boolean(a && b && a.trim().toLowerCase() === b.trim().toLowerCase());
+  const left = normalizeEntityName(a);
+  const right = normalizeEntityName(b);
+  return Boolean(left && right && left === right);
 }
 
 function firstSentence(value: string) {

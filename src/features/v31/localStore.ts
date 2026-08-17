@@ -1,5 +1,6 @@
 import type { Account, Contact, Interaction, Objection, Opportunity, SalesAction, StructuredSalesCapture } from '../../types/v31';
 import { toLocalDateKey } from '../../utils/safeDate.ts';
+import { normalizeEntityName } from '../../utils/accountIdentity.ts';
 import { DEMO_AUTH_KEY, DEMO_USER_ID, DEMO_WORKSPACE_KEY } from '../../lib/demoMode';
 
 interface LocalCapture {
@@ -76,8 +77,10 @@ function writeLocalMemory(memory: LocalMemory) {
   localStorage.setItem(KEY, JSON.stringify(memory));
 }
 
+/** The canonical fold - see accountIdentity.ts. Matches both account names and
+ * contact names, so it decides whether a capture creates a duplicate person. */
 function sameName(a: string, b: string) {
-  return a.trim().toLowerCase() === b.trim().toLowerCase();
+  return normalizeEntityName(a) === normalizeEntityName(b);
 }
 
 function mergeList(existing: string[], next: string) {
