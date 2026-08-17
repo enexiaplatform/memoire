@@ -333,6 +333,46 @@ const merge = (canonical, mergedNames) => ({
     'these compare two names by lowercasing both; the comparison must go '
     + `through normalizeEntityName: ${comparisonOffenders.join(', ')}`,
   );
+
+  /**
+   * And the fourth: no `.trim()` at all.
+   *
+   * All three checks above key on `.trim().toLowerCase()`. Seven more sites just
+   * wrote `.toLowerCase()` on the name and were invisible to every one of them -
+   * including `normalizeDuplicateKey`, the function that decides an imported row
+   * is a duplicate, which let a differently-accented spelling through as a new
+   * opportunity at the exact moment the operator was being shown a duplicate
+   * check.
+   *
+   * So this one matches a lowercase on a *name-bearing expression*, with or
+   * without the trim.
+   *
+   * A bare `.name` is not enough to go on: `file.name.toLowerCase()` on an
+   * uploaded zip is not a customer, and flagging it would put a permanent false
+   * positive in the check. The receivers that do carry a person's name are
+   * listed instead.
+   */
+  const NAME_FIELDS = 'accountName|opportunityName|stakeholderName|contactName'
+    + '|linkedAccountName|linkedOpportunityName'
+    + '|(?:stakeholder|person|contact|candidate|account|memory|node)\\.name';
+  const nameLowercase = new RegExp(
+    `(?:${NAME_FIELDS})\\s*(?:\\|\\|\\s*''\\s*)?\\)?\\s*\\.\\s*(?:trim\\(\\)\\s*\\.\\s*)?toLowerCase\\(\\)`,
+  );
+
+  const lowercaseOffenders = [...collect('src/utils'), ...collect('src/features')]
+    .filter((file) => {
+      const code = readSourceFile(file, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/.*$/gm, '');
+      return nameLowercase.test(code);
+    });
+
+  assert.deepEqual(
+    lowercaseOffenders,
+    [],
+    'these lowercase a name instead of folding it with normalizeEntityName, so '
+    + `a diacritic makes two records of one: ${lowercaseOffenders.join(', ')}`,
+  );
 }
 
 console.log('Account link contract verified, and names are matched in exactly one way.');

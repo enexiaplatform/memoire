@@ -1,4 +1,5 @@
 import type { SalesActivityRecord } from '../services/salesActivityStore';
+import { normalizeEntityName } from './accountIdentity.ts';
 import { resolveAccountName, type AccountAliasIndex } from './accountAliases.ts';
 import { classifyBusinessDomain, type BusinessDomain } from './businessDomain.ts';
 import { buildCaptureDerivedKey, getDatedCaptureActions, type PlanRecord } from './weeklyPlan.ts';
@@ -131,7 +132,8 @@ function buildCoverage(activities: SalesActivityRecord[], aliases?: AccountAlias
       activities.map((activity) => accountOf(activity, aliases)).filter(Boolean).map((name) => name.toLowerCase()),
     ).size,
     opportunitiesTouched: new Set(
-      activities.map((activity) => (activity.linkedOpportunityName || activity.opportunityName || '').trim()).filter(Boolean).map((name) => name.toLowerCase()),
+      // Canonical, so one deal spelled two ways is not counted as two touched.
+      activities.map((activity) => normalizeEntityName(activity.linkedOpportunityName || activity.opportunityName || '')).filter(Boolean),
     ).size,
     followUps: activities.filter((activity) => activity.activityType === 'Follow-up').length,
     objections: activities.filter((activity) => activity.activityType === 'Objection handling').length,

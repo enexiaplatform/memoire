@@ -1,4 +1,5 @@
 import type { ObjectionRecord } from '../services/objectionStore';
+import { normalizeEntityName } from './accountIdentity.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { SalesAssetRecord } from '../services/salesAssetStore';
 import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
@@ -254,12 +255,14 @@ function hasChampionSignal(opportunity: CrmLiteOpportunity) {
 }
 
 function hasRelatedAsset(objection: ObjectionRecord, assets: SalesAssetRecord[]) {
-  const objectionType = objection.objectionType.toLowerCase();
-  const account = objection.accountName.toLowerCase();
-  const opportunity = (objection.opportunityName || '').toLowerCase();
+  // The haystack is folded the same way as the needles - see accountIdentity.
+  // Folding only one side would find nothing at all once accents are involved.
+  const objectionType = normalizeEntityName(objection.objectionType);
+  const account = normalizeEntityName(objection.accountName);
+  const opportunity = normalizeEntityName(objection.opportunityName || '');
 
   return assets.some((asset) => {
-    const combined = `${asset.title} ${asset.summary} ${asset.content} ${asset.relatedAccountName || ''} ${asset.relatedOpportunityName || ''} ${asset.relatedObjectionType || ''}`.toLowerCase();
+    const combined = normalizeEntityName(`${asset.title} ${asset.summary} ${asset.content} ${asset.relatedAccountName || ''} ${asset.relatedOpportunityName || ''} ${asset.relatedObjectionType || ''}`);
     return combined.includes(objectionType) || (account && combined.includes(account)) || (opportunity && combined.includes(opportunity));
   });
 }

@@ -728,8 +728,10 @@ export function DailyCapturePage() {
     const activity = lastSavedActivity;
     const linkedOpportunity = opportunities.find((opportunity) => opportunity.id === activity.linkedOpportunityId);
     const matchingStakeholder = stakeholders.find((stakeholder) => (
-      stakeholder.name.toLowerCase() === (activity.stakeholderName || activity.contactName || '').toLowerCase() &&
-      (!activity.accountName || stakeholder.accountName.toLowerCase() === activity.accountName.toLowerCase())
+      // Canonical on both sides: a capture that names the person without their
+      // accents must still attach to the stakeholder record that has them.
+      normalizeEntityName(stakeholder.name) === normalizeEntityName(activity.stakeholderName || activity.contactName || '') &&
+      (!activity.accountName || normalizeEntityName(stakeholder.accountName) === normalizeEntityName(activity.accountName))
     ));
     const result = await createObjection(buildObjectionFromActivity(activity, linkedOpportunity, matchingStakeholder), dataUserId);
     setObjections((current) => [result.objection, ...current.filter((item) => item.id !== result.objection.id)]);
@@ -780,13 +782,15 @@ export function DailyCapturePage() {
     setQuoteSuggestionMessage(`${suggestion.actionLabel}: ${suggestion.quoteLabel}. Money flow updated.`);
   };
   const alreadyHasStakeholderCandidate = stakeholderCandidate ? stakeholders.some((stakeholder) => (
-    stakeholder.name.toLowerCase() === stakeholderCandidate.name.toLowerCase() &&
-    stakeholder.accountName.toLowerCase() === stakeholderCandidate.accountName.toLowerCase()
+    // Canonical, or the same person captured with and without their accents is
+    // offered again as a new stakeholder to create.
+    normalizeEntityName(stakeholder.name) === normalizeEntityName(stakeholderCandidate.name) &&
+    normalizeEntityName(stakeholder.accountName) === normalizeEntityName(stakeholderCandidate.accountName)
   )) : false;
   const alreadyHasObjectionCandidate = Boolean(objectionCandidate && lastSavedActivity && objections.some((objection) => (
     objection.sourceActivityId === lastSavedActivity.id ||
     (objection.objectionText.toLowerCase() === objectionCandidate.objectionText.toLowerCase() &&
-      objection.accountName.toLowerCase() === (lastSavedActivity.linkedAccountName || lastSavedActivity.accountName).toLowerCase())
+      normalizeEntityName(objection.accountName) === normalizeEntityName(lastSavedActivity.linkedAccountName || lastSavedActivity.accountName))
   )));
 
   return (

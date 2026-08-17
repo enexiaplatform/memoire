@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
+import { normalizeEntityName } from '../../utils/accountIdentity.ts';
 import {
   AlertTriangle,
   ArrowRight,
@@ -1236,7 +1237,9 @@ function groupNudgesByAccount(nudges: NudgeRecord[]): NudgeAccountGroup[] {
   const groups = new Map<string, { accountName: string; nudges: NudgeRecord[]; dealIds: Set<string> }>();
   for (const nudge of nudges) {
     const accountName = nudge.accountName?.trim() || 'Needs confirmation';
-    const key = accountName.toLowerCase();
+    // Canonical, or one customer's alarms are split into two cards on the
+    // dashboard because two of them spelled the account differently.
+    const key = normalizeEntityName(accountName);
     const group = groups.get(key) || { accountName, nudges: [], dealIds: new Set<string>() };
     group.nudges.push(nudge);
     if (nudge.entityType === 'opportunity' && nudge.entityId) {

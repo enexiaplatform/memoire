@@ -1,4 +1,5 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
+import { normalizeEntityName } from './accountIdentity.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { Recommendation, ReasonCode, Severity } from '../domain/commercialKernel/policyEngine';
 import type { SalesActivityType } from './salesActivityClassifier';
@@ -459,7 +460,7 @@ function buildAlertSuggestions(input: {
     .filter((recommendation) => {
       // One alert per account per rule. A customer with four overdue promises
       // needs one line on the board, not four.
-      const dedupeKey = `${recommendation.reasonCode}:${(recommendation.accountName || '').toLowerCase()}`;
+      const dedupeKey = `${recommendation.reasonCode}:${normalizeEntityName(recommendation.accountName || '')}`;
       if (seen.has(dedupeKey)) return false;
       seen.add(dedupeKey);
       return true;

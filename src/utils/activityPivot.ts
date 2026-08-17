@@ -1,4 +1,5 @@
 import type { ActivityEntry } from './activityLedger.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 import { relationTypeLabel } from './activityLedger.ts';
 import { formatSafeBusinessDate } from './safeDate.ts';
 
@@ -201,7 +202,7 @@ export function keyOf(entry: ActivityEntry, dimension: ActivityDimension): strin
     case 'relatedTo':
       // Typed, so an account and a brand line with the same name never merge
       // into one row that means two different things.
-      return `${entry.relatedTo.type}:${entry.relatedTo.name.toLowerCase()}`;
+      return `${entry.relatedTo.type}:${normalizeEntityName(entry.relatedTo.name)}`;
     case 'relationType':
       return entry.relatedTo.type;
     case 'type':

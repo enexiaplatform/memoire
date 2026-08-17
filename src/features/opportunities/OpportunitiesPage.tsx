@@ -3034,15 +3034,16 @@ function OpportunityPanel({
    * queue is that naming them is how they get added.
    */
   const stakeholderOptionsFor = (field: 'decisionMaker' | 'budgetOwner') => {
-    const typed = (form[field] || '').trim().toLowerCase();
+    // Folded the same way as the names below, so typing "duc" finds "Đức".
+    const typed = normalizeEntityName(form[field] || '');
     const forAccount = allStakeholders.filter((person) => sameAccount(person.accountName, form.accountName));
     // Fall back to the whole book only when the account is not named yet;
     // otherwise a customer's own contacts would compete with everyone else's.
     const pool = forAccount.length > 0 || form.accountName.trim() ? forAccount : allStakeholders;
     return pool
       .filter((person) => person.name.trim())
-      .filter((person) => !typed || person.name.toLowerCase().includes(typed))
-      .filter((person) => person.name.toLowerCase() !== typed)
+      .filter((person) => !typed || normalizeEntityName(person.name).includes(typed))
+      .filter((person) => normalizeEntityName(person.name) !== typed)
       .slice(0, 8)
       .map((person) => ({
         key: `${field}-${person.id}`,

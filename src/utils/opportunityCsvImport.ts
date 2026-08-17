@@ -13,6 +13,7 @@ import {
 } from '../services/opportunityStore.ts';
 import { getReportingCurrency, isSupportedCurrency } from './money.ts';
 import { parseCsvRows } from './csvParse.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 import { parseLocalizedAmount } from './numberFormat.ts';
 
 export type OpportunityCsvPreviewRow = {
@@ -840,9 +841,17 @@ function makeOpportunityKey(opportunity: CrmLiteOpportunity) {
   return normalizeDuplicateKey(opportunity.accountName, opportunity.opportunityName);
 }
 
+/**
+ * The key that decides an imported row is a duplicate.
+ *
+ * Folded canonically, so "CÔNG TY DƯỢC PHẨM" and "Cong ty Duoc Pham" are caught
+ * as the same deal. A plain lowercase let the second spelling through as a new
+ * opportunity, which is a duplicate created at the exact moment the operator was
+ * being shown a duplicate check.
+ */
 function normalizeDuplicateKey(accountName: string, opportunityName: string) {
   if (!accountName.trim() || !opportunityName.trim()) return '';
-  return `${accountName}|${opportunityName}`.toLowerCase().replace(/\s+/g, ' ').trim();
+  return `${normalizeEntityName(accountName)}|${normalizeEntityName(opportunityName)}`;
 }
 
 function normalizeText(value: string) {

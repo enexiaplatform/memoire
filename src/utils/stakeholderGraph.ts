@@ -80,7 +80,9 @@ export function deriveStakeholderCandidatesFromActivities(activities: SalesActiv
   activities.forEach((activity) => {
     const candidate = deriveStakeholderCandidateFromCapture(activity);
     if (!candidate) return;
-    const key = `${candidate.accountName.toLowerCase()}::${candidate.name.toLowerCase()}`;
+    // Canonical on both halves, or the same person captured with and without
+    // their accents is offered twice as a new stakeholder to create.
+    const key = `${normalizeEntityName(candidate.accountName)}::${normalizeEntityName(candidate.name)}`;
     if (!candidates.has(key)) candidates.set(key, candidate);
   });
   return Array.from(candidates.values());
