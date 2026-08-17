@@ -3,7 +3,6 @@ import { Link, Navigate } from 'react-router-dom';
 import { AlertTriangle, Database, RefreshCw, RotateCcw, ShieldCheck } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import {
-  FOUNDER_IMPORT_TARGET_EMAIL,
   isFounderImportUser,
   loadImportBatches,
   loadImportRowResults,
@@ -86,7 +85,9 @@ export function FounderImportReviewPage() {
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Founder Import</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Core Data Import Review</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-            Audit batches, warning codes, and safe row-result metadata for {FOUNDER_IMPORT_TARGET_EMAIL}.
+            {/* The address is configuration now rather than a line in the
+                source, and this page is only reachable by the person it names. */}
+            Audit batches, warning codes, and safe row-result metadata for this workspace.
           </p>
         </div>
         <button

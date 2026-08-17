@@ -6,7 +6,13 @@ import process from 'node:process';
 import { createClient } from '@supabase/supabase-js';
 import JSZip from 'jszip';
 
-const TARGET_EMAIL = 'thongtran.hcmus@gmail.com';
+// Whose workspace this one-off import writes into. An address, not a person:
+// it was hard-coded here, and this repository is public.
+const TARGET_EMAIL = (process.env.FOUNDER_IMPORT_EMAIL || '').trim().toLowerCase();
+if (!TARGET_EMAIL) {
+  console.error('Set FOUNDER_IMPORT_EMAIL to the account this import should write into.');
+  process.exit(1);
+}
 const SOURCE_SYSTEM = 'founder_core_fy26';
 const BACKUP_DIR = '.memoire-private/import-backups';
 const CHUNK_SIZE = 500;

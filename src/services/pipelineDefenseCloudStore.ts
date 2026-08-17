@@ -1,5 +1,5 @@
 import { supabaseClient } from '../lib/supabaseClient.ts';
-import type { PipelineDefenseBrief, PipelineDefenseBriefStore } from '../utils/pipelineDefenseStorage';
+import { isLegacySeededSalesOwner, type PipelineDefenseBrief, type PipelineDefenseBriefStore } from '../utils/pipelineDefenseStorage';
 import { reportClientOperationalEvent } from './clientTelemetry';
 import { invalidateWorkspaceCollection } from './workspaceDataCache';
 
@@ -135,7 +135,9 @@ function rowToBrief(row: PipelineDefenseBriefRow): PipelineDefenseBrief {
     id: row.id,
     title: row.title,
     weekLabel: row.week_label || 'Current Week',
-    salesOwner: row.sales_owner && row.sales_owner !== 'Henry' ? row.sales_owner : 'Sales owner',
+    // Same rule as the local copy: a brief seeded with somebody else's name
+    // must not show it to the person reading the brief.
+    salesOwner: row.sales_owner && !isLegacySeededSalesOwner(row.sales_owner) ? row.sales_owner : 'Sales owner',
     scope: row.scope || 'Demo review pipeline',
     deals: Array.isArray(row.deals) ? row.deals : [],
     createdAt: row.created_at,

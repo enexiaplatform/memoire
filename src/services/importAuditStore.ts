@@ -1,6 +1,19 @@
 import { supabaseClient } from '../lib/supabaseClient.ts';
 
-export const FOUNDER_IMPORT_TARGET_EMAIL = 'thongtran.hcmus@gmail.com';
+/**
+ * Whose import audit this founder-only page shows.
+ *
+ * This was a personal Gmail address written into the source, which meant it was
+ * compiled into the JavaScript every visitor downloads - the owner's private
+ * address, readable by anyone who opened the bundle or grepped the public repo.
+ * It is configuration now, and empty by default: with nothing set the page and
+ * its rail entry do not exist for anybody. The real boundary was never this
+ * check - `import_batches` is behind RLS and only ever returns the caller's own
+ * rows - so switching it off costs no access control.
+ */
+export const FOUNDER_IMPORT_TARGET_EMAIL = String(
+  import.meta.env.VITE_FOUNDER_IMPORT_EMAIL || '',
+).trim().toLowerCase();
 
 export type ImportBatchStatus = 'running' | 'completed' | 'failed' | 'rolled_back';
 
@@ -69,6 +82,7 @@ type ImportRowResultRow = {
 };
 
 export function isFounderImportUser(email?: string | null) {
+  if (!FOUNDER_IMPORT_TARGET_EMAIL) return false;
   return (email || '').trim().toLowerCase() === FOUNDER_IMPORT_TARGET_EMAIL;
 }
 

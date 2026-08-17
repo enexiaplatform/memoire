@@ -73,7 +73,10 @@ export function ProfileTab() {
             disabled={profileLoading || saving}
             onChange={(event) => { setName(event.target.value); setMessage(''); setError(''); }}
             onKeyDown={(event) => { if (event.key === 'Enter' && !unchanged) void handleSave(); }}
-            placeholder="e.g. Henry Tran"
+            // Somebody else's name, on the one field that asks for yours: the
+            // example here was the name of the person who built the product,
+            // shown to every operator who opened their own profile.
+            placeholder="e.g. Jane Smith"
             className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10 disabled:bg-gray-50"
           />
           <span className="mt-1 block text-[11px] text-gray-400">

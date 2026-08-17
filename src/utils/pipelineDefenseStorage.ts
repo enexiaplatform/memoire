@@ -3,6 +3,20 @@ import { invalidateWorkspaceCollection } from '../services/workspaceDataCache.ts
 import { normalizeImportedDeal } from './importPipelineDefenseBrief.ts';
 import { writeLocalRecords } from '../services/localWriteGuard.ts';
 
+/**
+ * Sales-owner names that were seeded before the field was read off the account.
+ *
+ * A brief carrying one of these is showing a stranger's name to whoever opens
+ * it, so it reads as "Sales owner" instead. Kept here, once, because the same
+ * rule has to run on the local copy and on the cloud row.
+ */
+export const LEGACY_SEEDED_SALES_OWNERS = ['henry', 'user', 'demo user'];
+
+export function isLegacySeededSalesOwner(value: unknown) {
+  if (typeof value !== 'string') return false;
+  return LEGACY_SEEDED_SALES_OWNERS.includes(value.trim().toLowerCase());
+}
+
 export const MULTI_BRIEF_STORAGE_KEY = 'memoire.pipelineDefenseBriefs.v1';
 export const LEGACY_LOCAL_STORAGE_KEY = 'memoire.pipelineDefenseBrief.v1';
 
@@ -228,9 +242,16 @@ function sanitizeBrief(value: unknown): PipelineDefenseBrief | null {
   };
 }
 
+/**
+ * Briefs written before the owner was read off the account carry a name that
+ * was the developer's, not the reader's. It is replaced on read so nobody
+ * inherits somebody else's name at the top of their review - and the literal
+ * lives in one place, `LEGACY_SEEDED_SALES_OWNERS`, rather than being written
+ * into the product in several.
+ */
 function normalizeLegacySalesOwner(value: unknown) {
-  if (typeof value !== 'string' || !value.trim() || value.trim() === 'Henry') return 'Sales owner';
-  return value.trim();
+  if (typeof value !== 'string' || !value.trim()) return 'Sales owner';
+  return isLegacySeededSalesOwner(value) ? 'Sales owner' : value.trim();
 }
 
 function normalizeSource(value: unknown): PipelineDefenseBrief['source'] {
