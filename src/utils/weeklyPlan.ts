@@ -4,6 +4,7 @@ import type { OwnObligation } from './ownObligations.ts';
 import type { BusinessDomain } from './businessDomain.ts';
 import { classifyPlanWork, summarisePlanWork, type PlanWorkKind, type PlanWorkSplit } from './planWorkKind.ts';
 import {
+  addMonthsClamped,
   compareSafeBusinessDate,
   isBusinessDateInRange,
   isValidBusinessDate,
@@ -467,31 +468,15 @@ export function getPlanRange(periodType: PlanPeriod, anchorDate = new Date()): P
 /**
  * One period back or forward.
  *
- * The month step lands on the 1st before it moves, and that is the whole fix.
- * `setMonth(getMonth() + 1)` on the 31st asks for the 31st of a month that may
- * only have 30 days, and JavaScript rolls the overflow forward into the month
- * after that. Paging from the 31st therefore skipped a month, and in the other
- * direction it could not move at all:
- *
- *   31 Aug  next -> October      (September never reachable)
- *   31 Mar  next -> May,  prev -> March   (stuck; February unreachable)
- *   31 May  next -> July, prev -> May     (stuck)
- *
- * Three or four days in every month, and for the whole session of anyone who
- * opened the Plan on one of them, the operator could not page back to the month
- * they were looking for. Nothing indicated it - the header just showed a
- * different month than the one the arrow implied.
- *
- * `getPlanRange('month')` reads only the year and the month off this anchor, so
- * the day of month carries no information worth preserving.
+ * The month step goes through `addMonthsClamped` - see safeDate.ts for what
+ * `setMonth` does on the 31st and why every month-paging control in the product
+ * had the same bug.
  *
  * The week step needs no such care: `setDate` overflowing a month boundary is
  * exactly what advancing seven days means.
  */
 export function shiftPlanAnchor(anchorDate: Date, periodType: PlanPeriod, direction: -1 | 1) {
-  if (periodType === 'month') {
-    return new Date(anchorDate.getFullYear(), anchorDate.getMonth() + direction, 1);
-  }
+  if (periodType === 'month') return addMonthsClamped(anchorDate, direction);
   const next = new Date(anchorDate);
   next.setDate(next.getDate() + direction * 7);
   return next;

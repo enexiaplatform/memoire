@@ -35,6 +35,34 @@ export function timestampToLocalDateKey(value: unknown) {
   return toLocalDateKey(parsed);
 }
 
+/**
+ * A month forward or back, with the day clamped instead of overflowing.
+ *
+ * `date.setMonth(date.getMonth() + 1)` on the 31st asks for the 31st of a month
+ * that may only have 30 days, and JavaScript rolls the overflow forward into the
+ * month after that. Every month-paging control in the product had it - the Plan,
+ * the Calendar and the Reviews recap - so from the 31st:
+ *
+ *   31 Aug   next -> October                (September unreachable)
+ *   31 Mar   next -> May,   prev -> March   (stuck; February unreachable)
+ *   31 May   next -> July,  prev -> May     (stuck)
+ *
+ * Three or four days in every month the arrow skipped a month or would not move,
+ * and nothing said so: the header showed a month, just not the one the arrow
+ * implied, which reads as "that month is empty" rather than "you never opened
+ * it".
+ *
+ * Clamping rather than snapping to the 1st, because the day is meaningful to the
+ * callers that also page by day and week: 31 January back one month is the 28th
+ * or 29th of February, which is what a person means by "a month earlier".
+ */
+export function addMonthsClamped(date: Date, months: number): Date {
+  const target = new Date(date.getFullYear(), date.getMonth() + months, 1);
+  const daysInTargetMonth = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(date.getDate(), daysInTargetMonth));
+  return target;
+}
+
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 

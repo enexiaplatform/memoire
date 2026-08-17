@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { classifySalesActivity, extractCompetitors, extractDueDate } from '../src/utils/salesActivityClassifier.ts';
 import {
+  addMonthsClamped,
   compareSafeBusinessDate,
   formatSafeBusinessDate,
   isBusinessDateOverdue,
@@ -49,6 +50,42 @@ assert.match(todayDateKey(), /^\d{4}-\d{2}-\d{2}$/);
   assert.equal(timestampToLocalDateKey('2026-06-18T09:00:00.000Z'), localKeyOfInstant);
   assert.match(timestampToLocalDateKey(new Date().toISOString()), /^\d{4}-\d{2}-\d{2}$/);
 }
+// Month paging must clamp the day rather than overflow it. `setMonth` on the
+// 31st asks for the 31st of a month that may have 30 days and JavaScript rolls
+// it into the month after that, so the Plan, the Calendar and the Reviews recap
+// all skipped a month forward and refused to move back.
+{
+  const key = (date) => toLocalDateKey(date);
+  assert.equal(key(addMonthsClamped(new Date(2026, 7, 31), 1)), '2026-09-30', 'August 31 forward is September, not October');
+  assert.equal(key(addMonthsClamped(new Date(2026, 2, 31), 1)), '2026-04-30', 'March 31 forward is April, not May');
+  assert.equal(key(addMonthsClamped(new Date(2026, 2, 31), -1)), '2026-02-28', 'March 31 back is February, not March again');
+  assert.equal(key(addMonthsClamped(new Date(2028, 2, 31), -1)), '2028-02-29', 'and a leap February keeps its 29th');
+  assert.equal(key(addMonthsClamped(new Date(2026, 0, 31), -1)), '2025-12-31', 'across a year boundary');
+  assert.equal(key(addMonthsClamped(new Date(2026, 11, 31), 1)), '2027-01-31');
+  // A day that exists in both months is preserved, because the callers that page
+  // by day and week read it.
+  assert.equal(key(addMonthsClamped(new Date(2026, 7, 15), 1)), '2026-09-15');
+}
+
+// And no month-paging control may go back to the raw `setMonth`.
+{
+  const monthPagers = [
+    'src/utils/weeklyPlan.ts',
+    'src/features/calendar/SalesActivityCalendarPage.tsx',
+    'src/features/reviews/SalesReviewsPage.tsx',
+  ];
+  for (const file of monthPagers) {
+    const code = readFileSync(file, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
+    assert.equal(
+      /\.setMonth\(/.test(code),
+      false,
+      `${file} must page months through addMonthsClamped, not setMonth`,
+    );
+  }
+}
+
 assert.equal(extractDueDate('Send quote by 02/31/2026', '2026-02-01'), '');
 
 const note = 'Met Pymepharco today with Ms. Nhu. They are evaluating Merck EM RTU. Need to send DCM comparison quote by next Friday. Tender decision expected end of July.';

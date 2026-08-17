@@ -57,7 +57,7 @@ import {
   type SalesPlaybookPattern,
 } from '../../utils/salesPlaybook';
 import { analyzeAssetNeeds, type SalesAssetNeed } from '../../utils/salesAssetSuggestions';
-import { formatSafeBusinessDate, isValidBusinessDate, toLocalDateKey, timestampToLocalDateKey } from '../../utils/safeDate.ts';
+import { addMonthsClamped, formatSafeBusinessDate, isValidBusinessDate, toLocalDateKey, timestampToLocalDateKey } from '../../utils/safeDate.ts';
 import { buildWeeklyTouchSeries, buildWinLossByQuarter } from '../../utils/pipelineInsights';
 import { Sparkline } from '../../components/charts/Sparkline';
 import { MiniBarChart } from '../../components/charts/MiniBarChart';
@@ -1453,7 +1453,10 @@ function getRecapRange(periodType: SalesRecapPeriod, anchorDate: Date): SalesRec
 function shiftRecapAnchor(anchorDate: Date, periodType: SalesRecapPeriod, direction: -1 | 1) {
   const next = new Date(anchorDate);
   if (periodType === 'week') next.setDate(next.getDate() + direction * 7);
-  if (periodType === 'month') next.setMonth(next.getMonth() + direction);
+  // Not `setMonth`: on the 31st it overflows into the month after next, so the
+  // arrow skipped a month going forward and would not move going back. See
+  // addMonthsClamped in utils/safeDate.
+  if (periodType === 'month') return addMonthsClamped(anchorDate, direction);
   return next;
 }
 
