@@ -86,6 +86,43 @@ describe('daily digest: what it decides to say', () => {
     assert.doesNotMatch(digest.lines.join('\n'), /Settled|Deleted/);
   });
 
+  test('a deal that arrived this week has not gone quiet, it has not been worked yet', () => {
+    const digest = buildDailyDigest(inputs({
+      opportunities: [
+        deal('fresh', { created_at: '2026-07-30T00:00:00.000Z', next_action_date: '2026-08-20' }),
+        deal('stale', { created_at: '2026-05-01T00:00:00.000Z', next_action_date: '2026-08-20' }),
+      ],
+    }), TODAY);
+
+    assert.equal(digest.counts.quiet, 1, 'only the deal old enough for silence to mean something');
+    assert.match(digest.lines.join('\n'), /Account stale/);
+    assert.doesNotMatch(digest.lines.join('\n'), /Account fresh/);
+  });
+
+  test('an import that lands a whole pipeline does not report the whole pipeline as neglected', () => {
+    const justImported = Array.from({ length: 40 }, (_, index) => deal(`i${index}`, {
+      created_at: '2026-08-02T01:00:00.000Z',
+      next_action_date: '2026-09-01',
+    }));
+
+    const digest = buildDailyDigest(inputs({ opportunities: justImported }), TODAY);
+
+    assert.equal(digest.counts.quiet, 0);
+    assert.equal(digest.hasSignal, false, 'the first morning after an import has nothing to accuse anybody of');
+  });
+
+  test("a deal's own last touch counts, even when no activity row was written", () => {
+    const digest = buildDailyDigest(inputs({
+      opportunities: [deal('worked', {
+        created_at: '2026-05-01T00:00:00.000Z',
+        last_touch_at: '2026-08-01T09:00:00.000Z',
+        next_action_date: '2026-08-20',
+      })],
+    }), TODAY);
+
+    assert.equal(digest.counts.quiet, 0);
+  });
+
   test('a quiet morning has no signal, so nothing is sent', () => {
     const digest = buildDailyDigest(inputs({
       opportunities: [deal('fine')],

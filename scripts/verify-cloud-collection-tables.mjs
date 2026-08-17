@@ -54,4 +54,27 @@ for (const collection of collections) {
   );
 }
 
-console.log(`Cloud collection table contract verified for ${collections.length} collections.`);
+// And every one of them has to be in the file the user is told is their backup.
+//
+// `knowledge_notes` shipped on 2026-08-09 and was not added to `exportTables`.
+// Nothing failed: the table was simply never queried, so no warning was raised,
+// and the manifest went on saying `complete: true` over an export with none of
+// the operator's own written notes in it. That is the second time this list has
+// drifted behind the collections - the money tables went the same way - and both
+// times the only symptom was a backup that looked fine until it was restored.
+{
+  const exportSource = readFileSync('api/export.ts', 'utf8');
+  const listStart = exportSource.indexOf('export const exportTables');
+  assert.ok(listStart >= 0, 'api/export.ts must declare exportTables');
+  const list = exportSource.slice(listStart, exportSource.indexOf('] as const;', listStart));
+
+  for (const collection of collections) {
+    assert.ok(
+      new RegExp(`table: '${collection}'`).test(list),
+      `public.${collection} syncs to the cloud but api/export.ts never reads it, `
+      + 'so a backup of this account silently leaves it out',
+    );
+  }
+}
+
+console.log(`Cloud collection table contract verified for ${collections.length} collections, all of them exported.`);

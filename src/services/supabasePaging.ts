@@ -32,9 +32,24 @@ type PageResult<Row> = { data: Row[] | null; error: { message: string } | null }
  * query builder produced. Callers pass a closure so the whole query - columns,
  * filters, ordering - stays in one place at the call site.
  *
- * The ordering matters and is the caller's job: paging over an unordered query
- * is not stable, and rows can be seen twice or not at all. Every caller here
- * already ordered by `updated_at`, which is enough.
+ * The ordering matters, it is the caller's job, and it must end in a column that
+ * is unique within the filtered set. This comment used to say that ordering by
+ * `updated_at` "is enough". It is not, and the workspace this project was built
+ * against is the proof: 1,080 of its 1,086 accounts carry the same `updated_at`
+ * to the microsecond, because they arrived in one import.
+ *
+ * `OFFSET` does not remember the previous page. Each request re-runs the sort
+ * and then counts rows off the top, so rows tied on the sort key may come back
+ * in a different order than they did a moment ago - a different plan, a parallel
+ * scan, or simply another row written between the two requests is enough. When
+ * the tie group straddles the page boundary, the row that was at index 999 can
+ * land at index 1000 on the next request and be returned twice, and the one that
+ * moves the other way is never returned at all.
+ *
+ * Nothing downstream can tell: both pages are a 200 with the expected number of
+ * rows. So every call site appends `.order('id')` last, which makes the order
+ * total and the paging exact. `scripts/verify-storage-safety.mjs` holds callers
+ * to it, because the next one to forget will not see anything go wrong either.
  */
 export async function fetchAllRows<Row>(
   fetchPage: (from: number, to: number) => PromiseLike<PageResult<Row>>,

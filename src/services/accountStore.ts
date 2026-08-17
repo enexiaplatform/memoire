@@ -367,6 +367,9 @@ async function loadCloudAccounts(userId: string): Promise<AccountMemoryRecord[]>
     .select(ACCOUNT_COLUMNS)
     .eq('user_id', userId)
     .order('updated_at', { ascending: false })
+    // The tiebreaker, not decoration: this workspace imported 1,080 accounts in
+    // one batch and they all share an `updated_at`. See `fetchAllRows`.
+    .order('id', { ascending: true })
     .range(from, to));
 
   // The projected column list is not a literal type, so the client hands back

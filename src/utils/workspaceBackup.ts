@@ -225,7 +225,33 @@ function joinWithAnd(values: string[]) {
   return `${values.slice(0, -1).join(', ')} and ${values[values.length - 1]}`;
 }
 
+/**
+ * Two workspace settings predate the `memoire.` convention and are punctuated
+ * `memoire_`, so a prefix test on the dot did not see them. They are not
+ * cosmetic: one is the currency every figure in the product is denominated in,
+ * the other is the opening cash balance the whole cash-on-hand line is built
+ * from.
+ *
+ * Three things went wrong for the want of a character. A backup did not carry
+ * them, so restoring onto a new laptop reopened the workspace in the default
+ * currency with no opening balance and every total quietly re-denominated.
+ * "Clear all Memoire data stored in this browser" left them behind. And the same
+ * clear runs after an account is permanently deleted, so a figure about somebody
+ * else's business stayed on a shared machine after they had asked for all of it
+ * to go.
+ *
+ * Named rather than matched on `memoire` alone, because `memoire_demo_auth` and
+ * `memoire_demo_workspace` are also underscored and must stay out - they are
+ * demo-mode flags, and carrying one into a restore would put a live workspace
+ * into the sandbox.
+ */
+export const LEGACY_WORKSPACE_KEYS = [
+  'memoire_reporting_currency',
+  'memoire_opening_cash_balance',
+] as const;
+
 export function isWorkspaceKey(key: string) {
+  if ((LEGACY_WORKSPACE_KEYS as readonly string[]).includes(key)) return true;
   return key.startsWith(BACKUP_KEY_PREFIX);
 }
 

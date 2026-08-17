@@ -266,6 +266,8 @@ async function loadCloudStakeholders(userId: string) {
     .select(STAKEHOLDER_COLUMNS)
     .eq('user_id', userId)
     .order('updated_at', { ascending: false })
+    // Total order, so paging cannot repeat or skip a person. See `fetchAllRows`.
+    .order('id', { ascending: true })
     .range(from, to));
 
   return (data as unknown as StakeholderRow[]).map(rowToStakeholder);

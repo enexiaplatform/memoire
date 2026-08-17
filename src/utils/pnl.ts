@@ -2,7 +2,7 @@ import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { ExpenseRecord } from '../services/expenseStore.ts';
 import { expenseCategories, type ExpenseCategory } from '../services/expenseStore.ts';
 import { buildCashPosition, getOpeningCashBalance } from './cashPosition.ts';
-import { getReportingCurrency, sumMoney, type SupportedCurrency } from './money.ts';
+import { getReportingCurrency, hasExchangeRate, sumMoney, type SupportedCurrency } from './money.ts';
 import { sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 
 /**
@@ -48,6 +48,22 @@ export type ProfitAndLoss = {
    * amount was already in the reporting currency, which is the common case.
    */
   convertedFrom: string[];
+  /**
+   * Currencies nobody has priced, whose money is therefore **not in these
+   * totals at all**.
+   *
+   * `sumMoney` drops an amount it cannot convert rather than inventing a rate,
+   * which is the right call - but this statement used to list those currencies
+   * under `convertedFrom` and print "includes SEK converted at planning rates".
+   * The money was not included and nothing was converted: the revenue line was
+   * short by the whole amount, and the one sentence that could have said so said
+   * the opposite. An operator picking a currency the product ships no rate for is
+   * a supported path (see `listSelectableCurrencies`), so this is reachable by
+   * choosing your own country's money and never visiting Settings.
+   */
+  excludedCurrencies: string[];
+  /** How many paid records were left out of the totals for want of a rate. */
+  excludedRecordCount: number;
 };
 
 type PnlInput = {
@@ -104,13 +120,22 @@ export function buildProfitAndLoss(input: PnlInput): ProfitAndLoss {
     .sort((left, right) => right.totalBase - left.totalBase);
 
   // Named from the amounts that actually contributed to this period, so the
-  // disclosure appears only when a conversion really happened.
-  const convertedFrom = [...new Set([
+  // disclosure appears only when a conversion really happened - and split by
+  // whether a conversion was possible at all, because the two need opposite
+  // sentences. `sumMoney` silently drops what it cannot price.
+  const periodCurrencies = [...new Set([
     ...paidQuotesInPeriod.map((quote) => (quote.currency || '').trim().toUpperCase()),
     ...paidExpensesInPeriod.map((expense) => (expense.currency || '').trim().toUpperCase()),
   ])]
     .filter((currency) => currency && currency !== reportingCurrency)
     .sort();
+
+  const convertedFrom = periodCurrencies.filter((currency) => hasExchangeRate(currency));
+  const excludedCurrencies = periodCurrencies.filter((currency) => !hasExchangeRate(currency));
+  const isExcluded = (currency?: string | null) =>
+    excludedCurrencies.includes((currency || '').trim().toUpperCase());
+  const excludedRecordCount = paidQuotesInPeriod.filter((quote) => isExcluded(quote.currency)).length
+    + paidExpensesInPeriod.filter((expense) => isExcluded(expense.currency)).length;
 
   return {
     period: input.period,
@@ -128,6 +153,8 @@ export function buildProfitAndLoss(input: PnlInput): ProfitAndLoss {
     cashOnHandBase: cash.cashOnHandBase,
     projectedCashBase: cash.projectedCashBase,
     convertedFrom,
+    excludedCurrencies,
+    excludedRecordCount,
   };
 }
 

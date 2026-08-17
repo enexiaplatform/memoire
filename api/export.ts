@@ -73,6 +73,13 @@ export const exportTables = [
   { table: 'order_milestones', ownerColumn: 'user_id' },
   { table: 'supplier_commitments', ownerColumn: 'user_id' },
   { table: 'commercial_targets', ownerColumn: 'user_id' },
+  // What the operator wrote down themselves. The Business Vault's notes are the
+  // only records here that were typed rather than derived, which makes them the
+  // ones a backup can least afford to lose. This table shipped on 2026-08-09 and
+  // was not added here, so every export taken since carried a `complete: true`
+  // manifest over a file with no notes in it - the same drift, in the same
+  // direction, that this list was already rewritten once to fix.
+  { table: 'knowledge_notes', ownerColumn: 'user_id' },
   // Judgements the operator made that no other row records: which names are the
   // same customer, which nudges they have already answered, how they work.
   { table: 'account_merges', ownerColumn: 'user_id' },

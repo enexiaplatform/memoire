@@ -433,6 +433,9 @@ async function loadCloudActivities(userId: string): Promise<SalesActivityRecord[
     .eq('user_id', userId)
     .order('activity_date', { ascending: false })
     .order('created_at', { ascending: false })
+    // `activity_date` is a DATE and a day holds many touches, so the pair above
+    // is not a total order. See `fetchAllRows`.
+    .order('id', { ascending: true })
     .range(from, to) as never);
 
   return data.map(rowToRecord);

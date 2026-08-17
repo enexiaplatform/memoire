@@ -382,6 +382,8 @@ async function loadCloudOpportunities(userId: string): Promise<CrmLiteOpportunit
     .select('*,account:account_id(id,name,account_name)')
     .eq('user_id', userId)
     .order('updated_at', { ascending: false })
+    // Total order, so paging cannot repeat or skip a deal. See `fetchAllRows`.
+    .order('id', { ascending: true })
     .range(from, to) as never);
 
   return data.map(rowToOpportunity);

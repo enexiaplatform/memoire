@@ -104,4 +104,47 @@ for (const [label, file] of [
   assert.ok(settings.includes('<StoragePanel'), 'Settings must show what this workspace is storing');
 }
 
-console.log('Storage safety verified: one guarded write path, a refusal that is reported, and a warning that cannot be dismissed.');
+// 5. Every paged read has a total order.
+//
+//    `fetchAllRows` walks a collection with OFFSET, and OFFSET does not remember
+//    the previous page: each request re-runs the sort and counts rows off the
+//    top. Order by a column that repeats and the rows tied on it may come back
+//    in a different order a moment later, so one straddling the page boundary is
+//    returned twice and its neighbour is never returned at all. This is not
+//    hypothetical here - 1,080 of this project's 1,086 accounts share an
+//    `updated_at` to the microsecond, because they arrived in one import.
+//
+//    Both pages are a 200 carrying the expected number of rows, so nothing in
+//    the app or the test suite can see it. Only this can.
+{
+  const offenders = serviceFiles.flatMap((file) => {
+    // Comments stripped first: the call sites explain in prose why the
+    // tiebreaker is there, and prose must not be able to satisfy the check.
+    const source = readFileSync(file, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
+
+    return source.split('.range(from, to)').slice(0, -1).flatMap((before) => {
+      // One query chain back. Long enough for the longest select here, short
+      // enough that it cannot reach the previous query in the same file.
+      const chain = before.slice(-700);
+      return /\.order\(\s*'id'/.test(chain) ? [] : [file];
+    });
+  });
+
+  assert.deepEqual(
+    offenders,
+    [],
+    'these paged reads do not end their ordering in a unique column, so a page '
+    + `boundary can repeat one row and lose another: ${[...new Set(offenders)].join(', ')}`,
+  );
+
+  // And the helper has to keep saying why, because the call sites point at it.
+  const paging = readFileSync('src/services/supabasePaging.ts', 'utf8');
+  assert.ok(
+    paging.includes('unique within the filtered set'),
+    'supabasePaging must state that the final order column has to be unique',
+  );
+}
+
+console.log('Storage safety verified: one guarded write path, a refusal that is reported, a warning that cannot be dismissed, and paged reads that cannot skip a row.');

@@ -6,6 +6,7 @@ import {
   BACKUP_FORMAT_VERSION,
   buildRestorePlan,
   describeCloudExportGaps,
+  isWorkspaceKey,
   parseBackupFile,
   type BackupEnvelope,
   type BackupSummary,
@@ -501,11 +502,15 @@ function friendlyStoreName(key: string) {
     .replace(/^./, (character) => character.toUpperCase());
 }
 
+// Both of these ask `isWorkspaceKey` rather than testing the prefix themselves.
+// The rule for what belongs to a workspace was written out in four places - here,
+// the clear below, and twice in workspaceBackup - and the two copies here were
+// the ones that never learned about the underscored preference keys.
 function collectLocalMemoireData() {
   const data: Record<string, unknown> = {};
   for (let index = 0; index < window.localStorage.length; index += 1) {
     const key = window.localStorage.key(index);
-    if (!key || !key.startsWith('memoire.')) continue;
+    if (!key || !isWorkspaceKey(key)) continue;
     const value = window.localStorage.getItem(key);
     if (value === null) continue;
     try {
@@ -521,7 +526,7 @@ function clearMemoireLocalData() {
   const keys: string[] = [];
   for (let index = 0; index < window.localStorage.length; index += 1) {
     const key = window.localStorage.key(index);
-    if (key?.startsWith('memoire.')) keys.push(key);
+    if (key && isWorkspaceKey(key)) keys.push(key);
   }
   keys.forEach((key) => window.localStorage.removeItem(key));
 }

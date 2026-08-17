@@ -64,6 +64,14 @@ const expectedTables = [
   ['order_milestones', 'user_id'],
   ['supplier_commitments', 'user_id'],
   ['commercial_targets', 'user_id'],
+  // The operator's own written notes. This list did not catch `knowledge_notes`
+  // going missing from the export for eight days, because it is a second copy of
+  // the same list and was written from it - two hand-maintained copies drift
+  // together and protect nothing. What actually holds the export to the app is
+  // verify-cloud-collection-tables.mjs, which derives the collections from
+  // `CloudJsonCollectionTable` rather than restating them. This file's job is the
+  // owner column and the contamination guard.
+  ['knowledge_notes', 'user_id'],
   ['account_merges', 'user_id'],
   ['nudges', 'user_id'],
   ['operating_context', 'user_id'],

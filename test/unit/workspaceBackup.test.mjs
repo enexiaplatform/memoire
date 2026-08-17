@@ -4,6 +4,7 @@ import {
   BACKUP_FORMAT_VERSION,
   buildRestorePlan,
   describeCloudExportGaps,
+  isWorkspaceKey,
   parseBackupFile,
   summarizeBackup,
 } from '../../src/utils/workspaceBackup.ts';
@@ -29,6 +30,45 @@ test('a valid export parses and summarizes', () => {
   assert.equal(result.summary.totalKeys, 3, 'only memoire.* keys count');
   assert.equal(result.summary.totalRecords, 3);
   assert.equal(result.summary.totalSampleRecords, 1);
+});
+
+describe('what counts as a workspace key', () => {
+  test('the two underscored settings belong to the workspace, the demo flags do not', () => {
+    // Both are workspace settings that predate the `memoire.` convention. Missing
+    // them meant a restored workspace reopened in the wrong currency with no
+    // opening balance, and "clear this browser" left both behind.
+    assert.equal(isWorkspaceKey('memoire_reporting_currency'), true);
+    assert.equal(isWorkspaceKey('memoire_opening_cash_balance'), true);
+
+    // Demo-mode flags are underscored too and must stay out: restoring one puts
+    // a live workspace into the sandbox.
+    assert.equal(isWorkspaceKey('memoire_demo_auth'), false);
+    assert.equal(isWorkspaceKey('memoire_demo_workspace'), false);
+
+    assert.equal(isWorkspaceKey('memoire.opportunities.v1'), true);
+    assert.equal(isWorkspaceKey('unrelated.key'), false);
+  });
+
+  test('a backup carries the reporting currency and opening balance through a restore', () => {
+    const backup = {
+      exportedAt: '2026-08-17T09:00:00.000Z',
+      formatVersion: BACKUP_FORMAT_VERSION,
+      mode: 'local-only',
+      localBrowserData: {
+        'memoire.opportunities.v1': [{ id: 'o1' }],
+        memoire_reporting_currency: 'SGD',
+        memoire_opening_cash_balance: '250000',
+      },
+    };
+
+    const parsed = parseBackupFile(JSON.stringify(backup));
+    assert.equal(parsed.ok, true);
+
+    const plan = buildRestorePlan(parsed.envelope);
+    const written = Object.fromEntries(plan.writes.map((write) => [write.key, write.value]));
+    assert.equal(written.memoire_reporting_currency, '"SGD"');
+    assert.equal(written.memoire_opening_cash_balance, '"250000"');
+  });
 });
 
 test('non-Memoire files are refused with a reason, not best-effort parsed', () => {

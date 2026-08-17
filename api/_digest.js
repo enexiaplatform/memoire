@@ -58,7 +58,9 @@ export async function loadDigestInputs(supabase, userId, today) {
   const [opportunities, activities, quotes, expenses] = await Promise.all([
     supabase
       .from('opportunities')
-      .select('id, account_name, opportunity_name, title, stage, status, next_action, next_action_date, estimated_value, currency, updated_at')
+      // `created_at` and `last_touch_at` are read for the quiet rule below, which
+      // cannot be right without them.
+      .select('id, account_name, opportunity_name, title, stage, status, next_action, next_action_date, estimated_value, currency, created_at, last_touch_at, updated_at')
       .eq('user_id', userId)
       .limit(1000),
     supabase
@@ -132,12 +134,27 @@ export function buildDailyDigest(input, today) {
   const quiet = open
     .map((opportunity) => {
       const account = String(opportunity.account_name || '').trim().toLowerCase();
-      const lastTouch = account ? lastTouchByAccount.get(account) : undefined;
+      const accountTouch = account ? lastTouchByAccount.get(account) : undefined;
+      // The deal carries its own last touch, and it is not always the account's:
+      // a deal edited from the drawer records nothing in `sales_activities`.
+      const dealTouch = dateKey(opportunity.last_touch_at);
+      const lastTouch = [accountTouch, dealTouch].filter(Boolean).sort().pop() || '';
       const days = lastTouch ? daysBetween(lastTouch, today) : null;
-      return { opportunity, lastTouch, days };
+      // A deal with no touch has not "gone quiet" - it has not been worked yet,
+      // and the two are only the same once enough time has passed for silence to
+      // mean something. Measuring from nothing counted every untouched deal as
+      // quiet on the day it arrived, so the first digest after an import told an
+      // operator their entire pipeline had been neglected for a fortnight when
+      // they had owned it for an hour.
+      const age = daysBetween(dateKey(opportunity.created_at), today);
+      return { opportunity, lastTouch, days, age };
     })
-    .filter((entry) => entry.days === null || entry.days >= QUIET_DAYS)
-    .sort((left, right) => (right.days ?? 9999) - (left.days ?? 9999));
+    .filter((entry) => (entry.days === null
+      // Unknown age means a row with no usable `created_at`, which is old data
+      // rather than new: reporting it is the safer half of the guess.
+      ? entry.age === null || entry.age >= QUIET_DAYS
+      : entry.days >= QUIET_DAYS))
+    .sort((left, right) => (right.days ?? right.age ?? 9999) - (left.days ?? left.age ?? 9999));
 
   const stuckMoney = input.quotes.filter((quote) => {
     if (quote.__deleted === true || quote.status === 'Rejected') return false;
@@ -169,8 +186,10 @@ export function buildDailyDigest(input, today) {
   if (quiet.length > 0) {
     lines.push(`${quiet.length} live deal${quiet.length === 1 ? '' : 's'} with nothing recorded in ${QUIET_DAYS} days:`);
     quiet.slice(0, 5).forEach((entry) => {
-      const age = entry.days === null ? 'no touch ever recorded' : `quiet ${entry.days} days`;
-      lines.push(`  · ${entry.opportunity.account_name || 'No account'} / ${dealName(entry.opportunity)} — ${age}`);
+      const since = entry.days !== null
+        ? `quiet ${entry.days} days`
+        : (entry.age !== null ? `no touch in the ${entry.age} days you have held it` : 'no touch ever recorded');
+      lines.push(`  · ${entry.opportunity.account_name || 'No account'} / ${dealName(entry.opportunity)} — ${since}`);
     });
   }
   if (stuckMoney.length > 0) {

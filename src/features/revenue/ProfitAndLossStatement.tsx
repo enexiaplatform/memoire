@@ -47,6 +47,19 @@ export function ProfitAndLossStatement({
                 <> · includes {pnl.convertedFrom.join(', ')} converted at planning rates</>
               )}
             </p>
+            {/* Money nobody could price is not in these totals. That is the
+                honest handling, and it is only honest if the statement says so -
+                this line used to read "includes SEK converted at planning
+                rates" over a revenue figure that had left the SEK out. */}
+            {pnl.excludedCurrencies.length > 0 && (
+              <p className="mt-1 text-xs font-semibold text-amber-700" role="status">
+                {pnl.excludedRecordCount} paid record{pnl.excludedRecordCount === 1 ? '' : 's'} in{' '}
+                {pnl.excludedCurrencies.join(', ')} {pnl.excludedRecordCount === 1 ? 'is' : 'are'} not
+                counted here — no rate is set.{' '}
+                <Link to="/app/settings" className="underline">Set one in Settings</Link> and these
+                figures will include them.
+              </p>
+            )}
           </div>
         </div>
         <div className="flex rounded-full border border-gray-200 p-0.5">

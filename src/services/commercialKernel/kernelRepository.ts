@@ -137,6 +137,8 @@ export async function loadCloudRecords<T extends KernelRecord>(
     .select('*')
     .eq('user_id', userId)
     .order(codec.orderColumn, { ascending: false })
+    // Total order, so paging cannot repeat or skip a record. See `fetchAllRows`.
+    .order('id', { ascending: true })
     .range(from, to) as never);
 
   return data

@@ -112,6 +112,37 @@ describe('buildProfitAndLoss', () => {
     assert.deepEqual(mixed.convertedFrom, ['EUR', 'USD'], 'foreign currencies are named, reporting currency is not');
   });
 
+  test('money in a currency nobody has priced is declared missing, not declared converted', () => {
+    const pnl = buildProfitAndLoss({
+      // SEK ships no planning rate and the operator has set none, so sumMoney
+      // drops it. The statement has to say that rather than claim it converted.
+      quotes: [quote({ currency: 'VND', amount: 100_000_000 }), quote({ currency: 'SEK', amount: 90_000 })],
+      expenses: [expense({ currency: 'SEK', amount: 10_000 })],
+      period: 'mtd',
+      today: '2026-07-22',
+    });
+
+    assert.equal(pnl.revenueBase, 100_000_000, 'the unpriced amount is genuinely not in the total');
+    assert.equal(pnl.expensesBase, 0);
+    assert.deepEqual(pnl.convertedFrom, [], 'nothing was converted, so nothing is claimed to have been');
+    assert.deepEqual(pnl.excludedCurrencies, ['SEK']);
+    assert.equal(pnl.excludedRecordCount, 2, 'one quote and one expense went uncounted');
+  });
+
+  test('a priced foreign currency converts and is not reported as excluded', () => {
+    const pnl = buildProfitAndLoss({
+      quotes: [quote({ currency: 'EUR', amount: 1000 })],
+      expenses: [],
+      period: 'mtd',
+      today: '2026-07-22',
+    });
+
+    assert.deepEqual(pnl.convertedFrom, ['EUR']);
+    assert.deepEqual(pnl.excludedCurrencies, []);
+    assert.equal(pnl.excludedRecordCount, 0);
+    assert.ok(pnl.revenueBase > 0);
+  });
+
   test('has no margin when there is no revenue', () => {
     const pnl = buildProfitAndLoss({
       quotes: [],

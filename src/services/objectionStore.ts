@@ -266,6 +266,8 @@ async function loadCloudObjections(userId: string) {
     .select('*')
     .eq('user_id', userId)
     .order('updated_at', { ascending: false })
+    // Total order, so paging cannot repeat or skip a record. See `fetchAllRows`.
+    .order('id', { ascending: true })
     .range(from, to) as never);
   return data.map(rowToObjection);
 }
