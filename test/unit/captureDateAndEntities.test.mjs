@@ -204,3 +204,35 @@ describe('a count is written the same way as money', () => {
     assert.equal(formatBytes(0), '0 B');
   });
 });
+
+describe('a slash between two numbers is not always a date', () => {
+  /**
+   * The slash branch is the only one in `extractDueDate` with no keyword in
+   * front of it, so it read any `n/m` in the promise as a deadline - and in this
+   * trade `3/4` is a pipe size. Each note below is a real commitment, so it
+   * reached the Plan carrying a date nobody wrote, months in the past, already
+   * overdue on arrival.
+   */
+  test('a dimension inside a promise does not become a deadline', () => {
+    assert.equal(extractDueDate('Need to send the quote for the 3/4 inch butterfly valve.', ANCHOR), '');
+    assert.equal(extractDueDate('I will confirm the 1/2 inch fittings price.', ANCHOR), '');
+    assert.equal(extractDueDate('Ship the 5/8" hose next.', ANCHOR), '');
+    assert.equal(extractDueDate('Quote 2/3 of the order.', ANCHOR), '');
+  });
+
+  test('and the whole classifier no longer invents one either', () => {
+    const note = 'Need to send the quote for the 3/4 inch butterfly valve.';
+    assert.equal(classifySalesActivity(note, ANCHOR).dueDate, '');
+  });
+
+  test('a pair that carries a year, or a half over 12, is a date whatever follows', () => {
+    assert.equal(extractDueDate('deliver 3/4/2027 as agreed', ANCHOR), '2027-04-03');
+    assert.equal(extractDueDate('deliver 21/8', ANCHOR), '2026-08-21');
+  });
+
+  test('a bare date with no preposition still reads, which is why the test is on what follows', () => {
+    // "chase invoice 03/09" has no keyword in front of it and is a date; a
+    // keyword requirement would have thrown it away.
+    assert.equal(extractDueDate('chase invoice 03/09', ANCHOR), '2026-09-03');
+  });
+});

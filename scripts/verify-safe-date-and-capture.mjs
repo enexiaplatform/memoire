@@ -89,6 +89,15 @@ assert.ok(!JSON.stringify(result).includes('1900-'));
   // The formats that already worked keep working, in their existing order.
   assert.equal(extractDueDate('send it 2026-09-30', '2026-08-16'), '2026-09-30');
   assert.equal(extractDueDate('send it 12/08/2026', '2026-08-16'), '2026-08-12', 'slash dates stay day-first');
+  // A pipe size is not a deadline. This trade writes 3/4, 1/2 and 5/8 constantly,
+  // and each of these notes is a real commitment, so the invented date reached
+  // the Plan already months overdue while capture reported success.
+  assert.equal(extractDueDate('send the quote for the 3/4 inch valve', '2026-08-16'), '');
+  assert.equal(extractDueDate('ship the 5/8" hose', '2026-08-16'), '');
+  assert.equal(extractDueDate('deliver 2/3 of the order', '2026-08-16'), '');
+  // Only the ambiguous small-number pair is refused, and only before a unit.
+  assert.equal(extractDueDate('deliver 3/4/2027 as agreed', '2026-08-16'), '2027-04-03');
+  assert.equal(extractDueDate('chase invoice 03/09', '2026-08-16'), '2026-09-03');
   assert.equal(extractDueDate('send it next Tuesday', '2026-08-16'), '2026-08-18');
 }
 

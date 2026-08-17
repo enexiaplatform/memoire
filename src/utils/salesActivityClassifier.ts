@@ -512,7 +512,7 @@ export function extractDueDate(rawNote: string, activityDate: string) {
   if (namedMonthDate) return namedMonthDate;
 
   const slashDate = rawNote.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
-  if (slashDate) {
+  if (slashDate && !isMeasurementNotADate(rawNote, slashDate)) {
     const parsed = readSlashDate(slashDate[1], slashDate[2], slashDate[3], anchor.getFullYear());
     if (parsed) return sanitizeBusinessDate(parsed);
   }
@@ -614,6 +614,37 @@ function prefersMonthFirstDates() {
  * month, so `12/25` is read as December 25th rather than refused - a note is not
  * a form and people paste both.
  */
+/**
+ * `3/4` in a distributor's note is a pipe size, not the third of April.
+ *
+ * The slash branch is the only one in `extractDueDate` with no keyword in front
+ * of it, so it read any `n/m` in the promise sentence as a deadline. Measured on
+ * notes this trade actually writes:
+ *
+ *   "Need to send the quote for the 3/4 inch butterfly valve." -> 2026-04-03
+ *   "I will confirm the 1/2 inch fittings price."              -> 2026-02-01
+ *   "Must deliver 2/3 of the order this month."                -> 2026-03-02
+ *
+ * Each is a real commitment, so it lands on the Plan - carrying a date nobody
+ * wrote, months in the past, already overdue on arrival. The capture screen then
+ * tells the operator their commitment was recorded, which is the exact failure
+ * the rest of this file is built to prevent.
+ *
+ * The test is what *follows* the pair rather than a keyword before it, because a
+ * keyword requirement would break "chase invoice 03/09" - a bare date with no
+ * preposition, which people write. A pair that carries a year, or one where
+ * either half is over 12, is a date whatever follows it: only the genuinely
+ * ambiguous small-number pair is refused, and only when a unit of measure or
+ * "of" comes next.
+ */
+function isMeasurementNotADate(rawNote: string, match: RegExpMatchArray) {
+  if (match[3]) return false;
+  if (Number(match[1]) > 12 || Number(match[2]) > 12) return false;
+
+  const after = rawNote.slice((match.index ?? 0) + match[0].length);
+  return /^\s*(?:"|''|in\b|inch|inches|mm\b|cm\b|m\b|kg\b|g\b|tons?\b|tonnes?\b|lbs?\b|ml\b|l\b|hp\b|kw\b|bar\b|psi\b|%|of\b)/i.test(after);
+}
+
 function readSlashDate(firstPart: string, secondPart: string, yearPart: string | undefined, fallbackYear: number) {
   const first = Number(firstPart);
   const second = Number(secondPart);
