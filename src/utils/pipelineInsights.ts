@@ -1,4 +1,5 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
+import { normalizeEntityName } from './accountIdentity.ts';
 import { opportunityStages } from '../services/opportunityStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import { sumMoneyInBase } from './money';
@@ -46,16 +47,32 @@ export function buildPipelineHealthSummary(
 
   const valueOf = (list: CrmLiteOpportunity[]) => sumMoneyInBase(list.map(opportunityMoney));
 
-  const accountTotals = new Map<string, number>();
+  /**
+   * Keyed canonically, displayed as typed.
+   *
+   * The key used to be the raw trimmed name, so "CÔNG TY X" and "Cong ty X" -
+   * and even "VNVC" and "vnvc" - were two accounts. This total feeds the
+   * concentration figure, which is a *risk* number: splitting one customer's
+   * pipeline across two keys makes the top account's share look smaller than it
+   * is, and the whole point of the number is to warn that too much of the
+   * quarter rests on one relationship.
+   */
+  const accountTotals = new Map<string, { name: string; total: number }>();
   for (const opportunity of active) {
-    const key = (opportunity.accountName || 'No account').trim() || 'No account';
-    accountTotals.set(key, (accountTotals.get(key) || 0) + sumMoneyInBase([opportunityMoney(opportunity)]));
+    const name = (opportunity.accountName || '').trim() || 'No account';
+    const key = normalizeEntityName(name) || 'no account';
+    const current = accountTotals.get(key) || { name, total: 0 };
+    current.total += sumMoneyInBase([opportunityMoney(opportunity)]);
+    accountTotals.set(key, current);
   }
   const activeValueBase = valueOf(active);
   let concentration: PipelineHealthSummary['concentration'] = null;
   if (activeValueBase > 0 && accountTotals.size > 0) {
-    const [topAccountName, topValue] = [...accountTotals.entries()].sort((a, b) => b[1] - a[1])[0];
-    concentration = { topAccountName, topAccountShare: Math.round((topValue / activeValueBase) * 100) };
+    const top = [...accountTotals.values()].sort((a, b) => b.total - a.total)[0];
+    concentration = {
+      topAccountName: top.name,
+      topAccountShare: Math.round((top.total / activeValueBase) * 100),
+    };
   }
 
   const atRiskValue = valueOf(grouped.atRisk);
