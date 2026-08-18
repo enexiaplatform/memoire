@@ -575,6 +575,26 @@ export const featureRegistry: FeatureRecord[] = [
     dataRetention: 'Validation feedback preserved.',
     killOrActivationCondition: 'Founder-only.',
   },
+  {
+    id: 'admin-console',
+    label: 'Operator console',
+    status: 'founder',
+    ownerSurface: 'founder tooling',
+    // The only route in this registry that does not begin `/app`. It is not a
+    // workspace surface: it reads across every workspace on the deployment, and
+    // the six-destination product it would otherwise be the seventh member of
+    // is exactly what the navigation contract protects.
+    route: '/admin',
+    routeBehavior: 'compatibility',
+    navVisible: false,
+    // The console must not measure itself. Product events describe operators
+    // running their commercial loop, and admin page views would sit in the same
+    // funnel as customer activity while belonging to a different question.
+    analytics: 'none',
+    dataRetention: 'Reads only; writes nothing. Counts are computed per request and never stored.',
+    killOrActivationCondition:
+      'Operator-only forever. Access is granted by ADMIN_USER_IDS/ADMIN_EMAILS on the server, never by a client flag.',
+  },
 
   // --------------------------------------------------------------- removed
   {

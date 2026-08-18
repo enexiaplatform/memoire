@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from '
 import { AppErrorBoundary } from './components/common/AppErrorBoundary';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { isFounderWorkspaceEnabled } from './lib/demoMode';
+import { WebAnalytics } from './lib/webAnalytics';
 import { LibraryGate } from './features/library/LibraryGate';
 
 const AppShell = lazy(() => import('./components/layout/AppShell').then((module) => ({ default: module.AppShell })));
@@ -26,6 +27,9 @@ const LegalPage = lazy(() => import('./features/legal/LegalPage').then((module) 
 const SharedBriefPage = lazy(() => import('./features/pipeline/SharedBriefPage').then((module) => ({ default: module.SharedBriefPage })));
 const ValidationFeedbackPage = lazy(() =>
   import('./features/validation/ValidationFeedbackPage').then((module) => ({ default: module.ValidationFeedbackPage })),
+);
+const AdminDashboardPage = lazy(() =>
+  import('./features/admin/AdminDashboardPage').then((module) => ({ default: module.AdminDashboardPage })),
 );
 const TodayPage = lazy(() => import('./features/dashboard/DashboardPage').then((module) => ({ default: module.TodayPage })));
 const TimelinePage = lazy(() => import('./features/timeline/TimelinePage').then((module) => ({ default: module.TimelinePage })));
@@ -85,6 +89,9 @@ function App() {
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AppErrorBoundary>
+      {/* Inside the router so a client-side navigation counts as a pageview,
+          and outside Suspense so a lazy chunk still loading never delays it. */}
+      <WebAnalytics />
       <Suspense fallback={<RouteLoading />}>
         <Routes>
           {/* Public routes */}
@@ -112,6 +119,27 @@ function App() {
             element={
               <ProtectedRoute>
                 <FirstRunPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* The operator console. Outside `/app` on purpose, and not merely
+              outside the shell: everything under `/app` is one person's
+              workspace, and this is the business that runs it. A route inside
+              `/app` would have to be excluded from the rail, from the phone tab
+              bar and from the six-destination contract, one exception at a
+              time - and would still read, to anyone glancing at the URL, as a
+              seventh place to work.
+
+              Signing in is all this route checks. Who may see the numbers is
+              decided in api/admin-metrics.ts, from environment variables that
+              never reach the bundle, because a gate in the browser is a gate
+              the browser can open. */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminDashboardPage />
               </ProtectedRoute>
             }
           />

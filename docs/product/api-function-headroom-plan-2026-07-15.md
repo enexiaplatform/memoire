@@ -52,3 +52,32 @@ Then drive a real capture in the app and confirm AI classification still populat
 Second-safest merge: `export` + `delete-account` into `api/account-data.ts` behind an `action` field (both are low-traffic Settings operations). Do this one **second** and with extra care - `delete-account` is destructive, so its post-deploy check must use a throwaway account.
 
 The real fix for sustained growth is upgrading off Hobby; consolidation buys one or two slots, not a platform.
+
+---
+
+## Update 2026-08-18: the cap is no longer close, and this plan was measuring a
+## surface that no longer exists
+
+Adding `api/admin-metrics.ts` (the operator console) meant counting the routes
+again, and the count in "The constraint" above is stale in both directions.
+
+Five of the twelve endpoints it lists were removed in June with the AI provider -
+`ask-memoire`, `capture-ai-classify`, `generate-embedding`, `search`,
+`structure-capture` - which `verify-no-ai-dependency.mjs` now proves on every
+build. The merge this document prepares is therefore not a plan that is waiting
+to be executed; it is a plan for two files that are gone.
+
+Counted on disk today (excluding `_`-prefixed shared modules, which Vercel does
+not deploy as routes):
+
+`admin-metrics`, `billing`, `client-log`, `delete-account`, `export`, `health`,
+`lemonsqueezy-webhook`, `product-events`, `request-access`, `send-digests`.
+
+**Ten of twelve. Two slots free**, with the operator console already counted.
+
+What survives from the original plan is only the last line, and it is still the
+right one: consolidation buys one or two slots, not a platform. If a thirteenth
+route is ever needed, `export` + `delete-account` behind an `action` field is now
+the first merge to consider rather than the second, and the warning attached to it
+stands - `delete-account` is destructive, so its post-deploy check needs a
+throwaway account.

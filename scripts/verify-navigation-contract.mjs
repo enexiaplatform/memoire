@@ -103,6 +103,7 @@ for (const retiredId of [
   'plan',
   'founder-import',
   'cohort-console',
+  'admin-console',
 ]) {
   const record = registry.match(new RegExp(`id: '${retiredId}',[\\s\\S]*?navVisible: (true|false)`));
   assert.ok(record, `feature registry lost its record for ${retiredId}`);
