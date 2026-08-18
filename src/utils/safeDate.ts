@@ -122,6 +122,32 @@ export function compareSafeBusinessDate(dateA: unknown, dateB: unknown) {
   return left.localeCompare(right);
 }
 
+/**
+ * True when `candidate` is a readable date that happened after `current`.
+ *
+ * `compareSafeBusinessDate` sorts unreadable dates *after* readable ones, which
+ * is right for a list - the rows nobody can act on belong at the bottom. It is
+ * wrong for the other thing four call sites were using it for: keeping the most
+ * recent of a set by asking `compare(candidate, current) > 0`. Under that
+ * reading "sorts after" means "is more recent", so one activity whose date
+ * failed to parse became the account's last touch, and the account was then
+ * reported as touched today.
+ *
+ * That is the worst direction for this product to be wrong in: an unreadable
+ * date silenced the silence detector. `03/04/2026` from a dd/mm import is
+ * enough to do it - see the deadline four months overdue that the same shape of
+ * input produced before.
+ *
+ * So recency asks this instead. An unreadable candidate never wins, and an
+ * unreadable incumbent always loses, which means a set with one readable date
+ * in it keeps that one.
+ */
+export function isMoreRecentBusinessDate(candidate: unknown, current: unknown) {
+  if (!isValidBusinessDate(candidate)) return false;
+  if (!isValidBusinessDate(current)) return true;
+  return compareSafeBusinessDate(candidate, current) > 0;
+}
+
 export function isBusinessDateOverdue(date: unknown, today = todayDateKey()) {
   return isValidBusinessDate(date) && isValidBusinessDate(today) && compareSafeBusinessDate(date, today) < 0;
 }

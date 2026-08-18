@@ -29,10 +29,16 @@ import { starterAssetPacks, type StarterAssetPack } from '../../utils/starterAss
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
 import { reportWorkspaceSyncError } from '../../services/workspaceSyncStatus';
 import { matchesSearchQuery } from '../../utils/textSearch';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 const allFilter = 'All';
 
 export function SalesAssetsPage() {
+  // Four surfaces reached the browser with no title of their own, so the tab,
+  // the history entry and the first thing a screen reader says on arrival all
+  // read as the marketing page. These four do not use PageHeader, which is
+  // where every other page gets this for free.
+  useDocumentTitle('Assets');
   const { loading: authLoading, isAuthenticated, user } = useAuthContext();
   const [assets, setAssets] = useState<SalesAssetRecord[]>([]);
   const [search, setSearch] = useState('');

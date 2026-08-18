@@ -40,11 +40,17 @@ import {
 } from '../../utils/initiativeExperiment';
 import { listInitiativeActivityLinks, readLinkedActivityIds, toggleLinkedActivity } from '../../utils/initiativeActivityLink';
 import { useModalDrawer } from '../../hooks/useModalDrawer';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 type Filter = 'active' | 'initiative' | 'play' | 'all';
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 export function OperatingSystemPage() {
+  // Four surfaces reached the browser with no title of their own, so the tab,
+  // the history entry and the first thing a screen reader says on arrival all
+  // read as the marketing page. These four do not use PageHeader, which is
+  // where every other page gets this for free.
+  useDocumentTitle('Must-win work');
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const sampleDataActive = hasLocalSampleData();

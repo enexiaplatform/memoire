@@ -4,7 +4,7 @@ import { isAttached, type ActivityEntry, type ActivityOrigin, type ActivityRelat
 import { resolveAccountName, type AccountAliasIndex } from './accountAliases.ts';
 import { accountKey } from './accountIdentity.ts';
 import type { BusinessDomain } from './businessDomain.ts';
-import { compareSafeBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
+import { isMoreRecentBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 
 /**
  * The activity ledger read back as analysis.
@@ -37,8 +37,10 @@ export type SubjectRow = {
   done: number;
   open: number;
   overdue: number;
+  /** Empty when nothing in this subject's history carries a readable date. */
   lastDate: string;
-  daysSinceLast: number;
+  /** Null when recency is unknown, which is never the same as touched today. */
+  daysSinceLast: number | null;
   /** How the rows behind this subject got here: capture, a deal, an obligation, or typed. */
   origins: ActivityOrigin[];
 };
@@ -69,7 +71,7 @@ export type AttachmentReading = {
   rate: number | null;
 };
 
-export type SilentSubject = { name: string; type: ActivityRelationType; href: string; daysSinceLast: number };
+export type SilentSubject = { name: string; type: ActivityRelationType; href: string; daysSinceLast: number | null };
 
 export type CoverageGap = { name: string; href: string; reason: 'open deal' | 'account' };
 
@@ -238,13 +240,18 @@ function buildSubjects(entries: ActivityEntry[], allEntries: ActivityEntry[], to
   allEntries.forEach((entry) => {
     const key = subjectKey(entry);
     const existing = lastSeen.get(key);
-    if (!existing || compareSafeBusinessDate(entry.date, existing) > 0) lastSeen.set(key, entry.date);
+    if (isMoreRecentBusinessDate(entry.date, existing)) lastSeen.set(key, entry.date);
   });
 
   const total = entries.length;
   return [...groups.entries()]
     .map(([key, rows]) => {
-      const lastDate = lastSeen.get(key) || rows[0].date;
+      // No readable date anywhere in this subject's history is a state of its
+      // own. It used to arrive here as `rows[0].date`, and `daysBetween` turned
+      // that into 0 - "last touched today" - which is the one answer that
+      // guarantees the subject is never asked about again.
+      const lastDate = lastSeen.get(key) || '';
+      const daysSinceLast = lastDate ? daysBetween(lastDate, today) : null;
       return {
         key,
         name: rows[0].relatedTo.name,
@@ -258,7 +265,7 @@ function buildSubjects(entries: ActivityEntry[], allEntries: ActivityEntry[], to
         open: rows.filter((row) => row.state === 'open').length,
         overdue: rows.filter((row) => row.state === 'overdue').length,
         lastDate,
-        daysSinceLast: daysBetween(lastDate, today),
+        daysSinceLast,
         origins: [...new Set(rows.map((row) => row.origin))],
       };
     })
@@ -275,8 +282,12 @@ function buildSilentSubjects(subjects: SubjectRow[], entries: ActivityEntry[]): 
   return subjects
     .filter((subject) => subject.type !== 'internal')
     .filter((subject) => worked.has(subject.key))
-    .filter((subject) => subject.daysSinceLast >= QUIET_MIN_DAYS)
-    .sort((left, right) => right.daysSinceLast - left.daysSinceLast)
+    // Unknown recency belongs on this list, not off it. The subject was worked
+    // in the period and nothing since can be shown to have happened, which is
+    // the same question the operator needs to answer - it just carries no
+    // number. Sorted last, so it never displaces a customer measurably quiet.
+    .filter((subject) => subject.daysSinceLast === null || subject.daysSinceLast >= QUIET_MIN_DAYS)
+    .sort((left, right) => (right.daysSinceLast ?? -1) - (left.daysSinceLast ?? -1))
     .slice(0, 6)
     .map((subject) => ({
       name: subject.name,

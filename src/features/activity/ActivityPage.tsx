@@ -755,7 +755,7 @@ function SubjectLeaderboard({
                   <span className="flex min-w-0 items-center gap-2">
                     <SubjectChip relation={{ type: subject.type, name: subject.name, href: subject.href }} />
                     <span className="truncate text-[11px] text-gray-400">
-                      last {subject.daysSinceLast === 0 ? 'today' : `${subject.daysSinceLast}d ago`}
+                      {describeRecency(subject.daysSinceLast)}
                     </span>
                   </span>
                   <span className="shrink-0 text-sm font-bold text-navy">
@@ -862,12 +862,25 @@ function UnresolvedPanel({ subjects }: { subjects: SubjectRow[] }) {
  * activity is the most expensive row on this page, and it is the one row that is
  * structurally invisible on a week view - because absence has no date.
  */
+/**
+ * Recency in words, including the one it used to be unable to say.
+ *
+ * A subject whose history carries no readable date reads as null here rather
+ * than 0. Printing "last today" for it was not just wrong on screen - the same
+ * 0 kept it off the quiet list, which is the list this page exists for.
+ */
+function describeRecency(daysSinceLast: number | null) {
+  if (daysSinceLast === null) return 'no readable date';
+  if (daysSinceLast === 0) return 'last today';
+  return `last ${daysSinceLast}d ago`;
+}
+
 function GapsPanel({
   silent,
   gaps,
   periodLabel,
 }: {
-  silent: { name: string; type: ActivityRelationType; href: string; daysSinceLast: number }[];
+  silent: { name: string; type: ActivityRelationType; href: string; daysSinceLast: number | null }[];
   gaps: { name: string; href: string; reason: 'open deal' | 'account' }[];
   periodLabel: string;
 }) {
@@ -887,7 +900,9 @@ function GapsPanel({
             {silent.map((subject) => (
               <li key={`${subject.type}-${subject.name}`} className="flex items-center justify-between gap-2 text-sm">
                 <SubjectChip relation={{ type: subject.type, name: subject.name, href: subject.href }} />
-                <span className="shrink-0 text-xs font-bold text-amber-700">{subject.daysSinceLast}d silent</span>
+                <span className="shrink-0 text-xs font-bold text-amber-700">
+                  {subject.daysSinceLast === null ? 'no readable date' : `${subject.daysSinceLast}d silent`}
+                </span>
               </li>
             ))}
           </ul>

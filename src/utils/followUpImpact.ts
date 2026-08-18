@@ -5,6 +5,7 @@ import { sumMoneyInBase } from './money.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
 import {
   compareSafeBusinessDate,
+  isMoreRecentBusinessDate,
   isValidBusinessDate,
   sanitizeBusinessDate,
   timestampToLocalDateKey,
@@ -178,6 +179,7 @@ function classifyAfterFollowUp(
 ): { status: FollowUpImpactStatus; evidence: string } {
   const wonOutcome = outcomes.find((outcome) => outcome.opportunityId === opportunity.id
     && outcome.outcome === 'Won'
+    && isValidBusinessDate(outcome.outcomeDate)
     && compareSafeBusinessDate(outcome.outcomeDate, followUp.activityDate) >= 0);
   if (wonOutcome || opportunity.status === 'Won') {
     return { status: 'won', evidence: wonOutcome ? `Marked won on ${wonOutcome.outcomeDate}.` : 'Deal marked won.' };
@@ -185,7 +187,7 @@ function classifyAfterFollowUp(
 
   const laterTouch = touchesForOpportunity(opportunity, activities)
     .filter((activity) => activity.id !== followUp.id && !isFollowUpTouch(activity)
-      && compareSafeBusinessDate(activity.activityDate, followUp.activityDate) > 0)
+      && isMoreRecentBusinessDate(activity.activityDate, followUp.activityDate))
     .sort((a, b) => compareSafeBusinessDate(a.activityDate, b.activityDate))
     .at(0);
   if (laterTouch) {

@@ -1135,7 +1135,7 @@ export function PipelineReviewDefenseBriefPage() {
             <p className="mt-2 max-w-3xl text-sm text-gray-500">
               Memoire works beside your company CRM—not in place of it—to prepare, defend, rescue, or downgrade every forecast with manager-ready review answers.
             </p>
-            <div className="mt-4 grid max-w-3xl gap-2 sm:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 max-w-3xl gap-2 sm:grid-cols-2">
               {['What can I defend?', 'What must I rescue?', 'What must I downgrade?', 'What evidence is missing?'].map((question) => (
                 <div key={question} className="rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2 text-sm font-bold text-blue-950">{question}</div>
               ))}
@@ -1170,7 +1170,7 @@ export function PipelineReviewDefenseBriefPage() {
           </div>
           <div className="flex flex-col gap-4">
             {isReviewMode ? (
-              <div className="grid min-w-[320px] gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">
+              <div className="grid grid-cols-1 min-w-[320px] gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">
                 <MetaRow label="Brief" value={activeBrief?.title || 'Pipeline Defense Brief'} />
                 <MetaRow label="Week" value={activeBrief?.weekLabel || pipelineDefenseBriefMeta.week} />
                 <MetaRow label="Sales owner" value={activeBrief?.salesOwner || pipelineDefenseBriefMeta.salesOwner} />
@@ -1178,7 +1178,7 @@ export function PipelineReviewDefenseBriefPage() {
                 <MetaRow label="Period" value={pipelineDefenseBriefMeta.pipelinePeriod} />
               </div>
             ) : (
-              <div className="grid min-w-[320px] gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">
+              <div className="grid grid-cols-1 min-w-[320px] gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">
                 <label className="block">
                   <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Current brief</span>
                   <select
@@ -1192,7 +1192,7 @@ export function PipelineReviewDefenseBriefPage() {
                   </select>
                 </label>
                 <Field label="Brief title" value={activeBrief?.title || ''} onChange={(value) => updateActiveBrief({ title: value })} />
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <Field label="Week label" value={activeBrief?.weekLabel || ''} onChange={(value) => updateActiveBrief({ weekLabel: value })} />
                   <Field label="Sales owner" value={activeBrief?.salesOwner || ''} onChange={(value) => updateActiveBrief({ salesOwner: value })} />
                 </div>
@@ -1204,7 +1204,7 @@ export function PipelineReviewDefenseBriefPage() {
                 </p>
               </div>
             )}
-            <div className="grid gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="rounded-lg border border-brand-blue/20 bg-blue-50/60 p-4">
                 <div className="mb-3 flex flex-col gap-1">
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Primary actions</p>
@@ -1411,7 +1411,7 @@ export function PipelineReviewDefenseBriefPage() {
             </button>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[1fr_0.9fr]">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_0.9fr]">
             <div>
               <textarea
                 value={importInput}
@@ -1618,7 +1618,7 @@ export function PipelineReviewDefenseBriefPage() {
       <section className="mb-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <details>
           <summary className="cursor-pointer text-sm font-bold text-navy">How rules work</summary>
-          <div className="mt-3 grid gap-2 text-sm text-gray-600 md:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-2 text-sm text-gray-600 md:grid-cols-2">
             <p>Missing decision context increases risk because the deal is harder to defend in review.</p>
             <p>Unresolved objection debt increases rescue priority until proof, response, or a confirmed next step exists.</p>
             <p>Weak evidence makes the forecast less defensible, especially when language is unclear, waiting, possible, or not confirmed.</p>
@@ -1763,7 +1763,7 @@ function DefenseCategoryBoard({
             {group.items.length === 0 ? (
               <p className="rounded-lg border border-dashed border-gray-200 bg-white px-4 py-3 text-sm text-gray-500">No deals in this category.</p>
             ) : (
-              <div className="grid gap-4 xl:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                 {group.items.map((item) => (
                   <ManagerReadyDealCard
                     key={item.deal.id}
@@ -1809,7 +1809,7 @@ function ManagerReadyDealCard({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <ManagerBriefFact label="Money" value={item.moneyLabel} />
         <ManagerBriefFact label="Due date" value={item.dueDateLabel} />
         <ManagerBriefFact label="Evidence supporting forecast" value={item.evidence.join('; ') || 'Missing evidence — no customer proof captured'} />
@@ -2182,7 +2182,7 @@ function ShareableBriefPanel({
             ))}
           </div>
         </div>
-        <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
+        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto]">
           <input
             value={briefFeedbackNote}
             onChange={(event) => setBriefFeedbackNote(event.target.value)}
@@ -2196,7 +2196,7 @@ function ShareableBriefPanel({
         {briefFeedbackMessage && <p className="mt-2 text-sm font-semibold text-emerald-700">{briefFeedbackMessage}</p>}
       </section>}
 
-      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
           <p className="text-sm font-bold text-gray-900">Manager summary</p>
           <p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-700">{shareableBrief.managerSummary}</p>
@@ -2255,13 +2255,13 @@ function ShareableBriefPanel({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
         <DealGroup title="Deals to defend" deals={shareableBrief.dealsToDefend} empty="No defendable deals yet." />
         <DealGroup title="Deals to rescue" deals={shareableBrief.dealsToRescue} empty="No rescue deals flagged." />
         <DealGroup title="Downgrade / deprioritize" deals={shareableBrief.dealsToDowngrade} empty="No downgrade candidates flagged." />
       </div>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
           <p className="text-sm font-bold text-gray-900">Top Missing Proof / MEDDIC Gaps</p>
           {shareableBrief.topMissingProofGaps.length === 0 ? (
@@ -2280,7 +2280,7 @@ function ShareableBriefPanel({
 
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
           <p className="text-sm font-bold text-gray-900">Brief Quality Checklist</p>
-          <div className="mt-3 grid gap-2">
+          <div className="mt-3 grid grid-cols-1 gap-2">
             {shareableBrief.qualityChecklist.map((item) => (
               <div key={item.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
                 <div className="flex flex-wrap items-center gap-2">
@@ -2301,7 +2301,7 @@ function ShareableBriefPanel({
         {shareableBrief.nextDefenseActions.length === 0 ? (
           <p className="mt-2 text-sm text-gray-500">No next defense actions defined yet.</p>
         ) : (
-          <div className="mt-3 grid gap-2 md:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
             {shareableBrief.nextDefenseActions.slice(0, 6).map((action) => (
               <article key={action.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
                 <div className="flex flex-wrap gap-2">
@@ -2476,7 +2476,7 @@ function IntelligencePanelStatus({
       {allGenerated ? (
         <p className="text-sm font-semibold text-emerald-700">Risk analysis, review readiness, and weekly actions are generated for the current brief.</p>
       ) : (
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           {!hasRiskSummary && (
             <EmptyPrepCard
               title="Deal risk analysis not run yet"
@@ -2576,7 +2576,7 @@ function BriefQualityReviewPanel({ analysis, onGoToDeal }: { analysis: BriefQual
         )}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <BriefQualityIssueGroup title="High" issues={highIssues} onGoToDeal={onGoToDeal} />
         <BriefQualityIssueGroup title="Medium" issues={mediumIssues} onGoToDeal={onGoToDeal} />
         <BriefQualityIssueGroup title="Low" issues={lowIssues} onGoToDeal={onGoToDeal} />
@@ -2689,7 +2689,7 @@ function WeeklyActionPlanPanel({
           <p className="mt-1 text-sm text-gray-500">Add or import deals, then generate this week's actions again.</p>
         </div>
       ) : (
-        <div className="grid gap-5">
+        <div className="grid grid-cols-1 gap-5">
           {(['Critical', 'High', 'Medium', 'Low'] as ActionPriority[]).map((priority) => (
             <ActionPriorityGroup
               key={priority}
@@ -2730,7 +2730,7 @@ function ActionPriorityGroup({
       {items.length === 0 ? (
         <p className="text-sm text-gray-500">No {priority.toLowerCase()} action items.</p>
       ) : (
-        <div className="grid gap-3">
+        <div className="grid grid-cols-1 gap-3">
           {items.map((item) => {
             const done = doneActionIds.has(item.id);
             return (
@@ -2842,8 +2842,8 @@ function DealDefenseCard({
           </div>
         </div>
 
-        <div className="grid gap-4">
-          <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <Field label="Account" value={deal.account} onChange={(value) => onUpdate({ account: value })} />
             <Field label="Opportunity" value={deal.opportunity} onChange={(value) => onUpdate({ opportunity: value })} />
           </div>
@@ -2856,11 +2856,11 @@ function DealDefenseCard({
 
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
             <p className="mb-3 text-sm font-bold text-amber-900">Objection debt</p>
-            <div className="grid gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <Field label="Objection" value={deal.objectionDebt.objection} onChange={(value) => onUpdateObjection({ objection: value })} />
               <TextAreaField label="Evidence" value={deal.objectionDebt.evidence} onChange={(value) => onUpdateObjection({ evidence: value })} />
               <TextAreaField label="Required proof / action" value={deal.objectionDebt.requiredAction} onChange={(value) => onUpdateObjection({ requiredAction: value })} />
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <Field label="Owner" value={deal.objectionDebt.owner} onChange={(value) => onUpdateObjection({ owner: value })} />
                 <SelectField
                   label="Status"
@@ -2872,7 +2872,7 @@ function DealDefenseCard({
             </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <SelectField
               label="Forecast evidence category"
               value={deal.forecastEvidenceCategory}
@@ -2940,7 +2940,7 @@ function DealDefenseCard({
         </div>
       </div>
 
-      <div className="grid gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <InfoBlock icon={<ShieldCheck className="h-4 w-4" />} title="Deal truth" items={[deal.dealTruth]} />
         <InfoBlock icon={<AlertTriangle className="h-4 w-4" />} title="Risk type" items={deal.riskType} />
         <InfoBlock icon={<ClipboardCheck className="h-4 w-4" />} title="Evidence" items={deal.evidence} />
@@ -3019,7 +3019,7 @@ function RiskSuggestionPanel({ suggestion, onApply }: { suggestion: DealRiskSugg
         </button>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div className="rounded-xl border border-gray-200 bg-white p-3">
           <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Suggested forecast category</p>
           <div className="mt-2">
@@ -3039,7 +3039,7 @@ function RiskSuggestionPanel({ suggestion, onApply }: { suggestion: DealRiskSugg
         {suggestion.riskFlags.length === 0 ? (
           <p className="mt-2 text-sm text-gray-500">No rule flags detected.</p>
         ) : (
-          <div className="mt-2 grid gap-2">
+          <div className="mt-2 grid grid-cols-1 gap-2">
             {suggestion.riskFlags.map((flag) => (
               <div key={flag.id} className="rounded-lg border border-gray-200 p-3">
                 <div className="flex flex-wrap items-center gap-2">
@@ -3112,7 +3112,7 @@ function DraftAssistPanel({
         </button>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] md:items-end">
         <label className="block">
           <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Draft type</span>
           <select
@@ -3356,7 +3356,7 @@ function ManagerQuestions() {
         title="Manager Question List"
         description="Questions to ask yourself or the customer before review."
       />
-      <div className="grid gap-3">
+      <div className="grid grid-cols-1 gap-3">
         {managerQuestions.map((item) => (
           <div key={item.id} className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
             <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-brand-blue" />

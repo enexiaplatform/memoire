@@ -3,7 +3,13 @@ import { normalizeEntityName } from './accountIdentity.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
-import { compareSafeBusinessDate, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
+import {
+  compareSafeBusinessDate,
+  isMoreRecentBusinessDate,
+  isValidBusinessDate,
+  sanitizeBusinessDate,
+  todayDateKey,
+} from './safeDate.ts';
 
 export const RETENTION_QUIET_DAYS = 14;
 
@@ -47,7 +53,7 @@ export function buildRetentionSignals(input: RetentionSignalsInput): RetentionSi
     const key = normalize(quote.accountName);
     if (!key) return;
     const current = latestPaidByAccount.get(key);
-    if (!current || compareSafeBusinessDate(quote.quoteDate, current.quoteDate) > 0) {
+    if (!current || isMoreRecentBusinessDate(quote.quoteDate, current.quoteDate)) {
       latestPaidByAccount.set(key, quote);
     }
   });

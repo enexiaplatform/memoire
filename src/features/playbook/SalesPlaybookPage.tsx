@@ -31,6 +31,7 @@ import {
   type SalesPlaybookSeverity,
 } from '../../utils/salesPlaybook';
 import { matchesSearchQuery } from '../../utils/textSearch';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 const allFilter = 'All';
 
@@ -44,6 +45,11 @@ type PlaybookData = {
 };
 
 export function SalesPlaybookPage() {
+  // Four surfaces reached the browser with no title of their own, so the tab,
+  // the history entry and the first thing a screen reader says on arrival all
+  // read as the marketing page. These four do not use PageHeader, which is
+  // where every other page gets this for free.
+  useDocumentTitle('Playbook');
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const navigate = useNavigate();
   const [data, setData] = useState<PlaybookData>({

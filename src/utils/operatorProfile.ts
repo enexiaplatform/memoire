@@ -7,6 +7,7 @@ import { classifyBusinessDomain } from './businessDomain.ts';
 import { convertMoney, formatCompactBaseAmount } from './money.ts';
 import {
   compareSafeBusinessDate,
+  isMoreRecentBusinessDate,
   isValidBusinessDate,
   sanitizeBusinessDate,
   timestampToLocalDateKey,
@@ -641,7 +642,11 @@ function dedupeOutcomes(outcomes: OpportunityOutcomeRecord[]) {
   outcomes.forEach((outcome) => {
     const key = outcome.opportunityId || outcome.id;
     const existing = byOpportunity.get(key);
-    if (!existing || compareSafeBusinessDate(outcome.outcomeDate, existing.outcomeDate) > 0) {
+    // An outcome whose date will not parse must not win this comparison: it
+    // would take over the deal's result while carrying no evidence of being the
+    // later one. The first record for a key is still kept, so nothing is
+    // dropped - only overtaken by something readable.
+    if (!existing || isMoreRecentBusinessDate(outcome.outcomeDate, existing.outcomeDate)) {
       byOpportunity.set(key, outcome);
     }
   });
