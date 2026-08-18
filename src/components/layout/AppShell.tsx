@@ -14,6 +14,7 @@ import { prefetchPrimaryAppRoutes } from '../../utils/routePrefetch';
 import { hydrateWorkspacePreferences } from '../../services/workspacePreferences';
 import { useAuth } from '../../hooks/useAuth';
 import { PageContainer } from './PageFrame';
+import { RouteErrorBoundary } from '../common/RouteErrorBoundary';
 
 export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -122,9 +123,16 @@ export function AppShell() {
             for most of the trial - see the component. */}
         <TrialStatusBanner />
         <div className="flex-1">
-          <Suspense fallback={<AppContentLoading />}>
-            <Outlet />
-          </Suspense>
+          {/* Keyed on the route so navigating away and back is the retry, and
+              so a screen that broke this morning is not still broken after the
+              operator has moved on. The rail, the tab bar and the banners are
+              all outside it on purpose: a crash inside one destination must
+              leave the way out of it working. */}
+          <RouteErrorBoundary key={pathname} route={pathname}>
+            <Suspense fallback={<AppContentLoading />}>
+              <Outlet />
+            </Suspense>
+          </RouteErrorBoundary>
         </div>
       </main>
       <MobileTabBar onOpenMenu={() => setMobileNavOpen(true)} menuOpen={mobileNavOpen} />

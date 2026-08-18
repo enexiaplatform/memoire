@@ -222,7 +222,29 @@ Today went from 4,475 ms to 2,760 ms, a 38% cut, and because every one of those
 fixes is in shared code it applies to every surface and every re-render, not
 only to the cold load being measured.
 
-**Remaining work:** Today is still over the 1.5 s target. What is left is spread
+**Closed 2026-08-18.** Playwright was never in `devDependencies`, so
+`measure:surfaces` could not run on a clean checkout and this number went
+unmeasured for a fortnight. With the dependency added, at the same 300 deals /
+900 activities / 210 accounts:
+
+| Surface | 2026-08-02 | 2026-08-18 |
+|---|---|---|
+| **today** | **2,760 ms** | **488 ms** |
+| opportunities | 469 ms | 410 ms |
+| accounts | 486 ms | 419 ms |
+| revenue | 527 ms | 469 ms |
+| reviews | 529 ms | 456 ms |
+| timeline | 425 ms | 390 ms |
+| business | 376 ms | 350 ms |
+| activity | 1,172 ms | 462 ms |
+
+All eight are inside the 1.5 s target and the longest frame is 75 ms. The same
+run of `measure:mobile` found two regressions against the 2026-08-03 pass -
+eight 20px tap targets on Opportunities and a currency `<select>` scrolling
+Settings sideways by 96px - both fixed the same day. That is the argument for
+the dependency: a harness nobody can run reports nothing, and says so silently.
+
+**Superseded note:** Today is still over the 1.5 s target. What is left is spread
 thin rather than concentrated - roughly 300 ms of it is the deal action plan
 reached through the Today command centre, and the rest is a 2,700-line page that
 computes fifteen memos on mount over a workspace of sixteen collections. A

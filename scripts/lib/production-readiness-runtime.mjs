@@ -54,6 +54,10 @@ export function evaluateProductionReadiness(env = process.env, options = {}) {
     optional('lemonsqueezy_store', hasEnv(env, 'LEMONSQUEEZY_STORE_ID')),
     optional('lemonsqueezy_webhook_secret', hasEnv(env, 'LEMONSQUEEZY_WEBHOOK_SECRET')),
     optional('billing_checkout_disabled', env.BILLING_CHECKOUT_ENABLED !== 'true'),
+    // The Terms of Service named no operating entity until this was set, and
+    // api/billing.ts refuses a checkout without it. Reported here so the gap is
+    // visible from outside rather than found at the first attempted purchase.
+    optional('legal_entity_named', hasEnv(env, 'LEGAL_ENTITY_NAME')),
   ];
   const requiredFailures = checks.filter((check) => check.severity === 'required' && !check.ok);
 

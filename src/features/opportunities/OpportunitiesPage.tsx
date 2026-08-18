@@ -2669,7 +2669,12 @@ function OpportunityMasterTable({
                         onClick={(event) => event.stopPropagation()}
                         onChange={() => onToggleSelection(opportunity.id)}
                         aria-label={`Select ${opportunity.accountName} / ${opportunity.opportunityName}`}
-                        className="h-4 w-4 accent-brand-blue"
+                        // 16px of box measured 20x20 with the browser's own
+                        // border, which is under the WCAG 2.5.8 floor of 24 and
+                        // was the only failure left on this route at 390px. The
+                        // tick itself stays the size it was; the target does not.
+                        className="h-4 w-4 cursor-pointer accent-brand-blue outline-offset-2 [transform:scale(1.15)]"
+                        style={{ minWidth: 24, minHeight: 24, padding: 2 }}
                       />
                     </td>
 

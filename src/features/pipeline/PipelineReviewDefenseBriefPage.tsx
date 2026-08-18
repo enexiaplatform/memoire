@@ -110,6 +110,7 @@ import { buildForecastCalibration, buildProbabilityCalibration } from '../../uti
 import { ForecastCalibrationPanel } from './ForecastCalibrationPanel';
 import { ProbabilityCalibrationPanel } from './ProbabilityCalibrationPanel';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
+import { capDealList, describeDealListCap } from '../../utils/dealListCap';
 
 const categoryClasses: Record<ForecastEvidenceCategory, string> = {
   Defensible: 'border-emerald-200 bg-emerald-50 text-emerald-700',
@@ -177,6 +178,9 @@ export function PipelineReviewDefenseBriefPage() {
   const [localMigrationStore] = useState<PipelineDefenseBriefStore>(() => loadPipelineDefenseBriefStore());
   const [store, setStore] = useState<PipelineDefenseBriefStore>(localMigrationStore);
   const [editingDealId, setEditingDealId] = useState<string | null>(null);
+  // The deal cards are the tallest thing on the page by a wide margin, so this
+  // is the cap that decides whether the page is a page. See utils/dealListCap.ts.
+  const [allDealsShown, setAllDealsShown] = useState(false);
   const [markdownPreview, setMarkdownPreview] = useState('');
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [saveStatus, setSaveStatus] = useState('Saved locally in this browser');
@@ -230,6 +234,10 @@ export function PipelineReviewDefenseBriefPage() {
   // early on an empty list, which is the only reason this was a warning and not
   // a loop.
   const deals = useMemo(() => activeBrief?.deals || [], [activeBrief]);
+  const dealCardCap = useMemo(
+    () => capDealList(deals, { expanded: allDealsShown }),
+    [deals, allDealsShown],
+  );
 
   // Deep link from Today alarms: ?dealId= opens that deal card for editing and
   // scrolls it into view, so the alarm lands on the handling spot. The scroll
@@ -1662,7 +1670,7 @@ export function PipelineReviewDefenseBriefPage() {
               description={isReviewMode ? 'Compact read-only deal view for pipeline review.' : 'Edit each card while preparing review. Changes update the summary, radar, debt, actions, and decision log immediately.'}
             />
             <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-              {deals.map((deal) => (
+              {dealCardCap.visible.map((deal) => (
                 isReviewMode ? (
                   <PipelineDefenseReviewDealCard key={deal.id} deal={deal} />
                 ) : (
@@ -1701,6 +1709,13 @@ export function PipelineReviewDefenseBriefPage() {
                 )
               ))}
             </div>
+            {dealCardCap.capped && (
+              <ShowMoreDeals
+                hidden={dealCardCap.hidden}
+                expanded={allDealsShown}
+                onToggle={() => setAllDealsShown((open) => !open)}
+              />
+            )}
           </section>
 
           {!isReviewMode && (
@@ -1755,30 +1770,70 @@ function DefenseCategoryBoard({
       />
       <div className="mt-5 space-y-5">
         {groups.map((group) => (
-          <div key={group.category}>
-            <div className="mb-2 flex items-center gap-2">
-              <h3 className="text-sm font-black text-navy">{group.category}</h3>
-              <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-gray-500 ring-1 ring-gray-200">{group.items.length}</span>
-            </div>
-            {group.items.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-gray-200 bg-white px-4 py-3 text-sm text-gray-500">No deals in this category.</p>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                {group.items.map((item) => (
-                  <ManagerReadyDealCard
-                    key={item.deal.id}
-                    item={item}
-                    nudges={nudgesByDeal[item.deal.id] || nudgesByDeal[item.deal.sourceOpportunityId || ''] || []}
-                    copyStatus={copyStatus[item.deal.id]}
-                    onCopy={() => onCopy(item)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          <ManagerReadyCategoryGroup
+            key={group.category}
+            group={group}
+            nudgesByDeal={nudgesByDeal}
+            copyStatus={copyStatus}
+            onCopy={onCopy}
+          />
         ))}
       </div>
     </section>
+  );
+}
+
+/**
+ * One category of the manager-ready briefs, capped on its own.
+ *
+ * Each card here is a full brief for one deal, and every opportunity appears
+ * once - so this section grew exactly as fast as the pipeline did, and at forty
+ * deals it was the tallest thing on the page after the editable cards.
+ * Capping per category rather than across the section keeps the shape of the
+ * review: Defend, Rescue and Downgrade each stay visible even when one of them
+ * is long.
+ */
+function ManagerReadyCategoryGroup({
+  group,
+  nudgesByDeal,
+  copyStatus,
+  onCopy,
+}: {
+  group: { category: string; items: ManagerReadyDealBrief[] };
+  nudgesByDeal: Record<string, NudgeRecord[]>;
+  copyStatus: Record<string, 'copied' | 'failed'>;
+  onCopy: (item: ManagerReadyDealBrief) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const cap = capDealList(group.items, { expanded });
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center gap-2">
+        <h3 className="text-sm font-black text-navy">{group.category}</h3>
+        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-gray-500 ring-1 ring-gray-200">{group.items.length}</span>
+      </div>
+      {group.items.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-gray-200 bg-white px-4 py-3 text-sm text-gray-500">No deals in this category.</p>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {cap.visible.map((item) => (
+              <ManagerReadyDealCard
+                key={item.deal.id}
+                item={item}
+                nudges={nudgesByDeal[item.deal.id] || nudgesByDeal[item.deal.sourceOpportunityId || ''] || []}
+                copyStatus={copyStatus[item.deal.id]}
+                onCopy={() => onCopy(item)}
+              />
+            ))}
+          </div>
+          {cap.capped && (
+            <ShowMoreDeals hidden={cap.hidden} expanded={expanded} onToggle={() => setExpanded((open) => !open)} />
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -2338,6 +2393,35 @@ function MiniMetric({ label, value, tone = 'default' }: { label: string; value: 
   );
 }
 
+/**
+ * The control that stands between a review page and three hundred screens of
+ * scrolling. It always names the number behind it - see utils/dealListCap.ts
+ * for why the cap exists and why the order is never rearranged to justify it.
+ */
+function ShowMoreDeals({
+  hidden,
+  expanded,
+  onToggle,
+}: {
+  hidden: number;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const label = describeDealListCap({ visible: [], hidden, capped: true }, expanded);
+  return (
+    <div className="mt-3 flex justify-center">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50"
+      >
+        {label}
+      </button>
+    </div>
+  );
+}
+
 function DealGroup({ title, deals, empty }: { title: string; deals: PipelineDefenseDeal[]; empty: string }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
@@ -2719,6 +2803,12 @@ function ActionPriorityGroup({
   onToggleDone: (actionId: string) => void;
   onGoToDeal: (dealId: string) => void;
 }) {
+  // The weekly plan derives its actions from the deals, so it grew with the
+  // pipeline exactly like the card list did. Capped per priority: Critical stays
+  // whole in any week a person could actually work.
+  const [expanded, setExpanded] = useState(false);
+  const cap = capDealList(items, { expanded });
+
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -2731,7 +2821,7 @@ function ActionPriorityGroup({
         <p className="text-sm text-gray-500">No {priority.toLowerCase()} action items.</p>
       ) : (
         <div className="grid grid-cols-1 gap-3">
-          {items.map((item) => {
+          {cap.visible.map((item) => {
             const done = doneActionIds.has(item.id);
             return (
               <article key={item.id} className={`rounded-xl border border-gray-200 bg-white p-4 ${done ? 'opacity-70' : ''}`}>
@@ -2770,6 +2860,9 @@ function ActionPriorityGroup({
             );
           })}
         </div>
+      )}
+      {cap.capped && (
+        <ShowMoreDeals hidden={cap.hidden} expanded={expanded} onToggle={() => setExpanded((open) => !open)} />
       )}
     </div>
   );
@@ -3300,6 +3393,9 @@ function MissingContextRadar({ deals }: { deals: PipelineDefenseDeal[] }) {
 }
 
 function ObjectionDebt({ deals }: { deals: PipelineDefenseDeal[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const cap = capDealList(deals, { expanded });
+
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <SectionHeader
@@ -3308,22 +3404,25 @@ function ObjectionDebt({ deals }: { deals: PipelineDefenseDeal[] }) {
         description="Unresolved objections are treated as commercial debt until proof, response, or a customer-confirmed next step exists."
       />
       <div className="space-y-3">
-        {deals.map((deal) => (
+        {cap.visible.map((deal) => (
           <div key={deal.id} className="rounded-lg border border-gray-200 p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-bold text-gray-900">{deal.account}</p>
-                <p className="mt-1 text-sm text-gray-600">{deal.objectionDebt.objection || 'No objection entered yet.'}</p>
+                <p className="mt-1 line-clamp-3 text-sm text-gray-600">{deal.objectionDebt.objection || 'No objection entered yet.'}</p>
               </div>
               <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">{deal.objectionDebt.status}</span>
             </div>
             <p className="mt-3 text-xs font-bold uppercase tracking-wide text-gray-400">Evidence</p>
-            <p className="mt-1 text-sm text-gray-600">{deal.objectionDebt.evidence || 'No evidence entered yet.'}</p>
+            <p className="mt-1 line-clamp-3 text-sm text-gray-600">{deal.objectionDebt.evidence || 'No evidence entered yet.'}</p>
             <p className="mt-3 text-xs font-bold uppercase tracking-wide text-gray-400">Required proof/action</p>
-            <p className="mt-1 text-sm text-gray-600">{deal.objectionDebt.requiredAction || 'No required proof entered yet.'}</p>
+            <p className="mt-1 line-clamp-3 text-sm text-gray-600">{deal.objectionDebt.requiredAction || 'No required proof entered yet.'}</p>
           </div>
         ))}
       </div>
+      {cap.capped && (
+        <ShowMoreDeals hidden={cap.hidden} expanded={expanded} onToggle={() => setExpanded((open) => !open)} />
+      )}
     </section>
   );
 }
@@ -3385,25 +3484,38 @@ function RecommendedActions({ deals }: { deals: PipelineDefenseDeal[] }) {
       />
       <div className="space-y-4">
         {Object.entries(grouped).map(([type, groupedDeals]) => (
-          <div key={type}>
+          <RecommendedActionGroup key={type} type={type} deals={groupedDeals} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** One action type, capped on its own - see utils/dealListCap.ts. */
+function RecommendedActionGroup({ type, deals }: { type: string; deals: PipelineDefenseDeal[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const cap = capDealList(deals, { expanded });
+
+  return (
+    <div>
             <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-900">
               <Target className="h-4 w-4 text-brand-blue" />
               {type}
             </h3>
             <div className="space-y-2">
-              {groupedDeals.map((deal) => (
+              {cap.visible.map((deal) => (
                 <div key={deal.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                   <p className="font-bold text-gray-900">{deal.account}</p>
                   <p className="mt-1 text-sm text-gray-500">{deal.opportunity}</p>
-                  <p className="mt-2 text-sm text-gray-700">{deal.recommendedAction || 'Add the action the sales owner should take this week.'}</p>
-                  <p className="mt-2 text-xs font-medium text-gray-500">Why this week: {deal.pipelineReviewAnswer || 'Pipeline answer is not written yet.'}</p>
+                  <p className="mt-2 line-clamp-3 text-sm text-gray-700">{deal.recommendedAction || 'Add the action the sales owner should take this week.'}</p>
+                  <p className="mt-2 line-clamp-2 text-xs font-medium text-gray-500">Why this week: {deal.pipelineReviewAnswer || 'Pipeline answer is not written yet.'}</p>
                 </div>
               ))}
             </div>
-          </div>
-        ))}
-      </div>
-    </section>
+      {cap.capped && (
+        <ShowMoreDeals hidden={cap.hidden} expanded={expanded} onToggle={() => setExpanded((open) => !open)} />
+      )}
+    </div>
   );
 }
 
@@ -3418,6 +3530,9 @@ function deriveActionType(deal: PipelineDefenseDeal) {
 }
 
 function DecisionLog({ deals }: { deals: PipelineDefenseDeal[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const cap = capDealList(deals, { expanded });
+
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <SectionHeader
@@ -3426,7 +3541,7 @@ function DecisionLog({ deals }: { deals: PipelineDefenseDeal[] }) {
         description="What the sales owner should decide during pipeline review."
       />
       <div className="space-y-3">
-        {deals.map((deal) => (
+        {cap.visible.map((deal) => (
           <div key={deal.id} className="rounded-lg border border-gray-200 p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -3435,10 +3550,13 @@ function DecisionLog({ deals }: { deals: PipelineDefenseDeal[] }) {
               </div>
               <Badge className={decisionClasses[deal.decisionRecommendation]}>{deal.decisionRecommendation}</Badge>
             </div>
-            <p className="mt-3 text-sm text-gray-600">{deal.recommendedAction || 'No next action entered yet.'}</p>
+            <p className="mt-3 line-clamp-3 text-sm text-gray-600">{deal.recommendedAction || 'No next action entered yet.'}</p>
           </div>
         ))}
       </div>
+      {cap.capped && (
+        <ShowMoreDeals hidden={cap.hidden} expanded={expanded} onToggle={() => setExpanded((open) => !open)} />
+      )}
     </section>
   );
 }

@@ -92,6 +92,14 @@ export const exportTables = [
   { table: 'interactions', ownerColumn: 'user_id' },
   { table: 'actions', ownerColumn: 'user_id' },
   { table: 'activity_log', ownerColumn: 'user_id' },
+
+  // The import audit. Left out until 2026-08-18, checked against the live schema
+  // rather than against this list - which is how it was missed, because nothing
+  // warned: these two are the only user-owned tables the export never named, so
+  // the manifest still said `complete: true` while the record of what somebody
+  // imported, and which rows the importer refused, was absent from their backup.
+  { table: 'import_batches', ownerColumn: 'user_id' },
+  { table: 'import_row_results', ownerColumn: 'user_id' },
 ] as const;
 
 /**

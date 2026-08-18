@@ -240,7 +240,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   const windowStart = new Date(now - WINDOW_DAYS * DAY_MS).toISOString();
 
   try {
-    const [authUsers, profiles, events, revenue] = await Promise.all([
+    const [authUsers, profiles, events, revenue, leads] = await Promise.all([
       fetchAuthUsers(supabase),
       fetchAllRows<any>((from, to) => supabase
         .from('user_profiles')
@@ -262,6 +262,19 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         .order('id', { ascending: true })
         .range(from, to)),
       fetchStoreRevenue(),
+      // The contact form's only reader.
+      //
+      // `/api/request-access` writes a lead and notifies nobody, and until
+      // 2026-08-18 this console did not read the table either - so a person who
+      // filled in the form on the marketing site reached a row that no surface
+      // in the product displayed. Empty at the time it was found, which is the
+      // only reason it cost nothing.
+      fetchAllRows<any>((from, to) => supabase
+        .from('early_access_requests')
+        .select('id, name, work_email, role, current_tool, biggest_pain, preferred_use_case, source, created_at')
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(from, to)),
     ]);
 
     // Demo traffic is separated rather than dropped: it is the only measure of
@@ -377,6 +390,26 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
           .sort((a, b) => b[1] - a[1])
           .slice(0, 12)
           .map(([event, count]) => ({ event, count })),
+      },
+
+      // Nobody is emailed when one of these arrives, so this list is the whole
+      // mechanism. It carries the message the person wrote, because a count
+      // alone would tell the operator that somebody wanted something without
+      // telling them what.
+      leads: {
+        total: leads.length,
+        newLast7: leads.filter((lead) => withinDays(lead.created_at, 7, now)).length,
+        recent: leads.slice(0, 20).map((lead) => ({
+          id: lead.id,
+          name: lead.name || '',
+          workEmail: lead.work_email || '',
+          role: lead.role || '',
+          currentTool: lead.current_tool || '',
+          biggestPain: lead.biggest_pain || '',
+          preferredUseCase: lead.preferred_use_case || '',
+          source: lead.source || '',
+          createdAt: lead.created_at,
+        })),
       },
 
       // Sync failures are the one number here that is an alarm rather than a

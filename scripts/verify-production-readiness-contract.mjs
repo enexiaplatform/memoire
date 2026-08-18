@@ -203,12 +203,32 @@ for (const directive of [
   "object-src 'none'",
   "frame-ancestors 'none'",
   "base-uri 'self'",
-  'https://fonts.googleapis.com',
-  'https://fonts.gstatic.com',
   'https://*.supabase.co',
 ]) {
   requireCondition(csp.includes(directive), `Content-Security-Policy missing ${directive}`);
 }
+
+/**
+ * The fonts are served from this origin now.
+ *
+ * The CSP used to name `fonts.googleapis.com` and `fonts.gstatic.com` because
+ * `src/index.css` opened with a Google Fonts `@import` - four serial round trips
+ * before the first painted word, and the only third party the landing page
+ * needed. `scripts/fetch-fonts.mjs` brought the faces into `public/fonts`, so
+ * those two hosts are now the kind of permission that outlives its reason.
+ * Pinned as an absence: putting the `@import` back must fail here rather than
+ * silently reopening the origins.
+ */
+for (const removed of ['fonts.googleapis.com', 'fonts.gstatic.com']) {
+  requireCondition(
+    !csp.includes(removed),
+    `Content-Security-Policy still allows ${removed} - the fonts are self-hosted, so nothing should need it`,
+  );
+}
+requireCondition(
+  !read('src/index.css').includes('fonts.googleapis.com'),
+  'src/index.css must not @import Google Fonts - see scripts/fetch-fonts.mjs',
+);
 requireCondition(
   !/script-src[^;]*unsafe-(inline|eval)/.test(csp),
   "Content-Security-Policy must not allow unsafe-inline or unsafe-eval in script-src - the build emits no inline script, so nothing needs it",

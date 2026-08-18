@@ -53,6 +53,20 @@ export default async function handler(req: any, res: any) {
       return res.status(503).json({ error: 'Checkout is not enabled.' });
     }
 
+    // A card cannot be taken against terms that name no counterparty.
+    //
+    // The Terms of Service said what the service costs and who was liable
+    // without ever saying who "we" is - see src/config/legalEntity.ts. That is
+    // fixable while nobody has paid and unfixable afterwards, because it is
+    // wrong at the moment of every sale made under it. So the flag that opens
+    // checkout is no longer sufficient on its own: the entity has to be named
+    // too, and forgetting produces a refusal here rather than a customer.
+    if (!(process.env.LEGAL_ENTITY_NAME || '').trim()) {
+      return res.status(503).json({
+        error: 'Checkout is closed until the operating entity is named in the Terms of Service.',
+      });
+    }
+
     // The client names a plan, never a variant id - it has no way to know one.
     // Resolving it here keeps the store's configuration server-side, and the
     // allow-list below still decides, so an unconfigured plan cannot be bought.

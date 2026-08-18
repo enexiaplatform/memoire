@@ -4,6 +4,7 @@ import { Footer } from '../../components/marketing/Footer';
 import { PageSeo } from '../../components/marketing/PageSeo';
 import { breadcrumbSchema } from '../../config/structuredData';
 import { CONTACT_EMAIL } from '../../config/contact';
+import { LEGAL_ENTITY, LEGAL_ENTITY_DECLARED } from '../../config/legalEntity';
 
 type LegalDocument = {
   title: string;
@@ -145,6 +146,22 @@ const documents: Record<string, LegalDocument> = {
           'The service may be interrupted or contain errors. Keep independent copies of business-critical information.',
           'To the extent permitted by law, Memoire is not liable for lost opportunities, lost local browser data, inaccurate outputs, or decisions made from generated recommendations.',
         ],
+      },
+      {
+        // Who "we" is. See src/config/legalEntity.ts - while the fields there
+        // are blank this says so plainly rather than leaving the reader to
+        // notice that a contract they are being charged under names nobody.
+        title: 'Who you are contracting with',
+        paragraphs: LEGAL_ENTITY_DECLARED
+          ? [
+            `Memoire is operated by ${LEGAL_ENTITY.name}, ${LEGAL_ENTITY.registration}, registered at ${LEGAL_ENTITY.address}.`,
+            `These terms are governed by ${LEGAL_ENTITY.governingLaw}, and any dispute arising from them is subject to ${LEGAL_ENTITY.disputeVenue}. Nothing here removes a right you have under the consumer law of the country you live in.`,
+            'Lemon Squeezy is the merchant of record for payments and is the seller named on your invoice; its own terms cover the transaction itself.',
+          ]
+          : [
+            `The operating entity behind Memoire has not been named in these terms yet, and no charge is taken while that is true: checkout stays closed. Anything you need to raise in the meantime can be sent to ${CONTACT_EMAIL} and will be answered by the person who runs the service.`,
+            'Lemon Squeezy is the merchant of record for payments and is the seller named on your invoice; its own terms cover the transaction itself.',
+          ],
       },
       {
         title: 'Contact',

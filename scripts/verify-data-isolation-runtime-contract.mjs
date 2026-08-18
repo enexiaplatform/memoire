@@ -82,6 +82,11 @@ const expectedTables = [
   ['interactions', 'user_id'],
   ['actions', 'user_id'],
   ['activity_log', 'user_id'],
+  // The import audit, added 2026-08-18 after checking this list against the
+  // live schema: these two were the only user-owned tables the export never
+  // named, and nothing warned because a missing table cannot raise a warning.
+  ['import_batches', 'user_id'],
+  ['import_row_results', 'user_id'],
 ];
 
 /**

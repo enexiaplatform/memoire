@@ -126,12 +126,19 @@ export function SettingsPage() {
               Totals and charts are shown in this currency. Each deal keeps its own currency; amounts are converted for reporting.
             </p>
           </div>
-          <label className="flex items-center gap-2">
+          {/* A select sizes itself to its widest option, and the widest of these
+              is "AED — UAE Dirham". Unconstrained that came to 453px, which on a
+              390px phone pushed the whole document sideways - the fixed header
+              and the tab bar stretched with it, so the one page where somebody
+              changes their reporting currency was also the one page that
+              scrolled horizontally. `min-w-0` lets it shrink; the option text is
+              still complete when the menu opens. */}
+          <label className="flex min-w-0 items-center gap-2">
             <span className="sr-only">Reporting currency</span>
             <select
               value={pendingCurrency || reportingCurrency}
               onChange={(event) => { void handleCurrencyChange(event.target.value); }}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+              className="min-w-0 max-w-full flex-1 truncate rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
             >
               {selectableCurrencies.map((currency) => (
                 <option key={currency.code} value={currency.code}>

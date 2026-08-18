@@ -70,6 +70,21 @@ type AdminMetrics = {
     topRoutes: Array<{ route: string; count: number }>;
     topEvents: Array<{ event: string; count: number }>;
   };
+  leads: {
+    total: number;
+    newLast7: number;
+    recent: Array<{
+      id: string;
+      name: string;
+      workEmail: string;
+      role: string;
+      currentTool: string;
+      biggestPain: string;
+      preferredUseCase: string;
+      source: string;
+      createdAt: string;
+    }>;
+  };
   trust: {
     syncFailed: number;
     syncRecovered: number;
@@ -223,6 +238,8 @@ export function AdminDashboardPage() {
               <SignupChart days={metrics.accounts.signupsByDay} />
             </Section>
 
+            <LeadsSection leads={metrics.leads} />
+
             <Section title="Money">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                 {/* "Paying" means Lemon Squeezy has a subscription for them.
@@ -333,6 +350,61 @@ export function AdminDashboardPage() {
  * hoisted above every other number, and it says so in words and an icon rather
  * than by turning a tile red - colour alone is not a message.
  */
+/**
+ * Everyone who filled in the contact form, because nothing else shows them.
+ *
+ * `/api/request-access` writes the row and sends no notification, so before
+ * this section existed a lead reached the database and stopped there. It is
+ * placed above Money on purpose: an unanswered lead is the most perishable
+ * thing on this page.
+ */
+function LeadsSection({ leads }: { leads: AdminMetrics['leads'] }) {
+  return (
+    <Section
+      title="Leads"
+      note="From the contact form. Nobody is emailed when one arrives - this list is the whole mechanism."
+    >
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <StatTile label="Leads" value={leads.total} tone="primary" />
+        <StatTile label="New, 7 days" value={leads.newLast7} note="Waiting on a reply" />
+      </div>
+
+      {leads.recent.length === 0 ? (
+        <p className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+          No one has used the contact form yet.
+        </p>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {leads.recent.map((lead) => (
+            <li key={lead.id} className="rounded-lg border border-gray-200 bg-white p-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div>
+                  <p className="text-sm font-bold text-navy">{lead.name || 'No name given'}</p>
+                  <a className="text-sm text-brand-blue hover:underline" href={`mailto:${lead.workEmail}`}>
+                    {lead.workEmail}
+                  </a>
+                </div>
+                <p className="text-xs text-gray-500">{formatLeadDate(lead.createdAt)}</p>
+              </div>
+              {lead.role && <p className="mt-2 text-xs text-gray-500">{lead.role}{lead.currentTool ? ` · uses ${lead.currentTool}` : ''}</p>}
+              {lead.biggestPain && <p className="mt-2 text-sm text-gray-700">{lead.biggestPain}</p>}
+              {lead.preferredUseCase && (
+                <p className="mt-1 text-xs text-gray-500">Wants: {lead.preferredUseCase}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
+  );
+}
+
+function formatLeadDate(value: string) {
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) return '';
+  return new Date(parsed).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
 function TrustBanner({ trust }: { trust: AdminMetrics['trust'] }) {
   const unrecovered = trust.syncFailed - trust.syncRecovered;
 
