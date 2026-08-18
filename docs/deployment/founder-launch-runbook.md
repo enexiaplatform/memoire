@@ -51,6 +51,26 @@ Verify: `/api/health` returns `ok: true` with `no_ai_provider_configured` passin
 2. Redeploy, then check Vercel function logs for `client-log` entries after browsing the production app.
 3. Product events: confirm rows appear in Supabase `product_events` after a run-through. Product analytics posts to the dedicated `/api/product-events` endpoint, separately from operational telemetry and from the request-access lead endpoint.
 
+## Step 3a - Anonymous traffic (added 2026-08-18)
+
+`product_events` only starts at the first thing somebody does *inside* the app.
+It is blind to the landing page, to where a visitor came from, and to everyone
+who read the pricing page and left - which is most of them, and the part that
+matters most during a marketing push. Vercel Web Analytics covers that half.
+
+**Both halves or neither.** Until the project switch is on,
+`/_vercel/insights/script.js` 404s on every page load, which is why the mount is
+behind a flag.
+
+1. Vercel -> Project -> **Analytics** tab -> enable Web Analytics for the project.
+2. Vercel -> Project Settings -> Environment Variables (Production):
+   `VITE_ENABLE_WEB_ANALYTICS = true`
+3. Redeploy.
+
+Verify: fetch any landing-page asset list and confirm `webAnalytics-*.js` is no
+longer the empty `function n(){return null}` it compiles to while the flag is
+off, and that the Analytics tab starts showing pageviews.
+
 ## Step 3b - Email reminders (the daily digest and the Monday review)
 
 Added 2026-08-02. Until these are set, the scheduled send runs and does nothing:
@@ -109,8 +129,45 @@ the next one, and wait for it. `digest_deliveries` records every attempt with
 its outcome, so "the email never arrived" has an answer, and a red run in the
 Actions tab is the first place to look before that.
 
+## Step 3c - Supabase auth hardening and deliverability (added 2026-08-18)
+
+All three are dashboard-only, and the first is the one that decides whether a
+marketing push converts at all.
+
+1. **Custom SMTP.** Supabase -> Project Settings -> Authentication -> SMTP
+   Settings. The built-in service is best-effort, a few messages an hour, and is
+   documented as not for production: without this, most people who sign up in a
+   busy hour never receive their confirmation email and never come back. Use the
+   same verified sending domain as `EMAIL_FROM` in Step 3b.
+2. **Auth rate limits.** Supabase -> Authentication -> Rate Limits. Even with
+   custom SMTP the default is **30 new users per hour**. A launch day will
+   exceed that before lunch; raise it to match the traffic being bought.
+3. **Leaked-password protection.** Supabase -> Authentication -> Sign In /
+   Providers -> Password section. Off today, and the security advisor reports it
+   on every run. The app's own policy (12 characters, four character classes) is
+   strict but cannot know that a strong password already appeared in a breach.
+
+Verify: the security advisor stops reporting `auth_leaked_password_protection`,
+and a real signup on production receives its confirmation email from the custom
+sender rather than `supabase.io`.
+
 ## Step 4 - Paid early access only (Phase: after cohort evidence)
 
+0. **`LEGAL_ENTITY_NAME` first (added 2026-08-18).** `api/billing.ts` refuses to
+   mint a checkout while it is unset, whatever `BILLING_CHECKOUT_ENABLED` says:
+   the Terms of Service named no counterparty and no governing law, and a card
+   cannot be taken against a contract with nobody on the other side. Fill the
+   five fields in `src/config/legalEntity.ts` (that is what `/legal/terms`
+   renders - it currently says plainly that no entity is named yet) and set
+   `LEGAL_ENTITY_NAME` in Vercel to the same registered name. `/api/health`
+   reports `legal_entity_named`, and `npm run verify:legal-entity` fails on a
+   half-filled entity as loudly as on an empty one.
+0b. **Check `LEGACY_ACCESS_BEFORE` before flipping the flag.** It is
+   `2026-08-10` in `src/utils/entitlement.ts`. Every account created after that
+   date and without a subscription flips to `needs_trial` with
+   `canWrite: false` **the moment checkout opens** - so opening it after a
+   marketing push locks that entire cohort out of writing, without warning. Open
+   checkout before the push, or move the date.
 1. Vercel env: `LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_STORE_ID`, `LEMONSQUEEZY_WEBHOOK_SECRET`, the selected `LEMONSQUEEZY_*_VARIANT_ID`, `BILLING_CHECKOUT_ENABLED=true`.
 2. Point the Lemon Squeezy webhook at `https://memoire-official.com/api/lemonsqueezy-webhook`, subscribed to `order_created` and every `subscription_*` event.
 3. Run the B1-B6 billing QA in Lemon Squeezy test mode first (see `commercial-release-gate-2026-06-16.md`).
