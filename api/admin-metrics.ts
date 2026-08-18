@@ -244,7 +244,9 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       fetchAuthUsers(supabase),
       fetchAllRows<any>((from, to) => supabase
         .from('user_profiles')
-        .select('id, subscription_status, subscription_tier, subscription_trial_ends_at, created_at')
+        // The two Lemon Squeezy ids are read for one reason: to tell a paying
+        // customer from a row that merely says 'active'. See `paying` below.
+        .select('id, subscription_status, subscription_tier, subscription_trial_ends_at, created_at, lemonsqueezy_subscription_id, lemonsqueezy_customer_id')
         // Offset paging needs a total order or rows repeat and rows vanish.
         // `created_at` alone is not one: profiles created in the same import
         // share a timestamp, and Postgres is free to order those differently
@@ -289,6 +291,25 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const tierCount = (tier: string) => profiles.filter((profile) => profile.subscription_tier === tier).length;
     const statusCount = (status: string) => profiles.filter((profile) => profile.subscription_status === status).length;
 
+    /**
+     * A subscription Lemon Squeezy knows about.
+     *
+     * `subscription_status` alone does not mean money. Checked against the live
+     * database on 2026-08-18, two profiles read `active`/`team` and neither had
+     * a Lemon Squeezy id - which they must, because the webhook writes
+     * `lemonsqueezy_subscription_id` from the event id on every subscription
+     * event it processes. Checkout has also never been open. So those rows were
+     * set by hand or by an old seed path, and a "Paying: 2" on the first
+     * dashboard the operator ever opens would have been the number lying on day
+     * one, in the direction people most want to believe.
+     *
+     * They are still counted, under their own name, because a comped or legacy
+     * account is a real thing to know about. What they are not is revenue.
+     */
+    const hasBillingAccount = (profile: any) =>
+      Boolean(profile.lemonsqueezy_subscription_id || profile.lemonsqueezy_customer_id);
+    const ENTITLED = new Set(['active', 'on_trial', 'cancelled']);
+
     return res.json({
       generatedAt: new Date(now).toISOString(),
       windowDays: WINDOW_DAYS,
@@ -309,7 +330,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
       billing: {
         checkoutEnabled: process.env.BILLING_CHECKOUT_ENABLED === 'true',
-        paying: statusCount('active'),
+        paying: profiles.filter((profile) => profile.subscription_status === 'active' && hasBillingAccount(profile)).length,
+        // Entitled, but with no billing relationship behind it: comped, seeded
+        // or set by hand. Reported rather than folded into either side.
+        entitledWithoutBilling: profiles.filter(
+          (profile) => ENTITLED.has(profile.subscription_status) && !hasBillingAccount(profile),
+        ).length,
         onTrial: statusCount('on_trial'),
         cancelled: statusCount('cancelled'),
         free: profiles.filter((profile) => !profile.subscription_status || profile.subscription_status === 'free').length,

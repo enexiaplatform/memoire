@@ -195,6 +195,34 @@ check('cross-workspace paging has a total order', () => {
   );
 });
 
+// 9b. "Paying" must mean money, not a column that says so.
+//
+// Checked against the live database on 2026-08-18: two profiles read
+// `subscription_status = 'active'` and neither carried a Lemon Squeezy id,
+// which the webhook writes on every subscription event it processes - and
+// checkout had never been open. Counting those as paying would have put a false
+// revenue number on the first dashboard the operator ever opened.
+check('paying counts a billing relationship, not a status column', () => {
+  assert.ok(
+    endpoint.includes("profile.subscription_status === 'active' && hasBillingAccount(profile)"),
+    'paying must require a Lemon Squeezy subscription or customer id, not just an active status',
+  );
+  assert.ok(
+    endpoint.includes('lemonsqueezy_subscription_id, lemonsqueezy_customer_id'),
+    'the profile read must fetch both Lemon Squeezy ids, or hasBillingAccount is always false',
+  );
+  // The comped/seeded rows are still reported - hiding them would replace one
+  // wrong number with a different missing one.
+  assert.ok(
+    endpoint.includes('entitledWithoutBilling:'),
+    'profiles entitled without a billing account must be reported under their own name',
+  );
+  assert.ok(
+    page.includes('metrics.billing.entitledWithoutBilling'),
+    'the page must show the entitled-without-billing count rather than dropping it',
+  );
+});
+
 // 10. The browser decides nothing. No VITE_ flag and no client-side allow-list
 // may exist: both would ship the gate inside the bundle, where it is a
 // suggestion. (The page names ADMIN_USER_IDS in its refusal copy, which is

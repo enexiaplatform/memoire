@@ -42,6 +42,7 @@ type AdminMetrics = {
   billing: {
     checkoutEnabled: boolean;
     paying: number;
+    entitledWithoutBilling: number;
     onTrial: number;
     cancelled: number;
     free: number;
@@ -224,7 +225,17 @@ export function AdminDashboardPage() {
 
             <Section title="Money">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                <StatTile label="Paying" value={metrics.billing.paying} tone="primary" />
+                {/* "Paying" means Lemon Squeezy has a subscription for them.
+                    A profile can read `active` without one - comped, seeded or
+                    set by hand - and counting those as revenue would be the
+                    number lying in the direction anyone most wants to believe,
+                    so they sit in their own tile with their own name. */}
+                <StatTile label="Paying" value={metrics.billing.paying} tone="primary" note="Has a Lemon Squeezy subscription" />
+                <StatTile
+                  label="Entitled, not billed"
+                  value={metrics.billing.entitledWithoutBilling}
+                  note="Comped or set by hand"
+                />
                 <StatTile label="On trial" value={metrics.billing.onTrial} />
                 <StatTile
                   label="Trials ending in 7 days"
