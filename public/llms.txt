@@ -6,9 +6,17 @@
 > answers for their own pipeline, not for a sales team's manager.
 
 Memoire is web software, installable on iOS and Android, at
-https://www.memoire-official.com. It costs **$10 per month for one person**
-after a **7-day free trial**. The trial takes a card up front and charges when
-it ends; cancelling inside the trial costs nothing. **There is no free tier.**
+https://www.memoire-official.com.
+
+**Current status: free preview.** The store is not open. Every feature is
+available to everyone, signup takes no card, no trial is counting down and
+nothing is charged.
+
+The published price for after the preview is **$10 per month for one person**
+after a **7-day free trial**. That trial takes a card up front and charges when
+it ends; cancelling inside the trial costs nothing. **There is no free tier**
+once the preview is over - a preview that ends and a permanent free plan are
+not the same thing.
 
 ## What it actually does
 
@@ -44,7 +52,9 @@ marketing copy:
 2. **No CRM writeback, ever.** It does not sync to, or write into, Salesforce,
    HubSpot or any other system of record.
 3. **No free tier.** An earlier version of this page advertised one; it declared
-   limits no code enforced, and it was removed rather than built.
+   limits no code enforced, and it was removed rather than built. The free
+   preview running now is a phase with an end and an announced price, not a
+   permanent tier.
 
 It is also not accounting software, not payroll, not inventory, not ecommerce,
 and not a company system of record with a manager dashboard. Teams needing SSO
@@ -72,8 +82,9 @@ deletes it.
   exists for, and the price.
 - [Use Cases](https://www.memoire-official.com/use-cases): the four commercial
   jobs it is built around, each with the surfaces that serve it.
-- [Pricing](https://www.memoire-official.com/pricing): $10 per month, one
-  person, after a 7-day trial. Team is not on sale.
+- [Pricing](https://www.memoire-official.com/pricing): free during the preview;
+  $10 per month, one person, after a 7-day trial once it ends. Team is not on
+  sale.
 - [Request early access](https://www.memoire-official.com/request-access)
 - [Privacy Policy](https://www.memoire-official.com/legal/privacy)
 - [Terms of Service](https://www.memoire-official.com/legal/terms)

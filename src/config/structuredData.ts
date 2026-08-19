@@ -1,4 +1,5 @@
 import { CONTACT_EMAIL } from './contact';
+import { FREE_PREVIEW } from './launchPhase';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_OG_IMAGE, SITE_URL, canonicalUrl } from './seo';
 
 /**
@@ -105,8 +106,15 @@ export function softwareApplicationSchema(options: {
       // The trial is Lemon Squeezy's: card up front, charged when it ends.
       // Declaring it as a free trial rather than a free tier is the whole
       // point - the free tier this site used to advertise did not exist.
+      //
+      // During the free preview the price stays the published price - it is
+      // what the store will charge, and scripts/verify-seo-contract.mjs holds
+      // the structured number to the visible one - but the *terms* must not
+      // claim a card is taken, because checkout is shut and none can be.
       eligibleCustomerType: 'https://schema.org/Enduser',
-      description: `${options.trialDays}-day free trial with the full product, card taken up front and charged only when the trial ends. Cancel inside the trial and you pay nothing. There is no free tier.`,
+      description: FREE_PREVIEW
+        ? `Free for everyone while Memoire is in preview: the full product, no card taken at signup and nothing charged. $${options.monthlyPriceUsd} a month for one person once the preview ends. There is no free tier after it.`
+        : `${options.trialDays}-day free trial with the full product, card taken up front and charged only when the trial ends. Cancel inside the trial and you pay nothing. There is no free tier.`,
     },
   };
 }

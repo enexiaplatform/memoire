@@ -14,6 +14,7 @@ import {
   Search,
   ShieldCheck,
   Smartphone,
+  Sparkles,
   Sun,
   Timer,
   X,
@@ -28,6 +29,13 @@ import {
   softwareApplicationSchema,
   websiteSchema,
 } from '../config/structuredData';
+import {
+  FREE_PREVIEW,
+  PAID_SEO_LINE,
+  PREVIEW_BADGE,
+  PREVIEW_ENDS_NOTE,
+  PREVIEW_SEO_LINE,
+} from '../config/launchPhase';
 import { PERSONAL_MONTHLY_PRICE_USD, TRIAL_DAYS } from '../utils/entitlement';
 
 /**
@@ -44,6 +52,13 @@ import { PERSONAL_MONTHLY_PRICE_USD, TRIAL_DAYS } from '../utils/entitlement';
  *    code applied. The trial is Lemon Squeezy's - card up front, charged when
  *    it ends - and src/utils/entitlement.ts reads the result rather than
  *    inventing one.
+ *
+ *    While `FREE_PREVIEW` is on (src/config/launchPhase.ts) this page describes
+ *    the phase the product is actually in: checkout is shut, no card can be
+ *    taken, and everybody has the whole thing for nothing. The paid copy sits
+ *    beside the preview copy rather than being replaced by it, so launch day is
+ *    one boolean rather than a rewrite. The $10 is still stated, because a
+ *    preview that hides the price it is a preview *of* is a bait.
  * 3. Nothing here may narrow the product. The mocks below are structurally
  *    real - the flag names ("Payment overdue", "Deal going silent"), the seven
  *    order stages, "0 of 5 steps done", the aging buckets and the knowledge-gap
@@ -108,39 +123,74 @@ const notIdealFor = [
   'Quick transactional selling with no follow-up loop',
 ];
 
-const pricingPlans = [
+type PricingPlan = {
+  name: string;
+  price: string;
+  cadence: string;
+  description: string;
+  items: string[];
+  note: string;
+  highlighted: boolean;
+};
+
+/** The same feature list under both phases: only the price line moves. */
+const PERSONAL_ITEMS = [
+  'Unlimited capture and unlimited records',
+  'Search & Insights over everything you have written down',
+  'Orders, Cash Collection and Cost Analysis',
+  'Pipeline Defense Briefs and shareable review packs',
+  'Business Vault, daily digest email and full data export',
+];
+
+const TEAM_PLAN: PricingPlan = {
+  name: 'Team',
+  price: 'Later',
+  cadence: '',
+  description: 'A shared workspace for the people you sell alongside.',
+  items: [
+    'Shared workspace and review standards',
+    'Manager workflows',
+    'Team security review',
+    'CRM sync',
+  ],
+  note: 'Not on sale yet. The individual loop gets finished first.',
+  highlighted: false,
+};
+
+const paidPlans: PricingPlan[] = [
   {
     name: 'Personal',
     price: '$10',
     cadence: 'per month',
     description: 'Everything Memoire does, for one operator running the whole commercial loop.',
-    items: [
-      'Unlimited capture and unlimited records',
-      'Search & Insights over everything you have written down',
-      'Orders, Cash Collection and Cost Analysis',
-      'Pipeline Defense Briefs and shareable review packs',
-      'Business Vault, daily digest email and full data export',
-    ],
+    items: PERSONAL_ITEMS,
     note: `Starts with a ${TRIAL_DAYS}-day free trial. Your card is taken up front and charged when the trial ends — cancel before then and nothing is taken.`,
     highlighted: true,
   },
-  {
-    name: 'Team',
-    price: 'Later',
-    cadence: '',
-    description: 'A shared workspace for the people you sell alongside.',
-    items: [
-      'Shared workspace and review standards',
-      'Manager workflows',
-      'Team security review',
-      'CRM sync',
-    ],
-    note: 'Not on sale yet. The individual loop gets finished first.',
-    highlighted: false,
-  },
+  TEAM_PLAN,
 ];
 
-const faqs = [
+const previewPlans: PricingPlan[] = [
+  {
+    name: 'Personal',
+    price: 'Free',
+    cadence: 'while in preview',
+    description: 'Everything Memoire does, for one operator running the whole commercial loop. Nothing is held back during the preview.',
+    items: PERSONAL_ITEMS,
+    note: PREVIEW_ENDS_NOTE,
+    highlighted: true,
+  },
+  TEAM_PLAN,
+];
+
+const pricingPlans = FREE_PREVIEW ? previewPlans : paidPlans;
+
+/**
+ * The two money questions. They are answered by the phase the product is in,
+ * and the answers ship as FAQPage structured data - so an answer engine that
+ * reads this page during the preview must not be told a card is taken.
+ */
+const paidOfferFaqs = [
   {
     question: 'What does $10 a month actually buy?',
     answer:
@@ -151,6 +201,35 @@ const faqs = [
     answer:
       'You start the trial from Settings, in the Billing tab. Lemon Squeezy takes the card and holds the first payment for seven days, then charges $10 — it is the merchant of record and the seller on your invoice, and Memoire never sees your card number. Cancelling inside the seven days costs nothing, and cancellation lives in the same Lemon Squeezy portal as your cards and invoices.',
   },
+];
+
+const previewOfferFaqs = [
+  {
+    question: 'Is Memoire really free right now?',
+    answer:
+      'Yes. Memoire is in preview: every feature is switched on for everyone, signup asks for no card, and there is no trial clock counting down to a charge. Today, Plan, Orders, Cash Collection, Cost Analysis, Review, the Business Vault and Search & Insights are all included, because there is no smaller plan holding anything back.',
+  },
+  {
+    question: 'What happens when the preview ends?',
+    answer:
+      'It becomes $10 a month for one person, and you hear that from us before it happens rather than from a card statement — nothing starts billing on its own. Paying will then live inside the app, in Settings under Billing, where Lemon Squeezy takes the payment as merchant of record and the seller on your invoice; Memoire never sees your card number. Whatever you decide, everything you captured stays readable and exportable.',
+  },
+];
+
+const offerFaqs = FREE_PREVIEW ? previewOfferFaqs : paidOfferFaqs;
+
+/**
+ * The clause that closes the meta description.
+ *
+ * Held in a constant rather than written inline because the description has to
+ * stay one template literal: it is read out of this file by
+ * scripts/verify-business-activity-os-contract.mjs, and a nested backtick makes
+ * it unreadable to that check.
+ */
+const SEO_OFFER_LINE = FREE_PREVIEW ? PREVIEW_SEO_LINE : PAID_SEO_LINE;
+
+const faqs = [
+  ...offerFaqs,
   {
     question: 'Does Memoire use AI?',
     answer:
@@ -190,7 +269,7 @@ export function LandingPage() {
            were both in the part that got cut, and the visible half ended
            mid-clause on "from conversation ...". Everything that has to survive
            truncation is now in the first sentence. */
-        description={`Follow every customer thread from conversation to quote to delivery to cash, so nothing goes silent. $${PERSONAL_MONTHLY_PRICE_USD}/month, ${TRIAL_DAYS}-day free trial.`}
+        description={`Follow every customer thread from conversation to quote to delivery to cash, so nothing goes silent. ${SEO_OFFER_LINE}`}
         socialDescription="Never enter a pipeline review unprepared. Capture messy notes and emails, find the risk in Today, follow every quote to cash, and copy manager-ready answers."
         jsonLd={[
           organizationSchema(),
@@ -221,6 +300,16 @@ export function LandingPage() {
                 <span className="brand-gradient inline-block h-2 w-2 rounded-full" />
                 Personal Commercial Control Tower
               </p>
+              {/* The preview badge sits above the promise rather than under the
+                  buttons: "free" is the first thing a visitor decides on, and a
+                  price they discover after reading the whole page reads as one
+                  that was being kept from them. */}
+              {FREE_PREVIEW && (
+                <p className="mt-3 flex w-fit items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-400/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-emerald-200">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {PREVIEW_BADGE}
+                </p>
+              )}
               <h1 className="mt-6 font-display text-5xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
                 {/* The trailing space is load-bearing. A block-level span after
                     text joins in the accessibility tree, so this line was
@@ -249,7 +338,9 @@ export function LandingPage() {
                 </Link>
               </div>
               <p className="mt-5 text-sm leading-6 text-slate-400">
-                {TRIAL_DAYS} days free, then $10 a month · Cancel in the trial and pay nothing · Your data is never shared
+                {FREE_PREVIEW
+                  ? 'Free for everyone while Memoire is in preview · No card at signup · Your data is never shared'
+                  : `${TRIAL_DAYS} days free, then $10 a month · Cancel in the trial and pay nothing · Your data is never shared`}
               </p>
             </div>
 
@@ -554,8 +645,12 @@ export function LandingPage() {
           <div className="mx-auto max-w-6xl">
             <SectionHeader
               eyebrow="Pricing"
-              title="One person, one price. $10 a month."
-              text={`Seven days free to run a real week on your own work. Card up front, charged only when the trial ends — cancel before then and you pay nothing. After that it is $10 a month, and there is no smaller plan pretending to be enough.`}
+              title={FREE_PREVIEW ? 'Free while in preview. $10 a month later.' : 'One person, one price. $10 a month.'}
+              text={
+                FREE_PREVIEW
+                  ? `Memoire is being run by its first operators before the store opens, and while that lasts the whole product is free: no card at signup, no trial clock, nothing charged. When it ends it is $10 a month for one person, and there is no smaller plan pretending to be enough.`
+                  : `Seven days free to run a real week on your own work. Card up front, charged only when the trial ends — cancel before then and you pay nothing. After that it is $10 a month, and there is no smaller plan pretending to be enough.`
+              }
             />
             <div className="mx-auto mt-12 grid max-w-4xl items-start gap-6 lg:grid-cols-2">
               {pricingPlans.map((plan) =>
@@ -578,7 +673,7 @@ export function LandingPage() {
                   to="/signup"
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-blue px-7 py-3.5 font-display text-sm font-bold text-white transition hover:bg-brand-blue-dark active:scale-[0.98]"
                 >
-                  Start your free trial
+                  {FREE_PREVIEW ? 'Start free — no card' : 'Start your free trial'}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
@@ -589,8 +684,18 @@ export function LandingPage() {
                 </Link>
               </div>
               <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-slate-500">
-                Upgrading happens inside the app, in Settings under Billing. Payment is taken by Lemon Squeezy,
-                which is the seller on your invoice and handles tax where you are — Memoire never sees your card.
+                {FREE_PREVIEW ? (
+                  <>
+                    There is nothing to buy today — the billing screen is closed and no card can be taken. When paid
+                    plans open, upgrading happens inside the app, in Settings under Billing, with Lemon Squeezy as the
+                    seller on your invoice handling tax where you are — Memoire never sees your card.
+                  </>
+                ) : (
+                  <>
+                    Upgrading happens inside the app, in Settings under Billing. Payment is taken by Lemon Squeezy,
+                    which is the seller on your invoice and handles tax where you are — Memoire never sees your card.
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -633,8 +738,9 @@ export function LandingPage() {
               Find out what went quiet <span className="brand-gradient-text">while you can still fix it</span>.
             </h2>
             <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-slate-300">
-              Take {TRIAL_DAYS} days to capture a real week of your own work and see what it caught. Cancel inside the
-              trial and you are charged nothing.
+              {FREE_PREVIEW
+                ? 'Take a week to capture your own real work and see what it caught. While Memoire is in preview that costs nothing and asks for no card.'
+                : `Take ${TRIAL_DAYS} days to capture a real week of your own work and see what it caught. Cancel inside the trial and you are charged nothing.`}
             </p>
             <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
               <Link
