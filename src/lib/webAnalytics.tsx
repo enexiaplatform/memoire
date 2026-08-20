@@ -1,4 +1,4 @@
-import { Analytics } from '@vercel/analytics/react';
+import { Analytics, type BeforeSendEvent } from '@vercel/analytics/react';
 
 /**
  * Anonymous traffic measurement, for the half of the funnel `product_events`
@@ -26,7 +26,35 @@ import { Analytics } from '@vercel/analytics/react';
  */
 export const isWebAnalyticsEnabled = import.meta.env.VITE_ENABLE_WEB_ANALYTICS === 'true';
 
+/**
+ * Send the path and nothing else.
+ *
+ * Two of this app's URLs carry secrets after the path, and both of them rely on
+ * the fragment never reaching a server: the manager share link encodes an entire
+ * pipeline brief - account names, deal values - as `/share/brief#b=...`, and
+ * Supabase hands back `#access_token=...` on the recovery and verification
+ * routes. A pageview beacon is a request this page makes itself, so that
+ * guarantee stops holding the moment analytics is on - whatever `event.url`
+ * holds is what gets stored. Query strings are the same story.
+ *
+ * Only the path is worth measuring anyway: which pages get read, and where
+ * people leave. Nothing downstream reads a query string or a fragment.
+ *
+ * Not exported: this file also exports a component, and a second non-component
+ * export breaks Fast Refresh (react-refresh/only-export-components).
+ */
+function toPathOnlyEvent(event: BeforeSendEvent): BeforeSendEvent | null {
+  try {
+    const url = new URL(event.url);
+    return { ...event, url: `${url.origin}${url.pathname}` };
+  } catch {
+    // A URL this cannot parse is a URL whose shape is unknown, which is exactly
+    // the case where forwarding it verbatim is the risk. Drop the pageview.
+    return null;
+  }
+}
+
 export function WebAnalytics() {
   if (!isWebAnalyticsEnabled) return null;
-  return <Analytics />;
+  return <Analytics beforeSend={toPathOnlyEvent} />;
 }
