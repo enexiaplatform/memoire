@@ -278,7 +278,19 @@ export function AdminDashboardPage() {
                   value: step.reached,
                   share: step.shareOfSignups,
                 }))}
-                emptyNote="No product events in this window yet."
+                /* Two different silences, and the first version said the wrong
+                   one out loud: production showed "No product events in this
+                   window yet" directly above a Usage block counting 221 of
+                   them. An empty funnel next to a busy product means the
+                   activation events specifically are not arriving - which is a
+                   finding, not an absence of data - and saying "no events"
+                   there sends the reader to look for a logging outage that
+                   isn't happening. */
+                emptyNote={
+                  metrics.usage.eventsLast30 > 0
+                    ? `No activation steps recorded, though ${formatCount(metrics.usage.eventsLast30)} other events arrived in this window. Activation events only fire the first time an account does each thing, so an established workspace produces none.`
+                    : 'No product events in this window yet.'
+                }
               />
             </Section>
 
@@ -476,10 +488,25 @@ function RevenuePanel({
           <StatTile label="Sales, all time" value={revenue.totalSales ?? 0} />
         </div>
       ) : (
-        <p className="mt-2 text-sm leading-6 text-gray-600">
-          {revenue.reason || 'Lemon Squeezy did not answer.'} Subscriber counts above come from this database and
-          are unaffected.
-        </p>
+        <div className="mt-2 text-sm leading-6 text-gray-600">
+          <p>
+            {revenue.reason || 'Lemon Squeezy did not answer.'} Subscriber counts above come from this database and
+            are unaffected.
+          </p>
+          {/* This console is the first code in the product that ever called the
+              Lemon Squeezy API - checkout has never been open, and the webhook
+              only runs when somebody buys - so a 404 here is not a fault that
+              started today. It is the store configuration being exercised for
+              the first time and failing, which is worth saying plainly while
+              there is still no money riding on it. */}
+          {!checkoutEnabled && revenue.reason?.includes('404') && (
+            <p className="mt-2">
+              A 404 means the API key and the configured store id do not name the same store. Nothing has been
+              lost - no payment has ever been taken - but this is the first thing to fix before checkout opens,
+              because the same pair is what the webhook and checkout will use.
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
