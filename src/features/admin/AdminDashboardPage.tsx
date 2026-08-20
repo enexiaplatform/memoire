@@ -329,14 +329,24 @@ export function AdminDashboardPage() {
                       isWebAnalyticsEnabled ? 'bg-emerald-50 text-emerald-800' : 'bg-gray-100 text-gray-600'
                     }`}
                   >
-                    Beacon {isWebAnalyticsEnabled ? 'on' : 'off in this build'}
+                    {/* What this badge can honestly claim is the build flag,
+                        because the build flag is the only half of the pair the
+                        browser can see. It read "Beacon on" while Vercel's own
+                        project switch was off - so the page announced that
+                        traffic was being measured, on a deployment where every
+                        beacon was 404ing and nothing was being collected at
+                        all. A status badge that can only see one of two
+                        switches has to name the one it sees. */}
+                    Beacon {isWebAnalyticsEnabled ? 'on in this build' : 'off in this build'}
                   </span>
                 </div>
                 <p className="mt-2 text-sm leading-6 text-gray-600">
                   Everything above starts at the first product event, so it only sees people who reached the app.
                   Visits to the landing page, where they came from, and everyone who read the pricing page and left
                   are measured by Vercel from the edge and read in Vercel's own dashboard.
-                  {!isWebAnalyticsEnabled && ' Two switches turn it on: Web Analytics on the Vercel project, and VITE_ENABLE_WEB_ANALYTICS=true.'}
+                  {isWebAnalyticsEnabled
+                    ? ' This build sends the beacon, but nothing is collected until Web Analytics is also switched on for the project in Vercel - check the Analytics tab there before trusting an empty chart.'
+                    : ' Two switches turn it on: Web Analytics on the Vercel project, and VITE_ENABLE_WEB_ANALYTICS=true.'}
                 </p>
                 <a
                   href="https://vercel.com/dashboard"
