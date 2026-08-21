@@ -7,6 +7,8 @@ import { ThreadsSection } from '../threads/ThreadsSection';
 import { CoveragePanel } from './CoveragePanel';
 import { TargetPlanPanel } from './TargetPlanPanel';
 import { OrderBookPanel } from './OrderBookPanel';
+import { loadOrderCostsForWorkspace } from '../../services/orderCostStore';
+import type { OrderTermRecord } from '../../utils/orderToCash';
 import { SupplierCommitmentsPanel } from './SupplierCommitmentsPanel';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
@@ -77,8 +79,23 @@ export function RevenueViewPage() {
   const [loading, setLoading] = useState(!initialRevenueData);
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
+  // The terms recorded against each order, loaded here and handed to the order
+  // book. They live on the cost record because that is where an operator works
+  // them out - usually before any quote exists - and the order book must not
+  // import that module itself (verify-order-margin, case 1b). Without them a
+  // deal won on a handshake showed "No payment term" and carried a Deposit step
+  // its Net 30 terms never owed.
+  const [termRecords, setTermRecords] = useState<OrderTermRecord[]>([]);
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadOrderCostsForWorkspace(dataUserId, sampleDataActive).then((records) => {
+      if (!cancelled) setTermRecords(records);
+    });
+    return () => { cancelled = true; };
+  }, [dataUserId, sampleDataActive]);
 
   // Expenses are local, but they feed both the P&L headline and the money-out
   // panel below it, so they live on the page and both surfaces read one copy.
@@ -182,6 +199,7 @@ export function RevenueViewPage() {
           <OrderBookPanel
             opportunities={data.opportunities}
             quotes={data.quotes}
+            termRecords={termRecords}
             dataUserId={dataUserId}
             sampleDataActive={sampleDataActive}
           />

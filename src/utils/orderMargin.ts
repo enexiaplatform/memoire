@@ -112,6 +112,15 @@ export type OrderCostRecord = {
    * outranks a working assumption.
    */
   paymentTerm: string;
+  /**
+   * Days between paying the principal and delivering to the customer.
+   *
+   * The front half of the credit period the price has to carry, and an input to
+   * the financing figure beside it. It lived only in component state, so every
+   * reopen re-priced the order at zero delivery lag - a quieter version of the
+   * same fault as the terms above, and one that moves the suggested price.
+   */
+  deliveryLagDays: number | null;
   note: string;
   createdAt: string;
   updatedAt: string;
@@ -396,6 +405,7 @@ export function createOrderCostRecord(input: {
   extrasCurrency?: string;
   supplier?: string;
   paymentTerm?: string;
+  deliveryLagDays?: number | null;
   note?: string;
   existing?: OrderCostRecord;
   source?: 'demo' | 'user';
@@ -421,6 +431,9 @@ export function createOrderCostRecord(input: {
     // Kept when the caller does not mention it, so saving a cost from a surface
     // that has no terms field cannot erase terms recorded from one that does.
     paymentTerm: (input.paymentTerm ?? input.existing?.paymentTerm ?? '').trim(),
+    // Kept on the same terms as paymentTerm: a caller with no delivery field
+    // must not zero a lag somebody else recorded.
+    deliveryLagDays: finiteOrNull(input.deliveryLagDays ?? input.existing?.deliveryLagDays ?? null),
     note: (input.note || '').trim(),
     createdAt: input.existing?.createdAt || now,
     updatedAt: now,

@@ -264,3 +264,47 @@ const settings = readFileSync('src/features/settings/SettingsPage.tsx', 'utf8');
 }
 
 console.log('First-run onboarding contract verified: new arrivals are met, progress is earned, one path across three surfaces.');
+
+// 9. The one question first run asks must be answerable by everyone it is asked
+// of.
+//
+// The picker mapped `SUPPORTED_CURRENCIES` - the twenty-one that ship with a
+// planning rate, weighted to this product's first market. Settings and the quote
+// form both offer every ISO code, so an operator in Stockholm met a product that
+// could not name their own currency on the first screen they ever saw and could
+// on every screen afterwards. That is the screen where somebody decides whether
+// this software is for them.
+//
+// Offering all of them is only safe with the rate gate beside it: reporting in a
+// currency nothing converts into reads as zero on every total, which is the same
+// trap `sumMoney` leaves for an unpriced amount. So both halves are asserted -
+// the full list, and the prompt that holds an unpriced choice until a rate exists.
+{
+  assert.ok(
+    welcome.includes('listSelectableCurrencies'),
+    'the first-run currency picker must offer every ISO currency, not only the ones that ship with a rate',
+  );
+  assert.equal(
+    /SUPPORTED_CURRENCIES\.map/.test(welcome),
+    false,
+    'the short hardcoded currency list must not come back to the first screen',
+  );
+  assert.ok(
+    welcome.includes('hasExchangeRate'),
+    'first run must detect a currency it cannot convert rather than reporting zeroes in it',
+  );
+  assert.ok(
+    welcome.includes('<PendingCurrencyRate'),
+    'first run must ask for the rate before reporting in a currency that has none',
+  );
+
+  const prompt = readFileSync('src/components/common/PendingCurrencyRate.tsx', 'utf8');
+  assert.ok(
+    prompt.includes('setExchangeRateOverride'),
+    'the rate prompt must actually store the rate it collects',
+  );
+  assert.ok(
+    settings.includes('<PendingCurrencyRate'),
+    'Settings and first run must ask for a rate the same way, from the same component',
+  );
+}

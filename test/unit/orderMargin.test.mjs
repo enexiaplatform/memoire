@@ -323,3 +323,48 @@ describe('order margin: a cost in a currency nobody has priced', () => {
     assert.equal(summary.marginPct, null, 'and it cannot inflate the workspace margin');
   });
 });
+
+describe('order cost: the delivery lag is part of the record, not the screen', () => {
+  test('a lag the operator typed survives being written', () => {
+    const record = createOrderCostRecord({
+      opportunityId: 'a',
+      amount: 168_000,
+      currency: 'EUR',
+      paymentTerm: '30% deposit, 70% net 45',
+      deliveryLagDays: 60,
+    });
+
+    assert.equal(record.deliveryLagDays, 60);
+  });
+
+  test('a caller with no delivery field cannot zero a lag somebody else recorded', () => {
+    const existing = createOrderCostRecord({
+      opportunityId: 'a',
+      amount: 168_000,
+      currency: 'EUR',
+      deliveryLagDays: 60,
+    });
+
+    // Cost Analysis saves a purchase price from a surface that has no delivery
+    // field. Omitting it must keep the lag, exactly as omitting terms keeps
+    // the terms.
+    const resaved = createOrderCostRecord({
+      opportunityId: 'a',
+      amount: 171_000,
+      currency: 'EUR',
+      existing,
+    });
+
+    assert.equal(resaved.deliveryLagDays, 60);
+  });
+
+  test('never recorded reads as null, not as delivered on payment day', () => {
+    const record = createOrderCostRecord({ opportunityId: 'a', amount: 1, currency: 'EUR' });
+
+    assert.equal(
+      record.deliveryLagDays,
+      null,
+      'zero would price the order as if it shipped the day it was paid for, which is a claim nobody made',
+    );
+  });
+});

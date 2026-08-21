@@ -15,6 +15,7 @@ import {
   type OrderMilestoneRecord,
   type OrderMilestoneState,
   type OrderStage,
+  type OrderTermRecord,
 } from '../../utils/orderToCash';
 import { formatBaseCurrencyAmount, formatCompactBaseAmount, formatCurrencyAmount } from '../../utils/money';
 import { formatSafeBusinessDate } from '../../utils/safeDate';
@@ -43,11 +44,19 @@ import { matchesSearchQuery } from '../../utils/textSearch';
 export function OrderBookPanel({
   opportunities,
   quotes,
+  termRecords,
   dataUserId,
   sampleDataActive,
 }: {
   opportunities: CrmLiteOpportunity[];
   quotes: QuoteRecord[];
+  /**
+   * The payment terms recorded against each order, for the ordinary case of a
+   * deal won without a quote. Handed down rather than read here, because this
+   * panel answers "where is my money" and must not reach into the module that
+   * answers "was it worth it" - see verify-order-margin, case 1b.
+   */
+  termRecords: OrderTermRecord[];
   dataUserId?: string;
   sampleDataActive: boolean;
 }) {
@@ -65,8 +74,12 @@ export function OrderBookPanel({
   }, [dataUserId, sampleDataActive]);
 
   const book = useMemo(
-    () => buildOrderBook({ opportunities, quotes, milestoneRecords }),
-    [milestoneRecords, opportunities, quotes],
+    // `termRecords` is what stops a Net 30 order keeping a Deposit step it never
+    // owed. The engine has always honoured it; this caller used to omit it, so
+    // the order book printed "No payment term" for terms that were saved and
+    // built the road to cash from that blank.
+    () => buildOrderBook({ opportunities, quotes, milestoneRecords, costRecords: termRecords }),
+    [termRecords, milestoneRecords, opportunities, quotes],
   );
 
   const visibleOrders = useMemo(() => {

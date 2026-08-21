@@ -76,6 +76,8 @@ export function saveOrderCost(input: {
   supplier?: string;
   /** Omit to keep whatever terms are already on the record - see the factory. */
   paymentTerm?: string;
+  /** Omit to keep whatever delivery lag is already on the record. */
+  deliveryLagDays?: number | null;
   note?: string;
   source?: 'demo' | 'user';
   isSample?: boolean;
@@ -148,6 +150,10 @@ function sanitizeOrderCostRecord(value: unknown): OrderCostRecord | null {
     // Absent on every record written before terms lived here, which is why it
     // reads as empty rather than being refused.
     paymentTerm: typeof candidate.paymentTerm === 'string' ? candidate.paymentTerm : '',
+    // Absent on every record written before the lag was persisted. Null, not
+    // zero: "never recorded" and "delivers the day it is paid for" price
+    // identically today but are different facts, and only one of them is true.
+    deliveryLagDays: numberOrNull(candidate.deliveryLagDays),
     note: typeof candidate.note === 'string' ? candidate.note : '',
     createdAt: typeof candidate.createdAt === 'string' && candidate.createdAt ? candidate.createdAt : now,
     updatedAt: typeof candidate.updatedAt === 'string' && candidate.updatedAt ? candidate.updatedAt : now,

@@ -59,6 +59,12 @@ export function QuotePricingPanel({
     supplier: '',
   });
   const [saved, setSaved] = useState('');
+  // Both of these are hydrated by the load effect below, so they are declared
+  // above it. `recordedTerm` is the terms saved on the cost record - the source
+  // the panel falls back to when the deal has no quote - and `deliveryLagDays`
+  // is the front half of the credit period. See the notes at their use sites.
+  const [recordedTerm, setRecordedTerm] = useState('');
+  const [deliveryLagDays, setDeliveryLagDays] = useState('0');
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +82,8 @@ export function QuotePricingPanel({
           extrasCurrency: existing.extrasCurrency,
           supplier: existing.supplier,
         });
+        setRecordedTerm(existing.paymentTerm || '');
+        setDeliveryLagDays(existing.deliveryLagDays === null ? '0' : String(existing.deliveryLagDays));
       }
     });
     return () => { cancelled = true; };
@@ -84,18 +92,28 @@ export function QuotePricingPanel({
   const targetPct = getTargetMarginPct();
   const financingRatePct = getFinancingRatePct();
 
-  // The terms on the freshest quote, falling back to nothing. A deal with no
-  // quote yet is priced on whatever the operator is about to offer, so the
-  // field below is editable rather than read-only.
+  // The terms on the freshest quote, falling back to the ones saved on the cost
+  // record. A deal with no quote yet is priced on whatever the operator is about
+  // to offer, so the field below is editable rather than read-only.
+  //
+  // The fallback is the whole point. `saveOrderCost` has always written the
+  // terms, and Cash Collection has always read them back - but this panel read
+  // only the quote, so reopening a deal that had no quote showed an empty field
+  // whose placeholder is the very string most operators type. The panel then
+  // priced the order as if nothing had been agreed: "Paid up front - nothing to
+  // carry", against terms that were 45 days of credit on 70% of the value. It
+  // did not go quiet about the loss, it stated the opposite with confidence, on
+  // the one screen a price is decided from.
   const freshestQuote = useMemo(() => (
     [...quotes].sort((left, right) => (right.quoteDate || '').localeCompare(left.quoteDate || ''))[0] || null
   ), [quotes]);
   const quotedTerm = freshestQuote?.paymentTerm || '';
-  const [term, setTerm] = useState(quotedTerm);
-  useEffect(() => { setTerm(quotedTerm); }, [quotedTerm]);
+  // A quote still wins where one exists: a document the customer has seen
+  // outranks a working assumption.
+  const effectiveTerm = quotedTerm || recordedTerm;
+  const [term, setTerm] = useState(effectiveTerm);
+  useEffect(() => { setTerm(effectiveTerm); }, [effectiveTerm]);
   const [termSaved, setTermSaved] = useState('');
-
-  const [deliveryLagDays, setDeliveryLagDays] = useState('0');
 
   const parsedTerm = useMemo(() => parsePaymentTerm(term), [term]);
 
@@ -141,9 +159,11 @@ export function QuotePricingPanel({
       // state: type them, watch them parse, press save, lose them - while the
       // order book went on reporting "No payment term".
       paymentTerm: term,
+      deliveryLagDays: numberOrNull(deliveryLagDays),
       source: sampleDataActive ? 'demo' : 'user',
       isSample: sampleDataActive,
     });
+    setRecordedTerm(term);
     setSaved(term.trim()
       ? 'Purchase cost and terms saved. The order book and Cash Collection read them from here until a quote replaces them.'
       : 'Purchase cost saved. Cost Analysis reads the same figure once this order lands.');

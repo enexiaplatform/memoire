@@ -185,6 +185,39 @@ const quote = (id, opportunityId, overrides = {}) => ({
   for (const marker of ['orderStage', 'daysInStage', 'orderRef', 'orderDate', '<table']) {
     assert.ok(panel.includes(marker), `the order book must show ${marker}`);
   }
+
+  // The panel has to hand the buy side to the engine, not just call it.
+  //
+  // `buildOrderBook` has always fallen back to the terms on the cost record when
+  // a deal has no quote, and its unit tests cover that - including case 8 below,
+  // where net terms must not invent a deposit. But this panel called it without
+  // `costRecords`, so the fallback had nothing to fall back to, and case 8 came
+  // straight back through the front door: the order book printed "No payment
+  // term" for terms that were saved, and an order on Net 30 kept a Deposit step
+  // it never owed. Cash Collection, which does pass them, read the same record
+  // and produced the dated schedule. One saved fact, two surfaces, two answers.
+  // An engine test cannot catch a caller that never supplies the argument, so
+  // the call site is asserted here.
+  assert.match(
+    panel,
+    /buildOrderBook\(\{[^}]*costRecords:\s*termRecords[^}]*\}\)/s,
+    'OrderBookPanel must pass the recorded terms to buildOrderBook, or terms saved without a quote vanish from the order book',
+  );
+
+  // The terms arrive as a prop rather than being read here, because case 1b of
+  // verify-order-margin forbids this panel from importing the cost module at
+  // all. So the load is asserted where it actually happens.
+  const ordersPage = readFileSync(new URL('../src/features/revenue/RevenueViewPage.tsx', import.meta.url), 'utf8');
+  assert.match(
+    ordersPage,
+    /loadOrderCostsForWorkspace\(/,
+    'the Orders page must load the recorded terms it hands to the order book',
+  );
+  assert.match(
+    ordersPage,
+    /<OrderBookPanel[^>]*termRecords=\{termRecords\}/s,
+    'the Orders page must hand the recorded terms down to the order book',
+  );
 }
 
 // 8. An order on net terms has no deposit, so it cannot be waiting for one.

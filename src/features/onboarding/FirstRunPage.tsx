@@ -5,7 +5,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { NoIndex } from '../../components/marketing/PageSeo';
 import { BrandWordmark } from '../../components/brand/BrandWordmark';
-import { CURRENCY_NAMES, SUPPORTED_CURRENCIES, getReportingCurrency } from '../../utils/money';
+import { getReportingCurrency, hasExchangeRate, listSelectableCurrencies } from '../../utils/money';
+import { PendingCurrencyRate } from '../../components/common/PendingCurrencyRate';
 import { saveReportingCurrencyPreference } from '../../services/workspacePreferences';
 import { loadSampleDataset } from '../../utils/sampleData';
 import { trackProductEvent } from '../../utils/productAnalytics';
@@ -54,7 +55,26 @@ export function FirstRunPage() {
 
   const [act, setAct] = useState<Act>('loop');
   const [currency, setCurrency] = useState(() => getReportingCurrency());
+  // A currency the operator has chosen but that cannot convert yet. It is held
+  // here, not applied, until a rate exists - reporting in an unpriced currency
+  // would read as zero on every total. Same gate as Settings, same component.
+  const [pendingCurrency, setPendingCurrency] = useState('');
   const [busy, setBusy] = useState(false);
+
+  // Every ISO currency, not the twenty-one that ship with a rate. The short list
+  // meant an operator outside this product's original market could not name
+  // their own currency on the first screen they ever saw, while Settings and the
+  // quote form offered all of them.
+  const selectableCurrencies = useMemo(() => listSelectableCurrencies(), [pendingCurrency, currency]);
+
+  const chooseCurrency = (next: string) => {
+    if (!hasExchangeRate(next)) {
+      setPendingCurrency(next);
+      return;
+    }
+    setPendingCurrency('');
+    setCurrency(next as typeof currency);
+  };
 
   const loop = useMemo(() => buildFirstWeekPath({ activities: [], opportunities: [], briefs: [] }).steps, []);
   const actIndex = ACTS.indexOf(act);
@@ -166,15 +186,29 @@ export function FirstRunPage() {
                 <label className="mt-8 block max-w-sm">
                   <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Reporting currency</span>
                   <select
-                    value={currency}
-                    onChange={(event) => setCurrency(event.target.value as typeof currency)}
-                    className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-[15px] font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                    value={pendingCurrency || currency}
+                    onChange={(event) => chooseCurrency(event.target.value)}
+                    className="mt-2 w-full truncate rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-[15px] font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
                   >
-                    {SUPPORTED_CURRENCIES.map((option) => (
-                      <option key={option} value={option}>{option} — {CURRENCY_NAMES[option]}</option>
+                    {selectableCurrencies.map((option) => (
+                      <option key={option.code} value={option.code}>
+                        {option.code} — {option.name}{option.hasRate ? '' : ' · needs a rate'}
+                      </option>
                     ))}
                   </select>
                 </label>
+                {pendingCurrency && (
+                  <div className="max-w-sm">
+                    <PendingCurrencyRate
+                      currency={pendingCurrency}
+                      onCancel={() => setPendingCurrency('')}
+                      onSaved={() => {
+                        setCurrency(pendingCurrency as typeof currency);
+                        setPendingCurrency('');
+                      }}
+                    />
+                  </div>
+                )}
               </section>
             )}
 

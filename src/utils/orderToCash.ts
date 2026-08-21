@@ -1,6 +1,5 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { QuoteRecord } from '../services/quoteStore';
-import type { OrderCostRecord } from './orderMargin.ts';
 import { compareSafeBusinessDate, isValidBusinessDate, timestampToLocalDateKey, todayDateKey } from './safeDate.ts';
 import { sumMoneyInBase } from './money.ts';
 import { parsePaymentTerm } from './paymentTerms.ts';
@@ -150,6 +149,21 @@ export type OrderStageSummary = {
   overdueCount: number;
 };
 
+/**
+ * The only part of a cost record the order book reads: whose order it is, and
+ * the terms written on it.
+ *
+ * Named separately so `OrderBookPanel` can take these as a prop without
+ * importing the cost-analysis module - Orders answers "where is my money" and
+ * cost answers "was it worth it", and verify-order-margin case 1b keeps the two
+ * apart. Structural, so a full `OrderCostRecord` satisfies it unchanged.
+ */
+export type OrderTermRecord = {
+  opportunityId: string;
+  paymentTerm: string;
+  __deleted?: boolean;
+};
+
 export type OrderBook = {
   orders: CommittedOrder[];
   totalCount: number;
@@ -183,7 +197,7 @@ export function buildOrderBook(input: {
    * exists. Optional: a caller that has not loaded costs still gets an order
    * book, it just falls back to the quote for terms as it always did.
    */
-  costRecords?: OrderCostRecord[];
+  costRecords?: OrderTermRecord[];
   today?: string;
 }): OrderBook {
   const today = input.today || todayDateKey();
