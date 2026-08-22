@@ -100,7 +100,12 @@ export function explainPipelineRisk(
   }
   if (['Rescue', 'Downgrade', 'Deprioritize'].includes(opportunity.decisionRecommendation)) {
     return {
-      reason: `You marked this deal "${opportunity.decisionRecommendation}", which keeps it on the watch-list until the call changes.`,
+      // Not "you marked". `decisionRecommendation` is also set by
+      // `inferDecisionRecommendation` during a CSV import, so on a freshly
+      // imported book this told operators they had made a call they had never
+      // made - about deals they had not opened yet. Nothing on the record says
+      // which of the two set it, so the sentence states what is true either way.
+      reason: `This deal is marked "${opportunity.decisionRecommendation}", which keeps it on the watch-list until the call changes.`,
       clearedBy: 'Change Decision to Defend or Monitor once it has recovered - or close it out.',
     };
   }

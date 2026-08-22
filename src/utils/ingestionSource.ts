@@ -103,7 +103,18 @@ export function composeIngestionParserText(
     item.recipients ? `Recipients: ${item.recipients}` : '',
     cleanValue(hints.accountHint) ? `Account hint: ${cleanValue(hints.accountHint)}` : '',
     cleanValue(hints.opportunityHint) ? `Opportunity hint: ${cleanValue(hints.opportunityHint)}` : '',
-    'Instructions: Extract structured sales evidence conservatively. Do not invent opportunity names. Do not infer MEDDIC roles such as Champion or Economic Buyer unless explicit evidence says so. Mark uncertain fields as Needs confirmation.',
+    // No instruction preamble. This text is two things at once: what the local
+    // classifier reads, and what is stored as the activity's `rawNote`. A line
+    // beginning "Instructions: Extract structured sales evidence conservatively
+    // ... do not infer MEDDIC roles such as Champion or Economic Buyer" was
+    // prompt scaffolding from an LLM-shaped design that this product does not
+    // have - and it was being written verbatim into the operator's own record,
+    // where it reached every export and every raw-note view. In a product whose
+    // capture screen promises "nothing is sent to an AI service", a stored
+    // prompt is the one artefact that makes the promise look untrue.
+    //
+    // It was not inert either: the classifier scans this text for signals, and
+    // the sentence contained "Champion", "Economic Buyer" and "opportunity".
     'Body excerpt:',
     item.originalExcerpt,
   ];
