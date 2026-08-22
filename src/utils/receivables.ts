@@ -101,6 +101,15 @@ export type ReceivableInstallmentState = {
 };
 
 /**
+ * How much of a slice can be left unpaid and still count as settled.
+ *
+ * Half a cent in the reporting currency. Money crossing a rate never lands
+ * exactly on the slice it settles, and the residue is not a debt - treating it
+ * as one keeps a paid installment overdue for ever.
+ */
+const SETTLED_EPSILON_BASE = 0.005;
+
+/**
  * How late money is, in the buckets a credit controller actually works in.
  *
  * `due-soon` is not an aging bucket - nothing is late yet - but it is the one
@@ -349,9 +358,20 @@ function buildOneReceivable(
   const states: ReceivableInstallmentState[] = scheduled.map((entry) => {
     const applied = Math.min(remaining, entry.dueBase);
     remaining = Math.max(0, remaining - applied);
-    const outstandingBase = Math.max(0, entry.dueBase - applied);
+    const rawOutstanding = Math.max(0, entry.dueBase - applied);
     const daysLate = entry.dueDate ? (daysBetween(entry.dueDate, today) ?? 0) : 0;
-    const overdue = outstandingBase > 0 && Boolean(entry.dueDate) && daysLate > 0;
+    // Settled decides overdue, rather than each answering the question its own
+    // way. They used to disagree by a line: `settled` allowed half a cent of
+    // slack and `overdue` was `outstandingBase > 0`, so a slice could be both at
+    // once - and a converted amount almost always lands a fraction off the slice
+    // it settles. 30% of a 168,000 EUR order, paid in full and read in USD, left
+    // 0.0038 outstanding; that residue was an unpaid debt for ever. The deposit
+    // reported 92 days late, the order took the worst of its slices, and "Chase
+    // this one first" sent the operator after money that arrived in May. The
+    // 135,692 that really was late was five days late, in the next slice down.
+    const settled = rawOutstanding <= SETTLED_EPSILON_BASE;
+    const outstandingBase = settled ? 0 : rawOutstanding;
+    const overdue = !settled && Boolean(entry.dueDate) && daysLate > 0;
     return {
       id: entry.id,
       label: entry.label,
@@ -359,7 +379,7 @@ function buildOneReceivable(
       dueBase: entry.dueBase,
       receivedBase: applied,
       outstandingBase,
-      settled: outstandingBase <= 0.005,
+      settled,
       daysOverdue: overdue ? daysLate : 0,
       overdue,
       bucket: bucketFor(overdue ? daysLate : null, entry.dueDate, today, outstandingBase),

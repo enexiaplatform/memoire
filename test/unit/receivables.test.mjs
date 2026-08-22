@@ -500,3 +500,4 @@ describe('receivables: an order in a currency nobody has priced', () => {
     assert.equal(summary.orders[0].settled, true);
   });
 });
+
