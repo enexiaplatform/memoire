@@ -3,7 +3,8 @@ import { Coins, Pencil, Search, Target, TrendingDown, TrendingUp } from 'lucide-
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { QuoteRecord } from '../../services/quoteStore';
 import { deleteOrderCost, loadOrderCostsForWorkspace, saveOrderCost } from '../../services/orderCostStore';
-import { buildOrderBook, COMMIT_PROBABILITY_THRESHOLD, type CommittedOrder } from '../../utils/orderToCash';
+import { buildOrderBook, COMMIT_PROBABILITY_THRESHOLD, type CommittedOrder, type OrderMilestoneRecord } from '../../utils/orderToCash';
+import { loadOrderMilestonesForWorkspace } from '../../services/orderMilestoneStore';
 import {
   buildOrderMargins,
   marginTone,
@@ -88,25 +89,33 @@ export function CostAnalysisPanel({
   const [editingId, setEditingId] = useState('');
   const [entryOpen, setEntryOpen] = useState(false);
   const [targetPct, setTargetPct] = useState(() => getTargetMarginPct());
+  const [milestoneRecords, setMilestoneRecords] = useState<OrderMilestoneRecord[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     void loadOrderCostsForWorkspace(dataUserId, sampleDataActive).then((records) => {
       if (!cancelled) setCostRecords(records);
     });
+    void loadOrderMilestonesForWorkspace(dataUserId, sampleDataActive).then((records) => {
+      if (!cancelled) setMilestoneRecords(records);
+    });
     return () => { cancelled = true; };
   }, [dataUserId, sampleDataActive]);
 
   // The same committed orders the order book shows, from the same function.
   //
-  // Milestone ticks are deliberately not loaded here: they decide where an order
-  // is stuck, not which orders exist or what they are worth, so margin computed
-  // without them is identical to margin computed with them. The order-margin
-  // contract asserts that equality rather than leaving it as a comment, and this
-  // saves a second cloud read of a collection the panel above already holds.
+  // Ticks are loaded even though they cannot move a total. They used not to be,
+  // on the grounds that a tick decides where an order is stuck and not what it
+  // is worth - true of every figure on this page except the one that matters
+  // most here, the trend. `rollupMarginByMonth` files an order under its
+  // `orderDate`, and that now reads the Contract / PO tick, so without these the
+  // chart bucketed by the record's last edit: an order signed in April sat in
+  // whichever month it happened to be opened. The totals are unchanged and the
+  // order-margin contract still asserts that; what the ticks buy is the months
+  // being the months the orders were actually placed in.
   const orders = useMemo(
-    () => buildOrderBook({ opportunities, quotes, milestoneRecords: [], costRecords }).orders,
-    [costRecords, opportunities, quotes],
+    () => buildOrderBook({ opportunities, quotes, milestoneRecords, costRecords }).orders,
+    [costRecords, milestoneRecords, opportunities, quotes],
   );
 
   const margins = useMemo(

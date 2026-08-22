@@ -17,7 +17,8 @@ import {
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { loadOrderCostsForWorkspace } from '../../services/orderCostStore';
 import type { OrderCostRecord } from '../../utils/orderMargin';
-import { buildOrderBook } from '../../utils/orderToCash';
+import { buildOrderBook, type OrderMilestoneRecord } from '../../utils/orderToCash';
+import { loadOrderMilestonesForWorkspace } from '../../services/orderMilestoneStore';
 import {
   agingBucketLabels,
   buildReceivables,
@@ -57,6 +58,7 @@ export function CashCollectionPage() {
   const [quotes, setQuotes] = useState<QuoteRecord[]>(cached?.quotes || []);
   const [records, setRecords] = useState<OrderReceivableRecord[]>([]);
   const [costRecords, setCostRecords] = useState<OrderCostRecord[]>([]);
+  const [milestoneRecords, setMilestoneRecords] = useState<OrderMilestoneRecord[]>([]);
   const [loading, setLoading] = useState(!cached);
   const [syncing, setSyncing] = useState(false);
   const [filter, setFilter] = useState<'open' | 'overdue' | 'all'>('open');
@@ -74,12 +76,18 @@ export function CashCollectionPage() {
       // has been raised yet. Without them this page shows a schedule it
       // invented for an order whose terms the operator had already typed.
       loadOrderCostsForWorkspace(dataUserId, sampleDataActive),
-    ]).then(([workspace, receivableRecords, costs]) => {
+      // The ticked road to cash. Needed for the order's *date*: a deposit falls
+      // due on order, and without the Contract / PO tick the order book dates
+      // the order from the record's last edit, so opening a deal moved money
+      // out of overdue.
+      loadOrderMilestonesForWorkspace(dataUserId, sampleDataActive),
+    ]).then(([workspace, receivableRecords, costs, milestones]) => {
       if (cancelled) return;
       setOpportunities(workspace.opportunities);
       setQuotes(workspace.quotes);
       setRecords(receivableRecords);
       setCostRecords(costs);
+      setMilestoneRecords(milestones);
       setLoading(false);
     });
     return () => { cancelled = true; };
@@ -95,9 +103,9 @@ export function CashCollectionPage() {
 
   const today = todayDateKey();
   const summary = useMemo(() => {
-    const book = buildOrderBook({ opportunities, quotes, milestoneRecords: [], costRecords, today });
+    const book = buildOrderBook({ opportunities, quotes, milestoneRecords, costRecords, today });
     return buildReceivables({ orders: book.orders, records, today });
-  }, [costRecords, opportunities, quotes, records, today]);
+  }, [costRecords, milestoneRecords, opportunities, quotes, records, today]);
 
   const reload = async () => {
     setSyncing(true);

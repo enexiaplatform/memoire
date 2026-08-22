@@ -292,3 +292,49 @@ describe('order book: where the payment terms come from', () => {
     assert.equal(book.orders[0].paymentTerm, '');
   });
 });
+
+describe('order date: an order is dated by when it was placed, not when it was touched', () => {
+  const contractOn = (opportunityId, doneAt) => createOrderMilestoneRecord({
+    opportunityId,
+    milestone: 'contract',
+    done: true,
+    doneAt: `${doneAt}T09:00:00.000Z`,
+  });
+
+  test('a ticked Contract / PO dates the order, over the record last-edited time', () => {
+    const book = buildOrderBook({
+      opportunities: [opportunity('a', { status: 'Won', updatedAt: '2026-08-22T09:00:00.000Z' })],
+      quotes: [],
+      milestoneRecords: [contractOn('a', '2026-06-12')],
+      today: '2026-08-22',
+    });
+
+    assert.equal(book.orders[0].orderDate, '2026-06-12');
+  });
+
+  test('editing the record does not move the order date', () => {
+    const dateFor = (updatedAt) => buildOrderBook({
+      opportunities: [opportunity('a', { status: 'Won', updatedAt })],
+      quotes: [],
+      milestoneRecords: [contractOn('a', '2026-06-12')],
+      today: '2026-08-22',
+    }).orders[0].orderDate;
+
+    // The whole point. A deposit falls due "on order" and anchors to this date,
+    // so when it tracked `updatedAt` an operator who opened the deal and typed a
+    // note moved the deposit's due date to today and took it out of overdue.
+    assert.equal(dateFor('2026-06-12T09:00:00.000Z'), '2026-06-12');
+    assert.equal(dateFor('2026-08-22T09:00:00.000Z'), '2026-06-12');
+  });
+
+  test('an unticked contract milestone does not date the order', () => {
+    const book = buildOrderBook({
+      opportunities: [opportunity('a', { status: 'Won', updatedAt: '2026-08-22T09:00:00.000Z' })],
+      quotes: [],
+      milestoneRecords: [createOrderMilestoneRecord({ opportunityId: 'a', milestone: 'contract', done: false })],
+      today: '2026-08-22',
+    });
+
+    assert.equal(book.orders[0].orderDate, '2026-08-22', 'it falls back as it always did');
+  });
+});

@@ -119,13 +119,18 @@ const bookOf = (opportunities) => buildOrderBook({
   assert.match(registry, /id: 'cost-analysis'/, 'the rail renders from the registry, so the destination must be declared there');
 }
 
-// 1c. Margin does not depend on milestone ticks, which is why the module can
-//     read the order book without loading them a second time.
+// 1c. A milestone tick moves no total - but it does decide which month an order
+//     is filed under, so this page has to load them.
 //
-//     A tick decides where an order is stuck. It cannot change which orders are
-//     committed or what they are worth, so the two derivations are provably the
-//     same set - asserted here rather than trusted to a comment, because the day
-//     that stops being true is the day this page starts disagreeing with itself.
+//     The original rule was that a tick decides where an order is stuck and
+//     never what it is worth, so the panel could skip a second read. Half of
+//     that still holds and is asserted below: revenue, margin and coverage are
+//     identical with and without ticks. The other half stopped being true when
+//     `orderDate` began reading the Contract / PO tick. `rollupMarginByMonth`
+//     files an order by `orderDate`, so a panel that withheld the ticks drew its
+//     trend from the record's last edit - an order signed in April counted in
+//     whichever month somebody last opened it, and Cost Analysis and Orders
+//     disagreed about when the same order happened.
 {
   const opportunities = [opportunity('a', { estimatedValue: 1_000_000 })];
   const costRecords = [createOrderCostRecord({ opportunityId: 'a', amount: 400_000, currency: 'VND' })];
@@ -147,8 +152,39 @@ const bookOf = (opportunities) => buildOrderBook({
   assert.equal(withTicks.grossMarginBase, withoutTicks.grossMarginBase, 'a milestone tick must not move margin');
   assert.equal(withTicks.coveredCount, withoutTicks.coveredCount);
 
+  // The months, however, must follow the tick.
+  const signedInApril = buildOrderBook({
+    opportunities,
+    quotes: [],
+    milestoneRecords: [{
+      id: 'om-a-contract', opportunityId: 'a', milestone: 'contract', done: true,
+      doneAt: '2026-04-10T09:00:00.000Z',
+      createdAt: '2026-04-10T09:00:00.000Z', updatedAt: '2026-04-10T09:00:00.000Z',
+    }],
+    today: '2026-08-05',
+  }).orders;
+  assert.equal(signedInApril[0].orderDate, '2026-04-10', 'the Contract / PO tick dates the order');
+
+  const monthsWithTick = rollupMarginByMonth({
+    orders: signedInApril,
+    margins: buildOrderMargins({ orders: signedInApril, costRecords }),
+    monthCount: 6,
+    today: '2026-08-05',
+  });
+  const april = monthsWithTick.find((month) => month.key === '2026-04');
+  assert.equal(april?.orderCount, 1, 'an order signed in April is counted in April, not in the month it was last edited');
+
   const panel = readFileSync(new URL('../src/features/revenue/CostAnalysisPanel.tsx', import.meta.url), 'utf8');
-  assert.match(panel, /milestoneRecords: \[\]/, 'the module reads the same order book without a second milestone load');
+  assert.equal(
+    /milestoneRecords: \[\]/.test(panel),
+    false,
+    'Cost Analysis must not withhold the ticks: its trend is bucketed by order date, which reads them',
+  );
+  assert.match(
+    panel,
+    /loadOrderMilestonesForWorkspace\(/,
+    'Cost Analysis must load the milestone records it passes',
+  );
 }
 
 // 2. The totals count only orders that have both halves.

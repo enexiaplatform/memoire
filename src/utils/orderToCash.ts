@@ -238,7 +238,29 @@ export function buildOrderBook(input: {
       const amount = freshestQuote?.amount ?? opportunity.estimatedValue;
       const currency = freshestQuote?.currency || opportunity.currency || 'VND';
 
-      const orderDate = sanitize(freshestQuote?.quoteDate)
+      /**
+       * When the order was actually placed.
+       *
+       * The ticked Contract / PO milestone leads, because it is the only source
+       * here that *means* "the order was placed on this date" - an operator
+       * ticking it with a date is stating the fact directly, where a quote date
+       * is when the quote went out, some time before.
+       *
+       * The last resort used to be `opportunity.updatedAt`, and for a deal won
+       * without a quote - the ordinary handshake, and the same gap that left the
+       * order book showing "No payment term" - that is the record's last edit,
+       * not the order's date. It moved. A deposit falls due "on order", so it
+       * anchors here: on a 242,000 order signed 12 June with 30% down, opening
+       * the deal and typing a note re-dated the deposit from 12 June to today
+       * and took both it and the balance out of overdue. Same contract, same
+       * money, same customer - and the page stopped saying it was late because
+       * the operator had looked at it.
+       */
+      const contractSignedOn = sanitize(timestampToLocalDateKey(manual?.get('contract')?.done
+        ? manual.get('contract')?.doneAt
+        : undefined));
+      const orderDate = contractSignedOn
+        || sanitize(freshestQuote?.quoteDate)
         || sanitize(timestampToLocalDateKey(freshestQuote?.createdAt))
         || sanitize(timestampToLocalDateKey(opportunity.updatedAt))
         || '';
@@ -414,6 +436,16 @@ export function createOrderMilestoneRecord(input: {
   opportunityId: string;
   milestone: OrderMilestoneKey;
   done: boolean;
+  /**
+   * When the step actually happened, where that is not the moment it was ticked.
+   *
+   * Without this the factory stamped `now` unconditionally, so every date on the
+   * road to cash was a click time rather than an event time - a PO signed three
+   * weeks ago was recorded as signed today, and an operator entering the orders
+   * already on their desk could not tell the truth about any of them. It still
+   * defaults to now, which is right for ticking something off as it happens.
+   */
+  doneAt?: string;
   existing?: OrderMilestoneRecord;
   source?: 'demo' | 'user';
   isSample?: boolean;
@@ -424,7 +456,7 @@ export function createOrderMilestoneRecord(input: {
     opportunityId: input.opportunityId,
     milestone: input.milestone,
     done: input.done,
-    doneAt: input.done ? now : undefined,
+    doneAt: input.done ? (input.doneAt || input.existing?.doneAt || now) : undefined,
     createdAt: input.existing?.createdAt || now,
     updatedAt: now,
     source: input.existing?.source ?? input.source,
