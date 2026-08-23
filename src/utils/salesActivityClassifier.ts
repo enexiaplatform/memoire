@@ -321,10 +321,57 @@ function isNegatedAction(sourceText: string, rawNote: string) {
     || /\b(no|not|never|without|didn'?t|hasn'?t|haven'?t)\s+\w{0,12}$/.test(before);
 }
 
+const ACTION_VERB = /\b(send|resend|share|prepare|schedule|reschedule|confirm|call|reply|respond|update|clarify|reprice|revise|redo|draft|issue|submit|arrange|book|quote|propose|chase|answer|agree|sending|resending|sharing|preparing|scheduling|confirming|calling|replying|updating|chasing|repricing|revising|drafting|issuing|submitting|arranging|booking|quoting|proposing|answering|following up|follow up|follow-up)\b[^.\n;]*/i;
+
+/**
+ * Markers that turn a verb into a promise rather than a report.
+ *
+ * "Intro call with Sodexo France in Issy-les-Moulineaux" reached the Plan as a
+ * commitment to make a call that had already happened - the note's opening
+ * sentence, describing the meeting being written up, read as the next step.
+ * "Good call." produced a commitment called "Call". A promise starts its
+ * clause or stands behind one of these; a verb buried mid-sentence is almost
+ * always the operator narrating what they just did.
+ */
+const PROMISE_MARKER = /(?:^|[.;:]\s*)(?:i\s+)?(?:will|shall|must|should|going\s+to|need(?:s|ed)?\s+to|have\s+to|next|then|to|please|action)\b[\s:,-]*$/i;
+
+function startsAPromise(candidate: string, matchIndex: number) {
+  if (matchIndex === 0) return true;
+  const before = candidate.slice(0, matchIndex);
+  if (/^[\s"'(-]*$/.test(before)) return true;
+  return PROMISE_MARKER.test(before);
+}
+
+/**
+ * Whether a promise has shrunk to a verb with nothing behind it.
+ *
+ * "Need to reprice as two phases and send by 20 April" used to reach the Plan
+ * as a commitment called "Send" - the first half dropped because "reprice" is
+ * not in the verb list, the second half stripped of its date because the date
+ * belongs in the due column. What was left said nothing at all: an operator
+ * opening Today six weeks later sees "Grupo Pestana Hoteis - Send" and has no
+ * way to know what. A clause like that is the tail of the promise in front of
+ * it, not a promise of its own.
+ */
+function isBareVerbTitle(title: string) {
+  const words = title.trim().split(/\s+/);
+  if (words.length > 2) return false;
+  return /^(?:send|share|prepare|schedule|confirm|call|reply|update|clarify|chase|follow\s*up)$/i.test(title.trim());
+}
+
 export function extractNextActions(rawNote: string, activityDate: string): SalesActivityNextAction[] {
-  const actionSection = rawNote.match(/\b(?:need to|next actions?:?|to do:?)\s+(.+)$/i)?.[1] || rawNote;
-  const candidates = actionSection
-    .split(/\s+(?:and|then|;)\s+/i)
+  // An explicit cue means the operator has already pointed at the promise.
+  // Hunting for a listed verb inside it then throws away everything they
+  // wrote in their own words - "reprice as two phases" is a commitment, and
+  // "reprice" is not a word this list will ever contain.
+  const cued = rawNote.match(/\b(?:need to|next actions?:?|to do:?)\s+(.+)$/i)?.[1] || '';
+  const actionSection = cued || rawNote;
+  // Uncued, a note is prose: the promise is one sentence among several, and
+  // scanning the whole thing as a single candidate stopped at the first verb
+  // it saw, which is usually the one describing the meeting being written up.
+  const sections = cued ? [cued] : actionSection.split(/(?<=[.!?])\s+|\n+/);
+  const candidates = sections
+    .flatMap((section) => section.split(/\s+(?:and|then|;)\s+/i))
     .map((part) => part.trim())
     .filter(Boolean);
 
@@ -332,7 +379,12 @@ export function extractNextActions(rawNote: string, activityDate: string): Sales
     // The gerund is in here too: "Sending the support proof Friday" is a
     // promise, and until it was read the Plan got nothing from a note written
     // that way - including the note on the product's own landing page.
-    .map((candidate) => candidate.match(/\b(send|share|prepare|schedule|confirm|call|follow up|follow-up|reply|update|clarify|sending|sharing|preparing|scheduling|confirming|calling|replying|updating|chasing|following up)\b[^.\n;]*/i)?.[0] || '')
+    .map((candidate) => {
+      if (cued) return candidate;
+      const found = candidate.match(ACTION_VERB);
+      if (!found || typeof found.index !== 'number') return '';
+      return startsAPromise(candidate, found.index) ? found[0] : '';
+    })
     .filter(Boolean)
     // A month of ordinary notes turned "No reply yet." into a commitment called
     // "reply yet", sitting on the Plan with a date. A verb behind a negation is
@@ -352,6 +404,19 @@ export function extractNextActions(rawNote: string, activityDate: string): Sales
       };
     })
     .filter((action) => action.title.length > 0);
+
+  // The tail clause keeps its date if it is the only thing the note promised,
+  // because "Send by 20 April" is still worth more than nothing; it is dropped
+  // when a fuller promise from the same note already carries the work, and its
+  // due date moves onto that promise so the deadline is not lost with it.
+  const substantial = actions.filter((action) => !isBareVerbTitle(action.title));
+  if (substantial.length && substantial.length < actions.length) {
+    const orphanDue = actions.find((action) => isBareVerbTitle(action.title) && action.dueDate)?.dueDate;
+    if (orphanDue && !substantial[substantial.length - 1].dueDate) {
+      substantial[substantial.length - 1] = { ...substantial[substantial.length - 1], dueDate: orphanDue };
+    }
+    return dedupeByTitle(substantial).slice(0, 5);
+  }
 
   return dedupeByTitle(actions).slice(0, 5);
 }
@@ -714,25 +779,68 @@ function extractFirstMatch(rawNote: string, patterns: RegExp[]) {
   return '';
 }
 
+/**
+ * A name, then a comma, then a job title.
+ *
+ * Written as one regex literal on purpose. A personal name is matched with
+ * `\p{Lu}`/`\p{L}` rather than `[A-Z][A-Za-z]`, because the ASCII class cannot
+ * match "Jose Fernandez" written properly, "Soren Nystrom" or "Luis Simoes" -
+ * it stops at the first accented letter. On a workspace outside the
+ * English-speaking world that is most of the names in it, so the stakeholder
+ * map stayed empty however carefully the operator wrote their notes.
+ *
+ * The title is up to three modifier words followed by a head noun, so "Head of
+ * Engineering", "group energy manager" and "CFO" all read, while a sentence
+ * that merely contains a comma does not.
+ */
+const APPOSITIVE_CONTACT = /\b(?!(?:Met|Called|Visited|Saw|Emailed|Spoke|Rang|With|And|But|The|Their|They|Our|Next|Then|Today|Yesterday|Also|Site|Call|Visit)\b)(\p{Lu}[\p{L}'-]{1,30}(?:\s+\p{Lu}[\p{L}'-]{1,30}){0,2})\s*,\s*((?:the\s+)?(?:[\p{L}][\p{L}&'.-]*\s+){0,3}(?:CFO|CEO|COO|CTO|CIO|CMO|CPO|VP|MD|[Dd]irector|[Mm]anager|[Oo]fficer|[Hh]ead|[Cc]hief|[Ee]ngineer|[Bb]uyer|[Oo]wner|[Ll]ead|[Pp]resident|[Cc]ontroller|[Ss]upervisor|[Ff]ounder|[Pp]artner|[Aa]rchitect|[Cc]oordinator|[Ss]pecialist|[Ee]xecutive|[Aa]nalyst|[Cc]onsultant|[Tt]echnician|[Ss]uperintendent|[Pp]rincipal)\b(?:\s+of\s+[\p{L}][\p{L} &'-]{0,30})?)/u;
+
 function extractContact(rawNote: string) {
   // Deliberately case-sensitive after the verb: the trailing groups are what
   // stop "Ms. Huyen is the buyer" from capturing "Huyen is the", and only
   // capitalisation can tell a name from the rest of the sentence. Requiring a
   // full stop or "at"/"from" behind the name instead - which is what this did -
   // meant the commonest sentence a seller writes resolved to nobody.
-  const match = rawNote.match(/\b(?:[Ww]ith|[Cc]all(?:ed)?|[Mm]et)\s+((?:Dr|Mr|Ms|Mrs)\.?\s+[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,2})\b/);
+  const match = rawNote.match(/\b(?:[Ww]ith|[Cc]all(?:ed)?|[Mm]et)\s+((?:Dr|Mr|Ms|Mrs)\.?\s+\p{Lu}[\p{L}.'-]+(?:\s+\p{Lu}[\p{L}.'-]+){0,2})\b/u);
+  // The name and the job title in one breath, which is the shape the honorific
+  // rule above and the verb rule below both miss. Taken before the verb rule
+  // because a note that states someone's role is stating who they are.
+  const appositive = match ? null : rawNote.match(APPOSITIVE_CONTACT);
+  const appositiveName = appositive?.[1]?.trim() || '';
+  // A company followed by a job title - "Sodexo France, regional director
+  // wants a pilot" - is the same shape with an organisation in front of it,
+  // and filing that as a person invents a stakeholder who does not exist.
+  const usableAppositive = appositiveName && !looksLikeOrganisationName(appositiveName) ? appositive : null;
   // A person named by what they did, which is how a note mentions the person
   // who matters: "Dana Reyes likes the proposal", "Anke Vogt asked for the
   // BOM". Two capitalised words and a verb of opinion or request - narrow on
   // purpose, because a wrong name on a stakeholder map is worse than none.
-  const byVerb = match
+  const byVerb = match || usableAppositive
     ? null
     // No full stop inside a name, or "Called Nordwind Marine. They want ..."
     // reads the sentence boundary as part of the person: "Marine. They".
-    : rawNote.match(/\b([A-Z][A-Za-z'-]{1,20}\s+[A-Z][A-Za-z'-]{1,20})\s+(?:likes?|wants?|asked|asks|said|says|prefers?|raised|confirmed|agreed|needs?|is\s+the\s+)/);
-  const name = (match?.[1] || byVerb?.[1] || '').trim();
-  const role = name.match(/^(Dr\.?|Doctor)\b/i) ? 'Doctor' : '';
+    : rawNote.match(/\b(\p{Lu}[\p{L}'-]{1,20}\s+\p{Lu}[\p{L}'-]{1,20})\s+(?:likes?|wants?|asked|asks|said|says|prefers?|raised|confirmed|agreed|needs?|is\s+the\s+)/u);
+  const name = (match?.[1] || usableAppositive?.[1] || byVerb?.[1] || '').trim();
+  const role = name.match(/^(Dr\.?|Doctor)\b/i)
+    ? 'Doctor'
+    : cleanRoleTitle(usableAppositive?.[2] || '');
   return { name, role };
+}
+
+/**
+ * Whether a capitalised run in front of a job title is a company rather than a
+ * person. Kept separate from `looksLikeOrganization` in the entity resolver
+ * because this one also has to catch the plain country and city suffixes that
+ * end a subsidiary's name.
+ */
+function looksLikeOrganisationName(value: string) {
+  return /\b(?:company|corp|corporation|inc|ltd|limited|gmbh|sarl|sas|spa|srl|bv|nv|ab|as|oy|plc|group|holdings?|international|france|deutschland|espana|portugal|iberia|benelux|nordic)\b/i.test(value);
+}
+
+function cleanRoleTitle(value: string) {
+  const cleaned = value.replace(/\s+/g, ' ').replace(/^the\s+/i, '').replace(/[.,;:]$/, '').trim();
+  if (!cleaned) return '';
+  return cleaned.replace(/^\p{Ll}/u, (letter) => letter.toUpperCase()).slice(0, 60);
 }
 
 function extractNextAction(rawNote: string) {

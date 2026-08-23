@@ -173,13 +173,10 @@ function resolveOpportunity(input: {
   opportunities: OpportunityContext[];
   corrections: CaptureCorrectionEvent[];
 }) {
-  const realMention = input.opportunities
-    .filter((opportunity) => opportunityFitsAccount(opportunity, input.accountName))
-    .filter((opportunity) => (
-      includesPhrase(input.rawNote, opportunity.opportunityName)
-      || Boolean(opportunity.productOrSolution && includesPhrase(input.rawNote, opportunity.productOrSolution))
-    ))
-    .sort((left, right) => right.opportunityName.length - left.opportunityName.length)[0];
+  const realMention = pickMentionedOpportunity(
+    input.rawNote,
+    input.opportunities.filter((opportunity) => opportunityFitsAccount(opportunity, input.accountName)),
+  );
   if (realMention) return realMention;
 
   const suppressCandidate = input.corrections.some((event) => (
@@ -241,6 +238,110 @@ function extractExplicitOpportunity(rawNote: string) {
 
 function opportunityFitsAccount(opportunity: OpportunityContext, accountName: string) {
   return !accountName || !opportunity.accountName || sameName(opportunity.accountName, accountName);
+}
+
+/**
+ * Stages that mean the work is finished.
+ *
+ * A customer you have done business with twice has two deals with the same
+ * words in them, and the older one is the closed one. Ranking them together
+ * meant a note about the live proposal - "they want heat recovery across six
+ * Algarve hotels" - attached itself to the heat recovery job delivered in
+ * March, because that one's product line was the phrase the note happened to
+ * repeat. The live deal then stayed on nought touches, which is the one thing
+ * this product exists to prevent, and a finished job collected an open
+ * commitment it can never discharge. Repeat business is the good case, so it
+ * must not be the case that breaks the link.
+ */
+const CLOSED_OPPORTUNITY_STAGES = new Set(['won', 'lost', 'on hold']);
+
+/**
+ * Words that sit in so many deal names that finding one in a note says nothing
+ * about which deal was meant. Kept short on purpose: anything genuinely
+ * describing the work - "retrofit", "algarve", "compressed" - has to stay in,
+ * because those are exactly the words that tell two of a customer's deals
+ * apart.
+ */
+const GENERIC_DEAL_WORDS = new Set([
+  'project', 'projects', 'programme', 'program', 'solution', 'solutions',
+  'service', 'services', 'system', 'systems', 'phase', 'stage', 'deal',
+  'opportunity', 'contract', 'proposal', 'quote', 'order', 'work', 'scope',
+]);
+
+function isClosedOpportunity(opportunity: OpportunityContext) {
+  return CLOSED_OPPORTUNITY_STAGES.has((opportunity.stage || '').trim().toLowerCase());
+}
+
+function opportunityWords(opportunity: OpportunityContext) {
+  const source = `${opportunity.opportunityName || ''} ${opportunity.productOrSolution || ''}`;
+  return new Set(
+    normalize(source)
+      .split(' ')
+      .filter((word) => word.length >= 4 && !GENERIC_DEAL_WORDS.has(word)),
+  );
+}
+
+/**
+ * Per deal, the words that belong to that deal and to no other deal of the same
+ * customer.
+ *
+ * The old rule could only see a deal whose whole name or whole product line was
+ * repeated in the note, and nobody writes that way - a note says "the Algarve
+ * rollout", not "Heat recovery retrofit - 6 hotels Algarve". One word that
+ * only one of the customer's deals owns is the strongest signal a real note
+ * actually carries, and it is safe precisely because it is computed within one
+ * customer: a word shared by two of their deals is dropped here rather than
+ * used to pick between them.
+ */
+function distinctiveWordsByOpportunity(inScope: OpportunityContext[]) {
+  const wordSets = inScope.map(opportunityWords);
+  const counts = new Map<string, number>();
+  for (const wordSet of wordSets) {
+    for (const word of wordSet) counts.set(word, (counts.get(word) || 0) + 1);
+  }
+  return wordSets.map((wordSet) => Array.from(wordSet).filter((word) => counts.get(word) === 1));
+}
+
+function scoreOpportunityMention(rawNote: string, opportunity: OpportunityContext, distinctiveWords: string[]) {
+  let score = 0;
+  if (opportunity.opportunityName && includesPhrase(rawNote, opportunity.opportunityName)) {
+    score += 1000 + opportunity.opportunityName.length;
+  }
+  if (opportunity.productOrSolution && includesPhrase(rawNote, opportunity.productOrSolution)) {
+    score += 500 + opportunity.productOrSolution.length;
+  }
+  score += 100 * distinctiveWords.filter((word) => includesPhrase(rawNote, word)).length;
+  return score;
+}
+
+/**
+ * The deal a note is about, out of the ones belonging to its customer.
+ *
+ * Open deals win outright whenever any of them matches; a closed deal is
+ * returned only when nothing still running matches at all, which is what makes
+ * "the water reuse study is finished, can we do the same at Vila do Conde"
+ * still land on the study. Within a group the strongest evidence wins - a whole
+ * name, then a whole product line, then distinctive words - and length is only
+ * the last tie-break rather than, as before, the entire ranking.
+ */
+function pickMentionedOpportunity(rawNote: string, inScope: OpportunityContext[]) {
+  if (!inScope.length) return undefined;
+  const distinctive = distinctiveWordsByOpportunity(inScope);
+  const scored = inScope
+    .map((opportunity, index) => ({
+      opportunity,
+      score: scoreOpportunityMention(rawNote, opportunity, distinctive[index]),
+      closed: isClosedOpportunity(opportunity),
+    }))
+    .filter((entry) => entry.score > 0);
+  if (!scored.length) return undefined;
+  const stillRunning = scored.filter((entry) => !entry.closed);
+  const preferred = stillRunning.length ? stillRunning : scored;
+  preferred.sort((left, right) => (
+    right.score - left.score
+    || right.opportunity.opportunityName.length - left.opportunity.opportunityName.length
+  ));
+  return preferred[0].opportunity;
 }
 
 function looksLikePerson(value: string) {
