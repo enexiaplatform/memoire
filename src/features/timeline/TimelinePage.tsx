@@ -56,12 +56,21 @@ export function TimelinePage() {
         title="Plan"
         description={activeHint}
         actions={
+          /*
+           * Named "Quick capture", not "Capture": the app header carries a
+           * permanent dark "Capture" pill in the corner directly above this one,
+           * so on Plan - and only on Plan - two identical buttons sat stacked
+           * 57px apart with the same word on them. They are not the same thing;
+           * this one opens the quick form. Every other surface already labels
+           * its capture link for what it does there ("Capture update", "Capture
+           * a sales update"), so this follows them.
+           */
           <Link
             to="/app/capture?mode=quick"
             className="inline-flex items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
           >
             <Plus className="h-4 w-4" />
-            Capture
+            Quick capture
           </Link>
         }
       />

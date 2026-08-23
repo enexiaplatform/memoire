@@ -49,7 +49,7 @@ export function PlanSuggestionsPanel({
           <span className="text-sm font-bold text-navy">Suggested for this week ({suggestions.length})</span>
           <span className="text-xs text-gray-500">
             {alertCount > 0
-              ? `${alertCount} from what is at risk right now. Nothing is on your plan until you put it there.`
+              ? `${alertCount} of those come from what is at risk right now. Nothing is on your plan until you put it there.`
               : 'Nothing here is on your plan until you put it there.'}
           </span>
         </span>

@@ -82,7 +82,7 @@ export function ActivityPivotTable({
             <tbody>
               {pivot.rows.map((row) => (
                 <tr key={row.key} className="group">
-                  <th className="sticky left-0 z-10 max-w-[190px] border-b border-gray-100 bg-white py-1.5 pr-3 text-left align-middle font-semibold text-gray-800 group-hover:bg-blue-50/40">
+                  <th className="sticky left-0 z-10 max-w-[clamp(190px,14vw,360px)] border-b border-gray-100 bg-white py-1.5 pr-3 text-left align-middle font-semibold text-gray-800 group-hover:bg-blue-50/40">
                     <span className="block truncate" title={row.label}>{row.label}</span>
                     {row.note && <span className="block text-[10px] font-medium text-gray-400">{row.note}</span>}
                   </th>

@@ -58,6 +58,8 @@ export function AskMemoirePage() {
    * changed was somewhere the operator could not see.
    */
   const answerSectionRef = useRef<HTMLElement>(null);
+  /** Set when a question is answered, consumed by the effect that scrolls to it. */
+  const pendingScrollRef = useRef(false);
   const [loading, setLoading] = useState(false);
   const [contextLoading, setContextLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -117,6 +119,13 @@ export function AskMemoirePage() {
   useEffect(() => {
     loadMemory();
   }, [loadMemory]);
+
+  // Scrolls to the answer once it has actually been painted, never on load.
+  useEffect(() => {
+    if (!pendingScrollRef.current || loading) return;
+    pendingScrollRef.current = false;
+    answerSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [answer, loading]);
 
   useEffect(() => {
     const nextScope = (searchParams.get('scope') as AskMemoireContext['scope']) || 'all';
@@ -342,7 +351,13 @@ export function AskMemoirePage() {
       setAnswer(withAnswerCards(answerFromMemory(nextQuestion, contextPacket), nextQuestion, contextPacket));
     } finally {
       setLoading(false);
-      answerSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Deliberately NOT scrolled here. This runs inside the handler, before
+      // React has committed the answer, so it scrolled the still-empty card -
+      // which was already on screen - and the real answer then rendered below
+      // the fold. Asking a question and being left looking at the form is how
+      // this read as "Ask does nothing". The scroll moved to an effect that
+      // fires after the answer is painted; see `pendingScrollRef`.
+      pendingScrollRef.current = true;
     }
   }, [
     canSearch,
@@ -824,7 +839,7 @@ function answerFromAttention({
         id: `health-${health.entityType}-${health.entityId}`,
         rank: health.status === 'broken' ? 3 : 4,
         entityKey: `${health.entityType}-${health.entityId}`,
-        entityName: opportunity ? `${account?.name || 'Unknown account'} / ${opportunity.title}` : account?.name || 'Unknown account',
+        entityName: opportunity ? `${account?.name || opportunity.account?.name || opportunity.account_name || 'Unknown account'} / ${opportunity.title}` : account?.name || 'Unknown account',
         reason: health.reasons[0] || (health.status === 'broken' ? 'This deal may go silent.' : 'Account context needs more detail.'),
         signalSource: 'Context Health',
         suggestedNextAction: linkedAction?.title || health.suggestedFixes[0] || 'Create or confirm the next action.',

@@ -55,6 +55,22 @@ export function detectBrokenLoops({
   staleCutoff.setDate(staleCutoff.getDate() - staleDays);
 
   const accountById = new Map(accounts.map((account) => [account.id, account]));
+
+  /*
+   * Every stuck-deal card read "Unknown account / <deal>".
+   *
+   * `account_id` is resolved by matching the deal's account NAME against an
+   * Account record, and a CSV import writes deals without writing accounts - so
+   * on an imported pipeline the lookup misses every time and the answer names
+   * no customer at all. "Which deals may go silent?" is unusable if it cannot
+   * say whose. The deal already carries the name it was imported with; use it
+   * when the register has no record to point at.
+   */
+  const accountNameFor = (opportunity: Opportunity) =>
+    accountById.get(opportunity.account_id || '')?.name
+    || opportunity.account?.name
+    || opportunity.account_name
+    || 'Unknown account';
   const activeActions = actions.filter((action) => action.status === 'open');
   const activeOpportunities = opportunities.filter((opportunity) => activeOpportunityStages.includes(opportunity.stage));
   const latestInteractionByAccount = latestBy(interactions, (interaction) => interaction.account_id || '');
@@ -75,7 +91,7 @@ export function detectBrokenLoops({
         id: `opportunity-no-next-action-${opportunity.id}`,
         priority: 'P0',
         issue: 'Missing follow-up',
-        affectedEntity: `${accountById.get(opportunity.account_id || '')?.name || 'Unknown account'} / ${opportunity.title}`,
+        affectedEntity: `${accountNameFor(opportunity)} / ${opportunity.title}`,
         whyItMatters: 'This deal may stall because there is no clear next step.',
         suggestedFix: 'Create or confirm a follow-up action.',
         actionLabel: 'Create Action',
@@ -94,7 +110,7 @@ export function detectBrokenLoops({
         id: `stale-opportunity-${opportunity.id}`,
         priority: 'P1',
         issue: 'Account going silent',
-        affectedEntity: `${accountById.get(opportunity.account_id || '')?.name || 'Unknown account'} / ${opportunity.title}`,
+        affectedEntity: `${accountNameFor(opportunity)} / ${opportunity.title}`,
         whyItMatters: 'No recent interaction means the relationship may be cooling down.',
         suggestedFix: 'Schedule a check-in or log a recent update.',
         actionLabel: 'Open Opportunity',

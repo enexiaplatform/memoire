@@ -80,6 +80,7 @@ export function adaptWorkspaceToV31(workspace: SalesWorkspaceData, userId: strin
       id: opportunity.id,
       user_id: userId,
       account_id: accountId,
+      account_name: opportunity.accountName || null,
       contact_id: null,
       title: opportunity.opportunityName,
       stage: toLegacyStage(opportunity.stage),

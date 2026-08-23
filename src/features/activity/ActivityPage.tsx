@@ -335,12 +335,15 @@ export function ActivityPage() {
         title="Activity"
         description="Every dated thing in the workspace, each one resolved to the single customer, deal, line or domain it was for. The calendar says when; this says who it was for and whether it added up."
         actions={
+          /* "Quick capture", not "Capture": the app header's permanent Capture
+             pill sits directly above this one. See TimelinePage for the same
+             collision and the same reasoning. */
           <Link
             to="/app/capture?mode=quick"
             className="inline-flex items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
           >
             <Plus className="h-4 w-4" />
-            Capture
+            Quick capture
           </Link>
         }
       />

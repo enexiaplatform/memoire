@@ -280,20 +280,60 @@ function response({
   };
 }
 
+/**
+ * The catch-all answer, for a question no preset matched.
+ *
+ * It used to open "Account: X." and then print `opportunities[0]`,
+ * `interactions[0]` and the first open action beneath it, as one paragraph. The
+ * four lists are sorted independently and nothing joins them, so with more than
+ * one customer in scope those are four unrelated records wearing the grammar of
+ * a single-customer briefing.
+ *
+ * Observed on a 19-customer workspace, asking "Which Dubai customers owe me
+ * money right now?": the card answered "Account: Nordisk Storkokken A/S" - a
+ * Danish account - followed by "Current opportunity: Newbuild galley outfitting
+ * - hulls 4471 to 4474", which belongs to Bahri Ship Management. Two different
+ * companies printed as one, under a heading that reads "Answer ready".
+ *
+ * The attribution cannot be repaired here: a deal carries its account by name
+ * and `account_id` is not written. So the fix is to stop claiming the join. One
+ * account in scope keeps the briefing voice, because there the join is real.
+ * More than one, and every line says which list it is the top of.
+ */
 function summarizeContext(accounts: Account[], opportunities: Opportunity[], interactions: Interaction[], objections: Objection[], actions: SalesAction[]) {
   if (accounts.length === 0 && opportunities.length === 0 && interactions.length === 0) {
     return 'Memoire does not have enough context to answer confidently.';
   }
+
+  const account = accounts[0];
+  const opportunity = opportunities[0];
+  const openAction = actions.find((action) => action.status === 'open');
+  const objectionLine = objections.length > 0
+    ? `Objections: ${objections.map((objection) => objection.title).join('; ')}`
+    : '';
+
+  const oneSubject = accounts.length <= 1
+    && (!opportunity || !account || !opportunity.account_id || opportunity.account_id === account.id);
+
+  if (oneSubject) {
+    return [
+      account ? `Account: ${account.name}. ${account.summary || ''}` : '',
+      // "at Proposal" reads; "at won" does not, because Won is not a place the
+      // deal is sitting at - it is what happened to it.
+      opportunity ? `Current opportunity: ${opportunity.title} — ${opportunity.stage}.` : '',
+      interactions[0] ? `Last interaction: ${interactions[0].summary}` : '',
+      objectionLine,
+      openAction ? `Next action: ${openAction.title}` : '',
+    ].filter(Boolean).join('\n');
+  }
+
   return [
-    accounts[0] ? `Account: ${accounts[0].name}. ${accounts[0].summary || ''}` : '',
-    // "at Proposal" reads; "at won" does not, because Won is not a place the
-    // deal is sitting at - it is what happened to it.
-    opportunities[0]
-      ? `Current opportunity: ${opportunities[0].title} — ${opportunities[0].stage}.`
-      : '',
-    interactions[0] ? `Last interaction: ${interactions[0].summary}` : '',
-    objections.length > 0 ? `Objections: ${objections.map((objection) => objection.title).join('; ')}` : '',
-    actions.find((action) => action.status === 'open') ? `Next action: ${actions.find((action) => action.status === 'open')?.title}` : '',
+    `This is the whole workspace, not one customer: ${accounts.length} customers are in scope.`,
+    opportunity ? `Most recently updated deal: ${opportunity.title} — ${opportunity.stage}.` : '',
+    interactions[0] ? `Most recent interaction recorded: ${interactions[0].summary}` : '',
+    objectionLine,
+    openAction ? `Oldest open action: ${openAction.title}` : '',
+    'Each line above is the top of its own list. Pick one customer in the context selector to get one story instead of four.',
   ].filter(Boolean).join('\n');
 }
 

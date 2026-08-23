@@ -34,6 +34,16 @@ export interface Opportunity {
   id: string;
   user_id: string;
   account_id: string | null;
+  /**
+   * The customer name the deal itself carries.
+   *
+   * `account_id` is resolved by matching this name against an Account record,
+   * and a pipeline CSV writes deals without writing accounts - so on an imported
+   * workspace `account_id` is null for every deal and every surface that reads
+   * it prints "Unknown account". The name was never missing; only the record
+   * was. Additive and optional: nothing that reads `account_id` changes.
+   */
+  account_name?: string | null;
   contact_id: string | null;
   title: string;
   stage: SalesStage;
