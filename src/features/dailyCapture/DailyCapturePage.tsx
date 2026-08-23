@@ -472,6 +472,50 @@ export function DailyCapturePage() {
     }
   }, [searchParams, searchParamsKey]);
 
+  /**
+   * Attach a just-saved capture to the deal it names.
+   *
+   * Every save wrote `linkStatus: 'Unlinked'`, whatever the operator had just
+   * confirmed in the panel directly above the button. Three things followed
+   * from that one word. The deal showed "No touch yet" and "0 touches" beside a
+   * silence badge reading "Quiet 18d" - because the silence rule matches on the
+   * account and the touch count only counts linked activities, so one row
+   * disagreed with itself. The capture sat in the confirmation inbox for ever,
+   * and the workspace kept reporting items to confirm that had been confirmed.
+   * And a product whose stated principle is "record once" asked for the same
+   * link twice.
+   *
+   * Deliberately conservative: it links only when exactly one deal matches both
+   * the account and the opportunity the draft carries - which is a deal the
+   * operator has already named or accepted on screen. Nothing matched, or more
+   * than one, and it stays Unlinked with the suggestion list doing what it did.
+   */
+  const autoLinkSavedActivity = async (record: SalesActivityRecord) => {
+    const accountKey = normalizeEntityName(record.accountName || '');
+    const opportunityKey = normalizeEntityName(record.opportunityName || '');
+    if (!accountKey || !opportunityKey) return record;
+    const matches = opportunities.filter((opportunity) => (
+      normalizeEntityName(opportunity.accountName) === accountKey
+      && normalizeEntityName(opportunity.opportunityName) === opportunityKey
+    ));
+    if (matches.length !== 1) return record;
+    try {
+      const linked = await updateSalesActivityLink(record, {
+        linkedOpportunityId: matches[0].id,
+        linkedOpportunityName: matches[0].opportunityName,
+        linkedAccountName: matches[0].accountName,
+        linkStatus: 'Linked',
+      }, dataUserId);
+      setActivities((current) => current.map((item) => item.id === linked.id ? linked : item));
+      setLastSavedActivity(linked);
+      return linked;
+    } catch {
+      // The capture is saved either way. A link that could not be written is
+      // work the suggestion list can still offer; it is not a failed save.
+      return record;
+    }
+  };
+
   const handleSave = async () => {
     // Guarded here rather than only on the buttons: both Save buttons and any
     // future call site funnel through this function, and a disabled button is
@@ -524,6 +568,7 @@ export function DailyCapturePage() {
     setAccountAliases(memory.aliases);
     setActivities((current) => [result.record, ...current.filter((item) => item.id !== result.record.id)]);
     setLastSavedActivity(result.record);
+    void autoLinkSavedActivity(result.record);
     setRawNote('');
     setEmailForm(createInitialEmailThreadCaptureForm(searchParams));
     setStructuredDraft(null);
@@ -566,6 +611,7 @@ export function DailyCapturePage() {
     });
     setActivities((current) => [result.record, ...current.filter((item) => item.id !== result.record.id)]);
     setLastSavedActivity(result.record);
+    void autoLinkSavedActivity(result.record);
     setQuickForm((current) => ({
       ...current,
       whatHappened: '',

@@ -6029,9 +6029,29 @@ function formatDate(date: Date) {
   });
 }
 
+/**
+ * The touches on a deal.
+ *
+ * An explicit link is the answer whenever there is one. The name match behind
+ * it is for captures taken before saving started linking them: the silence
+ * rule has always matched on the account alone, so one row could read "No
+ * touch yet" and "1 gap - 0 touches" beside a badge saying "Quiet 18d", where
+ * the 18 days were counted from a touch this function refused to see. Stricter
+ * than the silence rule on purpose - both the account and the deal have to
+ * match, because "we spoke to this customer" and "we moved this deal" are
+ * different claims and only the second one belongs in a touch count.
+ */
 function getLinkedActivities(opportunity: CrmLiteOpportunity, activities: SalesActivityRecord[]) {
+  const accountKey = normalizeEntityName(opportunity.accountName || '');
+  const opportunityKey = normalizeEntityName(opportunity.opportunityName || '');
   return activities
-    .filter((activity) => activity.linkStatus === 'Linked' && activity.linkedOpportunityId === opportunity.id)
+    .filter((activity) => {
+      if (activity.linkStatus === 'Linked') return activity.linkedOpportunityId === opportunity.id;
+      if (activity.linkStatus === 'Ignored') return false;
+      if (!accountKey || !opportunityKey) return false;
+      return normalizeEntityName(activity.accountName || '') === accountKey
+        && normalizeEntityName(activity.opportunityName || '') === opportunityKey;
+    })
     .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate) || b.createdAt.localeCompare(a.createdAt));
 }
 
