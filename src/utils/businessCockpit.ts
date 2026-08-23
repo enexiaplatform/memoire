@@ -66,6 +66,16 @@ type BusinessCockpitInput = {
   /** Used only to resolve a quote-shaped answer back to its deal. */
   quotes?: QuoteRecord[];
   captureInboxCount: number;
+  /**
+   * Where the oldest unconfirmed capture actually is.
+   *
+   * The card used to send everybody to `/app/capture` - an empty note box -
+   * however many items it had just said were waiting. It named a queue and
+   * then opened a blank form, so the only way to reach the queue was to know,
+   * without being told, that the linking UI lives in the Activity ledger's
+   * detail. The inbox items have carried their own href the whole time.
+   */
+  captureInboxHref?: string;
   today?: string;
 };
 
@@ -274,7 +284,9 @@ export function buildBusinessCockpit(input: BusinessCockpitInput): BusinessCockp
       answer: input.captureInboxCount > 0
         ? `${input.captureInboxCount} captured ${input.captureInboxCount === 1 ? 'item needs' : 'items need'} confirmation.`
         : 'Inbox clear. Capture the next touch right after it happens.',
-      href: input.captureInboxCount > 0 ? '/app/capture' : '/app/capture?mode=quick',
+      href: input.captureInboxCount > 0
+        ? input.captureInboxHref || '/app/timeline?view=history'
+        : '/app/capture?mode=quick',
       // Deliberately not urgent: unconfirmed captures are work waiting, not an
       // alarm, and colouring them amber next to an overdue payment would say
       // they were the same thing.

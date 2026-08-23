@@ -8,6 +8,7 @@ import { SkeletonCard, SkeletonScreen } from '../../components/common/Skeleton';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { QuoteRecord } from '../../services/quoteStore';
+import type { OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { CostAnalysisPanel } from './CostAnalysisPanel';
@@ -39,6 +40,9 @@ export function CostAnalysisPage() {
   const cached = getCachedSalesWorkspaceData(dataUserId);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>(cached?.opportunities || []);
   const [quotes, setQuotes] = useState<QuoteRecord[]>(cached?.quotes || []);
+  // The close dates. Without them the margin trend files every imported order
+  // in the month it was imported.
+  const [opportunityOutcomes, setOpportunityOutcomes] = useState<OpportunityOutcomeRecord[]>(cached?.opportunityOutcomes || []);
   const [loading, setLoading] = useState(!cached);
   const [syncing, setSyncing] = useState(false);
 
@@ -50,6 +54,7 @@ export function CostAnalysisPage() {
       if (cancelled) return;
       setOpportunities(workspace.opportunities);
       setQuotes(workspace.quotes);
+      setOpportunityOutcomes(workspace.opportunityOutcomes);
       setLoading(false);
     });
     return () => { cancelled = true; };
@@ -61,6 +66,7 @@ export function CostAnalysisPage() {
       const workspace = await loadSalesWorkspaceData(dataUserId, { force: true });
       setOpportunities(workspace.opportunities);
       setQuotes(workspace.quotes);
+      setOpportunityOutcomes(workspace.opportunityOutcomes);
     } finally {
       setSyncing(false);
     }
@@ -114,6 +120,7 @@ export function CostAnalysisPage() {
         <CostAnalysisPanel
           opportunities={opportunities}
           quotes={quotes}
+          outcomes={opportunityOutcomes}
           dataUserId={dataUserId}
           sampleDataActive={sampleDataActive}
         />

@@ -200,6 +200,7 @@ export function RevenueViewPage() {
             opportunities={data.opportunities}
             quotes={data.quotes}
             termRecords={termRecords}
+            outcomes={data.opportunityOutcomes}
             dataUserId={dataUserId}
             sampleDataActive={sampleDataActive}
           />

@@ -16,6 +16,7 @@ import {
   type OrderMilestoneState,
   type OrderStage,
   type OrderTermRecord,
+  type OrderOutcomeRecord,
 } from '../../utils/orderToCash';
 import { formatBaseCurrencyAmount, formatCompactBaseAmount, formatCurrencyAmount } from '../../utils/money';
 import { formatSafeBusinessDate } from '../../utils/safeDate';
@@ -45,11 +46,17 @@ export function OrderBookPanel({
   opportunities,
   quotes,
   termRecords,
+  outcomes,
   dataUserId,
   sampleDataActive,
 }: {
   opportunities: CrmLiteOpportunity[];
   quotes: QuoteRecord[];
+  /**
+   * When each closed deal closed. Without it the engine falls back to the
+   * record's last edit, which dates an imported book at the import.
+   */
+  outcomes: OrderOutcomeRecord[];
   /**
    * The payment terms recorded against each order, for the ordinary case of a
    * deal won without a quote. Handed down rather than read here, because this
@@ -78,8 +85,8 @@ export function OrderBookPanel({
     // owed. The engine has always honoured it; this caller used to omit it, so
     // the order book printed "No payment term" for terms that were saved and
     // built the road to cash from that blank.
-    () => buildOrderBook({ opportunities, quotes, milestoneRecords, costRecords: termRecords }),
-    [termRecords, milestoneRecords, opportunities, quotes],
+    () => buildOrderBook({ opportunities, quotes, milestoneRecords, costRecords: termRecords, outcomes }),
+    [termRecords, milestoneRecords, opportunities, quotes, outcomes],
   );
 
   const visibleOrders = useMemo(() => {

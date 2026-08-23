@@ -7,6 +7,7 @@ import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 import { SkeletonCard, SkeletonScreen } from '../../components/common/Skeleton';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { QuoteRecord } from '../../services/quoteStore';
+import type { OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import {
   loadOrderReceivablesForWorkspace,
@@ -57,6 +58,10 @@ export function CashCollectionPage() {
   const cached = getCachedSalesWorkspaceData(dataUserId);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>(cached?.opportunities || []);
   const [quotes, setQuotes] = useState<QuoteRecord[]>(cached?.quotes || []);
+  // The day each deal closed, which is the day its order was placed. Without
+  // it every order in an imported book is dated at the import and nothing in
+  // the collection schedule can ever read as late.
+  const [outcomes, setOutcomes] = useState<OpportunityOutcomeRecord[]>(cached?.opportunityOutcomes || []);
   const [records, setRecords] = useState<OrderReceivableRecord[]>([]);
   const [costRecords, setCostRecords] = useState<OrderCostRecord[]>([]);
   const [milestoneRecords, setMilestoneRecords] = useState<OrderMilestoneRecord[]>([]);
@@ -86,6 +91,7 @@ export function CashCollectionPage() {
       if (cancelled) return;
       setOpportunities(workspace.opportunities);
       setQuotes(workspace.quotes);
+      setOutcomes(workspace.opportunityOutcomes);
       setRecords(receivableRecords);
       setCostRecords(costs);
       setMilestoneRecords(milestones);
@@ -104,9 +110,9 @@ export function CashCollectionPage() {
 
   const today = todayDateKey();
   const summary = useMemo(() => {
-    const book = buildOrderBook({ opportunities, quotes, milestoneRecords, costRecords, today });
+    const book = buildOrderBook({ opportunities, quotes, milestoneRecords, costRecords, outcomes, today });
     return buildReceivables({ orders: book.orders, records, today });
-  }, [costRecords, milestoneRecords, opportunities, quotes, records, today]);
+  }, [costRecords, milestoneRecords, opportunities, outcomes, quotes, records, today]);
 
   const reload = async () => {
     setSyncing(true);
@@ -117,6 +123,7 @@ export function CashCollectionPage() {
       ]);
       setOpportunities(workspace.opportunities);
       setQuotes(workspace.quotes);
+      setOutcomes(workspace.opportunityOutcomes);
       setRecords(receivableRecords);
     } finally {
       setSyncing(false);

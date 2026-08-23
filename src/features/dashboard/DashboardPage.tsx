@@ -369,7 +369,8 @@ export function TodayPage() {
     opportunities: data.opportunities,
     quotes: data.quotes,
     captureInboxCount: todayCenter.captureInbox.length,
-  }), [data.opportunities, data.quotes, proactiveNudges.allActiveNudges, todayCenter.captureInbox.length, todayCenter.commercialRiskItems]);
+    captureInboxHref: todayCenter.captureInbox[0]?.href,
+  }), [data.opportunities, data.quotes, proactiveNudges.allActiveNudges, todayCenter.captureInbox, todayCenter.commercialRiskItems]);
   // Built after the cockpit so it can be told what the cockpit already said.
   const morningBrief = useMemo(() => buildMorningBrief({
     nudges: proactiveNudges.todayNudges,

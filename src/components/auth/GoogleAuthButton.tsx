@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { useAuthContext } from '../../auth/authContext';
 import { supabaseClient } from '../../lib/supabaseClient';
 
 const GOOGLE_SCRIPT_ID = 'memoire-google-identity-services';
@@ -60,7 +59,16 @@ export function GoogleAuthButton({
   label?: string;
   redirectTo?: string;
 }) {
-  const { error } = useAuthContext();
+  /**
+   * Deliberately not reading the shared auth error.
+   *
+   * `useAuthContext().error` is whatever failed last anywhere in auth,
+   * including a mistyped password on the form below. This button rendered it
+   * in its own amber slot, so a stale saved password produced "Invalid login
+   * credentials" *underneath the Google button* as well as under the password
+   * field - and the honest reading of that is that Google sign-in is broken.
+   * It is not: nothing here had run. A button reports what this button did.
+   */
   const buttonRef = useRef<HTMLDivElement>(null);
   const [actionError, setActionError] = useState('');
   const [isSigningIn, setIsSigningIn] = useState(false);
@@ -149,9 +157,9 @@ export function GoogleAuthButton({
         className={isSigningIn ? 'pointer-events-none flex min-h-11 w-full justify-center opacity-60' : 'flex min-h-11 w-full justify-center'}
       />
       {isSigningIn && <p className="text-center text-xs text-gray-500">Signing in securely...</p>}
-      {(actionError || error) && (
+      {actionError && (
         <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700">
-          {actionError || error}
+          {actionError}
         </p>
       )}
     </div>

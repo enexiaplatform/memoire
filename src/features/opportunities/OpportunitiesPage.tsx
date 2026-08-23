@@ -1344,6 +1344,7 @@ export function OpportunitiesPage() {
         ) : (
           <OpportunityMasterTable
             rows={pagedRows}
+            allRows={visibleOpportunityRows}
             columns={opportunityColumns}
             grouped={sortKey === 'closePeriod' && sortDirection === 'asc'}
             totalRows={visibleOpportunityRows.length}
@@ -2525,6 +2526,7 @@ function groupRowsByClosePeriod(rows: OpportunityMasterRow[]): OpportunityRowGro
 
 function OpportunityMasterTable({
   rows,
+  allRows,
   columns,
   grouped,
   totalRows,
@@ -2542,7 +2544,10 @@ function OpportunityMasterTable({
   onOpen,
   onDraftFollowUp,
 }: {
+  /** The rows on this page - what gets rendered. */
   rows: OpportunityMasterRow[];
+  /** Every row that survived the filters - what the group headings count. */
+  allRows: OpportunityMasterRow[];
   columns: OpportunityColumnVisibility;
   /** True when the rows are in close-quarter order and can carry group headings. */
   grouped: boolean;
@@ -2565,9 +2570,27 @@ function OpportunityMasterTable({
   // Nine base columns fit a laptop without horizontal scroll; each optional one
   // adds its own width back rather than the table reserving space for all four.
   const minWidth = 1120 + optionalCount * 110;
+  /**
+   * Two passes on purpose.
+   *
+   * `groups` is what gets rendered - only the rows on this page. `groupTotals`
+   * is what the heading counts, and it reads every row that survived the
+   * filters. Building both from the page meant the heading described the page
+   * slice: on a 27-deal workspace at 25 rows a page, "CLOSED - WON AND LOST"
+   * announced 6 deals, and changing the page size to 50 - which changes no
+   * data at all - made the same heading say 8. The money subtotal was cut the
+   * same way and silently, which is worse: an operator reconciling what they
+   * closed this year against a quarter heading was reading the first page of
+   * it. The same reasoning as `opportunityColumns` above, which already reads
+   * the filtered rows rather than the page.
+   */
   const groups = grouped
     ? groupRowsByClosePeriod(rows)
     : [{ key: 'all', label: '', rows, value: 0, showValue: false, unpriced: 0 }];
+  const groupTotals = useMemo(
+    () => new Map(groupRowsByClosePeriod(allRows).map((group) => [group.key, group])),
+    [allRows],
+  );
   const columnCount = 9 + optionalCount;
 
   return (
@@ -2634,16 +2657,20 @@ function OpportunityMasterTable({
                     <span className="flex flex-wrap items-baseline gap-x-2 text-[11px]">
                       <span className="font-bold uppercase tracking-wide text-navy">{group.label}</span>
                       <span className="font-semibold text-gray-500">
-                        {group.rows.length} {group.rows.length === 1 ? 'deal' : 'deals'}
+                        {groupTotals.get(group.key)?.rows.length !== group.rows.length
+                          ? `${group.rows.length} of ${groupTotals.get(group.key)?.rows.length ?? group.rows.length}`
+                          : group.rows.length}
+                        {' '}
+                        {(groupTotals.get(group.key)?.rows.length ?? group.rows.length) === 1 ? 'deal' : 'deals'}
                       </span>
-                      {group.showValue && group.value > 0 && (
+                      {group.showValue && (groupTotals.get(group.key)?.value ?? group.value) > 0 && (
                         <span className="text-gray-500">
-                          {formatBaseMoney(group.value)}
+                          {formatBaseMoney(groupTotals.get(group.key)?.value ?? group.value)}
                         </span>
                       )}
-                      {group.showValue && group.unpriced > 0 && (
+                      {group.showValue && (groupTotals.get(group.key)?.unpriced ?? group.unpriced) > 0 && (
                         <span className="text-amber-700">
-                          · {group.unpriced} not converted
+                          · {groupTotals.get(group.key)?.unpriced ?? group.unpriced} not converted
                         </span>
                       )}
                     </span>

@@ -3,7 +3,7 @@ import { Coins, Pencil, Search, Target, TrendingDown, TrendingUp } from 'lucide-
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { QuoteRecord } from '../../services/quoteStore';
 import { deleteOrderCost, loadOrderCostsForWorkspace, saveOrderCost } from '../../services/orderCostStore';
-import { buildOrderBook, COMMIT_PROBABILITY_THRESHOLD, type CommittedOrder, type OrderMilestoneRecord } from '../../utils/orderToCash';
+import { buildOrderBook, COMMIT_PROBABILITY_THRESHOLD, type CommittedOrder, type OrderMilestoneRecord, type OrderOutcomeRecord } from '../../utils/orderToCash';
 import { loadOrderMilestonesForWorkspace } from '../../services/orderMilestoneStore';
 import {
   buildOrderMargins,
@@ -73,11 +73,18 @@ import { matchesSearchQuery } from '../../utils/textSearch';
 export function CostAnalysisPanel({
   opportunities,
   quotes,
+  outcomes,
   dataUserId,
   sampleDataActive,
 }: {
   opportunities: CrmLiteOpportunity[];
   quotes: QuoteRecord[];
+  /**
+   * When each closed deal closed. The monthly margin trend files an order
+   * under its `orderDate`, so without this an imported book bunches into the
+   * month it was imported.
+   */
+  outcomes: OrderOutcomeRecord[];
   dataUserId?: string;
   sampleDataActive: boolean;
 }) {
@@ -114,8 +121,8 @@ export function CostAnalysisPanel({
   // order-margin contract still asserts that; what the ticks buy is the months
   // being the months the orders were actually placed in.
   const orders = useMemo(
-    () => buildOrderBook({ opportunities, quotes, milestoneRecords, costRecords }).orders,
-    [costRecords, milestoneRecords, opportunities, quotes],
+    () => buildOrderBook({ opportunities, quotes, milestoneRecords, costRecords, outcomes }).orders,
+    [costRecords, milestoneRecords, opportunities, quotes, outcomes],
   );
 
   const margins = useMemo(

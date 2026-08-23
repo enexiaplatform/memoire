@@ -164,6 +164,19 @@ export type OrderTermRecord = {
   __deleted?: boolean;
 };
 
+/**
+ * The only part of an outcome record the order book reads: which deal it
+ * closed, and the day it closed.
+ *
+ * Structural, so a full `OpportunityOutcomeRecord` satisfies it unchanged and
+ * this module keeps no dependency on the outcome store.
+ */
+export type OrderOutcomeRecord = {
+  opportunityId: string;
+  outcomeDate: string;
+  __deleted?: boolean;
+};
+
 export type OrderBook = {
   orders: CommittedOrder[];
   totalCount: number;
@@ -198,9 +211,22 @@ export function buildOrderBook(input: {
    * book, it just falls back to the quote for terms as it always did.
    */
   costRecords?: OrderTermRecord[];
+  /**
+   * When each closed deal actually closed.
+   *
+   * Optional, and the reason the order book can date a six-month book at all -
+   * see the order-date chain below. A caller that has not loaded outcomes gets
+   * exactly the behaviour it always did.
+   */
+  outcomes?: OrderOutcomeRecord[];
   today?: string;
 }): OrderBook {
   const today = input.today || todayDateKey();
+  const outcomeDateByOrder = new Map(
+    (input.outcomes || [])
+      .filter((record) => record.__deleted !== true && sanitize(record.outcomeDate))
+      .map((record) => [record.opportunityId, sanitize(record.outcomeDate)]),
+  );
   const termByOrder = new Map(
     (input.costRecords || [])
       .filter((record) => record.__deleted !== true && record.paymentTerm?.trim())
@@ -259,7 +285,22 @@ export function buildOrderBook(input: {
       const contractSignedOn = sanitize(timestampToLocalDateKey(manual?.get('contract')?.done
         ? manual.get('contract')?.doneAt
         : undefined));
+      /**
+       * The day the customer committed, not the day the row was last written.
+       *
+       * `updatedAt` was the last resort, and on any book that arrived by import
+       * or has simply never been quoted it is the only link in the chain that
+       * resolves - so every order in it was stamped with the import date. A
+       * distributor six months in opened Orders and found the whole year's
+       * business "ordered today, 0d waiting": a March order still uninvoiced
+       * reported nothing overdue, and the page whose entire promise is
+       * following money from contract to the bank could not show anything as
+       * late. The outcome record has carried the real close date the whole
+       * time; it just was not asked. It sits above the quote date because a
+       * quote is when we offered and the outcome is when they agreed.
+       */
       const orderDate = contractSignedOn
+        || outcomeDateByOrder.get(opportunity.id)
         || sanitize(freshestQuote?.quoteDate)
         || sanitize(timestampToLocalDateKey(freshestQuote?.createdAt))
         || sanitize(timestampToLocalDateKey(opportunity.updatedAt))
