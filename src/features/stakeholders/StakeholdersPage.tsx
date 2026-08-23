@@ -242,7 +242,11 @@ export function StakeholdersPage() {
         <Metric label="Economic buyers" value={summary.economicBuyers} tone="blue" />
         <Metric label="Blockers" value={summary.blockers} tone="red" />
         <Metric label="High influence" value={summary.highInfluence} tone="amber" />
-        <Metric label="Missing champion" value={summary.accountsWithMissingChampion} tone="amber" />
+        {/* Counts ACCOUNTS, like the deals tile below counts deals - so it says
+            so. Left as "Missing champion" it read as a fact about the people on
+            this page: a workspace with one stakeholder showed "Total 1" beside
+            "Missing champion 17". */}
+        <Metric label="Accounts missing a champion" value={summary.accountsWithMissingChampion} tone="amber" />
         <Metric label="No account" value={summary.unattachedStakeholders} tone={summary.unattachedStakeholders > 0 ? 'amber' : 'green'} />
         {/* Every other tile in this row counts stakeholders. This one counts
             deals, so on a workspace with no stakeholders at all it read
