@@ -392,7 +392,7 @@ function QuoteTable({ quotes, onOpen }: { quotes: QuoteRecord[]; onOpen: (quote:
               return (
                 <tr key={quote.id} onClick={() => onOpen(quote)} className="cursor-pointer hover:bg-blue-50/60">
                   <td className="px-4 py-3">
-                    <p className="max-w-[220px] truncate font-bold text-navy" title={quote.title}>{quote.title}</p>
+                    <p className="max-w-[clamp(220px,16vw,420px)] truncate font-bold text-navy" title={quote.title}>{quote.title}</p>
                     <p className="mt-1 text-xs font-semibold text-gray-400">{quote.quoteId}</p>
                   </td>
                   <td className="px-4 py-3 font-semibold text-gray-800">{quote.accountName}</td>
@@ -409,7 +409,7 @@ function QuoteTable({ quotes, onOpen }: { quotes: QuoteRecord[]; onOpen: (quote:
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 font-semibold text-gray-700">{formatSafeBusinessDate(quote.validUntil)}</td>
                   <td className="px-4 py-3">
-                    <p className="max-w-[220px] truncate text-gray-700" title={quote.nextAction}>{quote.nextAction || 'No next action'}</p>
+                    <p className="max-w-[clamp(220px,16vw,420px)] truncate text-gray-700" title={quote.nextAction}>{quote.nextAction || 'No next action'}</p>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button type="button" onClick={(event) => { event.stopPropagation(); onOpen(quote); }} className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600 hover:border-brand-blue hover:text-brand-blue" title="Open quote">

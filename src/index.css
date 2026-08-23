@@ -130,8 +130,25 @@ html {
   position: relative;
   max-width: 100%;
   overflow: auto;
-  max-height: clamp(20rem, calc(100vh - var(--app-header-h) - var(--filter-bar-h) - 9rem), 60rem);
-  overscroll-behavior: contain;
+  max-height: clamp(20rem, calc(100vh - var(--app-header-h) - var(--filter-bar-h) - 4rem), 75rem);
+  /*
+   * Horizontal containment stays: a sideways flick inside a wide table must not
+   * become browser back-navigation.
+   *
+   * Vertical containment was removed on 2026-08-23. It broke the wheel for the
+   * ordinary case: the pointer sits over the table (it covers most of the page),
+   * the table reaches its last row, and the page underneath refuses to move -
+   * the pagination, the panels below the table and the primary buttons become
+   * unreachable without first moving the mouse off the table. Chaining back to
+   * the page at the ends is what every other list on the web does, and the
+   * sticky header - the only reason this scrollport exists - does not need it.
+   *
+   * The 9rem bottom allowance became 4rem in the same pass: it reserved room for
+   * chrome that scrolls away anyway, so a 911px window gave the table only 657px
+   * and put 25 of 30 rows behind an inner scrollbar.
+   */
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
 }
 
 .record-table-scroller thead th {

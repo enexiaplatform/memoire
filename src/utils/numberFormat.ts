@@ -107,3 +107,17 @@ export function parseLocalizedAmount(raw: string | number | null | undefined): n
   if (!Number.isFinite(parsed)) return null;
   return negative ? -parsed : parsed;
 }
+
+/**
+ * "1 days late" shipped on three surfaces at once (Cash collection's Average
+ * wait stat, its "Chase this one first" banner and every row of the order
+ * list), because each of them concatenated a count with a hard-coded plural.
+ * A receivables screen that cannot say "1 day" reads like a placeholder, and
+ * this product's whole claim is that the numbers on it were looked at.
+ *
+ * English-only on purpose: the product ships one language today, and a real
+ * Intl.PluralRules table would be a fiction until a second one exists.
+ */
+export function pluralizeCount(count: number, singular: string, plural = `${singular}s`) {
+  return `${count} ${Math.abs(count) === 1 ? singular : plural}`;
+}

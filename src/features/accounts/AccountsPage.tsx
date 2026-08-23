@@ -1170,12 +1170,12 @@ function AccountMasterTable({
                 >
                   <td className="whitespace-nowrap px-3 py-2 font-mono text-xs font-bold text-brand-blue">{row.accountCode}</td>
                   <td className="px-3 py-2">
-                    <p className="max-w-[220px] truncate font-bold text-navy" title={memory.account.accountName}>{memory.account.accountName}</p>
-                    <p className="max-w-[220px] truncate text-xs text-gray-500">{formatAccountLocation(memory.account)}</p>
+                    <p className="max-w-[clamp(220px,16vw,420px)] truncate font-bold text-navy" title={memory.account.accountName}>{memory.account.accountName}</p>
+                    <p className="max-w-[clamp(220px,16vw,420px)] truncate text-xs text-gray-500">{formatAccountLocation(memory.account)}</p>
                   </td>
                   <td className="px-3 py-2">
-                    <p className="max-w-[170px] truncate font-semibold text-gray-700">{memory.account.segment || 'Unsegmented'}</p>
-                    <p className="max-w-[170px] truncate text-xs text-gray-500">{formatAccountPriority(memory.account)}</p>
+                    <p className="max-w-[clamp(170px,12vw,320px)] truncate font-semibold text-gray-700">{memory.account.segment || 'Unsegmented'}</p>
+                    <p className="max-w-[clamp(170px,12vw,320px)] truncate text-xs text-gray-500">{formatAccountPriority(memory.account)}</p>
                   </td>
                   <td className="px-3 py-2">
                     <Badge
@@ -1198,10 +1198,10 @@ function AccountMasterTable({
                   <td className="px-3 py-2">
                     {row.latestActivity ? (
                       <>
-                        <p className="max-w-[270px] truncate font-semibold text-gray-800" title={row.latestActivity.summary}>
+                        <p className="max-w-[clamp(270px,20vw,520px)] line-clamp-2 font-semibold text-gray-800" title={row.latestActivity.summary}>
                           {row.latestActivity.summary}
                         </p>
-                        <p className="max-w-[270px] truncate text-xs text-gray-500">
+                        <p className="max-w-[clamp(270px,20vw,520px)] truncate text-xs text-gray-500">
                           {formatSafeBusinessDate(row.latestActivity.activityDate)} · {row.latestContact || row.latestActivity.activityType}
                         </p>
                       </>

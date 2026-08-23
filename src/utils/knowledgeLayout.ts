@@ -57,10 +57,45 @@ export const COMPACT_NODE_SIZES: Record<'focus' | 'near' | 'far', { width: numbe
   far: { width: 148, height: 30 },
 };
 
-export function nodeSizeFor(positioned: { ring: number; focused: boolean; compact?: boolean }) {
+/**
+ * Character budget per node, and the plate chrome around it. Kept here rather
+ * than in the canvas because the layout separates nodes by these widths: if the
+ * plate grows and the collision pass does not know, names overlap instead of
+ * truncating, which is a worse failure.
+ */
+export const NODE_LABEL_METRICS = {
+  full: { charWidth: 6.9, chrome: 40, maxWidth: 320 },
+  compact: { charWidth: 6.1, chrome: 44, maxWidth: 300 },
+} as const;
+
+/**
+ * How many characters of the label this plate can actually show.
+ *
+ * Before 2026-08-23 the canvas held this as a constant (19 characters for a
+ * normal compact node) while the plate held a constant width, so every real
+ * company name lost its tail: a Vault of eight nodes read "Saudi Red Sea Deve…",
+ * "Emirates Marine Ca…", "Compass Group Danm…". A map whose labels are all
+ * elided is not a map of anything. The plate now widens to the name and the
+ * budget is derived from the width it ended up with, so the two can no longer
+ * disagree.
+ */
+export function nodeLabelBudget(width: number, compact = false) {
+  const { charWidth, chrome } = compact ? NODE_LABEL_METRICS.compact : NODE_LABEL_METRICS.full;
+  return Math.max(12, Math.floor((width - chrome) / charWidth));
+}
+
+export function nodeSizeFor(positioned: { ring: number; focused: boolean; compact?: boolean; node?: { label?: string } }) {
   const sizes = positioned.compact ? COMPACT_NODE_SIZES : NODE_SIZES;
-  if (positioned.focused) return sizes.focus;
-  return positioned.ring >= 2 ? sizes.far : sizes.near;
+  const base = positioned.focused ? sizes.focus : positioned.ring >= 2 ? sizes.far : sizes.near;
+
+  const label = positioned.node?.label ?? '';
+  if (!label) return base;
+
+  const { charWidth, chrome, maxWidth } = positioned.compact
+    ? NODE_LABEL_METRICS.compact
+    : NODE_LABEL_METRICS.full;
+  const wanted = Math.ceil(label.length * charWidth + chrome);
+  return { ...base, width: Math.min(Math.max(wanted, base.width), maxWidth) };
 }
 
 export type PositionedNode = {

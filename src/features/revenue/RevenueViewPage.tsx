@@ -434,7 +434,7 @@ function RevenueActionTable({ items }: { items: RevenueActionItem[] }) {
             <tr key={item.id} className="hover:bg-blue-50/60">
               <td className="px-3 py-3 font-bold text-navy">{item.accountName}</td>
               <td className="px-3 py-3">
-                <p className="max-w-[240px] truncate font-semibold text-gray-800" title={item.label}>{item.label}</p>
+                <p className="max-w-[clamp(240px,18vw,460px)] truncate font-semibold text-gray-800" title={item.label}>{item.label}</p>
                 <p className="mt-1 text-xs font-semibold text-gray-400">{item.source} / {item.status}</p>
               </td>
               <td className="whitespace-nowrap px-3 py-3 font-bold text-gray-800">{formatMoney(item.amount, item.currency)}</td>
@@ -449,7 +449,7 @@ function RevenueActionTable({ items }: { items: RevenueActionItem[] }) {
                 )}
               </td>
               <td className="px-3 py-3">
-                <p className="max-w-[260px] truncate text-gray-700" title={item.nextAction}>{item.nextAction}</p>
+                <p className="max-w-[clamp(260px,19vw,480px)] truncate text-gray-700" title={item.nextAction}>{item.nextAction}</p>
                 {item.clearedBy && (
                   <p className="mt-1 max-w-[280px] text-xs leading-5 text-brand-blue">{item.clearedBy}</p>
                 )}

@@ -199,7 +199,7 @@ export function BusinessLensPage() {
                   // Scaled to total pipeline, so the bar and the percent beside
                   // it are measuring the same thing.
                   scaleTo={lens.concentration.totalOpenBase}
-                  labelWidth="sm:w-56"
+                  labelWidth="sm:w-56 lg:w-72 xl:w-[26rem]"
                   rows={lens.concentration.rows.map((row) => ({
                     label: row.accountName,
                     value: row.openPipelineBase,

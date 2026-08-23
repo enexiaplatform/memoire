@@ -310,10 +310,10 @@ export function CostAnalysisPanel({
                   return (
                     <tr key={order.opportunityId} className={margin && margin.hasCost && (margin.marginBase as number) < 0 ? 'bg-red-50/40' : 'bg-white'}>
                       <td className="px-4 py-2">
-                        <p className="max-w-[260px] truncate font-bold text-navy" title={`${order.accountName} / ${order.orderName}`}>
+                        <p className="max-w-[clamp(260px,19vw,480px)] truncate font-bold text-navy" title={`${order.accountName} / ${order.orderName}`}>
                           {order.accountName}
                         </p>
-                        <p className="max-w-[260px] truncate text-xs text-gray-500">
+                        <p className="max-w-[clamp(260px,19vw,480px)] truncate text-xs text-gray-500">
                           <span className="font-mono font-bold text-brand-blue">{order.orderRef}</span>
                           {' · '}
                           {order.orderName}
@@ -349,7 +349,7 @@ export function CostAnalysisPanel({
                           <td className="whitespace-nowrap px-3 py-2 text-right">
                             <LandedExtras margin={margin} />
                           </td>
-                          <td className="max-w-[150px] truncate px-3 py-2 text-xs text-gray-600" title={margin?.supplier}>
+                          <td className="max-w-[clamp(150px,11vw,300px)] truncate px-3 py-2 text-xs text-gray-600" title={margin?.supplier}>
                             {margin?.supplier || '—'}
                           </td>
                           <td className="whitespace-nowrap px-3 py-2 text-right">

@@ -225,6 +225,10 @@ function App() {
                 lands on the page that carries that name; the daily loop it used
                 to forward to is one tap away and is not what someone typing
                 "dashboard" is looking for. */}
+            {/* The rail calls this destination "Orders" but its route is
+                /app/revenue, so /app/orders is the URL an operator types or
+                bookmarks after reading the rail. It 404'd. */}
+            <Route path="orders" element={<LegacyRedirect to="/app/revenue" />} />
             <Route path="dashboard" element={<LegacyRedirect to="/app/business" />} />
             <Route path="plan" element={<LegacyRedirect to="/app/timeline" params={{ view: 'upcoming' }} />} />
             <Route path="calendar" element={<LegacyRedirect to="/app/timeline" params={{ view: 'history' }} />} />

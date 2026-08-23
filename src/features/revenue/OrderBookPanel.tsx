@@ -234,10 +234,10 @@ export function OrderBookPanel({
                         }`}
                       >
                         <td className="px-4 py-2">
-                          <p className="max-w-[280px] truncate font-bold text-navy" title={`${order.accountName} / ${order.orderName}`}>
+                          <p className="max-w-[clamp(280px,21vw,540px)] truncate font-bold text-navy" title={`${order.accountName} / ${order.orderName}`}>
                             {order.accountName}
                           </p>
-                          <p className="max-w-[280px] truncate text-xs text-gray-500">
+                          <p className="max-w-[clamp(280px,21vw,540px)] line-clamp-2 text-xs text-gray-500">
                             <span className="font-mono font-bold text-brand-blue">{order.orderRef}</span>
                             {' · '}
                             {order.orderName}
@@ -262,7 +262,7 @@ export function OrderBookPanel({
                             <p className="text-xs font-semibold text-emerald-700">Money in the bank</p>
                           ) : (
                             <>
-                              <p className="max-w-[190px] truncate font-semibold text-gray-800">
+                              <p className="max-w-[clamp(190px,14vw,360px)] line-clamp-2 font-semibold text-gray-800">
                                 {order.nextMilestone?.label}
                               </p>
                               <p className={`text-xs font-semibold ${order.overdue ? 'text-red-700' : 'text-gray-500'}`}>

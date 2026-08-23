@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Crosshair, Minus, Plus } from 'lucide-react';
-import { nodeSizeFor, type GraphView, type PositionedEdge, type PositionedNode } from '../../utils/knowledgeLayout';
+import { nodeLabelBudget, nodeSizeFor, type GraphView, type PositionedEdge, type PositionedNode } from '../../utils/knowledgeLayout';
 import { nodeVisual } from './nodeVisuals';
 import { knowledgeNodeTypeLabels } from '../../utils/knowledgeGraph';
 
@@ -443,9 +443,10 @@ function Node({
   const visual = nodeVisual(node.type);
   const halfWidth = size.width / 2;
   const halfHeight = size.height / 2;
-  const titleMax = compact
-    ? (selected ? 21 : ring >= 2 ? 16 : 19)
-    : (selected ? 26 : ring >= 2 ? 18 : 22);
+  // Derived from the plate this node actually got, never guessed: see
+  // `nodeLabelBudget`. A selected node is drawn a point larger, so it earns
+  // slightly fewer characters, not more.
+  const titleMax = nodeLabelBudget(size.width, compact) - (selected ? 1 : 0);
 
   const metric = nodeMetric(node);
   const describedAs = `${node.label}. ${knowledgeNodeTypeLabels[node.type]}. ${metric || 'No records yet'}${positioned.relation ? `. ${positioned.relation}` : ''}`;

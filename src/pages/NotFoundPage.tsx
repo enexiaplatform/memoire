@@ -1,5 +1,5 @@
 import { ArrowLeft, LayoutDashboard } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BrandWordmark } from '../components/brand/BrandWordmark';
 import { NoIndex } from '../components/marketing/PageSeo';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 export function NotFoundPage() {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   useDocumentTitle('Page not found');
 
   /**
@@ -44,17 +45,40 @@ export function NotFoundPage() {
         <p className="mt-3 text-sm leading-6 text-slate-600">
           The link may be outdated, or the page may have moved.
         </p>
+        {/*
+         * The way out is chosen by where the operator IS, not by whether they
+         * hold an account.
+         *
+         * Both buttons used to branch on `isAuthenticated`, so the product's own
+         * browser-only mode - no account, by design, with a real workspace in
+         * this browser - mistyped a route and was handed "Start free trial" and
+         * a link to the marketing homepage. Neither leads back to their records,
+         * and the trial being offered does not exist: checkout is shut for the
+         * duration of the free preview (src/config/launchPhase.ts), which is why
+         * every public CTA says "Start free".
+         */}
         <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-          <Link to="/" className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">
-            <ArrowLeft className="h-4 w-4" />
-            Return home
-          </Link>
+          {insideApp ? (
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Go back
+            </button>
+          ) : (
+            <Link to="/" className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">
+              <ArrowLeft className="h-4 w-4" />
+              Return home
+            </Link>
+          )}
           <Link
-            to={isAuthenticated ? '/app/today' : '/signup'}
+            to={insideApp || isAuthenticated ? '/app/today' : '/signup'}
             className="inline-flex items-center justify-center gap-2 rounded-full bg-navy px-5 py-3 text-sm font-bold text-white hover:bg-navy/90"
           >
             <LayoutDashboard className="h-4 w-4" />
-            {isAuthenticated ? 'Open Today' : 'Start free trial'}
+            {insideApp || isAuthenticated ? 'Open Today' : 'Start free'}
           </Link>
         </div>
       </section>

@@ -18,6 +18,14 @@ export interface FunnelBarRow {
  * `labelWidth` exists because a Vietnamese company name carries its legal form
  * up front - "Cong ty TNHH Duoc pham ..." - and the default column truncates
  * every one of them to the same unreadable prefix.
+ *
+ * Every width here is a breakpoint ladder, not a constant, because the constant
+ * was wrong in one direction only. Measured on a 1920px window, Customer
+ * concentration gave the label 224px and cut "Al Habtoor Hospitality Group -
+ * Facilities & Engineering Division" by 138px - while the bar track beside it
+ * ran ~980px and the longest bar filled 24% of it. The name was elided into
+ * whitespace. The bar keeps `flex-1`, so widening the label spends the empty
+ * end of the track and nothing else.
  */
 export function FunnelBars({
   rows,
@@ -25,7 +33,7 @@ export function FunnelBars({
   ariaLabel,
   onSelect,
   scaleTo,
-  labelWidth = 'sm:w-32',
+  labelWidth = 'sm:w-32 lg:w-40 xl:w-48',
 }: {
   rows: FunnelBarRow[];
   color?: string;

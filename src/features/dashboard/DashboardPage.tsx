@@ -163,6 +163,8 @@ type DashboardCommercialAction = {
 export function TodayPage() {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const sampleDataActive = hasLocalSampleData();
+  /** Is there actually a cloud copy behind this workspace, or only this browser? */
+  const cloudBacked = isAuthenticated && isSupabaseConfigured;
   const dailyExecutionScope = sampleDataActive ? 'demo' : user?.id ? `user-${user.id}` : 'guest';
   const [data, setData] = useState<DashboardData>({
     activities: [],
@@ -597,15 +599,30 @@ export function TodayPage() {
         description="Three steps: get the picture, do today's work, check the watch-list."
         actions={
           <>
+            {/*
+             * This button said "Cloud sync" in success green, at the same size
+             * and pill shape as the DataModePill immediately to its right - so a
+             * workspace with no account read "Cloud sync" and "Browser only"
+             * side by side, two chips of identical weight contradicting each
+             * other, and one of them offering a cloud that is not there.
+             *
+             * It is one control either way; it is named for what it does in the
+             * mode it is in, and only wears the cloud's colour when there is a
+             * cloud behind it.
+             */}
             <button
               type="button"
               onClick={() => refreshDashboard({ force: true })}
               disabled={workspaceSyncing}
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
-              title="Reload dashboard from cloud"
+              className={`inline-flex items-center justify-center gap-2 rounded-full border px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-60 ${
+                cloudBacked
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+              title={cloudBacked ? 'Reload dashboard from cloud' : 'Reload from the records in this browser'}
             >
               <RefreshCw className={`h-4 w-4 ${workspaceSyncing ? 'animate-spin' : ''}`} />
-              Cloud sync
+              {cloudBacked ? 'Cloud sync' : 'Refresh'}
             </button>
             <DataModePill
               compact

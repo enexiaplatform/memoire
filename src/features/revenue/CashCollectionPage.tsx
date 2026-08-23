@@ -29,6 +29,7 @@ import {
 import { describeInstallment, parsePaymentTerm } from '../../utils/paymentTerms';
 import { formatBaseCurrencyAmount, formatCompactBaseAmount, getReportingCurrency } from '../../utils/money';
 import { formatSafeBusinessDate, todayDateKey } from '../../utils/safeDate';
+import { pluralizeCount } from '../../utils/numberFormat';
 
 /**
  * Cash collection - công nợ, and the calls it implies.
@@ -177,7 +178,7 @@ export function CashCollectionPage() {
             />
             <Stat
               label="Average wait"
-              value={summary.averageDaysOutstanding === null ? '—' : `${summary.averageDaysOutstanding} days`}
+              value={summary.averageDaysOutstanding === null ? '—' : pluralizeCount(summary.averageDaysOutstanding, 'day')}
               detail="Past the date you agreed, weighted by money"
             />
           </section>
@@ -196,7 +197,7 @@ export function CashCollectionPage() {
                     <span className="font-bold">{summary.worstOverdue.accountName}</span>
                     {' — '}
                     {formatBaseCurrencyAmount(summary.worstOverdue.overdueBase)} past due
-                    {summary.worstOverdue.daysOverdue !== null ? ` by ${summary.worstOverdue.daysOverdue} days` : ''}
+                    {summary.worstOverdue.daysOverdue !== null ? ` by ${pluralizeCount(summary.worstOverdue.daysOverdue, 'day')}` : ''}
                     {' on '}
                     {summary.worstOverdue.orderRef}.
                   </p>
@@ -359,7 +360,7 @@ function ReceivableRow({
               : order.settled
               ? 'Collected'
               : order.daysOverdue !== null
-                ? `${order.daysOverdue} days late`
+                ? `${pluralizeCount(order.daysOverdue, 'day')} late`
                 : order.nextDueDate
                   ? `${nextSliceLabel(order)} due ${formatSafeBusinessDate(order.nextDueDate)}`
                   : 'No date'}

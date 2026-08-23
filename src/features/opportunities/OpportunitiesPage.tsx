@@ -1859,7 +1859,7 @@ function OpportunityCsvImportPanel({
               type="button"
               onClick={onRefresh}
               disabled={!refreshPreview || refreshApplyCount === 0}
-              className="mt-4 w-full rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="sticky bottom-4 z-10 mt-4 w-full rounded-full bg-navy px-4 py-2 text-sm font-bold text-white shadow-lg shadow-navy/20 hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Apply refresh ({refreshPreview?.newItems.length || 0} new, {selectedRefreshUpdateCount} update{selectedRefreshUpdateCount === 1 ? '' : 's'})
             </button>
@@ -1868,7 +1868,7 @@ function OpportunityCsvImportPanel({
               type="button"
               onClick={onImport}
               disabled={importableRows.length === 0}
-              className="mt-4 w-full rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="sticky bottom-4 z-10 mt-4 w-full rounded-full bg-navy px-4 py-2 text-sm font-bold text-white shadow-lg shadow-navy/20 hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Import {importableRows.length} new opportunit{importableRows.length === 1 ? 'y' : 'ies'}
             </button>
@@ -2683,11 +2683,11 @@ function OpportunityMasterTable({
                         expansion" beside "Validation Expansion". One column, customer
                         first, because that is how an operator looks a deal up. */}
                     <td className={`sticky left-10 z-10 border-r border-gray-100 px-3 py-2.5 group-hover:bg-blue-50 ${selected ? 'bg-blue-50' : 'bg-white'}`}>
-                      <p className="max-w-[230px] truncate font-bold text-navy" title={opportunity.accountName}>
+                      <p className="max-w-[clamp(230px,17vw,420px)] truncate font-bold text-navy" title={opportunity.accountName}>
                         {opportunity.accountName || 'No account'}
                       </p>
                       <p
-                        className="max-w-[230px] truncate text-xs text-gray-600"
+                        className="max-w-[clamp(230px,17vw,420px)] line-clamp-2 text-xs text-gray-600"
                         title={`${opportunity.opportunityName}${opportunity.productOrSolution ? ` · ${opportunity.productOrSolution}` : ''}${opportunity.decisionMaker ? ` · DM: ${opportunity.decisionMaker}` : ''}`}
                       >
                         {opportunity.opportunityName || 'Untitled opportunity'}
@@ -2767,7 +2767,7 @@ function OpportunityMasterTable({
                         label={quality.status}
                         tone={quality.status === 'High risk' ? 'red' : quality.status === 'Needs cleanup' ? 'amber' : 'green'}
                       />
-                      <p className="mt-1 max-w-[160px] truncate text-[11px] text-gray-600" title={`Forecast evidence: ${opportunity.forecastEvidenceCategory} · Review decision: ${opportunity.decisionRecommendation}`}>
+                      <p className="mt-1 max-w-[clamp(160px,12vw,300px)] truncate text-[11px] text-gray-600" title={`Forecast evidence: ${opportunity.forecastEvidenceCategory} · Review decision: ${opportunity.decisionRecommendation}`}>
                         {opportunity.forecastEvidenceCategory} · {opportunity.decisionRecommendation}
                       </p>
                       <p className="text-[11px] text-gray-500" title={quality.primaryAction}>
@@ -2777,7 +2777,7 @@ function OpportunityMasterTable({
 
                     <td className="px-3 py-2.5">
                       <p
-                        className={`max-w-[210px] truncate font-semibold ${opportunity.nextAction ? 'text-gray-800' : 'text-amber-700'}`}
+                        className={`max-w-[clamp(210px,16vw,400px)] line-clamp-2 font-semibold ${opportunity.nextAction ? 'text-gray-800' : 'text-amber-700'}`}
                         title={opportunity.nextAction}
                       >
                         {opportunity.nextAction || 'No next action'}
@@ -3460,7 +3460,19 @@ function OpportunityPanel({
         </p>
       )}
 
-      <div className="mt-5 flex flex-wrap gap-2">
+      {/*
+       * Pinned to the bottom of the drawer since 2026-08-23. This form is 4.3
+       * screens tall on a 900px window (measured: 3607px of content in an 847px
+       * scrollport), and Save sat at the end of it as ordinary flow content. So
+       * correcting one field near the top - the thing a seller does most often
+       * in here - meant scrolling ~2,700px to commit it, and the surface that
+       * promises "nothing goes quiet" gave no visible way to save without
+       * hunting for one.
+       *
+       * `-mx-5 -mb-5` cancels the drawer's own p-5 so the bar spans its full
+       * width and the rows scroll under an opaque edge rather than beside it.
+       */}
+      <div className="sticky bottom-0 -mx-5 -mb-5 mt-5 flex flex-wrap gap-2 border-t border-gray-200 bg-white px-5 py-3">
         <button
           type="button"
           onClick={onSave}
