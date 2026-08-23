@@ -301,6 +301,7 @@ export function buildOrderBook(input: {
        */
       const orderDate = contractSignedOn
         || outcomeDateByOrder.get(opportunity.id)
+        || sanitize(opportunity.closedOn)
         || sanitize(freshestQuote?.quoteDate)
         || sanitize(timestampToLocalDateKey(freshestQuote?.createdAt))
         || sanitize(timestampToLocalDateKey(opportunity.updatedAt))

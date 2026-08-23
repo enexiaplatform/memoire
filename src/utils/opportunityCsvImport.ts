@@ -15,6 +15,7 @@ import { getReportingCurrency, isSupportedCurrency } from './money.ts';
 import { parseCsvRows } from './csvParse.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
 import { parseLocalizedAmount } from './numberFormat.ts';
+import { isValidBusinessDate } from './safeDate.ts';
 
 export type OpportunityCsvPreviewRow = {
   id: string;
@@ -92,6 +93,7 @@ export type OpportunityRefreshField = keyof Pick<
   | 'estimatedValue'
   | 'currency'
   | 'expectedClosePeriod'
+  | 'closedOn'
   | 'productOrSolution'
   | 'nextAction'
   | 'evidence'
@@ -566,6 +568,15 @@ function mapRawRowToOpportunityInput(raw: Record<string, string>, fieldMap: Reco
   const evidence = valueForField(raw, fieldMap, 'evidence');
   const missingContext = valueForField(raw, fieldMap, 'missingContext');
 
+  const status = normalizeStatus(statusRaw || inferStatus(stageRaw));
+  // On a closed deal the close-date column is the day it closed, so the order
+  // book can date it. Read from the confirmed mapping first, then from the
+  // headers that can only ever mean an actual close.
+  const closedOn = status === 'Won' || status === 'Lost'
+    ? parseCsvCloseDate(closePeriod)
+      || parseCsvCloseDate(firstValue(raw, ['closedate', 'dateclosed', 'actualclosedate', 'closedon', 'wondate', 'closedwondate', 'decisiondate']))
+    : '';
+
   return {
     ...emptyOpportunityInput,
     accountName,
@@ -589,8 +600,68 @@ function mapRawRowToOpportunityInput(raw: Record<string, string>, fieldMap: Reco
     missingContext,
     forecastEvidenceCategory: normalizeForecastCategory(forecastRaw),
     decisionRecommendation: inferDecisionRecommendation(forecastRaw, missingContext, notes),
-    status: normalizeStatus(statusRaw || inferStatus(stageRaw)),
+    status,
+    ...(closedOn ? { closedOn } : {}),
   };
+}
+
+/**
+ * A close date out of a CSV, read only when it is unambiguous.
+ *
+ * Every CRM exports one column for this. On an open deal Salesforce's
+ * `CloseDate` and HubSpot's `closedate` are the *expected* close, which is why
+ * this importer has always filed them as the close period; on a deal already
+ * marked Closed Won or Closed Lost the same column is the day it actually
+ * closed. That is the whole convention, and reading it costs the operator
+ * nothing - no extra column, no second import.
+ *
+ * Anything that is not plainly a date - "Q3 2026", "FY27", "next quarter" -
+ * returns nothing rather than a guess, and the deal keeps the behaviour it had.
+ */
+export function parseCsvCloseDate(value: string): string {
+  const raw = (value || '').trim();
+  if (!raw) return '';
+
+  const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T ]|$)/);
+  if (iso) return buildDateKey(Number(iso[1]), Number(iso[2]), Number(iso[3]));
+
+  const numeric = raw.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/);
+  if (numeric) {
+    const first = Number(numeric[1]);
+    const second = Number(numeric[2]);
+    const year = Number(numeric[3]);
+    // The same disambiguation the note reader uses: a part above 12 can only be
+    // a day, and where both could be either the pair is read day-first, because
+    // that is the order the date inputs beside this render.
+    if (first > 12 && second <= 12) return buildDateKey(year, second, first);
+    if (second > 12 && first <= 12) return buildDateKey(year, first, second);
+    if (first <= 12 && second <= 12) return buildDateKey(year, second, first);
+    return '';
+  }
+
+  const dayFirst = raw.match(/^(\d{1,2})\s+([A-Za-z]{3,})\.?,?\s+(\d{4})$/);
+  if (dayFirst) {
+    const month = MONTH_NUMBERS[dayFirst[2].slice(0, 3).toLowerCase()];
+    return month ? buildDateKey(Number(dayFirst[3]), month, Number(dayFirst[1])) : '';
+  }
+
+  const monthFirst = raw.match(/^([A-Za-z]{3,})\.?\s+(\d{1,2}),?\s+(\d{4})$/);
+  if (monthFirst) {
+    const month = MONTH_NUMBERS[monthFirst[1].slice(0, 3).toLowerCase()];
+    return month ? buildDateKey(Number(monthFirst[3]), month, Number(monthFirst[2])) : '';
+  }
+
+  return '';
+}
+
+const MONTH_NUMBERS: Record<string, number> = {
+  jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+  jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+};
+
+function buildDateKey(year: number, month: number, day: number) {
+  const candidate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  return isValidBusinessDate(candidate) ? candidate : '';
 }
 
 function buildWarnings(input: OpportunityFormInput, raw: Record<string, string>) {
@@ -777,6 +848,10 @@ const refreshFields: { field: OpportunityRefreshField; label: string; safeBaseFi
   { field: 'estimatedValue', label: 'Value', safeBaseField: true },
   { field: 'currency', label: 'Currency', safeBaseField: true },
   { field: 'expectedClosePeriod', label: 'Expected close period', safeBaseField: true },
+  // In the refresh list so an operator who imported before this existed can
+  // backfill their history from the same export rather than opening every
+  // closed deal by hand.
+  { field: 'closedOn', label: 'Closed on', safeBaseField: true },
   { field: 'productOrSolution', label: 'Product / solution', safeBaseField: true },
   { field: 'nextAction', label: 'Next action', safeBaseField: true },
   { field: 'evidence', label: 'Evidence', safeBaseField: false },

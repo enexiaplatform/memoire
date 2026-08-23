@@ -62,6 +62,16 @@ export interface CrmLiteOpportunity {
   technicalCriteria: string;
   nextAction: string;
   nextActionDate: string;
+  /**
+   * The day the deal was won or lost, when that is known from outside the app.
+   *
+   * A deal closed inside Memoire records its date on its outcome retro. A book
+   * that arrived by CSV - which is every new operator's first day - had
+   * nowhere to put one, so the order book fell through to the record's last
+   * edit and dated a whole year's business at the import. Optional, and read
+   * only when set.
+   */
+  closedOn?: string;
   evidence: string;
   missingContext: string;
   objectionDebt: string;
@@ -111,6 +121,7 @@ type OpportunityRow = {
   next_action: string | null;
   next_action_text?: string | null;
   next_action_date: string | null;
+  closed_on?: string | null;
   evidence: string | null;
   missing_context: string | null;
   objection_debt: string | null;
@@ -461,6 +472,7 @@ function rowToOpportunity(row: OpportunityRow): CrmLiteOpportunity {
     technicalCriteria: row.technical_criteria || '',
     nextAction: row.next_action || row.next_action_text || '',
     nextActionDate: sanitizeBusinessDate(row.next_action_date),
+    closedOn: sanitizeBusinessDate(row.closed_on) || undefined,
     evidence: row.evidence || '',
     missingContext: row.missing_context || '',
     objectionDebt: row.objection_debt || row.blocker || '',
@@ -539,6 +551,7 @@ function opportunityToRow(input: OpportunityFormInput) {
     technical_criteria: input.technicalCriteria || null,
     next_action: input.nextAction || null,
     next_action_date: sanitizeBusinessDate(input.nextActionDate) || null,
+    closed_on: sanitizeBusinessDate(input.closedOn || '') || null,
     evidence: input.evidence || null,
     missing_context: input.missingContext || null,
     objection_debt: input.objectionDebt || null,

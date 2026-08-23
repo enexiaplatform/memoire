@@ -2817,11 +2817,21 @@ function OpportunityMasterTable({
                     </td>
 
                     <td className="whitespace-nowrap px-3 py-2.5">
-                      <p className="text-[11px] font-semibold text-gray-700">{formatOpportunityDate(row.lastUpdatedAt)}</p>
+                      {/* The column is headed "Last touch", so the line under it
+                          has to be one. It printed `lastUpdatedAt` - the later
+                          of the newest activity and the record's own edit - and
+                          on a deal with no activity that is only the edit. An
+                          imported book read "Aug 23, 2026" over "No touch" in
+                          every row: a date, presented as the answer to when you
+                          last spoke to them, that nobody had spoken on. The
+                          edit still shows, underneath, called what it is. */}
+                      <p className={`text-[11px] font-semibold ${row.lastActivityDate ? 'text-gray-700' : 'text-amber-700'}`}>
+                        {row.lastActivityDate ? formatOpportunityDate(row.lastActivityDate) : 'No touch yet'}
+                      </p>
                       <p className={`text-[11px] ${row.silence.status === 'silent' ? 'font-bold text-red-600' : row.silence.status === 'at-risk' ? 'font-bold text-amber-600' : 'text-gray-500'}`}>
                         {quiet
                           ? `Quiet ${row.silence.daysQuiet}d`
-                          : row.lastActivityDate ? `Touch ${formatOpportunityDate(row.lastActivityDate)}` : 'No touch'}
+                          : row.lastActivityDate ? '' : `Record updated ${formatOpportunityDate(row.lastUpdatedAt)}`}
                       </p>
                       {quiet && (
                         <button
