@@ -80,6 +80,9 @@ const periodOptions: { value: PlanPeriod; label: string }[] = [
  * own one heading for both halves of the ledger; the board itself is unchanged,
  * which is why the old /app/plan URL can keep working as a deep link.
  */
+/** DOM id of the plan board, so a commitment can point at where it is ticked. */
+export const PLAN_BOARD_ANCHOR_ID = 'plan-board';
+
 export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   // The same recommendations Today and Pipeline Defense show. The plan reads
@@ -524,7 +527,11 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
     : board.days;
 
   return (
-    <div className={embedded ? '' : 'mx-auto max-w-[1600px] px-4 py-6 sm:px-6'}>
+    /* The anchor the commitment panel above scrolls to. Its "On your Plan"
+       chip pointed at `/app/timeline?view=upcoming` - the page it was already
+       on - so the one route from a promise to the place it can be ticked was a
+       link that did nothing. */
+    <div id={PLAN_BOARD_ANCHOR_ID} className={embedded ? '' : 'mx-auto max-w-[1600px] px-4 py-6 sm:px-6'}>
       <header className={`flex flex-col gap-3 sm:flex-row sm:items-start ${embedded ? 'sm:justify-end' : 'sm:justify-between'}`}>
         {!embedded && (
           <div>

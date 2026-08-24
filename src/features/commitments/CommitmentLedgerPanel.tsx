@@ -5,6 +5,7 @@ import type { CommercialCommitment, CommitmentParty } from '../../domain/commerc
 import { isPlanDerivedCommitment } from '../../domain/commercialKernel/derivePlanCommitments';
 import { formatSafeBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
 import { useCommitmentLedger } from './useCommitmentLedger';
+import { PLAN_BOARD_ANCHOR_ID } from '../plan/WeeklyPlanPage';
 
 const partyLabels: Record<CommitmentParty, string> = {
   self: 'I owe',
@@ -207,8 +208,23 @@ function CommitmentGroup({
                 {commitment.accountName && <span className="ml-1.5 text-xs text-gray-400">· {commitment.accountName}</span>}
               </p>
               {fromPlan ? (
+                /* A promise that lives on the board is ticked on the board -
+                   this panel deliberately does not write derived commitments,
+                   so the chip is the only route from here to the place it can
+                   be kept. It pointed at `/app/timeline?view=upcoming`, which
+                   on Plan is the page the operator is already looking at: a
+                   link that did nothing, on every row, above a board that until
+                   now did not even show the overdue ones. When the board is on
+                   screen it scrolls there; from Today it still navigates. */
                 <Link
                   to="/app/timeline?view=upcoming"
+                  onClick={(event) => {
+                    const board = document.getElementById(PLAN_BOARD_ANCHOR_ID);
+                    if (!board) return;
+                    event.preventDefault();
+                    board.scrollIntoView({ block: 'start' });
+                  }}
+                  title="Tick it on the plan board"
                   className="shrink-0 rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-bold text-gray-500 hover:bg-gray-50 hover:text-brand-blue"
                 >
                   On your Plan
