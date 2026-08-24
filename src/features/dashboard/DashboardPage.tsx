@@ -65,6 +65,7 @@ import { MorningBriefCard } from './MorningBriefCard';
 import { BusinessCockpitStrip } from './BusinessCockpitStrip';
 import { CommittedWeekStrip } from './CommittedWeekStrip';
 import { loadPlanItemsForWorkspace, PLAN_ITEMS_UPDATED_EVENT } from '../../services/planItemStore';
+import { derivePlanCommitments } from '../../domain/commercialKernel/derivePlanCommitments';
 import type { PlanRecord } from '../../utils/weeklyPlan';
 import { CommitmentLedgerPanel } from '../commitments/CommitmentLedgerPanel';
 import { CommercialRiskPanel } from '../threads/CommercialRiskPanel';
@@ -329,6 +330,19 @@ export function TodayPage() {
     opportunityOutcomes: data.opportunityOutcomes,
     pipelineHealth: livePipelineHealth,
   }), [accountHygienePreferences, data.accounts, data.activities, data.briefs, data.expenses, data.objections, data.opportunities, data.opportunityOutcomes, data.quotes, data.stakeholders, livePipelineHealth, revenueView.actionItems]);
+  // The dated promises this workspace already holds - Plan board items and the
+  // ones made inside a capture. Handed to the nudge engine so a deal with a
+  // booked follow-up is not called silent: Today was showing the commitment in
+  // Coming up and, on the same screen, a Critical nudge saying nothing was
+  // scheduled for that customer.
+  const plannedCommitments = useMemo(
+    () => derivePlanCommitments({
+      activities: data.activities,
+      planItems: firstWeekPlanRecords,
+      includeSampleRecords: sampleDataActive,
+    }),
+    [data.activities, firstWeekPlanRecords, sampleDataActive],
+  );
   const proactiveNudges = useMemo(() => buildProactiveNudges({
     briefs: data.briefs,
     revenueActions: revenueView.actionItems,
@@ -342,11 +356,12 @@ export function TodayPage() {
     opportunityOutcomes: data.opportunityOutcomes,
     operatingContexts: data.operatingContext,
     persistedNudges: nudgeState,
+    plannedCommitments,
     // This page renders the capture inbox above, and ranks the same captures in
     // "what Memoire would start with". A third card in the watch-list was the
     // same note a third time, with a third opinion about how urgent it is.
     captureInboxShown: true,
-  }), [accountHygienePreferences, data.accounts, data.activities, data.briefs, data.objections, data.operatingContext, data.opportunities, data.opportunityOutcomes, data.quotes, data.stakeholders, nudgeState, revenueView.actionItems]);
+  }), [accountHygienePreferences, data.accounts, data.activities, data.briefs, data.objections, data.operatingContext, data.opportunities, data.opportunityOutcomes, data.quotes, data.stakeholders, nudgeState, plannedCommitments, revenueView.actionItems]);
   const decidedActionIds = useMemo(() => (
     new Set(dailyExecutionState.decisions.map((decision) => decision.actionId))
   ), [dailyExecutionState.decisions]);
@@ -368,9 +383,12 @@ export function TodayPage() {
     nudges: proactiveNudges.allActiveNudges,
     opportunities: data.opportunities,
     quotes: data.quotes,
+    // The touches, so "which deals are hot?" is answered from movement rather
+    // than from the alarm feed.
+    activities: data.activities,
     captureInboxCount: todayCenter.captureInbox.length,
     captureInboxHref: todayCenter.captureInbox[0]?.href,
-  }), [data.opportunities, data.quotes, proactiveNudges.allActiveNudges, todayCenter.captureInbox, todayCenter.commercialRiskItems]);
+  }), [data.activities, data.opportunities, data.quotes, proactiveNudges.allActiveNudges, todayCenter.captureInbox, todayCenter.commercialRiskItems]);
   // Built after the cockpit so it can be told what the cockpit already said.
   const morningBrief = useMemo(() => buildMorningBrief({
     nudges: proactiveNudges.todayNudges,

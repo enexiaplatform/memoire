@@ -2,9 +2,9 @@ import type { NudgeRecord } from '../services/nudgeStore.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { RevenueActionItem } from './revenueView.ts';
-import { formatCompactCurrencyAmount } from './money.ts';
+import { convertMoney, formatCompactCurrencyAmount } from './money.ts';
 import { resolveOpportunityByName, resolveQuoteOpportunityId } from './opportunityResolution.ts';
-import { isBusinessDateOverdue, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
+import { formatSafeBusinessDate, isBusinessDateOverdue, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
 
 export type BusinessCockpitAnswer = {
@@ -59,8 +59,26 @@ export type BusinessCockpitAnswer = {
   actionable: boolean;
 };
 
+/** The only part of an activity the cockpit reads. */
+type CockpitActivity = {
+  accountName?: string;
+  opportunityName?: string;
+  linkedOpportunityId?: string;
+  activityDate?: string;
+  buyingSignals?: string[];
+};
+
+/** How far back a touch still counts as movement. */
+const HOT_WINDOW_DAYS = 21;
+
 type BusinessCockpitInput = {
   commercialRiskItems: RevenueActionItem[];
+  /**
+   * The touches, so "which deals are hot?" can be answered from movement
+   * rather than from the alarm feed. Optional; without it the card says it has
+   * nothing to add rather than borrowing an alarm.
+   */
+  activities?: CockpitActivity[];
   nudges: NudgeRecord[];
   opportunities: CrmLiteOpportunity[];
   /** Used only to resolve a quote-shaped answer back to its deal. */
@@ -140,6 +158,106 @@ function idFromHref(href: string | undefined, key: string): string | undefined {
   return match ? decodeURIComponent(match[1]) : undefined;
 }
 
+/**
+ * How close a stage is to a signature.
+ *
+ * "Where the money sits" is a question about position, and the stage is the
+ * only ordering the pipeline actually carries.
+ */
+const CLOSING_STAGE_RANK: Record<string, number> = {
+  Procurement: 6,
+  Negotiation: 5,
+  Proposal: 4,
+  Demo: 3,
+  'Technical discussion': 3,
+  Qualification: 2,
+  Lead: 1,
+};
+
+/** Money that is late is money that moves today, if you act on it. */
+function isLateMoney(item: RevenueActionItem) {
+  return /overdue|expired/i.test(item.risk || '');
+}
+
+function opportunityBaseAmount(opportunity: CrmLiteOpportunity) {
+  const amount = opportunity.estimatedValue ?? opportunity.fy26Value ?? null;
+  if (typeof amount !== 'number' || !Number.isFinite(amount) || !opportunity.currency) return 0;
+  return convertMoney(amount, opportunity.currency) ?? 0;
+}
+
+/**
+ * The open deal closest to a signature, biggest first.
+ *
+ * The money card used to be the top row of the revenue *risk* feed, whatever
+ * that row was. On a 3.6M EUR book whose loudest risk was a 48,500 EUR deal
+ * marked "Rescue", the card headed "What moves money today?" answered
+ * "Weak pipeline: Vila Gale Hoteis (48.5K EUR)" - the thirteenth largest thing
+ * in the workspace, and an answer about risk under a question about money.
+ */
+function closestToSigning(opportunities: CrmLiteOpportunity[]) {
+  return opportunities
+    .filter((opportunity) => opportunity.status === 'Active')
+    .map((opportunity) => ({
+      opportunity,
+      base: opportunityBaseAmount(opportunity),
+      rank: CLOSING_STAGE_RANK[opportunity.stage] ?? 0,
+    }))
+    .filter((entry) => entry.base > 0 || entry.rank > 0)
+    .sort((left, right) => right.rank - left.rank || right.base - left.base)[0];
+}
+
+/**
+ * A deal that has actually moved lately, biggest first.
+ *
+ * "Which deals are hot?" was answered from the alarm feed, so on a quiet book
+ * it replied "Deal going silent: Mai Nguyen / Landing page audit" - the
+ * opposite of hot, about the smallest record in the workspace. Hot is a touch
+ * or a buying signal inside the window, which is a thing the activity ledger
+ * can actually answer.
+ */
+function hottestDeal(
+  opportunities: CrmLiteOpportunity[],
+  activities: CockpitActivity[],
+  today: string,
+  excludeOpportunityId?: string,
+) {
+  const windowStart = shiftDays(today, -HOT_WINDOW_DAYS);
+  const recent = activities.filter((activity) => {
+    const date = sanitizeBusinessDate(activity.activityDate);
+    return Boolean(date) && date >= windowStart && date <= today;
+  });
+  if (!recent.length) return undefined;
+
+  return opportunities
+    .filter((opportunity) => opportunity.status === 'Active' && opportunity.id !== excludeOpportunityId)
+    .map((opportunity) => {
+      const accountKey = normalizeEntityName(opportunity.accountName || '');
+      const opportunityKey = normalizeEntityName(opportunity.opportunityName || '');
+      const touches = recent.filter((activity) => {
+        if (activity.linkedOpportunityId && activity.linkedOpportunityId === opportunity.id) return true;
+        if (!accountKey || !opportunityKey) return false;
+        return normalizeEntityName(activity.accountName || '') === accountKey
+          && normalizeEntityName(activity.opportunityName || '') === opportunityKey;
+      });
+      const signals = touches.flatMap((activity) => activity.buyingSignals || []);
+      const lastTouch = touches
+        .map((activity) => sanitizeBusinessDate(activity.activityDate))
+        .filter(Boolean)
+        .sort()
+        .pop() || '';
+      return { opportunity, touches: touches.length, signals, lastTouch, base: opportunityBaseAmount(opportunity) };
+    })
+    .filter((entry) => entry.touches > 0)
+    // A recorded buying signal beats a bare touch; then the bigger deal.
+    .sort((left, right) => (right.signals.length ? 1 : 0) - (left.signals.length ? 1 : 0) || right.base - left.base)[0];
+}
+
+function shiftDays(date: string, days: number) {
+  const parsed = Date.parse(`${date}T00:00:00Z`);
+  if (Number.isNaN(parsed)) return date;
+  return new Date(parsed + days * 86_400_000).toISOString().slice(0, 10);
+}
+
 export function buildBusinessCockpit(input: BusinessCockpitInput): BusinessCockpitAnswer[] {
   const today = sanitizeBusinessDate(input.today) || todayDateKey();
   const nudges = input.nudges || [];
@@ -180,28 +298,6 @@ export function buildBusinessCockpit(input: BusinessCockpitInput): BusinessCockp
       return Boolean(moneyAccount) && normalizeEntityName(nudge.accountName || '') === moneyAccount;
     })
     : undefined;
-  const hotDealNudge = nudges.find((nudge) => {
-    if (nudge.source !== 'opportunity' && nudge.source !== 'revenue') return false;
-    // The nudge the money card is already standing on, even where it was matched
-    // only by customer - two cards about one customer is the repetition this
-    // whole block exists to stop.
-    if (moneyNudge && nudge.id === moneyNudge.id) return false;
-    if (!moneyKey) return true;
-    const nudgeId = (nudge.entityId || '').replace(/^(opportunity|quote)-/, '');
-    const nudgeDealId = resolveOpportunityId({
-      opportunityId: nudge.entityType === 'opportunity' ? nudgeId : undefined,
-      quoteId: nudge.entityType === 'quote' ? nudgeId : undefined,
-      accountName: nudge.accountName,
-      opportunityName: nudge.opportunityName,
-    }, opportunities, quotes);
-    return nudgeId !== moneyKey && (!nudgeDealId || nudgeDealId !== moneyDealId);
-  });
-  const hotDealId = resolveOpportunityId({
-    opportunityId: hotDealNudge?.entityType === 'opportunity' ? (hotDealNudge.entityId || '').replace(/^opportunity-/, '') : undefined,
-    quoteId: hotDealNudge?.entityType === 'quote' ? (hotDealNudge.entityId || '').replace(/^quote-/, '') : undefined,
-    accountName: hotDealNudge?.accountName,
-    opportunityName: hotDealNudge?.opportunityName,
-  }, opportunities, quotes);
 
   // Most overdue first, so the one deal this card opens is the worst one.
   const lateFollowUps = opportunities
@@ -210,6 +306,14 @@ export function buildBusinessCockpit(input: BusinessCockpitInput): BusinessCockp
     ))
     .sort((left, right) => (left.nextActionDate || '').localeCompare(right.nextActionDate || ''));
   const stalledInitiative = nudges.find((nudge) => nudge.source === 'initiative');
+  const lateMoney = moneyItem && isLateMoney(moneyItem) ? moneyItem : undefined;
+  const nearestClose = lateMoney ? undefined : closestToSigning(opportunities);
+  const hottest = hottestDeal(
+    opportunities,
+    input.activities || [],
+    today,
+    lateMoney ? moneyDealId : nearestClose?.opportunity.id,
+  );
 
   // Every urgent answer routes to the exact record that raised it (the quote,
   // the deal, the initiative) - a page top is only the fallback for calm tiles.
@@ -218,30 +322,50 @@ export function buildBusinessCockpit(input: BusinessCockpitInput): BusinessCockp
       id: 'money',
       subject: 'Money',
       question: 'What moves money today?',
-      answer: moneyItem
-        ? `${moneyItem.risk}: ${moneyItem.accountName || 'Needs confirmation'}${typeof moneyItem.amount === 'number' && moneyItem.currency ? ` (${formatCompactCurrencyAmount(moneyItem.amount, moneyItem.currency)})` : ''}`
-        : 'No money action is waiting on you.',
-      detail: moneyItem?.reason,
-      href: moneyItem?.href || '/app/revenue',
-      urgent: Boolean(moneyItem),
-      opportunityId: moneyDealId,
-      nudgeId: moneyNudge?.id,
-      accountName: moneyItem?.accountName,
-      actionable: Boolean(moneyItem),
+      // Money that is already late leads, because acting on it today is what
+      // makes it move. Everything else is a question about position, and the
+      // answer is the biggest deal closest to a signature - not whichever row
+      // the risk feed happened to put first.
+      answer: lateMoney
+        ? `${lateMoney.risk}: ${lateMoney.accountName || 'Needs confirmation'}${typeof lateMoney.amount === 'number' && lateMoney.currency ? ` (${formatCompactCurrencyAmount(lateMoney.amount, lateMoney.currency)})` : ''}`
+        : nearestClose
+          ? `${nearestClose.opportunity.accountName || 'Needs confirmation'} / ${nearestClose.opportunity.opportunityName || 'Needs confirmation'}${nearestClose.base > 0 ? ` (${formatCompactCurrencyAmount(nearestClose.opportunity.estimatedValue ?? 0, nearestClose.opportunity.currency)})` : ''}`
+          : 'No money action is waiting on you.',
+      detail: lateMoney
+        ? lateMoney.reason
+        : nearestClose
+          ? `Furthest along at ${nearestClose.opportunity.stage}. ${nearestClose.opportunity.nextAction || 'No next step is recorded on it.'}`
+          : undefined,
+      href: lateMoney?.href
+        || (nearestClose ? `/app/opportunities?opportunityId=${encodeURIComponent(nearestClose.opportunity.id)}` : '/app/revenue'),
+      // A big deal sitting where it should be is not an alarm.
+      urgent: Boolean(lateMoney),
+      opportunityId: lateMoney ? moneyDealId : nearestClose?.opportunity.id,
+      nudgeId: lateMoney ? moneyNudge?.id : undefined,
+      accountName: lateMoney ? lateMoney.accountName : nearestClose?.opportunity.accountName,
+      actionable: Boolean(lateMoney || nearestClose),
     },
     {
       id: 'deals',
       subject: 'Deals',
       question: 'Which deals are hot?',
-      answer: hotDealNudge
-        ? `${hotDealNudge.title}: ${[hotDealNudge.accountName, hotDealNudge.opportunityName].filter(Boolean).join(' / ')}`
-        : 'No deal is flashing right now.',
-      href: nudgeEntityHref(hotDealNudge) || '/app/opportunities',
-      urgent: Boolean(hotDealNudge && (hotDealNudge.urgency === 'critical' || hotDealNudge.urgency === 'high')),
-      opportunityId: hotDealId,
-      nudgeId: hotDealNudge?.id,
-      accountName: hotDealNudge?.accountName,
-      actionable: Boolean(hotDealNudge),
+      // Hot means it moved. Answering from the alarm feed made this card reply
+      // "Deal going silent: ..." - the opposite of the question - about
+      // whichever record happened to be shouting loudest.
+      answer: hottest
+        ? `${hottest.opportunity.accountName || 'Needs confirmation'} / ${hottest.opportunity.opportunityName || 'Needs confirmation'}`
+        : `No deal has moved in the last ${HOT_WINDOW_DAYS} days.`,
+      detail: hottest
+        ? `${hottest.signals.length ? `${hottest.signals[0]}. ` : ''}Last touch ${formatSafeBusinessDate(hottest.lastTouch)}, ${hottest.touches} ${hottest.touches === 1 ? 'touch' : 'touches'} in ${HOT_WINDOW_DAYS} days.`
+        : 'Capture a touch and the deal that is moving will show up here.',
+      href: hottest
+        ? `/app/opportunities?opportunityId=${encodeURIComponent(hottest.opportunity.id)}`
+        : '/app/opportunities',
+      // Movement is good news, never an alarm.
+      urgent: false,
+      opportunityId: hottest?.opportunity.id,
+      accountName: hottest?.opportunity.accountName,
+      actionable: Boolean(hottest),
     },
     {
       id: 'follow-ups',

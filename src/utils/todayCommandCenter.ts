@@ -9,7 +9,7 @@ import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeSto
 import type { RevenueActionItem } from './revenueView';
 import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
 import { buildPipelineDefenseCenter, type ManagerReadyDealBrief } from './pipelineDefenseCenter.ts';
-import { formatMoneyWithBase } from './money.ts';
+import { convertMoney, formatMoneyWithBase } from './money.ts';
 import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 import { classifyAccountEngagement, type AccountHygienePreference } from './accountHygiene.ts';
 import { analyzePersonalSalesLearning } from './personalSalesLearning.ts';
@@ -34,6 +34,16 @@ export type TodayCommandAction = {
   dueDate: string;
   dueDateLabel: string;
   moneyLabel: string;
+  /**
+   * The same money as `moneyLabel`, as a number in the reporting currency, so
+   * the ranking can use it. The label alone could not: every card printed its
+   * amount and the sort went rank, then due date, then `title.localeCompare` -
+   * so on a book where the top candidates share a category and carry no due
+   * date, the three things Memoire told a 3.6M business to start with were
+   * ordered alphabetically, with 460,000 EUR sitting under 412,000 EUR and a
+   * 540,000 EUR deal off the list entirely.
+   */
+  amountBase?: number;
   rank: number;
   /**
    * "Why am I seeing this?" - the rule that surfaced it plus its evidence.
@@ -199,6 +209,7 @@ function buildPipelineAction(item: ManagerReadyDealBrief): TodayCommandAction[] 
     dueDate: sanitizeBusinessDate(item.deal.nextActionDate),
     dueDateLabel: item.dueDateLabel,
     moneyLabel: item.moneyLabel,
+    amountBase: toBaseAmount(item.deal.estimatedValue, item.deal.currency),
     rank,
   }];
 }
@@ -218,6 +229,7 @@ function buildRevenueAction(item: RevenueActionItem): TodayCommandAction {
     dueDate,
     dueDateLabel: formatSafeBusinessDate(dueDate),
     moneyLabel: formatMoney(item.amount, item.currency),
+    amountBase: toBaseAmount(item.amount, item.currency),
     rank: critical ? 100 : 90,
   };
 }
@@ -241,6 +253,7 @@ function buildOpportunityActions(
       dueDate,
       dueDateLabel: formatSafeBusinessDate(opportunity.nextActionDate),
       moneyLabel: formatMoney(opportunity.estimatedValue, opportunity.currency),
+      amountBase: toBaseAmount(opportunity.estimatedValue, opportunity.currency),
       source: 'Opportunity' as const,
     };
     if (isBusinessDateOverdue(dueDate, today)) return [{
@@ -283,6 +296,7 @@ function buildPostWonAction(customer: WonCustomerNudge): TodayCommandAction {
     dueDate: '',
     dueDateLabel: formatSafeBusinessDate(''),
     moneyLabel: customer.wonValueBase > 0 ? formatCompactBaseAmount(customer.wonValueBase) : '',
+    amountBase: customer.wonValueBase > 0 ? customer.wonValueBase : undefined,
     rank: veryQuiet ? 82 : 70,
   };
 }
@@ -304,6 +318,7 @@ function buildObligationAction(obligation: OwnObligation): TodayCommandAction {
     dueDate: obligation.dueDate,
     dueDateLabel: formatSafeBusinessDate(obligation.dueDate),
     moneyLabel: obligation.amountBase !== null ? formatCompactBaseAmount(obligation.amountBase) : '',
+    amountBase: obligation.amountBase ?? undefined,
     rank: overdue ? 95 : 80,
   };
 }
@@ -383,8 +398,33 @@ function collapseByTitle(actions: TodayCommandAction[]): TodayCommandAction[] {
   return merged.sort(compareTodayActions);
 }
 
+/**
+ * Rank, then the date, then the money, then the title.
+ *
+ * The money used to be missing entirely, and the title was doing its job. On a
+ * six-month book whose top candidates were all "Rescue before review" and all
+ * undated - which is what an imported pipeline looks like - the three cards
+ * Today put up were in alphabetical order: "Agree retention terms" (412,000),
+ * "Agree the pilot site" (460,000), "Answer the procurement questionnaire"
+ * (187,000). Each card printed its own amount while the page ignored it.
+ *
+ * Deliberately below the due date rather than above it: a promise with a day on
+ * it outranks a bigger one without, because the date is something the operator
+ * or the customer actually committed to. Money only decides between equals -
+ * which is exactly where a title was deciding before.
+ */
 function compareTodayActions(left: TodayCommandAction, right: TodayCommandAction) {
-  return right.rank - left.rank || compareSafeBusinessDate(left.dueDate, right.dueDate) || left.title.localeCompare(right.title);
+  return right.rank - left.rank
+    || compareSafeBusinessDate(left.dueDate, right.dueDate)
+    || (right.amountBase || 0) - (left.amountBase || 0)
+    || left.title.localeCompare(right.title);
+}
+
+/** An amount in the reporting currency, so two deals in two currencies compare. */
+function toBaseAmount(amount: number | null | undefined, currency: string | null | undefined) {
+  if (typeof amount !== 'number' || !Number.isFinite(amount) || !currency) return undefined;
+  const converted = convertMoney(amount, currency);
+  return converted === null ? undefined : converted;
 }
 
 function latestOpportunitySignal(opportunity: CrmLiteOpportunity, activities: SalesActivityRecord[]) {

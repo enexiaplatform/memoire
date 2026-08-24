@@ -13,7 +13,7 @@ import type { RevenueActionItem } from './revenueView.ts';
 import { classifyAccountEngagement, type AccountHygienePreference } from './accountHygiene.ts';
 import { readLinkedActivityIds } from './initiativeActivityLink.ts';
 import { buildMeddicStakeholderMap } from './meddicStakeholderMap.ts';
-import { formatMoneyWithBase } from './money.ts';
+import { convertMoney, formatMoneyWithBase } from './money.ts';
 import { analyzePersonalSalesLearning } from './personalSalesLearning.ts';
 import { buildManagerReadyDealBrief } from './pipelineDefenseCenter.ts';
 import { buildRetentionSignals } from './retentionSignals.ts';
@@ -33,6 +33,11 @@ export type ProactiveNudgeInput = {
   opportunityOutcomes?: OpportunityOutcomeRecord[];
   operatingContexts?: OperatingContextRecord[];
   persistedNudges?: NudgeRecord[];
+  /**
+   * Dated open promises from the Plan board and from captures, derived by the
+   * caller. Optional: without them the silence rule behaves exactly as it did.
+   */
+  plannedCommitments?: PlannedCommitmentSignal[];
   today?: string;
   limit?: number;
   /**
@@ -339,14 +344,71 @@ export type OpportunitySilenceState = {
   lastTouchDate: string;
 };
 
+/**
+ * A dated promise that is still open, from the Plan board or from a capture.
+ *
+ * Structurally typed so this file keeps no dependency on the commitment kernel;
+ * the caller derives the list and hands it in. Without it the silence rule can
+ * only see `opportunity.nextActionDate`, and a promise made in a capture never
+ * writes that field - so Today showed "Follow up - Frulact - due Sep 1" in
+ * Coming up and, four hundred pixels below, a Critical nudge saying "no next
+ * action is scheduled for Frulact" and telling the operator to put a date on
+ * it. A false alarm is not a small bug in a nudge. It is the thing that
+ * teaches an operator to stop reading them.
+ */
+export type PlannedCommitmentSignal = {
+  opportunityId?: string | null;
+  accountName?: string;
+  currentDueDate?: string;
+  status?: string;
+};
+
+/** Whether a dated open promise covers this deal, its account, or neither. */
+export function commitmentCoverFor(
+  opportunity: Pick<CrmLiteOpportunity, 'id' | 'accountName'>,
+  commitments: PlannedCommitmentSignal[] = [],
+): 'deal' | 'account' | 'none' {
+  const open = commitments.filter((commitment) => (
+    (commitment.status || 'open') === 'open' && isValidBusinessDate(commitment.currentDueDate)
+  ));
+  if (!open.length) return 'none';
+  if (open.some((commitment) => commitment.opportunityId && commitment.opportunityId === opportunity.id)) return 'deal';
+  const accountKey = normalizeEntityName(opportunity.accountName || '');
+  if (accountKey && open.some((commitment) => normalizeEntityName(commitment.accountName || '') === accountKey)) {
+    return 'account';
+  }
+  return 'none';
+}
+
+/** The soonest open promise on this deal's account, for saying so out loud. */
+function nextCommitmentDateFor(
+  opportunity: Pick<CrmLiteOpportunity, 'id' | 'accountName'>,
+  commitments: PlannedCommitmentSignal[] = [],
+) {
+  const accountKey = normalizeEntityName(opportunity.accountName || '');
+  return commitments
+    .filter((commitment) => (commitment.status || 'open') === 'open' && isValidBusinessDate(commitment.currentDueDate))
+    .filter((commitment) => (commitment.opportunityId && commitment.opportunityId === opportunity.id)
+      || (accountKey && normalizeEntityName(commitment.accountName || '') === accountKey))
+    .map((commitment) => commitment.currentDueDate as string)
+    .sort(compareSafeBusinessDate)[0] || '';
+}
+
 export function classifyOpportunitySilence(
   opportunity: CrmLiteOpportunity,
   activities: SalesActivityRecord[],
   today = todayDateKey(),
+  commitments: PlannedCommitmentSignal[] = [],
 ): OpportunitySilenceState {
   if (opportunity.status !== 'Active') return { status: 'inactive', daysQuiet: null, lastTouchDate: '' };
   const lastTouch = findLastTouchDate(opportunity, activities);
-  if (isValidBusinessDate(opportunity.nextActionDate)) return { status: 'planned', daysQuiet: null, lastTouchDate: lastTouch };
+  // A dated promise is a plan whichever book it was written in. `nextActionDate`
+  // is the field the deal carries; a commitment made in a capture never writes
+  // it, and reading only that field is what let a deal with a booked follow-up
+  // be called silent.
+  const planned = isValidBusinessDate(opportunity.nextActionDate)
+    || commitmentCoverFor(opportunity, commitments) === 'deal';
+  if (planned) return { status: 'planned', daysQuiet: null, lastTouchDate: lastTouch };
   const quietSince = lastTouch || sanitizeBusinessDate(timestampToLocalDateKey(opportunity.createdAt));
   const daysQuiet = daysBetweenBusinessDates(quietSince, sanitizeBusinessDate(today));
   if (daysQuiet === null) return { status: 'quiet-ok', daysQuiet: null, lastTouchDate: lastTouch };
@@ -357,15 +419,25 @@ export function classifyOpportunitySilence(
 
 function buildSilenceRiskNudges(input: ProactiveNudgeInput, today: string) {
   const activities = input.activities || [];
+  const commitments = input.plannedCommitments || [];
   return (input.opportunities || []).flatMap((opportunity) => {
-    const silence = classifyOpportunitySilence(opportunity, activities, today);
+    const silence = classifyOpportunitySilence(opportunity, activities, today, commitments);
     if (silence.status !== 'silent' && silence.status !== 'at-risk') return [];
     const lastTouch = silence.lastTouchDate;
     const quietSince = lastTouch || sanitizeBusinessDate(timestampToLocalDateKey(opportunity.createdAt));
-    const critical = silence.status === 'silent';
     const accountName = opportunity.accountName || 'Needs confirmation';
     const opportunityName = opportunity.opportunityName || 'Needs confirmation';
     const amount = opportunity.estimatedValue ?? opportunity.fy26Value ?? undefined;
+    // A promise dated on this customer, just not linked to this deal. Saying
+    // "no next action is scheduled" over the top of it is false, and the
+    // useful thing to say is the true one: there is a date, it is on the
+    // account, and nothing ties it here.
+    const coveredByAccount = commitmentCoverFor(opportunity, commitments) === 'account';
+    const plannedDate = coveredByAccount ? nextCommitmentDateFor(opportunity, commitments) : '';
+    const critical = silence.status === 'silent' && !coveredByAccount;
+    const scheduleClause = coveredByAccount
+      ? `${accountName} has a commitment dated ${formatSafeBusinessDate(plannedDate)}, but nothing is scheduled on ${opportunityName} itself.`
+      : `no next action is scheduled for ${accountName} / ${opportunityName}.`;
     return [createNudge({
       source: 'opportunity',
       entityType: 'opportunity',
@@ -374,11 +446,13 @@ function buildSilenceRiskNudges(input: ProactiveNudgeInput, today: string) {
       opportunityName,
       title: critical ? 'Deal going silent' : 'Silence risk',
       reason: lastTouch
-        ? `No customer touch since ${formatSafeBusinessDate(lastTouch)} and no next action is scheduled for ${accountName} / ${opportunityName}.`
-        : `No customer touch recorded since this opportunity was created on ${formatSafeBusinessDate(quietSince)}, and no next action is scheduled.`,
-      recommendedAction: opportunity.nextAction
-        ? `Put a date on the planned next action: ${opportunity.nextAction}`
-        : 'Book the next customer touch or send the follow-up now, before this deal goes quiet.',
+        ? `No customer touch since ${formatSafeBusinessDate(lastTouch)} and ${scheduleClause}`
+        : `No customer touch recorded since this opportunity was created on ${formatSafeBusinessDate(quietSince)}, and ${scheduleClause}`,
+      recommendedAction: coveredByAccount
+        ? `Link the ${formatSafeBusinessDate(plannedDate)} commitment to this deal, or book one of its own.`
+        : opportunity.nextAction
+          ? `Put a date on the planned next action: ${opportunity.nextAction}`
+          : 'Book the next customer touch or send the follow-up now, before this deal goes quiet.',
       urgency: critical ? 'critical' : 'high',
       moneyAmount: amount,
       moneyCurrency: opportunity.currency,
@@ -899,10 +973,22 @@ function compareNudges(left: NudgeRecord, right: NudgeRecord) {
     || overdueRank(right) - overdueRank(left)
     || sourceRank(right.source) - sourceRank(left.source)
     || compareSafeBusinessDate(left.dueDate, right.dueDate)
+    // The bigger deal, between two warnings that are otherwise the same kind of
+    // urgent. The watch-list is capped at five, so the order decides what an
+    // operator sees at all - and without this it fell through to the title,
+    // which put a 266 EUR deal above a 158,000 EUR one at the top of the list,
+    // both marked Critical, because "L" sorts before "R".
+    || nudgeAmountBase(right) - nudgeAmountBase(left)
     // Between two copies of one warning, the shorter reason wins. The long one
     // is always the copy that pasted a whole brief into a watch-list row.
     || left.reason.length - right.reason.length
     || left.title.localeCompare(right.title);
+}
+
+/** A nudge's money in the reporting currency, so two currencies compare. */
+function nudgeAmountBase(nudge: NudgeRecord) {
+  if (typeof nudge.moneyAmount !== 'number' || !Number.isFinite(nudge.moneyAmount) || !nudge.moneyCurrency) return 0;
+  return convertMoney(nudge.moneyAmount, nudge.moneyCurrency) ?? 0;
 }
 
 function overdueRank(nudge: NudgeRecord) {
