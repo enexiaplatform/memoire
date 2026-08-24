@@ -143,7 +143,8 @@ const center = buildPipelineDefenseCenter([deal], '2026-06-30', outcomes);
 assert.equal(center.items[0].learningWarning?.matchedOutcomes >= 2, true);
 assert.ok(center.items[0].copyText.includes('Outcome learning risk signal'));
 assert.ok(center.items[0].moneyLabel.includes('300,000 SGD'));
-assert.ok(center.items[0].moneyLabel.includes('Base: VND'));
+// Same rule as Today: two figures, the second in the reporting currency.
+assert.match(center.items[0].moneyLabel, /300,000 SGD \u00b7 [\d,.]+ VND$/);
 assert.ok(center.items[0].dueDateLabel.includes('Jul 3, 2026'));
 
 const today = buildUnifiedTodayCommandCenter({

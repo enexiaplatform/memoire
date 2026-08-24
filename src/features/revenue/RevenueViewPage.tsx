@@ -22,6 +22,7 @@ import { getCachedSalesWorkspaceData, loadSalesWorkspaceData, type SalesWorkspac
 import { useWorkspaceRefresh } from '../../hooks/useWorkspaceRefresh';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { formatBaseCurrencyAmount as formatBaseMoney, formatCurrencyAmount as formatMoney } from '../../utils/money';
+import { formatCount } from '../../utils/numberFormat';
 import { buildRevenueView, type RevenueActionItem, type RevenueRiskKind } from '../../utils/revenueView';
 import { buildMoneyFlow, moneyFlowStages } from '../../utils/moneyFlow';
 import { formatBaseCurrencyAmount, formatCurrencyAmount, listSelectableCurrencies } from '../../utils/money';
@@ -125,6 +126,13 @@ export function RevenueViewPage() {
 
   const revenue = useMemo(() => buildRevenueView(data), [data]);
   const moneyFlow = useMemo(() => buildMoneyFlow(data), [data]);
+  // How many money threads have reached a quote. This is the whole difference
+  // between "In motion" and "Active pipeline", and until it is above nought
+  // the two tiles print the same figure.
+  const quotedThreadCount = useMemo(
+    () => moneyFlow.threads.filter((thread) => thread.stage !== 'Opportunity').length,
+    [moneyFlow.threads],
+  );
   const routeHealth = useMemo(() => buildRouteHealth({ opportunities: data.opportunities }), [data.opportunities]);
   const visibleActions = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -209,8 +217,27 @@ export function RevenueViewPage() {
               (Base: VND)" wrapped to two lines inside its own card and turned a
               four-number strip into a paragraph. */}
           <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-            <RevenueMetric label="In motion" value={formatBaseCurrencyAmount(moneyFlow.totalInMotionBase, true)} tone="blue" />
-            <RevenueMetric label="Active pipeline" value={formatBaseMoney(revenue.activePipeline, true)} tone="blue" />
+            {/* These two are the same number until the operator writes their
+                first quote, because "in motion" is unquoted active deals plus
+                live quotes and "active pipeline" is every active deal. Two
+                identical figures side by side, with nothing saying why, read
+                as one of them being broken. Each now says what it counts, and
+                In motion says how much of the pipeline has reached a quote -
+                which is the only thing that makes them differ. */}
+            <RevenueMetric
+              label="In motion"
+              value={formatBaseCurrencyAmount(moneyFlow.totalInMotionBase, true)}
+              tone="blue"
+              detail={quotedThreadCount > 0
+                ? `${formatCount(quotedThreadCount)} quoted of ${formatCount(moneyFlow.threads.length)}`
+                : 'Nothing quoted yet'}
+            />
+            <RevenueMetric
+              label="Active pipeline"
+              value={formatBaseMoney(revenue.activePipeline, true)}
+              tone="blue"
+              detail="Every open deal"
+            />
             <RevenueMetric label="At risk" value={formatBaseMoney(revenue.atRiskRevenue, true)} tone={revenue.atRiskRevenue ? 'red' : 'green'} />
             <RevenueMetric label="Overdue follow-ups" value={revenue.overdueFollowUps} tone={revenue.overdueFollowUps ? 'red' : 'green'} />
           </section>
@@ -706,11 +733,18 @@ function RevenueEmptyState() {
   );
 }
 
-function RevenueMetric({ label, value, tone }: { label: string; value: string | number; tone: 'blue' | 'green' | 'amber' | 'red' }) {
+function RevenueMetric({ label, value, tone, detail }: {
+  label: string;
+  value: string | number;
+  tone: 'blue' | 'green' | 'amber' | 'red';
+  /** One line saying what the figure counts, for tiles that can read alike. */
+  detail?: string;
+}) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
       <p className="truncate text-[10px] font-bold uppercase tracking-wide text-gray-400" title={label}>{label}</p>
       <p className={`text-lg font-bold leading-tight ${textToneClass(tone)}`}>{value}</p>
+      {detail && <p className="mt-0.5 text-[10px] leading-tight text-gray-500">{detail}</p>}
     </div>
   );
 }

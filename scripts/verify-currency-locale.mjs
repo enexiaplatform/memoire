@@ -95,11 +95,17 @@ assert.equal(sumMoney([{ amount: 100, currency: 'XYZ' }, { amount: 5, currency: 
   // Source != reporting: the converted figure carries the currency it is in.
   const converted = formatMoneyWithBase(200_000, 'SGD');
   assert.ok(converted.startsWith('200,000 SGD · '), `must lead with the deal's own currency, got: ${converted}`);
-  assert.ok(
-    converted.includes(`(Base: ${DEFAULT_REPORTING_CURRENCY})`),
+  // The half after the separator is the converted figure, and it has to carry
+  // the reporting currency. It used to be wrapped in "(Base: USD)" as well;
+  // that wrapper is gone because the ISO code is already in the string, but the
+  // rule it existed to enforce is the one below and is unchanged.
+  const convertedHalf = converted.split(' · ')[1] || '';
+  assert.match(
+    convertedHalf,
+    new RegExp(`^[\\d,.]+ ${DEFAULT_REPORTING_CURRENCY}$`),
     `converted figure must be labelled with the reporting currency, got: ${converted}`,
   );
-  assert.equal(/[\d,]+ SGD \(Base/.test(converted), false, 'the reported bug: a converted figure labelled with the source currency');
+  assert.equal(/ SGD$/.test(convertedHalf), false, 'the reported bug: a converted figure labelled with the source currency');
 
   // Unsupported currency: honest, not a fabricated conversion.
   assert.equal(formatMoneyWithBase(100, 'XYZ'), '100 XYZ · Needs confirmation');

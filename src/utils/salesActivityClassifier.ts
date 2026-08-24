@@ -427,11 +427,46 @@ export function extractNextActions(rawNote: string, activityDate: string): Sales
  * name an account after an article.
  */
 const competitorStopWords = new Set([
+  // Period labels read like capitalised names and are not companies:
+  // "measured against Q3 target" recorded a competitor called Q3.
+  'q1', 'q2', 'q3', 'q4', 'fy', 'fy25', 'fy26', 'fy27', 'fy28', 'h1', 'h2',
   'the', 'a', 'an', 'our', 'ours', 'their', 'theirs', 'his', 'her', 'its',
   'this', 'that', 'these', 'those', 'us', 'them', 'it', 'we', 'they',
   'another', 'other', 'others', 'local', 'current', 'existing', 'previous',
   'one', 'two', 'three', 'last', 'next', 'same', 'both', 'everyone', 'someone',
 ]);
+
+/**
+ * A second way a note names a rival: by their position, not by the word
+ * "competitor".
+ *
+ * "Schneider is the incumbent on controls" recorded nobody, on a field whose
+ * own placeholder reads "e.g. Incumbent Vendor". Sellers write who else is in
+ * the room the way people talk - somebody *is* the incumbent, the customer is
+ * *also talking to* someone, a rival *currently supplies* them. The pattern
+ * above only ever read the handful of phrasings built around the word
+ * "competitor" itself, so the whole objection and defence layer downstream ran
+ * on an empty field.
+ *
+ * Case-sensitive in the captured half for the same reason as everything else
+ * here: the capital is the only thing separating a company from the words
+ * around it.
+ */
+const COMPETITOR_POSITION_PATTERNS = [
+  // "Schneider is the incumbent", "Veolia are the incumbent supplier"
+  /\b([A-Z][A-Za-z0-9&'-]{1,30}(?:\s+[A-Z][A-Za-z0-9&'-]{1,30}){0,2})\s+(?:is|are|remains?|stays?)\s+(?:still\s+)?the\s+incumbent\b/g,
+  // "the incumbent is Schneider", "incumbent supplier is Schneider"
+  /\bincumbent(?:\s+(?:supplier|vendor|provider|contractor))?\s+is\s+([A-Z][A-Za-z0-9&'-]{1,30}(?:\s+[A-Z][A-Za-z0-9&'-]{1,30}){0,2})/g,
+  // "also talking to Veolia", "also speaking to Veolia", "also quoting Veolia"
+  /\balso\s+(?:talking|speaking|quoting|looking)\s+(?:to|at|with)\s+([A-Z][A-Za-z0-9&'-]{1,30}(?:\s+[A-Z][A-Za-z0-9&'-]{1,30}){0,2})/g,
+  // "shortlisted alongside Veolia", "bidding with Veolia". Bare "against" is
+  // deliberately absent: the verb-anchored pattern above already reads
+  // "competing/benchmarking/up against", and loose here it matched
+  // "measured against Q3 target" and recorded a competitor called Q3.
+  /\b(?:alongside|shortlisted\s+with|bidding\s+with)\s+([A-Z][A-Za-z0-9&'-]{1,30}(?:\s+[A-Z][A-Za-z0-9&'-]{1,30}){0,2})/g,
+  // "Veolia currently supplies them", "Schneider currently holds the contract"
+  /\b([A-Z][A-Za-z0-9&'-]{1,30}(?:\s+[A-Z][A-Za-z0-9&'-]{1,30}){0,2})\s+(?:currently\s+)?(?:supplies|supply|holds?\s+the\s+contract|has\s+the\s+contract)\b/g,
+];
 
 export function extractCompetitors(rawNote: string) {
   const found = new Set<string>();
@@ -450,6 +485,14 @@ export function extractCompetitors(rawNote: string) {
     if (competitorStopWords.has(firstWord.toLowerCase())) continue;
     found.add(candidate);
   }
+  for (const pattern of COMPETITOR_POSITION_PATTERNS) {
+    for (const match of rawNote.matchAll(pattern)) {
+      const candidate = match[1].trim().replace(/[.,;:]$/, '');
+      const [firstWord] = candidate.split(/\s+/);
+      if (competitorStopWords.has(firstWord.toLowerCase())) continue;
+      found.add(candidate);
+    }
+  }
   for (const competitor of knownCompetitors) {
     if (new RegExp(`\\b${escapeRegExp(competitor)}\\b`, 'i').test(rawNote)) {
       found.add(competitor);
@@ -462,6 +505,15 @@ export function extractBuyingSignals(rawNote: string) {
   const signals: string[] = [];
   if (/\bbudget\s+(?:approval|approved|confirmed|secured)\b/i.test(rawNote)) signals.push('Budget approved');
   if (/\b(?:confirmed|approved)\s+(?:budget|funding)\b/i.test(rawNote)) signals.push('Budget approved');
+  // The ordinary way a customer says yes before the money moves. "They approved
+  // the LED and HVAC controls programme in principle" recorded nothing, because
+  // the only approvals this read were of a budget by name. An approval in
+  // principle is the strongest thing most B2B deals get before a PO.
+  if (/\bapproved\b[^.\n;]{0,60}?\bin principle\b/i.test(rawNote)) signals.push('Approved in principle');
+  if (/\b(?:board|committee|management|leadership|they|customer|client)\s+(?:has\s+|have\s+)?approved\b/i.test(rawNote)) signals.push('Approved in principle');
+  if (/\bsign(?:ed)?[\s-]off\b|\bsigned\s+the\b/i.test(rawNote)) signals.push('Sign-off signal');
+  if (/\bshortlist(?:ed)?\b/i.test(rawNote)) signals.push('Shortlisted');
+  if (/\btechnically\s+agreed\b|\btechnical(?:ly)?\s+approv(?:al|ed)\b|\bspec(?:ification)?\s+(?:is\s+)?approved\b/i.test(rawNote)) signals.push('Technical approval');
   if (/\bpo\b|purchase order/i.test(rawNote)) signals.push('Purchase order signal');
   if (/\bpayment\b/i.test(rawNote)) signals.push('Payment signal');
   if (/\bdelivery\b/i.test(rawNote)) signals.push('Delivery signal');
@@ -476,6 +528,18 @@ export function extractTimelineSignals(rawNote: string) {
   const signals: string[] = [];
   const tenderDecision = rawNote.match(/\b(tender decision (?:is )?expected\s+[^.\n;]+)/i)?.[1];
   if (tenderDecision) signals.push(cleanSentence(tenderDecision).replace(/^./, (character) => character.toUpperCase()));
+  // When they say they will decide, which is the single most useful date in a
+  // note and was not read at all: "Their board decides on 2 September."
+  const decisionDay = rawNote.match(/\b(?:decides?|decision|deciding|sign(?:s|ing)?)\s+(?:is\s+)?(?:on|in|by)\s+([^.\n;,]{2,40})/i)?.[1];
+  if (decisionDay) signals.push(`Decision ${cleanSentence(decisionDay)}`);
+  // A deal parked until a named month. "Nothing moves until September because
+  // the line runs flat out through summer" is a plan, not neglect, and the
+  // note is the only place it was written down.
+  const parkedUntil = rawNote.match(/\b(?:until|not until|after)\s+((?:early |mid |late )?(?:January|February|March|April|May|June|July|August|September|October|November|December|Q[1-4]|the new year|the shutdown))\b/i)?.[1];
+  if (parkedUntil) signals.push(`Parked until ${cleanSentence(parkedUntil)}`);
+  if (/\bbudget (?:cycle|year|round)\s+(?:starts|opens|begins)\s+([^.\n;,]{2,30})/i.test(rawNote)) {
+    signals.push(`Budget cycle ${cleanSentence(rawNote.match(/\bbudget (?:cycle|year|round)\s+(?:starts|opens|begins)\s+([^.\n;,]{2,30})/i)?.[1] || '')}`);
+  }
   if (/\bnext quarter\b/i.test(rawNote)) signals.push('Next quarter');
   if (/\bthis quarter\b/i.test(rawNote)) signals.push('This quarter');
   if (/\bnext month\b/i.test(rawNote)) signals.push('Next month');
@@ -924,9 +988,17 @@ function limitActionSource(value: string) {
 
 function extractRisks(rawNote: string) {
   const risks: string[] = [];
-  if (/\bcompetitor\b|still in the loop/i.test(rawNote)) risks.push('Competitor still active');
+  if (/\bcompetitor\b|still in the loop|\bincumbent\b/i.test(rawNote)) risks.push('Competitor still active');
   if (/\blead time\b/i.test(rawNote)) risks.push('Lead time concern');
   if (/\bno response|waiting|unclear|not confirmed\b/i.test(rawNote)) risks.push('Unclear response or confirmation');
+  // What the customer has actually said they are unhappy about. This is the
+  // objection the whole defence layer exists to answer, and nothing here read
+  // it: "They are worried about VAT treatment" scored no risk at all.
+  if (/\b(?:worried|concerned|nervous|unhappy|pushing back|push back|objected|objection)\b/i.test(rawNote)) risks.push('Stated concern from the customer');
+  // A blocker the operator has written down in the plainest possible words.
+  // "No contract vehicle agreed and no budget line yet" is two named blockers
+  // in one sentence and matched none of the rules above.
+  if (/\bno\s+(?:budget|contract|decision|owner|timeline|date|sign[\s-]?off|approval|po\b)/i.test(rawNote)) risks.push('Named blocker still open');
   if (/\bprocurement\b/i.test(rawNote) && !/\bconfirmed procurement|procurement owner confirmed\b/i.test(rawNote)) risks.push('Procurement path needs follow-up');
   return uniqueList(risks);
 }

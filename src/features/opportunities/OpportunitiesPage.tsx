@@ -501,7 +501,19 @@ export function OpportunitiesPage() {
     refreshCsvMappingReview(csvInput, csvMappingProfiles);
   };
 
-  const refreshCsvMappingReview = (text: string, profiles = csvMappingProfiles) => {
+  /**
+   * Rebuild the column mapping, and hand it back.
+   *
+   * The return value is the whole point: `setCsvMappingReview` does not land
+   * until the next render, so a caller that set the mapping and then read
+   * `csvMappingReview` on the following line read the value from before it.
+   * That is why Parse CSV had to be pressed twice - the first press built the
+   * mapping and parsed against an empty one, leaving "READY 0 / No preview
+   * rows yet" under a panel showing every column correctly auto-detected. A
+   * first-time operator reads that as their file being rejected, and nothing on
+   * the screen says to press it again.
+   */
+  const refreshCsvMappingReview = (text: string, profiles = csvMappingProfiles): CsvMappingReviewRow[] => {
     const headers = getCsvHeaders(text);
     setCsvDetectedHeaders(headers);
 
@@ -511,7 +523,7 @@ export function OpportunitiesPage() {
       setCsvMappingProfileName('');
       setCsvMappingSourceType('Custom');
       setCsvMappingMessage('');
-      return;
+      return [];
     }
 
     const match = detectCsvMappingProfile(headers, profiles);
@@ -524,6 +536,7 @@ export function OpportunitiesPage() {
     setCsvMappingMessage(match
       ? `Recognized this CSV format. Use saved mapping: ${match.profile.name}.`
       : 'Review the suggested mapping before previewing or refreshing.');
+    return review;
   };
 
   useEffect(() => {
@@ -605,10 +618,13 @@ export function OpportunitiesPage() {
   }, [searchParams.toString(), loading, opportunities]);
 
   const parseCsvImport = () => {
-    if (csvDetectedHeaders.length === 0) {
-      refreshCsvMappingReview(csvInput, csvMappingProfiles);
-    }
-    const fieldMap = buildFieldMapFromReview(csvMappingReview);
+    // Rebuilt unconditionally and read from the return value. The old guard
+    // only rebuilt when no headers had been detected, and then parsed against
+    // `csvMappingReview` from the previous render either way.
+    const review = csvMappingReview.length
+      ? csvMappingReview
+      : refreshCsvMappingReview(csvInput, csvMappingProfiles);
+    const fieldMap = buildFieldMapFromReview(review);
     const result = parseOpportunityCsv(csvInput, opportunities, fieldMap);
     setCsvImportResult(result);
     if (csvMode === 'refresh') {

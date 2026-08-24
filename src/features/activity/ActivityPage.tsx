@@ -80,7 +80,7 @@ import { matchesSearchQuery } from '../../utils/textSearch';
  *     expensive things in a week, and both are invisible on a calendar.
  */
 
-type PeriodId = 'week' | 'month' | 'd30' | 'd90';
+type PeriodId = 'week' | 'month' | 'd30' | 'd90' | 'd180' | 'd365';
 
 /**
  * Two shapes over one set of rows. Stream groups by state then by day, which is
@@ -94,6 +94,13 @@ const periods: { id: PeriodId; label: string; days: number; hint: string }[] = [
   { id: 'month', label: 'This month', days: 0, hint: 'The calendar month so far.' },
   { id: 'd30', label: 'Last 30 days', days: 30, hint: 'A rolling month, ending today.' },
   { id: 'd90', label: 'Last 90 days', days: 90, hint: 'A rolling quarter - enough to see a trend.' },
+  // A quarter was the longest lens there was, on a product that asks an
+  // operator to run their whole business in it. Six months in, the page could
+  // not show the six months: the half of the year that explains the second
+  // half - which customers were bought from twice, which season is quiet, what
+  // the rate looked like before the summer - was simply out of reach.
+  { id: 'd180', label: 'Last 6 months', days: 180, hint: 'Half a year - two quarters side by side.' },
+  { id: 'd365', label: 'Last 12 months', days: 365, hint: 'A full year, so this season can be read against the last one.' },
 ];
 
 /** A pivot cell or a chart bar, held as "show me the rows behind this". */

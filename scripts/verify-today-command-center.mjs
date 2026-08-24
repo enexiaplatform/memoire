@@ -49,7 +49,10 @@ assert.deepEqual(center.topActions.map((action) => action.source), ['Revenue', '
 assert.equal(center.topActions[0].urgency, 'Critical');
 assert.ok(center.topActions[0].dueDateLabel.includes('Jun 18, 2026'));
 assert.ok(center.topActions[0].moneyLabel.includes('200,000 SGD'));
-assert.ok(center.topActions[0].moneyLabel.includes('Base: VND'));
+// The deal's own currency, then the converted figure in the reporting one.
+// The "(Base: VND)" wrapper is gone - the ISO code already says it - so this
+// pins the shape rather than the wrapper.
+assert.match(center.topActions[0].moneyLabel, /200,000 SGD \u00b7 [\d,.]+ VND$/);
 assert.equal(center.captureInbox[0].accountName, 'Needs confirmation');
 assert.equal(center.overdueActions >= 3, true);
 

@@ -36,7 +36,14 @@ assert.equal(reporting, 'USD', 'a new workspace must not open in one market’s 
 // figure, not the last bit of it.
 assert.equal(Math.round(aggregate * 100), Math.round(expected * 100));
 assert.notEqual(aggregate, 600_000, 'mixed currencies must not be added as bare numbers');
-assert.match(formatBaseCurrencyAmount(aggregate), new RegExp(`Base: ${reporting}`));
+// The aggregate names the currency it is in, once. It used to append
+// "(Base: USD)" to a string already ending in " USD" - the same three letters
+// twice, adjacent, in every mode and for every currency, saying nothing a
+// reader could act on. `formatMoneyWithBase` still labels a *converted* figure,
+// and verify-currency-locale pins that; this pins the total.
+assert.match(formatBaseCurrencyAmount(aggregate), new RegExp(`${reporting}$`));
+assert.equal(formatBaseCurrencyAmount(aggregate).includes('Base:'), false, 'a total must not repeat its own currency code');
+assert.equal(formatBaseCurrencyAmount(aggregate, true).includes('Base:'), false, 'compact totals too');
 assert.match(formatCurrencyAmount(mixedCurrencyFixture[0].amount, mixedCurrencyFixture[0].currency), /SGD$/);
 
 assert.ok(SUPPORTED_CURRENCIES.includes('USD') && SUPPORTED_CURRENCIES.includes('EUR') && SUPPORTED_CURRENCIES.includes('SGD'));

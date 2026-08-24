@@ -48,7 +48,10 @@ for (const label of ['Forecast position:', 'Current decision:', 'Evidence suppor
   assert.ok(managerBrief.copyText.includes(label), `Manager brief missing ${label}`);
 }
 assert.ok(managerBrief.moneyLabel.includes('300,000 SGD'));
-assert.ok(managerBrief.moneyLabel.includes('Base: VND'));
+// The brief carries the deal's own currency and the converted figure beside
+// it. The "(Base: VND)" wrapper is gone - the ISO code already says it - so
+// this pins the shape that matters: two figures, the second one in VND.
+assert.match(managerBrief.moneyLabel, /300,000 SGD · [\d,.]+ VND$/);
 assert.ok(managerBrief.dueDateLabel.includes('Jun 30, 2026'));
 
 const guarded = buildManagerReadyDealBrief(deal('guarded', {

@@ -436,13 +436,28 @@ export function formatMoneyWithBase(amount: number, currency: string, options: {
   return `${item} · ${formatBaseCurrencyAmount(converted, options.compact)}`;
 }
 
-/** Aggregate formatter: makes the reporting basis explicit in every money card. */
+/**
+ * Aggregate formatter: a total, in the reporting currency.
+ *
+ * It used to append "(Base: EUR)" to a string that already ended in " EUR",
+ * because both formatters below print the ISO code and neither prints a
+ * symbol. So it said the same three letters twice, adjacent, in every mode and
+ * for every currency - seven times on one Cost Analysis screen, and
+ * "27.3M AED (Base: AED)" on a workspace whose reporting currency was AED.
+ *
+ * The suffix was meant to say "this total is a converted mix". It never could:
+ * the string is identical whether or not anything was converted, so a reader
+ * learns nothing from it either way. That signal is carried where it can
+ * actually be computed - the quarter heading's "1 not converted", and
+ * `formatMoneyWithBase`, which shows a deal's own currency next to its
+ * converted figure and is deliberately unchanged here. `formatCompactBaseAmount`
+ * has never appended it, so the two siblings now agree as well.
+ */
 export function formatBaseCurrencyAmount(value?: number | null, compact = false) {
   const currency = getReportingCurrency();
-  const formatted = compact
+  return compact
     ? formatCompactCurrencyAmount(value, currency)
     : formatCurrencyAmount(value, currency);
-  return `${formatted} (Base: ${currency})`;
 }
 
 function normalizeCurrency(currency?: string | null) {
