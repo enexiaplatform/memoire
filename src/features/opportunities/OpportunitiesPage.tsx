@@ -2778,12 +2778,21 @@ function OpportunityMasterTable({
                       <p className="mt-1 text-[11px] text-gray-500">
                         {opportunity.isStageInferred ? 'Inferred stage' : opportunity.status}
                       </p>
+                      {/* "gaps" here meant missing sales-flow checkpoints; "gaps"
+                          in the Health cell three columns along meant record
+                          quality issues. One row, one word, two counts - Pestana
+                          read "Needs action · 3 gaps" and "1 gap · 3 touches"
+                          and nothing said which three or which one. Each is
+                          named after what it counts now, and the tooltip lists
+                          them. */}
                       <p
                         className={`mt-0.5 text-[11px] font-semibold ${flow.status === 'Needs action' ? 'text-amber-700' : 'text-gray-500'}`}
-                        title={flow.suggestedAction}
+                        title={flow.missingCheckpoints.length
+                          ? `Still to clear: ${flow.missingCheckpoints.join(', ')}. ${flow.suggestedAction}`
+                          : flow.suggestedAction}
                       >
                         {flow.status}
-                        {flow.missingCheckpoints.length > 0 ? ` · ${flow.missingCheckpoints.length} gap${flow.missingCheckpoints.length === 1 ? '' : 's'}` : ''}
+                        {flow.missingCheckpoints.length > 0 ? ` · ${flow.missingCheckpoints.length} checkpoint${flow.missingCheckpoints.length === 1 ? '' : 's'}` : ''}
                       </p>
                     </td>
 
@@ -2834,8 +2843,13 @@ function OpportunityMasterTable({
                       <p className="mt-1 max-w-[clamp(160px,12vw,300px)] truncate text-[11px] text-gray-600" title={`Forecast evidence: ${opportunity.forecastEvidenceCategory} · Review decision: ${opportunity.decisionRecommendation}`}>
                         {opportunity.forecastEvidenceCategory} · {opportunity.decisionRecommendation}
                       </p>
-                      <p className="text-[11px] text-gray-500" title={quality.primaryAction}>
-                        {quality.issues.length} gap{quality.issues.length === 1 ? '' : 's'} · {row.linkedActivityCount} {row.linkedActivityCount === 1 ? 'touch' : 'touches'}
+                      <p
+                        className="text-[11px] text-gray-500"
+                        title={quality.issues.length
+                          ? `Missing on the record: ${quality.issues.join(', ')}. ${quality.primaryAction}`
+                          : quality.primaryAction}
+                      >
+                        {quality.issues.length} record gap{quality.issues.length === 1 ? '' : 's'} · {row.linkedActivityCount} {row.linkedActivityCount === 1 ? 'touch' : 'touches'}
                       </p>
                     </td>
 
