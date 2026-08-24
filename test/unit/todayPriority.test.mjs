@@ -279,3 +279,46 @@ describe('a workspace that failed to load is not a new account', () => {
     }), false);
   });
 });
+
+const capture = (id, accountName, opportunityName, linkStatus = 'Unlinked') => ({
+  id, accountName, opportunityName, contactName: '', stakeholderName: '', stakeholderRole: '',
+  competitors: [], buyingSignals: [], risks: [], timelineSignals: [], nextActions: [],
+  activityType: 'Customer meeting', summary: `Note ${id}`, nextAction: '', dueDate: '', tags: [],
+  rawNote: '', activityDate: '2026-08-20', linkedOpportunityId: '', linkedOpportunityName: '',
+  linkedAccountName: '', linkStatus, createdAt: '2026-08-20T00:00:00.000Z',
+  updatedAt: '2026-08-20T00:00:00.000Z', storageMode: 'local',
+});
+
+describe('the capture inbox counts what is genuinely unattached', () => {
+  const deals = [
+    cockpitDeal('o-a', 'Frulact', 'Refrigeration heat reclaim - Maia', 'Proposal', 158_000),
+    cockpitDeal('o-b', 'Sodexo France', 'Kitchen energy programme', 'Discovery', 460_000),
+  ];
+  const run = (activities) => buildUnifiedTodayCommandCenter({
+    briefs: [], revenueActions: [], opportunities: deals, activities, today: TODAY,
+    pipelineHealth: buildPipelineDefenseCenter([], TODAY),
+  });
+
+  test('a note the workspace already understands does not sit there for ever', () => {
+    // Every capture written before saving started linking carries 'Unlinked',
+    // and the deal reads it as a touch anyway. "8 captured items need
+    // confirmation" could never fall.
+    const center = run([capture('a', 'Frulact', 'Refrigeration heat reclaim - Maia')]);
+    assert.deepEqual(center.captureInbox, []);
+  });
+
+  test('a note naming nobody still needs confirming', () => {
+    const center = run([capture('b', '', '')]);
+    assert.equal(center.captureInbox.length, 1);
+  });
+
+  test('a note naming a deal that does not exist still needs confirming', () => {
+    const center = run([capture('c', 'Someone Else', 'A deal we never had')]);
+    assert.equal(center.captureInbox.length, 1);
+  });
+
+  test('a suggested link is still a question, not an answer', () => {
+    const center = run([capture('d', 'Frulact', 'Refrigeration heat reclaim - Maia', 'Suggested')]);
+    assert.equal(center.captureInbox.length, 1);
+  });
+});

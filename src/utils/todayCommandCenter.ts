@@ -117,7 +117,7 @@ export function buildUnifiedTodayCommandCenter(input: {
   const obligationActions = obligations.obligations
     .filter((obligation) => obligation.kind === 'Payment' && (obligation.status === 'Overdue' || obligation.status === 'Due soon'))
     .map(buildObligationAction);
-  const captureInbox = buildCaptureInbox(input.activities);
+  const captureInbox = buildCaptureInbox(input.activities, input.opportunities);
   const accountClassifications = (input.accounts || []).map((account) => ({
     account,
     classification: classifyAccountEngagement({
@@ -323,9 +323,37 @@ function buildObligationAction(obligation: OwnObligation): TodayCommandAction {
   };
 }
 
-function buildCaptureInbox(activities: SalesActivityRecord[]): TodayCaptureInboxItem[] {
+/**
+ * Captures that are genuinely not attached to anything yet.
+ *
+ * `linkStatus` alone is the wrong test now. Every capture saved before saving
+ * started linking them carries 'Unlinked', and the rest of the product no
+ * longer cares: a capture naming an account and an opportunity that resolve to
+ * one real deal is read as a touch on that deal everywhere it is counted. So an
+ * operator sat on "8 captured items need confirmation" that could never fall,
+ * about notes the workspace had already understood - and the only way to clear
+ * it was to re-confirm, by hand, a link the app had already made.
+ *
+ * A capture still needs confirmation when it names nothing, or names something
+ * that matches no deal or more than one. That is the honest boundary and it is
+ * the same rule the auto-link and the deal's own touch count use.
+ */
+function buildCaptureInbox(
+  activities: SalesActivityRecord[],
+  opportunities: CrmLiteOpportunity[] = [],
+): TodayCaptureInboxItem[] {
+  const resolvesToOneDeal = (activity: SalesActivityRecord) => {
+    const accountKey = normalize(activity.accountName || '');
+    const opportunityKey = normalize(activity.opportunityName || '');
+    if (!accountKey || !opportunityKey) return false;
+    return opportunities.filter((opportunity) => (
+      normalize(opportunity.accountName) === accountKey
+      && normalize(opportunity.opportunityName) === opportunityKey
+    )).length === 1;
+  };
   return [...activities]
     .filter((activity) => activity.linkStatus === 'Unlinked' || activity.linkStatus === 'Suggested' || !activity.accountName.trim() || !activity.opportunityName.trim())
+    .filter((activity) => activity.linkStatus === 'Suggested' || !resolvesToOneDeal(activity))
     .sort((left, right) => compareSafeBusinessDate(right.activityDate, left.activityDate) || right.createdAt.localeCompare(left.createdAt))
     .slice(0, 8)
     .map((activity) => ({
