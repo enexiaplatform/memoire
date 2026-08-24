@@ -950,12 +950,24 @@ function QuietWonCustomersCard({
  * accounts does not need to introduce itself as an Account Memory Summary.
  */
 function AccountMemorySummary({ summary }: { summary: ReturnType<typeof buildAccountsSummary> }) {
-  const stats: { label: string; value: number; tone?: 'green' | 'amber' }[] = [
+  /**
+   * These are one ladder, not seven measures.
+   *
+   * `classifyAccountEngagement` assigns exactly one status per account, most
+   * urgent first: anything with a follow-up signal becomes "Needs follow-up"
+   * before it can be counted "Active". So "Active" means *active and nothing
+   * due* - and on a book where every deal carries a next action, that is nought.
+   * A workspace with eighteen customers holding 3.6M EUR of live pipeline read
+   * "ACTIVE 0" across the top of its customer list. True under a definition
+   * nobody is told, and alarming under the obvious one; the hint is what makes
+   * it the first rather than the second.
+   */
+  const stats: { label: string; value: number; tone?: 'green' | 'amber'; hint?: string }[] = [
     { label: 'Total', value: summary.totalAccounts },
-    { label: 'Active', value: summary.activeAccounts, tone: 'green' },
-    { label: 'Needs follow-up', value: summary.followUpAccounts, tone: summary.followUpAccounts ? 'amber' : 'green' },
+    { label: 'Active', value: summary.activeAccounts, tone: 'green', hint: 'nothing due' },
+    { label: 'Needs follow-up', value: summary.followUpAccounts, tone: summary.followUpAccounts ? 'amber' : 'green', hint: 'something owed' },
     { label: 'Strategic', value: summary.strategicAccounts },
-    { label: 'Dormant', value: summary.dormantAccounts },
+    { label: 'Dormant', value: summary.dormantAccounts, hint: 'past signal only' },
     { label: 'Imported only', value: summary.importedOnlyAccounts },
     { label: 'Archived', value: summary.archivedAccounts },
   ];
@@ -970,6 +982,7 @@ function AccountMemorySummary({ summary }: { summary: ReturnType<typeof buildAcc
           }`}>
             {formatCount(stat.value)}
           </p>
+          {stat.hint && <p className="truncate text-[10px] leading-tight text-gray-500" title={stat.hint}>{stat.hint}</p>}
         </div>
       ))}
     </section>
@@ -1214,7 +1227,10 @@ function AccountMasterTable({
                       which set the height of every row in the table. */}
                   <td className="whitespace-nowrap px-3 py-2">
                     <Badge label={row.hygiene.status} tone={row.hygiene.status === 'Needs follow-up' ? 'amber' : row.hygiene.status === 'Active' || row.hygiene.status === 'Strategic' ? 'green' : 'gray'} />
-                    <p className="text-xs text-gray-500">{row.stakeholderCount} contacts · {row.openObjectionCount} open</p>
+                    {/* "0 open" had no noun, and sat one column from a Pipeline cell reading
+                        "1 active opps" - so it read as open opportunities and
+                        contradicted its neighbour. It counts open objections. */}
+                    <p className="text-xs text-gray-500">{row.stakeholderCount} contacts · {row.openObjectionCount} open {row.openObjectionCount === 1 ? 'objection' : 'objections'}</p>
                   </td>
                   <td className="px-3 py-2 text-right">
                     <button
