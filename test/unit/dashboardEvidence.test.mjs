@@ -107,3 +107,21 @@ describe('the customer count the concentration line claims', () => {
     assert.equal(lens.accounts.total, 7);
   });
 });
+
+describe('the touches tile measures one window, not two', () => {
+  test('deal coverage is counted over the same thirty days the tile counts', () => {
+    // The detail line under "Touches, last 30 days" must be measured over those
+    // thirty days. Counting deals touched *ever* put "3" above "8 of 18",
+    // which is two windows read as one.
+    const old = { ...touch('Account a', 'Deal a'), activityDate: '2026-01-05' };
+    const recent = { ...touch('Account b', 'Deal b'), activityDate: '2026-08-20' };
+    const result = model([deal('a'), deal('b'), deal('c')], [old, recent]);
+    assert.equal(result.evidence.touchedLast30, 1, 'only the August touch is inside the window');
+    assert.equal(result.evidence.noTouch, 1, 'but two of the three have been touched at some point');
+  });
+
+  test('a deal touched today counts', () => {
+    const result = model([deal('a')], [{ ...touch('Account a', 'Deal a'), activityDate: TODAY }]);
+    assert.equal(result.evidence.touchedLast30, 1);
+  });
+});

@@ -187,7 +187,7 @@ export function BusinessLensPage() {
               label="Touches, last 30 days"
               value={formatCount(model.kpis.activitiesLast30)}
               detail={model.evidence.activeDeals > 0
-                ? `${formatCount(model.evidence.activeDeals - model.evidence.noTouch)} of ${formatCount(model.evidence.activeDeals)} active deals touched`
+                ? `${formatCount(model.evidence.touchedLast30)} of ${formatCount(model.evidence.activeDeals)} active deals reached`
                 : 'No active deals yet'}
             />
             {/* "0 EUR" is the true answer and, on its own, a misleading one: this

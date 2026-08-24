@@ -71,8 +71,18 @@ export type MasterDashboardModel = {
     /** True once the operator has actually graded: more than one category in play. */
     graded: boolean;
     activeDeals: number;
-    noDecisionMaker: number;
+    /** Active deals with no customer touch ever recorded. */
     noTouch: number;
+    /**
+     * Active deals touched inside the last 30 days.
+     *
+     * Separate from `noTouch` on purpose. The believability card asks whether a
+     * deal has *ever* been backed by a touch; the KPI tile above it is headed
+     * "Touches, last 30 days" and its detail has to be measured over the same
+     * thirty days, or the tile pairs two windows and reads as one.
+     */
+    touchedLast30: number;
+    noDecisionMaker: number;
     noNextStep: number;
   };
   weeklyActivity: WeeklyActivityPoint[];
@@ -149,6 +159,17 @@ export function buildMasterDashboard(input: MasterDashboardInput): MasterDashboa
     }))
     .filter((row) => row.count > 0);
 
+  // The same thirty days the KPI tile counts, as a date key so it compares
+  // against `activityDate` directly.
+  const thirtyDaysAgoKey = toDateKey(new Date(Date.parse(`${todayKey}T00:00:00Z`) - 30 * DAY_MS));
+  const dealKeysOf = (activity: SalesActivityRecord) => {
+    const keys: string[] = [];
+    if (activity.linkedOpportunityId) keys.push(`id:${activity.linkedOpportunityId}`);
+    const account = normalizeEntityName(activity.linkedAccountName || activity.accountName || '');
+    const opportunity = normalizeEntityName(activity.opportunityName || '');
+    if (account && opportunity) keys.push(`name:${account}|${opportunity}`);
+    return keys;
+  };
   const touchedDealKeys = new Set(
     input.activities
       .filter((activity) => isValidBusinessDate(activity.activityDate))
@@ -161,13 +182,20 @@ export function buildMasterDashboard(input: MasterDashboardInput): MasterDashboa
         return keys;
       }),
   );
-  const hasTouch = (opportunity: CrmLiteOpportunity) => (
-    touchedDealKeys.has(`id:${opportunity.id}`)
-    || touchedDealKeys.has(`name:${normalizeEntityName(opportunity.accountName || '')}|${normalizeEntityName(opportunity.opportunityName || '')}`)
+  const recentlyTouchedDealKeys = new Set(
+    input.activities
+      .filter((activity) => isValidBusinessDate(activity.activityDate) && activity.activityDate >= thirtyDaysAgoKey)
+      .flatMap(dealKeysOf),
   );
+  const matches = (keys: Set<string>, opportunity: CrmLiteOpportunity) => (
+    keys.has(`id:${opportunity.id}`)
+    || keys.has(`name:${normalizeEntityName(opportunity.accountName || '')}|${normalizeEntityName(opportunity.opportunityName || '')}`)
+  );
+  const hasTouch = (opportunity: CrmLiteOpportunity) => matches(touchedDealKeys, opportunity);
   const evidence = {
     graded: evidenceMix.length > 1,
     activeDeals: activeOpportunities.length,
+    touchedLast30: activeOpportunities.filter((opportunity) => matches(recentlyTouchedDealKeys, opportunity)).length,
     noDecisionMaker: activeOpportunities.filter((opportunity) => !(opportunity.decisionMaker || '').trim()).length,
     noTouch: activeOpportunities.filter((opportunity) => !hasTouch(opportunity)).length,
     noNextStep: activeOpportunities.filter((opportunity) => !isValidBusinessDate(opportunity.nextActionDate)).length,
