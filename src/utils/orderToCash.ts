@@ -22,6 +22,16 @@ import { parsePaymentTerm } from './paymentTerms.ts';
  * plan board has with the deals it mirrors.
  */
 
+/**
+ * How long an undated step may sit before the order counts as stalled.
+ *
+ * Thirty days is a month of nothing on a contract the customer has already
+ * committed to. Deliberately one number rather than a table per step: a
+ * threshold an operator can hold in their head is worth more than a precise
+ * one they cannot, and the row already prints the exact age beside it.
+ */
+export const ORDER_STALLED_AFTER_DAYS = 30;
+
 export const COMMIT_PROBABILITY_THRESHOLD = 90;
 
 export const orderMilestoneKeys = ['contract', 'deposit', 'delivery', 'invoice', 'paid'] as const;
@@ -138,6 +148,21 @@ export type CommittedOrder = {
   daysUntilDue: number | null;
   fullyCollected: boolean;
   overdue: boolean;
+  /**
+   * Nothing has happened on this order for a long time, and no date was ever
+   * set that could have made it overdue.
+   *
+   * `overdue` needs a `dueDate`, and a step's due date only ever comes from a
+   * quote's payment terms. An order won on a handshake - which is most of them,
+   * and every order on an imported book - therefore has no dated step and can
+   * never be overdue however long it sits. The order book reported "Overdue
+   * follow-ups: 0" above a row that had been at "To confirm" for a hundred and
+   * seventy-one days, on a page whose stated promise is following money from
+   * contract to the bank. The two signals are kept apart on purpose: overdue is
+   * a date somebody set and missed, stalled is time nobody accounted for. Both
+   * are true, and only one of them needed inventing.
+   */
+  stalled: boolean;
   href: string;
 };
 
@@ -184,6 +209,8 @@ export type OrderBook = {
   /** Committed money not yet fully collected, in the base currency. */
   awaitingBase: number;
   overdueCount: number;
+  /** Open orders with no dated step that have not moved in a long time. */
+  stalledCount: number;
   /** Every stage, in road-to-cash order, including the empty ones. */
   stages: OrderStageSummary[];
 };
@@ -340,6 +367,9 @@ export function buildOrderBook(input: {
         daysUntilDue: nextMilestone?.dueDate ? daysBetween(today, nextMilestone.dueDate) : null,
         fullyCollected: milestones[milestones.length - 1].done,
         overdue: milestones.some((milestone) => milestone.overdue),
+        stalled: !milestones[milestones.length - 1].done
+          && !nextMilestone?.dueDate
+          && (daysBetween(lastMovedAt, today) ?? 0) >= ORDER_STALLED_AFTER_DAYS,
         href: `/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}`,
       };
     })
@@ -347,7 +377,7 @@ export function buildOrderBook(input: {
     // then the largest. Fully collected orders sink to the bottom as receipts.
     .sort((a, b) =>
       Number(a.fullyCollected) - Number(b.fullyCollected)
-      || Number(b.overdue) - Number(a.overdue)
+      || Number(b.overdue || b.stalled) - Number(a.overdue || a.stalled)
       || a.doneCount - b.doneCount
       || b.amountBase - a.amountBase);
 
@@ -361,6 +391,7 @@ export function buildOrderBook(input: {
         .map((order) => ({ amount: order.amount || 0, currency: order.currency })),
     ),
     overdueCount: orders.filter((order) => order.overdue).length,
+    stalledCount: orders.filter((order) => order.stalled).length,
     // Every stage is reported, including the empty ones: a row of counters
     // with a gap in it says "nothing is waiting to be invoiced", which is
     // information. A list that silently omits empty stages says nothing.

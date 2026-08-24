@@ -10,6 +10,7 @@ import {
 import {
   buildOrderBook,
   COMMIT_PROBABILITY_THRESHOLD,
+  ORDER_STALLED_AFTER_DAYS,
   orderStages,
   type CommittedOrder,
   type OrderMilestoneRecord,
@@ -137,6 +138,19 @@ export function OrderBookPanel({
           </span>
           {book.overdueCount > 0 && (
             <span className="rounded-full bg-red-50 px-3 py-1 text-red-700">{book.overdueCount} overdue</span>
+          )}
+          {/* An order is only ever "overdue" against a date, and a step's date
+              comes from a quote's payment terms - so an order won on a
+              handshake can sit for ever without one. This book showed five
+              orders, one of them at "To confirm" since March, and reported
+              nothing late. Time nobody accounted for is its own signal. */}
+          {book.stalledCount > 0 && (
+            <span
+              className="rounded-full bg-amber-50 px-3 py-1 text-amber-700"
+              title={`No date was set on the next step and nothing has moved in ${ORDER_STALLED_AFTER_DAYS} days or more.`}
+            >
+              {book.stalledCount} stalled
+            </span>
           )}
           {book.collectedCount > 0 && (
             <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">{book.collectedCount} collected</span>
@@ -284,7 +298,12 @@ export function OrderBookPanel({
                           <p className={`font-bold ${agingTone(order)}`}>
                             {order.daysInStage === null ? '—' : `${order.daysInStage}d`}
                           </p>
-                          <p className="text-xs text-gray-500">since it moved</p>
+                          {/* "171d since it moved" was already on the row and
+                              said nothing about whether that was acceptable.
+                              The word is what turns an age into a verdict. */}
+                          <p className={`text-xs ${order.stalled ? 'font-semibold text-amber-700' : 'text-gray-500'}`}>
+                            {order.stalled ? 'stalled · no date set' : 'since it moved'}
+                          </p>
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex items-center justify-end gap-1.5">

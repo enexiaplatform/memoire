@@ -239,7 +239,19 @@ export function RevenueViewPage() {
               detail="Every open deal"
             />
             <RevenueMetric label="At risk" value={formatBaseMoney(revenue.atRiskRevenue, true)} tone={revenue.atRiskRevenue ? 'red' : 'green'} />
-            <RevenueMetric label="Overdue follow-ups" value={revenue.overdueFollowUps} tone={revenue.overdueFollowUps ? 'red' : 'green'} />
+            {/* Pipeline metrics, on a page that also carries an order book -
+                so this one says whose follow-ups it means. `overdueFollowUps`
+                counts deals with an overdue next-action date plus quotes at
+                risk; it has never looked at an order. Reading "Overdue
+                follow-ups: 0" directly under an order stuck for a hundred and
+                seventy-one days is what made that worth saying out loud. The
+                order book reports its own stuck money in its header. */}
+            <RevenueMetric
+              label="Overdue follow-ups"
+              value={revenue.overdueFollowUps}
+              tone={revenue.overdueFollowUps ? 'red' : 'green'}
+              detail="On deals and quotes"
+            />
           </section>
 
           {/* A control tower has to say whether you are going to make the
