@@ -130,6 +130,13 @@ export function CashCollectionPage() {
     }
   };
 
+  // How much of the past-due money rests on a schedule nobody agreed. The
+  // parser marks an unreadable or missing term `assumed`; the tiles above have
+  // to carry that, because they are the only figures most operators read.
+  const assumedOverdueBase = summary.orders
+    .filter((order) => order.termConfidence === 'assumed')
+    .reduce((total, order) => total + order.overdueBase, 0);
+
   const visible = summary.orders.filter((order) => {
     if (filter === 'all') return true;
     if (filter === 'overdue') return order.overdueBase > 0;
@@ -172,11 +179,28 @@ export function CashCollectionPage() {
               value={formatCompactBaseAmount(summary.totalOutstandingBase)}
               detail={`${summary.openCount} ${summary.openCount === 1 ? 'order' : 'orders'} open`}
             />
+            {/* "Money you agreed would be here" is false whenever nobody
+                agreed anything. An order with no payment terms is given one
+                payment on delivery and the parser marks that `assumed` - the
+                detail row already says so, four levels down behind a chevron,
+                while the tile at the top of the page asserted an agreement. On
+                the Porto book every order was in that state, so this read
+                "PAST DUE 429.5K EUR - money you agreed would be here" over five
+                handshakes. Worse, Orders one tab away reported nought overdue
+                on the same five: no date meant never late there and always late
+                here. The figure is still worth having - it is what to chase -
+                but it has to say what it rests on. */}
             <Stat
               label="Past due"
               value={formatCompactBaseAmount(summary.totalOverdueBase)}
               tone={summary.totalOverdueBase > 0 ? 'red' : 'default'}
-              detail={summary.totalOverdueBase > 0 ? 'Money you agreed would be here' : 'Nothing late'}
+              detail={summary.totalOverdueBase > 0
+                ? assumedOverdueBase >= summary.totalOverdueBase
+                  ? 'No terms agreed — dates assumed'
+                  : assumedOverdueBase > 0
+                    ? `${formatCompactBaseAmount(assumedOverdueBase)} of it on assumed dates`
+                    : 'Money you agreed would be here'
+                : 'Nothing late'}
             />
             <Stat
               label="Due in 30 days"
@@ -186,7 +210,9 @@ export function CashCollectionPage() {
             <Stat
               label="Average wait"
               value={summary.averageDaysOutstanding === null ? '—' : pluralizeCount(summary.averageDaysOutstanding, 'day')}
-              detail="Past the date you agreed, weighted by money"
+              detail={assumedOverdueBase > 0
+                ? 'Past the due date, weighted by money'
+                : 'Past the date you agreed, weighted by money'}
             />
           </section>
 
@@ -208,6 +234,16 @@ export function CashCollectionPage() {
                     {' on '}
                     {summary.worstOverdue.orderRef}.
                   </p>
+                  {/* Naming a number of days late is a claim about a date, and
+                      on an assumed schedule that date is Memoire's, not the
+                      customer's. Saying so here costs one line and is the
+                      difference between a chase that lands and one that gets
+                      "we never agreed that". */}
+                  {summary.worstOverdue.termConfidence === 'assumed' && (
+                    <p className="mt-1 text-xs leading-5 font-semibold text-amber-900">
+                      No payment terms on this order, so the due date is assumed: one payment on delivery. Check before chasing.
+                    </p>
+                  )}
                 </div>
               </div>
             </section>
