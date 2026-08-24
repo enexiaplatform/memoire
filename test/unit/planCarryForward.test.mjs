@@ -93,3 +93,49 @@ describe('a promise made in March is still work in August', () => {
     assert.equal(itemsOn(result, '2026-08-26')[0].carriedFrom, undefined);
   });
 });
+
+describe('a customer with a booked next step is scheduled, not silent', () => {
+  const activity = (accountName, activityDate) => ({
+    id: `a-${accountName}-${activityDate}`, accountName, opportunityName: '', contactName: '',
+    stakeholderName: '', stakeholderRole: '', competitors: [], buyingSignals: [], risks: [],
+    timelineSignals: [], nextActions: [], activityType: 'Customer meeting',
+    summary: 'Met them', nextAction: '', dueDate: '', tags: [], rawNote: '', activityDate,
+    linkedOpportunityId: '', linkedOpportunityName: '', linkedAccountName: accountName,
+    linkStatus: 'Unlinked', createdAt: `${activityDate}T00:00:00.000Z`,
+    updatedAt: `${activityDate}T00:00:00.000Z`, storageMode: 'local',
+  });
+
+  const insights = async (plannedCommitments) => {
+    const { buildActivityInsights } = await import('../../src/utils/activityInsights.ts');
+    return buildActivityInsights({
+      activities: [activity('Frulact', '2026-06-25'), activity('Mai Nguyen', '2026-07-16')],
+      planRecords: [],
+      range: { start: '2026-08-24', end: '2026-08-30' },
+      today: TODAY,
+      plannedCommitments,
+    });
+  };
+
+  test('an account with a dated open promise is not going quiet', async () => {
+    // Plan announced "Frulact has been silent 60 days" one tab away from its
+    // own panel showing a follow-up booked with them for 1 September.
+    const result = await insights([{ accountName: 'Frulact', currentDueDate: '2026-09-01', status: 'open' }]);
+    assert.equal(result.quietAccounts.some((entry) => entry.account === 'Frulact'), false);
+    assert.equal(/Frulact has been silent/.test(result.headline), false);
+  });
+
+  test('an account with nothing booked is still called quiet', async () => {
+    const result = await insights([{ accountName: 'Frulact', currentDueDate: '2026-09-01', status: 'open' }]);
+    assert.equal(result.quietAccounts.some((entry) => entry.account === 'Mai Nguyen'), true);
+  });
+
+  test('a settled promise does not silence the warning', async () => {
+    const result = await insights([{ accountName: 'Frulact', currentDueDate: '2026-09-01', status: 'kept' }]);
+    assert.equal(result.quietAccounts.some((entry) => entry.account === 'Frulact'), true);
+  });
+
+  test('without the signal it behaves exactly as it did', async () => {
+    const result = await insights(undefined);
+    assert.equal(result.quietAccounts.some((entry) => entry.account === 'Frulact'), true);
+  });
+});

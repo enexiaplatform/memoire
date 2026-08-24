@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { derivePlanCommitments } from '../../domain/commercialKernel/derivePlanCommitments';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   CalendarDays,
@@ -218,6 +219,10 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
       planRecords,
       range: { start: range.start, end: range.end },
       accountAliases,
+      // A customer with a booked next step is scheduled, not silent. Plan
+      // announced "Frulact has been silent 60 days" one tab away from its own
+      // panel showing a follow-up booked with them for 1 September.
+      plannedCommitments: derivePlanCommitments({ activities, planItems: planRecords }),
     }),
     [accountAliases, activities, planRecords, range.end, range.start],
   );

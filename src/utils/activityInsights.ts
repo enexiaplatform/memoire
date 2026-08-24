@@ -93,6 +93,21 @@ export function buildActivityInsights(input: {
   today?: string;
   /** Names the user has merged, so a merged customer is one account here. */
   accountAliases?: AccountAliasIndex;
+  /**
+   * Dated open promises, so a customer with a booked next step is not called
+   * silent.
+   *
+   * "Going quiet" was measured from the last touch alone, which reads a
+   * deliberately parked account as a neglected one: Plan announced "Frulact has
+   * been silent 60 days" on a workspace whose own commitment panel, one tab
+   * away, showed a follow-up booked with them for 1 September. Today learned
+   * this rule first; this is the same rule in the second engine, because two
+   * surfaces disagreeing about one customer on one day is the thing that
+   * empties the words of meaning.
+   *
+   * Optional: without it the tile behaves exactly as it did.
+   */
+  plannedCommitments?: { accountName?: string; currentDueDate?: string; status?: string }[];
 }): ActivityInsights {
   const today = sanitizeBusinessDate(input.today) || todayDateKey();
   const aliases = input.accountAliases;
@@ -108,7 +123,7 @@ export function buildActivityInsights(input: {
     (activity) => accountOf(activity, aliases),
   ));
   const followThrough = buildFollowThrough(inPeriod, input.planRecords, today);
-  const quietAccounts = buildQuietAccounts(input.activities, today, aliases);
+  const quietAccounts = buildQuietAccounts(input.activities, today, aliases, input.plannedCommitments || []);
   const coverage = buildCoverage(inPeriod, aliases);
 
   return {
@@ -202,7 +217,19 @@ function buildFollowThrough(periodActivities: SalesActivityRecord[], planRecords
   };
 }
 
-function buildQuietAccounts(activities: SalesActivityRecord[], today: string, aliases?: AccountAliasIndex): QuietAccount[] {
+function buildQuietAccounts(
+  activities: SalesActivityRecord[],
+  today: string,
+  aliases?: AccountAliasIndex,
+  plannedCommitments: { accountName?: string; currentDueDate?: string; status?: string }[] = [],
+): QuietAccount[] {
+  // Customers with a dated promise still open. Not silent - scheduled.
+  const scheduled = new Set(
+    plannedCommitments
+      .filter((commitment) => (commitment.status || 'open') === 'open' && isValidBusinessDate(commitment.currentDueDate))
+      .map((commitment) => normalizeEntityName(commitment.accountName || ''))
+      .filter(Boolean),
+  );
   const lastTouchByAccount = new Map<string, { account: string; lastTouch: string }>();
   activities.forEach((activity) => {
     const account = accountOf(activity, aliases);
@@ -216,6 +243,7 @@ function buildQuietAccounts(activities: SalesActivityRecord[], today: string, al
 
   return [...lastTouchByAccount.values()]
     .map((entry) => ({ ...entry, daysSinceTouch: daysBetween(entry.lastTouch, today) }))
+    .filter((entry) => !scheduled.has(normalizeEntityName(entry.account)))
     .filter((entry) => entry.daysSinceTouch >= QUIET_MIN_DAYS && entry.daysSinceTouch <= QUIET_MAX_DAYS)
     .sort((left, right) => right.daysSinceTouch - left.daysSinceTouch)
     .slice(0, 4)
