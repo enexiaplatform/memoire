@@ -752,7 +752,11 @@ export function DailyCapturePage() {
       opportunityId: candidate.opportunityId,
       opportunityName: candidate.opportunityName,
       name: candidate.name,
-      roleTitle: '',
+      // The job title from the note. `stakeholderRole` stays Unknown - that is
+      // the MEDDIC judgement and Memoire does not make it - but the title is a
+      // fact the operator wrote down and throwing it away made the record
+      // poorer than the note it came from.
+      roleTitle: candidate.roleTitle,
       stakeholderRole: 'Unknown',
       influenceLevel: 'Unknown',
       relationshipStrength: 'Developing',
@@ -1276,7 +1280,7 @@ export function DailyCapturePage() {
                   // or Economic Buyer without explicit evidence. Stated to the user,
                   // and contract-pinned, because inventing a role is the one thing
                   // stakeholder mapping must never do.
-                  detail={`Add to ${stakeholderCandidate.accountName || 'this account'} for stakeholder mapping. Role starts as Unknown — Memoire will not auto-assign Champion or Economic Buyer.`}
+                  detail={`Add to ${stakeholderCandidate.accountName || 'this account'} for stakeholder mapping.${stakeholderCandidate.roleTitle ? ` Keeps the title you wrote: ${stakeholderCandidate.roleTitle}.` : ''} Role starts as Unknown — Memoire will not auto-assign Champion or Economic Buyer.`}
                   actionLabel="Create stakeholder"
                   onAct={createStakeholderFromLastActivity}
                   onIgnore={() => setStakeholderSuggestionDismissed(true)}

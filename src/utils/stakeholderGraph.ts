@@ -18,6 +18,19 @@ export type StakeholderCoverage = {
 export type StakeholderCandidate = {
   id: string;
   name: string;
+  /**
+   * The job title the note gave, when it gave one.
+   *
+   * Not the MEDDIC role - that is `stakeholderRole` and it stays Unknown until
+   * somebody says otherwise, which is the one thing stakeholder mapping must
+   * never guess. A job title is the opposite: it is a fact the operator wrote
+   * down. "Sofia Marques, Head of Engineering" was parsed, shown in the confirm
+   * panel, confirmed, saved - and then dropped here, so the record created from
+   * it carried an empty `roleTitle` and the hardest fact about that person was
+   * gone. The contract's own fixture pairs `roleTitle: 'QA manager'` with
+   * `stakeholderRole: 'Unknown'`; this is that pair.
+   */
+  roleTitle: string;
   accountName: string;
   opportunityName: string;
   opportunityId: string;
@@ -94,6 +107,7 @@ export function deriveStakeholderCandidateFromCapture(activity: SalesActivityRec
   return {
     id: `${activity.id}-${name}`,
     name,
+    roleTitle: (activity.stakeholderRole || '').trim(),
     accountName: activity.linkedAccountName || activity.accountName,
     opportunityName: activity.linkedOpportunityName || activity.opportunityName,
     opportunityId: activity.linkedOpportunityId || '',
@@ -141,9 +155,21 @@ export function summarizeStakeholderCoverage(stakeholders: StakeholderRecord[], 
    * and the coverage tiles look like they are describing different books.
    */
   const unattachedStakeholders = stakeholders.filter((stakeholder) => !stakeholder.accountName.trim()).length;
-  const opportunitiesWithStakeholderRisk = opportunities.filter((opportunity) => (
-    analyzeStakeholderCoverage(stakeholders, opportunity).warnings.length > 0
-  )).length;
+  /**
+   * Live deals nobody is named on.
+   *
+   * Active only, which is the same universe the missing-champion count above
+   * already uses and for the same reason. Without the filter this counted every
+   * deal ever recorded: a six-month book read "DEALS WITH NOBODY NAMED 27"
+   * beside "ACCOUNTS MISSING A CHAMPION 18" on one tile row, and eight of those
+   * twenty-seven had been Won or Lost months earlier. Naming the buyer on a
+   * deal you lost in June is not work, and counting it makes the one number
+   * that is real look smaller than it is.
+   */
+  const opportunitiesWithStakeholderRisk = opportunities
+    .filter((opportunity) => opportunity.status === 'Active')
+    .filter((opportunity) => analyzeStakeholderCoverage(stakeholders, opportunity).warnings.length > 0)
+    .length;
 
   return {
     totalStakeholders: stakeholders.length,
