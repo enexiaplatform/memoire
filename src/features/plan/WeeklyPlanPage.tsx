@@ -25,7 +25,7 @@ import {
 } from '../../utils/supplierCommitments';
 import { buildPlanSuggestions, type PlanSuggestion } from '../../utils/planSuggestions';
 import { useCommercialThreads } from '../threads/useCommercialThreads';
-import { todayDateKey } from '../../utils/safeDate';
+import { todayDateKey, formatSafeBusinessDate } from '../../utils/safeDate';
 import { PlanSuggestionsPanel } from './PlanSuggestionsPanel';
 import { PlanTagAccountsPanel } from './PlanTagAccountsPanel';
 import { PlanPasteImportPanel } from './PlanPasteImportPanel';
@@ -801,7 +801,13 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
                         <span className={`font-medium ${item.done ? 'line-through' : ''}`}>{item.label}</span>
                       )}
                       {item.overdue && !item.done && (
-                        <span className="ml-1 rounded bg-red-50 px-1 py-0.5 text-[10px] font-bold text-red-700">Overdue</span>
+                        /* A carried promise says the day it was actually owed.
+                           "Overdue" alone, on a card sitting under today's
+                           column, reads as "late this morning" - and the ones
+                           this board was dropping were five months late. */
+                        <span className="ml-1 rounded bg-red-50 px-1 py-0.5 text-[10px] font-bold text-red-700">
+                          {item.carriedFrom ? `Was due ${formatSafeBusinessDate(item.carriedFrom)}` : 'Overdue'}
+                        </span>
                       )}
                     </p>
                     )}

@@ -44,6 +44,18 @@ export type PlanItem = {
   /** Where to go to act on it. Empty for personal items. */
   href: string;
   overdue: boolean;
+  /**
+   * The day this was actually promised for, when it was promised before the
+   * period on screen and carried forward onto today.
+   *
+   * Every source on this board was filtered by `isBusinessDateInRange`, so a
+   * promise dated outside the visible week was dropped outright - and `overdue`
+   * could therefore only ever mean "earlier this week". A workspace owing seven
+   * promises from March to July opened Plan and saw one item and the words
+   * "0 / 1 done": the surface whose whole job is working out the week could not
+   * show the work that was already late.
+   */
+  carriedFrom?: string;
   /** Customer work, work for a line you carry, or your own machinery. */
   workKind: PlanWorkKind;
   /** The line served, for principal work. Empty otherwise. */
@@ -118,6 +130,20 @@ export type PlanRecord = {
 };
 
 const WEEKDAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/**
+ * How far back an unkept promise still belongs on the board.
+ *
+ * A year. Beyond that it is history rather than work, and carrying it forward
+ * for ever would make the board unreadable instead of honest.
+ */
+const CARRY_FORWARD_LOOKBACK_DAYS = 365;
+
+function shiftDateKey(date: string, days: number) {
+  const parsed = parseDateKey(date);
+  parsed.setDate(parsed.getDate() + days);
+  return toDateKey(parsed);
+}
 
 export function buildPlanBoard(input: {
   periodType: PlanPeriod;
@@ -208,7 +234,28 @@ export function buildPlanBoard(input: {
       linkedBrand: record.linkedBrand,
     }));
 
-  const allItems = [...derived.map((item) => withWork(item)), ...personal];
+  /**
+   * Promises made before this period and never kept.
+   *
+   * Only when today is on the board: paging back to March, or forward to
+   * October, is a deliberate look at that period and injecting this week's
+   * backlog into it would be a different lie. On the current period they belong
+   * on today, which is the day they can still be acted on - the same thing
+   * every planning tool on earth does, and the thing this board was not doing
+   * while the panel directly above it listed seven overdue promises.
+   */
+  const todayOnBoard = isBusinessDateInRange(today, range.start, range.end);
+  const carried = todayOnBoard ? buildCarriedForwardItems({
+    opportunities: input.opportunities,
+    obligations: input.obligations,
+    activities: input.activities || [],
+    liveRecords,
+    completionByKey,
+    rangeStart: range.start,
+    today,
+  }).map((item) => withWork(item)) : [];
+
+  const allItems = [...derived.map((item) => withWork(item)), ...personal, ...carried];
   const days = buildDays(range, today).map((day) => {
     const items = allItems
       .filter((item) => item.date === day.date)
@@ -238,6 +285,69 @@ export function buildPlanBoard(input: {
 
 /** A board item before it has been asked who it is for. */
 type UnclassifiedPlanItem = Omit<PlanItem, 'workKind' | 'workBrand' | 'workDomain'>;
+
+/**
+ * Everything promised before the visible period and still open, moved onto
+ * today so it can be acted on.
+ *
+ * Built by running the same four builders over the year before the period and
+ * keeping what is not done. The item keeps its real due day in `carriedFrom`
+ * so the board can say when it was owed rather than pretending it was always
+ * for today.
+ */
+function buildCarriedForwardItems(input: {
+  opportunities: CrmLiteOpportunity[];
+  obligations: OwnObligation[];
+  activities: SalesActivityRecord[];
+  liveRecords: PlanRecord[];
+  completionByKey: Map<string, PlanRecord>;
+  rangeStart: string;
+  today: string;
+}): UnclassifiedPlanItem[] {
+  const carryRange: PlanRange = {
+    start: shiftDateKey(input.rangeStart, -CARRY_FORWARD_LOOKBACK_DAYS),
+    end: shiftDateKey(input.rangeStart, -1),
+  };
+  if (compareSafeBusinessDate(carryRange.start, carryRange.end) > 0) return [];
+
+  const dealItems = buildDealItems(input.opportunities, carryRange, input.today);
+  const personalRecords = input.liveRecords
+    .filter((record) => !record.derivedKey)
+    .filter((record) => record.dismissed !== true && record.done !== true)
+    .filter((record) => isValidBusinessDate(record.date) && isBusinessDateInRange(record.date, carryRange.start, carryRange.end));
+
+  const derived = [
+    ...dealItems,
+    ...buildObligationItems(input.obligations, carryRange, input.today),
+    ...buildCaptureItems(input.activities, carryRange, input.today, dealItems, personalRecords),
+  ].map((item) => {
+    const completion = input.completionByKey.get(item.derivedKey as string);
+    return completion ? { ...item, done: completion.done, doneAt: completion.doneAt } : item;
+  });
+
+  const personal: UnclassifiedPlanItem[] = personalRecords.map((record) => ({
+    id: record.id,
+    kind: 'personal' as const,
+    date: record.date,
+    tag: record.tag,
+    label: record.label,
+    done: record.done,
+    doneAt: record.doneAt,
+    href: record.linkedOpportunityId
+      ? `/app/opportunities?opportunityId=${encodeURIComponent(record.linkedOpportunityId)}`
+      : record.linkedAccountName
+        ? `/app/accounts?accountName=${encodeURIComponent(record.linkedAccountName)}`
+        : '',
+    overdue: true,
+  }));
+
+  return [...derived, ...personal]
+    // Done work stays where it was done. Only an open promise is still work.
+    .filter((item) => !item.done)
+    .map((item) => ({ ...item, carriedFrom: item.date, date: input.today, overdue: true }))
+    // Oldest promise first: it has been waiting longest.
+    .sort((left, right) => compareSafeBusinessDate(left.carriedFrom || '', right.carriedFrom || ''));
+}
 
 function buildDealItems(opportunities: CrmLiteOpportunity[], range: PlanRange, today: string): UnclassifiedPlanItem[] {
   return opportunities
