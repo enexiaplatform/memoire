@@ -190,7 +190,11 @@ function concentrationHeadline(rows: AccountConcentrationRow[], topThreeShare: n
   if (topThreeShare >= 0.6) {
     return `Your top ${named} customers are ${percent}% of open pipeline, and ${biggest.accountName} alone is ${biggestPercent}%. Losing one changes the year.`;
   }
-  return `Your top ${named} customers are ${percent}% of open pipeline, spread across ${rows.length} customers in total.`;
+  // "in total" was false: `rows` counts the customers who have open pipeline,
+  // and this sentence sat directly under a tile reading "Customers 21" on a
+  // workspace where 18 of them had a live deal. Two customer counts on one
+  // screen, one of them claiming to be the total.
+  return `Your top ${named} customers are ${percent}% of open pipeline, spread across ${rows.length} customers with open deals.`;
 }
 
 function daysBetween(fromKey: string, toKey: string) {

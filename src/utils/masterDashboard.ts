@@ -12,7 +12,8 @@ import { buildCashPosition, getOpeningCashBalance, type CategorySpendRow } from 
 import { buildOwnObligations } from './ownObligations.ts';
 import { buildPlanBoard, buildCaptureDerivedKey, getDatedCaptureActions, type PlanRecord } from './weeklyPlan.ts';
 import { getReportingCurrency, sumMoney, type SupportedCurrency } from './money.ts';
-import { sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
+import { isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
+import { normalizeEntityName } from './accountIdentity.ts';
 
 export type StageMixRow = {
   stage: OpportunityStage;
@@ -51,6 +52,29 @@ export type MasterDashboardModel = {
   };
   stageMix: StageMixRow[];
   evidenceMix: EvidenceMixRow[];
+  /**
+   * What the records say about the pipeline, next to what the operator has said
+   * about it.
+   *
+   * `evidenceMix` counts `forecastEvidenceCategory`, which is a field somebody
+   * has to grade by hand. Nobody has graded an imported book, so every deal
+   * carries the same imported default - and the card asking "is the pipeline
+   * believable?" drew one full-width bar reading "Weak but recoverable: 18",
+   * which is the whole pipeline in one colour and answers nothing. Worse, that
+   * card's own subtitle promises evidence "not how they feel", and the field it
+   * reads is exactly how they feel.
+   *
+   * These four are derived from the records themselves, so the card has a true
+   * answer to fall back on when nobody has graded anything.
+   */
+  evidence: {
+    /** True once the operator has actually graded: more than one category in play. */
+    graded: boolean;
+    activeDeals: number;
+    noDecisionMaker: number;
+    noTouch: number;
+    noNextStep: number;
+  };
   weeklyActivity: WeeklyActivityPoint[];
   outcomes: {
     /** `missingRetro`: closed deals still valued at their forecast, not a signed figure. */
@@ -125,6 +149,30 @@ export function buildMasterDashboard(input: MasterDashboardInput): MasterDashboa
     }))
     .filter((row) => row.count > 0);
 
+  const touchedDealKeys = new Set(
+    input.activities
+      .filter((activity) => isValidBusinessDate(activity.activityDate))
+      .flatMap((activity) => {
+        const keys: string[] = [];
+        if (activity.linkedOpportunityId) keys.push(`id:${activity.linkedOpportunityId}`);
+        const account = normalizeEntityName(activity.linkedAccountName || activity.accountName || '');
+        const opportunity = normalizeEntityName(activity.opportunityName || '');
+        if (account && opportunity) keys.push(`name:${account}|${opportunity}`);
+        return keys;
+      }),
+  );
+  const hasTouch = (opportunity: CrmLiteOpportunity) => (
+    touchedDealKeys.has(`id:${opportunity.id}`)
+    || touchedDealKeys.has(`name:${normalizeEntityName(opportunity.accountName || '')}|${normalizeEntityName(opportunity.opportunityName || '')}`)
+  );
+  const evidence = {
+    graded: evidenceMix.length > 1,
+    activeDeals: activeOpportunities.length,
+    noDecisionMaker: activeOpportunities.filter((opportunity) => !(opportunity.decisionMaker || '').trim()).length,
+    noTouch: activeOpportunities.filter((opportunity) => !hasTouch(opportunity)).length,
+    noNextStep: activeOpportunities.filter((opportunity) => !isValidBusinessDate(opportunity.nextActionDate)).length,
+  };
+
   const outcomes = {
     won: bucketClosedDeals(input.opportunities, input.opportunityOutcomes, 'Won'),
     lost: bucketClosedDeals(input.opportunities, input.opportunityOutcomes, 'Lost'),
@@ -176,6 +224,7 @@ export function buildMasterDashboard(input: MasterDashboardInput): MasterDashboa
     },
     stageMix,
     evidenceMix,
+    evidence,
     weeklyActivity: buildWeeklyActivity(input.activities, todayDate),
     outcomes,
     execution,

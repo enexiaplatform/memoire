@@ -170,9 +170,26 @@ export function BusinessLensPage() {
       ) : (
         <>
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Stat label="Open pipeline" value={formatBaseCurrencyAmount(model.kpis.openPipelineBase, true)} detail={`${model.kpis.openDeals} active ${model.kpis.openDeals === 1 ? 'deal' : 'deals'}`} />
+            <Stat
+              label="Open pipeline"
+              value={formatBaseCurrencyAmount(model.kpis.openPipelineBase, true)}
+              detail={`${model.kpis.openDeals} active ${model.kpis.openDeals === 1 ? 'deal' : 'deals'} · ${model.kpis.openQuotes} open ${model.kpis.openQuotes === 1 ? 'quote' : 'quotes'}`}
+            />
             <Stat label="Customers" value={formatCount(lens.accounts.total)} detail={`${lens.accounts.active} touched in ${QUIET_ACCOUNT_DAYS} days`} />
-            <Stat label="Touches, last 30 days" value={formatCount(model.kpis.activitiesLast30)} detail={`${model.kpis.openQuotes} open ${model.kpis.openQuotes === 1 ? 'quote' : 'quotes'}`} />
+            {/* The detail line qualifies the number above it on every other
+                tile. This one carried open quotes - a different metric, parked
+                under a headline about touches because it had nowhere else to
+                go. Touch coverage is the thing that number actually raises:
+                three touches across eighteen live deals is a different business
+                from three touches on three of them. Quotes moved up to the
+                pipeline tile, where they belong. */}
+            <Stat
+              label="Touches, last 30 days"
+              value={formatCount(model.kpis.activitiesLast30)}
+              detail={model.evidence.activeDeals > 0
+                ? `${formatCount(model.evidence.activeDeals - model.evidence.noTouch)} of ${formatCount(model.evidence.activeDeals)} active deals touched`
+                : 'No active deals yet'}
+            />
             <Stat label="Realized profit" value={formatBaseCurrencyAmount(model.money.realizedProfitBase, true)} detail="Collected, less paid costs" tone={model.money.realizedProfitBase < 0 ? 'red' : 'green'} />
           </section>
 
@@ -260,7 +277,9 @@ export function BusinessLensPage() {
               ]}
               rows={model.evidenceMix.map((row) => ({ category: row.category, count: `${row.count}` }))}
             >
-              {model.evidenceMix.some((row) => row.count > 0) ? (
+              {model.evidence.activeDeals === 0 ? (
+                <p className="text-sm text-gray-500">No active deals to judge yet.</p>
+              ) : model.evidence.graded ? (
                 <SegmentBar
                   ariaLabel="Active deals by forecast evidence category"
                   segments={model.evidenceMix.map((row) => ({
@@ -270,7 +289,35 @@ export function BusinessLensPage() {
                   }))}
                 />
               ) : (
-                <p className="text-sm text-gray-500">No active deals to judge yet.</p>
+                /* Every active deal carries the same grade, which means nobody
+                   has graded any of them - and a full-width bar reading "Weak
+                   but recoverable: 18" is the whole pipeline in one colour
+                   answering nothing. This card's own subtitle promises evidence
+                   rather than feeling, so when the feeling has not been recorded
+                   it says so and reads the records instead. */
+                <div className="space-y-2 text-sm">
+                  <p className="font-bold text-navy">
+                    Nothing has been graded yet.
+                  </p>
+                  <p className="leading-6 text-gray-600">
+                    All {formatCount(model.evidence.activeDeals)} active {model.evidence.activeDeals === 1 ? 'deal carries' : 'deals carry'}
+                    {' '}the same forecast category, so this is your judgement not yet given. What the records themselves say:
+                  </p>
+                  <ul className="space-y-1 text-gray-800">
+                    <li>
+                      <span className="font-bold">{formatCount(model.evidence.noTouch)}</span> of {formatCount(model.evidence.activeDeals)} have no customer touch recorded.
+                    </li>
+                    <li>
+                      <span className="font-bold">{formatCount(model.evidence.noDecisionMaker)}</span> have nobody named as the decision maker.
+                    </li>
+                    <li>
+                      <span className="font-bold">{formatCount(model.evidence.noNextStep)}</span> have no next step with a date on it.
+                    </li>
+                  </ul>
+                  <Link to="/app/opportunities" className="inline-block font-bold text-brand-blue underline">
+                    Grade them on Opportunities
+                  </Link>
+                </div>
               )}
             </ChartFrame>
           </div>
