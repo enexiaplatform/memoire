@@ -126,6 +126,7 @@ import { stageForStatus, statusForStage } from '../../utils/opportunityOutcome';
 import { accountKey, normalizeEntityName, sameAccount } from '../../utils/accountIdentity';
 import { checkAccountName, type AccountNameCheck } from '../../utils/accountDuplicates';
 import { analyzeStakeholderCoverage, getStakeholdersForOpportunity } from '../../utils/stakeholderGraph';
+import { normalizeMeddicRole } from '../../utils/meddicStakeholderMap';
 import { buildMeddicStakeholderMap, formatMeddicStakeholderDate } from '../../utils/meddicStakeholderMap.ts';
 import { getObjectionsForOpportunity, objectionStatusTone } from '../../utils/objectionLedger';
 import { analyzeOpportunityOutcomeLoop } from '../../utils/actionOutcomeLoop';
@@ -390,7 +391,7 @@ export function OpportunitiesPage() {
   }, [opportunities, selectedOpportunityIds]);
 
   const opportunityRows = useMemo(
-    () => opportunities.map((opportunity) => buildOpportunityMasterRow(opportunity, activities, quotes)),
+    () => opportunities.map((opportunity) => buildOpportunityMasterRow(opportunity, activities, quotes, stakeholders)),
     [activities, opportunities, quotes],
   );
 
@@ -2424,6 +2425,19 @@ type OpportunityMasterRow = {
   linkedActivityCount: number;
   lastActivityDate: string;
   lastUpdatedAt: string;
+  /**
+   * Who is named on this deal, and whether any of them is its decision maker.
+   *
+   * The row's warning read `!opportunity.decisionMaker` and nothing else - a
+   * free-text field on the deal, with no awareness that stakeholder records
+   * exist. So a deal with a named contact carrying a job title, linked to that
+   * exact deal, still reported "No decision maker" - and mapping that person as
+   * Economic Buyer would never have cleared it either, because the warning
+   * cannot see the store the mapping lives in. Two homes for one fact, and the
+   * page nags hardest about precisely this one.
+   */
+  decisionMakerName: string;
+  namedStakeholderCount: number;
   silence: OpportunitySilenceState;
   /** `expectedClosePeriod` read onto one absolute quarter axis. */
   closePeriod: ClosePeriod;
@@ -2735,8 +2749,15 @@ function OpportunityMasterTable({
                       >
                         {opportunity.opportunityName || 'Untitled opportunity'}
                       </p>
-                      {!opportunity.decisionMaker && (
-                        <p className="text-[11px] font-semibold text-amber-700">No decision maker</p>
+                      {!row.decisionMakerName && (
+                        <p
+                          className="text-[11px] font-semibold text-amber-700"
+                          title={row.namedStakeholderCount
+                            ? `${row.namedStakeholderCount} ${row.namedStakeholderCount === 1 ? 'person is' : 'people are'} named on this deal, none of them marked as the decision maker.`
+                            : 'Nobody is named on this deal yet.'}
+                        >
+                          {row.namedStakeholderCount ? 'Decision maker not marked' : 'No decision maker'}
+                        </p>
                       )}
                       {isFounderImportedOpportunity(opportunity) && (
                         <p className="text-[11px] font-semibold text-emerald-700">Imported core</p>
@@ -5707,11 +5728,18 @@ function formatBatchDate(value: string) {
   });
 }
 
+/** MEDDIC roles that actually decide. A champion is an ally, not a signatory. */
+const DECIDING_ROLES = new Set(['Economic Buyer', 'Decision Committee']);
+
 function buildOpportunityMasterRow(
   opportunity: CrmLiteOpportunity,
   activities: SalesActivityRecord[],
   quotes: QuoteRecord[],
+  stakeholders: StakeholderRecord[] = [],
 ): OpportunityMasterRow {
+  const linkedStakeholders = getStakeholdersForOpportunity(stakeholders, opportunity);
+  const decidingStakeholder = linkedStakeholders
+    .find((stakeholder) => DECIDING_ROLES.has(normalizeMeddicRole(stakeholder.stakeholderRole)));
   const linkedActivities = getLinkedActivities(opportunity, activities);
   const quality = analyzeOpportunityQuality(opportunity, linkedActivities);
   const latestActivity = linkedActivities[0];
@@ -5730,6 +5758,8 @@ function buildOpportunityMasterRow(
     linkedActivityCount: linkedActivities.length,
     lastActivityDate: latestActivity?.activityDate || '',
     lastUpdatedAt,
+    decisionMakerName: (opportunity.decisionMaker || '').trim() || decidingStakeholder?.name || '',
+    namedStakeholderCount: linkedStakeholders.length,
     silence: classifyOpportunitySilence(opportunity, activities),
     // Resolved once per row rather than inside the comparator, which would
     // re-parse the same free text on every comparison of every sort.
