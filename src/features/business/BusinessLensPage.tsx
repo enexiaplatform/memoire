@@ -190,7 +190,22 @@ export function BusinessLensPage() {
                 ? `${formatCount(model.evidence.activeDeals - model.evidence.noTouch)} of ${formatCount(model.evidence.activeDeals)} active deals touched`
                 : 'No active deals yet'}
             />
-            <Stat label="Realized profit" value={formatBaseCurrencyAmount(model.money.realizedProfitBase, true)} detail="Collected, less paid costs" tone={model.money.realizedProfitBase < 0 ? 'red' : 'green'} />
+            {/* "0 EUR" is the true answer and, on its own, a misleading one: this
+                page says 429.5K EUR was won four cards further down, and nothing
+                joins the two. Realized profit is nought here because no money
+                has been marked collected, not because the year produced none -
+                and an operator reading a bare zero beside a 3.6M pipeline
+                concludes something the records do not say. */}
+            <Stat
+              label="Realized profit"
+              value={formatBaseCurrencyAmount(model.money.realizedProfitBase, true)}
+              detail={model.money.collectedRevenueBase > 0
+                ? 'Collected, less paid costs'
+                : model.outcomes.won.totalBase > 0
+                  ? `Nothing marked collected yet · ${formatBaseCurrencyAmount(model.outcomes.won.totalBase, true)} won`
+                  : 'Collected, less paid costs'}
+              tone={model.money.realizedProfitBase < 0 ? 'red' : 'green'}
+            />
           </section>
 
           {/* Who the business actually is. The sharpest question on the page,
