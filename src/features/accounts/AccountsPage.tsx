@@ -1230,7 +1230,7 @@ function AccountMasterTable({
                     {/* "0 open" had no noun, and sat one column from a Pipeline cell reading
                         "1 active opps" - so it read as open opportunities and
                         contradicted its neighbour. It counts open objections. */}
-                    <p className="text-xs text-gray-500">{row.stakeholderCount} contacts · {row.openObjectionCount} open {row.openObjectionCount === 1 ? 'objection' : 'objections'}</p>
+                    <p className="text-xs text-gray-500">{row.stakeholderCount} {row.stakeholderCount === 1 ? 'contact' : 'contacts'} · {row.openObjectionCount} open {row.openObjectionCount === 1 ? 'objection' : 'objections'}</p>
                   </td>
                   <td className="px-3 py-2 text-right">
                     <button
