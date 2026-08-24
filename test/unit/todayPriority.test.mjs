@@ -249,3 +249,33 @@ describe('the two questions Today opens the day with', () => {
     assert.notEqual(money.opportunityId, hot.opportunityId);
   });
 });
+
+describe('a workspace that failed to load is not a new account', () => {
+  test('a failed load never opens the welcome screen', async () => {
+    const { shouldOpenFirstRun } = await import('../../src/utils/firstRun.ts');
+    // `loadDashboardData` rejects rather than hand back a partial workspace, so
+    // a cloud that does not answer leaves exactly the shape a brand-new account
+    // leaves: no records. Today read that and sent an operator with 27 deals to
+    // "Record it once. Nothing goes quiet after that."
+    assert.equal(shouldOpenFirstRun({
+      userKey: 'user-1', hasAnyRecord: false, sampleDataActive: false, state: null, loadFailed: true,
+    }), false);
+  });
+
+  test('a genuinely empty workspace still gets the welcome', async () => {
+    const { shouldOpenFirstRun } = await import('../../src/utils/firstRun.ts');
+    assert.equal(shouldOpenFirstRun({
+      userKey: 'user-1', hasAnyRecord: false, sampleDataActive: false, state: null,
+    }), true);
+    assert.equal(shouldOpenFirstRun({
+      userKey: 'user-1', hasAnyRecord: false, sampleDataActive: false, state: null, loadFailed: false,
+    }), true);
+  });
+
+  test('a workspace with records is never sent there either way', async () => {
+    const { shouldOpenFirstRun } = await import('../../src/utils/firstRun.ts');
+    assert.equal(shouldOpenFirstRun({
+      userKey: 'user-1', hasAnyRecord: true, sampleDataActive: false, state: null, loadFailed: true,
+    }), false);
+  });
+});

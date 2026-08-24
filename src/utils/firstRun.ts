@@ -124,7 +124,21 @@ export function shouldOpenFirstRun(input: {
   hasAnyRecord: boolean;
   sampleDataActive: boolean;
   state: FirstRunState | null;
+  /**
+   * True when the workspace load failed rather than came back empty.
+   *
+   * The two are indistinguishable downstream - both leave the caller holding
+   * no records - and only one of them is a new user. `loadDashboardData`
+   * deliberately rejects rather than hand back a partial workspace, so a cloud
+   * that does not answer produces exactly the same empty shape as a brand-new
+   * account. Today read that shape and sent an operator with twenty-seven deals
+   * to "Record it once. Nothing goes quiet after that."
+   *
+   * A failed load is never a first run.
+   */
+  loadFailed?: boolean;
 }): boolean {
+  if (input.loadFailed) return false;
   if (input.hasAnyRecord) return false;
   if (input.sampleDataActive) return false;
   if (input.state?.userKey === input.userKey && input.state.completedAt) return false;

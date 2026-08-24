@@ -182,6 +182,20 @@ export function TodayPage() {
     opportunityOutcomes: [],
   });
   const [loading, setLoading] = useState(() => !getCachedSalesWorkspaceData(sampleDataActive ? undefined : user?.id));
+  /**
+   * Why the workspace is empty, when it is empty because the load failed.
+   *
+   * `loadDashboardData` deliberately *rejects* rather than hand back a partial
+   * workspace - "a red pill above a screen reading 0 accounts is still a screen
+   * that says the business is gone". The catch below swallowed that, left
+   * `data` at its initial empty value and set `loading` to false, so the
+   * first-run guard read "no records" and sent an operator with 27 deals to the
+   * welcome screen: "Record it once. Nothing goes quiet after that." The
+   * protection against showing a fragment turned into a larger untruth than the
+   * fragment. A failed load is not an empty workspace and must never be read as
+   * one.
+   */
+  const [loadError, setLoadError] = useState('');
   const [message, setMessage] = useState('');
   // The First Week Path strip reuses the trial-checklist dismissal flag rather
   // than adding a second one, so anyone who dismissed onboarding guidance
@@ -234,13 +248,21 @@ export function TodayPage() {
       const nextData = await loadDashboardData(dataUserId, options);
 
       setData(nextData);
+      setLoadError('');
       setMessage('Command center ready');
       setTrialChecklistState(loadTrialActivationChecklistState());
     } catch (error) {
       if (import.meta.env.DEV) {
         console.debug('[Dashboard] load failed', { message: error instanceof Error ? error.message : 'Unknown error' });
       }
-      setMessage('Cloud sync issue - your local copy is preserved.');
+      // The engine's own words, because it knows which of the two things
+      // happened: the cloud did not answer, or it answered and this browser
+      // holds too little to stand in. "Your local copy is preserved" claimed
+      // the second while the screen showed neither.
+      setLoadError(error instanceof Error && error.message
+        ? error.message
+        : 'Memoire could not load this workspace. Nothing has been changed.');
+      setMessage('Workspace could not be loaded.');
     } finally {
       setLoading(false);
       setWorkspaceSyncing(false);
@@ -602,6 +624,7 @@ export function TodayPage() {
     hasAnyRecord: data.activities.length > 0 || data.opportunities.length > 0 || data.accounts.length > 0,
     sampleDataActive,
     state: readFirstRunState(),
+    loadFailed: Boolean(loadError),
   })) {
     return <Navigate to="/app/start" replace />;
   }
@@ -661,7 +684,29 @@ export function TodayPage() {
         }
       />
 
-      {loading ? (
+      {loadError ? (
+        /* An honest failure, not an empty page. Drawing the command tower with
+           every module blank under the headline "Nothing in your business goes
+           silent" says the business is gone; this says the load did not
+           finish, and offers the one button that can change that. */
+        <section
+          role="alert"
+          className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-5 text-sm text-amber-900"
+        >
+          <h2 className="text-base font-bold">Today could not be loaded</h2>
+          <p className="mt-2 leading-6">{loadError}</p>
+          <p className="mt-2 leading-6 text-amber-800">
+            Nothing has been changed, and no record has been lost. Your workspace is still in your account.
+          </p>
+          <button
+            type="button"
+            onClick={() => { void refreshDashboard({ force: true }); }}
+            className="mt-4 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
+          >
+            Try again
+          </button>
+        </section>
+      ) : loading ? (
         <SkeletonScreen label="Loading your Today command center">
           <div className="space-y-4">
             <SkeletonCard lines={2} />
