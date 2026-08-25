@@ -359,8 +359,12 @@ assert.ok(insightSource.includes('History, not prediction'), 'calibration card m
   // Filtering on one reason and displaying another made the objections answer
   // name a deal and then explain it with "No recent interaction is available."
   assert.ok(
-    askSource.includes("(focus === 'objections' && item.objectionReason) || item.issue || item.reason"),
-    'the objections answer must show the reason that made it an objection',
+    askSource.includes('const objectionTitleFor ='),
+    'the objections answer must name the objection somebody recorded, not just report that one exists',
+  );
+  assert.ok(
+    askSource.includes('why === shown ?'),
+    'the card must not print the same sentence under two labels',
   );
 }
 

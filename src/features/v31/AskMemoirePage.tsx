@@ -263,6 +263,7 @@ export function AskMemoirePage() {
         setStatusMessage('Answered with local rule-based deal memory.');
         setAnswer(answerFromAttention({
           focus: attentionFocusFor(nextQuestion),
+          objections: scopedMemory.objections,
           context: contextPacket,
           accounts: scopedMemory.accounts,
           opportunities: scopedMemory.opportunities,
@@ -855,6 +856,7 @@ function answerFromAttention({
   actions,
   brokenLoops,
   memoryHealth,
+  objections,
   focus,
 }: {
   context: AskMemoireContext;
@@ -863,8 +865,18 @@ function answerFromAttention({
   actions: SalesAction[];
   brokenLoops: BrokenLoop[];
   memoryHealth: ReturnType<typeof calculateMemoryHealth>[];
+  objections: Objection[];
   focus: AttentionFocus;
 }): AskMemoireAnswer {
+  // "There is an open objection or blocker in memory" is what the health engine
+  // knows. The objection itself is recorded, with a title somebody wrote, and
+  // naming it is the difference between a signal and an answer.
+  const openObjections = objections.filter((objection) => objection.status === 'open');
+  const objectionTitleFor = (accountId?: string | null, opportunityId?: string | null) => {
+    const match = openObjections.find((objection) => (opportunityId && objection.opportunity_id === opportunityId))
+      || openObjections.find((objection) => (accountId && objection.account_id === accountId));
+    return match ? `${match.title}${match.severity === 'high' ? ' (high severity)' : ''}` : '';
+  };
   const accountById = new Map(accounts.map((account) => [account.id, account]));
   const opportunityById = new Map(opportunities.map((opportunity) => [opportunity.id, opportunity]));
   const openActionsByAccount = firstBy(actions.filter((action) => action.status === 'open'), (action) => action.account_id || '');
@@ -926,8 +938,15 @@ function answerFromAttention({
       };
     });
 
-  const displayReason = (item: { reason: string; objectionReason: string }) =>
-    (focus === 'objections' && item.objectionReason) || item.reason;
+  const displayReason = (item: { reason: string; objectionReason: string; accountId?: string | null; opportunityId?: string | null }) =>
+    (focus === 'objections' && (objectionTitleFor(item.accountId, item.opportunityId) || item.objectionReason))
+    || item.reason;
+
+  const whyLine = (item: { reason: string; objectionReason: string; whyItMatters: string; accountId?: string | null; opportunityId?: string | null }) => {
+    const shown = displayReason(item);
+    const why = item.whyItMatters || item.reason;
+    return why === shown ? '' : why;
+  };
 
   const matchesFocus = (item: { hasNextAction: boolean; isObjection: boolean }) => {
     if (focus === 'objections') return item.isObjection;
@@ -972,8 +991,10 @@ function answerFromAttention({
       kind: 'stuck_deal',
       title: item.entityName,
       fields: [
-        { label: 'Issue', value: (focus === 'objections' && item.objectionReason) || item.issue || item.reason, tone: 'warning' },
-        { label: attentionWhyLabels[focus], value: (focus === 'objections' && item.objectionReason) || item.whyItMatters || item.reason, tone: 'warning' },
+        { label: 'Issue', value: displayReason(item) || item.issue, tone: 'warning' },
+        // Printing the same sentence twice under two labels says nothing the
+        // first one did not - the "(Won, Won)" tic in a different costume.
+        ...(whyLine(item) ? [{ label: attentionWhyLabels[focus], value: whyLine(item), tone: 'warning' as const }] : []),
         { label: 'Evidence', value: [item.signalSource] },
         { label: 'Missing context', value: item.missingContext.length > 0 ? item.missingContext : ['No additional missing context detected.'] },
         { label: 'Suggested fix', value: item.suggestedNextAction, tone: 'warning' },
