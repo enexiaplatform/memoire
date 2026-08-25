@@ -845,9 +845,17 @@ export function findRecords(
   opportunities: CrmLiteOpportunity[],
 ): RecordFind | null {
   const raw = question.trim();
-  if (!raw || QUESTION_CUES.test(raw.toLowerCase())) return null;
+  if (!raw) return null;
   const needle = normalizeEntityName(raw);
   if (needle.length < 3) return null;
+  // The cue test runs on the folded text, not the raw one, because a JavaScript
+  // word boundary is ASCII-only. Written plainly, "Hoteis" has no boundary
+  // before its final "is". Written with its accent, the letter before that
+  // "is" stops being a word character, a boundary appears, and the cue for the
+  // verb "is" matches inside a customer's name. "Grupo Pestana Hoteis" was
+  // therefore read as a question and answered with a summary of the whole
+  // workspace - and every accented name in the book was one boundary from it.
+  if (QUESTION_CUES.test(needle)) return null;
 
   const matches = (name: string) => {
     const folded = normalizeEntityName(name || '');

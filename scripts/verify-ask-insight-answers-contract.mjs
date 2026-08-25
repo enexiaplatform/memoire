@@ -318,6 +318,11 @@ assert.ok(insightSource.includes('History, not prediction'), 'calibration card m
   assert.equal(findRecords('What changed at Grupo Calvo this week?', book), null);
   assert.equal(findRecords('Which deals may go silent?', book), null);
   assert.equal(findRecords('Bahri Ship Management', book), null, 'a name nobody has must not be invented into a match');
+  // A JavaScript word boundary is ASCII-only, so the accent in "Hoteis" put a
+  // boundary before its final "is" and the cue for the verb matched inside the
+  // customer's name. Every accented name in the book was one boundary away.
+  const accented = [{ id: 'd9', accountName: 'Grupo Pestana Hoteis'.replace('Hoteis', 'Hotéis'), opportunityName: 'Boiler upgrade', stage: 'Proposal', status: 'Active', estimatedValue: 112000, currency: 'EUR', nextAction: '', nextActionDate: '' }];
+  assert.ok(findRecords('Grupo Pestana Hotéis', accented), 'an accented customer name must still be looked up, not read as a question');
 }
 
 console.log('Ask Memoire insight answers contract verified.');

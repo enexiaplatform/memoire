@@ -48,6 +48,19 @@ describe('the Search half of Search & Insights', () => {
     assert.ok(findRecords('luis simoes logistica', BOOK));
   });
 
+  test('an accent does not turn a name into a question', () => {
+    // A JavaScript word boundary is ASCII-only, so the accent in "Hotéis"
+    // creates a boundary before its final "is" and the cue for the verb "is"
+    // matched inside the customer's name. The lookup was skipped and the
+    // answer summarized the whole workspace instead.
+    const book = [{ ...BOOK[0], id: 'd9', accountName: 'Grupo Pestana Hotéis', opportunityName: 'Boiler upgrade' }];
+    const found = findRecords('Grupo Pestana Hotéis', book);
+    assert.ok(found, 'an accented customer name must still be looked up');
+    assert.equal(found.accounts[0].name, 'Grupo Pestana Hotéis');
+    // Other accented names that carry an ASCII-only boundary trap.
+    assert.ok(findRecords('Vila Galé Hotéis', [{ ...BOOK[0], id: 'd8', accountName: 'Vila Galé Hotéis' }]));
+  });
+
   test('a deal name finds the deal', () => {
     const found = findRecords('Warehouse LED retrofit', BOOK);
     assert.ok(found);
