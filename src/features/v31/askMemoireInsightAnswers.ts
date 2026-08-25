@@ -961,8 +961,24 @@ export function namedAccountIn(question: string, opportunities: CrmLiteOpportuni
   for (const opportunity of opportunities) {
     const name = (opportunity.accountName || '').trim();
     const folded = normalizeEntityName(name);
-    if (folded.length < 3 || !needle.includes(folded)) continue;
-    if (!best || folded.length > best.length) best = { name, length: folded.length };
+    if (folded.length < 3) continue;
+    // Nobody types the registered name. The question says "Amorim Cork"; the
+    // record says "Amorim Cork Composites". So the leading run of the record's
+    // words is what gets looked for, longest first - two words, or one when it
+    // is long enough to be distinctive on its own.
+    //
+    // Six characters, not five, because "Grupo" and "Hotel" open several names
+    // in a Portuguese book and name none of them. Failing to match only costs
+    // the scope note; matching the wrong customer states something false, so
+    // the threshold leans toward the safe failure.
+    const words = folded.split(' ').filter(Boolean);
+    const minWords = words[0] && words[0].length >= 6 ? 1 : 2;
+    for (let take = words.length; take >= minWords; take -= 1) {
+      const run = words.slice(0, take).join(' ');
+      if (run.length < 3 || !needle.includes(run)) continue;
+      if (!best || run.length > best.length) best = { name, length: run.length };
+      break;
+    }
   }
   return best?.name || null;
 }

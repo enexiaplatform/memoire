@@ -5,6 +5,7 @@ import {
   answerFromRecordFind,
   detectInsightQuestion,
   findRecords,
+  namedAccountIn,
 } from '../../src/features/v31/askMemoireInsightAnswers.ts';
 
 const deal = (id, accountName, opportunityName, status = 'Active', nextAction = '') => ({
@@ -103,5 +104,41 @@ describe('the Search half of Search & Insights', () => {
     // The engines are consulted first; these still route as questions.
     assert.equal(detectInsightQuestion('Where is the money?'), 'money_state');
     assert.equal(detectInsightQuestion('What do I owe today?'), 'own_obligations');
+  });
+});
+
+describe('a question that names a customer', () => {
+  const OPS = [
+    { accountName: 'Amorim Cork Composites' },
+    { accountName: 'Grupo Pestana Hotéis' },
+    { accountName: 'Vila Galé Hotéis' },
+  ];
+
+  test('nobody types the registered name', () => {
+    // The question says "Amorim Cork". The record says "Amorim Cork Composites".
+    assert.equal(namedAccountIn('What changed at Amorim Cork this week?', OPS), 'Amorim Cork Composites');
+    assert.equal(namedAccountIn('What changed at Grupo Pestana this week?', OPS), 'Grupo Pestana Hotéis');
+  });
+
+  test('the full name still matches, accents and all', () => {
+    assert.equal(namedAccountIn('What changed at Vila Galé Hotéis this week?', OPS), 'Vila Galé Hotéis');
+  });
+
+  test('a question naming nobody names nobody', () => {
+    assert.equal(namedAccountIn('What changed this week?', OPS), null);
+    assert.equal(namedAccountIn('Which deals may go silent?', OPS), null);
+  });
+
+  test('a short leading word alone does not claim a customer', () => {
+    // "Grupo" opens two of the names in this book, so one short word is not
+    // enough to say which customer the question meant.
+    assert.equal(namedAccountIn('What changed at Grupo this week?', OPS), null);
+    assert.equal(namedAccountIn('What changed at Vila this week?', OPS), null);
+  });
+
+  test('one long word is enough on its own', () => {
+    // "Amorim" identifies exactly one customer; requiring two words would make
+    // the common way of naming it fail.
+    assert.equal(namedAccountIn('What changed at Amorim this week?', OPS), 'Amorim Cork Composites');
   });
 });
