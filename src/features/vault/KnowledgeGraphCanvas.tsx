@@ -83,6 +83,9 @@ export function KnowledgeGraphCanvas({ view, focusId, onSelect, summary, compact
   const [size, setSize] = useState({ width: 900, height: 560 });
   const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
   const [hovered, setHovered] = useState('');
+  // The live camera, readable from a tween without making the tween depend on
+  // its own output.
+  const transformRef = useRef({ scale: 1, x: 0, y: 0 });
   const dragState = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number } | null>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -98,23 +101,28 @@ export function KnowledgeGraphCanvas({ view, focusId, onSelect, summary, compact
     return () => observer.disconnect();
   }, []);
 
-  const fit = useCallback(() => {
+  const frameFor = useCallback((bounds: GraphView['bounds']) => {
     // The bounds already include each card's own box, so the padding here is
     // breathing room rather than a guess at how big a node draws.
     const padding = compact ? 18 : 34;
-    const width = Math.max(view.bounds.maxX - view.bounds.minX + padding * 2, 320);
-    const height = Math.max(view.bounds.maxY - view.bounds.minY + padding * 2, 240);
+    const width = Math.max(bounds.maxX - bounds.minX + padding * 2, 320);
+    const height = Math.max(bounds.maxY - bounds.minY + padding * 2, 240);
     const scale = clamp(Math.min(size.width / width, size.height / height), MIN_FIT_SCALE, 1.15);
-    const centerX = (view.bounds.minX + view.bounds.maxX) / 2;
-    const centerY = (view.bounds.minY + view.bounds.maxY) / 2;
-    setTransform({ scale, x: -centerX * scale, y: -centerY * scale });
-  }, [size.width, size.height, view.bounds, compact]);
+    const centerX = (bounds.minX + bounds.maxX) / 2;
+    const centerY = (bounds.minY + bounds.maxY) / 2;
+    return { scale, x: -centerX * scale, y: -centerY * scale };
+  }, [size.width, size.height, compact]);
+
+  const fit = useCallback(() => {
+    setTransform(frameFor(view.bounds));
+  }, [frameFor, view.bounds]);
 
   // Re-frames whenever the neighbourhood changes, which is what makes selecting
   // a node feel like the map moving to it rather than the map being replaced.
   useEffect(() => {
     fit();
   }, [fit, focusId, view.nodes.length]);
+
 
   // Wheel zoom, on a non-passive listener because React's synthetic wheel
   // handler cannot preventDefault and the page would scroll underneath.
@@ -141,12 +149,76 @@ export function KnowledgeGraphCanvas({ view, focusId, onSelect, summary, compact
     () => (revealed ? view.nodes.filter((positioned) => revealed.has(positioned.node.id)) : view.nodes),
     [view.nodes, revealed],
   );
+  /**
+   * The box around what exists at this point in the replay, or undefined when
+   * there is no replay running and the normal framing applies.
+   */
+  const revealedBounds = useMemo(() => {
+    if (!revealed || visibleNodes.length === 0) return undefined;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const positioned of visibleNodes) {
+      const nodeSize = nodeSizeFor(positioned);
+      minX = Math.min(minX, positioned.x - nodeSize.width / 2);
+      maxX = Math.max(maxX, positioned.x + nodeSize.width / 2);
+      minY = Math.min(minY, positioned.y - nodeSize.height / 2);
+      maxY = Math.max(maxY, positioned.y + nodeSize.height / 2);
+    }
+    return { minX, minY, maxX, maxY };
+  }, [revealed, visibleNodes]);
+
   const visibleEdges = useMemo(
     () => (revealed
       ? view.edges.filter((edge) => revealed.has(edge.from.node.id) && revealed.has(edge.to.node.id))
       : view.edges),
     [view.edges, revealed],
   );
+
+  /**
+   * During a replay, the camera follows what exists.
+   *
+   * Positions never move - a node is in its final place from the first frame it
+   * appears in - but the frame around them does, so the map opens tight on the
+   * first customer and pulls back as the business grows. Framed on the finished
+   * graph instead, the first two thirds of a replay is an empty canvas with one
+   * card adrift in the corner, which is what this looked like on the first run.
+   *
+   * Tweened in JavaScript rather than with CSS, because the root group's
+   * transform is the one property a CSS transition will not animate here, and
+   * snapping the camera every 420ms reads as a fault rather than as movement.
+   */
+  const tweenRef = useRef<number | null>(null);
+  // Written in an effect, never during render: a ref assigned while rendering
+  // is a side effect, and React may render twice before committing.
+  useEffect(() => {
+    transformRef.current = transform;
+  }, [transform]);
+  useEffect(() => {
+    if (!revealedBounds) return undefined;
+    const target = frameFor(revealedBounds);
+    const start = transformRef.current;
+    const startedAt = performance.now();
+    const duration = 340;
+    const step = (now: number) => {
+      const progress = Math.min((now - startedAt) / duration, 1);
+      // Ease-out cubic: the camera arrives rather than stopping dead.
+      const eased = 1 - (1 - progress) ** 3;
+      setTransform({
+        scale: start.scale + (target.scale - start.scale) * eased,
+        x: start.x + (target.x - start.x) * eased,
+        y: start.y + (target.y - start.y) * eased,
+      });
+      if (progress < 1) tweenRef.current = requestAnimationFrame(step);
+    };
+    tweenRef.current = requestAnimationFrame(step);
+    return () => {
+      if (tweenRef.current !== null) cancelAnimationFrame(tweenRef.current);
+    };
+    // `transformRef` is read, not depended on: including the live transform
+    // would restart the tween on every frame it sets.
+  }, [revealedBounds, frameFor]);
 
   const adjacency = useMemo(() => {
     const map = new Map<string, Set<string>>();
