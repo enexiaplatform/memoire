@@ -122,9 +122,32 @@ export function deriveOutcomesFromClosedDeals(
   return opportunities
     .filter((deal) => (deal.status === 'Won' || deal.status === 'Lost') && !recorded.has(deal.id))
     .map((deal) => {
-      const closedOn = isValidBusinessDate(deal.expectedCloseDate || '')
-        ? String(deal.expectedCloseDate)
-        : timestampToLocalDateKey(deal.updatedAt) || todayDateKey();
+      /**
+       * The day the deal actually closed.
+       *
+       * This used to read `deal.expectedCloseDate` and fall back to
+       * `updatedAt`. There is no `expectedCloseDate` on an opportunity - the
+       * field is `expectedClosePeriod` - and because the input type declared it
+       * optional, TypeScript could not see that the branch was dead. Every
+       * derived close date was therefore the day the record was last edited.
+       *
+       * On the Porto book that meant a scoreboard headed "Closed this week"
+       * counting eight deals closed between 6 March and 4 August: their
+       * `updated_at` was 23 August 23:24 UTC, which in the operator's own
+       * timezone is the 24th, so the whole six months landed inside the week
+       * they happened to be edited in. A review exists to say what the week
+       * produced, and it was answering with the edit log.
+       *
+       * `closedOn` is the fact and leads. `expectedClosePeriod` is second and
+       * only when it parses as a real date - on a closed deal that is the CRM
+       * convention, and it is often "Q3 2026", which is not a day. The record's
+       * last edit stays last, because it is the only thing always present.
+       */
+      const closedOn = isValidBusinessDate(deal.closedOn || '')
+        ? String(deal.closedOn)
+        : isValidBusinessDate(deal.expectedClosePeriod || '')
+          ? String(deal.expectedClosePeriod)
+          : timestampToLocalDateKey(deal.updatedAt) || todayDateKey();
       return {
         id: `derived-outcome-${deal.id}`,
         opportunityId: deal.id,
@@ -160,7 +183,10 @@ type ClosedDealInput = {
   stage: OpportunityOutcomeRecord['stageBeforeOutcome'];
   estimatedValue?: number | null;
   currency?: string;
-  expectedCloseDate?: string;
+  /** The day it was won or lost, when that is known. See the derivation above. */
+  closedOn?: string;
+  /** Often a quarter label rather than a day; read only when it is a real date. */
+  expectedClosePeriod?: string;
   updatedAt?: string;
   forecastEvidenceCategory: OpportunityOutcomeRecord['forecastEvidenceCategoryBeforeOutcome'];
   decisionRecommendation: OpportunityOutcomeRecord['decisionRecommendationBeforeOutcome'];
