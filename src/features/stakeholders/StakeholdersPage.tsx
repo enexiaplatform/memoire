@@ -23,6 +23,9 @@ import {
   type StakeholderRecord,
 } from '../../services/stakeholderStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
+import { type SalesActivityRecord } from '../../services/salesActivityStore';
+import { deriveStakeholderCandidatesFromActivities } from '../../utils/stakeholderGraph';
+import { normalizeEntityName as normalize } from '../../utils/accountIdentity';
 import { useWorkspaceRefresh } from '../../hooks/useWorkspaceRefresh';
 import { formatCount } from '../../utils/numberFormat';
 import { summarizeStakeholderCoverage } from '../../utils/stakeholderGraph';
@@ -44,6 +47,7 @@ export function StakeholdersPage() {
   const dataUserId = sampleDataActive ? undefined : user?.id;
   const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
+  const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [accountFilter, setAccountFilter] = useState(searchParams.get('accountName') || allFilter);
@@ -63,6 +67,7 @@ export function StakeholdersPage() {
     if (cachedData) {
       setStakeholders(cachedData.stakeholders);
       setOpportunities(cachedData.opportunities);
+      setActivities(cachedData.activities);
       setLoading(false);
       return;
     }
@@ -71,6 +76,7 @@ export function StakeholdersPage() {
     const workspaceData = await loadSalesWorkspaceData(dataUserId);
     setStakeholders(workspaceData.stakeholders);
     setOpportunities(workspaceData.opportunities);
+    setActivities(workspaceData.activities);
     setLoading(false);
   };
 
@@ -132,6 +138,24 @@ export function StakeholdersPage() {
   useEffect(() => {
     setPage(1);
   }, [accountFilter, influenceFilter, pageSize, query, roleFilter, stanceFilter]);
+
+  /**
+   * People your captures name who have no record here.
+   *
+   * This page calls itself "the whole book". It was the book of what somebody
+   * typed into this form, and a person named in a capture only ever got one
+   * chance to become a record - the prompt shown immediately after that capture
+   * was saved. Dismiss it, or capture before that prompt existed, and the
+   * person was never offered again while this page went on claiming to hold
+   * everyone. `deriveStakeholderCandidatesFromActivities` was already written
+   * and tested for exactly this and had no caller at all.
+   */
+  const uncountedPeople = useMemo(() => {
+    const recorded = new Set(stakeholders.map((person) => `${normalize(person.name)}|${normalize(person.accountName)}`));
+    return deriveStakeholderCandidatesFromActivities(activities)
+      .filter((candidate) => !recorded.has(`${normalize(candidate.name)}|${normalize(candidate.accountName)}`))
+      .slice(0, 12);
+  }, [activities, stakeholders]);
 
   const openAddPanel = (seed: Partial<StakeholderFormInput> = {}) => {
     setSelectedStakeholder(null);
@@ -216,6 +240,47 @@ export function StakeholdersPage() {
           />
         }
       />
+
+      {/*
+        The people this page was quietly leaving out.
+
+        A page that calls itself "the whole book" has to account for the ones it
+        knows about and has not got. Each was named in a capture, with the job
+        title that capture recorded, and adding one is a click - the form opens
+        already filled with what the note said.
+      */}
+      {!loading && uncountedPeople.length > 0 && (
+        <section className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-bold text-amber-900">
+            {uncountedPeople.length} {uncountedPeople.length === 1 ? 'person appears' : 'people appear'} in your captures with no record here
+          </p>
+          <p className="mt-1 text-xs text-amber-800">
+            Named in a note but never added. Adding one opens the form with what the note already said.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {uncountedPeople.map((candidate) => (
+              <button
+                key={candidate.id}
+                type="button"
+                onClick={() => openAddPanel({
+                  name: candidate.name,
+                  accountName: candidate.accountName,
+                  roleTitle: candidate.roleTitle,
+                  opportunityName: candidate.opportunityName,
+                  opportunityId: candidate.opportunityId,
+                  notes: candidate.notes,
+                })}
+                className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:border-amber-500"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                {candidate.name}
+                {candidate.roleTitle ? <span className="font-normal text-amber-700">· {candidate.roleTitle}</span> : null}
+                {candidate.accountName ? <span className="font-normal text-amber-700">· {candidate.accountName}</span> : null}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">

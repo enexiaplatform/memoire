@@ -183,4 +183,24 @@ const sidebar = readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
 assert.ok(sidebar.includes("from '../../config/featureRegistry'"), 'Sidebar must render navigation from the feature registry');
 assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 0, 'A navigation item was hard-coded into the Sidebar instead of declared in the feature registry.');
 
+
+/**
+ * The Stakeholders page claims to be "the whole book", so it has to account for
+ * the people it knows about and has not got.
+ *
+ * `deriveStakeholderCandidatesFromActivities` existed, was tested, and had no
+ * caller anywhere in the app - so a person named in a capture got one chance to
+ * become a record and was never offered again.
+ */
+{
+  const page = readFileSync('src/features/stakeholders/StakeholdersPage.tsx', 'utf8');
+  assert.match(
+    page,
+    /deriveStakeholderCandidatesFromActivities\(/,
+    'the page that calls itself the whole book must surface people it has no record for',
+  );
+  assert.match(page, /with no record here/, 'and say so in words');
+  assert.match(page, /roleTitle: candidate\.roleTitle/, 'adding one carries the job title the note gave');
+}
+
 console.log('MEDDIC stakeholder map regression verified.');
