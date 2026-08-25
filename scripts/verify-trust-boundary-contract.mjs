@@ -109,7 +109,12 @@ for (const marker of [
 // The supported questions are listed on the page for the same reason the
 // no-AI promise is: an open text box that implies unlimited natural-language
 // intelligence is a claim the product cannot keep.
-const askMemoire = read('src/features/v31/AskMemoirePage.tsx');
+// The advertised list moved into askMemoireContext so the questions and the
+// matchers that honour them cannot drift apart - five of the eight were
+// printed here and routed nowhere. This contract follows it there rather than
+// forcing a second hand-written copy back into the JSX.
+const askMemoire = read('src/features/v31/AskMemoirePage.tsx')
+  + read('src/features/v31/askMemoireContext.ts');
 for (const marker of [
   'Search &amp; Insights',
   'What this can answer',

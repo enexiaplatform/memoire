@@ -4,7 +4,7 @@ import { Bot, ExternalLink, Send, Sparkles } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { DEMO_USER_ID } from '../../lib/demoMode';
 import type { Account, AskMemoireAnswer, AskMemoireAnswerCard, AskMemoireContext, Interaction, MemoryChange, Objection, Opportunity, SalesAction, SalesPattern } from '../../types/v31';
-import { actionFixPresets, answerFromMemory, buildAskMemoireContext, presetsForScope } from './askMemoireContext';
+import { actionFixPresets, advertisedQuestions, answerFromMemory, buildAskMemoireContext, isAttentionQuestion, isPatternQuestion, isWhatChangedQuestion, presetsForScope } from './askMemoireContext';
 import { detectBrokenLoops, type BrokenLoop } from './brokenLoops';
 import { calculateMemoryHealth } from './memoryHealth';
 import { buildWhatChangedDigest, formatMemoryChangeSeverity } from './whatChangedDigest';
@@ -24,7 +24,9 @@ import {
   answerFromFollowUpImpact,
   answerFromForecastCalibration,
   answerFromInitiativeReview,
+  answerFromAwaitingCustomer,
   answerFromMoneyFlow,
+  answerFromOwnObligations,
   answerFromObjectionPlaybook,
   answerFromRetentionSignals,
   answerFromWeekRecap,
@@ -33,6 +35,7 @@ import {
 } from './askMemoireInsightAnswers';
 import { buildMoneyFlow } from '../../utils/moneyFlow';
 import { buildOrderBook } from '../../utils/orderToCash';
+import { buildOwnObligations } from '../../utils/ownObligations';
 import { buildRetentionSignals } from '../../utils/retentionSignals';
 import { buildCommitmentLedger } from '../../utils/weeklyBusinessReview';
 import { buildInitiativeReview } from '../../utils/initiativeReview';
@@ -41,6 +44,9 @@ import { buildCommercialJourneySnapshot } from '../../utils/commercialJourney';
 import { todayDateKey } from '../../utils/safeDate';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 import { useEntitlement } from '../../hooks/useEntitlement';
+
+/** How far either side of today a promise counts as this week's. */
+const COMMITMENT_WINDOW_DAYS = 7;
 
 export function AskMemoirePage() {
   const { user } = useAuth();
@@ -332,13 +338,41 @@ export function AskMemoirePage() {
           setAnswer(answerFromCommitments(buildCommitmentLedger({
             opportunities: rawWorkspace.opportunities,
             activities: rawWorkspace.activities,
-            period: { start: addDaysToDateKey(today, -7), end: addDaysToDateKey(today, 7) },
+            period: {
+              start: addDaysToDateKey(today, -COMMITMENT_WINDOW_DAYS),
+              end: addDaysToDateKey(today, COMMITMENT_WINDOW_DAYS),
+            },
           }, today)));
         } else if (insightKind === 'initiative_review') {
           setAnswer(answerFromInitiativeReview(buildInitiativeReview({
             operatingContexts: rawWorkspace.operatingContext,
             activities: rawWorkspace.activities,
           })));
+        } else if (insightKind === 'awaiting_customer') {
+          setAnswer(answerFromAwaitingCustomer(
+            buildOrderBook({
+              opportunities: rawWorkspace.opportunities,
+              quotes: rawWorkspace.quotes,
+              milestoneRecords: [],
+              outcomes: rawWorkspace.opportunityOutcomes,
+            }),
+            buildMoneyFlow({ opportunities: rawWorkspace.opportunities, quotes: rawWorkspace.quotes }),
+          ));
+        } else if (insightKind === 'own_obligations') {
+          setAnswer(answerFromOwnObligations(
+            buildOwnObligations({ expenses: rawWorkspace.expenses, quotes: rawWorkspace.quotes }),
+            // The same window the commitments answer uses. Two Ask answers
+            // reporting different missed-promise counts for the same week is
+            // exactly the disagreement this page exists to end.
+            buildCommitmentLedger({
+              opportunities: rawWorkspace.opportunities,
+              activities: rawWorkspace.activities,
+              period: {
+                start: addDaysToDateKey(todayDateKey(), -COMMITMENT_WINDOW_DAYS),
+                end: addDaysToDateKey(todayDateKey(), COMMITMENT_WINDOW_DAYS),
+              },
+            }, todayDateKey()),
+          ));
         } else if (insightKind === 'customer_signals') {
           setAnswer(answerFromCustomerSignals(buildCustomerSignalDigest({ activities: rawWorkspace.activities })));
         } else {
@@ -540,14 +574,9 @@ export function AskMemoirePage() {
         <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-3">
           <p className="text-xs font-bold uppercase tracking-wide text-gray-400">What this can answer</p>
           <ul className="mt-1.5 grid gap-x-4 gap-y-0.5 text-xs leading-5 text-gray-600 sm:grid-cols-2">
-            <li>Who needs follow-up?</li>
-            <li>Where is money stuck?</li>
-            <li>What changed this week?</li>
-            <li>Summarize this account.</li>
-            <li>Which opportunities have no next action?</li>
-            <li>Which commitments are overdue?</li>
-            <li>What am I waiting for from customers?</li>
-            <li>What do I owe today?</li>
+            {advertisedQuestions.map((advertised) => (
+              <li key={advertised}>{advertised}</li>
+            ))}
           </ul>
           <p className="mt-2 text-xs text-emerald-700">
             Answers are built on this device from your captured data. Nothing is sent to an AI service, so no
@@ -751,10 +780,6 @@ function normalizeMissing(items: string[]) {
   }));
 }
 
-function isWhatChangedQuestion(question: string) {
-  const normalized = question.toLowerCase();
-  return normalized.includes('what changed') || normalized.includes('changed recently');
-}
 
 function getContextLabel(
   scope: AskMemoireContext['scope'],
@@ -770,33 +795,7 @@ function getContextLabel(
   return opportunities.find((opportunity) => opportunity.id === selectedOpportunityId)?.title || 'Select Opportunity';
 }
 
-function isPatternQuestion(question: string) {
-  const normalized = question.toLowerCase();
-  return normalized.includes('pattern') || normalized.includes('sales activity');
-}
 
-function isAttentionQuestion(question: string) {
-  const normalized = question.toLowerCase();
-  return [
-    'what needs attention',
-    'what needs attention today',
-    'which accounts need attention',
-    'which accounts need action',
-    'which deals may go silent',
-    'which accounts need follow-up',
-    'which objections are unresolved',
-    'what should i fix today',
-    'stuck deals',
-    'deals may go silent',
-    'what should i focus on',
-    'which deals are broken',
-    'which accounts are broken',
-    'show stuck deals',
-    'what are my stuck deals',
-    'which deals are missing next actions',
-    'missing next actions',
-  ].some((pattern) => normalized.includes(pattern));
-}
 
 function answerFromAttention({
   context,

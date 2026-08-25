@@ -15,6 +15,7 @@ import { initiativeDecisionLabel } from '../../utils/initiativeExperiment.ts';
 import { type SignalDigest } from '../../utils/customerSignals.ts';
 import { formatBaseCurrencyAmount, formatCurrencyAmount } from '../../utils/money.ts';
 import { formatSafeBusinessDate, isValidBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
+import { type OwnObligationsModel } from '../../utils/ownObligations.ts';
 import { normalizeEntityName } from '../../utils/accountIdentity.ts';
 
 export type InsightQuestionKind =
@@ -25,6 +26,8 @@ export type InsightQuestionKind =
   | 'week_recap'
   | 'retention_check'
   | 'commitments'
+  | 'awaiting_customer'
+  | 'own_obligations'
   | 'customer_signals'
   | 'initiative_review'
   | 'deal_position';
@@ -55,8 +58,18 @@ export function detectInsightQuestion(question: string): InsightQuestionKind | n
   if (/\bretention\b|check back with|keep warm|(customers?|clients?|accounts?)\b.*\b(check back|revisit|reconnect|going (quiet|cold))|paid\b.*\b(gone|going|went) (quiet|cold)/.test(normalized)) {
     return 'retention_check';
   }
-  if (/did i keep (my )?(promises?|commitments?|word)|(promises?|commitments?)\b.*\b(kept|missed|due|status)|\b(kept|missed) (promises?|commitments?)|commitments? this week/.test(normalized)) {
+  if (/did i keep (my )?(promises?|commitments?|word)|(promises?|commitments?)\b.*\b(kept|missed|due|overdue|outstanding|slipped|status)|\b(kept|missed) (promises?|commitments?)|commitments? this week/.test(normalized)) {
     return 'commitments';
+  }
+  // Both of these were printed in the page's own "What this can answer" panel
+  // and matched nothing, so they fell through to the generic memory answer.
+  // Checked before customer_signals so "waiting for from customers" is not
+  // swallowed by the signals matcher, which also looks for "customers".
+  if (/waiting (on|for)\b.*\b(customers?|clients?|them|buyers?)|what am i waiting|(customers?|clients?|they)\b.*\bowe me|chase(d|s)? (up )?(for )?(payment|decision)/.test(normalized)) {
+    return 'awaiting_customer';
+  }
+  if (/what do i owe|what i owe|do i owe (today|this week|anyone)|my (own )?obligations?|\b(bills?|payments?|deliveries)\b.*\bi owe\b|owe (today|this week)/.test(normalized)) {
+    return 'own_obligations';
   }
   // Customer signals: what buyers are telling the seller (buying signals,
   // risks, timeline, competitors). Checked after retention so "check back
@@ -625,6 +638,176 @@ export function answerFromForecastCalibration(calibration: ForecastCalibration):
         { label: 'Basis', value: 'Your own closed outcomes. History, not prediction.' },
       ],
       ctas: [{ label: 'Open Pipeline Defense', href: '/app/pipeline-defense', note: 'The full calibration table lives on Pipeline Defense.' }],
+    }],
+  };
+}
+
+/**
+ * "What am I waiting for from customers?" - the ball on their side of the net.
+ *
+ * The page advertised this question in its own "What this can answer" panel and
+ * routed it nowhere: it fell through to the generic memory answer, which knows
+ * nothing about money. Every part of the real answer already existed - the
+ * order book knows what is committed and uncollected, the money flow knows
+ * which quotes went out and never came back - and neither was ever asked.
+ *
+ * The two are kept apart because they are different waits. A quote with no
+ * answer is waiting on a decision; a signed order with no payment is waiting on
+ * money that is already yours. Chasing them is not the same phone call.
+ */
+export function answerFromAwaitingCustomer(orderBook: OrderBook, moneyFlow: MoneyFlow): AskMemoireAnswer {
+  const awaitingBase = orderBook.awaitingBase;
+  const openOrders = orderBook.orders.filter((order) => !order.fullyCollected);
+  const oldestOrder = [...openOrders].sort((a, b) => (b.daysInStage ?? 0) - (a.daysInStage ?? 0))[0];
+  const decisionLanes = moneyFlow.lanes.filter((lane) => lane.stage === 'Quoted' || lane.stage === 'Pending PO');
+  const decisionThreads = decisionLanes.reduce((sum, lane) => sum + lane.threads, 0);
+  const decisionBase = decisionLanes.reduce((sum, lane) => sum + lane.totalBase, 0);
+  const waitingQuotes = moneyFlow.threads.filter((thread) => thread.stage === 'Quoted' || thread.stage === 'Pending PO');
+
+  if (openOrders.length === 0 && decisionThreads === 0) {
+    return {
+      answer: 'Nothing is sitting on the customer side right now - no quote is out without an answer, and no committed order is waiting to be paid. Everything open is waiting on you.',
+      contextUsed: ['Order book', 'Money flow (deals, quotes, POs, deliveries, payments)'],
+      missingContext: [],
+      suggestedNextAction: 'Check what you owe today instead.',
+      suggestedQuestions: ['What do I owe today?', 'Which deals may go silent?'],
+    };
+  }
+
+  const decisionSentence = decisionThreads > 0
+    ? `${decisionThreads} ${decisionThreads === 1 ? 'quote is' : 'quotes are'} out without an answer (${formatBaseCurrencyAmount(decisionBase, true)}).`
+    : 'No quote is out without an answer.';
+  const moneySentence = awaitingBase > 0
+    ? ` ${formatBaseCurrencyAmount(awaitingBase, true)} is committed and not yet collected across ${openOrders.length} ${openOrders.length === 1 ? 'order' : 'orders'}${oldestOrder?.daysInStage ? `, the oldest untouched for ${oldestOrder.daysInStage} days` : ''}.`
+    : '';
+
+  return {
+    answer: `${decisionSentence}${moneySentence}`,
+    contextUsed: ['Order book', 'Money flow (deals, quotes, POs, deliveries, payments)'],
+    missingContext: [],
+    suggestedNextAction: oldestOrder
+      ? `Chase ${oldestOrder.accountName} on ${oldestOrder.orderRef}${oldestOrder.nextMilestone ? ` - ${oldestOrder.nextMilestone.label}` : ''}.`
+      : waitingQuotes[0]
+        ? `Ask ${waitingQuotes[0].accountName} where the decision stands.`
+        : 'Pick the oldest wait and close it.',
+    suggestedQuestions: ['What do I owe today?', 'Where is the money?'],
+    cards: [{
+      kind: 'insight',
+      title: 'Waiting on them',
+      fields: [
+        ...(decisionThreads > 0
+          ? [{ label: 'Awaiting a decision', value: `${decisionThreads} ${decisionThreads === 1 ? 'quote' : 'quotes'} - ${formatBaseCurrencyAmount(decisionBase, true)}` }]
+          : []),
+        ...(awaitingBase > 0
+          ? [{
+            label: 'Awaiting payment',
+            value: `${formatBaseCurrencyAmount(awaitingBase, true)} across ${openOrders.length} ${openOrders.length === 1 ? 'order' : 'orders'}${orderBook.stalledCount ? ` - ${orderBook.stalledCount} not moved in a month` : ''}`,
+            tone: 'warning' as const,
+          }]
+          : []),
+        ...(waitingQuotes.length > 0
+          ? [{ label: 'Quotes with no answer', value: waitingQuotes.slice(0, 4).map((thread) => `${thread.accountName} / ${thread.label} - ${thread.nextAction}`) }]
+          : []),
+        ...(openOrders.length > 0
+          ? [{
+            label: 'Oldest waits',
+            value: [...openOrders]
+              .sort((a, b) => (b.daysInStage ?? 0) - (a.daysInStage ?? 0))
+              .slice(0, 4)
+              .map((order) => `${order.accountName} / ${order.orderRef}: ${formatBaseCurrencyAmount(order.amountBase, true)}${order.daysInStage ? ` - ${order.daysInStage} days` : ''}`),
+            tone: 'warning' as const,
+          }]
+          : []),
+        { label: 'Basis', value: 'A quote with no answer is waiting on a decision. A signed order with no payment is waiting on money that is already yours.' },
+      ],
+      ctas: [
+        { label: 'Open Cash collection', href: '/app/cash-collection', note: 'What each customer still owes lives there.' },
+        { label: 'Open Money', href: '/app/revenue', note: 'The full money flow lives on the Money page.' },
+      ],
+    }],
+  };
+}
+
+/**
+ * "What do I owe today?" - the same silence detection, pointed at the operator.
+ *
+ * Also advertised on the page and also unrouted. Two different debts answer to
+ * it and both already exist: money and deliveries you owe (own obligations),
+ * and promises you made to customers (the commitment ledger). Neither is more
+ * true than the other, so it reports both rather than picking one.
+ */
+export function answerFromOwnObligations(
+  obligations: OwnObligationsModel,
+  commitments: CommitmentItem[],
+): AskMemoireAnswer {
+  const missed = commitments.filter((item) => item.status === 'missed');
+  const dueToday = commitments.filter((item) => item.status === 'upcoming' && item.date === todayDateKey());
+  const overdue = obligations.overdue;
+  const dueSoon = obligations.dueSoon;
+  const nothingOwed = overdue.length === 0 && dueSoon.length === 0 && missed.length === 0 && dueToday.length === 0;
+
+  if (nothingOwed) {
+    return {
+      answer: 'Nothing you owe is overdue or due in the next week - no payment, no delivery, and no promise you made to a customer has slipped. Only dated obligations can be checked, so anything undated is invisible here rather than clear.',
+      contextUsed: ['Own obligations (payments, deliveries)', 'Active deals (dated next actions)'],
+      missingContext: ['Undated obligations cannot be checked'],
+      suggestedNextAction: 'Date the next payment or delivery you owe.',
+      suggestedQuestions: ['What am I waiting for from customers?', 'Which deals may go silent?'],
+    };
+  }
+
+  const owedSentence = overdue.length > 0
+    ? `${overdue.length} ${overdue.length === 1 ? 'obligation is' : 'obligations are'} already overdue.`
+    : 'Nothing you owe is overdue yet.';
+  const soonSentence = dueSoon.length > 0 ? ` ${dueSoon.length} due within the week.` : '';
+  const promiseSentence = missed.length > 0
+    ? ` You have also missed ${missed.length} ${missed.length === 1 ? 'promise' : 'promises'} to customers.`
+    : dueToday.length > 0
+      ? ` ${dueToday.length} ${dueToday.length === 1 ? 'promise is' : 'promises are'} due today.`
+      : '';
+
+  return {
+    answer: `${owedSentence}${soonSentence}${promiseSentence}`,
+    contextUsed: ['Own obligations (payments, deliveries)', 'Active deals (dated next actions)'],
+    missingContext: [],
+    suggestedNextAction: overdue[0]
+      ? `Settle ${overdue[0].label} to ${overdue[0].counterparty}.`
+      : missed[0]
+        ? `Recover the missed promise at ${missed[0].accountName}: ${missed[0].action}.`
+        : dueSoon[0]
+          ? `${dueSoon[0].label} to ${dueSoon[0].counterparty} is due ${formatSafeBusinessDate(dueSoon[0].dueDate)}.`
+          : 'Clear the nearest obligation.',
+    suggestedQuestions: ['What am I waiting for from customers?', 'Where is the money?'],
+    cards: [{
+      kind: 'insight',
+      title: 'What you owe',
+      fields: [
+        ...(overdue.length > 0
+          ? [{
+            label: 'Overdue',
+            value: overdue.slice(0, 4).map((item) => `${item.label} - ${item.counterparty} (due ${formatSafeBusinessDate(item.dueDate)})`),
+            tone: 'warning' as const,
+          }]
+          : []),
+        ...(dueSoon.length > 0
+          ? [{ label: 'Due this week', value: dueSoon.slice(0, 4).map((item) => `${item.label} - ${item.counterparty} (due ${formatSafeBusinessDate(item.dueDate)})`) }]
+          : []),
+        ...(obligations.paymentsOwedBase > 0
+          ? [{ label: 'Money owed out', value: formatBaseCurrencyAmount(obligations.paymentsOwedBase, true), tone: 'warning' as const }]
+          : []),
+        ...(missed.length > 0
+          ? [{
+            label: 'Promises missed',
+            value: missed.slice(0, 4).map((item) => `${item.accountName}: ${item.action} - promised ${formatSafeBusinessDate(item.date)}`),
+            tone: 'warning' as const,
+          }]
+          : []),
+        ...(dueToday.length > 0
+          ? [{ label: 'Promised for today', value: dueToday.slice(0, 4).map((item) => `${item.accountName}: ${item.action}`) }]
+          : []),
+        { label: 'Basis', value: 'Only dated obligations can be checked. Anything undated is invisible here rather than clear.' },
+      ],
+      ctas: [{ label: 'Open Money', href: '/app/revenue', note: 'Money out and obligations live on the Money page.' }],
     }],
   };
 }

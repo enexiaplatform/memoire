@@ -120,12 +120,35 @@ export function answerFromMemory(question: string, context: AskMemoireContext): 
     ...opportunities.map((opportunity) => opportunity.blocker || '').filter(Boolean),
     ...interactions.map((interaction) => interaction.objection || '').filter(Boolean),
   ]);
-  const evidence = [
-    latestInteraction ? `Last interaction: ${latestInteraction.summary}` : '',
-    activeOpportunity ? `Opportunity: ${activeOpportunity.title} (${activeOpportunity.stage})` : '',
-    blockers[0] ? `Blocker: ${blockers[0]}` : '',
-    suggestedNextAction ? `Next action: ${suggestedNextAction}` : '',
-  ].filter(Boolean);
+  // summarizeContext already refuses to claim this join, but it is only the
+  // last branch of this function. Every branch above it printed the same
+  // borrowed evidence under `Account: ${accounts[0].name}` - so asking
+  // "Which opportunities have no next action?" on a 19-customer workspace
+  // answered "Account: Grupo Calvo" over an interaction belonging to Luis
+  // Simoes Logistica and a deal belonging to a third customer entirely.
+  // One subject keeps the briefing voice; more than one and every line says
+  // which list it is the top of.
+  const oneSubject = accounts.length <= 1
+    && (!activeOpportunity || !accounts[0] || !activeOpportunity.account_id || activeOpportunity.account_id === accounts[0].id);
+  const subjectLine = oneSubject
+    ? `Account: ${accountName}`
+    : `Scope: all memory - ${accounts.length} customers. This is not one customer's story.`;
+  const scopeNote = oneSubject
+    ? undefined
+    : 'Each line above is the top of its own list, not one account. Pick a customer in the context selector to get one story.';
+  const evidence = oneSubject
+    ? [
+      latestInteraction ? `Last interaction: ${latestInteraction.summary}` : '',
+      activeOpportunity ? `Opportunity: ${activeOpportunity.title} (${activeOpportunity.stage})` : '',
+      blockers[0] ? `Blocker: ${blockers[0]}` : '',
+      suggestedNextAction ? `Next action: ${suggestedNextAction}` : '',
+    ].filter(Boolean)
+    : [
+      latestInteraction ? `Most recent interaction recorded: ${latestInteraction.summary}` : '',
+      activeOpportunity ? `Most recently updated deal: ${activeOpportunity.title} (${activeOpportunity.stage})` : '',
+      blockers[0] ? `First of ${blockers.length} open blocker${blockers.length === 1 ? '' : 's'}: ${blockers[0]}` : '',
+      suggestedNextAction ? `Oldest open action: ${suggestedNextAction}` : '',
+    ].filter(Boolean);
 
   if (normalized.includes('go silent') || normalized.includes('stuck') || normalized.includes('missing follow')) {
     const issue = blockers[0]
@@ -153,6 +176,8 @@ export function answerFromMemory(question: string, context: AskMemoireContext): 
     return response({
       answer: structuredAnswer({
         account: accountName,
+        subjectLine,
+        scopeNote,
         issue: 'Known account context',
         evidence,
         suggestedFix: suggestedNextAction || 'Capture the next customer update.',
@@ -169,6 +194,8 @@ export function answerFromMemory(question: string, context: AskMemoireContext): 
       answer: blockers.length > 0
         ? structuredAnswer({
             account: accountName,
+            subjectLine,
+            scopeNote,
             issue: 'Unresolved objection',
             evidence,
             suggestedFix: suggestedNextAction || 'Create a follow-up action to clarify the blocker.',
@@ -192,6 +219,16 @@ export function answerFromMemory(question: string, context: AskMemoireContext): 
   }
 
   if (normalized.includes('follow-up') || normalized.includes('follow up') || normalized.includes('message')) {
+    // A draft is text the operator sends. Greeting one customer over another
+    // customer's objection is the one place this guess leaves the app, so
+    // when the scope holds several customers it asks which one instead.
+    if (!oneSubject) {
+      return response({
+        answer: `Pick a customer first - ${accounts.length} are in scope, and a draft addressed to one of them about another one's objection is worse than no draft. Choose the account in the context selector and ask again.`,
+        context,
+        suggestedNextAction: 'Select one account in the context selector, then ask for the draft.',
+      });
+    }
     const account = accounts[0]?.name || 'there';
     const concern = openObjections[0]?.title || activeOpportunity?.blocker || '';
     return response({
@@ -206,6 +243,8 @@ export function answerFromMemory(question: string, context: AskMemoireContext): 
       answer: context.missingContext.length > 0
         ? structuredAnswer({
             account: accountName,
+            subjectLine,
+            scopeNote,
             issue: 'Missing context',
             evidence,
             suggestedFix: suggestedNextAction || 'Capture the next interaction or create a next action.',
@@ -223,6 +262,8 @@ export function answerFromMemory(question: string, context: AskMemoireContext): 
       answer: suggestedNextAction
         ? structuredAnswer({
             account: accountName,
+            subjectLine,
+            scopeNote,
             issue: blockers[0] ? 'Unresolved objection' : 'Follow-up ready',
             evidence,
             suggestedFix: suggestedNextAction,
@@ -238,11 +279,10 @@ export function answerFromMemory(question: string, context: AskMemoireContext): 
   if (normalized.includes('prepare')) {
     return response({
       answer: [
-        accounts[0] ? `Account: ${accounts[0].name}` : '',
-        activeOpportunity ? `Opportunity: ${activeOpportunity.title} (${activeOpportunity.stage})` : '',
-        latestInteraction ? `Last interaction: ${latestInteraction.summary}` : '',
+        subjectLine,
+        ...evidence,
         openObjections.length > 0 ? `Open objections: ${openObjections.map((objection) => objection.title).join('; ')}` : '',
-        suggestedNextAction ? `Next action: ${suggestedNextAction}` : '',
+        scopeNote || '',
       ].filter(Boolean).join('\n'),
       context,
       suggestedNextAction,
@@ -339,27 +379,34 @@ function summarizeContext(accounts: Account[], opportunities: Opportunity[], int
 
 function structuredAnswer({
   account,
+  subjectLine,
   issue,
   evidence,
   suggestedFix,
   missingContext,
   nextAction,
+  scopeNote,
 }: {
   account: string;
+  // When the evidence spans more than one customer there is no single account
+  // to put at the top, so the caller supplies a heading it can defend.
+  subjectLine?: string;
   issue: string;
   evidence: string[];
   suggestedFix: string;
   missingContext: string[];
   nextAction?: string;
+  scopeNote?: string;
 }) {
   return [
-    `Account: ${account}`,
+    subjectLine || `Account: ${account}`,
     `Issue: ${issue}`,
     `Evidence:\n${evidence.length > 0 ? evidence.map((item) => `- ${item}`).join('\n') : '- No recent evidence captured.'}`,
     `Suggested fix: ${suggestedFix || 'Confirm the next follow-up.'}`,
     `Missing context:\n${missingContext.length > 0 ? missingContext.map((item) => `- ${item}`).join('\n') : '- No major missing context detected.'}`,
     `Next action: ${nextAction || suggestedFix || 'Create a follow-up action.'}`,
-  ].join('\n\n');
+    scopeNote || '',
+  ].filter(Boolean).join('\n\n');
 }
 
 function contextLabels(context: AskMemoireContext) {
@@ -385,4 +432,75 @@ function missingForPacket(accounts: Account[], interactions: Interaction[], acti
 
 function unique(values: string[]) {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+/**
+ * The questions the Ask page prints under "What this can answer".
+ *
+ * This is a promise made in the product's own words, and it used to live only
+ * in JSX while the matchers that honour it lived in two other files. Five of
+ * the eight reached no engine at all and fell through to the generic memory
+ * answer - the one that cannot attribute evidence to a customer. Advertised
+ * and unrouted is the worst pair of those two properties.
+ *
+ * They sit here so `routeForAdvertisedQuestion` can be asserted over the exact
+ * strings the page renders, and the list and the routing cannot drift apart
+ * again without a test going red.
+ */
+export const advertisedQuestions = [
+  'Who needs follow-up?',
+  'Where is money stuck?',
+  'What changed this week?',
+  'Summarize this account.',
+  'Which opportunities have no next action?',
+  'Which commitments are overdue?',
+  'What am I waiting for from customers?',
+  'What do I owe today?',
+] as const;
+
+/**
+ * True when the question is one Memoire answers from a named engine rather
+ * than from the generic memory fallback. "Summarize this account." is the
+ * deliberate exception: summarizing IS the fallback's job, and with one account
+ * in scope it does it honestly.
+ */
+export function isAttentionQuestion(question: string) {
+  const normalized = question.toLowerCase();
+  return [
+    'what needs attention',
+    'what needs attention today',
+    'which accounts need attention',
+    'which accounts need action',
+    'which deals may go silent',
+    'which accounts need follow-up',
+    'which objections are unresolved',
+    'what should i fix today',
+    'stuck deals',
+    'deals may go silent',
+    'what should i focus on',
+    'which deals are broken',
+    'which accounts are broken',
+    'show stuck deals',
+    'what are my stuck deals',
+    'which deals are missing next actions',
+    'missing next actions',
+    // Printed verbatim in the advertised list and previously unrouted.
+    'who needs follow-up',
+    'who needs follow up',
+    'needs follow-up',
+    'needs follow up',
+    'no next action',
+    'no next step',
+    'without a next action',
+  ].some((pattern) => normalized.includes(pattern));
+}
+
+export function isWhatChangedQuestion(question: string) {
+  const normalized = question.toLowerCase();
+  return normalized.includes('what changed') || normalized.includes('changed recently');
+}
+
+export function isPatternQuestion(question: string) {
+  const normalized = question.toLowerCase();
+  return normalized.includes('pattern') || normalized.includes('sales activity');
 }

@@ -18,7 +18,7 @@ import { buildCommitmentLedger } from '../src/utils/weeklyBusinessReview.ts';
 import { buildCommercialJourneySnapshot } from '../src/utils/commercialJourney.ts';
 import { buildInitiativeReview } from '../src/utils/initiativeReview.ts';
 import { buildCustomerSignalDigest } from '../src/utils/customerSignals.ts';
-import { opportunityPresets, allMemoryPresets } from '../src/features/v31/askMemoireContext.ts';
+import { advertisedQuestions, allMemoryPresets, answerFromMemory, isAttentionQuestion, isWhatChangedQuestion, opportunityPresets } from '../src/features/v31/askMemoireContext.ts';
 import { answerFromInitiativeReview, answerFromCustomerSignals } from '../src/features/v31/askMemoireInsightAnswers.ts';
 
 // 1. Detection is narrow and routes to the right layer.
@@ -42,6 +42,10 @@ assert.equal(detectInsightQuestion('Where does the Apex deal stand?'), 'deal_pos
 assert.equal(detectInsightQuestion('Where do we stand with Apex Labs?'), 'deal_position');
 assert.equal(detectInsightQuestion('How is the Northstar deal going?'), 'deal_position');
 assert.equal(detectInsightQuestion('Where is the money?'), 'money_state', 'money question must win over deal position');
+assert.equal(detectInsightQuestion('Which commitments are overdue?'), 'commitments', 'overdue is how an operator says a promise slipped');
+assert.equal(detectInsightQuestion('What am I waiting for from customers?'), 'awaiting_customer');
+assert.equal(detectInsightQuestion('What do I owe today?'), 'own_obligations');
+assert.equal(detectInsightQuestion('What are customers telling me?'), 'customer_signals', 'the signals question is not the waiting-on-them question');
 // Ambiguous or unrelated questions fall through to the normal answer path.
 assert.equal(detectInsightQuestion('What should I do next?'), null);
 assert.equal(detectInsightQuestion('Draft a follow-up for Apex Labs'), null, 'drafting requests are not history questions');
@@ -254,5 +258,48 @@ for (const marker of ['detectInsightQuestion', 'answerFromFollowUpImpact', 'answ
 }
 const insightSource = readFileSync(new URL('../src/features/v31/askMemoireInsightAnswers.ts', import.meta.url), 'utf8');
 assert.ok(insightSource.includes('History, not prediction'), 'calibration card must carry the honesty basis line');
+
+
+// 9. The page's advertised list is a promise, and every question on it routes.
+//
+// Five of the eight questions printed under "What this can answer" reached no
+// engine and fell through to the generic memory answer, which knows nothing
+// about money, orders or promises. The list and the matchers now live in one
+// module so they cannot drift apart silently.
+{
+  const fallbackByDesign = new Set(['Summarize this account.']);
+  const unrouted = advertisedQuestions
+    .filter((question) => !fallbackByDesign.has(question))
+    .filter((question) => !isAttentionQuestion(question)
+      && !isWhatChangedQuestion(question)
+      && detectInsightQuestion(question) === null);
+  assert.deepEqual(unrouted, [], `advertised on the Ask page but routed nowhere: ${unrouted.join(' | ')}`);
+
+  const askSource = readFileSync(new URL('../src/features/v31/AskMemoirePage.tsx', import.meta.url), 'utf8');
+  assert.ok(
+    askSource.includes('advertisedQuestions.map((advertised) =>'),
+    'the advertised list must render from the shared constant, not a second hand-written copy in JSX',
+  );
+
+  // The one guess that leaves the app as text the operator sends.
+  const twoCustomers = {
+    scope: 'all',
+    includedData: {
+      accounts: [{ id: 'a1', name: 'Grupo Calvo' }, { id: 'a2', name: 'Luis Simoes Logistica' }],
+      opportunities: [{ id: 'o1', account_id: 'a2', title: 'Heat recovery retrofit', stage: 'proposal' }],
+      interactions: [{ id: 'i1', account_id: 'a2', summary: 'Call about the retrofit', occurred_at: '2026-08-20T09:00:00.000Z' }],
+      actions: [{ id: 'ac1', account_id: 'a2', status: 'open', title: 'Confirm the phasing' }],
+      objections: [],
+    },
+    missingContext: [],
+  };
+  const draft = answerFromMemory('Draft a follow-up', twoCustomers);
+  assert.ok(!draft.answer.startsWith('Hi Grupo Calvo'), 'a draft must not greet one customer over another customer objection');
+  assert.ok(draft.answer.includes('Pick a customer first'));
+
+  const structured = answerFromMemory('Which opportunities have no next action?', twoCustomers);
+  assert.ok(!structured.answer.startsWith('Account: Grupo Calvo'), 'no single account heading over workspace-wide evidence');
+  assert.ok(structured.answer.includes('top of its own list'));
+}
 
 console.log('Ask Memoire insight answers contract verified.');
