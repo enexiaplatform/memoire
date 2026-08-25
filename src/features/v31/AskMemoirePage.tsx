@@ -869,13 +869,27 @@ function answerFromAttention({
   focus: AttentionFocus;
 }): AskMemoireAnswer {
   // "There is an open objection or blocker in memory" is what the health engine
-  // knows. The objection itself is recorded, with a title somebody wrote, and
-  // naming it is the difference between a signal and an answer.
+  // knows. The objection itself was written down somewhere, and naming it is the
+  // difference between a signal and an answer.
+  //
+  // Three somewheres, because `hasOpenObjection` counts all of them: an
+  // Objection record, an interaction carrying objection text, or the deal's own
+  // blocker field. This workspace holds zero Objection records and every
+  // objection on the interactions, so looking only at the first store found
+  // nothing and printed the generic sentence.
   const openObjections = objections.filter((objection) => objection.status === 'open');
+  const objectionInteractions = (context.includedData.interactions || [])
+    .filter((interaction) => Boolean(interaction.objection))
+    .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at));
   const objectionTitleFor = (accountId?: string | null, opportunityId?: string | null) => {
-    const match = openObjections.find((objection) => (opportunityId && objection.opportunity_id === opportunityId))
+    const record = openObjections.find((objection) => (opportunityId && objection.opportunity_id === opportunityId))
       || openObjections.find((objection) => (accountId && objection.account_id === accountId));
-    return match ? `${match.title}${match.severity === 'high' ? ' (high severity)' : ''}` : '';
+    if (record) return `${record.title}${record.severity === 'high' ? ' (high severity)' : ''}`;
+    const fromInteraction = objectionInteractions.find((interaction) => (opportunityId && interaction.opportunity_id === opportunityId))
+      || objectionInteractions.find((interaction) => (accountId && interaction.account_id === accountId));
+    if (fromInteraction?.objection) return fromInteraction.objection;
+    const deal = opportunityId ? opportunityById.get(opportunityId) : undefined;
+    return deal?.blocker || '';
   };
   const accountById = new Map(accounts.map((account) => [account.id, account]));
   const opportunityById = new Map(opportunities.map((opportunity) => [opportunity.id, opportunity]));

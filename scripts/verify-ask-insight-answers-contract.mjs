@@ -362,6 +362,17 @@ assert.ok(insightSource.includes('History, not prediction'), 'calibration card m
     askSource.includes('const objectionTitleFor ='),
     'the objections answer must name the objection somebody recorded, not just report that one exists',
   );
+  // memoryHealth counts an objection from any of three stores, so the lookup
+  // has to read all three. This workspace holds zero Objection records and
+  // every objection on the interactions.
+  const healthSource = readFileSync(new URL('../src/features/v31/memoryHealth.ts', import.meta.url), 'utf8');
+  assert.ok(
+    healthSource.includes('relatedInteractions.some((interaction) => Boolean(interaction.objection))'),
+    'memoryHealth reads objection text off interactions - if that changes, the Ask lookup below must change with it',
+  );
+  for (const store of ['openObjections.find', 'objectionInteractions.find', 'deal?.blocker']) {
+    assert.ok(askSource.includes(store), `the objection lookup must consult ${store}`);
+  }
   assert.ok(
     askSource.includes('why === shown ?'),
     'the card must not print the same sentence under two labels',
