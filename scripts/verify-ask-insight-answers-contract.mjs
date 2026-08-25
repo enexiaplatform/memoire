@@ -356,6 +356,12 @@ assert.ok(insightSource.includes('History, not prediction'), 'calibration card m
     askSource.includes('answer: `${attentionHeadings[focus]}'),
     'the attention answer must use the heading for the question asked, not a fixed one',
   );
+  // Filtering on one reason and displaying another made the objections answer
+  // name a deal and then explain it with "No recent interaction is available."
+  assert.ok(
+    askSource.includes("(focus === 'objections' && item.objectionReason) || item.issue || item.reason"),
+    'the objections answer must show the reason that made it an objection',
+  );
 }
 
 console.log('Ask Memoire insight answers contract verified.');

@@ -48,6 +48,9 @@ import { todayDateKey } from '../../utils/safeDate';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 import { useEntitlement } from '../../hooks/useEntitlement';
 
+/** What counts as an objection in a stuck-deal or context-health reason. */
+const OBJECTION_TEXT = /objection|blocker|blocked|concern/i;
+
 /** How far either side of today a promise counts as this week's. */
 const COMMITMENT_WINDOW_DAYS = 7;
 
@@ -886,7 +889,11 @@ function answerFromAttention({
     hasNextAction: Boolean(loop.opportunityId
       ? openActionsByOpportunity.get(loop.opportunityId)
       : loop.accountId ? openActionsByAccount.get(loop.accountId) : undefined),
-    isObjection: /objection|blocker|blocked/i.test(`${loop.issue} ${loop.whyItMatters}`),
+    isObjection: OBJECTION_TEXT.test(`${loop.issue} ${loop.whyItMatters}`),
+    // The line that made this an objection. Filtering on one reason and
+    // displaying another made the objections answer look arbitrary: it named a
+    // deal and then explained it with "No recent interaction is available."
+    objectionReason: OBJECTION_TEXT.test(loop.issue) ? loop.issue : loop.whyItMatters,
   }));
 
   const healthItems = memoryHealth
@@ -914,9 +921,13 @@ function answerFromAttention({
         issue: health.status === 'broken' ? 'Deal at risk' : 'Weak context',
         whyItMatters: health.reasons[0] || 'Memoire does not have enough context to help you act confidently.',
         hasNextAction: Boolean(linkedAction),
-        isObjection: /objection|blocker|blocked/i.test(health.reasons.join(' ')),
+        isObjection: health.reasons.some((reason) => OBJECTION_TEXT.test(reason)),
+        objectionReason: health.reasons.find((reason) => OBJECTION_TEXT.test(reason)) || '',
       };
     });
+
+  const displayReason = (item: { reason: string; objectionReason: string }) =>
+    (focus === 'objections' && item.objectionReason) || item.reason;
 
   const matchesFocus = (item: { hasNextAction: boolean; isObjection: boolean }) => {
     if (focus === 'objections') return item.isObjection;
@@ -949,7 +960,7 @@ function answerFromAttention({
   return {
     answer: `${attentionHeadings[focus]}\n${rankedItems.map((item, index) => [
       `${index + 1}. ${item.entityName}`,
-      `   Issue: ${item.reason}`,
+      `   Issue: ${displayReason(item)}`,
       `   Evidence: ${item.signalSource}`,
       `   Suggested fix: ${item.suggestedNextAction}`,
     ].join('\n')).join('\n\n')}`,
@@ -961,8 +972,8 @@ function answerFromAttention({
       kind: 'stuck_deal',
       title: item.entityName,
       fields: [
-        { label: 'Issue', value: item.issue || item.reason, tone: 'warning' },
-        { label: attentionWhyLabels[focus], value: item.whyItMatters || item.reason, tone: 'warning' },
+        { label: 'Issue', value: (focus === 'objections' && item.objectionReason) || item.issue || item.reason, tone: 'warning' },
+        { label: attentionWhyLabels[focus], value: (focus === 'objections' && item.objectionReason) || item.whyItMatters || item.reason, tone: 'warning' },
         { label: 'Evidence', value: [item.signalSource] },
         { label: 'Missing context', value: item.missingContext.length > 0 ? item.missingContext : ['No additional missing context detected.'] },
         { label: 'Suggested fix', value: item.suggestedNextAction, tone: 'warning' },
