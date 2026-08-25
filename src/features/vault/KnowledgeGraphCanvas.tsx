@@ -67,9 +67,18 @@ type Props = {
    * than inventing a ring.
    */
   health?: Map<string, { known: number; total: number }>;
+  /**
+   * Which nodes exist yet, during a replay.
+   *
+   * Undefined means "all of them", which is the normal state. The layout is
+   * always computed from the finished graph, so a node revealed halfway through
+   * a replay is already in its final position and nothing reflows as the story
+   * plays.
+   */
+  revealed?: Set<string>;
 };
 
-export function KnowledgeGraphCanvas({ view, focusId, onSelect, summary, compact = false, health }: Props) {
+export function KnowledgeGraphCanvas({ view, focusId, onSelect, summary, compact = false, health, revealed }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 900, height: 560 });
   const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
@@ -125,6 +134,19 @@ export function KnowledgeGraphCanvas({ view, focusId, onSelect, summary, compact
   }, []);
 
   const labelled = useMemo(() => labellableEdges(view, compact), [view, compact]);
+
+  // A relation can only be drawn once both ends of it exist. Drawing a line to
+  // a customer you had not met yet is the one thing a replay must never do.
+  const visibleNodes = useMemo(
+    () => (revealed ? view.nodes.filter((positioned) => revealed.has(positioned.node.id)) : view.nodes),
+    [view.nodes, revealed],
+  );
+  const visibleEdges = useMemo(
+    () => (revealed
+      ? view.edges.filter((edge) => revealed.has(edge.from.node.id) && revealed.has(edge.to.node.id))
+      : view.edges),
+    [view.edges, revealed],
+  );
 
   const adjacency = useMemo(() => {
     const map = new Map<string, Set<string>>();
@@ -310,7 +332,7 @@ export function KnowledgeGraphCanvas({ view, focusId, onSelect, summary, compact
               Hairline grey said only "connected", which the arrangement of the
               cards already said.
             */}
-            {view.edges.map((edge, index) => (
+            {visibleEdges.map((edge, index) => (
               <Edge
                 key={`${focusId}:${edge.id}`}
                 drawDelay={Math.min(index * 45, 300)}
@@ -339,7 +361,7 @@ export function KnowledgeGraphCanvas({ view, focusId, onSelect, summary, compact
                 }
               />
             ))}
-            {view.nodes.map((positioned, index) => (
+            {visibleNodes.map((positioned, index) => (
               /*
                 The neighbourhood assembles outward from the focus.
 
@@ -609,6 +631,11 @@ function Node({
   // Offset outside the card so the gauge is its own object rather than a
   // doubled border, and drawn as a path starting at top centre so a partial
   // ring reads as a dial filling clockwise instead of as a broken frame.
+  const pipCount = motion.total > 0 ? Math.min(motion.total, PIP_MAX) : 0;
+  const pipWidth = pipCount > 0 ? (pipCount - 1) * PIP_PITCH + 6 : 0;
+  // 5.6px per character at 10.5px in this face, measured the same way
+  // NODE_LABEL_METRICS was; 14 left inset, 12 right, 10 of air before the marks.
+  const metricBudget = Math.max(8, Math.floor((size.width - 14 - 12 - pipWidth - 10) / 5.6));
   const describedAs = [
     node.label,
     knowledgeNodeTypeLabels[node.type],
@@ -818,7 +845,11 @@ function Node({
 
           {(selected || ring < 2) && metric && (
             <text x={-halfWidth + 14} y={halfHeight - 12} fontSize={10.5} fontWeight={600} fill="#475569">
-              {truncate(metric, selected ? 34 : 26)}
+              {/* Budgeted against the room the marks left, the same way the
+                  title is budgeted against the plate. A fixed 26 characters ran
+                  "6 memories · 2 links" straight through eleven marks on a
+                  184px card. */}
+              {truncate(metric, Math.min(selected ? 34 : 26, metricBudget))}
             </text>
           )}
         </>

@@ -9,6 +9,8 @@ import { buildAccountAliasIndex } from '../../utils/accountAliases';
 import { buildKnowledgeGraph, knowledgeNodeTypePlurals, type KnowledgeGap, type KnowledgeNodeType } from '../../utils/knowledgeGraph';
 import { buildGraphView } from '../../utils/knowledgeLayout';
 import { motionLegend } from '../../utils/vaultMotion';
+import { buildReplayTimeline, canReplay, revealedAt } from '../../utils/vaultReplay';
+import { VaultReplayButton, VaultReplayControl } from './VaultReplayControl';
 import {
   createKnowledgeRecordId,
   type KnowledgeRecord,
@@ -126,6 +128,28 @@ export function BusinessVaultPage() {
   }), [workspace, knowledge]);
 
   const selectedNode = selectedId ? graph.byId.get(selectedId) : undefined;
+
+  /**
+   * Replay state.
+   *
+   * `replayAt` is a date key while the story is playing and null the rest of
+   * the time, which is also the map's normal state - so nothing about the live
+   * map is conditional on a feature nobody has switched on.
+   */
+  const [replayAt, setReplayAt] = useState<string | null>(null);
+  const [replaying, setReplaying] = useState(false);
+  const replayTimeline = useMemo(
+    () => buildReplayTimeline(graph.memory, graph.nodes.map((node) => node.id)),
+    [graph],
+  );
+  const revealed = useMemo(
+    () => (replayAt ? revealedAt(replayTimeline, replayAt) : undefined),
+    [replayAt, replayTimeline],
+  );
+  const exitReplay = useCallback(() => {
+    setReplaying(false);
+    setReplayAt(null);
+  }, []);
 
   const graphView = useMemo(
     () => buildGraphView({ graph, focusId: selectedNode?.id, hiddenTypes }),
@@ -345,6 +369,7 @@ export function BusinessVaultPage() {
                         onSelect={select}
                         summary={mapSummary(graphView.nodes.length, selectedNode?.label)}
                         health={graph.health}
+                        revealed={revealed}
                       />
                     </div>
                     <p className="text-xs text-gray-500">
@@ -352,6 +377,32 @@ export function BusinessVaultPage() {
                         ? `${graphView.shownNeighborCount} of ${graphView.neighborCount} relationships shown around ${selectedNode.label}. Drag to pan, scroll to zoom, or use the Library tab for a keyboard-friendly list.`
                         : 'Showing the parts of the business with the most recorded around them. Select anything to centre the map on it.'}
                     </p>
+
+                    {/*
+                      Replay: the same map, played back in the order the
+                      business was learned. Every other view answers "what do I
+                      know"; this one answers "how did I come to know it", which
+                      is a question only a store that dates its memory can ask.
+                    */}
+                    {replayAt
+                      ? (
+                        <VaultReplayControl
+                          timeline={replayTimeline}
+                          at={replayAt}
+                          playing={replaying}
+                          onChange={setReplayAt}
+                          onPlayingChange={setReplaying}
+                          onExit={exitReplay}
+                        />
+                      )
+                      : canReplay(replayTimeline) && (
+                        <VaultReplayButton
+                          onStart={() => {
+                            setReplayAt(replayTimeline.steps[0]);
+                            setReplaying(true);
+                          }}
+                        />
+                      )}
 
                     {/*
                       Every motion on the map means something, so every motion

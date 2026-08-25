@@ -120,7 +120,7 @@ describe('the legend', () => {
   test('every motion on the map is written down', () => {
     // A motion the reader cannot decode is decoration wearing a lab coat.
     const ids = motionLegend.map((entry) => entry.id);
-    for (const required of ['ring', 'sweep', 'fade', 'flow']) {
+    for (const required of ['marks', 'breathing', 'fade', 'flow']) {
       assert.ok(ids.includes(required), `${required} must be explained in the legend`);
     }
     for (const entry of motionLegend) {

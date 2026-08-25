@@ -168,14 +168,14 @@ export function edgeMotionFor(input: { primary: boolean; valueBase: number }): E
  */
 export const motionLegend: { id: string; title: string; meaning: string }[] = [
   {
-    id: 'ring',
-    title: 'The ring around a card',
-    meaning: 'How much of what is worth knowing is written down. A closed ring is a complete file.',
+    id: 'marks',
+    title: 'The marks on a card',
+    meaning: 'One per thing worth knowing about that record, filled when it is written down.',
   },
   {
-    id: 'sweep',
-    title: 'A sweeping gap in the ring',
-    meaning: 'Something is missing here, and the drawer lists exactly what.',
+    id: 'breathing',
+    title: 'Marks that breathe',
+    meaning: 'Still missing. Select the card and the drawer lists exactly which ones.',
   },
   {
     id: 'fade',

@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { buildKnowledgeGraph, accountNodeId, searchKnowledgeNodes } from '../src/utils/knowledgeGraph.ts';
 import { buildGraphView } from '../src/utils/knowledgeLayout.ts';
 import { edgeMotionFor, memoryAgeFor, memoryAgeOpacity, motionLegend } from '../src/utils/vaultMotion.ts';
+import { buildReplayTimeline, canReplay, revealedAt } from '../src/utils/vaultReplay.ts';
 
 /**
  * The Business Vault is business memory, and the coverage matrix still exists.
@@ -347,6 +348,13 @@ const registry = readFileSync('src/config/featureRegistry.ts', 'utf8');
   const page = readFileSync('src/features/vault/BusinessVaultPage.tsx', 'utf8');
   assert.match(page, /motionLegend\.map\(/, 'the map ships its own key');
   assert.ok(motionLegend.length >= 4, 'every motion on the map is explained');
+  // The key has to describe what is drawn now, not what was drawn last week.
+  // Two encodings were built and discarded before the marks, and the legend
+  // shipped describing one of them for an afternoon - a key that explains a
+  // design nobody can see is worse than no key.
+  const legendText = motionLegend.map((entry) => `${entry.title} ${entry.meaning}`).join(' ').toLowerCase();
+  assert.ok(legendText.includes('marks'), 'the key must describe the marks, which is what the card actually draws');
+  assert.ok(!/\bring\b/.test(legendText), 'no ring is drawn on a card, so the key must not describe one');
 
   // Money on a relation means a deal with a value, not the customer's running
   // total - reading the larger of the two ends made every line out of a
@@ -354,6 +362,56 @@ const registry = readFileSync('src/config/featureRegistry.ts', 'utf8');
   assert.match(canvas, /candidate\.type === 'opportunity'/, 'value on an edge comes from the deal end');
   assert.equal(edgeMotionFor({ primary: true, valueBase: 0 }).carriesValue, false);
   assert.equal(edgeMotionFor({ primary: false, valueBase: 1 }).carriesValue, false);
+}
+
+
+/**
+ * Replay answers a question a CRM cannot ask.
+ *
+ * A CRM stores the present tense - a field's value, not the moment it arrived.
+ * The Vault keeps a dated memory entry behind every node, so the order the
+ * business was learned in is recoverable without anyone recording it on
+ * purpose. Two properties keep that honest.
+ */
+{
+  const replay = readFileSync('src/utils/vaultReplay.ts', 'utf8');
+
+  // Nothing re-runs the graph mid-replay. The layout is computed once from the
+  // finished graph and the replay only decides what is visible yet, which is
+  // why a node sits in its final place from the first frame it appears in.
+  const page = readFileSync('src/features/vault/BusinessVaultPage.tsx', 'utf8');
+  assert.match(page, /revealed=\{revealed\}/, 'the replay reveals nodes rather than rebuilding the layout');
+  assert.ok(
+    !/buildGraphView\([^)]*replayAt/s.test(page),
+    'the layout must not depend on the replay position, or every frame reflows',
+  );
+
+  // A record with no readable date is not a record from the beginning of time
+  // and not one from today. It is held constant and counted out loud.
+  const timeline = buildReplayTimeline(
+    new Map([['dated', [{ date: '2026-03-04' }]], ['undated', [{ date: 'whenever' }]]]),
+    ['dated', 'undated'],
+    '2026-08-25',
+  );
+  assert.deepEqual(timeline.undated, ['undated'], 'undated records are named, not dropped');
+  assert.ok(revealedAt(timeline, '2026-03-04').has('undated'), 'undated records are present throughout');
+  assert.match(replay, /REPLAY_MIN_MOMENTS/, 'a book with no story does not offer a replay');
+
+  // An imported pipeline arrives on one day. Offering a replay of it produces a
+  // single frame that reveals everything at once, which looks broken.
+  // Two dates, not one: a real import often straddles a day boundary, and a
+  // threshold that only rejects a single date would let that through.
+  const importedDay = buildReplayTimeline(
+    new Map([
+      ['a', [{ date: '2026-08-23' }]],
+      ['b', [{ date: '2026-08-23' }]],
+      ['c', [{ date: '2026-08-24' }]],
+    ]),
+    ['a', 'b', 'c'],
+    '2026-08-25',
+  );
+  assert.equal(importedDay.steps.length, 2, 'the fixture must straddle two days for the threshold to be tested');
+  assert.equal(canReplay(importedDay), false, 'a one-day import has no story to replay');
 }
 
 console.log('Business Vault knowledge contract verified: memory in the Vault, coverage under Accounts.');
