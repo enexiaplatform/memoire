@@ -6,6 +6,7 @@ import { formatWinRate, type ForecastCalibration } from '../../utils/forecastCal
 import type { CrmLiteOpportunity } from '../../services/opportunityStore.ts';
 import { classifyBusinessDomain, type BusinessDomain } from '../../utils/businessDomain.ts';
 import { type MoneyFlow } from '../../utils/moneyFlow.ts';
+import { type OrderBook } from '../../utils/orderToCash.ts';
 import { type RetentionSignal, RETENTION_QUIET_DAYS } from '../../utils/retentionSignals.ts';
 import { type CommitmentItem } from '../../utils/weeklyBusinessReview.ts';
 import { type CommercialJourneySnapshot, formatJourneyCommitment } from '../../utils/commercialJourney.ts';
@@ -153,8 +154,44 @@ export function answerFromDealPosition(snapshot: CommercialJourneySnapshot, oppo
   };
 }
 
-export function answerFromMoneyFlow(moneyFlow: MoneyFlow): AskMemoireAnswer {
+/**
+ * "Where is the money?" - both pools of it.
+ *
+ * `buildMoneyFlow` covers deals and quotes and stops at Paid, so this answered
+ * a six-month book with "3.6M EUR is in motion" and never mentioned the 429.5K
+ * EUR of committed orders sitting uncollected, the oldest waiting a hundred and
+ * seventy-one days. That is the money the operator can actually do something
+ * about today, and it was missing from the answer to the question that asks for
+ * it by name. Pipeline is money you might get; the order book is money you are
+ * owed, and they are not the same answer.
+ *
+ * `orderBook` is optional so a caller that has not built one behaves as before.
+ */
+export function answerFromMoneyFlow(moneyFlow: MoneyFlow, orderBook?: OrderBook): AskMemoireAnswer {
+  const awaitingBase = orderBook?.awaitingBase ?? 0;
+  const owedSentence = awaitingBase > 0
+    ? ` ${formatBaseCurrencyAmount(awaitingBase, true)} is already committed and not yet collected${orderBook?.stalledCount ? `, ${orderBook.stalledCount} of those orders not moved in a month` : ''}.`
+    : '';
+
   if (moneyFlow.threads.length === 0) {
+    // Nothing in the pipeline is not the same as no money anywhere. A book that
+    // has won everything it is working on still has money to collect, and
+    // "no commercial threads are in motion" reads as "you have nothing".
+    if (awaitingBase > 0) {
+      return {
+        answer: `Nothing is open in the pipeline right now.${owedSentence}`,
+        contextUsed: ['Money flow (deals, quotes, POs, deliveries, payments)', 'Order book'],
+        missingContext: ['Open opportunities or quotes'],
+        suggestedNextAction: 'Chase what is already owed, then capture the next opportunity.',
+        suggestedQuestions: ['What should I do first today?', 'What happened this week?'],
+        cards: [{
+          kind: 'insight',
+          title: 'Where the money sits',
+          fields: [{ label: 'Committed, not collected', value: formatBaseCurrencyAmount(awaitingBase, true), tone: 'warning' }],
+          ctas: [{ label: 'Open Cash collection', href: '/app/cash-collection', note: 'What each customer still owes lives there.' }],
+        }],
+      };
+    }
     return {
       answer: 'No commercial threads are in motion - no open deals, quotes, POs, deliveries, or payments. Capture the next quote or opportunity and the money flow starts here.',
       contextUsed: ['Money flow (deals, quotes, POs, deliveries, payments)'],
@@ -173,8 +210,13 @@ export function answerFromMoneyFlow(moneyFlow: MoneyFlow): AskMemoireAnswer {
   return {
     answer: `${formatBaseCurrencyAmount(moneyFlow.totalInMotionBase, true)} is in motion across ${laneSummary || 'no active lanes'}. ${stuck.length > 0
       ? `${stuck.length} ${stuck.length === 1 ? 'thread is' : 'threads are'} stuck: ${stuck.slice(0, 3).map((thread) => `${thread.accountName} (${thread.stuckReason})`).join('; ')}.`
-      : 'Nothing is stuck right now.'}`,
-    contextUsed: ['Money flow (deals, quotes, POs, deliveries, payments)'],
+      // "Nothing is stuck" is about pipeline threads. Said flatly, one sentence
+      // before "1 of those orders not moved in a month", it contradicts its own
+      // paragraph - so it says which nothing it means.
+      : orderBook?.stalledCount ? 'Nothing in the pipeline is stuck.' : 'Nothing is stuck right now.'}${owedSentence}`,
+    contextUsed: awaitingBase > 0
+      ? ['Money flow (deals, quotes, POs, deliveries, payments)', 'Order book']
+      : ['Money flow (deals, quotes, POs, deliveries, payments)'],
     missingContext: [],
     suggestedNextAction: stuck[0] ? `${stuck[0].nextAction} (${stuck[0].accountName})` : 'Keep the next commercial steps dated.',
     suggestedQuestions: ['Which customers should I check back with?', 'Which deals may go silent?'],
@@ -183,6 +225,13 @@ export function answerFromMoneyFlow(moneyFlow: MoneyFlow): AskMemoireAnswer {
       title: 'Where the money sits',
       fields: [
         { label: 'In motion', value: formatBaseCurrencyAmount(moneyFlow.totalInMotionBase, true), tone: 'good' },
+        ...(awaitingBase > 0
+          ? [{
+            label: 'Committed, not collected',
+            value: `${formatBaseCurrencyAmount(awaitingBase, true)}${orderBook?.stalledCount ? ` - ${orderBook.stalledCount} stalled` : ''}`,
+            tone: 'warning' as const,
+          }]
+          : []),
         ...activeLanes.map((lane) => ({
           label: lane.stage,
           value: `${lane.threads} ${lane.threads === 1 ? 'thread' : 'threads'} - ${formatBaseCurrencyAmount(lane.totalBase, true)}${lane.stuckThreads > 0 ? ` (${lane.stuckThreads} stuck)` : ''}`,
@@ -196,7 +245,12 @@ export function answerFromMoneyFlow(moneyFlow: MoneyFlow): AskMemoireAnswer {
           }]
           : []),
       ],
-      ctas: [{ label: 'Open Money', href: '/app/revenue', note: 'The full money flow lives on the Money page.' }],
+      ctas: awaitingBase > 0
+        ? [
+          { label: 'Open Money', href: '/app/revenue', note: 'The full money flow lives on the Money page.' },
+          { label: 'Open Cash collection', href: '/app/cash-collection', note: 'What each customer still owes lives there.' },
+        ]
+        : [{ label: 'Open Money', href: '/app/revenue', note: 'The full money flow lives on the Money page.' }],
     }],
   };
 }

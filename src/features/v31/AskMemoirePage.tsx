@@ -32,6 +32,7 @@ import {
   resolveDealForQuestion,
 } from './askMemoireInsightAnswers';
 import { buildMoneyFlow } from '../../utils/moneyFlow';
+import { buildOrderBook } from '../../utils/orderToCash';
 import { buildRetentionSignals } from '../../utils/retentionSignals';
 import { buildCommitmentLedger } from '../../utils/weeklyBusinessReview';
 import { buildInitiativeReview } from '../../utils/initiativeReview';
@@ -303,10 +304,19 @@ export function AskMemoirePage() {
             opportunityOutcomes: rawWorkspace.opportunityOutcomes,
           })));
         } else if (insightKind === 'money_state') {
-          setAnswer(answerFromMoneyFlow(buildMoneyFlow({
-            opportunities: rawWorkspace.opportunities,
-            quotes: rawWorkspace.quotes,
-          })));
+          // Both pools: the pipeline, and what is committed but not collected.
+          setAnswer(answerFromMoneyFlow(
+            buildMoneyFlow({
+              opportunities: rawWorkspace.opportunities,
+              quotes: rawWorkspace.quotes,
+            }),
+            buildOrderBook({
+              opportunities: rawWorkspace.opportunities,
+              quotes: rawWorkspace.quotes,
+              milestoneRecords: [],
+              outcomes: rawWorkspace.opportunityOutcomes,
+            }),
+          ));
         } else if (insightKind === 'week_recap') {
           setAnswer(answerFromWeekRecap(rawWorkspace.activities));
         } else if (insightKind === 'retention_check') {
