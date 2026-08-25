@@ -5,6 +5,7 @@ import type { SalesWorkspaceData } from '../../services/workspaceData';
 import type { PlanRecord } from '../../utils/weeklyPlan';
 import { buildAccountAliasIndex } from '../../utils/accountAliases';
 import { buildOperatorProfile, type ProfileTrait } from '../../utils/operatorProfile';
+import { deriveOutcomesFromClosedDeals } from '../../utils/outcomeScoreboard';
 import { buildOperatorTrends, type MetricTrend, trendRules } from '../../utils/metricTrend';
 import { formatCompactBaseAmount } from '../../utils/money';
 import { Sparkline } from '../../components/charts/Sparkline';
@@ -30,21 +31,39 @@ export function OperatorProfileSection({
   workspace: SalesWorkspaceData;
   planRecords: PlanRecord[];
 }) {
+  /**
+   * Deals closed without a retro count as closed.
+   *
+   * The scoreboard on the sibling tab already does this, and its comment says
+   * why: "otherwise this reads nothing closed over a won deal, while the
+   * Business page counts it". The same fix had not reached here, so one page
+   * printed "63% win rate" on one tab and "Win rate - 0 of 5 records" on the
+   * other, from the same eight closed deals.
+   *
+   * Safe because nothing in `buildOperatorProfile` reads `reasonCategory` or
+   * `reasonText` - a derived outcome carries no reason, and every reading here
+   * needs only the outcome, its date and its value.
+   */
+  const closedOutcomes = useMemo(() => [
+    ...workspace.opportunityOutcomes,
+    ...deriveOutcomesFromClosedDeals(workspace.opportunities, workspace.opportunityOutcomes),
+  ], [workspace.opportunities, workspace.opportunityOutcomes]);
+
   const profile = useMemo(() => buildOperatorProfile({
     opportunities: workspace.opportunities,
-    opportunityOutcomes: workspace.opportunityOutcomes,
+    opportunityOutcomes: closedOutcomes,
     activities: workspace.activities,
     quotes: workspace.quotes,
     accountAliases: buildAccountAliasIndex(workspace.accountMerges),
-  }), [workspace]);
+  }), [workspace, closedOutcomes]);
 
   const trends = useMemo(() => buildOperatorTrends({
     activities: workspace.activities,
     opportunities: workspace.opportunities,
-    opportunityOutcomes: workspace.opportunityOutcomes,
+    opportunityOutcomes: closedOutcomes,
     quotes: workspace.quotes,
     planRecords,
-  }), [workspace, planRecords]);
+  }), [workspace, planRecords, closedOutcomes]);
 
   const notable = trends.filter((trend) => trend.notable);
 
