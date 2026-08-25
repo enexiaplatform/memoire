@@ -61,6 +61,20 @@ describe('the Search half of Search & Insights', () => {
     assert.ok(findRecords('Vila Galé Hotéis', [{ ...BOOK[0], id: 'd8', accountName: 'Vila Galé Hotéis' }]));
   });
 
+  test('a won deal is not labelled "(Won, Won)"', () => {
+    // The stage and the status are both Won; printing both repeats itself the
+    // way "(Base: EUR)" does when the reporting currency already is EUR.
+    const result = answerFromRecordFind(findRecords('Grupo Calvo', BOOK));
+    assert.doesNotMatch(JSON.stringify(result.cards), /Won, Won/);
+    assert.match(JSON.stringify(result.cards), /Chiller replacement \(Won\)/);
+  });
+
+  test('a stage and status that genuinely differ are both shown', () => {
+    const book = [{ ...BOOK[0], id: 'dx', accountName: 'Sonae MC', opportunityName: 'Freezer upgrade', stage: 'Proposal', status: 'Lost' }];
+    const result = answerFromRecordFind(findRecords('Sonae MC', book));
+    assert.match(JSON.stringify(result.cards), /Proposal, Lost/);
+  });
+
   test('a deal name finds the deal', () => {
     const found = findRecords('Warehouse LED retrofit', BOOK);
     assert.ok(found);

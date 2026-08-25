@@ -889,7 +889,13 @@ export function answerFromRecordFind(find: RecordFind): AskMemoireAnswer {
     const next = deal.nextAction
       ? ` - next: ${deal.nextAction}${isValidBusinessDate(deal.nextActionDate || '') ? ` (${formatSafeBusinessDate(deal.nextActionDate)})` : ''}`
       : ' - no next action recorded';
-    return `${deal.opportunityName || 'Untitled deal'} (${deal.stage}${deal.status !== 'Active' ? `, ${deal.status}` : ''})${value}${next}`;
+    // On a won deal the stage and the status are both "Won", and printing both
+    // gave "(Won, Won)" - the same tic as "(Base: EUR)" when the reporting
+    // currency already is EUR. A label repeated is not a label confirmed.
+    const state = deal.status !== 'Active' && deal.status !== deal.stage
+      ? `${deal.stage}, ${deal.status}`
+      : deal.stage;
+    return `${deal.opportunityName || 'Untitled deal'} (${state})${value}${next}`;
   };
 
   const account = find.accounts[0];
@@ -937,4 +943,26 @@ export function answerFromRecordFind(find: RecordFind): AskMemoireAnswer {
       ctas: [{ label: 'Open opportunities', href: '/app/opportunities', note: 'Filter and edit the records there.' }],
     }],
   };
+}
+
+/**
+ * The customer a question mentions, when the scope is still All Memory.
+ *
+ * `findRecords` deliberately refuses anything carrying an interrogative, so it
+ * can never answer this: "What changed at Amorim Cork this week?" is a question
+ * first. But naming a customer in a question is a scope the operator expects to
+ * be honoured, and the digest behind that answer is workspace-wide. Knowing the
+ * name lets the answer say which of the two it actually did.
+ */
+export function namedAccountIn(question: string, opportunities: CrmLiteOpportunity[]): string | null {
+  const needle = normalizeEntityName(question);
+  if (needle.length < 3) return null;
+  let best: { name: string; length: number } | null = null;
+  for (const opportunity of opportunities) {
+    const name = (opportunity.accountName || '').trim();
+    const folded = normalizeEntityName(name);
+    if (folded.length < 3 || !needle.includes(folded)) continue;
+    if (!best || folded.length > best.length) best = { name, length: folded.length };
+  }
+  return best?.name || null;
 }

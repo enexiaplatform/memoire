@@ -27,6 +27,7 @@ import {
   answerFromAwaitingCustomer,
   answerFromRecordFind,
   findRecords,
+  namedAccountIn,
   answerFromMoneyFlow,
   answerFromOwnObligations,
   answerFromObjectionPlaybook,
@@ -269,7 +270,11 @@ export function AskMemoirePage() {
       }
       if (isWhatChangedQuestion(nextQuestion)) {
         setStatusMessage('Answered with local rule-based change detection.');
-        setAnswer(answerFromChanges(whatChanged, contextPacket));
+        setAnswer(answerFromChanges(
+          whatChanged,
+          contextPacket,
+          rawWorkspace ? namedAccountIn(nextQuestion, rawWorkspace.opportunities) ?? undefined : undefined,
+        ));
         return;
       }
       if (isPatternQuestion(nextQuestion)) {
@@ -940,7 +945,18 @@ function answerFromAttention({
   };
 }
 
-function answerFromChanges(changes: MemoryChange[], context: AskMemoireContext): AskMemoireAnswer {
+/**
+ * `namedRecord` is set when the question mentioned a customer or deal that
+ * exists in the workspace while the scope is still All Memory. "What changed at
+ * Amorim Cork this week?" listed overdue actions belonging to other customers
+ * without ever saying the answer was not about Amorim Cork. The digest is
+ * workspace-wide by construction, so the fix is to say so rather than to imply
+ * a filter that was never applied.
+ */
+function answerFromChanges(changes: MemoryChange[], context: AskMemoireContext, namedRecord?: string): AskMemoireAnswer {
+  const scopeNote = namedRecord && context.scope === 'all'
+    ? `\n\nThis is every recent change in the workspace, not only ${namedRecord}. Pick it in the context selector to narrow the answer.`
+    : '';
   if (changes.length === 0) {
     return {
       answer: 'No major changes yet. Capture interactions and Memoire will summarize what changed here.',
@@ -951,7 +967,7 @@ function answerFromChanges(changes: MemoryChange[], context: AskMemoireContext):
   }
 
   return {
-    answer: `Recent meaningful changes:\n${changes.map((change) => `- [${formatMemoryChangeSeverity(change.severity)}] ${change.title}: ${change.description}`).join('\n')}`,
+    answer: `Recent meaningful changes:\n${changes.map((change) => `- [${formatMemoryChangeSeverity(change.severity)}] ${change.title}: ${change.description}`).join('\n')}${scopeNote}`,
     contextUsed: ['What Changed Digest', `${changes.length} recent changes`, context.scope === 'all' ? 'All Memory' : context.scope],
     suggestedNextAction: changes.find((change) => change.suggestedReviewAction)?.suggestedReviewAction,
     missingContext: context.missingContext,
