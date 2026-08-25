@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { buildKnowledgeGraph, accountNodeId, searchKnowledgeNodes } from '../src/utils/knowledgeGraph.ts';
 import { buildGraphView } from '../src/utils/knowledgeLayout.ts';
+import { edgeMotionFor, memoryAgeFor, memoryAgeOpacity, motionLegend } from '../src/utils/vaultMotion.ts';
 
 /**
  * The Business Vault is business memory, and the coverage matrix still exists.
@@ -277,6 +278,82 @@ const registry = readFileSync('src/config/featureRegistry.ts', 'utf8');
   // Underscore-prefixed files are shared modules, not deployed functions.
   const apiFunctions = readdirSync('api').filter((file) => /\.(ts|js)$/.test(file) && !file.startsWith('_'));
   assert.ok(apiFunctions.length <= 12, `api/ is at the Vercel Hobby ceiling: ${apiFunctions.length} functions`);
+}
+
+
+/**
+ * The map's motion is a readout, not decoration.
+ *
+ * Every animation on the Vault map has to encode something the graph already
+ * computed - how complete a file is, how long ago it was touched, which way a
+ * relation reads, whether money travels along it. That rule is the difference
+ * between a knowledge map and a prettier node-link diagram, and it is only
+ * enforceable if the pieces below stay true.
+ */
+{
+  const canvas = readFileSync('src/features/vault/KnowledgeGraphCanvas.tsx', 'utf8');
+  const motion = readFileSync('src/utils/vaultMotion.ts', 'utf8');
+
+  // The trap that cost two debugging rounds in 2026-08 and was re-measured in
+  // this browser in 2026-08-25: a CSS *transition* on an SVG group's transform
+  // never ticks here, while a keyframe *animation* on the same property does.
+  // Every moving thing on this canvas is therefore an animation.
+  // Tested against the code with its comments removed. The first version of
+  // this check failed on the paragraph *explaining* the rule, which is the
+  // same class of mistake as a marker a comment satisfies: a substring test
+  // cannot tell an instruction from a description of one.
+  const canvasCode = canvas
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+  assert.ok(
+    !/transition[^;\n]*transform/.test(canvasCode),
+    'no CSS transition on an SVG transform: it does not tick in Chrome, use a keyframe animation',
+  );
+  for (const name of ['vaultRise', 'vaultDraw', 'vaultFlow', 'vaultPip', 'vaultHalo']) {
+    assert.ok(canvas.includes(`@keyframes ${name}`), `${name} must be declared as a keyframe animation`);
+  }
+
+  // An operator who has asked their system to stop moving things must get a map
+  // that says exactly the same facts and simply holds still.
+  assert.match(canvas, /@media \(prefers-reduced-motion: reduce\)/, 'reduced motion is honoured');
+  const reduced = canvas.slice(canvas.indexOf('prefers-reduced-motion'));
+  for (const cls of ['.vault-flow', '.vault-pip', '.vault-rise', '.vault-halo', '.vault-draw']) {
+    assert.ok(reduced.includes(cls), `${cls} must be switched off under reduced motion`);
+  }
+  assert.ok(
+    reduced.includes('.vault-draw { stroke-dasharray: none; }'),
+    'the draw-in dash pattern must be cleared under reduced motion, or every relation is invisible',
+  );
+
+  // The knowledge marks are a count. `KnowledgeHealth` is deliberately a count
+  // and a band rather than a percentage, on the grounds that "six of the nine
+  // things worth knowing are written down" is a sentence anyone can check. The
+  // marks are that sentence drawn, so they must stay countable.
+  assert.match(canvas, /const PIP_MAX = \d+;/, 'the marks have a stated ceiling');
+  assert.ok(
+    !/completeness \* 100\}%/.test(canvas) && !/toFixed\(/.test(canvas),
+    'the map must not render completeness as a percentage - the count is the design',
+  );
+
+  // Silence is drawn. An unreadable date is not silence, and must not be drawn
+  // as the coldest thing on the map - the same trap that once made a broken
+  // date the most recent touch in the account engine.
+  assert.equal(memoryAgeFor('not a date', '2026-08-25'), 'undated');
+  assert.equal(memoryAgeOpacity.undated, 1, 'an unreadable date is not drawn as long silence');
+  assert.ok(memoryAgeOpacity.cold < memoryAgeOpacity.fading, 'longer silence is drawn fainter');
+  assert.ok(memoryAgeOpacity.cold >= 0.5, 'a cold card must still be legible');
+
+  // A motion nobody can decode is decoration. The legend ships beside the map.
+  const page = readFileSync('src/features/vault/BusinessVaultPage.tsx', 'utf8');
+  assert.match(page, /motionLegend\.map\(/, 'the map ships its own key');
+  assert.ok(motionLegend.length >= 4, 'every motion on the map is explained');
+
+  // Money on a relation means a deal with a value, not the customer's running
+  // total - reading the larger of the two ends made every line out of a
+  // customer teal, and a line that is always lit says nothing.
+  assert.match(canvas, /candidate\.type === 'opportunity'/, 'value on an edge comes from the deal end');
+  assert.equal(edgeMotionFor({ primary: true, valueBase: 0 }).carriesValue, false);
+  assert.equal(edgeMotionFor({ primary: false, valueBase: 1 }).carriesValue, false);
 }
 
 console.log('Business Vault knowledge contract verified: memory in the Vault, coverage under Accounts.');

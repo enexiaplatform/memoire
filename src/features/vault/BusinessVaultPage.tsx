@@ -8,6 +8,7 @@ import { deleteKnowledgeNote, loadKnowledgeNotes, loadKnowledgeNotesForWorkspace
 import { buildAccountAliasIndex } from '../../utils/accountAliases';
 import { buildKnowledgeGraph, knowledgeNodeTypePlurals, type KnowledgeGap, type KnowledgeNodeType } from '../../utils/knowledgeGraph';
 import { buildGraphView } from '../../utils/knowledgeLayout';
+import { motionLegend } from '../../utils/vaultMotion';
 import {
   createKnowledgeRecordId,
   type KnowledgeRecord,
@@ -343,6 +344,7 @@ export function BusinessVaultPage() {
                         focusId={selectedNode?.id || ''}
                         onSelect={select}
                         summary={mapSummary(graphView.nodes.length, selectedNode?.label)}
+                        health={graph.health}
                       />
                     </div>
                     <p className="text-xs text-gray-500">
@@ -350,6 +352,20 @@ export function BusinessVaultPage() {
                         ? `${graphView.shownNeighborCount} of ${graphView.neighborCount} relationships shown around ${selectedNode.label}. Drag to pan, scroll to zoom, or use the Library tab for a keyboard-friendly list.`
                         : 'Showing the parts of the business with the most recorded around them. Select anything to centre the map on it.'}
                     </p>
+
+                    {/*
+                      Every motion on the map means something, so every motion
+                      is written down. A key the reader has to hunt for turns a
+                      readout back into decoration.
+                    */}
+                    <dl className="grid gap-x-6 gap-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs sm:grid-cols-2">
+                      {motionLegend.map((entry) => (
+                        <div key={entry.id} className="flex gap-2">
+                          <dt className="shrink-0 font-semibold text-gray-700">{entry.title}</dt>
+                          <dd className="text-gray-500">{entry.meaning}</dd>
+                        </div>
+                      ))}
+                    </dl>
                   </>
                 ) : (
                   <MapAsList view={graphView} focusLabel={selectedNode?.label} onSelect={select} />

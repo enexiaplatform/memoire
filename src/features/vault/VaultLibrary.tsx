@@ -175,6 +175,7 @@ export function VaultLibrary({
                 view={mapView}
                 focusId={selectedId}
                 onSelect={onSelect}
+                health={graph.health}
                 summary={`Knowledge map${selectedId && graph.byId.get(selectedId) ? ` centred on ${graph.byId.get(selectedId)!.label}` : ''}, showing ${mapView.nodes.length} related things. The list below is the same content as text.`}
               />
             </div>
