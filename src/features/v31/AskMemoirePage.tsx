@@ -556,6 +556,14 @@ export function AskMemoirePage() {
               </button>
             ))}
           </div>
+          {scope === 'all' && (
+            // These three write about one customer. Offered over the whole
+            // workspace they either dead-end or answer about whoever happens to
+            // sort first, so the requirement is stated before the click.
+            <p className="mt-2 text-xs text-gray-500">
+              These three need one customer - pick an account or opportunity in the context selector first.
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -588,7 +596,17 @@ export function AskMemoirePage() {
           <p className="text-xs font-bold uppercase tracking-wide text-gray-400">What this can answer</p>
           <ul className="mt-1.5 grid gap-x-4 gap-y-0.5 text-xs leading-5 text-gray-600 sm:grid-cols-2">
             {advertisedQuestions.map((advertised) => (
-              <li key={advertised}>{advertised}</li>
+              // Every one of these routes to an engine now, so there is no
+              // reason to make the operator retype what the page just offered.
+              <li key={advertised}>
+                <button
+                  type="button"
+                  onClick={() => ask(advertised)}
+                  className="text-left underline decoration-gray-300 underline-offset-2 hover:text-brand-blue hover:decoration-brand-blue"
+                >
+                  {advertised}
+                </button>
+              </li>
             ))}
           </ul>
           <p className="mt-2 text-xs text-emerald-700">
