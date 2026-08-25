@@ -62,6 +62,17 @@ export type PlanItem = {
   workBrand: string;
   /** Which of the seven domains internal work belongs to. Null for the rest. */
   workDomain: BusinessDomain | null;
+  /**
+   * The person this line is with, when the owning record names one.
+   *
+   * Read from wherever the truth already sits - the decision maker on a deal,
+   * the stakeholder a touch was captured against, the contact the operator set
+   * on their own line - so the calendar can say who a visit is *with* rather
+   * than only which company it is for. It is shown, which is the point: an edit
+   * whose result never appears on screen reads to the operator as an edit that
+   * did not save.
+   */
+  contactName?: string;
 };
 
 export type PlanDay = {
@@ -114,6 +125,12 @@ export type PlanRecord = {
    * unattached admin.
    */
   linkedBrand?: string;
+  /**
+   * The person this line is with. A plan line is nearly always "see somebody",
+   * and without this the only place to put a name was inside the sentence,
+   * where nothing else in the workspace could read it.
+   */
+  linkedStakeholderName?: string;
   /**
    * The suggestion this record answers. Present whether the suggestion was
    * taken or refused, so acceptance rate has a denominator - the same
@@ -218,6 +235,7 @@ export function buildPlanBoard(input: {
       label: record.label,
       done: record.done,
       doneAt: record.doneAt,
+      contactName: (record.linkedStakeholderName || '').trim(),
       // A linked item deep-links to the exact record it belongs to, so the
       // board stays wired into the same data spine as everything else.
       href: record.linkedOpportunityId
@@ -333,6 +351,7 @@ function buildCarriedForwardItems(input: {
     label: record.label,
     done: record.done,
     doneAt: record.doneAt,
+    contactName: (record.linkedStakeholderName || '').trim(),
     href: record.linkedOpportunityId
       ? `/app/opportunities?opportunityId=${encodeURIComponent(record.linkedOpportunityId)}`
       : record.linkedAccountName
@@ -362,6 +381,7 @@ function buildDealItems(opportunities: CrmLiteOpportunity[], range: PlanRange, t
       tag: opportunity.accountName || 'Unknown account',
       label: opportunity.nextAction || 'Next action not written yet',
       done: false,
+      contactName: (opportunity.decisionMaker || '').trim(),
       href: '/app/opportunities',
       overdue: compareSafeBusinessDate(opportunity.nextActionDate, today) < 0,
     }));
@@ -461,6 +481,7 @@ function buildCaptureItems(
         tag: account,
         label: condensePlanLabel(candidate.title),
         done: false,
+        contactName: (activity.stakeholderName || activity.contactName || '').trim(),
         // Land on the exact touch that raised this, so its evidence is one click away.
         href: `/app/timeline?view=history&activityId=${encodeURIComponent(activity.id)}`,
         overdue: compareSafeBusinessDate(candidate.dueDate, today) < 0,
@@ -627,6 +648,7 @@ export function createPersonalPlanRecord(input: {
   linkedOpportunityId?: string;
   linkedAccountName?: string;
   linkedBrand?: string;
+  linkedStakeholderName?: string;
   suggestionKey?: string;
   source?: 'demo' | 'user';
   isSample?: boolean;
@@ -645,6 +667,7 @@ export function createPersonalPlanRecord(input: {
     linkedOpportunityId: input.linkedOpportunityId,
     linkedAccountName: input.linkedAccountName,
     linkedBrand: input.linkedBrand,
+    linkedStakeholderName: input.linkedStakeholderName,
     suggestionKey: input.suggestionKey,
     createdAt: now,
     updatedAt: now,
@@ -986,11 +1009,34 @@ export function planKindTone(kind: PlanItemKind) {
  */
 const MAX_LABEL_LENGTH = 80;
 
+/**
+ * The full stop in "Mr." is not the end of a sentence.
+ *
+ * Taking the first sentence turned "Follow up Mr. Gioi for investigating" into
+ * "Follow up Mr" - the card dropped the one word that says who the visit is
+ * with, and there was nothing on screen to suggest anything had been cut. Every
+ * honorific in this book is short and capitalised, and so is every company
+ * suffix ("Co.", "Ltd.", "JSC."), so a stop after a short word is treated as an
+ * abbreviation rather than a sentence end. The cost of guessing wrong that way
+ * is a slightly longer label, which the length cap catches anyway; the cost of
+ * guessing wrong the other way is a name deleted from the plan.
+ */
+const SENTENCE_END = /[.!?](?=\s+\S)/g;
+const ABBREVIATION_END = /(^|\s)\S{1,4}\.$/;
+
 export function condensePlanLabel(rawLabel: string) {
   const trimmed = (rawLabel || '').trim().replace(/\s+/g, ' ');
   if (!trimmed) return '';
 
-  const firstSentence = /^(.+?[.!?])\s+\S/.exec(trimmed)?.[1] || trimmed;
+  // The first real sentence end, skipping abbreviations. A title made only of
+  // abbreviated stops keeps all of its words and is capped on length instead.
+  let firstSentence = trimmed;
+  for (const match of trimmed.matchAll(SENTENCE_END)) {
+    const candidate = trimmed.slice(0, match.index + 1);
+    if (ABBREVIATION_END.test(candidate)) continue;
+    firstSentence = candidate;
+    break;
+  }
   const candidate = firstSentence.replace(/[.\s]+$/, '');
   if (candidate.length <= MAX_LABEL_LENGTH) return candidate;
 

@@ -302,6 +302,26 @@ aside :where(a, button):focus-visible {
     min-height: 1.25rem;
     min-width: 1.25rem;
   }
+
+  /* An action that fades in on hover does not exist on a thumb. The plan
+     board's row actions - edit the line, remove it - were drawn at opacity 0
+     until the pointer arrived, which on a tablet is never: the only route to
+     editing a day's work was a mouse.
+
+     Typed with the element so it outranks the utility rather than tying with
+     it: a tie is decided by source order, and source order is a property of
+     how the CSS happens to be assembled. */
+  button.row-action {
+    opacity: 1;
+  }
+}
+
+/* Reachable by keyboard as well as by pointer. A focusable control drawn at
+   opacity 0 is a tab stop that shows the user nothing, so focus reveals it on
+   exactly the same terms hover does. */
+.row-action:focus-visible,
+.row-action:focus {
+  opacity: 1;
 }
 
 /* Checkboxes rendered by the platform default to a grey-blue that belongs to no

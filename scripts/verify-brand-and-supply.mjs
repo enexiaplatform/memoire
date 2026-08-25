@@ -117,10 +117,17 @@ import {
 {
   const plan = readFileSync(new URL('../src/features/plan/WeeklyPlanPage.tsx', import.meta.url), 'utf8');
   assert.match(plan, /supplierCommitmentsAsOwnObligations/, 'the week must include what you owe your principals');
+
+  // The sentence that names the record holding an obligation's date is written
+  // once and read from two places: the drag handler, when the item refuses to
+  // move, and the detail drawer, when it opens read-only. Two copies of it is
+  // two chances to send the operator to the wrong screen.
+  assert.match(plan, /planObligationOwnerMessage\(item\)/, 'the board asks the shared rule which record holds the date');
+  const planEdit = readFileSync(new URL('../src/utils/planItemEdit.ts', import.meta.url), 'utf8');
   assert.match(
-    plan,
+    planEdit,
     /includes\(SUPPLIER_OBLIGATION_MARKER\)/,
-    'the board must recognise a supplier obligation with includes - the board wraps its own prefix on, so startsWith reads false',
+    'that rule must recognise a supplier obligation with includes - the board wraps its own prefix on, so startsWith reads false',
   );
 
   const money = readFileSync(new URL('../src/features/revenue/RevenueViewPage.tsx', import.meta.url), 'utf8');

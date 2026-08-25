@@ -401,6 +401,20 @@ describe('buildPlanSuggestions', () => {
     assert.doesNotMatch(long, /\s\.\.\.$/, 'no dangling space before the ellipsis');
   });
 
+  test('an honorific is not a sentence end', () => {
+    // "Follow up Mr. Gioi for investigating" used to reach the plan board as
+    // "Follow up Mr" - the card dropped the one word saying who the visit was
+    // with, and nothing on screen said anything had been cut.
+    assert.equal(
+      condensePlanLabel('Follow up Mr. Gioi for investigating'),
+      'Follow up Mr. Gioi for investigating',
+    );
+    assert.equal(condensePlanLabel('Ship to Acme Co. and invoice them'), 'Ship to Acme Co. and invoice them');
+    // A real sentence break still ends the label, which is the whole point of
+    // condensing a captured paragraph down to one readable line.
+    assert.equal(condensePlanLabel('Call the buyer. Send the CoA afterwards'), 'Call the buyer');
+  });
+
   test('ignores internal work and anything outside the lookback window', () => {
     const suggestions = buildPlanSuggestions({
       activities: [

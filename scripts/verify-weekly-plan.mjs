@@ -176,7 +176,13 @@ const anchor = new Date(2026, 6, 22); // Wed of the Mon 2026-07-20 week
   assert.match(sharedToggle, /createDerivedCompletionRecord/, 'a derived tick is stored as its own completion stub');
 
   // Every write the board is allowed to make, and the only fields it may set.
-  const dealWrites = [...page.matchAll(/opportunityToFormInput\(opportunity\), ([a-zA-Z]+):/g)].map((match) => match[1]);
+  //
+  // Every field in each write, not just the one nearest the spread: the old
+  // pattern stopped at the first key, so a second field added to the same
+  // object - the customer, the decision maker, the value - would have moved a
+  // whole opportunity from a calendar cell with this contract still green.
+  const dealWrites = [...page.matchAll(/opportunityToFormInput\(opportunity\),([\s\S]*?)\}/g)]
+    .flatMap((match) => [...match[1].matchAll(/([a-zA-Z]+):/g)].map((field) => field[1]));
   assert.deepEqual(
     [...new Set(dealWrites)].sort(),
     ['nextAction', 'nextActionDate'],
@@ -375,6 +381,194 @@ const anchor = new Date(2026, 6, 22); // Wed of the Mon 2026-07-20 week
   const page = readFileSync(new URL('../src/features/plan/WeeklyPlanPage.tsx', import.meta.url), 'utf8');
   assert.match(page, /isAuthenticated=\{isAuthenticated\}/, 'the pill is told whether the user is signed in');
   assert.match(page, /cloudAvailable=\{canUseSalesActivityCloudStore\(dataUserId\)\}/, 'the pill is told whether cloud is reachable');
+}
+
+// 11. A line on the week can be edited in full - the day, the customer, the
+//     person it is with, the wording - and every field is written into the
+//     record that owns it. Which fields are editable is decided by where the
+//     field lives, never by what would be convenient on a calendar.
+{
+  const {
+    applyPersonalPlanEdit,
+    buildCaptureEditChanges,
+    buildPlanItemEditDraft,
+    captureEditUnlinksDeal,
+    planItemEditPolicy,
+  } = await import('../src/utils/planItemEdit.ts');
+
+  const boardOf = (input) => buildPlanBoard({
+    periodType: 'week', anchorDate: anchor, obligations: [], today: '2026-07-22',
+    opportunities: [], activities: [], records: [], ...input,
+  });
+  const itemOn = (board, date) => board.days.find((day) => day.date === date).items[0];
+
+  // 11a. The draft is read from the owning record, never from the card. The
+  //      board condenses a long capture title to fit a day column, so editing
+  //      what is on screen would silently truncate what the operator wrote.
+  {
+    const longTitle = 'Send the revised quotation with the CoA and the updated lead time to purchasing before Friday';
+    const touch = {
+      id: 'a1', accountName: 'MDL', linkedAccountName: '', linkedOpportunityId: '', linkedOpportunityName: '',
+      activityType: 'Customer meeting', activityDate: '2026-07-20', summary: '', linkStatus: 'Unlinked',
+      nextAction: longTitle, dueDate: '2026-07-22', nextActions: [], stakeholderName: 'Mr. Phuoc',
+      stakeholderRole: 'Purchasing', createdAt: '', updatedAt: '', storageMode: 'local',
+    };
+    const item = itemOn(boardOf({ activities: [touch] }), '2026-07-22');
+    assert.notEqual(item.label, longTitle, 'the card condenses a long capture title');
+
+    const draft = buildPlanItemEditDraft(item, { records: [], opportunities: [], activities: [touch] });
+    assert.equal(draft.label, longTitle, 'the drawer opens with the whole sentence the operator wrote');
+    assert.equal(draft.contactName, 'Mr. Phuoc', 'and with the person the touch was captured against');
+    assert.equal(draft.contactRole, 'Purchasing');
+  }
+
+  // 11b. Where a field lives decides whether this surface may write it. A deal
+  //      item may be rescheduled and reworded; its customer and decision maker
+  //      belong to the opportunity, and moving those from a day column would
+  //      move the deal's money and history with them.
+  {
+    const deal = opportunity('o1', 'MDL', 'Connect Mr. Tinh', '2026-07-20');
+    const dealPolicy = planItemEditPolicy(itemOn(boardOf({ opportunities: [deal] }), '2026-07-20'));
+    assert.deepEqual(dealPolicy.fields, { label: true, date: true, account: false, contact: false });
+    assert.ok(dealPolicy.lockedReason, 'and the drawer says why, rather than hiding the fields');
+    assert.match(dealPolicy.ownerHref, /opportunityId=o1/, 'with a link to the record that owns them');
+
+    const obligationPolicy = planItemEditPolicy(
+      itemOn(boardOf({ obligations: [obligation('e1', 'VAT payment', 'Tax office', '2026-07-23')] }), '2026-07-23'),
+    );
+    assert.deepEqual(
+      obligationPolicy.fields,
+      { label: false, date: false, account: false, contact: false },
+      'an obligation is held by the quote or expense behind it, so nothing here is editable',
+    );
+    assert.ok(obligationPolicy.lockedReason, 'and the drawer names the record that does hold the date');
+
+    const typed = createPersonalPlanRecord({ date: '2026-07-21', label: 'Business trip claim' });
+    const typedPolicy = planItemEditPolicy(itemOn(boardOf({ records: [typed] }), '2026-07-21'));
+    assert.deepEqual(typedPolicy.fields, { label: true, date: true, account: true, contact: true });
+    assert.equal(typedPolicy.deletable, true, 'a line you typed is yours to remove');
+  }
+
+  // 11c. A typed line takes every field. The customer only becomes a *link*
+  //      when the workspace already knows it - a name typed by hand stays an
+  //      unresolved tag on purpose, because the panel below the board offers to
+  //      create exactly those and skips any record that already claims a link.
+  {
+    const record = createPersonalPlanRecord({ date: '2026-07-20', label: '[Internal] Submit KPI' });
+    const moved = applyPersonalPlanEdit(record, {
+      label: 'Submit KPI and the quarterly claim',
+      date: '2026-07-23',
+      accountName: 'Trust Farma',
+      accountKind: '',
+      opportunityId: '',
+      opportunityName: '',
+      contactName: 'Ms. Yen',
+      contactRole: '',
+    });
+    assert.equal(moved.date, '2026-07-23', 'the day moves');
+    assert.equal(moved.label, 'Submit KPI and the quarterly claim');
+    assert.equal(moved.tag, 'Trust Farma', 'the customer is written as the tag');
+    assert.equal(moved.linkedStakeholderName, 'Ms. Yen', 'and the person is kept as a field, not buried in the words');
+    assert.equal(
+      moved.linkedAccountName,
+      undefined,
+      'a customer Memoire does not know yet stays unresolved, so it can still be offered as an account to create',
+    );
+
+    const linked = applyPersonalPlanEdit(record, {
+      label: 'Submit KPI', date: '2026-07-20', accountName: 'MDL', accountKind: 'deal',
+      opportunityId: 'o1', opportunityName: 'MDL deal', contactName: '', contactRole: '',
+    });
+    assert.equal(linked.linkedAccountName, 'MDL', 'a customer picked from the workspace is linked');
+    assert.equal(linked.linkedOpportunityId, 'o1', 'and so is the deal it was picked from');
+
+    // The store rebuilds a plan record field by field, so a field missing from
+    // the sanitizer is a field deleted on the next write: the contact would
+    // save, survive one render, and be gone after a reload.
+    const planStore = readFileSync(new URL('../src/services/planItemStore.ts', import.meta.url), 'utf8');
+    assert.match(
+      planStore,
+      /linkedStakeholderName: typeof candidate\.linkedStakeholderName === 'string'/,
+      'the plan item store keeps the contact through a round trip',
+    );
+  }
+
+  // 11d. A capture edit rewrites only the action it came from, and settles the
+  //      deal link at the same time. The board reads `linkedAccountName ||
+  //      accountName`, so correcting the customer while leaving a stale link
+  //      would show the old customer back on screen with nothing saying why.
+  {
+    const touch = {
+      id: 'a1', accountName: 'MDL', linkedAccountName: 'MDL', linkedOpportunityId: 'o1',
+      linkedOpportunityName: 'MDL deal', linkStatus: 'Linked', activityType: 'Customer meeting',
+      activityDate: '2026-07-20', summary: '', nextAction: 'Send quote', dueDate: '2026-07-22',
+      nextActions: [{ title: 'Book the visit', dueDate: '2026-07-23' }],
+      createdAt: '', updatedAt: '', storageMode: 'local',
+    };
+    const board = boardOf({ activities: [touch] });
+    const headline = itemOn(board, '2026-07-22');
+    const structured = itemOn(board, '2026-07-23');
+
+    const rescheduled = buildCaptureEditChanges({
+      activity: touch, item: structured, slot: 'n0',
+      draft: {
+        label: 'Book the visit with purchasing', date: '2026-07-24', accountName: 'MDL', accountKind: 'deal',
+        opportunityId: 'o1', opportunityName: 'MDL deal', contactName: 'Mr. Phuoc', contactRole: 'Purchasing',
+      },
+    });
+    assert.equal(rescheduled.nextAction, undefined, 'a structured action moving must not drag the headline with it');
+    assert.equal(rescheduled.dueDate, undefined);
+    assert.deepEqual(
+      rescheduled.nextActions,
+      [{ title: 'Book the visit with purchasing', dueDate: '2026-07-24' }],
+      'only the slot the card came from is rewritten',
+    );
+    assert.equal(rescheduled.stakeholderName, 'Mr. Phuoc', 'the person lands on the touch');
+    assert.equal(rescheduled.linkStatus, 'Linked', 'and the same customer keeps the deal link');
+
+    const moved = buildCaptureEditChanges({
+      activity: touch, item: headline, slot: 'main',
+      draft: {
+        label: 'Send quote', date: '2026-07-22', accountName: 'Trust Farma', accountKind: '',
+        opportunityId: '', opportunityName: '', contactName: '', contactRole: '',
+      },
+    });
+    assert.equal(moved.accountName, 'Trust Farma', 'the corrected customer is written onto the touch');
+    assert.equal(moved.linkedAccountName, '', 'and the link that named the old customer is dropped');
+    assert.equal(moved.linkStatus, 'Unlinked');
+    assert.equal(moved.linkedOpportunityId, '');
+    assert.equal(
+      captureEditUnlinksDeal(touch, {
+        label: '', date: '', accountName: 'Trust Farma', accountKind: '',
+        opportunityId: '', opportunityName: '', contactName: '', contactRole: '',
+      }),
+      true,
+      'and the drawer can warn before the operator commits, not after',
+    );
+  }
+
+  // 11e. The person a line is with is shown on the board. An edit whose result
+  //      never appears on screen is an edit the operator reads as lost.
+  {
+    const withContact = createPersonalPlanRecord({
+      date: '2026-07-20', label: 'Book the visit', tag: 'MDL', linkedStakeholderName: 'Mr. Phuoc',
+    });
+    assert.equal(
+      itemOn(boardOf({ records: [withContact] }), '2026-07-20').contactName,
+      'Mr. Phuoc',
+      'the board carries the contact through to the card',
+    );
+    assert.equal(
+      itemOn(boardOf({ opportunities: [{ ...opportunity('o1', 'MDL', 'Connect', '2026-07-20'), decisionMaker: 'Mr. Tinh' }] }), '2026-07-20').contactName,
+      'Mr. Tinh',
+      'a deal item shows the decision maker already on the record',
+    );
+
+    const page = readFileSync(new URL('../src/features/plan/WeeklyPlanPage.tsx', import.meta.url), 'utf8');
+    assert.match(page, /item\.contactName && !labelNamesContact\(/, 'the card renders the contact, without repeating a name the sentence already has');
+    assert.match(page, /onClick=\{\(\) => openDetail\(item\)\}/, 'the pencil opens the line in full');
+    assert.match(page, /<PlanItemDetailDrawer/, 'and the drawer is wired into the board');
+  }
 }
 
 console.log('Weekly plan board contract verified.');

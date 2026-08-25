@@ -7,7 +7,7 @@ import { hasLocalSampleData } from '../../utils/dataMode';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import {
   canUseSalesActivityCloudStore,
-  updateSalesActivitySchedule,
+  updateSalesActivityDetails,
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
 import { opportunityToFormInput, updateOpportunity } from '../../services/opportunityStore';
@@ -20,7 +20,6 @@ import { buildOwnObligations } from '../../utils/ownObligations';
 import { loadSupplierCommitmentsForWorkspace } from '../../services/supplierCommitmentStore';
 import {
   supplierCommitmentsAsOwnObligations,
-  SUPPLIER_OBLIGATION_MARKER,
   type SupplierCommitmentRecord,
 } from '../../utils/supplierCommitments';
 import { buildPlanSuggestions, type PlanSuggestion } from '../../utils/planSuggestions';
@@ -55,7 +54,20 @@ import {
   loadPlanItemsForWorkspace,
   savePlanItem,
 } from '../../services/planItemStore';
+import {
+  applyPersonalPlanEdit,
+  buildCaptureEditChanges,
+  buildPlanItemEditDraft,
+  planItemEditDate,
+  planItemEditPolicy,
+  planObligationOwnerMessage,
+  type PlanItemEditDraft,
+} from '../../utils/planItemEdit';
+import { PlanItemDetailDrawer, type PlanContactOption } from './PlanItemDetailDrawer';
+import type { StakeholderRecord } from '../../services/stakeholderStore';
 import { buildActivityLedgerContext, resolvePlanItemSubject } from '../../utils/activityLedger';
+import { accountKey, normalizeEntityName } from '../../utils/accountIdentity';
+import { normalizeSearchText } from '../../utils/textSearch';
 import { buildAccountAliasIndex } from '../../utils/accountAliases';
 import type { AccountMergeRecord } from '../../services/accountMergeStore';
 import { SubjectChip } from '../../components/common/SubjectChip';
@@ -113,6 +125,14 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
   const [editingId, setEditingId] = useState('');
   const [editDraft, setEditDraft] = useState('');
   const [boardMessage, setBoardMessage] = useState('');
+  const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
+  // The line opened for a full edit, and the draft being made of it. Held here
+  // rather than in the drawer so a save can be applied against the same records
+  // the board is drawn from.
+  const [detailItem, setDetailItem] = useState<PlanItem | null>(null);
+  const [detailDraft, setDetailDraft] = useState<PlanItemEditDraft | null>(null);
+  const [detailSaving, setDetailSaving] = useState(false);
+  const [detailError, setDetailError] = useState('');
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
@@ -124,6 +144,7 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
       setQuotes(cached.quotes);
       setExpenses(cached.expenses);
       setAccountMerges(cached.accountMerges);
+      setStakeholders(cached.stakeholders);
       setLoading(false);
     } else {
       setLoading(true);
@@ -133,6 +154,10 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
       setQuotes(workspaceData.quotes);
       setExpenses(workspaceData.expenses);
       setAccountMerges(workspaceData.accountMerges);
+      // Who the workspace already knows at each customer, so "who is it with"
+      // offers the people on the record instead of asking the operator to
+      // retype a name the book already holds.
+      setStakeholders(workspaceData.stakeholders);
       setLoading(false);
     }
 
@@ -213,6 +238,35 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
     () => accounts.filter((account) => account.kaFlag === true).map((account) => account.accountName),
     [accounts],
   );
+  /**
+   * Every person the workspace can name, and the customer they belong to.
+   *
+   * Stakeholder records first, then the people captures were recorded against -
+   * a name written on a touch and never filed as a stakeholder is still the
+   * person the next visit is with, and asking the operator to retype it is the
+   * duplicate work this product exists to remove.
+   */
+  const contactOptions = useMemo<PlanContactOption[]>(() => {
+    const seen = new Map<string, PlanContactOption>();
+    const add = (name: string, roleTitle: string, accountName: string) => {
+      const trimmed = (name || '').trim();
+      if (!trimmed) return;
+      // Keyed the way every other surface keys a customer. A raw lowercase
+      // would file "CÔNG TY DƯỢC PHẨM CỬU LONG" and "Cong ty Duoc Pham Cuu
+      // Long" as two different companies and offer the same person twice.
+      const key = `${normalizeEntityName(trimmed)}|${accountKey(accountName || '')}`;
+      if (seen.has(key)) return;
+      seen.set(key, { name: trimmed, roleTitle: (roleTitle || '').trim(), accountName: (accountName || '').trim() });
+    };
+    stakeholders.forEach((person) => add(person.name, person.roleTitle, person.accountName));
+    activities.forEach((activity) => add(
+      activity.stakeholderName || activity.contactName || '',
+      activity.stakeholderRole || '',
+      activity.linkedAccountName || activity.accountName || '',
+    ));
+    opportunities.forEach((opportunity) => add(opportunity.decisionMaker, 'Decision maker', opportunity.accountName));
+    return [...seen.values()];
+  }, [activities, opportunities, stakeholders]);
   const draftLinkOptions = useMemo(() => (
     draftLink ? [] : buildPlanLinkOptions({ draft, opportunities, accountNames: knownAccountNames, brands: knownBrands })
   ), [draft, draftLink, knownAccountNames, knownBrands, opportunities]);
@@ -291,19 +345,16 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
               `n${index}` === target.slot ? { ...action, dueDate: targetDate } : action
             )),
           };
-        const updated = await updateSalesActivitySchedule(activity, changes, dataUserId);
+        const updated = await updateSalesActivityDetails(activity, changes, dataUserId);
         carryCompletionStub(item, buildCaptureDerivedKey(activity.id, targetDate, target.slot), targetDate);
         setActivities((current) => current.map((candidate) => (candidate.id === activity.id ? updated : candidate)));
         return;
       }
 
       // Three kinds of record can raise an obligation, and the message has to
-      // name the right one or it sends the operator to the wrong screen.
-      setBoardMessage(
-        item.id.includes(SUPPLIER_OBLIGATION_MARKER)
-          ? `Change the date with the principal on Orders - "${item.tag}" is holding this one.`
-          : 'Payments and deliveries you owe move when the quote or expense behind them changes date.',
-      );
+      // name the right one or it sends the operator to the wrong screen. The
+      // detail drawer answers the same question, from the same sentence.
+      setBoardMessage(planObligationOwnerMessage(item));
     } catch {
       setBoardMessage('Could not move that item. Nothing was changed.');
     }
@@ -368,13 +419,98 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
               `n${index}` === target.slot ? { ...action, title: raw } : action
             )),
           };
-        const updated = await updateSalesActivitySchedule(activity, changes, dataUserId);
+        const updated = await updateSalesActivityDetails(activity, changes, dataUserId);
         setActivities((current) => current.map((candidate) => (candidate.id === activity.id ? updated : candidate)));
       }
     } catch {
       setBoardMessage('Could not save that edit. The original wording stands.');
     }
   }, [activities, dataUserId, editDraft, opportunities, records]);
+
+  /**
+   * Opens one line in full, with the draft read from the record that owns it
+   * rather than from the card - the card's wording is condensed to fit a day
+   * column, and editing that would silently truncate the operator's sentence.
+   */
+  const openDetail = useCallback((item: PlanItem) => {
+    setEditingId('');
+    setDetailError('');
+    setDetailItem(item);
+    setDetailDraft(buildPlanItemEditDraft(item, { records, opportunities, activities }));
+  }, [activities, opportunities, records]);
+
+  const closeDetail = useCallback(() => {
+    setDetailItem(null);
+    setDetailDraft(null);
+    setDetailError('');
+    setDetailSaving(false);
+  }, []);
+
+  /**
+   * Saves the whole draft in one write per record.
+   *
+   * One write, not one per field: a day change followed by a customer change
+   * would read the second from state the first had not landed in yet, and the
+   * later write would put the older value back.
+   */
+  const saveDetail = useCallback(async () => {
+    if (!detailItem || !detailDraft) return;
+    const policy = planItemEditPolicy(detailItem);
+    const target = getPlanItemWriteTarget(detailItem);
+    setDetailSaving(true);
+    setDetailError('');
+    setBoardMessage('');
+
+    try {
+      if (target.kind === 'personal') {
+        const existing = records.find((record) => record.id === target.recordId);
+        if (!existing) throw new Error('missing record');
+        setRecords(savePlanItem(applyPersonalPlanEdit(existing, detailDraft)));
+        closeDetail();
+        return;
+      }
+
+      if (target.kind === 'deal') {
+        const opportunity = opportunities.find((candidate) => candidate.id === target.opportunityId);
+        if (!opportunity) throw new Error('missing deal');
+        // Only the two fields this board is allowed to touch. The customer and
+        // the decision maker are the deal's own, and the drawer shows them
+        // locked with a link rather than pretending otherwise.
+        const result = await updateOpportunity(
+          opportunity,
+          {
+            ...opportunityToFormInput(opportunity),
+            nextAction: detailDraft.label.trim() || opportunity.nextAction,
+            nextActionDate: detailDraft.date || opportunity.nextActionDate,
+          },
+          dataUserId,
+        );
+        carryCompletionStub(detailItem, buildDealDerivedKey(opportunity.id, result.opportunity.nextActionDate), result.opportunity.nextActionDate);
+        setOpportunities((current) => current.map((candidate) => (candidate.id === opportunity.id ? result.opportunity : candidate)));
+        if (result.warning) setBoardMessage(result.warning);
+        closeDetail();
+        return;
+      }
+
+      if (target.kind === 'capture') {
+        const activity = activities.find((candidate) => candidate.id === target.activityId);
+        if (!activity) throw new Error('missing touch');
+        const changes = buildCaptureEditChanges({ activity, item: detailItem, slot: target.slot, draft: detailDraft });
+        const updated = await updateSalesActivityDetails(activity, changes, dataUserId);
+        const nextDate = planItemEditDate(detailItem, detailDraft);
+        carryCompletionStub(detailItem, buildCaptureDerivedKey(activity.id, nextDate, target.slot), nextDate);
+        setActivities((current) => current.map((candidate) => (candidate.id === activity.id ? updated : candidate)));
+        closeDetail();
+        return;
+      }
+
+      setDetailError(policy.lockedReason);
+      setDetailSaving(false);
+    } catch {
+      setDetailError('Could not save that. Nothing was changed — the record still says what it said.');
+      setDetailSaving(false);
+    }
+  }, [activities, carryCompletionStub, closeDetail, dataUserId, detailDraft, detailItem, opportunities, records]);
 
   const addPersonalItem = useCallback((date: string) => {
     const label = draft.trim();
@@ -807,6 +943,17 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
                       ) : (
                         <span className={`font-medium ${item.done ? 'line-through' : ''}`}>{item.label}</span>
                       )}
+                      {/* Who it is with, when the record names somebody the
+                          sentence does not. An edit whose result never shows on
+                          the board is an edit the operator reads as lost, so
+                          the contact they just set has to be visible here - and
+                          repeating a name already written into the line would
+                          be noise, which is what the second test rules out. */}
+                      {item.contactName && !labelNamesContact(item.label, item.contactName) && (
+                        <span className="ml-1 whitespace-nowrap text-[11px] font-semibold text-gray-500">
+                          · {item.contactName}
+                        </span>
+                      )}
                       {item.overdue && !item.done && (
                         /* A carried promise says the day it was actually owed.
                            "Overdue" alone, on a card sitting under today's
@@ -819,12 +966,19 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
                     </p>
                     )}
                   </div>
-                  {editable && !isEditing && (
+                  {/* The pencil opens the line in full - day, customer,
+                      contact, wording - rather than repeating the click on the
+                      sentence, which already starts an inline edit. It is
+                      offered on obligations too: a line that cannot be changed
+                      here still owes the operator an answer to "why not, and
+                      where do I change it", and refusing to open said nothing. */}
+                  {!isEditing && (
                     <button
                       type="button"
-                      aria-label={`Edit ${item.label}`}
-                      onClick={() => startEdit(item)}
-                      className="relative shrink-0 rounded p-0.5 text-gray-300 opacity-0 transition after:absolute after:-inset-1.5 after:content-[''] hover:bg-gray-200 hover:text-gray-700 group-hover:opacity-100"
+                      aria-label={`Edit details of ${item.label}`}
+                      title="Edit details"
+                      onClick={() => openDetail(item)}
+                      className="row-action relative shrink-0 rounded p-0.5 text-gray-300 opacity-0 transition after:absolute after:-inset-1.5 after:content-[''] hover:bg-gray-200 hover:text-gray-700 group-hover:opacity-100"
                     >
                       <Pencil className="h-3 w-3" />
                     </button>
@@ -834,7 +988,7 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
                       type="button"
                       aria-label={`Remove ${item.label}`}
                       onClick={() => removePersonalItem(item.id)}
-                      className="shrink-0 rounded p-0.5 text-gray-300 opacity-0 transition hover:bg-gray-200 hover:text-gray-700 group-hover:opacity-100"
+                      className="row-action shrink-0 rounded p-0.5 text-gray-300 opacity-0 transition hover:bg-gray-200 hover:text-gray-700 group-hover:opacity-100"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -965,12 +1119,54 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
 
       <p className="mt-4 text-xs leading-5 text-gray-400">
         Items in green were pulled in from a capture - you wrote them once, they landed here on their own. Drag any item
-        to another day to reschedule it, or use the pencil to rewrite it - both write straight into the deal or touch it
-        came from. Checking an item records that you did your plan; it does not change the deal, so capture the touch
-        when it happens and the rest of Memoire stays in step.
+        to another day to reschedule it, or open the pencil to change the day, the customer, the person you are seeing
+        and the wording together - all of it writes straight into the deal or touch it came from. Checking an item
+        records that you did your plan; it does not change the deal, so capture the touch when it happens and the rest
+        of Memoire stays in step.
       </p>
+
+      {detailItem && detailDraft && (
+        <PlanItemDetailDrawer
+          item={detailItem}
+          draft={detailDraft}
+          onDraftChange={setDetailDraft}
+          opportunities={opportunities}
+          activities={activities}
+          accountNames={knownAccountNames}
+          brands={knownBrands}
+          contacts={contactOptions}
+          saving={detailSaving}
+          error={detailError}
+          onSave={() => void saveDetail()}
+          onDelete={detailItem.kind === 'personal'
+            ? () => { removePersonalItem(detailItem.id); closeDetail(); }
+            : undefined}
+          onClose={closeDetail}
+        />
+      )}
     </div>
   );
+}
+
+/**
+ * Whether the line already says the contact's name.
+ *
+ * "Follow up Mr. Phuoc" with Mr. Phuoc as the contact does not need "· Mr.
+ * Phuoc" after it. Matched on the surname-ish last word as well as the whole
+ * string, because the sentence is usually written with less of the name than
+ * the record holds.
+ */
+function labelNamesContact(label: string, contactName: string) {
+  // Both sides folded the same way, so "Nguyễn Văn Đức" written into the line
+  // and "Nguyen Van Duc" on the record are recognised as one person rather than
+  // printed twice on the same card.
+  const haystack = normalizeSearchText(label);
+  const name = normalizeSearchText(contactName);
+  if (!name) return true;
+  if (haystack.includes(name)) return true;
+  const parts = name.split(' ').filter((part) => part.length >= 3);
+  const distinctive = parts[parts.length - 1];
+  return Boolean(distinctive && haystack.includes(distinctive));
 }
 
 function describeInternalDomains(domains: { domain: string; count: number }[]) {

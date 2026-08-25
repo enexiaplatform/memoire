@@ -306,30 +306,59 @@ export async function updateSalesActivityLink(
   return { ...updated, storageMode: 'local' };
 }
 
-export type SalesActivityScheduleInput = {
+export type SalesActivityDetailsInput = {
   nextAction?: string;
   dueDate?: string;
   nextActions?: ClassifiedSalesActivity['nextActions'];
+  /**
+   * Who the touch is about and who it is with.
+   *
+   * These belong to the touch, not to the deal, which is exactly why the plan
+   * board is allowed to write them: correcting the customer on a capture fixes
+   * one record's own reading of itself, where correcting the customer on a deal
+   * would move an entire opportunity.
+   */
+  accountName?: string;
+  stakeholderName?: string;
+  stakeholderRole?: string;
+  linkedAccountName?: string;
+  linkedOpportunityId?: string;
+  linkedOpportunityName?: string;
+  linkStatus?: SalesActivityRecord['linkStatus'];
 };
 
 /**
- * Rewrites a touch's dated next actions - the write behind dragging a capture
- * item to another day, or editing its wording, on the Timeline board. The board
- * derives from the activity, so rescheduling has to land here: writing the new
- * date anywhere else would create a second copy of the commitment that the
+ * Rewrites what a touch says about itself - its dated next actions, the customer
+ * it is about, the person it was with, and the deal it points at.
+ *
+ * This is the write behind dragging a capture item to another day, editing its
+ * wording, or opening it on the plan board and correcting its details. The board
+ * derives from the activity, so every one of those has to land here: writing any
+ * of it anywhere else would create a second copy of the commitment that the
  * activity itself would quietly contradict.
+ *
+ * Every field is optional and `undefined` means "leave it alone", so a caller
+ * changing only the date cannot blank a stakeholder it never looked at.
  */
-export async function updateSalesActivitySchedule(
+export async function updateSalesActivityDetails(
   activity: SalesActivityRecord,
-  changes: SalesActivityScheduleInput,
+  changes: SalesActivityDetailsInput,
   userId?: string | null
 ): Promise<SalesActivityRecord> {
   const timestamp = new Date().toISOString();
+  const linkStatus = changes.linkStatus !== undefined ? changes.linkStatus : activity.linkStatus;
   const updated: SalesActivityRecord = {
     ...activity,
     nextAction: changes.nextAction !== undefined ? changes.nextAction : activity.nextAction,
     dueDate: changes.dueDate !== undefined ? sanitizeBusinessDate(changes.dueDate) : activity.dueDate,
     nextActions: changes.nextActions !== undefined ? normalizeNextActions(changes.nextActions) : activity.nextActions,
+    accountName: changes.accountName !== undefined ? changes.accountName : activity.accountName,
+    stakeholderName: changes.stakeholderName !== undefined ? changes.stakeholderName : activity.stakeholderName,
+    stakeholderRole: changes.stakeholderRole !== undefined ? changes.stakeholderRole : activity.stakeholderRole,
+    linkedAccountName: changes.linkedAccountName !== undefined ? changes.linkedAccountName : activity.linkedAccountName,
+    linkedOpportunityId: changes.linkedOpportunityId !== undefined ? changes.linkedOpportunityId : activity.linkedOpportunityId,
+    linkedOpportunityName: changes.linkedOpportunityName !== undefined ? changes.linkedOpportunityName : activity.linkedOpportunityName,
+    linkStatus,
     updatedAt: timestamp,
   };
 
@@ -340,6 +369,13 @@ export async function updateSalesActivitySchedule(
         next_action: updated.nextAction || null,
         due_date: sanitizeBusinessDate(updated.dueDate) || null,
         next_actions: normalizeNextActions(updated.nextActions),
+        account_name: updated.accountName || null,
+        stakeholder_name: updated.stakeholderName || null,
+        stakeholder_role: updated.stakeholderRole || null,
+        linked_account_name: updated.linkedAccountName || null,
+        linked_opportunity_id: updated.linkedOpportunityId || null,
+        linked_opportunity_name: updated.linkedOpportunityName || null,
+        link_status: updated.linkStatus,
         updated_at: timestamp,
       })
       .eq('id', activity.id)

@@ -120,6 +120,10 @@ function sanitizePlanRecord(value: unknown): PlanRecord | null {
     linkedOpportunityId: typeof candidate.linkedOpportunityId === 'string' ? candidate.linkedOpportunityId : undefined,
     linkedAccountName: typeof candidate.linkedAccountName === 'string' ? candidate.linkedAccountName : undefined,
     linkedBrand: typeof candidate.linkedBrand === 'string' ? candidate.linkedBrand : undefined,
+    // Sanitizing rebuilds the record field by field, so a field missing from
+    // this list is a field the store silently deletes on the next write - the
+    // contact would save, survive one render, and be gone after a reload.
+    linkedStakeholderName: typeof candidate.linkedStakeholderName === 'string' ? candidate.linkedStakeholderName : undefined,
     suggestionKey: typeof candidate.suggestionKey === 'string' ? candidate.suggestionKey : undefined,
     dismissed: candidate.dismissed === true,
     createdAt: typeof candidate.createdAt === 'string' && candidate.createdAt ? candidate.createdAt : now,
