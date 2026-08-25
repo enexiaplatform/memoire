@@ -157,7 +157,7 @@ const nextActionPatterns = [
 const opportunityPatterns = [
   /\b(?:opportunity|deal|project|pipeline|for)\s*[:-]\s*([^.\n;]+)/i,
   /\b(?:proposal|quote|tender|demo|poc)\s+(?:for|with)\s+([^.\n;]+)/i,
-  /\b([A-Z][A-Za-z0-9+/-]*(?:\s+(?:[A-Z][A-Za-z0-9+/-]*|\d+)){0,4}\s+Phase\s+\d+)\b/,
+  /\b(\p{Lu}[\p{L}\p{N}+/-]*(?:\s+(?:\p{Lu}[\p{L}\p{N}+/-]*|\d+)){0,4}\s+Phase\s+\d+)\b/u,
 ];
 
 const accountPatterns = [
@@ -168,23 +168,36 @@ const accountPatterns = [
   // the next note about the same customer named a different colleague and
   // created a second one. Case-sensitive, because the capital letter is the
   // only thing separating a company from the words around it.
-  /\b(?:[Mm]et|[Vv]isited|[Cc]alled|[Ss]aw|[Ee]mailed|[Ss]poke\s+(?:to|with))\s+(?:with\s+)?(?:Dr\.?|Mr\.?|Ms\.?|Mrs\.?)?\s*[A-Z][A-Za-z.'-]{1,30}(?:\s+[A-Z][A-Za-z.'-]{1,30}){0,3}\s+(?:at|from|of)\s+([A-Z][A-Za-z0-9&.' -]{2,60}?)(?=\s+(?:today|yesterday|this\s+\w+|last\s+\w+|about\b|on\s+\d)|[.\n;,]|$)/,
+  /\b(?:[Mm]et|[Vv]isited|[Cc]alled|[Ss]aw|[Ee]mailed|[Ss]poke\s+(?:to|with))\s+(?:with\s+)?(?:Dr\.?|Mr\.?|Ms\.?|Mrs\.?)?\s*\p{Lu}[\p{L}.'-]{1,30}(?:\s+\p{Lu}[\p{L}.'-]{1,30}){0,3}\s+(?:at|from|of)\s+(\p{Lu}[\p{L}\p{N}&.'+/ -]{2,60}?)(?=\s+(?:today|yesterday|this\s+\w+|last\s+\w+|about\b|on\s+\d)|[.\n;,]|$)/u,
   // The same sentence with the person's job title in the middle of it: "Met
   // Kenji Sato, procurement manager at Sakura Manufacturing". The pattern above
   // needs the company to follow the name directly, so an appositive - which is
   // how anybody introduces a contact they have just met - left the whole note
   // attached to nobody. The role is required to be lowercase and short, so this
   // reads a job title rather than swallowing half a sentence.
-  /\b(?:[Mm]et|[Vv]isited|[Cc]alled|[Ss]aw|[Ee]mailed|[Ss]poke\s+(?:to|with))\s+(?:with\s+)?(?:Dr\.?|Mr\.?|Ms\.?|Mrs\.?)?\s*[A-Z][A-Za-z.'-]{1,30}(?:\s+[A-Z][A-Za-z.'-]{1,30}){0,3}\s*,\s*[a-z][a-z/&' -]{2,40}?\s+(?:at|from|of)\s+([A-Z][A-Za-z0-9&.' -]{2,60}?)(?=\s+(?:today|yesterday|this\s+\w+|last\s+\w+|about\b|on\s+\d)|[.\n;,]|$)/,
+  // The job title may be capitalised. Requiring it to start lowercase read
+  // "Sofia Marques, head of engineering at X" and not "Sofia Marques, Head of
+  // Engineering at X", which is how people actually write it - so the customer
+  // in the second sentence was lost entirely while the first worked. The length
+  // bound and the required "at"/"from"/"of" are what keep this a title rather
+  // than half a sentence; the case never was.
+  // Tried in this order on purpose. "Head of Engineering at Grupo Pestana"
+  // and "the operations manager of Bayside Freight" are both real, and a
+  // single pattern cannot tell which "of" belongs to the title: the first
+  // reads the company after "at", the second after "of". So the stricter
+  // form runs first and only falls through when there is no "at"/"from" to
+  // find - which is exactly when "of" must be the company.
+  /\b(?:[Mm]et|[Vv]isited|[Cc]alled|[Ss]aw|[Ee]mailed|[Ss]poke\s+(?:to|with))\s+(?:with\s+)?(?:Dr\.?|Mr\.?|Ms\.?|Mrs\.?)?\s*\p{Lu}[\p{L}.'-]{1,30}(?:\s+\p{Lu}[\p{L}.'-]{1,30}){0,3}\s*,\s*\p{L}[\p{L}/&' -]{2,40}?\s+(?:at|from)\s+(\p{Lu}[\p{L}\p{N}&.'+/ -]{2,60}?)(?=\s+(?:today|yesterday|this\s+\w+|last\s+\w+|about\b|on\s+\d)|[.\n;,]|$)/u,
+  /\b(?:[Mm]et|[Vv]isited|[Cc]alled|[Ss]aw|[Ee]mailed|[Ss]poke\s+(?:to|with))\s+(?:with\s+)?(?:Dr\.?|Mr\.?|Ms\.?|Mrs\.?)?\s*\p{Lu}[\p{L}.'-]{1,30}(?:\s+\p{Lu}[\p{L}.'-]{1,30}){0,3}\s*,\s*\p{L}[\p{L}/&' -]{2,40}?\s+(?:at|from|of)\s+(\p{Lu}[\p{L}\p{N}&.'+/ -]{2,60}?)(?=\s+(?:today|yesterday|this\s+\w+|last\s+\w+|about\b|on\s+\d)|[.\n;,]|$)/u,
   // Case-sensitive: `/i` made the leading `[A-Z]` meaningless, so "Met the
   // buyer today" proposed an account called "the buyer".
-  /\b(?:[Mm]et|[Vv]isited|[Cc]alled)\s+([A-Z][A-Za-z0-9&.' -]{2,60}?)\s+(?:today|yesterday|this\s+(?:morning|afternoon|week)|on\s+\d)/,
+  /\b(?:[Mm]et|[Vv]isited|[Cc]alled)\s+(\p{Lu}[\p{L}\p{N}&.'+/ -]{2,60}?)\s+(?:today|yesterday|this\s+(?:morning|afternoon|week)|on\s+\d)/u,
   // The same verbs when a dash or a comma ends the clause instead of a time
   // word: "Called Halden Industrial - Dana Reyes likes the proposal". That is
   // the note printed on the product's own landing page, and it attached to
   // nobody. A run of capitalised words, so it stops before the person does.
-  /\b(?:[Mm]et|[Vv]isited|[Cc]alled)\s+([A-Z][A-Za-z0-9&'-]{1,30}(?:\s+[A-Z][A-Za-z0-9&'-]{1,30}){0,3})\s*(?:[-–—,:]|\.\s|$)/,
-  /\b(?:met|meeting|spoke|call|called)\s+with\s+(?:Dr\.?|Mr\.?|Ms\.?|Mrs\.?)?\s*[A-Z][A-Za-z.' -]{1,60}\s+at\s+([A-Z][A-Z0-9&.-]{1,20})(?:\b|[.\n;,])/i,
+  /\b(?:[Mm]et|[Vv]isited|[Cc]alled)\s+(\p{Lu}[\p{L}\p{N}&'-]{1,30}(?:\s+\p{Lu}[\p{L}\p{N}&'-]{1,30}){0,3})\s*(?:[-–—,:]|\.\s|$)/u,
+  /\b(?:met|meeting|spoke|call|called)\s+with\s+(?:Dr\.?|Mr\.?|Ms\.?|Mrs\.?)?\s*\p{Lu}[\p{L}.' -]{1,60}\s+at\s+(\p{Lu}[\p{Lu}\p{N}&.-]{1,20})(?:\b|[.\n;,])/iu,
   /\bat\s+([A-Z][A-Z0-9&.-]{1,20})(?:\b|[.\n;,])/,
   // The weakest fallback, and it used to run to the end of the sentence: it
   // read up to the next comma or full stop, so "Quote for Northstar Foods went
@@ -300,8 +313,22 @@ export function extractB2BEntities(rawNote: string, context: CaptureExtractionCo
     opportunityName: resolution.opportunityName,
     contactName: resolution.contactName,
     stakeholderName: resolution.contactName,
-    stakeholderRole: contact.role,
+    // "Met Sarah Doyle, the operations manager of Bayside Freight" gives a job
+    // title of "Operations manager of Bayside Freight", because a title clause
+    // reading "<role> of <thing>" cannot tell a function from a company -
+    // "Head of Engineering" and "manager of Bayside Freight" are the same
+    // shape. Once the customer has been resolved it can: whatever name the
+    // account came out as does not belong in the person's job title.
+    stakeholderRole: stripAccountFromRoleTitle(contact.role, resolution.accountName),
   };
+}
+
+function stripAccountFromRoleTitle(role: string, accountName: string) {
+  const trimmedRole = (role || '').trim();
+  const account = (accountName || '').trim();
+  if (!trimmedRole || !account) return trimmedRole;
+  const escaped = account.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return trimmedRole.replace(new RegExp(`\\s+(?:of|at|from)\\s+${escaped}$`, 'iu'), '').trim() || trimmedRole;
 }
 
 /**
@@ -857,7 +884,7 @@ function extractFirstMatch(rawNote: string, patterns: RegExp[]) {
  * Engineering", "group energy manager" and "CFO" all read, while a sentence
  * that merely contains a comma does not.
  */
-const APPOSITIVE_CONTACT = /\b(?!(?:Met|Called|Visited|Saw|Emailed|Spoke|Rang|With|And|But|The|Their|They|Our|Next|Then|Today|Yesterday|Also|Site|Call|Visit)\b)(\p{Lu}[\p{L}'-]{1,30}(?:\s+\p{Lu}[\p{L}'-]{1,30}){0,2})\s*,\s*((?:the\s+)?(?:[\p{L}][\p{L}&'.-]*\s+){0,3}(?:CFO|CEO|COO|CTO|CIO|CMO|CPO|VP|MD|[Dd]irector|[Mm]anager|[Oo]fficer|[Hh]ead|[Cc]hief|[Ee]ngineer|[Bb]uyer|[Oo]wner|[Ll]ead|[Pp]resident|[Cc]ontroller|[Ss]upervisor|[Ff]ounder|[Pp]artner|[Aa]rchitect|[Cc]oordinator|[Ss]pecialist|[Ee]xecutive|[Aa]nalyst|[Cc]onsultant|[Tt]echnician|[Ss]uperintendent|[Pp]rincipal)\b(?:\s+of\s+[\p{L}][\p{L} &'-]{0,30})?)/u;
+const APPOSITIVE_CONTACT = /\b(?!(?:Met|Called|Visited|Saw|Emailed|Spoke|Rang|With|And|But|The|Their|They|Our|Next|Then|Today|Yesterday|Also|Site|Call|Visit)\b)(\p{Lu}[\p{L}'-]{1,30}(?:\s+\p{Lu}[\p{L}'-]{1,30}){0,2})\s*,\s*((?:the\s+)?(?:[\p{L}][\p{L}&'.-]*\s+){0,3}(?:CFO|CEO|COO|CTO|CIO|CMO|CPO|VP|MD|[Dd]irector|[Mm]anager|[Oo]fficer|[Hh]ead|[Cc]hief|[Ee]ngineer|[Bb]uyer|[Oo]wner|[Ll]ead|[Pp]resident|[Cc]ontroller|[Ss]upervisor|[Ff]ounder|[Pp]artner|[Aa]rchitect|[Cc]oordinator|[Ss]pecialist|[Ee]xecutive|[Aa]nalyst|[Cc]onsultant|[Tt]echnician|[Ss]uperintendent|[Pp]rincipal)\b(?:\s+of\s+\p{L}[\p{L}&'-]*(?:\s+(?!(?:at|from|for|in|on|with)\b)\p{L}[\p{L}&'-]*){0,2})?)/u;
 
 function extractContact(rawNote: string) {
   // Deliberately case-sensitive after the verb: the trailing groups are what
