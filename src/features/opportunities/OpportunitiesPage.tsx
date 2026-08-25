@@ -83,7 +83,7 @@ import { FunnelBars } from '../../components/charts/FunnelBars';
 import { MiniBarChart } from '../../components/charts/MiniBarChart';
 import { SkeletonScreen, SkeletonTable } from '../../components/common/Skeleton';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
-import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, sanitizeBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
+import { compareBusinessDateDesc, compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, sanitizeBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
 import { type SalesActivityRecord } from '../../services/salesActivityStore';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
@@ -6112,7 +6112,7 @@ function getLinkedActivities(opportunity: CrmLiteOpportunity, activities: SalesA
       return normalizeEntityName(activity.accountName || '') === accountKey
         && normalizeEntityName(activity.opportunityName || '') === opportunityKey;
     })
-    .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate) || b.createdAt.localeCompare(a.createdAt));
+    .sort((a, b) => compareBusinessDateDesc(a.activityDate, b.activityDate) || b.createdAt.localeCompare(a.createdAt));
 }
 
 function forecastTone(category: string) {

@@ -15,7 +15,7 @@ import type { SalesWorkspaceData } from '../../services/workspaceData';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { SalesActivityRecord } from '../../services/salesActivityStore';
 import type { ObjectionRecord } from '../../services/objectionStore';
-import { compareSafeBusinessDate, sanitizeBusinessDate } from '../../utils/safeDate.ts';
+import { compareBusinessDateDesc, sanitizeBusinessDate } from '../../utils/safeDate.ts';
 
 export type V31WorkspaceMemory = {
   accounts: Account[];
@@ -249,7 +249,10 @@ function getLatestActivityForOpportunity(activities: SalesActivityRecord[], oppo
         && sameName(activity.linkedOpportunityName || activity.opportunityName, opportunity.opportunityName)
       )
     ))
-    .sort((left, right) => compareSafeBusinessDate(right.activityDate, left.activityDate) || right.updatedAt.localeCompare(left.updatedAt))[0];
+    // `[0]` is read as "the newest touch on this deal". Reversing the
+    // ascending comparator made that whichever activity had a date nobody can
+    // read, which is the same fault the account engine carried.
+    .sort((left, right) => compareBusinessDateDesc(left.activityDate, right.activityDate) || right.updatedAt.localeCompare(left.updatedAt))[0];
 }
 
 function toLegacyStage(stage: CrmLiteOpportunity['stage']): SalesStage {

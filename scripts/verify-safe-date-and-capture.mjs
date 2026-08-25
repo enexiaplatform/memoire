@@ -301,4 +301,41 @@ function collectSourceFiles(dir) {
   });
 }
 
+
+/**
+ * Direction belongs in the comparator, not at the call site.
+ *
+ * `compareSafeBusinessDate(b, a)` reads like the way to get a newest-first
+ * list and is the opposite: the ascending comparator deliberately sorts
+ * unreadable dates LAST, so reversing its arguments sends them to the FRONT.
+ * The head of the list is then whichever record has a date nobody can read -
+ * and the head is what every caller treats as "the latest".
+ *
+ * Sixteen files carried this. The worst of them fed `allActivities[0].summary`
+ * into a follow-up the operator was about to send, and
+ * `getLatestActivityForOpportunity` returned it by name.
+ */
+{
+  const offenders = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) walk(full);
+      else if (/\.(ts|tsx)$/.test(entry.name)) {
+        const source = readFileSync(full, 'utf8');
+        if (/compareSafeBusinessDate\(\s*(b|right)\./.test(source)) offenders.push(full);
+      }
+    }
+  };
+  walk('src');
+  assert.deepEqual(
+    offenders,
+    [],
+    `reversed date comparator - use compareBusinessDateDesc so unreadable dates stay last: ${offenders.join(', ')}`,
+  );
+
+  const safeDate = readFileSync('src/utils/safeDate.ts', 'utf8');
+  assert.match(safeDate, /export function compareBusinessDateDesc/, 'the descending comparator exists');
+}
+
 console.log('Safe date and capture extraction regression verified, and nobody derives today from UTC.');

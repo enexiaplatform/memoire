@@ -5,7 +5,8 @@ import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import { buildMoneyFlow } from './moneyFlow.ts';
 import { classifyOpportunitySilence } from './proactiveNudges.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
-import { compareSafeBusinessDate, formatSafeBusinessDate, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
+import { compareBusinessDateDesc,
+  formatSafeBusinessDate, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 
 export const soloJourneyStages = ['Audience', 'Conversation', 'Offer', 'Sale', 'Fulfillment', 'Payment', 'Retention'] as const;
 
@@ -57,7 +58,7 @@ export function buildCommercialJourneySnapshot(input: JourneyInput): CommercialJ
       && (activity.linkedOpportunityId === opportunity.id
         || (accountKey !== ''
           && (normalize(activity.accountName) === accountKey || normalize(activity.linkedAccountName) === accountKey))))
-    .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate))[0] || null;
+    .sort((a, b) => compareBusinessDateDesc(a.activityDate, b.activityDate))[0] || null;
 
   const openObjection = input.objections
     .filter((objection) => objection.status === 'Open'

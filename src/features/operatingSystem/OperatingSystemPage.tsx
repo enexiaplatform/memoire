@@ -15,7 +15,7 @@ import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { formatCompactCurrencyAmount } from '../../utils/money';
-import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate } from '../../utils/safeDate.ts';
+import { compareBusinessDateDesc, compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate } from '../../utils/safeDate.ts';
 import {
   createOperatingContext,
   deleteOperatingContext,
@@ -607,7 +607,9 @@ function RelatedActivitiesSection({
   const relatedIds = new Set(related.map((item) => item.activity.id));
   const linkable = [...activities]
     .filter((activity) => !relatedIds.has(activity.id))
-    .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate))
+    // Newest first, unreadable last - otherwise a record with a date nobody
+    // can read takes one of the thirty slots from a genuinely recent one.
+    .sort((a, b) => compareBusinessDateDesc(a.activityDate, b.activityDate))
     .slice(0, 30);
 
   return (

@@ -1,6 +1,7 @@
 import type { ActionOutcomeRecord } from '../services/actionOutcomeStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
-import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate, todayDateKey } from './safeDate.ts';
+import { compareBusinessDateDesc,
+  formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate, todayDateKey } from './safeDate.ts';
 import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
@@ -142,7 +143,7 @@ function daysSinceLastActivity(opportunity: CrmLiteOpportunity, activities: Sale
       )
     ))
     .filter((activity) => isValidBusinessDate(activity.activityDate))
-    .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate));
+    .sort((a, b) => compareBusinessDateDesc(a.activityDate, b.activityDate));
   if (related.length === 0) return 999;
   const latest = new Date(`${related[0].activityDate}T00:00:00`).getTime();
   const now = new Date(`${todayKey()}T00:00:00`).getTime();

@@ -3,7 +3,7 @@ import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeSto
 import type { QuoteRecord } from '../services/quoteStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { AccountMemory } from './accountMemory.ts';
-import { compareSafeBusinessDate, isValidBusinessDate, sanitizeBusinessDate } from './safeDate.ts';
+import { compareBusinessDateDesc, isValidBusinessDate, sanitizeBusinessDate } from './safeDate.ts';
 
 /**
  * One customer's whole story, in the order it happened.
@@ -58,7 +58,7 @@ export function buildAccountTimeline(input: {
   ]
     .filter((entry) => isValidBusinessDate(entry.date))
     // Newest first: the last thing that happened is the thing being asked about.
-    .sort((left, right) => compareSafeBusinessDate(right.date, left.date) || left.id.localeCompare(right.id));
+    .sort((left, right) => compareBusinessDateDesc(left.date, right.date) || left.id.localeCompare(right.id));
 
   const dates = entries.map((entry) => entry.date);
 

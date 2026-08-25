@@ -4,6 +4,7 @@ import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import { sumMoneyInBase } from './money.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
 import {
+  compareBusinessDateDesc,
   compareSafeBusinessDate,
   isMoreRecentBusinessDate,
   isValidBusinessDate,
@@ -84,7 +85,7 @@ export function buildFollowUpImpact(input: FollowUpImpactInput): FollowUpImpactS
   let quietDealsContacted = 0;
 
   followUps
-    .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate))
+    .sort((a, b) => compareBusinessDateDesc(a.activityDate, b.activityDate))
     .forEach((followUp) => {
       followUpsSent += 1;
       const opportunity = resolveOpportunity(followUp, opportunityById, opportunitiesByAccount);

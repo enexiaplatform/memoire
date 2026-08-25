@@ -10,7 +10,8 @@ import type { RevenueActionItem } from './revenueView';
 import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
 import { buildPipelineDefenseCenter, type ManagerReadyDealBrief } from './pipelineDefenseCenter.ts';
 import { convertMoney, formatMoneyWithBase } from './money.ts';
-import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
+import { compareBusinessDateDesc,
+  compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 import { classifyAccountEngagement, type AccountHygienePreference } from './accountHygiene.ts';
 import { analyzePersonalSalesLearning } from './personalSalesLearning.ts';
 import { normalizeMeddicRole } from './meddicStakeholderMap.ts';
@@ -354,7 +355,7 @@ function buildCaptureInbox(
   return [...activities]
     .filter((activity) => activity.linkStatus === 'Unlinked' || activity.linkStatus === 'Suggested' || !activity.accountName.trim() || !activity.opportunityName.trim())
     .filter((activity) => activity.linkStatus === 'Suggested' || !resolvesToOneDeal(activity))
-    .sort((left, right) => compareSafeBusinessDate(right.activityDate, left.activityDate) || right.createdAt.localeCompare(left.createdAt))
+    .sort((left, right) => compareBusinessDateDesc(left.activityDate, right.activityDate) || right.createdAt.localeCompare(left.createdAt))
     .slice(0, 8)
     .map((activity) => ({
       id: activity.id,

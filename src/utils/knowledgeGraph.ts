@@ -10,7 +10,8 @@ import { accountKey } from './accountIdentity.ts';
 import { resolveAccountName, type AccountAliasIndex } from './accountAliases.ts';
 import { normalizeSearchText } from './textSearch.ts';
 import { sumMoneyInBase } from './money.ts';
-import { compareSafeBusinessDate, formatSafeBusinessDate, isValidBusinessDate, todayDateKey } from './safeDate.ts';
+import { compareBusinessDateDesc,
+  formatSafeBusinessDate, isValidBusinessDate, todayDateKey } from './safeDate.ts';
 
 /**
  * The Business Vault's model: what this workspace knows, how it connects, and
@@ -862,7 +863,7 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraph 
   }
 
   for (const [nodeId, entries] of memory) {
-    entries.sort((left, right) => compareSafeBusinessDate(right.date, left.date));
+    entries.sort((left, right) => compareBusinessDateDesc(left.date, right.date));
     const node = nodes.get(nodeId);
     if (!node) continue;
     node.memoryCount = entries.length;

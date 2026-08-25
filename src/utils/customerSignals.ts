@@ -1,5 +1,6 @@
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
-import { compareSafeBusinessDate, isBusinessDateInRange } from './safeDate.ts';
+import { compareBusinessDateDesc,
+  isBusinessDateInRange } from './safeDate.ts';
 
 export type SignalDigestItem = {
   text: string;
@@ -39,7 +40,7 @@ export function buildCustomerSignalDigest(input: CustomerSignalDigestInput): Sig
     const seen = new Set<string>();
     const items: SignalDigestItem[] = [];
     [...scoped]
-      .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate))
+      .sort((a, b) => compareBusinessDateDesc(a.activityDate, b.activityDate))
       .forEach((activity) => {
         (getSignals(activity) || []).forEach((text) => {
           const cleaned = text.trim();

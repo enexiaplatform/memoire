@@ -1,5 +1,6 @@
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
-import { compareSafeBusinessDate, isValidBusinessDate } from './safeDate.ts';
+import { compareBusinessDateDesc,
+  isValidBusinessDate } from './safeDate.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
 
 const PAYLOAD_KEY = 'linkedActivityIds';
@@ -65,7 +66,7 @@ export function listInitiativeActivityLinks(
   limit = 6,
 ): InitiativeActivityLink[] {
   const linkedIds = new Set(readLinkedActivityIds(context.payload));
-  const byDateDesc = (a: SalesActivityRecord, b: SalesActivityRecord) => compareSafeBusinessDate(b.activityDate, a.activityDate);
+  const byDateDesc = (a: SalesActivityRecord, b: SalesActivityRecord) => compareBusinessDateDesc(a.activityDate, b.activityDate);
 
   const linked = activities
     .filter((activity) => linkedIds.has(activity.id))

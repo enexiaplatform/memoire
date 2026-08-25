@@ -14,7 +14,7 @@ import {
   type PlanRecord,
 } from './weeklyPlan.ts';
 import {
-  compareSafeBusinessDate,
+  compareBusinessDateDesc,
   isBusinessDateInRange,
   isValidBusinessDate,
   sanitizeBusinessDate,
@@ -214,7 +214,7 @@ export function buildActivityLedger(input: {
   }).map((item) => buildTaskEntry(item, context, input.accountAliases));
 
   return [...events, ...tasks].sort(
-    (left, right) => compareSafeBusinessDate(right.date, left.date) || left.subject.localeCompare(right.subject),
+    (left, right) => compareBusinessDateDesc(left.date, right.date) || left.subject.localeCompare(right.subject),
   );
 }
 

@@ -1,5 +1,6 @@
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
-import { compareSafeBusinessDate, isValidBusinessDate } from './safeDate.ts';
+import { compareBusinessDateDesc,
+  isValidBusinessDate } from './safeDate.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
 
 export const initiativeDecisions = ['undecided', 'continue', 'adjust', 'stop'] as const;
@@ -87,7 +88,7 @@ export function listInitiativeActivities(
       return tokens.some((token) => text.includes(token));
     })
     .filter((activity) => isValidBusinessDate(activity.activityDate))
-    .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate))
+    .sort((a, b) => compareBusinessDateDesc(a.activityDate, b.activityDate))
     .slice(0, limit);
 }
 

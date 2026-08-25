@@ -6,6 +6,7 @@ import type { SalesActivityType } from './salesActivityClassifier';
 import { condensePlanLabel, getDatedCaptureActions, type PlanRecord } from './weeklyPlan.ts';
 import { sameAccount } from './accountIdentity.ts';
 import {
+  compareBusinessDateDesc,
   compareSafeBusinessDate,
   formatSafeBusinessDate,
   isBusinessDateInRange,
@@ -216,7 +217,7 @@ export function buildPlanSuggestions(input: {
   const recent = input.activities
     .filter((activity) => isValidBusinessDate(activity.activityDate))
     .filter((activity) => isBusinessDateInRange(activity.activityDate, lookbackStart, lookbackEnd))
-    .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate));
+    .sort((a, b) => compareBusinessDateDesc(a.activityDate, b.activityDate));
 
   const suggestions: PlanSuggestion[] = [];
 

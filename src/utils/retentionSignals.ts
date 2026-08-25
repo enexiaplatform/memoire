@@ -4,7 +4,7 @@ import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import {
-  compareSafeBusinessDate,
+  compareBusinessDateDesc,
   isMoreRecentBusinessDate,
   isValidBusinessDate,
   sanitizeBusinessDate,
@@ -69,7 +69,7 @@ export function buildRetentionSignals(input: RetentionSignalsInput): RetentionSi
     const lastTouch = activities
       .filter((activity) => isValidBusinessDate(activity.activityDate)
         && (normalize(activity.accountName) === accountKey || normalize(activity.linkedAccountName) === accountKey))
-      .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate))[0] || null;
+      .sort((a, b) => compareBusinessDateDesc(a.activityDate, b.activityDate))[0] || null;
     const daysQuiet = lastTouch ? daysBetweenBusinessDates(lastTouch.activityDate, today) : null;
     if (daysQuiet !== null && daysQuiet < RETENTION_QUIET_DAYS) continue;
 

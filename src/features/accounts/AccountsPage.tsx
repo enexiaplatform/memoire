@@ -63,7 +63,7 @@ import {
   formatCurrencyAmount as formatMoney,
   sumMoneyInBase,
 } from '../../utils/money';
-import { compareSafeBusinessDate, formatSafeBusinessDate } from '../../utils/safeDate.ts';
+import { compareBusinessDateDesc, compareSafeBusinessDate, formatSafeBusinessDate } from '../../utils/safeDate.ts';
 import { AccountImportPanel } from './AccountImportPanel';
 import { FollowUpComposerPanel } from '../v31/FollowUpComposerPanel';
 import { SkeletonScreen, SkeletonTable } from '../../components/common/Skeleton';
@@ -528,7 +528,10 @@ export function AccountsPage() {
 
   const openFollowUpComposer = (memory: AccountMemory) => {
     const allActivities = [...memory.linkedActivities, ...memory.matchingActivities]
-      .sort((left, right) => compareSafeBusinessDate(right.activityDate, left.activityDate) || right.updatedAt.localeCompare(left.updatedAt));
+      // Newest first with unreadable dates LAST. Reversing the ascending
+      // comparator sent them to the front, and `allActivities[0]` below is the
+      // "last interaction" line in a follow-up the operator sends.
+      .sort((left, right) => compareBusinessDateDesc(left.activityDate, right.activityDate) || right.updatedAt.localeCompare(left.updatedAt));
     const currentOpportunity = memory.opportunities.find((opportunity) => opportunity.status === 'Active')
       || memory.opportunities[0];
     const primaryStakeholder = stakeholders.find((stakeholder) =>
@@ -1832,7 +1835,7 @@ function MemorySections({
   outcomes: OpportunityOutcomeRecord[];
 }) {
   const allActivities = [...memory.linkedActivities, ...memory.matchingActivities]
-    .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate) || b.createdAt.localeCompare(a.createdAt));
+    .sort((a, b) => compareBusinessDateDesc(a.activityDate, b.activityDate) || b.createdAt.localeCompare(a.createdAt));
   return (
     <div className="mt-5 space-y-4">
       <AccountQuotesSection accountName={memory.account.accountName} quotes={quotes} />

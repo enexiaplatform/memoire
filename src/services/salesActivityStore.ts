@@ -3,7 +3,7 @@ import { fetchAllRows } from './supabasePaging.ts';
 import type { ClassifiedSalesActivity, SalesActivityType } from '../utils/salesActivityClassifier.ts';
 import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
-import { compareSafeBusinessDate, isBusinessDateInRange, sanitizeBusinessDate } from '../utils/safeDate.ts';
+import { compareBusinessDateDesc, isBusinessDateInRange, sanitizeBusinessDate } from '../utils/safeDate.ts';
 import {
   buildIngestionSourceTags,
   parseIngestionSourceTags,
@@ -591,7 +591,7 @@ function createId() {
 }
 
 function sortNewestFirst(a: SalesActivityRecord, b: SalesActivityRecord) {
-  return compareSafeBusinessDate(b.activityDate, a.activityDate) || b.createdAt.localeCompare(a.createdAt);
+  return compareBusinessDateDesc(a.activityDate, b.activityDate) || b.createdAt.localeCompare(a.createdAt);
 }
 
 function normalizeLinkStatus(value: unknown): SalesActivityRecord['linkStatus'] {

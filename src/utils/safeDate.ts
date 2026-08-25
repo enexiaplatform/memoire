@@ -112,6 +112,26 @@ export function formatSafeBusinessDate(date: unknown) {
   return businessDateFormatter.format(new Date(`${value}T00:00:00Z`));
 }
 
+/**
+ * Newest first, with unreadable dates last.
+ *
+ * `compareSafeBusinessDate(b, a)` looks like the way to get a newest-first list
+ * and is not: it sends unreadable dates to the FRONT, so the head of the list -
+ * the row everything downstream calls "the latest" - is whichever record has a
+ * date nobody can read. That is how a broken date became an account's last
+ * interaction inside a follow-up the operator was about to send.
+ *
+ * Direction belongs in the comparator, not at the call site.
+ */
+export function compareBusinessDateDesc(dateA: unknown, dateB: unknown) {
+  const left = sanitizeBusinessDate(dateA);
+  const right = sanitizeBusinessDate(dateB);
+  if (!left && !right) return 0;
+  if (!left) return 1;
+  if (!right) return -1;
+  return right.localeCompare(left);
+}
+
 /** Invalid or empty dates sort after valid dates and never compare as overdue. */
 export function compareSafeBusinessDate(dateA: unknown, dateB: unknown) {
   const left = sanitizeBusinessDate(dateA);

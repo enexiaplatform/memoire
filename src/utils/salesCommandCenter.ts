@@ -8,7 +8,8 @@ import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
 import type { RevenueActionItem, RevenueRiskKind } from './revenueView';
 import { buildOpportunitySalesFlowGuidance } from './salesFlowGuidance.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
-import { compareSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, isValidBusinessDate, todayDateKey, toLocalDateKey, timestampToLocalDateKey } from './safeDate.ts';
+import { compareBusinessDateDesc,
+  compareSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, isValidBusinessDate, todayDateKey, toLocalDateKey, timestampToLocalDateKey } from './safeDate.ts';
 
 export type CommandPriority = 'Critical' | 'High' | 'Medium' | 'Low';
 export type CommandActionSource = 'Activity' | 'Opportunity' | 'Operating System' | 'Sales Flow' | 'Pipeline Defense' | 'Quote';
@@ -560,7 +561,7 @@ export function getAccountsNeedingTouch(
 
 export function getRecentActivitySummary(activities: SalesActivityRecord[]): RecentActivityItem[] {
   return [...activities]
-    .sort((a, b) => compareSafeBusinessDate(b.activityDate, a.activityDate) || b.createdAt.localeCompare(a.createdAt))
+    .sort((a, b) => compareBusinessDateDesc(a.activityDate, b.activityDate) || b.createdAt.localeCompare(a.createdAt))
     .slice(0, 10)
     .map((activity) => ({
       id: activity.id,
