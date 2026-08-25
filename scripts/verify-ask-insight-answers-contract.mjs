@@ -19,7 +19,7 @@ import { buildCommercialJourneySnapshot } from '../src/utils/commercialJourney.t
 import { buildInitiativeReview } from '../src/utils/initiativeReview.ts';
 import { buildCustomerSignalDigest } from '../src/utils/customerSignals.ts';
 import { advertisedQuestions, allMemoryPresets, answerFromMemory, isAttentionQuestion, isWhatChangedQuestion, opportunityPresets } from '../src/features/v31/askMemoireContext.ts';
-import { answerFromInitiativeReview, answerFromCustomerSignals } from '../src/features/v31/askMemoireInsightAnswers.ts';
+import { answerFromInitiativeReview, answerFromCustomerSignals, answerFromRecordFind, findRecords } from '../src/features/v31/askMemoireInsightAnswers.ts';
 
 // 1. Detection is narrow and routes to the right layer.
 assert.equal(detectInsightQuestion('Did my follow-ups work?'), 'follow_up_impact');
@@ -300,6 +300,24 @@ assert.ok(insightSource.includes('History, not prediction'), 'calibration card m
   const structured = answerFromMemory('Which opportunities have no next action?', twoCustomers);
   assert.ok(!structured.answer.startsWith('Account: Grupo Calvo'), 'no single account heading over workspace-wide evidence');
   assert.ok(structured.answer.includes('top of its own list'));
+}
+
+
+// 10. The page is titled "Find anything". A bare record name must find it.
+{
+  const book = [
+    { id: 'd1', accountName: 'Grupo Calvo', opportunityName: 'Cold store retrofit', stage: 'Proposal', status: 'Active', estimatedValue: 120000, currency: 'EUR', nextAction: 'Confirm the phasing', nextActionDate: '' },
+    { id: 'd2', accountName: 'Grupo Calvo', opportunityName: 'Chiller replacement', stage: 'Won', status: 'Won', estimatedValue: 90000, currency: 'EUR', nextAction: '', nextActionDate: '' },
+  ];
+  const found = findRecords('Grupo Calvo', book);
+  assert.ok(found, 'a bare customer name must find that customer, not summarize the workspace');
+  assert.ok(answerFromRecordFind(found).answer.startsWith('Grupo Calvo:'));
+  // Folded, so an accented or differently cased name still lands.
+  assert.ok(findRecords('GRUPO CALVO', book));
+  // A question is a question even when it names a customer.
+  assert.equal(findRecords('What changed at Grupo Calvo this week?', book), null);
+  assert.equal(findRecords('Which deals may go silent?', book), null);
+  assert.equal(findRecords('Bahri Ship Management', book), null, 'a name nobody has must not be invented into a match');
 }
 
 console.log('Ask Memoire insight answers contract verified.');

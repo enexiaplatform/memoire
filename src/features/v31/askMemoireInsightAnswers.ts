@@ -811,3 +811,122 @@ export function answerFromOwnObligations(
     }],
   };
 }
+
+/**
+ * Interrogatives. A question is a question even when it also names a customer,
+ * and "What changed at Grupo Calvo this week?" belongs to the change engine,
+ * not to a record lookup.
+ */
+const QUESTION_CUES = /\b(what|which|who|whom|whose|how|when|why|where|should|shall|can|could|would|will|do|does|did|is|are|am|was|were|any|show|list|summar\w*|draft|help)\b/;
+
+export type RecordFind = {
+  query: string;
+  /** Deals whose own name matched. The most specific kind of hit. */
+  deals: CrmLiteOpportunity[];
+  /** Account names that matched, each with the deals filed under them. */
+  accounts: { name: string; deals: CrmLiteOpportunity[] }[];
+};
+
+/**
+ * The "Search" half of Search & Insights.
+ *
+ * The page is titled "Find anything, and ask what it means" and had no way to
+ * find anything: the box only answered questions, so typing a customer's name -
+ * the first thing anyone does on a page called Search - matched no engine and
+ * fell through to the workspace summary, which answered about the whole book
+ * and never mentioned the customer whose name was typed.
+ *
+ * A lookup is only attempted when the text is not a question. Names are folded
+ * through `normalizeEntityName`, the same fold the deal resolver uses, so an
+ * accented or differently-cased name still finds its record.
+ */
+export function findRecords(
+  question: string,
+  opportunities: CrmLiteOpportunity[],
+): RecordFind | null {
+  const raw = question.trim();
+  if (!raw || QUESTION_CUES.test(raw.toLowerCase())) return null;
+  const needle = normalizeEntityName(raw);
+  if (needle.length < 3) return null;
+
+  const matches = (name: string) => {
+    const folded = normalizeEntityName(name || '');
+    if (folded.length < 3) return false;
+    return folded.includes(needle) || needle.includes(folded);
+  };
+
+  const deals = opportunities.filter((opportunity) => matches(opportunity.opportunityName || ''));
+  const byAccount = new Map<string, CrmLiteOpportunity[]>();
+  opportunities
+    .filter((opportunity) => matches(opportunity.accountName || ''))
+    .forEach((opportunity) => {
+      const name = (opportunity.accountName || '').trim();
+      byAccount.set(name, [...(byAccount.get(name) || []), opportunity]);
+    });
+
+  if (deals.length === 0 && byAccount.size === 0) return null;
+  return {
+    query: raw,
+    deals,
+    accounts: [...byAccount.entries()].map(([name, accountDeals]) => ({ name, deals: accountDeals })),
+  };
+}
+
+export function answerFromRecordFind(find: RecordFind): AskMemoireAnswer {
+  const activeOf = (deals: CrmLiteOpportunity[]) => deals.filter((deal) => deal.status === 'Active');
+  const dealLine = (deal: CrmLiteOpportunity) => {
+    const value = typeof deal.estimatedValue === 'number' && deal.estimatedValue > 0 && deal.currency
+      ? ` - ${formatCurrencyAmount(deal.estimatedValue, deal.currency)}`
+      : '';
+    const next = deal.nextAction
+      ? ` - next: ${deal.nextAction}${isValidBusinessDate(deal.nextActionDate || '') ? ` (${formatSafeBusinessDate(deal.nextActionDate)})` : ''}`
+      : ' - no next action recorded';
+    return `${deal.opportunityName || 'Untitled deal'} (${deal.stage}${deal.status !== 'Active' ? `, ${deal.status}` : ''})${value}${next}`;
+  };
+
+  const account = find.accounts[0];
+  if (find.accounts.length === 1 && find.deals.length === 0) {
+    const open = activeOf(account.deals);
+    return {
+      answer: `${account.name}: ${account.deals.length} ${account.deals.length === 1 ? 'deal' : 'deals'} on record, ${open.length} still open.`,
+      contextUsed: [`Account: ${account.name}`, 'Opportunities'],
+      missingContext: open.some((deal) => !deal.nextAction) ? ['A next action on every open deal'] : [],
+      suggestedNextAction: open[0]?.nextAction || `Book the next step with ${account.name}.`,
+      suggestedQuestions: ['Which deals may go silent?', 'Where is the money?'],
+      cards: [{
+        kind: 'insight',
+        title: `Found: ${account.name}`,
+        fields: [
+          { label: 'Open deals', value: open.length > 0 ? open.map(dealLine) : 'None open right now.' },
+          ...(account.deals.length > open.length
+            ? [{ label: 'Closed', value: account.deals.filter((deal) => deal.status !== 'Active').map(dealLine) }]
+            : []),
+        ],
+        ctas: [{ label: 'Open Accounts', href: '/app/accounts', note: 'The full record lives on the Accounts page.' }],
+      }],
+    };
+  }
+
+  const hits = [...find.deals, ...find.accounts.flatMap((entry) => entry.deals)];
+  const unique = [...new Map(hits.map((deal) => [deal.id, deal])).values()];
+  const open = activeOf(unique);
+  return {
+    answer: `"${find.query}" matches ${unique.length} ${unique.length === 1 ? 'record' : 'records'}${find.accounts.length > 1 ? ` across ${find.accounts.length} customers` : ''}, ${open.length} still open.`,
+    contextUsed: ['Opportunities', 'Accounts'],
+    missingContext: [],
+    suggestedNextAction: open[0]?.nextAction || 'Pick one record and book its next step.',
+    suggestedQuestions: ['Which deals may go silent?', 'Where is the money?'],
+    cards: [{
+      kind: 'insight',
+      title: `Found: ${find.query}`,
+      fields: [
+        { label: 'Open', value: open.length > 0 ? open.slice(0, 6).map(dealLine) : 'None open right now.' },
+        ...(unique.length > open.length
+          ? [{ label: 'Closed', value: unique.filter((deal) => deal.status !== 'Active').slice(0, 6).map(dealLine) }]
+          : []),
+        { label: 'Basis', value: 'Names are matched after folding accents and case, so a differently written name still finds its record.' },
+      ],
+      ctas: [{ label: 'Open opportunities', href: '/app/opportunities', note: 'Filter and edit the records there.' }],
+    }],
+  };
+}

@@ -25,6 +25,8 @@ import {
   answerFromForecastCalibration,
   answerFromInitiativeReview,
   answerFromAwaitingCustomer,
+  answerFromRecordFind,
+  findRecords,
   answerFromMoneyFlow,
   answerFromOwnObligations,
   answerFromObjectionPlaybook,
@@ -383,6 +385,17 @@ export function AskMemoirePage() {
         }
         return;
       }
+      // The page is called Search & Insights and titled "Find anything". A
+      // bare customer name is the first thing anyone types on a page called
+      // Search, and it used to fall through to a summary of the whole
+      // workspace that never mentioned the name typed. Checked last, so a
+      // real question always keeps its own engine.
+      const found = rawWorkspace ? findRecords(nextQuestion, rawWorkspace.opportunities) : null;
+      if (found) {
+        setStatusMessage('Found in your workspace - matched by name, on this device.');
+        setAnswer(answerFromRecordFind(found));
+        return;
+      }
       // Answers are computed from your own workspace by rule, on this device.
       // No model call, no API key, nothing leaves the browser.
       setStatusMessage('Answered from your workspace using rules - nothing was sent to an AI service.');
@@ -555,8 +568,8 @@ export function AskMemoirePage() {
                 void ask();
               }
             }}
-            aria-label="Ask a supported question"
-            placeholder="Ask about stuck deals, missing follow-ups, or selected account context..."
+            aria-label="Find a record by name, or ask a supported question"
+            placeholder="Type a customer or deal name to find it, or ask about stuck deals, money and follow-ups..."
             className="min-h-[88px] flex-1 resize-y rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
           />
           <button

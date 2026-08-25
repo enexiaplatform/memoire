@@ -139,7 +139,11 @@ for (const destination of DESTINATIONS) {
 // stays an honest claim rather than a list that quietly skipped the awkward ones.
 {
   const ask = readFileSync('src/features/v31/AskMemoirePage.tsx', 'utf8');
-  assert.match(ask, /placeholder="Ask about/, 'Ask is a question box: it is usable on an empty workspace, so it has no empty state');
+  // The invariant is that the box is usable with nothing recorded yet, not the
+  // exact wording of its placeholder - which has to change now that the box
+  // also finds records by name.
+  assert.match(ask, /placeholder="[^"]*\bask about\b/i, 'Ask is a question box: it is usable on an empty workspace, so it has no empty state');
+  assert.ok(!/EmptyState/.test(ask), 'Ask must not render an empty state: a question box works before any record exists');
 
   const settings = readFileSync('src/features/settings/SettingsPage.tsx', 'utf8');
   assert.ok(settings.length > 0, 'Settings is configuration, not records: there is nothing for it to be empty of');
