@@ -128,8 +128,7 @@ export function answerFromMemory(question: string, context: AskMemoireContext): 
   // Simoes Logistica and a deal belonging to a third customer entirely.
   // One subject keeps the briefing voice; more than one and every line says
   // which list it is the top of.
-  const oneSubject = accounts.length <= 1
-    && (!activeOpportunity || !accounts[0] || !activeOpportunity.account_id || activeOpportunity.account_id === accounts[0].id);
+  const oneSubject = hasSingleSubject(accounts, activeOpportunity);
   const subjectLine = oneSubject
     ? `Account: ${accountName}`
     : `Scope: all memory - ${accounts.length} customers. This is not one customer's story.`;
@@ -352,8 +351,7 @@ function summarizeContext(accounts: Account[], opportunities: Opportunity[], int
     ? `Objections: ${objections.map((objection) => objection.title).join('; ')}`
     : '';
 
-  const oneSubject = accounts.length <= 1
-    && (!opportunity || !account || !opportunity.account_id || opportunity.account_id === account.id);
+  const oneSubject = hasSingleSubject(accounts, opportunity);
 
   if (oneSubject) {
     return [
@@ -503,4 +501,25 @@ export function isWhatChangedQuestion(question: string) {
 export function isPatternQuestion(question: string) {
   const normalized = question.toLowerCase();
   return normalized.includes('pattern') || normalized.includes('sales activity');
+}
+
+/**
+ * Whether the scope holds one customer, so a single-customer briefing is a
+ * claim the data supports.
+ *
+ * A deal carries its account by name and `account_id` is not written, so the
+ * join between an account and an opportunity cannot be repaired - only
+ * refused. Three separate places had grown their own copy of this test
+ * (`summarizeContext`, `answerFromMemory`, and the answer-card builder), and
+ * the card builder - the copy the operator actually sees - never had one:
+ * "Recipient: Grupo Calvo" printed above another customer's interaction in the
+ * card for a draft about to be sent. One test, one answer.
+ */
+export function hasSingleSubject(
+  accounts: { id: string }[],
+  opportunity?: { account_id?: string | null } | null,
+): boolean {
+  if (accounts.length > 1) return false;
+  const account = accounts[0];
+  return !opportunity || !account || !opportunity.account_id || opportunity.account_id === account.id;
 }

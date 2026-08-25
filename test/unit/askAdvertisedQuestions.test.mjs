@@ -4,6 +4,7 @@ import '../support/reportingCurrency.mjs';
 import {
   advertisedQuestions,
   answerFromMemory,
+  hasSingleSubject,
   isAttentionQuestion,
   isWhatChangedQuestion,
 } from '../../src/features/v31/askMemoireContext.ts';
@@ -100,6 +101,19 @@ describe('the fallback does not put one customer over another customer evidence'
     ));
     assert.doesNotMatch(result.answer, /^Hi Grupo Calvo/);
     assert.match(result.answer, /Pick a customer first/);
+  });
+
+  test('one test decides it, for the text and the card alike', () => {
+    // The answer card builder is a third copy of this join and never had the
+    // test: "Recipient: Grupo Calvo" printed above another customer's
+    // interaction, in the card for a draft about to be sent.
+    assert.equal(hasSingleSubject([{ id: 'a1' }], { account_id: 'a1' }), true);
+    assert.equal(hasSingleSubject([{ id: 'a1' }, { id: 'a2' }], { account_id: 'a1' }), false);
+    // A deal carries its account by name, so a missing account_id is the norm
+    // and not evidence of a second customer.
+    assert.equal(hasSingleSubject([{ id: 'a1' }], { account_id: '' }), true);
+    assert.equal(hasSingleSubject([{ id: 'a1' }], { account_id: 'a2' }), false);
+    assert.equal(hasSingleSubject([], null), true);
   });
 
   test('a single customer still gets the draft', () => {

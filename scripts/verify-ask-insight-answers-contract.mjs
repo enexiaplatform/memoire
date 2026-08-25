@@ -18,7 +18,7 @@ import { buildCommitmentLedger } from '../src/utils/weeklyBusinessReview.ts';
 import { buildCommercialJourneySnapshot } from '../src/utils/commercialJourney.ts';
 import { buildInitiativeReview } from '../src/utils/initiativeReview.ts';
 import { buildCustomerSignalDigest } from '../src/utils/customerSignals.ts';
-import { advertisedQuestions, allMemoryPresets, answerFromMemory, isAttentionQuestion, isWhatChangedQuestion, opportunityPresets } from '../src/features/v31/askMemoireContext.ts';
+import { advertisedQuestions, allMemoryPresets, answerFromMemory, hasSingleSubject, isAttentionQuestion, isWhatChangedQuestion, opportunityPresets } from '../src/features/v31/askMemoireContext.ts';
 import { answerFromInitiativeReview, answerFromCustomerSignals, answerFromRecordFind, findRecords } from '../src/features/v31/askMemoireInsightAnswers.ts';
 
 // 1. Detection is narrow and routes to the right layer.
@@ -296,6 +296,15 @@ assert.ok(insightSource.includes('History, not prediction'), 'calibration card m
   const draft = answerFromMemory('Draft a follow-up', twoCustomers);
   assert.ok(!draft.answer.startsWith('Hi Grupo Calvo'), 'a draft must not greet one customer over another customer objection');
   assert.ok(draft.answer.includes('Pick a customer first'));
+
+  // The answer card builder is the third copy of this join and the one the
+  // operator sees. It must consult the same test, not grow its own.
+  assert.equal(hasSingleSubject([{ id: 'a1' }, { id: 'a2' }], { account_id: 'a1' }), false);
+  assert.equal(hasSingleSubject([{ id: 'a1' }], { account_id: 'a1' }), true);
+  assert.ok(
+    askSource.includes('if (!hasSingleSubject(accounts, opportunity)) return answer;'),
+    'the answer card builder must refuse to draw a one-customer card over several customers',
+  );
 
   const structured = answerFromMemory('Which opportunities have no next action?', twoCustomers);
   assert.ok(!structured.answer.startsWith('Account: Grupo Calvo'), 'no single account heading over workspace-wide evidence');

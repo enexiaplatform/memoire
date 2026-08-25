@@ -4,7 +4,7 @@ import { Bot, ExternalLink, Send, Sparkles } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { DEMO_USER_ID } from '../../lib/demoMode';
 import type { Account, AskMemoireAnswer, AskMemoireAnswerCard, AskMemoireContext, Interaction, MemoryChange, Objection, Opportunity, SalesAction, SalesPattern } from '../../types/v31';
-import { actionFixPresets, advertisedQuestions, answerFromMemory, buildAskMemoireContext, isAttentionQuestion, isPatternQuestion, isWhatChangedQuestion, presetsForScope } from './askMemoireContext';
+import { actionFixPresets, advertisedQuestions, answerFromMemory, buildAskMemoireContext, hasSingleSubject, isAttentionQuestion, isPatternQuestion, isWhatChangedQuestion, presetsForScope } from './askMemoireContext';
 import { detectBrokenLoops, type BrokenLoop } from './brokenLoops';
 import { calculateMemoryHealth } from './memoryHealth';
 import { buildWhatChangedDigest, formatMemoryChangeSeverity } from './whatChangedDigest';
@@ -741,6 +741,17 @@ function withAnswerCards(answer: AskMemoireAnswer, question: string, context: As
       ? `/app/accounts?accountId=${encodeURIComponent(opportunity.account_id)}`
       : undefined;
   const opportunityHref = opportunity?.id ? '/app/opportunities' : undefined;
+
+  // Every card below is a single-customer briefing: it prints one Recipient,
+  // one Current story, one Deal status, and fills them from five independently
+  // sorted lists. That is the third copy of the join `summarizeContext` refuses
+  // to claim, and it is the copy the operator sees - "Recipient: Grupo Calvo"
+  // sat above "Last interaction: Call with Luis Simoes Logistica" on a
+  // 21-customer workspace, in the card for a draft they were about to send.
+  // With more than one customer in scope there is no card to draw, and the
+  // answer text already carries the honest workspace-wide framing.
+  if (!hasSingleSubject(accounts, opportunity)) return answer;
+
   const commonCtas = [
     contextHref ? { label: 'Open Account', href: contextHref } : null,
     opportunityHref ? { label: 'Open Opportunity', href: opportunityHref } : null,
