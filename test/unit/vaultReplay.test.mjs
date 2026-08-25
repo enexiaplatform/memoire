@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   REPLAY_MIN_MOMENTS,
   buildReplayTimeline,
+  boardBuildRatio,
   boardMoments,
   canReplay,
   replayLabel,
@@ -133,5 +134,34 @@ describe('the gate asks about the board, not the workspace', () => {
     );
     const timeline = buildReplayTimeline(spread, [...spread.keys()], TODAY);
     assert.equal(canReplay(timeline, [...spread.keys()]), true);
+  });
+});
+
+describe('a replay has to build, not jump cut', () => {
+  test('a board that mostly lands on the last day is refused', () => {
+    // Six cards dated across four moments and twelve landing together on the
+    // import date passed the distinct-dates gate and still showed six cards for
+    // nine of ten frames.
+    const entries = new Map();
+    ['2026-03-04', '2026-04-15', '2026-05-20', '2026-06-02'].forEach((date, index) => {
+      entries.set(`early-${index}`, [{ date }]);
+    });
+    for (let index = 0; index < 12; index += 1) entries.set(`imported-${index}`, [{ date: '2026-08-23' }]);
+    const board = [...entries.keys()];
+    const timeline = buildReplayTimeline(entries, board, TODAY);
+    assert.ok(boardMoments(timeline, board) >= 4, 'it clears the distinct-dates floor');
+    assert.ok(boardBuildRatio(timeline, board) < 0.5, 'but only a quarter of it is there before the end');
+    assert.equal(canReplay(timeline, board), false);
+  });
+
+  test('a board that arrives steadily is offered', () => {
+    const entries = new Map(
+      ['2026-03-04', '2026-04-15', '2026-05-20', '2026-06-02', '2026-07-11', '2026-08-23']
+        .map((date, index) => [`n${index}`, [{ date }]]),
+    );
+    const board = [...entries.keys()];
+    const timeline = buildReplayTimeline(entries, board, TODAY);
+    assert.ok(boardBuildRatio(timeline, board) >= 0.5);
+    assert.equal(canReplay(timeline, board), true);
   });
 });

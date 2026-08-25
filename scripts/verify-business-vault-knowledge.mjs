@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { buildKnowledgeGraph, accountNodeId, searchKnowledgeNodes } from '../src/utils/knowledgeGraph.ts';
 import { buildGraphView } from '../src/utils/knowledgeLayout.ts';
 import { edgeMotionFor, memoryAgeFor, memoryAgeOpacity, motionLegend } from '../src/utils/vaultMotion.ts';
-import { buildReplayTimeline, canReplay, revealedAt } from '../src/utils/vaultReplay.ts';
+import { boardMoments, buildReplayTimeline, canReplay, revealedAt } from '../src/utils/vaultReplay.ts';
 
 /**
  * The Business Vault is business memory, and the coverage matrix still exists.
@@ -443,6 +443,23 @@ const registry = readFileSync('src/config/featureRegistry.ts', 'utf8');
     canReplay(importedBoard, ['board-a', 'board-b']),
     false,
     'a board that never changes must not be offered as a replay',
+  );
+
+  // And it has to build, not jump cut. Six cards dated across four moments with
+  // twelve landing together on the import date clears the distinct-dates floor
+  // and still shows six cards for nine of ten frames.
+  const jumpCut = new Map();
+  ['2026-03-04', '2026-04-15', '2026-05-20', '2026-06-02'].forEach((date, index) => {
+    jumpCut.set(`early-${index}`, [{ date }]);
+  });
+  for (let index = 0; index < 12; index += 1) jumpCut.set(`imported-${index}`, [{ date: '2026-08-23' }]);
+  const jumpCutBoard = [...jumpCut.keys()];
+  const jumpCutTimeline = buildReplayTimeline(jumpCut, jumpCutBoard, '2026-08-25');
+  assert.ok(boardMoments(jumpCutTimeline, jumpCutBoard) >= 4, 'the fixture must clear the distinct-dates floor');
+  assert.equal(
+    canReplay(jumpCutTimeline, jumpCutBoard),
+    false,
+    'a replay whose board arrives all at once at the end must not be offered',
   );
 }
 

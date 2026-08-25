@@ -147,10 +147,37 @@ export function boardMoments(timeline: ReplayTimeline, boardIds: string[]) {
   return dates.size;
 }
 
+/**
+ * How much of the board has arrived before its final moment.
+ *
+ * Counting distinct dates was still not enough. On the book this was built
+ * against, six cards had dates spread across four moments and the other twelve
+ * all landed on the import date - so the gate passed, and the replay showed six
+ * cards for nine frames and then everything at once. That is not a story that
+ * builds; it is a still image with a jump cut at the end.
+ */
+export function boardBuildRatio(timeline: ReplayTimeline, boardIds: string[]) {
+  if (boardIds.length === 0) return 0;
+  const last = timeline.steps[timeline.steps.length - 1];
+  if (!last) return 0;
+  const before = boardIds.filter((id) => {
+    const first = timeline.firstSeen.get(id);
+    return Boolean(first) && first! < last;
+  }).length;
+  return before / boardIds.length;
+}
+
+/**
+ * A replay has to build. Half the board standing before the last frame is the
+ * floor: below it the reader is watching a still image and a jump cut.
+ */
+export const REPLAY_MIN_BUILD = 0.5;
+
 export function canReplay(timeline: ReplayTimeline, boardIds?: string[]) {
   if (timeline.steps.length < REPLAY_MIN_MOMENTS) return false;
   if (!boardIds) return true;
-  return boardMoments(timeline, boardIds) >= REPLAY_MIN_MOMENTS;
+  return boardMoments(timeline, boardIds) >= REPLAY_MIN_MOMENTS
+    && boardBuildRatio(timeline, boardIds) >= REPLAY_MIN_BUILD;
 }
 
 export function replayLabel(timeline: ReplayTimeline, at: string) {
