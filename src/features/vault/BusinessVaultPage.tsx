@@ -7,7 +7,7 @@ import { getCachedSalesWorkspaceData, loadSalesWorkspaceData, type SalesWorkspac
 import { deleteKnowledgeNote, loadKnowledgeNotes, loadKnowledgeNotesForWorkspace, saveKnowledgeNote } from '../../services/knowledgeNoteStore';
 import { buildAccountAliasIndex } from '../../utils/accountAliases';
 import { buildKnowledgeGraph, knowledgeNodeTypePlurals, type KnowledgeGap, type KnowledgeNodeType } from '../../utils/knowledgeGraph';
-import { buildGraphView } from '../../utils/knowledgeLayout';
+import { buildGraphView, buildReplayView } from '../../utils/knowledgeLayout';
 import { motionLegend } from '../../utils/vaultMotion';
 import { buildReplayTimeline, canReplay, revealedAt } from '../../utils/vaultReplay';
 import { VaultReplayButton, VaultReplayControl } from './VaultReplayControl';
@@ -145,6 +145,19 @@ export function BusinessVaultPage() {
   const revealed = useMemo(
     () => (replayAt ? revealedAt(replayTimeline, replayAt) : undefined),
     [replayAt, replayTimeline],
+  );
+  /**
+   * A replay gets its own board.
+   *
+   * The overview draws eleven curated hubs - today's best connected - and
+   * revealing a subset of those showed almost nothing for most of the story,
+   * because today's hubs are mostly things learned late. The replay board is
+   * laid out by when things arrived instead, so the order it reveals in and the
+   * order it is arranged in are the same order.
+   */
+  const replayView = useMemo(
+    () => (replayAt ? buildReplayView({ graph, order: replayTimeline.order, hiddenTypes }) : null),
+    [replayAt, graph, replayTimeline.order, hiddenTypes],
   );
   const exitReplay = useCallback(() => {
     setReplaying(false);
@@ -364,7 +377,7 @@ export function BusinessVaultPage() {
                     />
                     <div className="h-[calc(100vh-300px)] min-h-[480px] w-full">
                       <KnowledgeGraphCanvas
-                        view={graphView}
+                        view={replayView || graphView}
                         focusId={selectedNode?.id || ''}
                         onSelect={select}
                         summary={mapSummary(graphView.nodes.length, selectedNode?.label)}

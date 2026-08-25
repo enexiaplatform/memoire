@@ -21,6 +21,14 @@ import { isValidBusinessDate, todayDateKey } from './safeDate.ts';
  */
 
 export type ReplayTimeline = {
+  /**
+   * Node ids in the order they were learned, undated last.
+   *
+   * The replay's layout is built from this, so a node's position on the board
+   * is when it arrived - the earliest thing at the centre, the newest at the
+   * rim. Revealing them in order draws the business growing outward.
+   */
+  order: string[];
   /** Earliest date anything was recorded, or '' when nothing is dated. */
   start: string;
   /** Today, or the newest record if the book runs into the future. */
@@ -61,8 +69,16 @@ export function buildReplayTimeline(
   }
 
   const steps = [...new Set(firstSeen.values())].sort();
+  // The order the replay lays the board out in: earliest learned first, and the
+  // undated after them rather than interleaved, since there is no date to
+  // interleave them by.
+  const order = [
+    ...[...firstSeen.entries()].sort((left, right) => (left[1] < right[1] ? -1 : left[1] > right[1] ? 1 : 0)).map(([id]) => id),
+    ...undated,
+  ];
   const newest = steps.length > 0 ? steps[steps.length - 1] : '';
   return {
+    order,
     start: steps[0] || '',
     // A book can carry a record dated ahead of today; the scrubber has to reach
     // it or the last thing you learned is unreachable.

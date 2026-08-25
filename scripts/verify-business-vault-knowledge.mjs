@@ -412,6 +412,14 @@ const registry = readFileSync('src/config/featureRegistry.ts', 'utf8');
   );
   assert.equal(importedDay.steps.length, 2, 'the fixture must straddle two days for the threshold to be tested');
   assert.equal(canReplay(importedDay), false, 'a one-day import has no story to replay');
+
+  // The replay draws a network, not a row of names. Seeding the board with the
+  // heaviest nodes produced two lines on it: the heaviest things in a book are
+  // its customers, and customers are not related to each other - their deals
+  // are what join them.
+  const layout = readFileSync('src/utils/knowledgeLayout.ts', 'utf8');
+  assert.match(layout, /graph\.neighbors\.get\(seed\.id\)/, 'the replay board is filled from what its seeds touch');
+  assert.match(layout, /const MAX_REPLAY_NODES = \d+;/, 'the board has a stated ceiling');
 }
 
 console.log('Business Vault knowledge contract verified: memory in the Vault, coverage under Accounts.');

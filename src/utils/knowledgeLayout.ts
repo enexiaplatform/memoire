@@ -483,3 +483,110 @@ function groupByRelation(neighbors: KnowledgeNeighbor[]) {
     .map(([relation, items]) => ({ relation, items }))
     .sort((left, right) => right.items.length - left.items.length || left.relation.localeCompare(right.relation));
 }
+
+/**
+ * How many things a replay puts on the board.
+ *
+ * The overview draws eleven, because eleven curated cards is what you study.
+ * A replay is not a thing you study - it is a thing you watch - and eleven of
+ * them is not a story: the first run of this feature reused the overview and
+ * spent two thirds of its length showing a single card, because the eleven it
+ * drew were today's best-connected hubs and almost none of them existed yet.
+ *
+ * Eighteen is what stays readable. Thirty-seven was tried and the map had to
+ * shrink to 62% to hold them, which took every card's own name below the point
+ * of being worth drawing.
+ */
+const MAX_REPLAY_NODES = 18;
+
+/** Cell size for the replay board, wide enough for the near-size card. */
+const REPLAY_CELL = { width: 250, height: 132 };
+
+/**
+ * The map laid out by when you learned things, for the replay to reveal.
+ *
+ * Position IS chronology here. The board fills in reading order - left to
+ * right, top to bottom - so revealing things in the order they arrived draws
+ * the business being written down. That is a different composition from the
+ * overview's hub ring and deliberately so: the overview answers "what matters
+ * now", this answers "what happened".
+ *
+ * A grid rather than rings. Rings were built first and read as a scatter: the
+ * map container is about three times wider than it is tall, so concentric
+ * rings either overflow the top and bottom or squash into rows that are not
+ * rings any more. A grid needs no relaxation pass, which matters here because a
+ * relaxation pass would move cards during a replay.
+ *
+ * Positions are computed once for the whole story. Only the camera moves.
+ */
+export function buildReplayView({
+  graph,
+  order,
+  hiddenTypes,
+}: {
+  graph: KnowledgeGraph;
+  /** Node ids, earliest learned first. Anything not listed is left out. */
+  order: string[];
+  hiddenTypes?: Set<KnowledgeNodeType>;
+}): GraphView {
+  const hidden = hiddenTypes || new Set<KnowledgeNodeType>();
+  const available = order
+    .map((id) => graph.byId.get(id))
+    .filter((node): node is KnowledgeNode => node !== undefined && !hidden.has(node.type));
+
+  // Which eighteen, then in what order.
+  //
+  // Picking the eighteen heaviest nodes was tried and drew a board with two
+  // lines on it: the heaviest things in a book are its customers, and customers
+  // are not related to each other - their deals are what join them. So the
+  // board is seeded with the heaviest hubs and then filled with what those hubs
+  // actually touch, which is what makes a replay show a network appearing
+  // rather than a list of names appearing.
+  const keep = new Set<string>();
+  const seeds = [...available]
+    .sort((left, right) => right.weight - left.weight)
+    .slice(0, Math.ceil(MAX_REPLAY_NODES / 3));
+  for (const seed of seeds) {
+    if (keep.size >= MAX_REPLAY_NODES) break;
+    keep.add(seed.id);
+  }
+  for (const seed of seeds) {
+    const neighbors = [...(graph.neighbors.get(seed.id) || [])]
+      .filter((neighbor) => !hidden.has(neighbor.node.type))
+      .sort((left, right) => right.node.weight - left.node.weight);
+    for (const neighbor of neighbors) {
+      if (keep.size >= MAX_REPLAY_NODES) break;
+      keep.add(neighbor.node.id);
+    }
+  }
+  // Any room left goes to the next heaviest, so a book with few relations still
+  // fills the board rather than leaving it half empty.
+  for (const node of [...available].sort((left, right) => right.weight - left.weight)) {
+    if (keep.size >= MAX_REPLAY_NODES) break;
+    keep.add(node.id);
+  }
+  // `available` is already chronological, so filtering it keeps the board in the
+  // order things were learned.
+  const chosen = available.filter((node) => keep.has(node.id));
+
+  const columns = Math.max(1, Math.ceil(Math.sqrt(chosen.length * 3)));
+  const rows = Math.max(1, Math.ceil(chosen.length / columns));
+  const placed = new Map<string, PositionedNode>();
+
+  chosen.forEach((node, index) => {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    placed.set(node.id, {
+      node,
+      x: (column - (columns - 1) / 2) * REPLAY_CELL.width,
+      y: (row - (rows - 1) / 2) * REPLAY_CELL.height,
+      // Everything at the near size: in a replay no single node is the subject,
+      // the order is.
+      ring: 1,
+      relation: '',
+      focused: false,
+    });
+  });
+
+  return assemble(graph, placed, '', { neighborCount: 0, shownNeighborCount: chosen.length });
+}
