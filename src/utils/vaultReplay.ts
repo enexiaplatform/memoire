@@ -124,8 +124,33 @@ export const REPLAY_FRAME_MS = 420;
  */
 export const REPLAY_MIN_MOMENTS = 4;
 
-export function canReplay(timeline: ReplayTimeline) {
-  return timeline.steps.length >= REPLAY_MIN_MOMENTS;
+/**
+ * Whether a replay of THIS board would actually show anything.
+ *
+ * Counting the workspace's distinct dates is not enough, and the first version
+ * of this gate did exactly that. On a book whose deals were imported, ten
+ * distinct dates existed - from captured activity - while the eighteen cards
+ * the board draws were almost all stamped with the import date. The replay
+ * passed the gate, opened on six cards, and held those six for nine of its ten
+ * frames before everything arrived at once.
+ *
+ * So the question is asked about the board: how many moments does the thing on
+ * screen actually change on. Below the floor the control is not offered, which
+ * is the honest outcome for a book that was imported rather than lived.
+ */
+export function boardMoments(timeline: ReplayTimeline, boardIds: string[]) {
+  const dates = new Set<string>();
+  for (const id of boardIds) {
+    const first = timeline.firstSeen.get(id);
+    if (first) dates.add(first);
+  }
+  return dates.size;
+}
+
+export function canReplay(timeline: ReplayTimeline, boardIds?: string[]) {
+  if (timeline.steps.length < REPLAY_MIN_MOMENTS) return false;
+  if (!boardIds) return true;
+  return boardMoments(timeline, boardIds) >= REPLAY_MIN_MOMENTS;
 }
 
 export function replayLabel(timeline: ReplayTimeline, at: string) {

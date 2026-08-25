@@ -420,6 +420,30 @@ const registry = readFileSync('src/config/featureRegistry.ts', 'utf8');
   const layout = readFileSync('src/utils/knowledgeLayout.ts', 'utf8');
   assert.match(layout, /graph\.neighbors\.get\(seed\.id\)/, 'the replay board is filled from what its seeds touch');
   assert.match(layout, /const MAX_REPLAY_NODES = \d+;/, 'the board has a stated ceiling');
+
+  // The gate asks about the board, not the workspace. A book whose deals were
+  // imported has dates on its captured activity and the import date on
+  // everything else: ten distinct moments existed while the eighteen cards on
+  // screen changed on one of them, so the replay opened on six cards and held
+  // them for nine of its ten frames.
+  const importedBoard = buildReplayTimeline(
+    new Map([
+      ['elsewhere-1', [{ date: '2026-03-04' }]],
+      ['elsewhere-2', [{ date: '2026-04-15' }]],
+      ['elsewhere-3', [{ date: '2026-05-20' }]],
+      ['elsewhere-4', [{ date: '2026-06-02' }]],
+      ['board-a', [{ date: '2026-08-23' }]],
+      ['board-b', [{ date: '2026-08-23' }]],
+    ]),
+    ['elsewhere-1', 'elsewhere-2', 'elsewhere-3', 'elsewhere-4', 'board-a', 'board-b'],
+    '2026-08-25',
+  );
+  assert.equal(canReplay(importedBoard), true, 'the workspace itself has enough moments');
+  assert.equal(
+    canReplay(importedBoard, ['board-a', 'board-b']),
+    false,
+    'a board that never changes must not be offered as a replay',
+  );
 }
 
 console.log('Business Vault knowledge contract verified: memory in the Vault, coverage under Accounts.');

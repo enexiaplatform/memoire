@@ -106,3 +106,38 @@ describe('the board a replay plays on', () => {
     assert.ok(view.nodes.length <= 18, `board held ${view.nodes.length}`);
   });
 });
+
+describe('a chronological board prefers records it can place in time', () => {
+  test('dated nodes take the board before undated ones', () => {
+    // A record with no readable date is shown from the first frame to the last,
+    // so it cannot advance the story - and on the book this was built against,
+    // sixteen of them were holding board slots.
+    const graph = graphOf();
+    const heavyUndated = Array.from({ length: 20 }, (_, i) => ({
+      ...graph.nodes[0], id: `undated-${i}`, label: `undated-${i}`, weight: 1000,
+    }));
+    for (const node of heavyUndated) {
+      graph.nodes.push(node);
+      graph.byId.set(node.id, node);
+      graph.neighbors.set(node.id, []);
+    }
+    const view = buildReplayView({
+      graph,
+      order: [...ORDER, ...heavyUndated.map((n) => n.id)],
+      dated: new Set(ORDER),
+    });
+    // The claim is not "few undated cards" - a board bigger than the dated set
+    // has to fill up somehow. It is that no dated record was passed over for an
+    // undated one, however heavy the undated one is.
+    const placed = new Set(view.nodes.map((n) => n.node.id));
+    for (const id of ORDER) {
+      assert.ok(placed.has(id), `${id} is dated and was left off the board`);
+    }
+  });
+
+  test('with no dated set it behaves exactly as before', () => {
+    const withoutFlag = buildReplayView({ graph: graphOf(), order: ORDER });
+    const withEmpty = buildReplayView({ graph: graphOf(), order: ORDER, dated: new Set() });
+    assert.equal(withoutFlag.nodes.length, withEmpty.nodes.length);
+  });
+});

@@ -155,9 +155,22 @@ export function BusinessVaultPage() {
    * laid out by when things arrived instead, so the order it reveals in and the
    * order it is arranged in are the same order.
    */
-  const replayView = useMemo(
-    () => (replayAt ? buildReplayView({ graph, order: replayTimeline.order, hiddenTypes }) : null),
-    [replayAt, graph, replayTimeline.order, hiddenTypes],
+  const replayBoard = useMemo(
+    () => buildReplayView({
+      graph,
+      order: replayTimeline.order,
+      dated: new Set(replayTimeline.firstSeen.keys()),
+      hiddenTypes,
+    }),
+    [graph, replayTimeline, hiddenTypes],
+  );
+  const replayView = replayAt ? replayBoard : null;
+  // Asked about the board rather than the workspace: an imported book has dates
+  // on its captured activity and the import date on everything else, so the
+  // cards on screen would sit still for the whole story.
+  const replayWorthOffering = useMemo(
+    () => canReplay(replayTimeline, replayBoard.nodes.map((positioned) => positioned.node.id)),
+    [replayTimeline, replayBoard],
   );
   const exitReplay = useCallback(() => {
     setReplaying(false);
@@ -408,7 +421,7 @@ export function BusinessVaultPage() {
                           onExit={exitReplay}
                         />
                       )
-                      : canReplay(replayTimeline) && (
+                      : replayWorthOffering && (
                         <VaultReplayButton
                           onStart={() => {
                             setReplayAt(replayTimeline.steps[0]);

@@ -522,14 +522,25 @@ const REPLAY_CELL = { width: 250, height: 132 };
 export function buildReplayView({
   graph,
   order,
+  dated,
   hiddenTypes,
 }: {
   graph: KnowledgeGraph;
   /** Node ids, earliest learned first. Anything not listed is left out. */
   order: string[];
+  /**
+   * The ones whose arrival is dated.
+   *
+   * Preferred for the board, because a record with no readable date behind it
+   * is shown from the first frame to the last and therefore cannot advance the
+   * story. On the book this was built against, sixteen such records existed and
+   * they were taking board slots from things that actually arrived somewhere.
+   */
+  dated?: Set<string>;
   hiddenTypes?: Set<KnowledgeNodeType>;
 }): GraphView {
   const hidden = hiddenTypes || new Set<KnowledgeNodeType>();
+  const rank = (node: KnowledgeNode) => (dated && dated.has(node.id) ? 1 : 0);
   const available = order
     .map((id) => graph.byId.get(id))
     .filter((node): node is KnowledgeNode => node !== undefined && !hidden.has(node.type));
@@ -544,7 +555,7 @@ export function buildReplayView({
   // rather than a list of names appearing.
   const keep = new Set<string>();
   const seeds = [...available]
-    .sort((left, right) => right.weight - left.weight)
+    .sort((left, right) => rank(right) - rank(left) || right.weight - left.weight)
     .slice(0, Math.ceil(MAX_REPLAY_NODES / 3));
   for (const seed of seeds) {
     if (keep.size >= MAX_REPLAY_NODES) break;
@@ -553,7 +564,7 @@ export function buildReplayView({
   for (const seed of seeds) {
     const neighbors = [...(graph.neighbors.get(seed.id) || [])]
       .filter((neighbor) => !hidden.has(neighbor.node.type))
-      .sort((left, right) => right.node.weight - left.node.weight);
+      .sort((left, right) => rank(right.node) - rank(left.node) || right.node.weight - left.node.weight);
     for (const neighbor of neighbors) {
       if (keep.size >= MAX_REPLAY_NODES) break;
       keep.add(neighbor.node.id);
@@ -561,7 +572,7 @@ export function buildReplayView({
   }
   // Any room left goes to the next heaviest, so a book with few relations still
   // fills the board rather than leaving it half empty.
-  for (const node of [...available].sort((left, right) => right.weight - left.weight)) {
+  for (const node of [...available].sort((left, right) => rank(right) - rank(left) || right.weight - left.weight)) {
     if (keep.size >= MAX_REPLAY_NODES) break;
     keep.add(node.id);
   }

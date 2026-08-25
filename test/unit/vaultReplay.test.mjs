@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   REPLAY_MIN_MOMENTS,
   buildReplayTimeline,
+  boardMoments,
   canReplay,
   replayLabel,
   revealedAt,
@@ -104,5 +105,33 @@ describe('when a replay is worth offering', () => {
     const timeline = buildReplayTimeline(captured, [...captured.keys()], TODAY);
     assert.ok(timeline.steps.length >= REPLAY_MIN_MOMENTS);
     assert.equal(canReplay(timeline), true);
+  });
+});
+
+describe('the gate asks about the board, not the workspace', () => {
+  test('a workspace with dates but a board without them is refused', () => {
+    // Ten distinct dates existed on the book this was built against - from
+    // captured activity - while the cards the board draws were almost all
+    // stamped with the import date. The replay opened on six cards and held
+    // them for nine of its ten frames.
+    const spread = new Map(
+      ['2026-03-04', '2026-04-15', '2026-05-20', '2026-06-02', '2026-07-11']
+        .map((date, index) => [`elsewhere-${index}`, [{ date }]]),
+    );
+    spread.set('board-a', [{ date: '2026-08-23' }]);
+    spread.set('board-b', [{ date: '2026-08-23' }]);
+    const timeline = buildReplayTimeline(spread, [...spread.keys()], TODAY);
+    assert.ok(canReplay(timeline), 'the workspace itself has enough moments');
+    assert.equal(boardMoments(timeline, ['board-a', 'board-b']), 1);
+    assert.equal(canReplay(timeline, ['board-a', 'board-b']), false, 'but this board never changes');
+  });
+
+  test('a board that does change is offered', () => {
+    const spread = new Map(
+      ['2026-03-04', '2026-04-15', '2026-05-20', '2026-06-02', '2026-07-11']
+        .map((date, index) => [`n${index}`, [{ date }]]),
+    );
+    const timeline = buildReplayTimeline(spread, [...spread.keys()], TODAY);
+    assert.equal(canReplay(timeline, [...spread.keys()]), true);
   });
 });
