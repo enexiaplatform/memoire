@@ -4,6 +4,10 @@ import '../support/reportingCurrency.mjs';
 import {
   advertisedQuestions,
   answerFromMemory,
+  attentionEmptyAnswers,
+  attentionFocusFor,
+  attentionHeadings,
+  attentionWhyLabels,
   hasSingleSubject,
   isAttentionQuestion,
   isWhatChangedQuestion,
@@ -123,5 +127,38 @@ describe('the fallback does not put one customer over another customer evidence'
       [interaction('i1', 'a1', 'Call about the retrofit')],
     ));
     assert.match(result.answer, /^Hi Grupo Calvo/);
+  });
+});
+
+describe('four attention questions, four answers', () => {
+  test('each question is recognised for what it asks', () => {
+    // All four used to return the same ranked list under the same heading,
+    // "Deals that may go silent" - so "Which objections are unresolved?" was
+    // answered with an overdue action.
+    assert.equal(attentionFocusFor('Which objections are unresolved?'), 'objections');
+    assert.equal(attentionFocusFor('Which opportunities have no next action?'), 'no_next_action');
+    assert.equal(attentionFocusFor('Which accounts need follow-up?'), 'accounts');
+    assert.equal(attentionFocusFor('Which deals may go silent?'), 'all');
+    assert.equal(attentionFocusFor('What should I fix today?'), 'all');
+  });
+
+  test('a question about deals is not answered as a question about accounts', () => {
+    assert.equal(attentionFocusFor('Which accounts need action on their deals?'), 'all');
+  });
+
+  test('every focus has its own heading, label and empty answer', () => {
+    const focuses = ['objections', 'no_next_action', 'accounts', 'all'];
+    for (const focus of focuses) {
+      assert.ok(attentionHeadings[focus], `${focus} needs a heading`);
+      assert.ok(attentionWhyLabels[focus], `${focus} needs a card label`);
+      assert.ok(attentionEmptyAnswers[focus], `${focus} needs an empty answer`);
+    }
+    assert.equal(new Set(focuses.map((f) => attentionHeadings[f])).size, focuses.length);
+    assert.equal(new Set(focuses.map((f) => attentionWhyLabels[f])).size, focuses.length);
+  });
+
+  test('an empty objections answer is not read as an all-clear', () => {
+    // Nothing captured is not the same as nothing raised.
+    assert.match(attentionEmptyAnswers.objections, /not proof that customers have raised none/);
   });
 });

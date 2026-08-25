@@ -4,7 +4,7 @@ import { Bot, ExternalLink, Send, Sparkles } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { DEMO_USER_ID } from '../../lib/demoMode';
 import type { Account, AskMemoireAnswer, AskMemoireAnswerCard, AskMemoireContext, Interaction, MemoryChange, Objection, Opportunity, SalesAction, SalesPattern } from '../../types/v31';
-import { actionFixPresets, advertisedQuestions, answerFromMemory, buildAskMemoireContext, hasSingleSubject, isAttentionQuestion, isPatternQuestion, isWhatChangedQuestion, presetsForScope } from './askMemoireContext';
+import { actionFixPresets, advertisedQuestions, answerFromMemory, attentionEmptyAnswers, attentionFocusFor, attentionHeadings, attentionWhyLabels, type AttentionFocus, buildAskMemoireContext, hasSingleSubject, isAttentionQuestion, isPatternQuestion, isWhatChangedQuestion, presetsForScope } from './askMemoireContext';
 import { detectBrokenLoops, type BrokenLoop } from './brokenLoops';
 import { calculateMemoryHealth } from './memoryHealth';
 import { buildWhatChangedDigest, formatMemoryChangeSeverity } from './whatChangedDigest';
@@ -259,6 +259,7 @@ export function AskMemoirePage() {
       if (scope === 'all' && isAttentionQuestion(nextQuestion)) {
         setStatusMessage('Answered with local rule-based deal memory.');
         setAnswer(answerFromAttention({
+          focus: attentionFocusFor(nextQuestion),
           context: contextPacket,
           accounts: scopedMemory.accounts,
           opportunities: scopedMemory.opportunities,
@@ -851,6 +852,7 @@ function answerFromAttention({
   actions,
   brokenLoops,
   memoryHealth,
+  focus,
 }: {
   context: AskMemoireContext;
   accounts: Account[];
@@ -858,6 +860,7 @@ function answerFromAttention({
   actions: SalesAction[];
   brokenLoops: BrokenLoop[];
   memoryHealth: ReturnType<typeof calculateMemoryHealth>[];
+  focus: AttentionFocus;
 }): AskMemoireAnswer {
   const accountById = new Map(accounts.map((account) => [account.id, account]));
   const opportunityById = new Map(opportunities.map((opportunity) => [opportunity.id, opportunity]));
@@ -878,6 +881,12 @@ function answerFromAttention({
     opportunityId: loop.opportunityId,
     issue: loop.issue,
     whyItMatters: loop.whyItMatters,
+    // Two facts the focused questions need, recorded once here rather than
+    // re-derived from the prose of `reason` at read time.
+    hasNextAction: Boolean(loop.opportunityId
+      ? openActionsByOpportunity.get(loop.opportunityId)
+      : loop.accountId ? openActionsByAccount.get(loop.accountId) : undefined),
+    isObjection: /objection|blocker|blocked/i.test(`${loop.issue} ${loop.whyItMatters}`),
   }));
 
   const healthItems = memoryHealth
@@ -904,21 +913,33 @@ function answerFromAttention({
         opportunityId: opportunity?.id,
         issue: health.status === 'broken' ? 'Deal at risk' : 'Weak context',
         whyItMatters: health.reasons[0] || 'Memoire does not have enough context to help you act confidently.',
+        hasNextAction: Boolean(linkedAction),
+        isObjection: /objection|blocker|blocked/i.test(health.reasons.join(' ')),
       };
     });
 
+  const matchesFocus = (item: { hasNextAction: boolean; isObjection: boolean }) => {
+    if (focus === 'objections') return item.isObjection;
+    if (focus === 'no_next_action') return !item.hasNextAction;
+    return true;
+  };
+
   const rankedItems = [...loopItems, ...healthItems]
     .sort((a, b) => a.rank - b.rank)
+    .filter(matchesFocus)
     .filter((item) => {
-      if (seen.has(item.entityKey)) return false;
-      seen.add(item.entityKey);
+      // Accounts are the unit for the account question, so two deals at the
+      // same customer are one row rather than two.
+      const key = focus === 'accounts' ? `account-${item.accountId || item.entityKey}` : item.entityKey;
+      if (seen.has(key)) return false;
+      seen.add(key);
       return true;
     })
     .slice(0, 8);
 
   if (rankedItems.length === 0) {
     return {
-      answer: 'No major stuck-deal items detected. Your accounts have enough context and follow-up for now.',
+      answer: attentionEmptyAnswers[focus],
       contextUsed: ['All Deals', 'Stuck Deal Queue', 'Context Health'],
       missingContext: [],
       suggestedQuestions: presetsForScope(context.scope).slice(0, 4),
@@ -926,7 +947,7 @@ function answerFromAttention({
   }
 
   return {
-    answer: `Deals that may go silent:\n${rankedItems.map((item, index) => [
+    answer: `${attentionHeadings[focus]}\n${rankedItems.map((item, index) => [
       `${index + 1}. ${item.entityName}`,
       `   Issue: ${item.reason}`,
       `   Evidence: ${item.signalSource}`,
@@ -941,7 +962,7 @@ function answerFromAttention({
       title: item.entityName,
       fields: [
         { label: 'Issue', value: item.issue || item.reason, tone: 'warning' },
-        { label: 'Why it may go silent', value: item.whyItMatters || item.reason, tone: 'warning' },
+        { label: attentionWhyLabels[focus], value: item.whyItMatters || item.reason, tone: 'warning' },
         { label: 'Evidence', value: [item.signalSource] },
         { label: 'Missing context', value: item.missingContext.length > 0 ? item.missingContext : ['No additional missing context detected.'] },
         { label: 'Suggested fix', value: item.suggestedNextAction, tone: 'warning' },

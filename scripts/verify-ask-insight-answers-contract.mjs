@@ -18,7 +18,7 @@ import { buildCommitmentLedger } from '../src/utils/weeklyBusinessReview.ts';
 import { buildCommercialJourneySnapshot } from '../src/utils/commercialJourney.ts';
 import { buildInitiativeReview } from '../src/utils/initiativeReview.ts';
 import { buildCustomerSignalDigest } from '../src/utils/customerSignals.ts';
-import { advertisedQuestions, allMemoryPresets, answerFromMemory, hasSingleSubject, isAttentionQuestion, isWhatChangedQuestion, opportunityPresets } from '../src/features/v31/askMemoireContext.ts';
+import { advertisedQuestions, allMemoryPresets, attentionFocusFor, attentionHeadings, answerFromMemory, hasSingleSubject, isAttentionQuestion, isWhatChangedQuestion, opportunityPresets } from '../src/features/v31/askMemoireContext.ts';
 import { answerFromInitiativeReview, answerFromCustomerSignals, answerFromRecordFind, findRecords } from '../src/features/v31/askMemoireInsightAnswers.ts';
 
 // 1. Detection is narrow and routes to the right layer.
@@ -332,6 +332,30 @@ assert.ok(insightSource.includes('History, not prediction'), 'calibration card m
   // customer's name. Every accented name in the book was one boundary away.
   const accented = [{ id: 'd9', accountName: 'Grupo Pestana Hoteis'.replace('Hoteis', 'Hotéis'), opportunityName: 'Boiler upgrade', stage: 'Proposal', status: 'Active', estimatedValue: 112000, currency: 'EUR', nextAction: '', nextActionDate: '' }];
   assert.ok(findRecords('Grupo Pestana Hotéis', accented), 'an accented customer name must still be looked up, not read as a question');
+}
+
+
+// 11. Four attention questions must not share one answer.
+{
+  const askSource = readFileSync(new URL('../src/features/v31/AskMemoirePage.tsx', import.meta.url), 'utf8');
+  assert.equal(attentionFocusFor('Which objections are unresolved?'), 'objections');
+  assert.equal(attentionFocusFor('Which opportunities have no next action?'), 'no_next_action');
+  assert.equal(attentionFocusFor('Which accounts need follow-up?'), 'accounts');
+  assert.equal(attentionFocusFor('Which deals may go silent?'), 'all');
+  const focuses = ['objections', 'no_next_action', 'accounts', 'all'];
+  assert.equal(
+    new Set(focuses.map((focus) => attentionHeadings[focus])).size,
+    focuses.length,
+    'each attention focus needs its own heading - one heading for four questions is how they became one answer',
+  );
+  assert.ok(
+    askSource.includes('focus: attentionFocusFor(nextQuestion),'),
+    'the attention answer must be told which question was asked',
+  );
+  assert.ok(
+    askSource.includes('answer: `${attentionHeadings[focus]}'),
+    'the attention answer must use the heading for the question asked, not a fixed one',
+  );
 }
 
 console.log('Ask Memoire insight answers contract verified.');

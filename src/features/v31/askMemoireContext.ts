@@ -523,3 +523,55 @@ export function hasSingleSubject(
   const account = accounts[0];
   return !opportunity || !account || !opportunity.account_id || opportunity.account_id === account.id;
 }
+
+/**
+ * Which of the attention questions was actually asked.
+ *
+ * `answerFromAttention` used to ignore the question completely: four preset
+ * buttons - "Which deals may go silent?", "Which accounts need follow-up?",
+ * "Which objections are unresolved?" and "What should I fix today?" - returned
+ * the same ranked list under the same heading, "Deals that may go silent". Asked
+ * about unresolved objections, it answered with an overdue action. Offering a
+ * distinction and then not honouring it is worse than not offering it.
+ */
+export type AttentionFocus = 'objections' | 'no_next_action' | 'accounts' | 'all';
+
+export function attentionFocusFor(question: string): AttentionFocus {
+  const normalized = question.toLowerCase();
+  if (normalized.includes('objection') || normalized.includes('blocker')) return 'objections';
+  if (normalized.includes('no next action')
+    || normalized.includes('no next step')
+    || normalized.includes('without a next action')
+    || normalized.includes('missing next action')) {
+    return 'no_next_action';
+  }
+  if (normalized.includes('account') && !normalized.includes('deal')) return 'accounts';
+  return 'all';
+}
+
+export const attentionHeadings: Record<AttentionFocus, string> = {
+  objections: 'Open objections, oldest first:',
+  no_next_action: 'Open deals with no next action recorded:',
+  accounts: 'Accounts that need a follow-up:',
+  all: 'Deals that may go silent:',
+};
+
+/**
+ * What to say when the focused question has no matches. "No stuck deals" is the
+ * wrong sentence for a question about objections, and reading it as an all-clear
+ * on objections would be a false all-clear.
+ */
+export const attentionEmptyAnswers: Record<AttentionFocus, string> = {
+  objections: 'No open objections are recorded. That is a statement about what has been captured, not proof that customers have raised none - objections only appear here once someone writes them down.',
+  no_next_action: 'Every open deal carries a next action. Nothing is waiting on you to decide what happens next.',
+  accounts: 'No account is waiting on a follow-up right now.',
+  all: 'No major stuck-deal items detected. Your accounts have enough context and follow-up for now.',
+};
+
+/** The card's second line, matched to the question the reader asked. */
+export const attentionWhyLabels: Record<AttentionFocus, string> = {
+  objections: 'Why it is still open',
+  no_next_action: 'Why it needs a next action',
+  accounts: 'Why this account needs a follow-up',
+  all: 'Why it may go silent',
+};
