@@ -195,6 +195,53 @@ check('cross-workspace paging has a total order', () => {
   );
 });
 
+// 9a. The console can name an account holder, and can never read their work.
+//
+// Every account figure here was a count until 2026-08-26: the endpoint read
+// `id, email, created_at, last_sign_in_at, email_confirmed_at` for every user
+// and collapsed the lot into `.filter().length` before responding, so no
+// account row ever left the server. "1 new in 30 days" is not something an
+// operator with four accounts can act on, and the same endpoint already
+// returned a list for leads, with the reason written above it.
+//
+// The line is between *who holds an account* - a signup ledger every product
+// has - and *what is inside their workspace*, which belongs to one seller. So
+// this pins both halves: the list exists, and the tables behind a workspace
+// stay unreadable from here.
+check('the account list carries identity and lifecycle, never workspace content', () => {
+  assert.ok(
+    /recent: authUsers/.test(endpoint),
+    'the account list is gone - the console is back to reporting counts nobody can act on',
+  );
+  for (const field of ['email: account.email', 'confirmed: Boolean(account.email_confirmed_at)', 'lastSignInAt: account.last_sign_in_at']) {
+    assert.ok(endpoint.includes(field), `the account list must carry ${field}`);
+  }
+
+  // Comments name these tables in order to forbid them, so the check runs
+  // against code with the comments stripped.
+  const code = endpoint
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('//') && !line.trim().startsWith('*'))
+    .join('\n');
+  for (const table of [
+    'sales_activities',
+    'crm_opportunities',
+    'crm_accounts',
+    'stakeholders',
+    'quotes',
+    'orders',
+    'commercial_commitments',
+    'pipeline_defense_briefs',
+  ]) {
+    assert.equal(
+      code.includes(`'${table}'`),
+      false,
+      `admin-metrics reads ${table} - one seller's customers must never be readable from the cross-workspace console`,
+    );
+  }
+});
+
 // 9b. "Paying" must mean money, not a column that says so.
 //
 // Checked against the live database on 2026-08-18: two profiles read

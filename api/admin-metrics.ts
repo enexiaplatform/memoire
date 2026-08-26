@@ -301,6 +301,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       realEvents.filter((event) => withinDays(event.created_at, days, now)).map((event) => event.anonymous_id),
     ).size;
 
+    // `user_profiles.id` is the auth user id, so the account list below can say
+    // what plan somebody is on without a second round trip. A missing row is
+    // normal rather than an error - a profile is created lazily, and an account
+    // that has not been back since signing up may not have one yet.
+    const profileById = new Map<string, any>(profiles.map((profile) => [profile.id, profile]));
+
     const tierCount = (tier: string) => profiles.filter((profile) => profile.subscription_tier === tier).length;
     const statusCount = (status: string) => profiles.filter((profile) => profile.subscription_status === status).length;
 
@@ -339,6 +345,59 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         // Signed up and never came back after the first session.
         neverReturned: authUsers.filter((account) => !account.last_sign_in_at).length,
         signupsByDay: countByDay(authUsers.map((account) => account.created_at), WINDOW_DAYS, now),
+
+        /**
+         * Who they actually are, newest first.
+         *
+         * Every figure above this line is a count, and until now that was all
+         * this endpoint returned about accounts: it read `id, email,
+         * created_at, last_sign_in_at, email_confirmed_at` for every user and
+         * then collapsed the lot into `.filter().length` before responding. Not
+         * one account row ever left the server.
+         *
+         * The same endpoint already returns a list for leads, with the reason
+         * written above it - "a count alone would tell the operator that
+         * somebody wanted something without telling them what". That argument
+         * was made for leads and never applied here, and it applies harder
+         * here: "1 new in 30 days" and "0 never confirmed" are unactionable at
+         * four accounts and stay unactionable at forty. Which one is new, did
+         * they confirm, have they ever come back - those are the questions, and
+         * every one of them was already in memory and thrown away.
+         *
+         * ## What this may carry, and what it may not
+         *
+         * The line this file draws is between *who holds an account* and *what
+         * is inside their workspace*. An email address and a signup date are
+         * the operator's own signup ledger, which every product has. A customer
+         * name, a deal, an amount or a note belongs to one seller and is not
+         * readable from here at any tier - see the queries above, which never
+         * select from those tables.
+         *
+         * Activation is deliberately absent, and it is the one people will ask
+         * for. `product_events` is keyed on `anonymous_id` and carries no user
+         * id by construction (see its migration), so "did *this* account ever
+         * capture anything" cannot be answered without breaking that. The
+         * activation funnel below stays a population measure. Making it
+         * per-person would mean attaching identity to every product event,
+         * which is a much larger decision than a table on a dashboard.
+         */
+        recent: authUsers
+          .slice()
+          .sort((a, b) => Date.parse(b.created_at || '') - Date.parse(a.created_at || ''))
+          .slice(0, 100)
+          .map((account) => {
+            const profile = profileById.get(account.id);
+            return {
+              id: account.id,
+              email: account.email || '',
+              createdAt: account.created_at || '',
+              confirmed: Boolean(account.email_confirmed_at),
+              lastSignInAt: account.last_sign_in_at || '',
+              subscriptionStatus: profile?.subscription_status || 'free',
+              subscriptionTier: profile?.subscription_tier || '',
+              trialEndsAt: profile?.subscription_trial_ends_at || '',
+            };
+          }),
       },
 
       billing: {

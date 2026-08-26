@@ -38,6 +38,16 @@ type AdminMetrics = {
     activeLast30: number;
     neverReturned: number;
     signupsByDay: DayCount[];
+    recent: Array<{
+      id: string;
+      email: string;
+      createdAt: string;
+      confirmed: boolean;
+      lastSignInAt: string;
+      subscriptionStatus: string;
+      subscriptionTier: string;
+      trialEndsAt: string;
+    }>;
   };
   billing: {
     checkoutEnabled: boolean;
@@ -236,6 +246,7 @@ export function AdminDashboardPage() {
                 />
               </div>
               <SignupChart days={metrics.accounts.signupsByDay} />
+              <AccountList accounts={metrics.accounts.recent} />
             </Section>
 
             <LeadsSection leads={metrics.leads} />
@@ -380,6 +391,92 @@ export function AdminDashboardPage() {
  * placed above Money on purpose: an unanswered lead is the most perishable
  * thing on this page.
  */
+/**
+ * Who holds an account, newest first.
+ *
+ * Everything above this on the page is a count, and counts are what you read
+ * when there are thousands of accounts. At four, "1 new in 30 days" is not a
+ * measurement - it is a row you want to look at. Which one is new, did they
+ * confirm their email, have they ever come back.
+ *
+ * The three states worth spotting at a glance get a chip rather than a column
+ * of dates to compare: a signup that never confirmed (which is not a customer,
+ * it is a form submission), and one that has never returned since the day they
+ * joined (which is the whole product failing in the first session).
+ *
+ * There is no "has this person activated" column, and its absence is
+ * deliberate: `product_events` carries an anonymous id and no user id by
+ * construction, so the funnel above is a population measure and cannot be
+ * resolved to a name without changing what the product records about people.
+ */
+function AccountList({ accounts }: { accounts: AdminMetrics['accounts']['recent'] }) {
+  if (accounts.length === 0) {
+    return (
+      <p className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+        No accounts yet.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-5">
+      <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500">
+        Accounts, newest first
+      </h3>
+      {/* Its own scroller, so a long email never makes the page scroll sideways. */}
+      <div className="mt-3 overflow-x-auto rounded-lg border border-gray-200">
+        <table className="min-w-full text-left text-sm">
+          <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+            <tr>
+              <th scope="col" className="px-4 py-2 font-bold">Account</th>
+              <th scope="col" className="px-4 py-2 font-bold">Joined</th>
+              <th scope="col" className="px-4 py-2 font-bold">Last seen</th>
+              <th scope="col" className="px-4 py-2 font-bold">Plan</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 bg-white">
+            {accounts.map((account) => (
+              <tr key={account.id}>
+                <td className="px-4 py-3 align-top">
+                  <a className="font-medium text-brand-blue hover:underline" href={`mailto:${account.email}`}>
+                    {account.email || account.id}
+                  </a>
+                  {!account.confirmed && (
+                    <span className="ml-2 inline-block rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-800">
+                      Never confirmed
+                    </span>
+                  )}
+                  {account.confirmed && !account.lastSignInAt && (
+                    <span className="ml-2 inline-block rounded border border-red-100 bg-red-50 px-1.5 py-0.5 text-[11px] font-bold text-red-700">
+                      Never returned
+                    </span>
+                  )}
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 align-top text-gray-600">{formatLeadDate(account.createdAt)}</td>
+                <td className="whitespace-nowrap px-4 py-3 align-top text-gray-600">
+                  {account.lastSignInAt ? formatLeadDate(account.lastSignInAt) : '—'}
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 align-top text-gray-600">
+                  {account.subscriptionTier || account.subscriptionStatus || 'free'}
+                  {account.trialEndsAt && (
+                    <span className="block text-[11px] text-gray-500">
+                      trial ends {formatLeadDate(account.trialEndsAt)}
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-2 text-[11px] text-gray-500">
+        Newest 100. Emails and dates only — no workspace content is readable from here, and the activation funnel
+        below stays anonymous by design.
+      </p>
+    </div>
+  );
+}
+
 function LeadsSection({ leads }: { leads: AdminMetrics['leads'] }) {
   return (
     <Section
