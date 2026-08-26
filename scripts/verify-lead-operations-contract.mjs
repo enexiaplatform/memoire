@@ -37,6 +37,52 @@ for (const marker of [
   requireIncludes(requestAccessApi, marker, `request-access API missing marker: ${marker}`);
 }
 
+/**
+ * Somebody is told when a lead arrives.
+ *
+ * Nobody was. The form wrote a row and the operator console said so plainly:
+ * "this list is the whole mechanism". A stranger's enquiry sat there until
+ * somebody happened to open /admin, and nothing would ever have reported the
+ * one that was missed.
+ *
+ * Three properties, each pinned to the line that provides it, because each one
+ * is a different way to reintroduce the same class of loss:
+ */
+{
+  const insertAt = requestAccessApi.indexOf("supabase.from('early_access_requests').insert");
+  const notifyAt = requestAccessApi.indexOf('await notifyOperatorOfLead(');
+
+  // 1. The alert never precedes the record. A notification that can throw
+  //    before the insert takes the lead down with it.
+  if (notifyAt === -1) {
+    fail('request-access must notify somebody when a lead arrives - the /admin list cannot be the whole mechanism');
+  } else if (notifyAt < insertAt) {
+    fail('the lead notification runs before the insert - the alert must never be able to cost the record it is about');
+  }
+
+  // 2. Awaited. This is a serverless handler: an unawaited promise is killed
+  //    when it returns, so fire-and-forget here is fire-and-never-send.
+  requireIncludes(
+    requestAccessApi,
+    'await notifyOperatorOfLead(',
+    'the lead notification must be awaited - a serverless handler kills an unawaited promise on return',
+  );
+
+  // 3. Its failure is swallowed, and its destination is configuration. The
+  //    person filling in the form cannot fix our mailbox and must still get
+  //    their 201; and no support address may be typed literally here, because
+  //    it has one home in src/config/contact.ts.
+  for (const marker of [
+    'process.env.LEAD_NOTIFICATION_EMAIL || process.env.EMAIL_FROM',
+    '  } catch {',
+  ]) {
+    requireIncludes(requestAccessApi, marker, `lead notification marker missing: ${marker}`);
+  }
+  if (/@memoire-official\.com/.test(requestAccessApi)) {
+    fail('a support address is written literally in request-access.ts - it belongs in src/config/contact.ts');
+  }
+}
+
 for (const analytics of [
   "body.kind === 'event'",
   'buildProductEventPayload',
