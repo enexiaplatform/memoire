@@ -5,7 +5,7 @@ import { CONTACT_EMAIL, CONTACT_MAILTO } from '../../config/contact';
 export function Footer() {
   return (
     <footer className="bg-white border-t border-gray-100 py-12 px-4">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-5">
         <div className="md:col-span-2">
           <Link to="/" className="mb-4 block" aria-label="Memoire home">
             <BrandWordmark className="text-2xl" />
@@ -27,6 +27,17 @@ export function Footer() {
           </ul>
         </div>
         
+        {/* The guides are linked from every marketing page rather than only from
+            the sitemap. A page a crawler reaches only through an XML file is
+            treated as one nothing on the site thinks is important. */}
+        <div>
+          <h4 className="font-semibold text-gray-900 mb-4">Guides</h4>
+          <ul className="space-y-3">
+            <li><Link to="/why-deals-go-quiet" className="text-gray-600 hover:text-gray-900">Why deals go quiet</Link></li>
+            <li><Link to="/quote-to-cash" className="text-gray-600 hover:text-gray-900">Quote to cash</Link></li>
+          </ul>
+        </div>
+
         <div>
           <h4 className="font-semibold text-gray-900 mb-4">Legal</h4>
           <ul className="space-y-3">

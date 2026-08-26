@@ -100,6 +100,11 @@ export const PUBLIC_PAGES: { path: string; priority: number; changefreq: string 
   { path: '/', priority: 1.0, changefreq: 'weekly' },
   { path: '/pricing', priority: 0.9, changefreq: 'weekly' },
   { path: '/use-cases', priority: 0.9, changefreq: 'weekly' },
+  // The guides. Priority below the product pages and above the legal ones: they
+  // are the pages a stranger arrives on, but a brand query should still land on
+  // the home page rather than on an essay.
+  { path: '/why-deals-go-quiet', priority: 0.8, changefreq: 'monthly' },
+  { path: '/quote-to-cash', priority: 0.8, changefreq: 'monthly' },
   { path: '/request-access', priority: 0.6, changefreq: 'monthly' },
   { path: '/legal/privacy', priority: 0.3, changefreq: 'yearly' },
   { path: '/legal/terms', priority: 0.3, changefreq: 'yearly' },

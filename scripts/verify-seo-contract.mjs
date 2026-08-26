@@ -172,7 +172,7 @@ const read = (path) => readFileSync(path, 'utf8');
   // the search sense, so they are excluded by name rather than by pattern.
   const routed = [...app.matchAll(/<Route path="(\/[^"]*)"/g)].map((match) => match[1]);
   const shouldBeListed = routed.filter((path) =>
-    ['/', '/pricing', '/use-cases', '/request-access'].includes(path),
+    ['/', '/pricing', '/use-cases', '/why-deals-go-quiet', '/quote-to-cash', '/request-access'].includes(path),
   );
   for (const path of shouldBeListed) {
     assert.ok(listed.has(path), `${path} is a public route but is missing from PUBLIC_PAGES`);
@@ -227,15 +227,30 @@ const read = (path) => readFileSync(path, 'utf8');
     'the SPA fallback must declare noindex - it serves only private surfaces and soft 404s',
   );
 
-  const prerendered = [
-    ['/', 'dist/index.html'],
-    ['/pricing', 'dist/pricing/index.html'],
-    ['/use-cases', 'dist/use-cases/index.html'],
-    ['/request-access', 'dist/request-access/index.html'],
-    ['/legal/privacy', 'dist/legal/privacy/index.html'],
-    ['/legal/terms', 'dist/legal/terms/index.html'],
-    ['/legal/boundaries', 'dist/legal/boundaries/index.html'],
-  ];
+  /**
+   * Derived from `PUBLIC_PAGES`, not typed out again.
+   *
+   * This was a hardcoded list of seven routes, and it was a second copy of the
+   * site's page list with nothing keeping it honest. Adding `/why-deals-go-quiet`
+   * and `/quote-to-cash` proved the cost: both were prerendered, both were in
+   * the sitemap, both passed this contract - and neither was checked at all.
+   * Every assertion in the loop below (one h1, one title, a canonical that
+   * matches, a description under 160, parseable JSON-LD, no head tags left in
+   * the body, more than 4000 bytes of real content) silently did not apply to
+   * the only two pages on the site nobody had reviewed yet.
+   *
+   * The path-to-file rule is the same one `outputPathFor` uses in
+   * scripts/prerender.mjs: root is index.html, everything else is a directory.
+   */
+  const prerendered = PUBLIC_PAGES.map(({ path }) => [
+    path,
+    path === '/' ? 'dist/index.html' : `dist${path}/index.html`,
+  ]);
+  assert.equal(
+    prerendered.length,
+    PUBLIC_PAGES.length,
+    'every public page must be checked here - this list is derived so it cannot drift',
+  );
 
   for (const [route, file] of prerendered) {
     assert.ok(existsSync(file), `${route} was not prerendered (${file})`);

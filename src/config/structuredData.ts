@@ -152,6 +152,44 @@ export function breadcrumbSchema(trail: { name: string; path: string }[]): Recor
   };
 }
 
+/**
+ * An explanatory page, as an Article.
+ *
+ * The guides are the only pages here that are writing rather than product
+ * description, and the distinction is one a crawler cannot make by reading. An
+ * `Article` with dates is what lets a search result show a date, and what lets
+ * an answer engine prefer the more recent of two pages covering the same
+ * ground - including, eventually, two of ours.
+ *
+ * `author` and `publisher` are both the organisation on purpose. Naming a
+ * person would be a claim about who wrote it that nothing else on the site
+ * makes, and a byline that does not resolve to a real author page is markup
+ * pretending to be provenance.
+ */
+export function articleSchema(options: {
+  headline: string;
+  description: string;
+  path: string;
+  /** ISO date. Both are required: a page with no `dateModified` reads as never revisited. */
+  published: string;
+  updated: string;
+}): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: options.headline,
+    description: options.description,
+    datePublished: options.published,
+    dateModified: options.updated,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': canonicalUrl(options.path) },
+    author: { '@id': ORGANIZATION_ID },
+    publisher: { '@id': ORGANIZATION_ID },
+    image: SITE_OG_IMAGE,
+    isPartOf: { '@id': WEBSITE_ID },
+    inLanguage: 'en',
+  };
+}
+
 /** A page that is mostly one list - the use-cases page is exactly this shape. */
 export function itemListSchema(options: {
   name: string;

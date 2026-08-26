@@ -82,6 +82,13 @@ deletes it.
   exists for, and the price.
 - [Use Cases](https://www.memoire-official.com/use-cases): the four commercial
   jobs it is built around, each with the surfaces that serve it.
+- [Why deals go quiet](https://www.memoire-official.com/why-deals-go-quiet): the
+  four silences in a B2B cycle - after the quote, after the win, after the
+  invoice, and before the review - why each happens, and what to do about them
+  with or without software.
+- [Quote to cash](https://www.memoire-official.com/quote-to-cash): the seven
+  steps between a signed order and money in the bank, the three places a small
+  business loses cash in them, and how to run it without an ERP.
 - [Pricing](https://www.memoire-official.com/pricing): free during the preview;
   $10 per month, one person, after a 7-day trial once it ends. Team is not on
   sale.

@@ -20,6 +20,14 @@ const ResetPasswordPage = lazy(() =>
 );
 const PricingPage = lazy(() => import('./features/pricing/PricingPage').then((module) => ({ default: module.PricingPage })));
 const UseCasesPage = lazy(() => import('./features/useCases/UseCasesPage').then((module) => ({ default: module.UseCasesPage })));
+// The guides. Public, prerendered, and the only pages here written for a reader
+// who has not heard the product's name - see src/features/guides/GuideLayout.tsx.
+const WhyDealsGoQuietPage = lazy(() =>
+  import('./features/guides/WhyDealsGoQuietPage').then((module) => ({ default: module.WhyDealsGoQuietPage })),
+);
+const QuoteToCashPage = lazy(() =>
+  import('./features/guides/QuoteToCashPage').then((module) => ({ default: module.QuoteToCashPage })),
+);
 const EarlyAccessRequestPage = lazy(() =>
   import('./features/earlyAccess/EarlyAccessRequestPage').then((module) => ({ default: module.EarlyAccessRequestPage })),
 );
@@ -103,6 +111,8 @@ function App() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/use-cases" element={<UseCasesPage />} />
+          <Route path="/why-deals-go-quiet" element={<WhyDealsGoQuietPage />} />
+          <Route path="/quote-to-cash" element={<QuoteToCashPage />} />
           <Route path="/request-access" element={<EarlyAccessRequestPage />} />
           <Route path="/privacy" element={<Navigate to="/legal/privacy" replace />} />
           <Route path="/terms" element={<Navigate to="/legal/terms" replace />} />

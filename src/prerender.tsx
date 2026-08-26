@@ -8,6 +8,8 @@ import { PricingPage } from './features/pricing/PricingPage';
 import { UseCasesPage } from './features/useCases/UseCasesPage';
 import { LegalPage } from './features/legal/LegalPage';
 import { EarlyAccessRequestPage } from './features/earlyAccess/EarlyAccessRequestPage';
+import { WhyDealsGoQuietPage } from './features/guides/WhyDealsGoQuietPage';
+import { QuoteToCashPage } from './features/guides/QuoteToCashPage';
 
 /**
  * The server half of the marketing site.
@@ -58,6 +60,8 @@ export const PRERENDER_ROUTES = [
   '/',
   '/pricing',
   '/use-cases',
+  '/why-deals-go-quiet',
+  '/quote-to-cash',
   '/request-access',
   '/legal/privacy',
   '/legal/terms',
@@ -118,6 +122,8 @@ export function renderRoute(url: string): string {
             <Route path="/" element={<LandingPage />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/use-cases" element={<UseCasesPage />} />
+            <Route path="/why-deals-go-quiet" element={<WhyDealsGoQuietPage />} />
+            <Route path="/quote-to-cash" element={<QuoteToCashPage />} />
             <Route path="/request-access" element={<EarlyAccessRequestPage />} />
             <Route path="/legal/:document" element={<LegalPage />} />
           </Routes>
