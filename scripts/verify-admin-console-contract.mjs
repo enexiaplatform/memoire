@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { adminGateConfigured, isAdminUser } from '../api/admin-metrics.ts';
+import { adminGateConfigured, isAdminUser, neverCameBack } from '../api/admin-metrics.ts';
 
 /**
  * The operator console is the one endpoint in this product that reads across
@@ -192,6 +192,56 @@ check('cross-workspace paging has a total order', () => {
     orderedById.length,
     2,
     'both paged reads (user_profiles, product_events) must break ties on id, or counts silently drift',
+  );
+});
+
+// 9-. "Never came back" counts the people the label describes.
+//
+// It was `!account.last_sign_in_at` - never signed in *at all* - under a tile
+// reading "Never signed in again / First session was the only one". Supabase
+// writes `last_sign_in_at` when the signup session is created, so every account
+// in the population the label describes has that column set, and the number was
+// structurally zero for exactly the people it claimed to count. It read 0 while
+// an account sat in the database having joined and last appeared on the same
+// day in May - which the account list made visible on the same screen.
+//
+// This is the worst number on the page to get wrong. "Did anybody come back
+// after the first session" is the question a product in preview exists to
+// answer, and a zero here reads as "nobody churned".
+check('never-came-back is measured, not assumed from a null column', () => {
+  const confirmed = '2026-05-02T09:00:00Z';
+  const cases = [
+    ['signed up and left the same day', { email_confirmed_at: confirmed, created_at: confirmed, last_sign_in_at: confirmed }, true],
+    ['a long first session is still one session', { email_confirmed_at: confirmed, created_at: confirmed, last_sign_in_at: '2026-05-02T20:00:00Z' }, true],
+    ['no sign-in recorded at all', { email_confirmed_at: confirmed, created_at: confirmed }, true],
+    ['came back the next day', { email_confirmed_at: confirmed, created_at: confirmed, last_sign_in_at: '2026-05-03T10:00:00Z' }, false],
+    ['came back three months later', { email_confirmed_at: confirmed, created_at: confirmed, last_sign_in_at: '2026-08-26T09:00:00Z' }, false],
+    // Counted by the tile beside this one. Somebody who never confirmed never
+    // had a first session to come back from, and the two failures have
+    // different fixes - email deliverability, or the first five minutes.
+    ['never confirmed', { created_at: confirmed, last_sign_in_at: confirmed }, false],
+    // An unreadable date is not evidence of anything, least of all of churn.
+    ['unreadable signup date', { email_confirmed_at: confirmed, created_at: 'not a date', last_sign_in_at: confirmed }, false],
+  ];
+
+  for (const [name, account, expected] of cases) {
+    assert.equal(neverCameBack(account), expected, `never-came-back got ${name} wrong`);
+  }
+
+  // The tile and the rows must never disagree about the same person, which is
+  // what a second copy of this rule in the browser would eventually produce.
+  assert.ok(
+    endpoint.includes('neverReturned: authUsers.filter(neverCameBack).length'),
+    'the tile must count with the same predicate the rows carry',
+  );
+  assert.ok(
+    endpoint.includes('neverCameBack: neverCameBack(account)'),
+    'each account row must carry the flag rather than let the browser re-derive it',
+  );
+  assert.equal(
+    /!account\.lastSignInAt\s*&&/.test(page),
+    false,
+    'the admin page derives "never came back" from a date again instead of reading the flag',
   );
 });
 

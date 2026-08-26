@@ -44,6 +44,7 @@ type AdminMetrics = {
       createdAt: string;
       confirmed: boolean;
       lastSignInAt: string;
+      neverCameBack: boolean;
       subscriptionStatus: string;
       subscriptionTier: string;
       trialEndsAt: string;
@@ -240,9 +241,9 @@ export function AdminDashboardPage() {
                   note="Signups that did not finish"
                 />
                 <StatTile
-                  label="Never signed in again"
+                  label="Never came back"
                   value={metrics.accounts.neverReturned}
-                  note="First session was the only one"
+                  note="No sign-in after the first day"
                 />
               </div>
               <SignupChart days={metrics.accounts.signupsByDay} />
@@ -399,10 +400,12 @@ export function AdminDashboardPage() {
  * measurement - it is a row you want to look at. Which one is new, did they
  * confirm their email, have they ever come back.
  *
- * The three states worth spotting at a glance get a chip rather than a column
- * of dates to compare: a signup that never confirmed (which is not a customer,
- * it is a form submission), and one that has never returned since the day they
- * joined (which is the whole product failing in the first session).
+ * The two states worth spotting at a glance get a chip rather than two dates to
+ * compare: a signup that never confirmed (which is not a customer, it is a form
+ * submission), and one that never came back after the day it joined (which is
+ * the product failing in the first session). Both chips read a flag the server
+ * computed with the same predicate as the tile above, so a row can never
+ * disagree with the count about the same person.
  *
  * There is no "has this person activated" column, and its absence is
  * deliberate: `product_events` carries an anonymous id and no user id by
@@ -446,9 +449,9 @@ function AccountList({ accounts }: { accounts: AdminMetrics['accounts']['recent'
                       Never confirmed
                     </span>
                   )}
-                  {account.confirmed && !account.lastSignInAt && (
+                  {account.neverCameBack && (
                     <span className="ml-2 inline-block rounded border border-red-100 bg-red-50 px-1.5 py-0.5 text-[11px] font-bold text-red-700">
-                      Never returned
+                      Never came back
                     </span>
                   )}
                 </td>

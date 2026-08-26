@@ -84,6 +84,40 @@ export function adminGateConfigured() {
 }
 
 /**
+ * Signed up, used it once, and never came back.
+ *
+ * This tile is labelled "Never signed in again / First session was the only
+ * one" and was computed as `!account.last_sign_in_at` - never signed in *at
+ * all*. Supabase writes `last_sign_in_at` when the signup session is
+ * created, so the population the label describes always has that column
+ * set, and the number was structurally zero for exactly the people it
+ * claimed to count. It read 0 while `admin@memoireapp.com` sat in the
+ * database having joined and last appeared on the same day in May.
+ *
+ * It is the worst number on the page to get wrong: "did anybody come back
+ * after the first session" is the single question a product in preview
+ * exists to answer.
+ *
+ * So it is computed the way the label reads - no sign-in more than a day
+ * after signing up. A day rather than an hour because a session that runs
+ * long is still one session, and because the alternative is guessing at a
+ * session length Supabase does not record.
+ *
+ * Unconfirmed signups are excluded and counted by the tile beside this one.
+ * Somebody who never confirmed their email never had a first session to
+ * come back from, and the two failures have different fixes - one is email
+ * deliverability, the other is the first five minutes of the product.
+ */
+export function neverCameBack(account: { created_at?: string; last_sign_in_at?: string; email_confirmed_at?: string }) {
+  if (!account.email_confirmed_at) return false;
+  const created = Date.parse(account.created_at || '');
+  if (!Number.isFinite(created)) return false;
+  const lastSeen = Date.parse(account.last_sign_in_at || '');
+  if (!Number.isFinite(lastSeen)) return true;
+  return lastSeen - created < DAY_MS;
+}
+
+/**
  * Exported for the contract test. Takes the *verified* user object, so there is
  * no overload that accepts an id or an email on its own - passing a value the
  * caller supplied is then not something this function will do for you.
@@ -301,6 +335,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       realEvents.filter((event) => withinDays(event.created_at, days, now)).map((event) => event.anonymous_id),
     ).size;
 
+
     // `user_profiles.id` is the auth user id, so the account list below can say
     // what plan somebody is on without a second round trip. A missing row is
     // normal rather than an error - a profile is created lazily, and an account
@@ -342,8 +377,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         unconfirmed: authUsers.filter((account) => !account.email_confirmed_at).length,
         activeLast7: authUsers.filter((account) => withinDays(account.last_sign_in_at, 7, now)).length,
         activeLast30: authUsers.filter((account) => withinDays(account.last_sign_in_at, 30, now)).length,
-        // Signed up and never came back after the first session.
-        neverReturned: authUsers.filter((account) => !account.last_sign_in_at).length,
+        neverReturned: authUsers.filter(neverCameBack).length,
         signupsByDay: countByDay(authUsers.map((account) => account.created_at), WINDOW_DAYS, now),
 
         /**
@@ -393,6 +427,9 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
               createdAt: account.created_at || '',
               confirmed: Boolean(account.email_confirmed_at),
               lastSignInAt: account.last_sign_in_at || '',
+              // Read from the same predicate the tile counts, so a row can
+              // never disagree with the number above it about the same person.
+              neverCameBack: neverCameBack(account),
               subscriptionStatus: profile?.subscription_status || 'free',
               subscriptionTier: profile?.subscription_tier || '',
               trialEndsAt: profile?.subscription_trial_ends_at || '',
