@@ -51,22 +51,35 @@
     <!-- Link previews. A product whose feature is "send this brief to your
          manager" was pasting into Slack and email as a blank card: no image, no
          card type, just a URL.
-         The card is an SVG, which Slack, Discord and iMessage render and X does
-         not - export it to social-card.png and swap the two URLs below when
-         there is a moment; a card most places render beats none anywhere. -->
+         The card was an SVG until 2026-08-26, and SVG is not an accepted
+         og:image on X, LinkedIn, Facebook or WhatsApp - which is to say it
+         rendered in three places nobody sells in and in none of the places they
+         do. It is now a PNG from `npm run generate:social-card`.
+         Everything below is a fallback. Every prerendered marketing page
+         overrides the whole block from src/components/marketing/PageSeo.tsx,
+         and the merge in scripts/prerender.mjs drops a tag here whenever the
+         page emits the same key - so what survives is what an unrendered route
+         (the SPA shell, and 404) shares as.
+         The description carries no price on purpose: this file cannot read
+         FREE_PREVIEW, so an offer written here goes stale the day the flag
+         flips and would be pasted beside a pricing page saying the opposite.
+         The offer lives on the pages that are rendered from the flag. -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Memoire" />
     <meta property="og:title" content="Memoire - Personal Commercial Control Tower for B2B Sellers" />
-    <meta property="og:description" content="Memoire follows every customer thread from conversation to quote to delivery to cash, so nothing goes silent. $10 a month for one person, after a 7-day free trial." />
+    <meta property="og:description" content="Memoire follows every customer thread from conversation to quote to delivery to cash, so nothing in your business goes silent." />
     <meta property="og:locale" content="en_US" />
     <meta property="og:url" content="https://www.memoire-official.com/" />
-    <meta property="og:image" content="https://www.memoire-official.com/social-card.svg" />
+    <meta property="og:image" content="https://www.memoire-official.com/social-card.png" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Memoire - Personal Commercial Control Tower. Nothing in your business goes silent." />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Memoire - Personal Commercial Control Tower for B2B Sellers" />
     <meta name="twitter:description" content="Capture messy notes, see where the money is stuck, and walk into every review with answers." />
-    <meta name="twitter:image" content="https://www.memoire-official.com/social-card.svg" />
+    <meta name="twitter:image" content="https://www.memoire-official.com/social-card.png" />
+    <meta name="twitter:image:alt" content="Memoire - Personal Commercial Control Tower. Nothing in your business goes silent." />
 
     <title>Memoire - Personal Commercial Control Tower for B2B Sellers</title>
   </head>

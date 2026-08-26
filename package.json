@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build && npm run prerender",
     "prerender": "node scripts/prerender.mjs",
     "generate:favicons": "node scripts/generate-favicons.mjs",
+    "generate:social-card": "node scripts/generate-social-card.mjs",
     "typecheck:api": "tsc -p tsconfig.api.json",
     "lint": "eslint .",
     "test": "node --test \"test/unit/*.test.mjs\"",

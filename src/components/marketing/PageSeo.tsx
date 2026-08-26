@@ -4,6 +4,10 @@ import {
   ROBOTS_PRIVATE,
   SITE_NAME,
   SITE_OG_IMAGE,
+  SITE_OG_IMAGE_ALT,
+  SITE_OG_IMAGE_HEIGHT,
+  SITE_OG_IMAGE_TYPE,
+  SITE_OG_IMAGE_WIDTH,
   canonicalUrl,
 } from '../../config/seo';
 
@@ -96,12 +100,28 @@ export function PageSeo({
       <meta property="og:title" content={shareTitle} />
       <meta property="og:description" content={shareDescription} />
       <meta property="og:url" content={url} />
+      {/*
+        * The card's dimensions, type and alt text travel with its URL.
+        *
+        * They used to sit in `index.html` and only half of them existed: width
+        * and height, no type, no alt. The prerender drops a template tag only
+        * when the page emits the same key, so those two survived from the
+        * template while the URL beside them came from here - one card described
+        * in two files. Declaring all five together means a card that changes
+        * shape cannot leave a stale 1200x630 behind it, and a scraper that
+        * needs the type before it will fetch the bytes (X is one) gets it.
+        */}
       <meta property="og:image" content={image} />
+      <meta property="og:image:type" content={SITE_OG_IMAGE_TYPE} />
+      <meta property="og:image:width" content={String(SITE_OG_IMAGE_WIDTH)} />
+      <meta property="og:image:height" content={String(SITE_OG_IMAGE_HEIGHT)} />
+      <meta property="og:image:alt" content={SITE_OG_IMAGE_ALT} />
       <meta property="og:locale" content="en_US" />
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={shareTitle} />
       <meta name="twitter:description" content={shareDescription} />
       <meta name="twitter:image" content={image} />
+      <meta name="twitter:image:alt" content={SITE_OG_IMAGE_ALT} />
 
       {jsonLd.map((entry, index) => (
         // The index is the key because these are a fixed, ordered list per page

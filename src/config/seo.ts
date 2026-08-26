@@ -32,11 +32,32 @@ export const SITE_DESCRIPTION =
   'Memoire follows every customer thread from conversation to quote to delivery to cash, so nothing goes silent. $10 a month for one person.';
 
 /**
- * Link-preview card. Still an SVG: Slack, Discord and iMessage render it and X
- * does not. Exporting it to PNG and swapping this one constant is the whole
- * fix when there is a moment for it.
+ * Link-preview card.
+ *
+ * A PNG, and that is the point. This was an SVG until 2026-08-26, which meant
+ * the card rendered in Slack, Discord and iMessage and nowhere a buyer is: not
+ * X, not LinkedIn, not Facebook, not WhatsApp. None of them accept SVG as an
+ * og:image, so every share of this product on the channel its own customers
+ * live on came out as a grey box with a URL under it.
+ *
+ * Regenerate with `npm run generate:social-card` when the card changes; the
+ * output is committed. `SITE_OG_IMAGE_TYPE` travels with it because a card
+ * whose declared type does not match its bytes is refetched or dropped by
+ * several scrapers.
  */
-export const SITE_OG_IMAGE = `${SITE_URL}/social-card.svg`;
+export const SITE_OG_IMAGE = `${SITE_URL}/social-card.png`;
+export const SITE_OG_IMAGE_TYPE = 'image/png';
+export const SITE_OG_IMAGE_WIDTH = 1200;
+export const SITE_OG_IMAGE_HEIGHT = 630;
+
+/**
+ * What the card shows, for a reader who cannot see it.
+ *
+ * `twitter:image:alt` and `og:image:alt` are read out by screen readers on the
+ * platforms that support them, and a card with none is announced as "image".
+ */
+export const SITE_OG_IMAGE_ALT =
+  'Memoire - Personal Commercial Control Tower. Nothing in your business goes silent.';
 
 /**
  * Absolute URL for a route path.
