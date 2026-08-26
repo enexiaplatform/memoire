@@ -74,6 +74,49 @@ for (const [file, surface] of [
   );
 }
 
+// 4b. On Plan, the ledger never re-lists the week the board below it is already
+//     drawing.
+//
+//     Plan opened with every open promise as a card and the same promises drawn
+//     as days underneath: a workspace owing 21 spent about 1,650px listing its
+//     week before the week itself came into view, and the only action on a
+//     derived row was a chip that scrolled down to the board. The fold is what
+//     stops the page being a table of contents for itself.
+//
+//     It is scoped to Plan on purpose. Today and Review have no board on screen,
+//     so there the panel is the only place a promise appears and folding it
+//     would delete it from the interface.
+{
+  const timeline = read('src/features/timeline/TimelinePage.tsx');
+  assert.ok(
+    /boardWindow=\{boardWindow\}/.test(timeline),
+    'Plan must hand the ledger the days its board is drawing, or the panel cannot know what to fold',
+  );
+  assert.ok(
+    /onRangeChange=\{setBoardWindow\}/.test(timeline),
+    'and paging the board must move that answer with it',
+  );
+
+  const today = read('src/features/dashboard/DashboardPage.tsx');
+  const todayPanel = today.slice(today.indexOf('<CommitmentLedgerPanel'), today.indexOf('<TodayTopThreeActions'));
+  assert.ok(todayPanel.length > 0, "Today's ledger panel must be findable");
+  assert.equal(
+    todayPanel.includes('boardWindow'),
+    false,
+    'Today has no plan board on screen, so folding there would hide promises with nowhere else to appear',
+  );
+
+  const panel = read('src/features/commitments/CommitmentLedgerPanel.tsx');
+  assert.ok(
+    panel.includes('splitCommitmentsByBoard'),
+    'the fold must use the shared rule, not a second opinion about what the board shows',
+  );
+  assert.ok(
+    panel.includes('List them'),
+    'the fold is a default, not a decision taken away - the full list must stay one click off',
+  );
+}
+
 // 5. Recommendations are explainable in the interface, not just in the domain.
 {
   const risk = read('src/features/threads/CommercialRiskPanel.tsx');

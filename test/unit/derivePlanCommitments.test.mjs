@@ -150,3 +150,52 @@ describe('one promise, once', () => {
     assert.equal(derived[0].sourceId, 'p9', 'the operator’s own wording is the one kept');
   });
 });
+
+describe('what the week board below is already showing', () => {
+  const { start, end, today } = { start: '2026-08-24', end: '2026-08-30', today: '2026-08-26' };
+  const win = { start, end, today };
+  const split = async (commitments, window = win) => {
+    const { splitCommitmentsByBoard } = await import('../../src/domain/commercialKernel/derivePlanCommitments.ts');
+    return splitCommitmentsByBoard(commitments, window);
+  };
+
+  test('a promise the board is drawing is folded, so the week is not listed twice above itself', async () => {
+    const derived = derivePlanCommitments({ planItems: [planItem({ id: 'p1', date: '2026-08-27' })] });
+    const { onBoard, offBoard } = await split(derived);
+    assert.equal(onBoard.length, 1);
+    assert.equal(offBoard.length, 0);
+  });
+
+  test('a promise recorded by hand is never folded - the board cannot draw it at all', async () => {
+    const byHand = recorded({ id: 'c1', currentDueDate: '2026-08-27' });
+    const { onBoard, offBoard } = await split([byHand]);
+    assert.equal(onBoard.length, 0, 'the kernel store is not a source the plan board reads');
+    assert.equal(offBoard[0].id, 'c1');
+  });
+
+  test('an undated promise stays listed, because a calendar has nowhere to draw it', async () => {
+    const undated = recorded({ id: 'c2', currentDueDate: '', originalDueDate: '' });
+    const { onBoard, offBoard } = await split([undated]);
+    assert.equal(onBoard.length, 0);
+    assert.equal(offBoard.length, 1, 'folding this one would delete it from the interface');
+  });
+
+  test('a promise dated outside the days on screen stays listed', async () => {
+    const derived = derivePlanCommitments({ planItems: [planItem({ id: 'p2', date: '2026-09-15' })] });
+    const { onBoard, offBoard } = await split(derived);
+    assert.equal(onBoard.length, 0);
+    assert.equal(offBoard.length, 1);
+  });
+
+  test('an overdue promise is folded while today is on the board, because that is where it is carried to', async () => {
+    const derived = derivePlanCommitments({ planItems: [planItem({ id: 'p3', date: '2026-08-07' })] });
+    const onThisWeek = await split(derived);
+    assert.equal(onThisWeek.onBoard.length, 1, 'the board carries an unkept promise forward onto today');
+
+    // Paged to a week that does not contain today, the board stops carrying it
+    // forward - so folding it would hide it from every surface at once.
+    const pagedAway = await split(derived, { start: '2026-09-14', end: '2026-09-20', today });
+    assert.equal(pagedAway.onBoard.length, 0);
+    assert.equal(pagedAway.offBoard.length, 1);
+  });
+});

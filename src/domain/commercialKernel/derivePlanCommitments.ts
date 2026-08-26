@@ -1,6 +1,7 @@
 import type { CommercialCommitment } from './types.ts';
 import type { SalesActivityRecord } from '../../services/salesActivityStore.ts';
 import { buildCaptureDerivedKey, getDatedCaptureActions, type PlanRecord } from '../../utils/weeklyPlan.ts';
+import { compareSafeBusinessDate, isBusinessDateInRange } from '../../utils/safeDate.ts';
 
 /**
  * The promises Memoire made on the operator's behalf, read as commitments.
@@ -169,4 +170,59 @@ export function mergePlanCommitments(
   const derived = derivePlanCommitments(input)
     .filter((commitment) => !recordedSourceIds.has(commitment.sourceId || ''));
   return [...commitments, ...derived];
+}
+
+/** The days the plan board on screen is currently drawing. */
+export type PlanBoardWindow = {
+  start: string;
+  end: string;
+  /** Today, so a carried-forward promise is counted as visible. */
+  today: string;
+};
+
+/**
+ * Which promises the week board directly below is already showing.
+ *
+ * Plan opened with the ledger listing every open promise as a card, and the
+ * board underneath drawing the same promises as days. Fifteen promises cost
+ * about 1,100px of list before the week itself came into view, and the only
+ * action on a derived row was a chip that scrolled down to the board - the list
+ * was a table of contents for the thing beneath it.
+ *
+ * The split is by what the board can actually draw, not by what is convenient:
+ *
+ *  - Only a plan-derived promise can be on it. A promise recorded by hand lives
+ *    in the kernel store, which the board never reads.
+ *  - It has to have a day, because the board is a calendar. An undated promise
+ *    has nowhere to be drawn and would otherwise disappear entirely.
+ *  - That day has to be on screen - or be in the past while today is on screen,
+ *    which is where the board carries an unkept promise forward to.
+ *
+ * Everything else stays listed in full, because for those the panel is the only
+ * place they exist.
+ */
+export function splitCommitmentsByBoard(
+  commitments: CommercialCommitment[],
+  window: PlanBoardWindow,
+): { onBoard: CommercialCommitment[]; offBoard: CommercialCommitment[] } {
+  const onBoard: CommercialCommitment[] = [];
+  const offBoard: CommercialCommitment[] = [];
+
+  commitments.forEach((commitment) => {
+    (isOnPlanBoard(commitment, window) ? onBoard : offBoard).push(commitment);
+  });
+
+  return { onBoard, offBoard };
+}
+
+function isOnPlanBoard(commitment: CommercialCommitment, window: PlanBoardWindow) {
+  if (!isPlanDerivedCommitment(commitment)) return false;
+  const due = commitment.currentDueDate;
+  if (!due) return false;
+  if (isBusinessDateInRange(due, window.start, window.end)) return true;
+  // Carried forward onto today, and only while today is a column on screen:
+  // paging back to March is a deliberate look at March, and the board does not
+  // inject this week's backlog into it.
+  return compareSafeBusinessDate(due, window.today) < 0
+    && isBusinessDateInRange(window.today, window.start, window.end);
 }

@@ -40,6 +40,7 @@ import {
   createPersonalPlanRecord,
   formatPlanRangeLabel,
   getPlanItemWriteTarget,
+  planDateKeyToDate,
   planLinkKindLabel,
   shiftPlanAnchor,
   splitBracketTag,
@@ -64,6 +65,7 @@ import {
   type PlanItemEditDraft,
 } from '../../utils/planItemEdit';
 import { PlanItemDetailDrawer, type PlanContactOption } from './PlanItemDetailDrawer';
+import type { PlanBoardWindow } from '../../domain/commercialKernel/derivePlanCommitments';
 import type { StakeholderRecord } from '../../services/stakeholderStore';
 import { buildActivityLedgerContext, resolvePlanItemSubject } from '../../utils/activityLedger';
 import { accountKey, normalizeEntityName } from '../../utils/accountIdentity';
@@ -95,7 +97,21 @@ const periodOptions: { value: PlanPeriod; label: string }[] = [
 /** DOM id of the plan board, so a commitment can point at where it is ticked. */
 export const PLAN_BOARD_ANCHOR_ID = 'plan-board';
 
-export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}) {
+export function WeeklyPlanPage({
+  embedded = false,
+  onRangeChange,
+  focusRequest = null,
+}: {
+  embedded?: boolean;
+  /** Fired with the days now on screen, so a surface above can stop repeating them. */
+  onRangeChange?: (range: PlanBoardWindow) => void;
+  /**
+   * A day to page the board to, so a promise listed elsewhere can be brought
+   * into view. The sequence number is what lets the same day be asked for
+   * twice - see the comment where it is raised.
+   */
+  focusRequest?: { date: string; seq: number } | null;
+} = {}) {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   // The same recommendations Today and Pipeline Defense show. The plan reads
   // them rather than recomputing, so a risk cannot say one thing on one page
@@ -217,6 +233,26 @@ export function WeeklyPlanPage({ embedded = false }: { embedded?: boolean } = {}
     records,
     brands: knownBrands,
   }), [activities, anchorDate, knownBrands, obligations, opportunities, periodType, records]);
+
+  /**
+   * Tells the surface above which days are on screen.
+   *
+   * The commitment panel sits directly above this board and used to re-list
+   * every promise the board was already drawing. It can only stop doing that if
+   * it knows what the board is showing - and paging to another week has to move
+   * that answer with it, or the panel would fold promises that are no longer
+   * visible anywhere.
+   */
+  useEffect(() => {
+    onRangeChange?.({ start: board.rangeStart, end: board.rangeEnd, today: todayDateKey() });
+  }, [board.rangeEnd, board.rangeStart, onRangeChange]);
+
+  // Asked for from outside - a promise listed above the board because its day
+  // is not on screen. Paging to it is what makes that row's one action true.
+  useEffect(() => {
+    if (!focusRequest?.date) return;
+    setAnchorDate(planDateKeyToDate(focusRequest.date));
+  }, [focusRequest]);
 
   // Every account name the workspace already knows, so a typed plan item can
   // link to the entity it belongs to instead of living as loose text.

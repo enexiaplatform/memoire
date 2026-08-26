@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, ChevronDown, Clock3, Plus, RotateCcw, X } from 'lucide-react';
+import { ArrowDown, Check, ChevronDown, Clock3, Plus, RotateCcw, X } from 'lucide-react';
 import type { CommercialCommitment, CommitmentParty } from '../../domain/commercialKernel/types';
-import { isPlanDerivedCommitment } from '../../domain/commercialKernel/derivePlanCommitments';
+import {
+  isPlanDerivedCommitment,
+  splitCommitmentsByBoard,
+  type PlanBoardWindow,
+} from '../../domain/commercialKernel/derivePlanCommitments';
 import { formatSafeBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
 import { useCommitmentLedger } from './useCommitmentLedger';
 import { PLAN_BOARD_ANCHOR_ID } from '../plan/WeeklyPlanPage';
@@ -34,6 +38,8 @@ export function CommitmentLedgerPanel({
   accountNames = [],
   limit,
   showComposer = true,
+  boardWindow,
+  onShowOnBoard,
 }: {
   title?: string;
   /** Known accounts, offered as suggestions so promises attach to real customers. */
@@ -41,14 +47,66 @@ export function CommitmentLedgerPanel({
   /** Cap each group. Today shows a few; Timeline shows them all. */
   limit?: number;
   showComposer?: boolean;
+  /**
+   * The days the plan board directly below is drawing, when there is one.
+   *
+   * Given it, the panel stops re-listing the promises that board already shows
+   * and counts them on one line instead. Omitted on Today and Review, where
+   * there is no board on screen and the list is the only place they appear.
+   */
+  boardWindow?: PlanBoardWindow;
+  /**
+   * Pages the board below to a given day. Only meaningful beside a board, and
+   * it is what makes the rows that survive the fold reachable: they survived
+   * precisely because their day is not on screen.
+   */
+  onShowOnBoard?: (dateKey: string) => void;
 }) {
   const ledger = useCommitmentLedger();
   const [composerOpen, setComposerOpen] = useState(false);
   const [rescheduling, setRescheduling] = useState<string>('');
   const [showSettled, setShowSettled] = useState(false);
+  const [showBoardItems, setShowBoardItems] = useState(false);
 
-  const groups = ledger.groups;
-  const openCount = groups.overdue.length + groups.dueToday.length + groups.upcoming.length + groups.undated.length;
+  const openCount = ledger.groups.overdue.length
+    + ledger.groups.dueToday.length
+    + ledger.groups.upcoming.length
+    + ledger.groups.undated.length;
+
+  // What the week below already draws, folded into a line. `showBoardItems`
+  // puts it back: the fold is a default, not a decision taken away.
+  const fold = useMemo(() => {
+    if (!boardWindow || showBoardItems) return null;
+    const open = [...ledger.groups.overdue, ...ledger.groups.dueToday, ...ledger.groups.upcoming];
+    const { onBoard } = splitCommitmentsByBoard(open, boardWindow);
+    if (onBoard.length === 0) return null;
+    const folded = new Set(onBoard.map((commitment) => commitment.id));
+    return {
+      count: onBoard.length,
+      overdue: ledger.groups.overdue.filter((commitment) => folded.has(commitment.id)).length,
+      dueToday: ledger.groups.dueToday.filter((commitment) => folded.has(commitment.id)).length,
+      upcoming: ledger.groups.upcoming.filter((commitment) => folded.has(commitment.id)).length,
+      folded,
+    };
+  }, [boardWindow, ledger.groups, showBoardItems]);
+
+  const groups = useMemo(() => {
+    if (!fold) return ledger.groups;
+    const keep = (items: CommercialCommitment[]) => items.filter((item) => !fold.folded.has(item.id));
+    return {
+      ...ledger.groups,
+      overdue: keep(ledger.groups.overdue),
+      dueToday: keep(ledger.groups.dueToday),
+      upcoming: keep(ledger.groups.upcoming),
+    };
+  }, [fold, ledger.groups]);
+  const listedCount = groups.overdue.length + groups.dueToday.length + groups.upcoming.length + groups.undated.length;
+  // Group labels earn their place only when there is something to tell apart.
+  // Folded down to one group, "NOT ON THE WEEK SHOWN (3)" sat directly above
+  // "COMING UP (3)" - two headings, one count, no new fact between them.
+  const listedGroupCount = [groups.overdue, groups.dueToday, groups.upcoming, groups.undated]
+    .filter((group) => group.length > 0).length;
+  const showGroupLabels = !fold || listedGroupCount > 1;
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm" aria-label={title}>
@@ -88,6 +146,17 @@ export function CommitmentLedgerPanel({
         />
       )}
 
+      {fold && <PlanBoardFold fold={fold} onExpand={() => setShowBoardItems(true)} />}
+      {boardWindow && showBoardItems && openCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowBoardItems(false)}
+          className="mt-3 text-xs font-bold text-brand-blue hover:underline"
+        >
+          Fold the ones already on the week
+        </button>
+      )}
+
       {ledger.loading && openCount === 0 ? (
         <p className="mt-4 text-xs text-gray-400">Loading commitments…</p>
       ) : openCount === 0 ? (
@@ -95,8 +164,24 @@ export function CommitmentLedgerPanel({
           Nothing is promised right now. A commitment is what Memoire watches: what happens next, who owes it, and by
           when.
         </p>
+      ) : listedCount === 0 ? (
+        /* Every open promise is on the week below. Saying so beats an empty
+           panel, which would read as "nothing is promised" directly above a
+           board full of promises. */
+        null
       ) : (
         <div className="mt-3 space-y-4">
+          {/* One heading for the whole remainder, rather than qualifying every
+              group. The groups themselves are relative to today - overdue,
+              due today, coming up - while "on the week shown" is relative to
+              the board, and folding those two ideas into each label produced
+              "Later than this week" above a promise dated *before* the week the
+              board had been paged to. */}
+          {fold && (
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-400">
+              Not on the week shown ({listedCount})
+            </p>
+          )}
           <CommitmentGroup
             label="Overdue"
             tone="text-red-700"
@@ -104,6 +189,8 @@ export function CommitmentLedgerPanel({
             limit={limit}
             rescheduling={rescheduling}
             onReschedule={setRescheduling}
+            onShowOnBoard={onShowOnBoard}
+            showLabel={showGroupLabels}
             ledger={ledger}
           />
           <CommitmentGroup
@@ -113,6 +200,8 @@ export function CommitmentLedgerPanel({
             limit={limit}
             rescheduling={rescheduling}
             onReschedule={setRescheduling}
+            onShowOnBoard={onShowOnBoard}
+            showLabel={showGroupLabels}
             ledger={ledger}
           />
           <CommitmentGroup
@@ -122,6 +211,8 @@ export function CommitmentLedgerPanel({
             limit={limit}
             rescheduling={rescheduling}
             onReschedule={setRescheduling}
+            onShowOnBoard={onShowOnBoard}
+            showLabel={showGroupLabels}
             ledger={ledger}
           />
           <CommitmentGroup
@@ -131,6 +222,8 @@ export function CommitmentLedgerPanel({
             limit={limit}
             rescheduling={rescheduling}
             onReschedule={setRescheduling}
+            onShowOnBoard={onShowOnBoard}
+            showLabel={showGroupLabels}
             ledger={ledger}
           />
         </div>
@@ -165,6 +258,72 @@ export function CommitmentLedgerPanel({
   );
 }
 
+/**
+ * The promises the week below is already drawing, as one line instead of a
+ * hundred pixels each.
+ *
+ * It leads with the count that decides whether the operator is behind, because
+ * that is the question the top of this page is read for - and it is a link to
+ * the board rather than a summary they then have to go and find.
+ */
+function PlanBoardFold({
+  fold,
+  onExpand,
+}: {
+  fold: { count: number; overdue: number; dueToday: number; upcoming: number };
+  onExpand: () => void;
+}) {
+  const parts = [
+    fold.overdue > 0 ? `${fold.overdue} overdue` : '',
+    fold.dueToday > 0 ? `${fold.dueToday} due today` : '',
+    // Not "later this week": the board can be paged to any week, and a
+    // breakdown that assumes the current one describes the wrong days the
+    // moment somebody looks ahead.
+    fold.upcoming > 0 ? `${fold.upcoming} still to come` : '',
+  ].filter(Boolean);
+  // A breakdown that repeats the count in different words earns nothing. It is
+  // shown when it splits the total, or whenever anything is overdue - that one
+  // is the reason this line is read at all.
+  const breakdown = parts.length > 1 || fold.overdue > 0 ? parts : [];
+
+  return (
+    <div className={`mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg px-3 py-2 ring-1 ${
+      fold.overdue > 0 ? 'bg-red-50 ring-red-100' : 'bg-blue-50 ring-blue-100'
+    }`}>
+      <p className="text-sm font-bold text-navy">
+        {fold.count} {fold.count === 1 ? 'promise is' : 'promises are'} on the week below
+      </p>
+      {breakdown.length > 0 && (
+        <p className={`text-xs font-semibold ${fold.overdue > 0 ? 'text-red-800' : 'text-gray-600'}`}>
+          {breakdown.join(' · ')}
+        </p>
+      )}
+      <div className="ml-auto flex items-center gap-3">
+        <a
+          href={`#${PLAN_BOARD_ANCHOR_ID}`}
+          onClick={(event) => {
+            const board = document.getElementById(PLAN_BOARD_ANCHOR_ID);
+            if (!board) return;
+            event.preventDefault();
+            board.scrollIntoView({ block: 'start' });
+          }}
+          className="inline-flex items-center gap-1 text-xs font-bold text-brand-blue hover:underline"
+        >
+          <ArrowDown className="h-3.5 w-3.5" />
+          Go to the week
+        </a>
+        <button
+          type="button"
+          onClick={onExpand}
+          className="text-xs font-bold text-gray-500 hover:text-brand-blue"
+        >
+          List them
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CommitmentGroup({
   label,
   tone,
@@ -172,6 +331,8 @@ function CommitmentGroup({
   limit,
   rescheduling,
   onReschedule,
+  onShowOnBoard,
+  showLabel = true,
   ledger,
 }: {
   label: string;
@@ -180,6 +341,8 @@ function CommitmentGroup({
   limit?: number;
   rescheduling: string;
   onReschedule: (id: string) => void;
+  onShowOnBoard?: (dateKey: string) => void;
+  showLabel?: boolean;
   ledger: ReturnType<typeof useCommitmentLedger>;
 }) {
   if (items.length === 0) return null;
@@ -187,10 +350,12 @@ function CommitmentGroup({
 
   return (
     <div>
-      <p className={`text-[11px] font-bold uppercase tracking-[0.14em] ${tone}`}>
-        {label} ({items.length})
-      </p>
-      <ul className="mt-1.5 space-y-1.5">
+      {showLabel && (
+        <p className={`text-[11px] font-bold uppercase tracking-[0.14em] ${tone}`}>
+          {label} ({items.length})
+        </p>
+      )}
+      <ul className={showLabel ? 'mt-1.5 space-y-1.5' : 'space-y-1.5'}>
         {visible.map((commitment) => {
           // A promise derived from the Plan is shown, never edited here: the
           // plan item is the record, and it is ticked and moved on the Plan.
@@ -222,12 +387,16 @@ function CommitmentGroup({
                     const board = document.getElementById(PLAN_BOARD_ANCHOR_ID);
                     if (!board) return;
                     event.preventDefault();
+                    // A row survives the fold because its day is not on the
+                    // board, so scrolling alone would land the operator on a
+                    // week this promise is not in. Page the board to it first.
+                    if (onShowOnBoard && commitment.currentDueDate) onShowOnBoard(commitment.currentDueDate);
                     board.scrollIntoView({ block: 'start' });
                   }}
-                  title="Tick it on the plan board"
+                  title={onShowOnBoard ? 'Show that week on the plan board' : 'Tick it on the plan board'}
                   className="shrink-0 rounded-full border border-gray-200 px-2 py-0.5 text-[10px] font-bold text-gray-500 hover:bg-gray-50 hover:text-brand-blue"
                 >
-                  On your Plan
+                  {onShowOnBoard ? 'Show on the week' : 'On your Plan'}
                 </Link>
               ) : (
                 <div className="flex shrink-0 items-center gap-1">
@@ -259,19 +428,7 @@ function CommitmentGroup({
               )}
             </div>
 
-            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-500">
-              <span>{commitment.ownerLabel}</span>
-              {commitment.currentDueDate && <span>· due {formatSafeBusinessDate(commitment.currentDueDate)}</span>}
-              {/* The promise as first made, whenever it is not the promise now.
-                  Without this, a date moved three times reads as if it were
-                  always Friday. */}
-              {commitment.dueDateHistory.length > 0 && (
-                <span className="text-amber-700">
-                  · first promised {formatSafeBusinessDate(commitment.originalDueDate)}, moved{' '}
-                  {commitment.dueDateHistory.length}×
-                </span>
-              )}
-            </p>
+            <CommitmentMeta commitment={commitment} />
 
             {rescheduling === commitment.id && (
               <RescheduleRow
@@ -292,6 +449,51 @@ function CommitmentGroup({
         </p>
       )}
     </div>
+  );
+}
+
+/** A promise of the operator's own, which the "I owe" badge already states. */
+function isSelfOwned(commitment: CommercialCommitment) {
+  return commitment.commitmentParty === 'self';
+}
+
+/**
+ * The second line of a row: who owes it, when, and whether the date has moved.
+ *
+ * Assembled as a list rather than written out, because the owner is now dropped
+ * whenever the badge beside it already says "I owe" - and a hard-coded "·"
+ * prefix on the parts that follow leaves a dangling separator the moment the
+ * first part is gone.
+ */
+function CommitmentMeta({ commitment }: { commitment: CommercialCommitment }) {
+  const parts: { key: string; node: ReactNode }[] = [];
+  if (!isSelfOwned(commitment)) parts.push({ key: 'owner', node: commitment.ownerLabel });
+  if (commitment.currentDueDate) {
+    parts.push({ key: 'due', node: `due ${formatSafeBusinessDate(commitment.currentDueDate)}` });
+  }
+  // The promise as first made, whenever it is not the promise now. Without
+  // this, a date moved three times reads as if it were always Friday.
+  if (commitment.dueDateHistory.length > 0) {
+    parts.push({
+      key: 'history',
+      node: (
+        <span className="text-amber-700">
+          first promised {formatSafeBusinessDate(commitment.originalDueDate)}, moved {commitment.dueDateHistory.length}×
+        </span>
+      ),
+    });
+  }
+  if (parts.length === 0) return null;
+
+  return (
+    <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-gray-500">
+      {parts.map((part, index) => (
+        <span key={part.key}>
+          {index > 0 && <span className="mr-1.5 text-gray-300">·</span>}
+          {part.node}
+        </span>
+      ))}
+    </p>
   );
 }
 

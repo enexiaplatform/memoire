@@ -214,7 +214,7 @@ const anchor = new Date(2026, 6, 22); // Wed of the Mon 2026-07-20 week
   assert.match(app, /path="plan" element=\{<LegacyRedirect/, 'the old plan URL still resolves');
 
   const timeline = readFileSync(new URL('../src/features/timeline/TimelinePage.tsx', import.meta.url), 'utf8');
-  assert.match(timeline, /<WeeklyPlanPage embedded \/>/, 'Timeline > Upcoming renders the plan board');
+  assert.match(timeline, /<WeeklyPlanPage embedded[ \n]/, 'Timeline > Upcoming renders the plan board');
   assert.match(timeline, /Upcoming/, 'Timeline offers the Upcoming view');
   assert.match(timeline, /History/, 'Timeline offers the History view');
 }

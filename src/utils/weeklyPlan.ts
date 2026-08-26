@@ -1072,6 +1072,17 @@ function formatMonthLabel(dateKey: string) {
   }
 }
 
+/**
+ * A `YYYY-MM-DD` key as a local Date, or today when it is not one.
+ *
+ * Local rather than UTC on purpose: the board is the operator's week, and
+ * `new Date('2026-08-31')` is midnight UTC, which in Asia/Ho_Chi Minh is the
+ * 31st but in America/Los_Angeles is the 30th.
+ */
+export function planDateKeyToDate(dateKey: unknown) {
+  return isValidBusinessDate(dateKey) ? parseDateKey(dateKey) : new Date();
+}
+
 function parseDateKey(dateKey: string) {
   const [year, month, day] = dateKey.split('-').map(Number);
   return new Date(year, (month || 1) - 1, day || 1);

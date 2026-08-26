@@ -1,9 +1,13 @@
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CalendarDays, Plus } from 'lucide-react';
 import { WeeklyPlanPage } from '../plan/WeeklyPlanPage';
 import { SalesActivityCalendarPage } from '../calendar/SalesActivityCalendarPage';
 import { CommitmentLedgerPanel } from '../commitments/CommitmentLedgerPanel';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
+import type { PlanBoardWindow } from '../../domain/commercialKernel/derivePlanCommitments';
+import { getPlanRange } from '../../utils/weeklyPlan';
+import { todayDateKey } from '../../utils/safeDate';
 
 export type TimelineView = 'upcoming' | 'history';
 
@@ -35,6 +39,23 @@ function readView(value: string | null): TimelineView {
 export function TimelinePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const view = readView(searchParams.get('view'));
+  // Seeded with the week the board opens on, so the panel above it is already
+  // right on the first paint rather than briefly listing what is about to be
+  // drawn underneath it.
+  const [boardWindow, setBoardWindow] = useState<PlanBoardWindow>(() => {
+    const range = getPlanRange('week');
+    return { start: range.start, end: range.end, today: todayDateKey() };
+  });
+  /**
+   * The day the panel last asked the board to show.
+   *
+   * Carries a sequence number rather than being a bare date, because asking
+   * twice for the same day is a real case: page the board back by hand and the
+   * row reappears above it. Without the counter the second click would set
+   * state to the value it already held, no effect would run, and the link would
+   * do nothing.
+   */
+  const [focusRequest, setFocusRequest] = useState<{ date: string; seq: number } | null>(null);
 
   // Deliberately no "timeline viewed" event. Page opens measure which rooms
   // people walk into; what matters is whether commitments get created and kept,
@@ -96,9 +117,19 @@ export function TimelinePage() {
         {view === 'upcoming' ? (
           <>
             {/* Open commitments lead: they are the promises the week is made
-                of. The plan board below is the same week laid out as days. */}
-            <CommitmentLedgerPanel title="Open commitments" />
-            <WeeklyPlanPage embedded />
+                of. The plan board below is the same week laid out as days -
+                which is exactly why the panel is handed that week's range. It
+                used to re-list every promise the board was about to draw, so
+                the operator scrolled past a full copy of their week to reach
+                the week. It now counts those on one line and lists only what
+                the board cannot show: undated promises, promises somebody else
+                owes, and anything dated beyond the days on screen. */}
+            <CommitmentLedgerPanel
+              title="Open commitments"
+              boardWindow={boardWindow}
+              onShowOnBoard={(date) => setFocusRequest((current) => ({ date, seq: (current?.seq ?? 0) + 1 }))}
+            />
+            <WeeklyPlanPage embedded onRangeChange={setBoardWindow} focusRequest={focusRequest} />
           </>
         ) : (
           <SalesActivityCalendarPage embedded />
