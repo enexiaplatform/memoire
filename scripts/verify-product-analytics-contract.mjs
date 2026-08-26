@@ -151,6 +151,71 @@ for (const retired of [
   );
 }
 
+// 7b. Every activation event is actually sent by something.
+//
+// This is the check the taxonomy checks above could not make. All three copies
+// of the list agreed perfectly while three of the five activation events -
+// first_capture_saved, first_thread_linked and first_review_completed - had no
+// emitter anywhere in src/. The funnel was declared, validated, and empty at
+// the top: the product could report how many people kept a promise and could
+// not report how many had ever captured anything.
+//
+// `capture_saved` is named separately because it is the root of the funnel and
+// the product's primary action. Every later step is conditional on it, so a
+// missing emitter there makes every rate below it uncomputable rather than
+// merely incomplete.
+{
+  const sources = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (/\.tsx?$/.test(entry.name)) sources.push(readFileSync(path, 'utf8'));
+    }
+  };
+  walk('src');
+  const app = sources.join('\n');
+
+  // A call site, not a mention: the name has to appear inside one of the two
+  // tracking calls. `'capture_saved'` in a comment or a type is not an emitter,
+  // which is the failure mode this whole contract exists for.
+  const emitted = new Set(
+    [...app.matchAll(/track(?:ProductEvent|FirstTimeEvent)\(\s*'([a-z_]+)'/g)].map((match) => match[1]),
+  );
+
+  // An event paired in ACTIVATION_OF is emitted whenever its trigger is. The
+  // map lives in its own module because `productAnalytics.ts` imports the
+  // Supabase client and only runs in a browser, which made the one part of the
+  // funnel that is pure data the one part nothing could test.
+  const pairs = readFileSync('src/utils/activationEvents.ts', 'utf8');
+  const pairBlock = pairs.slice(
+    pairs.indexOf('export const ACTIVATION_OF'),
+    pairs.indexOf('};', pairs.indexOf('export const ACTIVATION_OF')),
+  );
+  assert.ok(
+    client.includes("import { ACTIVATION_OF } from './activationEvents'"),
+    'the tracker must read the pairing map rather than keep a second copy of it',
+  );
+  assert.ok(pairBlock.includes('capture_saved'), 'ACTIVATION_OF must pair the capture with its activation event');
+  for (const [, trigger, activation] of pairBlock.matchAll(/^\s*([a-z_]+):\s*'([a-z_]+)'/gm)) {
+    if (emitted.has(trigger)) emitted.add(activation);
+  }
+
+  for (const event of [
+    'capture_saved',
+    'first_capture_saved',
+    'first_thread_linked',
+    'first_commitment_created',
+    'first_commitment_completed',
+    'first_review_completed',
+  ]) {
+    assert.ok(
+      emitted.has(event),
+      `${event} is in the taxonomy but nothing in src/ sends it - the onboarding funnel cannot be measured at that step`,
+    );
+  }
+}
+
 // 8. Data mode distinguishes the states that matter for whether data survived.
 {
   for (const mode of ['demo-local', 'cloud-synced', 'browser-only', 'sync-pending', 'sync-failed']) {

@@ -24,7 +24,7 @@ import {
 import type { SalesActivityRecord } from '../../services/salesActivityStore';
 import type { PlanRecord } from '../../utils/weeklyPlan';
 import { todayDateKey } from '../../utils/safeDate.ts';
-import { trackFirstTimeEvent, trackProductEvent } from '../../utils/productAnalytics';
+import { trackProductEvent } from '../../utils/productAnalytics';
 
 export type CommitmentGroups = {
   overdue: CommercialCommitment[];
@@ -141,8 +141,11 @@ export function useCommitmentLedger() {
   const create = useCallback((input: CreateCommitmentInput) => {
     const created = run(createCommitment(scope, input), 'Commitment recorded.');
     if (created) {
+      // `first_commitment_created` rides along automatically - see
+      // ACTIVATION_OF in src/utils/productAnalytics.ts. It was fired by hand
+      // here, and that arrangement is what left three of the five activation
+      // events with no emitter at all.
       trackProductEvent('commitment_created');
-      trackFirstTimeEvent('first_commitment_created');
     }
     return created;
   }, [run, scope]);
@@ -151,7 +154,6 @@ export function useCommitmentLedger() {
     const completed = run(completeCommitment(scope, { commitmentId, evidence }), 'Marked as kept.');
     if (completed) {
       trackProductEvent('commitment_completed');
-      trackFirstTimeEvent('first_commitment_completed');
     }
     return completed;
   }, [run, scope]);

@@ -1,6 +1,7 @@
 import { isDemoWorkspaceActive, isSupabaseConfigured } from '../lib/demoMode';
 import { getWorkspaceSyncStatus } from '../services/workspaceSyncStatus';
 import { supabaseClient } from '../lib/supabaseClient.ts';
+import { ACTIVATION_OF } from './activationEvents';
 
 const ANALYTICS_ID_KEY = 'memoire.analytics.anonymousId.v1';
 const FIRST_EVENT_KEY_PREFIX = 'memoire.analytics.first.';
@@ -103,6 +104,7 @@ export function resolveAnalyticsDataMode(): AnalyticsDataMode {
   return sync.state === 'ready' ? 'cloud-synced' : 'sync-pending';
 }
 
+
 /**
  * Records a product event. Never throws, never blocks, never awaits.
  *
@@ -131,6 +133,13 @@ export function trackProductEvent(eventName: ProductEvent, dataMode?: AnalyticsD
   }).catch(() => {
     // Analytics must never block the customer workflow.
   });
+
+  // After the send, and never recursive: no activation event is itself a key in
+  // ACTIVATION_OF. `trackFirstTimeEvent` carries the demo guard and the
+  // once-per-browser marker, so this line cannot double-count or count a
+  // visitor who only looked at the sample workspace.
+  const activation = ACTIVATION_OF[eventName];
+  if (activation) trackFirstTimeEvent(activation, mode);
 }
 
 /**

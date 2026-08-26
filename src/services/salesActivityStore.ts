@@ -10,6 +10,7 @@ import {
   type IngestionSourceType,
 } from '../utils/ingestionSource.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
+import type { AnalyticsDataMode } from '../utils/productAnalytics.ts';
 
 export interface SalesActivityRecord extends ClassifiedSalesActivity {
   id: string;
@@ -202,6 +203,54 @@ export function filterSalesActivitiesByPeriod(
  */
 export type SalesActivityWorkspaceTag = { source?: 'demo' | 'user'; isSample?: boolean };
 
+/**
+ * Analytics, loaded only when there is a browser to load it in.
+ *
+ * `productAnalytics` imports `demoMode` and the Supabase client, both of which
+ * read `import.meta.env` and exist only under Vite. A static import here put
+ * that whole chain on the store's module graph, and the store is imported by
+ * unit tests that run in plain node - `offlineCapture.test.mjs` stopped being
+ * able to load at all.
+ *
+ * A dynamic import behind the window guard also keeps the rule the analytics
+ * module states about itself: it must never block or break the workflow it sits
+ * inside. Nothing here is awaited, and every failure ends in silence.
+ */
+function withAnalytics(use: (analytics: typeof import('../utils/productAnalytics.ts')) => void) {
+  if (typeof window === 'undefined') return;
+  void import('../utils/productAnalytics.ts').then(use).catch(() => {
+    // A capture is never lost because a counter could not be incremented.
+  });
+}
+
+/**
+ * The two activation events a saved capture proves.
+ *
+ * Emitted from the store rather than from the page, because there are two save
+ * handlers on Capture and both end here - and because neither of them emitted
+ * anything at all. `capture_saved` had no call site in the app, which meant the
+ * product's single most important action was unmeasured and the first two steps
+ * of the onboarding funnel were permanently empty. The operator console draws
+ * that funnel; four of its six rows could only ever read zero.
+ *
+ * `first_thread_linked` fires on the same rule `buildFirstWeekPath` uses to
+ * tick step 2: a capture that names a customer has somewhere to live. An event
+ * with a stricter rule than the checklist on screen would report a step as
+ * undone while the operator is looking at a tick.
+ *
+ * `first_capture_saved` rides along with `capture_saved` automatically - see
+ * ACTIVATION_OF in src/utils/activationEvents.ts.
+ */
+function trackCaptureSaved(record: SalesActivityRecord, demoOnly: boolean, dataMode: AnalyticsDataMode) {
+  if (demoOnly) return;
+  withAnalytics(({ trackProductEvent, trackFirstTimeEvent }) => {
+    trackProductEvent('capture_saved', dataMode);
+    if (record.accountName?.trim() || record.opportunityName?.trim()) {
+      trackFirstTimeEvent('first_thread_linked', dataMode);
+    }
+  });
+}
+
 export async function saveSalesActivity(
   activity: ClassifiedSalesActivity,
   // Explicitly passed rather than optional, so the required tag can follow it.
@@ -224,6 +273,7 @@ export async function saveSalesActivity(
     try {
       const record = await createCloudActivity(activity, userId as string);
       invalidateWorkspaceCollection('activities');
+      trackCaptureSaved(record, demoOnly, 'cloud-synced');
       return { record, mode: 'cloud' };
     } catch (error) {
       reportWorkspaceSyncError();
@@ -235,6 +285,7 @@ export async function saveSalesActivity(
       invalidateWorkspaceCollection('activities');
       announcePendingSync();
       debugSalesActivityStore('cloud save failed; local copy preserved', { message: getErrorMessage(error) });
+      trackCaptureSaved(record, demoOnly, 'sync-failed');
       return {
         record,
         mode: 'local',
@@ -246,6 +297,7 @@ export async function saveSalesActivity(
   const record = createLocalActivity(activity, workspace);
   saveLocalActivityRecord(record);
   invalidateWorkspaceCollection('activities');
+  trackCaptureSaved(record, demoOnly, 'browser-only');
   return { record, mode: 'local' };
 }
 
@@ -280,6 +332,15 @@ export async function updateSalesActivityLink(
     linkStatus: link.linkStatus,
     updatedAt: timestamp,
   };
+
+  // Step 2 of the first-week path, from the other direction: an existing
+  // capture being attached by hand. The auto-link on save covers the common
+  // case; this covers the one where somebody goes back and links it themselves,
+  // and there are five call sites that write a link across three pages - which
+  // is exactly why this sits here and not on any of them.
+  if (link.linkStatus === 'Linked' && activity.isSample !== true && activity.source !== 'demo') {
+    withAnalytics(({ trackFirstTimeEvent }) => trackFirstTimeEvent('first_thread_linked'));
+  }
 
   if (activity.storageMode === 'cloud' && canUseSalesActivityCloudStore(userId)) {
     const { data, error } = await supabaseClient!
