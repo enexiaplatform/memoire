@@ -93,6 +93,13 @@
       ]
     }
   ],
+  "redirects": [
+    {
+      "source": "/social-card.svg",
+      "destination": "/social-card.png",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
