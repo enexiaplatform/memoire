@@ -666,13 +666,27 @@ export function TodayPage() {
               <RefreshCw className={`h-4 w-4 ${workspaceSyncing ? 'animate-spin' : ''}`} />
               {cloudBacked ? 'Cloud sync' : 'Refresh'}
             </button>
+            {/*
+             * `undefined`, not `null`, and `cloudAvailable` gone entirely.
+             *
+             * An explicit `null` means "I checked and it is fine" - the pill
+             * takes it over the global sync status. So this page, whose own
+             * `message` only ever carries a cloud problem when the string
+             * happens to begin "Cloud sync issue", was asserting all-clear over
+             * every sync failure reported by anything else, on the one screen a
+             * seller opens first. And `cloudAvailable={isSupabaseConfigured}` is
+             * a build-time constant: true in production no matter what the cloud
+             * is doing.
+             *
+             * Undefined lets this page's richer message win when it has one, and
+             * otherwise lets the status through.
+             */}
             <DataModePill
               compact
               isLoading={authLoading || loading}
               isAuthenticated={isAuthenticated}
               isSupabaseConfigured={isSupabaseConfigured}
-              cloudAvailable={isSupabaseConfigured}
-              syncError={message.startsWith('Cloud sync issue') ? message : null}
+              syncError={message.startsWith('Cloud sync issue') ? message : undefined}
               hasSampleData={sampleDataActive}
             />
             {message && !message.startsWith('Command center ready') ? (

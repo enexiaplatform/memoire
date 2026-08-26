@@ -16,6 +16,31 @@ function requireIncludes(text, marker, label) {
   if (!text.includes(marker)) fail(label);
 }
 
+/**
+ * Source with every comment removed.
+ *
+ * An "it must include X" marker can be satisfied by a comment that merely
+ * mentions X - the trap this repo has hit before. An "it must NOT include X"
+ * marker has the mirror-image trap, and it bites immediately: the comment
+ * explaining why a line was deleted names the deleted line, so the check fails
+ * on its own explanation and the only way to pass is to stop explaining.
+ *
+ * Block comments cover JSX `{/* … *\/}` too, since that is a block comment in
+ * braces. Line comments are matched only where `//` opens the line, so a URL in
+ * a string is left alone.
+ */
+function code(text) {
+  return text
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .filter((line) => !/^\s*(\/\/|\*)/.test(line))
+    .join('\n');
+}
+
+function requireExcludes(text, marker, label) {
+  if (code(text).includes(marker)) fail(label);
+}
+
 const appShell = read('src/components/layout/AppShell.tsx');
 for (const marker of [
   '<a href="#app-main-content" className="skip-link">',
@@ -72,11 +97,62 @@ for (const marker of [
   'onOpenMenu',
   'title="Open navigation"',
   'DataModePill',
-  'syncError={profileError || syncStatus.message}',
-  'cloudAvailable={syncStatus.state !== \'error\'}',
+  "isLoading={loading || syncStatus.state === 'checking'}",
+  'hasSampleData={demoActive}',
 ]) {
   requireIncludes(topNav, marker, `TopNav accessibility/data-mode marker missing: ${marker}`);
 }
+
+/**
+ * One question, one answer.
+ *
+ * "Are my records reaching the cloud?" is asked by a chip in the top bar and
+ * again by a chip on Today, and for a while the two were computed from
+ * different inputs and disagreed on screen. The top bar fed it `profileError` -
+ * a failed read of the `user_profiles` row, which holds a display name - so a
+ * single slow row (5s timeout, no retry) painted the global chip red for the
+ * rest of the session under the words "new changes may remain only in this
+ * browser", while Today's chip, two inches below, read "Cloud + browser".
+ *
+ * Today had the mirror-image fault: an explicit `syncError={... : null}` means
+ * "I checked and it is fine", which outranks the global status, so the one
+ * screen a seller opens first was asserting all-clear over every sync failure
+ * reported by anything else.
+ *
+ * Neither surface knows more than `useWorkspaceSyncStatus`, so neither may
+ * overrule it. `undefined` is the only permitted way to decline to answer.
+ */
+requireExcludes(
+  topNav,
+  'profileError',
+  'TopNav feeds a profile-row failure into the sync chip again - profileError is not a sync error',
+);
+requireExcludes(
+  topNav,
+  'cloudAvailable',
+  'TopNav overrides cloudAvailable again - the top bar knows nothing useWorkspaceSyncStatus does not',
+);
+
+const profileTab = read('src/features/settings/ProfileTab.tsx');
+for (const marker of [
+  'profileError',
+  '{profileError} Your records are unaffected',
+  'role="alert"',
+]) {
+  requireIncludes(profileTab, marker, `ProfileTab must own the profile-read failure: ${marker}`);
+}
+
+const dashboardPage = read('src/features/dashboard/DashboardPage.tsx');
+requireIncludes(
+  dashboardPage,
+  "syncError={message.startsWith('Cloud sync issue') ? message : undefined}",
+  "Today's data-mode chip must decline with undefined, never assert null over a real sync error",
+);
+requireExcludes(
+  dashboardPage,
+  'cloudAvailable={isSupabaseConfigured}',
+  'Today claims cloudAvailable from a build-time constant again - it is true in production whatever the cloud is doing',
+);
 
 const protectedRoute = read('src/components/layout/ProtectedRoute.tsx');
 for (const marker of [

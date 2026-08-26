@@ -13,7 +13,7 @@ import { getUserDisplayName } from '../../utils/userDisplay';
  * authentication action with its own verification flow, not a profile edit.
  */
 export function ProfileTab() {
-  const { user, profile, profileLoading, updateDisplayName, isAuthenticated } = useAuthContext();
+  const { user, profile, profileError, profileLoading, updateDisplayName, isAuthenticated } = useAuthContext();
   const storedName = profile?.display_name || '';
   const [name, setName] = useState(storedName);
   const [saving, setSaving] = useState(false);
@@ -62,6 +62,23 @@ export function ProfileTab() {
         How Memoire refers to you — in the sidebar, on a brief you share with a manager, and at the top of your daily
         digest.
       </p>
+
+      {/*
+       * Where a failed profile read belongs.
+       *
+       * It used to be shown in the global sync chip in the top bar, which said
+       * "Cloud sync is unavailable. New changes may remain only in this browser"
+       * over a workspace whose records were all syncing normally. This row is
+       * the only thing the failure is actually about: the name field below is
+       * empty because the row behind it did not answer, and saving over that
+       * would be saving over something nobody has read.
+       */}
+      {profileError && (
+        <p role="alert" className="mt-4 max-w-2xl rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+          {profileError} Your records are unaffected — this is only the row that stores your name. Reload the page to
+          try again.
+        </p>
+      )}
 
       <div className="mt-5 max-w-md space-y-4">
         <label className="block">

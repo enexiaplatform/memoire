@@ -12,7 +12,7 @@ import { reportWorkspaceSyncError, useWorkspaceSyncStatus } from '../../services
 import { loadReviewPacksForUser } from '../../utils/reviewPacks';
 
 export function TopNav({ onOpenMenu }: { onOpenMenu: () => void }) {
-  const { user, profile, signOut, loading, profileError, isAuthenticated } = useAuthContext();
+  const { user, profile, signOut, loading, isAuthenticated } = useAuthContext();
   const navigate = useNavigate();
   const demoActive = useDemoWorkspaceMode();
   const syncStatus = useWorkspaceSyncStatus();
@@ -58,13 +58,28 @@ export function TopNav({ onOpenMenu }: { onOpenMenu: () => void }) {
           <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">Capture</span>
         </Link>
+        {/*
+          * Sync state only. This used to pass `syncError={profileError || ...}`,
+          * and `profileError` is a failed read of the `user_profiles` row - a
+          * display name and a handful of preferences. It is not the workspace.
+          * One slow row (the read gives up at 5s and never retries) turned the
+          * global chip red and left it red for the rest of the session, telling
+          * an operator "new changes may remain only in this browser" while the
+          * pill two inches below it on Today read "Cloud + browser" and every
+          * record was in fact syncing. Two chips, one screen, opposite answers,
+          * and the alarming one was the wrong one.
+          *
+          * Nothing here overrides the global status any more, because this bar
+          * knows nothing the status does not - `cloudAvailable` was
+          * `syncStatus.state !== 'error'`, which is the same fact twice. The
+          * profile failure now surfaces in Settings → Profile, which is the
+          * screen it is actually about.
+          */}
         <DataModePill
           compact
           isLoading={loading || syncStatus.state === 'checking'}
           isAuthenticated={isAuthenticated}
           isSupabaseConfigured={isSupabaseConfigured}
-          cloudAvailable={syncStatus.state !== 'error'}
-          syncError={profileError || syncStatus.message}
           hasSampleData={demoActive}
         />
         {user && (
