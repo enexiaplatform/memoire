@@ -1066,7 +1066,7 @@ export function DailyCapturePage() {
                   type="text"
                   value={emailForm.sender}
                   onChange={(event) => updateEmailForm({ sender: event.target.value })}
-                  placeholder="e.g. Jane Buyer <jane@example.com>"
+                  placeholder="Name and address, as the mail client shows them"
                   className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
                 />
               </label>
@@ -1424,7 +1424,7 @@ export function DailyCapturePage() {
             <Clipboard className="mx-auto h-6 w-6 text-gray-400" />
             <p className="mt-3 text-sm font-bold text-navy">No activities captured yet.</p>
             <p className="mt-1 text-sm text-gray-500">
-              Try: "Met Orion Pharma today. Need to clarify tender timeline next week."
+              Try: "Met the buyer today. Need to clarify the tender timeline next week."
             </p>
           </div>
         ) : (

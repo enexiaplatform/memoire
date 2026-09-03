@@ -235,14 +235,35 @@ export function planItemEditDate(item: PlanItem, draft: PlanItemEditDraft) {
 }
 
 /** True when the draft says something the owning record does not already say. */
+/**
+ * Whether the drawer has anything to save.
+ *
+ * Compared across the draft's own keys rather than a hand-written list of them.
+ * The list version had seven entries and went stale the moment an eighth field
+ * was added: `channel` shipped on 2026-09-03, the operator picked
+ * "Out of office" from the new control, and Save stayed grey with nothing on
+ * screen saying why - the form was full of their answer and the app believed
+ * nothing had changed.
+ *
+ * That is the same failure `sanitizePlanRecord` had, and it has the same cause:
+ * one type, two places that enumerate its fields by hand. Deriving the
+ * comparison removes the class rather than the instance, so the next field
+ * added is covered by construction.
+ *
+ * Keys are unioned rather than read from `before` alone, so a field present on
+ * only one side still counts as a change instead of being skipped.
+ */
 export function planItemEditChangesAnything(before: PlanItemEditDraft, after: PlanItemEditDraft) {
-  return before.label.trim() !== after.label.trim()
-    || before.date !== after.date
-    || before.accountName.trim() !== after.accountName.trim()
-    || before.accountKind !== after.accountKind
-    || before.opportunityId !== after.opportunityId
-    || before.contactName.trim() !== after.contactName.trim()
-    || before.contactRole.trim() !== after.contactRole.trim();
+  const keys = new Set([...Object.keys(before), ...Object.keys(after)]) as Set<keyof PlanItemEditDraft>;
+  return [...keys].some((key) => draftValue(before[key]) !== draftValue(after[key]));
+}
+
+/**
+ * Every field on the draft is a string, and trailing space is not an edit -
+ * typing a space into the label and deleting it again should not arm Save.
+ */
+function draftValue(value: string | undefined): string {
+  return (value || '').trim();
 }
 
 /**

@@ -157,9 +157,14 @@ export type OpportunityImportBatchRecord = {
 export const OPPORTUNITY_IMPORT_BATCH_STORAGE_KEY = 'memoire.importBatches.v1';
 export const CSV_MAPPING_PROFILE_STORAGE_KEY = 'memoire.csvMappingProfiles.v1';
 
+/**
+ * Column shapes, not a worked example - see ACCOUNT_CSV_TEMPLATE for why. The
+ * two fields whose vocabulary is fixed, stage and currency, keep a real value,
+ * because those are the ones an operator actually gets wrong.
+ */
 export const OPPORTUNITY_CSV_TEMPLATE = [
   'Account Name,Opportunity Name,Stage,Value,Currency,Expected Close Period,Product / Solution,Next Action,Evidence,Missing Context',
-  'Apex Labs,Validation Expansion,Technical discussion,120000,VND,Next quarter,Validation System,Send revised quote by Friday,Budget approved and technical team engaged,Confirm procurement path and economic buyer',
+  '<company name>,<what the deal is for>,Technical discussion,120000,VND,Next quarter,<product or service>,<the next thing you will do>,<what makes this real>,<what you still do not know>',
 ].join('\n');
 
 export const opportunityCsvFields: { value: OpportunityCsvField; label: string }[] = [

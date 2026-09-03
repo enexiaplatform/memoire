@@ -69,11 +69,15 @@ describe('account CSV: reading the header', () => {
     assert.deepEqual(headers[0], 'Account Name');
     assert.equal(result.errors.length, 0);
     assert.equal(result.rows.length, 1);
-    assert.equal(result.rows[0].input.accountName, 'Orion Pharma');
+    // The template names nobody: every free-text column is a <slot> the
+    // operator replaces, and only the fixed-vocabulary columns carry a real
+    // value. What is asserted here is that the columns still land in the right
+    // fields and that the two multi-value columns still split.
+    assert.equal(result.rows[0].input.accountName, '<company name>');
     assert.equal(result.rows[0].input.accountPotential, 'High');
     assert.equal(result.rows[0].input.relationshipStatus, 'Developing');
-    assert.deepEqual(result.rows[0].input.keyStakeholders, ['Ms. Lan (QA Head)', 'Mr. Minh (Procurement)']);
-    assert.deepEqual(result.rows[0].input.tags, ['tender', 'priority']);
+    assert.deepEqual(result.rows[0].input.keyStakeholders, ['<name> (<role>)', '<name> (<role>)']);
+    assert.deepEqual(result.rows[0].input.tags, ['<tag>', '<tag>']);
   });
 });
 

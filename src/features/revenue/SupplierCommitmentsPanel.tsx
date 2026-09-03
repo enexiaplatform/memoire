@@ -269,7 +269,7 @@ function Composer({
             value={brand}
             onChange={(event) => setBrand(event.target.value)}
             list="supplier-brand-options"
-            placeholder="e.g. Sartorius"
+            placeholder="The line this is for"
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
           />
           <datalist id="supplier-brand-options">
@@ -319,7 +319,7 @@ function Composer({
               if (event.key === 'Enter' && canSave) onAdd({ brand, party, kind, label, dueDate });
               if (event.key === 'Escape') onCancel();
             }}
-            placeholder="e.g. Special price for Conda tender"
+            placeholder="What was promised, in your own words"
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
           />
         </label>

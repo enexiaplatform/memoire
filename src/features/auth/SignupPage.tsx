@@ -77,7 +77,7 @@ export function SignupPage() {
               type="text"
               // See LoginPage: a password manager fills and saves on these.
               autoComplete="name"
-              placeholder="Jane Smith"
+              placeholder="Your name"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               required
@@ -86,7 +86,7 @@ export function SignupPage() {
               label="Email address"
               type="email"
               autoComplete="email"
-              placeholder="jane@company.com"
+              placeholder="you@company.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required

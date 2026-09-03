@@ -83,7 +83,7 @@ export function LoginPage() {
               // has to pass through did not, so the browser offered nothing to
               // fill on sign-in and nothing to save on sign-up.
               autoComplete="email"
-              placeholder="jane@company.com"
+              placeholder="you@company.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required

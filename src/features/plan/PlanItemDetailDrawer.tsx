@@ -115,7 +115,9 @@ export function PlanItemDetailDrawer({
     : undefined;
   const willUnlink = Boolean(linkedActivity && captureEditUnlinksDeal(linkedActivity, draft));
   const dirty = planItemEditChangesAnything(opened, draft);
-  const editable = policy.fields.label || policy.fields.date || policy.fields.account || policy.fields.contact;
+  // Every writable field, not four of them: a policy that allowed only the
+  // channel would otherwise render a control with no Save under it.
+  const editable = Object.values(policy.fields).some(Boolean);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -267,7 +269,7 @@ export function PlanItemDetailDrawer({
                     type="text"
                     value={draft.contactName}
                     autoComplete="off"
-                    placeholder="Mr. Phuoc"
+                    placeholder="Their name"
                     onChange={(event) => { set({ contactName: event.target.value }); setContactMenuOpen(true); }}
                     onFocus={() => setContactMenuOpen(true)}
                     onBlur={() => setContactMenuOpen(false)}

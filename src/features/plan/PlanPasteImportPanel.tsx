@@ -3,12 +3,20 @@ import { ClipboardPaste, X } from 'lucide-react';
 import type { PlanDay, PlanRecord } from '../../utils/weeklyPlan';
 import { parsePlanPaste } from '../../utils/planPasteImport';
 
+/**
+ * What a pasted week looks like, with nobody in it.
+ *
+ * The example has to show two things - a day heading starts a column, and a
+ * [Tag] before the sentence names the customer or the line - and neither needs
+ * an invented person or company to demonstrate. A placeholder that reads like
+ * somebody's real contact is a placeholder an operator has to stop and check.
+ */
 const PLACEHOLDER = `Monday
 [Internal] Weekly meeting
-[FKV] Connect Ms. Yen & Ms. Mai
+[Customer name] Call the QC lead about the sample
 
 Tuesday
-[Cobetter] Presentation`;
+[Principal name] Presentation`;
 
 /**
  * A week drafted elsewhere, dropped in whole.

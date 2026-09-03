@@ -101,7 +101,7 @@ export function LogToActivityBox({
             onChange={(event) => onChangeNote(event.target.value)}
             rows={2}
             autoFocus
-            placeholder="What actually happened? e.g. Called Ms. Huyen, she asked for the TDS before Friday."
+            placeholder="What actually happened, and what they asked for next."
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs leading-5 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
           />
           {/* How it happened, asked here because this is the last moment the

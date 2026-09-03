@@ -56,9 +56,18 @@ export const accountCsvFields: { value: AccountCsvField; label: string }[] = [
   { value: 'ignore', label: 'Do not import' },
 ];
 
+/**
+ * The template row shows the *shape* of each column, not a worked example.
+ *
+ * It used to carry an invented company and two invented contacts, which read as
+ * somebody's real book and had to be deleted before the file was usable. Angle
+ * brackets say "replace me" in a way a plausible name never can, while the
+ * punctuation that actually matters - semicolons between contacts, a role in
+ * brackets, a semicolon-separated tag list - is still demonstrated.
+ */
 export const ACCOUNT_CSV_TEMPLATE = [
   'Account Name,Segment,Industry,Location,Potential,Relationship,Contacts,Notes,Tags',
-  'Orion Pharma,Pharma manufacturing,Pharma,Ho Chi Minh City,High,Developing,"Ms. Lan (QA Head); Mr. Minh (Procurement)",Tender expected Q4,"tender;priority"',
+  '<company name>,<segment>,<industry>,<city>,High,Developing,"<name> (<role>); <name> (<role>)",<free notes>,"<tag>;<tag>"',
 ].join('\n');
 
 export type AccountCsvPreviewRow = {
