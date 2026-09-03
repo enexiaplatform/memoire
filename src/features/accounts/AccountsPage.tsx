@@ -49,6 +49,7 @@ import { accountKey, sameAccount } from '../../utils/accountIdentity';
 import {
   alternateNamesFor,
   deleteAccountMerge,
+  describeMergeBasis,
   dismissedPairKeys,
   loadAccountMergesForWorkspace,
   mergedAwayNames,
@@ -339,6 +340,11 @@ export function AccountsPage() {
       kind: 'merge',
       canonicalAccountName: survivorName,
       mergedNames,
+      // What this alias rests on, kept with it. A merge accepted from a
+      // "likely" suggestion is a reading of the names, not a match on them, and
+      // six months later nothing else could tell the two apart.
+      basis: group.confidence === 'certain' ? 'confirmed' : 'assumed',
+      basisNote: group.reason,
       createdAt: now,
       updatedAt: now,
       source: sampleDataActive ? 'demo' : 'user',
@@ -2150,10 +2156,25 @@ function MergedAccountsNote({
       <ul className="space-y-1.5 border-t border-gray-100 px-4 py-3 text-xs leading-5">
         {merges.map((record) => (
           <li key={record.id} className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-gray-600">
+            <span className="min-w-0 text-gray-600">
               <span className="font-bold text-gray-900">{record.canonicalAccountName}</span>
               {' also answers to '}
               {record.mergedNames.join(', ')}
+              {/* What the alias rests on. An assumed merge is marked, because a
+                  reading of two names and a match between them are not the same
+                  fact and only one of them is worth re-checking. */}
+              <span
+                className={`ml-1.5 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                  record.basis === 'assumed'
+                    ? 'bg-amber-100 text-amber-800'
+                    : record.basis
+                      ? 'bg-gray-100 text-gray-600'
+                      : 'bg-gray-100 text-gray-400'
+                }`}
+                title={describeMergeBasis(record)}
+              >
+                {record.basis || 'basis not recorded'}
+              </span>
             </span>
             <button type="button" onClick={() => onUndo(record.id)} className="shrink-0 font-bold text-brand-blue hover:underline">
               Undo

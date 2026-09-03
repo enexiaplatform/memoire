@@ -5,6 +5,8 @@ import { FORECAST_QUARTERS, quarterForDate, daysLeftInQuarter, type ForecastQuar
 import { sumMoneyInBase } from './money.ts';
 import { isValidBusinessDate, timestampToLocalDateKey, todayDateKey } from './safeDate.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
+import { countOutOfOfficeDays, isInPersonChannel } from './activityChannel.ts';
+import { summariseCaptureDepth } from './captureDepth.ts';
 
 /**
  * The scoreboard: what last week and last month actually produced, against the
@@ -86,9 +88,56 @@ export type OutcomeScoreboard = {
   };
   quarter: TargetProgress | null;
   year: TargetProgress | null;
+  /**
+   * The same period counted twice: once as it happened, and once after the
+   * question "of that, how much was real".
+   *
+   * Every figure on a scoreboard has a soft version and a hard one, and a
+   * review that only shows the soft one measures effort while sounding like it
+   * measures progress. "Four deals created" is a number anybody can produce in
+   * an afternoon; "of which one is qualified" is the number that predicts next
+   * quarter. Both are shown, always as a pair, so neither can be read alone.
+   *
+   * Null when the workspace has no deals to score - an empty pair is not a
+   * finding about the period, and drawing "0 of 0 qualified" would read as one.
+   */
+  quality: ScoreboardQuality | null;
   /** One sentence saying where this leaves the year. Never invented. */
   verdict: string;
   hasTargets: boolean;
+};
+
+export type ScoreboardQuality = {
+  /** Open deals in the book right now. Not period-bound: a pipeline is a stock, not a flow. */
+  activeDeals: number;
+  /** Of those, deals clearing the forecast gate with no blocker. */
+  qualifiedDeals: number;
+  /** Of those, deals with no champion or no economic buyer. */
+  blockedDeals: number;
+  /** Of those, deals staged above what the evidence supports. */
+  overStatedDeals: number;
+  /** Touches in the period. */
+  touches: number;
+  /**
+   * Of those, the ones that cost travel - a visit either way, or an event.
+   *
+   * Counted rather than inferred: only a touch whose channel says so is
+   * included, so this rises as the habit of recording it does. It is a floor,
+   * never a claim about the rest.
+   */
+  inPersonTouches: number;
+  /** Distinct days in the period marked as not working. Context for a thin week. */
+  daysOutOfOffice: number;
+  /**
+   * Touches that record that something happened without recording what.
+   *
+   * The other half of `touches`, and the reason a raw touch count is not a
+   * measure of anything: a month of "followed up" is a full ledger and an empty
+   * memory. Counted, never blocked - see `captureDepth`.
+   */
+  thinTouches: number;
+  /** Median words per touch in the period. Survives one very long note. */
+  medianTouchWords: number;
 };
 
 export type ScoreboardTarget = {
@@ -200,6 +249,11 @@ export type ScoreboardInput = {
   quotes: QuoteRecord[];
   activities: SalesActivityRecord[];
   targets: ScoreboardTarget[];
+  /**
+   * Qualification scores for the open book, keyed by opportunity id. Optional:
+   * without them the quality pair is simply absent rather than reported as zero.
+   */
+  qualification?: Map<string, { backsForecast: boolean; blockers: unknown[]; stageGap: number }>;
   /** Defaults to today. Injected in tests and when reviewing a past period. */
   today?: string;
   includeSampleRecords?: boolean;
@@ -274,6 +328,7 @@ export function buildOutcomeScoreboard(input: ScoreboardInput): OutcomeScoreboar
     lost,
     winRate: decided > 0 ? won.count / decided : null,
     previousWon,
+    quality: buildQuality(input.qualification, periodActivities),
     movement: {
       quotesSent: periodQuotes.length,
       quotesAccepted: periodQuotes.filter((quote) => quote.status === 'Accepted').length,
@@ -415,4 +470,32 @@ function daysBetween(from: string, to: string): number {
 
 function dateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+/**
+ * The hard half of each pair.
+ *
+ * Deal counts read the whole open book rather than the period, on purpose: a
+ * pipeline is a stock and asking "how many qualified deals were created in the
+ * last seven days" produces zero most weeks, which says nothing about whether
+ * the book is any good.
+ */
+function buildQuality(
+  qualification: ScoreboardInput['qualification'],
+  periodActivities: SalesActivityRecord[],
+): ScoreboardQuality | null {
+  if (!qualification || qualification.size === 0) return null;
+  const scores = [...qualification.values()];
+  const depth = summariseCaptureDepth(periodActivities);
+  return {
+    activeDeals: scores.length,
+    qualifiedDeals: scores.filter((score) => score.backsForecast).length,
+    blockedDeals: scores.filter((score) => score.blockers.length > 0).length,
+    overStatedDeals: scores.filter((score) => score.stageGap > 0).length,
+    touches: periodActivities.length,
+    inPersonTouches: periodActivities.filter((activity) => isInPersonChannel(activity.activityChannel)).length,
+    daysOutOfOffice: countOutOfOfficeDays(periodActivities),
+    thinTouches: depth.thin,
+    medianTouchWords: depth.medianWords,
+  };
 }

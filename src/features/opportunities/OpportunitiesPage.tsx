@@ -68,6 +68,19 @@ import { buildReviveFollowUpContext } from '../../utils/followUpFromOpportunity'
 import type { FollowUpContext } from '../../types/v31';
 import { analyzeMeddicLiteOpportunity, type MeddicLiteDealCategory, type MeddicLiteStatus } from '../../utils/meddicLite';
 import {
+  describeStageGap,
+  scoreDealQualification,
+  FORECAST_GATE,
+  type DealQualification,
+} from '../../utils/dealQualificationScore';
+import {
+  checkOpportunityIntegrity,
+  describeIntegrity,
+  type RecordIntegrity,
+} from '../../utils/recordIntegrity';
+import { buildOpportunityImportReceipt } from '../../utils/importReceipt';
+import { FieldOwnership } from '../../components/common/FieldOwnership';
+import {
   convertMoney,
   formatBaseCurrencyAmount as formatBaseMoney,
   formatCompactBaseAmount,
@@ -343,6 +356,21 @@ export function OpportunitiesPage() {
     opportunities.forEach((opportunity) => add(opportunity.accountName));
     return [...byKey.values()].sort((left, right) => left.localeCompare(right));
   }, [accountAliases, accounts, opportunities]);
+
+  /**
+   * Customers that exist as an *account record*, and nothing else.
+   *
+   * Deliberately not `knownAccountNames`, which folds in every name typed onto
+   * a deal so the form can offer the spelling already in use. That union is
+   * right for a typeahead and useless for an integrity check: a deal naming a
+   * customer nobody has a record for puts that name into the list, and the
+   * check then finds it and passes. Every deal would read as linked, forever,
+   * and the one thing this was built to catch could never fire.
+   */
+  const accountRecordNames = useMemo(
+    () => accounts.map((account) => resolveAccountName(account.accountName || '', accountAliases)),
+    [accountAliases, accounts],
+  );
 
   const refreshOpportunities = async (options: { force?: boolean } = {}) => {
     setWorkspaceLoadError('');
@@ -1308,6 +1336,7 @@ export function OpportunitiesPage() {
           mappingProfiles={csvMappingProfiles}
           detectedHeaders={csvDetectedHeaders}
           mappingReview={csvMappingReview}
+          knownAccountNames={accountRecordNames}
           selectedMappingProfileId={csvSelectedMappingProfileId}
           mappingProfileName={csvMappingProfileName}
           mappingSourceType={csvMappingSourceType}
@@ -1471,6 +1500,7 @@ export function OpportunitiesPage() {
         allOpportunities={opportunities}
         allStakeholders={stakeholders}
         knownAccountNames={knownAccountNames}
+        accountRecordNames={accountRecordNames}
         accountAliases={accountAliases}
         accountWarningForced={accountNameConfirmed === form.accountName.trim() && Boolean(accountNameConfirmed)}
         closeOutNudge={closeOutNudge}
@@ -1612,6 +1642,7 @@ function OpportunityCsvImportPanel({
   mode,
   csvInput,
   result,
+  knownAccountNames,
   refreshPreview,
   selectedRefreshFields,
   skipDuplicates,
@@ -1654,6 +1685,12 @@ function OpportunityCsvImportPanel({
   mappingProfiles: CsvMappingProfile[];
   detectedHeaders: string[];
   mappingReview: CsvMappingReviewRow[];
+  /**
+   * Customers that exist as an account *record*, so the receipt can spot deals
+   * that will land on nothing. Never the typeahead's wider list, which includes
+   * names taken from deals and would make the check pass on itself.
+   */
+  knownAccountNames: string[];
   selectedMappingProfileId: string;
   mappingProfileName: string;
   mappingSourceType: CsvMappingSourceType;
@@ -1677,6 +1714,14 @@ function OpportunityCsvImportPanel({
 }) {
   const rows = result?.rows || [];
   const importableRows = getImportableCsvRows(rows, { skipDuplicates });
+  const receipt = result
+    ? buildOpportunityImportReceipt({
+      rows,
+      mapping: mappingReview,
+      knownAccountNames,
+      errors: result.errors,
+    })
+    : null;
   const duplicateCount = rows.filter((row) => row.isDuplicate).length;
   const invalidCount = rows.filter((row) => !row.isValid).length;
   const selectedRefreshUpdateCount = refreshPreview?.changedItems.filter((item) => (selectedRefreshFields[item.id] || []).length > 0).length || 0;
@@ -1817,6 +1862,43 @@ function OpportunityCsvImportPanel({
               <ImportMetric label="Ready" value={importableRows.length} tone="green" />
               <ImportMetric label="Duplicates" value={duplicateCount} tone={duplicateCount ? 'amber' : 'green'} />
               <ImportMetric label="Invalid" value={invalidCount} tone={invalidCount ? 'red' : 'green'} />
+            </div>
+          )}
+
+          {/* The receipt. Three counters say how much came through; this says
+              what the import decided on your behalf and what was already wrong
+              in the file. Shown before the import runs, because "please
+              confirm" after the fact is not a question. */}
+          {receipt && !receipt.clean && (
+            <div className="mt-3 grid gap-2 lg:grid-cols-2">
+              {receipt.assumptions.length > 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-amber-800">Assumed — please confirm</p>
+                  <ul className="mt-2 space-y-1 text-xs leading-5 text-amber-900">
+                    {receipt.assumptions.map((entry) => (
+                      <li key={entry.text}>
+                        - {entry.text}
+                        {entry.rows > 0 && <span className="text-amber-700/70"> ({entry.rows} rows)</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {receipt.problems.length > 0 && (
+                <div className="rounded-lg border border-red-200 bg-red-50/60 p-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-red-800">
+                    Problems in the file — named, not fixed
+                  </p>
+                  <ul className="mt-2 space-y-1 text-xs leading-5 text-red-900">
+                    {receipt.problems.map((entry) => (
+                      <li key={entry.text}>
+                        - {entry.text}
+                        {entry.rows > 0 && <span className="text-red-700/70"> ({entry.rows} rows)</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
 
@@ -3027,6 +3109,7 @@ function OpportunityPanel({
   allOpportunities,
   allStakeholders,
   knownAccountNames,
+  accountRecordNames,
   accountAliases,
   accountWarningForced,
   closeOutNudge,
@@ -3061,6 +3144,13 @@ function OpportunityPanel({
    */
   allStakeholders: StakeholderRecord[];
   knownAccountNames: string[];
+  /**
+   * Customers that exist as an account *record*, for the broken-link check.
+   * `knownAccountNames` above folds in names typed onto deals so the form can
+   * offer an existing spelling; used here it would find the deal's own name and
+   * report every link as sound.
+   */
+  accountRecordNames: string[];
   accountAliases: AccountAliasIndex;
   /** True once a save has raised the near-miss, so the field shows it too. */
   accountWarningForced: boolean;
@@ -3248,6 +3338,26 @@ function OpportunityPanel({
             quotes,
             activities: linkedActivities,
             objections,
+          })}
+          /* Above the fold on purpose. The nine-letter breakdown belongs in the
+             folded analysis, but "you have this at Negotiation and the evidence
+             supports Qualification" is the first thing worth knowing about a
+             deal, and a sentence nobody unfolds is a sentence nobody reads. */
+          qualification={scoreDealQualification({
+            opportunity: currentOpportunity,
+            stakeholders,
+            objections,
+            activities: linkedActivities,
+            quotes,
+          })}
+          /* A record that is broken says so where it is being looked at, rather
+             than in a hygiene report somewhere else. Named fields, not a
+             completeness percentage - "Missing Value, Close period" is
+             something you can act on without opening anything. */
+          integrity={checkOpportunityIntegrity({
+            opportunity: currentOpportunity,
+            accountNames: accountRecordNames,
+            aliases: accountAliases,
           })}
         />
       )}
@@ -3467,6 +3577,7 @@ function OpportunityPanel({
               stakeholders={stakeholders}
               objections={objections}
               activities={linkedActivities}
+              quotes={quotes}
             />
           )}
           {currentOpportunity && (
@@ -3602,8 +3713,19 @@ function OpportunityPanel({
  * read-model Today and Ask use - before the long CRM form and the folded deep
  * analysis. The drawer used to open straight into a form of twenty fields.
  */
-function DealFirstThingHead({ snapshot }: { snapshot: ReturnType<typeof buildCommercialJourneySnapshot> }) {
+function DealFirstThingHead({
+  snapshot,
+  qualification,
+  integrity,
+}: {
+  snapshot: ReturnType<typeof buildCommercialJourneySnapshot>;
+  qualification: DealQualification;
+  integrity: RecordIntegrity;
+}) {
   const commitment = formatJourneyCommitment(snapshot.nextCommitment);
+  const stageGap = describeStageGap(qualification);
+  const percent = Math.round(qualification.percentOfMax * 100);
+  const integrityNote = describeIntegrity(integrity);
   return (
     <section className="mt-4 rounded-xl border border-brand-blue/20 bg-blue-50/50 p-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -3614,7 +3736,28 @@ function DealFirstThingHead({ snapshot }: { snapshot: ReturnType<typeof buildCom
         {snapshot.daysQuiet !== null && snapshot.daysQuiet > 0 && (
           <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">Quiet {snapshot.daysQuiet}d</span>
         )}
+        {/* The score as a fraction, not only a percentage: 18/32 says how much
+            is known and how much is knowable, where 56% says only the first and
+            reads like a grade. */}
+        <span
+          className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+            qualification.backsForecast
+              ? 'bg-emerald-100 text-emerald-800'
+              : qualification.blockers.length > 0
+                ? 'bg-red-100 text-red-800'
+                : 'bg-gray-100 text-gray-700'
+          }`}
+          title={`Qualification: ${qualification.weighted} of ${qualification.max} weighted points`}
+        >
+          Qualified {percent}% · {qualification.weighted}/{qualification.max}
+        </span>
       </div>
+      {stageGap && (
+        <p className="mt-2 text-sm font-semibold leading-6 text-amber-900">{stageGap}</p>
+      )}
+      {integrityNote && (
+        <p className="mt-1.5 text-xs font-semibold leading-5 text-red-700">{integrityNote}</p>
+      )}
       <p className="mt-3 text-xs font-bold uppercase tracking-wide text-brand-blue">Do this first</p>
       <p className="mt-1 text-sm font-bold leading-6 text-navy">
         {snapshot.nextCommitment ? commitment : 'No next action set — decide the first move and add it below.'}
@@ -4180,13 +4323,19 @@ function MeddicLitePanel({
   stakeholders,
   objections,
   activities,
+  quotes,
 }: {
   opportunity: CrmLiteOpportunity;
   stakeholders: StakeholderRecord[];
   objections: ObjectionRecord[];
   activities: SalesActivityRecord[];
+  quotes: QuoteRecord[];
 }) {
-  const review = analyzeMeddicLiteOpportunity({ opportunity, stakeholders, objections, activities });
+  const review = analyzeMeddicLiteOpportunity({ opportunity, stakeholders, objections, activities, quotes });
+  // Scored from the same review rather than from a second one, so the number in
+  // the header and the letters underneath it can never disagree.
+  const qualification = scoreDealQualification({ opportunity, review });
+  const scoreByKey = new Map(qualification.elements.map((element) => [element.key, element]));
 
   return (
     <section className="mt-5 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
@@ -4195,18 +4344,64 @@ function MeddicLitePanel({
           <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">MEDDIC-lite Review</p>
           <h3 className="mt-1 text-base font-bold text-navy">Deal evidence check</h3>
           <p className="mt-1 text-sm leading-6 text-blue-900/75">
-            Rule-based review of buyer, criteria, process, pain, champion, and competition.
+            Nine elements, each scored from records you already keep — the stakeholder map, the objection ledger,
+            captured touches and the quote book. Nothing here is graded by hand, so the way to raise a score is to
+            record the thing, not to type a better number about it.
           </p>
         </div>
         <Badge label={review.category} tone={meddicCategoryTone(review.category)} />
+      </div>
+
+      <div className="mt-4 rounded-lg bg-white p-3 ring-1 ring-blue-100">
+        <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-gray-400">
+          Qualification
+          {/* Marked, because a number that cannot be typed has to say so. An
+              operator who tries to correct a score and finds no field assumes
+              the app is broken rather than that the score is a reading. */}
+          <FieldOwnership owner="derived" />
+        </p>
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <p className="text-2xl font-black tabular-nums text-navy">
+            {qualification.weighted}<span className="text-base font-bold text-gray-400">/{qualification.max}</span>
+          </p>
+          <p className="text-sm font-bold text-gray-600">{Math.round(qualification.percentOfMax * 100)}% of maximum</p>
+          <p className="ml-auto text-xs font-semibold text-gray-500">
+            {qualification.backsForecast
+              ? `Clears the ${Math.round(FORECAST_GATE * 100)}% gate — this deal may back a forecast.`
+              : `Below the ${Math.round(FORECAST_GATE * 100)}% gate — counted at zero in forecast coverage.`}
+          </p>
+        </div>
+        <p className="mt-2 text-sm leading-6 text-navy">
+          Evidence supports <strong>{qualification.evidenceStage}</strong>; you have it at{' '}
+          <strong>{qualification.claimedStage}</strong>.
+        </p>
+        {qualification.blockers.length > 0 && (
+          <p className="mt-1 text-sm font-semibold leading-6 text-red-700">
+            {describeStageGap(qualification)}
+          </p>
+        )}
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-2">
         {review.fields.map((field) => (
           <details key={field.key} className="rounded-lg bg-white p-3 ring-1 ring-blue-100">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-              <span className="text-sm font-bold text-navy">{field.label}</span>
-              <Badge label={field.status} tone={meddicStatusTone(field.status)} />
+              <span className="text-sm font-bold text-navy">
+                {field.label}
+                {/* Weight beside the name, because "Champion is Missing" and
+                    "Competition is Missing" cost three points and one, and a
+                    list that hides that reads as nine equal problems. */}
+                <span className="ml-1.5 text-[11px] font-semibold text-gray-400">
+                  ×{scoreByKey.get(field.key)?.weight ?? 1}
+                </span>
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="text-xs font-bold tabular-nums text-gray-500">
+                  {scoreByKey.get(field.key)?.weightedPoints ?? 0}
+                  /{(scoreByKey.get(field.key)?.weight ?? 1) * 2}
+                </span>
+                <Badge label={field.status} tone={meddicStatusTone(field.status)} />
+              </span>
             </summary>
             <div className="mt-3 grid grid-cols-1 gap-3">
               <div>

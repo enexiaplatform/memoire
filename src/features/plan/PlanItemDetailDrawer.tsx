@@ -15,6 +15,7 @@ import {
   activityChannelSpec,
   type ActivityChannel,
 } from '../../utils/activityChannel';
+import { FieldOwnership } from '../../components/common/FieldOwnership';
 import { formatSafeBusinessDate } from '../../utils/safeDate';
 import { sameAccount } from '../../utils/accountIdentity';
 import { matchesSearchQuery } from '../../utils/textSearch';
@@ -427,7 +428,12 @@ function pickAccount(option: PlanLinkOption, set: (patch: Partial<PlanItemEditDr
 function LockedField({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <span className="text-sm font-bold text-gray-400">{label}</span>
+      <span className="flex items-center gap-1.5 text-sm font-bold text-gray-400">
+        {label}
+        {/* Says why it is locked, not only that it is. A padlock alone reads as
+            a refusal; this one names where the field actually lives. */}
+        <FieldOwnership owner="elsewhere" />
+      </span>
       <p className="mt-2 flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-500">
         <Lock className="h-3.5 w-3.5 shrink-0" />
         <span className="min-w-0 break-words">{value}</span>

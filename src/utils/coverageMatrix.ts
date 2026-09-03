@@ -3,6 +3,7 @@ import { resolveAccountName, type AccountAliasIndex } from './accountAliases.ts'
 import { accountKey } from './accountIdentity.ts';
 import { isCommittedToOrder } from './orderToCash.ts';
 import { sumMoneyInBase } from './money.ts';
+import { brandKey, canonicalBrandName } from './brandIdentity.ts';
 
 /**
  * Every customer against every line you carry, and - the point of the whole
@@ -91,9 +92,16 @@ export function buildCoverageMatrix(input: {
   ));
   const withBrand = opportunities.filter((opportunity) => (opportunity.brand || '').trim());
 
+  /*
+   * Columns are canonical spellings, because the cells below are keyed on the
+   * canonical form. Built from the raw strings this drew "PMM" and "pmm" as two
+   * columns, and both then resolved to the same cell key - so one line's deals
+   * appeared twice and its money was counted twice in the column order.
+   */
+  const allBrandSpellings = withBrand.map((opportunity) => opportunity.brand || '');
   const brandValue = new Map<string, number>();
   withBrand.forEach((opportunity) => {
-    const brand = (opportunity.brand || '').trim();
+    const brand = canonicalBrandName((opportunity.brand || '').trim(), allBrandSpellings);
     brandValue.set(brand, (brandValue.get(brand) || 0) + valueOf(opportunity));
   });
   // Biggest lines first, so the columns that matter are read before scrolling.
@@ -237,11 +245,9 @@ function valueOf(opportunity: CrmLiteOpportunity) {
  * carrying two halves of one customer's squares.
  */
 function cellKey(accountName: string, brand: string) {
-  return `${accountKey(accountName)}|${normalize(brand)}`;
-}
-
-function normalize(value: string) {
-  return (value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  // `brandKey` rather than a local normalizer, so this file and every other
+  // surface agree on when two spellings are one line.
+  return `${accountKey(accountName)}|${brandKey(brand)}`;
 }
 
 export { CELL_RANK };

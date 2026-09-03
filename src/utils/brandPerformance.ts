@@ -1,6 +1,7 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import { isCommittedToOrder } from './orderToCash.ts';
 import { sumMoneyInBase } from './money.ts';
+import { canonicalBrandName } from './brandIdentity.ts';
 
 /**
  * Which brand is carrying the number.
@@ -54,9 +55,20 @@ export type BrandPerformanceReport = {
 };
 
 export function buildBrandPerformance(input: { opportunities: CrmLiteOpportunity[] }): BrandPerformanceReport {
+  /*
+   * Grouped on the canonical key rather than the typed string.
+   *
+   * Brand is free text, so "PMM", "pmm" and " Pmm " are three keys and each row
+   * would carry a third of the line's money - every per-brand total wrong, with
+   * nothing on screen explaining why. Folded on case, spacing and accents only:
+   * a genuine second name for the same principal is a judgement, and
+   * `brandIdentity` deliberately leaves that one to a person.
+   */
+  const allSpellings = input.opportunities.map((opportunity) => opportunity.brand || '');
   const groups = new Map<string, CrmLiteOpportunity[]>();
   input.opportunities.forEach((opportunity) => {
-    const brand = (opportunity.brand || '').trim() || UNBRANDED_LABEL;
+    const typed = (opportunity.brand || '').trim();
+    const brand = typed ? canonicalBrandName(typed, allSpellings) : UNBRANDED_LABEL;
     const list = groups.get(brand) || [];
     list.push(opportunity);
     groups.set(brand, list);

@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Target as TargetIcon, TrendingDown } from 'lucide-react';
+import { ShieldAlert, Target as TargetIcon, TrendingDown } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { formatCompactBaseAmount } from '../../utils/money';
 import { setCommercialTarget } from '../../domain/commercialKernel/commands';
 import { FORECAST_QUARTERS, type ForecastQuarter, type QuarterCoverage } from '../../domain/commercialKernel/forecast';
 import { useCoverage } from './useCoverage';
+import { FORECAST_GATE } from '../../utils/dealQualificationScore';
 
 /**
  * Coverage: am I going to make the number, and is there still time?
@@ -114,6 +115,44 @@ export function CoveragePanel() {
           <QuarterCard key={quarter.quarter} quarter={quarter} />
         ))}
       </div>
+
+      {/* Two different failures, in the order they matter.
+          This one asks whether a qualified deal exists behind the number at
+          all; the amber block below asks whether a declared probability is
+          still believable. A deal can pass the second and fail this one - it is
+          touched weekly and correctly staged, and nobody inside the account is
+          carrying it. That is the failure that loses quarters, so it leads. */}
+      {coverage.unbackedValue > 0 && (
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50/60 p-4">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="h-4 w-4 text-red-700" />
+            <h3 className="text-sm font-bold text-navy">
+              {formatCompactBaseAmount(coverage.unbackedValue)} of target with no qualified deal behind it
+            </h3>
+          </div>
+          <p className="mt-1 text-xs leading-5 text-gray-600">
+            Across {coverage.unbackedQuarters} quarter{coverage.unbackedQuarters === 1 ? '' : 's'}. A deal backs a
+            forecast when it scores {Math.round(FORECAST_GATE * 100)}% or more on qualification and has both a champion
+            and an economic buyer. Everything else is counted at zero here, however large it is — which is the point:
+            a number nothing qualifies is the thing worth seeing before the quarter ends, not after.
+          </p>
+          {coverage.unqualifiedByBrand.length > 0 && (
+            <ul className="mt-3 space-y-1.5">
+              {coverage.unqualifiedByBrand.map((row) => (
+                <li key={row.brand} className="flex flex-wrap items-baseline gap-x-2 text-xs leading-5">
+                  <span className="font-bold text-navy">{row.brand}</span>
+                  <span className="text-gray-500">
+                    {row.deals} deal{row.deals === 1 ? '' : 's'} not yet qualified
+                  </span>
+                  <span className="ml-auto font-bold text-gray-700">
+                    {formatCompactBaseAmount(row.amount)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {coverage.unsupportedValue > 0 && (
         <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/60 p-4">

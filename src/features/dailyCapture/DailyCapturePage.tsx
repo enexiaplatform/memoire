@@ -35,6 +35,7 @@ import {
 } from '../../utils/capturePlanReconciliation';
 import type { PlanItem, PlanRecord } from '../../utils/weeklyPlan';
 import { applyActivityLogChoice, isExcludedFromActivityLedger } from '../../utils/activityLogChoice';
+import { assessCaptureDepth } from '../../utils/captureDepth';
 import {
   ACTIVITY_CHANNELS,
   ACTIVITY_CHANNEL_VALUES,
@@ -1830,11 +1831,22 @@ function StructuredPreviewEditor({
   accountSuggestions?: string[];
   opportunitySuggestions?: string[];
 }) {
+  const depth = assessCaptureDepth(preview);
+
   return (
     <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+      {/* A nudge, never a block. A capture refused for being short is a capture
+          that does not happen, and an empty ledger is worse than a thin one.
+          Only fires when the note is short *and* the rules read nothing out of
+          it - eleven words naming a person and a date is a complete record. */}
+      {depth.thin && (
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold leading-5 text-amber-900 ring-1 ring-amber-100 md:col-span-2">
+          {depth.hint}
+        </p>
+      )}
       <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-blue-100">
         <span className="text-xs font-bold uppercase tracking-wide text-blue-500">Source</span>
-        <p className="mt-1 text-sm font-semibold text-blue-950">Rule-based</p>
+        <p className="mt-1 text-sm font-semibold text-blue-950">Rule-based · {depth.words} words</p>
       </div>
       <label className="block rounded-lg bg-white px-3 py-2 ring-1 ring-blue-100">
         <span className="text-xs font-bold uppercase tracking-wide text-blue-500">Type</span>

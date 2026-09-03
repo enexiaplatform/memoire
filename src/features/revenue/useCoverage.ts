@@ -16,6 +16,9 @@ const EMPTY: CoverageReport = {
   hasTargets: false,
   unsupportedValue: 0,
   unsupportedDeals: [],
+  unbackedQuarters: 0,
+  unbackedValue: 0,
+  unqualifiedByBrand: [],
 };
 
 /**

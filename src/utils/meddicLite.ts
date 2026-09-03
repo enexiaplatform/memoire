@@ -1,20 +1,33 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
+import type { QuoteRecord } from '../services/quoteStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
 import { activitiesForOpportunityStrict } from './activityIndex.ts';
+import { sameAccount } from './accountIdentity.ts';
 import { getObjectionsForOpportunity } from './objectionLedger.ts';
 import { normalizeMeddicRole } from './meddicStakeholderMap.ts';
 import { getStakeholdersForOpportunity } from './stakeholderGraph.ts';
 import { formatCurrencyAmount } from './money.ts';
 
+/**
+ * The nine letters, not seven.
+ *
+ * `implicate` and `paperProcess` were the two the review never asked about, and
+ * they are the two that decide whether a deal closes *this* quarter rather than
+ * eventually. Urgency is what separates a real project from a good conversation;
+ * the paper route is what separates a verbal yes from money. A qualification
+ * model without them scores a deal as strong right up to the month it slips.
+ */
 export type MeddicLiteFieldKey =
   | 'metrics'
   | 'economicBuyer'
   | 'decisionCriteria'
   | 'decisionProcess'
   | 'identifyPain'
+  | 'implicate'
   | 'champion'
+  | 'paperProcess'
   | 'competition';
 
 export type MeddicLiteStatus = 'Strong' | 'Partial' | 'Missing';
@@ -67,6 +80,8 @@ export function analyzeMeddicLiteOpportunity(input: {
   stakeholders?: StakeholderRecord[];
   objections?: ObjectionRecord[];
   activities?: SalesActivityRecord[];
+  /** Optional: the paper route reads them. Absent, `paperProcess` scores on the deal alone. */
+  quotes?: QuoteRecord[];
 }): MeddicLiteReview {
   const opportunity = input.opportunity;
   const relatedStakeholders = getRelatedStakeholders(opportunity, input.stakeholders || []);
@@ -79,7 +94,9 @@ export function analyzeMeddicLiteOpportunity(input: {
     reviewDecisionCriteria(opportunity),
     reviewDecisionProcess(opportunity),
     reviewIdentifyPain(opportunity, relatedObjections, relatedActivities),
+    reviewImplicate(opportunity, relatedActivities),
     reviewChampion(relatedStakeholders),
+    reviewPaperProcess(opportunity, getRelatedQuotes(opportunity, input.quotes || [])),
     reviewCompetition(opportunity, relatedObjections, relatedActivities),
   ];
 
@@ -397,6 +414,133 @@ function getRelatedObjections(opportunity: CrmLiteOpportunity, objections: Objec
 function getRelatedActivities(opportunity: CrmLiteOpportunity, activities: SalesActivityRecord[]) {
   return activitiesForOpportunityStrict(opportunity, activities);
 }
+
+/**
+ * The quotes raised against this deal.
+ *
+ * Matched by id where a quote carries one and by customer name otherwise,
+ * because a quote written before the deal existed - which is the ordinary case
+ * on an imported book - has no opportunity id to match on.
+ */
+function getRelatedQuotes(opportunity: CrmLiteOpportunity, quotes: QuoteRecord[]) {
+  return quotes.filter((quote) => {
+    if (quote.__deleted) return false;
+    if (quote.opportunityId) return quote.opportunityId === opportunity.id;
+    return sameAccount(quote.accountName, opportunity.accountName);
+  });
+}
+
+/**
+ * Implicate: is the pain urgent, or is it merely real?
+ *
+ * The distinction the other eight letters cannot make. A customer can have a
+ * confirmed problem, a mapped champion and a signed-off budget and still do
+ * nothing for two years, because nothing forces the date. This is the letter
+ * that separates a deal from a good relationship, which is why it is worth
+ * scoring separately from `identifyPain`.
+ *
+ * Strong needs a *consequence*, not just a date: a timeline signal the customer
+ * gave, or language about a deadline, an audit, an expiry, a plant coming
+ * online. A close period the seller typed into a form is their own forecast,
+ * so on its own it is Partial - the seller believing in a date is not the
+ * customer having one.
+ */
+function reviewImplicate(
+  opportunity: CrmLiteOpportunity,
+  activities: SalesActivityRecord[],
+): MeddicLiteFieldReview {
+  const timelineSignals = dedupe(activities.flatMap((activity) => activity.timelineSignals || []));
+  const hasCustomerDeadline = urgencyTerms.test(
+    `${opportunity.evidence} ${opportunity.missingContext} ${activities.map((activity) => activity.summary).join(' ')}`,
+  );
+  const hasClosePeriod = Boolean(opportunity.expectedClosePeriod.trim());
+
+  const evidence = [
+    timelineSignals.length > 0 ? `Timeline signals from the customer: ${timelineSignals.slice(0, 3).join(', ')}.` : '',
+    hasCustomerDeadline ? 'A deadline, audit or cut-off is mentioned in what was captured.' : '',
+    hasClosePeriod ? `Close period on the deal: ${opportunity.expectedClosePeriod}.` : '',
+  ].filter(Boolean);
+
+  const customerDriven = timelineSignals.length > 0 || hasCustomerDeadline;
+  const status: MeddicLiteStatus = customerDriven && hasClosePeriod
+    ? 'Strong'
+    : customerDriven || hasClosePeriod
+      ? 'Partial'
+      : 'Missing';
+
+  return {
+    key: 'implicate',
+    label: 'Urgency',
+    status,
+    evidence: evidence.length > 0 ? evidence : ['Nothing captured says why this has to happen now.'],
+    gaps: [
+      !customerDriven ? 'No customer-side deadline - the timing is ours, not theirs.' : '',
+      !hasClosePeriod ? 'No close period on the deal.' : '',
+    ].filter(Boolean),
+    recommendedQuestions: [
+      'What happens to them if this slips a quarter?',
+      'What date is fixed on their side - an audit, an expiry, a line going live?',
+    ],
+  };
+}
+
+/**
+ * Paper process: how a yes turns into money.
+ *
+ * Deliberately separate from `decisionProcess`, which asks how they *decide*.
+ * A customer can decide in a meeting and then take four months to raise a PO,
+ * and the deals that die in that gap are invisible to every other letter. So
+ * this one reads the paperwork that actually exists - a quote, its terms, its
+ * PO state - rather than what anybody said about it.
+ */
+function reviewPaperProcess(
+  opportunity: CrmLiteOpportunity,
+  quotes: QuoteRecord[],
+): MeddicLiteFieldReview {
+  const withTerms = quotes.filter((quote) => Boolean((quote.paymentTerm || '').trim()));
+  // Only a received purchase order counts as the paper route demonstrated.
+  // 'Pending' is the default every quote is created with, so treating it as
+  // progress would score a deal on a field nobody has touched.
+  const poRaised = quotes.filter((quote) => quote.poStatus === 'Received');
+  const hasProcurementPath = Boolean(opportunity.procurementPath.trim());
+
+  const evidence = [
+    quotes.length > 0 ? `${quotes.length} quote${quotes.length === 1 ? '' : 's'} raised against this deal.` : '',
+    withTerms.length > 0 ? `Payment terms agreed: ${withTerms[0].paymentTerm}.` : '',
+    poRaised.length > 0 ? `Purchase order status: ${poRaised[0].poStatus}.` : '',
+    hasProcurementPath ? `Procurement path: ${opportunity.procurementPath}.` : '',
+  ].filter(Boolean);
+
+  // A PO in flight is the paper process demonstrated rather than described, so
+  // it alone is enough. Otherwise a quote plus terms, or a described route.
+  const status: MeddicLiteStatus = poRaised.length > 0 || (withTerms.length > 0 && hasProcurementPath)
+    ? 'Strong'
+    : quotes.length > 0 || hasProcurementPath
+      ? 'Partial'
+      : 'Missing';
+
+  return {
+    key: 'paperProcess',
+    label: 'Paper Process',
+    status,
+    evidence: evidence.length > 0 ? evidence : ['No quote, terms or purchase order route is recorded.'],
+    gaps: [
+      quotes.length === 0 ? 'No quote has been raised.' : '',
+      withTerms.length === 0 ? 'Payment terms are not agreed.' : '',
+      !hasProcurementPath ? 'The route from yes to purchase order is unknown.' : '',
+    ].filter(Boolean),
+    recommendedQuestions: [
+      'Who raises the purchase order, and what do they need from us to raise it?',
+      'What are the payment terms, and who signs them off?',
+    ],
+  };
+}
+
+/**
+ * Words that mean the customer has a date, as opposed to us having a hope.
+ * Bilingual for the same reason every other rule in this codebase is.
+ */
+const urgencyTerms = /\b(deadline|due by|must have|go[- ]live|shutdown|audit|inspection|expiry|expires|renewal|contract ends|before the end of|cut-?off|penalty|validation window|han chot|kiem tra|het han|gia han|truoc khi)\b/iu;
 
 function fieldStatus(review: Pick<MeddicLiteReview, 'fields'>, key: MeddicLiteFieldKey) {
   return review.fields.find((field) => field.key === key)?.status || 'Missing';

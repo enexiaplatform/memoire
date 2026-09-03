@@ -19,6 +19,7 @@ import {
 } from '../../utils/outcomeScoreboard';
 import { formatBaseCurrencyAmount, formatCompactBaseAmount } from '../../utils/money';
 import { formatCount } from '../../utils/numberFormat';
+import { scorePipelineQualification } from '../../utils/dealQualificationScore';
 
 /**
  * The head of Review, and the reason to open it.
@@ -72,6 +73,25 @@ export function ReviewScoreboardPanel({
     return () => { active = false; window.removeEventListener(TARGETS_UPDATED_EVENT, onTargetsUpdated); };
   }, [dataUserId, sampleDataActive]);
 
+  /**
+   * The open book scored, so every count on this panel can show its hard half.
+   *
+   * Scoped to the whole book rather than the reviewed period: a pipeline is a
+   * stock. "How many qualified deals were created last week" is zero most
+   * weeks and says nothing about whether the book is any good.
+   */
+  const qualification = useMemo(() => {
+    if (!workspace) return undefined;
+    const scores = scorePipelineQualification({
+      opportunities: workspace.opportunities,
+      stakeholders: workspace.stakeholders,
+      objections: workspace.objections,
+      activities: workspace.activities,
+      quotes: workspace.quotes,
+    });
+    return new Map(scores.map((score) => [score.opportunityId, score]));
+  }, [workspace]);
+
   const board = useMemo(() => buildOutcomeScoreboard({
     period,
     // Retros first, and the closed deals nobody wrote one for alongside them -
@@ -84,7 +104,8 @@ export function ReviewScoreboardPanel({
     quotes: workspace?.quotes || [],
     activities: workspace?.activities || [],
     targets,
-  }), [period, targets, workspace]);
+    qualification,
+  }), [period, qualification, targets, workspace]);
 
   const wonDelta = board.won.valueBase - board.previousWon.valueBase;
 
@@ -169,6 +190,42 @@ export function ReviewScoreboardPanel({
             <Movement label="Touches recorded" value={board.movement.touches} />
             <Movement label="Customers touched" value={board.movement.accountsTouched} />
           </dl>
+
+          {/* Every soft number above has a hard one here. Shown as a pair, and
+              never on its own: "four deals created" is a number anybody can
+              produce in an afternoon, and it reads like progress until the
+              second line says how many of them anyone can defend. */}
+          {board.quality && (
+            <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-gray-100 pt-3 text-xs">
+              <Movement
+                label="Open deals"
+                value={board.quality.activeDeals}
+                of={`${formatCount(board.quality.qualifiedDeals)} qualified`}
+              />
+              <Movement
+                label="Staged too high"
+                value={board.quality.overStatedDeals}
+                of={board.quality.blockedDeals > 0 ? `${formatCount(board.quality.blockedDeals)} with no champion or buyer` : ''}
+                tone={board.quality.overStatedDeals > 0 ? 'warn' : 'plain'}
+              />
+              <Movement
+                label="In person"
+                value={board.quality.inPersonTouches}
+                of={`of ${formatCount(board.quality.touches)} touches`}
+              />
+              <Movement
+                label="Days out of office"
+                value={board.quality.daysOutOfOffice}
+                of={board.quality.daysOutOfOffice > 0 ? 'not counted against you' : ''}
+              />
+              <Movement
+                label="Thin notes"
+                value={board.quality.thinTouches}
+                of={`median ${formatCount(board.quality.medianTouchWords)} words`}
+                tone={board.quality.thinTouches > 0 ? 'warn' : 'plain'}
+              />
+            </dl>
+          )}
         </div>
 
         <div className="flex flex-col gap-3">
@@ -204,11 +261,27 @@ export function ReviewScoreboardPanel({
   );
 }
 
-function Movement({ label, value }: { label: string; value: number }) {
+function Movement({
+  label,
+  value,
+  of = '',
+  tone = 'plain',
+}: {
+  label: string;
+  value: number;
+  /** The qualifying half of the pair, on its own line under the count. */
+  of?: string;
+  tone?: 'plain' | 'warn';
+}) {
   return (
     <div className="flex items-baseline justify-between gap-2">
-      <dt className="truncate text-gray-500">{label}</dt>
-      <dd className="font-bold text-navy">{formatCount(value)}</dd>
+      <dt className="min-w-0 truncate text-gray-500">
+        {label}
+        {of && <span className="block truncate text-[11px] text-gray-400">{of}</span>}
+      </dt>
+      <dd className={`font-bold ${tone === 'warn' && value > 0 ? 'text-amber-700' : 'text-navy'}`}>
+        {formatCount(value)}
+      </dd>
     </div>
   );
 }

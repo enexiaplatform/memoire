@@ -28,6 +28,7 @@ import type { PlanRecord } from '../../utils/weeklyPlan';
 import { buildAccountAliasIndex } from '../../utils/accountAliases';
 import { buildActivityInsights } from '../../utils/activityInsights';
 import { countOutOfOfficeDays, isInPersonChannel } from '../../utils/activityChannel';
+import { checkActivityIntegrity, type RecordIntegrity } from '../../utils/recordIntegrity';
 import {
   buildActivityLedgerContext,
   resolveActivitySubject,
@@ -470,6 +471,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
                           key={activity.id}
                           activity={activity}
                           subject={resolveActivitySubject(activity, subjectContext, accountAliases)}
+                          integrity={checkActivityIntegrity({ activity, opportunities })}
                           copied={copiedId === activity.id}
                           onOpen={() => setSelectedActivity(activity)}
                           onCopy={() => handleCopy(activity)}
@@ -566,6 +568,7 @@ function MetricTextCard({ label, value }: { label: string; value: string }) {
 function ActivityCard({
   activity,
   subject,
+  integrity,
   copied,
   onOpen,
   onCopy,
@@ -573,6 +576,8 @@ function ActivityCard({
   activity: SalesActivityRecord;
   /** What this touch is about, resolved the same way the Activity ledger does. */
   subject: ActivityRelation;
+  /** Whether what this touch points at still exists. */
+  integrity: RecordIntegrity;
   copied: boolean;
   onOpen: () => void;
   onCopy: () => void;
@@ -599,6 +604,19 @@ function ActivityCard({
               {activity.activityChannel && (
                 <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-bold text-gray-600">
                   {activity.activityChannel}
+                </span>
+              )}
+              {/* A link pointing at a deal that is gone. Shown on the row rather
+                  than counted in a report elsewhere, because the whole value is
+                  that the record tells you it is broken while you are looking
+                  at it - and because the fix is to re-link it, which happens
+                  here. */}
+              {integrity.brokenLinks.length > 0 && (
+                <span
+                  className="inline-flex rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700"
+                  title={integrity.brokenLinks.join(' ')}
+                >
+                  Broken link
                 </span>
               )}
               <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${businessDomainTone(classifyBusinessDomain(activity))}`}>

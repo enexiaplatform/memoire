@@ -10,6 +10,7 @@ import {
   evaluateCommercialPolicies,
   type Recommendation,
 } from '../../domain/commercialKernel/policyEngine';
+import { scorePipelineQualification } from '../../utils/dealQualificationScore';
 import { buildCoverage } from '../../domain/commercialKernel/forecast';
 import {
   loadTargets,
@@ -121,16 +122,38 @@ export function useCommercialThreads() {
   // Coverage feeds the two quarter-level rules. Built here rather than in the
   // Money page so Today can raise a coverage warning without Money being open -
   // a shortfall you only see when you go looking is not a warning.
+  /**
+   * How well each open deal is actually qualified, so coverage can separate
+   * "the number is backed by real deals" from "the number is backed by rows".
+   *
+   * Built once here and shared, because scoring runs a full MEDDIC review per
+   * deal against the stakeholder map, the objection ledger and every touch -
+   * doing that again inside each panel would be the same work three times on
+   * the same records.
+   */
+  const qualification = useMemo(() => {
+    if (!workspace) return undefined;
+    const scores = scorePipelineQualification({
+      opportunities: workspace.opportunities,
+      stakeholders: workspace.stakeholders,
+      objections: workspace.objections,
+      activities: workspace.activities,
+      quotes: workspace.quotes,
+    });
+    return new Map(scores.map((score) => [score.opportunityId, score]));
+  }, [workspace]);
+
   const coverage = useMemo(() => {
     if (!workspace || targets.length === 0) return undefined;
     return buildCoverage({
       opportunities: workspace.opportunities,
       threads,
       targets: targets.map((target) => ({ quarter: target.period, amount: target.amount })),
+      qualification,
       fiscalYearStartMonth: targets[0]?.fiscalYearStartMonth || 1,
       includeSampleRecords: sampleDataActive,
     });
-  }, [sampleDataActive, targets, threads, workspace]);
+  }, [qualification, sampleDataActive, targets, threads, workspace]);
 
   const recommendations = useMemo<Recommendation[]>(() => {
     if (!workspace) return [];
@@ -146,5 +169,5 @@ export function useCommercialThreads() {
     });
   }, [commitments, coverage, sampleDataActive, threads, workspace]);
 
-  return { threads, recommendations, coverage, workspace, loading };
+  return { threads, recommendations, coverage, qualification, workspace, loading };
 }

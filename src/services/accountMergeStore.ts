@@ -22,6 +22,17 @@ export const ACCOUNT_MERGES_UPDATED_EVENT = 'memoire:account-merges-updated';
  * Dismissals are stored for the same reason plan suggestions store refusals:
  * a question the user already answered must not be asked again.
  */
+/**
+ * How firm the ground under an alias is.
+ *
+ * `confirmed` - the names matched on the canonical key; the merge only made
+ *   official what the data already said.
+ * `assumed`   - the names merely looked alike. A human agreed, which is the
+ *   best evidence there is, and it is still a judgement that can be wrong.
+ * `manual`    - chosen by the operator with no suggestion behind it.
+ */
+export type MergeBasis = 'confirmed' | 'assumed' | 'manual';
+
 export type AccountMergeRecord = {
   id: string;
   kind: 'merge' | 'dismissal';
@@ -31,6 +42,23 @@ export type AccountMergeRecord = {
   mergedNames: string[];
   /** The refused pair, for a dismissal. */
   pairKey?: string;
+  /**
+   * Why these names were treated as one customer.
+   *
+   * The point of recording it is that an alias the operator confirmed from an
+   * exact match and an alias they accepted from a fuzzy suggestion are the same
+   * row afterwards, and they are not the same fact. A distributor's own tracking
+   * workbook keeps this as a third column beside every old-name/new-name pair,
+   * with the word ASSUMPTION in capitals on the ones that were a reading rather
+   * than a match - which is what turns a guess into something auditable instead
+   * of into a silent truth.
+   *
+   * Absent on every record written before 2026-09-03, and absent means unknown
+   * rather than confirmed: `describeMergeBasis` says so rather than guessing.
+   */
+  basis?: MergeBasis;
+  /** The words the suggestion used, kept verbatim so it can be checked later. */
+  basisNote?: string;
   createdAt: string;
   updatedAt: string;
   source?: 'demo' | 'user';
@@ -140,6 +168,12 @@ function sanitize(value: unknown): AccountMergeRecord | null {
       ? candidate.mergedNames.filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
       : [],
     pairKey: typeof candidate.pairKey === 'string' ? candidate.pairKey : undefined,
+    // Rebuilt field by field like the rest, so it has to be listed here or every
+    // write would drop it - the same trap `sanitizePlanRecord` fell into.
+    basis: candidate.basis === 'confirmed' || candidate.basis === 'assumed' || candidate.basis === 'manual'
+      ? candidate.basis
+      : undefined,
+    basisNote: typeof candidate.basisNote === 'string' ? candidate.basisNote : undefined,
     createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : now,
     updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : now,
     source: candidate.source === 'demo' ? 'demo' : candidate.source === 'user' ? 'user' : undefined,
@@ -149,4 +183,23 @@ function sanitize(value: unknown): AccountMergeRecord | null {
 
 function canUseStorage() {
   return typeof window !== 'undefined' && Boolean(window.localStorage);
+}
+
+/**
+ * One line saying what this alias rests on, for the merge history.
+ *
+ * An unrecorded basis says so plainly rather than being presented as confirmed:
+ * every merge made before the field existed is in that state, and quietly
+ * calling them all confirmed would be the app inventing evidence for its own
+ * past decisions.
+ */
+export function describeMergeBasis(record: AccountMergeRecord): string {
+  if (record.basis === 'confirmed') return record.basisNote || 'Names matched exactly.';
+  if (record.basis === 'manual') return record.basisNote || 'Merged by hand, with no suggestion behind it.';
+  if (record.basis === 'assumed') {
+    return record.basisNote
+      ? `Assumed: ${record.basisNote}`
+      : 'Assumed - the names looked alike and you agreed.';
+  }
+  return 'Basis not recorded.';
 }

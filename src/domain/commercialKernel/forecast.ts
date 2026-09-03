@@ -223,6 +223,28 @@ export type QuarterCoverage = {
   /** committed + weightedSupported, over target. Null when no target is set. */
   coverage: number | null;
   opportunityCount: number;
+  /**
+   * Open value in this quarter from deals that actually clear qualification -
+   * 75% of the MEDDIC maximum with neither a champion nor an economic buyer
+   * missing.
+   *
+   * A different question from `weightedSupported`, and both are worth having.
+   * That one asks whether a *probability* is still believable, and marks it
+   * down for silence. This one asks whether there is a qualified deal behind
+   * the money at all. A deal touched every week, correctly staged, with nobody
+   * inside the account carrying it and no budget holder named, passes the first
+   * test and fails this one - and it is the second failure that loses quarters.
+   */
+  qualifiedPipeline: number;
+  /** Open value from deals that do not clear it. Unweighted, like `openPipeline`. */
+  unqualifiedPipeline: number;
+  /**
+   * target - committed - qualifiedPipeline. Positive means this quarter's
+   * number is not backed by qualified deals even at their full value.
+   */
+  unbackedTarget: number;
+  /** (committed + qualifiedPipeline) / target. Null when no target is set. */
+  qualifiedCoverage: number | null;
 };
 
 export type CoverageReport = {
@@ -244,12 +266,40 @@ export type CoverageReport = {
     valueAtRisk: number;
     reasons: string[];
   }[];
+  /**
+   * The two numbers a forecast review actually opens on: how many quarters are
+   * carrying a target that qualified deals cannot reach, and how much money
+   * that adds up to.
+   *
+   * Zero when no targets are set - a quarter with no number cannot be short of
+   * one, and reporting "0 unbacked" there would read as a pass rather than as
+   * an absent question.
+   */
+  unbackedQuarters: number;
+  unbackedValue: number;
+  /**
+   * Where the unqualified pipeline sits, by the line it belongs to, largest
+   * first. A distributor works one brand at a time, so "PMM is covered and
+   * Tailin is not" is the sentence that produces an action.
+   */
+  unqualifiedByBrand: { brand: string; amount: number; deals: number }[];
 };
 
 export function buildCoverage(input: {
   opportunities: CrmLiteOpportunity[];
   threads: ResolvedThread[];
   targets: ForecastTarget[];
+  /**
+   * Qualification scores, keyed by opportunity id.
+   *
+   * Optional, and its absence is meaningful rather than neutral: a workspace
+   * that has not scored its deals reports every open deal as unqualified, so
+   * the coverage line reads "nothing here is backed" until the records exist.
+   * Defaulting the other way - treating unscored as qualified - would let an
+   * empty book claim full cover, which is the exact reassurance a forecast
+   * check exists to withhold.
+   */
+  qualification?: Map<string, { backsForecast: boolean }>;
   today?: Date;
   fiscalYearStartMonth?: number;
   includeSampleRecords?: boolean;
@@ -269,6 +319,7 @@ export function buildCoverage(input: {
 
   const blank = () => ({
     committed: 0, openPipeline: 0, weightedDeclared: 0, weightedSupported: 0, count: 0,
+    qualifiedPipeline: 0, unqualifiedPipeline: 0,
   });
   const totals: Record<ForecastQuarter, ReturnType<typeof blank>> = {
     Q1: blank(), Q2: blank(), Q3: blank(), Q4: blank(),
@@ -276,6 +327,7 @@ export function buildCoverage(input: {
 
   const unsupportedDeals: CoverageReport['unsupportedDeals'] = [];
   let unsupportedValue = 0;
+  const unqualifiedBrandTotals = new Map<string, { amount: number; deals: number }>();
 
   for (const opportunity of input.opportunities) {
     if (!includeSamples && opportunity.isSample) continue;
@@ -289,6 +341,11 @@ export function buildCoverage(input: {
       opportunity,
       threadByOpportunity.get(opportunity.id),
     );
+
+    // Won money is banked and needs no qualification behind it; the question
+    // only applies to what is still open.
+    const qualifies = opportunity.status === 'Won'
+      || input.qualification?.get(opportunity.id)?.backsForecast === true;
 
     for (const quarter of FORECAST_QUARTERS) {
       const amount = amounts[quarter];
@@ -305,6 +362,19 @@ export function buildCoverage(input: {
       bucket.openPipeline += amount;
       bucket.weightedDeclared += amount * (declared / 100);
       bucket.weightedSupported += amount * (probability / 100);
+      if (qualifies) bucket.qualifiedPipeline += amount;
+      else bucket.unqualifiedPipeline += amount;
+    }
+
+    if (!qualifies && opportunity.status === 'Active' && total > 0) {
+      // "Other" rather than dropping the row: a brand nobody filled in is still
+      // money nothing qualifies, and hiding it would make the brand list add up
+      // to less than the total it is breaking down.
+      const brand = (opportunity.brand || '').trim() || 'No brand set';
+      const entry = unqualifiedBrandTotals.get(brand) || { amount: 0, deals: 0 };
+      entry.amount += total;
+      entry.deals += 1;
+      unqualifiedBrandTotals.set(brand, entry);
     }
 
     if (opportunity.status === 'Active' && penalties.length > 0 && probability < declared) {
@@ -328,6 +398,8 @@ export function buildCoverage(input: {
     const isCurrent = quarter === currentQuarter;
     const forecast = bucket.committed + bucket.weightedSupported;
 
+    const qualifiedForecast = bucket.committed + bucket.qualifiedPipeline;
+
     return {
       quarter,
       isCurrent,
@@ -340,6 +412,13 @@ export function buildCoverage(input: {
       gap: target > 0 ? target - forecast : 0,
       coverage: target > 0 ? forecast / target : null,
       opportunityCount: bucket.count,
+      qualifiedPipeline: bucket.qualifiedPipeline,
+      unqualifiedPipeline: bucket.unqualifiedPipeline,
+      // Qualified pipeline is counted at full value, not weighted. The gate has
+      // already done the discounting - a deal either clears it or contributes
+      // nothing - and weighting on top would discount the same doubt twice.
+      unbackedTarget: target > 0 ? Math.max(0, target - qualifiedForecast) : 0,
+      qualifiedCoverage: target > 0 ? qualifiedForecast / target : null,
     };
   });
 
@@ -351,5 +430,11 @@ export function buildCoverage(input: {
     unsupportedDeals: unsupportedDeals
       .sort((left, right) => right.valueAtRisk - left.valueAtRisk)
       .slice(0, 8),
+    unbackedQuarters: quarters.filter((quarter) => quarter.unbackedTarget > 0).length,
+    unbackedValue: quarters.reduce((total, quarter) => total + quarter.unbackedTarget, 0),
+    unqualifiedByBrand: [...unqualifiedBrandTotals.entries()]
+      .map(([brand, entry]) => ({ brand, amount: entry.amount, deals: entry.deals }))
+      .sort((left, right) => right.amount - left.amount || left.brand.localeCompare(right.brand))
+      .slice(0, 6),
   };
 }
