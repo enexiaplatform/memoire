@@ -3,6 +3,7 @@ import { normalizeEntityName } from './accountIdentity.ts';
 import { resolveAccountName, type AccountAliasIndex } from './accountAliases.ts';
 import { classifyBusinessDomain, type BusinessDomain } from './businessDomain.ts';
 import { buildCaptureDerivedKey, getDatedCaptureActions, type PlanRecord } from './weeklyPlan.ts';
+import { activityChannelSpec, type ActivityChannel } from './activityChannel.ts';
 import {
   compareSafeBusinessDate,
   isBusinessDateInRange,
@@ -234,6 +235,17 @@ function buildQuietAccounts(
   activities.forEach((activity) => {
     const account = accountOf(activity, aliases);
     if (!account || !isValidBusinessDate(activity.activityDate)) return;
+    // A day at the desk and a day off are not touches, so neither may reset a
+    // customer's silence clock. Filing a quotation under Frulact's name on
+    // Tuesday does not mean Frulact heard from anybody on Tuesday, and letting
+    // it stand as the last touch is the failure that matters here: an alarm
+    // that fires late is noticed, an alarm switched off by a piece of admin
+    // never fires at all.
+    //
+    // Only an explicit non-customer channel is excluded. An unstated channel -
+    // which is every record written before the field existed - still counts, so
+    // this rule can never make a busy history read as silence.
+    if (isNonCustomerChannel(activity.activityChannel)) return;
     const key = normalizeEntityName(account);
     const existing = lastTouchByAccount.get(key);
     if (!existing || compareSafeBusinessDate(activity.activityDate, existing.lastTouch) > 0) {
@@ -332,4 +344,15 @@ function shiftDateKey(dateKey: string, days: number) {
   if (Number.isNaN(base)) return dateKey;
   const shifted = new Date(base + days * DAY_MS);
   return shifted.toISOString().slice(0, 10);
+}
+
+/**
+ * True only when the record states a channel that had nobody on the other side.
+ * An unstated channel returns false: not knowing is not the same as knowing it
+ * was internal, and the safe reading of "not known" is that the customer was
+ * there.
+ */
+function isNonCustomerChannel(channel: ActivityChannel | '' | undefined) {
+  const spec = activityChannelSpec(channel);
+  return spec ? spec.customerFacing === false : false;
 }

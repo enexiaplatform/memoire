@@ -2,6 +2,7 @@ import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { SalesActivityDetailsInput, SalesActivityRecord } from '../services/salesActivityStore';
 import { sameAccount } from './accountIdentity.ts';
 import { sanitizeBusinessDate } from './safeDate.ts';
+import { normalizeActivityChannel, type ActivityChannel } from './activityChannel.ts';
 import { SUPPLIER_OBLIGATION_MARKER } from './supplierCommitments.ts';
 import {
   getDatedCaptureActions,
@@ -56,6 +57,12 @@ export type PlanItemEditDraft = {
   /** The person this line is with. */
   contactName: string;
   contactRole: string;
+  /**
+   * How this line is meant to happen. Editable here because a week is planned
+   * before it is worked: a call booked on Monday becomes a visit by Wednesday,
+   * and a field that can only be set at creation is a field that goes stale.
+   */
+  channel: ActivityChannel | '';
 };
 
 export type PlanItemEditSources = {
@@ -66,7 +73,7 @@ export type PlanItemEditSources = {
 
 export type PlanItemEditPolicy = {
   /** Which fields this surface is allowed to write for this kind of item. */
-  fields: { label: boolean; date: boolean; account: boolean; contact: boolean };
+  fields: { label: boolean; date: boolean; account: boolean; contact: boolean; channel: boolean };
   /** Plain words for the record the drawer writes into. */
   ownerLabel: string;
   /** Where the fields this surface will not write actually live. */
@@ -92,7 +99,7 @@ export function planObligationOwnerMessage(item: PlanItem) {
 export function planItemEditPolicy(item: PlanItem): PlanItemEditPolicy {
   if (item.kind === 'personal') {
     return {
-      fields: { label: true, date: true, account: true, contact: true },
+      fields: { label: true, date: true, account: true, contact: true, channel: true },
       ownerLabel: 'this plan line',
       ownerHref: '',
       lockedReason: '',
@@ -102,7 +109,7 @@ export function planItemEditPolicy(item: PlanItem): PlanItemEditPolicy {
 
   if (item.kind === 'capture') {
     return {
-      fields: { label: true, date: true, account: true, contact: true },
+      fields: { label: true, date: true, account: true, contact: true, channel: true },
       ownerLabel: 'the touch you captured',
       ownerHref: item.href,
       lockedReason: '',
@@ -113,7 +120,10 @@ export function planItemEditPolicy(item: PlanItem): PlanItemEditPolicy {
   if (item.kind === 'deal') {
     const target = getPlanItemWriteTarget(item);
     return {
-      fields: { label: true, date: true, account: false, contact: false },
+      // No channel on a deal's next action: the opportunity has no field to
+      // hold one, and offering a control that writes nowhere is worse than
+      // offering none.
+      fields: { label: true, date: true, account: false, contact: false, channel: false },
       ownerLabel: 'the deal',
       ownerHref: target.kind === 'deal'
         ? `/app/opportunities?opportunityId=${encodeURIComponent(target.opportunityId)}`
@@ -124,7 +134,7 @@ export function planItemEditPolicy(item: PlanItem): PlanItemEditPolicy {
   }
 
   return {
-    fields: { label: false, date: false, account: false, contact: false },
+    fields: { label: false, date: false, account: false, contact: false, channel: false },
     ownerLabel: 'the record you owe this on',
     ownerHref: item.href,
     lockedReason: planObligationOwnerMessage(item),
@@ -150,6 +160,7 @@ export function buildPlanItemEditDraft(item: PlanItem, sources: PlanItemEditSour
     opportunityName: '',
     contactName: item.contactName || '',
     contactRole: '',
+    channel: normalizeActivityChannel(item.channel),
   };
 
   const target = getPlanItemWriteTarget(item);
@@ -172,6 +183,7 @@ export function buildPlanItemEditDraft(item: PlanItem, sources: PlanItemEditSour
       opportunityName: '',
       contactName: record.linkedStakeholderName || '',
       contactRole: '',
+      channel: normalizeActivityChannel(record.channel),
     };
   }
 
@@ -187,6 +199,10 @@ export function buildPlanItemEditDraft(item: PlanItem, sources: PlanItemEditSour
       opportunityName: opportunity.opportunityName,
       contactName: opportunity.decisionMaker || '',
       contactRole: '',
+      // A deal's next action lives on the opportunity, which has no channel
+      // field, so there is nothing to read and nothing this drawer may write.
+      // `planItemEditPolicy` is what keeps the control off the screen.
+      channel: '',
     };
   }
 
@@ -203,6 +219,7 @@ export function buildPlanItemEditDraft(item: PlanItem, sources: PlanItemEditSour
       opportunityName: activity.linkedOpportunityName || '',
       contactName: activity.stakeholderName || activity.contactName || '',
       contactRole: activity.stakeholderRole || '',
+      channel: normalizeActivityChannel(activity.activityChannel),
     };
   }
 
@@ -251,6 +268,7 @@ export function applyPersonalPlanEdit(record: PlanRecord, draft: PlanItemEditDra
     linkedBrand: draft.accountKind === 'brand' ? accountName : undefined,
     linkedOpportunityId: draft.accountKind === 'deal' ? draft.opportunityId || undefined : undefined,
     linkedStakeholderName: draft.contactName.trim() || undefined,
+    channel: normalizeActivityChannel(draft.channel),
     updatedAt: new Date().toISOString(),
   };
 }
@@ -301,6 +319,9 @@ export function buildCaptureEditChanges(input: {
   const contact: SalesActivityDetailsInput = {
     stakeholderName: draft.contactName.trim(),
     stakeholderRole: draft.contactRole.trim(),
+    // The touch owns its own channel, so correcting it here corrects the record
+    // the ledger counts - not a copy of it on the board.
+    activityChannel: normalizeActivityChannel(draft.channel),
   };
 
   const accountName = draft.accountName.trim();

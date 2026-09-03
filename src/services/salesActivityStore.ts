@@ -1,6 +1,7 @@
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { fetchAllRows } from './supabasePaging.ts';
 import type { ClassifiedSalesActivity, SalesActivityType } from '../utils/salesActivityClassifier.ts';
+import { normalizeActivityChannel, type ActivityChannel } from '../utils/activityChannel.ts';
 import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { compareBusinessDateDesc, isBusinessDateInRange, sanitizeBusinessDate } from '../utils/safeDate.ts';
@@ -42,6 +43,7 @@ type SalesActivityRow = {
   activity_date: string;
   raw_note: string;
   activity_type: SalesActivityType;
+  activity_channel?: ActivityChannel | null;
   account_name: string | null;
   opportunity_name: string | null;
   contact_name?: string | null;
@@ -370,6 +372,12 @@ export async function updateSalesActivityLink(
 export type SalesActivityDetailsInput = {
   nextAction?: string;
   dueDate?: string;
+  /**
+   * How the touch happened. Editable after the fact because the rules only ever
+   * guessed it from the note, and a guess the operator can see but not correct
+   * is worse than no guess at all.
+   */
+  activityChannel?: ActivityChannel | '';
   nextActions?: ClassifiedSalesActivity['nextActions'];
   /**
    * Who the touch is about and who it is with.
@@ -413,6 +421,9 @@ export async function updateSalesActivityDetails(
     nextAction: changes.nextAction !== undefined ? changes.nextAction : activity.nextAction,
     dueDate: changes.dueDate !== undefined ? sanitizeBusinessDate(changes.dueDate) : activity.dueDate,
     nextActions: changes.nextActions !== undefined ? normalizeNextActions(changes.nextActions) : activity.nextActions,
+    activityChannel: changes.activityChannel !== undefined
+      ? normalizeActivityChannel(changes.activityChannel)
+      : activity.activityChannel,
     accountName: changes.accountName !== undefined ? changes.accountName : activity.accountName,
     stakeholderName: changes.stakeholderName !== undefined ? changes.stakeholderName : activity.stakeholderName,
     stakeholderRole: changes.stakeholderRole !== undefined ? changes.stakeholderRole : activity.stakeholderRole,
@@ -430,6 +441,7 @@ export async function updateSalesActivityDetails(
         next_action: updated.nextAction || null,
         due_date: sanitizeBusinessDate(updated.dueDate) || null,
         next_actions: normalizeNextActions(updated.nextActions),
+        activity_channel: normalizeActivityChannel(updated.activityChannel) || null,
         account_name: updated.accountName || null,
         stakeholder_name: updated.stakeholderName || null,
         stakeholder_role: updated.stakeholderRole || null,
@@ -481,6 +493,7 @@ function loadLocalActivities(): SalesActivityRecord[] {
         timelineSignals: normalizeStringArray(item.timelineSignals),
         nextActions: normalizeNextActions(item.nextActions),
         activityType: item.activityType || 'Other',
+        activityChannel: normalizeActivityChannel(item.activityChannel),
         summary: item.summary || item.rawNote || '',
         nextAction: item.nextAction || '',
         dueDate: sanitizeBusinessDate(item.dueDate),
@@ -589,6 +602,7 @@ function rowToRecord(row: SalesActivityRow): SalesActivityRecord {
     activityDate: sanitizeBusinessDate(row.activity_date),
     rawNote: row.raw_note,
     activityType: row.activity_type || 'Other',
+    activityChannel: normalizeActivityChannel(row.activity_channel),
     accountName: row.account_name || '',
     opportunityName: row.opportunity_name || '',
     contactName: row.contact_name || '',
@@ -630,6 +644,9 @@ function activityToInsert(
     activity_date: sanitizeBusinessDate(activity.activityDate) || null,
     raw_note: activity.rawNote,
     activity_type: activity.activityType,
+    // Written as null rather than '' when unstated, so "not stated" is one value
+    // in the database instead of two that every query would have to test for.
+    activity_channel: normalizeActivityChannel(activity.activityChannel) || null,
     account_name: activity.accountName || null,
     opportunity_name: activity.opportunityName || null,
     contact_name: activity.contactName || null,

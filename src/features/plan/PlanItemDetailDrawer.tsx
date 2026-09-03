@@ -10,6 +10,11 @@ import {
 } from '../../utils/planItemEdit';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { SalesActivityRecord } from '../../services/salesActivityStore';
+import {
+  ACTIVITY_CHANNELS,
+  activityChannelSpec,
+  type ActivityChannel,
+} from '../../utils/activityChannel';
 import { formatSafeBusinessDate } from '../../utils/safeDate';
 import { sameAccount } from '../../utils/accountIdentity';
 import { matchesSearchQuery } from '../../utils/textSearch';
@@ -304,6 +309,30 @@ export function PlanItemDetailDrawer({
               </div>
             ) : (
               <LockedField label="Who it is with" value={item.contactName || 'Not recorded'} />
+            )}
+
+            {/* How the line is meant to happen - or, on a captured touch, how it
+                did. The same vocabulary in both places, because the plan and the
+                ledger have to be able to say the same words about the same day
+                or the comparison between them means nothing. */}
+            {policy.fields.channel && (
+              <label className="block">
+                <span className="text-sm font-bold text-navy">How</span>
+                <select
+                  value={draft.channel}
+                  onChange={(event) => set({ channel: (event.target.value || '') as ActivityChannel | '' })}
+                  className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                >
+                  <option value="">Not stated</option>
+                  {ACTIVITY_CHANNELS.map((spec) => (
+                    <option key={spec.channel} value={spec.channel}>{spec.channel}</option>
+                  ))}
+                </select>
+                <span className="mt-1.5 block text-xs leading-5 text-gray-500">
+                  {activityChannelSpec(draft.channel)?.hint
+                    || 'Optional. A visit, a call, a screen, or a day you are not selling.'}
+                </span>
+              </label>
             )}
 
             {policy.lockedReason && (

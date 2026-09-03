@@ -9,6 +9,7 @@ import {
 } from './cloudJsonCollectionStore';
 import { invalidateWorkspaceCollection } from './workspaceDataCache';
 import { writeLocalRecords } from './localWriteGuard.ts';
+import { normalizeActivityChannel } from '../utils/activityChannel.ts';
 
 export const PLAN_ITEM_STORAGE_KEY = 'memoire.planItems.v1';
 export const PLAN_ITEMS_UPDATED_EVENT = 'memoire:plan-items-updated';
@@ -124,6 +125,7 @@ function sanitizePlanRecord(value: unknown): PlanRecord | null {
     // this list is a field the store silently deletes on the next write - the
     // contact would save, survive one render, and be gone after a reload.
     linkedStakeholderName: typeof candidate.linkedStakeholderName === 'string' ? candidate.linkedStakeholderName : undefined,
+    channel: normalizeActivityChannel(candidate.channel),
     suggestionKey: typeof candidate.suggestionKey === 'string' ? candidate.suggestionKey : undefined,
     dismissed: candidate.dismissed === true,
     createdAt: typeof candidate.createdAt === 'string' && candidate.createdAt ? candidate.createdAt : now,

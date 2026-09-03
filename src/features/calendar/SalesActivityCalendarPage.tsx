@@ -27,6 +27,7 @@ import { loadPlanItemsForWorkspace, PLAN_ITEMS_UPDATED_EVENT } from '../../servi
 import type { PlanRecord } from '../../utils/weeklyPlan';
 import { buildAccountAliasIndex } from '../../utils/accountAliases';
 import { buildActivityInsights } from '../../utils/activityInsights';
+import { countOutOfOfficeDays, isInPersonChannel } from '../../utils/activityChannel';
 import {
   buildActivityLedgerContext,
   resolveActivitySubject,
@@ -63,6 +64,14 @@ type ActivitySummary = {
   topActivityType: string;
   mostTouchedAccount: string;
   openNextActions: number;
+  /** Touches that cost travel - a visit either way, or an event. */
+  inPersonTouches: number;
+  /**
+   * Distinct days marked `Out of office`. Read beside `activeDays`, it is the
+   * difference between "a quiet month" and "a month with Tet in it", which is
+   * a distinction the app could not previously draw at all.
+   */
+  daysOutOfOffice: number;
 };
 
 const viewOptions: { value: CalendarViewMode; label: string }[] = [
@@ -506,6 +515,11 @@ function WeeklySummaryPanel({ summary }: { summary: ActivitySummary }) {
       <MetricCard label="Internal coordination" value={summary.internalCoordinationItems} />
       <MetricCard label="Next actions" value={summary.activitiesWithNextActions} tone={summary.activitiesWithNextActions > 0 ? 'blue' : 'amber'} />
       <MetricCard label="Overdue due dates" value={summary.overdueDueDates} tone={summary.overdueDueDates > 0 ? 'red' : 'green'} />
+      {/* Only drawn once there is something to draw. A permanent "0 in person"
+          on a workspace that has never used the field would read as a finding
+          about the week rather than as a field nobody has filled. */}
+      {summary.inPersonTouches > 0 && <MetricCard label="In person" value={summary.inPersonTouches} />}
+      {summary.daysOutOfOffice > 0 && <MetricCard label="Days out of office" value={summary.daysOutOfOffice} />}
     </div>
   );
 }
@@ -576,6 +590,17 @@ function ActivityCard({
               <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${activityTypeTone[activity.activityType]}`}>
                 {activity.activityType}
               </span>
+              {/* Beside the subject, never instead of it: a demo is a demo
+                  whether it happened at the plant or on a screen, and the point
+                  of showing both is that the pair is what the day actually was.
+                  Absent on every record written before the field existed, which
+                  is why it is conditional rather than a chip reading "Unknown"
+                  on nine months of history. */}
+              {activity.activityChannel && (
+                <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-bold text-gray-600">
+                  {activity.activityChannel}
+                </span>
+              )}
               <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${businessDomainTone(classifyBusinessDomain(activity))}`}>
                 {classifyBusinessDomain(activity)}
               </span>
@@ -686,6 +711,11 @@ function ActivityDetailModal({
           <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${activityTypeTone[activity.activityType]}`}>
             {activity.activityType}
           </span>
+          {activity.activityChannel && (
+            <span className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-bold text-gray-600">
+              {activity.activityChannel}
+            </span>
+          )}
           <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-600">
             {formatSafeBusinessDate(activity.activityDate)}
           </span>
@@ -923,6 +953,8 @@ function buildActivitySummary(activities: SalesActivityRecord[]): ActivitySummar
     topActivityType: topCount(typeCounts),
     mostTouchedAccount: topCount(accountCounts),
     openNextActions: activities.filter((activity) => Boolean(activity.nextAction)).length,
+    inPersonTouches: activities.filter((activity) => isInPersonChannel(activity.activityChannel)).length,
+    daysOutOfOffice: countOutOfOfficeDays(activities),
   };
 }
 
@@ -944,6 +976,7 @@ function sortByDateAscending(a: SalesActivityRecord, b: SalesActivityRecord) {
 function formatActivitySummary(activity: SalesActivityRecord) {
   return [
     `Activity: ${activity.activityType}`,
+    activity.activityChannel ? `How: ${activity.activityChannel}` : '',
     `Date: ${formatSafeBusinessDate(activity.activityDate)}`,
     getActivityAccountName(activity) ? `Account: ${getActivityAccountName(activity)}` : '',
     getActivityOpportunityName(activity) ? `Opportunity: ${getActivityOpportunityName(activity)}` : '',

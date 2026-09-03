@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDays, ChevronLeft, ChevronRight, Loader2, Pencil, Plus, RotateCcw, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
@@ -7,6 +7,7 @@ import { hasLocalSampleData } from '../../utils/dataMode';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import {
   canUseSalesActivityCloudStore,
+  saveSalesActivity,
   updateSalesActivityDetails,
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
@@ -77,6 +78,17 @@ import { getWeeklyCommitmentForWeek, loadWeeklyCommitmentsForWorkspace } from '.
 import { getCurrentPipelineReviewWeekId } from '../../utils/pipelineReviewHabit';
 import type { WeeklyCommitmentSnapshot } from '../../utils/weeklyCommitment';
 import { trackProductEvent } from '../../utils/productAnalytics';
+import { buildPlanCompletionActivity, planCompletionLogMessage } from '../../utils/planCompletionLog';
+import {
+  LogToActivityBox,
+  type LogToActivityDraft,
+  type LogToActivityState,
+} from '../../components/common/LogToActivityBox';
+import {
+  ACTIVITY_CHANNELS,
+  normalizeActivityChannel,
+  type ActivityChannel,
+} from '../../utils/activityChannel';
 import { SkeletonCard, SkeletonScreen } from '../../components/common/Skeleton';
 
 const periodOptions: { value: PlanPeriod; label: string }[] = [
@@ -136,6 +148,17 @@ export function WeeklyPlanPage({
   const [composerDate, setComposerDate] = useState('');
   const [draft, setDraft] = useState('');
   const [draftLink, setDraftLink] = useState<PlanLinkOption | null>(null);
+  const [draftChannel, setDraftChannel] = useState<ActivityChannel | ''>('');
+  /**
+   * The tick that is offering to become an activity, and how that write is
+   * going. Only one at a time: two open composers on one board would be two
+   * half-written notes, and the operator would lose whichever they did not
+   * finish. Ticking a second item replaces the first, which is what closing an
+   * unsaved offer means here - nothing was written, so nothing is lost.
+   */
+  const [logDraft, setLogDraft] = useState<LogToActivityDraft | null>(null);
+  const [logState, setLogState] = useState<LogToActivityState>('idle');
+  const [logMessage, setLogMessage] = useState('');
   const [dragItem, setDragItem] = useState<PlanItem | null>(null);
   const [dragOverDate, setDragOverDate] = useState('');
   const [editingId, setEditingId] = useState('');
@@ -307,8 +330,15 @@ export function WeeklyPlanPage({
     draftLink ? [] : buildPlanLinkOptions({ draft, opportunities, accountNames: knownAccountNames, brands: knownBrands })
   ), [draft, draftLink, knownAccountNames, knownBrands, opportunities]);
 
+  const dismissLog = useCallback(() => {
+    setLogDraft(null);
+    setLogState('idle');
+    setLogMessage('');
+  }, []);
+
   const toggleItem = useCallback((item: PlanItem) => {
-    const record = createPlanItemToggleRecord(item, !item.done, records, {
+    const nextDone = !item.done;
+    const record = createPlanItemToggleRecord(item, nextDone, records, {
       source: sampleDataActive ? 'demo' : 'user',
       isSample: sampleDataActive,
     });
@@ -318,7 +348,62 @@ export function WeeklyPlanPage({
     // spent on the operator's own work counted as zero commitments kept - and
     // Today's strip, ticking the identical box, always counted it.
     trackProductEvent('commitment_completed');
-  }, [records, sampleDataActive]);
+
+    /*
+     * The board writes to Activity now.
+     *
+     * Until 2026-09-03 a box ticked here saved a completion mark and stopped.
+     * Ticking the identical item on Today's strip offered to write down what
+     * happened, so the same day's work was in the ledger or missing from it
+     * depending on which page the operator was looking at - and this is the
+     * page whose entire job is the week. An operator who plans and works from
+     * Plan produced a full calendar and an empty Activity, which is the exact
+     * failure this product exists to prevent.
+     *
+     * Same offer, same record, same opt-in as Today. Unticking withdraws it
+     * rather than leaving an orphan form open under a box that is no longer
+     * ticked.
+     */
+    if (nextDone) {
+      setLogDraft({ item, note: '', enabled: false, channel: normalizeActivityChannel(item.channel) });
+      setLogState('idle');
+      setLogMessage('');
+    } else if (logDraft?.item.id === item.id) {
+      dismissLog();
+    }
+  }, [records, sampleDataActive, logDraft, dismissLog]);
+
+  const saveLog = useCallback(async () => {
+    if (!logDraft || logState === 'saving') return;
+    setLogState('saving');
+    setLogMessage('');
+    try {
+      const log = buildPlanCompletionActivity({
+        item: logDraft.item,
+        note: logDraft.note,
+        opportunities,
+        // The day the work was done, which is the day the item sat on - not
+        // today. A Tuesday visit ticked off on Friday is still a Tuesday visit,
+        // and stamping it Friday would move the touch three days and reset the
+        // customer's silence clock to the wrong date.
+        activityDate: logDraft.item.date,
+        channel: logDraft.channel,
+      });
+      if (!log) { setLogState('idle'); return; }
+
+      const result = await saveSalesActivity(log.activity, dataUserId, {
+        source: sampleDataActive ? 'demo' : 'user',
+        isSample: sampleDataActive,
+      });
+
+      setLogState('saved');
+      setLogMessage(result.warning || planCompletionLogMessage(log.accountName, log.activity.activityChannel));
+      setActivities((current) => [result.record, ...current]);
+    } catch {
+      setLogState('idle');
+      setLogMessage('Could not log it. Your note is still here - try again.');
+    }
+  }, [dataUserId, logDraft, logState, opportunities, sampleDataActive]);
 
   /**
    * Rewrites the completion stub for a derived item whose date is changing, so
@@ -557,13 +642,15 @@ export function WeeklyPlanPage({
       linkedOpportunityId: draftLink?.opportunityId,
       linkedAccountName: draftLink?.accountName,
       linkedBrand: draftLink?.brand,
+      channel: draftChannel,
       source: sampleDataActive ? 'demo' : 'user',
       isSample: sampleDataActive,
     })));
     setDraft('');
     setDraftLink(null);
+    setDraftChannel('');
     trackProductEvent('commitment_created');
-  }, [draft, draftLink, sampleDataActive]);
+  }, [draft, draftChannel, draftLink, sampleDataActive]);
 
   const importPastedWeek = useCallback((lines: { date: string; tag: string; label: string }[]) => {
     let nextRecords = records;
@@ -897,8 +984,8 @@ export function WeeklyPlanPage({
                 const editable = item.kind !== 'obligation';
                 const isEditing = editingId === item.id;
                 return (
+                <Fragment key={item.id}>
                 <div
-                  key={item.id}
                   // Obligations can be picked up even though they will not
                   // move. Refusing the drag outright taught the operator
                   // nothing - the item simply did not respond - whereas
@@ -990,6 +1077,14 @@ export function WeeklyPlanPage({
                           · {item.contactName}
                         </span>
                       )}
+                      {/* What kind of day this line asks for. Shown only when
+                          the operator said - the board never guesses one, so a
+                          chip here always means somebody chose it. */}
+                      {item.channel && (
+                        <span className="ml-1 whitespace-nowrap rounded bg-gray-100 px-1 py-0.5 text-[10px] font-bold text-gray-600">
+                          {item.channel}
+                        </span>
+                      )}
                       {item.overdue && !item.done && (
                         /* A carried promise says the day it was actually owed.
                            "Overdue" alone, on a card sitting under today's
@@ -1030,6 +1125,22 @@ export function WeeklyPlanPage({
                     </button>
                   )}
                 </div>
+                {logDraft?.item.id === item.id && (
+                  <LogToActivityBox
+                    draft={logDraft}
+                    state={logState}
+                    message={logMessage}
+                    /* Almost no indent: a day column is narrow, and Today's
+                       checkbox gutter does not exist here. */
+                    indentClassName="ml-1"
+                    onToggleEnabled={(enabled) => setLogDraft((current) => (current ? { ...current, enabled } : current))}
+                    onChangeNote={(note) => setLogDraft((current) => (current ? { ...current, note } : current))}
+                    onChangeChannel={(channel) => setLogDraft((current) => (current ? { ...current, channel } : current))}
+                    onSave={() => { void saveLog(); }}
+                    onDismiss={dismissLog}
+                  />
+                )}
+                </Fragment>
                 );
               })}
 
@@ -1043,7 +1154,7 @@ export function WeeklyPlanPage({
                       onChange={(event) => setDraft(event.target.value)}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter') { event.preventDefault(); addPersonalItem(day.date); }
-                        if (event.key === 'Escape') { setComposerDate(''); setDraft(''); setDraftLink(null); }
+                        if (event.key === 'Escape') { setComposerDate(''); setDraft(''); setDraftLink(null); setDraftChannel(''); }
                       }}
                       placeholder="[Internal] Submit KPI"
                       aria-label={`Add an item to ${day.weekdayLabel}`}
@@ -1057,6 +1168,24 @@ export function WeeklyPlanPage({
                       Add
                     </button>
                   </div>
+                  {/* What kind of day this line is asking for. Optional, and
+                      blank by default - most lines do not need it. Two that do:
+                      a visit, because the week has to show which days leave the
+                      office, and "Out of office", because a public holiday is
+                      something you write onto next week's calendar and there is
+                      no touch to hang it on. The tick that completes the line
+                      carries this onto the activity. */}
+                  <select
+                    value={draftChannel}
+                    onChange={(event) => setDraftChannel((event.target.value || '') as ActivityChannel | '')}
+                    aria-label={`How this ${day.weekdayLabel} item will happen`}
+                    className="mt-1 w-full rounded border border-gray-200 bg-white px-1.5 py-1 text-[11px] font-semibold text-gray-600"
+                  >
+                    <option value="">How? (optional)</option>
+                    {ACTIVITY_CHANNELS.map((spec) => (
+                      <option key={spec.channel} value={spec.channel}>{spec.channel}</option>
+                    ))}
+                  </select>
                   {draftLink && (
                     <span className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-brand-blue">
                       <span className="truncate">Linked: {draftLink.display}</span>
@@ -1157,8 +1286,9 @@ export function WeeklyPlanPage({
         Items in green were pulled in from a capture - you wrote them once, they landed here on their own. Drag any item
         to another day to reschedule it, or open the pencil to change the day, the customer, the person you are seeing
         and the wording together - all of it writes straight into the deal or touch it came from. Checking an item
-        records that you did your plan; it does not change the deal, so capture the touch when it happens and the rest
-        of Memoire stays in step.
+        records that you did your plan, and offers to write down what actually happened - that note becomes a touch on
+        Activity and on the customer&apos;s history. The tick on its own still moves no deal, so a stage change is
+        still yours to make.
       </p>
 
       {detailItem && detailDraft && (

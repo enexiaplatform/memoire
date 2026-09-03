@@ -35,6 +35,22 @@ import {
 } from '../../utils/capturePlanReconciliation';
 import type { PlanItem, PlanRecord } from '../../utils/weeklyPlan';
 import { applyActivityLogChoice, isExcludedFromActivityLedger } from '../../utils/activityLogChoice';
+import {
+  ACTIVITY_CHANNELS,
+  ACTIVITY_CHANNEL_VALUES,
+  activityChannelSpec,
+  inferActivityChannel,
+  type ActivityChannel,
+} from '../../utils/activityChannel';
+
+/**
+ * The label the quick form's "How" control shows for an unset channel.
+ *
+ * `QuickSelect` renders a plain option list and has no notion of an empty
+ * value, so the absence needs a word. It is mapped back to `''` on the way out
+ * - the string never reaches a record.
+ */
+const NOT_STATED_CHANNEL = 'Not stated';
 import { trackProductEvent } from '../../utils/productAnalytics';
 import { markPipelineReviewHabitStepComplete } from '../../utils/pipelineReviewHabit';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
@@ -96,6 +112,12 @@ type QuickCaptureForm = {
   dueDate: string;
   signalType: QuickSignalType;
   activityDate: string;
+  /**
+   * Where the operator was. Blank by default: the quick form is meant to be
+   * three fields and a sentence, and pre-selecting a channel would put a wrong
+   * value on every touch made by somebody who never opened the control.
+   */
+  activityChannel: ActivityChannel | '';
 };
 type EmailThreadCaptureForm = {
   sourceType: 'pasted-email' | 'pasted-thread';
@@ -1615,6 +1637,16 @@ function QuickCapturePanel({
         />
         <QuickSelect label="Interaction type" value={form.interactionType} options={quickInteractionTypes} onChange={(value) => update('interactionType', value as QuickInteractionType)} />
         <QuickSelect label="Signal type" value={form.signalType} options={quickSignalTypes} onChange={(value) => update('signalType', value as QuickSignalType)} />
+        {/* Sits beside interaction type rather than inside it: "Technical
+            discussion" is the subject and says nothing about whether it took a
+            day of driving or twenty minutes on a screen. "Not stated" is a real
+            answer and stays the default. */}
+        <QuickSelect
+          label="How optional"
+          value={form.activityChannel || NOT_STATED_CHANNEL}
+          options={[NOT_STATED_CHANNEL, ...ACTIVITY_CHANNEL_VALUES]}
+          onChange={(value) => update('activityChannel', value === NOT_STATED_CHANNEL ? '' : (value as ActivityChannel))}
+        />
         <QuickInput label="Activity date" type="date" value={form.activityDate} placeholder="" onChange={(value) => update('activityDate', value)} />
         <QuickInput label="Due date optional" type="date" value={form.dueDate} placeholder="" onChange={(value) => update('dueDate', value)} />
         <QuickTextArea
@@ -1813,6 +1845,27 @@ function StructuredPreviewEditor({
         >
           {activityTypes.map((type) => <option key={type} value={type}>{type}</option>)}
         </select>
+      </label>
+      {/* "Type" says what the touch was about; "How" says where the operator
+          was. Two fields because they are independent - a demo can be on-site
+          or on a screen - and because "Out of office" has to be sayable at all.
+          Pre-filled from the note when the rules recognised a word for it, and
+          left blank rather than defaulted when they did not. */}
+      <label className="block rounded-lg bg-white px-3 py-2 ring-1 ring-blue-100 md:col-span-2">
+        <span className="text-xs font-bold uppercase tracking-wide text-blue-500">How</span>
+        <select
+          value={preview.activityChannel || ''}
+          onChange={(event) => onChange('activityChannel', (event.target.value || '') as ActivityChannel | '')}
+          className="mt-1 w-full bg-transparent text-sm font-semibold text-blue-950 outline-none"
+        >
+          <option value="">Not stated</option>
+          {ACTIVITY_CHANNELS.map((spec) => (
+            <option key={spec.channel} value={spec.channel}>{spec.channel}</option>
+          ))}
+        </select>
+        <p className="mt-0.5 text-xs font-medium text-blue-500">
+          {activityChannelSpec(preview.activityChannel)?.hint || 'Optional. A visit, a call, a screen, or a day you were not selling.'}
+        </p>
       </label>
       <PreviewInput label="Account" value={preview.accountName} placeholder="Not captured" onChange={(value) => onChange('accountName', value)} suggestions={accountSuggestions} />
       <PreviewInput label="Opportunity" value={preview.opportunityName} placeholder="Not captured" onChange={(value) => onChange('opportunityName', value)} suggestions={opportunitySuggestions} />
@@ -2191,6 +2244,7 @@ function createInitialQuickCaptureForm(searchParams: URLSearchParams): QuickCapt
     dueDate: '',
     signalType: 'No major change',
     activityDate: getQueryDate(searchParams) || todayKey(),
+    activityChannel: '',
   };
 }
 
@@ -2259,6 +2313,10 @@ function buildQuickCaptureActivity(form: QuickCaptureForm): ClassifiedSalesActiv
       sourceText: nextAction,
     }] : [],
     activityType,
+    // What the operator picked wins. Only when they left it alone do the rules
+    // read the sentence, so a note saying "cold called them" is not filed as a
+    // plain phone call just because nobody touched the dropdown.
+    activityChannel: form.activityChannel || inferActivityChannel(`${form.interactionType} ${whatHappened}`),
     summary: whatHappened || nextAction,
     nextAction,
     dueDate,

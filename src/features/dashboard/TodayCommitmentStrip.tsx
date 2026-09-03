@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarCheck, Check, NotebookPen, X } from 'lucide-react';
+import { CalendarCheck, Check } from 'lucide-react';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { QuoteRecord } from '../../services/quoteStore';
 import type { ExpenseRecord } from '../../services/expenseStore';
@@ -22,6 +22,9 @@ import {
 } from '../../utils/weeklyPlan';
 import { todayDateKey } from '../../utils/safeDate.ts';
 import { trackProductEvent } from '../../utils/productAnalytics';
+import { buildPlanCompletionActivity, planCompletionLogMessage } from '../../utils/planCompletionLog';
+import { LogToActivityBox, type LogToActivityDraft } from '../../components/common/LogToActivityBox';
+import { normalizeActivityChannel, type ActivityChannel } from '../../utils/activityChannel';
 import { TodayTaskDrawer } from './TodayTaskDrawer';
 
 type StripWorkspace = {
@@ -78,7 +81,7 @@ export function TodayCommitmentStrip({
   const [workspace, setWorkspace] = useState<StripWorkspace | null>(null);
   const [records, setRecords] = useState<PlanRecord[]>([]);
   const [openItemId, setOpenItemId] = useState('');
-  const [logDraft, setLogDraft] = useState<{ item: PlanItem; note: string; enabled: boolean } | null>(null);
+  const [logDraft, setLogDraft] = useState<LogToActivityDraft | null>(null);
   const [logState, setLogState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [logMessage, setLogMessage] = useState('');
   const today = useMemo(() => todayDateKey(), []);
@@ -150,7 +153,9 @@ export function TodayCommitmentStrip({
     // happened, so the offer to write it down belongs here and nowhere else.
     // Unticking withdraws the offer rather than leaving an orphan form open.
     if (nextDone) {
-      setLogDraft({ item, note: '', enabled: false });
+      // Seeded from what the line was planned as, so an item written as an
+      // on-site visit arrives here already saying so.
+      setLogDraft({ item, note: '', enabled: false, channel: normalizeActivityChannel(item.channel) });
       setLogState('idle');
       setLogMessage('');
     } else if (logDraft?.item.id === item.id) {
@@ -182,43 +187,24 @@ export function TodayCommitmentStrip({
     setLogState('saving');
     setLogMessage('');
     try {
-      // The deal behind a deal item, so the touch reaches the same opportunity
-      // the task did rather than landing as a loose note on the account.
-      const target = getPlanItemWriteTarget(item);
-      const opportunity = target.kind === 'deal'
-        ? (workspace?.opportunities || []).find((record) => record.id === target.opportunityId)
-        : undefined;
-
-      const accountName = opportunity?.accountName || (item.workKind === 'customer' ? item.tag : '');
-
-      const result = await saveSalesActivity({
-        accountName,
-        opportunityName: opportunity?.opportunityName || '',
-        activityType: activityTypeForItem(item),
-        summary: text,
-        nextAction: '',
-        dueDate: '',
-        // `plan-completion` is the marker; the second tag carries the identity of
-        // the exact task, so a touch written from here can always be traced back
-        // to the box that produced it.
-        tags: ['plan-completion', `plan:${item.derivedKey || item.id}`],
-        rawNote: `${item.tag ? `[${item.tag}] ` : ''}${item.label}\n\n${text}`,
+      // Shared with the Plan board, so the same box ticked on either surface
+      // produces the same record. See utils/planCompletionLog.ts.
+      const log = buildPlanCompletionActivity({
+        item,
+        note: text,
+        opportunities: workspace?.opportunities || [],
         activityDate: today,
-      }, userId, {
+        channel: logDraft.channel,
+      });
+      if (!log) return;
+
+      const result = await saveSalesActivity(log.activity, userId, {
         source: sampleDataActive ? 'demo' : 'user',
         isSample: sampleDataActive,
       });
 
       setLogState('saved');
-      // Says where it actually went. A task typed onto a day with no customer
-      // attached produces a touch with no customer attached, and telling the
-      // operator it landed on "this account's history" when there is no account
-      // is the kind of small lie that costs a product its numbers later: they
-      // go looking for it under the customer, do not find it, and stop trusting
-      // that anything they tick is being recorded at all.
-      setLogMessage(result.warning || (accountName
-        ? `Logged against ${accountName}. It is on Activity and on that customer's history.`
-        : 'Logged to Activity as internal work - this task names no customer, so it reaches no deal.'));
+      setLogMessage(result.warning || planCompletionLogMessage(log.accountName, log.activity.activityChannel));
       onActivityLogged?.();
     } catch {
       setLogState('idle');
@@ -298,6 +284,7 @@ export function TodayCommitmentStrip({
                 message={logMessage}
                 onToggleEnabled={(enabled) => setLogDraft((current) => (current ? { ...current, enabled } : current))}
                 onChangeNote={(note) => setLogDraft((current) => (current ? { ...current, note } : current))}
+                onChangeChannel={(channel: ActivityChannel | '') => setLogDraft((current) => (current ? { ...current, channel } : current))}
                 onSave={() => { void saveLog(); }}
                 onDismiss={dismissLog}
               />
@@ -338,99 +325,6 @@ export function TodayCommitmentStrip({
  * back at the day and the week, without the workspace filling up with rows that
  * only say "a checkbox was ticked".
  */
-function LogToActivityBox({
-  draft,
-  state,
-  message,
-  onToggleEnabled,
-  onChangeNote,
-  onSave,
-  onDismiss,
-}: {
-  draft: { item: PlanItem; note: string; enabled: boolean };
-  state: 'idle' | 'saving' | 'saved';
-  message: string;
-  onToggleEnabled: (enabled: boolean) => void;
-  onChangeNote: (note: string) => void;
-  onSave: () => void;
-  onDismiss: () => void;
-}) {
-  if (state === 'saved') {
-    return (
-      <div className="ml-9 mt-1 flex items-center justify-between gap-2 rounded-lg border border-emerald-100 bg-emerald-50/60 px-3 py-2">
-        <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-800">
-          <Check className="h-3.5 w-3.5 shrink-0" />
-          {message}
-        </p>
-        <button type="button" onClick={onDismiss} className="shrink-0 rounded-full p-1 text-emerald-700 hover:bg-emerald-100" aria-label="Dismiss">
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="ml-9 mt-1 rounded-lg border border-gray-200 bg-white px-3 py-2">
-      <div className="flex items-center justify-between gap-2">
-        <label className="inline-flex cursor-pointer items-center gap-2">
-          <input
-            type="checkbox"
-            checked={draft.enabled}
-            onChange={(event) => onToggleEnabled(event.target.checked)}
-            className="h-3.5 w-3.5 shrink-0"
-          />
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-700">
-            <NotebookPen className="h-3.5 w-3.5 text-brand-blue" />
-            Log what you did to Activity
-          </span>
-        </label>
-        <button type="button" onClick={onDismiss} className="shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-100" aria-label="Dismiss">
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      {draft.enabled && (
-        <div className="mt-2 space-y-2">
-          <textarea
-            value={draft.note}
-            onChange={(event) => onChangeNote(event.target.value)}
-            rows={2}
-            autoFocus
-            placeholder="What actually happened? e.g. Called Ms. Huyen, she asked for the TDS before Friday."
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs leading-5 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
-          />
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={onSave}
-              disabled={state === 'saving' || draft.note.trim().length === 0}
-              className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {state === 'saving' ? 'Saving...' : 'Save to Activity'}
-            </button>
-            {/* Only a customer-facing task produces a customer-facing touch, so
-                only that one gets the warning. Printing it over an internal
-                task would train the operator to ignore it. */}
-            <p className="text-[11px] leading-4 text-gray-400">
-              {draft.item.workKind === 'customer'
-                ? `Counts as a touch on ${draft.item.tag || 'this customer'}, so the going-silent watch sees it.`
-                : 'Recorded as internal work. This task names no customer, so no deal moves.'}
-            </p>
-          </div>
-          {message && <p className="text-[11px] font-semibold text-amber-700">{message}</p>}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/**
- * What kind of touch a completed task was.
- *
- * Read off who the work was for, which the plan board already decided, rather
- * than guessed from the wording - a wrong guess here lands in the activity mix
- * an operator reads as fact.
- */
 /**
  * The deal a task belongs to, if any: the deal item's own opportunity, or the
  * one a typed item was linked to when it was written.
@@ -447,13 +341,6 @@ function findCaptureActivity(item: PlanItem, activities: SalesActivityRecord[]) 
   const target = getPlanItemWriteTarget(item);
   if (target.kind !== 'capture') return undefined;
   return activities.find((activity) => activity.id === target.activityId);
-}
-
-function activityTypeForItem(item: PlanItem) {
-  if (item.kind === 'obligation') return 'Payment / invoice' as const;
-  if (item.workKind === 'customer') return 'Follow-up' as const;
-  if (item.workKind === 'principal') return 'Internal coordination' as const;
-  return 'Admin / CRM' as const;
 }
 
 function pickWorkspace(data: {

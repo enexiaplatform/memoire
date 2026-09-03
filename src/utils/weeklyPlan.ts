@@ -3,6 +3,7 @@ import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { OwnObligation } from './ownObligations.ts';
 import type { BusinessDomain } from './businessDomain.ts';
 import { classifyPlanWork, summarisePlanWork, type PlanWorkKind, type PlanWorkSplit } from './planWorkKind.ts';
+import { normalizeActivityChannel, type ActivityChannel } from './activityChannel.ts';
 import {
   addMonthsClamped,
   compareSafeBusinessDate,
@@ -73,6 +74,12 @@ export type PlanItem = {
    * did not save.
    */
   contactName?: string;
+  /**
+   * The channel the owning record asks for. Empty when it says nothing, which
+   * is most items - the board is not going to guess a visit out of a sentence
+   * and then draw a van beside it.
+   */
+  channel?: ActivityChannel | '';
 };
 
 export type PlanDay = {
@@ -131,6 +138,16 @@ export type PlanRecord = {
    * where nothing else in the workspace could read it.
    */
   linkedStakeholderName?: string;
+  /**
+   * How this line is meant to happen - a visit, a call, a screen, or a day off.
+   *
+   * Planned, not observed: on a future item it is the intent, and the tick that
+   * completes it carries the same value onto the activity so the ledger records
+   * what kind of day it actually was. `Out of office` is why this belongs on
+   * the plan and not only on the capture - a public holiday is something you
+   * write on next week's calendar, and there is no touch to attach it to.
+   */
+  channel?: ActivityChannel | '';
   /**
    * The suggestion this record answers. Present whether the suggestion was
    * taken or refused, so acceptance rate has a denominator - the same
@@ -236,6 +253,7 @@ export function buildPlanBoard(input: {
       done: record.done,
       doneAt: record.doneAt,
       contactName: (record.linkedStakeholderName || '').trim(),
+      channel: normalizeActivityChannel(record.channel),
       // A linked item deep-links to the exact record it belongs to, so the
       // board stays wired into the same data spine as everything else.
       href: record.linkedOpportunityId
@@ -352,6 +370,7 @@ function buildCarriedForwardItems(input: {
     done: record.done,
     doneAt: record.doneAt,
     contactName: (record.linkedStakeholderName || '').trim(),
+    channel: normalizeActivityChannel(record.channel),
     href: record.linkedOpportunityId
       ? `/app/opportunities?opportunityId=${encodeURIComponent(record.linkedOpportunityId)}`
       : record.linkedAccountName
@@ -649,6 +668,7 @@ export function createPersonalPlanRecord(input: {
   linkedAccountName?: string;
   linkedBrand?: string;
   linkedStakeholderName?: string;
+  channel?: ActivityChannel | '';
   suggestionKey?: string;
   source?: 'demo' | 'user';
   isSample?: boolean;
@@ -668,6 +688,11 @@ export function createPersonalPlanRecord(input: {
     linkedAccountName: input.linkedAccountName,
     linkedBrand: input.linkedBrand,
     linkedStakeholderName: input.linkedStakeholderName,
+    // Only ever what the operator picked. The board does not infer a channel
+    // from the words typed into it: a line reading "call Ms Ha" is a plan, and
+    // guessing `Phone call` onto it would put a value in a field the operator
+    // never filled and cannot see they are now being counted on.
+    channel: normalizeActivityChannel(input.channel),
     suggestionKey: input.suggestionKey,
     createdAt: now,
     updatedAt: now,

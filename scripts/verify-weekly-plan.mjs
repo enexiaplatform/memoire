@@ -190,7 +190,10 @@ const anchor = new Date(2026, 6, 22); // Wed of the Mon 2026-07-20 week
   );
   assert.doesNotMatch(page, /saveOpportunity|deleteOpportunity/, 'the board never creates or deletes a deal');
 
-  assert.match(page, /does not change the deal/, 'the page says so to the operator');
+  // The wording may change; the promise may not. Ticking a box records that the
+  // work was done - and, since 2026-09-03, offers to write down what happened -
+  // but it never moves the deal itself, and the board has to say so.
+  assert.match(page, /moves no deal|does not change the deal/, 'the page says so to the operator');
   assert.match(page, /isSample: sampleDataActive/, 'demo plan items are tagged at birth');
 }
 
@@ -429,7 +432,7 @@ const anchor = new Date(2026, 6, 22); // Wed of the Mon 2026-07-20 week
   {
     const deal = opportunity('o1', 'MDL', 'Connect Mr. Tinh', '2026-07-20');
     const dealPolicy = planItemEditPolicy(itemOn(boardOf({ opportunities: [deal] }), '2026-07-20'));
-    assert.deepEqual(dealPolicy.fields, { label: true, date: true, account: false, contact: false });
+    assert.deepEqual(dealPolicy.fields, { label: true, date: true, account: false, contact: false, channel: false });
     assert.ok(dealPolicy.lockedReason, 'and the drawer says why, rather than hiding the fields');
     assert.match(dealPolicy.ownerHref, /opportunityId=o1/, 'with a link to the record that owns them');
 
@@ -438,14 +441,14 @@ const anchor = new Date(2026, 6, 22); // Wed of the Mon 2026-07-20 week
     );
     assert.deepEqual(
       obligationPolicy.fields,
-      { label: false, date: false, account: false, contact: false },
+      { label: false, date: false, account: false, contact: false, channel: false },
       'an obligation is held by the quote or expense behind it, so nothing here is editable',
     );
     assert.ok(obligationPolicy.lockedReason, 'and the drawer names the record that does hold the date');
 
     const typed = createPersonalPlanRecord({ date: '2026-07-21', label: 'Business trip claim' });
     const typedPolicy = planItemEditPolicy(itemOn(boardOf({ records: [typed] }), '2026-07-21'));
-    assert.deepEqual(typedPolicy.fields, { label: true, date: true, account: true, contact: true });
+    assert.deepEqual(typedPolicy.fields, { label: true, date: true, account: true, contact: true, channel: true });
     assert.equal(typedPolicy.deletable, true, 'a line you typed is yours to remove');
   }
 

@@ -4,6 +4,7 @@ import type { CaptureAccountAlias, CaptureCorrectionEvent } from '../services/ca
 import type { IngestionSourceType } from './ingestionSource.ts';
 import { sanitizeBusinessDate, todayDateKey, toLocalDateKey } from './safeDate.ts';
 import { resolveCaptureEntities } from './captureEntityResolution.ts';
+import { inferActivityChannel, type ActivityChannel } from './activityChannel.ts';
 
 export type SalesActivityType =
   | 'Customer meeting'
@@ -41,6 +42,14 @@ export interface ClassifiedSalesActivity {
   timelineSignals?: string[];
   nextActions?: SalesActivityNextAction[];
   activityType: SalesActivityType;
+  /**
+   * How the work happened, as opposed to what it was about. Optional and
+   * frequently empty: every record written before 2026-09-03 has no channel,
+   * and `''` means "not stated" rather than any particular kind of day. See
+   * utils/activityChannel.ts for why this is a second field and not more
+   * values on `activityType`.
+   */
+  activityChannel?: ActivityChannel | '';
   summary: string;
   nextAction: string;
   dueDate: string;
@@ -271,6 +280,11 @@ export function classifySalesActivity(
     timelineSignals,
     nextActions,
     activityType,
+    // Offered, not decided. The note is the only evidence there is at this
+    // point, so the reader gets the rules' best guess pre-filled in the form
+    // and can overrule it before anything is written. An empty guess stays
+    // empty rather than falling back to a default - see activityChannel.ts.
+    activityChannel: inferActivityChannel(cleanedNote),
     // When the rules read nothing out of the note, the summary is the only
     // structured trace of it there is, so it keeps the whole note rather than
     // the opening sentence. See `summarize`.
