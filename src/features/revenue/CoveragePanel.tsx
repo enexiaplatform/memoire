@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ShieldAlert, Target as TargetIcon, TrendingDown } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { hasLocalSampleData } from '../../utils/dataMode';
-import { formatCompactBaseAmount } from '../../utils/money';
+import { formatCompactBaseAmount, getReportingCurrency } from '../../utils/money';
 import { setCommercialTarget } from '../../domain/commercialKernel/commands';
 import { FORECAST_QUARTERS, type ForecastQuarter, type QuarterCoverage } from '../../domain/commercialKernel/forecast';
 import { useCoverage } from './useCoverage';
@@ -43,7 +43,11 @@ export function CoveragePanel() {
       const amount = Number(raw.replace(/[,\s]/g, ''));
       if (!Number.isFinite(amount)) continue;
 
-      const result = setCommercialTarget(scope, { period: quarter, fiscalYear, amount });
+      // Stamped with the currency the editor said it was asking for, so a
+      // target keeps its unit if the operator later reports in a different one.
+      const result = setCommercialTarget(scope, {
+        period: quarter, fiscalYear, amount, currency: getReportingCurrency(),
+      });
       if (result.ok) saved += 1;
       else setMessage(result.error);
     }
@@ -268,7 +272,13 @@ function TargetEditor({
 
   return (
     <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-      <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Targets for FY{fiscalYear}</p>
+      {/* The currency is named, because the number has no unit on it otherwise
+          and the panel below prints every figure in this one. A target typed
+          under one reporting currency and read under another is arithmetic on
+          two units, which is exactly what this used to be. */}
+      <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
+        Targets for FY{fiscalYear} · in {getReportingCurrency()}
+      </p>
       <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
         {FORECAST_QUARTERS.map((quarter) => (
           <label key={quarter} className="block">
@@ -293,8 +303,8 @@ function TargetEditor({
         Save targets
       </button>
       <p className="mt-2 text-[11px] leading-4 text-gray-400">
-        A target that moves is recorded as a change, not overwritten - so &quot;I was raised mid-quarter&quot; stays
-        answerable later.
+        Saved in {getReportingCurrency()}, the currency this page reports in. A target that moves is recorded as a
+        change, not overwritten — so &quot;I was raised mid-quarter&quot; stays answerable later.
       </p>
     </div>
   );

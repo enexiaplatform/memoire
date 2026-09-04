@@ -307,6 +307,19 @@ function sanitizeQuote(raw: Partial<QuoteRecord> | null): QuoteRecord | null {
     updatedAt: raw.updatedAt || now,
     source: raw.source === 'demo' ? 'demo' : raw.source === 'user' ? 'user' : undefined,
     isSample: raw.isSample === true,
+    /*
+     * The tombstone, carried through like every other field.
+     *
+     * `mergeCloudJsonRecords` drops deleted records before this runs, so today
+     * nothing reaches here still carrying the flag - which is exactly why it
+     * went missing. Seven engines read `quote.__deleted` (cash position, money
+     * flow, the master dashboard, the MEDDIC paper-process check among them),
+     * and six other stores carry it through their own sanitizer. A field the
+     * type declares, the readers trust, and one sanitizer silently erases is a
+     * deleted quote waiting to reappear in the cash position the first time a
+     * path reaches this function with the flag set.
+     */
+    __deleted: raw.__deleted === true ? true : undefined,
   };
 }
 

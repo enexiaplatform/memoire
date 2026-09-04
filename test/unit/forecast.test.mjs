@@ -12,6 +12,23 @@ import {
 
 const TODAY = new Date('2026-08-15T00:00:00Z');
 
+/*
+ * Reported in VND, which is also the currency every value below is written in,
+ * so the numbers read as written.
+ *
+ * The forecast counts in the *reporting* currency - the one the coverage panel
+ * labels every figure with - rather than in `BASE_CURRENCY`. Without this stub
+ * `getReportingCurrency()` falls back to USD and each amount here is silently
+ * converted, which is the behaviour under test in forecastCurrency.test.mjs.
+ */
+const currencyStore = new Map([['memoire_reporting_currency', 'VND']]);
+globalThis.localStorage = {
+  getItem: (key) => (currencyStore.has(key) ? currencyStore.get(key) : null),
+  setItem: (key, value) => currencyStore.set(key, String(value)),
+  removeItem: (key) => currencyStore.delete(key),
+  clear: () => currencyStore.clear(),
+};
+
 // Values are VND (the base currency) so the tests read as the numbers written.
 const opp = (patch = {}) => ({
   id: 'opp-1', accountName: 'Northstar Foods', opportunityName: 'QC analyser',

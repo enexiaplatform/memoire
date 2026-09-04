@@ -202,7 +202,21 @@ describe('summariseQualification', () => {
 });
 
 describe('forecast coverage, gated on qualification', () => {
-  const target = [{ quarter: 'Q4', amount: 100000 }];
+  /*
+   * Reported in the base currency, so every amount below passes through
+   * unconverted and these tests stay about coverage gating rather than about an
+   * exchange rate. The currency behaviour itself is covered in
+   * forecastCurrency.test.mjs.
+   */
+  const store = new Map([['memoire_reporting_currency', 'VND']]);
+  globalThis.localStorage = {
+    getItem: (key) => (store.has(key) ? store.get(key) : null),
+    setItem: (key, value) => store.set(key, String(value)),
+    removeItem: (key) => store.delete(key),
+    clear: () => store.clear(),
+  };
+
+  const target = [{ quarter: 'Q4', amount: 100000, currency: 'VND' }];
   // Amounts in the base currency, so the assertions are about coverage rather
   // than about an exchange rate.
   const q4Deal = (id, qualified) => deal({

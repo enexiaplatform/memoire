@@ -1,6 +1,6 @@
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { ResolvedThread } from './deriveThreads.ts';
-import { convertMoney, BASE_CURRENCY, type SupportedCurrency } from '../../utils/money.ts';
+import { convertMoney, getReportingCurrency, BASE_CURRENCY, type SupportedCurrency } from '../../utils/money.ts';
 
 /**
  * Forecast coverage: "am I going to make the number, and is there still time?"
@@ -122,23 +122,37 @@ export function evidenceAdjustedProbability(
 }
 
 /**
- * The amount an opportunity places in each quarter, in the base currency.
+ * The amount an opportunity places in each quarter, in the reporting currency.
  *
  * Uses the imported quarter split when there is one, because that is the
  * seller's own judgement about when the money lands. Falls back to putting the
  * whole value in the quarter named by `expectedClosePeriod`, and finally to the
  * current quarter - never silently dropping an opportunity out of the forecast
  * just because its dating is untidy.
+ *
+ * **Reporting currency, not `BASE_CURRENCY`.** It converted to the base for
+ * months while every figure derived from it was printed by
+ * `formatCompactBaseAmount`, which labels with the *reporting* currency and
+ * converts nothing. On a workspace reporting in USD over a VND book, a target
+ * of one billion dong therefore rendered as "1B USD" - the right magnitude
+ * under the wrong code, on the one surface an operator commits a number from.
+ * Worse than the label: the target and the pipeline were then being compared in
+ * two different currencies, so the shortfall itself was wrong.
+ *
+ * `sumMoneyInBase` has always meant "sum in the reporting currency" - the name
+ * is older than the setting. This now agrees with it, which is what makes the
+ * panel's own labels true.
  */
 export function quarterAmounts(
   opportunity: CrmLiteOpportunity,
   currentQuarter: ForecastQuarter,
 ): Record<ForecastQuarter, number> {
   const currency = (opportunity.currency || BASE_CURRENCY) as SupportedCurrency;
+  const reporting = getReportingCurrency();
   // An unrecognised currency converts to null. Treating that as zero would drop
   // the opportunity out of the forecast silently, so it is carried at face
   // value instead - visibly wrong beats invisibly missing.
-  const toBase = (value: number) => convertMoney(value, currency, BASE_CURRENCY) ?? value;
+  const toBase = (value: number) => convertMoney(value, currency, reporting) ?? value;
 
   const split = opportunity.quarterValues;
   const result = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 } as Record<ForecastQuarter, number>;
@@ -202,6 +216,16 @@ export function daysLeftInQuarter(date: Date, fiscalYearStartMonth = 1): number 
 export type ForecastTarget = {
   quarter: ForecastQuarter;
   amount: number;
+  /**
+   * The currency the number was typed in.
+   *
+   * Stored on `CommercialTarget` since targets existed and read by nothing
+   * until 2026-09-03, so a target entered under one reporting currency was
+   * compared against pipeline converted into another. Optional, and an absent
+   * value means the reporting currency - which is what the operator was
+   * looking at when they typed it.
+   */
+  currency?: string;
 };
 
 export type QuarterCoverage = {
@@ -314,8 +338,25 @@ export function buildCoverage(input: {
     if (thread.opportunityId) threadByOpportunity.set(thread.opportunityId, thread);
   }
 
+  /*
+   * Targets converted into the same currency the pipeline is counted in.
+   *
+   * They were compared raw, so a target typed in one currency was measured
+   * against pipeline converted into another and the shortfall was arithmetic
+   * on two different units. An unconvertible currency is carried at face value
+   * rather than dropped, for the same reason `quarterAmounts` does: a target
+   * that vanishes reads as "no target set", which is the one wrong answer a
+   * coverage check must never give.
+   */
+  const reportingCurrency = getReportingCurrency();
   const targetByQuarter = new Map<ForecastQuarter, number>();
-  for (const target of input.targets) targetByQuarter.set(target.quarter, target.amount);
+  for (const target of input.targets) {
+    const from = (target.currency || reportingCurrency) as SupportedCurrency;
+    const amount = from === reportingCurrency
+      ? target.amount
+      : convertMoney(target.amount, from, reportingCurrency) ?? target.amount;
+    targetByQuarter.set(target.quarter, amount);
+  }
 
   const blank = () => ({
     committed: 0, openPipeline: 0, weightedDeclared: 0, weightedSupported: 0, count: 0,

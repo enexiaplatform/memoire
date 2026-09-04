@@ -174,6 +174,10 @@ function sanitize(value: unknown): AccountMergeRecord | null {
       ? candidate.basis
       : undefined,
     basisNote: typeof candidate.basisNote === 'string' ? candidate.basisNote : undefined,
+    // Same reason as `basis` above, and the same reason `quoteStore` carries it:
+    // `accountAliases` filters on this flag, so erasing it here would bring an
+    // undone merge back and fold two customers into one again.
+    __deleted: candidate.__deleted === true ? true : undefined,
     createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : now,
     updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : now,
     source: candidate.source === 'demo' ? 'demo' : candidate.source === 'user' ? 'user' : undefined,

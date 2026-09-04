@@ -111,6 +111,37 @@ const deal = (overrides = {}) => ({
   assert.equal(untargeted.unbackedValue, 0, 'no target means no shortfall, not a passing grade');
 }
 
+// 3b. The forecast counts in the currency it labels itself with.
+//
+//     `formatCompactBaseAmount` labels with the reporting currency and converts
+//     nothing, so anything it prints must already be in that currency. The
+//     forecast converted to `BASE_CURRENCY` instead, which showed a dong target
+//     under a dollar code and - worse - compared target against pipeline in two
+//     different units. Pinned on the source because the arithmetic is only wrong
+//     when the two currencies differ, which a default-configured test run does
+//     not exercise.
+{
+  const forecast = codeOf('src/domain/commercialKernel/forecast.ts');
+  assert.match(
+    forecast, /const reporting = getReportingCurrency\(\);/,
+    'quarterAmounts resolves the reporting currency',
+  );
+  assert.match(
+    forecast, /convertMoney\(value, currency, reporting\)/,
+    'and converts into it, never into BASE_CURRENCY',
+  );
+  assert.match(
+    forecast, /convertMoney\(target\.amount, from, reportingCurrency\)/,
+    'targets are converted into the same currency the pipeline is counted in',
+  );
+
+  const panel = codeOf('src/features/revenue/CoveragePanel.tsx');
+  assert.match(
+    panel, /Targets for FY\{fiscalYear\} · in \{getReportingCurrency\(\)\}/,
+    'and the editor names the currency it is asking for, because a number has no unit on it',
+  );
+}
+
 // 4. Integrity names fields; it never reports a percentage.
 //
 //    A percentage tells an operator how they are doing. A list of names tells

@@ -5,6 +5,8 @@ import { PageSeo } from '../../components/marketing/PageSeo';
 import { breadcrumbSchema } from '../../config/structuredData';
 import { CONTACT_EMAIL } from '../../config/contact';
 import { LEGAL_ENTITY, LEGAL_ENTITY_DECLARED } from '../../config/legalEntity';
+import { FREE_PREVIEW } from '../../config/launchPhase';
+import { PERSONAL_MONTHLY_PRICE_USD, TRIAL_DAYS } from '../../utils/entitlement';
 
 type LegalDocument = {
   title: string;
@@ -106,8 +108,9 @@ const documents: Record<string, LegalDocument> = {
   terms: {
     title: 'Terms of Service',
     updated: 'August 11, 2026',
-    metaDescription:
-      'The terms for Memoire: $10 a month for one person, a 7-day trial, no free tier, and no refunds on completed charges.',
+    metaDescription: FREE_PREVIEW
+      ? 'The terms for Memoire: free for everyone while it is in preview, no card taken, and $10 a month for one person when the preview ends.'
+      : 'The terms for Memoire: $10 a month for one person, a 7-day trial, no free tier, and no refunds on completed charges.',
     intro: 'These terms govern use of Memoire, a personal sales workspace for one operator.',
     sections: [
       {
@@ -119,12 +122,36 @@ const documents: Record<string, LegalDocument> = {
       },
       {
         title: 'Subscription and payment',
-        paragraphs: [
-          'The Personal plan is $10 per month for one person. It begins with a 7-day free trial: a card is taken up front, nothing is charged during the trial, and the first charge is taken when the trial ends. Cancel before then and you are not charged.',
-          'Cancelling after that stops the next renewal; access continues until the end of the period already paid for. There is no free tier. The Team plan is not on sale and has no price.',
-          'Refunds are not offered on completed charges. The trial exists so the decision is made before any money moves: you get the whole product for seven days, and cancelling inside that window costs nothing. Statutory rights that apply where you live are not affected by this paragraph.',
-          'Lemon Squeezy processes payments as merchant of record, and its own terms apply to the transaction. Write to us at the address below about anything to do with a charge.',
-        ],
+        /*
+         * The one public page that had not been given the preview treatment,
+         * and the only one where the omission is a contradiction rather than
+         * stale copy.
+         *
+         * Every other surface - the landing page, pricing, the guides, the
+         * structured data - already picks its wording from `FREE_PREVIEW`.
+         * This page did not, so while the store was shut the Terms told a
+         * visitor "a card is taken up front" and "there is no free tier" on the
+         * same site whose pricing page said "free, no card". A contract that
+         * contradicts the offer beside it is worse than either version alone:
+         * whichever one the customer relied on, the other says they are wrong.
+         *
+         * Both versions are kept, and the flag picks. Setting `FREE_PREVIEW`
+         * back to `false` restores the paid terms exactly as they were written
+         * rather than asking somebody to reconstruct them.
+         */
+        paragraphs: FREE_PREVIEW
+          ? [
+            'Memoire is free while it is in preview. No card is taken, nothing is charged, and there is no trial clock counting down - the whole product is available to every account for as long as the preview runs.',
+            `When the preview ends the Personal plan is $${PERSONAL_MONTHLY_PRICE_USD} per month for one person. Nothing starts billing on its own: every account will be told before any charge is possible, and continuing then is a decision you make rather than one that happens to you.`,
+            'The Team plan is not on sale and has no price.',
+            'Because no money moves during the preview there is nothing to refund. The paragraphs about charges, cancellation and refunds take effect only once paid subscriptions open, and this page will say so before they do.',
+          ]
+          : [
+            `The Personal plan is $${PERSONAL_MONTHLY_PRICE_USD} per month for one person. It begins with a ${TRIAL_DAYS}-day free trial: a card is taken up front, nothing is charged during the trial, and the first charge is taken when the trial ends. Cancel before then and you are not charged.`,
+            'Cancelling after that stops the next renewal; access continues until the end of the period already paid for. There is no free tier. The Team plan is not on sale and has no price.',
+            `Refunds are not offered on completed charges. The trial exists so the decision is made before any money moves: you get the whole product for ${TRIAL_DAYS} days, and cancelling inside that window costs nothing. Statutory rights that apply where you live are not affected by this paragraph.`,
+            'Lemon Squeezy processes payments as merchant of record, and its own terms apply to the transaction. Write to us at the address below about anything to do with a charge.',
+          ],
       },
       {
         title: 'Your responsibilities',
