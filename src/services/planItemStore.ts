@@ -132,6 +132,10 @@ function sanitizePlanRecord(value: unknown): PlanRecord | null {
     updatedAt: typeof candidate.updatedAt === 'string' && candidate.updatedAt ? candidate.updatedAt : now,
     source: candidate.source === 'demo' ? 'demo' : candidate.source === 'user' ? 'user' : undefined,
     isSample: candidate.isSample === true,
+    // The tombstone. `buildPlanBoard` filters on it, and so do the follow-through
+    // figures on Plan and the master dashboard - so the readers already assume
+    // it survives a write, and until now it did not.
+    __deleted: candidate.__deleted === true ? true : undefined,
   };
 }
 

@@ -342,6 +342,24 @@ function loadLocalOpportunities(): CrmLiteOpportunity[] {
         forecastEvidenceCategory: normalizeForecastCategory(item.forecastEvidenceCategory),
         decisionRecommendation: normalizeDecisionRecommendation(item.decisionRecommendation),
         status: outcome.status,
+        /*
+         * The day it closed - the third field this reader has silently dropped,
+         * and the one with the loudest consequence.
+         *
+         * `closedOn` exists because an imported book had nowhere to record when
+         * a deal was actually won, so the order book fell through to the
+         * record's last edit and dated a whole year's business at the moment of
+         * import. Omitting it here reintroduced exactly that: every local read
+         * returned a deal with no close date, the outcome derivation fell back
+         * to `updatedAt`, and Review's headline counted five deals closed
+         * "this week" that had closed in three different months.
+         *
+         * Worse, `saveLocalOpportunityRecord` rebuilds the whole mirror from
+         * this reader, so editing one deal erased the close date from every
+         * other deal on the device. See the note below about brand and
+         * probability - same reader, same shape of bug, same year.
+         */
+        closedOn: sanitizeBusinessDate(item.closedOn || '') || undefined,
         // The imported dimensions. These were absent here while the cloud
         // reader carried all of them, so every local read quietly returned a
         // thinner opportunity than the one that was stored - and because
