@@ -21,6 +21,7 @@ import {
   sameBrand,
 } from '../../src/utils/brandIdentity.ts';
 import { buildOpportunityImportReceipt, formatImportReceipt } from '../../src/utils/importReceipt.ts';
+import { derivePlanCommitments } from '../../src/domain/commercialKernel/derivePlanCommitments.ts';
 
 const deal = (overrides = {}) => ({
   id: 'o1',
@@ -294,5 +295,33 @@ describe('buildOpportunityImportReceipt', () => {
     });
     assert.equal(receipt.clean, true);
     assert.match(formatImportReceipt(receipt), /Nothing was assumed/);
+  });
+});
+
+describe('an undated next action is not silently swallowed', () => {
+  test('derivePlanCommitments deliberately makes nothing of it', () => {
+    // The design principle: a promise the product can watch is one with a day
+    // on it. This test exists to pin the *consequence*, so the confirmation
+    // copy below cannot drift away from the behaviour it describes.
+    const activity = {
+      id: 'a1', accountName: 'Accw1', linkedAccountName: '', linkedOpportunityId: '',
+      activityType: 'Customer meeting', activityDate: '2026-09-04',
+      nextAction: 'Send the TDS', dueDate: '', nextActions: [], summary: '', rawNote: '',
+      tags: [], createdAt: '', updatedAt: '',
+    };
+    const commitments = derivePlanCommitments({ activities: [activity], planItems: [], includeSampleRecords: true });
+    assert.equal(commitments.length, 0, 'an undated promise is not a commitment');
+  });
+
+  test('and a dated one is', () => {
+    const activity = {
+      id: 'a1', accountName: 'Accw1', linkedAccountName: '', linkedOpportunityId: '',
+      activityType: 'Customer meeting', activityDate: '2026-09-04',
+      nextAction: 'Send the TDS', dueDate: '2026-09-08', nextActions: [], summary: '', rawNote: '',
+      tags: [], createdAt: '', updatedAt: '',
+    };
+    const commitments = derivePlanCommitments({ activities: [activity], planItems: [], includeSampleRecords: true });
+    assert.equal(commitments.length, 1);
+    assert.equal(commitments[0].currentDueDate, '2026-09-08');
   });
 });

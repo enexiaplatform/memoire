@@ -645,7 +645,7 @@ export function DailyCapturePage() {
     setRawNote('');
     setStructuredDraft(null);
     setSaveState(result.warning ? 'error' : 'saved');
-    setMessage(result.warning || (result.mode === 'cloud' ? 'Quick capture synced to your account.' : 'Quick capture saved locally.'));
+    setMessage(result.warning || describeQuickCaptureSave(result.mode, prepared));
     markTrialActivationChecklistItemComplete('capture-update');
     markPipelineReviewHabitStepComplete('capturedUpdatesAt');
     setStakeholderSuggestionDismissed(false);
@@ -2341,6 +2341,33 @@ function buildQuickCaptureActivity(form: QuickCaptureForm): ClassifiedSalesActiv
     sourceHash: '',
     originalExcerpt: rawNote.slice(0, 600),
   };
+}
+
+/**
+ * What the operator is told after a quick capture, including the one thing the
+ * confirmation used to leave out.
+ *
+ * A next action with no date is recorded on the touch and shown in Activity,
+ * and then nothing ever asks for it again: `derivePlanCommitments` only makes a
+ * commitment out of a *dated* promise, on the deliberate principle that a
+ * promise the product can watch is one with a day on it. That principle is
+ * sound and this is the gap it leaves - the operator types "Send the TDS", the
+ * app says "saved", and the plan panel one click away says "nothing is promised
+ * right now".
+ *
+ * For a product whose whole claim is that nothing goes silent, saying "saved"
+ * and stopping is the wrong half of the truth. So the confirmation names it,
+ * and says the one thing that fixes it.
+ */
+function describeQuickCaptureSave(
+  mode: 'local' | 'cloud',
+  activity: ClassifiedSalesActivity,
+): string {
+  const saved = mode === 'cloud' ? 'Quick capture synced to your account.' : 'Quick capture saved locally.';
+  const hasNextAction = Boolean((activity.nextAction || '').trim());
+  const hasDate = Boolean((activity.dueDate || '').trim());
+  if (!hasNextAction || hasDate) return saved;
+  return `${saved} Your next step has no date, so it is on this touch but nothing will chase it - give it a due date and it lands on your plan.`;
 }
 
 function quickInteractionToActivityType(interactionType: QuickInteractionType): SalesActivityType {
