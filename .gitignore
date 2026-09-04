@@ -36,3 +36,4 @@ dist-ssr
 
 # Local-only confidential import backups and dry-run artifacts
 .memoire-private/
+.audit/

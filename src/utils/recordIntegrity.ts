@@ -62,12 +62,32 @@ export type RecordIntegrity = {
  * period and it reaches no quarter.
  */
 const OPPORTUNITY_REQUIRED: { label: string; read: (deal: CrmLiteOpportunity) => boolean }[] = [
-  { label: 'Customer', read: (deal) => Boolean(deal.accountName.trim()) },
-  { label: 'Deal name', read: (deal) => Boolean(deal.opportunityName.trim()) },
+  { label: 'Customer', read: (deal) => Boolean(readText(deal.accountName)) },
+  { label: 'Deal name', read: (deal) => Boolean(readText(deal.opportunityName)) },
   { label: 'Value', read: (deal) => typeof deal.estimatedValue === 'number' && deal.estimatedValue > 0 },
-  { label: 'Currency', read: (deal) => Boolean((deal.currency || '').trim()) },
-  { label: 'Close period', read: (deal) => Boolean(deal.expectedClosePeriod.trim()) },
+  { label: 'Currency', read: (deal) => Boolean(readText(deal.currency)) },
+  { label: 'Close period', read: (deal) => Boolean(readText(deal.expectedClosePeriod)) },
 ];
+
+/**
+ * A field read as text, whatever arrived.
+ *
+ * These checks are the one place in the app that is pointed deliberately at
+ * *unsanitised* records: `buildOpportunityImportReceipt` runs them over CSV
+ * preview rows, before any store has coerced anything. A `.trim()` on a field
+ * the file did not supply throws, and a thrown exception inside an import
+ * preview is a blank screen at the exact moment a new operator is loading their
+ * book for the first time.
+ *
+ * So every read here is total. The engine's job is to report what is missing;
+ * failing on a record *because* something is missing is the one thing it must
+ * never do.
+ */
+function readText(value: unknown): string {
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return '';
+}
 
 export function checkOpportunityIntegrity(input: {
   opportunity: CrmLiteOpportunity;
@@ -86,7 +106,7 @@ export function checkOpportunityIntegrity(input: {
 
   const links: RecordIntegrity['links'] = [];
 
-  const named = opportunity.accountName.trim();
+  const named = readText(opportunity.accountName);
   if (!named) {
     links.push({ label: 'Customer', status: 'none', detail: 'No customer named.' });
   } else {
@@ -97,7 +117,7 @@ export function checkOpportunityIntegrity(input: {
      * done the most tidying up, which is the wrong way round.
      */
     const canonical = input.aliases ? resolveAccountName(named, input.aliases) : named;
-    const known = input.accountNames.some((accountName) => (
+    const known = (input.accountNames || []).filter((name) => typeof name === 'string').some((accountName) => (
       accountKey(accountName) === accountKey(canonical)
       || normalizeEntityName(accountName) === normalizeEntityName(canonical)
     ));
@@ -130,8 +150,8 @@ export function checkOpportunityIntegrity(input: {
  * attached, which is the leak this product exists to close.
  */
 const ACTIVITY_REQUIRED: { label: string; read: (activity: SalesActivityRecord) => boolean }[] = [
-  { label: 'Date', read: (activity) => Boolean((activity.activityDate || '').trim()) },
-  { label: 'What happened', read: (activity) => Boolean((activity.summary || activity.rawNote || '').trim()) },
+  { label: 'Date', read: (activity) => Boolean(readText(activity.activityDate)) },
+  { label: 'What happened', read: (activity) => Boolean(readText(activity.summary) || readText(activity.rawNote)) },
 ];
 
 export function checkActivityIntegrity(input: {
@@ -144,7 +164,7 @@ export function checkActivityIntegrity(input: {
     .map((field) => field.label);
 
   const links: RecordIntegrity['links'] = [];
-  const linkedId = (activity.linkedOpportunityId || '').trim();
+  const linkedId = readText(activity.linkedOpportunityId);
   if (!linkedId) {
     links.push({ label: 'Deal', status: 'none', detail: 'Not linked to a deal.' });
   } else {
@@ -178,11 +198,11 @@ export function checkActivityIntegrity(input: {
  * "0 overdue" on one page and a large figure on another.
  */
 const QUOTE_REQUIRED: { label: string; read: (quote: QuoteRecord) => boolean }[] = [
-  { label: 'Customer', read: (quote) => Boolean((quote.accountName || '').trim()) },
+  { label: 'Customer', read: (quote) => Boolean(readText(quote.accountName)) },
   { label: 'Amount', read: (quote) => typeof quote.amount === 'number' && quote.amount > 0 },
-  { label: 'Currency', read: (quote) => Boolean((quote.currency || '').trim()) },
-  { label: 'Quote date', read: (quote) => Boolean((quote.quoteDate || '').trim()) },
-  { label: 'Payment term', read: (quote) => Boolean((quote.paymentTerm || '').trim()) },
+  { label: 'Currency', read: (quote) => Boolean(readText(quote.currency)) },
+  { label: 'Quote date', read: (quote) => Boolean(readText(quote.quoteDate)) },
+  { label: 'Payment term', read: (quote) => Boolean(readText(quote.paymentTerm)) },
 ];
 
 export function checkQuoteIntegrity(input: {
@@ -195,7 +215,7 @@ export function checkQuoteIntegrity(input: {
     .map((field) => field.label);
 
   const links: RecordIntegrity['links'] = [];
-  const linkedId = (quote.opportunityId || '').trim();
+  const linkedId = readText(quote.opportunityId);
   if (!linkedId) {
     links.push({ label: 'Deal', status: 'none', detail: 'Not linked to a deal.' });
   } else {

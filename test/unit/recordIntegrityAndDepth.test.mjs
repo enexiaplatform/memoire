@@ -325,3 +325,42 @@ describe('an undated next action is not silently swallowed', () => {
     assert.equal(commitments[0].currentDueDate, '2026-09-08');
   });
 });
+
+describe('integrity survives records no store has cleaned', () => {
+  // These checks are pointed deliberately at unsanitised data:
+  // `buildOpportunityImportReceipt` runs them over CSV preview rows, before any
+  // store has coerced anything. Throwing there is a blank screen at the exact
+  // moment a new operator loads their book for the first time.
+  const HOSTILE = [
+    ['an empty object', {}],
+    ['every field null', { accountName: null, opportunityName: null, currency: null, expectedClosePeriod: null, estimatedValue: null }],
+    ['numbers where strings go', { accountName: 7, opportunityName: 8, currency: 9, expectedClosePeriod: 10, estimatedValue: 'lots' }],
+    ['arrays and objects', { accountName: [], opportunityName: {}, currency: [], expectedClosePeriod: {}, estimatedValue: [] }],
+  ];
+
+  HOSTILE.forEach(([label, opportunity]) => {
+    test(`reports on ${label} rather than throwing`, () => {
+      const integrity = checkOpportunityIntegrity({ opportunity, accountNames: [null, undefined, '', 'A'] });
+      assert.ok(Array.isArray(integrity.missingFields));
+      assert.equal(typeof describeIntegrity(integrity), 'string');
+      assert.equal(integrity.complete, false, 'a record this empty is never complete');
+    });
+  });
+
+  test('a numeric account name is read, not rejected', () => {
+    // A spreadsheet column of customer codes arrives as numbers. Reporting
+    // "Missing Customer" there would be the check being wrong about the data.
+    const integrity = checkOpportunityIntegrity({ opportunity: { accountName: 4021 }, accountNames: ['4021'] });
+    assert.ok(!integrity.missingFields.includes('Customer'));
+  });
+
+  test('the receipt survives a row whose columns mapped to nothing', () => {
+    const receipt = buildOpportunityImportReceipt({
+      rows: [{ id: 'r', rowNumber: 1, input: {}, warnings: [], isValid: true, isDuplicate: false, raw: {} }],
+      mapping: [{ csvColumn: 'Notes', normalizedHeader: 'notes', mappedField: '', confidence: 'Unmapped' }],
+      knownAccountNames: [],
+    });
+    assert.equal(receipt.accepted, 1);
+    assert.ok(receipt.problems.length > 0);
+  });
+});
