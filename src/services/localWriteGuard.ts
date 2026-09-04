@@ -159,15 +159,47 @@ function countRecords(value: string): number | null {
   }
 }
 
+/**
+ * What kind of failure this was, read from the error's shape rather than its
+ * constructor.
+ *
+ * It used to require `error instanceof DOMException` before looking at anything
+ * else, so the whole quota branch - and the one message that tells an operator
+ * what to actually do about it - was reachable only when the error object came
+ * from the same realm's DOMException. Three cases where it does not:
+ *
+ *   - An error thrown across a realm boundary. `instanceof` compares against
+ *     *this* window's constructor, so a storage call that crosses an iframe, or
+ *     a privacy extension that wraps `localStorage` in a proxy of its own, fails
+ *     the check while being a genuine quota error.
+ *   - Safari in private mode, which historically threw a plain `Error`.
+ *   - Any environment without a `DOMException` global at all, which this file
+ *     knowingly runs in - see `resolveStorage` below.
+ *
+ * In each of those the operator was told "Memoire could not save to this
+ * browser" when the true answer was "this browser is full, export a backup and
+ * sign in so records sync". The first sentence is a shrug; the second is a way
+ * out, and it was unreachable outside the happy path.
+ *
+ * Name and code are what every browser actually sets, so they are what this
+ * reads. A real `DOMException` classifies exactly as it did before.
+ */
 function classify(error: unknown): LocalWriteFailureReason {
   // Chrome and Firefox report code 22 / name QuotaExceededError; Safari in
   // private mode historically threw code 1014 with a different name.
-  if (typeof DOMException !== 'undefined' && error instanceof DOMException) {
-    if (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED' || error.code === 22 || error.code === 1014) {
-      return 'quota';
-    }
-    return 'unavailable';
+  const named = error as { name?: unknown; code?: unknown } | null;
+  const name = typeof named?.name === 'string' ? named.name : '';
+  const code = typeof named?.code === 'number' ? named.code : null;
+
+  if (name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED' || code === 22 || code === 1014) {
+    return 'quota';
   }
+
+  // A DOMException that is not about space is the browser refusing storage
+  // outright - blocked site data, or a context with no storage partition.
+  if (typeof DOMException !== 'undefined' && error instanceof DOMException) return 'unavailable';
+  if (name === 'SecurityError' || name === 'InvalidAccessError') return 'unavailable';
+
   return 'unknown';
 }
 
