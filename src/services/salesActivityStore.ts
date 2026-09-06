@@ -66,6 +66,52 @@ type SalesActivityRow = {
   updated_at: string;
 };
 
+/**
+ * The deal a capture was about, carried into the write.
+ *
+ * Before this existed, `createLocalActivity` and `activityToInsert` both wrote
+ * `link_status: 'Unlinked'` unconditionally - so a scope the operator had just
+ * confirmed on screen was discarded between the confirmation and the row, and
+ * the only way to attach it was a second, separate, optional step afterwards.
+ * One activity in a hundred survived that step, which is the whole reason every
+ * learning cohort was empty.
+ *
+ * Optional on purpose. An account-level interaction is a real thing and passing
+ * nothing is how it is expressed - the fix is to stop *losing* a known link,
+ * not to start inventing one.
+ */
+export type SalesActivityLinkTarget = {
+  linkedOpportunityId: string;
+  linkedOpportunityName: string;
+  linkedAccountName: string;
+};
+
+/**
+ * The one place that decides what a capture's link becomes on disk.
+ *
+ * Both writers call it - the browser copy and the cloud insert - because the
+ * bug this phase exists to fix was a link that survived one of them and not the
+ * other, and two hand-written copies of the same four fields is how that
+ * happens twice. A name with no id is a label rather than a link, and is
+ * written as no link at all.
+ */
+export function resolveActivityLink(link?: SalesActivityLinkTarget): {
+  opportunityId: string;
+  opportunityName: string;
+  accountName: string;
+  linkStatus: SalesActivityRecord['linkStatus'];
+} {
+  if (!link?.linkedOpportunityId) {
+    return { opportunityId: '', opportunityName: '', accountName: '', linkStatus: 'Unlinked' };
+  }
+  return {
+    opportunityId: link.linkedOpportunityId,
+    opportunityName: link.linkedOpportunityName || '',
+    accountName: link.linkedAccountName || '',
+    linkStatus: 'Linked',
+  };
+}
+
 export type SalesActivityLinkInput = {
   linkedOpportunityId?: string;
   linkedOpportunityName?: string;
@@ -263,6 +309,8 @@ export async function saveSalesActivity(
   // live record, which is exactly what every caller was doing before. Making
   // the compiler ask the question is the only version of this that cannot rot.
   workspace: SalesActivityWorkspaceTag,
+  /** The deal this interaction was about, when it is known. */
+  link?: SalesActivityLinkTarget,
 ): Promise<{ record: SalesActivityRecord; mode: 'local' | 'cloud'; warning?: string }> {
   // A sample capture never reaches the account, whatever id it was handed.
   // Callers already pass `undefined` for the user in demo mode, so this is a
@@ -273,7 +321,7 @@ export async function saveSalesActivity(
 
   if (!demoOnly && canUseSalesActivityCloudStore(userId)) {
     try {
-      const record = await createCloudActivity(activity, userId as string);
+      const record = await createCloudActivity(activity, userId as string, undefined, link);
       invalidateWorkspaceCollection('activities');
       trackCaptureSaved(record, demoOnly, 'cloud-synced');
       return { record, mode: 'cloud' };
@@ -282,7 +330,7 @@ export async function saveSalesActivity(
       // Owed to the cloud, not merely saved locally. Without the flag this
       // capture is indistinguishable from one made while signed out, and
       // nothing would ever send it.
-      const record = { ...createLocalActivity(activity, workspace), pendingSync: true };
+      const record = { ...createLocalActivity(activity, workspace, link), pendingSync: true };
       saveLocalActivityRecord(record);
       invalidateWorkspaceCollection('activities');
       announcePendingSync();
@@ -296,7 +344,7 @@ export async function saveSalesActivity(
     }
   }
 
-  const record = createLocalActivity(activity, workspace);
+  const record = createLocalActivity(activity, workspace, link);
   saveLocalActivityRecord(record);
   invalidateWorkspaceCollection('activities');
   trackCaptureSaved(record, demoOnly, 'browser-only');
@@ -555,10 +603,11 @@ async function createCloudActivity(
   activity: ClassifiedSalesActivity,
   userId: string,
   timestamps?: { createdAt: string; updatedAt: string },
+  link?: SalesActivityLinkTarget,
 ) {
   const { data, error } = await supabaseClient!
     .from(TABLE_NAME)
-    .insert(activityToInsert(activity, userId, timestamps))
+    .insert(activityToInsert(activity, userId, timestamps, link))
     .select('*')
     .single();
 
@@ -569,6 +618,7 @@ async function createCloudActivity(
 function createLocalActivity(
   activity: ClassifiedSalesActivity,
   workspace: SalesActivityWorkspaceTag = {},
+  link?: SalesActivityLinkTarget,
 ): SalesActivityRecord {
   const timestamp = new Date().toISOString();
   const tags = mergeActivitySourceTags(activity.tags, activity);
@@ -581,10 +631,12 @@ function createLocalActivity(
     id: createId(),
     source: workspace.source ?? 'user',
     isSample: workspace.isSample === true,
-    linkedOpportunityId: '',
-    linkedOpportunityName: '',
-    linkedAccountName: '',
-    linkStatus: 'Unlinked',
+    // A link is written when the caller knows one and left alone when it does
+    // not. Same decision as the cloud insert below, from the same function.
+    linkedOpportunityId: resolveActivityLink(link).opportunityId,
+    linkedOpportunityName: resolveActivityLink(link).opportunityName,
+    linkedAccountName: resolveActivityLink(link).accountName,
+    linkStatus: resolveActivityLink(link).linkStatus,
     createdAt: timestamp,
     updatedAt: timestamp,
     storageMode: 'local',
@@ -637,6 +689,7 @@ function activityToInsert(
   // it with the moment it finally sent would put it at the top of the activity
   // log under today's date and quietly rewrite when the customer was seen.
   timestamps?: { createdAt: string; updatedAt: string },
+  link?: SalesActivityLinkTarget,
 ) {
   const timestamp = new Date().toISOString();
   return {
@@ -661,10 +714,13 @@ function activityToInsert(
     next_action: activity.nextAction || null,
     due_date: sanitizeBusinessDate(activity.dueDate) || null,
     tags: mergeActivitySourceTags(activity.tags, activity),
-    linked_opportunity_id: null,
-    linked_opportunity_name: null,
-    linked_account_name: null,
-    link_status: 'Unlinked',
+    // The same decision as the browser copy above, from the same function,
+    // because a link that survives locally and vanishes on sync is the harder
+    // bug: nothing on screen looks wrong until the next device opens it.
+    linked_opportunity_id: resolveActivityLink(link).opportunityId || null,
+    linked_opportunity_name: resolveActivityLink(link).opportunityName || null,
+    linked_account_name: resolveActivityLink(link).accountName || null,
+    link_status: resolveActivityLink(link).linkStatus,
     created_at: timestamps?.createdAt || timestamp,
     updated_at: timestamps?.updatedAt || timestamp,
   };

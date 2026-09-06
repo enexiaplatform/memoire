@@ -6,15 +6,19 @@ import {
 import {
   isoOrNow,
   kernelId,
+  loadCloudRecordsSince,
   loadForWorkspace,
   oneOf,
   optionalText,
   readLocal,
+  reportKernelSyncFailure,
+  selectOwedCloudRecords,
   syncRecordsForCurrentUser,
   text,
   writeLocal,
   type KernelCodec,
 } from './kernelRepository.ts';
+import { reportWorkspaceSyncError } from '../workspaceSyncStatus.ts';
 
 export const EVENT_STORAGE_KEY = 'memoire.commercialEvents.v1';
 export const EVENTS_UPDATED_EVENT = 'memoire:commercial-events-updated';
@@ -119,6 +123,91 @@ export function loadEvents() {
 
 export function loadEventsForWorkspace(userId?: string | null, sampleDataActive = false) {
   return loadForWorkspace(eventCodec, userId, sampleDataActive);
+}
+
+/**
+ * How far back a surface reads the event log.
+ *
+ * Ninety days, because a quarter is the unit the forecast is argued in and
+ * nothing on screen looks further back than that. Five hundred rows, because
+ * that is well past what a solo operator generates in a quarter and it is a
+ * quarter of the local cap, so the log can never dominate a workspace load.
+ *
+ * Both bounds only ever *understate* what Memoire knows, which is the safe
+ * direction: a trimmed window makes `historyCoverage` report less coverage than
+ * really exists, never more.
+ */
+export const EVENT_WINDOW_DAYS = 90;
+export const EVENT_WINDOW_LIMIT = 500;
+
+/**
+ * The bounded read Delta Intelligence uses.
+ *
+ * Deliberately not `loadForWorkspace`. That helper merges the whole collection
+ * and then offers the cloud anything it appears to be missing - correct for a
+ * collection read in full, and wrong here: every local event older than the
+ * window would look absent from the cloud on every single load and be pushed
+ * again forever.
+ *
+ * So the merge is explicit and the write-back is scoped: local keeps everything
+ * it had (trimmed only by the existing local cap), and only in-window events
+ * the cloud genuinely lacks are offered to it - which is how an event captured
+ * offline eventually arrives.
+ */
+export async function loadRecentEvents(
+  userId?: string | null,
+  sampleDataActive = false,
+  options: { windowDays?: number; limit?: number; now?: Date } = {},
+): Promise<CommercialEvent[]> {
+  const now = options.now || new Date();
+  const windowDays = options.windowDays ?? EVENT_WINDOW_DAYS;
+  const limit = options.limit ?? EVENT_WINDOW_LIMIT;
+  const since = new Date(now.getTime() - windowDays * 86_400_000).toISOString();
+
+  const local = loadEvents();
+  const localInWindow = local.filter((event) => event.occurredAt >= since);
+
+  if (!userId || sampleDataActive) return localInWindow.slice(0, limit);
+
+  let cloud: CommercialEvent[] = [];
+  try {
+    cloud = await loadCloudRecordsSince(eventCodec, userId, 'occurred_at', since, limit);
+  } catch (error) {
+    reportWorkspaceSyncError();
+    reportKernelSyncFailure(eventCodec.table, 'load', error);
+    // A cloud that cannot be reached is not an empty history. The browser copy
+    // is what this device recorded, and it is the honest answer offline.
+    return localInWindow.slice(0, limit);
+  }
+
+  const merged = new Map<string, CommercialEvent>();
+  for (const event of [...cloud, ...localInWindow]) merged.set(event.id, event);
+  const window = [...merged.values()].sort(eventCodec.compare).slice(0, limit);
+
+  // Local keeps its out-of-window history; only the window is refreshed.
+  const outsideWindow = local.filter((event) => event.occurredAt < since);
+  writeLocal(eventCodec, [...window, ...outsideWindow].slice(0, LOCAL_EVENT_LIMIT));
+
+  const owed = selectOwedCloudRecords(localInWindow, cloud);
+  if (owed.length > 0) syncRecordsForCurrentUser(eventCodec, owed);
+
+  return window;
+}
+
+/**
+ * The oldest moment this workspace can speak to, from a loaded window.
+ *
+ * Null when there are no events at all, which is the honest answer for a
+ * workspace that predates instrumentation: Memoire has recorded no transitions,
+ * so it must not imply it knows there were none.
+ */
+export function earliestObservedAt(events: CommercialEvent[]): string | null {
+  let earliest: string | null = null;
+  for (const event of events) {
+    if (!event.occurredAt) continue;
+    if (!earliest || event.occurredAt < earliest) earliest = event.occurredAt;
+  }
+  return earliest;
 }
 
 /**

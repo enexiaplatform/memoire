@@ -1,6 +1,6 @@
 import { supabaseClient } from '../lib/supabaseClient.ts';
-import { invalidateWorkspaceCollection } from './workspaceDataCache';
-import { reportWorkspaceSyncError } from './workspaceSyncStatus';
+import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
+import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { writeLocalCollection, writeLocalRecords } from './localWriteGuard.ts';
 import { fetchAllRows } from './supabasePaging.ts';
 

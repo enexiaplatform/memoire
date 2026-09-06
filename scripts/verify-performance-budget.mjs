@@ -8,6 +8,17 @@ import { buildOutcomeScoreboard } from '../src/utils/outcomeScoreboard.ts';
 import { resolveCommercialThreads } from '../src/domain/commercialKernel/deriveThreads.ts';
 import { buildKnowledgeGraph } from '../src/utils/knowledgeGraph.ts';
 import { buildGraphView } from '../src/utils/knowledgeLayout.ts';
+import { deriveCommercialDelta } from '../src/domain/commercialKernel/deriveDelta.ts';
+import { evaluateCommercialPolicies } from '../src/domain/commercialKernel/policyEngine.ts';
+import { rankRecommendations } from '../src/domain/commercialKernel/rankRecommendations.ts';
+import { parseCapture } from '../src/domain/commercialKernel/parseCapture.ts';
+import {
+  projectCurrentEvidence,
+  supportingEvidenceFor,
+} from '../src/domain/commercialKernel/commercialEvidence.ts';
+import { derivePersonalLearning } from '../src/domain/commercialLearning/derivePersonalLearning.ts';
+import { resolveCommercialScope } from '../src/domain/commercialKernel/resolveCommercialScope.ts';
+import { suggestHistoricalLinks } from '../src/domain/commercialKernel/suggestHistoricalLinks.ts';
 
 /**
  * The derived models, measured against a real book of business.
@@ -44,6 +55,40 @@ const BUDGETS = {
   // innocent-looking nested lookup turns quadratic.
   knowledgeGraph: 150,
   knowledgeGraphView: 40,
+  // One subject against the whole book. Generous, like the rest: a tripwire for
+  // a nested scan, not a stopwatch.
+  deriveDelta: 100,
+  // Ranking runs over every candidate the policy engine raised, resolving a
+  // record and a currency for each. It sits behind Today, so it has to stay
+  // cheap at a book that raises hundreds of them.
+  rankRecommendations: 150,
+  // Capture parsing runs the moment a note is saved, in front of somebody who
+  // has just come out of a meeting. It has to feel instant on a long note over
+  // a real book of customers.
+  parseCapture: 120,
+  // Evidence is projected once per read and then looked up by scope. This
+  // budget is a tripwire for the shape it must never take: asking the evidence
+  // list per deal, inside a loop over the deals.
+  projectCurrentEvidence: 40,
+  /**
+   * Learning walks every closed deal once per pattern, over a book several
+   * times the size of the one this product has today. Generous, like the rest:
+   * it is a tripwire for a nested scan, and it is measured at a scale the
+   * workspace will not reach for a long time precisely so that it stays one.
+   */
+  personalLearning: 400,
+  /**
+   * Scope resolution runs while the seller types, so it has the tightest budget
+   * in this file. It reads a handful of fields off the deals on one customer;
+   * anything approaching this number means it has started scanning the book.
+   */
+  resolveCommercialScope: 20,
+  /**
+   * Historical suggestions run once when the Review page opens, over every
+   * unlinked activity. Heavier by design and still bounded: the account index
+   * is what keeps it from being every activity against every deal.
+   */
+  suggestHistoricalLinks: 300,
 };
 
 const { opportunities, activities, accounts, quotes, outcomes } = buildScaleWorkspace(SCALE);
@@ -122,6 +167,293 @@ measure('knowledgeGraphView', () => {
 });
 
 console.log(`  knowledge graph: ${knowledgeGraph.nodes.length} nodes, ${knowledgeGraph.edges.length} relations, ${knowledgeGraph.gaps.length} open gaps`);
+
+// Delta, for one customer, against the whole book.
+//
+// This is the derivation most exposed to the quadratic mistake: it filters five
+// collections per subject and walks the account's touches looking for gaps. It
+// runs behind a panel that appears the moment a record is opened, so it has to
+// stay cheap at a real book rather than at a fixture.
+measure('deriveDelta', () => deriveCommercialDelta({
+  subject: { kind: 'account', id: accounts[0].id, name: accounts[0].accountName },
+  events: [],
+  commitments: [],
+  planItems: [],
+  objections,
+  stakeholders,
+  activities,
+  opportunityOutcomes: outcomes,
+  recommendations: [],
+  observedFrom: null,
+  today: new Date('2026-08-02T00:00:00Z'),
+}));
+
+// Next Best Action, over everything the policy engine raised at that scale.
+//
+// This is the hot one: it runs on Today, on Review and behind every subject
+// panel, and it touches a commitment, a quote or an opportunity for each
+// candidate. Measured against the real candidate set rather than a handful, so
+// a lookup that quietly became a scan shows up here.
+{
+  const threads = resolveCommercialThreads({
+    storedThreads: [], opportunities, activities, quotes, commitments: [],
+    today: new Date('2026-08-02T00:00:00Z'),
+  });
+  const candidates = evaluateCommercialPolicies({
+    threads, commitments: [], opportunities, quotes, today: new Date('2026-08-02T00:00:00Z'),
+  });
+
+  measure('rankRecommendations', () => rankRecommendations({
+    recommendations: candidates,
+    opportunities,
+    quotes,
+    commitments: [],
+    objections,
+    today: new Date('2026-08-02T00:00:00Z'),
+  }));
+  console.log(`  ranking: ${candidates.length} candidates from ${opportunities.length} deals`);
+}
+
+// Capture parsing: a long note against the whole book of customers.
+//
+// The one derivation a person waits on directly. It resolves the customer
+// against every account the workspace has, so the temptation is a scan per
+// token; the context is indexed once and this measurement is what notices if
+// that stops being true.
+{
+  const note = [
+    'Met Anna Vu at the plant today with the QC team.',
+    'Trial looks good but they still need clarification on GPT verification.',
+    'Purchasing wants to decide before Sep 20.',
+    'Likely PO around 400M VND.',
+    'They are also worried about lead time on the spare parts.',
+    'Marc will visit Oct 3 for the second round.',
+    'I promised to send the validation explanation by Friday.',
+    'We also discussed the maintenance contract, the training plan, and the',
+    'documentation pack they asked for last quarter, none of which is agreed yet.',
+  ].join(' ');
+
+  measure('parseCapture', () => parseCapture({
+    rawCapture: note,
+    captureDate: '2026-08-02',
+    context: {
+      accounts: accounts.map((account) => ({ id: account.id, accountName: account.accountName })),
+      opportunities: opportunities.map((opportunity) => ({
+        id: opportunity.id,
+        accountName: opportunity.accountName,
+        opportunityName: opportunity.opportunityName,
+        currency: opportunity.currency,
+        estimatedValue: opportunity.estimatedValue,
+      })),
+      objections,
+      stakeholders,
+      openCommitments: [],
+      evidence: [],
+      reportingCurrency: 'VND',
+    },
+  }));
+}
+
+// Commercial Evidence: the current reading over a workspace with a long history
+// of findings.
+//
+// The projection is the whole reason evidence can be consulted by the policy
+// engine and by ranking without either of them scanning. It is built once per
+// read and answered from a map, so this measurement exists to notice the day
+// somebody folds the history inside a comparator instead.
+{
+  const evidence = opportunities.flatMap((opportunity, index) => (
+    // Three observations on every fourth deal: enough supersession to exercise
+    // the contest, spread over a book rather than piled on one record.
+    index % 4 !== 0 ? [] : [0, 1, 2].map((step) => ({
+      id: `${opportunity.id}-ev-${step}`,
+      userId: null,
+      accountName: opportunity.accountName,
+      accountId: '',
+      opportunityId: opportunity.id,
+      threadId: null,
+      category: 'technical_outcome',
+      direction: step === 1 ? 'negative' : 'positive',
+      summary: step === 1 ? 'Trial did not pass' : 'Trial passed',
+      evidenceText: 'Trial run completed at the plant and the results were reviewed with QC.',
+      observedAt: `2026-0${5 + step}-1${step}`,
+      recordedAt: `2026-0${5 + step}-1${step}T00:00:00.000Z`,
+      sourceActivityId: null,
+      sourceType: 'capture',
+      sourceId: null,
+      sourceUrl: null,
+      sourceUpdatedAt: null,
+      createdAt: `2026-0${5 + step}-1${step}T00:00:00.000Z`,
+      updatedAt: `2026-0${5 + step}-1${step}T00:00:00.000Z`,
+    }))
+  ));
+
+  measure('projectCurrentEvidence', () => {
+    const projection = projectCurrentEvidence(evidence);
+    // The lookup every consumer actually makes, once per deal. If this is not
+    // measured with the projection, a per-deal scan would hide inside it.
+    for (const opportunity of opportunities) {
+      supportingEvidenceFor(projection, {
+        opportunityId: opportunity.id,
+        accountName: opportunity.accountName,
+      });
+    }
+  });
+  console.log(`  evidence: ${evidence.length} findings across ${opportunities.length} deals`);
+}
+
+// Personal Commercial Learning at a book several times today's size.
+//
+// The brief for this measurement is the shape of the calculation rather than
+// its current cost: six patterns each walk the closed deals and ask an indexed
+// question per deal. What this notices is the day somebody asks that question
+// by scanning the collection instead - which is invisible at thirteen closed
+// deals and quadratic at a thousand.
+{
+  const LEARNING_SCALE = { opportunities: 1000, activities: 5000, evidence: 1000 };
+  const learningOpportunities = Array.from({ length: LEARNING_SCALE.opportunities }, (unused, index) => ({
+    id: `lopp-${index}`,
+    accountName: `Account ${index % 200}`,
+    opportunityName: `Deal ${index}`,
+    stage: 'Proposal',
+    estimatedValue: 100_000_000 + index,
+    currency: 'VND',
+    expectedClosePeriod: 'Q3 2026',
+    productOrSolution: '',
+    decisionMaker: '',
+    budgetOwner: '',
+    procurementPath: '',
+    technicalCriteria: '',
+    nextAction: '',
+    nextActionDate: '',
+    evidence: '',
+    missingContext: '',
+    objectionDebt: '',
+    forecastEvidenceCategory: 'Defensible',
+    decisionRecommendation: 'Monitor',
+    status: index % 2 === 0 ? 'Won' : 'Lost',
+    createdAt: '2025-01-01T00:00:00.000Z',
+    updatedAt: '2026-07-01T00:00:00.000Z',
+    storageMode: 'local',
+  }));
+
+  const learningOutcomes = learningOpportunities.map((opportunity, index) => ({
+    id: `lout-${index}`,
+    opportunityId: opportunity.id,
+    accountName: opportunity.accountName,
+    opportunityName: opportunity.opportunityName,
+    outcome: index % 2 === 0 ? 'Won' : 'Lost',
+    outcomeDate: `2026-0${(index % 6) + 1}-1${index % 9}`,
+    finalAmount: opportunity.estimatedValue,
+    currency: 'VND',
+    forecastEvidenceCategoryBeforeOutcome: 'Defensible',
+    decisionRecommendationBeforeOutcome: 'Defend',
+    stageBeforeOutcome: 'Proposal',
+    pipelineProbabilityBeforeOutcome: null,
+    reasonCategory: 'Technical fit',
+    reasonText: '',
+    createdAt: '2026-07-01T00:00:00.000Z',
+    updatedAt: '2026-07-01T00:00:00.000Z',
+    storageMode: 'local',
+  }));
+
+  const learningActivities = Array.from({ length: LEARNING_SCALE.activities }, (unused, index) => ({
+    id: `lact-${index}`,
+    accountName: `Account ${index % 200}`,
+    opportunityName: '',
+    activityType: 'Customer meeting',
+    activityChannel: index % 3 === 0 ? 'On-site visit' : 'Email / message',
+    summary: '',
+    nextAction: '',
+    dueDate: '',
+    tags: [],
+    rawNote: '',
+    activityDate: '2026-02-10',
+    linkedOpportunityId: `lopp-${index % LEARNING_SCALE.opportunities}`,
+    linkedOpportunityName: '',
+    linkedAccountName: `Account ${index % 200}`,
+    linkStatus: 'Linked',
+    createdAt: '2026-02-10T00:00:00.000Z',
+    updatedAt: '2026-02-10T00:00:00.000Z',
+    storageMode: 'local',
+  }));
+
+  const learningEvidence = Array.from({ length: LEARNING_SCALE.evidence }, (unused, index) => ({
+    id: `lev-${index}`,
+    userId: null,
+    accountName: `Account ${index % 200}`,
+    accountId: '',
+    opportunityId: `lopp-${index}`,
+    threadId: null,
+    category: 'technical_outcome',
+    direction: index % 3 === 0 ? 'negative' : 'positive',
+    summary: 'Trial result',
+    evidenceText: 'Trial completed at the plant and the results were reviewed.',
+    observedAt: '2026-01-15',
+    recordedAt: '2026-01-15T00:00:00.000Z',
+    sourceActivityId: null,
+    sourceType: 'capture',
+    sourceId: null,
+    sourceUrl: null,
+    sourceUpdatedAt: null,
+    createdAt: '2026-01-15T00:00:00.000Z',
+    updatedAt: '2026-01-15T00:00:00.000Z',
+  }));
+
+  measure('personalLearning', () => derivePersonalLearning({
+    opportunities: learningOpportunities,
+    opportunityOutcomes: learningOutcomes,
+    activities: learningActivities,
+    stakeholders: [],
+    objections: [],
+    quotes: [],
+    commitments: [],
+    evidence: learningEvidence,
+    today: new Date('2026-08-02T00:00:00.000Z'),
+  }));
+  console.log(
+    `  learning: ${LEARNING_SCALE.opportunities} closed deals, `
+    + `${LEARNING_SCALE.activities} activities, ${LEARNING_SCALE.evidence} findings`,
+  );
+}
+
+// Commercial scope resolution, at the moment it actually runs.
+//
+// Once per keystroke in the worst case, against a book with many deals on the
+// same customer. What this notices is the day it starts reading the whole
+// workspace instead of one account's deals.
+{
+  const scopeOpportunities = opportunities.map((opportunity) => ({
+    id: opportunity.id,
+    accountName: opportunity.accountName,
+    opportunityName: opportunity.opportunityName,
+    status: opportunity.status,
+    createdAt: opportunity.createdAt,
+  }));
+  const busiestAccount = scopeOpportunities[0]?.accountName || '';
+
+  measure('resolveCommercialScope', () => resolveCommercialScope({
+    accountName: busiestAccount,
+    rawNote: 'Met the QC team today. Trial passed but purchasing still needs to decide.',
+    captureDate: '2026-08-02',
+    opportunities: scopeOpportunities,
+  }));
+
+  // The Review-time pass: every unlinked activity, against the deals on its own
+  // customer rather than against all of them.
+  const unlinked = activities.map((activity, index) => ({
+    ...activity,
+    id: `link-${index}`,
+    linkStatus: 'Unlinked',
+    linkedOpportunityId: '',
+    linkedAccountName: activity.accountName,
+  }));
+  measure('suggestHistoricalLinks', () => suggestHistoricalLinks({
+    activities: unlinked,
+    opportunities: scopeOpportunities,
+  }));
+  console.log(`  linkage: ${unlinked.length} unlinked touches against ${scopeOpportunities.length} deals`);
+}
 
 // Deriving is not what makes the app feel slow - every model above lands in
 // single-digit milliseconds. The wait is the network: one barrier over sixteen

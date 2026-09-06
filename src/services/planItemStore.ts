@@ -6,8 +6,8 @@ import {
   mergeCloudJsonRecords,
   syncCloudJsonCollectionForCurrentUser,
   sendOwedCloudJsonRecords,
-} from './cloudJsonCollectionStore';
-import { invalidateWorkspaceCollection } from './workspaceDataCache';
+} from './cloudJsonCollectionStore.ts';
+import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
 import { normalizeActivityChannel } from '../utils/activityChannel.ts';
 

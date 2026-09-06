@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Archive, ArchiveRestore, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, Database, Eye, Filter, Grid3x3, Plus, RefreshCw, Save, Search, Star, Trash2, Upload, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { ThreadsSection } from '../threads/ThreadsSection';
+import { DeltaPanel } from '../threads/DeltaPanel';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
@@ -858,6 +859,15 @@ export function AccountsPage() {
           busy={saveState === 'saving'}
           onCreate={handleCreateCandidate}
           onCreateAll={handleCreateAllCandidates}
+        />
+      )}
+
+      {/* What actually moved on this customer, above the threads that describe
+          where they stand. Only with an account selected: "what changed" is a
+          question about somebody, and across the whole book it is a newsfeed. */}
+      {selectedAccount && (
+        <DeltaPanel
+          subject={{ kind: 'account', id: selectedAccount.id, name: selectedAccount.accountName }}
         />
       )}
 

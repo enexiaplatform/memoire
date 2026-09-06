@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { trackProductEvent } from '../../utils/productAnalytics';
 import { AlertTriangle, Info } from 'lucide-react';
-import type { Recommendation, Severity } from '../../domain/commercialKernel/policyEngine';
+import type { Severity } from '../../domain/commercialKernel/policyEngine';
+import type { RankedRecommendation } from '../../domain/commercialKernel/rankRecommendations';
 import { SavedByMemoirePrompt } from '../value/SavedByMemoirePrompt';
 
 const severityTone: Record<Severity, string> = {
@@ -10,6 +11,32 @@ const severityTone: Record<Severity, string> = {
   high: 'border-amber-200 bg-amber-50/60',
   medium: 'border-gray-200 bg-white',
   low: 'border-gray-100 bg-white',
+};
+
+/**
+ * The three ordinal dimensions, in words.
+ *
+ * Shown so "why is this above that one" is answerable by reading two rows
+ * rather than by trusting a number. The fourth dimension - the money - is
+ * already a sentence in the rationale, with the real figure in it.
+ */
+const urgencyLabel: Record<RankedRecommendation['urgency'], string> = {
+  now: 'the moment has passed',
+  this_week: 'due this week',
+  soon: 'on the horizon',
+  whenever: 'no deadline',
+};
+
+const unblockingLabel: Record<RankedRecommendation['unblocking'], string> = {
+  unblocks: 'unblocks the thread',
+  advances: 'advances it',
+  tidies: 'tidies the record',
+};
+
+const evidenceLabel: Record<RankedRecommendation['evidence'], string> = {
+  specific: 'from a specific record',
+  partial: 'from the history',
+  absence_only: 'from something missing',
 };
 
 const severityLabel: Record<Severity, string> = {
@@ -33,7 +60,12 @@ export function CommercialRiskPanel({
   limit = 5,
   title = 'Going silent',
 }: {
-  recommendations: Recommendation[];
+  /**
+   * Ranked by the kernel, and rendered in the order it hands them over. This
+   * panel does not sort, weight or score - it draws the one order the product
+   * has, so Today and Review cannot disagree about the same book.
+   */
+  recommendations: RankedRecommendation[];
   limit?: number;
   title?: string;
 }) {
@@ -75,9 +107,18 @@ export function CommercialRiskPanel({
           <li key={item.id} className={`rounded-lg border p-3 ${severityTone[item.severity]}`}>
             <div className="flex flex-wrap items-start justify-between gap-2">
               <p className="min-w-0 flex-1 text-sm leading-5 text-gray-900">{item.reasonText}</p>
-              <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-bold uppercase text-gray-500 ring-1 ring-gray-200">
-                {severityLabel[item.severity]}
-              </span>
+              <div className="flex shrink-0 items-center gap-1.5">
+                {/* Said once, on the one it applies to. A list where every row
+                    is labelled is a list with no first row. */}
+                {item.rank === 1 && (
+                  <span className="rounded-full bg-navy px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+                    Best move
+                  </span>
+                )}
+                <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold uppercase text-gray-500 ring-1 ring-gray-200">
+                  {severityLabel[item.severity]}
+                </span>
+              </div>
             </div>
 
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -86,7 +127,7 @@ export function CommercialRiskPanel({
                 onClick={() => trackProductEvent('commercial_risk_acted_on')}
                 className="text-xs font-bold text-brand-blue hover:underline"
               >
-                {item.recommendedAction}
+                {item.candidateAction || item.recommendedAction}
               </Link>
               <button
                 type="button"
@@ -101,6 +142,25 @@ export function CommercialRiskPanel({
 
             {explaining === item.id && (
               <dl className="mt-2 rounded-lg bg-white/70 p-2 text-[11px] leading-5 text-gray-600 ring-1 ring-gray-100">
+                {/* Why it sits where it sits, in sentences. There is no score to
+                    show, because the order is decided by named dimensions in a
+                    fixed precedence rather than by a weighted total. */}
+                <div className="mb-1.5">
+                  <dt className="font-bold text-gray-500">
+                    {item.rank === 1 ? 'Why this is first:' : `Why this is #${item.rank}:`}
+                  </dt>
+                  <dd>
+                    <ul className="mt-0.5 list-disc space-y-0.5 pl-4">
+                      {item.rationale.map((line) => <li key={line}>{line}</li>)}
+                    </ul>
+                  </dd>
+                </div>
+                <div className="flex gap-2">
+                  <dt className="font-bold text-gray-500">Weighed as:</dt>
+                  <dd>
+                    {urgencyLabel[item.urgency]} · {unblockingLabel[item.unblocking]} · {evidenceLabel[item.evidence]}
+                  </dd>
+                </div>
                 <div className="flex gap-2">
                   <dt className="font-bold text-gray-500">Rule:</dt>
                   <dd><code>{item.reasonCode}</code></dd>

@@ -18,6 +18,16 @@ export type PersonalSalesLearningInsight = {
   type: PersonalSalesLearningInsightType;
   title: string;
   pattern: string;
+  /**
+   * Historically named for a stronger claim than the counting behind it
+   * supports: this is a frequency over the reasons the operator typed on their
+   * own retros, not a comparison of behaviour against outcome. The wording was
+   * softened in 4.1 because it now sits beside Personal Commercial Learning,
+   * which states its sample and refuses to conclude below it - and a confident
+   * instruction next to a careful comparison teaches the reader to distrust the
+   * careful one. The field name is left alone deliberately; renaming it is a
+   * refactor and this was a copy change.
+   */
   suggestedBehaviorChange: string;
   frequency: number;
   relatedAccounts: string[];
@@ -123,9 +133,9 @@ function buildReasonInsights(outcomes: OpportunityOutcomeRecord[]): PersonalSale
     .map(({ key, items }) => ({
       id: `reason-${slugify(key)}`,
       type: 'Recurring loss reason' as const,
-      title: `${key} is repeating in lost/delayed deals`,
+      title: `${key} keeps appearing in lost and delayed deals`,
       pattern: `${key} appeared in ${items.length} lost/delayed/no-decision outcome${items.length === 1 ? '' : 's'}.`,
-      suggestedBehaviorChange: `Add explicit ${key.toLowerCase()} proof before moving similar deals to Defend.`,
+      suggestedBehaviorChange: `Worth checking: do similar open deals have ${key.toLowerCase()} proof recorded before you defend them?`,
       frequency: items.length,
       relatedAccounts: unique(items.map((item) => item.accountName)),
       relatedOpportunities: unique(items.map((item) => item.opportunityName)),
@@ -139,9 +149,9 @@ function buildWinSignalInsights(outcomes: OpportunityOutcomeRecord[]): PersonalS
     .map(({ key, items }) => ({
       id: `win-signal-${slugify(key)}`,
       type: 'Recurring win signal' as const,
-      title: `${key} correlates with wins`,
+      title: `${key} was written down on deals you won`,
       pattern: `${key} showed up in ${items.length} won deal${items.length === 1 ? '' : 's'}.`,
-      suggestedBehaviorChange: `Look for ${key.toLowerCase()} signal early and capture it as forecast evidence.`,
+      suggestedBehaviorChange: `Worth checking: is ${key.toLowerCase()} recorded on the deals you are forecasting now?`,
       frequency: items.length,
       relatedAccounts: unique(items.map((item) => item.accountName)),
       relatedOpportunities: unique(items.map((item) => item.opportunityName)),
@@ -157,7 +167,7 @@ function buildEvidenceGapInsights(outcomes: OpportunityOutcomeRecord[]): Persona
       type: 'Evidence gap' as const,
       title: `${label} keeps showing up as missing evidence`,
       pattern: `${label} was missing in ${items.length} lost/delayed/no-decision deal${items.length === 1 ? '' : 's'}.`,
-      suggestedBehaviorChange: `Capture ${label.toLowerCase()} before treating similar deals as review-ready.`,
+      suggestedBehaviorChange: `Worth checking: is ${label.toLowerCase()} recorded on the deals you are taking into review?`,
       frequency: items.length,
       relatedAccounts: unique(items.map((item) => item.accountName)),
       relatedOpportunities: unique(items.map((item) => item.opportunityName)),
@@ -173,7 +183,7 @@ function buildObjectionInsights(outcomes: OpportunityOutcomeRecord[]): PersonalS
       type: 'Objection pattern' as const,
       title: `${label} objection mattered repeatedly`,
       pattern: `${label} appeared in ${items.length} lost/delayed/no-decision retro${items.length === 1 ? '' : 's'}.`,
-      suggestedBehaviorChange: `Prepare proof for ${label.toLowerCase()} before forecast review.`,
+      suggestedBehaviorChange: `Worth checking: is there an answer on file for ${label.toLowerCase()} on the deals you are defending?`,
       frequency: items.length,
       relatedAccounts: unique(items.map((item) => item.accountName)),
       relatedOpportunities: unique(items.map((item) => item.opportunityName)),
@@ -192,7 +202,7 @@ function buildOverconfidenceInsights(outcomes: OpportunityOutcomeRecord[]): Pers
     type: 'Forecast overconfidence',
     title: 'Some defended deals later slipped or lost',
     pattern: `${overconfident.length} deal${overconfident.length === 1 ? '' : 's'} marked Defend/Defensible later became lost, delayed, or no-decision.`,
-    suggestedBehaviorChange: 'Before defending, check whether the next action is customer-confirmed and whether decision path evidence exists.',
+    suggestedBehaviorChange: 'Worth checking on the deals you are defending now: is the next action customer-confirmed, and is the decision path recorded?',
     frequency: overconfident.length,
     relatedAccounts: unique(overconfident.map((item) => item.accountName)),
     relatedOpportunities: unique(overconfident.map((item) => item.opportunityName)),
@@ -207,9 +217,9 @@ function buildWinPocketInsights(outcomes: OpportunityOutcomeRecord[]): PersonalS
     .map(({ key, items }) => ({
       id: `win-pocket-${slugify(key)}`,
       type: 'Win pocket' as const,
-      title: `Wins are clustering from ${key}`,
+      title: `Several wins were at ${key} when they closed`,
       pattern: `${items.length} won deal${items.length === 1 ? '' : 's'} had pre-outcome stage ${key}.`,
-      suggestedBehaviorChange: `Compare active ${key.toLowerCase()} deals against the evidence that supported these wins.`,
+      suggestedBehaviorChange: `Worth comparing: what did these wins have recorded at ${key.toLowerCase()} that your open deals do not?`,
       frequency: items.length,
       relatedAccounts: unique(items.map((item) => item.accountName)),
       relatedOpportunities: unique(items.map((item) => item.opportunityName)),

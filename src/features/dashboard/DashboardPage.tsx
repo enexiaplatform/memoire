@@ -427,7 +427,7 @@ export function TodayPage() {
   ), [advancedInsightsOpen, data]);
   // The Commercial Kernel view of the same workspace: threads derived from the
   // records already loaded, and the deterministic recommendations about them.
-  const { threads: commercialThreads, recommendations: kernelRecommendations } = useCommercialThreads();
+  const { threads: commercialThreads, rankedRecommendations: kernelRecommendations } = useCommercialThreads();
 
   // The quietest threads are the point of a control tower - a thread that has
   // been moving does not need watching.

@@ -75,7 +75,9 @@ export function buildWhatChangedDigest({
       changes.push({
         id: `overdue-action-${action.id}`,
         type: 'overdue_action',
-        title: 'Action became overdue',
+        // A state, not a moment. Nothing recorded when it crossed the line, so
+        // "became overdue" was asserting a transition off a due date.
+        title: 'Action is overdue',
         description: withEntity(action.title, accountById.get(action.account_id || '')?.name || action.account?.name),
         entityType: 'action',
         entityId: action.id,
@@ -143,23 +145,18 @@ export function buildWhatChangedDigest({
       });
     });
 
-  opportunities
-    .filter((opportunity) => isRecent(opportunity.updated_at, cutoff) && opportunity.stage !== 'new')
-    .forEach((opportunity) => {
-      changes.push({
-        id: `opportunity-stage-${opportunity.id}`,
-        type: 'opportunity_stage_changed',
-        title: 'Opportunity stage updated',
-        description: withEntity(`${opportunity.title} is now ${opportunity.stage}.`, accountById.get(opportunity.account_id || '')?.name || opportunity.account?.name),
-        entityType: 'opportunity',
-        entityId: opportunity.id,
-        accountId: opportunity.account_id || undefined,
-        opportunityId: opportunity.id,
-        severity: 'medium',
-        suggestedReviewAction: opportunity.next_action_text ? 'Review the next action.' : 'Add a next action for this stage.',
-        createdAt: opportunity.updated_at,
-      });
-    });
+  // Removed: an "Opportunity stage updated" row built from `updated_at`.
+  //
+  // `updated_at` proves a record changed. It does not prove WHICH field changed,
+  // so a typo fixed in the notes produced "Opportunity stage updated" over a
+  // stage nobody had touched - a confident sentence about an event that never
+  // happened, on every deal edited that fortnight.
+  //
+  // Observed stage moves now come from the Commercial Kernel, which records the
+  // before and the after at the moment of the change:
+  // `domain/commercialKernel/opportunityChanges.ts` writes them and
+  // `domain/commercialKernel/deriveDelta.ts` reads them. This module is frozen;
+  // `scripts/verify-delta-intelligence.mjs` keeps the fake transition out.
 
   return dedupe(changes)
     .sort((a, b) => severityRank[a.severity] - severityRank[b.severity] || b.createdAt.localeCompare(a.createdAt))

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ThreadsSection } from '../threads/ThreadsSection';
+import { DeltaPanel } from '../threads/DeltaPanel';
 import {
   AlertTriangle,
   ArrowUpDown,
@@ -1472,6 +1473,22 @@ export function OpportunitiesPage() {
             ]);
           } : undefined}
         />
+      )}
+
+      {/* What moved on this deal since a fortnight ago, read before the thread
+          it belongs to. Scoped to the open deal - an account-wide delta here
+          would attribute another deal's objection to this one. */}
+      {editingOpportunity && (
+        <div className="mt-6">
+          <DeltaPanel
+            subject={{
+              kind: 'opportunity',
+              id: editingOpportunity.id,
+              name: editingOpportunity.opportunityName,
+              accountName: editingOpportunity.accountName,
+            }}
+          />
+        </div>
       )}
 
       {/* The same thread component every other surface uses. When a deal is
@@ -3318,7 +3335,7 @@ function OpportunityPanel({
                 View Account Memory
               </Link>
               <Link
-                to={`/app/capture?mode=quick&account=${encodeURIComponent(editingOpportunity.accountName)}&opportunity=${encodeURIComponent(editingOpportunity.opportunityName)}`}
+                to={`/app/capture?mode=quick&account=${encodeURIComponent(editingOpportunity.accountName)}&opportunity=${encodeURIComponent(editingOpportunity.opportunityName)}&opportunityId=${encodeURIComponent(editingOpportunity.id)}`}
                 className="inline-flex rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:border-emerald-300"
               >
                 Capture Update
@@ -4182,7 +4199,7 @@ function StakeholderMap({
             <Link to={`/app/stakeholders?accountName=${encodeURIComponent(opportunity.accountName)}&opportunityName=${encodeURIComponent(opportunity.opportunityName)}`} className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">
               Add stakeholder
             </Link>
-            <Link to={`/app/capture?mode=quick&account=${encodeURIComponent(opportunity.accountName)}&opportunity=${encodeURIComponent(opportunity.opportunityName)}`} className="rounded-full border border-emerald-100 bg-white px-3 py-1.5 text-xs font-bold text-emerald-700">
+            <Link to={`/app/capture?mode=quick&account=${encodeURIComponent(opportunity.accountName)}&opportunity=${encodeURIComponent(opportunity.opportunityName)}&opportunityId=${encodeURIComponent(opportunity.id)}`} className="rounded-full border border-emerald-100 bg-white px-3 py-1.5 text-xs font-bold text-emerald-700">
               Capture meeting note
             </Link>
             <span className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-xs font-bold text-amber-700">

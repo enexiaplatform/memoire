@@ -11,6 +11,7 @@ const KERNEL_TABLES = [
   'commercial_commitments',
   'commercial_events',
   'commercial_value_outcomes',
+  'commercial_evidence',
 ];
 
 const migrationsDir = 'supabase/migrations';
@@ -25,10 +26,25 @@ const migrationSql = migrationFiles
 {
   const kernelMigration = readFileSync(`${migrationsDir}/20260726140000_commercial_kernel.sql`, 'utf8').toLowerCase();
 
+  // Read across every migration, not just the founding one: the kernel grew a
+  // fifth table in a file of its own, and pinning this to one filename would
+  // mean a new kernel table could only ever be added by editing history.
   for (const table of KERNEL_TABLES) {
     assert.ok(
-      new RegExp(`create table if not exists public\\.${table}`).test(kernelMigration),
-      `migration must create public.${table} idempotently`,
+      new RegExp(`create table if not exists public\\.${table}`).test(migrationSql),
+      `a migration must create public.${table} idempotently`,
+    );
+    assert.ok(
+      new RegExp(`alter table public\\.${table} enable row level security`).test(migrationSql),
+      `public.${table} must have row level security enabled`,
+    );
+    assert.ok(
+      new RegExp(`revoke all on table public\\.${table} from anon`).test(migrationSql),
+      `public.${table} must be revoked from anon`,
+    );
+    assert.ok(
+      new RegExp(`grant select, insert, update, delete on table public\\.${table} to authenticated`).test(migrationSql),
+      `public.${table} must be granted only to authenticated`,
     );
   }
 

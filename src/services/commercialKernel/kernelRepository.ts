@@ -9,7 +9,8 @@ export type KernelTable =
   | 'commercial_threads'
   | 'commercial_commitments'
   | 'commercial_events'
-  | 'commercial_value_outcomes';
+  | 'commercial_value_outcomes'
+  | 'commercial_evidence';
 
 export type KernelRecord = {
   id: string;
@@ -63,6 +64,7 @@ function workspaceCollectionForTable(table: KernelTable) {
   if (table === 'commercial_commitments') return 'commitments';
   if (table === 'commercial_threads') return 'threads';
   if (table === 'commercial_value_outcomes') return 'valueOutcomes';
+  if (table === 'commercial_evidence') return 'evidence';
   return 'commercialEvents';
 }
 
@@ -143,6 +145,45 @@ export async function loadCloudRecords<T extends KernelRecord>(
 
   return data
     .map(codec.fromRow)
+    .filter((record): record is T => Boolean(record));
+}
+
+/**
+ * A bounded slice of a kernel table, newest first.
+ *
+ * `loadCloudRecords` above reads every row, which is right for commitments and
+ * threads - collections that grow with the number of promises a person makes.
+ * The event log is different in kind: it grows with every state change forever,
+ * and nothing on screen ever needs all of it. Reading it unbounded would put an
+ * ever-growing payload on a workspace load that is already dominated by
+ * accounts and stakeholders.
+ *
+ * Both the time window and the row cap are the caller's, so the bound is
+ * declared where the reason for it lives rather than hidden in the repository.
+ */
+export async function loadCloudRecordsSince<T extends KernelRecord>(
+  codec: KernelCodec<T>,
+  userId: string,
+  sinceColumn: string,
+  sinceIso: string,
+  limit: number,
+): Promise<T[]> {
+  if (!supabaseClient) return [];
+
+  const { data, error } = await supabaseClient
+    .from(codec.table)
+    .select('*')
+    .eq('user_id', userId)
+    .gte(sinceColumn, sinceIso)
+    .order(sinceColumn, { ascending: false })
+    // Total order, so the cap always takes the same rows. See `fetchAllRows`.
+    .order('id', { ascending: true })
+    .limit(limit);
+
+  if (error) throw new Error(error.message);
+
+  return (data || [])
+    .map((row) => codec.fromRow(row as Record<string, unknown>))
     .filter((record): record is T => Boolean(record));
 }
 
@@ -285,7 +326,7 @@ function updatedAt(record: KernelRecord) {
   return record.updatedAt || record.createdAt || '';
 }
 
-function reportKernelSyncFailure(table: KernelTable, operation: 'load' | 'upsert' | 'delete', error: unknown) {
+export function reportKernelSyncFailure(table: KernelTable, operation: 'load' | 'upsert' | 'delete', error: unknown) {
   reportClientOperationalEvent({
     eventName: 'cloud_json_sync_failed',
     component: 'commercialKernelRepository',

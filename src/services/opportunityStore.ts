@@ -5,6 +5,7 @@ import { sanitizeBusinessDate } from '../utils/safeDate.ts';
 import { reconcileOpportunityOutcome } from '../utils/opportunityOutcome.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
 import { fetchAllRows } from './supabasePaging.ts';
+import { recordOpportunityStateChanges } from '../domain/commercialKernel/opportunityChanges.ts';
 
 export const OPPORTUNITY_STORAGE_KEY = 'memoire.opportunities.v1';
 
@@ -227,11 +228,33 @@ export async function updateOpportunity(
 ): Promise<{ opportunity: CrmLiteOpportunity; mode: 'local' | 'cloud'; warning?: string }> {
   const normalized = normalizeOpportunityInput(input);
 
+  /**
+   * Notes which of the four watched fields actually moved.
+   *
+   * Called after the record is safely written, never before: the edit is the
+   * canonical act, and history that fails to record must not take the operator's
+   * change with it. `updated_at` moves on every save and can never answer "what
+   * changed" - this is the only moment the previous value still exists.
+   */
+  const noteObservedChanges = () => {
+    try {
+      recordOpportunityStateChanges(
+        { userId: userId ?? null, sampleDataActive: opportunity.isSample === true },
+        opportunity,
+        normalized,
+      );
+    } catch {
+      // History is a by-product. A failure here is never allowed to surface as
+      // a failed save.
+    }
+  };
+
   if (opportunity.storageMode === 'cloud' && canUseOpportunityCloudStore(userId)) {
     try {
       const updated = await updateCloudOpportunity(opportunity.id, normalized, userId as string);
       saveLocalOpportunityRecord({ ...updated, storageMode: 'local' });
       invalidateWorkspaceCollection('opportunities');
+      noteObservedChanges();
       return { opportunity: updated, mode: 'cloud' };
     } catch (error) {
       reportWorkspaceSyncError();
@@ -244,6 +267,7 @@ export async function updateOpportunity(
       saveLocalOpportunityRecord(localCopy);
       invalidateWorkspaceCollection('opportunities');
       debugOpportunityStore('cloud update failed; local copy preserved', { message: getErrorMessage(error) });
+      noteObservedChanges();
       return {
         opportunity: localCopy,
         mode: 'local',
@@ -260,6 +284,7 @@ export async function updateOpportunity(
   };
   saveLocalOpportunityRecord(updated);
   invalidateWorkspaceCollection('opportunities');
+  noteObservedChanges();
   return { opportunity: updated, mode: 'local' };
 }
 

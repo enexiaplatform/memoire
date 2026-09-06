@@ -21,6 +21,67 @@ export type CaptureEntityResolution = {
   matchedAlias?: string;
 };
 
+
+/**
+ * The ways a note says a person was met, in one list.
+ *
+ * There were two hand-written copies of this - one here, one in the capture
+ * parser - which is why "had a chat with Nguyen Thi Lan" produced neither a
+ * contact nor a stakeholder while "met Nguyen Thi Lan" produced both. A phrase
+ * added here now improves both readers at once, which is the only reason this
+ * is exported rather than inlined twice more.
+ *
+ * It stays a list of *contact* phrasings and does not grow into a general verb
+ * dictionary: every entry has to be a way of saying two people were in the same
+ * conversation, because that is the only thing that licenses proposing a
+ * stakeholder. "Heard from", "was told by" and "chased" are deliberately absent
+ * - they describe a message, not a meeting, and the person on the other end may
+ * be someone the note never actually names.
+ */
+export const personContactCues = [
+  'met',
+  'met with',
+  'visited',
+  'called',
+  'saw',
+  'emailed',
+  'spoke to',
+  'spoke with',
+  'call with',
+  'meeting with',
+  'sat down with',
+  'caught up with',
+  'had a chat with',
+  'had a call with',
+  'had a meeting with',
+  'had a catch-up with',
+] as const;
+
+/**
+ * The cue list as a regex fragment.
+ *
+ * Longest first, because alternation is leftmost-first and "met" would
+ * otherwise win against "met with" and leave "with" in front of the name.
+ *
+ * The first letter of each phrase accepts either case while the rest does not,
+ * and the pattern is built without the `i` flag on purpose: the capital letter
+ * at the start of the *name* is the only thing separating a person from the
+ * ordinary words around them, so case-folding the whole expression would make
+ * "met the team" propose a stakeholder called "The".
+ */
+export function personContactCuePattern(): string {
+  const alternatives = [...personContactCues]
+    .sort((left, right) => right.length - left.length)
+    .map((phrase) => phrase
+      .split(' ')
+      .map((word, index) => (index === 0
+        ? `[${word[0].toUpperCase()}${word[0]}]${word.slice(1)}`
+        : word))
+      .join('\\s+')
+      .replace(/-/g, '-?'));
+  return `(?:${alternatives.join('|')})`;
+}
+
 export function resolveCaptureEntities(input: {
   rawNote: string;
   accountName?: string;
@@ -162,9 +223,11 @@ function resolveContact(rawNote: string, candidate: string) {
   // while the company half of the same sentence was being filed as the account
   // name - so the one note produced no person and a wrong customer. The company
   // must start with a capital too, which is what stops "called Minh at 9am".
-  const positional = rawNote.match(
-    /\b(?:[Mm]et|[Vv]isited|[Cc]alled|[Ss]aw|[Ee]mailed|[Ss]poke\s+(?:to|with))\s+(?:with\s+)?(\p{Lu}[\p{L}'’-]{1,30}(?:\s+\p{Lu}[\p{L}'’-]{1,30}){0,2})\s+(?:at|from|of)\s+\p{Lu}/u,
-  )?.[1] || '';
+  const positional = rawNote.match(new RegExp(
+    `\\b${personContactCuePattern()}\\s+(?:with\\s+)?`
+    + `(\\p{Lu}[\\p{L}'’-]{1,30}(?:\\s+\\p{Lu}[\\p{L}'’-]{1,30}){0,2})\\s+(?:at|from|of)\\s+\\p{Lu}`,
+    'u',
+  ))?.[1] || '';
   if (positional && !looksLikeOrganization(positional)) return cleanEntity(positional);
 
   if (candidate && includesPhrase(rawNote, candidate) && !looksLikeOrganization(candidate)) return cleanEntity(candidate);

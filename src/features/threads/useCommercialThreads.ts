@@ -10,6 +10,9 @@ import {
   evaluateCommercialPolicies,
   type Recommendation,
 } from '../../domain/commercialKernel/policyEngine';
+import { rankRecommendations } from '../../domain/commercialKernel/rankRecommendations';
+import { derivePersonalLearning } from '../../domain/commercialLearning/derivePersonalLearning';
+import { personalEvidenceFor } from '../../domain/commercialLearning/personalEvidenceFor';
 import { scorePipelineQualification } from '../../utils/dealQualificationScore';
 import { buildCoverage } from '../../domain/commercialKernel/forecast';
 import {
@@ -163,11 +166,88 @@ export function useCommercialThreads() {
       opportunities: workspace.opportunities,
       quotes: workspace.quotes,
       coverage,
+      // What the seller has recorded learning. Without it, "nothing recorded
+      // supports that stage" is said over a deal whose trial result is on file.
+      evidence: workspace.evidence,
       // In the demo, the sample data is the workspace. Anywhere else, a demo
       // record must never raise a real risk.
       includeSampleRecords: sampleDataActive,
     });
   }, [commitments, coverage, sampleDataActive, threads, workspace]);
 
-  return { threads, recommendations, coverage, qualification, workspace, loading };
+  /**
+   * The same recommendations, in the order they are worth doing.
+   *
+   * Ranked here rather than in each surface, so Today and Review cannot put the
+   * same book in two different orders. There is no delta at this scope - it
+   * covers the whole workspace, and a delta belongs to one subject - so this is
+   * the deterministic order from urgency, unblocking power, evidence and value.
+   * A subject-scoped surface re-ranks with its own observed changes; see
+   * `useCommercialDelta`.
+   */
+  /**
+   * What the seller's own closed deals show, measured once per workspace.
+   *
+   * Memoised on the workspace rather than computed per surface: it walks every
+   * closed deal once per pattern, and Today re-renders far more often than the
+   * book of closed deals changes.
+   *
+   * It produces evidence, never a candidate. See `personalEvidenceFor` for why
+   * only a matured, dimension-relevant pattern reaches a rationale at all, and
+   * why none of it changes the order.
+   */
+  const bookLearning = useMemo(() => {
+    if (!workspace) return null;
+    return derivePersonalLearning({
+      opportunities: workspace.opportunities,
+      opportunityOutcomes: workspace.opportunityOutcomes,
+      activities: workspace.activities,
+      stakeholders: workspace.stakeholders,
+      objections: workspace.objections,
+      quotes: workspace.quotes,
+      commitments: workspace.commitments,
+      evidence: workspace.evidence,
+      includeSampleRecords: sampleDataActive,
+    });
+  }, [sampleDataActive, workspace]);
+
+  const ranking = useMemo(() => {
+    if (!workspace) return null;
+    return rankRecommendations({
+      recommendations,
+      opportunities: workspace.opportunities,
+      quotes: workspace.quotes,
+      commitments,
+      objections: workspace.objections,
+      qualification,
+      // Rationale lines only. Nothing here moves a recommendation up or down.
+      personalEvidence: personalEvidenceFor(bookLearning?.patterns || [], recommendations),
+    });
+  }, [bookLearning, commitments, qualification, recommendations, workspace]);
+
+  // `planItems` is returned as well as consumed: the promises on the Plan are
+  // where completions are actually recorded, so Delta needs the same list this
+  // hook already loaded rather than fetching it a second time.
+  return {
+    threads,
+    recommendations,
+    /**
+     * The ledger plus the promises derived from the Plan and from captures.
+     *
+     * Returned because every consumer that reasons about "is anything scheduled
+     * here" must see the same list the policy engine saw. The stored ledger
+     * alone is empty on most workspaces, so a consumer reading `workspace.commitments`
+     * would conclude nothing is ever scheduled.
+     */
+    commitments,
+    rankedRecommendations: ranking?.ranked || [],
+    suppressedRecommendations: ranking?.suppressed || [],
+    coverage,
+    qualification,
+    /** What the closed deals show. Evidence for Review; never a recommendation. */
+    bookLearning,
+    workspace,
+    planItems,
+    loading,
+  };
 }

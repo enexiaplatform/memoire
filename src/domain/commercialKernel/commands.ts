@@ -28,8 +28,16 @@ import {
 import { loadThreads, newThreadId, saveThread } from '../../services/commercialKernel/threadStore.ts';
 import { appendEvent, newEventId } from '../../services/commercialKernel/eventStore.ts';
 import { newValueOutcomeId, saveValueOutcome } from '../../services/commercialKernel/valueOutcomeStore.ts';
+import { newEvidenceId, saveCommercialEvidence } from '../../services/commercialKernel/evidenceStore.ts';
+import {
+  evidenceCategoryLabels,
+  type CommercialEvidence,
+  type EvidenceCategory,
+  type EvidenceDirection,
+} from './commercialEvidence.ts';
 import { loadTargets, saveTarget, type CommercialTarget } from '../../services/commercialKernel/targetStore.ts';
 import type { ForecastQuarter } from './forecast.ts';
+import { sanitizeBusinessDate } from '../../utils/safeDate.ts';
 
 /**
  * Application commands: the only place a Commercial Kernel record changes state.
@@ -643,4 +651,99 @@ export function recordValueOutcome(
   });
 
   return ok(outcome, event);
+}
+
+// ---------------------------------------------------- commercial evidence
+
+export type RecordCommercialEvidenceInput = {
+  accountName: string;
+  accountId?: string;
+  opportunityId?: string | null;
+  threadId?: string | null;
+  category: EvidenceCategory;
+  direction: EvidenceDirection;
+  summary: string;
+  /** The operator's own sentence. Required; see below. */
+  evidenceText: string;
+  /** The business day it was observed. Defaults to today. */
+  observedAt?: string;
+  sourceActivityId?: string | null;
+  sourceType?: SourceType;
+  sourceId?: string | null;
+};
+
+/**
+ * Writes down something the seller learned.
+ *
+ * The two rejections are the whole point of routing this through a command.
+ * A claim with no customer belongs to nobody, and a claim with no sentence
+ * behind it cannot be checked by the person it will later be shown to - which
+ * is the difference between evidence and an assertion. Both are refused here,
+ * once, rather than defended in each surface that might write one.
+ *
+ * Nothing is overwritten. A later observation supersedes an earlier one at read
+ * time (see `projectCurrentEvidence`); the earlier record stays exactly as it
+ * was recorded, because a trial that failed on the 1st really did fail on the
+ * 1st and a summary that tidies that away is lying about the deal.
+ */
+export function recordCommercialEvidence(
+  scope: CommercialScope,
+  input: RecordCommercialEvidenceInput,
+): CommandResult<CommercialEvidence> {
+  const accountName = input.accountName.trim();
+  if (!accountName) return fail('Evidence needs a customer.');
+
+  const evidenceText = input.evidenceText.trim();
+  if (!evidenceText) return fail('Evidence needs the sentence it came from.');
+
+  const timestamp = now();
+  const observedAt = sanitizeBusinessDate(input.observedAt || '') || timestamp.slice(0, 10);
+  const summary = input.summary.trim() || evidenceText.slice(0, 120);
+
+  const record: CommercialEvidence = {
+    id: newEvidenceId(),
+    userId: scope.userId,
+    accountName,
+    accountId: input.accountId || '',
+    opportunityId: input.opportunityId || null,
+    threadId: input.threadId || null,
+    category: input.category,
+    direction: input.direction,
+    summary,
+    evidenceText,
+    observedAt,
+    recordedAt: timestamp,
+    sourceActivityId: input.sourceActivityId || null,
+    sourceType: input.sourceType || 'manual',
+    sourceId: input.sourceId || null,
+    sourceUrl: null,
+    sourceUpdatedAt: null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    ...(isSample(scope) ? { isSample: true } : {}),
+  };
+
+  saveCommercialEvidence(record);
+
+  // The event says when the claim entered the workspace. Delta reads the
+  // record instead - a record is available retroactively and this log is not -
+  // so nothing downstream maps this type, and the two cannot double-count.
+  const event = recordCommercialEvent(scope, {
+    eventType: 'evidence_recorded',
+    summary: `${evidenceCategoryLabels[record.category]}: ${summary}`,
+    accountId: record.accountId || null,
+    opportunityId: record.opportunityId,
+    threadId: record.threadId,
+    occurredAt: `${observedAt}T00:00:00.000Z`,
+    structuredPayload: {
+      category: record.category,
+      direction: record.direction,
+      evidenceId: record.id,
+      accountName: record.accountName,
+    },
+    sourceType: record.sourceType,
+    sourceId: record.sourceId,
+  });
+
+  return ok(record, event);
 }

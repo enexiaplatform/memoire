@@ -376,11 +376,27 @@ const ACTION_VERB = /\b(send|resend|share|prepare|schedule|reschedule|confirm|ca
  */
 const PROMISE_MARKER = /(?:^|[.;:]\s*)(?:i\s+)?(?:will|shall|must|should|going\s+to|need(?:s|ed)?\s+to|have\s+to|next|then|to|please|action)\b[\s:,-]*$/i;
 
+/**
+ * The other half of how a promise is written: with a subject in front of it.
+ *
+ * `PROMISE_MARKER` only recognises a promise that starts its clause or stands
+ * behind a bare "will" / "need to". That misses the two commonest ways a real
+ * note records who owes what - "I promised to send the validation explanation"
+ * and "Purchasing will return the PO on Monday" - so both produced no
+ * commitment at all, on a product whose whole claim is that nothing goes
+ * silent.
+ *
+ * The subject is bounded and the verb list is closed, so this still refuses the
+ * narration it was built to refuse: "Good call." has no such verb in front of
+ * the action word, and "Intro call with Sodexo" has no subject-plus-will.
+ */
+const PROMISE_SUBJECT = /(?:^|[.;:]\s*)[\p{L}][\p{L}\s'-]{0,40}?\s+(?:will|shall|agreed\s+to|promised\s+to|committed\s+to|is\s+going\s+to|are\s+going\s+to)\s*$/iu;
+
 function startsAPromise(candidate: string, matchIndex: number) {
   if (matchIndex === 0) return true;
   const before = candidate.slice(0, matchIndex);
   if (/^[\s"'(-]*$/.test(before)) return true;
-  return PROMISE_MARKER.test(before);
+  return PROMISE_MARKER.test(before) || PROMISE_SUBJECT.test(before);
 }
 
 /**

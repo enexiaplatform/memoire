@@ -185,6 +185,12 @@ export const commercialEventTypes = [
   'thread_linked',
   'thread_status_changed',
   'opportunity_stage_changed',
+  // The two field moves that change what the forecast means. `updated_at`
+  // cannot answer either of them - it says a record changed, not which field
+  // moved or what it moved from - so a deal's expected close slipping a quarter
+  // is unknowable unless it is written down at the moment it happens.
+  'opportunity_close_period_changed',
+  'opportunity_value_changed',
   'quote_created',
   'quote_sent',
   'quote_validity_extended',
@@ -199,6 +205,12 @@ export const commercialEventTypes = [
   'opportunity_won',
   'opportunity_lost',
   'value_outcome_recorded',
+  // The seller wrote down something they learned - a trial result, a technical
+  // acceptance. The *record* is the evidence and Delta reads it there, because
+  // a record works retroactively and this log only ever runs forward. The event
+  // exists so the audit trail can still say when the claim entered the
+  // workspace, which is a different question from when the trial happened.
+  'evidence_recorded',
   // A quota that moves mid-year is a fact about the year, not a correction to
   // be overwritten. Without this event, "I was raised in Q3" is unanswerable
   // the moment the number changes.
@@ -303,6 +315,18 @@ const LEGACY_STAGE_MAP: Record<string, OpportunityStage> = {
   discovery: 'qualified',
   qualified: 'qualified',
   qualification: 'qualified',
+  // The three the app's own stage dropdown offers that this map never named.
+  // They fell through to `new`, so a deal moving Negotiation -> Procurement
+  // read as falling all the way back to the start of the pipeline. Nothing
+  // consumed the mapping closely enough to notice until Delta started using it
+  // to say whether a stage move was forward or backward.
+  'technical discussion': 'qualified',
+  demo: 'qualified',
+  // Procurement is the tail of the same phase as Negotiation, not a phase of
+  // its own: the deal is agreed and is being papered. Mapping it alongside
+  // negotiation makes that move read as neither progress nor slippage, which
+  // is what it is.
+  procurement: 'negotiation',
   proposal: 'proposal',
   quoted: 'proposal',
   negotiation: 'negotiation',

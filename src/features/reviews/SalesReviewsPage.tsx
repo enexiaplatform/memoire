@@ -9,6 +9,14 @@ import { CommercialRiskPanel } from '../threads/CommercialRiskPanel';
 import { ThreadsSection } from '../threads/ThreadsSection';
 import { useCommercialThreads } from '../threads/useCommercialThreads';
 import { CommitmentLedgerPanel } from '../commitments/CommitmentLedgerPanel';
+import { PersonalLearningPanel } from './PersonalLearningPanel';
+import { CommercialLinkagePanel } from './CommercialLinkagePanel';
+import { buildCommercialDataReadiness } from '../../domain/commercialLearning/commercialDataReadiness';
+import { suggestHistoricalLinks } from '../../domain/commercialKernel/suggestHistoricalLinks';
+import { updateSalesActivityLink } from '../../services/salesActivityStore';
+import { derivePersonalLearning } from '../../domain/commercialLearning/derivePersonalLearning';
+import type { CommercialCommitment } from '../../domain/commercialKernel/types';
+import type { CommercialEvidence } from '../../domain/commercialKernel/commercialEvidence';
 import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -95,7 +103,7 @@ export function SalesReviewsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('view');
   const tab: ReviewTab = rawTab === 'defense' || rawTab === 'analytics' ? rawTab : 'review';
-  const { recommendations: reviewRecommendations } = useCommercialThreads();
+  const { rankedRecommendations: reviewRecommendations } = useCommercialThreads();
 
   // One period for the whole tab. The scoreboard declares it and the recap
   // below reads it: two period pickers on one page meant the headline and the
@@ -244,6 +252,13 @@ function WeeklyReviewSection({
   const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
   const [briefs, setBriefs] = useState<PipelineDefenseBrief[]>([]);
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
+  // The two kernel collections the learning patterns need. Loaded here with
+  // everything else rather than fetched by the panel, so the section cannot
+  // draw from a workspace the rest of the page is not looking at.
+  const [learningCommitments, setLearningCommitments] = useState<CommercialCommitment[]>([]);
+  const [learningEvidence, setLearningEvidence] = useState<CommercialEvidence[]>([]);
+  /** Which suggestion is being written, so its two buttons can disable. */
+  const [applyingLink, setApplyingLink] = useState('');
   const [operatingContexts, setOperatingContexts] = useState<OperatingContextRecord[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [recap, setRecap] = useState<SalesActivityRecap | null>(null);
@@ -340,6 +355,118 @@ function WeeklyReviewSection({
     () => analyzePersonalSalesLearning({ outcomes: opportunityOutcomes, opportunities, limit: 5 }),
     [opportunities, opportunityOutcomes],
   );
+
+  /**
+   * What the closed deals themselves show, as opposed to what was written on
+   * their retros.
+   *
+   * Deliberately a second thing beside `personalLearning` above rather than a
+   * merge of it. That one counts the reasons the operator typed - it answers
+   * "what do I keep writing down". This one compares behaviour recorded before
+   * the close against the outcome, and answers "what do my records contain".
+   * Two different questions; folding them would mean neither could be checked.
+   *
+   * Memoised on the workspace, because it walks every closed deal once per
+   * pattern and Review re-renders on every period change above it.
+   */
+  const bookLearning = useMemo(
+    () => derivePersonalLearning({
+      opportunities,
+      opportunityOutcomes,
+      activities,
+      stakeholders,
+      objections,
+      quotes,
+      commitments: learningCommitments,
+      evidence: learningEvidence,
+      // In the demo the sample data is the workspace. Anywhere else a demo
+      // record must never reach a comparison about the seller's real history.
+      includeSampleRecords: sampleDataActive,
+    }),
+    [
+      activities, learningCommitments, learningEvidence, objections, opportunities,
+      opportunityOutcomes, quotes, sampleDataActive, stakeholders,
+    ],
+  );
+  /**
+   * How much of this workspace's history is actually connected.
+   *
+   * The per-pattern counts come straight off `bookLearning` rather than being
+   * recomputed: two answers to "is this pattern ready" on one page is exactly
+   * the disagreement the kernel exists to prevent.
+   */
+  const dataReadiness = useMemo(
+    () => buildCommercialDataReadiness({
+      activities,
+      opportunities,
+      stakeholders,
+      learning: bookLearning,
+      evidenceCount: learningEvidence.length,
+      commitmentsCount: learningCommitments.length,
+      eventHistoryCount: 0,
+      includeSampleRecords: sampleDataActive,
+    }),
+    [
+      activities, bookLearning, learningCommitments.length, learningEvidence.length,
+      opportunities, sampleDataActive, stakeholders,
+    ],
+  );
+
+  /**
+   * Past interactions that could be placed on a deal. Suggestions only - see
+   * `suggestHistoricalLinks` for why nothing here is ever applied on its own.
+   */
+  const historicalLinks = useMemo(
+    () => suggestHistoricalLinks({
+      activities,
+      opportunities: opportunities.map((opportunity) => ({
+        id: opportunity.id,
+        accountName: opportunity.accountName,
+        opportunityName: opportunity.opportunityName,
+        status: opportunity.status,
+        createdAt: opportunity.createdAt,
+      })),
+      includeSampleRecords: sampleDataActive,
+    }),
+    [activities, opportunities, sampleDataActive],
+  );
+
+  const applyHistoricalLink = useCallback(async (activityId: string, opportunityId: string) => {
+    const activity = activities.find((item) => item.id === activityId);
+    const opportunity = opportunities.find((item) => item.id === opportunityId);
+    if (!activity || !opportunity) return;
+    setApplyingLink(activityId);
+    try {
+      // The canonical update path, the same one a manual link uses. There is no
+      // second writer for suggested links.
+      const updated = await updateSalesActivityLink(activity, {
+        linkedOpportunityId: opportunity.id,
+        linkedOpportunityName: opportunity.opportunityName,
+        linkedAccountName: opportunity.accountName,
+        linkStatus: 'Linked',
+      }, dataUserId);
+      setActivities((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    } catch {
+      // The suggestion stays on the list; a failed write is not a decision.
+    } finally {
+      setApplyingLink('');
+    }
+  }, [activities, dataUserId, opportunities]);
+
+  const ignoreHistoricalLink = useCallback(async (activityId: string) => {
+    const activity = activities.find((item) => item.id === activityId);
+    if (!activity) return;
+    setApplyingLink(activityId);
+    try {
+      const updated = await updateSalesActivityLink(activity, { linkStatus: 'Ignored' }, dataUserId);
+      setActivities((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    } catch {
+      // Same as above: nothing is lost by asking again next week.
+    } finally {
+      setApplyingLink('');
+    }
+  }, [activities, dataUserId]);
+
   const assetNeeds = useMemo(
     () => analyzeAssetNeeds({ patterns: playbookLearnings, objections: periodObjections, assets, opportunities }),
     [assets, opportunities, periodObjections, playbookLearnings]
@@ -358,6 +485,8 @@ function WeeklyReviewSection({
       setBriefs(cachedData.briefs);
       setQuotes(cachedData.quotes);
       setOperatingContexts(cachedData.operatingContext);
+      setLearningCommitments(cachedData.commitments);
+      setLearningEvidence(cachedData.evidence);
       setLoadingActivities(false);
       return;
     }
@@ -375,6 +504,8 @@ function WeeklyReviewSection({
     setBriefs(workspaceData.briefs);
     setQuotes(workspaceData.quotes);
     setOperatingContexts(workspaceData.operatingContext);
+    setLearningCommitments(workspaceData.commitments);
+    setLearningEvidence(workspaceData.evidence);
     setLoadingActivities(false);
   }, [dataUserId]);
 
@@ -617,6 +748,16 @@ function WeeklyReviewSection({
         )}
 
         <PersonalOutcomeLearningPanel learning={personalLearning} />
+
+        <PersonalLearningPanel learning={bookLearning} />
+
+        <CommercialLinkagePanel
+          readiness={dataReadiness}
+          review={historicalLinks}
+          applying={applyingLink}
+          onLink={applyHistoricalLink}
+          onIgnore={ignoreHistoricalLink}
+        />
 
         {assetNeeds.length > 0 && (
           <AssetNeedsPanel needs={assetNeeds} />

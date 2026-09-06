@@ -4,6 +4,12 @@ import type { CoverageReport } from './forecast.ts';
 import { isThreadClosed } from './types.ts';
 import type { QuoteRecord } from '../../services/quoteStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
+import {
+  projectCurrentEvidence,
+  supportingEvidenceFor,
+  type CommercialEvidence,
+  type EvidenceProjection,
+} from './commercialEvidence.ts';
 
 /**
  * The deterministic policy engine.
@@ -124,6 +130,15 @@ export type PolicyInput = {
    * fires on data the user never entered is a rule they will learn to ignore.
    */
   coverage?: CoverageReport;
+  /**
+   * What the seller has recorded learning about these deals.
+   *
+   * Optional, and absent means "none recorded" rather than "none exists". That
+   * is the safe direction: a caller that has not been taught to pass it gets
+   * the old behaviour - the rule still fires - instead of a gap being silently
+   * declared satisfied by evidence nobody looked for.
+   */
+  evidence?: CommercialEvidence[];
 };
 
 const SEVERITY_ORDER: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -140,7 +155,15 @@ export function evaluateCommercialPolicies(input: PolicyInput): Recommendation[]
   const recommendations: Recommendation[] = [
     ...commitmentRules(input.commitments.filter(isVisible), todayKey, thresholds, calculatedAt),
     ...threadRules(input.threads, thresholds, calculatedAt),
-    ...opportunityRules(input.opportunities.filter(isVisible), todayKey, calculatedAt),
+    ...opportunityRules(
+      input.opportunities.filter(isVisible),
+      todayKey,
+      calculatedAt,
+      // Indexed once for the whole run. The alternative - asking the evidence
+      // list per deal - is a scan of the workspace inside a loop over the
+      // workspace, which is the shape that makes a rule slow on a real book.
+      projectCurrentEvidence((input.evidence || []).filter(isVisible)),
+    ),
     ...quoteRules(input.quotes.filter(isVisible), todayKey, thresholds, calculatedAt),
     ...coverageRules(input.coverage, thresholds, calculatedAt),
   ];
@@ -361,13 +384,28 @@ function opportunityRules(
   opportunities: CrmLiteOpportunity[],
   todayKey: string,
   calculatedAt: string,
+  evidence: EvidenceProjection,
 ): Recommendation[] {
   const out: Recommendation[] = [];
 
   for (const opportunity of opportunities) {
     if (opportunity.status !== 'Active') continue;
 
-    if (!opportunity.evidence?.trim()) {
+    // Two things can support the stage: the free-text box on the deal, and a
+    // recorded piece of commercial evidence. Before the second existed this
+    // rule said "nothing recorded that supports that stage" to a seller who
+    // had written down that the trial passed the week before - a rule that
+    // contradicts a record the operator can see is a rule they stop reading.
+    //
+    // Negative evidence deliberately does not count. The rule asks what
+    // *supports* the stage, and a failed trial is the opposite of support: a
+    // deal sitting at Demo on the back of one still has this gap.
+    const supporting = supportingEvidenceFor(evidence, {
+      opportunityId: opportunity.id,
+      accountName: opportunity.accountName,
+    });
+
+    if (!opportunity.evidence?.trim() && supporting.length === 0) {
       out.push({
         id: `${opportunity.id}:no-evidence`,
         reasonCode: 'OPPORTUNITY_WITHOUT_STAGE_EVIDENCE',

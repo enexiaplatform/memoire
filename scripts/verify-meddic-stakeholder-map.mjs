@@ -166,9 +166,21 @@ for (const marker of ['Role confirmed by evidence', 'Stakeholder next action', '
   assert.ok(stakeholderUi.includes(marker), `Stakeholder evidence UI missing ${marker}`);
 }
 
-const captureUi = readFileSync('src/features/dailyCapture/DailyCapturePage.tsx', 'utf8');
+// The promise moved with the proposal. Capture used to spin off a stakeholder
+// from a bespoke handler on the page; it now proposes one as a reviewable fact,
+// so the reassurance belongs on the row the operator is looking at rather than
+// on the page that used to own the handler.
+const captureUi = readFileSync('src/features/dailyCapture/CaptureReviewPanel.tsx', 'utf8');
 assert.ok(captureUi.includes('Role starts as Unknown'), 'Capture contact suggestion must not auto-invent role');
 assert.ok(captureUi.includes('will not auto-assign Champion or Economic Buyer'), 'Capture must explicitly avoid role hallucination');
+
+// And the guarantee is enforced where it is actually kept, not only where it is
+// promised: the dispatcher is the one thing that can write a stakeholder.
+const captureDispatcher = readFileSync('src/domain/commercialKernel/commitCapturedFacts.ts', 'utf8');
+assert.ok(
+  /stakeholderRole:\s*'Unknown'/.test(captureDispatcher),
+  'a captured person must be written with an Unknown MEDDIC role',
+);
 
 const proactive = readFileSync('src/utils/proactiveNudges.ts', 'utf8');
 for (const marker of ['Champion missing on rescue deal', 'Economic buyer unknown', 'Procurement path missing', 'Blocker objection unresolved', 'Stakeholder next action overdue']) {

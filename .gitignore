@@ -37,3 +37,8 @@ dist-ssr
 # Local-only confidential import backups and dry-run artifacts
 .memoire-private/
 .audit/
+
+# Local product-validation baselines. `npm run report:product-validation --json`
+# writes counts only, but it is a snapshot of one workspace's shape and belongs
+# on the machine that produced it rather than in the repository.
+*.local.json

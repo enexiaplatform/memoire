@@ -1,14 +1,29 @@
 import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Bot, CalendarDays, Clipboard, Copy, Loader2, Mail, Mic, MicOff, NotebookPen, Save, Sparkles, Trash2 } from 'lucide-react';
+import { Bot, CalendarDays, Clipboard, Copy, Link2 as LinkIcon, Loader2, Mail, Mic, MicOff, NotebookPen, Save, Sparkles, Trash2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { useSpeechDictation } from '../../hooks/useSpeechDictation';
 import { DataModePill } from '../../components/common/DataModePill';
 import { SuggestInput } from '../../components/common/SuggestInput';
 import { normalizeEntityName } from '../../utils/accountIdentity';
+import { getReportingCurrency } from '../../utils/money';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { classifySalesActivity, type ClassifiedSalesActivity, type SalesActivityType } from '../../utils/salesActivityClassifier';
+import { matchKnownAccount, parseCapture } from '../../domain/commercialKernel/parseCapture';
+import { mergePlanCommitments } from '../../domain/commercialKernel/derivePlanCommitments';
+import {
+  isPreselectable,
+  resolveCommercialScope,
+  type CaptureOrigin,
+  type CommercialScope,
+} from '../../domain/commercialKernel/resolveCommercialScope';
+import type { CommercialCommitment } from '../../domain/commercialKernel/types';
+import type { CommercialEvidence } from '../../domain/commercialKernel/commercialEvidence';
+import { commitCapturedFacts } from '../../domain/commercialKernel/commitCapturedFacts';
+import type { CapturedFact, ReviewableChangeSet } from '../../domain/commercialKernel/capturedFacts';
+import { recordCaptureFactMetrics } from '../../services/captureFactMetrics';
+import { CaptureReviewPanel } from './CaptureReviewPanel';
 import {
   canUseSalesActivityCloudStore,
   deleteSalesActivity,
@@ -18,13 +33,11 @@ import {
 } from '../../services/salesActivityStore';
 import { updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { type AccountMemoryRecord } from '../../services/accountStore';
-import { createStakeholder, type StakeholderRecord } from '../../services/stakeholderStore';
-import { createObjection, type ObjectionRecord } from '../../services/objectionStore';
+import type { StakeholderRecord } from '../../services/stakeholderStore';
+import type { ObjectionRecord } from '../../services/objectionStore';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportunityLinkPanel';
 import { applyOpportunityUpdateSuggestion, suggestOpportunityLinks, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
-import { deriveStakeholderCandidateFromCapture } from '../../utils/stakeholderGraph';
-import { buildObjectionFromActivity, detectObjectionCandidatesFromActivity } from '../../utils/objectionLedger';
 import { suggestQuoteStateChanges, type QuoteStateSuggestion } from '../../utils/quoteStateSuggestions';
 import { updateQuote, type QuoteRecord } from '../../services/quoteStore';
 import { loadPlanItemsForWorkspace, savePlanItem } from '../../services/planItemStore';
@@ -318,9 +331,16 @@ export function DailyCapturePage() {
   const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
   const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
   const [objections, setObjections] = useState<ObjectionRecord[]>([]);
-  const [stakeholderSuggestionDismissed, setStakeholderSuggestionDismissed] = useState(false);
-  const [objectionSuggestionDismissed, setObjectionSuggestionDismissed] = useState(false);
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
+  const [ledgerCommitments, setLedgerCommitments] = useState<CommercialCommitment[]>([]);
+  const [evidenceRecords, setEvidenceRecords] = useState<CommercialEvidence[]>([]);
+  /**
+   * The deal the operator has confirmed this note is about, when they have
+   * overridden what Memoire proposed. Null means "use whatever the resolver
+   * says", which is the case for almost every capture.
+   */
+  const [scopeOverrideId, setScopeOverrideId] = useState<string | null>(null);
+  const [scopeCorrected, setScopeCorrected] = useState(false);
   const [dismissedQuoteSuggestions, setDismissedQuoteSuggestions] = useState<string[]>([]);
   const [quoteSuggestionMessage, setQuoteSuggestionMessage] = useState('');
   const [lastSavedActivity, setLastSavedActivity] = useState<SalesActivityRecord | null>(null);
@@ -440,6 +460,8 @@ export function DailyCapturePage() {
       setStakeholders(cachedData.stakeholders);
       setObjections(cachedData.objections);
       setQuotes(cachedData.quotes);
+      setLedgerCommitments(cachedData.commitments);
+      setEvidenceRecords(cachedData.evidence);
       setLoadingActivities(false);
       return;
     }
@@ -452,6 +474,8 @@ export function DailyCapturePage() {
     setStakeholders(workspaceData.stakeholders);
     setObjections(workspaceData.objections);
     setQuotes(workspaceData.quotes);
+    setLedgerCommitments(workspaceData.commitments);
+    setEvidenceRecords(workspaceData.evidence);
     setLoadingActivities(false);
   };
 
@@ -496,48 +520,117 @@ export function DailyCapturePage() {
   }, [searchParams, searchParamsKey]);
 
   /**
-   * Attach a just-saved capture to the deal it names.
+   * There is no post-save linker any more, and that is the point.
    *
-   * Every save wrote `linkStatus: 'Unlinked'`, whatever the operator had just
-   * confirmed in the panel directly above the button. Three things followed
-   * from that one word. The deal showed "No touch yet" and "0 touches" beside a
-   * silence badge reading "Quiet 18d" - because the silence rule matches on the
-   * account and the touch count only counts linked activities, so one row
-   * disagreed with itself. The capture sat in the confirmation inbox for ever,
-   * and the workspace kept reporting items to confirm that had been confirmed.
-   * And a product whose stated principle is "record once" asked for the same
-   * link twice.
+   * Until 4.1 the writer discarded whatever scope the operator had confirmed,
+   * so a repair ran afterwards: it re-derived the deal from the saved record
+   * and linked when exactly one matched. Two linkers, and the weaker one ran
+   * last - which is how a note the operator had deliberately *not* filed
+   * against a deal ("several are open here, pick one") still ended up on the
+   * first deal that matched by name.
    *
-   * Deliberately conservative: it links only when exactly one deal matches both
-   * the account and the opportunity the draft carries - which is a deal the
-   * operator has already named or accepted on screen. Nothing matched, or more
-   * than one, and it stays Unlinked with the suggestion list doing what it did.
+   * The scope is now carried into `saveSalesActivity` itself, so the record is
+   * written linked or account-level in one step, by the answer on screen.
    */
-  const autoLinkSavedActivity = async (record: SalesActivityRecord) => {
-    const accountKey = normalizeEntityName(record.accountName || '');
-    const opportunityKey = normalizeEntityName(record.opportunityName || '');
-    if (!accountKey || !opportunityKey) return record;
-    const matches = opportunities.filter((opportunity) => (
-      normalizeEntityName(opportunity.accountName) === accountKey
-      && normalizeEntityName(opportunity.opportunityName) === opportunityKey
-    ));
-    if (matches.length !== 1) return record;
-    try {
-      const linked = await updateSalesActivityLink(record, {
-        linkedOpportunityId: matches[0].id,
-        linkedOpportunityName: matches[0].opportunityName,
-        linkedAccountName: matches[0].accountName,
-        linkStatus: 'Linked',
-      }, dataUserId);
-      setActivities((current) => current.map((item) => item.id === linked.id ? linked : item));
-      setLastSavedActivity(linked);
-      return linked;
-    } catch {
-      // The capture is saved either way. A link that could not be written is
-      // work the suggestion list can still offer; it is not a failed save.
-      return record;
+
+  /**
+   * Where the operator was standing when they opened Capture.
+   *
+   * Typed, and derived from the URL once rather than read inside the resolver:
+   * a resolver that reaches into route state behaves differently in a test than
+   * in the product, and this one has to be testable without a React tree.
+   *
+   * An opportunity id in the link is the strongest evidence there is - the
+   * operator chose that deal with a click - so it is passed as an id rather
+   * than a name, which is what the pre-4.1 links carried and what could not be
+   * turned back into a deal without guessing.
+   */
+  const captureOrigin = useMemo<CaptureOrigin>(() => {
+    const opportunityId = searchParams.get('opportunityId');
+    if (opportunityId) return { kind: 'opportunity', opportunityId };
+    const account = searchParams.get('account');
+    if (account) return { kind: 'account', accountName: account };
+    return { kind: 'global' };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParamsKey]);
+
+  const scopeOpportunities = useMemo(
+    () => opportunities.map((opportunity) => ({
+      id: opportunity.id,
+      accountName: opportunity.accountName,
+      opportunityName: opportunity.opportunityName,
+      status: opportunity.status,
+      createdAt: opportunity.createdAt,
+    })),
+    [opportunities],
+  );
+
+  /**
+   * Which commercial thread the note in the box is about.
+   *
+   * Recomputed as the note is typed, which is cheap: the account index is built
+   * from the same list the page already holds and the resolver reads a handful
+   * of fields. Nothing here scans the workspace per fact.
+   */
+  const resolvedScope = useMemo<CommercialScope>(() => {
+    const noteText = captureMode === 'quick'
+      ? `${quickForm.accountName} ${quickForm.opportunityName} ${quickForm.whatHappened}`
+      : activeCaptureText;
+    const readFromNote = captureMode === 'quick'
+      ? (quickForm.accountName || preview?.accountName || '')
+      : (preview?.accountName || '');
+    // The entity resolver returns its best reading of the *text* - "Met Rohto
+    // QC" gives "Rohto QC" - and a deal belongs to a customer on the books, not
+    // to a phrase. Same matcher the fact parser uses, imported rather than
+    // written a second time.
+    const accountName = matchKnownAccount(noteText, readFromNote, { accounts }) || readFromNote;
+    return resolveCommercialScope({
+      accountName,
+      rawNote: noteText,
+      captureDate: activeActivityDate,
+      opportunities: scopeOpportunities,
+      origin: captureOrigin,
+    });
+  }, [
+    accounts, activeActivityDate, activeCaptureText, captureMode, captureOrigin,
+    preview?.accountName, quickForm.accountName, quickForm.opportunityName,
+    quickForm.whatHappened, scopeOpportunities,
+  ]);
+
+  /**
+   * The scope that will actually be written: the operator's correction if they
+   * made one, otherwise the resolver's answer - and only when the resolver was
+   * confident enough to preselect. `multiple_matches` deliberately writes no
+   * link at all until somebody chooses.
+   */
+  const activeScope = useMemo<CommercialScope>(() => {
+    if (!scopeOverrideId) {
+      return isPreselectable(resolvedScope)
+        ? resolvedScope
+        : { ...resolvedScope, opportunityId: null, opportunityName: '' };
     }
-  };
+    const chosen = resolvedScope.candidates.find((item) => item.opportunityId === scopeOverrideId);
+    if (!chosen) return { ...resolvedScope, opportunityId: null, opportunityName: '' };
+    return {
+      ...resolvedScope,
+      opportunityId: chosen.opportunityId,
+      opportunityName: chosen.opportunityName,
+      resolution: 'exact',
+    };
+  }, [resolvedScope, scopeOverrideId]);
+
+  const scopeLinkTarget = activeScope.opportunityId
+    ? {
+      linkedOpportunityId: activeScope.opportunityId,
+      linkedOpportunityName: activeScope.opportunityName,
+      linkedAccountName: activeScope.accountName,
+    }
+    : undefined;
+
+  const chooseScope = useCallback((opportunityId: string | null) => {
+    setScopeOverrideId(opportunityId);
+    setScopeCorrected(true);
+  }, [setScopeOverrideId, setScopeCorrected]);
 
   const handleSave = async () => {
     // Guarded here rather than only on the buttons: both Save buttons and any
@@ -585,13 +678,13 @@ export function DailyCapturePage() {
     const result = await saveSalesActivity(classified, dataUserId, {
       source: sampleDataActive ? 'demo' : 'user',
       isSample: sampleDataActive,
-    });
+    }, scopeLinkTarget);
     const memory = recordCaptureCorrections(corrections, user?.id);
     setCaptureCorrections(memory.corrections);
     setAccountAliases(memory.aliases);
     setActivities((current) => [result.record, ...current.filter((item) => item.id !== result.record.id)]);
     setLastSavedActivity(result.record);
-    void autoLinkSavedActivity(result.record);
+    openReviewForCapture(result.record);
     setRawNote('');
     setEmailForm(createInitialEmailThreadCaptureForm(searchParams));
     setStructuredDraft(null);
@@ -603,8 +696,6 @@ export function DailyCapturePage() {
     if (activeSourceItem?.sourceType === 'pasted-email' || activeSourceItem?.sourceType === 'pasted-thread') {
       markDemoJourneyStepComplete('paste-evidence', 'Pasted email/thread evidence captured');
     }
-    setStakeholderSuggestionDismissed(false);
-    setObjectionSuggestionDismissed(false);
     setPlanCloseDismissed(false);
     setMarkedDoneKeys([]);
   };
@@ -631,10 +722,10 @@ export function DailyCapturePage() {
     const result = await saveSalesActivity(prepared, dataUserId, {
       source: sampleDataActive ? 'demo' : 'user',
       isSample: sampleDataActive,
-    });
+    }, scopeLinkTarget);
     setActivities((current) => [result.record, ...current.filter((item) => item.id !== result.record.id)]);
     setLastSavedActivity(result.record);
-    void autoLinkSavedActivity(result.record);
+    openReviewForCapture(result.record);
     setQuickForm((current) => ({
       ...current,
       whatHappened: '',
@@ -648,8 +739,6 @@ export function DailyCapturePage() {
     setMessage(result.warning || describeQuickCaptureSave(result.mode, prepared));
     markTrialActivationChecklistItemComplete('capture-update');
     markPipelineReviewHabitStepComplete('capturedUpdatesAt');
-    setStakeholderSuggestionDismissed(false);
-    setObjectionSuggestionDismissed(false);
     setPlanCloseDismissed(false);
     setMarkedDoneKeys([]);
   };
@@ -765,53 +854,184 @@ export function DailyCapturePage() {
     }
   };
 
-  const createStakeholderFromLastActivity = async () => {
-    if (!lastSavedActivity) return;
-    const candidate = deriveStakeholderCandidateFromCapture(lastSavedActivity);
-    if (!candidate) return;
-    const result = await createStakeholder({
-      accountId: '',
-      accountName: candidate.accountName,
-      opportunityId: candidate.opportunityId,
-      opportunityName: candidate.opportunityName,
-      name: candidate.name,
-      // The job title from the note. `stakeholderRole` stays Unknown - that is
-      // the MEDDIC judgement and Memoire does not make it - but the title is a
-      // fact the operator wrote down and throwing it away made the record
-      // poorer than the note it came from.
-      roleTitle: candidate.roleTitle,
-      stakeholderRole: 'Unknown',
-      influenceLevel: 'Unknown',
-      relationshipStrength: 'Developing',
-      stance: 'Unknown',
-      email: '',
-      phone: '',
-      notes: candidate.notes,
-      tags: ['from-capture', 'role-needs-confirmation'],
-      lastInteractionDate: candidate.lastInteractionDate,
-    }, dataUserId);
-    setStakeholders((current) => [result.stakeholder, ...current.filter((item) => item.id !== result.stakeholder.id)]);
-    setStakeholderSuggestionDismissed(true);
-    setMessage(result.warning || 'Stakeholder created from capture.');
-    setSaveState(result.warning ? 'error' : 'saved');
-  };
+  /**
+   * Every promise that is actually open, by the same derivation the rest of the
+   * product uses.
+   *
+   * The capture review used to check for duplicate promises against an empty
+   * list, because the stored ledger has one writer and is empty on almost every
+   * workspace. So a note repeating "I'll send the quote by Friday" - which the
+   * Plan was already carrying from yesterday's note - proposed it again as new.
+   * `mergePlanCommitments` is the same call Today, Plan and the policy engine
+   * make; a capture-only index of promises would be a second answer to a
+   * question the product already answers once.
+   */
+  const openCommitments = useMemo(
+    () => mergePlanCommitments(ledgerCommitments, {
+      activities,
+      planItems: planRecords,
+      includeSampleRecords: sampleDataActive,
+    }).filter((commitment) => commitment.status === 'open'),
+    [activities, ledgerCommitments, planRecords, sampleDataActive],
+  );
 
-  const createObjectionFromLastActivity = async () => {
-    if (!lastSavedActivity) return;
-    const activity = lastSavedActivity;
-    const linkedOpportunity = opportunities.find((opportunity) => opportunity.id === activity.linkedOpportunityId);
-    const matchingStakeholder = stakeholders.find((stakeholder) => (
-      // Canonical on both sides: a capture that names the person without their
-      // accents must still attach to the stakeholder record that has them.
-      normalizeEntityName(stakeholder.name) === normalizeEntityName(activity.stakeholderName || activity.contactName || '') &&
-      (!activity.accountName || normalizeEntityName(stakeholder.accountName) === normalizeEntityName(activity.accountName))
-    ));
-    const result = await createObjection(buildObjectionFromActivity(activity, linkedOpportunity, matchingStakeholder), dataUserId);
-    setObjections((current) => [result.objection, ...current.filter((item) => item.id !== result.objection.id)]);
-    setObjectionSuggestionDismissed(true);
-    setMessage(result.warning || 'Objection created from capture.');
-    setSaveState(result.warning ? 'error' : 'saved');
-  };
+  /**
+   * What Memoire read out of the note, waiting to be confirmed.
+   *
+   * This replaced three bespoke "also spotted" handlers that each called a
+   * store directly from this component. One parser, one review model, one
+   * dispatcher - so a record created from a note is created by the same command
+   * as one typed by hand, and Delta cannot tell the two apart.
+   */
+  const [reviewSet, setReviewSet] = useState<ReviewableChangeSet | null>(null);
+  const [committing, setCommitting] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState('');
+  const [committedFactIds, setCommittedFactIds] = useState<string[]>([]);
+
+
+  /**
+   * Reads the note that was just saved and opens the review.
+   *
+   * Deliberately after the activity is stored: the interaction itself is the
+   * raw record and the operator already confirmed it on the form above. What
+   * needs a second look is what Memoire *derived* from it, and none of that is
+   * written until the review is saved.
+   */
+  const openReviewForCapture = useCallback((record: SalesActivityRecord) => {
+    const changeSet = parseCapture({
+      rawCapture: record.rawNote,
+      captureDate: record.activityDate,
+      // The scope the operator confirmed above the Save button. Every accepted
+      // fact inherits it, so nobody is asked which deal this is seven times.
+      ...(record.linkStatus === 'Linked' && record.linkedOpportunityId
+        ? {
+          scope: {
+            accountName: record.linkedAccountName || record.accountName,
+            opportunityId: record.linkedOpportunityId,
+            opportunityName: record.linkedOpportunityName,
+          },
+        }
+        : {}),
+      context: {
+        accounts: accounts.map((account) => ({ id: account.id, accountName: account.accountName })),
+        opportunities: opportunities.map((opportunity) => ({
+          id: opportunity.id,
+          accountName: opportunity.accountName,
+          opportunityName: opportunity.opportunityName,
+          productOrSolution: opportunity.productOrSolution,
+          stage: opportunity.stage,
+          currency: opportunity.currency,
+          estimatedValue: opportunity.estimatedValue,
+        })),
+        objections: objections.map((objection) => ({
+          id: objection.id,
+          accountName: objection.accountName,
+          opportunityId: objection.opportunityId,
+          objectionText: objection.objectionText,
+          status: objection.status,
+        })),
+        stakeholders: stakeholders.map((stakeholder) => ({
+          id: stakeholder.id,
+          accountName: stakeholder.accountName,
+          name: stakeholder.name,
+        })),
+        openCommitments: openCommitments.map((commitment) => ({
+          id: commitment.id,
+          accountName: commitment.accountName,
+          opportunityId: commitment.opportunityId,
+          commitmentText: commitment.commitmentText,
+        })),
+        evidence: evidenceRecords.map((record) => ({
+          id: record.id,
+          accountName: record.accountName,
+          opportunityId: record.opportunityId,
+          category: record.category,
+          direction: record.direction,
+          summary: record.summary,
+        })),
+        reportingCurrency: getReportingCurrency(),
+      },
+    });
+
+    // Counts only, on this device. See services/captureFactMetrics.ts for why
+    // nothing here leaves the browser.
+    recordCaptureFactMetrics({
+      parsed: true,
+      // Counts only, on this device: which of the four resolutions happened,
+      // and how many facts carried a deal. No customer or deal name leaves the
+      // browser - see services/captureFactMetrics.ts.
+      scopeResolution: record.linkStatus === 'Linked' && record.linkedOpportunityId
+        ? (scopeCorrected ? 'corrected' : resolvedScope.resolution)
+        : (resolvedScope.resolution === 'multiple_matches' ? 'multiple_matches' : 'unresolved'),
+      opportunityScopedFacts: changeSet.facts.filter((fact) => fact.target.opportunityId).length,
+      accountOnlyFacts: changeSet.facts.filter((fact) => !fact.target.opportunityId).length,
+      foundNothing: changeSet.facts.length === 0,
+      unsupported: changeSet.unsupported.length,
+      proposed: changeSet.facts.filter((fact) => fact.status === 'proposed').map((fact) => fact.kind),
+      alreadyRecorded: changeSet.facts.filter((fact) => fact.status === 'already_recorded').map((fact) => fact.kind),
+    });
+
+    setCommittedFactIds([]);
+    setReviewMessage('');
+    setReviewSet(changeSet.facts.length > 0 || changeSet.unsupported.length > 0 ? changeSet : null);
+    // The setters are listed because they are stable and the compiler checks
+    // the list against what it infers rather than against what changes.
+  }, [
+    accounts, evidenceRecords, objections, openCommitments, opportunities, resolvedScope.resolution,
+    scopeCorrected, stakeholders, setCommittedFactIds, setReviewMessage, setReviewSet,
+  ]);
+
+  const handleCommitFacts = useCallback(async (accepted: CapturedFact[]) => {
+    if (!reviewSet || !lastSavedActivity) return;
+    setCommitting(true);
+    setReviewMessage('');
+
+    const ignored = reviewSet.facts
+      .filter((fact) => fact.status !== 'already_recorded' && !accepted.some((item) => item.id === fact.id));
+    const editedKinds = accepted
+      .filter((fact) => {
+        const original = reviewSet.facts.find((item) => item.id === fact.id);
+        return original ? JSON.stringify({ ...original, status: 'x' }) !== JSON.stringify({ ...fact, status: 'x' }) : false;
+      })
+      .map((fact) => fact.kind);
+
+    const result = await commitCapturedFacts(
+      { ...reviewSet, facts: accepted },
+      {
+        scope: { userId: user?.id || null, sampleDataActive },
+        userId: dataUserId,
+        opportunities,
+        sourceActivityId: lastSavedActivity.id,
+        captureDate: lastSavedActivity.activityDate,
+        isSample: sampleDataActive,
+      },
+      committedFactIds,
+    );
+
+    const saved = result.outcomes.filter((outcome) => outcome.ok);
+    setCommittedFactIds((current) => [...current, ...saved.map((outcome) => outcome.factId)]);
+
+    recordCaptureFactMetrics({
+      saved: saved.length > 0,
+      saveFailures: result.outcomes.length - saved.length,
+      accepted: accepted.filter((fact) => saved.some((outcome) => outcome.factId === fact.id)).map((fact) => fact.kind),
+      edited: editedKinds,
+      ignored: ignored.map((fact) => fact.kind),
+    });
+
+    // Honest about a partial save: the storage is not transactional, so the
+    // ones that landed are named and the ones that did not stay retryable.
+    if (result.retryable.length > 0) {
+      setReviewMessage(`Saved ${saved.length}. ${result.retryable.length} could not be saved - try again and only those will be retried.`);
+      setReviewSet((current) => (current ? { ...current, facts: result.retryable } : current));
+    } else {
+      setReviewMessage(`Saved ${saved.length} ${saved.length === 1 ? 'item' : 'items'} to your records.`);
+      setReviewSet(null);
+    }
+
+    setCommitting(false);
+  }, [committedFactIds, dataUserId, lastSavedActivity, opportunities, reviewSet, sampleDataActive, user?.id,
+    setCommitting, setCommittedFactIds, setReviewMessage, setReviewSet]);
 
   // What the just-saved capture did to the plan, both directions: the dated
   // actions that landed on it by themselves, and the open items this touch may
@@ -839,8 +1059,9 @@ export function DailyCapturePage() {
     trackProductEvent('commitment_completed');
   }, [planRecords, sampleDataActive]);
 
-  const stakeholderCandidate = lastSavedActivity ? deriveStakeholderCandidateFromCapture(lastSavedActivity) : null;
-  const objectionCandidate = lastSavedActivity ? detectObjectionCandidatesFromActivity(lastSavedActivity)[0] : null;
+  // Quote state is not a fact read out of the note - it is an existing quote
+  // advancing its own lifecycle - so it stays its own suggestion rather than
+  // being bent into the fact model.
   const quoteStateSuggestions = (lastSavedActivity ? suggestQuoteStateChanges(lastSavedActivity, quotes) : [])
     .filter((suggestion) => !dismissedQuoteSuggestions.includes(`${suggestion.quoteRecordId}:${suggestion.kind}`));
 
@@ -854,17 +1075,6 @@ export function DailyCapturePage() {
     setDismissedQuoteSuggestions((current) => [...current, `${suggestion.quoteRecordId}:${suggestion.kind}`]);
     setQuoteSuggestionMessage(`${suggestion.actionLabel}: ${suggestion.quoteLabel}. Money flow updated.`);
   };
-  const alreadyHasStakeholderCandidate = stakeholderCandidate ? stakeholders.some((stakeholder) => (
-    // Canonical, or the same person captured with and without their accents is
-    // offered again as a new stakeholder to create.
-    normalizeEntityName(stakeholder.name) === normalizeEntityName(stakeholderCandidate.name) &&
-    normalizeEntityName(stakeholder.accountName) === normalizeEntityName(stakeholderCandidate.accountName)
-  )) : false;
-  const alreadyHasObjectionCandidate = Boolean(objectionCandidate && lastSavedActivity && objections.some((objection) => (
-    objection.sourceActivityId === lastSavedActivity.id ||
-    (objection.objectionText.toLowerCase() === objectionCandidate.objectionText.toLowerCase() &&
-      normalizeEntityName(objection.accountName) === normalizeEntityName(lastSavedActivity.linkedAccountName || lastSavedActivity.accountName))
-  )));
 
   return (
     <PageContainer>
@@ -983,6 +1193,12 @@ export function DailyCapturePage() {
                 className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
               />
             </label>
+            <CaptureScopePanel
+              scope={activeScope}
+              resolution={resolvedScope.resolution}
+              corrected={scopeCorrected}
+              onChoose={chooseScope}
+            />
             <button
               type="button"
               onClick={handleSave}
@@ -1276,66 +1492,40 @@ export function DailyCapturePage() {
         </section>
       )}
 
-      {(() => {
-        const showStakeholder = Boolean(stakeholderCandidate && !alreadyHasStakeholderCandidate && !stakeholderSuggestionDismissed);
-        const showObjection = Boolean(objectionCandidate && !alreadyHasObjectionCandidate && !objectionSuggestionDismissed);
-        const showQuote = quoteStateSuggestions.length > 0;
-        if (!showStakeholder && !showObjection && !showQuote) return null;
-        return (
-          // One grouped panel instead of three separate coloured cards - the
-          // seller just logged a note and sees the related records Memoire can
-          // spin off as a compact, scannable list, not a wall of prompts.
-          <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-brand-blue" />
-              <p className="text-sm font-bold text-navy">Memoire also spotted in this capture</p>
-            </div>
-            {/* The consent guarantee is deliberate and contract-pinned: these
-                suggestions never create or mutate anything on their own. */}
-            <p className="mt-0.5 text-xs text-gray-500">Spin off a related record or update a quote. Nothing changes until you confirm.</p>
-            <div className="mt-3 space-y-2">
-              {showStakeholder && stakeholderCandidate && (
-                <CaptureSpotRow
-                  tone="blue"
-                  tag="Person"
-                  title={stakeholderCandidate.name}
-                  // Role starts as Unknown - Memoire will not auto-assign Champion
-                  // or Economic Buyer without explicit evidence. Stated to the user,
-                  // and contract-pinned, because inventing a role is the one thing
-                  // stakeholder mapping must never do.
-                  detail={`Add to ${stakeholderCandidate.accountName || 'this account'} for stakeholder mapping.${stakeholderCandidate.roleTitle ? ` Keeps the title you wrote: ${stakeholderCandidate.roleTitle}.` : ''} Role starts as Unknown — Memoire will not auto-assign Champion or Economic Buyer.`}
-                  actionLabel="Create stakeholder"
-                  onAct={createStakeholderFromLastActivity}
-                  onIgnore={() => setStakeholderSuggestionDismissed(true)}
-                />
-              )}
-              {quoteStateSuggestions.map((suggestion) => (
-                <CaptureSpotRow
-                  key={`${suggestion.quoteRecordId}:${suggestion.kind}`}
-                  tone="emerald"
-                  tag="Quote"
-                  title={suggestion.actionLabel}
-                  detail={`${suggestion.reason} Quote: ${suggestion.quoteLabel}`}
-                  actionLabel={suggestion.actionLabel}
-                  onAct={() => applyQuoteStateSuggestion(suggestion)}
-                  onIgnore={() => setDismissedQuoteSuggestions((current) => [...current, `${suggestion.quoteRecordId}:${suggestion.kind}`])}
-                />
-              ))}
-              {showObjection && objectionCandidate && (
-                <CaptureSpotRow
-                  tone="amber"
-                  tag="Objection"
-                  title={objectionCandidate.objectionText}
-                  detail={`${objectionCandidate.objectionType} risk · ${objectionCandidate.reason}`}
-                  actionLabel="Create objection"
-                  onAct={createObjectionFromLastActivity}
-                  onIgnore={() => setObjectionSuggestionDismissed(true)}
-                />
-              )}
-            </div>
-          </section>
-        );
-      })()}
+      {reviewSet && (
+        <CaptureReviewPanel
+          changeSet={reviewSet}
+          saving={committing}
+          message={reviewMessage}
+          scopeCandidates={resolvedScope.candidates}
+          onSave={handleCommitFacts}
+          onDismiss={() => { setReviewSet(null); setReviewMessage(''); }}
+        />
+      )}
+
+      {quoteStateSuggestions.length > 0 && (
+        <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-brand-blue" />
+            <p className="text-sm font-bold text-navy">A quote on this account can move on</p>
+          </div>
+          <p className="mt-0.5 text-xs text-gray-500">Nothing changes until you confirm.</p>
+          <div className="mt-3 space-y-2">
+            {quoteStateSuggestions.map((suggestion) => (
+              <CaptureSpotRow
+                key={`${suggestion.quoteRecordId}:${suggestion.kind}`}
+                tone="emerald"
+                tag="Quote"
+                title={suggestion.actionLabel}
+                detail={`${suggestion.reason} Quote: ${suggestion.quoteLabel}`}
+                actionLabel={suggestion.actionLabel}
+                onAct={() => applyQuoteStateSuggestion(suggestion)}
+                onIgnore={() => setDismissedQuoteSuggestions((current) => [...current, `${suggestion.quoteRecordId}:${suggestion.kind}`])}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {quoteSuggestionMessage && (
         <p className="rounded-lg bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-100">{quoteSuggestionMessage}</p>
@@ -2393,4 +2583,102 @@ function getQueryDate(searchParams: URLSearchParams) {
 
 function todayKey() {
   return todayDateKey();
+}
+
+/**
+ * Which commercial thread this note will be filed against.
+ *
+ * The whole design goal is that the seller reads this and thinks "yes, that is
+ * the conversation I mean" - not "I need to tag this for analytics". So it sits
+ * directly above Save, states the answer as a sentence, and offers correction
+ * in one click rather than sending anybody to a linking panel afterwards.
+ *
+ * The four resolutions read differently on purpose. A guess presented in the
+ * same voice as a certainty is how a product teaches people to stop reading it.
+ */
+function CaptureScopePanel({
+  scope,
+  resolution,
+  corrected,
+  onChoose,
+}: {
+  scope: CommercialScope;
+  resolution: CommercialScope['resolution'];
+  corrected: boolean;
+  onChoose: (opportunityId: string | null) => void;
+}) {
+  const [picking, setPicking] = useState(false);
+
+  if (!scope.accountName) return null;
+
+  const needsChoice = resolution === 'multiple_matches' && !corrected;
+
+  return (
+    <div className={`rounded-lg border p-3 ${needsChoice ? 'border-amber-200 bg-amber-50/60' : 'border-gray-200 bg-gray-50'}`}>
+      <div className="flex items-start gap-2">
+        <LinkIcon className="mt-0.5 h-4 w-4 shrink-0 text-brand-blue" aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">Filing this under</p>
+          <p className="mt-0.5 truncate text-sm font-bold text-navy">{scope.accountName}</p>
+          {scope.opportunityId ? (
+            <p className="truncate text-sm text-gray-700">↳ {scope.opportunityName}</p>
+          ) : (
+            <p className="text-sm text-gray-600">
+              {needsChoice
+                ? 'Several deals are open here — pick one, or leave it with the customer.'
+                : 'The customer, not a specific deal.'}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {scope.candidates.length > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={() => setPicking((open) => !open)}
+            aria-expanded={picking}
+            className="mt-2 text-xs font-bold text-brand-blue"
+          >
+            {picking ? 'Close' : scope.opportunityId ? 'Change deal' : 'Choose a deal'}
+          </button>
+
+          {picking && (
+            <ul className="mt-2 space-y-1">
+              {scope.candidates.map((candidate) => (
+                <li key={candidate.opportunityId}>
+                  <button
+                    type="button"
+                    onClick={() => { onChoose(candidate.opportunityId); setPicking(false); }}
+                    className={`w-full rounded-md border px-2.5 py-1.5 text-left text-sm ${
+                      candidate.opportunityId === scope.opportunityId
+                        ? 'border-brand-blue bg-white font-bold text-navy'
+                        : 'border-gray-200 bg-white text-gray-700'
+                    }`}
+                  >
+                    <span className="block truncate">{candidate.opportunityName}</span>
+                    {/* Closed deals are offered because post-sale work is real
+                        work. They are never preselected, which is the part that
+                        keeps a new interaction off a deal that is finished. */}
+                    {!candidate.isOpen && (
+                      <span className="text-[11px] text-gray-500">Closed — post-sale work only</span>
+                    )}
+                  </button>
+                </li>
+              ))}
+              <li>
+                <button
+                  type="button"
+                  onClick={() => { onChoose(null); setPicking(false); }}
+                  className="w-full rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-left text-sm text-gray-700"
+                >
+                  Keep it with the customer
+                </button>
+              </li>
+            </ul>
+          )}
+        </>
+      )}
+    </div>
+  );
 }

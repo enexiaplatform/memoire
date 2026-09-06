@@ -14,6 +14,8 @@ import { loadStakeholders, type StakeholderRecord } from './stakeholderStore';
 import { loadCommitmentsForWorkspace } from './commercialKernel/commitmentStore';
 import { loadThreadsForWorkspace } from './commercialKernel/threadStore';
 import { loadValueOutcomesForWorkspace } from './commercialKernel/valueOutcomeStore';
+import { loadCommercialEvidenceForWorkspace } from './commercialKernel/evidenceStore';
+import type { CommercialEvidence } from '../domain/commercialKernel/commercialEvidence';
 import type {
   CommercialCommitment,
   CommercialThread,
@@ -63,6 +65,13 @@ export type SalesWorkspaceData = {
   commitments: CommercialCommitment[];
   threads: CommercialThread[];
   valueOutcomes: CommercialValueOutcome[];
+  /**
+   * What the seller has learned, as opposed to what Memoire watched happen.
+   * Loaded here because the policy engine reads it - a rule that fires from a
+   * collection some surfaces load and others do not is a rule that contradicts
+   * itself depending on which page you are standing on.
+   */
+  evidence: CommercialEvidence[];
 };
 
 type LoadOptions = {
@@ -115,6 +124,7 @@ const collectionLoaders = {
   commitments: (userId?: string | null) => loadCommitmentsForWorkspace(userId),
   threads: (userId?: string | null) => loadThreadsForWorkspace(userId),
   valueOutcomes: (userId?: string | null) => loadValueOutcomesForWorkspace(userId),
+  evidence: (userId?: string | null) => loadCommercialEvidenceForWorkspace(userId),
   accountMerges: (userId?: string | null) => loadAccountMergesForWorkspace(userId),
 } satisfies { [K in keyof SalesWorkspaceData]: (userId?: string | null) => Promise<SalesWorkspaceData[K]> };
 
