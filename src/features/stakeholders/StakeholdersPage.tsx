@@ -225,7 +225,7 @@ export function StakeholdersPage() {
         ].filter(Boolean))].sort().map((name) => <option key={name} value={name} />)}
       </datalist>
       <PageHeader
-        eyebrow="Records"
+        eyebrow="Accounts"
         title="Stakeholders"
         meta={loading ? undefined : `${visibleStakeholders.length} shown of ${stakeholders.length}`}
         description="Everyone who influences a deal, across every customer: champions, buyers, procurement, users and blockers. The account and the deal show the people on that record; this is the whole book."

@@ -317,7 +317,16 @@ export function LandingPage() {
                 Nothing in your business{' '}
                 <span className="block brand-gradient-text">goes silent.</span>
               </h1>
-              <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300">
+              {/* Who this is for, immediately under the promise.
+                  "Nothing in your business goes silent" is the right promise
+                  and, on its own, scopeless - it reads as software for running
+                  a business, which is a different and much larger claim than
+                  the one the product makes. One line fixes it without
+                  weakening the headline. */}
+              <p className="mt-5 max-w-xl font-display text-lg font-bold leading-7 text-white">
+                For B2B sellers running complex commercial work, from conversation to cash.
+              </p>
+              <p className="mt-4 max-w-xl text-lg leading-8 text-slate-300">
                 The quote nobody chased. The delivery nobody invoiced. The payment nobody noticed was late.
                 Memoire works beside your CRM and your spreadsheets, and keeps watching every thread
                 from the first conversation to the money in the bank.
@@ -459,7 +468,13 @@ export function LandingPage() {
         {/* ── Capture ── */}
         <section id="features" className="bg-page px-4 py-20 sm:px-6 lg:px-8">
           <NarrativeBlock
-            eyebrow="Capture"
+            /* One loop, named at each step: capture what happened, understand
+               what changed, decide what matters next, follow it through to
+               cash, and learn what is winning. The sections were already in
+               that order; they were labelled by module - Capture, Today, Money,
+               Review - which asked a visitor to learn the product's furniture
+               before they could see the argument. */
+            eyebrow="Capture — what happened?"
             icon={Inbox}
             title="Type it once. Messy is fine."
             text="Paste a note, an email thread or a meeting recap. Memoire reads out the account, the amount, the objection and the next action — on your device, with rules you can see, and shows you the result to correct before anything is saved."
@@ -476,12 +491,12 @@ export function LandingPage() {
         <section className="bg-white px-4 py-20 sm:px-6 lg:px-8">
           <NarrativeBlock
             flip
-            eyebrow="Today"
+            eyebrow="Understand, then decide — what matters next?"
             icon={Sun}
             title="Start where the risk is."
-            text="Today is a command center, not a dashboard: get the picture, do the work, check the watch-list. The watch-list is capped at five, because a list that grows without limit is a list nobody reads."
+            text="Today has three sections and nothing else: the picture, your three moves, and the watch-list. The watch-list is capped at five, because a list that grows without limit is a list nobody reads."
             bullets={[
-              'Every flag carries a "Why am I seeing this?" you can open',
+              'Three ranked moves, each with the reason it is first',
               'Silence detection on every deal, customer and initiative',
               'Snooze, dismiss or act — and it never changes CRM data',
             ]}
@@ -542,7 +557,7 @@ export function LandingPage() {
         {/* ── Review ── */}
         <section className="bg-page px-4 py-20 sm:px-6 lg:px-8">
           <NarrativeBlock
-            eyebrow="Review & learn"
+            eyebrow="Learn — what is making you win?"
             icon={FileText}
             title="Walk in with answers."
             text="Sort every deal into defend, rescue, or downgrade — with the proof, the gaps and the next actions attached. Share the pack as a read-only link instead of rebuilding it in a slide, then log what actually happened."
@@ -569,16 +584,23 @@ export function LandingPage() {
                 <CoverageHeatmap />
               </div>
               <div className="flex min-w-0 flex-col gap-6">
+                {/* Named for what they do, not for the modules they used to
+                    be. There is no "Business Vault" tab and no "Search &
+                    Insights" tab any more: the memory of a customer is on that
+                    customer, and search is a keystroke from anywhere in the
+                    product. A landing page that teaches module names the
+                    application no longer uses is a landing page that has to be
+                    unlearned on the first login. */}
                 <MemoryHeading
                   icon={Network}
-                  title="Business Vault"
-                  text="Your customers, people, products and deals drawn as one connected map, built from what you already captured — and an honest account of the gaps, ranked by what the relationship is worth."
+                  title="Every customer's memory, on the customer"
+                  text="What was agreed, who said it, what is still open and what you have never asked — kept on the customer itself, built from what you already captured. The connected map of people, products and deals is one click further in, for when the question is really about how things join up."
                 />
                 <MemoryHeading
                   icon={Search}
-                  title="Search & Insights"
+                  title="Search from anywhere"
                   badge="Personal"
-                  text="Ask what is at risk, where the money sits, or whether your follow-ups worked. Every answer is computed from your own history on your own device — nothing is sent to an AI service."
+                  text="One keystroke, from any screen: find a customer, a deal, or ask what is at risk, where the money sits, or whether your follow-ups worked. Every answer is computed from your own history on your own device — nothing is sent to an AI service."
                 />
                 <div className="rounded-card border border-slate-200 bg-page p-5">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Ask, in your own words</p>

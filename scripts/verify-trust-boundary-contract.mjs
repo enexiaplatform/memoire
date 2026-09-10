@@ -115,8 +115,12 @@ for (const marker of [
 // forcing a second hand-written copy back into the JSX.
 const askMemoire = read('src/features/v31/AskMemoirePage.tsx')
   + read('src/features/v31/askMemoireContext.ts');
+// "Search & Insights" is no longer in this list. It was the rail-group eyebrow
+// at the top of the page, and it was never part of the trust guarantee - the
+// markers below are. The group it named stopped existing on 2026-09-07, and a
+// contract that keeps a retired module name alive is how the name leaks back
+// into the interface.
 for (const marker of [
-  'Search &amp; Insights',
   'What this can answer',
   'Who needs follow-up?',
   'Where is money stuck?',

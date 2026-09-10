@@ -467,7 +467,7 @@ export function AskMemoirePage() {
       {/* The eyebrow carries the surface's own name rather than its rail group,
           because the title here is a sentence and the name would otherwise
           appear nowhere on the page you reached by clicking it. */}
-      <PageHeader eyebrow="Search &amp; Insights" title="Find anything, and ask what it means" />
+      <PageHeader title="Find anything, and ask what it means" />
 
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="mb-5 rounded-lg border border-gray-100 bg-gray-50 p-4">

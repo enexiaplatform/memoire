@@ -1,6 +1,7 @@
+import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Plus, ReceiptText, RefreshCw, Search, Trash2, Wallet } from 'lucide-react';
+import { Plus, ReceiptText, RefreshCw, Search, Trash2, Wallet } from 'lucide-react';
 import { ProfitAndLossStatement } from './ProfitAndLossStatement';
 import { BUSINESS_ACCOUNTING_ENABLED } from '../../config/featureFlags';
 import { ThreadsSection } from '../threads/ThreadsSection';
@@ -11,8 +12,6 @@ import { loadOrderCostsForWorkspace } from '../../services/orderCostStore';
 import type { OrderTermRecord } from '../../utils/orderToCash';
 import { SupplierCommitmentsPanel } from './SupplierCommitmentsPanel';
 import { useAuthContext } from '../../auth/authContext';
-import { DataModePill } from '../../components/common/DataModePill';
-import { isSupabaseConfigured } from '../../lib/demoMode';
 import type { AccountMergeRecord } from '../../services/accountMergeStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore';
@@ -66,8 +65,8 @@ function revenueDataFrom(workspace: SalesWorkspaceData | null): RevenueData | nu
   };
 }
 
-export function RevenueViewPage() {
-  const { user, loading: authLoading, isAuthenticated } = useAuthContext();
+export function RevenueViewPage({ tabs }: { tabs?: ReactNode } = {}) {
+  const { user, loading: authLoading } = useAuthContext();
   // Paint from the workspace already in memory rather than flashing a skeleton
   // on every arrival. Money is the surface sellers bounce in and out of most,
   // and the load below still runs - it just no longer holds the screen blank
@@ -153,34 +152,32 @@ export function RevenueViewPage() {
           the day. Two surfaces claiming to say what to do first is how an
           operator stops trusting either. */}
       <PageHeader
-        eyebrow="Records"
+        tabs={tabs}
+        eyebrow="Money"
         title="Orders"
+        documentTitle="Money · Orders"
         description="Committed orders, followed from contract to money in the bank. Today owns the priority order."
         actions={
-          <>
-            <Link to="/app/today" className="inline-flex items-center justify-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-sm font-bold text-white">
-              Today
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <button
-              type="button"
-              onClick={() => loadRevenue(true)}
-              disabled={syncing}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
-              title="Reload orders from cloud"
-            >
-              <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-            </button>
-            <DataModePill
-              compact
-              isLoading={authLoading || loading}
-              isAuthenticated={isAuthenticated}
-              isSupabaseConfigured={isSupabaseConfigured}
-              cloudAvailable={isSupabaseConfigured}
-              hasSampleData={sampleDataActive}
-            />
-          </>
+          <button
+            type="button"
+            onClick={() => loadRevenue(true)}
+            disabled={syncing}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700 disabled:opacity-60"
+            title="Reload orders from cloud"
+          >
+            <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+          </button>
         }
+          /*
+           * No per-page sync chrome.
+           *
+           * The app header carries one sync state for the whole workspace, and
+           * every page that repeated it added a second answer to "am I synced"
+           * on the same screen - a green "Cloud sync" pill beside a grey
+           * "Browser only" pill was a real screenshot. Normal is quiet; a
+           * genuine failure still speaks, in this page's own error state, where
+           * it can say what failed and offer the retry.
+           */
       />
 
       {loading ? (

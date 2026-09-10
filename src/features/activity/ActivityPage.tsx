@@ -110,7 +110,24 @@ type LedgerFocus =
   | { kind: 'day'; date: string; label: string }
   | null;
 
-export function ActivityPage() {
+/**
+ * The activity analysis, and the page that used to be its only home.
+ *
+ * `variant` is which question is being asked. "page" is the full surface: the
+ * analysis, then the ledger under it, with a row opening its detail drawer.
+ * "analytics" is the analysis alone, embedded in Review > Learning & Analytics,
+ * which is where "how am I working" belongs - it is a weekly question, and it
+ * was being asked from a rail row of its own.
+ *
+ * The ledger comes with the embed, folded. It would have been tidier to leave
+ * it out - looking a touch up is Plan > History's job, and
+ * `/app/activity?activityId=` has forwarded there for that reason since before
+ * this split - but the heatmap, the leaderboard and the pivot are all
+ * click-to-filter, and the thing they filter is the ledger. Dropping it would
+ * have left three affordances on the page that visibly do nothing.
+ */
+export function ActivityPage({ variant = 'page' }: { variant?: 'page' | 'analytics' } = {}) {
+  const analyticsOnly = variant === 'analytics';
   const { user } = useAuthContext();
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
@@ -308,6 +325,9 @@ export function ActivityPage() {
   }, [domainFilter, entries, focus, relationFilter, search]);
 
   if (loading) {
+    if (analyticsOnly) {
+      return <div className="rounded-xl border border-gray-200 bg-white p-5 text-sm font-semibold text-gray-500">Reading your activity...</div>;
+    }
     return (
       <SkeletonScreen label="Reading your activity">
         <PageContainer>
@@ -323,8 +343,19 @@ export function ActivityPage() {
   // wall of zeros, em-dashes and "0% attached", which reads as a verdict on the
   // operator rather than as an empty room. One sentence and one way in instead.
   if (allEntries.length === 0) {
+    if (analyticsOnly) {
+      return (
+        <p className="rounded-xl border border-gray-200 bg-white p-5 text-sm leading-6 text-gray-500">
+          Nothing dated yet, so there is no rhythm to read. Capture a customer touch and this fills in.
+        </p>
+      );
+    }
     return <ActivityEmptyState />;
   }
+
+  // The embed is a section of Review, so Review owns the page frame, the
+  // heading and the eyebrow. Everything below is identical either way.
+  const Frame = analyticsOnly ? AnalyticsFrame : PageContainer;
 
   const activePeriod = periods.find((option) => option.id === period);
   const filtersActive = relationFilter !== 'all' || domainFilter !== 'all' || Boolean(search.trim()) || Boolean(focus);
@@ -335,25 +366,18 @@ export function ActivityPage() {
     : 'No rows match these filters.';
 
   return (
-    <PageContainer>
-      <PageHeader
-        eyebrow="Records"
-        icon={<ActivityIcon className="h-5 w-5" />}
-        title="Activity"
-        description="Every dated thing in the workspace, each one resolved to the single customer, deal, line or domain it was for. The calendar says when; this says who it was for and whether it added up."
-        actions={
-          /* "Quick capture", not "Capture": the app header's permanent Capture
-             pill sits directly above this one. See TimelinePage for the same
-             collision and the same reasoning. */
-          <Link
-            to="/app/capture?mode=quick"
-            className="inline-flex items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
-          >
-            <Plus className="h-4 w-4" />
-            Quick capture
-          </Link>
-        }
-      />
+    <Frame>
+      {!analyticsOnly && (
+        <PageHeader
+          eyebrow="Review"
+          icon={<ActivityIcon className="h-5 w-5" />}
+          title="Activity"
+          description="Every dated thing in the workspace, each one resolved to the single customer, deal, line or domain it was for. The calendar says when; this says who it was for and whether it added up."
+          /* No capture control. The app header carries a permanent Capture pill
+             on every page, and a second one here was only ever distinguishable
+             by being renamed. See TimelinePage for the same collision. */
+        />
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="inline-flex rounded-full border border-gray-200 bg-gray-50 p-1" role="tablist" aria-label="Period">
@@ -623,6 +647,7 @@ export function ActivityPage() {
         </div>
       </div>
 
+      <LedgerFrame folded={analyticsOnly} shown={visibleEntries.length} total={entries.length} filtered={Boolean(focus)}>
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -714,6 +739,7 @@ export function ActivityPage() {
           )}
         </div>
       </section>
+      </LedgerFrame>
 
       {selectedEntry && (
         <ActivityDetailDrawer
@@ -722,7 +748,51 @@ export function ActivityPage() {
           onDelete={canDeleteEntry(selectedEntry) ? () => deleteEntry(selectedEntry) : undefined}
         />
       )}
-    </PageContainer>
+    </Frame>
+  );
+}
+
+/** The embedded shape: a plain column, because Review owns the page frame. */
+function AnalyticsFrame({ children }: { children: React.ReactNode }) {
+  return <div className="flex w-full flex-col gap-4">{children}</div>;
+}
+
+/**
+ * The ledger, open on its own page and folded inside Review.
+ *
+ * Folded rather than dropped because the analysis above it is click-to-filter -
+ * pick a day on the heatmap, a customer on the leaderboard, a cell in the pivot
+ * - and this is what those clicks filter. The summary carries the count so a
+ * filter still visibly does something with the fold shut, and opening it shows
+ * the rows. On the Activity page itself there is no fold: the ledger is what
+ * that page is for.
+ */
+function LedgerFrame({
+  folded,
+  shown,
+  total,
+  filtered,
+  children,
+}: {
+  folded: boolean;
+  shown: number;
+  total: number;
+  filtered: boolean;
+  children: React.ReactNode;
+}) {
+  if (!folded) return <>{children}</>;
+  return (
+    <details className="rounded-xl border border-gray-200 bg-white shadow-sm" open={filtered}>
+      <summary className="cursor-pointer list-none px-5 py-3">
+        <span className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="text-sm font-bold text-navy">The rows behind this</span>
+          <span className="text-xs font-semibold text-gray-500">
+            {shown === total ? `${total} dated ${total === 1 ? 'item' : 'items'}` : `${shown} of ${total} shown`}
+          </span>
+        </span>
+      </summary>
+      <div className="border-t border-gray-100 p-5">{children}</div>
+    </details>
   );
 }
 

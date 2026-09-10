@@ -148,9 +148,15 @@ export const featureRegistry: FeatureRecord[] = [
     //
     // Shortened again to "Orders" (2026-08-02). "& Cash" was doing no work in
     // the rail: cash is where an order ends, so naming both halves described the
-    // page rather than naming the thing you go there to look at. The page still
-    // walks contract to collection - the noun in the rail is just the record.
-    label: 'Orders',
+    // page rather than naming the thing you go there to look at.
+    //
+    // Back to "Money" (2026-09-07), and this time the name is accurate rather
+    // than aspirational: the destination now owns Orders, Collections and
+    // Margin as three views of one question - what did we commit to, did it
+    // arrive, was it worth doing. Calling that "Orders" would name one third of
+    // it, and the two thirds it did not name were the two rail rows this change
+    // removed.
+    label: 'Money',
     status: 'core',
     ownerSurface: 'money',
     route: '/app/revenue',
@@ -227,7 +233,7 @@ export const featureRegistry: FeatureRecord[] = [
     // already says. It means what it says again - this is in the rail, so it is
     // true, and `navigationGroups` refuses to build a rail item that claims
     // otherwise.
-    navVisible: true,
+    navVisible: false,
     analytics: 'active',
     dataRetention: 'Derived query results only.',
     killOrActivationCondition: 'Never - bounded, deterministic answers over the workspace.',
@@ -240,7 +246,7 @@ export const featureRegistry: FeatureRecord[] = [
     route: '/app/settings',
     routeBehavior: 'primary',
     // In the rail's last group. See the note on search-insights above.
-    navVisible: true,
+    navVisible: false,
     analytics: 'active',
     dataRetention: 'Owns export, restore and sync recovery.',
     killOrActivationCondition: 'Never.',
@@ -261,7 +267,7 @@ export const featureRegistry: FeatureRecord[] = [
     // calendars in the primary rail and force the operator to decide which one
     // "the week" lives in, which is the exact mistake the Plan/Activity merge
     // was undone to fix.
-    navVisible: true,
+    navVisible: false,
     analytics: 'active',
     dataRetention: 'Derived ledger and pivots. Owns no records.',
     killOrActivationCondition:
@@ -302,7 +308,7 @@ export const featureRegistry: FeatureRecord[] = [
     // of and none of them answers whole. Promoting it to a seventh primary
     // would mean editing PRIMARY_DESTINATION_IDS, which is a product decision
     // and not a side effect of shipping charts.
-    navVisible: true,
+    navVisible: false,
     analytics: 'active',
     dataRetention: 'Derived from the workspace. Owns no records.',
     killOrActivationCondition:
@@ -310,7 +316,7 @@ export const featureRegistry: FeatureRecord[] = [
   },
   {
     id: 'cost-analysis',
-    label: 'Cost Analysis',
+    label: 'Margin',
     // Shipped 2026-08-05 as a block inside Orders, under the order book it
     // prices. Promoted to the rail the next day for one reason, and it is worth
     // recording honestly: the founder went looking for it in the navigation,
@@ -331,7 +337,7 @@ export const featureRegistry: FeatureRecord[] = [
     ownerSurface: 'cost-analysis',
     route: '/app/cost-analysis',
     routeBehavior: 'primary',
-    navVisible: true,
+    navVisible: false,
     analytics: 'active',
     dataRetention: 'Owns one purchase cost per committed order. Derives every other figure.',
     killOrActivationCondition:
@@ -339,7 +345,7 @@ export const featureRegistry: FeatureRecord[] = [
   },
   {
     id: 'cash-collection',
-    label: 'Cash Collection',
+    label: 'Collections',
     // Its own destination beside Orders rather than a tab inside it, decided by
     // the founder on 2026-08-06 and worth recording in their terms: an order is
     // where you track the goods, a receivable is where you chase the money, and
@@ -355,7 +361,7 @@ export const featureRegistry: FeatureRecord[] = [
     ownerSurface: 'cash-collection',
     route: '/app/cash-collection',
     routeBehavior: 'primary',
-    navVisible: true,
+    navVisible: false,
     analytics: 'active',
     dataRetention: 'Owns payment receipts and corrected schedules, one row per order. Derives every due date.',
     killOrActivationCondition:
@@ -384,7 +390,7 @@ export const featureRegistry: FeatureRecord[] = [
     ownerSurface: 'stakeholders',
     route: '/app/stakeholders',
     routeBehavior: 'primary',
-    navVisible: true,
+    navVisible: false,
     analytics: 'active',
     dataRetention: 'Source of truth for stakeholder records. Also shown on Account and Opportunity.',
     killOrActivationCondition:
@@ -403,7 +409,7 @@ export const featureRegistry: FeatureRecord[] = [
     // surface. Making it primary would be the exact drift this registry exists
     // to stop - and would have meant editing PRIMARY_DESTINATION_IDS, which is
     // a product decision, not a side effect of shipping a map.
-    navVisible: true,
+    navVisible: false,
     analytics: 'active',
     // Owns exactly one collection - the knowledge notes and open questions an
     // operator writes themselves - and derives every other node from records
@@ -700,42 +706,30 @@ export const globalActions: FeatureRecord[] = ['capture', 'search-insights', 'ac
  */
 const NAVIGATION_GROUP_IDS: { id: NavGroupId; label: string; itemIds: string[] }[] = [
   {
+    // One block, six rows, no headings.
+    //
+    // The rail carried fourteen items in three labelled groups until
+    // 2026-09-07. Every one of them was defensible on its own and the whole was
+    // not: a seller opening Memoire had to choose between Today, Plan,
+    // Dashboard, Review, Accounts, Stakeholders, Opportunities, Orders, Cash
+    // Collection, Cost Analysis, Activity, Search, Vault and Settings before
+    // doing any commercial work at all. Fourteen doors is not fourteen
+    // capabilities; it is one capability and thirteen ways to be lost.
+    //
+    // What is gone from the rail is not gone from the product. Money now owns
+    // Orders, Collections and Margin as three views of one question. Search and
+    // Capture are global actions in the top bar, because they are things you do
+    // from wherever you are standing rather than places you go. Settings is
+    // administration and lives under the avatar. Activity, the Dashboard lens
+    // and the Vault are ways of seeing the six destinations, and they are
+    // reached from the surface that owns their question.
+    //
+    // The group labels went with them. "Run / Records / Workspace" is the
+    // product's own filing taxonomy, and a rail short enough to read in one
+    // glance does not need to be filed.
     id: 'run',
-    // No heading rendered for the first block - the wordmark above it is the
-    // heading, and an operator does not need to be told that Today is where
-    // running the business starts.
     label: '',
-    itemIds: ['today', 'timeline', 'business-lens', 'review'],
-  },
-  {
-    id: 'records',
-    label: 'Records',
-    // Activity sits here from 2026-08-03. It is still `status: 'global'` and
-    // still owns no records - every row is a captured touch or a plan item that
-    // Capture, Timeline and the deal already own. What changed is how the
-    // operator reads it: they go to Activity to look up a specific piece of
-    // work, by customer, the same way they open Accounts to look up a customer.
-    // That is a Records question, and filing it under "Workspace" next to
-    // Settings hid it. Position in the rail is presentation; status is the
-    // contract, and the contract is unchanged - it is still absent from
-    // PRIMARY_DESTINATION_IDS and still writes nothing.
-    // Stakeholders sits directly under Accounts from 2026-08-05: a stakeholder
-    // is a person inside a customer, so the two rows read as one pair. Same
-    // contract as Activity above - present in the rail, absent from
-    // PRIMARY_DESTINATION_IDS.
-    // Cost Analysis sits directly under Orders from 2026-08-06, the same way
-    // Stakeholders sits under Accounts: the buy side of the orders above it.
-    // Cash Collection sits directly under Orders from 2026-08-06: the money
-    // side of the orders above it, kept as its own row because chasing a
-    // payment and fulfilling an order are different jobs on different clocks.
-    // Cost Analysis moved down to sit beside it - it is no longer about orders
-    // at all, it prices a quote before one exists.
-    itemIds: ['accounts', 'stakeholders', 'opportunities', 'money', 'cash-collection', 'cost-analysis', 'activity'],
-  },
-  {
-    id: 'tools',
-    label: 'Workspace',
-    itemIds: ['search-insights', 'business-vault', 'settings'],
+    itemIds: ['today', 'timeline', 'accounts', 'opportunities', 'money', 'review'],
   },
 ];
 

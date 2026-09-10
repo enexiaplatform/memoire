@@ -12,12 +12,9 @@ import {
   X,
 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
-import { DataModePill } from '../../components/common/DataModePill';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
-import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import {
-  canUseSalesActivityCloudStore,
   deleteSalesActivity,
   updateSalesActivityLink,
   type SalesActivityRecord,
@@ -106,7 +103,7 @@ const activityTypeTone: Record<SalesActivityType, string> = {
  * and /app/calendar URLs keep working as deep links.
  */
 export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boolean } = {}) {
-  const { user, loading: authLoading, isAuthenticated } = useAuthContext();
+  const { user } = useAuthContext();
   const [viewMode, setViewMode] = useState<CalendarViewMode>('week');
   const [domainFilter, setDomainFilter] = useState<BusinessDomain | 'All'>('All');
   const [anchorDate, setAnchorDate] = useState(() => new Date());
@@ -306,14 +303,8 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
           </div>
         )}
         <div className="flex flex-wrap items-center gap-2">
-          <DataModePill
-            compact
-            isLoading={authLoading}
-            isAuthenticated={isAuthenticated}
-            isSupabaseConfigured={isSupabaseConfigured}
-            cloudAvailable={canUseSalesActivityCloudStore(dataUserId)}
-            hasSampleData={sampleDataActive}
-          />
+            {/* No data-mode pill. One sync state, in the app header, for
+                every page - see the note on Today. */}
           <Link
             to={`/app/capture?mode=quick&date=${range.start}`}
             className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 hover:border-emerald-300"

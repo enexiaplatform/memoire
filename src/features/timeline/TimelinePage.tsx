@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { CalendarDays, Plus } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { CalendarDays } from 'lucide-react';
 import { WeeklyPlanPage } from '../plan/WeeklyPlanPage';
 import { SalesActivityCalendarPage } from '../calendar/SalesActivityCalendarPage';
 import { CommitmentLedgerPanel } from '../commitments/CommitmentLedgerPanel';
+import { CommittedWeekStrip } from '../dashboard/CommittedWeekStrip';
+import { useAuthContext } from '../../auth/authContext';
+import { hasLocalSampleData } from '../../utils/dataMode';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 import type { PlanBoardWindow } from '../../domain/commercialKernel/derivePlanCommitments';
 import { getPlanRange } from '../../utils/weeklyPlan';
@@ -37,6 +40,8 @@ function readView(value: string | null): TimelineView {
  * and /app/activity URLs still resolve here.
  */
 export function TimelinePage() {
+  const { user } = useAuthContext();
+  const sampleDataActive = hasLocalSampleData();
   const [searchParams, setSearchParams] = useSearchParams();
   const view = readView(searchParams.get('view'));
   // Seeded with the week the board opens on, so the panel above it is already
@@ -72,28 +77,20 @@ export function TimelinePage() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow="Run"
         icon={<CalendarDays className="h-5 w-5" />}
         title="Plan"
         description={activeHint}
-        actions={
-          /*
-           * Named "Quick capture", not "Capture": the app header carries a
-           * permanent dark "Capture" pill in the corner directly above this one,
-           * so on Plan - and only on Plan - two identical buttons sat stacked
-           * 57px apart with the same word on them. They are not the same thing;
-           * this one opens the quick form. Every other surface already labels
-           * its capture link for what it does there ("Capture update", "Capture
-           * a sales update"), so this follows them.
-           */
-          <Link
-            to="/app/capture?mode=quick"
-            className="inline-flex items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
-          >
-            <Plus className="h-4 w-4" />
-            Quick capture
-          </Link>
-        }
+        /*
+         * No capture control here.
+         *
+         * There was one, renamed "Quick capture" so it would not read as a
+         * second copy of the permanent Capture pill sitting 57px above it in
+         * the app header. The rename made the two buttons distinguishable
+         * without making the second one necessary: the global control opens the
+         * same composer, from every page, and a per-page duplicate of a global
+         * action is the thing that made "which of these two do I press" a
+         * question at all.
+         */
       />
 
       <div className="-mt-1 inline-flex rounded-full border border-gray-200 bg-gray-50 p-1" role="tablist" aria-label="Timeline view">
@@ -116,20 +113,38 @@ export function TimelinePage() {
       <div className="flex flex-col gap-5">
         {view === 'upcoming' ? (
           <>
-            {/* Open commitments lead: they are the promises the week is made
-                of. The plan board below is the same week laid out as days -
-                which is exactly why the panel is handed that week's range. It
-                used to re-list every promise the board was about to draw, so
-                the operator scrolled past a full copy of their week to reach
-                the week. It now counts those on one line and lists only what
-                the board cannot show: undated promises, promises somebody else
-                owes, and anything dated beyond the days on screen. */}
-            <CommitmentLedgerPanel
-              title="Open commitments"
-              boardWindow={boardWindow}
-              onShowOnBoard={(date) => setFocusRequest((current) => ({ date, seq: (current?.seq ?? 0) + 1 }))}
+            {/* The week in the order it is decided.
+
+                1. What this week is for - the promise frozen at confirm time,
+                   which is the only thing on the page that says what "a good
+                   week" would even mean.
+                2. The ranked moves, and 3. the open commitments: both inside
+                   the board component below, because the ledger has to sit
+                   between the moves and the days and the board owns that
+                   sequence once it is handed the panel.
+                4. The days.
+
+                The calendar was the whole of this view and therefore the whole
+                of the week's meaning. It is execution machinery: useful,
+                unchanged, and no longer the first thing the eye lands on. */}
+            <CommittedWeekStrip userId={sampleDataActive ? undefined : user?.id} sampleDataActive={sampleDataActive} />
+            <WeeklyPlanPage
+              embedded
+              onRangeChange={setBoardWindow}
+              focusRequest={focusRequest}
+              beforeBoard={(
+                /* Handed the days the board is drawing, so it stops re-listing
+                   the promises that board is about to show and counts them on
+                   one line instead. What survives the fold is what the board
+                   cannot show: undated promises, promises somebody else owes,
+                   and anything dated beyond the days on screen. */
+                <CommitmentLedgerPanel
+                  title="Commitments"
+                  boardWindow={boardWindow}
+                  onShowOnBoard={(date) => setFocusRequest((current) => ({ date, seq: (current?.seq ?? 0) + 1 }))}
+                />
+              )}
             />
-            <WeeklyPlanPage embedded onRangeChange={setBoardWindow} focusRequest={focusRequest} />
           </>
         ) : (
           <SalesActivityCalendarPage embedded />

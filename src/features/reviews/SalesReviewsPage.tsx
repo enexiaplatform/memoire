@@ -18,11 +18,8 @@ import { derivePersonalLearning } from '../../domain/commercialLearning/derivePe
 import type { CommercialCommitment } from '../../domain/commercialKernel/types';
 import type { CommercialEvidence } from '../../domain/commercialKernel/commercialEvidence';
 import { useAuthContext } from '../../auth/authContext';
-import { DataModePill } from '../../components/common/DataModePill';
-import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import {
-  canUseSalesActivityCloudStore,
   filterSalesActivitiesByPeriod,
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
@@ -87,7 +84,9 @@ export type ReviewTab = 'review' | 'defense' | 'analytics';
 const reviewTabs: { value: ReviewTab; label: string }[] = [
   { value: 'review', label: 'Weekly review' },
   { value: 'defense', label: 'Pipeline Defense' },
-  { value: 'analytics', label: 'Analytics' },
+  // Named for both halves: the charts are the analytics, and what the book is
+  // starting to show about how this seller wins is the learning.
+  { value: 'analytics', label: 'Learning & Analytics' },
 ];
 
 /**
@@ -122,7 +121,6 @@ export function SalesReviewsPage() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow="Run"
         title="Review"
         description="Close the week: what actually happened, what it cost, and what you commit to next."
         actions={
@@ -147,6 +145,14 @@ export function SalesReviewsPage() {
 
       {tab === 'review' && (
         <>
+          {/* The week as four questions, in the order somebody closing a week
+              actually asks them. They were already the four things this tab
+              produced; what was missing was any statement that they were one
+              argument rather than five independent panels, so a reader met a
+              scoreboard, then a ledger, then a recap, then a brand chart, and
+              had to assemble the story themselves. */}
+          <ReviewNarrativeLabel label="What happened?" hint="What closed, what moved, and what you promised" />
+
           {/* The outcome, first and above everything else. What closed in this
               window, how that compares with the one before, and what it leaves
               of the quarter and the year. */}
@@ -163,6 +169,10 @@ export function SalesReviewsPage() {
               period, and this is the only place that shows it. */}
           <CommitmentLedgerPanel title="Commitment performance" showComposer={false} />
 
+          <ReviewNarrativeLabel
+            label="Why?"
+            hint="What the week was made of, and what Memoire has learned from it"
+          />
           <WeeklyReviewSection periodType={periodType} period={period} />
 
           {/* Which line is carrying the number.
@@ -175,6 +185,10 @@ export function SalesReviewsPage() {
               100%". */}
           <BrandPerformancePanel />
 
+          <ReviewNarrativeLabel
+            label="What changes next week?"
+            hint="What this period leaves standing"
+          />
           {/* Forward-looking work, deliberately last and folded. These are the
               two panels Review used to open on; they are what to do about the
               period rather than what the period produced, and Today owns the
@@ -198,6 +212,23 @@ export function SalesReviewsPage() {
       {tab === 'defense' && <PipelineDefenseArtifactSection />}
       {tab === 'analytics' && <ReviewAnalyticsSection />}
     </PageContainer>
+  );
+}
+
+/**
+ * A step in the weekly argument.
+ *
+ * Level-3 typography, like the bands on the analytics tab and the labels on
+ * Today: it names the question and leaves the panel underneath to answer it.
+ * Giving these card shells would have added four more boxes to the page whose
+ * problem was that everything already looked equally important.
+ */
+function ReviewNarrativeLabel({ label, hint }: { label: string; hint: string }) {
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 pt-2">
+      <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-gray-400">{label}</h2>
+      <p className="text-xs font-medium text-gray-400">{hint}</p>
+    </div>
   );
 }
 
@@ -241,7 +272,7 @@ function WeeklyReviewSection({
   periodType: SalesRecapPeriod;
   period: SalesRecapRange;
 }) {
-  const { user, loading: authLoading, isAuthenticated } = useAuthContext();
+  const { user } = useAuthContext();
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [objections, setObjections] = useState<ObjectionRecord[]>([]);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
@@ -575,14 +606,8 @@ function WeeklyReviewSection({
             {loadingActivities ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
             Copy weekly brief
           </button>
-          <DataModePill
-            compact
-            isLoading={authLoading}
-            isAuthenticated={isAuthenticated}
-            isSupabaseConfigured={isSupabaseConfigured}
-            cloudAvailable={canUseSalesActivityCloudStore(dataUserId)}
-            hasSampleData={sampleDataActive}
-          />
+            {/* No data-mode pill. One sync state, in the app header, for
+                every page - see the note on Today. */}
         </div>
       </header>
 
@@ -725,7 +750,7 @@ function WeeklyReviewSection({
       )}
 
       <ReviewFold
-        title="What to learn from it"
+        title="What Memoire learned from it"
         hint="Outcomes of the actions you took, execution quality, playbook patterns and the assets you were missing"
       >
         {(periodActionOutcomes.length > 0 || actionOutcomeSummary.unresolvedCriticalActions.length > 0) && (

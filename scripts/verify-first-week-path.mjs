@@ -113,9 +113,12 @@ assert.ok(
   today.includes('!sampleDataActive && !firstWeekPath.complete && !trialChecklistState.dismissedAt'),
   'the strip must be gated on real-workspace, incomplete, and not-dismissed',
 );
+// Below the watch-list, because a workspace still on its first week has little
+// in the watch-list to read and the strip is what it can act on - but never
+// above the picture, which is the page's answer to "what is going on".
 assert.ok(
-  today.indexOf('<FirstWeekPathStrip') < today.indexOf('The rest of the watch-list'),
-  'the strip renders in the action tier, above the first collapsed drawer',
+  today.indexOf('<FirstWeekPathStrip') > today.indexOf('<ProactiveNudgesPanel'),
+  'the strip closes the daily page rather than interrupting it',
 );
 assert.ok(today.includes('dismissTrialActivationChecklist()'), 'dismiss reuses the checklist state, no new store');
 

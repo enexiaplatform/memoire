@@ -66,7 +66,7 @@ const EVIDENCE_COLORS: Record<string, string> = {
   Unsupported: '#6D28D9',
 };
 
-export function BusinessLensPage() {
+export function BusinessLensPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { user, loading: authLoading } = useAuthContext();
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
@@ -122,7 +122,16 @@ export function BusinessLensPage() {
     return `${Math.abs(change)}% ${change > 0 ? 'more' : 'fewer'} in the last four weeks than the four before`;
   }, [model]);
 
+  // The embed is a band inside Review, so Review owns the frame and the
+  // heading. Everything between them is the same lens either way - which is the
+  // point: "absorbed into Review" has to mean the same component, or the two
+  // readings drift and the redirect becomes a lie.
+  const Frame = embedded ? LensFrame : PageContainer;
+
   if (authLoading || (loading && !model)) {
+    if (embedded) {
+      return <div className="rounded-xl border border-gray-200 bg-white p-5 text-sm font-semibold text-gray-500">Reading how the business is doing...</div>;
+    }
     return (
       <SkeletonScreen label="Reading how the business is doing">
         <PageContainer>
@@ -149,21 +158,21 @@ export function BusinessLensPage() {
 
   if (!model || !lens) {
     return (
-      <PageContainer>
-        <Header />
+      <Frame>
+        {!embedded && <Header />}
         <p className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
           <Loader2 className="mx-auto mb-2 h-4 w-4 animate-spin" />
           Reading your workspace.
         </p>
-      </PageContainer>
+      </Frame>
     );
   }
 
   const hasAnything = model.kpis.openDeals > 0 || model.kpis.activitiesLast30 > 0 || lens.accounts.total > 0;
 
   return (
-    <PageContainer>
-      <Header />
+    <Frame>
+      {!embedded && <Header />}
 
       {!hasAnything ? (
         <EmptyState />
@@ -402,14 +411,19 @@ export function BusinessLensPage() {
           </div>
         </>
       )}
-    </PageContainer>
+    </Frame>
   );
+}
+
+/** The embedded shape: a plain column, because Review owns the page frame. */
+function LensFrame({ children }: { children: React.ReactNode }) {
+  return <div className="flex w-full flex-col gap-5">{children}</div>;
 }
 
 function Header() {
   return (
     <PageHeader
-      eyebrow="Run"
+      eyebrow="Review"
       icon={<BarChart3 className="h-5 w-5" />}
       title="How the business is doing"
       // Counted six when the rail held six. It holds fourteen now, and a number

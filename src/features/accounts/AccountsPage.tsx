@@ -4,13 +4,10 @@ import { Archive, ArchiveRestore, ArrowUpDown, ChevronDown, ChevronLeft, Chevron
 import { useAuthContext } from '../../auth/authContext';
 import { ThreadsSection } from '../threads/ThreadsSection';
 import { DeltaPanel } from '../threads/DeltaPanel';
-import { DataModePill } from '../../components/common/DataModePill';
-import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import {
   accountPotentials,
   accountToFormInput,
-  canUseAccountCloudStore,
   createAccount,
   deleteAccount,
   emptyAccountInput,
@@ -115,7 +112,7 @@ const quickFilterOptions: Array<{ value: QuickFilter; label: string }> = [
 ];
 
 export function AccountsPage() {
-  const { user, loading: authLoading, isAuthenticated } = useAuthContext();
+  const { user } = useAuthContext();
   const [searchParams, setSearchParams] = useSearchParams();
   // Paint from the workspace already in memory. The refresh below still runs;
   // without this the page went blank on every arrival even though every record
@@ -136,6 +133,7 @@ export function AccountsPage() {
   const [lastLoadedAt, setLastLoadedAt] = useState('');
   const [loadError, setLoadError] = useState('');
   const [query, setQuery] = useState('');
+  const [allFiltersOpen, setAllFiltersOpen] = useState(false);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
   const [hygieneFilter, setHygieneFilter] = useState<HygieneFilter>('Active work');
   const [hygienePreferences, setHygienePreferences] = useState<AccountHygienePreference[]>([]);
@@ -399,6 +397,19 @@ export function AccountsPage() {
     || quickFilter !== 'all'
     || hygieneFilter !== 'Active work';
 
+  // What is on behind the fold, so the button can say so. The two chips in
+  // front of it are excluded: a filter you can see the state of does not need
+  // counting, and counting it would make "All filters 1" appear the moment
+  // somebody pressed a chip that is right there.
+  const advancedFilterCount = [
+    segmentFilter !== allFilter,
+    potentialFilter !== allFilter,
+    relationshipFilter !== allFilter,
+    healthFilter !== allFilter,
+    quickFilter !== 'all' && quickFilter !== 'keyAccounts',
+    hygieneFilter !== 'Active work' && hygieneFilter !== 'Needs follow-up',
+  ].filter(Boolean).length;
+
   const clearAllFilters = () => {
     setQuery('');
     setSegmentFilter(allFilter);
@@ -660,7 +671,6 @@ export function AccountsPage() {
           duplicates, unlinked candidates - moves below it, where you go
           looking for work rather than tripping over it. */}
       <PageHeader
-        eyebrow="Records"
         title="Accounts"
         meta={
           loading
@@ -668,50 +678,60 @@ export function AccountsPage() {
             : `${formatCount(visibleRows.length)} shown of ${formatCount(summary.totalAccounts)}`
         }
         actions={
+          /*
+           * One primary, one secondary, and the rest behind "More".
+           *
+           * There were five controls of near-equal weight here - Add, Import,
+           * Coverage, a refresh disc and a data-mode pill - and four of them
+           * were things you do once a quarter or never. The refresh and the
+           * pill are gone entirely: the app header carries the sync state for
+           * every page, and repeating it per page is how "am I synced" became a
+           * question with several answers on screen at once. A real failure
+           * still speaks, loudly, in `loadError` below.
+           */
           <>
-            <button type="button" onClick={openAddPanel} className="inline-flex items-center justify-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-sm font-bold text-white">
+            <button type="button" onClick={openAddPanel} className="inline-flex items-center justify-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-sm font-bold text-white hover:bg-navy/90">
               <Plus className="h-4 w-4" />
               Add account
             </button>
-            <button
-              type="button"
-              onClick={() => setImportOpen((open) => !open)}
-              aria-expanded={importOpen}
-              className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-bold transition ${
-                importOpen ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-gray-300 bg-white text-gray-700 hover:border-brand-blue hover:text-brand-blue'
-              }`}
-            >
-              <Upload className="h-4 w-4" />
-              Import
-            </button>
-            {/* Portfolio Coverage was the Business Vault until 2026-08-09. It
-                asks a question about *these* records - which of your lines has
-                each customer never been offered - so its door belongs on the
-                page whose rows it is made of, not in a fifteenth rail row. */}
-            <Link
-              to="/app/portfolio-coverage"
-              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-gray-300 bg-white px-3.5 py-1.5 text-sm font-bold text-gray-700 transition hover:border-brand-blue hover:text-brand-blue"
-            >
-              <Grid3x3 className="h-4 w-4" />
-              Coverage
-            </Link>
-            <button
-              type="button"
-              onClick={() => refreshAccounts(true)}
-              disabled={loading || refreshing}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-60"
-              title="Reload accounts from cloud"
-            >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            </button>
-            <DataModePill
-              compact
-              isLoading={authLoading}
-              isAuthenticated={isAuthenticated}
-              isSupabaseConfigured={isSupabaseConfigured}
-              cloudAvailable={canUseAccountCloudStore(dataUserId)}
-              hasSampleData={sampleDataActive}
-            />
+            <details className="relative">
+              <summary className="inline-flex cursor-pointer list-none items-center justify-center gap-1.5 rounded-full border border-gray-300 bg-white px-3.5 py-1.5 text-sm font-bold text-gray-700 transition hover:border-brand-blue hover:text-brand-blue">
+                More
+                <ChevronDown className="h-4 w-4" />
+              </summary>
+              <div className="absolute right-0 z-30 mt-1 w-56 rounded-xl border border-gray-200 bg-white p-1 shadow-lg">
+                <button
+                  type="button"
+                  onClick={() => setImportOpen((open) => !open)}
+                  aria-expanded={importOpen}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  <Upload className="h-4 w-4 text-gray-400" />
+                  Import accounts
+                </button>
+                {/* Portfolio Coverage was the Business Vault until 2026-08-09.
+                    It asks a question about *these* records, so its door belongs
+                    on the page whose rows it is made of - and on each customer's
+                    own Coverage tab, which is where the question is usually
+                    asked from. */}
+                <Link
+                  to="/app/portfolio-coverage"
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  <Grid3x3 className="h-4 w-4 text-gray-400" />
+                  Coverage across the book
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => refreshAccounts(true)}
+                  disabled={loading || refreshing}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                >
+                  <RefreshCw className={`h-4 w-4 text-gray-400 ${refreshing ? 'animate-spin' : ''}`} />
+                  Reload from cloud
+                </button>
+              </div>
+            </details>
           </>
         }
       />
@@ -738,8 +758,20 @@ export function AccountsPage() {
       {!loading && <AccountMemorySummary summary={summary} />}
 
       <section className="sticky top-14 z-20 -mx-4 border-y border-gray-200 bg-page/95 px-4 py-2.5 backdrop-blur sm:-mx-5 sm:px-5 lg:-mx-6 lg:top-16 lg:px-6">
-        <div className="flex flex-col gap-2 xl:flex-row xl:items-center">
-          <label className="relative xl:w-[300px]">
+        {/*
+          * Search, the two questions people actually arrive with, and a door to
+          * the rest.
+          *
+          * The bar carried a search field, four dropdowns, seven engagement
+          * chips and five import cuts, all at once and all at the same weight -
+          * seventeen controls above a list, of which two get used. Segment,
+          * potential, relationship and health are record attributes: real, kept,
+          * and not what anybody opens Accounts to ask. "Who needs attention" and
+          * "who matters most" are, so they are chips and the rest is one click
+          * behind "All filters", which announces how many are on.
+          */}
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="relative min-w-[220px] flex-1 xl:max-w-[340px]">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
               value={query}
@@ -748,30 +780,70 @@ export function AccountsPage() {
               className="w-full rounded-lg border border-gray-300 bg-white py-1.5 pl-9 pr-3 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
             />
           </label>
-          <div className="grid flex-1 grid-cols-2 gap-2 md:grid-cols-4">
-            <FilterSelect label="Segment" value={segmentFilter} options={segments} onChange={setSegmentFilter} />
-            <FilterSelect label="Potential" value={potentialFilter} options={[allFilter, ...accountPotentials]} onChange={setPotentialFilter} />
-            <FilterSelect label="Relationship" value={relationshipFilter} options={[allFilter, ...relationshipStatuses]} onChange={setRelationshipFilter} />
-            <FilterSelect label="Health" value={healthFilter} options={[allFilter, 'Healthy', 'Needs attention', 'At risk', 'Dormant']} onChange={setHealthFilter} />
-          </div>
+          <button
+            type="button"
+            aria-pressed={hygieneFilter === 'Needs follow-up'}
+            onClick={() => setHygieneFilter(hygieneFilter === 'Needs follow-up' ? 'Active work' : 'Needs follow-up')}
+            className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+              hygieneFilter === 'Needs follow-up'
+                ? 'border-amber-300 bg-amber-50 text-amber-800'
+                : 'border-gray-200 bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue'
+            }`}
+          >
+            Needs attention
+          </button>
+          <button
+            type="button"
+            aria-pressed={quickFilter === 'keyAccounts'}
+            onClick={() => setQuickFilter(quickFilter === 'keyAccounts' ? 'all' : 'keyAccounts')}
+            className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+              quickFilter === 'keyAccounts'
+                ? 'border-brand-blue bg-blue-50 text-brand-blue'
+                : 'border-gray-200 bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue'
+            }`}
+          >
+            Strategic
+          </button>
+          <button
+            type="button"
+            aria-expanded={allFiltersOpen}
+            onClick={() => setAllFiltersOpen((open) => !open)}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+              allFiltersOpen ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-gray-200 bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue'
+            }`}
+          >
+            <Filter className="h-3.5 w-3.5" />
+            All filters
+            {advancedFilterCount > 0 && (
+              <span className="rounded-full bg-brand-blue px-1.5 text-[10px] font-black text-white">{advancedFilterCount}</span>
+            )}
+          </button>
           {hasActiveFilters && (
             <button
               type="button"
-              onClick={clearAllFilters}
-              className="shrink-0 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-600 hover:border-brand-blue hover:text-brand-blue"
+              onClick={() => { clearAllFilters(); setAllFiltersOpen(false); }}
+              className="shrink-0 rounded-full px-2 py-1.5 text-xs font-bold text-gray-500 underline hover:text-navy"
             >
-              Clear filters
+              Clear
             </button>
           )}
         </div>
-        {/* Two rows of chips asking two different questions - engagement state
-            and imported-core cuts - read as one long undifferentiated bar.
-            They are one row now, separated by a rule. */}
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <AccountHygieneTabs value={hygieneFilter} rows={accountRows} onChange={setHygieneFilter} />
-          <span className="mx-1 hidden h-4 w-px bg-gray-200 sm:block" />
-          <QuickFilterBar value={quickFilter} onChange={setQuickFilter} importSummary={importSummary} />
-        </div>
+
+        {allFiltersOpen && (
+          <div className="mt-2 flex flex-col gap-2 border-t border-gray-200 pt-2">
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+              <FilterSelect label="Segment" value={segmentFilter} options={segments} onChange={setSegmentFilter} />
+              <FilterSelect label="Potential" value={potentialFilter} options={[allFilter, ...accountPotentials]} onChange={setPotentialFilter} />
+              <FilterSelect label="Relationship" value={relationshipFilter} options={[allFilter, ...relationshipStatuses]} onChange={setRelationshipFilter} />
+              <FilterSelect label="Health" value={healthFilter} options={[allFilter, 'Healthy', 'Needs attention', 'At risk', 'Dormant']} onChange={setHealthFilter} />
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <AccountHygieneTabs value={hygieneFilter} rows={accountRows} onChange={setHygieneFilter} />
+              <span className="mx-1 hidden h-4 w-px bg-gray-200 sm:block" />
+              <QuickFilterBar value={quickFilter} onChange={setQuickFilter} importSummary={importSummary} />
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="space-y-4">
@@ -1179,15 +1251,20 @@ function AccountMasterTable({
         <table className="w-full min-w-[1240px] border-collapse text-left text-sm">
           <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
             <tr>
-              <SortableHeader label="Code" sortKey="accountCode" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              {/* Ten columns, of which four described the record and four
+                  described the commercial situation. The table is read to
+                  decide who to work on, so the situation leads: who they are,
+                  what is exposed, what moved, what to do. Segment, industry,
+                  relationship and potential are still here, still sortable,
+                  folded into one column that names what they are - profile -
+                  rather than four that each look like a decision input. */}
               <SortableHeader label="Account" sortKey="accountName" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <th className="border-b border-gray-200 px-3 py-2">Segment / Industry</th>
-              <SortableHeader label="Relationship" sortKey="relationship" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <SortableHeader label="Exposure" sortKey="activeValue" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <SortableHeader label="Changed" sortKey="lastUpdated" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <th className="border-b border-gray-200 px-3 py-2">Next move</th>
+              <SortableHeader label="Profile" sortKey="relationship" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <SortableHeader label="Potential" sortKey="potential" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <SortableHeader label="Pipeline" sortKey="activeValue" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <SortableHeader label="Last update" sortKey="lastUpdated" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <th className="border-b border-gray-200 px-3 py-2">Latest account memory</th>
-              <th className="border-b border-gray-200 px-3 py-2">Engagement</th>
+              <SortableHeader label="Code" sortKey="accountCode" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <th className="border-b border-gray-200 px-3 py-2 text-right">Open</th>
             </tr>
           </thead>
@@ -1200,57 +1277,70 @@ function AccountMasterTable({
                   onClick={() => onOpen(memory)}
                   className="cursor-pointer bg-white transition hover:bg-blue-50/60"
                 >
-                  <td className="whitespace-nowrap px-3 py-2 font-mono text-xs font-bold text-brand-blue">{row.accountCode}</td>
                   <td className="px-3 py-2">
                     <p className="max-w-[clamp(220px,16vw,420px)] truncate font-bold text-navy" title={memory.account.accountName}>{memory.account.accountName}</p>
-                    <p className="max-w-[clamp(220px,16vw,420px)] truncate text-xs text-gray-500">{formatAccountLocation(memory.account)}</p>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                      {/* Nowrap on purpose: at this column width "Needs
+                          follow-up" broke over two lines and set the height of
+                          every row in the table. */}
+                      <Badge label={row.hygiene.status} tone={row.hygiene.status === 'Needs follow-up' ? 'amber' : row.hygiene.status === 'Active' || row.hygiene.status === 'Strategic' ? 'green' : 'gray'} />
+                      <span className="max-w-[clamp(160px,10vw,300px)] truncate text-xs text-gray-500">{formatAccountLocation(memory.account)}</span>
+                    </div>
                   </td>
-                  <td className="px-3 py-2">
-                    <p className="max-w-[clamp(170px,12vw,320px)] truncate font-semibold text-gray-700">{memory.account.segment || 'Unsegmented'}</p>
-                    <p className="max-w-[clamp(170px,12vw,320px)] truncate text-xs text-gray-500">{formatAccountPriority(memory.account)}</p>
-                  </td>
-                  <td className="px-3 py-2">
-                    <Badge
-                      label={memory.account.relationshipStatus}
-                      tone={memory.account.relationshipStatus === 'At risk' ? 'red' : memory.account.relationshipStatus === 'Strong' ? 'green' : 'blue'}
-                    />
-                  </td>
-                  <td className="px-3 py-2"><Badge label={memory.account.accountPotential} /></td>
                   <td className="whitespace-nowrap px-3 py-2">
                     {row.hygiene.status === 'Imported only' || row.hygiene.status === 'Archived' ? (
                       <p className="text-xs font-semibold text-gray-400">No pipeline evidence</p>
                     ) : (
-                      <><p className="font-bold text-gray-800">{formatBaseMoney(memory.estimatedActiveValue)}</p><p className="text-xs text-gray-500">{memory.activeOpportunityCount} active opps</p></>
+                      <><p className="font-bold text-gray-800">{formatBaseMoney(memory.estimatedActiveValue)}</p><p className="text-xs text-gray-500">{memory.activeOpportunityCount} active {memory.activeOpportunityCount === 1 ? 'deal' : 'deals'}</p></>
                     )}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2">
-                    <p className="font-semibold text-gray-700">{formatDate(row.lastUpdatedAt)}</p>
-                    <p className="text-xs text-gray-500">{formatRelativeDate(row.lastUpdatedAt)}</p>
                   </td>
                   <td className="px-3 py-2">
                     {row.latestActivity ? (
                       <>
-                        <p className="max-w-[clamp(270px,20vw,520px)] line-clamp-2 font-semibold text-gray-800" title={row.latestActivity.summary}>
+                        <p className="max-w-[clamp(240px,17vw,440px)] line-clamp-2 font-semibold text-gray-800" title={row.latestActivity.summary}>
                           {row.latestActivity.summary}
                         </p>
-                        <p className="max-w-[clamp(270px,20vw,520px)] truncate text-xs text-gray-500">
-                          {formatSafeBusinessDate(row.latestActivity.activityDate)} · {row.latestContact || row.latestActivity.activityType}
+                        <p className="max-w-[clamp(240px,17vw,440px)] truncate text-xs text-gray-500">
+                          {formatRelativeDate(row.lastUpdatedAt)} · {row.latestContact || row.latestActivity.activityType}
                         </p>
                       </>
                     ) : (
                       <span className="text-xs text-gray-400">No activity captured</span>
                     )}
                   </td>
-                  {/* Nowrap on purpose: at this column width "Needs follow-up"
-                      broke over two lines and the contact count over three,
-                      which set the height of every row in the table. */}
-                  <td className="whitespace-nowrap px-3 py-2">
-                    <Badge label={row.hygiene.status} tone={row.hygiene.status === 'Needs follow-up' ? 'amber' : row.hygiene.status === 'Active' || row.hygiene.status === 'Strategic' ? 'green' : 'gray'} />
-                    {/* "0 open" had no noun, and sat one column from a Pipeline cell reading
-                        "1 active opps" - so it read as open opportunities and
-                        contradicted its neighbour. It counts open objections. */}
+                  {/* The open next action this customer's own records already
+                      carry. Read, not derived: nothing new is inferred here, and
+                      a customer with nothing promised says so rather than being
+                      given a suggestion the records do not support. */}
+                  <td className="px-3 py-2">
+                    {memory.openNextActions.length > 0 ? (
+                      <>
+                        <p className="max-w-[clamp(200px,14vw,380px)] line-clamp-2 font-semibold text-gray-800" title={memory.openNextActions[0]}>
+                          {memory.openNextActions[0]}
+                        </p>
+                        {memory.openNextActions.length > 1 && (
+                          <p className="text-xs text-gray-500">+{memory.openNextActions.length - 1} more open</p>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-xs text-gray-400">Nothing promised</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    <Badge
+                      label={memory.account.relationshipStatus}
+                      tone={memory.account.relationshipStatus === 'At risk' ? 'red' : memory.account.relationshipStatus === 'Strong' ? 'green' : 'blue'}
+                    />
+                    <p className="mt-0.5 max-w-[clamp(150px,10vw,280px)] truncate text-xs text-gray-500">
+                      {memory.account.segment || 'Unsegmented'} · {formatAccountPriority(memory.account)}
+                    </p>
+                    {/* "0 open" had no noun and sat next to a pipeline cell
+                        reading "1 active deals", so it read as open
+                        opportunities. It counts open objections. */}
                     <p className="text-xs text-gray-500">{row.stakeholderCount} {row.stakeholderCount === 1 ? 'contact' : 'contacts'} · {row.openObjectionCount} open {row.openObjectionCount === 1 ? 'objection' : 'objections'}</p>
                   </td>
+                  <td className="px-3 py-2"><Badge label={memory.account.accountPotential} /></td>
+                  <td className="whitespace-nowrap px-3 py-2 font-mono text-xs font-bold text-brand-blue">{row.accountCode}</td>
                   <td className="px-3 py-2 text-right">
                     <button
                       type="button"
@@ -1837,6 +1927,31 @@ function ImportedAccountMetadata({ account }: { account: AccountMemoryRecord }) 
   );
 }
 
+type AccountDetailTab = 'overview' | 'people' | 'memory' | 'coverage';
+
+const accountDetailTabs: { value: AccountDetailTab; label: string }[] = [
+  { value: 'overview', label: 'Overview' },
+  { value: 'people', label: 'People' },
+  { value: 'memory', label: 'Memory' },
+  { value: 'coverage', label: 'Coverage' },
+];
+
+/**
+ * One customer, in four questions.
+ *
+ * This was a single column: two sections, then a fold called "More account
+ * context" holding six more - health, objections, stakeholders, opportunities,
+ * the whole activity timeline, next actions and objection debt. Everything was
+ * present and almost nothing was findable, because the only structure was the
+ * order somebody had added things in, and the one navigational act available
+ * was to open a drawer inside a drawer.
+ *
+ * The four tabs are the four reasons anyone opens a customer: what is happening
+ * here, who am I dealing with, what do we know, and what have we never offered
+ * them. Nothing was removed. Stakeholders and business memory are the two that
+ * used to require leaving for a module of their own, and they are the reason
+ * neither needs a rail row any more.
+ */
 function MemorySections({
   memory,
   stakeholders,
@@ -1850,37 +1965,185 @@ function MemorySections({
   quotes: QuoteRecord[];
   outcomes: OpportunityOutcomeRecord[];
 }) {
+  const [tab, setTab] = useState<AccountDetailTab>('overview');
   const allActivities = [...memory.linkedActivities, ...memory.matchingActivities]
     .sort((a, b) => compareBusinessDateDesc(a.activityDate, b.activityDate) || b.createdAt.localeCompare(a.createdAt));
-  return (
-    <div className="mt-5 space-y-4">
-      <AccountQuotesSection accountName={memory.account.accountName} quotes={quotes} />
-      <AccountHistorySection memory={memory} quotes={quotes} outcomes={outcomes} />
 
-      <details className="group rounded-lg border border-gray-200 bg-gray-50">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-navy">
-          More account context
-          <span className="flex items-center gap-2 text-xs font-semibold text-gray-500">
-            {stakeholders.length} contacts | {allActivities.length} activities
-            <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
-          </span>
-        </summary>
-        <div className="space-y-4 border-t border-gray-200 p-4">
-          <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-            <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Account health / risk signals</p>
-            <p className="mt-2 text-sm font-bold text-navy">{memory.health}</p>
-            {memory.riskSignals.length > 0 ? (
-              <ul className="mt-2 space-y-1 text-sm leading-6 text-gray-700">
-                {memory.riskSignals.map((signal) => <li key={signal}>- {signal}</li>)}
-              </ul>
-            ) : (
-              <p className="mt-2 text-sm text-emerald-700">No major risk signals detected.</p>
-            )}
-          </section>
+  return (
+    <div className="mt-5">
+      <div className="inline-flex flex-wrap rounded-full border border-gray-200 bg-gray-50 p-1" role="tablist" aria-label="Account detail">
+        {accountDetailTabs.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            role="tab"
+            aria-selected={tab === option.value}
+            onClick={() => setTab(option.value)}
+            className={`rounded-full px-3.5 py-1.5 text-sm font-bold transition ${
+              tab === option.value ? 'bg-navy text-white' : 'text-gray-600 hover:bg-white'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4 space-y-4">
+        {tab === 'overview' && (
+          <>
+            <AccountQuotesSection accountName={memory.account.accountName} quotes={quotes} />
+            <AccountOpportunitiesSection memory={memory} />
+            <AccountHistorySection memory={memory} quotes={quotes} outcomes={outcomes} />
+          </>
+        )}
+
+        {tab === 'people' && (
+          <AccountPeopleTab accountName={memory.account.accountName} stakeholders={stakeholders} />
+        )}
+
+        {tab === 'memory' && (
+          <AccountMemoryTab
+            memory={memory}
+            objections={objections}
+            activities={allActivities}
+          />
+        )}
+
+        {tab === 'coverage' && <AccountCoverageTab accountName={memory.account.accountName} />}
+      </div>
+    </div>
+  );
+}
+
+/** The deals on this customer. Overview's answer to "which of these matter". */
+function AccountOpportunitiesSection({ memory }: { memory: AccountMemory }) {
+  return (
+    <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Open opportunities</p>
+      {memory.opportunities.length === 0 ? (
+        <p className="mt-2 text-sm text-gray-500">No opportunities connected to this account yet.</p>
+      ) : (
+        <div className="mt-3 space-y-2">
+          {memory.opportunities.map((opportunity) => (
+            <Link
+              key={opportunity.id}
+              to={`/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}`}
+              className="block rounded-lg bg-white p-3 ring-1 ring-gray-100 hover:ring-brand-blue/40"
+            >
+              <p className="text-sm font-bold text-navy">{opportunity.opportunityName}</p>
+              <p className="mt-1 text-xs font-semibold text-gray-500">{opportunity.stage} | {opportunity.status} | {formatMoney(opportunity.estimatedValue || 0, opportunity.currency)}</p>
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Who you are dealing with at this customer.
+ *
+ * This is where the Stakeholders module's daily job now happens. The records
+ * are the same records - there is one stakeholder store and this reads it, so
+ * nothing is duplicated - and creating or editing one still opens the editor,
+ * which is what /app/stakeholders remains.
+ *
+ * The gap line names buying roles nobody has been recorded against. It is a
+ * read of the roles on file and nothing more: it does not say who the decision
+ * maker is, or that the deal is unsafe without one, because the records do not
+ * support either claim.
+ */
+function AccountPeopleTab({
+  accountName,
+  stakeholders,
+}: {
+  accountName: string;
+  stakeholders: StakeholderRecord[];
+}) {
+  const covered = new Set<string>(stakeholders.map((person) => person.stakeholderRole));
+  const missing = ['Champion', 'Economic Buyer', 'Technical Buyer', 'Procurement'].filter((role) => !covered.has(role));
+
+  return (
+    <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">
+          {stakeholders.length} {stakeholders.length === 1 ? 'person' : 'people'} recorded
+        </p>
+        <Link
+          to={`/app/stakeholders?accountName=${encodeURIComponent(accountName)}`}
+          className="inline-flex w-fit rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-bold text-brand-blue hover:bg-blue-50"
+        >
+          Add or edit people
+        </Link>
+      </div>
+
+      {stakeholders.length === 0 ? (
+        <p className="mt-2 text-sm text-gray-500">
+          Nobody is recorded at this customer yet. Capture a conversation and the names in it are offered here.
+        </p>
+      ) : (
+        <div className="mt-3 space-y-2">
+          {stakeholders.map((stakeholder) => (
+            <div key={stakeholder.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="text-sm font-bold text-navy">{stakeholder.name}</p>
+                <Badge label={stakeholder.stakeholderRole} tone={stakeholder.stakeholderRole === 'Blocker' ? 'red' : 'blue'} />
+              </div>
+              {stakeholder.roleTitle && <p className="mt-0.5 text-xs text-gray-500">{stakeholder.roleTitle}</p>}
+              <p className="mt-1 text-xs font-semibold text-gray-500">
+                {stakeholder.influenceLevel} influence | {stakeholder.stance} | {stakeholder.relationshipStrength} relationship
+                {stakeholder.lastInteractionDate ? ` | Last: ${formatDate(stakeholder.lastInteractionDate)}` : ''}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {missing.length > 0 && stakeholders.length > 0 && (
+        <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs leading-5 text-gray-600 ring-1 ring-gray-100">
+          Nobody is recorded here as: <span className="font-bold text-navy">{missing.join(', ')}</span>. That may be
+          right for this customer - it is what the records say, not a verdict on the deal.
+        </p>
+      )}
+    </section>
+  );
+}
+
+/**
+ * What this workspace knows about the customer.
+ *
+ * The everyday half of the Business Vault: the facts, the objections, the
+ * touches and the open threads, read straight off the records this account
+ * already owns. Nobody should have to open a knowledge graph to remember what
+ * was agreed with a customer - the graph is one link away for when the question
+ * is genuinely about how things connect.
+ */
+function AccountMemoryTab({
+  memory,
+  objections,
+  activities,
+}: {
+  memory: AccountMemory;
+  objections: ObjectionRecord[];
+  activities: SalesActivityRecord[];
+}) {
+  return (
+    <>
+      <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Account health / risk signals</p>
+        <p className="mt-2 text-sm font-bold text-navy">{memory.health}</p>
+        {memory.riskSignals.length > 0 ? (
+          <ul className="mt-2 space-y-1 text-sm leading-6 text-gray-700">
+            {memory.riskSignals.map((signal) => <li key={signal}>- {signal}</li>)}
+          </ul>
+        ) : (
+          <p className="mt-2 text-sm text-emerald-700">No major risk signals detected.</p>
+        )}
+      </section>
 
       <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Account Objections</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Objections</p>
           <Link
             to={`/app/objections?accountName=${encodeURIComponent(memory.account.accountName)}`}
             className="inline-flex w-fit rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-bold text-brand-blue hover:bg-blue-50"
@@ -1910,56 +2173,16 @@ function MemorySections({
         )}
       </section>
 
-      <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Stakeholders</p>
-          <Link
-            to={`/app/stakeholders?accountName=${encodeURIComponent(memory.account.accountName)}`}
-            className="inline-flex w-fit rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-bold text-brand-blue hover:bg-blue-50"
-          >
-            Open Stakeholders
-          </Link>
-        </div>
-        {stakeholders.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-500">No stakeholders mapped to this account yet.</p>
-        ) : (
-          <div className="mt-3 space-y-2">
-            {stakeholders.slice(0, 6).map((stakeholder) => (
-              <div key={stakeholder.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
-                <p className="text-sm font-bold text-navy">{stakeholder.name}</p>
-                <p className="mt-1 text-xs font-semibold text-gray-500">
-                  {stakeholder.stakeholderRole} | {stakeholder.influenceLevel} influence | {stakeholder.stance}
-                </p>
-                <p className="mt-1 text-xs text-gray-500">{stakeholder.relationshipStrength} relationship{stakeholder.lastInteractionDate ? ` | Last: ${stakeholder.lastInteractionDate}` : ''}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      <ListSection title="Open next actions" items={memory.openNextActions} empty="No open next actions captured." />
+      <ListSection title="Objection debt" items={memory.objectionDebt} empty="No objection debt captured." />
 
       <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Related opportunities</p>
-        {memory.opportunities.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-500">No opportunities connected to this account yet.</p>
-        ) : (
-          <div className="mt-3 space-y-2">
-            {memory.opportunities.map((opportunity) => (
-              <div key={opportunity.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
-                <p className="text-sm font-bold text-navy">{opportunity.opportunityName}</p>
-                <p className="mt-1 text-xs font-semibold text-gray-500">{opportunity.stage} | {opportunity.status} | {formatMoney(opportunity.estimatedValue || 0, opportunity.currency)}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Linked activities timeline</p>
-        {allActivities.length === 0 ? (
+        <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Everything recorded here</p>
+        {activities.length === 0 ? (
           <p className="mt-2 text-sm text-gray-500">No activities linked to this account yet.</p>
         ) : (
           <div className="mt-3 space-y-2">
-            {allActivities.map((activity) => (
+            {activities.map((activity) => (
               <details key={activity.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
                 <summary className="cursor-pointer text-sm font-bold text-navy">
                   {formatDate(activity.activityDate)} · {activity.activityType}
@@ -1979,11 +2202,41 @@ function MemorySections({
         )}
       </section>
 
-          <ListSection title="Open next actions" items={memory.openNextActions} empty="No open next actions captured." />
-          <ListSection title="Objection debt" items={memory.objectionDebt} empty="No objection debt captured." />
-        </div>
-      </details>
-    </div>
+      {/* The graph, for when the question really is about how things connect.
+          It is a tool, not a module you have to understand to use Memoire. */}
+      <Link
+        to={`/app/vault?accountName=${encodeURIComponent(memory.account.accountName)}`}
+        className="inline-flex w-fit items-center gap-2 rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-xs font-bold text-gray-700 hover:border-brand-blue hover:text-brand-blue"
+      >
+        Explore business memory
+      </Link>
+    </>
+  );
+}
+
+/**
+ * What this customer has never been offered.
+ *
+ * Portfolio Coverage answers a question about these records, and until now it
+ * answered it for the whole book from a route of its own. The grid is large and
+ * cross-account by nature, so the tab states this customer's side of it and
+ * opens the full grid rather than trying to redraw it in a 620px drawer.
+ */
+function AccountCoverageTab({ accountName }: { accountName: string }) {
+  return (
+    <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Line coverage</p>
+      <p className="mt-2 text-sm leading-6 text-gray-600">
+        Which of your lines this customer has been quoted, has bought, and has never been offered.
+      </p>
+      <Link
+        to={`/app/portfolio-coverage?accountName=${encodeURIComponent(accountName)}`}
+        className="mt-3 inline-flex w-fit items-center gap-2 rounded-full bg-navy px-3.5 py-1.5 text-xs font-bold text-white hover:bg-navy/90"
+      >
+        <Grid3x3 className="h-3.5 w-3.5" />
+        Open coverage for {accountName}
+      </Link>
+    </section>
   );
 }
 

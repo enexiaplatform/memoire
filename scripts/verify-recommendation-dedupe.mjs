@@ -62,7 +62,11 @@ const opp = (patch = {}) => ({
 // 4. The card renders the provenance and the merge count.
 {
   const page = readFileSync('src/features/dashboard/DashboardPage.tsx', 'utf8');
-  assert.ok(page.includes('Why am I seeing this?'), 'the Top-3 card must expose the provenance');
+  // Renamed from "Why am I seeing this?" on 2026-09-09: the card now states
+  // "Why now" in the open, so the disclosure below it is about the rule and the
+  // records behind that sentence, not about the sentence's existence.
+  assert.ok(page.includes('What this is based on'), 'the Top-3 card must expose the provenance');
+  assert.ok(page.includes('Why now: '), 'and must state why this move is first without being opened');
   assert.ok(page.includes('action.basis'), 'it must render the basis');
   assert.ok(page.includes('action.mergedCount'), 'it must show how many deals a merged card stands for');
 }

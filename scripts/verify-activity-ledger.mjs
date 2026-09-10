@@ -397,7 +397,22 @@ const ledger = (patch = {}) => buildActivityLedger({
   assert.ok(entry, 'featureRegistry must declare the activity surface');
   assert.ok(entry[0].includes("status: 'global'"), 'Activity is a global lens, not a primary destination');
   assert.ok(entry[0].includes("route: '/app/activity'"), 'Activity must declare its route');
-  assert.ok(entry[0].includes('navVisible: true'), 'Activity must be reachable from the rail');
+  // From 2026-09-07 it is not a rail row either. That is a stronger statement
+  // than it looks, so it is checked as two things: the row is gone, AND the
+  // capability is still reachable - by route, and by name from the global
+  // search, which renders the registry rather than a hand-kept list. Removing a
+  // row must never be a way of removing a feature.
+  assert.ok(
+    entry[0].includes('navVisible: false'),
+    'Activity is reached from what owns its question, not from a rail row',
+  );
+
+  const search = readFileSync('src/components/layout/GlobalSearch.tsx', 'utf8');
+  assert.ok(
+    search.includes('featureRegistry'),
+    'global search must offer registry surfaces by name, or leaving the rail would strand them',
+  );
+  assert.ok(search.includes('activity:'), 'Activity needs a searchable description');
 }
 
 // 15. Both halves of the Timeline calendar draw the subject from the same

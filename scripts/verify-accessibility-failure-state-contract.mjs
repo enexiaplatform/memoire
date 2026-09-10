@@ -142,16 +142,26 @@ for (const marker of [
   requireIncludes(profileTab, marker, `ProfileTab must own the profile-read failure: ${marker}`);
 }
 
+// Today has no data-mode chip at all from 2026-09-09.
+//
+// The finding this guarded was that Today's own chip asserted all-clear over
+// sync failures reported by anything else. The narrow fix was to pass undefined
+// so the global status could win; the structural one is that the global status
+// is now the only chip on the page, which cannot be overridden because there is
+// nothing left to override it with. So the assertion becomes an exclusion: no
+// second sync opinion may reappear on the daily surface. Real failures still
+// speak - `loadError` renders a role="alert" panel with a retry, and that is
+// asserted below.
 const dashboardPage = read('src/features/dashboard/DashboardPage.tsx');
-requireIncludes(
-  dashboardPage,
-  "syncError={message.startsWith('Cloud sync issue') ? message : undefined}",
-  "Today's data-mode chip must decline with undefined, never assert null over a real sync error",
-);
 requireExcludes(
   dashboardPage,
-  'cloudAvailable={isSupabaseConfigured}',
-  'Today claims cloudAvailable from a build-time constant again - it is true in production whatever the cloud is doing',
+  '<DataModePill',
+  'Today grew a second sync opinion again - the app header carries one for every page',
+);
+requireIncludes(
+  dashboardPage,
+  'role="alert"',
+  'a workspace that failed to load must still say so on Today, loudly, with a retry',
 );
 
 const protectedRoute = read('src/components/layout/ProtectedRoute.tsx');

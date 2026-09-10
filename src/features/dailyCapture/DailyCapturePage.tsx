@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Bot, CalendarDays, Clipboard, Copy, Link2 as LinkIcon, Loader2, Mail, Mic, MicOff, NotebookPen, Save, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Clipboard, Copy, Link2 as LinkIcon, Loader2, Mail, Mic, MicOff, NotebookPen, Save, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { useSpeechDictation } from '../../hooks/useSpeechDictation';
-import { DataModePill } from '../../components/common/DataModePill';
 import { SuggestInput } from '../../components/common/SuggestInput';
 import { normalizeEntityName } from '../../utils/accountIdentity';
 import { getReportingCurrency } from '../../utils/money';
-import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { classifySalesActivity, type ClassifiedSalesActivity, type SalesActivityType } from '../../utils/salesActivityClassifier';
 import { matchKnownAccount, parseCapture } from '../../domain/commercialKernel/parseCapture';
@@ -25,7 +23,6 @@ import type { CapturedFact, ReviewableChangeSet } from '../../domain/commercialK
 import { recordCaptureFactMetrics } from '../../services/captureFactMetrics';
 import { CaptureReviewPanel } from './CaptureReviewPanel';
 import {
-  canUseSalesActivityCloudStore,
   deleteSalesActivity,
   saveSalesActivity,
   updateSalesActivityLink,
@@ -297,7 +294,7 @@ const quickTemplates: {
 ];
 
 export function DailyCapturePage() {
-  const { user, loading: authLoading, isAuthenticated } = useAuthContext();
+  const { user } = useAuthContext();
   // Capture is the entry point of the whole loop, so it is where an ended
   // trial has to be felt. Reading, Plan, Orders and export all stay open.
   const entitlement = useEntitlement();
@@ -306,22 +303,26 @@ export function DailyCapturePage() {
   const [rawNote, setRawNote] = useState('');
   const [activityDate, setActivityDate] = useState(() => getQueryDate(searchParams) || todayKey());
   /**
-   * Quick on a phone, the full note on a desk.
+   * One question on every device: what happened?
    *
-   * Capture is the spine of the product and most of it happens away from a
-   * desk - in a lobby, in a car park, between two meetings. This page opened on
-   * Full Note on every device: a dozen fields, with the thirty-second form one
-   * tap away and not obviously there. An explicit `?mode=` in the link always
-   * wins; the width only decides what somebody who just tapped Capture sees
-   * first.
+   * This used to open the Quick form on anything under 768px, on the reasoning
+   * that capture happens away from a desk - in a lobby, in a car park, between
+   * two meetings - and a phone should get the thirty-second form rather than a
+   * dozen fields. The premise was right and the conclusion was measured wrong:
+   * the Quick form is 1,672px tall on a 375px screen, roughly four and a half
+   * phone screens of labelled inputs, while the note composer is a box you can
+   * start typing in immediately and a parser that fills those same fields in
+   * for you to correct.
+   *
+   * So the fastest thing on a phone turns out to be the same thing as the
+   * fastest thing at a desk. An explicit `?mode=` in the link still always
+   * wins, because those links were written for a specific job.
    */
   const [captureMode, setCaptureMode] = useState<CaptureMode>(() => {
     const mode = searchParams.get('mode');
     if (mode === 'quick') return 'quick';
     if (mode === 'email') return 'email';
-    if (mode === 'note') return 'note';
-    const isSmallScreen = typeof window !== 'undefined' && window.innerWidth < 768;
-    return isSmallScreen ? 'quick' : 'note';
+    return 'note';
   });
   const [quickTemplateId, setQuickTemplateId] = useState(quickTemplates[0].id);
   const [quickForm, setQuickForm] = useState<QuickCaptureForm>(() => createInitialQuickCaptureForm(searchParams));
@@ -1080,45 +1081,57 @@ export function DailyCapturePage() {
     <PageContainer>
       <PageHeader
         eyebrow="Capture"
-        title="What happened today?"
-        description="Capture sales activity in natural language. Memoire classifies it locally into structured activity records."
-        actions={
-          <DataModePill
-            compact
-            isLoading={authLoading}
-            isAuthenticated={isAuthenticated}
-            isSupabaseConfigured={isSupabaseConfigured}
-            cloudAvailable={canUseSalesActivityCloudStore(dataUserId)}
-            hasSampleData={sampleDataActive}
-          />
-        }
+        title="What happened?"
+        description="Write it the way you would say it. Memoire reads it into commercial facts you confirm before anything is saved."
+        /*
+         * No data-mode pill. The app header carries sync state on every page,
+         * and this is the one surface where a second status chip competes with
+         * the only thing that matters: getting the sentence down before the
+         * moment passes.
+         */
       />
 
-      {/* One row, always. Three stacked full-width buttons took a third of a
-          phone screen before the first field - on the one page where the whole
-          point is to be finished before the moment passes. */}
-      <section className="rounded-lg border border-gray-200 bg-white p-1.5 shadow-sm">
-        <div className="grid grid-cols-3 gap-1.5">
-          {([
-            ['quick', 'Quick', 'Quick Capture'],
-            ['note', 'Note', 'Full Note'],
-            ['email', 'Email', 'Paste Email / Thread'],
-          ] as const).map(([mode, shortLabel, label]) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => setCaptureMode(mode)}
-              aria-pressed={captureMode === mode}
-              className={`rounded-lg px-2 py-2 text-sm font-bold transition ${
-                captureMode === mode ? 'bg-navy text-white' : 'bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-brand-blue'
-              }`}
-            >
-              <span className="sm:hidden">{shortLabel}</span>
-              <span className="hidden sm:inline">{label}</span>
-            </button>
-          ))}
+      {/*
+        * One input, and two ways in for the cases it does not suit.
+        *
+        * These were three buttons of equal weight - Quick, Note, Email - which
+        * asked the seller to pick a data-ingestion architecture before telling
+        * Memoire what happened. All three still exist and all three still work
+        * the same way; what changed is that the question "what happened?" is
+        * answered by typing, and the other two are offered as alternatives to
+        * that rather than as rivals to it.
+        *
+        * `?mode=quick` and `?mode=email` still land directly on their panel,
+        * because the links that carry them were written for a specific job.
+        */}
+      {captureMode === 'note' ? (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+          <span className="font-semibold text-gray-400">Or:</span>
+          <button
+            type="button"
+            onClick={() => setCaptureMode('quick')}
+            className="font-bold text-brand-blue hover:underline"
+          >
+            fill in quick details
+          </button>
+          <button
+            type="button"
+            onClick={() => setCaptureMode('email')}
+            className="font-bold text-brand-blue hover:underline"
+          >
+            paste an email or thread
+          </button>
         </div>
-      </section>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setCaptureMode('note')}
+          className="inline-flex w-fit items-center gap-1.5 text-xs font-bold text-brand-blue hover:underline"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back to writing what happened
+        </button>
+      )}
 
       {captureMode === 'quick' && (
         <QuickCapturePanel
@@ -1209,15 +1222,17 @@ export function DailyCapturePage() {
               Save Activity
             </button>
             <LogToActivityChoice checked={logToActivity} onChange={setLogToActivity} />
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-              <div className="flex items-center gap-2">
-                <Bot className="h-4 w-4 text-brand-blue" />
-                <p className="text-xs font-bold uppercase tracking-wide text-gray-500">On-device parsing</p>
-              </div>
-              <p className="mt-2 text-xs leading-5 text-gray-500">
-                Notes are structured by rules on this device - nothing is sent to an AI service. Confirm or correct every field before saving.
-              </p>
-            </div>
+            {/* A trust property, not the hero of the workflow. It was a
+                bordered card with an icon medallion, carrying the visual weight
+                of the save button beside it, for a sentence that reassures
+                rather than does anything. The claim is unchanged and still on
+                screen; it is now the size of a footnote, which is what it is.
+                The icon is a shield rather than a robot: the whole point of the
+                sentence is that there is no robot. */}
+            <p className="flex items-start gap-1.5 text-xs leading-5 text-gray-400">
+              <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span><span className="font-bold text-gray-500">On-device parsing.</span> Structured by rules on this device - nothing is sent to an AI service. Confirm or correct every field before saving.</span>
+            </p>
             {message && (
               <p className={`rounded-lg px-3 py-2 text-sm font-semibold ${
                 saveState === 'saved' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
@@ -1369,15 +1384,12 @@ export function DailyCapturePage() {
               Save Reviewed Evidence
             </button>
             <LogToActivityChoice checked={logToActivity} onChange={setLogToActivity} />
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-              <div className="flex items-center gap-2">
-                <Bot className="h-4 w-4 text-brand-blue" />
-                <p className="text-xs font-bold uppercase tracking-wide text-gray-500">On-device parsing</p>
-              </div>
-              <p className="mt-2 text-xs leading-5 text-gray-500">
-                Pasted emails are structured by rules on this device - nothing is sent to an AI service. Confirm or correct every field before saving.
-              </p>
-            </div>
+            {/* Same footnote treatment as the note composer: a trust property
+                stated once, quietly, beside the thing it is about. */}
+            <p className="flex items-start gap-1.5 text-xs leading-5 text-gray-400">
+              <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span><span className="font-bold text-gray-500">On-device parsing.</span> Pasted emails are structured by rules on this device - nothing is sent to an AI service. Confirm or correct every field before saving.</span>
+            </p>
             <div className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs font-semibold leading-5 text-amber-800">
               Long thread guard: saved cards use structured evidence plus source excerpt/hash, not the full raw thread.
             </div>

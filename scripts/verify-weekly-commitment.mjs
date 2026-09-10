@@ -218,10 +218,15 @@ const week = { weekId: '2026-07-20', periodStart: '2026-07-20', periodEnd: '2026
     'the strip offers no text entry: labels are frozen at confirm time',
   );
 
-  // Today runs the day; Review's analytics section is where the Dashboard's
+  // Plan runs the week; Review's analytics section is where the Dashboard's
   // roll-up went. Both read the same committed-week snapshot.
+  //
+  // It was Today until 2026-09-09. A frozen weekly promise is not a daily
+  // reading - it does not change between one morning and the next - and it now
+  // opens Plan, where it is the only thing on the page that says what a good
+  // week would have meant.
   [
-    ['../src/features/dashboard/DashboardPage.tsx', 'Today'],
+    ['../src/features/timeline/TimelinePage.tsx', 'Plan'],
     ['../src/features/reviews/ReviewAnalyticsSection.tsx', 'Review analytics'],
   ].forEach(([path, surface]) => {
     const page = readFileSync(new URL(path, import.meta.url), 'utf8');

@@ -1,11 +1,9 @@
+import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
-import { DataModePill } from '../../components/common/DataModePill';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 import { SkeletonCard, SkeletonScreen } from '../../components/common/Skeleton';
-import { isSupabaseConfigured } from '../../lib/demoMode';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { QuoteRecord } from '../../services/quoteStore';
 import type { OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore';
@@ -30,8 +28,8 @@ import { CostAnalysisPanel } from './CostAnalysisPanel';
  * ordinary reason - you do not run the day here, you come to ask whether the
  * work was worth doing.
  */
-export function CostAnalysisPage() {
-  const { user, loading: authLoading, isAuthenticated } = useAuthContext();
+export function CostAnalysisPage({ tabs }: { tabs?: ReactNode } = {}) {
+  const { user, loading: authLoading } = useAuthContext();
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
@@ -79,37 +77,34 @@ export function CostAnalysisPage() {
           "was it worth it". Two pages that both claim to be about orders is how
           an operator stops knowing which one to open. */}
       <PageHeader
-        eyebrow="Records"
-        title="Cost analysis"
+        tabs={tabs}
+        eyebrow="Money"
+        title="Margin"
+        documentTitle="Money · Margin"
         description="What your committed orders cost you, against what you sold them for. Orders follows the money to the bank; this says whether the work paid. Yours only — nothing here changes an order or reaches a customer."
         actions={
-          <>
-            <Link
-              to="/app/revenue"
-              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-sm font-bold text-gray-700 hover:bg-gray-50"
-            >
-              Orders
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <button
-              type="button"
-              onClick={() => { void reload(); }}
-              disabled={syncing}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
-              title="Reload orders from cloud"
-            >
-              <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-            </button>
-            <DataModePill
-              compact
-              isLoading={authLoading || loading}
-              isAuthenticated={isAuthenticated}
-              isSupabaseConfigured={isSupabaseConfigured}
-              cloudAvailable={isSupabaseConfigured}
-              hasSampleData={sampleDataActive}
-            />
-          </>
+          /* The link to Orders is gone: it is the tab immediately to the left
+             of this view's own tab, on the same page. */
+          <button
+            type="button"
+            onClick={() => { void reload(); }}
+            disabled={syncing}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700 disabled:opacity-60"
+            title="Reload orders from cloud"
+          >
+            <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+          </button>
         }
+          /*
+           * No per-page sync chrome.
+           *
+           * The app header carries one sync state for the whole workspace, and
+           * every page that repeated it added a second answer to "am I synced"
+           * on the same screen - a green "Cloud sync" pill beside a grey
+           * "Browser only" pill was a real screenshot. Normal is quiet; a
+           * genuine failure still speaks, in this page's own error state, where
+           * it can say what failed and offer the retry.
+           */
       />
 
       {loading ? (

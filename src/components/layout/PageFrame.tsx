@@ -52,6 +52,15 @@ export type PageHeaderProps = {
   description?: ReactNode;
   /** The primary action and, at most, its quieter alternatives. */
   actions?: ReactNode;
+  /**
+   * Sibling views of the same destination, as a tab strip under the title.
+   *
+   * Deliberately its own slot rather than more `actions`: a view switch is
+   * navigation within one place, and mixing it into the action row makes
+   * "Collections" look like a button that does something to the orders you are
+   * currently looking at.
+   */
+  tabs?: ReactNode;
   /** Optional glyph beside the title. */
   icon?: ReactNode;
   className?: string;
@@ -68,6 +77,7 @@ export function PageHeader({
   meta,
   description,
   actions,
+  tabs,
   icon,
   className = '',
   documentTitle,
@@ -94,6 +104,7 @@ export function PageHeader({
         {description && (
           <p className="mt-1.5 max-w-2xl text-sm leading-6 text-gray-600">{description}</p>
         )}
+        {tabs && <div className="mt-3">{tabs}</div>}
       </div>
       {actions && (
         /* `shrink-0` so a long title never squeezes the primary action into a

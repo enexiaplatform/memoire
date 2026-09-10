@@ -153,10 +153,17 @@ for (const destination of DESTINATIONS) {
 // replaced a rendered dashboard, so the branch matters as much as the copy.
 {
   const activity = readFileSync('src/features/activity/ActivityPage.tsx', 'utf8');
+  // Two shapes now: the page states it in full, the Review embed states it in a
+  // sentence, and neither draws the wall of zeros the finding was about.
   assert.match(
     activity,
-    /if \(allEntries\.length === 0\) \{\s*return <ActivityEmptyState \/>;/,
+    /if \(allEntries\.length === 0\) \{[\s\S]{0,400}?return <ActivityEmptyState \/>;/,
     'Activity must show the empty state instead of a dashboard of zeros',
+  );
+  assert.match(
+    activity,
+    /if \(analyticsOnly\) \{[\s\S]{0,300}?there is no rhythm to read/,
+    'and the embedded reading must say so too rather than drawing zeros inside Review',
   );
   assert.ok(
     activity.indexOf('if (allEntries.length === 0)') > activity.indexOf('const allEntries = useMemo'),

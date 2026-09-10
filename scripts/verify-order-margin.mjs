@@ -108,12 +108,22 @@ const bookOf = (opportunities) => buildOrderBook({
     'cost analysis has its own destination - rendering it on Orders too would be two doors onto one module',
   );
 
+  // It is a view of Money from 2026-09-07 rather than a rail row of its own.
+  // The 2026-08-06 finding that made it a row still holds - the operator went
+  // looking for it in the navigation and reported it missing - and it is now
+  // answered by a tab on the destination that owns money rather than by a
+  // fourteenth door. What must not come back is it being a block buried inside
+  // the Orders page, which is what the assertion above pins.
   const costPage = readFileSync(new URL('../src/features/revenue/CostAnalysisPage.tsx', import.meta.url), 'utf8');
-  assert.match(costPage, /<CostAnalysisPanel/, 'the cost analysis page must render the module');
-  assert.match(costPage, /eyebrow="Records"/, 'it sits in the Records group and must say so');
+  assert.match(costPage, /<CostAnalysisPanel/, 'the margin page must render the module');
+  assert.match(costPage, /eyebrow="Money"/, 'it is a view of Money and must say so');
+  assert.match(costPage, /title="Margin"/, 'the view is named for the question it answers');
+
+  const money = readFileSync(new URL('../src/features/revenue/MoneyPage.tsx', import.meta.url), 'utf8');
+  assert.match(money, /CostAnalysisPage/, 'Money must be able to render the margin view');
 
   const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
-  assert.match(app, /<Route path="cost-analysis"/, 'cost analysis needs a route');
+  assert.match(app, /<Route path="cost-analysis"/, 'the old cost-analysis link must keep working');
 
   const registry = readFileSync(new URL('../src/config/featureRegistry.ts', import.meta.url), 'utf8');
   assert.match(registry, /id: 'cost-analysis'/, 'the rail renders from the registry, so the destination must be declared there');

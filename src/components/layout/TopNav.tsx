@@ -1,10 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthContext } from '../../auth/authContext';
-import { Button } from '../ui/Button';
-import { Link, useNavigate } from 'react-router-dom';
-import { getUserDisplayName } from '../../utils/userDisplay';
+import { Link } from 'react-router-dom';
 import { BrandWordmark } from '../brand/BrandWordmark';
-import { Menu, Plus } from 'lucide-react';
+import { Menu, Plus, Search } from 'lucide-react';
+import { AccountMenu } from './AccountMenu';
+import { GlobalSearch } from './GlobalSearch';
 import { useDemoWorkspaceMode } from '../../hooks/useDemoWorkspaceMode';
 import { DataModePill } from '../common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
@@ -12,23 +12,29 @@ import { reportWorkspaceSyncError, useWorkspaceSyncStatus } from '../../services
 import { loadReviewPacksForUser } from '../../utils/reviewPacks';
 
 export function TopNav({ onOpenMenu }: { onOpenMenu: () => void }) {
-  const { user, profile, signOut, loading, isAuthenticated } = useAuthContext();
-  const navigate = useNavigate();
+  const { user, loading, isAuthenticated } = useAuthContext();
   const demoActive = useDemoWorkspaceMode();
   const syncStatus = useWorkspaceSyncStatus();
-  const displayName = demoActive ? 'Demo workspace' : getUserDisplayName(user, profile);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     if (!user || demoActive) return;
     void loadReviewPacksForUser(user.id).catch(() => reportWorkspaceSyncError());
   }, [demoActive, user]);
 
-  const handleSignOut = async () => {
-    const result = await signOut();
-    if (!result.error) {
-      navigate('/', { replace: true });
-    }
-  };
+  // Cmd/Ctrl+K from anywhere in the app. Registered on the bar rather than in
+  // each page, because the whole argument for search not being a destination is
+  // that it is available from wherever you are already standing.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   return (
     <header className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4 sm:h-16 sm:px-5 lg:left-[220px] lg:px-6">
@@ -50,7 +56,21 @@ export function TopNav({ onOpenMenu }: { onOpenMenu: () => void }) {
         <Menu className="h-5 w-5" />
       </button>
 
-      <div className="ml-auto flex items-center gap-2 sm:gap-4">
+      <div className="ml-auto flex items-center gap-2 sm:gap-3">
+        {/* Search first, then Capture: reading what you already know is the more
+            frequent job, and the two together are the only global actions. */}
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          aria-label="Search Memoire"
+          className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-2.5 py-1.5 text-sm text-gray-500 hover:border-gray-300 hover:text-gray-700 sm:px-3"
+        >
+          <Search className="h-4 w-4" />
+          <span className="hidden lg:inline">Search</span>
+          <kbd className="hidden rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 font-sans text-[11px] text-gray-400 lg:inline">
+            &#8984;K
+          </kbd>
+        </button>
         <Link
           to="/app/capture"
           className="inline-flex items-center gap-1.5 rounded-full bg-navy px-3 py-1.5 text-sm font-bold text-white hover:bg-navy/90"
@@ -82,15 +102,9 @@ export function TopNav({ onOpenMenu }: { onOpenMenu: () => void }) {
           isSupabaseConfigured={isSupabaseConfigured}
           hasSampleData={demoActive}
         />
-        {user && (
-          <>
-            <span className="hidden max-w-[220px] truncate text-sm text-gray-600 md:inline" title={displayName}>{displayName}</span>
-            <Button variant="ghost" size="sm" onClick={handleSignOut}>
-              Sign out
-            </Button>
-          </>
-        )}
+        <AccountMenu />
       </div>
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </header>
   );
 }

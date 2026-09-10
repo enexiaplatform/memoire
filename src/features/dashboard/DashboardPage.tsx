@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
-import { DataModePill } from '../../components/common/DataModePill';
 import { DemoJourneyCard } from '../../components/demo/DemoJourneyCard';
 import { SkeletonScreen, SkeletonCard } from '../../components/common/Skeleton';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
@@ -63,15 +62,12 @@ import { FollowUpImpactPanel } from './FollowUpImpactPanel';
 import { buildFollowUpImpact } from '../../utils/followUpImpact';
 import { MorningBriefCard } from './MorningBriefCard';
 import { BusinessCockpitStrip } from './BusinessCockpitStrip';
-import { CommittedWeekStrip } from './CommittedWeekStrip';
 import { loadPlanItemsForWorkspace, PLAN_ITEMS_UPDATED_EVENT } from '../../services/planItemStore';
 import { derivePlanCommitments } from '../../domain/commercialKernel/derivePlanCommitments';
 import type { PlanRecord } from '../../utils/weeklyPlan';
-import { CommitmentLedgerPanel } from '../commitments/CommitmentLedgerPanel';
 import { CommercialRiskPanel } from '../threads/CommercialRiskPanel';
 import { ThreadQuickLook } from '../threads/ThreadQuickLook';
 import { useCommercialThreads } from '../threads/useCommercialThreads';
-import { TodayCommitmentStrip } from './TodayCommitmentStrip';
 import { buildBusinessCockpit, nudgeEntityHref } from '../../utils/businessCockpit';
 import { buildMorningBrief } from '../../utils/morningBrief';
 import { buildReviveFollowUpContext } from '../../utils/followUpFromOpportunity';
@@ -161,7 +157,21 @@ type DashboardCommercialAction = {
   source: RevenueActionItem['source'];
 };
 
-export function TodayPage() {
+/**
+ * Today, and the reference reading of Today.
+ *
+ * `variant` is not a feature flag: it is which of two questions this component
+ * is answering. "today" answers what a seller opens the app to ask - what is
+ * the state of the business, what should I do, what is about to go wrong - in
+ * three sections and nothing else. "reference" is everything Memoire derives
+ * *about* those three, which used to hang off Today in two collapsed drawers -
+ * one for the rest of the watch-list, one for everything else the product
+ * tracks - and made the daily surface a warehouse. That reading is weekly, so it is embedded in
+ * Review > Learning & Analytics; it stays in this component because it is built
+ * from exactly the same derivations, and splitting the file would mean either
+ * loading the workspace twice or threading thirty props through a boundary.
+ */
+export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'reference' } = {}) {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   const sampleDataActive = hasLocalSampleData();
   /** Is there actually a cloud copy behind this workspace, or only this browser? */
@@ -203,8 +213,6 @@ export function TodayPage() {
   const [trialChecklistState, setTrialChecklistState] = useState(() => loadTrialActivationChecklistState());
   const [validationMessage, setValidationMessage] = useState('');
   const [demoSandboxPromptOpen, setDemoSandboxPromptOpen] = useState(false);
-  const [advancedInsightsOpen, setAdvancedInsightsOpen] = useState(false);
-  const [supportingDetailOpen, setSupportingDetailOpen] = useState(false);
   const [setupToolsOpen, setSetupToolsOpen] = useState(false);
   const [workspaceSyncing, setWorkspaceSyncing] = useState(false);
   const [commercialProgressMessage, setCommercialProgressMessage] = useState('');
@@ -320,7 +328,7 @@ export function TodayPage() {
   const accountHygienePreferences = useMemo(() => loadAccountHygienePreferences(user?.id), [user?.id]);
   // The legacy command-center model only feeds the Supporting-execution fold
   // and the demo prompt - keep its heavy scan off the initial render path.
-  const commandCenterNeeded = advancedInsightsOpen || demoSandboxPromptOpen;
+  const commandCenterNeeded = variant === 'reference' || demoSandboxPromptOpen;
   const commandCenter = useMemo(() => (commandCenterNeeded ? buildTodayCommandCenter({
     ...data,
     commercialActions: revenueView.actionItems,
@@ -422,9 +430,11 @@ export function TodayPage() {
     claimedNudgeIds: businessCockpit.filter((answer) => answer.actionable).map((answer) => answer.nudgeId).filter(Boolean) as string[],
     claimedAccounts: businessCockpit.filter((answer) => answer.actionable).map((answer) => answer.accountName).filter(Boolean) as string[],
   }), [businessCockpit, data.activities, followUpImpact.dealsWaiting, proactiveNudges.allActiveNudges, proactiveNudges.todayNudges]);
+  // Only the reference reading needs these, and the scan is expensive - Today
+  // itself must not pay for a derivation it no longer draws.
   const dashboardInsights = useMemo(() => (
-    advancedInsightsOpen ? buildDashboardInsights(data) : null
-  ), [advancedInsightsOpen, data]);
+    variant === 'reference' ? buildDashboardInsights(data) : null
+  ), [variant, data]);
   // The Commercial Kernel view of the same workspace: threads derived from the
   // records already loaded, and the deterministic recommendations about them.
   const { threads: commercialThreads, rankedRecommendations: kernelRecommendations } = useCommercialThreads();
@@ -437,11 +447,6 @@ export function TodayPage() {
       .sort((left, right) => (right.daysSinceActivity ?? 0) - (left.daysSinceActivity ?? 0))
       .slice(0, 4)
   ), [commercialThreads]);
-
-  const knownAccountNames = useMemo(() => Array.from(new Set([
-    ...data.accounts.map((account) => account.accountName),
-    ...data.opportunities.map((opportunity) => opportunity.accountName),
-  ].filter(Boolean))).sort((a, b) => a.localeCompare(b)), [data.accounts, data.opportunities]);
 
   const firstWeekPath = useMemo(() => buildFirstWeekPath({
     activities: data.activities,
@@ -619,6 +624,110 @@ export function TodayPage() {
   // Gated on the load having finished, because "no records yet" and "the cloud
   // has not answered yet" look identical mid-flight, and only one of them is a
   // new user.
+  // The reference reading, embedded elsewhere. It renders no page frame, no
+  // header and no first-run redirect: it is a section inside somebody else's
+  // page, and the surface that hosts it owns those.
+  if (variant === 'reference') {
+    if (loading) {
+      return <p className="rounded-xl border border-gray-200 bg-white p-5 text-sm font-semibold text-gray-500">Loading the deeper reading...</p>;
+    }
+    if (!todayCenter.hasMeaningfulData) {
+      return (
+        <p className="rounded-xl border border-gray-200 bg-white p-5 text-sm leading-6 text-gray-500">
+          Nothing to analyse yet. Capture a customer conversation and this fills in.
+        </p>
+      );
+    }
+    return (
+      <div className="flex flex-col gap-4">
+        {/* The watch-list read three other ways. Each is derived from the same
+            records as the alarms on Today, with the rule and the threshold
+            behind them shown - which is reference, not a first action. */}
+        <CommercialRiskPanel recommendations={kernelRecommendations} />
+        {commercialThreads.length > 0 && (
+          <section aria-label="Commercial threads">
+            <div className="mb-2 flex items-baseline justify-between">
+              <h3 className="text-sm font-bold text-navy">Commercial threads</h3>
+              <span className="text-xs text-gray-400">Quietest first</span>
+            </div>
+            <div className="grid gap-3 xl:grid-cols-2">
+              {quietestThreads.map((thread) => (
+                <ThreadQuickLook key={thread.id} thread={thread} compact />
+              ))}
+            </div>
+          </section>
+        )}
+        <ForecastDefenseReadiness center={todayCenter} />
+        <PipelineGlanceSection opportunities={data.opportunities} activities={data.activities} />
+        <TodayPipelineReadiness center={todayCenter} />
+        <TodayCommercialRisk items={todayCenter.commercialRiskItems} />
+        <TodayCaptureInbox items={todayCenter.captureInbox} />
+
+        {dashboardInsights && commandCenter && (
+          <>
+            <FollowUpImpactPanel impact={followUpImpact} onDraftFollowUp={handleDraftFollowUpFromImpact} />
+            <StartHerePanel
+              commandCenter={commandCenter}
+              signal={pipelineReviewSignal}
+              commercialAction={commercialAction}
+              sampleDataActive={sampleDataActive}
+              onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)}
+            />
+            <DailyOperatingPlan
+              blocks={commandCenter.dailyTimeblocks}
+              message={dailyExecutionMessage}
+              canUndo={Boolean(lastDailyExecutionActionId)}
+              execution={commandCenter.dailyExecution}
+              onDecision={handleDailyExecutionDecision}
+              onRestore={handleRestoreDailyExecution}
+              onUndo={handleUndoDailyExecution}
+            />
+            <TodayFocus commandCenter={commandCenter} />
+            <DashboardPrimaryWork commandCenter={commandCenter} signal={pipelineReviewSignal} />
+            {/* Supporting execution detail: the quote checkpoint is a step in
+                the money spine, reached from the deeper reading rather than
+                from the daily page. */}
+            <QuoteFollowUpCard
+              quotes={data.quotes}
+              revenueView={revenueView}
+              activeTopAction={activeRevenueAction}
+              progressMessage={commercialProgressMessage}
+              onAdvanceQuote={handleAdvanceQuote}
+            />
+            <ThisWeekSummary commandCenter={commandCenter} />
+            <CaptureNudgePanel nudges={dashboardInsights.captureNudges} />
+            <WeeklyExecutionHealth
+              review={dashboardInsights.weeklyExecutionReview}
+              activeOpportunityCount={dashboardInsights.activeOpportunityCount}
+            />
+            <TopSalesPattern pattern={dashboardInsights.topSalesPattern} />
+            <AssetGaps
+              gapSummary={dashboardInsights.assetGapSummary}
+              assetCount={data.assets.length}
+              objectionCount={data.objections.length}
+              patternCount={dashboardInsights.playbookPatterns.length}
+            />
+            <PriorityActionList items={commandCenter.priorityActions} />
+            <CriticalDealActions
+              actions={dashboardInsights.criticalDealActions}
+              outcomeLoop={dashboardInsights.outcomeLoop}
+            />
+            <OpenObjectionSignals objections={data.objections} />
+            <MeddicRiskSignal summary={dashboardInsights.meddicSummary} />
+            <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+              <AtRiskOpportunities items={commandCenter.atRiskOpportunities} />
+              <AccountsNeedingTouch items={commandCenter.accountsNeedingTouch} />
+            </section>
+            <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_360px]">
+              <RecentActivityFeed items={commandCenter.recentActivities} />
+              <QuickActions />
+            </section>
+          </>
+        )}
+      </div>
+    );
+  }
+
   if (!authLoading && !loading && shouldOpenFirstRun({
     userKey: firstRunUserKey(user),
     hasAnyRecord: data.activities.length > 0 || data.opportunities.length > 0 || data.accounts.length > 0,
@@ -638,57 +747,28 @@ export function TodayPage() {
         // a tab strip. This is what the tab, the history entry and the screen
         // reader's navigation announcement say.
         documentTitle="Today"
-        description="Three steps: get the picture, do today's work, check the watch-list."
+        description="The picture, your three moves, and what to watch. Everything else is on the surface that owns it."
         actions={
+          /*
+           * One quiet control, and a message only when there is one.
+           *
+           * This corner held a green "Cloud sync" button, a data-mode pill and a
+           * status chip - three ways of saying the same thing about
+           * connectivity, on the surface whose first screen is supposed to be
+           * the state of the business. The app header now carries sync for
+           * every page; what is left here is the reload, and a real problem
+           * still says so.
+           */
           <>
-            {/*
-             * This button said "Cloud sync" in success green, at the same size
-             * and pill shape as the DataModePill immediately to its right - so a
-             * workspace with no account read "Cloud sync" and "Browser only"
-             * side by side, two chips of identical weight contradicting each
-             * other, and one of them offering a cloud that is not there.
-             *
-             * It is one control either way; it is named for what it does in the
-             * mode it is in, and only wears the cloud's colour when there is a
-             * cloud behind it.
-             */}
             <button
               type="button"
               onClick={() => refreshDashboard({ force: true })}
               disabled={workspaceSyncing}
-              className={`inline-flex items-center justify-center gap-2 rounded-full border px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-60 ${
-                cloudBacked
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-              title={cloudBacked ? 'Reload dashboard from cloud' : 'Reload from the records in this browser'}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
+              title={cloudBacked ? 'Reload from cloud' : 'Reload from the records in this browser'}
             >
               <RefreshCw className={`h-4 w-4 ${workspaceSyncing ? 'animate-spin' : ''}`} />
-              {cloudBacked ? 'Cloud sync' : 'Refresh'}
             </button>
-            {/*
-             * `undefined`, not `null`, and `cloudAvailable` gone entirely.
-             *
-             * An explicit `null` means "I checked and it is fine" - the pill
-             * takes it over the global sync status. So this page, whose own
-             * `message` only ever carries a cloud problem when the string
-             * happens to begin "Cloud sync issue", was asserting all-clear over
-             * every sync failure reported by anything else, on the one screen a
-             * seller opens first. And `cloudAvailable={isSupabaseConfigured}` is
-             * a build-time constant: true in production no matter what the cloud
-             * is doing.
-             *
-             * Undefined lets this page's richer message win when it has one, and
-             * otherwise lets the status through.
-             */}
-            <DataModePill
-              compact
-              isLoading={authLoading || loading}
-              isAuthenticated={isAuthenticated}
-              isSupabaseConfigured={isSupabaseConfigured}
-              syncError={message.startsWith('Cloud sync issue') ? message : undefined}
-              hasSampleData={sampleDataActive}
-            />
             {message && !message.startsWith('Command center ready') ? (
               <span className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
                 {message}
@@ -774,19 +854,20 @@ export function TodayPage() {
             <TodayCommandEmptyState onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)} />
           ) : (
             <>
-              {/* The day as three numbered steps: see the picture, do the work,
-                  check the watch-list. One surface per step, and everything
-                  that restates a step folds away below.
+              {/* Three questions, in the order a seller actually asks them:
+                  what is the state of the business, what should I do about it,
+                  and what is about to go wrong. Nothing else is on this page.
 
-                  Step 3 used to be four panels - the nudge watch-list, "Going
-                  silent", the commitment ledger and a grid of quietest threads.
-                  All four are derived from the same records and three of them
-                  answer the same question ("what has gone quiet"), so a
-                  workspace with one struggling customer printed that customer
-                  four times under one heading. The watch-list is now one panel;
-                  the other readings of it are one click down, and the ledger
-                  moved up to step 2 where promises are actually kept. */}
-              <StepDivider step={1} title="Get the picture" hint="Ten seconds: where the money sits and what changed" />
+                  Everything that used to be a fourth, fifth or twentieth panel
+                  here was a second reading of one of those three, and each has
+                  moved to the surface that owns its question: the promises to
+                  Plan, the weekly analysis and the whole deeper reading to
+                  Review > Learning & Analytics, the qualification detail to the
+                  deal itself. Two collapsed drawers were where those readings
+                  had accumulated, and a drawer labelled "everything else" is an
+                  information architecture decision deferred rather than
+                  taken. */}
+              <TodaySectionLabel label="The picture" hint="Where the money sits, and what changed" />
               <BusinessCockpitStrip
                 answers={businessCockpit}
                 onOpenDeal={(opportunityId) => {
@@ -796,43 +877,9 @@ export function TodayPage() {
               />
               <MorningBriefCard brief={morningBrief} />
 
-              <StepDivider step={2} title="Do today's work" hint="What you owe, then the three Memoire would start with" />
-              {/* What the operator committed to sits as one row: the week's
-                  frozen promise beside today's dated plan column (shared
-                  box-for-box with the Plan board). Pairing them says these are
-                  yours, distinct from the app's suggestions underneath - and
-                  costs half the height of stacking. Either alone, or neither,
-                  still lays out correctly: each card is its own flex child, so
-                  a card that renders nothing simply leaves the row. */}
-              <div className="flex flex-col gap-4 lg:flex-row lg:[&>section]:min-w-0 lg:[&>section]:flex-1">
-                <CommittedWeekStrip userId={sampleDataActive ? undefined : user?.id} sampleDataActive={sampleDataActive} />
-                <TodayCommitmentStrip
-                  userId={sampleDataActive ? undefined : user?.id}
-                  sampleDataActive={sampleDataActive}
-                  onOpenDeal={(opportunityId) => {
-                    const opportunity = data.opportunities.find((item) => item.id === opportunityId);
-                    if (opportunity) setQuickLookOpportunity(opportunity);
-                  }}
-                  // Not forced. `saveSalesActivity` already invalidated the
-                  // activities collection, so the cached read misses and that
-                  // one collection is re-fetched while the other fifteen stay
-                  // warm. `force: true` would bypass every per-collection cache
-                  // and pull the whole ~3MB workspace back for one logged note.
-                  onActivityLogged={() => { void refreshDashboard(); }}
-                />
-              </div>
-              {/* A promise to a named person is work you owe, not a warning
-                  about a deal - so it belongs beside the other two commitment
-                  surfaces rather than under the watch-list, where it spent its
-                  time being read as a fourth alarm. */}
-              <CommitmentLedgerPanel
-                title="Commitments"
-                accountNames={knownAccountNames}
-                limit={4}
-              />
               <TodayTopThreeActions actions={todayCenter.topActions} />
 
-              <StepDivider step={3} title="Check the watch-list" hint="What Memoire flags before it can surprise you" />
+              <TodaySectionLabel label="Watchlist" hint="What Memoire flags before it can surprise you" />
               <ProactiveNudgesPanel
                 center={proactiveNudges}
                 message={nudgeMessage}
@@ -859,122 +906,7 @@ export function TodayPage() {
                   onDismiss={handleDismissFirstWeekPath}
                 />
               )}
-
-              {/* The same watch-list read three other ways, plus the numbers
-                  behind today's priorities. Collapsed by default - every one of
-                  these is a second view of something already on the page above,
-                  and a second view is reference, not a first action. The
-                  contract-asserted sections keep their render order inside the
-                  fold. */}
-              <details
-                className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
-                onToggle={(event) => setSupportingDetailOpen(event.currentTarget.open)}
-              >
-                <summary className="cursor-pointer text-sm font-bold text-navy">
-                  The rest of the watch-list
-                  <span className="ml-2 text-xs font-semibold text-gray-400">
-                    Threads going quiet, forecast readiness, stuck money, capture inbox
-                  </span>
-                </summary>
-                {/* Mounted only when opened - these reference sections (and their
-                    charts) stay out of the initial render cost. */}
-                {supportingDetailOpen && (
-                  <div className="mt-4 flex flex-col gap-4">
-                    {/* Reads the Commercial Kernel: the same silence the nudge
-                        panel reports, with the rule and threshold behind it. */}
-                    <CommercialRiskPanel recommendations={kernelRecommendations} />
-                    {commercialThreads.length > 0 && (
-                      <section aria-label="Commercial threads">
-                        <div className="mb-2 flex items-baseline justify-between">
-                          <h2 className="text-sm font-bold text-navy">Commercial threads</h2>
-                          <span className="text-xs text-gray-400">Quietest first</span>
-                        </div>
-                        <div className="grid gap-3 xl:grid-cols-2">
-                          {quietestThreads.map((thread) => (
-                            <ThreadQuickLook key={thread.id} thread={thread} compact />
-                          ))}
-                        </div>
-                      </section>
-                    )}
-                    <ForecastDefenseReadiness center={todayCenter} />
-                    <PipelineGlanceSection opportunities={data.opportunities} activities={data.activities} />
-                    <TodayPipelineReadiness center={todayCenter} />
-                    <TodayCommercialRisk items={todayCenter.commercialRiskItems} />
-                    <TodayCaptureInbox items={todayCenter.captureInbox} />
-                  </div>
-                )}
-              </details>
               {sampleDataActive && <DemoJourneyCard compact />}
-              <details
-                className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
-                onToggle={(event) => setAdvancedInsightsOpen(event.currentTarget.open)}
-              >
-                <summary className="cursor-pointer text-sm font-bold text-navy">
-                  Everything else Memoire tracks
-                  <span className="ml-2 text-xs font-semibold text-gray-400">
-                    Measured history, the timeblocked day, patterns, assets, objections
-                  </span>
-                </summary>
-                {dashboardInsights && commandCenter && (
-                  <div className="mt-4 flex flex-col gap-4">
-                    {/* Measured-history analysis - reference, not a first action. */}
-                    <FollowUpImpactPanel impact={followUpImpact} onDraftFollowUp={handleDraftFollowUpFromImpact} />
-                    <StartHerePanel
-                      commandCenter={commandCenter}
-                      signal={pipelineReviewSignal}
-                      commercialAction={commercialAction}
-                      sampleDataActive={sampleDataActive}
-                      onOpenDemoSandbox={() => setDemoSandboxPromptOpen(true)}
-                    />
-                    <DailyOperatingPlan
-                      blocks={commandCenter.dailyTimeblocks}
-                      message={dailyExecutionMessage}
-                      canUndo={Boolean(lastDailyExecutionActionId)}
-                      execution={commandCenter.dailyExecution}
-                      onDecision={handleDailyExecutionDecision}
-                      onRestore={handleRestoreDailyExecution}
-                      onUndo={handleUndoDailyExecution}
-                    />
-                    <TodayFocus commandCenter={commandCenter} />
-                    <DashboardPrimaryWork commandCenter={commandCenter} signal={pipelineReviewSignal} />
-                    <QuoteFollowUpCard
-                      quotes={data.quotes}
-                      revenueView={revenueView}
-                      activeTopAction={activeRevenueAction}
-                      progressMessage={commercialProgressMessage}
-                      onAdvanceQuote={handleAdvanceQuote}
-                    />
-                    <ThisWeekSummary commandCenter={commandCenter} />
-                    <CaptureNudgePanel nudges={dashboardInsights.captureNudges} />
-                    <WeeklyExecutionHealth
-                      review={dashboardInsights.weeklyExecutionReview}
-                      activeOpportunityCount={dashboardInsights.activeOpportunityCount}
-                    />
-                    <TopSalesPattern pattern={dashboardInsights.topSalesPattern} />
-                    <AssetGaps
-                      gapSummary={dashboardInsights.assetGapSummary}
-                      assetCount={data.assets.length}
-                      objectionCount={data.objections.length}
-                      patternCount={dashboardInsights.playbookPatterns.length}
-                    />
-                    <PriorityActionList items={commandCenter.priorityActions} />
-                    <CriticalDealActions
-                      actions={dashboardInsights.criticalDealActions}
-                      outcomeLoop={dashboardInsights.outcomeLoop}
-                    />
-                    <OpenObjectionSignals objections={data.objections} />
-                    <MeddicRiskSignal summary={dashboardInsights.meddicSummary} />
-                    <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-                      <AtRiskOpportunities items={commandCenter.atRiskOpportunities} />
-                      <AccountsNeedingTouch items={commandCenter.accountsNeedingTouch} />
-                    </section>
-                    <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_360px]">
-                      <RecentActivityFeed items={commandCenter.recentActivities} />
-                      <QuickActions />
-                    </section>
-                  </div>
-                )}
-              </details>
             </>
           )}
           {/* Onboarding is the First Week Path strip above and nothing else.
@@ -1007,6 +939,17 @@ export function TodayPage() {
 }
 
 export const DashboardPage = TodayPage;
+
+/**
+ * Today's deeper reading, as a section of somebody else's page.
+ *
+ * Mounted by Review > Learning & Analytics. Kept as a named export rather than
+ * a prop passed at the call site so the hosting surface never has to know that
+ * Today and this are one component.
+ */
+export function TodayReferenceSections() {
+  return <TodayPage variant="reference" />;
+}
 
 function buildDashboardInsights(data: DashboardData) {
   const period = getCurrentExecutionWeekRange();
@@ -1248,46 +1191,67 @@ function ForecastDefenseReadiness({ center }: { center: ReturnType<typeof buildU
   );
 }
 
+/**
+ * The judgement Today exists to deliver, and the one thing on the page allowed
+ * to look like it.
+ *
+ * It was a normal white card with a 14px heading, sitting third in a column of
+ * seven other normal white cards - so the ranked recommendation the whole
+ * commercial engine exists to produce carried exactly the visual weight of the
+ * capture inbox. Level 1 here means typography and space rather than more
+ * chrome: no outer card shell at all, a heading at the size of a page title,
+ * and each move given room to be read as a sentence.
+ *
+ * The ranking is the canonical one and is not re-derived here. There is
+ * deliberately no score on screen: the rank is the answer, and "why now" is
+ * what makes it checkable.
+ */
 function TodayTopThreeActions({ actions }: { actions: TodayCommandAction[] }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      {/* One line, not a three-line masthead. The step divider directly above
-          already says this is today's work, and repeating it at 20px was the
-          page shouting its own table of contents back at the reader. */}
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h2 className="text-sm font-bold text-navy">What Memoire would start with</h2>
-        <span className="text-xs text-gray-400">Ranked across defense, revenue, opportunities and capture</span>
+    <section aria-label="Your moves" className="pt-3">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h2 className="text-2xl font-bold tracking-tight text-navy">Your 3 moves</h2>
+        <p className="text-sm text-gray-500">What Memoire would start with, ranked across defense, revenue, opportunities and capture</p>
       </div>
       {actions.length === 0 ? (
-        <p className="mt-4 rounded-lg bg-gray-50 p-4 text-sm font-semibold text-gray-600">No urgent action found. Capture a sales update to refresh Today.</p>
+        <p className="mt-4 rounded-xl border border-gray-200 bg-white p-5 text-sm font-semibold text-gray-600">
+          No urgent action found. Capture a sales update to refresh Today.
+        </p>
       ) : (
-        <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        <div className="mt-4 grid gap-4 lg:grid-cols-3">
           {actions.map((action, index) => (
-            <article key={action.id} className="flex flex-col justify-between rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <article
+              key={action.id}
+              className="flex flex-col justify-between rounded-2xl border border-navy/15 bg-white p-5 shadow-[0_1px_3px_rgba(22,40,60,0.08)]"
+            >
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-navy px-2.5 py-1 text-xs font-black text-white">#{index + 1}</span>
+                  <span className="text-2xl font-black leading-none text-navy/25">#{index + 1}</span>
                   <PriorityBadge priority={action.urgency} />
                   <Badge label={action.source} tone="blue" />
                   {action.mergedCount && action.mergedCount > 1 && (
                     <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">{action.mergedCount} deals</span>
                   )}
                 </div>
-                <h3 className="mt-3 text-base font-bold text-navy">{action.title}</h3>
-                <p className="mt-1 text-xs font-bold uppercase tracking-wide text-gray-400">{action.accountName} / {action.opportunityName}</p>
-                <p className="mt-3 text-sm leading-6 text-gray-600">{action.reason}</p>
+                <p className="mt-3 text-xs font-bold uppercase tracking-wide text-gray-400">{action.accountName} / {action.opportunityName}</p>
+                <h3 className="mt-1 text-lg font-bold leading-tight text-navy">{action.title}</h3>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Badge label={`Due: ${action.dueDateLabel}`} tone={action.urgency === 'Critical' ? 'red' : 'blue'} />
+                  {action.moneyLabel && <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-bold text-gray-700 ring-1 ring-gray-200">{action.moneyLabel}</span>}
+                </div>
+                {/* Why now, in the open. The move is only checkable if the
+                    reason it is ranked first is on the same card as the rank. */}
+                <p className="mt-3 border-t border-gray-100 pt-3 text-sm leading-6 text-gray-600">
+                  <span className="font-bold text-navy">Why now: </span>{action.reason}
+                </p>
                 {action.basis && (
                   <details className="mt-2">
-                    <summary className="cursor-pointer text-xs font-semibold text-brand-blue">Why am I seeing this?</summary>
+                    <summary className="cursor-pointer text-xs font-semibold text-brand-blue">What this is based on</summary>
                     <p className="mt-1 text-xs leading-5 text-gray-500">{action.basis}</p>
                   </details>
                 )}
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Badge label={`Due: ${action.dueDateLabel}`} tone={action.urgency === 'Critical' ? 'red' : 'blue'} />
-                  {action.moneyLabel && <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-gray-700 ring-1 ring-gray-200">{action.moneyLabel}</span>}
-                </div>
               </div>
-              <Link to={action.href} className="mt-4 inline-flex w-fit items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Open action <ArrowRight className="h-4 w-4" /></Link>
+              <Link to={action.href} className="mt-4 inline-flex w-fit items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90">Open <ArrowRight className="h-4 w-4" /></Link>
             </article>
           ))}
         </div>
@@ -1297,16 +1261,24 @@ function TodayTopThreeActions({ actions }: { actions: TodayCommandAction[] }) {
 }
 
 /**
- * Numbered flow markers that turn Today into three explicit steps. Cheap on
- * purpose: a number, a title, a one-line hint - the sections stay the content.
+ * A quiet label over a section of Today.
+ *
+ * It used to be a numbered step marker - a filled navy disc, "1", a rule across
+ * the page - which made three sections look like a three-step wizard the seller
+ * had to work through in order. They are not steps; they are the state, the
+ * decision and the risk, and a reader takes them in whichever order their
+ * morning demands. So the numeral is gone and the label is typography: it names
+ * the section and then gets out of the way of it.
+ *
+ * Deliberately no rule and no background. The section beneath carries the
+ * weight, and a divider competing with it is how every band on a page ends up
+ * looking equally important.
  */
-function StepDivider({ step, title, hint }: { step: number; title: string; hint: string }) {
+function TodaySectionLabel({ label, hint }: { label: string; hint: string }) {
   return (
-    <div className="flex items-center gap-3 pt-2">
-      <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-black text-white">{step}</span>
-      <p className="shrink-0 text-xs font-bold uppercase tracking-[0.18em] text-navy">{title}</p>
-      <p className="hidden truncate text-xs font-medium text-gray-400 sm:block">{hint}</p>
-      <div className="h-px min-w-4 flex-1 bg-gray-200" />
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 pt-2">
+      <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-gray-400">{label}</h2>
+      <p className="text-xs font-medium text-gray-400">{hint}</p>
     </div>
   );
 }

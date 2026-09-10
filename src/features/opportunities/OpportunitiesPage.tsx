@@ -7,6 +7,7 @@ import {
   ArrowUpDown,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -25,14 +26,11 @@ import {
   X,
 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
-import { DataModePill } from '../../components/common/DataModePill';
 import { QuotePricingPanel } from './QuotePricingPanel';
 import { isQuotingStage } from '../../utils/quotePricing';
-import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { trackProductEvent, type AnalyticsDataMode } from '../../utils/productAnalytics';
 import {
-  canUseOpportunityCloudStore,
   createOpportunity,
   decisionRecommendations,
   deleteOpportunity,
@@ -247,7 +245,7 @@ const defaultPageSize = 25;
 const founderCoreSourceSystem = 'founder_core_fy26';
 
 export function OpportunitiesPage() {
-  const { user, loading: authLoading, isAuthenticated } = useAuthContext();
+  const { user } = useAuthContext();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
@@ -1189,7 +1187,6 @@ export function OpportunitiesPage() {
           with, and it now starts within the first screen. The analysis is
           still here, one fold below the rows it describes. */}
       <PageHeader
-        eyebrow="Records"
         title="Opportunities"
         meta={
           <>
@@ -1200,49 +1197,61 @@ export function OpportunitiesPage() {
           </>
         }
         actions={
+          /*
+           * One primary, one secondary, the rest behind "More".
+           *
+           * There were four solid buttons here - navy Add, blue Import, blue
+           * Defense brief and a refresh disc - three of them filled, so the
+           * page offered three equally emphatic things to do before the reader
+           * had seen a single deal. Adding a deal is what this page is for;
+           * producing a defense brief is the second most common; importing a
+           * CSV happens once.
+           */
           <>
             <button
               type="button"
               onClick={() => openAddPanel()}
-              className="inline-flex items-center justify-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-sm font-bold text-white"
+              className="inline-flex items-center justify-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-sm font-bold text-white hover:bg-navy/90"
             >
               <Plus className="h-4 w-4" />
               Add
             </button>
             <button
               type="button"
-              onClick={openCsvImport}
-              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-brand-blue bg-blue-50 px-3.5 py-1.5 text-sm font-bold text-brand-blue hover:bg-blue-100"
-            >
-              <Upload className="h-4 w-4" />
-              Import
-            </button>
-            <button
-              type="button"
               onClick={() => openDefenseBriefPreview()}
-              className="inline-flex items-center justify-center gap-1.5 rounded-full bg-brand-blue px-3.5 py-1.5 text-sm font-bold text-white"
+              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-gray-300 bg-white px-3.5 py-1.5 text-sm font-bold text-gray-700 transition hover:border-brand-blue hover:text-brand-blue"
               title="Generate Pipeline Defense Brief from the selected deals"
             >
               <FileText className="h-4 w-4" />
               Defense brief{selectedOpportunities.length > 0 ? ` (${selectedOpportunities.length})` : ''}
             </button>
-            <button
-              type="button"
-              onClick={() => refreshOpportunities({ force: true })}
-              disabled={workspaceSyncing}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
-              title="Reload opportunities from cloud"
-            >
-              <RefreshCw className={`h-4 w-4 ${workspaceSyncing ? 'animate-spin' : ''}`} />
-            </button>
-            <DataModePill
-              compact
-              isLoading={authLoading}
-              isAuthenticated={isAuthenticated}
-              isSupabaseConfigured={isSupabaseConfigured}
-              cloudAvailable={canUseOpportunityCloudStore(dataUserId)}
-              hasSampleData={sampleDataActive}
-            />
+            <details className="relative">
+              <summary className="inline-flex cursor-pointer list-none items-center justify-center gap-1.5 rounded-full border border-gray-300 bg-white px-3.5 py-1.5 text-sm font-bold text-gray-700 transition hover:border-brand-blue hover:text-brand-blue">
+                More
+                <ChevronDown className="h-4 w-4" />
+              </summary>
+              <div className="absolute right-0 z-30 mt-1 w-56 rounded-xl border border-gray-200 bg-white p-1 shadow-lg">
+                <button
+                  type="button"
+                  onClick={openCsvImport}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  <Upload className="h-4 w-4 text-gray-400" />
+                  Import deals
+                </button>
+                <button
+                  type="button"
+                  onClick={() => refreshOpportunities({ force: true })}
+                  disabled={workspaceSyncing}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                >
+                  <RefreshCw className={`h-4 w-4 text-gray-400 ${workspaceSyncing ? 'animate-spin' : ''}`} />
+                  Reload from cloud
+                </button>
+              </div>
+            </details>
+            {/* No data-mode pill. One sync state, in the app header, for
+                every page - see the note on Today. */}
           </>
         }
       />
@@ -1475,21 +1484,11 @@ export function OpportunitiesPage() {
         />
       )}
 
-      {/* What moved on this deal since a fortnight ago, read before the thread
-          it belongs to. Scoped to the open deal - an account-wide delta here
-          would attribute another deal's objection to this one. */}
-      {editingOpportunity && (
-        <div className="mt-6">
-          <DeltaPanel
-            subject={{
-              kind: 'opportunity',
-              id: editingOpportunity.id,
-              name: editingOpportunity.opportunityName,
-              accountName: editingOpportunity.accountName,
-            }}
-          />
-        </div>
-      )}
+      {/* What moved on this deal used to be drawn here, gated on a deal being
+          open - which is exactly when the drawer covers this page. So the one
+          reading that answers "what changed" was rendered only in the moments
+          it could not be seen. It is inside the drawer now, second, between the
+          state and the move. */}
 
       {/* The same thread component every other surface uses. When a deal is
           open this narrows to that customer's story, so the opportunity is read
@@ -3348,6 +3347,10 @@ function OpportunityPanel({
         </button>
       </div>
 
+      {/* State -> what changed -> best move -> evidence -> details.
+          Five questions in the order a seller asks them, and the reason the
+          drawer no longer opens on a form of twenty fields: a deal is something
+          you read before it is something you edit. */}
       {mode === 'edit' && currentOpportunity && (
         <DealFirstThingHead
           snapshot={buildCommercialJourneySnapshot({
@@ -3379,17 +3382,55 @@ function OpportunityPanel({
         />
       )}
 
+      {/* What changed. The canonical delta, scoped to this deal - an
+          account-wide reading here would attribute another deal's objection to
+          this one. Renders nothing when nothing was observed, which is honest:
+          a "no changes" card every time you open a quiet deal is noise. */}
+      {mode === 'edit' && currentOpportunity && (
+        <div className="mt-5">
+          <DealSectionLabel label="What changed" hint="Observed since a fortnight ago" />
+          <DeltaPanel
+            subject={{
+              kind: 'opportunity',
+              id: currentOpportunity.id,
+              name: currentOpportunity.opportunityName,
+              accountName: currentOpportunity.accountName,
+            }}
+          />
+        </div>
+      )}
+
       {currentOpportunity && (
-        <OpportunitySalesFlowCard
-          guidance={buildOpportunitySalesFlowGuidance(currentOpportunity)}
-          onUseAsNextAction={(action) => onChange({ ...form, nextAction: action })}
-        />
+        <>
+          {mode === 'edit' && <DealSectionLabel label="Best move" hint="One action, and why this one" />}
+          <OpportunitySalesFlowCard
+            guidance={buildOpportunitySalesFlowGuidance(currentOpportunity)}
+            onUseAsNextAction={(action) => onChange({ ...form, nextAction: action })}
+          />
+        </>
       )}
 
       {/* Read from `form`, not from the saved record, so it answers about what
           is on screen right now. */}
       {mode === 'edit' && form.status === 'Active' && <WhyThisDealIsFlagged form={form} />}
 
+      {mode === 'edit' && currentOpportunity && (
+        <>
+          <DealSectionLabel label="Evidence & blockers" hint="What the records support, dimension by dimension" />
+          <DealEvidenceSummary
+            qualification={scoreDealQualification({
+              opportunity: currentOpportunity,
+              stakeholders,
+              objections,
+              activities: linkedActivities,
+              quotes,
+            })}
+            openObjections={objections.filter((objection) => objection.status === 'Open').length}
+          />
+        </>
+      )}
+
+      {mode === 'edit' && <DealSectionLabel label="Details" hint="The record itself, and the full analysis behind it" />}
       <div className="mt-5 space-y-4">
         <div>
           <SuggestInput
@@ -6344,6 +6385,81 @@ function meddicCategoryTone(category: MeddicLiteDealCategory) {
   if (category === 'Defensible') return 'green';
   if (category === 'Weak but recoverable') return 'amber';
   return 'red';
+}
+
+/**
+ * A quiet label over one of the five readings of a deal.
+ *
+ * Level-3 typography: it names the section and gets out of the way. Cards were
+ * considered and rejected - the drawer's problem was never a shortage of boxes.
+ */
+function DealSectionLabel({ label, hint }: { label: string; hint: string }) {
+  return (
+    <div className="mt-6 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+      <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-gray-400">{label}</h3>
+      <p className="text-xs font-medium text-gray-400">{hint}</p>
+    </div>
+  );
+}
+
+/**
+ * One commercial judgement, instead of eight competing ones.
+ *
+ * A seller was being asked to reconcile stage, forecast grade, qualification
+ * score, integrity score, MEDDIC completeness, stakeholder coverage, objection
+ * severity and policy alerts before deciding what a deal meant. Every one of
+ * those is real and every one is still available; what was missing was the
+ * synthesis, so each reading argued with the others in the reader's head.
+ *
+ * This is that synthesis, and it derives nothing. The dimensions are the
+ * canonical qualification elements, the marks are the canonical statuses
+ * (Strong / Partial / Missing), and the blockers are the ones the scorer already
+ * declares. Deliberately no number: the score exists, it is in the full
+ * analysis, and putting a percentage here would add a ninth thing to reconcile
+ * rather than replacing the eight.
+ */
+function DealEvidenceSummary({
+  qualification,
+  openObjections,
+}: {
+  qualification: DealQualification;
+  openObjections: number;
+}) {
+  const mark = (status: MeddicLiteStatus) => (status === 'Strong' ? '✓' : status === 'Partial' ? '△' : '○');
+  const tone = (status: MeddicLiteStatus) => (
+    status === 'Strong' ? 'text-emerald-700' : status === 'Partial' ? 'text-amber-600' : 'text-gray-400'
+  );
+
+  return (
+    <section aria-label="Evidence and blockers" className="mt-2 rounded-xl border border-gray-200 bg-white p-4">
+      <div className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+        {qualification.elements.map((element) => (
+          <div key={element.key} className="flex items-baseline justify-between gap-3 border-b border-gray-50 py-0.5 last:border-0">
+            <span className="min-w-0 truncate text-sm text-gray-700" title={element.label}>{element.label}</span>
+            <span className={`shrink-0 text-sm font-black ${tone(element.status)}`} title={element.status}>
+              <span className="sr-only">{element.status}</span>
+              <span aria-hidden="true">{mark(element.status)}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {qualification.blockers.length > 0 && (
+        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+          <span className="font-bold">Nothing recorded on: </span>
+          {qualification.blockers.map((element) => element.label).join(', ')}. These are the two the deal does not
+          survive without, so the evidence cannot back a forecast until one of them is answered.
+        </p>
+      )}
+
+      {openObjections > 0 && (
+        <p className="mt-2 text-xs leading-5 text-gray-500">
+          {openObjections} open {openObjections === 1 ? 'objection' : 'objections'} on this customer, listed in the full
+          analysis below.
+        </p>
+      )}
+    </section>
+  );
 }
 
 function meddicStatusTone(status: MeddicLiteStatus) {

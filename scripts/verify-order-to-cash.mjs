@@ -128,17 +128,27 @@ const quote = (id, opportunityId, overrides = {}) => ({
   assert.equal(book.collectedCount, 1);
 }
 
-// 5. The surface says what it is. "Money" invited every commercial record onto
-//    one page; the rename is the product decision, not a caption.
+// 5. The surface says what it is.
+//
+//    The name has moved twice and both moves were product decisions rather than
+//    captions. "Money" became "Orders" on 2026-08-02 because the order was what
+//    the operator came to look at. It became "Money" again on 2026-09-07 for the
+//    opposite reason and without contradicting the first: the destination now
+//    holds Orders, Collections and Margin as three views of one question, and
+//    naming the whole after one third of it was what left the other two thirds
+//    as separate rail rows.
+//
+//    What has not changed is that the order book leads the Orders view.
 {
   const registry = readFileSync(new URL('../src/config/featureRegistry.ts', import.meta.url), 'utf8');
-  // Shortened to "Orders" on 2026-08-02: the road to cash is what the page
-  // shows, the order is what the operator came to look at.
-  assert.match(registry, /label: 'Orders'/, 'the destination is named for committed orders');
+  assert.match(registry, /label: 'Money'/, 'the money spine has one destination');
+
+  const views = readFileSync(new URL('../src/features/revenue/moneyViews.ts', import.meta.url), 'utf8');
+  assert.match(views, /'orders', 'collections', 'margin'/, 'Money holds exactly the three views');
 
   const page = readFileSync(new URL('../src/features/revenue/RevenueViewPage.tsx', import.meta.url), 'utf8');
-  assert.match(page, /<OrderBookPanel/, 'the order book leads the page');
-  assert.match(page, /Orders/, 'the page header matches the rail');
+  assert.match(page, /<OrderBookPanel/, 'the order book leads the orders view');
+  assert.match(page, /title="Orders"/, 'the orders view is still called Orders');
 }
 
 // 6. Storage contract: another JSON collection with a real table behind it, and

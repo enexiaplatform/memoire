@@ -25,15 +25,15 @@ const app = readFileSync('src/App.tsx', 'utf8');
   );
 }
 
-// 2. The rail renders from the registry, not from a hand-maintained list, and
-// every rail item belongs to exactly one declared group.
+// 2. The rail renders from the registry, and it is exactly the six primary
+// destinations.
 //
-// The rail is grouped by the question each block answers (run the week / the
-// records / workspace tools) rather than by registry status, so "primary" and
-// "global" items are interleaved by design. That makes this check stronger than
-// the old two-tier one, not weaker: the set of items in the rail must be
-// exactly the primary destinations plus the global surfaces that have a route,
-// with nothing added and nothing dropped.
+// It used to be the six plus the eight routed global surfaces, interleaved into
+// three labelled groups. That was defensible item by item and indefensible as a
+// whole: fourteen doors before any commercial work begins. From 2026-09-07 the
+// rail *is* PRIMARY_DESTINATION_IDS - the strongest form this check can take,
+// because it means a new nav row can only be created by editing the product
+// decision, which is a reviewed act, rather than by adding an id to a list.
 {
   assert.ok(
     sidebar.includes("from '../../config/featureRegistry'"),
@@ -47,14 +47,30 @@ const app = readFileSync('src/App.tsx', 'utf8');
     .flatMap((match) => [...match[1].matchAll(/'([a-z-]+)'/g)].map((item) => item[1]));
 
   assert.equal(new Set(railIds).size, railIds.length, 'a rail item appears in two groups');
+
+  const primaryBlock = registry.match(/export const PRIMARY_DESTINATION_IDS = \[([\s\S]*?)\] as const;/);
+  assert.ok(primaryBlock, 'featureRegistry must declare PRIMARY_DESTINATION_IDS');
+  const primaryIds = [...primaryBlock[1].matchAll(/'([a-z-]+)'/g)].map((match) => match[1]);
+
   assert.deepEqual(
     [...railIds].sort(),
-    [
-      'accounts', 'activity', 'business-lens', 'business-vault', 'cash-collection', 'cost-analysis', 'money',
-      'opportunities', 'review', 'search-insights', 'settings', 'stakeholders', 'timeline', 'today',
-    ],
-    'the rail is the six primary destinations plus the eight routed global surfaces - no more, no less',
+    [...primaryIds].sort(),
+    'the rail is exactly the six primary destinations - a seventh row means editing the product decision',
   );
+  assert.equal(railIds.length, 6, 'six destinations is the product; a seventh needs a reason in PRIMARY_DESTINATION_IDS');
+
+  // And the eight that left the rail are still routed, still global, and still
+  // reachable. Removing a row must never remove a capability.
+  for (const id of [
+    'search-insights', 'settings', 'activity', 'business-lens',
+    'cost-analysis', 'cash-collection', 'stakeholders', 'business-vault',
+  ]) {
+    const record = registry.match(new RegExp(`id: '${id}',[\\s\\S]*?navVisible: (true|false)`));
+    assert.ok(record, `feature registry lost its record for ${id}`);
+    assert.equal(record[1], 'false', `${id} is back in the rail`);
+    const routed = registry.match(new RegExp(`id: '${id}',[\\s\\S]*?route: '([^']+)'`));
+    assert.ok(routed, `${id} left the rail and lost its route - that is a deleted capability, not a moved one`);
+  }
 
   // No hard-coded nav target may sneak in beside the registry - that is exactly
   // how a seventh destination used to appear without anyone deciding to add it.
@@ -133,7 +149,7 @@ for (const retiredId of [
   }
 
   const primaries = registry.match(/export const PRIMARY_DESTINATION_IDS = \[([\s\S]*?)\] as const;/);
-  for (const lens of ['business-vault', 'activity', 'business-lens', 'stakeholders', 'cost-analysis']) {
+  for (const lens of ['business-vault', 'activity', 'business-lens', 'stakeholders', 'cost-analysis', 'cash-collection']) {
     assert.equal(
       primaries[1].includes(lens),
       false,
@@ -178,14 +194,16 @@ for (const retiredId of [
     ['Today', 'src/features/dashboard/DashboardPage.tsx'],
     ['Accounts', 'src/features/accounts/AccountsPage.tsx'],
     ['Opportunities', 'src/features/opportunities/OpportunitiesPage.tsx'],
-    ['Orders', 'src/features/revenue/RevenueViewPage.tsx'],
+    ['Money', 'src/features/revenue/MoneyPage.tsx'],
+    ['Money > Orders', 'src/features/revenue/RevenueViewPage.tsx'],
+    ['Money > Collections', 'src/features/revenue/CashCollectionPage.tsx'],
     ['Plan', 'src/features/timeline/TimelinePage.tsx'],
     ['Review', 'src/features/reviews/SalesReviewsPage.tsx'],
     ['Capture', 'src/features/dailyCapture/DailyCapturePage.tsx'],
     ['Search & Insights', 'src/features/v31/AskMemoirePage.tsx'],
     ['Activity', 'src/features/activity/ActivityPage.tsx'],
     ['Stakeholders', 'src/features/stakeholders/StakeholdersPage.tsx'],
-    ['Cost Analysis', 'src/features/revenue/CostAnalysisPage.tsx'],
+    ['Money > Margin', 'src/features/revenue/CostAnalysisPage.tsx'],
     ['Dashboard lens', 'src/features/business/BusinessLensPage.tsx'],
     ['Business Vault', 'src/features/vault/BusinessVaultPage.tsx'],
     ['Settings', 'src/features/settings/SettingsPage.tsx'],
@@ -312,7 +330,23 @@ for (const retiredId of [
     activityEntry[0].includes("has('activityId')") && activityEntry[0].includes('<LegacyRedirect'),
     '/app/activity?activityId=... must still open the touch in Timeline > History',
   );
-  assert.ok(activityEntry[0].includes('<ActivityPage />'), '/app/activity must render the Activity lens');
+  // The bare URL is a request for the reading, and the reading is inside
+  // Review now - rendered by the same ActivityPage component, in its
+  // analytics variant, which is what makes this forward a relocation rather
+  // than a deletion.
+  assert.ok(
+    activityEntry[0].includes(`to="/app/reviews"`) && activityEntry[0].includes(`view: 'analytics'`),
+    '/app/activity must land on the reading that absorbed it',
+  );
+  const reviewAnalytics = readFileSync(new URL('../src/features/reviews/ReviewAnalyticsSection.tsx', import.meta.url), 'utf8');
+  assert.ok(
+    reviewAnalytics.includes(`<ActivityPage variant="analytics" />`),
+    'Review must actually render the activity analysis, or that forward loses it',
+  );
+  assert.ok(
+    reviewAnalytics.includes('<BusinessLensPage embedded />'),
+    'Review must actually render the business lens, or /app/business loses it',
+  );
 }
 
 // 7. The retired persona system and the retired onboarding surfaces are gone.

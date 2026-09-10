@@ -40,11 +40,17 @@ for (const [file, surface] of [
   );
 }
 
-// 3. Commitments are editable from Today, Timeline and Review, through the same
-// ledger component - so a promise ticked in one place is kept in all of them.
+// 3. Commitments are editable from Plan and Review through the same ledger
+// component - so a promise ticked in one place is kept in the other.
+//
+// Today carried a third copy until 2026-09-09. One ledger rendered on three
+// surfaces was never the risk this check guards against; the risk is a second
+// *component*, and that is still what is asserted. What changed is that a
+// promise is a weekly object, and Today is now the picture, the moves and the
+// watch-list - so the ledger is answered once beside the board that can
+// schedule it, and read back on the surface that closes the week.
 for (const [file, surface] of [
-  ['src/features/dashboard/DashboardPage.tsx', 'Today'],
-  ['src/features/timeline/TimelinePage.tsx', 'Timeline'],
+  ['src/features/timeline/TimelinePage.tsx', 'Plan'],
   ['src/features/reviews/SalesReviewsPage.tsx', 'Review'],
 ]) {
   assert.ok(
@@ -97,13 +103,22 @@ for (const [file, surface] of [
     'and paging the board must move that answer with it',
   );
 
-  const today = read('src/features/dashboard/DashboardPage.tsx');
-  const todayPanel = today.slice(today.indexOf('<CommitmentLedgerPanel'), today.indexOf('<TodayTopThreeActions'));
-  assert.ok(todayPanel.length > 0, "Today's ledger panel must be findable");
+  // The surface without a board is Review, not Today.
+  //
+  // Today carried a copy of the ledger until 2026-09-09. It was the right place
+  // for it while Today was the whole operating loop, and the wrong one once the
+  // daily page became the picture, the moves and the watch-list: a promise you
+  // made is work you owe, which is the week's question, and it is now answered
+  // once on Plan (beside the board that can schedule it) and read back on
+  // Review (where nothing can be scheduled). The rule being guarded is
+  // unchanged - fold only where the board is on screen to fold into.
+  const review = read('src/features/reviews/SalesReviewsPage.tsx');
+  const reviewPanel = review.slice(review.indexOf('<CommitmentLedgerPanel'));
+  assert.ok(review.includes('<CommitmentLedgerPanel'), "Review's ledger panel must be findable");
   assert.equal(
-    todayPanel.includes('boardWindow'),
+    reviewPanel.slice(0, reviewPanel.indexOf('/>')).includes('boardWindow'),
     false,
-    'Today has no plan board on screen, so folding there would hide promises with nowhere else to appear',
+    'Review has no plan board on screen, so folding there would hide promises with nowhere else to appear',
   );
 
   const panel = read('src/features/commitments/CommitmentLedgerPanel.tsx');

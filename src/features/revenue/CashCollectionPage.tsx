@@ -1,8 +1,8 @@
+import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, Banknote, ChevronDown, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
-import { DataModePill } from '../../components/common/DataModePill';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 import { SkeletonCard, SkeletonScreen } from '../../components/common/Skeleton';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
@@ -50,7 +50,7 @@ import { pluralizeCount } from '../../utils/numberFormat';
  * the moment this page opens. The only thing an operator records is the part no
  * document in the product could prove - that the money actually landed.
  */
-export function CashCollectionPage() {
+export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
   const { user, loading: authLoading } = useAuthContext();
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
@@ -146,23 +146,32 @@ export function CashCollectionPage() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow="Records"
-        title="Cash collection"
+        tabs={tabs}
+        eyebrow="Money"
+        title="Collections"
+        documentTitle="Money · Collections"
         description="What customers still owe you, when each part fell due, and what has arrived. Orders follows the goods; this follows the money. Yours only — recording a payment here never reaches the customer."
         actions={
-          <>
-            <DataModePill />
-            <button
-              type="button"
-              onClick={() => void reload()}
-              disabled={syncing}
-              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-navy hover:bg-gray-50 disabled:opacity-50"
-            >
-              <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-              {syncing ? 'Syncing...' : 'Refresh'}
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={() => void reload()}
+            disabled={syncing}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700 disabled:opacity-60"
+            title="Reload collections from cloud"
+          >
+            <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+          </button>
         }
+          /*
+           * No per-page sync chrome.
+           *
+           * The app header carries one sync state for the whole workspace, and
+           * every page that repeated it added a second answer to "am I synced"
+           * on the same screen - a green "Cloud sync" pill beside a grey
+           * "Browser only" pill was a real screenshot. Normal is quiet; a
+           * genuine failure still speaks, in this page's own error state, where
+           * it can say what failed and offer the retry.
+           */
       />
 
       {loading ? (

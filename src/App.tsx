@@ -54,9 +54,7 @@ const SalesAssetsPage = lazy(() =>
   import('./features/assets/SalesAssetsPage').then((module) => ({ default: module.SalesAssetsPage })),
 );
 const QuotesPage = lazy(() => import('./features/quotes/QuotesPage').then((module) => ({ default: module.QuotesPage })));
-const RevenueViewPage = lazy(() => import('./features/revenue/RevenueViewPage').then((module) => ({ default: module.RevenueViewPage })));
-const CostAnalysisPage = lazy(() => import('./features/revenue/CostAnalysisPage').then((module) => ({ default: module.CostAnalysisPage })));
-const CashCollectionPage = lazy(() => import('./features/revenue/CashCollectionPage').then((module) => ({ default: module.CashCollectionPage })));
+const MoneyPage = lazy(() => import('./features/revenue/MoneyPage').then((module) => ({ default: module.MoneyPage })));
 const SettingsPage = lazy(() => import('./features/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const SalesReviewsPage = lazy(() =>
   import('./features/reviews/SalesReviewsPage').then((module) => ({ default: module.SalesReviewsPage })),
@@ -77,14 +75,8 @@ const PipelineReviewPackPage = lazy(() =>
 const FounderImportReviewPage = lazy(() =>
   import('./features/imports/FounderImportReviewPage').then((module) => ({ default: module.FounderImportReviewPage })),
 );
-const BusinessLensPage = lazy(() =>
-  import('./features/business/BusinessLensPage').then((module) => ({ default: module.BusinessLensPage })),
-);
 const BusinessVaultPage = lazy(() =>
   import('./features/vault/BusinessVaultPage').then((module) => ({ default: module.BusinessVaultPage })),
-);
-const ActivityPage = lazy(() =>
-  import('./features/activity/ActivityPage').then((module) => ({ default: module.ActivityPage })),
 );
 const PortfolioCoveragePage = lazy(() =>
   import('./features/coverage/PortfolioCoveragePage').then((module) => ({ default: module.PortfolioCoveragePage })),
@@ -170,7 +162,10 @@ function App() {
             <Route path="today" element={<TodayPage />} />
             <Route path="accounts" element={<AccountsPage />} />
             <Route path="opportunities" element={<OpportunitiesPage />} />
-            <Route path="revenue" element={<RevenueViewPage />} />
+            {/* Money owns Orders, Collections and Margin. The canonical URL is
+                unchanged so every existing bookmark, digest link and manager
+                link still lands here; `?view=` picks which of the three. */}
+            <Route path="revenue" element={<MoneyPage />} />
             <Route path="timeline" element={<TimelinePage />} />
             <Route path="reviews" element={<SalesReviewsPage />} />
 
@@ -178,16 +173,14 @@ function App() {
             <Route path="capture" element={<DailyCapturePage />} />
             <Route path="ask" element={<AskMemoirePage />} />
             <Route path="activity" element={<ActivityRouteEntry />} />
-            {/* The buy side of the order book. Its own destination since
-                2026-08-06 - see the registry entry for why it left the Orders
-                page it used to sit inside. */}
-            <Route path="cost-analysis" element={<CostAnalysisPage />} />
-            {/* Separate from Orders on purpose, at the founder's call on
-                2026-08-06: an order is a thing you fulfil and a receivable is a
-                thing you chase, and a delivery that is on time can sit behind
-                money that is ninety days late. */}
-            <Route path="cash-collection" element={<CashCollectionPage />} />
-            <Route path="business" element={<BusinessLensPage />} />
+            {/* Both were rail rows of their own until 2026-09-07 and are now
+                views of Money. The pages are unchanged; only where you reach
+                them from moved, so these keep working as permanent links. The
+                separation the 2026-08-06 note argued for survives - an order
+                you fulfil and a receivable you chase are still different tabs,
+                not a merged list. */}
+            <Route path="cost-analysis" element={<LegacyRedirect to="/app/revenue" params={{ view: 'margin' }} />} />
+            <Route path="cash-collection" element={<LegacyRedirect to="/app/revenue" params={{ view: 'collections' }} />} />
             <Route path="vault" element={<BusinessVaultPage />} />
             <Route path="settings" element={<SettingsPage />} />
 
@@ -239,7 +232,15 @@ function App() {
                 /app/revenue, so /app/orders is the URL an operator types or
                 bookmarks after reading the rail. It 404'd. */}
             <Route path="orders" element={<LegacyRedirect to="/app/revenue" />} />
-            <Route path="dashboard" element={<LegacyRedirect to="/app/business" />} />
+            {/* Both lenses are now rendered inside Review > Learning &
+                Analytics, by the same components these routes used to mount, so
+                these forward rather than hold a second copy of the reading.
+                They were rail rows until 2026-09-07 and routes until
+                2026-09-09; the gap between those two dates was deliberate -
+                a row was removed only after the reading had somewhere to live,
+                and the route only after that reading was the same component. */}
+            <Route path="dashboard" element={<LegacyRedirect to="/app/reviews" params={{ view: 'analytics' }} />} />
+            <Route path="business" element={<LegacyRedirect to="/app/reviews" params={{ view: 'analytics' }} />} />
             <Route path="plan" element={<LegacyRedirect to="/app/timeline" params={{ view: 'upcoming' }} />} />
             <Route path="calendar" element={<LegacyRedirect to="/app/timeline" params={{ view: 'history' }} />} />
             <Route path="weekly-brief" element={<LegacyRedirect to="/app/reviews" />} />
@@ -305,18 +306,22 @@ function LegacyRedirect({ to, params }: { to: string; params?: Record<string, st
 /**
  * `/app/activity` serves two jobs that used to be one.
  *
- * The Activity surface is now the analysis over the ledger, so the bare URL
- * renders it. But `/app/activity?activityId=...` has been a live deep link since
- * the ledger lived here - Today, Search and the daily digest all generate it, and
- * it is expected to open that exact touch with its detail modal. A row id is a
- * request for a record, not for a dashboard, so it keeps forwarding to Timeline >
- * History where the record and its modal live.
+ * The bare URL is a request for the analysis - "how am I working" - and that
+ * reading now lives in Review > Learning & Analytics, rendered by the very
+ * component this route used to mount. So it forwards there.
+ *
+ * But `/app/activity?activityId=...` has been a live deep link since the ledger
+ * lived here - Today, Search and the daily digest all generate it, and it is
+ * expected to open that exact touch with its detail modal. A row id is a request
+ * for a record, not for a reading, so it keeps forwarding to Plan > History
+ * where the record and its modal live. Two forwards, and which one you get
+ * depends on what you asked for.
  */
 function ActivityRouteEntry() {
   const location = useLocation();
   const hasRecordId = new URLSearchParams(location.search).has('activityId');
   if (hasRecordId) return <LegacyRedirect to="/app/timeline" params={{ view: 'history' }} />;
-  return <ActivityPage />;
+  return <LegacyRedirect to="/app/reviews" params={{ view: 'analytics' }} />;
 }
 
 function LegacyAccountRouteRedirect() {

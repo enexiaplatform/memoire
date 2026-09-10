@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDays, ChevronLeft, ChevronRight, Loader2, Pencil, Plus, RotateCcw, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
@@ -113,8 +114,19 @@ export function WeeklyPlanPage({
   embedded = false,
   onRangeChange,
   focusRequest = null,
+  beforeBoard = null,
 }: {
   embedded?: boolean;
+  /**
+   * Rendered between the week's ranked moves and the days themselves.
+   *
+   * Plan owns the calendar; it does not own the commitment ledger, and the
+   * ledger has to sit between the two because that is the order the week is
+   * decided in - what matters, what I already promised, then which day it
+   * lands on. A slot keeps that ordering decision in the destination that
+   * makes it rather than importing the ledger into the board.
+   */
+  beforeBoard?: ReactNode;
   /** Fired with the days now on screen, so a surface above can stop repeating them. */
   onRangeChange?: (range: PlanBoardWindow) => void;
   /**
@@ -791,6 +803,28 @@ export function WeeklyPlanPage({
        on - so the one route from a promise to the place it can be ticked was a
        link that did nothing. */
     <div id={PLAN_BOARD_ANCHOR_ID} className={embedded ? '' : 'mx-auto max-w-[1600px] px-4 py-6 sm:px-6'}>
+      {/* The week's ranked moves, then what is already promised, then the days.
+          The importers stay below the board.
+
+          These suggestions sat under the calendar until 2026-09-09, on the
+          reasoning that the calendar is what the operator came to read and
+          advice above it is something to scroll past. That was right about the
+          importers and wrong about this panel: the board is execution
+          machinery, and putting the only judgement on the page beneath five
+          screens of grid made the week look like a scheduling exercise rather
+          than a set of commercial choices. The panel proposes at most a handful
+          of items and every one of them is refusable, so it costs a few lines
+          above the fold and answers the question the board cannot: of all the
+          days in front of me, which of these matter. */}
+      <PlanSuggestionsPanel
+        suggestions={suggestions}
+        days={board.days}
+        onAccept={acceptSuggestion}
+        onDismiss={dismissSuggestion}
+      />
+
+      {beforeBoard}
+
       <header className={`flex flex-col gap-3 sm:flex-row sm:items-start ${embedded ? 'sm:justify-end' : 'sm:justify-between'}`}>
         {!embedded && (
           <div>
@@ -1261,17 +1295,6 @@ export function WeeklyPlanPage({
           </section>
         ))}
       </div>
-
-      {/* Everything that proposes work sits below the week, not above it.
-          The calendar is what the operator came to read; a panel of five
-          suggestions and two importers between the header and the days meant
-          scrolling past advice to reach the plan it was advising on. */}
-      <PlanSuggestionsPanel
-        suggestions={suggestions}
-        days={board.days}
-        onAccept={acceptSuggestion}
-        onDismiss={dismissSuggestion}
-      />
 
       <PlanTagAccountsPanel
         candidates={tagAccountCandidates}

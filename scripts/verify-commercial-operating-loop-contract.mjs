@@ -203,12 +203,24 @@ for (const marker of [
   requireIncludes(pipelineDefensePage, marker, `Pipeline Defense commercial handoff missing marker: ${marker}`);
 }
 
+// The account workspace still carries the commercial loop and still keeps every
+// deeper reading of the customer.
+//
+// "More account context" was a fold holding six sections - health, objections,
+// stakeholders, opportunities, the activity timeline, next actions - which is a
+// drawer inside a drawer, and the only way to find anything in it was to
+// remember it was in there. From 2026-09-09 those sections are four named tabs.
+// The marker changed; the guarantee did not, and is now stronger: the contract
+// names each tab, so a section cannot quietly stop being reachable.
 const accountsPage = read('src/features/accounts/AccountsPage.tsx');
 for (const marker of [
   'AccountCommercialLoop',
   'Commercial loop',
   'Opportunity to revenue',
-  'More account context',
+  'AccountPeopleTab',
+  'AccountMemoryTab',
+  'AccountCoverageTab',
+  'AccountOpportunitiesSection',
   'Edit account details',
 ]) {
   requireIncludes(accountsPage, marker, `Customer Workspace 2.0 missing marker: ${marker}`);

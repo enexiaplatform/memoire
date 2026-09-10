@@ -4,8 +4,6 @@ import { Link } from 'react-router-dom';
 import JSZip from 'jszip';
 import { ArrowRight, Copy, Download, Mail, RefreshCw } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
-import { DataModePill } from '../../components/common/DataModePill';
-import { isSupabaseConfigured } from '../../lib/demoMode';
 import { loadSalesWorkspaceData, type SalesWorkspaceData } from '../../services/workspaceData';
 import { loadPlanItemsForWorkspace, PLAN_ITEMS_UPDATED_EVENT } from '../../services/planItemStore';
 import type { PlanRecord } from '../../utils/weeklyPlan';
@@ -17,6 +15,9 @@ import { buildDailyDigest, buildDigestMailtoLink } from '../../utils/dailyDigest
 import { getUserDisplayName } from '../../utils/userDisplay';
 import { copyTextToClipboard } from '../../utils/clipboard';
 import { CommittedWeekStrip } from '../dashboard/CommittedWeekStrip';
+import { TodayReferenceSections } from '../dashboard/DashboardPage';
+import { BusinessLensPage } from '../business/BusinessLensPage';
+import { ActivityPage } from '../activity/ActivityPage';
 import { OperatorProfileSection } from './OperatorProfileSection';
 
 // Chart palette: fixed hex values (not Tailwind classes) so the SVGs survive
@@ -51,7 +52,7 @@ const EVIDENCE_COLORS: Record<string, string> = {
  * here, under Review, where the weekly loop already happens.
  */
 export function ReviewAnalyticsSection() {
-  const { user, profile, loading: authLoading, isAuthenticated } = useAuthContext();
+  const { user, profile, loading: authLoading } = useAuthContext();
   const [workspace, setWorkspace] = useState<SalesWorkspaceData | null>(null);
   const [planRecords, setPlanRecords] = useState<PlanRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,6 +60,7 @@ export function ReviewAnalyticsSection() {
   const [exporting, setExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState('');
   const [digestCopied, setDigestCopied] = useState(false);
+  const [deeperOpen, setDeeperOpen] = useState(false);
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
@@ -149,9 +151,10 @@ export function ReviewAnalyticsSection() {
     <div className="flex w-full max-w-none flex-col gap-5">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-navy">The whole business, in charts.</h2>
+          <h2 className="text-xl font-bold tracking-tight text-navy">The whole business, and how you are working it.</h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
-            History and trend. For what to do next, use Today.
+            History and trend, in four readings: what the book is, how you worked it, what it is teaching you,
+            and the detail underneath. For what to do next, use Today.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -165,24 +168,16 @@ export function ReviewAnalyticsSection() {
             <Download className="h-4 w-4" />
             {exporting ? 'Exporting...' : 'Export'}
           </button>
+          {/* Export is the action here; sync is the app header's job. */}
           <button
             type="button"
             onClick={() => loadDashboard(true)}
             disabled={syncing}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
-            title="Reload dashboard"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700 disabled:opacity-60"
+            title="Reload analytics"
           >
             <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-            Cloud sync
           </button>
-          <DataModePill
-            compact
-            isLoading={authLoading || loading}
-            isAuthenticated={isAuthenticated}
-            isSupabaseConfigured={isSupabaseConfigured}
-            cloudAvailable={isSupabaseConfigured}
-            hasSampleData={sampleDataActive}
-          />
         </div>
       </header>
 
@@ -198,29 +193,26 @@ export function ReviewAnalyticsSection() {
         <DashboardEmptyState />
       ) : (
         <>
-          {/* What is normal for this seller, and which way it is going. It
-              leads because the charts below are a period and this is the
-              person: the same 40% win rate reads differently once you know it
-              has been falling for a month. */}
-          {workspace && <OperatorProfileSection workspace={workspace} planRecords={planRecords} />}
+          {/* ---------------------------------------------------------------
+              One analytical hierarchy, in four readings.
 
-          {/* The operating-loop roll-up - adherence and the record-once funnel
-              - then the week's specific promises, then the charts. */}
-          <ExecutionBand execution={model.execution} />
+              Until 2026-09-09 the deeper two of those readings were rail rows
+              of their own - Dashboard and Activity - and this section carried a
+              pair of link cards pointing at them. Linking is not consolidation:
+              a reader still had to know that "the business lens" and "how you
+              worked" were separate modules, leave the page, and come back. Both
+              are now rendered here from the same components their old routes
+              render, so there is exactly one reading of each, and the old routes
+              can forward without deleting anything.
+              --------------------------------------------------------------- */}
 
-          <CommittedWeekStrip userId={dataUserId} sampleDataActive={sampleDataActive} />
-
-          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Key numbers">
-            <KpiCard label="Open deals" value={String(model.kpis.openDeals)} sub={`${formatCompactCurrencyAmount(model.kpis.openPipelineBase, model.reportingCurrency)} pipeline`} />
-            <KpiCard label="Money in motion" value={formatCompactCurrencyAmount(model.kpis.inMotionBase, model.reportingCurrency)} sub={`${model.kpis.stuckThreads} stuck thread${model.kpis.stuckThreads === 1 ? '' : 's'}`} tone={model.kpis.stuckThreads > 0 ? 'warn' : 'default'} />
-            <KpiCard label="Activities · 30 days" value={String(model.kpis.activitiesLast30)} sub={`${model.kpis.openQuotes} open quote${model.kpis.openQuotes === 1 ? '' : 's'}`} />
-            <KpiCard
-              label="Won / Lost"
-              value={`${model.outcomes.won.count} / ${model.outcomes.lost.count}`}
-              sub={`${formatCompactCurrencyAmount(model.outcomes.won.totalBase, model.reportingCurrency)} won`}
-              tone="positive"
-            />
-          </section>
+          <AnalyticsBand
+            label="Business picture"
+            hint="What the book actually is - who it depends on, whether it is believable, and what it is worth"
+          />
+          {/* The business lens, whole. Same component as /app/business, which is
+              what makes that route's redirect honest rather than a bin. */}
+          <BusinessLensPage embedded />
 
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Profit and cash">
             <KpiCard label="Collected revenue" value={formatCompactCurrencyAmount(model.money.collectedRevenueBase, model.reportingCurrency)} sub="Cash actually received" tone="positive" />
@@ -233,6 +225,32 @@ export function ReviewAnalyticsSection() {
             />
           </section>
 
+          <AnalyticsBand
+            label="Execution"
+            hint="How the week was actually worked: adherence, the record-once funnel, and the rhythm of the touches"
+          />
+          {/* The operating-loop roll-up - adherence and the record-once funnel
+              - then the week's specific promises. */}
+          <ExecutionBand execution={model.execution} />
+          <CommittedWeekStrip userId={dataUserId} sampleDataActive={sampleDataActive} />
+          {/* The activity analysis, whole. Same component as /app/activity.
+              Looking one touch up is Plan > History's job and is not here. */}
+          <ActivityPage variant="analytics" />
+
+          <AnalyticsBand
+            label="Learning"
+            hint="What this book is starting to say about how you win - measured, never assumed"
+          />
+          {/* What is normal for this seller, and which way it is going. It leads
+              the learning band because the charts are a period and this is the
+              person: the same 40% win rate reads differently once you know it
+              has been falling for a month. */}
+          {workspace && <OperatorProfileSection workspace={workspace} planRecords={planRecords} />}
+
+          <AnalyticsBand
+            label="Detail"
+            hint="The chart pack the export produces, and every derivation behind the daily page"
+          />
           <section className="grid gap-4 xl:grid-cols-2">
             <ChartCard title="Pipeline by stage" subtitle={`Active deals · value in ${model.reportingCurrency}`}>
               <StageBarChart model={model} svgRef={stageChartRef} />
@@ -270,8 +288,54 @@ export function ReviewAnalyticsSection() {
               </div>
             </div>
           </section>
+
+          {/* Everything Memoire derives about the daily page - the second
+              readings of the watch-list, the forecast-defense scoreboards, the
+              measured follow-up history, the legacy operating-plan panels.
+
+              These were two collapsed drawers on Today, which is the wrong
+              altitude for them twice over: they are reference rather than
+              action, and they are weekly rather than daily. Folded here because
+              a fold at the bottom of the deepest band is disclosure, whereas a
+              fold on the first screen of the day is a warehouse. */}
+          <details
+            className="rounded-xl border border-gray-200 bg-white shadow-sm"
+            onToggle={(event) => setDeeperOpen(event.currentTarget.open)}
+          >
+            <summary className="cursor-pointer list-none px-5 py-3">
+              <span className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="text-sm font-bold text-navy">Every derivation behind Today</span>
+                <span className="text-xs font-semibold text-gray-500">
+                  Risk readings, forecast readiness, follow-up history, capture inbox
+                </span>
+              </span>
+            </summary>
+            {/* Mounted only when opened: this is the heaviest scan in the app
+                and nothing about the four bands above depends on it. */}
+            {deeperOpen && (
+              <div className="border-t border-gray-100 p-5">
+                <TodayReferenceSections />
+              </div>
+            )}
+          </details>
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * The label over one of the four readings.
+ *
+ * Level-3 typography on purpose. These are signposts through a long page, not
+ * content, and giving them card shells would have added four more boxes to a
+ * section whose whole problem was that everything looked equally important.
+ */
+function AnalyticsBand({ label, hint }: { label: string; hint: string }) {
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 pt-3">
+      <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-gray-400">{label}</h3>
+      <p className="text-xs font-medium text-gray-400">{hint}</p>
     </div>
   );
 }
@@ -684,3 +748,4 @@ function downloadBlob(content: Blob, filename: string) {
   anchor.remove();
   window.URL.revokeObjectURL(url);
 }
+

@@ -66,10 +66,18 @@ assert.ok(app.includes('<Route index element={<Navigate to="/app/today" replace 
 // Today is the action surface and the landing. The old Dashboard page was the
 // reporting rival to it and is gone; what survives of it is Review > Analytics
 // and the read-only Business lens, which took the name "Dashboard" in the rail
-// on 2026-08-02. The old URL therefore lands on that lens - what matters here
+// on 2026-08-02 and was absorbed into Review > Learning & Analytics on
+// 2026-09-09. The old URL therefore lands on that reading - what matters here
 // is that it still resolves, and that it does not land back on Today as a
 // second reporting surface competing with the action list.
-assert.ok(app.includes('<Route path="dashboard" element={<LegacyRedirect to="/app/business" />} />'));
+assert.ok(
+  app.includes(`<Route path="dashboard" element={<LegacyRedirect to="/app/reviews" params={{ view: 'analytics' }} />} />`),
+  'the old Dashboard URL must land on the reading that absorbed it',
+);
+assert.ok(
+  app.includes(`<Route path="business" element={<LegacyRedirect to="/app/reviews" params={{ view: 'analytics' }} />} />`),
+  'and so must the lens route it was pointed at in between',
+);
 
 const sidebar = readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
 // Navigation is owned by src/config/featureRegistry.ts and enforced by
@@ -84,47 +92,68 @@ const todayPage = readFileSync('src/features/dashboard/DashboardPage.tsx', 'utf8
 for (const section of ['Forecast-defense readiness', 'What Memoire would start with', 'Pipeline Review Readiness', 'Commercial Risk', 'Capture Inbox']) {
   assert.ok(todayPage.includes(section), `Today missing ${section}`);
 }
-// Altitude: the action tier (cockpit -> brief -> commitments -> top 3 ->
-// watch-list) renders first, then the fold, then the reference scoreboards.
-// Asserted on the JSX usage sites (not display text, which also appears in the
-// function definitions) so the order reflects what actually renders.
-const renderOrder = [
-  '<BusinessCockpitStrip',
-  '<MorningBriefCard',
-  '<CommitmentLedgerPanel',
-  '<TodayTopThreeActions',
-  '<ProactiveNudgesPanel',
-  'The rest of the watch-list',
+// Today has exactly three sections, and the deeper readings are somewhere else.
+//
+// This used to assert a render *order* over twelve markers, on a page whose
+// first five were the day's work and whose remaining seven were reference
+// panels inside two collapsed drawers. An ordering contract was the strongest
+// thing available while both tiers lived on one page, and it quietly permitted
+// the thing that actually went wrong: a thirteenth panel, and a fourteenth,
+// each correctly placed inside "Everything else Memoire tracks", until the
+// daily surface was a warehouse with a lid on it.
+//
+// From 2026-09-09 the two tiers are two components, so this asserts membership
+// instead of sequence - which is not a weaker check but a categorical one. The
+// daily page may contain the picture, the moves and the watch-list; the deeper
+// reading may contain everything derived *about* those three, and it is
+// embedded in Review > Learning & Analytics, where a weekly question belongs.
+// Nothing was deleted: every panel named below still renders, and the
+// membership assertions are what stop either list drifting into the other.
+const referenceStart = todayPage.indexOf("if (variant === 'reference')");
+const todayStart = todayPage.indexOf('<PageContainer onClickCapture');
+const todayEnd = todayPage.indexOf('export const DashboardPage');
+assert.ok(referenceStart > 0 && todayStart > referenceStart && todayEnd > todayStart, 'Today must keep its two tiers separable');
+const referenceTier = todayPage.slice(referenceStart, todayStart);
+const dailyTier = todayPage.slice(todayStart, todayEnd);
+
+// The picture, the moves, the watch-list. In that order, because it is the
+// order the questions are asked in: what is happening, what do I do, what is
+// about to go wrong.
+const dailyOrder = ['<BusinessCockpitStrip', '<MorningBriefCard', '<TodayTopThreeActions', '<ProactiveNudgesPanel'];
+dailyOrder.forEach((marker, index) => {
+  const at = dailyTier.indexOf(marker);
+  assert.ok(at >= 0, `Today render missing ${marker}`);
+  if (index > 0) assert.ok(at > dailyTier.indexOf(dailyOrder[index - 1]), `Today render order incorrect at ${marker}`);
+});
+
+// Everything that is a second reading of one of those three. Each must render,
+// and none of them on the daily page.
+for (const panel of [
   '<CommercialRiskPanel',
+  '<ThreadQuickLook',
   '<ForecastDefenseReadiness',
   '<PipelineGlanceSection',
   '<TodayPipelineReadiness',
   '<TodayCommercialRisk',
   '<TodayCaptureInbox',
-];
-renderOrder.forEach((marker, index) => {
-  const at = todayPage.indexOf(marker);
-  assert.ok(at >= 0, `Today render missing ${marker}`);
-  if (index > 0) assert.ok(at > todayPage.indexOf(renderOrder[index - 1]), `Today render order incorrect at ${marker}`);
-});
-
-// Step 3 is one panel. It used to be four - the nudge watch-list, "Going
-// silent", the commitment ledger and a grid of quietest threads - all derived
-// from the same records, three of them answering "what has gone quiet". A
-// workspace with one struggling customer printed that customer four times under
-// a single heading, which is the specific thing operators call "over and busy".
-for (const secondReading of ['<CommercialRiskPanel', '<ThreadQuickLook']) {
-  assert.ok(
-    todayPage.indexOf(secondReading) > todayPage.indexOf('The rest of the watch-list'),
-    `${secondReading} is a second reading of the watch-list and must sit inside the fold`,
-  );
+  '<FollowUpImpactPanel',
+]) {
+  assert.ok(referenceTier.includes(panel), `${panel} must still render in the deeper reading`);
+  assert.ok(!dailyTier.includes(panel), `${panel} is a second reading and must not be on the daily page`);
 }
 
-// The measured-history panel folds into the second details block, below the
-// action tier - not a first-screen section.
+// And the warehouse cannot come back by name.
+for (const drawer of ['Everything else Memoire tracks', 'The rest of the watch-list']) {
+  assert.ok(!todayPage.includes(drawer), `"${drawer}" is an IA decision deferred, not a section`);
+}
+
+// The deeper reading is embedded where the weekly loop already happens, rather
+// than being a route of its own - which would be the fourteenth rail row this
+// whole refactor removed, wearing a different hat.
+const reviewAnalytics = readFileSync('src/features/reviews/ReviewAnalyticsSection.tsx', 'utf8');
 assert.ok(
-  todayPage.indexOf('<FollowUpImpactPanel') > todayPage.indexOf('Everything else Memoire tracks'),
-  'FollowUpImpactPanel must fold into the second drawer',
+  reviewAnalytics.includes('TodayReferenceSections'),
+  'the deeper reading must be reachable from Review, or removing it from Today deletes it',
 );
 
 const model = readFileSync('src/utils/todayCommandCenter.ts', 'utf8');

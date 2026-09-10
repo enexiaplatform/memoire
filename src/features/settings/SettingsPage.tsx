@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Check, CloudOff } from 'lucide-react';
 import { ExportTab } from './ExportTab';
 import { SyncRecoveryPanel } from './SyncRecoveryPanel';
@@ -39,10 +39,40 @@ import { useAuth } from '../../hooks/useAuth';
 import { BUSINESS_ACCOUNTING_ENABLED } from '../../config/featureFlags';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 
+export type SettingsCategory = 'workspace' | 'profile' | 'billing' | 'boundaries' | 'export';
+
+const settingsCategories: { value: SettingsCategory; label: string }[] = [
+  { value: 'workspace', label: 'Workspace' },
+  { value: 'profile', label: 'Account' },
+  { value: 'billing', label: 'Plan & Billing' },
+  { value: 'boundaries', label: 'Data & Privacy' },
+  { value: 'export', label: 'Export & Delete' },
+];
+
+/** `profile` is kept as the id so existing `?tab=profile` links still resolve. */
+function toSettingsCategory(value: string | null): SettingsCategory {
+  return settingsCategories.some((category) => category.value === value)
+    ? (value as SettingsCategory)
+    : 'workspace';
+}
+
 export function SettingsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'profile' | 'billing' | 'export' | 'boundaries'>('profile');
+  /*
+   * The category is in the URL, so the avatar menu's "Plan & billing" and
+   * "Data & privacy" rows land on the thing they name. They were already
+   * written as `?tab=` links; nothing read the parameter, so all four opened
+   * the same page and left the reader to find the tab themselves.
+   */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = toSettingsCategory(searchParams.get('tab'));
+  const selectTab = (next: SettingsCategory) => {
+    const params = new URLSearchParams(searchParams);
+    if (next === 'workspace') params.delete('tab');
+    else params.set('tab', next);
+    setSearchParams(params, { replace: true });
+  };
   const [reportingCurrency, setReportingCurrencyState] = useState(() => getReportingCurrency());
   const [currencySave, setCurrencySave] = useState<PreferenceSaveResult | null>(null);
   /** A currency chosen before it has a rate: held here until one is given. */
@@ -118,192 +148,198 @@ export function SettingsPage() {
         description="How this workspace reports money, what it keeps, and how to get your records out of it."
       />
 
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-navy">Reporting currency</p>
-            <p className="mt-1 text-sm text-gray-500">
-              Totals and charts are shown in this currency. Each deal keeps its own currency; amounts are converted for reporting.
-            </p>
-          </div>
-          {/* A select sizes itself to its widest option, and the widest of these
-              is "AED — UAE Dirham". Unconstrained that came to 453px, which on a
-              390px phone pushed the whole document sideways - the fixed header
-              and the tab bar stretched with it, so the one page where somebody
-              changes their reporting currency was also the one page that
-              scrolled horizontally. `min-w-0` lets it shrink; the option text is
-              still complete when the menu opens. */}
-          <label className="flex min-w-0 items-center gap-2">
-            <span className="sr-only">Reporting currency</span>
-            <select
-              value={pendingCurrency || reportingCurrency}
-              onChange={(event) => { void handleCurrencyChange(event.target.value); }}
-              className="min-w-0 max-w-full flex-1 truncate rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
-            >
-              {selectableCurrencies.map((currency) => (
-                <option key={currency.code} value={currency.code}>
-                  {currency.code} — {currency.name}{currency.hasRate ? '' : ' · needs a rate'}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        {pendingCurrency && (
-          <PendingCurrencyRate
-            currency={pendingCurrency}
-            onCancel={() => setPendingCurrency('')}
-            onSaved={() => { void handleCurrencyChange(pendingCurrency); }}
-          />
-        )}
-        <SaveState result={currencySave} savedLabel={`Saved. Totals are reported in ${reportingCurrency} everywhere.`} />
+      {/*
+        * Categories first.
+        *
+        * Reporting currency, exchange rates, pricing assumptions, notifications
+        * and the guide reset all rendered *above* the tab bar - five workspace
+        * cards standing between the reader and the navigation for the page they
+        * were on. So Settings had no first screen: it had a preamble of
+        * settings, and then a list of where the settings are. They are a
+        * category like any other now, and they are the first one, because
+        * "how does this workspace report money" is the question people arrive
+        * with.
+        */}
+      <div className="flex flex-wrap gap-x-6 border-b border-gray-200">
+        {settingsCategories.map((category) => (
+          <TabButton key={category.value} active={activeTab === category.value} onClick={() => selectTab(category.value)}>
+            {category.label}
+          </TabButton>
+        ))}
       </div>
 
-      <ExchangeRatesCard reportingCurrency={reportingCurrency} />
-
-      {/* Opening cash balance only means something next to a profit-and-loss
-          statement, and that is outside the beta proposition. Any value already
-          set is kept. See src/config/featureFlags.ts. */}
-      {BUSINESS_ACCOUNTING_ENABLED && (
+      {activeTab === 'workspace' && <>
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-navy">Opening cash balance</p>
+              <p className="text-sm font-semibold text-navy">Reporting currency</p>
               <p className="mt-1 text-sm text-gray-500">
-                Optional. The cash you started with, in {reportingCurrency}. Set this and Money shows absolute cash on
-                hand, not just profit.
+                Totals and charts are shown in this currency. Each deal keeps its own currency; amounts are converted for reporting.
+              </p>
+            </div>
+            {/* A select sizes itself to its widest option, and the widest of these
+                is "AED — UAE Dirham". Unconstrained that came to 453px, which on a
+                390px phone pushed the whole document sideways - the fixed header
+                and the tab bar stretched with it, so the one page where somebody
+                changes their reporting currency was also the one page that
+                scrolled horizontally. `min-w-0` lets it shrink; the option text is
+                still complete when the menu opens. */}
+            <label className="flex min-w-0 items-center gap-2">
+              <span className="sr-only">Reporting currency</span>
+              <select
+                value={pendingCurrency || reportingCurrency}
+                onChange={(event) => { void handleCurrencyChange(event.target.value); }}
+                className="min-w-0 max-w-full flex-1 truncate rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+              >
+                {selectableCurrencies.map((currency) => (
+                  <option key={currency.code} value={currency.code}>
+                    {currency.code} — {currency.name}{currency.hasRate ? '' : ' · needs a rate'}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {pendingCurrency && (
+            <PendingCurrencyRate
+              currency={pendingCurrency}
+              onCancel={() => setPendingCurrency('')}
+              onSaved={() => { void handleCurrencyChange(pendingCurrency); }}
+            />
+          )}
+          <SaveState result={currencySave} savedLabel={`Saved. Totals are reported in ${reportingCurrency} everywhere.`} />
+        </div>
+
+        <ExchangeRatesCard reportingCurrency={reportingCurrency} />
+
+        {/* Opening cash balance only means something next to a profit-and-loss
+            statement, and that is outside the beta proposition. Any value already
+            set is kept. See src/config/featureFlags.ts. */}
+        {BUSINESS_ACCOUNTING_ENABLED && (
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-navy">Opening cash balance</p>
+                <p className="mt-1 text-sm text-gray-500">
+                  Optional. The cash you started with, in {reportingCurrency}. Set this and Money shows absolute cash on
+                  hand, not just profit.
+                </p>
+              </div>
+              <label className="flex items-center gap-2">
+                <span className="sr-only">Opening cash balance</span>
+                <input
+                  inputMode="numeric"
+                  value={openingBalance}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setOpeningBalanceState(next);
+                    void handleOpeningBalanceChange(next);
+                  }}
+                  placeholder="e.g. 100000000"
+                  className="w-44 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                />
+              </label>
+            </div>
+            <SaveState result={balanceSave} savedLabel="Saved to your account." />
+          </div>
+        )}
+
+        {/* The two numbers every quote is priced from.
+            Both used to live in this browser only, on the reasoning that a target
+            margin merely annotated a report. That stopped being true when cost
+            analysis moved into the quoting flow: these now decide the price a
+            seller puts in front of a customer, and a figure that reads 20% on the
+            laptop and 15% on the phone is not an inconsistent report - it is two
+            different quotes for the same order. */}
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="text-sm font-semibold text-navy">Pricing assumptions</p>
+          <p className="mt-1 text-sm text-gray-500">
+            What every quote is priced back from. Cost Analysis on a deal uses both to work out the price that holds your
+            margin after the terms you are offering.
+          </p>
+
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-navy">Target margin</p>
+              <p className="mt-1 text-sm text-gray-500">
+                The share of the selling price you expect to keep. Every figure is graded against it.
               </p>
             </div>
             <label className="flex items-center gap-2">
-              <span className="sr-only">Opening cash balance</span>
+              <span className="sr-only">Target margin percent</span>
               <input
-                inputMode="numeric"
-                value={openingBalance}
+                inputMode="decimal"
+                value={targetMargin}
                 onChange={(event) => {
-                  const next = event.target.value;
-                  setOpeningBalanceState(next);
-                  void handleOpeningBalanceChange(next);
+                  setTargetMarginState(event.target.value);
+                  void handleTargetMarginChange(event.target.value);
                 }}
-                placeholder="e.g. 100000000"
-                className="w-44 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
               />
+              <span className="text-sm font-semibold text-gray-500">%</span>
             </label>
           </div>
-          <SaveState result={balanceSave} savedLabel="Saved to your account." />
-        </div>
-      )}
+          <SaveState result={targetMarginSave} savedLabel="Saved. Every quote is graded against this." />
 
-      {/* The two numbers every quote is priced from.
-          Both used to live in this browser only, on the reasoning that a target
-          margin merely annotated a report. That stopped being true when cost
-          analysis moved into the quoting flow: these now decide the price a
-          seller puts in front of a customer, and a figure that reads 20% on the
-          laptop and 15% on the phone is not an inconsistent report - it is two
-          different quotes for the same order. */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
-        <p className="text-sm font-semibold text-navy">Pricing assumptions</p>
-        <p className="mt-1 text-sm text-gray-500">
-          What every quote is priced back from. Cost Analysis on a deal uses both to work out the price that holds your
-          margin after the terms you are offering.
-        </p>
-
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-navy">Target margin</p>
-            <p className="mt-1 text-sm text-gray-500">
-              The share of the selling price you expect to keep. Every figure is graded against it.
-            </p>
+          <div className="mt-5 flex flex-col gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-navy">Cost of money</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Your overdraft or facility rate, per year. Giving a customer 60 days to pay is lending them money at this
+                rate, and the suggested price includes what that costs you.
+              </p>
+            </div>
+            <label className="flex items-center gap-2">
+              <span className="sr-only">Annual financing rate percent</span>
+              <input
+                inputMode="decimal"
+                value={financingRate}
+                onChange={(event) => {
+                  setFinancingRateState(event.target.value);
+                  void handleFinancingRateChange(event.target.value);
+                }}
+                className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+              />
+              <span className="text-sm font-semibold text-gray-500">% / yr</span>
+            </label>
           </div>
-          <label className="flex items-center gap-2">
-            <span className="sr-only">Target margin percent</span>
-            <input
-              inputMode="decimal"
-              value={targetMargin}
-              onChange={(event) => {
-                setTargetMarginState(event.target.value);
-                void handleTargetMarginChange(event.target.value);
+          <SaveState result={financingRateSave} savedLabel="Saved. Credit terms are priced at this rate." />
+        </div>
+
+        <NotificationsPanel />
+
+        <SyncRecoveryPanel />
+
+        <StoragePanel />
+
+        {/* The way back in. Onboarding that cannot be reopened is onboarding you
+            have to get right on the one pass, and nobody does. This clears the
+            answer and the dismissal, so the welcome and the corner guide both
+            come back on the next visit to Today - with one caveat stated on the
+            button, because `shouldOpenFirstRun` will not send a workspace that
+            already has records back to the welcome. */}
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-navy">Getting started</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Bring back the five-step guide in the corner of the workspace. If your workspace is still empty, the
+                welcome screen comes back too.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                restartFirstRun();
+                resetTrialActivationChecklist();
+                navigate('/app/today');
               }}
-              className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
-            />
-            <span className="text-sm font-semibold text-gray-500">%</span>
-          </label>
-        </div>
-        <SaveState result={targetMarginSave} savedLabel="Saved. Every quote is graded against this." />
-
-        <div className="mt-5 flex flex-col gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-navy">Cost of money</p>
-            <p className="mt-1 text-sm text-gray-500">
-              Your overdraft or facility rate, per year. Giving a customer 60 days to pay is lending them money at this
-              rate, and the suggested price includes what that costs you.
-            </p>
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Show the guide again
+            </button>
           </div>
-          <label className="flex items-center gap-2">
-            <span className="sr-only">Annual financing rate percent</span>
-            <input
-              inputMode="decimal"
-              value={financingRate}
-              onChange={(event) => {
-                setFinancingRateState(event.target.value);
-                void handleFinancingRateChange(event.target.value);
-              }}
-              className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
-            />
-            <span className="text-sm font-semibold text-gray-500">% / yr</span>
-          </label>
         </div>
-        <SaveState result={financingRateSave} savedLabel="Saved. Credit terms are priced at this rate." />
-      </div>
-
-      <NotificationsPanel />
-
-      <SyncRecoveryPanel />
-
-      <StoragePanel />
-
-      {/* The way back in. Onboarding that cannot be reopened is onboarding you
-          have to get right on the one pass, and nobody does. This clears the
-          answer and the dismissal, so the welcome and the corner guide both
-          come back on the next visit to Today - with one caveat stated on the
-          button, because `shouldOpenFirstRun` will not send a workspace that
-          already has records back to the welcome. */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-navy">Getting started</p>
-            <p className="mt-1 text-sm text-gray-500">
-              Bring back the five-step guide in the corner of the workspace. If your workspace is still empty, the
-              welcome screen comes back too.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              restartFirstRun();
-              resetTrialActivationChecklist();
-              navigate('/app/today');
-            }}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            Show the guide again
-          </button>
-        </div>
-      </div>
-
-      <div className="flex space-x-6 border-b border-gray-200">
-        <TabButton active={activeTab === 'profile'} onClick={() => setActiveTab('profile')}>
-          Profile
-        </TabButton>
-        <TabButton active={activeTab === 'billing'} onClick={() => setActiveTab('billing')}>
-          Plan & Billing
-        </TabButton>
-        <TabButton active={activeTab === 'boundaries'} onClick={() => setActiveTab('boundaries')}>
-          Data & Privacy
-        </TabButton>
-        <TabButton active={activeTab === 'export'} onClick={() => setActiveTab('export')}>
-          Export & Delete
-        </TabButton>
-      </div>
-
+      </>}
       {activeTab === 'profile' && <ProfileTab />}
       {activeTab === 'billing' && <BillingTab />}
       {activeTab === 'boundaries' && <BoundariesTab />}
