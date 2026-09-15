@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CalendarDays, Clipboard, Copy, Link2 as LinkIcon, Loader2, Mail, Mic, MicOff, NotebookPen, Save, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Building2, CalendarDays, Check, ChevronDown, Clipboard, Clock, Copy, Link2 as LinkIcon, Loader2, Lock, Mail, Mic, MicOff, NotebookPen, Save, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { useSpeechDictation } from '../../hooks/useSpeechDictation';
 import { SuggestInput } from '../../components/common/SuggestInput';
-import { normalizeEntityName } from '../../utils/accountIdentity';
+import { normalizeEntityName, sameAccount } from '../../utils/accountIdentity';
 import { getReportingCurrency } from '../../utils/money';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { classifySalesActivity, type ClassifiedSalesActivity, type SalesActivityType } from '../../utils/salesActivityClassifier';
@@ -21,7 +21,7 @@ import type { CommercialEvidence } from '../../domain/commercialKernel/commercia
 import { commitCapturedFacts } from '../../domain/commercialKernel/commitCapturedFacts';
 import type { CapturedFact, ReviewableChangeSet } from '../../domain/commercialKernel/capturedFacts';
 import { recordCaptureFactMetrics } from '../../services/captureFactMetrics';
-import { CaptureReviewPanel } from './CaptureReviewPanel';
+import { CaptureBarLead, CaptureReviewPanel } from './CaptureReviewPanel';
 import {
   deleteSalesActivity,
   saveSalesActivity,
@@ -86,6 +86,9 @@ import {
   type CaptureCorrectionEvent,
 } from '../../services/captureCorrectionMemoryStore';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
+import { TopBar } from '../../components/layout/TopBarSlot';
+import { GradientEdge, MicroPill, Monogram, Panel, StatusChip } from '../../components/ui/daylight';
+import { delay, ghostPillClass, monogramInitials, primaryPillClass } from '../../components/ui/daylightStyles';
 import { useEntitlement } from '../../hooks/useEntitlement';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -1077,12 +1080,70 @@ export function DailyCapturePage() {
     setQuoteSuggestionMessage(`${suggestion.actionLabel}: ${suggestion.quoteLabel}. Money flow updated.`);
   };
 
+  const noteFieldId = useId();
+
+  /**
+   * What pressing Save will do, before it is pressed - the composing half of the
+   * Daylight "What this changes" card. Stated from the draft on screen: the touch
+   * it adds, where it is filed, whether the next step reaches the Plan, and that
+   * everything else read from the note waits for a tick in the review.
+   */
+  const composingConsequences = useMemo(() => {
+    if (!preview) return ['Nothing yet. Write what happened and this says what saving it will do.'];
+    const sentences = [
+      `Saving adds one touch to ${preview.accountName || 'this workspace'}'s history, dated ${formatSafeBusinessDate(activeActivityDate)}${logToActivity ? '.' : ', kept out of Activity.'}`,
+    ];
+    if (activeScope.opportunityName) sentences.push(`It is filed under ${activeScope.opportunityName}.`);
+    if (preview.nextAction && preview.dueDate) sentences.push(`The next step lands on your Plan for ${formatSafeBusinessDate(preview.dueDate)}.`);
+    sentences.push('Then Memoire lists the people, promises and objections it read, for you to accept one at a time.');
+    return sentences;
+  }, [activeActivityDate, activeScope.opportunityName, logToActivity, preview]);
+
+  const discardNote = () => {
+    setRawNote('');
+    setEmailForm(createInitialEmailThreadCaptureForm(searchParams));
+    resetNoteDerivedState();
+    setScopeOverrideId(null);
+    setScopeCorrected(false);
+  };
+  const hasDraft = captureMode === 'email' ? emailForm.body.trim().length > 0 : rawNote.trim().length > 0;
+
   return (
     <PageContainer>
+      {/* The bar while composing. While a review is open the review owns the
+          bar instead - its Save saves the ticked facts, and two Saves in one bar
+          would be a coin toss about which record each one writes. */}
+      {!reviewSet && (
+        <TopBar
+          lead={<CaptureBarLead />}
+          status={<StatusChip tone="neutral" icon={<Lock className="h-3.5 w-3.5" aria-hidden="true" />} className="hidden md:inline-flex">No CRM writeback</StatusChip>}
+          actions={captureMode === 'quick' ? undefined : (
+            <>
+              <button type="button" onClick={discardNote} disabled={!hasDraft} className={`${ghostPillClass} hidden sm:inline-flex`}>
+                Discard
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saveState === 'saving' || !entitlement.canWrite}
+                className={`${primaryPillClass} hidden sm:inline-flex`}
+              >
+                {saveState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" strokeWidth={2.4} />}
+                {captureMode === 'email' ? 'Save evidence' : 'Save Activity'}
+              </button>
+            </>
+          )}
+          ownsPrimary={captureMode !== 'quick'}
+        />
+      )}
+
       <PageHeader
         eyebrow="Capture"
-        title="What happened?"
-        description="Write it the way you would say it. Memoire reads it into commercial facts you confirm before anything is saved."
+        title={reviewSet ? 'Check what Memoire read' : 'Paste the note. Keep the memory.'}
+        documentTitle="Capture"
+        description={reviewSet
+          ? 'Your note is saved as written. Tick what should become a record - nothing below is recorded until you save it.'
+          : 'Write it the way you would say it. Memoire reads it into commercial facts you confirm before anything is saved.'}
         /*
          * No data-mode pill. The app header carries sync state on every page,
          * and this is the one surface where a second status chip competes with
@@ -1090,6 +1151,24 @@ export function DailyCapturePage() {
          * moment passes.
          */
       />
+
+      {/* The review closes itself once everything ticked is saved, which also
+          took its confirmation away with it - the count of what landed was set
+          and then unmounted in the same moment. It is said here instead. */}
+      {!reviewSet && reviewMessage && (
+        <p role="status" className="rounded-[13px] bg-tint-green-bg px-4 py-2.5 text-sm font-semibold text-tint-green-ink">{reviewMessage}</p>
+      )}
+
+      {reviewSet && (
+        <CaptureReviewPanel
+          changeSet={reviewSet}
+          saving={committing}
+          message={reviewMessage}
+          scopeCandidates={resolvedScope.candidates}
+          onSave={handleCommitFacts}
+          onDismiss={() => { setReviewSet(null); setReviewMessage(''); }}
+        />
+      )}
 
       {/*
         * One input, and two ways in for the cases it does not suit.
@@ -1104,9 +1183,9 @@ export function DailyCapturePage() {
         * `?mode=quick` and `?mode=email` still land directly on their panel,
         * because the links that carry them were written for a specific job.
         */}
-      {captureMode === 'note' ? (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-          <span className="font-semibold text-gray-400">Or:</span>
+      {!reviewSet && (captureMode === 'note' ? (
+        <div className="-mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+          <span className="font-semibold text-muted">Or:</span>
           <button
             type="button"
             onClick={() => setCaptureMode('quick')}
@@ -1126,14 +1205,14 @@ export function DailyCapturePage() {
         <button
           type="button"
           onClick={() => setCaptureMode('note')}
-          className="inline-flex w-fit items-center gap-1.5 text-xs font-bold text-brand-blue hover:underline"
+          className="-mt-1 inline-flex w-fit items-center gap-1.5 text-xs font-bold text-brand-blue hover:underline"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to writing what happened
         </button>
-      )}
+      ))}
 
-      {captureMode === 'quick' && (
+      {!reviewSet && captureMode === 'quick' && (
         <QuickCapturePanel
           form={quickForm}
           templates={lensOrderedTemplates}
@@ -1150,51 +1229,52 @@ export function DailyCapturePage() {
         />
       )}
 
-      {captureMode === 'note' && (
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]">
-          <label className="block">
-            <span className="flex items-center justify-between gap-2">
-              <span className="text-sm font-bold text-navy">Activity note</span>
-              {dictation.supported && (
-                <button
-                  type="button"
-                  onClick={() => (dictation.listening ? dictation.stop() : dictation.start())}
-                  aria-label={dictation.listening ? 'Stop dictation' : 'Dictate note'}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ring-1 transition-colors ${
-                    dictation.listening
-                      ? 'bg-red-50 text-red-700 ring-red-200 hover:bg-red-100'
-                      : 'bg-white text-gray-700 ring-gray-200 hover:bg-blue-50 hover:text-brand-blue'
-                  }`}
-                >
-                  {dictation.listening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
-                  {dictation.listening ? 'Stop dictation' : 'Dictate'}
-                </button>
-              )}
+      {!reviewSet && captureMode === 'note' && (
+      <section className="grid items-start gap-[18px] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.08fr)]" aria-label="Capture a note">
+        <Panel as="div" className="flex animate-rise flex-col overflow-hidden focus-within:ring-2 focus-within:ring-brand-blue/30" style={delay(60)}>
+          <div className="flex items-center justify-between gap-2 border-b border-line px-5 pb-[13px] pt-4">
+            <label htmlFor={noteFieldId} className="font-display text-[15px] font-bold text-ink">Raw note</label>
+            {dictation.supported ? (
+              <button
+                type="button"
+                onClick={() => (dictation.listening ? dictation.stop() : dictation.start())}
+                aria-label={dictation.listening ? 'Stop dictation' : 'Dictate note'}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                  dictation.listening
+                    ? 'bg-tint-red-bg text-tint-red-solid'
+                    : 'bg-chip text-tint-neutral-ink hover:text-brand-blue'
+                }`}
+              >
+                {dictation.listening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                {dictation.listening ? 'Stop dictation' : 'Dictate'}
+              </button>
+            ) : (
+              <MicroPill tone="neutral" className="!normal-case !tracking-normal !text-[11px]">Type · paste</MicroPill>
+            )}
+          </div>
+          <textarea
+            id={noteFieldId}
+            value={rawNote}
+            onChange={(event) => {
+              resetNoteDerivedState();
+              setRawNote(event.target.value);
+            }}
+            placeholder="Example: Met the buyer today. Need to clarify the tender timeline next week."
+            className="min-h-[260px] w-full resize-y border-0 bg-transparent px-5 py-[18px] text-sm leading-[1.75] text-ink outline-none placeholder:text-muted focus-visible:outline-none"
+          />
+          {dictation.listening && (
+            <span className="flex items-center gap-2 px-5 pb-3 text-xs font-semibold text-tint-red-solid">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" aria-hidden />
+              Listening... speak your note. Audio stays in your browser's speech service.
             </span>
-            <textarea
-              value={rawNote}
-              onChange={(event) => {
-                resetNoteDerivedState();
-                setRawNote(event.target.value);
-              }}
-              placeholder="Example: Met the buyer today. Need to clarify the tender timeline next week."
-              className="mt-2 min-h-[150px] w-full resize-y rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm leading-6 text-gray-900 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
-            />
-            {dictation.listening && (
-              <span className="mt-2 flex items-center gap-2 text-xs font-semibold text-red-700">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" aria-hidden />
-                Listening... speak your note. Audio stays in your browser's speech service.
-              </span>
-            )}
-            {dictation.error && (
-              <span className="mt-2 block text-xs font-semibold text-amber-800">{dictation.error}</span>
-            )}
-          </label>
-
-          <div className="space-y-4">
-            <label className="block">
-              <span className="text-sm font-bold text-navy">Activity date</span>
+          )}
+          {dictation.error && (
+            <span className="block px-5 pb-3 text-xs font-semibold text-tint-amber-ink">{dictation.error}</span>
+          )}
+          <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-[13px]">
+            <span className="text-[11.5px] text-muted">{rawNote.length} characters · parsed on this device</span>
+            <label className="flex items-center gap-2 text-[11.5px] font-semibold text-tint-neutral-ink">
+              Activity date
               <input
                 type="date"
                 value={activityDate}
@@ -1203,72 +1283,106 @@ export function DailyCapturePage() {
                   setStructuredDraft(null);
                   setOriginalParsedDraft(null);
                 }}
-                className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                className="rounded-full border border-line bg-white px-3 py-1.5 text-[12px] text-ink outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
               />
             </label>
-            <CaptureScopePanel
-              scope={activeScope}
-              resolution={resolvedScope.resolution}
-              corrected={scopeCorrected}
-              onChoose={chooseScope}
-            />
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saveState === 'saving' || !entitlement.canWrite}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-navy px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {saveState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save Activity
-            </button>
-            <LogToActivityChoice checked={logToActivity} onChange={setLogToActivity} />
-            {/* A trust property, not the hero of the workflow. It was a
-                bordered card with an icon medallion, carrying the visual weight
-                of the save button beside it, for a sentence that reassures
-                rather than does anything. The claim is unchanged and still on
-                screen; it is now the size of a footnote, which is what it is.
-                The icon is a shield rather than a robot: the whole point of the
-                sentence is that there is no robot. */}
-            <p className="flex items-start gap-1.5 text-xs leading-5 text-gray-400">
+          </div>
+        </Panel>
+
+        <div className="flex min-w-0 flex-col gap-3.5">
+          <Panel as="div" className="animate-rise px-5 py-[18px]" style={delay(100)}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-display text-[15px] font-bold text-ink">Resolved to</h2>
+              {preview && (needsConfirmation
+                ? <MicroPill tone="amber" className="!normal-case !tracking-normal !text-[11px]">Needs confirmation</MicroPill>
+                : <MicroPill tone="green" className="!normal-case !tracking-normal !text-[11px]">Rule-based preview · all editable</MicroPill>)}
+            </div>
+
+            {preview ? (
+              <ResolvedPreviewRows preview={preview} accounts={accounts} />
+            ) : (
+              <p className="mt-3 text-[13px] leading-6 text-muted">
+                Start writing. Memoire reads the customer, the person, the next step and its date as you type - on this
+                device, by rule.
+              </p>
+            )}
+
+            <div className="mt-3.5">
+              <CaptureScopePanel
+                scope={activeScope}
+                resolution={resolvedScope.resolution}
+                corrected={scopeCorrected}
+                onChoose={chooseScope}
+              />
+            </div>
+
+            {preview && (
+              <details className="group mt-3.5 rounded-[13px] bg-tint-blue-bg" open={needsConfirmation || parsedNothing}>
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
+                  <span>
+                    <span className="block text-[11px] font-bold uppercase tracking-[0.12em] text-tint-blue-ink">Confirm and correct</span>
+                    <span className="mt-0.5 block text-xs text-tint-blue-ink">This reviewed structured draft is exactly what Save Activity will store.</span>
+                  </span>
+                  <ChevronDown className="h-4 w-4 shrink-0 text-tint-blue-ink transition-transform group-open:rotate-180" aria-hidden="true" />
+                </summary>
+                <div className="px-4 pb-4">
+                  <UnparsedNoteNotice show={parsedNothing} />
+                  <StructuredPreviewEditor preview={preview} onChange={updateDraft} accountSuggestions={accountNameSuggestions} opportunitySuggestions={opportunityNameSuggestions} />
+                  {opportunities.length > 0 && (
+                    <PreviewOpportunitySuggestions preview={previewToRecord(preview)} opportunities={opportunities} />
+                  )}
+                </div>
+              </details>
+            )}
+
+            <div className="mt-3.5">
+              <LogToActivityChoice checked={logToActivity} onChange={setLogToActivity} />
+            </div>
+            {/* A trust property, not the hero of the workflow. The claim is
+                unchanged and still on screen; it is the size of a footnote,
+                which is what it is. The icon is a shield rather than a robot:
+                the whole point of the sentence is that there is no robot. */}
+            <p className="mt-3 flex items-start gap-1.5 text-xs leading-5 text-muted">
               <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span><span className="font-bold text-gray-500">On-device parsing.</span> Structured by rules on this device - nothing is sent to an AI service. Confirm or correct every field before saving.</span>
+              <span><span className="font-bold text-tint-neutral-ink">On-device parsing.</span> Structured by rules on this device - nothing is sent to an AI service. Confirm or correct every field before saving.</span>
             </p>
             {message && (
-              <p className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-                saveState === 'saved' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+              <p className={`mt-3 rounded-[13px] px-3 py-2 text-sm font-semibold ${
+                saveState === 'saved' ? 'bg-tint-green-bg text-tint-green-ink' : 'bg-tint-amber-bg text-tint-amber-ink'
               }`}>
                 {message}
               </p>
             )}
-          </div>
-        </div>
+            {/* The bar carries Save from `sm` up. On a phone it has no room, so
+                the button sits where the thumb already is. */}
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saveState === 'saving' || !entitlement.canWrite}
+              className={`${primaryPillClass} mt-3.5 w-full sm:hidden`}
+            >
+              {saveState === 'saving' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save Activity
+            </button>
+          </Panel>
 
-        {preview && (
-          <div className="mt-5 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">Confirm and correct</p>
-                <p className="mt-1 text-xs text-blue-800">This reviewed structured draft is exactly what Save Activity will store.</p>
-              </div>
-              <div className="flex flex-wrap gap-2 text-xs font-bold">
-                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-700">
-                  Rule-based preview
-                </span>
-                {needsConfirmation && <span className="rounded-full bg-white px-2.5 py-1 text-amber-700 ring-1 ring-amber-200">Needs confirmation</span>}
-              </div>
+          <GradientEdge className="animate-rise" innerClassName="px-[18px] py-4" style={delay(160)}>
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-[15px] w-[15px] text-brand-blue" aria-hidden="true" />
+              <h3 className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-brand-blue">What this changes</h3>
             </div>
-            <UnparsedNoteNotice show={parsedNothing} />
-            <StructuredPreviewEditor preview={preview} onChange={updateDraft} accountSuggestions={accountNameSuggestions} opportunitySuggestions={opportunityNameSuggestions} />
-            {opportunities.length > 0 && (
-              <PreviewOpportunitySuggestions preview={previewToRecord(preview)} opportunities={opportunities} />
-            )}
-          </div>
-        )}
+            <ul className="mt-2.5 space-y-1.5">
+              {composingConsequences.map((sentence) => (
+                <li key={sentence} className="text-[13px] leading-[1.6] text-ink [text-wrap:pretty]">{sentence}</li>
+              ))}
+            </ul>
+          </GradientEdge>
+        </div>
       </section>
       )}
 
-      {captureMode === 'email' && (
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      {!reviewSet && captureMode === 'email' && (
+      <section className="animate-rise rounded-panel bg-white p-5 shadow-panel">
         <div className="mb-4 flex items-start gap-3 rounded-lg border border-blue-100 bg-blue-50/60 p-3">
           <Mail className="mt-0.5 h-4 w-4 shrink-0 text-brand-blue" />
           <div>
@@ -1439,7 +1553,7 @@ export function DailyCapturePage() {
       )}
 
       {lastSavedActivity && !planCloseDismissed && (planScheduledEntries.length > 0 || closablePlanItems.length > 0) && (
-        <section className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-4 shadow-sm">
+        <section className="rounded-panel bg-tint-green-bg px-5 py-4">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-emerald-600" />
@@ -1504,19 +1618,8 @@ export function DailyCapturePage() {
         </section>
       )}
 
-      {reviewSet && (
-        <CaptureReviewPanel
-          changeSet={reviewSet}
-          saving={committing}
-          message={reviewMessage}
-          scopeCandidates={resolvedScope.candidates}
-          onSave={handleCommitFacts}
-          onDismiss={() => { setReviewSet(null); setReviewMessage(''); }}
-        />
-      )}
-
       {quoteStateSuggestions.length > 0 && (
-        <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <section className="rounded-panel bg-white px-5 py-4 shadow-panel">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-brand-blue" />
             <p className="text-sm font-bold text-navy">A quote on this account can move on</p>
@@ -1543,7 +1646,7 @@ export function DailyCapturePage() {
         <p className="rounded-lg bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-100">{quoteSuggestionMessage}</p>
       )}
 
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-panel bg-white p-5 shadow-panel">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-lg font-bold text-navy">Capture Learning Memory</h2>
@@ -1602,7 +1705,7 @@ export function DailyCapturePage() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-panel bg-white p-5 shadow-panel">
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-bold text-navy">Just captured</h2>
@@ -1676,7 +1779,7 @@ export function DailyCapturePage() {
  */
 function LogToActivityChoice({ checked, onChange }: { checked: boolean; onChange: (next: boolean) => void }) {
   return (
-    <div className={`rounded-lg border px-3 py-2.5 ${checked ? 'border-gray-200 bg-white' : 'border-amber-200 bg-amber-50'}`}>
+    <div className={`rounded-[13px] px-3 py-2.5 ${checked ? 'bg-tint-neutral-bg' : 'bg-tint-amber-bg'}`}>
       <label className="flex cursor-pointer items-start gap-2">
         <input
           type="checkbox"
@@ -1778,7 +1881,7 @@ function QuickCapturePanel({
   }, [form, onChange, opportunityRecords]);
 
   return (
-    <section className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-5 shadow-sm">
+    <section className="animate-rise rounded-panel bg-white p-5 shadow-panel">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -2197,7 +2300,7 @@ function ActivityCard({
   onDelete: () => void;
 }) {
   return (
-    <article className="rounded-xl border border-gray-200 bg-white p-4">
+    <article className="rounded-2xl bg-tint-neutral-bg p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -2626,7 +2729,7 @@ function CaptureScopePanel({
   const needsChoice = resolution === 'multiple_matches' && !corrected;
 
   return (
-    <div className={`rounded-lg border p-3 ${needsChoice ? 'border-amber-200 bg-amber-50/60' : 'border-gray-200 bg-gray-50'}`}>
+    <div className={`rounded-[13px] p-3 ${needsChoice ? 'bg-tint-amber-bg' : 'bg-tint-neutral-bg'}`}>
       <div className="flex items-start gap-2">
         <LinkIcon className="mt-0.5 h-4 w-4 shrink-0 text-brand-blue" aria-hidden="true" />
         <div className="min-w-0 flex-1">
@@ -2692,5 +2795,116 @@ function CaptureScopePanel({
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * What the rules read out of the note, as the rows the Daylight "Resolved to"
+ * panel draws: the customer, the person, the next step and its day, the
+ * signals. Read-only - the fields themselves are corrected in "Confirm and
+ * correct" below, which writes the same draft these rows read.
+ */
+function ResolvedPreviewRows({ preview, accounts }: { preview: ClassifiedSalesActivity; accounts: AccountMemoryRecord[] }) {
+  const accountName = (preview.accountName || '').trim();
+  const known = accountName ? accounts.some((account) => sameAccount(account.accountName, accountName)) : false;
+  const person = (preview.contactName || preview.stakeholderName || '').trim();
+  const extraActions = Math.max(0, (preview.nextActions?.length || 0) - 1);
+  const risks = [...(preview.risks || []), ...(preview.competitors || []).map((name) => `Competitor: ${name}`)];
+  const buying = preview.buyingSignals || [];
+  const timeline = preview.timelineSignals || [];
+
+  return (
+    <ul className="mt-3.5 flex flex-col gap-[9px]">
+      <ResolvedRow
+        ground="bg-tint-neutral-bg"
+        tile={accountName ? <Monogram name={accountName} size={30} /> : <RowIcon className="bg-chip text-tint-neutral-ink"><Building2 className="h-[15px] w-[15px]" /></RowIcon>}
+        title={accountName || 'No customer read yet'}
+        detail={accountName ? (known ? 'Matched an existing account' : 'Not an account yet - saved as the name written') : 'Name the customer, or set it under Confirm and correct'}
+        pill={<MicroPill tone="cyan">Customer</MicroPill>}
+      />
+      {person && (
+        <ResolvedRow
+          ground="bg-tint-neutral-bg"
+          tile={<RowIcon style={{ background: 'linear-gradient(135deg,#7B1FA2,#C2185B)' }} className="font-display text-[11px] font-bold text-white">{monogramInitials(person)}</RowIcon>}
+          title={preview.stakeholderRole ? `${person} — ${preview.stakeholderRole}` : person}
+          detail="Named in the note"
+          pill={<MicroPill tone="violet">Person</MicroPill>}
+        />
+      )}
+      {preview.nextAction && (
+        <ResolvedRow
+          ground={preview.dueDate ? 'bg-tint-green-bg' : 'bg-tint-neutral-bg'}
+          tile={<RowIcon className={preview.dueDate ? 'bg-tint-green-solid text-white' : 'bg-chip text-tint-neutral-ink'}><Clock className="h-[15px] w-[15px]" strokeWidth={2.4} /></RowIcon>}
+          title={preview.nextAction}
+          detail={preview.dueDate
+            ? `Due ${formatSafeBusinessDate(preview.dueDate)} · lands on your Plan${extraActions > 0 ? ` · ${extraActions} more next ${extraActions === 1 ? 'step' : 'steps'}` : ''}`
+            : 'No date read, so it stays off the Plan until it has one'}
+          detailTone={preview.dueDate ? 'text-tint-green-ink' : 'text-tint-neutral-ink'}
+          pill={<MicroPill tone="green" solid={Boolean(preview.dueDate)}>Next step</MicroPill>}
+        />
+      )}
+      {risks.length > 0 && (
+        <ResolvedRow
+          ground="bg-tint-red-bg"
+          tile={<RowIcon className="bg-tint-red-solid text-white"><AlertTriangle className="h-[15px] w-[15px]" strokeWidth={2.4} /></RowIcon>}
+          title={risks.join('; ')}
+          detail="A risk the deal carries from here"
+          detailTone="text-tint-red-ink"
+          pill={<MicroPill tone="red" solid>Risk</MicroPill>}
+        />
+      )}
+      {(buying.length > 0 || timeline.length > 0) && (
+        <ResolvedRow
+          ground="bg-tint-amber-bg"
+          tile={<RowIcon className="bg-tint-amber-solid text-white"><Sparkles className="h-[15px] w-[15px]" strokeWidth={2.4} /></RowIcon>}
+          title={[...buying, ...timeline].join('; ')}
+          detail={buying.length > 0 ? 'Buying signal' : 'Timeline signal'}
+          detailTone="text-tint-amber-ink"
+          pill={<MicroPill tone="amber">Signal</MicroPill>}
+        />
+      )}
+      <ResolvedRow
+        ground="bg-tint-neutral-bg"
+        tile={<RowIcon className="bg-chip text-tint-neutral-ink"><NotebookPen className="h-[15px] w-[15px]" /></RowIcon>}
+        title={preview.activityType}
+        detail={preview.activityChannel ? preview.activityChannel : 'How it happened is not stated'}
+        pill={<MicroPill tone="neutral">Touch</MicroPill>}
+      />
+    </ul>
+  );
+}
+
+function ResolvedRow({
+  ground,
+  tile,
+  title,
+  detail,
+  detailTone = 'text-tint-neutral-ink',
+  pill,
+}: {
+  ground: string;
+  tile: ReactNode;
+  title: string;
+  detail: string;
+  detailTone?: string;
+  pill: ReactNode;
+}) {
+  return (
+    <li className={`flex items-center gap-3 rounded-xl px-[13px] py-[11px] ${ground}`}>
+      {tile}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] font-semibold text-ink" title={title}>{title}</span>
+        <span className={`block text-[11.5px] ${detailTone}`}>{detail}</span>
+      </span>
+      {pill}
+    </li>
+  );
+}
+
+function RowIcon({ children, className = '', style }: { children: ReactNode; className?: string; style?: CSSProperties }) {
+  return (
+    <span aria-hidden="true" className={`inline-flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px] ${className}`} style={style}>
+      {children}
+    </span>
   );
 }
