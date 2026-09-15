@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Bot, ExternalLink, Send, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ExternalLink, Lock, Sparkles } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { DEMO_USER_ID } from '../../lib/demoMode';
 import type { Account, AskMemoireAnswer, AskMemoireAnswerCard, AskMemoireContext, Interaction, MemoryChange, Objection, Opportunity, SalesAction, SalesPattern } from '../../types/v31';
@@ -46,6 +46,10 @@ import { buildCustomerSignalDigest } from '../../utils/customerSignals';
 import { buildCommercialJourneySnapshot } from '../../utils/commercialJourney';
 import { todayDateKey } from '../../utils/safeDate';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
+import { TopBar } from '../../components/layout/TopBarSlot';
+import { MicroLabel, Panel, Segmented, StatusChip } from '../../components/ui/daylight';
+import { delay, ghostPillClass } from '../../components/ui/daylightStyles';
+import { formatCount } from '../../utils/numberFormat';
 import { useEntitlement } from '../../hooks/useEntitlement';
 
 /** What counts as an objection in a stuck-deal or context-health reason. */
@@ -61,7 +65,18 @@ export function AskMemoirePage() {
   const [scope, setScope] = useState<AskMemoireContext['scope']>((searchParams.get('scope') as AskMemoireContext['scope']) || 'all');
   const [selectedAccountId, setSelectedAccountId] = useState(searchParams.get('accountId') || '');
   const [selectedOpportunityId, setSelectedOpportunityId] = useState(searchParams.get('opportunityId') || '');
-  const [question, setQuestion] = useState(() => searchParams.get('question')?.trim() || 'What should I do next?');
+  // The composer starts empty. It used to open holding "What should I do next?",
+  // which made the box read as already asked; the suggestions beside it now do
+  // that job without putting words in the operator's mouth.
+  const [question, setQuestion] = useState(() => searchParams.get('question')?.trim() || '');
+  /** The question the answer on screen belongs to - drawn as the bubble above it. */
+  const [askedQuestion, setAskedQuestion] = useState('');
+  /**
+   * What was asked on this visit, newest first. Held in memory only: a question
+   * names customers, and a list of them written to this browser would outlive
+   * the session and be readable by the next person to sign in here.
+   */
+  const [askedThisVisit, setAskedThisVisit] = useState<string[]>([]);
   const [urlQuestionConsumed, setUrlQuestionConsumed] = useState(false);
   const [answer, setAnswer] = useState<AskMemoireAnswer | null>(null);
   /**
@@ -252,7 +267,9 @@ export function AskMemoirePage() {
       return;
     }
 
-    setQuestion(nextQuestion);
+    setAskedQuestion(nextQuestion);
+    setQuestion('');
+    setAskedThisVisit((current) => [nextQuestion, ...current.filter((item) => item !== nextQuestion)].slice(0, 6));
     setLoading(true);
     setError(null);
     setStatusMessage('');
@@ -451,52 +468,80 @@ export function AskMemoirePage() {
     void ask(urlQuestion);
   }, [ask, contextLoading, searchParams, urlQuestionConsumed]);
 
+  const startNewThread = () => {
+    setAnswer(null);
+    setAskedQuestion('');
+    setQuestion('');
+    setError(null);
+    setStatusMessage('Every answer is computed on this device from your own records.');
+  };
+
+  const dealCount = rawWorkspace?.opportunities.length ?? opportunities.length;
+  const nextQuestions = (answer?.suggestedQuestions.length ? answer.suggestedQuestions : presets).slice(0, 4);
+  const earlierQuestions = askedThisVisit.filter((item) => item !== askedQuestion).slice(0, 4);
+  const answerParts = answer ? splitAnswer(answer) : null;
+
   return (
-    <PageContainer width="reading">
+    <PageContainer>
+      <TopBar
+        lead={(
+          <>
+            <Link
+              to="/app/today"
+              className="inline-flex shrink-0 items-center gap-2 rounded-full bg-chip px-3.5 py-2 text-[12.5px] font-semibold text-tint-neutral-ink transition-colors hover:text-ink"
+            >
+              <ArrowLeft className="h-[15px] w-[15px]" />
+              Back to Today
+            </Link>
+            <span className="hidden truncate text-[12.5px] text-muted xl:inline">Ask Memoire · computed from your own records, no AI service</span>
+          </>
+        )}
+        status={contextLoading ? undefined : (
+          <StatusChip tone="green" className="hidden md:inline-flex">
+            {formatCount(dealCount)} {dealCount === 1 ? 'deal' : 'deals'} indexed
+          </StatusChip>
+        )}
+        actions={(
+          <button type="button" onClick={startNewThread} className={`${ghostPillClass} hidden sm:inline-flex`}>
+            New thread
+          </button>
+        )}
+      />
+
       {/* This is Search & Insights, not a chatbot. An open text box with a
           blinking cursor promises unlimited natural-language intelligence;
           Memoire answers a bounded set of questions from the user's own
           records, deterministically. So the supported questions are shown as
           buttons and named as a list - what it can answer is visible before
-          anything is typed, and nothing is implied that is not true. */}
-      {/* The list of supported questions stays - it is the honest alternative to
-          a blinking cursor promising unlimited intelligence - but it moved
-          below the box it describes. Three explanatory blocks before the input
-          meant the page opened on an argument about itself; the reader wants to
-          type first and be told what is possible second. */}
-      {/* The eyebrow carries the surface's own name rather than its rail group,
-          because the title here is a sentence and the name would otherwise
-          appear nowhere on the page you reached by clicking it. */}
-      <PageHeader title="Find anything, and ask what it means" />
+          anything is typed, and nothing is implied that is not true.
 
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="mb-5 rounded-lg border border-gray-100 bg-gray-50 p-4">
-          {slowContextLoading && <RouteLoadingFallback onRetry={loadMemory} />}
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Context Selector</p>
-            <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-navy ring-1 ring-gray-200">
-              Current context: {contextLabel}
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {(['all', 'account', 'opportunity'] as AskMemoireContext['scope'][]).map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => {
-                  setScope(item);
-                  setAnswer(null);
-                  setError(null);
-                }}
-                className={`rounded-full px-3 py-1.5 text-sm font-semibold ${scope === item ? 'bg-navy text-white' : 'border border-gray-200 bg-white text-gray-600'}`}
-              >
-                {item === 'all' ? 'All Deals' : item === 'account' ? 'Specific Account' : 'Specific Opportunity'}
-              </button>
-            ))}
-          </div>
+          Under Daylight the list sits in the column beside the conversation,
+          where it stays in view while an answer is read, instead of below the
+          box it describes. */}
+      <div className="grid items-start gap-[18px] xl:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="flex min-w-0 flex-col gap-4">
+          {/* The eyebrow carries the surface's own name rather than a rail
+              group: the title is a sentence, and the name would otherwise
+              appear nowhere on the page you reached by clicking it. */}
+          <PageHeader eyebrow="Ask Memoire" title="Ask your own pipeline" documentTitle="Ask Memoire" />
 
-          {scope === 'account' && (
-            <>
+          <Panel as="div" className="flex animate-rise flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-center" style={delay(40)}>
+            <MicroLabel className="shrink-0">Asking about</MicroLabel>
+            <Segmented
+              label="Context selector"
+              value={scope}
+              onChange={(item) => {
+                setScope(item);
+                setAnswer(null);
+                setError(null);
+              }}
+              options={[
+                { value: 'all', label: 'All Deals' },
+                { value: 'account', label: 'Specific Account' },
+                { value: 'opportunity', label: 'Specific Opportunity' },
+              ]}
+            />
+            {scope === 'account' && (
               <select
                 value={selectedAccountId}
                 onChange={(event) => {
@@ -504,19 +549,16 @@ export function AskMemoirePage() {
                   setAnswer(null);
                 }}
                 disabled={contextLoading}
-                className="mt-3 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                aria-label="Choose account"
+                className="min-w-0 flex-1 rounded-full border border-line bg-white px-3.5 py-2 text-[13px] font-semibold text-gray-700 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
               >
                 <option value="">Choose account</option>
                 {accounts.map((account) => (
                   <option key={account.id} value={account.id}>{account.name}</option>
                 ))}
               </select>
-              {!selectedAccountId && <p className="mt-2 text-xs text-gray-500">Select an account so Memoire can answer with better context.</p>}
-            </>
-          )}
-
-          {scope === 'opportunity' && (
-            <>
+            )}
+            {scope === 'opportunity' && (
               <select
                 value={selectedOpportunityId}
                 onChange={(event) => {
@@ -524,200 +566,250 @@ export function AskMemoirePage() {
                   setAnswer(null);
                 }}
                 disabled={contextLoading}
-                className="mt-3 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                aria-label="Choose opportunity"
+                className="min-w-0 flex-1 rounded-full border border-line bg-white px-3.5 py-2 text-[13px] font-semibold text-gray-700 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
               >
                 <option value="">Choose opportunity</option>
                 {visibleOpportunities.map((opportunity) => (
                   <option key={opportunity.id} value={opportunity.id}>{opportunity.title}</option>
                 ))}
               </select>
-              {!selectedOpportunityId && <p className="mt-2 text-xs text-gray-500">Select an opportunity so Memoire can answer with deal-specific account context.</p>}
-            </>
-          )}
-        </div>
+            )}
+            <span className="truncate text-[11.5px] text-muted sm:ml-auto" title={`Current context: ${contextLabel}`}>
+              Current context: {contextLabel}
+            </span>
+          </Panel>
 
-        <div className="mb-4">
-          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">
-            {scope === 'all' ? 'Stuck deal presets' : scope === 'account' ? 'Account presets' : 'Opportunity presets'}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {presets.map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                onClick={() => ask(preset)}
-                className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm font-semibold text-gray-600 hover:border-brand-blue/40 hover:text-brand-blue"
-              >
-                {preset}
-              </button>
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-gray-500">Click a preset to run it, or edit the question below before asking.</p>
-          <p className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-gray-400">Action / fix prompts</p>
-          <div className="flex flex-wrap gap-2">
-            {actionFixPresets.map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                onClick={() => ask(preset)}
-                className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-brand-blue hover:border-brand-blue/40"
-              >
-                {preset}
-              </button>
-            ))}
-          </div>
-          {scope === 'all' && (
-            // These three write about one customer. Offered over the whole
-            // workspace they either dead-end or answer about whoever happens to
-            // sort first, so the requirement is stated before the click.
-            <p className="mt-2 text-xs text-gray-500">
-              These three need one customer - pick an account or opportunity in the context selector first.
-            </p>
-          )}
-        </div>
+          {slowContextLoading && <RouteLoadingFallback onRetry={loadMemory} />}
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <textarea
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !loading) {
-                event.preventDefault();
-                void ask();
-              }
-            }}
-            aria-label="Find a record by name, or ask a supported question"
-            placeholder="Type a customer or deal name to find it, or ask about stuck deals, money and follow-ups..."
-            className="min-h-[88px] flex-1 resize-y rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
-          />
-          <button
-            type="button"
-            onClick={() => ask()}
-            disabled={loading}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-navy px-4 text-sm font-semibold text-white disabled:opacity-50"
+          {/* `aria-live` so the answer is announced rather than silently
+              appearing, and `scroll-mt` so the question is not tucked under the
+              sticky header when this is scrolled to. */}
+          <section
+            ref={answerSectionRef}
+            aria-live="polite"
+            aria-busy={loading}
+            aria-label="Answer"
+            className="flex scroll-mt-24 flex-col gap-4"
           >
-            <Send className="h-4 w-4" />
-            Ask
-          </button>
-        </div>
-        <p className="mt-2 text-xs text-gray-400">Press Ctrl+Enter (Cmd+Enter on Mac) to ask.</p>
+            {askedQuestion && (
+              <div className="flex animate-rise justify-end">
+                <p className="max-w-[82%] rounded-[18px_18px_6px_18px] bg-ink px-[18px] py-[13px] text-sm leading-[1.55] text-white sm:max-w-[62%]">
+                  {askedQuestion}
+                </p>
+              </div>
+            )}
 
-        <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-3">
-          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">What this can answer</p>
-          <ul className="mt-1.5 grid gap-x-4 gap-y-0.5 text-xs leading-5 text-gray-600 sm:grid-cols-2">
-            {advertisedQuestions.map((advertised) => (
-              // Every one of these routes to an engine now, so there is no
-              // reason to make the operator retype what the page just offered.
-              <li key={advertised}>
-                <button
-                  type="button"
-                  onClick={() => ask(advertised)}
-                  className="text-left underline decoration-gray-300 underline-offset-2 hover:text-brand-blue hover:decoration-brand-blue"
-                >
-                  {advertised}
-                </button>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 text-xs text-emerald-700">
-            Answers are built on this device from your captured data. Nothing is sent to an AI service, so no
-            customer context leaves your browser.
-          </p>
-        </div>
-      </section>
-
-      {/* `aria-live` so the answer is announced rather than silently appearing,
-          and `scroll-mt` so the heading is not tucked under the sticky header
-          when this is scrolled to. */}
-      <section
-        ref={answerSectionRef}
-        aria-live="polite"
-        aria-busy={loading}
-        className="mt-5 scroll-mt-24 rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
-      >
-        <div className="mb-4 flex items-center gap-2">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-brand-blue">
-            <Bot className="h-5 w-5" />
-          </span>
-          <h2 className="text-lg font-bold text-navy">Answer</h2>
-        </div>
-
-        {loading ? (
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <Sparkles className="h-4 w-4 animate-pulse" />
-            Building answer...
-          </div>
-        ) : error ? (
-          <p className="rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-700">{error}</p>
-        ) : answer ? (
-          <div className="space-y-5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
-                Answer ready
-              </span>
-              {statusMessage && (
-                <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-brand-blue">
-                  {statusMessage}
+            <Panel as="div" className="flex animate-rise flex-col gap-3.5 px-[22px] py-5" style={delay(60)}>
+              <div className="flex items-start gap-2.5">
+                <span className="brand-gradient inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] text-white">
+                  <Sparkles className="h-[15px] w-[15px]" aria-hidden="true" />
                 </span>
+                <div className="min-w-0">
+                  <h2 className="font-display text-sm font-bold leading-snug text-ink">
+                    {loading
+                      ? 'Building answer...'
+                      : error
+                        ? 'That question could not be answered'
+                        : answerParts?.headline || 'Ask a question, or pick one beside this'}
+                  </h2>
+                  {statusMessage && !loading && (
+                    <p className="mt-0.5 text-[11.5px] text-muted">{statusMessage}</p>
+                  )}
+                </div>
+              </div>
+
+              {loading ? (
+                <p className="flex items-center gap-2 text-sm text-muted">
+                  <Sparkles className="h-4 w-4 animate-pulse" aria-hidden="true" />
+                  Reading your records...
+                </p>
+              ) : error ? (
+                <p className="rounded-[13px] bg-tint-red-bg px-4 py-3 text-sm text-tint-red-ink">{error}</p>
+              ) : answer && answerParts ? (
+                <>
+                  {answer.cards && answer.cards.length > 0 ? (
+                    <div className="grid gap-3">
+                      {answer.cards.map((card, index) => (
+                        <AnswerCard key={`${card.kind}-${card.title}-${index}`} card={card} />
+                      ))}
+                    </div>
+                  ) : answerParts.body ? (
+                    <p className="whitespace-pre-line text-sm leading-[1.7] text-ink [text-wrap:pretty]">{answerParts.body}</p>
+                  ) : !answerParts.headline ? (
+                    <div className="rounded-[13px] bg-tint-neutral-bg px-4 py-3.5">
+                      <p className="text-sm font-bold text-ink">Memoire does not have enough sales memory to answer this yet.</p>
+                      <p className="mt-1 text-sm text-tint-neutral-ink">
+                        Answers are built from your captured activity. Capture a customer note or add an opportunity, then ask again.
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Link to="/app/capture" className="rounded-full bg-brand-blue px-3.5 py-1.5 text-xs font-bold text-white hover:bg-brand-blue-dark">
+                          Capture a sales update
+                        </Link>
+                        <Link to="/app/opportunities?new=1" className="rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-bold text-gray-700 hover:bg-canvas">
+                          Add an opportunity
+                        </Link>
+                      </div>
+                    </div>
+                  ) : null}
+                  {answer.cards && answer.cards.length > 0 && answer.answer && (
+                    <details className="rounded-[13px] bg-tint-neutral-bg px-4 py-3">
+                      <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-[0.12em] text-tint-neutral-ink">Structured text</summary>
+                      <p className="mt-3 whitespace-pre-line text-sm leading-7 text-ink">{answer.answer}</p>
+                    </details>
+                  )}
+
+                  <div className="mt-1 border-t border-line pt-3.5">
+                    <AnswerBlock title="Drawn from" items={answer.contextUsed} />
+                    {answer.missingContext.length > 0 && (
+                      <div className="mt-3"><AnswerBlock title="Missing context" items={answer.missingContext} tone="amber" /></div>
+                    )}
+                    {answer.suggestedNextAction && (
+                      <p className="mt-3.5 flex items-start gap-2 rounded-[13px] bg-tint-blue-bg px-3.5 py-2.5 text-[13px] leading-[1.5] text-ink">
+                        <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-brand-blue" aria-hidden="true" />
+                        <span><span className="font-semibold">Suggested next action:</span> {answer.suggestedNextAction}</span>
+                      </p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm leading-6 text-tint-neutral-ink">
+                  Type a customer or a deal to find it, or ask about stuck deals, money and follow-ups. Every answer names
+                  the records it came from.
+                </p>
               )}
+            </Panel>
+          </section>
+
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!loading) void ask();
+            }}
+            className="flex animate-rise items-center gap-3 rounded-full bg-white py-2 pl-5 pr-2 shadow-panel"
+            style={delay(100)}
+          >
+            <input
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+              aria-label="Find a record by name, or ask a supported question"
+              placeholder="Find a customer or deal by name, or ask about a deal, an account, or a week..."
+              className="min-w-0 flex-1 bg-transparent text-[13.5px] text-ink outline-none placeholder:text-muted"
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              aria-label="Ask"
+              className="inline-flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-brand-blue text-white transition hover:bg-brand-blue-dark disabled:opacity-50"
+            >
+              <ArrowRight className="h-4 w-4" strokeWidth={2.3} />
+            </button>
+          </form>
+        </div>
+
+        <aside className="flex min-w-0 flex-col gap-3.5" aria-label="Questions Memoire can answer">
+          <Panel as="div" className="animate-rise px-5 py-[18px]" style={delay(120)}>
+            <MicroLabel as="h2">{answer ? 'Ask next' : scope === 'all' ? 'Stuck deal presets' : scope === 'account' ? 'Account presets' : 'Opportunity presets'}</MicroLabel>
+            <div className="mt-3 flex flex-col gap-2">
+              {nextQuestions.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => ask(suggestion)}
+                  className="rounded-xl bg-tint-neutral-bg px-3.5 py-2.5 text-left text-[12.5px] leading-[1.45] text-ink transition hover:bg-chip"
+                >
+                  {suggestion}
+                </button>
+              ))}
             </div>
-            {answer.cards && answer.cards.length > 0 ? (
-              <div className="grid gap-4">
-                {answer.cards.map((card, index) => (
-                  <AnswerCard key={`${card.kind}-${card.title}-${index}`} card={card} />
+            <MicroLabel as="h3" className="mt-4 block">Action / fix prompts</MicroLabel>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {actionFixPresets.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => ask(preset)}
+                  className="rounded-full bg-tint-blue-bg px-3 py-1.5 text-left text-[12px] font-semibold text-tint-blue-ink transition hover:bg-[#D3E5F8]"
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+            {scope === 'all' && (
+              // These three write about one customer. Offered over the whole
+              // workspace they either dead-end or answer about whoever happens to
+              // sort first, so the requirement is stated before the click.
+              <p className="mt-2.5 text-[11.5px] leading-5 text-muted">
+                These three need one customer - pick an account or opportunity in the context selector first.
+              </p>
+            )}
+          </Panel>
+
+          <Panel as="div" className="animate-rise px-5 py-[18px]" style={delay(160)}>
+            <MicroLabel as="h2">What this can answer</MicroLabel>
+            <ul className="mt-2.5 space-y-1.5">
+              {advertisedQuestions.map((advertised) => (
+                // Every one of these routes to an engine now, so there is no
+                // reason to make the operator retype what the page just offered.
+                <li key={advertised}>
+                  <button
+                    type="button"
+                    onClick={() => ask(advertised)}
+                    className="text-left text-[12.5px] leading-5 text-ink underline decoration-line-strong underline-offset-2 hover:text-brand-blue hover:decoration-brand-blue"
+                  >
+                    {advertised}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+
+          {earlierQuestions.length > 0 && (
+            <Panel as="div" className="animate-rise px-5 py-[18px]">
+              <MicroLabel as="h2">Asked this visit</MicroLabel>
+              <div className="mt-3 flex flex-col gap-2.5">
+                {earlierQuestions.map((earlier) => (
+                  <button key={earlier} type="button" onClick={() => ask(earlier)} className="text-left text-[12.5px] font-semibold leading-snug text-ink hover:text-brand-blue">
+                    {earlier}
+                  </button>
                 ))}
               </div>
-            ) : answer.answer && answer.answer.trim() ? (
-              <p className="whitespace-pre-line text-sm leading-7 text-gray-800">{answer.answer}</p>
-            ) : (
-              <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4">
-                <p className="text-sm font-bold text-navy">Memoire doesn't have enough sales memory to answer this yet.</p>
-                <p className="mt-1 text-sm text-gray-600">
-                  Answers are built from your captured activity. Capture a customer note or add an opportunity, then ask again.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Link to="/app/capture" className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white hover:bg-navy/90">
-                    Capture a sales update
-                  </Link>
-                  <Link to="/app/opportunities?new=1" className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">
-                    Add an opportunity
-                  </Link>
-                </div>
-              </div>
-            )}
-            {answer.cards && answer.cards.length > 0 && answer.answer && (
-              <details className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-gray-500">Structured text</summary>
-                <p className="mt-3 whitespace-pre-line text-sm leading-7 text-gray-700">{answer.answer}</p>
-              </details>
-            )}
-            <AnswerBlock title="Based on / Context used" items={answer.contextUsed} />
-            {answer.suggestedNextAction && <AnswerBlock title="Suggested next action" items={[answer.suggestedNextAction]} tone="blue" />}
-            {answer.missingContext.length > 0 && <AnswerBlock title="Missing context" items={answer.missingContext} tone="amber" />}
-            {answer.suggestedQuestions.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">Next questions</p>
-                <div className="flex flex-wrap gap-2">
-                  {answer.suggestedQuestions.map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      type="button"
-                      onClick={() => ask(suggestion)}
-                      className="rounded-full border border-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-600 hover:border-brand-blue/40 hover:text-brand-blue"
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <p className="text-sm text-gray-500">Choose a preset or ask a question. Memoire can answer with local rules when the endpoint is unavailable.</p>
-        )}
-      </section>
+              <p className="mt-3 text-[11px] text-muted">Kept for this visit only - nothing you ask is stored.</p>
+            </Panel>
+          )}
+
+          <section className="animate-rise rounded-panel bg-chip px-[18px] py-4" style={delay(200)} aria-label="Private by default">
+            <div className="flex items-center gap-2">
+              <Lock className="h-3.5 w-3.5 text-tint-neutral-ink" aria-hidden="true" />
+              <h2 className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-tint-neutral-ink">Private by default</h2>
+            </div>
+            <p className="mt-2 text-[12px] leading-[1.55] text-tint-neutral-ink">
+              Answers are built on this device from your captured data. Nothing is sent to an AI service, so no
+              customer context leaves your browser.
+            </p>
+          </section>
+        </aside>
+      </div>
     </PageContainer>
   );
+}
+
+/**
+ * The answer's first line as its headline, and the rest as its body.
+ *
+ * The engines write a heading line and then the reasons ("Which deals may go
+ * silent" and then the list). Drawing the whole thing as one paragraph under a
+ * generic "Answer" label buried the verdict in the prose; lifting the first line
+ * out is the Daylight shape - verdict, then evidence - without asking any engine
+ * to write differently.
+ */
+function splitAnswer(answer: AskMemoireAnswer): { headline: string; body: string } {
+  const lines = (answer.answer || '').split('\n');
+  const firstIndex = lines.findIndex((line) => line.trim());
+  if (firstIndex === -1) return { headline: '', body: '' };
+  const first = lines[firstIndex].trim().replace(/:$/, '');
+  if (first.length > 140) return { headline: 'Here is what your records say', body: answer.answer.trim() };
+  return { headline: first, body: lines.slice(firstIndex + 1).join('\n').trim() };
 }
 
 function addDaysToDateKey(dateKey: string, days: number) {
@@ -1077,42 +1169,43 @@ function answerFromPatterns(patterns: SalesPattern[], context: AskMemoireContext
   };
 }
 
+/**
+ * One record the answer is about, as a tinted card whose tint is the kind of
+ * answer - a stuck deal reads amber, a follow-up green - the same full-tint
+ * treatment Daylight gives every status row.
+ */
 function AnswerCard({ card }: { card: AskMemoireAnswerCard }) {
-  const toneClass = {
-    stuck_deal: 'border-amber-200 bg-amber-50/40',
-    account: 'border-blue-100 bg-blue-50/30',
-    opportunity: 'border-violet-100 bg-violet-50/30',
-    follow_up: 'border-emerald-100 bg-emerald-50/30',
-    insight: 'border-blue-100 bg-blue-50/30',
+  const tone = {
+    stuck_deal: { ground: 'bg-tint-amber-bg', label: 'text-tint-amber-solid' },
+    account: { ground: 'bg-tint-blue-bg', label: 'text-tint-blue-ink' },
+    opportunity: { ground: 'bg-tint-violet-bg', label: 'text-tint-violet-ink' },
+    follow_up: { ground: 'bg-tint-green-bg', label: 'text-tint-green-solid' },
+    insight: { ground: 'bg-tint-blue-bg', label: 'text-tint-blue-ink' },
   }[card.kind];
 
   return (
-    <article className={`rounded-lg border p-4 ${toneClass}`}>
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-gray-500">{card.kind.replace('_', ' ')}</p>
-          <h3 className="mt-1 text-base font-bold text-navy">{card.title}</h3>
-        </div>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
+    <article className={`rounded-2xl px-[18px] py-4 ${tone.ground}`}>
+      <p className={`text-[10.5px] font-bold uppercase tracking-[0.12em] ${tone.label}`}>{card.kind.replace('_', ' ')}</p>
+      <h3 className="mt-1 font-display text-base font-bold leading-snug text-ink">{card.title}</h3>
+      <div className="mt-3 grid gap-2.5 md:grid-cols-2">
         {card.fields.map((field) => (
           <CardField key={field.label} field={field} />
         ))}
       </div>
       {card.ctas && card.ctas.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-3.5 flex flex-wrap gap-2">
           {card.ctas.map((cta) => cta.href ? (
             <Link
               key={`${cta.label}-${cta.href}`}
               to={cta.href}
               title={cta.note}
-              className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:border-brand-blue/40 hover:text-brand-blue"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-gray-700 shadow-seg transition hover:-translate-y-px hover:text-brand-blue"
             >
               {cta.label}
               <ExternalLink className="h-3.5 w-3.5" />
             </Link>
           ) : (
-            <span key={cta.label} className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 ring-1 ring-gray-200">
+            <span key={cta.label} className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-tint-neutral-ink">
               {cta.label}
             </span>
           ))}
@@ -1124,44 +1217,48 @@ function AnswerCard({ card }: { card: AskMemoireAnswerCard }) {
 
 function CardField({ field }: { field: AskMemoireAnswerCard['fields'][number] }) {
   const tone = {
-    default: 'bg-white/80 text-gray-800',
-    warning: 'bg-amber-50 text-amber-950 ring-1 ring-amber-100',
-    good: 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100',
+    default: 'bg-white/85 text-ink',
+    warning: 'bg-white text-tint-amber-ink ring-1 ring-[#F6D9A8]',
+    good: 'bg-white text-tint-green-ink ring-1 ring-[#BFE8D0]',
   }[field.tone || 'default'];
   const values = Array.isArray(field.value) ? field.value.filter(Boolean) : [field.value].filter(Boolean);
 
   return (
-    <div className={`rounded-lg p-3 ${tone}`}>
-      <p className="text-xs font-bold uppercase tracking-wide opacity-60">{field.label}</p>
+    <div className={`rounded-xl px-3 py-2.5 ${tone}`}>
+      <p className="text-[10.5px] font-bold uppercase tracking-[0.1em] opacity-70">{field.label}</p>
       {values.length > 1 ? (
-        <ul className="mt-2 space-y-1 text-sm leading-6">
+        <ul className="mt-1.5 space-y-1 text-[13px] leading-6">
           {values.map((value) => (
             <li key={value} className="flex gap-2">
-              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-50" />
+              <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-50" />
               <span>{value}</span>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="mt-2 whitespace-pre-line text-sm leading-6">{values[0] || 'Memoire does not know yet.'}</p>
+        <p className="mt-1.5 whitespace-pre-line text-[13px] leading-6">{values[0] || 'Memoire does not know yet.'}</p>
       )}
     </div>
   );
 }
 
+/** Where an answer came from, as chips - the record behind every claim. */
 function AnswerBlock({ title, items, tone = 'gray' }: { title: string; items: string[]; tone?: 'gray' | 'blue' | 'amber' }) {
-  const toneClass = {
-    gray: 'bg-gray-100 text-gray-600',
-    blue: 'bg-blue-50 text-brand-blue',
-    amber: 'bg-amber-50 text-amber-700',
+  const chip = {
+    gray: { ground: 'bg-chip text-tint-neutral-ink', dot: 'bg-brand-blue' },
+    blue: { ground: 'bg-tint-blue-bg text-tint-blue-ink', dot: 'bg-brand-blue' },
+    amber: { ground: 'bg-tint-amber-pill text-tint-amber-solid', dot: 'bg-[#E8891A]' },
   }[tone];
 
   return (
     <div>
-      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">{title}</p>
-      <div className="flex flex-wrap gap-2">
+      <MicroLabel as="p">{title}</MicroLabel>
+      <div className="mt-2.5 flex flex-wrap gap-2">
         {items.map((item) => (
-          <span key={item} className={`rounded-full px-2.5 py-1 text-xs font-medium ${toneClass}`}>{item}</span>
+          <span key={item} className={`inline-flex items-center gap-[7px] rounded-full px-3 py-1.5 text-[11.5px] font-semibold ${chip.ground}`}>
+            <span aria-hidden="true" className={`h-[7px] w-[7px] shrink-0 rounded-full ${chip.dot}`} />
+            {item}
+          </span>
         ))}
       </div>
     </div>
