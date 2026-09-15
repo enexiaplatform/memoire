@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check } from 'lucide-react';
 import type { BusinessCockpitAnswer } from '../../utils/businessCockpit';
+import { Panel } from '../../components/ui/daylight';
+import { delay } from '../../components/ui/daylightStyles';
 
 /**
- * The ten-second picture.
+ * The cockpit's five questions, answered.
  *
  * Two things were wrong with it before 2026-08-04, and both were the same
  * mistake in different clothes - the strip asked a question and then refused to
@@ -11,15 +13,17 @@ import type { BusinessCockpitAnswer } from '../../utils/businessCockpit';
  *
  * It showed all five questions whether or not they had anything to say, so a
  * clean workspace spent two of five slots on "No initiative looks stalled" and
- * "Inbox clear". A card is the most expensive thing on a page; spending one to
- * report the absence of a problem is how a control tower turns into a report.
- * Answers with nothing in them now collapse into a single line underneath.
+ * "Inbox clear". Answers with nothing in them still collapse into a single line
+ * underneath.
  *
- * And every card was a link off Today. Measured on the demo workspace: five
- * cards, zero of which opened the quick look - clicking "what moves money
- * today" threw you onto the Quotes page to answer the question Today had just
- * asked you. Where an answer is about a deal, the card opens that deal here,
- * and the operator can act and carry on down the page.
+ * And every card was a link off Today. Where an answer is about a deal, the row
+ * opens that deal here, and the operator can act and carry on down the page.
+ *
+ * Daylight (2026-09-15) moved it beside the moves. The page now opens on four
+ * numbers, and these answers are the record-level pointers behind them - the
+ * deal closest to signing, the one that moved, the follow-ups that slipped - so
+ * they read as the context a move is decided in rather than as a second row of
+ * headline cards competing with the figures above.
  */
 export function BusinessCockpitStrip({
   answers,
@@ -31,77 +35,74 @@ export function BusinessCockpitStrip({
   const live = answers.filter((answer) => answer.actionable);
   const clear = answers.filter((answer) => !answer.actionable);
 
-  // Nothing needs attention at all. One line says that better than five cards
-  // arranged to look like a dashboard.
-  if (live.length === 0) {
-    return (
-      <section
-        aria-label="Business cockpit"
-        className="flex items-center gap-2.5 rounded-xl border border-emerald-100 bg-emerald-50/50 px-4 py-3"
-      >
-        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-          <Check className="h-3.5 w-3.5" />
+  return (
+    <Panel aria-label="Business cockpit" className="animate-rise px-[22px] py-5" style={delay(270)}>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-display text-base font-bold text-ink">Five questions</h2>
+        <span className="rounded-full bg-tint-green-pill px-[11px] py-1 font-display text-xs font-bold text-tint-green-solid">
+          {clear.length} / {answers.length} clear
         </span>
-        <p className="text-sm font-semibold text-emerald-900">
+      </div>
+
+      {live.length === 0 ? (
+        // Nothing needs attention at all. One line says that better than five
+        // rows arranged to look like a dashboard.
+        <p className="mt-3.5 flex items-start gap-2.5 rounded-2xl bg-tint-green-bg px-3.5 py-3 text-[13px] font-semibold leading-5 text-tint-green-ink">
+          <Check className="mt-0.5 h-4 w-4 shrink-0 text-tint-green-solid" />
           Nothing is waiting on you. Money, deals, follow-ups, initiatives and the capture inbox are all clear.
         </p>
-      </section>
-    );
-  }
+      ) : (
+        <ul className="mt-3 flex flex-col gap-1">
+          {live.map((answer) => (
+            <li key={answer.id}>
+              <CockpitRow answer={answer} onOpenDeal={onOpenDeal} />
+            </li>
+          ))}
+        </ul>
+      )}
 
-  return (
-    <section aria-label="Business cockpit" className="flex flex-col gap-2">
-      {/* Up to four live answers, so a row never drops a card to 1/5 of a
-          laptop's width and truncates the customer's name to fit. */}
-      <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${live.length >= 4 ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
-        {live.map((answer) => (
-          <CockpitCard key={answer.id} answer={answer} onOpenDeal={onOpenDeal} />
-        ))}
-      </div>
-      {clear.length > 0 && (
-        <p className="px-1 text-xs leading-5 text-gray-400">
-          <span className="font-bold text-emerald-600">Clear:</span>{' '}
+      {live.length > 0 && clear.length > 0 && (
+        <p className="mt-2 px-3 text-xs leading-5 text-muted">
+          <span className="font-bold text-tint-green-solid">Clear:</span>{' '}
           {clear.map((answer) => answer.subject.toLowerCase()).join(' · ')}
         </p>
       )}
-    </section>
+    </Panel>
   );
 }
 
-function CockpitCard({
+function CockpitRow({
   answer,
   onOpenDeal,
 }: {
   answer: BusinessCockpitAnswer;
   onOpenDeal?: (opportunityId: string) => void;
 }) {
-  const tone = answer.urgent
-    ? 'border-amber-200 bg-amber-50/60 hover:border-amber-300'
-    : 'border-gray-200 bg-white hover:border-brand-blue/40';
-  const className = `group flex w-full flex-col rounded-xl border p-3 text-left shadow-sm transition hover:shadow ${tone}`;
+  const className = 'group -mx-1 flex w-full items-start gap-[11px] rounded-xl px-3 py-2.5 text-left transition hover:bg-canvas';
 
   const body = (
     <>
-      <p className="text-xs font-bold uppercase tracking-wide text-gray-500">{answer.question}</p>
-      <p className={`mt-1.5 text-sm font-semibold leading-5 ${answer.urgent ? 'text-amber-900' : 'text-gray-700'}`}>
-        {answer.answer}
-      </p>
-      {/* The condition behind the flag, named as the field that holds it. A
-          risk label alone ("Weak pipeline") sends people editing whatever looks
-          related, and the flag survives every one of those edits. */}
-      {answer.detail && (
-        <p className="mt-1 text-xs leading-5 text-gray-500">{answer.detail}</p>
-      )}
-      {/* Says what the click does before it is clicked. The old card carried no
-          affordance at all, so a tile that opened a drawer and one that left the
-          page looked identical. */}
       <span
-        className={`mt-2 inline-flex items-center gap-1 text-[11px] font-bold ${
-          answer.urgent ? 'text-amber-700' : 'text-brand-blue'
-        }`}
-      >
-        {answer.opportunityId ? 'Open the deal' : 'Go there'}
-        <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+        aria-hidden="true"
+        className={`mt-[5px] h-2 w-2 shrink-0 rounded-full ${answer.urgent ? 'bg-[#E8891A]' : 'bg-brand-blue'}`}
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block text-[10.5px] font-bold uppercase tracking-[0.1em] text-muted">{answer.question}</span>
+        <span className={`mt-0.5 block text-[13px] font-semibold leading-5 ${answer.urgent ? 'text-tint-amber-ink' : 'text-ink'}`}>
+          {answer.answer}
+        </span>
+        {/* The condition behind the flag, named as the field that holds it. A
+            risk label alone ("Weak pipeline") sends people editing whatever looks
+            related, and the flag survives every one of those edits. */}
+        {answer.detail && (
+          <span className="mt-0.5 line-clamp-2 block text-xs leading-5 text-muted" title={answer.detail}>{answer.detail}</span>
+        )}
+        {/* Says what the click does before it is clicked, so a row that opens a
+            drawer and one that leaves the page never look identical. */}
+        <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-brand-blue-dark">
+          {answer.opportunityId ? 'Open the deal' : 'Go there'}
+          <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+        </span>
       </span>
     </>
   );

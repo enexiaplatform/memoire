@@ -119,7 +119,12 @@ const dailyTier = todayPage.slice(todayStart, todayEnd);
 // The picture, the moves, the watch-list. In that order, because it is the
 // order the questions are asked in: what is happening, what do I do, what is
 // about to go wrong.
-const dailyOrder = ['<BusinessCockpitStrip', '<MorningBriefCard', '<TodayTopThreeActions', '<ProactiveNudgesPanel'];
+//
+// Daylight (2026-09-15) made the brief the hero's sentence and the picture four
+// figures, so both now precede the moves. The cockpit's answers are the
+// record-level context beside the moves - rendered after them in the source,
+// which is also where a phone stacks them - and the watch-list still closes.
+const dailyOrder = ['<MorningBriefCard', '<TodayMetricCards', '<TodayTopThreeActions', '<BusinessCockpitStrip', '<ProactiveNudgesPanel'];
 dailyOrder.forEach((marker, index) => {
   const at = dailyTier.indexOf(marker);
   assert.ok(at >= 0, `Today render missing ${marker}`);

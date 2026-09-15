@@ -75,6 +75,11 @@ export type PageHeaderProps = {
    * useful out of context ("Today" is fine; "Review" alone is not).
    */
   documentTitle?: string;
+  /**
+   * `hero` is Today's greeting: a size larger, because it is the one page that
+   * opens on a person rather than on a list.
+   */
+  size?: 'page' | 'hero';
 };
 
 export function PageHeader({
@@ -88,6 +93,7 @@ export function PageHeader({
   icon,
   className = '',
   documentTitle,
+  size = 'page',
 }: PageHeaderProps) {
   useDocumentTitle(documentTitle || (titleAccent ? `${title}${titleAccent.text}` : title));
 
@@ -105,8 +111,10 @@ export function PageHeader({
   return (
     <header className={`flex animate-rise flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-6 ${className}`}>
       <div className="min-w-0">
+        {/* brand-blue-dark, not brand-blue: the eyebrow sits on the page ground,
+            and #1976D2 on #F4F7FA is 4.28:1 - under AA at 11px. */}
         {eyebrow && (
-          <p className="font-display text-[11px] font-bold uppercase tracking-[0.22em] text-brand-blue">{eyebrow}</p>
+          <p className="font-display text-[11px] font-bold uppercase tracking-[0.22em] text-brand-blue-dark">{eyebrow}</p>
         )}
         {/* `items-baseline` rather than `items-center`: the meta is type sitting
             next to type, and centring it against a display title floats it. */}
@@ -116,14 +124,20 @@ export function PageHeader({
                row rides high against the cap height. */
             <span className="relative top-0.5 shrink-0 text-brand-blue">{icon}</span>
           )}
-          <h1 className="font-display text-[26px] font-[750] leading-[1.1] tracking-[-0.03em] text-ink sm:text-[30px] lg:text-[34px]">
+          <h1 className={`font-display font-[750] leading-[1.1] tracking-[-0.03em] text-ink ${
+            size === 'hero' ? 'text-[28px] sm:text-[34px] lg:text-[38px]' : 'text-[26px] sm:text-[30px] lg:text-[34px]'
+          }`}>
             {title}
             {titleAccent && <span className={accentColour}>{titleAccent.text}</span>}
           </h1>
           {meta && <p className="text-sm text-gray-500">{meta}</p>}
         </div>
+        {/* A div, not a p: a description may be a composed block (Today's brief
+            carries its own paragraphs), and a paragraph cannot contain one. */}
         {description && (
-          <p className="mt-2 max-w-2xl text-[13.5px] leading-6 text-tint-neutral-ink [text-wrap:pretty]">{description}</p>
+          <div className={`max-w-2xl text-[13.5px] leading-6 text-tint-neutral-ink [text-wrap:pretty] ${size === 'hero' ? 'mt-2.5' : 'mt-2'}`}>
+            {description}
+          </div>
         )}
         {tabs && <div className="mt-3">{tabs}</div>}
       </div>

@@ -13,6 +13,7 @@ import {
   ClipboardList,
   FileCheck2,
   FileText,
+  MessageCircle,
   NotebookPen,
   RefreshCw,
   ReceiptText,
@@ -62,9 +63,32 @@ import { FollowUpImpactPanel } from './FollowUpImpactPanel';
 import { buildFollowUpImpact } from '../../utils/followUpImpact';
 import { MorningBriefCard } from './MorningBriefCard';
 import { BusinessCockpitStrip } from './BusinessCockpitStrip';
+import { MoneyInMotionPanel, TodayMetricCards } from './TodayPicture';
 import { loadPlanItemsForWorkspace, PLAN_ITEMS_UPDATED_EVENT } from '../../services/planItemStore';
 import { derivePlanCommitments } from '../../domain/commercialKernel/derivePlanCommitments';
-import type { PlanRecord } from '../../utils/weeklyPlan';
+import { buildPlanBoard, type PlanRecord } from '../../utils/weeklyPlan';
+import { opportunityStages } from '../../services/opportunityStore';
+import { loadOrderReceivablesForWorkspace } from '../../services/orderReceivableStore';
+import { loadOrderCostsForWorkspace } from '../../services/orderCostStore';
+import type { OrderCostRecord } from '../../utils/orderMargin';
+import { loadOrderMilestonesForWorkspace } from '../../services/orderMilestoneStore';
+import { loadSupplierCommitmentsForWorkspace } from '../../services/supplierCommitmentStore';
+import { buildOrderBook, type OrderMilestoneRecord } from '../../utils/orderToCash';
+import { buildReceivables, type OrderReceivableRecord } from '../../utils/receivables';
+import { buildOwnObligations } from '../../utils/ownObligations';
+import { supplierCommitmentsAsOwnObligations, type SupplierCommitmentRecord } from '../../utils/supplierCommitments';
+import { buildMoneyFlow } from '../../utils/moneyFlow';
+import {
+  greetingFor,
+  summariseMoneyInMotion,
+  summariseOpenPipeline,
+  summariseOverdueCash,
+  summariseSilence,
+  summariseWeekPromises,
+} from '../../utils/todayPicture';
+import { getUserPersonalName } from '../../utils/userDisplay';
+import { MicroPill, Panel } from '../../components/ui/daylight';
+import { darkPillClass, delay, ghostPillClass, tintSurface, type DaylightTone } from '../../components/ui/daylightStyles';
 import { CommercialRiskPanel } from '../threads/CommercialRiskPanel';
 import { ThreadQuickLook } from '../threads/ThreadQuickLook';
 import { useCommercialThreads } from '../threads/useCommercialThreads';
@@ -90,7 +114,7 @@ import { buildPipelineHealthSummary, buildRevenueHorizon } from '../../utils/pip
 import { SegmentBar } from '../../components/charts/SegmentBar';
 import { MiniBarChart } from '../../components/charts/MiniBarChart';
 import { hasLocalSampleData } from '../../utils/dataMode';
-import { formatSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, toLocalDateKey } from '../../utils/safeDate.ts';
+import { formatSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, todayDateKey, toLocalDateKey } from '../../utils/safeDate.ts';
 import { loadSampleDataset } from '../../utils/sampleData';
 import { analyzeMeddicLitePipeline } from '../../utils/meddicLite';
 import { generatePipelineOpportunityActions, type OpportunityRecommendedAction } from '../../utils/opportunityActionPlan';
@@ -172,7 +196,7 @@ type DashboardCommercialAction = {
  * loading the workspace twice or threading thirty props through a boundary.
  */
 export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'reference' } = {}) {
-  const { user, loading: authLoading, isAuthenticated } = useAuthContext();
+  const { user, profile, loading: authLoading, isAuthenticated } = useAuthContext();
   const sampleDataActive = hasLocalSampleData();
   /** Is there actually a cloud copy behind this workspace, or only this browser? */
   const cloudBacked = isAuthenticated && isSupabaseConfigured;
@@ -229,6 +253,20 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
   const [followUpContext, setFollowUpContext] = useState<FollowUpContext | null>(null);
   const [followUpOpportunity, setFollowUpOpportunity] = useState<CrmLiteOpportunity | null>(null);
   const [quickLookOpportunity, setQuickLookOpportunity] = useState<CrmLiteOpportunity | null>(null);
+  /**
+   * The records the order book and the plan board read beyond the workspace:
+   * receipts, terms typed at quoting time, the ticked road to cash, and what is
+   * owed to principals. Loaded here so "Overdue cash" and "Promises kept" are
+   * the numbers Money > Collections and Plan print, computed by the same
+   * engines from the same rows, rather than cheaper estimates of them. Null
+   * until they arrive, and the cards wait rather than reading zero.
+   */
+  const [pictureRecords, setPictureRecords] = useState<{
+    receivables: OrderReceivableRecord[];
+    costs: OrderCostRecord[];
+    milestones: OrderMilestoneRecord[];
+    supplierCommitments: SupplierCommitmentRecord[];
+  } | null>(null);
 
   const refreshDashboard = useCallback(async (options: DashboardLoadOptions = {}) => {
     const sampleActive = hasLocalSampleData();
@@ -455,6 +493,48 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
     commitments: firstWeekPlanRecords,
   }), [data, firstWeekPlanRecords]);
 
+  // The picture. Each figure is another surface's number, read by that
+  // surface's engine - see utils/todayPicture.ts for why none of them is new.
+  const todayKey = todayDateKey();
+  const pipelinePicture = useMemo(
+    () => summariseOpenPipeline(data.opportunities, opportunityStages),
+    [data.opportunities],
+  );
+  const silencePicture = useMemo(() => summariseSilence({
+    opportunities: data.opportunities,
+    activities: data.activities,
+    commitments: plannedCommitments,
+    today: todayKey,
+  }), [data.activities, data.opportunities, plannedCommitments, todayKey]);
+  const cashPicture = useMemo(() => {
+    if (!pictureRecords) return null;
+    const book = buildOrderBook({
+      opportunities: data.opportunities,
+      quotes: data.quotes,
+      milestoneRecords: pictureRecords.milestones,
+      costRecords: pictureRecords.costs,
+      outcomes: data.opportunityOutcomes,
+      today: todayKey,
+    });
+    return summariseOverdueCash(buildReceivables({ orders: book.orders, records: pictureRecords.receivables, today: todayKey }));
+  }, [data.opportunities, data.opportunityOutcomes, data.quotes, pictureRecords, todayKey]);
+  const promisesPicture = useMemo(() => summariseWeekPromises(buildPlanBoard({
+    periodType: 'week',
+    opportunities: data.opportunities,
+    obligations: buildOwnObligations({
+      expenses: data.expenses,
+      quotes: data.quotes,
+      supplierObligations: supplierCommitmentsAsOwnObligations({ records: pictureRecords?.supplierCommitments || [] }),
+    }).obligations,
+    activities: data.activities,
+    records: firstWeekPlanRecords,
+    today: todayKey,
+  })), [data.activities, data.expenses, data.opportunities, data.quotes, firstWeekPlanRecords, pictureRecords, todayKey]);
+  const moneyInMotion = useMemo(
+    () => summariseMoneyInMotion(buildMoneyFlow({ opportunities: data.opportunities, quotes: data.quotes, today: todayKey })),
+    [data.opportunities, data.quotes, todayKey],
+  );
+
 
   useEffect(() => {
     let active = true;
@@ -468,6 +548,24 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
     window.addEventListener(PLAN_ITEMS_UPDATED_EVENT, onUpdate);
     return () => { active = false; window.removeEventListener(PLAN_ITEMS_UPDATED_EVENT, onUpdate); };
   }, [sampleDataActive, user?.id]);
+
+  useEffect(() => {
+    if (variant === 'reference' || authLoading) return;
+    let active = true;
+    const dataUserId = sampleDataActive ? undefined : user?.id;
+    void Promise.all([
+      loadOrderReceivablesForWorkspace(dataUserId, sampleDataActive),
+      loadOrderCostsForWorkspace(dataUserId, sampleDataActive),
+      loadOrderMilestonesForWorkspace(dataUserId, sampleDataActive),
+      loadSupplierCommitmentsForWorkspace(dataUserId, sampleDataActive),
+    ]).then(([receivables, costs, milestones, supplierCommitments]) => {
+      if (active) setPictureRecords({ receivables, costs, milestones, supplierCommitments });
+    }).catch(() => {
+      // The cash card says it is still reading rather than showing a zero it
+      // does not know to be true.
+    });
+    return () => { active = false; };
+  }, [authLoading, sampleDataActive, user?.id, variant]);
 
   const handleLoadDemoSandbox = async () => {
     loadSampleDataset();
@@ -738,16 +836,26 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
     return <Navigate to="/app/start" replace />;
   }
 
+  const pictureReady = !loading && !loadError && todayCenter.hasMeaningfulData;
+  const firstMove = pictureReady ? todayCenter.topActions[0] : undefined;
+
   return (
     <PageContainer onClickCapture={handleTodayLinkCapture}>
       <PageHeader
-        eyebrow="Personal Commercial Control Tower"
-        title="Nothing in your business goes silent."
+        size="hero"
+        eyebrow={new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}
+        // Daylight opens Today on the person and the day rather than on the
+        // product's promise. The name is only ever one they gave: a greeting
+        // that falls back to the email address is worse than none.
+        title={greetingFor(new Date(), sampleDataActive ? '' : getUserPersonalName(user, profile))}
         // The page title is a sentence, which is right on the page and useless in
         // a tab strip. This is what the tab, the history entry and the screen
         // reader's navigation announcement say.
         documentTitle="Today"
-        description="The picture, your three moves, and what to watch. Everything else is on the surface that owns it."
+        // The brief is the hero's sentence, and only once there is a workspace to
+        // brief on: drawn mid-load it would announce "no deals are at risk" about
+        // records that have not arrived yet.
+        description={pictureReady ? <MorningBriefCard brief={morningBrief} /> : undefined}
         actions={
           /*
            * One quiet control, and a message only when there is one.
@@ -760,20 +868,35 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
            * still says so.
            */
           <>
+            {message && !message.startsWith('Command center ready') ? (
+              <span className="rounded-full bg-tint-amber-pill px-3 py-1.5 text-xs font-bold text-tint-amber-solid">
+                {message}
+              </span>
+            ) : null}
             <button
               type="button"
               onClick={() => refreshDashboard({ force: true })}
               disabled={workspaceSyncing}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-[11px] border border-line bg-white text-tint-neutral-ink transition hover:-translate-y-px hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
               title={cloudBacked ? 'Reload from cloud' : 'Reload from the records in this browser'}
+              aria-label={cloudBacked ? 'Reload from cloud' : 'Reload from the records in this browser'}
             >
               <RefreshCw className={`h-4 w-4 ${workspaceSyncing ? 'animate-spin' : ''}`} />
             </button>
-            {message && !message.startsWith('Command center ready') ? (
-              <span className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
-                {message}
-              </span>
-            ) : null}
+            {pictureReady && (
+              <Link to="/app/ask" data-quick-look-exempt="true" className={ghostPillClass}>
+                <MessageCircle className="h-[15px] w-[15px]" />
+                Ask Memoire
+              </Link>
+            )}
+            {/* Starting the day is opening the first move. A deal opens in the
+                quick look like every other deal link on Today. */}
+            {firstMove && (
+              <Link to={firstMove.href} className={darkPillClass}>
+                Start the day
+                <ArrowRight className="h-[15px] w-[15px]" />
+              </Link>
+            )}
           </>
         }
       />
@@ -785,17 +908,17 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
            finish, and offers the one button that can change that. */
         <section
           role="alert"
-          className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-5 text-sm text-amber-900"
+          className="rounded-panel bg-tint-amber-bg px-5 py-5 text-sm text-tint-amber-ink shadow-panel"
         >
-          <h2 className="text-base font-bold">Today could not be loaded</h2>
+          <h2 className="font-display text-base font-bold">Today could not be loaded</h2>
           <p className="mt-2 leading-6">{loadError}</p>
-          <p className="mt-2 leading-6 text-amber-800">
+          <p className="mt-2 leading-6">
             Nothing has been changed, and no record has been lost. Your workspace is still in your account.
           </p>
           <button
             type="button"
             onClick={() => { void refreshDashboard({ force: true }); }}
-            className="mt-4 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
+            className={`mt-4 ${darkPillClass}`}
           >
             Try again
           </button>
@@ -867,19 +990,32 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
                   had accumulated, and a drawer labelled "everything else" is an
                   information architecture decision deferred rather than
                   taken. */}
-              <TodaySectionLabel label="The picture" hint="Where the money sits, and what changed" />
-              <BusinessCockpitStrip
-                answers={businessCockpit}
-                onOpenDeal={(opportunityId) => {
-                  const opportunity = data.opportunities.find((item) => item.id === opportunityId);
-                  if (opportunity) setQuickLookOpportunity(opportunity);
-                }}
+              {/* The picture: four numbers, each another surface's own. */}
+              <TodayMetricCards
+                pipeline={pipelinePicture}
+                silence={silencePicture}
+                cash={cashPicture}
+                promises={promisesPicture}
               />
-              <MorningBriefCard brief={morningBrief} />
 
-              <TodayTopThreeActions actions={todayCenter.topActions} />
+              {/* The moves are the page's one Level 1 object, so they take the
+                  wide column. Beside them, the cockpit's five questions and
+                  where quoted money is sitting - the context a move is decided
+                  in, not a second list of things to do. */}
+              <div className="grid grid-cols-1 gap-[18px] xl:grid-cols-[minmax(0,1.62fr)_minmax(0,1fr)] xl:items-start">
+                <TodayTopThreeActions actions={todayCenter.topActions} dealCount={pipelinePicture.dealCount} />
+                <div className="flex min-w-0 flex-col gap-[18px]">
+                  <BusinessCockpitStrip
+                    answers={businessCockpit}
+                    onOpenDeal={(opportunityId) => {
+                      const opportunity = data.opportunities.find((item) => item.id === opportunityId);
+                      if (opportunity) setQuickLookOpportunity(opportunity);
+                    }}
+                  />
+                  <MoneyInMotionPanel motion={moneyInMotion} />
+                </div>
+              </div>
 
-              <TodaySectionLabel label="Watchlist" hint="What Memoire flags before it can surprise you" />
               <ProactiveNudgesPanel
                 center={proactiveNudges}
                 message={nudgeMessage}
@@ -1206,80 +1342,122 @@ function ForecastDefenseReadiness({ center }: { center: ReturnType<typeof buildU
  * deliberately no score on screen: the rank is the answer, and "why now" is
  * what makes it checkable.
  */
-function TodayTopThreeActions({ actions }: { actions: TodayCommandAction[] }) {
+/**
+ * The status is the colour of the whole row. Critical reads red and High reads
+ * amber - the ranking's own urgency, not a second opinion about it - and
+ * everything calmer sits on the neutral ground.
+ */
+function moveTone(urgency: TodayCommandAction['urgency']): DaylightTone {
+  if (urgency === 'Critical') return 'red';
+  if (urgency === 'High') return 'amber';
+  return 'neutral';
+}
+
+const moveButtonClass: Record<DaylightTone, { solid: string; ghost: string }> = {
+  red: { solid: 'bg-tint-red-solid text-white shadow-[0_8px_16px_-10px_rgba(185,28,28,0.9)]', ghost: 'border border-[#F5C2C2] bg-white text-tint-red-ink' },
+  amber: { solid: 'bg-tint-amber-solid text-white shadow-[0_8px_16px_-10px_rgba(180,83,9,0.9)]', ghost: 'border border-[#F3DDA8] bg-white text-tint-amber-ink' },
+  green: { solid: 'bg-tint-green-solid text-white', ghost: 'border border-[#CDEBDB] bg-white text-tint-green-ink' },
+  neutral: { solid: 'bg-ink text-white', ghost: 'border border-line-strong bg-white text-gray-700' },
+  blue: { solid: 'bg-brand-blue text-white', ghost: 'border border-line bg-white text-tint-blue-ink' },
+  violet: { solid: 'bg-spectrum-purple text-white', ghost: 'border border-line bg-white text-tint-violet-ink' },
+  cyan: { solid: 'bg-tint-cyan-ink text-white', ghost: 'border border-line bg-white text-tint-cyan-ink' },
+};
+
+function TodayTopThreeActions({ actions, dealCount }: { actions: TodayCommandAction[]; dealCount: number }) {
   return (
-    <section aria-label="Your moves" className="pt-3">
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h2 className="text-2xl font-bold tracking-tight text-navy">Your 3 moves</h2>
-        <p className="text-sm text-gray-500">What Memoire would start with, ranked across defense, revenue, opportunities and capture</p>
+    <Panel aria-label="Your moves" className="min-w-0 animate-rise px-5 py-5 sm:px-6 sm:py-[22px]" style={delay(220)}>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <div className="min-w-0">
+          <h2 className="font-display text-[19px] font-bold tracking-[-0.015em] text-ink">Your 3 moves</h2>
+          <p className="mt-0.5 text-xs text-muted">What Memoire would start with, ranked across defense, revenue, opportunities and capture</p>
+        </div>
+        {dealCount > 0 && (
+          <Link to="/app/opportunities" data-quick-look-exempt="true" className="text-[12.5px] font-semibold text-brand-blue hover:underline">
+            See all {formatCount(dealCount)} {dealCount === 1 ? 'deal' : 'deals'}
+          </Link>
+        )}
       </div>
       {actions.length === 0 ? (
-        <p className="mt-4 rounded-xl border border-gray-200 bg-white p-5 text-sm font-semibold text-gray-600">
+        <p className="mt-4 rounded-2xl bg-tint-green-bg px-[18px] py-4 text-sm font-semibold text-tint-green-ink">
           No urgent action found. Capture a sales update to refresh Today.
         </p>
       ) : (
-        <div className="mt-4 grid gap-4 lg:grid-cols-3">
-          {actions.map((action, index) => (
-            <article
-              key={action.id}
-              className="flex flex-col justify-between rounded-2xl border border-navy/15 bg-white p-5 shadow-[0_1px_3px_rgba(22,40,60,0.08)]"
-            >
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-2xl font-black leading-none text-navy/25">#{index + 1}</span>
-                  <PriorityBadge priority={action.urgency} />
-                  <Badge label={action.source} tone="blue" />
-                  {action.mergedCount && action.mergedCount > 1 && (
-                    <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">{action.mergedCount} deals</span>
-                  )}
+        <ol className="mt-4 flex flex-col gap-[11px]">
+          {actions.map((action, index) => {
+            const tone = moveTone(action.urgency);
+            const surface = tintSurface[tone];
+            return (
+              <li
+                key={action.id}
+                className={`rounded-2xl px-4 py-4 transition duration-200 hover:translate-x-[3px] sm:px-[18px] ${surface.ground}`}
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="min-w-0 truncate text-[15.5px] font-bold text-ink" title={`${action.accountName} / ${action.opportunityName}`}>
+                        {action.accountName}
+                      </span>
+                      <MicroPill tone={tone === 'neutral' ? 'neutral' : tone} solid={tone !== 'neutral'}>{action.urgency}</MicroPill>
+                      <span className="rounded-full bg-white/80 px-2 py-[3px] text-[10px] font-bold uppercase tracking-[0.07em] text-tint-neutral-ink">
+                        {action.source}
+                      </span>
+                      {action.mergedCount && action.mergedCount > 1 && (
+                        <span className="rounded-full bg-white/80 px-2 py-[3px] text-[10px] font-bold uppercase tracking-[0.07em] text-tint-amber-solid">
+                          {action.mergedCount} deals
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-sm font-semibold leading-5 text-ink">{action.title}</p>
+                    {/* Why now, in the open. The move is only checkable if the
+                        reason it is ranked first is on the same card as the rank. */}
+                    <p className={`mt-1 text-[13px] leading-5 ${surface.ink}`}>
+                      <span className="font-bold">Why now: </span>{action.reason}
+                    </p>
+                    {action.basis && (
+                      <details className="mt-1.5">
+                        <summary className="cursor-pointer text-xs font-semibold text-tint-neutral-ink hover:text-ink">What this is based on</summary>
+                        <p className="mt-1 text-xs leading-5 text-tint-neutral-ink">{action.basis}</p>
+                      </details>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between gap-4 sm:shrink-0 sm:justify-end">
+                    <div className="min-w-0 text-left sm:max-w-[190px] sm:text-right">
+                      {/* "650,000,000 VND · 25,000 USD": the deal's own money
+                          reads as the figure, and its reporting-currency
+                          equivalent sits under it rather than wrapping mid-dot. */}
+                      {action.moneyLabel && (() => {
+                        const [own, ...converted] = action.moneyLabel.split(' · ');
+                        return (
+                          <>
+                            <span className="block whitespace-nowrap font-display text-[17px] font-extrabold leading-tight tracking-[-0.02em] text-ink">
+                              {own}
+                            </span>
+                            {converted.length > 0 && (
+                              <span className="block font-mono text-[11px] font-semibold text-tint-neutral-ink">{converted.join(' · ')}</span>
+                            )}
+                          </>
+                        );
+                      })()}
+                      <span className={`mt-0.5 block text-[11.5px] ${surface.ink}`}>
+                        {action.dueDate ? `Due ${action.dueDateLabel}` : action.dueDateLabel}
+                      </span>
+                    </div>
+                    <Link
+                      to={action.href}
+                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-[18px] py-2.5 font-display text-[13px] font-semibold transition hover:-translate-y-px ${
+                        index === 0 ? moveButtonClass[tone].solid : moveButtonClass[tone].ghost
+                      }`}
+                    >
+                      Open <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
                 </div>
-                <p className="mt-3 text-xs font-bold uppercase tracking-wide text-gray-400">{action.accountName} / {action.opportunityName}</p>
-                <h3 className="mt-1 text-lg font-bold leading-tight text-navy">{action.title}</h3>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Badge label={`Due: ${action.dueDateLabel}`} tone={action.urgency === 'Critical' ? 'red' : 'blue'} />
-                  {action.moneyLabel && <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-bold text-gray-700 ring-1 ring-gray-200">{action.moneyLabel}</span>}
-                </div>
-                {/* Why now, in the open. The move is only checkable if the
-                    reason it is ranked first is on the same card as the rank. */}
-                <p className="mt-3 border-t border-gray-100 pt-3 text-sm leading-6 text-gray-600">
-                  <span className="font-bold text-navy">Why now: </span>{action.reason}
-                </p>
-                {action.basis && (
-                  <details className="mt-2">
-                    <summary className="cursor-pointer text-xs font-semibold text-brand-blue">What this is based on</summary>
-                    <p className="mt-1 text-xs leading-5 text-gray-500">{action.basis}</p>
-                  </details>
-                )}
-              </div>
-              <Link to={action.href} className="mt-4 inline-flex w-fit items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90">Open <ArrowRight className="h-4 w-4" /></Link>
-            </article>
-          ))}
-        </div>
+              </li>
+            );
+          })}
+        </ol>
       )}
-    </section>
-  );
-}
-
-/**
- * A quiet label over a section of Today.
- *
- * It used to be a numbered step marker - a filled navy disc, "1", a rule across
- * the page - which made three sections look like a three-step wizard the seller
- * had to work through in order. They are not steps; they are the state, the
- * decision and the risk, and a reader takes them in whichever order their
- * morning demands. So the numeral is gone and the label is typography: it names
- * the section and then gets out of the way of it.
- *
- * Deliberately no rule and no background. The section beneath carries the
- * weight, and a divider competing with it is how every band on a page ends up
- * looking equally important.
- */
-function TodaySectionLabel({ label, hint }: { label: string; hint: string }) {
-  return (
-    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 pt-2">
-      <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-gray-400">{label}</h2>
-      <p className="text-xs font-medium text-gray-400">{hint}</p>
-    </div>
+    </Panel>
   );
 }
 
@@ -1349,17 +1527,17 @@ function ProactiveNudgesPanel({
   onOpenDeal?: (opportunityId: string) => void;
 }) {
   return (
-    <section className="rounded-xl border border-indigo-100 bg-white p-5 shadow-sm">
+    <Panel aria-label="Watch-list" className="animate-rise px-5 py-5 sm:px-6 sm:py-[22px]" style={delay(380)}>
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Proactive Nudges</p>
-          <h2 className="mt-1 text-xl font-bold text-navy">The few things that could embarrass you in review.</h2>
+          <p className="font-display text-[11px] font-bold uppercase tracking-[0.22em] text-brand-blue-dark">Proactive Nudges</p>
+          <h2 className="mt-1 font-display text-[19px] font-bold tracking-[-0.015em] text-ink">The few things that could embarrass you in review.</h2>
         </div>
-        <span className="text-xs font-semibold text-gray-400">Capped at five · never changes CRM data</span>
+        <span className="text-xs font-semibold text-muted">Capped at five · never changes CRM data</span>
       </div>
-      {message && <p className="mt-3 rounded-lg bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-800">{message}</p>}
+      {message && <p className="mt-3 rounded-xl bg-tint-blue-bg px-3 py-2 text-sm font-semibold text-tint-blue-ink">{message}</p>}
       {center.todayNudges.length === 0 ? (
-        <p className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm font-semibold text-gray-600">
+        <p className="mt-4 rounded-2xl bg-tint-green-bg px-4 py-4 text-sm font-semibold text-tint-green-ink">
           No active proactive nudge right now. Capture updates and Pipeline Defense will refresh the signal.
         </p>
       ) : (
@@ -1373,11 +1551,11 @@ function ProactiveNudgesPanel({
            underneath; every action stays exactly where it was. */
         <div className="mt-4 grid gap-3 xl:grid-cols-2">
           {groupNudgesByAccount(center.todayNudges).map((group) => (
-            <article key={group.key} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <article key={group.key} className="rounded-2xl bg-canvas p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <h3 className="text-base font-bold text-navy">{group.accountName}</h3>
-                  <p className="mt-0.5 text-xs font-semibold text-gray-500">
+                  <h3 className="font-display text-base font-bold text-ink">{group.accountName}</h3>
+                  <p className="mt-0.5 text-xs font-semibold text-muted">
                     {group.nudges.length === 1 ? '1 thing to answer' : `${group.nudges.length} things to answer`}
                   </p>
                 </div>
@@ -1385,7 +1563,7 @@ function ProactiveNudgesPanel({
                   <button
                     type="button"
                     onClick={() => onOpenDeal(group.opportunityId as string)}
-                    className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-brand-blue hover:border-brand-blue/40"
+                    className="rounded-full border border-line bg-white px-3 py-1.5 font-display text-xs font-semibold text-brand-blue-dark transition hover:-translate-y-px"
                   >
                     Open the deal
                   </button>
@@ -1395,31 +1573,31 @@ function ProactiveNudgesPanel({
               {/* Divided rows, not nested cards. A card inside a card pays for
                   the same border and padding twice and made the grouped panel
                   taller than the ungrouped one it replaced. */}
-              <div className="mt-3 flex flex-col divide-y divide-gray-200">
+              <div className="mt-3 flex flex-col divide-y divide-line">
                 {group.nudges.map((nudge) => (
                   <div key={nudge.id} className="py-3 first:pt-0 last:pb-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <NudgeUrgencyBadge urgency={nudge.urgency} />
-                      <Badge label={nudge.source} tone={nudge.source === 'outcome-learning' ? 'purple' : 'blue'} />
-                      <span className="ml-auto text-xs font-bold text-gray-500">{formatNudgeDueDate(nudge)}</span>
+                      <MicroPill tone={nudge.source === 'outcome-learning' ? 'violet' : 'blue'}>{nudge.source}</MicroPill>
+                      <span className="ml-auto text-xs font-semibold text-muted">{formatNudgeDueDate(nudge)}</span>
                     </div>
                     {/* An alarm's title is a door: it lands on the exact record
                         that raised it, never on a page top. */}
                     {nudgeEntityHref(nudge) ? (
                       <Link
                         to={nudgeEntityHref(nudge)}
-                        className="mt-2 block text-sm font-bold text-navy underline-offset-2 hover:text-brand-blue hover:underline"
+                        className="mt-2 block text-sm font-bold text-ink underline-offset-2 hover:text-brand-blue-dark hover:underline"
                       >
                         {nudge.title}
                       </Link>
                     ) : (
-                      <p className="mt-2 text-sm font-bold text-navy">{nudge.title}</p>
+                      <p className="mt-2 text-sm font-bold text-ink">{nudge.title}</p>
                     )}
                     {/* Only where it adds something: the account is the card's
                         heading, so repeating it per row is the noise this
                         grouping removed. */}
                     {nudge.opportunityName && (
-                      <p className="mt-0.5 text-xs font-bold uppercase tracking-wide text-gray-400">{nudge.opportunityName}</p>
+                      <p className="mt-0.5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-muted">{nudge.opportunityName}</p>
                     )}
                     {/* Some pipeline-defense nudges carry a whole review answer
                         as their reason; the row points at the risk, the full
@@ -1428,33 +1606,33 @@ function ProactiveNudgesPanel({
                         what to do about it. On a watch-list the second is the
                         one you act on, so the reason is a hover away and the
                         recommendation is the line that reads. */}
-                    <p className="mt-1 line-clamp-1 text-xs leading-5 text-gray-500" title={nudge.reason}>{nudge.reason}</p>
-                    <p className="mt-1 text-sm font-semibold text-navy">
+                    <p className="mt-1 line-clamp-1 text-xs leading-5 text-muted" title={nudge.reason}>{nudge.reason}</p>
+                    <p className="mt-1 text-sm font-semibold text-ink">
                       {nudge.recommendedAction}
                       {formatNudgeMoney(nudge) && (
-                        <span className="ml-2 text-xs font-bold text-gray-500">{formatNudgeMoney(nudge)}</span>
+                        <span className="ml-2 font-mono text-xs font-bold text-tint-neutral-ink">{formatNudgeMoney(nudge)}</span>
                       )}
                     </p>
                     <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
                       {nudge.entityType === 'opportunity' && (
-                        <button type="button" onClick={() => onDraftFollowUp(nudge)} className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">
+                        <button type="button" onClick={() => onDraftFollowUp(nudge)} className="rounded-full bg-ink px-3.5 py-1.5 font-display text-xs font-semibold text-white transition hover:-translate-y-px">
                           Draft follow-up
                         </button>
                       )}
-                      <button type="button" onClick={() => onMarkDone(nudge)} className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white">
+                      <button type="button" onClick={() => onMarkDone(nudge)} className="rounded-full bg-tint-green-solid px-3.5 py-1.5 font-display text-xs font-semibold text-white transition hover:-translate-y-px">
                         Mark done
                       </button>
                       {/* py-1 is the whole fix: these read as quiet text links and
                           were 16px tall, which is a miss on a thumb. They keep the
                           quiet look and become a 24px target, the WCAG 2.5.8 floor. */}
-                      <span className="flex items-center gap-x-3 gap-y-1 text-xs font-semibold text-gray-500">
-                        <button type="button" onClick={() => onDismiss(nudge)} className="py-1 underline-offset-2 hover:text-gray-800 hover:underline">
+                      <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-muted">
+                        <button type="button" onClick={() => onDismiss(nudge)} className="py-1 underline-offset-2 hover:text-ink hover:underline">
                           Dismiss
                         </button>
-                        <button type="button" onClick={() => onSnoozeTomorrow(nudge)} className="py-1 underline-offset-2 hover:text-indigo-700 hover:underline">
+                        <button type="button" onClick={() => onSnoozeTomorrow(nudge)} className="py-1 underline-offset-2 hover:text-ink hover:underline">
                           Snooze tomorrow
                         </button>
-                        <button type="button" onClick={() => onSnoozeNextWeek(nudge)} className="py-1 underline-offset-2 hover:text-indigo-700 hover:underline">
+                        <button type="button" onClick={() => onSnoozeNextWeek(nudge)} className="py-1 underline-offset-2 hover:text-ink hover:underline">
                           Snooze next week
                         </button>
                       </span>
@@ -1468,11 +1646,11 @@ function ProactiveNudgesPanel({
       )}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         {center.hiddenImportedAccountCount > 0 ? (
-          <p className="text-xs font-semibold text-gray-500">
+          <p className="text-xs font-semibold text-muted">
             {formatCount(center.hiddenImportedAccountCount)} imported accounts are still searchable but do not create urgent nudges.
           </p>
         ) : <span />}
-        <span className="flex items-center gap-3 text-xs font-semibold text-gray-400">
+        <span className="flex flex-wrap items-center gap-3 text-xs font-semibold text-muted">
           {/* "Local nudge state" is what the code calls it. What the reader is
               deciding is whether the ones they waved away should come back. */}
           <button type="button" onClick={onClearDismissed} className="underline-offset-2 hover:text-gray-700 hover:underline">
@@ -1483,14 +1661,14 @@ function ProactiveNudgesPanel({
           </button>
         </span>
       </div>
-    </section>
+    </Panel>
   );
 }
 
 function NudgeUrgencyBadge({ urgency }: { urgency: NudgeRecord['urgency'] }) {
   const label = urgency.charAt(0).toUpperCase() + urgency.slice(1);
-  const tone = urgency === 'critical' ? 'red' : urgency === 'high' ? 'amber' : urgency === 'medium' ? 'blue' : 'gray';
-  return <Badge label={label} tone={tone} />;
+  const tone: DaylightTone = urgency === 'critical' ? 'red' : urgency === 'high' ? 'amber' : urgency === 'medium' ? 'blue' : 'neutral';
+  return <MicroPill tone={tone} solid={urgency === 'critical'}>{label}</MicroPill>;
 }
 
 function TodayPipelineReadiness({ center }: { center: ReturnType<typeof buildUnifiedTodayCommandCenter> }) {
@@ -1566,24 +1744,24 @@ function TodayCaptureInbox({ items }: { items: ReturnType<typeof buildUnifiedTod
  */
 function TodayCommandEmptyState({ onOpenDemoSandbox }: { onOpenDemoSandbox: () => void }) {
   return (
-    <section className="rounded-xl border border-dashed border-blue-200 bg-white p-6 shadow-sm">
-      <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Start here</p>
-      <h2 className="mt-2 text-2xl font-black text-navy">Capture one real customer interaction.</h2>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
+    <section className="animate-rise rounded-panel bg-white p-6 shadow-panel sm:p-7">
+      <p className="font-display text-[11px] font-bold uppercase tracking-[0.22em] text-brand-blue-dark">Start here</p>
+      <h2 className="mt-2 font-display text-2xl font-extrabold tracking-[-0.02em] text-ink">Capture one real customer interaction.</h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-tint-neutral-ink">
         Paste a note, an email thread, or type what happened. That one capture starts the loop below. There is nothing to
         configure first.
       </p>
-      <ol className="mt-4 max-w-2xl space-y-1.5 text-sm leading-6 text-gray-600">
-        <li><span className="font-bold text-navy">1.</span> Capture a customer update - a note or a pasted email.</li>
-        <li><span className="font-bold text-navy">2.</span> Memoire structures it into account, deal, next commitment, and date.</li>
-        <li><span className="font-bold text-navy">3.</span> When anything goes quiet, Today tells you and drafts the follow-up.</li>
+      <ol className="mt-4 max-w-2xl space-y-1.5 text-sm leading-6 text-tint-neutral-ink">
+        <li><span className="font-bold text-ink">1.</span> Capture a customer update - a note or a pasted email.</li>
+        <li><span className="font-bold text-ink">2.</span> Memoire structures it into account, deal, next commitment, and date.</li>
+        <li><span className="font-bold text-ink">3.</span> When anything goes quiet, Today tells you and drafts the follow-up.</li>
       </ol>
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <Link to="/app/capture" className="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white">Capture your first activity</Link>
-        <button type="button" onClick={onOpenDemoSandbox} className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
+        <Link to="/app/capture" className="inline-flex items-center rounded-full bg-brand-blue px-5 py-2.5 font-display text-sm font-semibold text-white shadow-btn-blue transition hover:-translate-y-px">Capture your first activity</Link>
+        <button type="button" onClick={onOpenDemoSandbox} className={ghostPillClass}>
           See it working with demo data
         </button>
-        <Link to="/app/opportunities?import=csv" className="text-sm font-semibold text-gray-500 underline-offset-2 hover:underline">
+        <Link to="/app/opportunities?import=csv" className="text-sm font-semibold text-muted underline-offset-2 hover:text-ink hover:underline">
           Have a pipeline already? Import a CSV
         </Link>
       </div>
@@ -1598,13 +1776,13 @@ function TodayCommandEmptyState({ onOpenDemoSandbox }: { onOpenDemoSandbox: () =
  */
 function FirstWeekPathStrip({ path, onDismiss }: { path: FirstWeekPath; onDismiss: () => void }) {
   return (
-    <section aria-label="First week path" className="rounded-xl border border-brand-blue/20 bg-blue-50/50 p-4 shadow-sm">
+    <section aria-label="First week path" className="animate-rise rounded-panel bg-white p-5 shadow-panel">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Your first week</p>
-          <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-brand-blue ring-1 ring-blue-100">{path.done}/{path.total} done</span>
+          <p className="font-display text-[11px] font-bold uppercase tracking-[0.22em] text-brand-blue-dark">Your first week</p>
+          <span className="rounded-full bg-tint-green-pill px-2.5 py-1 font-display text-xs font-bold text-tint-green-solid">{path.done}/{path.total} done</span>
         </div>
-        <button type="button" onClick={onDismiss} className="min-h-[24px] self-start text-xs font-semibold text-gray-400 underline-offset-2 hover:underline sm:self-auto">
+        <button type="button" onClick={onDismiss} className="min-h-[24px] self-start text-xs font-semibold text-muted underline-offset-2 hover:text-ink hover:underline sm:self-auto">
           Dismiss
         </button>
       </div>
@@ -1614,22 +1792,22 @@ function FirstWeekPathStrip({ path, onDismiss }: { path: FirstWeekPath; onDismis
           return (
             <div
               key={step.id}
-              className={`flex-1 rounded-lg border p-3 ${
-                step.done ? 'border-emerald-100 bg-emerald-50/60' : isNext ? 'border-brand-blue/40 bg-white' : 'border-gray-200 bg-white/70'
+              className={`flex-1 rounded-2xl p-3.5 ${
+                step.done ? 'bg-tint-green-bg' : isNext ? 'bg-tint-blue-bg' : 'bg-canvas'
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-black ${
-                  step.done ? 'bg-emerald-600 text-white' : isNext ? 'bg-brand-blue text-white' : 'bg-gray-200 text-gray-600'
+                <span className={`inline-flex h-5 w-5 items-center justify-center rounded-md text-[11px] font-black ${
+                  step.done ? 'bg-tint-green-solid text-white' : isNext ? 'bg-brand-blue text-white' : 'bg-chip text-tint-neutral-ink'
                 }`}>
                   {step.done ? '✓' : index + 1}
                 </span>
-                <p className="text-sm font-bold text-navy">{step.label}</p>
+                <p className={`text-sm font-bold ${step.done ? 'text-tint-green-ink' : 'text-ink'}`}>{step.label}</p>
               </div>
               {!step.done && isNext && (
                 <>
-                  <p className="mt-2 text-xs leading-5 text-gray-600">{step.hint}</p>
-                  <Link to={step.href} className="mt-3 inline-flex rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white hover:bg-navy/90">
+                  <p className="mt-2 text-xs leading-5 text-tint-neutral-ink">{step.hint}</p>
+                  <Link to={step.href} className={`mt-3 ${darkPillClass} px-3.5 py-1.5 text-xs`}>
                     {step.cta}
                   </Link>
                 </>

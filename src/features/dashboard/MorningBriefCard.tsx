@@ -11,20 +11,20 @@ import type { MorningBrief } from '../../utils/morningBrief';
  * as busy: the eye has to decide which one is the page's actual first sentence,
  * and there is no right answer when both are dressed as one.
  *
- * So the cards keep the chrome, because they are the things you click, and the
- * brief becomes typography: a sentence, the context under it, and the questions
- * as plain links. Nothing was removed except the decoration.
+ * Daylight takes that to its end: the brief is not a card at all but the
+ * sentence under the greeting, with the headline in ink and the context after
+ * it in the quieter grey. The questions stay as plain chips beneath.
  */
 export function MorningBriefCard({ brief }: { brief: MorningBrief }) {
   return (
-    <section aria-label="Morning brief" className="px-1">
-      <p className="text-sm font-semibold leading-6 text-navy">{brief.headline}</p>
-      {brief.focus.length > 0 && (
-        <p className="mt-0.5 text-xs leading-5 text-gray-500">{brief.focus.join(' ')}</p>
-      )}
+    <div aria-label="Morning brief" className="max-w-[680px]">
+      <p className="text-[15px] leading-[1.55] text-tint-neutral-ink [text-wrap:pretty] sm:text-[15.5px]">
+        <strong className="font-semibold text-ink">{brief.headline}</strong>
+        {brief.focus.length > 0 && <> {brief.focus.join(' ')}</>}
+      </p>
       {brief.questions.length > 0 && (
-        <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs leading-5">
-          <span className="font-semibold text-gray-400">Ask:</span>
+        <p className="mt-2.5 flex flex-wrap items-center gap-2 text-xs leading-5">
+          <span className="font-semibold text-muted">Ask:</span>
           {/* Two, not three. The third was always the generic "what should I do
               first today?", which is the question Today is already answering
               three sections down. */}
@@ -32,13 +32,13 @@ export function MorningBriefCard({ brief }: { brief: MorningBrief }) {
             <Link
               key={question.label}
               to={question.href}
-              className="font-semibold text-brand-blue hover:underline"
+              className="rounded-full bg-chip px-3 py-1 font-semibold text-tint-neutral-ink transition hover:bg-line-strong hover:text-ink"
             >
               {question.label}
             </Link>
           ))}
         </p>
       )}
-    </section>
+    </div>
   );
 }

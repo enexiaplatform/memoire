@@ -335,8 +335,10 @@ function buildOpportunityNudges(opportunities: CrmLiteOpportunity[], today: stri
   });
 }
 
-const SILENCE_WARNING_DAYS = 7;
-const SILENCE_CRITICAL_DAYS = 14;
+// Exported so Today's "Going silent" figure counts with the watch-list's own
+// thresholds rather than a second pair that could drift from them.
+export const SILENCE_WARNING_DAYS = 7;
+export const SILENCE_CRITICAL_DAYS = 14;
 
 export type OpportunitySilenceState = {
   status: 'silent' | 'at-risk' | 'quiet-ok' | 'planned' | 'inactive';
