@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Settings } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { getUserDisplayName, getUserInitials } from '../../utils/userDisplay';
 import { useDemoWorkspaceMode } from '../../hooks/useDemoWorkspaceMode';
@@ -16,7 +17,13 @@ import { useDemoWorkspaceMode } from '../../hooks/useDemoWorkspaceMode';
  * button sat on every screen, saying who you are to the only person who already
  * knows - and the name was frequently an email address, truncated.
  */
-export function AccountMenu() {
+export function AccountMenu({ variant = 'bar' }: {
+  /**
+   * `rail` is the Daylight placement: a quiet gear at the end of the user row,
+   * opening upward, because the name and avatar are already drawn beside it.
+   */
+  variant?: 'bar' | 'rail';
+} = {}) {
   const { user, profile, signOut } = useAuthContext();
   const navigate = useNavigate();
   const demoActive = useDemoWorkspaceMode();
@@ -57,25 +64,45 @@ export function AccountMenu() {
     { to: '/app/settings?tab=export', label: 'Data & privacy' },
   ];
 
+  const inRail = variant === 'rail';
+
   return (
     <div ref={containerRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={`Account menu for ${displayName}`}
-        title={displayName}
-        className="brand-gradient flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-brand-blue"
-      >
-        {initials}
-      </button>
+      {inRail ? (
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label={`Account and settings for ${displayName}`}
+          title="Account and settings"
+          className={`flex h-[30px] w-[30px] items-center justify-center rounded-[9px] transition-colors ${
+            open ? 'bg-white/12 text-white' : 'text-white/55 hover:bg-white/[0.07] hover:text-white'
+          }`}
+        >
+          <Settings className="h-4 w-4" />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label={`Account menu for ${displayName}`}
+          title={displayName}
+          className="brand-gradient flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-brand-blue"
+        >
+          {initials}
+        </button>
+      )}
 
       {open && (
         <div
           role="menu"
           aria-label="Account"
-          className="absolute right-0 top-10 z-50 w-60 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
+          className={`absolute z-50 w-56 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg ${
+            inRail ? 'bottom-10 left-0' : 'right-0 top-10'
+          }`}
         >
           <div className="border-b border-gray-100 px-3 py-2">
             <p className="truncate text-sm font-semibold text-navy" title={displayName}>{displayName}</p>
@@ -90,7 +117,9 @@ export function AccountMenu() {
               to={item.to}
               role="menuitem"
               onClick={() => setOpen(false)}
-              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              // The rail paints focus rings white so they show on navy; this
+              // menu is white, so it takes the brand ring back.
+              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 focus-visible:outline-brand-blue"
             >
               {item.label}
             </Link>
@@ -103,7 +132,7 @@ export function AccountMenu() {
                 type="button"
                 role="menuitem"
                 onClick={handleSignOut}
-                className="block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                className="block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 focus-visible:outline-brand-blue"
               >
                 Sign out
               </button>

@@ -15,6 +15,7 @@ import { hydrateWorkspacePreferences } from '../../services/workspacePreferences
 import { useAuth } from '../../hooks/useAuth';
 import { PageContainer } from './PageFrame';
 import { RouteErrorBoundary } from '../common/RouteErrorBoundary';
+import { TopBarProvider } from './TopBarSlot';
 
 export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -88,7 +89,10 @@ export function AppShell() {
   }, [pathname]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    // The provider spans the bar and the page so a page can put its own status
+    // and actions into the bar - see TopBarSlot.
+    <TopBarProvider>
+    <div className="min-h-screen bg-canvas flex">
       {/* One tag for every `/app/*` route. The public pages became indexable on
           2026-08-11; the workspace did not, and it never should - these pages
           render one person's accounts, deals and amounts. */}
@@ -141,6 +145,7 @@ export function AppShell() {
           asked for. It renders nothing on a workspace that is past it. */}
       <GettingStartedCoach />
     </div>
+    </TopBarProvider>
   );
 }
 

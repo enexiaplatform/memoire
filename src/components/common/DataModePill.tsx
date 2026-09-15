@@ -9,6 +9,13 @@ type DataModePillProps = Partial<DataModeInput> & {
   modeInfo?: DataModeInfo;
   compact?: boolean;
   showDescription?: boolean;
+  /**
+   * Render nothing while the answer is "fine". For the top bar, on a page that
+   * has its own status to show: a green chip saying all is well competes with
+   * the one thing the page needs you to see. A warning or an error is never
+   * quiet - see the note in TopNav.
+   */
+  quietWhenSynced?: boolean;
 };
 
 const toneClasses: Record<DataModeInfo['severity'], string> = {
@@ -16,6 +23,14 @@ const toneClasses: Record<DataModeInfo['severity'], string> = {
   success: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   warning: 'border-amber-200 bg-amber-50 text-amber-700',
   error: 'border-red-200 bg-red-50 text-red-700',
+};
+
+/** The Daylight chip: no border, a tinted ground, a dot when all is well. */
+const compactToneClasses: Record<DataModeInfo['severity'], string> = {
+  neutral: 'bg-chip text-tint-neutral-ink',
+  success: 'bg-[#E8F8F0] text-tint-green-solid',
+  warning: 'bg-tint-amber-pill text-tint-amber-solid',
+  error: 'bg-tint-red-bg text-tint-red-solid',
 };
 
 /**
@@ -35,6 +50,7 @@ export function DataModePill({
   modeInfo,
   compact = false,
   showDescription = false,
+  quietWhenSynced = false,
   ...input
 }: DataModePillProps) {
   // Read rather than required: this component appears on surfaces that render
@@ -53,9 +69,32 @@ export function DataModePill({
     isLoading: input.isLoading ?? (syncStatus.state === 'checking' || Boolean(auth?.loading)),
   });
 
+  if (quietWhenSynced && (info.severity === 'success' || info.severity === 'neutral')) return null;
+
+  if (compact) {
+    return (
+      <div
+        className={`inline-flex min-w-0 shrink-0 items-center gap-[7px] rounded-full py-1.5 pl-2.5 pr-2.5 text-[11.5px] font-semibold sm:pr-3 ${compactToneClasses[info.severity]}`}
+        title={`${info.description} ${info.privacyNote}`}
+      >
+        {info.mode === 'loading' ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+        ) : info.mode === 'synced' ? (
+          <span aria-hidden="true" className="mx-0.5 h-1.5 w-1.5 rounded-full bg-[#10B981] animate-pulse-dot" />
+        ) : info.mode === 'sync-error' ? (
+          <CloudOff className="h-3.5 w-3.5" aria-hidden="true" />
+        ) : (
+          <DatabaseZap className="h-3.5 w-3.5" aria-hidden="true" />
+        )}
+        {/* Read on every width; drawn only where there is room for it. */}
+        <span className="sr-only whitespace-nowrap sm:not-sr-only">{info.label}</span>
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`inline-flex ${compact ? 'items-center' : 'items-start'} gap-2 rounded-lg border px-3 py-2 text-xs ${toneClasses[info.severity]}`}
+      className={`inline-flex items-start gap-2 rounded-lg border px-3 py-2 text-xs ${toneClasses[info.severity]}`}
       title={`${info.description} ${info.privacyNote}`}
     >
       <span className="mt-0.5">
@@ -71,7 +110,7 @@ export function DataModePill({
       </span>
       <span className="min-w-0">
         <span className="block font-bold">{info.label}</span>
-        {showDescription && !compact ? (
+        {showDescription ? (
           <>
             <span className="mt-1 block leading-5">{info.description}</span>
             <span className="mt-1 block leading-5 opacity-80">{info.privacyNote}</span>

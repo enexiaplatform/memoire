@@ -43,6 +43,12 @@ export type PageHeaderProps = {
   /** What this page answers, in the fewest words that survive a 5-second read. */
   title: string;
   /**
+   * The clause of the title coloured by the page's worst status - "31 people,
+   * *7 unknown roles*". Daylight headlines state the book and then the problem
+   * in it, and the colour is what makes the second half read as the point.
+   */
+  titleAccent?: { text: string; tone: 'red' | 'amber' | 'green' };
+  /**
    * State, not description: "128 shown of 340", "synced 2 minutes ago". Sits
    * inline with the title on a wide screen and wraps under it on a phone, so a
    * list page keeps its rows within the first screen.
@@ -74,6 +80,7 @@ export type PageHeaderProps = {
 export function PageHeader({
   eyebrow,
   title,
+  titleAccent,
   meta,
   description,
   actions,
@@ -82,27 +89,41 @@ export function PageHeader({
   className = '',
   documentTitle,
 }: PageHeaderProps) {
-  useDocumentTitle(documentTitle || title);
+  useDocumentTitle(documentTitle || (titleAccent ? `${title}${titleAccent.text}` : title));
 
+  const accentColour = titleAccent
+    ? { red: 'text-tint-red-solid', amber: 'text-tint-amber-solid', green: 'text-tint-green-solid' }[titleAccent.tone]
+    : '';
+
+  /*
+   * Daylight (2026-09-14). The eyebrow went from a grey filing label to the
+   * brand blue at 0.22em, and the title from 24px to a display headline - the
+   * page now opens on a statement rather than on the name of the tab you
+   * clicked. The anatomy above is unchanged, so every page that describes its
+   * header rather than drawing it picked this up without being edited.
+   */
   return (
-    <header className={`flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6 ${className}`}>
+    <header className={`flex animate-rise flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-6 ${className}`}>
       <div className="min-w-0">
         {eyebrow && (
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">{eyebrow}</p>
+          <p className="font-display text-[11px] font-bold uppercase tracking-[0.22em] text-brand-blue">{eyebrow}</p>
         )}
         {/* `items-baseline` rather than `items-center`: the meta is type sitting
-            next to type, and centring it against a 24px title floats it. */}
-        <div className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 ${eyebrow ? 'mt-1' : ''}`}>
+            next to type, and centring it against a display title floats it. */}
+        <div className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 ${eyebrow ? 'mt-[7px]' : ''}`}>
           {icon && (
             /* Nudged onto the title's baseline - an icon centred in a baseline
                row rides high against the cap height. */
             <span className="relative top-0.5 shrink-0 text-brand-blue">{icon}</span>
           )}
-          <h1 className="text-2xl font-bold tracking-tight text-navy">{title}</h1>
+          <h1 className="font-display text-[26px] font-[750] leading-[1.1] tracking-[-0.03em] text-ink sm:text-[30px] lg:text-[34px]">
+            {title}
+            {titleAccent && <span className={accentColour}>{titleAccent.text}</span>}
+          </h1>
           {meta && <p className="text-sm text-gray-500">{meta}</p>}
         </div>
         {description && (
-          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-gray-600">{description}</p>
+          <p className="mt-2 max-w-2xl text-[13.5px] leading-6 text-tint-neutral-ink [text-wrap:pretty]">{description}</p>
         )}
         {tabs && <div className="mt-3">{tabs}</div>}
       </div>
@@ -110,7 +131,7 @@ export function PageHeader({
         /* `shrink-0` so a long title never squeezes the primary action into a
            two-line stack of half-words, and `lg:justify-end` so the actions sit
            against the right edge on a wide screen instead of floating mid-row. */
-        <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:justify-end">{actions}</div>
+        <div className="flex flex-wrap items-center gap-2.5 lg:shrink-0 lg:justify-end">{actions}</div>
       )}
     </header>
   );
@@ -151,7 +172,7 @@ export function PageContainer({
 
   return (
     <div
-      className={`flex w-full flex-col gap-5 px-4 py-5 sm:px-5 lg:px-6 ${widths[width]} ${className}`}
+      className={`flex w-full flex-col gap-[18px] px-4 py-5 sm:px-6 lg:px-8 lg:py-[26px] ${widths[width]} ${className}`}
       onClickCapture={onClickCapture}
     >
       {children}

@@ -349,6 +349,11 @@ input[type='radio'] {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    /* The Daylight entry choreography staggers with delays and fills
+       `both`, so an element waits invisible until its turn. Shortening only
+       the duration would still hide the last card for half a second on a
+       setting whose whole point is that nothing moves or waits. */
+    animation-delay: 0s !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
