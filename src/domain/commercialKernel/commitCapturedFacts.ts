@@ -139,7 +139,7 @@ async function commitOne(fact: CapturedFact, context: CommitContext): Promise<st
         notes: `From capture: ${fact.evidence}`,
         tags: ['from-capture', 'role-needs-confirmation'],
         lastInteractionDate: context.captureDate,
-      }, context.userId);
+      }, context.userId, { source: context.isSample ? 'demo' : 'user', isSample: context.isSample });
       return result.stakeholder.id;
     }
 

@@ -159,12 +159,20 @@ const anchor = new Date(2026, 6, 22); // Wed of the Mon 2026-07-20 week
   // derived branch - two copies of the one rule that keeps the board from
   // becoming a second source of truth for a deal.
   assert.match(toggle, /createPlanItemToggleRecord/, 'the board ticks through the shared plan toggle');
-  const strip = readFileSync(new URL('../src/features/dashboard/TodayCommitmentStrip.tsx', import.meta.url), 'utf8');
-  assert.match(strip, /createPlanItemToggleRecord/, "Today's plan strip ticks through the same shared toggle");
-  assert.doesNotMatch(
-    strip.slice(strip.indexOf('const toggleItem'), strip.indexOf('const openItem')),
-    /updateOpportunity|saveOpportunity|deleteOpportunity|updateSalesActivity/,
-    'ticking on Today must not mutate the deal or the touch it came from either',
+  // Finishing is recording (2026-09-15): an open box opens the record, and the
+  // line is marked done by the save - never before it. Today's plan strip, the
+  // other surface that used to tick these boxes, left Today on 2026-09-10 and
+  // was removed with the opt-in offer it carried.
+  assert.match(
+    toggle,
+    /if \(!item\.done\) \{\s*setRecordingItem\(item\)/,
+    'an open line opens its record instead of being marked done on the spot',
+  );
+  const recording = page.slice(page.indexOf('const recordCompletion'), page.indexOf('const carryCompletionStub'));
+  assert.ok(
+    recording.indexOf('await saveSalesActivity(') > 0
+      && recording.indexOf('createPlanItemToggleRecord(item, true') > recording.indexOf('await saveSalesActivity('),
+    'the line is marked done only after its activity is written',
   );
 
   const model = readFileSync(new URL('../src/utils/weeklyPlan.ts', import.meta.url), 'utf8');

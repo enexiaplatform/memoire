@@ -71,45 +71,39 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
   assert.ok(isOutOfOfficeChannel(log.activity.activityChannel));
 }
 
-// 5. Ticking a box records the same thing on both surfaces.
+// 5. Finishing a plan item records it, with the person it was with.
 //
-//    Until 2026-09-03 the Plan board wrote a completion mark and stopped, while
-//    Today's strip offered to write the work to Activity - so an operator who
-//    ran their week from Plan produced a full calendar and an empty ledger. Both
-//    call `buildPlanCompletionActivity` now, and a surface that stops calling it
-//    has either lost the offer or grown a second definition of the record.
+//    Until 2026-09-03 the Plan board wrote a completion mark and stopped; until
+//    2026-09-15 it offered, unchecked, to write the work to Activity, and the
+//    live ledger held five activities from a plan tick. Finishing a line now
+//    opens its record, and customer work is not written without a named person.
+//
+//    Matched with word boundaries rather than `includes`, because a substring
+//    check passes on anything that merely starts with the name.
 {
-  const surfaces = [
-    'src/features/plan/WeeklyPlanPage.tsx',
-    'src/features/dashboard/TodayCommitmentStrip.tsx',
-  ];
-  //
-  //    Matched with word boundaries rather than `includes`, because a substring
-  //    check passes on anything that merely starts with the name: renaming the
-  //    component to `LogToActivityBoxV2` would still contain `<LogToActivityBox`
-  //    and this contract would go on saying the offer was there.
-  surfaces.forEach((path) => {
-    const source = read(path);
-    assert.match(
-      source, /\bbuildPlanCompletionActivity\(/,
-      `${path} must build its completion touch with the shared writer`,
-    );
-    assert.match(
-      source, /<LogToActivityBox[\s/>]/,
-      `${path} must offer to log a ticked item to Activity`,
-    );
-    assert.match(
-      source, /\bawait saveSalesActivity\(/,
-      `${path} must actually write the touch it offered to write`,
-    );
-  });
-
-  // One definition of the record, not two that drift.
-  const strip = read('src/features/dashboard/TodayCommitmentStrip.tsx');
+  const board = read('src/features/plan/WeeklyPlanPage.tsx');
+  assert.match(board, /\bbuildPlanCompletionActivity\(/, 'the board must build its completion touch with the shared writer');
+  assert.match(board, /<RecordPlanActivityDrawer[\s/>]/, 'finishing a line must open its record');
+  assert.match(board, /\bawait saveSalesActivity\(/, 'the board must actually write the touch it records');
+  assert.match(board, /\bawait createStakeholder\(/, 'somebody new named on a record is filed as a stakeholder, not left as a name');
   assert.ok(
-    !/tags:\s*\['plan-completion'/.test(strip),
+    !/tags:\s*\['plan-completion'/.test(board),
     'the completion record is built in utils/planCompletionLog.ts, not inline on a surface',
   );
+
+  const customerItem = {
+    id: 'p2', kind: 'personal', date: '2026-09-02', tag: 'Frulact', label: 'Visit the plant',
+    done: false, href: '', overdue: false, workKind: 'customer', workBrand: '', workDomain: null, channel: 'On-site visit',
+  };
+  assert.equal(
+    buildPlanCompletionActivity({ item: customerItem, note: 'Walked line 2.', opportunities: [], activityDate: '2026-09-02' }),
+    null,
+    'a customer touch with nobody named is not written',
+  );
+  const log = buildPlanCompletionActivity({
+    item: customerItem, note: 'Walked line 2.', person: { name: 'Ana Sousa' }, opportunities: [], activityDate: '2026-09-02',
+  });
+  assert.equal(log.activity.stakeholderName, 'Ana Sousa', 'the person reaches the activity as its stakeholder');
 }
 
 // 6. The channel reaches the database. A field the UI collects and the store

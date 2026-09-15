@@ -26,7 +26,7 @@ import {
 } from '../../utils/supplierCommitments';
 import { buildPlanSuggestions, type PlanSuggestion } from '../../utils/planSuggestions';
 import { useCommercialThreads } from '../threads/useCommercialThreads';
-import { todayDateKey, formatSafeBusinessDate } from '../../utils/safeDate';
+import { todayDateKey, formatSafeBusinessDate, isMoreRecentBusinessDate } from '../../utils/safeDate';
 import { PlanSuggestionsPanel } from './PlanSuggestionsPanel';
 import { PlanTagAccountsPanel } from './PlanTagAccountsPanel';
 import { PlanPasteImportPanel } from './PlanPasteImportPanel';
@@ -80,15 +80,26 @@ import { getWeeklyCommitmentForWeek, loadWeeklyCommitmentsForWorkspace } from '.
 import { getCurrentPipelineReviewWeekId } from '../../utils/pipelineReviewHabit';
 import type { WeeklyCommitmentSnapshot } from '../../utils/weeklyCommitment';
 import { trackProductEvent } from '../../utils/productAnalytics';
-import { buildPlanCompletionActivity, planCompletionLogMessage } from '../../utils/planCompletionLog';
 import {
-  LogToActivityBox,
-  type LogToActivityDraft,
-  type LogToActivityState,
-} from '../../components/common/LogToActivityBox';
+  buildPlanCompletionActivity,
+  findPlanCompletionActivity,
+  planCompletionLogMessage,
+  planCompletionActivityDate,
+  planItemAccountName,
+  planItemOpportunity,
+} from '../../utils/planCompletionLog';
+import {
+  RecordPlanActivityDrawer,
+  type RecordPlanActivityValues,
+} from '../../components/common/RecordPlanActivityDrawer';
+import {
+  createStakeholder,
+  emptyStakeholderInput,
+  stakeholderToFormInput,
+  updateStakeholder,
+} from '../../services/stakeholderStore';
 import {
   ACTIVITY_CHANNELS,
-  normalizeActivityChannel,
   type ActivityChannel,
 } from '../../utils/activityChannel';
 import { SkeletonCard, SkeletonScreen } from '../../components/common/Skeleton';
@@ -181,15 +192,13 @@ export function WeeklyPlanPage({
   const [draftLink, setDraftLink] = useState<PlanLinkOption | null>(null);
   const [draftChannel, setDraftChannel] = useState<ActivityChannel | ''>('');
   /**
-   * The tick that is offering to become an activity, and how that write is
-   * going. Only one at a time: two open composers on one board would be two
-   * half-written notes, and the operator would lose whichever they did not
-   * finish. Ticking a second item replaces the first, which is what closing an
-   * unsaved offer means here - nothing was written, so nothing is lost.
+   * The line being recorded. Ticking an open item opens its record rather than
+   * marking it done: the line is done when what happened, and who it was with,
+   * has been written to Activity.
    */
-  const [logDraft, setLogDraft] = useState<LogToActivityDraft | null>(null);
-  const [logState, setLogState] = useState<LogToActivityState>('idle');
-  const [logMessage, setLogMessage] = useState('');
+  const [recordingItem, setRecordingItem] = useState<PlanItem | null>(null);
+  const [recordSaving, setRecordSaving] = useState(false);
+  const [recordError, setRecordError] = useState('');
   const [dragItem, setDragItem] = useState<PlanItem | null>(null);
   const [dragOverDate, setDragOverDate] = useState('');
   const [editingId, setEditingId] = useState('');
@@ -381,80 +390,115 @@ export function WeeklyPlanPage({
     draftLink ? [] : buildPlanLinkOptions({ draft, opportunities, accountNames: knownAccountNames, brands: knownBrands })
   ), [draft, draftLink, knownAccountNames, knownBrands, opportunities]);
 
-  const dismissLog = useCallback(() => {
-    setLogDraft(null);
-    setLogState('idle');
-    setLogMessage('');
+  const closeRecord = useCallback(() => {
+    setRecordingItem(null);
+    setRecordSaving(false);
+    setRecordError('');
   }, []);
 
   const toggleItem = useCallback((item: PlanItem) => {
-    const nextDone = !item.done;
-    const record = createPlanItemToggleRecord(item, nextDone, records, {
+    /*
+     * Finishing a line is recording it.
+     *
+     * Until 2026-09-03 a box ticked here saved a completion mark and stopped;
+     * after that it offered, unchecked, to write the work to Activity - and the
+     * live ledger held five activities from a plan tick in total. An operator
+     * who plans and works from Plan produced a full calendar and an empty
+     * Activity, which is the exact failure this product exists to prevent.
+     *
+     * So an open box opens the record, and the line is marked done by the save
+     * in `recordCompletion`. Unticking a finished line only withdraws the mark:
+     * the activity it produced is a record of something that happened, and it
+     * stays on Activity until the operator deletes it there.
+     */
+    if (!item.done) {
+      setRecordingItem(item);
+      setRecordError('');
+      return;
+    }
+    const record = createPlanItemToggleRecord(item, false, records, {
       source: sampleDataActive ? 'demo' : 'user',
       isSample: sampleDataActive,
     });
     if (!record) return;
     setRecords(savePlanItem(record));
-    // Fires for typed items too. It used to return early for them, so a week
-    // spent on the operator's own work counted as zero commitments kept - and
-    // Today's strip, ticking the identical box, always counted it.
-    trackProductEvent('commitment_completed');
-
-    /*
-     * The board writes to Activity now.
-     *
-     * Until 2026-09-03 a box ticked here saved a completion mark and stopped.
-     * Ticking the identical item on Today's strip offered to write down what
-     * happened, so the same day's work was in the ledger or missing from it
-     * depending on which page the operator was looking at - and this is the
-     * page whose entire job is the week. An operator who plans and works from
-     * Plan produced a full calendar and an empty Activity, which is the exact
-     * failure this product exists to prevent.
-     *
-     * Same offer, same record, same opt-in as Today. Unticking withdraws it
-     * rather than leaving an orphan form open under a box that is no longer
-     * ticked.
-     */
-    if (nextDone) {
-      setLogDraft({ item, note: '', enabled: false, channel: normalizeActivityChannel(item.channel) });
-      setLogState('idle');
-      setLogMessage('');
-    } else if (logDraft?.item.id === item.id) {
-      dismissLog();
+    if (findPlanCompletionActivity(item, activities)) {
+      setBoardMessage(`"${item.label}" is open again. The activity recorded for it stays on Activity - delete it there if it did not happen.`);
     }
-  }, [records, sampleDataActive, logDraft, dismissLog]);
+  }, [activities, records, sampleDataActive]);
 
-  const saveLog = useCallback(async () => {
-    if (!logDraft || logState === 'saving') return;
-    setLogState('saving');
-    setLogMessage('');
+  const recordCompletion = useCallback(async (values: RecordPlanActivityValues) => {
+    const item = recordingItem;
+    if (!item || recordSaving) return;
+    const workspaceTag = { source: sampleDataActive ? 'demo' as const : 'user' as const, isSample: sampleDataActive };
+    // The day the item sat on, or today when it was finished ahead of its day.
+    const activityDate = planCompletionActivityDate(item, todayDateKey());
+    const log = buildPlanCompletionActivity({
+      item,
+      note: values.note,
+      person: values.person,
+      opportunities,
+      activityDate,
+      channel: values.channel,
+    });
+    if (!log) { setRecordError('Write what happened, and who it was with, before saving.'); return; }
+
+    setRecordSaving(true);
+    setRecordError('');
     try {
-      const log = buildPlanCompletionActivity({
-        item: logDraft.item,
-        note: logDraft.note,
-        opportunities,
-        // The day the work was done, which is the day the item sat on - not
-        // today. A Tuesday visit ticked off on Friday is still a Tuesday visit,
-        // and stamping it Friday would move the touch three days and reset the
-        // customer's silence clock to the wrong date.
-        activityDate: logDraft.item.date,
-        channel: logDraft.channel,
-      });
-      if (!log) { setLogState('idle'); return; }
+      const accountName = planItemAccountName(item, opportunities);
+      const personName = log.activity.stakeholderName || '';
+      // The link to a stakeholder is real, not a name in a sentence: somebody
+      // new is filed under the customer, and somebody already on record has
+      // their last interaction moved to this day when it is newer.
+      if (personName && values.personIsNew) {
+        const deal = planItemOpportunity(item, opportunities);
+        const created = await createStakeholder({
+          ...emptyStakeholderInput,
+          accountName,
+          opportunityId: deal?.id || '',
+          opportunityName: deal?.opportunityName || '',
+          name: personName,
+          roleTitle: values.person?.roleTitle || '',
+          relationshipStrength: 'Developing',
+          notes: `Added when recording "${item.label}" on the plan.`,
+          tags: ['from-plan'],
+          lastInteractionDate: activityDate,
+        }, dataUserId, workspaceTag);
+        setStakeholders((current) => [created.stakeholder, ...current]);
+      } else if (personName) {
+        const existing = stakeholders.find((person) => (
+          normalizeEntityName(person.name) === normalizeEntityName(personName)
+          && accountKey(person.accountName) === accountKey(accountName)
+        ));
+        if (existing && isMoreRecentBusinessDate(activityDate, existing.lastInteractionDate)) {
+          const updated = await updateStakeholder(existing, { ...stakeholderToFormInput(existing), lastInteractionDate: activityDate }, dataUserId);
+          setStakeholders((current) => current.map((person) => (person.id === existing.id ? updated.stakeholder : person)));
+        }
+      }
 
       const result = await saveSalesActivity(log.activity, dataUserId, {
-        source: sampleDataActive ? 'demo' : 'user',
+        source: workspaceTag.source,
         isSample: sampleDataActive,
       });
-
-      setLogState('saved');
-      setLogMessage(result.warning || planCompletionLogMessage(log.accountName, log.activity.activityChannel));
       setActivities((current) => [result.record, ...current]);
+
+      if (!item.done) {
+        const record = createPlanItemToggleRecord(item, true, records, workspaceTag);
+        if (record) {
+          setRecords(savePlanItem(record));
+          // Fires for typed items too. It used to return early for them, so a
+          // week spent on the operator's own work counted as zero kept.
+          trackProductEvent('commitment_completed');
+        }
+      }
+      setBoardMessage(result.warning || planCompletionLogMessage(log.accountName, log.activity.activityChannel, personName));
+      closeRecord();
     } catch {
-      setLogState('idle');
-      setLogMessage('Could not log it. Your note is still here - try again.');
+      setRecordSaving(false);
+      setRecordError('Could not save it. What you wrote is still here - try again.');
     }
-  }, [dataUserId, logDraft, logState, opportunities, sampleDataActive]);
+  }, [closeRecord, dataUserId, opportunities, recordSaving, recordingItem, records, sampleDataActive, stakeholders]);
 
   /**
    * Rewrites the completion stub for a derived item whose date is changing, so
@@ -1052,10 +1096,13 @@ export function WeeklyPlanPage({
                   late: { ground: 'bg-tint-red-bg', text: 'font-semibold text-tint-red-ink', meta: 'text-tint-red-solid' },
                   open: { ground: 'bg-tint-neutral-bg', text: 'text-ink', meta: 'text-tint-neutral-ink' },
                 }[state];
+                // A finished line says whether it reached Activity, and with
+                // whom - the record is the point of finishing it.
+                const recorded = item.done ? findPlanCompletionActivity(item, activities) : undefined;
                 const meta = [
                   item.channel,
                   state === 'done'
-                    ? 'done'
+                    ? (recorded ? `done${recorded.stakeholderName ? ` · with ${recorded.stakeholderName}` : ' · recorded'}` : 'done · not recorded')
                     : state === 'late'
                       /* A carried promise says the day it was actually owed.
                          "Overdue" alone, on a card sitting under today's
@@ -1167,6 +1214,17 @@ export function WeeklyPlanPage({
                     {!isEditing && meta && (
                       <p className={`mt-1 text-[10px] font-bold uppercase tracking-[0.06em] ${chip.meta}`}>{meta}</p>
                     )}
+                    {/* Done before recording was part of finishing - or ticked
+                        on another device - so the record can still be written. */}
+                    {!isEditing && item.done && !recorded && (
+                      <button
+                        type="button"
+                        onClick={() => { setRecordingItem(item); setRecordError(''); }}
+                        className="mt-1 text-[11px] font-bold text-brand-blue-dark underline-offset-2 hover:underline"
+                      >
+                        Record what happened
+                      </button>
+                    )}
                   </div>
                   {/* The pencil opens the line in full - day, customer,
                       contact, wording - rather than repeating the click on the
@@ -1196,21 +1254,6 @@ export function WeeklyPlanPage({
                     </button>
                   )}
                 </div>
-                {logDraft?.item.id === item.id && (
-                  <LogToActivityBox
-                    draft={logDraft}
-                    state={logState}
-                    message={logMessage}
-                    /* Almost no indent: a day column is narrow, and Today's
-                       checkbox gutter does not exist here. */
-                    indentClassName="ml-1"
-                    onToggleEnabled={(enabled) => setLogDraft((current) => (current ? { ...current, enabled } : current))}
-                    onChangeNote={(note) => setLogDraft((current) => (current ? { ...current, note } : current))}
-                    onChangeChannel={(channel) => setLogDraft((current) => (current ? { ...current, channel } : current))}
-                    onSave={() => { void saveLog(); }}
-                    onDismiss={dismissLog}
-                  />
-                )}
                 </Fragment>
                 );
               })}
@@ -1346,10 +1389,22 @@ export function WeeklyPlanPage({
         Items in green were pulled in from a capture - you wrote them once, they landed here on their own. Drag any item
         to another day to reschedule it, or open the pencil to change the day, the customer, the person you are seeing
         and the wording together - all of it writes straight into the deal or touch it came from. Checking an item
-        records that you did your plan, and offers to write down what actually happened - that note becomes a touch on
-        Activity and on the customer&apos;s history. The tick on its own still moves no deal, so a stage change is
-        still yours to make.
+        opens its record: how it happened, who at the customer it was with, and what was said. It is done when that
+        is saved, and it lands on Activity, on the customer&apos;s history and on the stakeholder&apos;s record. The
+        record still moves no deal, so a stage change is still yours to make.
       </p>
+
+      {recordingItem && (
+        <RecordPlanActivityDrawer
+          item={recordingItem}
+          opportunities={opportunities}
+          people={contactOptions}
+          saving={recordSaving}
+          error={recordError}
+          onSave={(values) => { void recordCompletion(values); }}
+          onClose={closeRecord}
+        />
+      )}
 
       {detailItem && detailDraft && (
         <PlanItemDetailDrawer

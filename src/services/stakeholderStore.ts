@@ -114,8 +114,31 @@ export async function loadStakeholders(userId?: string | null): Promise<Stakehol
   return loadLocalStakeholders();
 }
 
-export async function createStakeholder(input: StakeholderFormInput, userId?: string | null): Promise<{ stakeholder: StakeholderRecord; mode: 'local' | 'cloud'; warning?: string }> {
+/**
+ * Which workspace a new person was added in. Required, not optional.
+ *
+ * Every stakeholder used to be written `source: 'user', isSample: false`, so a
+ * person added inside the demo - by hand, from a capture, or from a plan record -
+ * was invisible to the demo purge and survived into the next signed-in
+ * workspace. The sweep over this collection existed; the label it looks for was
+ * never applied. That is the same failure activities had until 2026-08-05, and
+ * an optional tag would be the same bug in a politer form.
+ */
+export type StakeholderWorkspaceTag = { source: 'demo' | 'user'; isSample: boolean };
+
+export async function createStakeholder(
+  input: StakeholderFormInput,
+  userId: string | null | undefined,
+  workspace: StakeholderWorkspaceTag,
+): Promise<{ stakeholder: StakeholderRecord; mode: 'local' | 'cloud'; warning?: string }> {
   const normalized = normalizeStakeholderInput(input);
+  // A demo person never goes to the cloud, whoever happens to be signed in.
+  if (workspace.isSample) {
+    const stakeholder = createLocalStakeholder(normalized, undefined, workspace);
+    saveLocalStakeholderRecord(stakeholder);
+    invalidateWorkspaceCollection('stakeholders');
+    return { stakeholder, mode: 'local' };
+  }
   if (canUseStakeholderCloudStore(userId)) {
     try {
       const stakeholder = await createCloudStakeholder(normalized, userId as string);
@@ -124,14 +147,14 @@ export async function createStakeholder(input: StakeholderFormInput, userId?: st
       return { stakeholder, mode: 'cloud' };
     } catch (error) {
       reportWorkspaceSyncError();
-      const stakeholder = createLocalStakeholder(normalized, userId || undefined);
+      const stakeholder = createLocalStakeholder(normalized, userId || undefined, workspace);
       saveLocalStakeholderRecord(stakeholder);
       invalidateWorkspaceCollection('stakeholders');
       debugStakeholderStore('cloud create failed; local copy preserved', { message: getErrorMessage(error) });
       return { stakeholder, mode: 'local', warning: 'Cloud sync issue - your local copy is preserved.' };
     }
   }
-  const stakeholder = createLocalStakeholder(normalized, userId || undefined);
+  const stakeholder = createLocalStakeholder(normalized, userId || undefined, workspace);
   saveLocalStakeholderRecord(stakeholder);
   invalidateWorkspaceCollection('stakeholders');
   return { stakeholder, mode: 'local' };
@@ -295,14 +318,14 @@ async function updateCloudStakeholder(stakeholderId: string, input: StakeholderF
   return rowToStakeholder(data as StakeholderRow);
 }
 
-function createLocalStakeholder(input: StakeholderFormInput, userId?: string): StakeholderRecord {
+function createLocalStakeholder(input: StakeholderFormInput, userId: string | undefined, workspace: StakeholderWorkspaceTag): StakeholderRecord {
   const timestamp = new Date().toISOString();
   return {
     ...input,
     id: createId(),
     userId,
-    source: 'user',
-    isSample: false,
+    source: workspace.source,
+    isSample: workspace.isSample,
     createdAt: timestamp,
     updatedAt: timestamp,
     storageMode: 'local',

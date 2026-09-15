@@ -278,7 +278,7 @@ export function StakeholdersPage() {
     setMessage('Saving stakeholder...');
     const result = panelMode === 'edit' && selectedStakeholder
       ? await updateStakeholder(selectedStakeholder, form, dataUserId)
-      : await createStakeholder(form, dataUserId);
+      : await createStakeholder(form, dataUserId, { source: sampleDataActive ? 'demo' : 'user', isSample: sampleDataActive });
     setStakeholders((current) => [result.stakeholder, ...current.filter((item) => item.id !== result.stakeholder.id)]);
     setSelectedStakeholder(result.stakeholder);
     setForm(stakeholderToFormInput(result.stakeholder));

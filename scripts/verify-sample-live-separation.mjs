@@ -163,7 +163,7 @@ assert.equal(page.includes('createInitialPipelineDefenseDeals'), false, 'Pipelin
   for (const file of [
     'src/features/dailyCapture/DailyCapturePage.tsx',
     'src/features/v31/FollowUpComposerPanel.tsx',
-    'src/features/dashboard/TodayCommitmentStrip.tsx',
+    'src/features/plan/WeeklyPlanPage.tsx',
   ]) {
     const source = readFileSync(file, 'utf8');
     const callSites = [...source.matchAll(/saveSalesActivity\(/g)].map((match) => match.index);
@@ -179,6 +179,35 @@ assert.equal(page.includes('createInitialPipelineDefenseDeals'), false, 'Pipelin
         /isSample: sampleDataActive/,
         `${file} writes a touch without tagging the workspace it was made in (call at index ${at}) - that capture survives the demo purge`,
       );
+    });
+  }
+}
+
+// 9b. People, the same way. Every stakeholder used to be written
+// `source: 'user', isSample: false`, so a person added inside the demo - by hand,
+// from a capture, or from a plan record - survived the purge that sweeps this
+// collection. The tag is required, and every caller is checked to pass a real
+// flag rather than a literal.
+{
+  const store = readFileSync('src/services/stakeholderStore.ts', 'utf8');
+  assert.match(store, /workspace: StakeholderWorkspaceTag,?\s*\)/, 'createStakeholder must require the workspace tag');
+  assert.doesNotMatch(store, /workspace\?: StakeholderWorkspaceTag|workspace: StakeholderWorkspaceTag = /, 'the stakeholder workspace tag must not be optional or defaulted');
+  const localCreate = store.slice(
+    store.indexOf('function createLocalStakeholder'),
+    store.indexOf('\n}', store.indexOf('function createLocalStakeholder')),
+  );
+  assert.ok(localCreate.length > 0, 'the local stakeholder constructor must be findable');
+  assert.match(localCreate, /isSample: workspace\.isSample/, 'a new local stakeholder takes its sample flag from the workspace, not a literal');
+  for (const [file, flag] of [
+    ['src/features/stakeholders/StakeholdersPage.tsx', /isSample: sampleDataActive/],
+    ['src/features/plan/WeeklyPlanPage.tsx', /workspaceTag/],
+    ['src/domain/commercialKernel/commitCapturedFacts.ts', /isSample: context\.isSample/],
+  ]) {
+    const source = readFileSync(file, 'utf8');
+    const callSites = [...source.matchAll(/createStakeholder\(/g)].map((match) => match.index);
+    assert.ok(callSites.length > 0, `${file} no longer adds stakeholders - drop it from this list`);
+    callSites.forEach((at) => {
+      assert.match(source.slice(at, at + 1400), flag, `${file} adds a stakeholder without tagging the workspace (call at index ${at})`);
     });
   }
 }

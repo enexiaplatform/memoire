@@ -11,7 +11,15 @@ import {
   normalizeActivityChannel,
   summariseActivityChannels,
 } from '../../src/utils/activityChannel.ts';
-import { buildPlanCompletionActivity } from '../../src/utils/planCompletionLog.ts';
+import {
+  buildPlanCompletionActivity,
+  findPlanCompletionActivity,
+  peopleForPlanAccount,
+  planCompletionActivityDate,
+  planCompletionNeedsPerson,
+  planCompletionProblems,
+  planItemAccountName,
+} from '../../src/utils/planCompletionLog.ts';
 import { buildActivityInsights } from '../../src/utils/activityInsights.ts';
 
 describe('normalizeActivityChannel', () => {
@@ -164,6 +172,7 @@ describe('buildPlanCompletionActivity', () => {
     const log = buildPlanCompletionActivity({
       item: planItem({ channel: 'On-site visit' }),
       note: 'Walked the line with Ms Ha.',
+      person: { name: 'Ms Ha' },
       opportunities: [],
       activityDate: '2026-09-02',
     });
@@ -176,6 +185,7 @@ describe('buildPlanCompletionActivity', () => {
     const log = buildPlanCompletionActivity({
       item: planItem({ channel: 'On-site visit' }),
       note: 'They cancelled, so we did it on a call.',
+      person: { name: 'Ms Ha' },
       opportunities: [],
       activityDate: '2026-09-02',
       channel: 'Online meeting',
@@ -199,10 +209,71 @@ describe('buildPlanCompletionActivity', () => {
 
   test('every touch it writes is traceable back to the box that made it', () => {
     const log = buildPlanCompletionActivity({
-      item: planItem(), note: 'Sent it.', opportunities: [], activityDate: '2026-09-02',
+      item: planItem(), note: 'Sent it.', person: { name: 'Ms Ha' }, opportunities: [], activityDate: '2026-09-02',
     });
     assert.ok(log.activity.tags.includes('plan-completion'));
     assert.ok(log.activity.tags.includes('plan:p1'));
+  });
+});
+
+describe('finishing a plan item records who it was with', () => {
+  const deal = { id: 'd1', accountName: 'Frulact Portugal', opportunityName: 'Line 2 retrofit' };
+
+  test('customer work names a person, or nothing is written', () => {
+    const input = { item: planItem(), note: 'Agreed the trial date.', opportunities: [], activityDate: '2026-09-02' };
+    assert.equal(buildPlanCompletionActivity(input), null);
+    assert.deepEqual(planCompletionProblems(input), ['Name who it was with.']);
+    assert.deepEqual(planCompletionProblems({ ...input, note: '' }), ['Write what happened.', 'Name who it was with.']);
+
+    const log = buildPlanCompletionActivity({ ...input, person: { name: 'Ana Sousa', roleTitle: 'Plant manager' } });
+    assert.equal(log.activity.stakeholderName, 'Ana Sousa');
+    assert.equal(log.activity.contactName, 'Ana Sousa');
+    assert.equal(log.activity.stakeholderRole, 'Plant manager');
+    assert.match(log.activity.rawNote, /with Ana Sousa/);
+  });
+
+  test('internal work and a day off do not ask for anyone', () => {
+    const internal = planItem({ tag: 'Internal', workKind: 'internal' });
+    assert.equal(planCompletionNeedsPerson(internal, []), false);
+    assert.ok(buildPlanCompletionActivity({ item: internal, note: 'Submitted KPI.', opportunities: [], activityDate: '2026-09-02' }));
+
+    const holiday = planItem({ channel: 'Out of office' });
+    assert.equal(planCompletionNeedsPerson(holiday, []), false);
+    const log = buildPlanCompletionActivity({
+      item: holiday, note: 'Public holiday.', person: { name: 'Ana Sousa' }, opportunities: [], activityDate: '2026-09-02',
+    });
+    assert.equal(log.activity.stakeholderName, '', 'a person named on a day off is not recorded as met');
+  });
+
+  test('the customer comes from the deal, then the link on the line, then a customer tag', () => {
+    const dealItem = planItem({ kind: 'deal', id: 'deal-d1', derivedKey: 'deal:d1:2026-09-02', tag: 'Frulact', href: '/app/opportunities?opportunityId=d1' });
+    assert.equal(planItemAccountName(dealItem, [deal]), 'Frulact Portugal');
+    const linked = planItem({ kind: 'personal', tag: 'Visit', workKind: 'internal', href: '/app/accounts?accountName=Vila%20Gale' });
+    assert.equal(planItemAccountName(linked, []), 'Vila Gale');
+    assert.equal(planItemAccountName(planItem({ workKind: 'internal', tag: 'Internal' }), []), '');
+  });
+
+  test('the people offered are the ones filed under that customer, the named one first', () => {
+    const people = [
+      { name: 'Rui Costa', accountName: 'Frulact' },
+      { name: 'Ana Sousa', accountName: 'FRULACT' },
+      { name: 'Mai Nguyen', accountName: 'Vila Gale' },
+    ];
+    assert.deepEqual(peopleForPlanAccount(people, 'Frulact', 'Rui Costa').map((person) => person.name), ['Rui Costa', 'Ana Sousa']);
+    assert.deepEqual(peopleForPlanAccount(people, '', 'Rui Costa'), []);
+  });
+
+  test('the activity is dated on the plan day once it has passed, and today when finished early', () => {
+    assert.equal(planCompletionActivityDate({ date: '2026-09-14' }, '2026-09-15'), '2026-09-14', 'a Monday visit ticked on Tuesday is Monday');
+    assert.equal(planCompletionActivityDate({ date: '2026-09-15' }, '2026-09-15'), '2026-09-15');
+    assert.equal(planCompletionActivityDate({ date: '2026-09-18' }, '2026-09-15'), '2026-09-15', 'Friday work done on Tuesday happened Tuesday');
+    assert.equal(planCompletionActivityDate({ date: 'not a date' }, '2026-09-15'), '2026-09-15');
+  });
+
+  test('a recorded line is found again by the tag it wrote', () => {
+    const item = planItem({ id: 'p9' });
+    assert.equal(findPlanCompletionActivity(item, [{ tags: ['plan-completion', 'plan:p1'] }]), undefined);
+    assert.ok(findPlanCompletionActivity(item, [{ tags: ['plan-completion', 'plan:p9'] }]));
   });
 });
 
