@@ -1,4 +1,12 @@
 import { Link } from 'react-router-dom';
+import { ArrowRight, Check, Cloud, Globe, ShieldCheck } from 'lucide-react';
+import { useAuthContext } from '../../auth/authContext';
+import { isSupabaseConfigured } from '../../lib/demoMode';
+import { getDataModeInfo, hasLocalSampleData } from '../../utils/dataMode';
+import { useWorkspaceSyncStatus } from '../../services/workspaceSyncStatus';
+import { getCachedSalesWorkspaceData } from '../../services/workspaceData';
+import { formatCount } from '../../utils/numberFormat';
+import { GradientEdge, MicroPill, Panel } from '../../components/ui/daylight';
 
 const notItems = [
   'A professional certification, hiring score, or credit signal',
@@ -25,56 +33,159 @@ const rights = [
   'Review the evidence behind rule-based risk and opportunity-quality signals.',
 ];
 
-export function BoundariesTab() {
+/**
+ * The product's boundaries in its own words.
+ *
+ * Laid out as the Daylight mock drew it: what Memoire is not on the left, the
+ * boundary statement in the gradient-edged card on the right, then where the
+ * records actually live and the one destructive door. The sentences are the
+ * same sentences - the trust contract pins them - and only their arrangement
+ * changed.
+ */
+export function BoundariesTab({ onOpenExport }: { onOpenExport: () => void }) {
+  const [aiStatement, ...otherBoundaries] = [boundaries[1], boundaries[0], boundaries[2]];
+
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-bold text-navy">Data and Product Boundaries</h2>
-        <p className="mt-2 text-sm leading-6 text-gray-500">
+        <h2 className="font-display text-xl font-bold tracking-[-0.02em] text-ink">Data and Product Boundaries</h2>
+        <p className="mt-1.5 text-[13px] leading-6 text-muted">
           Understand what Memoire stores, what remains local, and where human review is required.
         </p>
       </div>
 
-      <BoundaryCard title="Memoire is not" items={notItems} tone="negative" />
-      <BoundaryCard title="Current product boundaries" items={boundaries} tone="warning" />
-      <BoundaryCard title="Your controls" items={rights} tone="positive" />
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+        <div className="flex min-w-0 flex-col gap-4">
+          <Panel className="px-[22px] py-5">
+            <h3 className="font-display text-base font-bold text-ink">Memoire is not</h3>
+            <p className="mt-1.5 text-[12.5px] leading-[1.55] text-muted">Said as plainly here as it is on the landing page.</p>
+            <MarkedList items={notItems} marker="No" tone="red" />
+          </Panel>
 
-      <div className="border-t border-gray-100 pt-4">
-        <Link to="/legal/boundaries" className="text-sm font-bold text-brand-blue hover:text-navy">
-          View full product boundaries
-        </Link>
+          <Panel className="px-[22px] py-5">
+            <h3 className="font-display text-base font-bold text-ink">Your controls</h3>
+            <MarkedList items={rights} marker="Yes" tone="green" />
+            <div className="mt-4 border-t border-line-soft pt-3.5">
+              <Link to="/legal/boundaries" className="inline-flex items-center gap-1.5 text-[13px] font-bold text-brand-blue hover:text-navy">
+                View full product boundaries
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </Panel>
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-4">
+          <GradientEdge innerClassName="px-[22px] py-5">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-brand-blue" aria-hidden="true" />
+              <h3 className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-brand-blue">Current product boundaries</h3>
+            </div>
+            <p className="mt-3 text-[13.5px] leading-[1.6] text-ink [text-wrap:pretty]">{aiStatement}</p>
+            <ul className="mt-3.5 space-y-2.5">
+              {otherBoundaries.map((item) => (
+                <li key={item} className="flex items-start gap-2.5 text-[12.5px] leading-[1.55] text-tint-neutral-ink">
+                  <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-tint-green-solid" strokeWidth={2.6} aria-hidden="true" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </GradientEdge>
+
+          <StorageModeCard />
+
+          <section className="rounded-panel bg-tint-red-bg px-5 py-[18px]" aria-label="Danger zone">
+            <h3 className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-tint-red-solid">Danger zone</h3>
+            <p className="mt-2 text-[12.5px] leading-[1.55] text-tint-red-ink">
+              Deleting your account clears Memoire data stored in this browser and your signed-in cloud workspace.
+              Export first - this cannot be undone.
+            </p>
+            {/* A door to the flow that asks twice, not a second delete button.
+                The confirmation, the typed DELETE and the export beside it all
+                live on that tab; a shortcut that skipped them would be the one
+                path to losing a workspace by accident. */}
+            <button
+              type="button"
+              onClick={onOpenExport}
+              className="mt-3.5 inline-flex items-center gap-2 rounded-full bg-tint-red-solid px-4 py-2 font-display text-[12.5px] font-semibold text-white transition hover:-translate-y-px"
+            >
+              Export, then delete
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </section>
+        </div>
       </div>
     </div>
   );
 }
 
-function BoundaryCard({
-  title,
-  items,
-  tone,
-}: {
-  title: string;
-  items: string[];
-  tone: 'negative' | 'warning' | 'positive';
-}) {
-  const marker = tone === 'positive' ? 'Yes' : tone === 'warning' ? 'Note' : 'No';
-  const markerClass = tone === 'positive'
-    ? 'text-emerald-700'
-    : tone === 'warning'
-      ? 'text-amber-700'
-      : 'text-red-600';
+function MarkedList({ items, marker, tone }: { items: string[]; marker: string; tone: 'red' | 'green' }) {
+  return (
+    <ul className="mt-3.5 flex flex-col">
+      {items.map((item) => (
+        <li key={item} className="flex items-start gap-3 border-b border-line-soft py-2.5 last:border-b-0 last:pb-0">
+          <MicroPill tone={tone} className="mt-0.5">{marker}</MicroPill>
+          <span className="text-[12.5px] leading-[1.55] text-ink">{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * Where this workspace's records live right now, read from the same status the
+ * top bar's chip reads - so the two can never disagree about it.
+ */
+function StorageModeCard() {
+  const { isAuthenticated, loading, user } = useAuthContext();
+  const syncStatus = useWorkspaceSyncStatus();
+  const sampleData = hasLocalSampleData();
+  const info = getDataModeInfo({
+    isAuthenticated,
+    isSupabaseConfigured,
+    syncError: syncStatus.state === 'error' ? syncStatus.message || 'Cloud sync is unavailable.' : null,
+    hasSampleData: sampleData,
+    isLoading: loading || syncStatus.state === 'checking',
+  });
+  const cloudActive = info.mode === 'synced';
+  const workspace = getCachedSalesWorkspaceData(sampleData ? undefined : user?.id);
+  const counts = workspace
+    ? `${formatCount(workspace.accounts.length)} accounts, ${formatCount(workspace.opportunities.length)} deals`
+    : '';
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-6">
-      <h3 className="text-sm font-bold uppercase tracking-wider text-navy">{title}</h3>
-      <ul className="mt-4 space-y-3">
-        {items.map((item) => (
-          <li key={item} className="flex items-start gap-3">
-            <span className={`mt-0.5 text-xs font-bold uppercase ${markerClass}`}>{marker}</span>
-            <span className="text-sm leading-6 text-gray-700">{item}</span>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <Panel className="px-[22px] py-5">
+      <h3 className="font-display text-base font-bold text-ink">Storage</h3>
+      <div className={`mt-3.5 flex items-center gap-3 rounded-[13px] px-3.5 py-3 ${cloudActive ? '' : 'bg-tint-neutral-bg'}`}>
+        <span className={`inline-flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] ${cloudActive ? 'bg-[#E8F8F0] text-tint-green-solid' : 'bg-chip text-tint-neutral-ink'}`}>
+          <Cloud className="h-[17px] w-[17px]" aria-hidden="true" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[13px] font-semibold text-ink">Cloud + browser</span>
+          <span className="block text-[11.5px] text-muted">
+            {cloudActive
+              ? `Records sync to your account${counts ? ` · ${counts}` : ''}`
+              : info.mode === 'sync-error'
+                ? 'Signed in, but the cloud is not answering right now'
+                : 'Sign in to keep records on your account as well'}
+          </span>
+        </span>
+        {cloudActive && <MicroPill tone="green">Active</MicroPill>}
+        {info.mode === 'sync-error' && <MicroPill tone="red">Sync issue</MicroPill>}
+      </div>
+      <div className={`mt-2 flex items-center gap-3 rounded-[13px] px-3.5 py-3 ${cloudActive ? 'bg-tint-neutral-bg' : ''}`}>
+        <span className={`inline-flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] ${cloudActive ? 'bg-chip text-tint-neutral-ink' : 'bg-tint-amber-pill text-tint-amber-solid'}`}>
+          <Globe className="h-[17px] w-[17px]" aria-hidden="true" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[13px] font-semibold text-ink">Browser only</span>
+          <span className="block text-[11.5px] text-muted">
+            {sampleData
+              ? 'The demo sandbox lives only in this browser'
+              : 'Browser-only storage, with the limitations that carries'}
+          </span>
+        </span>
+        {!cloudActive && info.mode !== 'sync-error' && info.mode !== 'loading' && <MicroPill tone="amber">Active</MicroPill>}
+      </div>
+    </Panel>
   );
 }

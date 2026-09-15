@@ -240,7 +240,7 @@ export function BillingTab() {
 
 function Panel({ children }: { children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+    <section className="rounded-panel bg-white p-6 shadow-panel">
       <h2 className="text-lg font-bold text-navy">Plan &amp; billing</h2>
       <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
         What you are on, and what it costs. Payment is handled by Lemon Squeezy.

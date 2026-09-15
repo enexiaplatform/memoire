@@ -231,8 +231,8 @@ export function ExportTab() {
   };
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+    <div className="space-y-4">
+      <section className="rounded-panel bg-white p-6 shadow-panel sm:p-7">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-lg font-bold text-navy">Export workspace data</h2>
@@ -259,7 +259,7 @@ export function ExportTab() {
         {exportError && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-700">{exportError}</p>}
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+      <section className="rounded-panel bg-white p-6 shadow-panel sm:p-7">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-lg font-bold text-navy">Restore from a backup</h2>
@@ -397,7 +397,7 @@ export function ExportTab() {
         )}
       </section>
 
-      <section className="rounded-lg border border-blue-100 bg-blue-50/50 p-6 shadow-sm sm:p-8">
+      <section className="rounded-panel bg-tint-blue-bg p-6 sm:p-7">
         <h2 className="text-lg font-bold text-navy">Support package</h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
           When you write to support, include what you were doing, the approximate time, the visible error message,
@@ -416,7 +416,7 @@ export function ExportTab() {
         </p>
       </section>
 
-      <section className="rounded-lg border border-red-200 bg-white p-6 shadow-sm sm:p-8">
+      <section className="rounded-panel bg-white p-6 shadow-panel ring-1 ring-red-100 sm:p-7">
         <h2 className="text-lg font-bold text-navy">Danger zone</h2>
         <div className="mt-5 space-y-5">
           <DangerAction

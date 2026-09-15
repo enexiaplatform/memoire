@@ -119,7 +119,7 @@ export function NotificationsPanel() {
 
   if (!isSupabaseConfigured || !user) {
     return (
-      <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4">
+      <div className="rounded-panel bg-white p-5 shadow-panel">
         <div className="flex items-start gap-2.5">
           <Mail className="mt-0.5 h-4 w-4 shrink-0 text-brand-blue" />
           <div>
@@ -136,7 +136,7 @@ export function NotificationsPanel() {
   }
 
   return (
-    <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4">
+    <div className="rounded-panel bg-white p-5 shadow-panel">
       <div className="flex items-start gap-2.5">
         <Mail className="mt-0.5 h-4 w-4 shrink-0 text-brand-blue" />
         <div className="min-w-0 flex-1">

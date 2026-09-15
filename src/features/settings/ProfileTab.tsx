@@ -29,7 +29,7 @@ export function ProfileTab() {
 
   if (!isAuthenticated) {
     return (
-      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <section className="rounded-panel bg-white p-6 shadow-panel">
         <h2 className="text-lg font-bold text-navy">Your profile</h2>
         <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500">
           You are working in this browser without an account, so there is no profile to name yet. Sign in and your name
@@ -56,7 +56,7 @@ export function ProfileTab() {
   };
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+    <section className="rounded-panel bg-white p-6 shadow-panel">
       <h2 className="text-lg font-bold text-navy">Your profile</h2>
       <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
         How Memoire refers to you — in the sidebar, on a brief you share with a manager, and at the top of your daily

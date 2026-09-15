@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Check, CloudOff } from 'lucide-react';
+import { Check, CloudOff, Download } from 'lucide-react';
 import { ExportTab } from './ExportTab';
 import { SyncRecoveryPanel } from './SyncRecoveryPanel';
 import { StoragePanel } from './StoragePanel';
@@ -38,15 +38,18 @@ import { getFinancingRatePct, getTargetMarginPct } from '../../utils/pricingAssu
 import { useAuth } from '../../hooks/useAuth';
 import { BUSINESS_ACCOUNTING_ENABLED } from '../../config/featureFlags';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
+import { TopBar } from '../../components/layout/TopBarSlot';
+import { Panel, StatusChip } from '../../components/ui/daylight';
+import { delay, ghostPillClass } from '../../components/ui/daylightStyles';
 
 export type SettingsCategory = 'workspace' | 'profile' | 'billing' | 'boundaries' | 'export';
 
-const settingsCategories: { value: SettingsCategory; label: string }[] = [
-  { value: 'workspace', label: 'Workspace' },
-  { value: 'profile', label: 'Account' },
-  { value: 'billing', label: 'Plan & Billing' },
-  { value: 'boundaries', label: 'Data & Privacy' },
-  { value: 'export', label: 'Export & Delete' },
+const settingsCategories: { value: SettingsCategory; label: string; purpose: string }[] = [
+  { value: 'workspace', label: 'Workspace', purpose: 'Money, notifications, storage' },
+  { value: 'profile', label: 'Account', purpose: 'Your name and sign-in' },
+  { value: 'billing', label: 'Plan & Billing', purpose: 'What you pay for' },
+  { value: 'boundaries', label: 'Data & Privacy', purpose: 'What Memoire is, and is not' },
+  { value: 'export', label: 'Export & Delete', purpose: 'Take it out, or remove it' },
 ];
 
 /** `profile` is kept as the id so existing `?tab=profile` links still resolve. */
@@ -87,6 +90,20 @@ export function SettingsPage() {
   const [targetMarginSave, setTargetMarginSave] = useState<PreferenceSaveResult | null>(null);
   const [financingRate, setFinancingRateState] = useState(() => String(getFinancingRatePct()));
   const [financingRateSave, setFinancingRateSave] = useState<PreferenceSaveResult | null>(null);
+  /**
+   * When a setting on this page last landed, for the top bar.
+   *
+   * "Changes save as you go" is a promise with no receipt, and the receipt used
+   * to be a line under whichever control was touched - easy to miss once the
+   * operator had scrolled on. Only a clean save counts: a write that stayed in
+   * this browser is not "saved" in the sense the bar is claiming.
+   */
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const noteSave = useCallback((result: PreferenceSaveResult) => {
+    if (!result.problem) setLastSavedAt(Date.now());
+    return result;
+  }, []);
+  const savedLabel = useSavedLabel(lastSavedAt);
 
   // The account is the record; this browser is the cache. Reading it back on
   // open is what makes the picker show what was actually saved rather than
@@ -119,7 +136,7 @@ export function SettingsPage() {
     setReportingCurrencyState(next as typeof reportingCurrency);
     setCurrencySave(null);
     const result = await saveReportingCurrencyPreference(next, user?.id);
-    setCurrencySave(result);
+    setCurrencySave(noteSave(result));
     setReportingCurrencyState(getReportingCurrency());
   };
 
@@ -127,49 +144,69 @@ export function SettingsPage() {
     setBalanceSave(null);
     const trimmed = raw.trim();
     const parsed = trimmed === '' ? null : Number(trimmed.replace(/,/g, ''));
-    setBalanceSave(await saveOpeningCashBalancePreference(parsed, user?.id));
+    setBalanceSave(noteSave(await saveOpeningCashBalancePreference(parsed, user?.id)));
   };
 
   const handleTargetMarginChange = async (raw: string) => {
     setTargetMarginSave(null);
-    setTargetMarginSave(await saveTargetMarginPreference(raw, user?.id));
+    setTargetMarginSave(noteSave(await saveTargetMarginPreference(raw, user?.id)));
   };
 
   const handleFinancingRateChange = async (raw: string) => {
     setFinancingRateSave(null);
-    setFinancingRateSave(await saveFinancingRatePreference(raw, user?.id));
+    setFinancingRateSave(noteSave(await saveFinancingRatePreference(raw, user?.id)));
   };
 
   return (
-    <PageContainer width="reading">
+    <PageContainer>
+      <TopBar
+        lead={<span className="truncate text-[12.5px] text-muted">Settings · changes save as you go</span>}
+        status={savedLabel ? <StatusChip tone="green" className="hidden sm:inline-flex">{savedLabel}</StatusChip> : undefined}
+        actions={activeTab === 'export' ? undefined : (
+          <button type="button" onClick={() => selectTab('export')} className={`${ghostPillClass} hidden sm:inline-flex`}>
+            <Download className="h-[15px] w-[15px]" />
+            Export &amp; Delete
+          </button>
+        )}
+      />
       <PageHeader
         eyebrow="Workspace"
-        title="Settings"
-        description="How this workspace reports money, what it keeps, and how to get your records out of it."
+        documentTitle="Settings"
+        title="Your rules, your data"
       />
 
-      {/*
-        * Categories first.
-        *
-        * Reporting currency, exchange rates, pricing assumptions, notifications
-        * and the guide reset all rendered *above* the tab bar - five workspace
-        * cards standing between the reader and the navigation for the page they
-        * were on. So Settings had no first screen: it had a preamble of
-        * settings, and then a list of where the settings are. They are a
-        * category like any other now, and they are the first one, because
-        * "how does this workspace report money" is the question people arrive
-        * with.
-        */}
-      <div className="flex flex-wrap gap-x-6 border-b border-gray-200">
-        {settingsCategories.map((category) => (
-          <TabButton key={category.value} active={activeTab === category.value} onClick={() => selectTab(category.value)}>
-            {category.label}
-          </TabButton>
-        ))}
-      </div>
+      <div className="grid items-start gap-[18px] lg:grid-cols-[260px_minmax(0,1fr)]">
+        {/*
+          * Categories first.
+          *
+          * Reporting currency, exchange rates, pricing assumptions, notifications
+          * and the guide reset all rendered *above* the tab bar - five workspace
+          * cards standing between the reader and the navigation for the page they
+          * were on. So Settings had no first screen: it had a preamble of
+          * settings, and then a list of where the settings are. They are a
+          * category like any other now, and they are the first one, because
+          * "how does this workspace report money" is the question people arrive
+          * with.
+          *
+          * Under Daylight the list is a card beside the content rather than a
+          * strip above it, so it stays in reach while a long tab scrolls.
+          */}
+        <Panel as="div" className="animate-rise p-5 lg:sticky lg:top-24" style={delay(60)}>
+          <h2 className="font-display text-base font-bold text-ink">Settings</h2>
+          <p className="mt-1.5 text-[12.5px] leading-[1.55] text-muted">Five tabs, each owning one decision about your workspace.</p>
+          <div role="tablist" aria-label="Settings" aria-orientation="vertical" className="mt-3.5 flex flex-col gap-1">
+            {settingsCategories.map((category) => (
+              <TabButton key={category.value} active={activeTab === category.value} onClick={() => selectTab(category.value)}>
+                <span className="block">{category.label}</span>
+                <span className={`block text-[11px] font-normal ${activeTab === category.value ? 'text-tint-blue-ink' : 'text-muted'}`}>{category.purpose}</span>
+              </TabButton>
+            ))}
+          </div>
+        </Panel>
 
+        <div className="flex min-w-0 animate-rise flex-col gap-4" style={delay(100)}>
       {activeTab === 'workspace' && <>
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="rounded-panel bg-white p-5 shadow-panel">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-navy">Reporting currency</p>
@@ -215,7 +252,7 @@ export function SettingsPage() {
             statement, and that is outside the beta proposition. Any value already
             set is kept. See src/config/featureFlags.ts. */}
         {BUSINESS_ACCOUNTING_ENABLED && (
-          <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <div className="rounded-panel bg-white p-5 shadow-panel">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-semibold text-navy">Opening cash balance</p>
@@ -250,7 +287,7 @@ export function SettingsPage() {
             seller puts in front of a customer, and a figure that reads 20% on the
             laptop and 15% on the phone is not an inconsistent report - it is two
             different quotes for the same order. */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="rounded-panel bg-white p-5 shadow-panel">
           <p className="text-sm font-semibold text-navy">Pricing assumptions</p>
           <p className="mt-1 text-sm text-gray-500">
             What every quote is priced back from. Cost Analysis on a deal uses both to work out the price that holds your
@@ -317,7 +354,7 @@ export function SettingsPage() {
             come back on the next visit to Today - with one caveat stated on the
             button, because `shouldOpenFirstRun` will not send a workspace that
             already has records back to the welcome. */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="rounded-panel bg-white p-5 shadow-panel">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-navy">Getting started</p>
@@ -342,8 +379,10 @@ export function SettingsPage() {
       </>}
       {activeTab === 'profile' && <ProfileTab />}
       {activeTab === 'billing' && <BillingTab />}
-      {activeTab === 'boundaries' && <BoundariesTab />}
+      {activeTab === 'boundaries' && <BoundariesTab onOpenExport={() => selectTab('export')} />}
       {activeTab === 'export' && <ExportTab />}
+        </div>
+      </div>
     </PageContainer>
   );
 }
@@ -387,7 +426,7 @@ function ExchangeRatesCard({ reportingCurrency }: { reportingCurrency: Supported
   );
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
+    <div className="rounded-panel bg-white p-5 shadow-panel">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-navy">Exchange rates</p>
@@ -488,14 +527,35 @@ function TabButton({
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
-      className={`border-b-2 pb-4 text-[15px] transition-colors ${
+      className={`rounded-[11px] px-3.5 py-2.5 text-left text-[13px] transition-colors ${
         active
-          ? 'border-brand-blue font-semibold text-navy'
-          : 'border-transparent font-medium text-gray-500 hover:border-gray-300 hover:text-slate-700'
+          ? 'bg-[#EFF6FF] font-display font-bold text-tint-blue-ink'
+          : 'font-semibold text-tint-neutral-ink hover:bg-canvas hover:text-ink'
       }`}
     >
       {children}
     </button>
   );
+}
+
+/**
+ * "Saved just now", kept honest as the minutes pass. Null until something on
+ * this page has actually saved - no chip is better than one describing a save
+ * that happened in some other session.
+ */
+function useSavedLabel(savedAt: number | null) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (savedAt === null) return;
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, [savedAt]);
+  if (savedAt === null) return null;
+  const minutes = Math.floor(Math.max(0, now - savedAt) / 60_000);
+  if (minutes < 1) return 'Saved just now';
+  return `Saved ${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
 }
