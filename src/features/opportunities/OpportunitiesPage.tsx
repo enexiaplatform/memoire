@@ -140,6 +140,8 @@ import { checkAccountName, type AccountNameCheck } from '../../utils/accountDupl
 import { analyzeStakeholderCoverage, getStakeholdersForOpportunity } from '../../utils/stakeholderGraph';
 import { normalizeMeddicRole } from '../../utils/meddicStakeholderMap';
 import { MeddicInsightPanel, MeddicScoreCell } from './MeddicInsight';
+import { LeadsEmptyState, LeadsTable } from './LeadsTable';
+import { Segmented } from '../../components/ui/daylight';
 import { buildMeddicStakeholderMap, formatMeddicStakeholderDate } from '../../utils/meddicStakeholderMap.ts';
 import { getObjectionsForOpportunity, objectionStatusTone } from '../../utils/objectionLedger';
 import { analyzeOpportunityOutcomeLoop } from '../../utils/actionOutcomeLoop';
@@ -272,6 +274,21 @@ export function OpportunitiesPage() {
   // asking the same question of it, which is why neither is a field.
   const [closeFilter, setCloseFilter] = useState(allFilter);
   const [quickFilter, setQuickFilter] = useState<OpportunityQuickFilter>('all');
+  /**
+   * Leads or the pipeline. A lead is a deal at the Lead stage, and it is kept
+   * out of the pipeline list because it answers a different question - "is this
+   * worth qualifying?" - rather than "where is this going and when".
+   *
+   * Held in state, read once from `?view=leads`: this page treats its query
+   * parameters as one-shot entry points and clears them, and opening a deal
+   * rewrites the URL to `?opportunityId=`, so a view kept only in the URL would
+   * fall back to the pipeline every time a lead was opened.
+   */
+  const [view, setView] = useState<'pipeline' | 'leads'>(() => (
+    new URLSearchParams(window.location.search).get('view') === 'leads' ? 'leads' : 'pipeline'
+  ));
+  const [leadBusyId, setLeadBusyId] = useState('');
+  const [leadMessage, setLeadMessage] = useState('');
   // Opens on "what closes soonest", which is the question a pipeline list is
   // for. Was "last update, newest first" - an order that answers "what did I
   // type most recently".
@@ -459,6 +476,7 @@ export function OpportunitiesPage() {
       ].join(' ').toLowerCase();
 
       return (
+        (view === 'leads') === isLeadStage(opportunity.stage) &&
         matchesSearchQuery(searchable, query) &&
         matchesOpportunityQuickFilter(row, quickFilter) &&
         (stageFilter === allFilter || opportunity.stage === stageFilter) &&
@@ -469,7 +487,9 @@ export function OpportunitiesPage() {
         (closeFilter === allFilter || closeFilterOptionsFor(row.closePeriod).includes(closeFilter))
       );
     }).sort((left, right) => compareOpportunityRows(left, right, sortKey, sortDirection));
-  }, [brandFilter, closeFilter, forecastFilter, opportunityRows, quickFilter, recommendationFilter, search, sortDirection, sortKey, stageFilter, statusFilter]);
+  }, [brandFilter, closeFilter, forecastFilter, opportunityRows, quickFilter, recommendationFilter, search, sortDirection, sortKey, stageFilter, statusFilter, view]);
+
+  const leadCount = useMemo(() => opportunities.filter((opportunity) => isLeadStage(opportunity.stage)).length, [opportunities]);
 
   const visibleOpportunities = useMemo(
     () => visibleOpportunityRows.map((row) => row.opportunity),
@@ -489,7 +509,42 @@ export function OpportunitiesPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [brandFilter, forecastFilter, pageSize, quickFilter, recommendationFilter, search, stageFilter, statusFilter]);
+  }, [brandFilter, forecastFilter, pageSize, quickFilter, recommendationFilter, search, stageFilter, statusFilter, view]);
+
+  /** A lead that has shown a real need joins the pipeline at Discovery - the stage, and nothing else, changes. */
+  const qualifyLead = async (opportunity: CrmLiteOpportunity) => {
+    if (leadBusyId) return;
+    setLeadBusyId(opportunity.id);
+    setLeadMessage('');
+    try {
+      const result = await updateOpportunity(opportunity, { ...opportunityToForm(opportunity), stage: 'Discovery' }, dataUserId);
+      setOpportunities((current) => current.map((item) => (item.id === result.opportunity.id ? result.opportunity : item)));
+      setLeadMessage(result.warning || `${opportunity.accountName || 'The lead'} is qualified and now in the pipeline at Discovery.`);
+    } catch {
+      setLeadMessage('Could not move it. Nothing was changed - try again.');
+    } finally {
+      setLeadBusyId('');
+    }
+  };
+
+  /**
+   * Out, with the reason. Opens the deal with its status set to Lost, which is
+   * what puts the close-out form in front of the operator: a lead closed without
+   * a reason teaches the book nothing about which leads are worth having.
+   */
+  const disqualifyLead = (opportunity: CrmLiteOpportunity) => {
+    setEditingOpportunity(opportunity);
+    setForm({ ...opportunityToForm(opportunity), status: 'Lost' });
+    setPanelMode('edit');
+    setSaveState('idle');
+    setMessage('Say why this lead is out in the close-out, then save it.');
+    // Brings the close-out into view with the cursor in it, the same nudge a
+    // refused save gives - the drawer opens at its head, well above the form.
+    window.setTimeout(() => setCloseOutNudge((count) => count + 1), 0);
+    // Deliberately not written to the URL, unlike opening a deal: the
+    // `?opportunityId=` entry point reloads the form from the saved record,
+    // which would put the status back to Active before the close-out appeared.
+  };
 
   useEffect(() => {
     if (page > pageCount) setPage(pageCount);
@@ -517,6 +572,8 @@ export function OpportunitiesPage() {
       currency: getReportingCurrency(),
       accountName: seed?.accountName || '',
       brand: seed?.brand || '',
+      // Adding from the leads list adds a lead.
+      ...(view === 'leads' ? { stage: 'Lead' as const } : {}),
     });
     setPanelMode('add');
     setSaveState('idle');
@@ -1191,15 +1248,32 @@ export function OpportunitiesPage() {
           with, and it now starts within the first screen. The analysis is
           still here, one fold below the rows it describes. */}
       <PageHeader
-        title="Opportunities"
+        title={view === 'leads' ? 'Leads' : 'Opportunities'}
+        documentTitle="Opportunities"
         meta={
           <>
             {loading
               ? 'Loading pipeline...'
-              : `${formatCount(visibleOpportunityRows.length)} shown of ${formatCount(opportunities.length)}`}
+              : `${formatCount(visibleOpportunityRows.length)} shown of ${formatCount(view === 'leads' ? leadCount : opportunities.length - leadCount)}`}
             {lastWorkspaceRefreshAt ? ` · synced ${formatOpportunityDate(lastWorkspaceRefreshAt)}` : ''}
           </>
         }
+        tabs={(
+          <Segmented
+            label="Opportunities view"
+            value={view}
+            onChange={(next) => {
+              setView(next);
+              setLeadMessage('');
+              // The stage cut belongs to the pipeline; a lead is one stage.
+              setStageFilter(allFilter);
+            }}
+            options={[
+              { value: 'pipeline', label: 'Opportunities', count: opportunities.length - leadCount },
+              { value: 'leads', label: 'Leads', count: leadCount },
+            ]}
+          />
+        )}
         actions={
           /*
            * One primary, one secondary, the rest behind "More".
@@ -1218,7 +1292,7 @@ export function OpportunitiesPage() {
               className="inline-flex items-center justify-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-sm font-bold text-white hover:bg-navy/90"
             >
               <Plus className="h-4 w-4" />
-              Add
+              {view === 'leads' ? 'Add lead' : 'Add'}
             </button>
             <button
               type="button"
@@ -1276,7 +1350,9 @@ export function OpportunitiesPage() {
             />
           </label>
           <div className="grid flex-1 grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
-            <FilterSelect label="Stage" value={stageFilter} onChange={setStageFilter} options={[allFilter, ...opportunityStages]} />
+            {view === 'pipeline' && (
+              <FilterSelect label="Stage" value={stageFilter} onChange={setStageFilter} options={[allFilter, ...opportunityStages.filter((stage) => !isLeadStage(stage))]} />
+            )}
             <FilterSelect label="Status" value={statusFilter} onChange={setStatusFilter} options={[allFilter, ...opportunityStatuses]} />
             <FilterSelect label="Forecast" value={forecastFilter} onChange={setForecastFilter} options={[allFilter, ...forecastEvidenceCategories]} />
             <FilterSelect label="Decision" value={recommendationFilter} onChange={setRecommendationFilter} options={[allFilter, ...decisionRecommendations]} />
@@ -1335,6 +1411,11 @@ export function OpportunitiesPage() {
           Cloud refresh issue: {workspaceLoadError}
         </p>
       )}
+      {leadMessage && (
+        <p role="status" className="rounded-[13px] bg-tint-green-bg px-4 py-2.5 text-sm font-semibold text-tint-green-ink">
+          {leadMessage}
+        </p>
+      )}
 
       {csvImportOpen && (
         <OpportunityCsvImportPanel
@@ -1387,6 +1468,16 @@ export function OpportunitiesPage() {
           </SkeletonScreen>
         ) : opportunities.length === 0 ? (
           <EmptyState onAdd={openAddPanel} onImport={openCsvImport} />
+        ) : view === 'leads' && leadCount === 0 ? (
+          <LeadsEmptyState onAdd={() => openAddPanel()} />
+        ) : view === 'leads' && visibleOpportunities.length > 0 ? (
+          <LeadsTable
+            rows={visibleOpportunityRows}
+            busyId={leadBusyId}
+            onOpen={(opportunity) => openEditPanel(opportunity)}
+            onQualify={(opportunity) => { void qualifyLead(opportunity); }}
+            onDisqualify={disqualifyLead}
+          />
         ) : visibleOpportunities.length === 0 ? (
           <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
             <p className="text-sm font-semibold text-gray-900">No opportunities match these filters.</p>
@@ -6010,6 +6101,11 @@ function formatBatchDate(value: string) {
 
 /** MEDDIC roles that actually decide. A champion is an ally, not a signatory. */
 const DECIDING_ROLES = new Set(['Economic Buyer', 'Decision Committee']);
+
+/** A lead is an opportunity at the Lead stage - there is no separate record type. */
+function isLeadStage(stage: string) {
+  return (stage || '').trim().toLowerCase() === 'lead';
+}
 
 function buildOpportunityMasterRow(
   opportunity: CrmLiteOpportunity,
