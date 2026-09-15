@@ -47,6 +47,7 @@ import {
   shiftPlanAnchor,
   splitBracketTag,
   stripPlanLinkFromDraft,
+  type PlanDay,
   type PlanItem,
   type PlanLinkOption,
   type PlanPeriod,
@@ -91,6 +92,14 @@ import {
   type ActivityChannel,
 } from '../../utils/activityChannel';
 import { SkeletonCard, SkeletonScreen } from '../../components/common/Skeleton';
+import { MicroLabel, MicroPill, Panel, Segmented } from '../../components/ui/daylight';
+import { delay, ghostPillClass } from '../../components/ui/daylightStyles';
+import {
+  formatPlanPeriodEyebrow,
+  NOT_STATED_CHANNEL,
+  summarisePlanBoard,
+  type PlanBoardSummary,
+} from '../../utils/planBoardSummary';
 
 const periodOptions: { value: PlanPeriod; label: string }[] = [
   { value: 'week', label: 'Week' },
@@ -110,9 +119,17 @@ const periodOptions: { value: PlanPeriod; label: string }[] = [
 /** DOM id of the plan board, so a commitment can point at where it is ticked. */
 export const PLAN_BOARD_ANCHOR_ID = 'plan-board';
 
+/** What the board tells the page header about the period on screen. */
+export type PlanBoardHeading = {
+  eyebrow: string;
+  done: number;
+  total: number;
+};
+
 export function WeeklyPlanPage({
   embedded = false,
   onRangeChange,
+  onHeadingChange,
   focusRequest = null,
   beforeBoard = null,
 }: {
@@ -129,6 +146,8 @@ export function WeeklyPlanPage({
   beforeBoard?: ReactNode;
   /** Fired with the days now on screen, so a surface above can stop repeating them. */
   onRangeChange?: (range: PlanBoardWindow) => void;
+  /** Fired with the period's name and how much of it is done, for the page headline. */
+  onHeadingChange?: (heading: PlanBoardHeading) => void;
   /**
    * A day to page the board to, so a promise listed elsewhere can be brought
    * into view. The sequence number is what lets the same day be asked for
@@ -281,6 +300,26 @@ export function WeeklyPlanPage({
   useEffect(() => {
     onRangeChange?.({ start: board.rangeStart, end: board.rangeEnd, today: todayDateKey() });
   }, [board.rangeEnd, board.rangeStart, onRangeChange]);
+
+  /**
+   * The same board one period back, for the strip's "against last week".
+   * Built from the records already in memory - paging back is a second read of
+   * the same arrays, not a second load.
+   */
+  const previousBoard = useMemo(() => buildPlanBoard({
+    periodType,
+    anchorDate: shiftPlanAnchor(anchorDate, periodType, -1),
+    opportunities,
+    obligations,
+    activities,
+    records,
+    brands: knownBrands,
+  }), [activities, anchorDate, knownBrands, obligations, opportunities, periodType, records]);
+  const summary = useMemo(() => summarisePlanBoard(board, previousBoard), [board, previousBoard]);
+
+  useEffect(() => {
+    onHeadingChange?.({ eyebrow: formatPlanPeriodEyebrow(board), done: summary.done, total: summary.total });
+  }, [board, onHeadingChange, summary.done, summary.total]);
 
   // Asked for from outside - a promise listed above the board because its day
   // is not on screen. Paging to it is what makes that row's one action true.
@@ -796,13 +835,14 @@ export function WeeklyPlanPage({
   const visibleDays = periodType === 'week' && !showWeekend
     ? board.days.filter((day) => !day.isWeekend || day.items.length > 0)
     : board.days;
+  const today = todayDateKey();
 
   return (
     /* The anchor the commitment panel above scrolls to. Its "On your Plan"
        chip pointed at `/app/timeline?view=upcoming` - the page it was already
        on - so the one route from a promise to the place it can be ticked was a
        link that did nothing. */
-    <div id={PLAN_BOARD_ANCHOR_ID} className={embedded ? '' : 'mx-auto max-w-[1600px] px-4 py-6 sm:px-6'}>
+    <div id={PLAN_BOARD_ANCHOR_ID} className={embedded ? 'flex flex-col gap-4' : 'mx-auto flex max-w-[1600px] flex-col gap-4 px-4 py-6 sm:px-6'}>
       {/* The week's ranked moves, then what is already promised, then the days.
           The importers stay below the board.
 
@@ -825,12 +865,12 @@ export function WeeklyPlanPage({
 
       {beforeBoard}
 
-      <header className={`flex flex-col gap-3 sm:flex-row sm:items-start ${embedded ? 'sm:justify-end' : 'sm:justify-between'}`}>
+      <header className={`flex flex-col gap-3 sm:flex-row sm:items-center ${embedded ? 'sm:justify-between' : 'sm:justify-between'}`}>
         {!embedded && (
           <div>
             <div className="flex items-center gap-2">
               <CalendarDays className="h-5 w-5 text-brand-blue" />
-              <h1 className="text-2xl font-bold text-navy">Plan</h1>
+              <h1 className="font-display text-2xl font-bold text-ink">Plan</h1>
               <DataModePill
                 compact
                 isLoading={authLoading}
@@ -840,92 +880,86 @@ export function WeeklyPlanPage({
                 hasSampleData={sampleDataActive}
               />
             </div>
-            <p className="mt-1 text-sm text-gray-600">
+            <p className="mt-1 text-sm text-tint-neutral-ink">
               Your week as days. Dated commitments already in Memoire appear on their own; add anything else the week needs.
             </p>
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-full border border-gray-200 p-0.5">
-            {periodOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setPeriodType(option.value)}
-                className={`rounded-full px-3 py-1.5 text-xs font-bold transition ${
-                  periodType === option.value ? 'bg-brand-blue text-white' : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              aria-label="Previous period"
-              onClick={() => setAnchorDate((current) => shiftPlanAnchor(current, periodType, -1))}
-              className="rounded-full border border-gray-200 p-2 text-gray-600 hover:bg-gray-50"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="min-w-[150px] text-center text-sm font-bold text-navy">{formatPlanRangeLabel(board)}</span>
-            <button
-              type="button"
-              aria-label="Next period"
-              onClick={() => setAnchorDate((current) => shiftPlanAnchor(current, periodType, 1))}
-              className="rounded-full border border-gray-200 p-2 text-gray-600 hover:bg-gray-50"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setAnchorDate(new Date())}
-              className="ml-1 inline-flex items-center gap-1 rounded-full border border-gray-200 px-3 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Today
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            aria-label="Previous period"
+            onClick={() => setAnchorDate((current) => shiftPlanAnchor(current, periodType, -1))}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white text-tint-neutral-ink transition hover:text-ink"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <span className="min-w-[150px] text-center font-display text-sm font-bold text-ink">{formatPlanRangeLabel(board)}</span>
+          <button
+            type="button"
+            aria-label="Next period"
+            onClick={() => setAnchorDate((current) => shiftPlanAnchor(current, periodType, 1))}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white text-tint-neutral-ink transition hover:text-ink"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setAnchorDate(new Date())}
+            className={`${ghostPillClass} ml-1 !px-3.5 !py-1.5`}
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Today
+          </button>
         </div>
+
+        <Segmented
+          label="Board period"
+          value={periodType}
+          onChange={setPeriodType}
+          options={periodOptions}
+        />
       </header>
 
-      {/* Who the week is for. The line above it answers where each item came
-          from; this one answers who it serves, which is the question a
-          distributor's week could never be asked before - every line without a
-          customer used to read as the same undifferentiated admin. */}
-      {board.totalCount > 0 && (
-        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
-          {/* Label first, count second - the same shape as the filter chips on
-              Accounts and Opportunities. Written the other way round these read
-              "2 customer", which is a count looking for a plural it never gets:
-              the word is the kind of work, not the thing being counted. */}
-          <span className="font-bold uppercase tracking-wide text-gray-400">This week serves</span>
-          {board.workSplit.customer > 0 && (
-            <span className="rounded-full bg-blue-50 px-2.5 py-1 font-bold text-brand-blue">
-              Customer {board.workSplit.customer}
-            </span>
-          )}
-          {board.workSplit.principal > 0 && (
-            <span className="rounded-full bg-violet-50 px-2.5 py-1 font-bold text-violet-700">
-              Principal {board.workSplit.principal}
-            </span>
-          )}
-          {board.workSplit.internal > 0 && (
-            <span className="rounded-full bg-gray-100 px-2.5 py-1 font-bold text-gray-600">
-              Internal {board.workSplit.internal}
-              {/* The domain breakdown only earns its place when it says
-                  something the count did not. A week whose internal work is all
-                  admin would otherwise read "3 internal - 3 internal". */}
-              {describeInternalDomains(board.workSplit.internalByDomain)}
-            </span>
-          )}
-        </div>
-      )}
+      <WeekSummaryStrip summary={summary} periodType={periodType} />
 
-      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-600">
-        <span className="font-bold text-navy">{board.doneCount} / {board.totalCount} done</span>
+      {/* Who the week is for, and where its lines came from. The strip above
+          answers how much of it is done; this line answers who it serves, which
+          is the question a distributor's week could never be asked before -
+          every line without a customer used to read as the same
+          undifferentiated admin. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-tint-neutral-ink">
+        {board.totalCount > 0 && (
+          <>
+            {/* Label first, count second - the same shape as the filter chips on
+                Accounts and Opportunities. Written the other way round these read
+                "2 customer", which is a count looking for a plural it never gets:
+                the word is the kind of work, not the thing being counted. */}
+            <MicroLabel>This week serves</MicroLabel>
+            {board.workSplit.customer > 0 && (
+              <MicroPill tone="blue" className="!normal-case !tracking-normal !text-[11.5px]">Customer {board.workSplit.customer}</MicroPill>
+            )}
+            {board.workSplit.principal > 0 && (
+              <MicroPill tone="violet" className="!normal-case !tracking-normal !text-[11.5px]">Principal {board.workSplit.principal}</MicroPill>
+            )}
+            {board.workSplit.internal > 0 && (
+              <MicroPill tone="neutral" className="!normal-case !tracking-normal !text-[11.5px]">
+                Internal {board.workSplit.internal}
+                {/* The domain breakdown only earns its place when it says
+                    something the count did not. A week whose internal work is all
+                    admin would otherwise read "3 internal - 3 internal". */}
+                {describeInternalDomains(board.workSplit.internalByDomain)}
+              </MicroPill>
+            )}
+          </>
+        )}
+        {board.captureCount > 0 && (
+          <span className="inline-flex items-center gap-1.5">
+            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-tint-green-solid" />
+            {board.captureCount} pulled in from your captures
+          </span>
+        )}
         {periodType === 'week' && (hiddenWeekendDays > 0 || showWeekend) && (
           <button
             type="button"
@@ -935,59 +969,50 @@ export function WeeklyPlanPage({
             {showWeekend ? 'Hide the empty weekend' : 'Show the weekend'}
           </button>
         )}
-        {board.derivedCount - board.captureCount > 0 && (
-          <span>{board.derivedCount - board.captureCount} from your pipeline and obligations</span>
-        )}
-        {board.captureCount > 0 && (
-          <span className="inline-flex items-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            {board.captureCount} pulled in from your captures
-          </span>
-        )}
-        {board.personalCount > 0 && <span>{board.personalCount} added by you</span>}
         {commitment && (
-          <Link to="/app/reviews" className="ml-auto font-bold text-brand-blue hover:underline">
+          <Link to="/app/reviews" className="font-bold text-brand-blue hover:underline sm:ml-auto">
             {commitment.items.length} commitments confirmed for this week
           </Link>
         )}
       </div>
 
       {accountMessage && (
-        <p className="mt-3 rounded-lg bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-100">
+        <p className="rounded-[13px] bg-tint-green-bg px-4 py-2.5 text-sm font-semibold text-tint-green-ink">
           {accountMessage}
         </p>
       )}
 
       {boardMessage && (
-        <p className="mt-3 rounded-lg bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800 ring-1 ring-amber-100">
+        <p className="rounded-[13px] bg-tint-amber-bg px-4 py-2.5 text-sm font-semibold text-tint-amber-ink">
           {boardMessage}
         </p>
       )}
 
       {board.totalCount === 0 && suggestions.length === 0 && (
-        <div className="mt-6 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
-          <p className="text-sm font-bold text-navy">Nothing dated in this period yet.</p>
-          <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">
+        <Panel className="px-6 py-7 text-center">
+          <p className="font-display text-sm font-bold text-ink">Nothing dated in this period yet.</p>
+          <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-tint-neutral-ink">
             Capture a touch with a due date and it lands here on its own — nothing to re-type. Deals and payments you owe
             fill in too, and you can always add your own items to a day below.
           </p>
           <Link
             to="/app/capture?mode=quick"
-            className="mt-4 inline-flex rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
+            className="mt-4 inline-flex rounded-full bg-brand-blue px-4 py-2 font-display text-sm font-semibold text-white shadow-btn-blue hover:bg-brand-blue-dark"
           >
             Capture activity
           </Link>
-        </div>
+        </Panel>
       )}
 
-      <div className={`mt-4 grid gap-3 ${
+      <div className={`grid gap-3.5 ${
         periodType === 'week'
           ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'
           : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7'
       }`}>
-        {visibleDays.map((day) => (
+        {visibleDays.map((day, dayIndex) => (
           <section
             key={day.date}
+            aria-label={`${day.weekdayLabel} ${day.dayLabel}${day.isToday ? ', today' : ''}`}
             onDragOver={(event) => {
               if (!dragItem) return;
               event.preventDefault();
@@ -1000,23 +1025,45 @@ export function WeeklyPlanPage({
               if (dragItem) void moveItem(dragItem, day.date);
               setDragItem(null);
             }}
-            className={`flex flex-col rounded-lg border ${day.isToday ? 'border-brand-blue' : 'border-gray-100'} bg-white ${
+            style={periodType === 'week' ? delay(100 + dayIndex * 40) : undefined}
+            className={`flex min-w-0 flex-col overflow-hidden rounded-tile bg-white ${periodType === 'week' ? 'animate-rise' : ''} ${
+              day.isToday ? 'shadow-today outline outline-2 -outline-offset-2 outline-brand-blue' : 'shadow-panel'
+            } ${
               dragItem && dragOverDate === day.date && dragItem.date !== day.date ? 'ring-2 ring-brand-blue/40' : ''
             }`}
           >
-            <header className={`flex items-baseline justify-between rounded-t-lg px-3 py-2 ${day.isToday ? 'bg-blue-50' : 'bg-gray-50'}`}>
-              <h2 className={`text-sm font-bold ${day.isToday ? 'text-brand-blue' : 'text-navy'}`}>
-                {periodType === 'week' ? day.weekdayLabel : day.dayLabel}
+            <header className={`flex items-baseline justify-between gap-2 px-[15px] py-[13px] ${day.isToday ? 'bg-brand-blue' : 'border-b border-line'}`}>
+              <h2 className={`font-display text-[13.5px] font-bold ${day.isToday ? 'text-white' : 'text-ink'}`}>
+                {periodType === 'week' ? day.weekdayLabel.slice(0, 3) : day.dayLabel}{' '}
+                <span className={`font-mono text-[11.5px] font-normal ${day.isToday ? 'text-white/85' : 'text-muted'}`}>
+                  {periodType === 'week' ? day.date.slice(8, 10) : day.weekdayLabel.slice(0, 3)}
+                </span>
               </h2>
-              <span className="text-[11px] text-gray-500">
-                {periodType === 'week' ? day.dayLabel : day.weekdayLabel.slice(0, 3)}
-              </span>
+              <DayCountPill day={day} today={today} />
             </header>
 
-            <div className="flex-1 space-y-1 p-2">
+            <div className="flex flex-1 flex-col gap-2 p-[11px]">
               {day.items.map((item) => {
                 const editable = item.kind !== 'obligation';
                 const isEditing = editingId === item.id;
+                const state = item.done ? 'done' : item.overdue ? 'late' : 'open';
+                const chip = {
+                  done: { ground: 'bg-tint-green-bg', text: 'text-tint-green-ink', meta: 'text-tint-green-solid' },
+                  late: { ground: 'bg-tint-red-bg', text: 'font-semibold text-tint-red-ink', meta: 'text-tint-red-solid' },
+                  open: { ground: 'bg-tint-neutral-bg', text: 'text-ink', meta: 'text-tint-neutral-ink' },
+                }[state];
+                const meta = [
+                  item.channel,
+                  state === 'done'
+                    ? 'done'
+                    : state === 'late'
+                      /* A carried promise says the day it was actually owed.
+                         "Overdue" alone, on a card sitting under today's
+                         column, reads as "late this morning" - and the ones
+                         this board was dropping were five months late. */
+                      ? (item.carriedFrom ? `Was due ${formatSafeBusinessDate(item.carriedFrom)}` : 'Overdue')
+                      : planItemSourceLabel(item),
+                ].filter(Boolean).join(' · ');
                 return (
                 <Fragment key={item.id}>
                 <div
@@ -1032,7 +1079,7 @@ export function WeeklyPlanPage({
                     setDragItem(item);
                   }}
                   onDragEnd={() => { setDragItem(null); setDragOverDate(''); }}
-                  className={`group flex items-start gap-2 rounded-md px-1.5 py-1 hover:bg-gray-50 ${
+                  className={`group flex items-start gap-2 rounded-[11px] px-[11px] py-[10px] transition-transform ${chip.ground} ${
                     editable && !isEditing ? 'cursor-grab active:cursor-grabbing' : ''
                   } ${dragItem?.id === item.id ? 'opacity-40' : ''}`}
                 >
@@ -1048,7 +1095,7 @@ export function WeeklyPlanPage({
                       checked={item.done}
                       onChange={() => toggleItem(item)}
                       aria-label={`Mark "${item.label}" ${item.done ? 'not done' : 'done'}`}
-                      className="mt-[3px] h-3.5 w-3.5"
+                      className={`mt-[2px] h-3.5 w-3.5 ${item.done ? 'accent-tint-green-solid' : ''}`}
                     />
                   </label>
                   <div className="min-w-0 flex-1">
@@ -1064,10 +1111,10 @@ export function WeeklyPlanPage({
                           if (event.key === 'Escape') { setEditingId(''); setEditDraft(''); }
                         }}
                         aria-label={`Edit "${item.label}"`}
-                        className="w-full rounded border border-brand-blue/60 px-1.5 py-0.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue/20"
+                        className="w-full rounded-md border border-brand-blue/60 bg-white px-1.5 py-0.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue/20"
                       />
                     ) : (
-                    <p className={`text-xs leading-5 ${item.done ? 'text-gray-400' : 'text-gray-900'}`}>
+                    <p className={`text-[11.5px] leading-[1.45] ${chip.text}`}>
                       {/* The strike lives on the sentence, never on the row.
                           Ticking an item used to grey the customer's chip and
                           put a line through it along with the words - a
@@ -1087,18 +1134,18 @@ export function WeeklyPlanPage({
                         />
                       )}
                       {item.href && !item.done ? (
-                        <Link to={item.href} className="font-medium hover:text-brand-blue hover:underline">{item.label}</Link>
+                        <Link to={item.href} className="hover:text-brand-blue hover:underline">{item.label}</Link>
                       ) : editable ? (
                         <button
                           type="button"
                           onClick={() => startEdit(item)}
-                          className={`text-left font-medium hover:text-brand-blue ${item.done ? 'line-through' : ''}`}
+                          className={`text-left hover:text-brand-blue ${item.done ? 'line-through' : ''}`}
                           title="Edit"
                         >
                           {item.label}
                         </button>
                       ) : (
-                        <span className={`font-medium ${item.done ? 'line-through' : ''}`}>{item.label}</span>
+                        <span className={item.done ? 'line-through' : ''}>{item.label}</span>
                       )}
                       {/* Who it is with, when the record names somebody the
                           sentence does not. An edit whose result never shows on
@@ -1107,28 +1154,18 @@ export function WeeklyPlanPage({
                           repeating a name already written into the line would
                           be noise, which is what the second test rules out. */}
                       {item.contactName && !labelNamesContact(item.label, item.contactName) && (
-                        <span className="ml-1 whitespace-nowrap text-[11px] font-semibold text-gray-500">
+                        <span className="ml-1 whitespace-nowrap text-[11px] font-semibold opacity-80">
                           · {item.contactName}
                         </span>
                       )}
-                      {/* What kind of day this line asks for. Shown only when
-                          the operator said - the board never guesses one, so a
-                          chip here always means somebody chose it. */}
-                      {item.channel && (
-                        <span className="ml-1 whitespace-nowrap rounded bg-gray-100 px-1 py-0.5 text-[10px] font-bold text-gray-600">
-                          {item.channel}
-                        </span>
-                      )}
-                      {item.overdue && !item.done && (
-                        /* A carried promise says the day it was actually owed.
-                           "Overdue" alone, on a card sitting under today's
-                           column, reads as "late this morning" - and the ones
-                           this board was dropping were five months late. */
-                        <span className="ml-1 rounded bg-red-50 px-1 py-0.5 text-[10px] font-bold text-red-700">
-                          {item.carriedFrom ? `Was due ${formatSafeBusinessDate(item.carriedFrom)}` : 'Overdue'}
-                        </span>
-                      )}
                     </p>
+                    )}
+                    {/* What kind of day this line asks for, and where it stands.
+                        The channel shows only when the operator said - the board
+                        never guesses one, so a channel here always means
+                        somebody chose it. */}
+                    {!isEditing && meta && (
+                      <p className={`mt-1 text-[10px] font-bold uppercase tracking-[0.06em] ${chip.meta}`}>{meta}</p>
                     )}
                   </div>
                   {/* The pencil opens the line in full - day, customer,
@@ -1143,7 +1180,7 @@ export function WeeklyPlanPage({
                       aria-label={`Edit details of ${item.label}`}
                       title="Edit details"
                       onClick={() => openDetail(item)}
-                      className="row-action relative shrink-0 rounded p-0.5 text-gray-300 opacity-0 transition after:absolute after:-inset-1.5 after:content-[''] hover:bg-gray-200 hover:text-gray-700 group-hover:opacity-100"
+                      className="row-action relative shrink-0 rounded p-0.5 text-tint-neutral-ink opacity-0 transition after:absolute after:-inset-1.5 after:content-[''] hover:bg-white hover:text-ink group-hover:opacity-100"
                     >
                       <Pencil className="h-3 w-3" />
                     </button>
@@ -1153,7 +1190,7 @@ export function WeeklyPlanPage({
                       type="button"
                       aria-label={`Remove ${item.label}`}
                       onClick={() => removePersonalItem(item.id)}
-                      className="row-action shrink-0 rounded p-0.5 text-gray-300 opacity-0 transition hover:bg-gray-200 hover:text-gray-700 group-hover:opacity-100"
+                      className="row-action shrink-0 rounded p-0.5 text-tint-neutral-ink opacity-0 transition hover:bg-white hover:text-ink group-hover:opacity-100"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -1179,7 +1216,7 @@ export function WeeklyPlanPage({
               })}
 
               {composerDate === day.date ? (
-                <div className="mt-1">
+                <div className="rounded-[11px] bg-white p-2 ring-1 ring-line">
                   <div className="flex items-center gap-1">
                     <input
                       type="text"
@@ -1192,12 +1229,12 @@ export function WeeklyPlanPage({
                       }}
                       placeholder="[Internal] Submit KPI"
                       aria-label={`Add an item to ${day.weekdayLabel}`}
-                      className="min-w-0 flex-1 rounded border border-gray-200 px-2 py-1 text-xs"
+                      className="min-w-0 flex-1 rounded-md border border-line px-2 py-1 text-xs"
                     />
                     <button
                       type="button"
                       onClick={() => addPersonalItem(day.date)}
-                      className="shrink-0 rounded bg-brand-blue px-2 py-1 text-xs font-bold text-white hover:bg-blue-700"
+                      className="shrink-0 rounded-md bg-brand-blue px-2 py-1 text-xs font-bold text-white hover:bg-brand-blue-dark"
                     >
                       Add
                     </button>
@@ -1213,7 +1250,7 @@ export function WeeklyPlanPage({
                     value={draftChannel}
                     onChange={(event) => setDraftChannel((event.target.value || '') as ActivityChannel | '')}
                     aria-label={`How this ${day.weekdayLabel} item will happen`}
-                    className="mt-1 w-full rounded border border-gray-200 bg-white px-1.5 py-1 text-[11px] font-semibold text-gray-600"
+                    className="mt-1 w-full rounded-md border border-line bg-white px-1.5 py-1 text-[11px] font-semibold text-tint-neutral-ink"
                   >
                     <option value="">How? (optional)</option>
                     {ACTIVITY_CHANNELS.map((spec) => (
@@ -1221,26 +1258,26 @@ export function WeeklyPlanPage({
                     ))}
                   </select>
                   {draftLink && (
-                    <span className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-brand-blue">
+                    <span className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full bg-tint-blue-bg px-2 py-0.5 text-[11px] font-bold text-tint-blue-ink">
                       <span className="truncate">Linked: {draftLink.display}</span>
                       <button
                         type="button"
                         aria-label="Remove link"
                         onClick={() => setDraftLink(null)}
-                        className="shrink-0 text-blue-400 hover:text-blue-700"
+                        className="shrink-0 opacity-70 hover:opacity-100"
                       >
                         <X className="h-3 w-3" />
                       </button>
                     </span>
                   )}
                   {draftLink && !draft.trim() && (
-                    <p className="mt-1 text-[11px] font-semibold text-gray-500">
+                    <p className="mt-1 text-[11px] font-semibold text-tint-neutral-ink">
                       Linked. Now type what you will do — “Send price + CoA”.
                     </p>
                   )}
                   {draftLinkOptions.length > 0 && (
-                    <div className="mt-1.5 overflow-hidden rounded-md border border-gray-100 bg-white shadow-sm">
-                      <p className="border-b border-gray-100 bg-gray-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-gray-400">
+                    <div className="mt-1.5 overflow-hidden rounded-lg border border-line bg-white shadow-seg">
+                      <p className="border-b border-line bg-canvas px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-muted">
                         Link to
                       </p>
                       {draftLinkOptions.map((option) => (
@@ -1259,14 +1296,14 @@ export function WeeklyPlanPage({
                             setDraft((current) => stripPlanLinkFromDraft(current, option.accountName || option.brand || option.display));
                           }}
                           title={option.display}
-                          className="flex w-full items-start gap-1.5 px-2 py-1.5 text-left text-[11px] font-semibold text-gray-700 hover:bg-blue-50 hover:text-brand-blue"
+                          className="flex w-full items-start gap-1.5 px-2 py-1.5 text-left text-[11px] font-semibold text-gray-700 hover:bg-tint-blue-bg hover:text-tint-blue-ink"
                         >
                           <span className={`mt-px shrink-0 rounded px-1 py-0.5 text-[9px] font-bold uppercase ${
                             option.kind === 'deal'
-                              ? 'bg-blue-50 text-brand-blue'
+                              ? 'bg-tint-blue-bg text-tint-blue-ink'
                               : option.kind === 'brand'
-                                ? 'bg-violet-50 text-violet-700'
-                                : 'bg-sky-50 text-sky-700'
+                                ? 'bg-tint-violet-bg text-tint-violet-ink'
+                                : 'bg-tint-cyan-bg text-tint-cyan-ink'
                           }`}>
                             {planLinkKindLabel(option.kind)}
                           </span>
@@ -1285,10 +1322,10 @@ export function WeeklyPlanPage({
                 <button
                   type="button"
                   onClick={() => { setComposerDate(day.date); setDraft(''); setDraftLink(null); }}
-                  className="mt-1 flex w-full items-center gap-1 rounded px-1.5 py-1 text-[11px] font-bold text-gray-400 transition hover:bg-gray-50 hover:text-brand-blue"
+                  className="mt-auto flex w-full items-center gap-[7px] rounded-[11px] bg-chip px-[11px] py-[9px] text-[11.5px] font-semibold text-tint-neutral-ink transition hover:text-brand-blue"
                 >
-                  <Plus className="h-3 w-3" />
-                  Add
+                  <Plus className="h-3.5 w-3.5" strokeWidth={2.2} />
+                  Add a plan item
                 </button>
               )}
             </div>
@@ -1305,7 +1342,7 @@ export function WeeklyPlanPage({
 
       <PlanPasteImportPanel days={board.days} records={records} onImport={importPastedWeek} />
 
-      <p className="mt-4 text-xs leading-5 text-gray-400">
+      <p className="text-xs leading-5 text-muted">
         Items in green were pulled in from a capture - you wrote them once, they landed here on their own. Drag any item
         to another day to reschedule it, or open the pencil to change the day, the customer, the person you are seeing
         and the wording together - all of it writes straight into the deal or touch it came from. Checking an item
@@ -1334,6 +1371,139 @@ export function WeeklyPlanPage({
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Where an open line came from, when it did not come from the operator's hand.
+ * A done or late line says its state instead; a line typed onto the day says
+ * nothing, because the operator knows they wrote it.
+ */
+function planItemSourceLabel(item: PlanItem) {
+  if (item.kind === 'deal') return 'Deal next step';
+  if (item.kind === 'capture') return 'From a capture';
+  if (item.kind === 'obligation') return 'You owe';
+  return '';
+}
+
+/**
+ * The count at the top of a day, coloured by how that day went.
+ *
+ * All done reads green. A day already past with work still open reads amber -
+ * not red, because the lines themselves carry the red and a column header
+ * shouting as well is the same alarm twice. A day still ahead with nothing done
+ * is simply open.
+ */
+function DayCountPill({ day, today }: { day: PlanDay; today: string }) {
+  const total = day.items.length;
+  const done = day.doneCount;
+  if (day.isToday) {
+    return (
+      <span className="rounded-full bg-white px-2 py-[3px] text-[10px] font-bold uppercase tracking-[0.07em] text-brand-blue">
+        {total > 0 ? `Today ${done}/${total}` : 'Today'}
+      </span>
+    );
+  }
+  if (total === 0) return null;
+  if (done === total) return <MicroPill tone="green">{done}/{total}</MicroPill>;
+  if (day.date < today) return <MicroPill tone="amber">{done}/{total}</MicroPill>;
+  if (done === 0) return <MicroPill tone="neutral">Open {total}</MicroPill>;
+  return <MicroPill tone="neutral">{done}/{total}</MicroPill>;
+}
+
+/** One colour per kind of day, in the ACTIVITY_CHANNELS order, unstated last and quiet. */
+const CHANNEL_COLOUR: Record<string, string> = {
+  'On-site visit': '#1976D2',
+  'Hosted visit': '#43A047',
+  'Online meeting': '#00ACC1',
+  'Phone call': '#7B1FA2',
+  'Cold outreach': '#C2185B',
+  'Email / message': '#3949AB',
+  Event: '#0E7490',
+  'Desk work': '#E8891A',
+  'Out of office': '#90A4AE',
+  [NOT_STATED_CHANNEL]: '#D5DBE3',
+};
+
+/**
+ * The week in one line: how much is done against the week before, how the work
+ * happens, and how much of it arrived from the records rather than by hand.
+ *
+ * "Not stated" is a slice, not a gap. Most lines carry no channel - a deal's
+ * next step does not say whether it is a call - and a bar that quietly dropped
+ * them would describe a week made only of the few lines somebody labelled.
+ */
+function WeekSummaryStrip({ summary, periodType }: { summary: PlanBoardSummary; periodType: PlanPeriod }) {
+  const percentTone = summary.donePercent === null
+    ? 'text-muted'
+    : summary.donePercent >= 70 ? 'text-tint-green-solid' : summary.donePercent >= 40 ? 'text-tint-amber-solid' : 'text-tint-red-solid';
+  const deltaTone = summary.deltaPoints === null || summary.deltaPoints === 0
+    ? 'text-muted'
+    : summary.deltaPoints > 0 ? 'text-tint-green-solid' : 'text-tint-red-solid';
+  const previousName = periodType === 'week' ? 'last week' : 'last month';
+
+  return (
+    <Panel className="flex animate-rise flex-col gap-4 px-[22px] py-[18px] lg:flex-row lg:items-center lg:gap-7" style={delay(60)} aria-label="This period at a glance">
+      <div className="shrink-0">
+        <MicroLabel>Done</MicroLabel>
+        <span className="mt-1.5 flex items-baseline gap-[7px]">
+          <span className={`font-display text-[30px] font-extrabold leading-none tracking-[-0.03em] ${percentTone}`}>
+            {summary.donePercent === null ? '—' : `${summary.donePercent}%`}
+          </span>
+          {summary.deltaPoints !== null && (
+            <span className={`text-xs font-semibold ${deltaTone}`} title={`Against ${previousName}`}>
+              {summary.deltaPoints > 0 ? '+' : summary.deltaPoints < 0 ? '−' : '±'}{Math.abs(summary.deltaPoints)} pts
+            </span>
+          )}
+        </span>
+        <span className="mt-1 block text-[11px] text-muted">
+          {summary.total === 0 ? 'Nothing on the board' : `${summary.done} of ${summary.total}${summary.deltaPoints !== null ? ` · vs ${previousName}` : ''}`}
+        </span>
+      </div>
+
+      <div aria-hidden="true" className="hidden w-px self-stretch bg-line lg:block" />
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="text-[11.5px] text-tint-neutral-ink">How the work happens</span>
+          <span className="text-[11px] text-muted">{summary.total} {summary.total === 1 ? 'item' : 'items'}</span>
+        </div>
+        <div
+          role="img"
+          aria-label={summary.channelMix.map((slice) => `${slice.channel} ${slice.count}`).join(', ') || 'No items'}
+          className="mt-2 flex h-3 overflow-hidden rounded-full bg-track"
+        >
+          {summary.channelMix.map((slice, index) => (
+            <span
+              key={slice.channel}
+              className="h-full origin-left animate-grow-h"
+              style={{
+                width: `${(slice.count / summary.total) * 100}%`,
+                background: CHANNEL_COLOUR[slice.channel] || CHANNEL_COLOUR[NOT_STATED_CHANNEL],
+                animationDelay: `${250 + index * 70}ms`,
+              }}
+            />
+          ))}
+        </div>
+        <div className="mt-2 flex flex-wrap gap-x-[18px] gap-y-1">
+          {summary.channelMix.map((slice) => (
+            <span key={slice.channel} className="inline-flex items-center gap-1.5 text-[11.5px] text-tint-neutral-ink">
+              <span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ background: CHANNEL_COLOUR[slice.channel] || CHANNEL_COLOUR[NOT_STATED_CHANNEL] }} />
+              {slice.channel} {slice.count}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div aria-hidden="true" className="hidden w-px self-stretch bg-line lg:block" />
+
+      <div className="shrink-0 lg:text-right">
+        <MicroLabel>From records / by hand</MicroLabel>
+        <span className="mt-1.5 block font-mono text-[22px] font-bold text-ink">
+          {summary.fromRecords} / {summary.addedByHand}
+        </span>
+      </div>
+    </Panel>
   );
 }
 

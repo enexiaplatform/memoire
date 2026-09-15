@@ -1,22 +1,23 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CalendarDays } from 'lucide-react';
-import { WeeklyPlanPage } from '../plan/WeeklyPlanPage';
+import { WeeklyPlanPage, type PlanBoardHeading } from '../plan/WeeklyPlanPage';
 import { SalesActivityCalendarPage } from '../calendar/SalesActivityCalendarPage';
 import { CommitmentLedgerPanel } from '../commitments/CommitmentLedgerPanel';
 import { CommittedWeekStrip } from '../dashboard/CommittedWeekStrip';
 import { useAuthContext } from '../../auth/authContext';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
+import { Segmented } from '../../components/ui/daylight';
 import type { PlanBoardWindow } from '../../domain/commercialKernel/derivePlanCommitments';
 import { getPlanRange } from '../../utils/weeklyPlan';
 import { todayDateKey } from '../../utils/safeDate';
+import { formatCount } from '../../utils/numberFormat';
 
 export type TimelineView = 'upcoming' | 'history';
 
-const views: { value: TimelineView; label: string; hint: string }[] = [
-  { value: 'upcoming', label: 'Upcoming', hint: 'Open commitments, dated work, and what you are waiting on.' },
-  { value: 'history', label: 'History', hint: 'Everything that already happened, in order.' },
+const views: { value: TimelineView; label: string }[] = [
+  { value: 'upcoming', label: 'Upcoming' },
+  { value: 'history', label: 'History' },
 ];
 
 function readView(value: string | null): TimelineView {
@@ -52,6 +53,12 @@ export function TimelinePage() {
     return { start: range.start, end: range.end, today: todayDateKey() };
   });
   /**
+   * What the board says about the period on screen - which week, and how much
+   * of it is done. The headline is that sentence, so the page opens on the
+   * state of the week rather than on the name of the tab.
+   */
+  const [heading, setHeading] = useState<PlanBoardHeading | null>(null);
+  /**
    * The day the panel last asked the board to show.
    *
    * Carries a sequence number rather than being a bare date, because asking
@@ -72,14 +79,18 @@ export function TimelinePage() {
     setSearchParams(params, { replace: true });
   };
 
-  const activeHint = views.find((option) => option.value === view)?.hint || '';
+  const upcomingTitle = !heading
+    ? 'Plan'
+    : heading.total === 0
+      ? 'Nothing planned yet'
+      : `${formatCount(heading.done)} of ${formatCount(heading.total)} planned ${heading.total === 1 ? 'item' : 'items'} done`;
 
   return (
     <PageContainer>
       <PageHeader
-        icon={<CalendarDays className="h-5 w-5" />}
-        title="Plan"
-        description={activeHint}
+        eyebrow={view === 'upcoming' ? heading?.eyebrow || 'Plan' : 'Plan · History'}
+        title={view === 'upcoming' ? upcomingTitle : 'What already happened'}
+        documentTitle="Plan"
         /*
          * No capture control here.
          *
@@ -91,26 +102,12 @@ export function TimelinePage() {
          * action is the thing that made "which of these two do I press" a
          * question at all.
          */
+        actions={(
+          <Segmented label="Timeline view" value={view} onChange={selectView} options={views} />
+        )}
       />
 
-      <div className="-mt-1 inline-flex rounded-full border border-gray-200 bg-gray-50 p-1" role="tablist" aria-label="Timeline view">
-        {views.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            role="tab"
-            aria-selected={view === option.value}
-            onClick={() => selectView(option.value)}
-            className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
-              view === option.value ? 'bg-navy text-white' : 'text-gray-600 hover:bg-white'
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-4">
         {view === 'upcoming' ? (
           <>
             {/* The week in the order it is decided.
@@ -131,6 +128,7 @@ export function TimelinePage() {
             <WeeklyPlanPage
               embedded
               onRangeChange={setBoardWindow}
+              onHeadingChange={setHeading}
               focusRequest={focusRequest}
               beforeBoard={(
                 /* Handed the days the board is drawing, so it stops re-listing

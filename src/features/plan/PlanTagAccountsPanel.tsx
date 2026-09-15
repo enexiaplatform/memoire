@@ -31,7 +31,7 @@ export function PlanTagAccountsPanel({
   const shown = expanded ? candidates : candidates.slice(0, 3);
 
   return (
-    <section className="mt-4 rounded-lg border border-blue-100 bg-blue-50/40 p-4">
+    <section className="rounded-panel bg-tint-blue-bg px-5 py-4">
       <div className="flex flex-wrap items-center gap-2">
         <Building2 className="h-4 w-4 text-brand-blue" />
         <h2 className="text-sm font-bold text-navy">Customers on your plan, not yet accounts ({candidates.length})</h2>

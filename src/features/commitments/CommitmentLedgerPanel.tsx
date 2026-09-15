@@ -109,7 +109,7 @@ export function CommitmentLedgerPanel({
   const showGroupLabels = !fold || listedGroupCount > 1;
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm" aria-label={title}>
+    <section className="rounded-panel bg-white px-5 py-4 shadow-panel" aria-label={title}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Clock3 className="h-4 w-4 text-brand-blue" />
@@ -363,7 +363,7 @@ function CommitmentGroup({
           // empty panel this replaced.
           const fromPlan = isPlanDerivedCommitment(commitment);
           return (
-          <li key={commitment.id} className="rounded-lg border border-gray-100 p-2.5">
+          <li key={commitment.id} className="rounded-[13px] bg-tint-neutral-bg p-3">
             <div className="flex flex-wrap items-start gap-2">
               <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ${partyTone[commitment.commitmentParty]}`}>
                 {partyLabels[commitment.commitmentParty]}

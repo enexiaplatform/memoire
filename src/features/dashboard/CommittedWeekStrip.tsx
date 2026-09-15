@@ -57,7 +57,7 @@ export function CommittedWeekStrip({
   const completed = snapshot.items.filter((item) => item.resolution === 'completed').length;
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm" aria-label="Committed this week">
+    <section className="rounded-panel bg-white px-5 py-4 shadow-panel" aria-label="Committed this week">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-sm font-bold text-navy">

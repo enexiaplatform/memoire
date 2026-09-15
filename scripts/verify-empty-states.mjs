@@ -127,7 +127,12 @@ for (const destination of DESTINATIONS) {
   // Exactly one primary. Every other affordance on an empty screen has to read
   // as an alternative, or the new user is choosing between equals with nothing
   // to choose on.
-  const primaries = block.match(/bg-navy /g) || [];
+  //
+  // A primary is the navy pill, or - on a surface redrawn in the 2026-09-14
+  // Daylight system - the brand-blue one that replaced it. Counting only navy
+  // would make a redrawn page read as having no primary at all; counting both
+  // keeps "two rival primaries" failing whichever colour they are.
+  const primaries = block.match(/bg-(?:navy|brand-blue) /g) || [];
   assert.equal(
     primaries.length,
     1,

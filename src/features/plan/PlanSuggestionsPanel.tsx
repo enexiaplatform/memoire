@@ -42,7 +42,7 @@ export function PlanSuggestionsPanel({
     // operator has already planned - worth offering, not worth reading past
     // every time the page opens. The summary carries the only two things that
     // decide whether to open it: how many, and how many are risks.
-    <details className="mt-4 rounded-lg border border-blue-100 bg-blue-50/40">
+    <details className="rounded-panel bg-white shadow-panel">
       <summary className="cursor-pointer list-none p-4">
         <span className="flex flex-wrap items-center gap-2">
           <Lightbulb className="h-4 w-4 text-brand-blue" />
@@ -55,7 +55,7 @@ export function PlanSuggestionsPanel({
         </span>
       </summary>
 
-      <div className="border-t border-blue-100 p-4">
+      <div className="border-t border-line p-4">
       <div className="flex justify-end">
         <button
           type="button"
