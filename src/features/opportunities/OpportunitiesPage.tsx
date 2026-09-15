@@ -139,6 +139,7 @@ import { accountKey, normalizeEntityName, sameAccount } from '../../utils/accoun
 import { checkAccountName, type AccountNameCheck } from '../../utils/accountDuplicates';
 import { analyzeStakeholderCoverage, getStakeholdersForOpportunity } from '../../utils/stakeholderGraph';
 import { normalizeMeddicRole } from '../../utils/meddicStakeholderMap';
+import { MeddicInsightPanel, MeddicScoreCell } from './MeddicInsight';
 import { buildMeddicStakeholderMap, formatMeddicStakeholderDate } from '../../utils/meddicStakeholderMap.ts';
 import { getObjectionsForOpportunity, objectionStatusTone } from '../../utils/objectionLedger';
 import { analyzeOpportunityOutcomeLoop } from '../../utils/actionOutcomeLoop';
@@ -237,6 +238,7 @@ type OpportunitySortKey =
   | 'recommendation'
   | 'nextActionDate'
   | 'quality'
+  | 'meddic'
   | 'updatedAt';
 type OpportunityQuickFilter = 'all' | 'imported' | 'stageInferred' | 'fy26' | 'fy27' | 'needsAction' | 'goingSilent';
 
@@ -418,8 +420,10 @@ export function OpportunitiesPage() {
   }, [opportunities, selectedOpportunityIds]);
 
   const opportunityRows = useMemo(
-    () => opportunities.map((opportunity) => buildOpportunityMasterRow(opportunity, activities, quotes, stakeholders)),
-    [activities, opportunities, quotes],
+    () => opportunities.map((opportunity) => buildOpportunityMasterRow(opportunity, activities, quotes, stakeholders, objections)),
+    // Stakeholders and objections are inputs to the row - who decides, and the
+    // MEDDIC score - so a person mapped or an objection logged has to redraw it.
+    [activities, objections, opportunities, quotes, stakeholders],
   );
 
   const goingSilentCount = useMemo(
@@ -2539,6 +2543,8 @@ type OpportunityMasterRow = {
   silence: OpportunitySilenceState;
   /** `expectedClosePeriod` read onto one absolute quarter axis. */
   closePeriod: ClosePeriod;
+  /** MEDDIC, scored from the records - the same engine the open deal reads. */
+  qualification: DealQualification;
 };
 
 type OpportunityCommercialSummary = {
@@ -2695,9 +2701,9 @@ function OpportunityMasterTable({
   onDraftFollowUp: (opportunity: CrmLiteOpportunity) => void;
 }) {
   const optionalCount = Number(columns.fy26) + Number(columns.fy27) + Number(columns.probability) + Number(columns.brand);
-  // Nine base columns fit a laptop without horizontal scroll; each optional one
+  // Ten base columns fit a laptop without horizontal scroll; each optional one
   // adds its own width back rather than the table reserving space for all four.
-  const minWidth = 1120 + optionalCount * 110;
+  const minWidth = 1250 + optionalCount * 110;
   /**
    * Two passes on purpose.
    *
@@ -2719,7 +2725,7 @@ function OpportunityMasterTable({
     () => new Map(groupRowsByClosePeriod(allRows).map((group) => [group.key, group])),
     [allRows],
   );
-  const columnCount = 9 + optionalCount;
+  const columnCount = 10 + optionalCount;
 
   return (
     <section className="min-w-0 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
@@ -2762,6 +2768,7 @@ function OpportunityMasterTable({
               <OpportunitySortableHeader label="Deal" sortKey="account" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="sticky left-10 z-20 border-r border-gray-200 bg-gray-50" />
               <OpportunitySortableHeader label="Close" sortKey="closePeriod" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Stage" sortKey="stage" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
+              <OpportunitySortableHeader label="MEDDIC" sortKey="meddic" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Value" sortKey="value" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="text-right" />
               {columns.fy26 && <OpportunitySortableHeader label="FY26" sortKey="fy26" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="text-right" />}
               {columns.fy27 && <OpportunitySortableHeader label="FY27" sortKey="fy27" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="text-right" />}
@@ -2892,6 +2899,12 @@ function OpportunityMasterTable({
                         {flow.status}
                         {flow.missingCheckpoints.length > 0 ? ` · ${flow.missingCheckpoints.length} checkpoint${flow.missingCheckpoints.length === 1 ? '' : 's'}` : ''}
                       </p>
+                    </td>
+
+                    {/* Every deal's MEDDIC score, beside the stage it is meant to
+                        justify - scored from the records, never typed. */}
+                    <td className="px-3 py-2.5">
+                      <MeddicScoreCell qualification={row.qualification} />
                     </td>
 
                     <td className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-gray-800">
@@ -3416,8 +3429,8 @@ function OpportunityPanel({
 
       {mode === 'edit' && currentOpportunity && (
         <>
-          <DealSectionLabel label="Evidence & blockers" hint="What the records support, dimension by dimension" />
-          <DealEvidenceSummary
+          <DealSectionLabel label="MEDDIC" hint="Scored from the records, letter by letter - record the thing to raise it" />
+          <MeddicInsightPanel
             qualification={scoreDealQualification({
               opportunity: currentOpportunity,
               stakeholders,
@@ -6003,6 +6016,7 @@ function buildOpportunityMasterRow(
   activities: SalesActivityRecord[],
   quotes: QuoteRecord[],
   stakeholders: StakeholderRecord[] = [],
+  objections: ObjectionRecord[] = [],
 ): OpportunityMasterRow {
   const linkedStakeholders = getStakeholdersForOpportunity(stakeholders, opportunity);
   const decidingStakeholder = linkedStakeholders
@@ -6031,6 +6045,15 @@ function buildOpportunityMasterRow(
     // Resolved once per row rather than inside the comparator, which would
     // re-parse the same free text on every comparison of every sort.
     closePeriod: resolveClosePeriod(opportunity.expectedClosePeriod),
+    // With the deal's own touches, exactly as the open deal scores it, so the
+    // number on the row and the number in the drawer cannot differ.
+    qualification: scoreDealQualification({
+      opportunity,
+      stakeholders,
+      objections,
+      activities: linkedActivities,
+      quotes,
+    }),
   };
 }
 
@@ -6257,6 +6280,8 @@ function getOpportunitySortValue(row: OpportunityMasterRow, sortKey: Opportunity
       return sanitizeBusinessDate(opportunity.nextActionDate) || '9999-12-31';
     case 'quality':
       return { Healthy: 0, 'Needs cleanup': 1, 'High risk': 2 }[row.quality.status];
+    case 'meddic':
+      return row.qualification.weighted;
     case 'updatedAt':
       return new Date(row.lastUpdatedAt).getTime() || 0;
   }
@@ -6399,66 +6424,6 @@ function DealSectionLabel({ label, hint }: { label: string; hint: string }) {
       <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-gray-400">{label}</h3>
       <p className="text-xs font-medium text-gray-400">{hint}</p>
     </div>
-  );
-}
-
-/**
- * One commercial judgement, instead of eight competing ones.
- *
- * A seller was being asked to reconcile stage, forecast grade, qualification
- * score, integrity score, MEDDIC completeness, stakeholder coverage, objection
- * severity and policy alerts before deciding what a deal meant. Every one of
- * those is real and every one is still available; what was missing was the
- * synthesis, so each reading argued with the others in the reader's head.
- *
- * This is that synthesis, and it derives nothing. The dimensions are the
- * canonical qualification elements, the marks are the canonical statuses
- * (Strong / Partial / Missing), and the blockers are the ones the scorer already
- * declares. Deliberately no number: the score exists, it is in the full
- * analysis, and putting a percentage here would add a ninth thing to reconcile
- * rather than replacing the eight.
- */
-function DealEvidenceSummary({
-  qualification,
-  openObjections,
-}: {
-  qualification: DealQualification;
-  openObjections: number;
-}) {
-  const mark = (status: MeddicLiteStatus) => (status === 'Strong' ? '✓' : status === 'Partial' ? '△' : '○');
-  const tone = (status: MeddicLiteStatus) => (
-    status === 'Strong' ? 'text-emerald-700' : status === 'Partial' ? 'text-amber-600' : 'text-gray-400'
-  );
-
-  return (
-    <section aria-label="Evidence and blockers" className="mt-2 rounded-xl border border-gray-200 bg-white p-4">
-      <div className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
-        {qualification.elements.map((element) => (
-          <div key={element.key} className="flex items-baseline justify-between gap-3 border-b border-gray-50 py-0.5 last:border-0">
-            <span className="min-w-0 truncate text-sm text-gray-700" title={element.label}>{element.label}</span>
-            <span className={`shrink-0 text-sm font-black ${tone(element.status)}`} title={element.status}>
-              <span className="sr-only">{element.status}</span>
-              <span aria-hidden="true">{mark(element.status)}</span>
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {qualification.blockers.length > 0 && (
-        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
-          <span className="font-bold">Nothing recorded on: </span>
-          {qualification.blockers.map((element) => element.label).join(', ')}. These are the two the deal does not
-          survive without, so the evidence cannot back a forecast until one of them is answered.
-        </p>
-      )}
-
-      {openObjections > 0 && (
-        <p className="mt-2 text-xs leading-5 text-gray-500">
-          {openObjections} open {openObjections === 1 ? 'objection' : 'objections'} on this customer, listed in the full
-          analysis below.
-        </p>
-      )}
-    </section>
   );
 }
 

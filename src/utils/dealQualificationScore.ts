@@ -114,6 +114,8 @@ export type QualificationElementScore = {
   evidence: string[];
   /** What is missing, and therefore what to go and record. */
   gaps: string[];
+  /** What to ask the customer to fill the gap, from the same MEDDIC review. */
+  questions: string[];
   blocking: boolean;
 };
 
@@ -199,6 +201,7 @@ export function scoreDealQualification(input: {
       weightedPoints: element.weight * points,
       evidence: field?.evidence || [],
       gaps: field?.gaps || [],
+      questions: field?.recommendedQuestions || [],
       blocking: BLOCKING_ELEMENTS.includes(element.key),
     };
   });

@@ -82,6 +82,22 @@ const deal = (overrides = {}) => ({
   const empty = scoreDealQualification({ opportunity: deal() });
   assert.equal(empty.max, 32, 'a deal the app knows nothing about still scores out of 32');
   assert.equal(empty.backsForecast, false);
+  assert.ok(empty.elements.every((element) => Array.isArray(element.questions)), 'every letter carries what to ask next');
+}
+
+// 2b. Every deal shows it (2026-09-15).
+//
+//    The score lived only inside an open deal, as a pill and a grid of ticks
+//    with no words beside them. The list carries it on every row now, built by
+//    the same call with the same inputs as the drawer, so the two numbers cannot
+//    differ - and the drawer says for each letter what is recorded and missing.
+{
+  const page = read('src/features/opportunities/OpportunitiesPage.tsx');
+  const rowBuilder = page.slice(page.indexOf('function buildOpportunityMasterRow'), page.indexOf('function buildOpportunityCommercialSummary'));
+  assert.match(rowBuilder, /qualification: scoreDealQualification\(\{[\s\S]*?activities: linkedActivities,/, 'every row is scored with the deal\'s own touches, as the drawer scores it');
+  assert.match(page, /<MeddicScoreCell qualification=\{row\.qualification\}/, 'the list shows the score on every row');
+  assert.match(page, /case 'meddic':\s*return row\.qualification\.weighted;/, 'the list can be sorted by it');
+  assert.match(page, /<MeddicInsightPanel[\s\S]{0,40}qualification=\{scoreDealQualification\(/, 'the open deal explains it letter by letter');
 }
 
 // 3. An unscored workspace backs nothing.
