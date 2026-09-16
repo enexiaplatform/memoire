@@ -83,6 +83,10 @@ import { formatCount } from '../../utils/numberFormat';
 import { useModalDrawer } from '../../hooks/useModalDrawer';
 import { matchesSearchQuery } from '../../utils/textSearch';
 import { normalizeEntityName } from '../../utils/accountIdentity.ts';
+import { buildAccountGlance, type AccountGlance } from '../../utils/accountGlance.ts';
+import { disqualifiedLeadIds, isLeadStage } from '../../utils/leadQueue.ts';
+import { MicroLabel, Panel } from '../../components/ui/daylight';
+import { tintSurface } from '../../components/ui/daylightStyles';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type SortDirection = 'asc' | 'desc';
@@ -1513,6 +1517,22 @@ function AccountDetailPanel({
         />
       )}
 
+      {/* What matters about this customer now, before any detail: the state of
+          the relationship in a few facts and at most three sentences. Everything
+          below it is the evidence. */}
+      {selectedMemory && hygieneStatus !== 'Imported only' && hygieneStatus !== 'Archived' && (
+        <AccountGlancePanel
+          glance={buildAccountGlance({
+            memory: selectedMemory,
+            stakeholders,
+            objections,
+            quotes,
+            disqualifiedLeadIds: disqualifiedLeadIds(outcomes),
+          })}
+          accountName={selectedMemory.account.accountName}
+        />
+      )}
+
       {selectedMemory && hygieneStatus !== 'Imported only' && hygieneStatus !== 'Archived' && (
         <AccountNextActionCard
           action={buildAccountNextAction({
@@ -1562,6 +1582,75 @@ function AccountDetailPanel({
       ) : null}
       </aside>
     </>
+  );
+}
+
+/**
+ * The top of the account: the customer's commercial state in facts, then what
+ * needs attention. Daylight surfaces on purpose - it is the one block in this
+ * drawer a reader should take in without reading.
+ */
+function AccountGlancePanel({ glance, accountName }: { glance: AccountGlance; accountName: string }) {
+  const facts: { label: string; value: string; detail: string; href?: string }[] = [
+    {
+      label: 'Last touch',
+      value: glance.daysSinceTouch === null ? 'None yet' : glance.daysSinceTouch === 0 ? 'Today' : `${glance.daysSinceTouch}d ago`,
+      detail: glance.lastTouchDate ? formatSafeBusinessDate(glance.lastTouchDate) : 'Nothing captured',
+    },
+    {
+      label: 'Leads',
+      value: formatCount(glance.openLeads.length),
+      detail: glance.openLeads.length ? 'open, not qualified' : 'none open',
+      href: glance.openLeads.length ? `/app/leads?q=${encodeURIComponent(accountName)}` : undefined,
+    },
+    {
+      label: 'Deals',
+      value: formatCount(glance.openDeals.length),
+      detail: glance.openDealsBase > 0 ? `${formatCompactBaseAmount(glance.openDealsBase)} qualified` : 'qualified, open',
+    },
+    {
+      label: 'People',
+      value: formatCount(glance.people),
+      detail: glance.champions.length ? `Champion: ${glance.champions[0]}` : glance.people ? 'no champion named' : 'nobody named',
+    },
+  ];
+
+  return (
+    <Panel as="div" className="mt-4 px-4 py-4" aria-label={`${accountName} at a glance`}>
+      <MicroLabel as="p">Now</MicroLabel>
+      <dl className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {facts.map((fact) => (
+          <div key={fact.label} className="rounded-2xl bg-tint-neutral-bg px-3 py-2.5">
+            <dt className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">{fact.label}</dt>
+            <dd className="mt-0.5 font-display text-[17px] font-extrabold leading-tight text-ink">
+              {fact.href ? <Link to={fact.href} className="hover:underline">{fact.value}</Link> : fact.value}
+            </dd>
+            <dd className="truncate text-[11px] text-tint-neutral-ink" title={fact.detail}>{fact.detail}</dd>
+          </div>
+        ))}
+      </dl>
+      {glance.matters.length === 0 ? (
+        <p className="mt-2.5 rounded-2xl bg-tint-green-bg px-3 py-2 text-[12.5px] font-semibold text-tint-green-ink">
+          Nothing on this customer needs attention right now.
+        </p>
+      ) : (
+        <ul className="mt-2.5 flex flex-col gap-1.5">
+          {glance.matters.map((item) => (
+            <li key={item.text} className={`rounded-2xl px-3 py-2 text-[12.5px] font-semibold ${tintSurface[item.tone].ground} ${tintSurface[item.tone].ink}`}>
+              {item.text}
+            </li>
+          ))}
+        </ul>
+      )}
+      {glance.openObjections.length > 0 || glance.quotesInPlay.length > 0 ? (
+        <p className="mt-2 text-[11.5px] text-muted">
+          {glance.openObjections.length} open {glance.openObjections.length === 1 ? 'objection' : 'objections'}
+          {' · '}
+          {glance.quotesInPlay.length} {glance.quotesInPlay.length === 1 ? 'quote' : 'quotes'} in play
+          {glance.quotesInPlayBase > 0 ? ` (${formatCompactBaseAmount(glance.quotesInPlayBase)})` : ''}
+        </p>
+      ) : null}
+    </Panel>
   );
 }
 
@@ -1718,7 +1807,8 @@ function AccountCommercialLoop({ memory, quotes }: { memory: AccountMemory; quot
   const paidQuotes = quotes.filter((quote) => getQuoteCommercialStage(quote) === 'Paid');
   const riskyQuotes = quotes.filter((quote) => getQuoteRisk(quote) !== 'None');
   const steps = [
-    { label: 'Opportunity', value: memory.activeOpportunityCount, hint: 'active' },
+    // Qualified deals only; leads have their own count in the glance above.
+    { label: 'Opportunity', value: memory.opportunities.filter((opportunity) => opportunity.status === 'Active' && !isLeadStage(opportunity.stage)).length, hint: 'active, qualified' },
     { label: 'Quote', value: activeQuotes.length, hint: 'sent / revised' },
     { label: 'PO', value: pendingPoQuotes.length, hint: 'waiting' },
     { label: 'Delivery', value: pendingDeliveryQuotes.length, hint: 'in progress' },

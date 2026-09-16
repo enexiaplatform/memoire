@@ -226,3 +226,35 @@ function isOnPlanBoard(commitment: CommercialCommitment, window: PlanBoardWindow
   return compareSafeBusinessDate(due, window.today) < 0
     && isBusinessDateInRange(window.today, window.start, window.end);
 }
+
+// ------------------------------------------------------------- who owes what
+
+/**
+ * Plan's operating question - who owes what, to whom, by when - split by the
+ * party that owes it.
+ *
+ * One ledger, three readings. There is no separate task list for "I owe",
+ * "customer owes" and "internal owes": every commitment already carries its
+ * party, and a promise captured in a note is always the operator's own (see
+ * `commitmentFrom`). These two functions are the only place the split is
+ * computed, so the counts on the filter and the rows under it cannot disagree.
+ */
+export type CommitmentPartyFilter = CommercialCommitment['commitmentParty'] | 'all';
+
+export function countCommitmentsByParty(
+  commitments: Pick<CommercialCommitment, 'commitmentParty' | 'status'>[],
+): Record<CommercialCommitment['commitmentParty'], number> {
+  const open = commitments.filter((commitment) => commitment.status === 'open');
+  return {
+    self: open.filter((commitment) => commitment.commitmentParty === 'self').length,
+    customer: open.filter((commitment) => commitment.commitmentParty === 'customer').length,
+    internal: open.filter((commitment) => commitment.commitmentParty === 'internal').length,
+  };
+}
+
+export function filterCommitmentsByParty<T extends Pick<CommercialCommitment, 'commitmentParty'>>(
+  commitments: T[],
+  party: CommitmentPartyFilter,
+): T[] {
+  return party === 'all' ? commitments : commitments.filter((commitment) => commitment.commitmentParty === party);
+}

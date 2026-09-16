@@ -77,7 +77,8 @@ export function LeadsPage() {
   const [planItems, setPlanItems] = useState<PlanRecord[]>([]);
   const [loading, setLoading] = useState(() => !getCachedSalesWorkspaceData(dataUserId));
   const [loadError, setLoadError] = useState('');
-  const [search, setSearch] = useState('');
+  // `?q=` seeds the search, so a customer's page can open its own leads.
+  const [search, setSearch] = useState(() => new URLSearchParams(window.location.search).get('q') || '');
   const [drawer, setDrawer] = useState<Drawer>({ kind: 'none' });
   const [busyId, setBusyId] = useState('');
   const [saving, setSaving] = useState(false);

@@ -65,6 +65,16 @@ const DESTINATIONS = [
     fills: /to="\/app\/capture"/,
   },
   {
+    // The seventh destination (2026-09-16). One primary - add a lead - and two
+    // quieter doors, because they are the other two ways a lead actually
+    // arrives: somebody met somebody, or a pipeline was imported.
+    id: 'leads',
+    file: 'src/features/leads/LeadsPage.tsx',
+    marker: 'function LeadsEmptyState',
+    says: /No leads waiting/,
+    fills: /onClick={onAdd}/,
+  },
+  {
     id: 'accounts',
     file: 'src/features/accounts/AccountsPage.tsx',
     marker: 'function EmptyState',
@@ -132,7 +142,10 @@ for (const destination of DESTINATIONS) {
   // Daylight system - the brand-blue one that replaced it. Counting only navy
   // would make a redrawn page read as having no primary at all; counting both
   // keeps "two rival primaries" failing whichever colour they are.
-  const primaries = block.match(/bg-(?:navy|brand-blue) /g) || [];
+  // The shared Daylight class names count too: a page that composes
+  // `primaryPillClass` rather than retyping its colours has a primary all the
+  // same, and a second one would be the same rivalry.
+  const primaries = block.match(/bg-(?:navy|brand-blue) |\bprimaryPillClass\b/g) || [];
   assert.equal(
     primaries.length,
     1,

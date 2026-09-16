@@ -1,11 +1,15 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowDown, Check, ChevronDown, Clock3, Plus, RotateCcw, X } from 'lucide-react';
+import { Segmented } from '../../components/ui/daylight';
 import type { CommercialCommitment, CommitmentParty } from '../../domain/commercialKernel/types';
 import {
   isPlanDerivedCommitment,
   splitCommitmentsByBoard,
   type PlanBoardWindow,
+  countCommitmentsByParty,
+  filterCommitmentsByParty,
+  type CommitmentPartyFilter,
 } from '../../domain/commercialKernel/derivePlanCommitments';
 import { formatSafeBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
 import { useCommitmentLedger } from './useCommitmentLedger';
@@ -67,6 +71,8 @@ export function CommitmentLedgerPanel({
   const [rescheduling, setRescheduling] = useState<string>('');
   const [showSettled, setShowSettled] = useState(false);
   const [showBoardItems, setShowBoardItems] = useState(false);
+  /** Whose promises are listed. The ledger is one list; this is how it is read. */
+  const [party, setParty] = useState<CommitmentPartyFilter>('all');
 
   const openCount = ledger.groups.overdue.length
     + ledger.groups.dueToday.length
@@ -90,16 +96,23 @@ export function CommitmentLedgerPanel({
     };
   }, [boardWindow, ledger.groups, showBoardItems]);
 
+  const partyCounts = useMemo(() => countCommitmentsByParty([
+    ...ledger.groups.overdue, ...ledger.groups.dueToday, ...ledger.groups.upcoming, ...ledger.groups.undated,
+  ]), [ledger.groups]);
+
   const groups = useMemo(() => {
-    if (!fold) return ledger.groups;
-    const keep = (items: CommercialCommitment[]) => items.filter((item) => !fold.folded.has(item.id));
+    const keep = (items: CommercialCommitment[]) => filterCommitmentsByParty(
+      fold ? items.filter((item) => !fold.folded.has(item.id)) : items,
+      party,
+    );
     return {
       ...ledger.groups,
       overdue: keep(ledger.groups.overdue),
       dueToday: keep(ledger.groups.dueToday),
       upcoming: keep(ledger.groups.upcoming),
+      undated: filterCommitmentsByParty(ledger.groups.undated, party),
     };
-  }, [fold, ledger.groups]);
+  }, [fold, ledger.groups, party]);
   const listedCount = groups.overdue.length + groups.dueToday.length + groups.upcoming.length + groups.undated.length;
   // Group labels earn their place only when there is something to tell apart.
   // Folded down to one group, "NOT ON THE WEEK SHOWN (3)" sat directly above
@@ -131,6 +144,24 @@ export function CommitmentLedgerPanel({
           </button>
         )}
       </div>
+
+      {/* Who owes what. Offered only once there is more than one party to tell
+          apart - a ledger of your own promises does not need a filter saying so. */}
+      {openCount > 0 && [partyCounts.self, partyCounts.customer, partyCounts.internal].filter((count) => count > 0).length > 1 && (
+        <Segmented
+          className="mt-3"
+          label="Who owes it"
+          semantics="filter"
+          value={party}
+          onChange={setParty}
+          options={[
+            { value: 'all', label: 'Everyone', count: openCount },
+            { value: 'self', label: partyLabels.self, count: partyCounts.self },
+            { value: 'customer', label: partyLabels.customer, count: partyCounts.customer },
+            { value: 'internal', label: partyLabels.internal, count: partyCounts.internal },
+          ]}
+        />
+      )}
 
       {ledger.message && (
         <p className="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800">{ledger.message}</p>

@@ -199,3 +199,39 @@ describe('what the week board below is already showing', () => {
     assert.equal(pagedAway.offBoard.length, 1);
   });
 });
+
+describe('who owes what', async () => {
+  const { countCommitmentsByParty, filterCommitmentsByParty } = await import('../../src/domain/commercialKernel/derivePlanCommitments.ts');
+  const commitment = (id, commitmentParty, status = 'open') => ({ id, commitmentParty, status });
+  const ledger = [
+    commitment('me-1', 'self'),
+    commitment('me-2', 'self'),
+    commitment('rohto', 'customer'),
+    commitment('pmm', 'internal'),
+    commitment('done', 'customer', 'completed'),
+  ];
+
+  test('I owe, customer owes and internal owes are counted from the one ledger, open only', () => {
+    assert.deepEqual(countCommitmentsByParty(ledger), { self: 2, customer: 1, internal: 1 });
+  });
+
+  test('filtering a party returns exactly that party, and everyone returns the ledger', () => {
+    assert.deepEqual(filterCommitmentsByParty(ledger, 'customer').map((item) => item.id), ['rohto', 'done']);
+    assert.deepEqual(filterCommitmentsByParty(ledger, 'internal').map((item) => item.id), ['pmm']);
+    assert.equal(filterCommitmentsByParty(ledger, 'all').length, ledger.length);
+  });
+
+  test('a promise read from a capture is the operator\'s own', () => {
+    const derived = derivePlanCommitments({
+      activities: [{
+        id: 'a1', accountName: 'Rohto', opportunityName: '', activityType: 'Meeting', summary: '', rawNote: '',
+        nextAction: 'Send the validation summary', dueDate: '2026-09-20', activityDate: '2026-09-16', tags: [],
+        linkedOpportunityId: '', linkedOpportunityName: '', linkedAccountName: 'Rohto', linkStatus: 'Unlinked',
+        createdAt: '2026-09-16T00:00:00.000Z', updatedAt: '2026-09-16T00:00:00.000Z', storageMode: 'local',
+      }],
+      planItems: [],
+    });
+    assert.ok(derived.length > 0);
+    assert.ok(derived.every((item) => item.commitmentParty === 'self'));
+  });
+});
