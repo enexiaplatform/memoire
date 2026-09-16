@@ -748,10 +748,33 @@ export type LeadSignal = {
   rows: LeadRow[];
   /** What happened, in the operator's own terms. */
   headline: string;
-  /** Why it matters and what to do. */
+  /** Why it matters. */
   detail: string;
+  /** What to do about it - a verb, and a name when there is one lead. */
+  action: string;
+  /**
+   * How much it matters today, as the two levels Today ranks on. High when the
+   * exception is already costing something - a revisit past its date, a lead
+   * that has waited a week for a first touch, one that is ready and not moved.
+   */
+  urgency: 'High' | 'Medium';
+  /** The soonest date in the group, when the signal is about a date. */
+  dueDate: string;
   href: string;
 };
+
+/** How long a new lead may wait for a first touch before it is late. */
+export const FIRST_TOUCH_LATE_DAYS = 7;
+
+const nameOf = (row: LeadRow) => row.opportunity.accountName || row.opportunity.opportunityName || 'a lead';
+
+/** "ABC Pharma", "ABC Pharma and Rohto", "ABC Pharma, Rohto and 3 more". */
+function namesOf(rows: LeadRow[]) {
+  const names = rows.map(nameOf);
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names[0]}, ${names[1]} and ${names.length - 2} more`;
+}
 
 /**
  * The lead exceptions worth interrupting a day for.
@@ -759,7 +782,9 @@ export type LeadSignal = {
  * Exceptions, not a count. "12 leads" is a fact about a list and tells nobody
  * what to do; "3 leads have never been contacted, the oldest 11 days ago" names
  * work. Each signal carries its rows, so the surface can say which leads and
- * link to them rather than restating the number.
+ * link to them rather than restating the number - and each says what happened,
+ * why it matters and what to do, because a signal that stops at "at risk"
+ * leaves the operator to work out the rest.
  */
 export function buildLeadSignals(queue: LeadQueue): LeadSignal[] {
   const working = queue.rows.filter((row) => !row.closed);
@@ -767,14 +792,22 @@ export function buildLeadSignals(queue: LeadQueue): LeadSignal[] {
 
   const revisitDue = working.filter((row) => row.nurture.nurturing && row.nurture.due);
   if (revisitDue.length) {
-    const overdue = revisitDue.filter((row) => (row.nurture.daysUntilRevisit ?? 0) < 0).length;
+    const overdue = revisitDue.filter((row) => (row.nurture.daysUntilRevisit ?? 0) < 0);
+    const soonest = [...revisitDue].sort((left, right) => left.nurture.revisitDate.localeCompare(right.nurture.revisitDate))[0];
     signals.push({
       kind: 'revisit-due',
       rows: revisitDue,
-      headline: `${revisitDue.length} nurtured ${revisitDue.length === 1 ? 'lead is' : 'leads are'} due to be revisited`,
-      detail: overdue
-        ? `${overdue} of them passed the date you set. You parked these because the timing was wrong - the timing has arrived.`
-        : 'You parked these because the timing was wrong. The date you chose is here.',
+      headline: revisitDue.length === 1
+        ? `${nameOf(soonest)} was parked until ${formatSafeBusinessDate(soonest.nurture.revisitDate)}`
+        : `${revisitDue.length} nurtured leads are due to be revisited`,
+      detail: overdue.length
+        ? `${overdue.length === revisitDue.length ? 'The date you set has passed' : `${overdue.length} of them passed the date you set`}. You parked ${revisitDue.length === 1 ? 'it' : 'them'} because the timing was wrong - the timing has arrived${soonest.nurture.reason ? ` (${soonest.nurture.reason})` : ''}.`
+        : `You parked ${revisitDue.length === 1 ? 'it' : 'them'} because the timing was wrong, and the date you chose is here.`,
+      action: revisitDue.length === 1
+        ? `Revisit ${nameOf(soonest)}: book a touch, qualify it, or park it again`
+        : `Revisit ${namesOf(revisitDue)}`,
+      urgency: overdue.length ? 'High' : 'Medium',
+      dueDate: soonest.nurture.revisitDate,
       href: '/app/leads?state=needs-action',
     });
   }
@@ -784,8 +817,11 @@ export function buildLeadSignals(queue: LeadQueue): LeadSignal[] {
     signals.push({
       kind: 'ready-to-qualify',
       rows: ready,
-      headline: `${ready.length} ${ready.length === 1 ? 'lead has' : 'leads have'} enough evidence to qualify`,
-      detail: 'Fit, a contact, a stated need and a conversation on each. Qualifying moves them into Discovery with everything recorded on them.',
+      headline: `${ready.length === 1 ? nameOf(ready[0]) : `${ready.length} leads`} ${ready.length === 1 ? 'has' : 'have'} enough evidence to qualify`,
+      detail: 'Fit, a contact, a stated need and a two-way conversation are all on record. Until it is qualified it is not in the pipeline, the forecast or Review.',
+      action: ready.length === 1 ? `Qualify ${nameOf(ready[0])} into Discovery` : `Qualify ${namesOf(ready)}`,
+      urgency: 'High',
+      dueDate: '',
       href: '/app/leads?state=ready',
     });
   }
@@ -795,13 +831,17 @@ export function buildLeadSignals(queue: LeadQueue): LeadSignal[] {
     const oldest = neverContacted.reduce((worst, row) => (
       (row.ageDays ?? 0) > (worst.ageDays ?? 0) ? row : worst
     ), neverContacted[0]);
+    const waited = oldest.ageDays ?? 0;
     signals.push({
       kind: 'never-contacted',
       rows: neverContacted,
       headline: `${neverContacted.length} new ${neverContacted.length === 1 ? 'lead has' : 'leads have'} never been contacted`,
-      detail: oldest.ageDays
-        ? `The oldest has been waiting ${oldest.ageDays} days - ${oldest.opportunity.accountName || 'no account named'}.`
-        : 'They arrived and nothing has gone back out.',
+      detail: waited > 0
+        ? `The oldest has been waiting ${waited} ${waited === 1 ? 'day' : 'days'} - ${nameOf(oldest)}. A lead that hears nothing in the first week rarely answers the second.`
+        : 'They arrived and nothing has gone back out yet.',
+      action: neverContacted.length === 1 ? `Make first contact with ${nameOf(oldest)}` : `Make first contact, starting with ${nameOf(oldest)}`,
+      urgency: waited >= FIRST_TOUCH_LATE_DAYS ? 'High' : 'Medium',
+      dueDate: '',
       href: '/app/leads?state=new',
     });
   }
@@ -812,11 +852,51 @@ export function buildLeadSignals(queue: LeadQueue): LeadSignal[] {
     signals.push({
       kind: 'going-quiet',
       rows: quiet,
-      headline: `${quiet.length} ${quiet.length === 1 ? 'lead is' : 'leads are'} going quiet with no next step`,
-      detail: `${worst.opportunity.accountName || 'One'} has been quiet for ${worst.silence.daysQuiet ?? 0} days. Book something, park it with a revisit date, or say why it is out.`,
+      headline: quiet.length === 1
+        ? `${nameOf(worst)} has been quiet for ${worst.silence.daysQuiet ?? 0} days with no next step`
+        : `${quiet.length} leads are going quiet with no next step`,
+      detail: quiet.length === 1
+        ? 'Nothing is scheduled, so nothing will bring it back to you.'
+        : `${nameOf(worst)} is the quietest, at ${worst.silence.daysQuiet ?? 0} days. Nothing is scheduled on any of them.`,
+      action: quiet.length === 1
+        ? `Book a next step with ${nameOf(worst)}, park it with a date, or disqualify it`
+        : `Book a next step or park each of ${namesOf(quiet)}`,
+      urgency: 'Medium',
+      dueDate: '',
       href: '/app/leads?state=going-quiet',
     });
   }
 
   return signals;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Need, read from a note                                                     */
+/* ------------------------------------------------------------------------- */
+
+/**
+ * The sentences in a note that say what a lead might need.
+ *
+ * Capture's classifier reads buying signals for a deal in motion - a quote
+ * asked for, a PO promised - and on a first conversation it finds none, so a
+ * lead created from "New microbiology laboratory planned next year. Interested
+ * in rapid testing." arrived with nothing under Need, and the queue called it
+ * a lead with no stated need. The need was in the note the whole time.
+ *
+ * Sentences, not phrases, and quoted as written: this is the operator's own
+ * words moved into the Evidence field they would otherwise retype, shown to them
+ * before the lead is created. Nothing is summarised, scored or guessed.
+ */
+const NEED_CUES = /\b(interested in|interest in|looking (?:for|at|to)|evaluating|considering|planned|planning|plans? (?:to|for)|new (?:lab|laboratory|plant|facility|line|site|project|building)|expan(?:d|sion|ding)|replac(?:e|ing|ement)|upgrade|needs?|requires?|requirement|tender|rfq|rfp|budget (?:for|approved)|currently uses?|switching from|pain|problem|issue with)\b/iu;
+
+export function extractLeadNeedSentences(note: string, limit = 3): string[] {
+  return (note || '')
+    .replace(/\s+/g, ' ')
+    .split(/(?<=[.!?])\s+/u)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length >= 8 && NEED_CUES.test(sentence))
+    // A follow-up instruction is a next step, not a need, even when it says
+    // "needs": "Need to call back Tuesday" belongs on the Plan.
+    .filter((sentence) => !/^(?:follow[ -]?up|call(?: back)?|send|email|remind|need to (?:call|send|email|follow))\b/iu.test(sentence))
+    .slice(0, limit);
 }

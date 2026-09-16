@@ -143,6 +143,7 @@ import {
   type DailyExecutionStatus,
 } from '../../utils/dailyExecution';
 import { buildUnifiedTodayCommandCenter, type TodayCommandAction } from '../../utils/todayCommandCenter.ts';
+import { buildLeadQueue, buildLeadSignals, disqualifiedLeadIds, selectQualifiedPipeline } from '../../utils/leadQueue.ts';
 import { loadAccountHygienePreferences } from '../../utils/accountHygiene.ts';
 import {
   buildProactiveNudges,
@@ -371,34 +372,6 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
     commercialActions: revenueView.actionItems,
     executionDecisions: dailyExecutionState.decisions,
   }) : null), [commandCenterNeeded, dailyExecutionState.decisions, data, revenueView.actionItems]);
-  // Readiness comes from the live pipeline, not the latest saved brief - the
-  // same reading Opportunities and a freshly generated brief would give.
-  const livePipelineHealth = useMemo(() => buildLivePipelineHealth({
-    opportunities: data.opportunities,
-    objections: data.objections,
-    stakeholders: data.stakeholders,
-    activities: data.activities,
-    actionOutcomes: data.actionOutcomes,
-    salesAssets: data.assets,
-    opportunityOutcomes: data.opportunityOutcomes,
-  }), [data.actionOutcomes, data.activities, data.assets, data.objections, data.opportunities, data.opportunityOutcomes, data.stakeholders]);
-  // The review signal the deeper reading shows, read from the live pipeline.
-  // It came from the latest saved Pipeline Defense brief until the brief was
-  // removed; no workspace had saved one, so it always said "no brief yet".
-  const pipelineReviewSignal = useMemo(() => buildLiveReviewSignal(livePipelineHealth), [livePipelineHealth]);
-  const todayCenter = useMemo(() => buildUnifiedTodayCommandCenter({
-    revenueActions: revenueView.actionItems,
-    opportunities: data.opportunities,
-    activities: data.activities,
-    stakeholders: data.stakeholders,
-    objections: data.objections,
-    accounts: data.accounts,
-    quotes: data.quotes,
-    expenses: data.expenses,
-    accountPreferences: accountHygienePreferences,
-    opportunityOutcomes: data.opportunityOutcomes,
-    pipelineHealth: livePipelineHealth,
-  }), [accountHygienePreferences, data.accounts, data.activities, data.expenses, data.objections, data.opportunities, data.opportunityOutcomes, data.quotes, data.stakeholders, livePipelineHealth, revenueView.actionItems]);
   // The dated promises this workspace already holds - Plan board items and the
   // ones made inside a capture. Handed to the nudge engine so a deal with a
   // booked follow-up is not called silent: Today was showing the commitment in
@@ -412,9 +385,66 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
     }),
     [data.activities, firstWeekPlanRecords, sampleDataActive],
   );
+  /**
+   * The qualified pipeline, and the leads beside it.
+   *
+   * Since Leads became its own destination (2026-09-16), every figure on Today
+   * that is about the pipeline - the open value, deals going silent, the moves
+   * that defend or rescue a deal, the watch-list - reads the qualified book
+   * only. A lead counted in open pipeline is a guess added to a forecast, and a
+   * lead on the deal watch-list is asked for a champion it could not yet have.
+   *
+   * Leads reach Today as their own exceptions, from the same queue the Leads
+   * page draws, so the two can never disagree about which leads need something.
+   * Everything that is about the whole book rather than the pipeline - money,
+   * the plan board, the quick look - still reads every record.
+   */
+  const disqualifiedLeads = useMemo(() => disqualifiedLeadIds(data.opportunityOutcomes), [data.opportunityOutcomes]);
+  const pipelineOpportunities = useMemo(
+    () => selectQualifiedPipeline(data.opportunities, disqualifiedLeads),
+    [data.opportunities, disqualifiedLeads],
+  );
+  const leadSignals = useMemo(() => buildLeadSignals(buildLeadQueue({
+    opportunities: data.opportunities,
+    activities: data.activities,
+    stakeholders: data.stakeholders,
+    objections: data.objections,
+    accounts: data.accounts,
+    opportunityOutcomes: data.opportunityOutcomes,
+    plannedCommitments,
+  })), [data.accounts, data.activities, data.objections, data.opportunities, data.opportunityOutcomes, data.stakeholders, plannedCommitments]);
+  // Readiness comes from the live pipeline, not the latest saved brief - the
+  // same reading Opportunities and a freshly generated brief would give.
+  const livePipelineHealth = useMemo(() => buildLivePipelineHealth({
+    opportunities: pipelineOpportunities,
+    objections: data.objections,
+    stakeholders: data.stakeholders,
+    activities: data.activities,
+    actionOutcomes: data.actionOutcomes,
+    salesAssets: data.assets,
+    opportunityOutcomes: data.opportunityOutcomes,
+  }), [data.actionOutcomes, data.activities, data.assets, data.objections, data.opportunityOutcomes, data.stakeholders, pipelineOpportunities]);
+  // The review signal the deeper reading shows, read from the live pipeline.
+  // It came from the latest saved Pipeline Defense brief until the brief was
+  // removed; no workspace had saved one, so it always said "no brief yet".
+  const pipelineReviewSignal = useMemo(() => buildLiveReviewSignal(livePipelineHealth), [livePipelineHealth]);
+  const todayCenter = useMemo(() => buildUnifiedTodayCommandCenter({
+    revenueActions: revenueView.actionItems,
+    opportunities: pipelineOpportunities,
+    activities: data.activities,
+    stakeholders: data.stakeholders,
+    objections: data.objections,
+    accounts: data.accounts,
+    quotes: data.quotes,
+    expenses: data.expenses,
+    accountPreferences: accountHygienePreferences,
+    opportunityOutcomes: data.opportunityOutcomes,
+    pipelineHealth: livePipelineHealth,
+    leadSignals,
+  }), [accountHygienePreferences, data.accounts, data.activities, data.expenses, data.objections, data.opportunityOutcomes, data.quotes, data.stakeholders, leadSignals, livePipelineHealth, pipelineOpportunities, revenueView.actionItems]);
   const proactiveNudges = useMemo(() => buildProactiveNudges({
     revenueActions: revenueView.actionItems,
-    opportunities: data.opportunities,
+    opportunities: pipelineOpportunities,
     activities: data.activities,
     objections: data.objections,
     accounts: data.accounts,
@@ -429,7 +459,7 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
     // "what Memoire would start with". A third card in the watch-list was the
     // same note a third time, with a third opinion about how urgent it is.
     captureInboxShown: true,
-  }), [accountHygienePreferences, data.accounts, data.activities, data.objections, data.operatingContext, data.opportunities, data.opportunityOutcomes, data.quotes, data.stakeholders, nudgeState, plannedCommitments, revenueView.actionItems]);
+  }), [accountHygienePreferences, data.accounts, data.activities, data.objections, data.operatingContext, data.opportunityOutcomes, data.quotes, data.stakeholders, nudgeState, pipelineOpportunities, plannedCommitments, revenueView.actionItems]);
   const decidedActionIds = useMemo(() => (
     new Set(dailyExecutionState.decisions.map((decision) => decision.actionId))
   ), [dailyExecutionState.decisions]);
@@ -443,20 +473,20 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
   ), [decidedActionIds, revenueView.actionItems]);
   const followUpImpact = useMemo(() => buildFollowUpImpact({
     activities: data.activities,
-    opportunities: data.opportunities,
+    opportunities: pipelineOpportunities,
     opportunityOutcomes: data.opportunityOutcomes,
-  }), [data.activities, data.opportunities, data.opportunityOutcomes]);
+  }), [data.activities, data.opportunityOutcomes, pipelineOpportunities]);
   const businessCockpit = useMemo(() => buildBusinessCockpit({
     commercialRiskItems: todayCenter.commercialRiskItems,
     nudges: proactiveNudges.allActiveNudges,
-    opportunities: data.opportunities,
+    opportunities: pipelineOpportunities,
     quotes: data.quotes,
     // The touches, so "which deals are hot?" is answered from movement rather
     // than from the alarm feed.
     activities: data.activities,
     captureInboxCount: todayCenter.captureInbox.length,
     captureInboxHref: todayCenter.captureInbox[0]?.href,
-  }), [data.activities, data.opportunities, data.quotes, proactiveNudges.allActiveNudges, todayCenter.captureInbox, todayCenter.commercialRiskItems]);
+  }), [data.activities, data.quotes, pipelineOpportunities, proactiveNudges.allActiveNudges, todayCenter.captureInbox, todayCenter.commercialRiskItems]);
   // Built after the cockpit so it can be told what the cockpit already said.
   const morningBrief = useMemo(() => buildMorningBrief({
     nudges: proactiveNudges.todayNudges,
@@ -497,15 +527,15 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
   // surface's engine - see utils/todayPicture.ts for why none of them is new.
   const todayKey = todayDateKey();
   const pipelinePicture = useMemo(
-    () => summariseOpenPipeline(data.opportunities, opportunityStages),
-    [data.opportunities],
+    () => summariseOpenPipeline(pipelineOpportunities, opportunityStages),
+    [pipelineOpportunities],
   );
   const silencePicture = useMemo(() => summariseSilence({
-    opportunities: data.opportunities,
+    opportunities: pipelineOpportunities,
     activities: data.activities,
     commitments: plannedCommitments,
     today: todayKey,
-  }), [data.activities, data.opportunities, plannedCommitments, todayKey]);
+  }), [data.activities, pipelineOpportunities, plannedCommitments, todayKey]);
   const cashPicture = useMemo(() => {
     if (!pictureRecords) return null;
     const book = buildOrderBook({
@@ -1389,7 +1419,7 @@ function TodayTopThreeActions({ actions, dealCount }: { actions: TodayCommandAct
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
           <h2 className="font-display text-[19px] font-bold tracking-[-0.015em] text-ink">Your 3 moves</h2>
-          <p className="mt-0.5 text-xs text-muted">What Memoire would start with, ranked across defense, revenue, opportunities and capture</p>
+          <p className="mt-0.5 text-xs text-muted">What Memoire would start with, ranked across money, deals, leads and capture</p>
         </div>
         {dealCount > 0 && (
           <Link to="/app/opportunities" data-quick-look-exempt="true" className="text-[12.5px] font-semibold text-brand-blue hover:underline">

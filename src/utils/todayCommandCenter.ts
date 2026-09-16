@@ -18,6 +18,7 @@ import { buildPostWonCustomers, type WonCustomerNudge } from './postWonCustomers
 import { buildOwnObligations, type OwnObligation } from './ownObligations.ts';
 import { formatCompactBaseAmount } from './money.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
+import { isLeadStage, type LeadSignal } from './leadQueue.ts';
 
 /**
  * Where a move came from. `Forecast evidence` was `Pipeline Defense` until the
@@ -25,7 +26,7 @@ import { normalizeEntityName } from './accountIdentity.ts';
  * defend, rescue or downgrade still read every live deal, and the label now
  * names what they read rather than a page that no longer exists.
  */
-export type TodayActionSource = 'Forecast evidence' | 'Revenue' | 'Opportunity' | 'Capture' | 'Customer' | 'Obligation';
+export type TodayActionSource = 'Forecast evidence' | 'Revenue' | 'Opportunity' | 'Capture' | 'Customer' | 'Obligation' | 'Lead';
 export type TodayActionUrgency = 'Critical' | 'High' | 'Medium' | 'Low';
 
 export type TodayCommandAction = {
@@ -89,6 +90,12 @@ export function buildUnifiedTodayCommandCenter(input: {
    * deals weak. Today composes; it does not decide where health comes from.
    */
   pipelineHealth?: ReturnType<typeof buildPipelineDefenseCenter>;
+  /**
+   * The lead exceptions, from buildLeadSignals - the same rule set the Leads
+   * page draws, so a move that says "3 leads never contacted" opens onto the
+   * same three rows. Today composes them; it does not re-derive them.
+   */
+  leadSignals?: LeadSignal[];
   today?: string;
 }) {
   const today = isValidBusinessDate(input.today) ? input.today : todayDateKey();
@@ -121,6 +128,7 @@ export function buildUnifiedTodayCommandCenter(input: {
   const obligationActions = obligations.obligations
     .filter((obligation) => obligation.kind === 'Payment' && (obligation.status === 'Overdue' || obligation.status === 'Due soon'))
     .map(buildObligationAction);
+  const leadActions = (input.leadSignals || []).map(buildLeadAction);
   const captureInbox = buildCaptureInbox(input.activities, input.opportunities);
   const accountClassifications = (input.accounts || []).map((account) => ({
     account,
@@ -152,8 +160,10 @@ export function buildUnifiedTodayCommandCenter(input: {
     moneyLabel: '',
     rank: 72 - index,
   }));
-  const rankedActions = [...pipelineActions, ...revenueActions, ...opportunityActions, ...postWonActions, ...obligationActions, ...captureActions]
-    .filter((action) => action.source === 'Capture' || action.source === 'Obligation' || !suppressedAccounts.has(normalize(action.accountName)))
+  const rankedActions = [...pipelineActions, ...revenueActions, ...opportunityActions, ...postWonActions, ...obligationActions, ...captureActions, ...leadActions]
+    // A lead signal stands for a group of leads, and its account name is the
+    // group's; the imported-account suppression is about single customers.
+    .filter((action) => action.source === 'Capture' || action.source === 'Obligation' || action.source === 'Lead' || !suppressedAccounts.has(normalize(action.accountName)))
     .sort(compareTodayActions);
   const allActions = dedupeActions(rankedActions).sort(compareTodayActions).map(withBasis);
   // Collapse identical titles into one card so a dataset where many deals share
@@ -242,7 +252,11 @@ function buildOpportunityActions(
   objections: ObjectionRecord[],
   today: string,
 ) {
-  return opportunities.filter((opportunity) => opportunity.status === 'Active').flatMap<TodayCommandAction>((opportunity) => {
+  // Leads are not graded here. "Confirm a customer champion" and "capture
+  // forecast evidence" are questions about a qualified deal, and asking them of
+  // somebody met at a stand last week is the MEDDIC-on-a-lead mistake the Leads
+  // destination exists to stop. Lead exceptions arrive as their own signals.
+  return opportunities.filter((opportunity) => opportunity.status === 'Active' && !isLeadStage(opportunity.stage)).flatMap<TodayCommandAction>((opportunity) => {
     const latestSignal = latestOpportunitySignal(opportunity, activities);
     const openObjection = objections.find((item) => item.status === 'Open' && matchesOpportunity(item, opportunity));
     const hasChampion = stakeholders.some((item) => normalizeMeddicRole(item.stakeholderRole) === 'Champion' && matchesOpportunity(item, opportunity));
@@ -279,6 +293,44 @@ function buildOpportunityActions(
     }];
     return [];
   });
+}
+
+/**
+ * A lead exception as a move.
+ *
+ * Title is what to do, reason is what happened and why it matters - the same
+ * three-part sentence every move on Today is held to. Ranked below overdue money
+ * and live deals at risk and above capture chores: a lead nobody has called is
+ * real work, and it is still less urgent than an invoice ninety days late.
+ */
+const LEAD_RANK: Record<LeadSignal['kind'], { High: number; Medium: number }> = {
+  'revisit-due': { High: 83, Medium: 75 },
+  'ready-to-qualify': { High: 80, Medium: 74 },
+  'never-contacted': { High: 79, Medium: 71 },
+  'going-quiet': { High: 76, Medium: 73 },
+};
+
+function buildLeadAction(signal: LeadSignal): TodayCommandAction {
+  const single = signal.rows.length === 1;
+  const dueDate = sanitizeBusinessDate(signal.dueDate);
+  return {
+    id: `lead-${signal.kind}`,
+    title: signal.action,
+    accountName: single
+      ? cleanOrConfirm(signal.rows[0].opportunity.accountName)
+      : `${signal.rows.length} leads`,
+    opportunityName: single ? cleanOrConfirm(signal.rows[0].opportunity.opportunityName) : 'Leads',
+    reason: `${signal.headline}. ${signal.detail}`,
+    source: 'Lead',
+    urgency: signal.urgency,
+    href: signal.href,
+    dueDate,
+    dueDateLabel: formatSafeBusinessDate(dueDate),
+    // A lead has not shown a need, so its value is a guess. Ranking a lead move
+    // on it would put the biggest guess first.
+    moneyLabel: '',
+    rank: LEAD_RANK[signal.kind][signal.urgency],
+  };
 }
 
 function buildPostWonAction(customer: WonCustomerNudge): TodayCommandAction {

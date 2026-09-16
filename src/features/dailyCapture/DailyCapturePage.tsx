@@ -29,6 +29,8 @@ import {
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
 import { updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
+import { createLead } from '../../services/leadCommands';
+import { extractLeadNeedSentences, leadSources, type LeadSource } from '../../utils/leadQueue';
 import { type AccountMemoryRecord } from '../../services/accountStore';
 import type { StakeholderRecord } from '../../services/stakeholderStore';
 import type { ObjectionRecord } from '../../services/objectionStore';
@@ -345,6 +347,16 @@ export function DailyCapturePage() {
    */
   const [scopeOverrideId, setScopeOverrideId] = useState<string | null>(null);
   const [scopeCorrected, setScopeCorrected] = useState(false);
+  /**
+   * "This is a new lead", confirmed by the operator.
+   *
+   * Never inferred. A note that names a customer with no open deal is common -
+   * post-sale work, a courtesy call, somebody else's account - and creating a
+   * lead for every one of them would fill the queue with records nobody
+   * decided to open. So the scope panel offers it, and the lead is created at
+   * save time only when this is on.
+   */
+  const [leadDraft, setLeadDraft] = useState<{ enabled: boolean; source: LeadSource | ''; detail: string }>({ enabled: false, source: '', detail: '' });
   const [dismissedQuoteSuggestions, setDismissedQuoteSuggestions] = useState<string[]>([]);
   const [quoteSuggestionMessage, setQuoteSuggestionMessage] = useState('');
   const [lastSavedActivity, setLastSavedActivity] = useState<SalesActivityRecord | null>(null);
@@ -631,10 +643,54 @@ export function DailyCapturePage() {
     }
     : undefined;
 
+  const leadNeedSentences = useMemo(
+    () => extractLeadNeedSentences(captureMode === 'quick' ? quickForm.whatHappened : activeCaptureText),
+    [activeCaptureText, captureMode, quickForm.whatHappened],
+  );
+
   const chooseScope = useCallback((opportunityId: string | null) => {
     setScopeOverrideId(opportunityId);
     setScopeCorrected(true);
+    // Picking a deal answers the question the lead option was asking.
+    if (opportunityId) setLeadDraft((current) => ({ ...current, enabled: false }));
   }, [setScopeOverrideId, setScopeCorrected]);
+
+  /**
+   * The link the save writes: the confirmed deal, or - when the operator said
+   * this is a new lead - a lead created now, from what the note already says.
+   *
+   * The lead carries the customer, the deal name the note gave, the next step
+   * and its date, the source the operator picked, and the buying signals as
+   * evidence of need. It does not carry the person: the fact review that opens
+   * after the save proposes them, and creating them here as well would propose
+   * a person who already exists.
+   */
+  const resolveSaveLinkTarget = async (fromNote: {
+    opportunityName?: string;
+    nextAction?: string;
+    dueDate?: string;
+  }) => {
+    if (!leadDraft.enabled || activeScope.opportunityId || !activeScope.accountName) return scopeLinkTarget;
+    const created = await createLead({
+      accountName: activeScope.accountName,
+      opportunityName: fromNote.opportunityName,
+      leadSource: leadDraft.source,
+      leadSourceDetail: leadDraft.detail,
+      nextAction: fromNote.nextAction,
+      nextActionDate: fromNote.dueDate,
+      // The sentences that say what they might need, as written - shown in the
+      // scope panel before saving, so nothing lands in Evidence unseen.
+      evidence: leadNeedSentences.join(' '),
+      currency: getReportingCurrency(),
+    }, dataUserId, { source: sampleDataActive ? 'demo' : 'user', isSample: sampleDataActive });
+    setOpportunities((current) => [created.opportunity, ...current]);
+    setLeadDraft({ enabled: false, source: '', detail: '' });
+    return {
+      linkedOpportunityId: created.opportunity.id,
+      linkedOpportunityName: created.opportunity.opportunityName,
+      linkedAccountName: created.opportunity.accountName,
+    };
+  };
 
   const handleSave = async () => {
     // Guarded here rather than only on the buttons: both Save buttons and any
@@ -679,10 +735,19 @@ export function DailyCapturePage() {
     // "clear sample data" actually reaches it. This is the primary demo path:
     // untagged, every capture a visitor made while trying the product stayed in
     // their real workspace the moment they signed in on the same browser.
+    let linkTarget = scopeLinkTarget;
+    try {
+      linkTarget = await resolveSaveLinkTarget(preview);
+    } catch {
+      // The note is the thing being saved. A lead that could not be created
+      // must not cost the operator the capture; it is saved against the
+      // customer and the reason is said out loud.
+      setMessage('Could not create the lead - the note is saved with the customer instead.');
+    }
     const result = await saveSalesActivity(classified, dataUserId, {
       source: sampleDataActive ? 'demo' : 'user',
       isSample: sampleDataActive,
-    }, scopeLinkTarget);
+    }, linkTarget);
     const memory = recordCaptureCorrections(corrections, user?.id);
     setCaptureCorrections(memory.corrections);
     setAccountAliases(memory.aliases);
@@ -723,10 +788,20 @@ export function DailyCapturePage() {
 
     setSaveState('saving');
     setMessage('Saving quick capture...');
+    let linkTarget = scopeLinkTarget;
+    try {
+      linkTarget = await resolveSaveLinkTarget({
+        opportunityName: quickForm.opportunityName,
+        nextAction: quickForm.nextAction,
+        dueDate: quickForm.dueDate,
+      });
+    } catch {
+      setMessage('Could not create the lead - the note is saved with the customer instead.');
+    }
     const result = await saveSalesActivity(prepared, dataUserId, {
       source: sampleDataActive ? 'demo' : 'user',
       isSample: sampleDataActive,
-    }, scopeLinkTarget);
+    }, linkTarget);
     setActivities((current) => [result.record, ...current.filter((item) => item.id !== result.record.id)]);
     setLastSavedActivity(result.record);
     openReviewForCapture(result.record);
@@ -1094,10 +1169,11 @@ export function DailyCapturePage() {
       `Saving adds one touch to ${preview.accountName || 'this workspace'}'s history, dated ${formatSafeBusinessDate(activeActivityDate)}${logToActivity ? '.' : ', kept out of Activity.'}`,
     ];
     if (activeScope.opportunityName) sentences.push(`It is filed under ${activeScope.opportunityName}.`);
+    else if (leadDraft.enabled && activeScope.accountName) sentences.push(`It creates a new lead for ${activeScope.accountName} and files the note under it.`);
     if (preview.nextAction && preview.dueDate) sentences.push(`The next step lands on your Plan for ${formatSafeBusinessDate(preview.dueDate)}.`);
     sentences.push('Then Memoire lists the people, promises and objections it read, for you to accept one at a time.');
     return sentences;
-  }, [activeActivityDate, activeScope.opportunityName, logToActivity, preview]);
+  }, [activeActivityDate, activeScope.accountName, activeScope.opportunityName, leadDraft.enabled, logToActivity, preview]);
 
   const discardNote = () => {
     setRawNote('');
@@ -1105,6 +1181,7 @@ export function DailyCapturePage() {
     resetNoteDerivedState();
     setScopeOverrideId(null);
     setScopeCorrected(false);
+    setLeadDraft({ enabled: false, source: '', detail: '' });
   };
   const hasDraft = captureMode === 'email' ? emailForm.body.trim().length > 0 : rawNote.trim().length > 0;
 
@@ -1313,6 +1390,9 @@ export function DailyCapturePage() {
                 resolution={resolvedScope.resolution}
                 corrected={scopeCorrected}
                 onChoose={chooseScope}
+                leadDraft={leadDraft}
+                onLeadDraftChange={setLeadDraft}
+                needSentences={leadNeedSentences}
               />
             </div>
 
@@ -2716,13 +2796,22 @@ function CaptureScopePanel({
   resolution,
   corrected,
   onChoose,
+  leadDraft,
+  onLeadDraftChange,
+  needSentences,
 }: {
   scope: CommercialScope;
   resolution: CommercialScope['resolution'];
   corrected: boolean;
   onChoose: (opportunityId: string | null) => void;
+  leadDraft: { enabled: boolean; source: LeadSource | ''; detail: string };
+  onLeadDraftChange: (next: { enabled: boolean; source: LeadSource | ''; detail: string }) => void;
+  /** What the note says they might need - becomes the lead's Evidence. */
+  needSentences: string[];
 }) {
   const [picking, setPicking] = useState(false);
+  const sourceId = useId();
+  const detailId = useId();
 
   if (!scope.accountName) return null;
 
@@ -2737,6 +2826,8 @@ function CaptureScopePanel({
           <p className="mt-0.5 truncate text-sm font-bold text-navy">{scope.accountName}</p>
           {scope.opportunityId ? (
             <p className="truncate text-sm text-gray-700">↳ {scope.opportunityName}</p>
+          ) : leadDraft.enabled ? (
+            <p className="text-sm font-semibold text-tint-blue-ink">↳ A new lead, created when you save</p>
           ) : (
             <p className="text-sm text-gray-600">
               {needsChoice
@@ -2793,6 +2884,72 @@ function CaptureScopePanel({
             </ul>
           )}
         </>
+      )}
+
+      {/* The Capture -> Lead door. Offered whenever no deal is chosen, because
+          that is exactly when a note can be the start of one - and only
+          offered: nothing is created until the operator turns it on and saves. */}
+      {!scope.opportunityId && (
+        <div className="mt-3 border-t border-white/70 pt-3">
+          <button
+            type="button"
+            aria-pressed={leadDraft.enabled}
+            onClick={() => onLeadDraftChange({ ...leadDraft, enabled: !leadDraft.enabled })}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition ${
+              leadDraft.enabled ? 'bg-brand-blue text-white' : 'bg-white text-brand-blue-dark ring-1 ring-line hover:ring-line-strong'
+            }`}
+          >
+            {leadDraft.enabled ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : null}
+            {leadDraft.enabled ? 'Creating as a lead' : 'Create as a lead'}
+          </button>
+          {!leadDraft.enabled && resolution === 'unresolved' && (
+            <p className="mt-1.5 text-[11.5px] leading-4 text-gray-500">
+              No open deal with {scope.accountName}. If this conversation could become one, save it as a lead.
+            </p>
+          )}
+          {leadDraft.enabled && (
+            <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div>
+                <label htmlFor={sourceId} className="block text-[11px] font-bold uppercase tracking-wide text-gray-500">Source</label>
+                <select
+                  id={sourceId}
+                  value={leadDraft.source}
+                  onChange={(event) => onLeadDraftChange({ ...leadDraft, source: event.target.value as LeadSource | '' })}
+                  className="mt-1 w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                >
+                  <option value="">Not stated</option>
+                  {leadSources.map((source) => <option key={source} value={source}>{source}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor={detailId} className="block text-[11px] font-bold uppercase tracking-wide text-gray-500">Source detail</label>
+                <input
+                  id={detailId}
+                  value={leadDraft.detail}
+                  onChange={(event) => onLeadDraftChange({ ...leadDraft, detail: event.target.value })}
+                  placeholder="The event or who referred"
+                  className="mt-1 w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                />
+              </div>
+              <div className="rounded-lg bg-white px-3 py-2 sm:col-span-2">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">Need, from your note</p>
+                {needSentences.length > 0 ? (
+                  <ul className="mt-1 space-y-0.5 text-[12.5px] leading-5 text-ink">
+                    {needSentences.map((sentence) => <li key={sentence}>“{sentence}”</li>)}
+                  </ul>
+                ) : (
+                  <p className="mt-1 text-[12.5px] leading-5 text-gray-500">
+                    Nothing in the note says what they need yet - the lead will show Need as missing.
+                  </p>
+                )}
+              </div>
+              <p className="text-[11.5px] leading-4 text-gray-500 sm:col-span-2">
+                The lead takes the customer, the next step and its date from the note, and these sentences as its evidence.
+                The people and promises it names are proposed for you to accept after saving.
+              </p>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

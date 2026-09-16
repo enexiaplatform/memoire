@@ -270,7 +270,23 @@ export function matchKnownAccount(
       if (key === resolvedKey) return { name: account.accountName, score: key.length + 100 };
       if (containsWords(note, key)) return { name: account.accountName, score: key.length + 50 };
       const lead = key.split(' ')[0];
-      if (lead.length >= 4 && containsWords(note, lead)) return { name: account.accountName, score: lead.length };
+      if (lead.length >= 4 && containsWords(note, lead)) {
+        // The first-word match exists for "Met Rohto QC" -> Rohto Vietnam: the
+        // note shortens the customer and adds a department. It must not fire
+        // when the note's own reading is a *different* company that happens to
+        // share a first word - "Delta Labs" is not "Delta Nutrition", and
+        // filing a new customer's note under an existing one is the false link
+        // that is worse than no link. The words after the shared one decide:
+        // a department, or a word of the account's own name, is the same
+        // customer; anything else is somebody new.
+        const readingWords = resolvedKey.split(' ').filter(Boolean);
+        if (readingWords[0] === lead && readingWords.length > 1) {
+          const accountWords = new Set(key.split(' '));
+          const differs = readingWords.slice(1).some((word) => !accountWords.has(word) && !DEPARTMENT_WORDS.has(word));
+          if (differs) return null;
+        }
+        return { name: account.accountName, score: lead.length };
+      }
       return null;
     })
     .filter((entry): entry is { name: string; score: number } => entry !== null)

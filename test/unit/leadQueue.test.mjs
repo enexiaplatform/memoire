@@ -6,6 +6,7 @@ import {
   buildLeadSignals,
   classifyNurture,
   disqualifiedLeadIds,
+  extractLeadNeedSentences,
   isDisqualifiedLeadOutcome,
   isLeadRecord,
   NURTURE_DUE_LEAD_DAYS,
@@ -286,5 +287,22 @@ describe('disqualification reasons', () => {
     assert.equal(outcomeReasonCategoryForLead('No budget'), 'Budget');
     assert.equal(outcomeReasonCategoryForLead('Competitor locked'), 'Competitor');
     assert.equal(outcomeReasonCategoryForLead('Duplicate'), 'Other');
+  });
+});
+
+describe('need, read from a capture', () => {
+  test('the sentences that say what they might need, as written', () => {
+    assert.deepEqual(
+      extractLeadNeedSentences('Met Minh from ABC Pharma. New QC laboratory planned for 2027. Currently uses Merck. Interested in rapid microbial testing. Follow up next Tuesday.'),
+      ['New QC laboratory planned for 2027.', 'Currently uses Merck.', 'Interested in rapid microbial testing.'],
+    );
+  });
+
+  test('a follow-up instruction is a next step, not a need', () => {
+    assert.deepEqual(extractLeadNeedSentences('Quick call. Need to send the brochure Friday. Follow up needed next week.'), []);
+  });
+
+  test('a note with no need says nothing rather than guessing', () => {
+    assert.deepEqual(extractLeadNeedSentences('Met Hoa at the stand. Nice chat.'), []);
   });
 });
