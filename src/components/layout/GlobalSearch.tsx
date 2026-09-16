@@ -6,6 +6,8 @@ import { hasLocalSampleData } from '../../utils/dataMode';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { matchesSearchQuery } from '../../utils/textSearch';
 import { featureRegistry } from '../../config/featureRegistry';
+import { matchCommands, type CommandKind } from '../../utils/commandRegistry';
+import { isLeadStage } from '../../utils/leadQueue';
 import type { SalesWorkspaceData } from '../../services/workspaceData';
 
 /**
@@ -38,7 +40,9 @@ import type { SalesWorkspaceData } from '../../services/workspaceData';
 
 type Hit = {
   id: string;
-  kind: 'account' | 'opportunity' | 'surface';
+  kind: 'command' | 'account' | 'lead' | 'opportunity' | 'surface';
+  /** For a command: what pressing Enter does, said on the row. */
+  commandKind?: CommandKind;
   label: string;
   detail: string;
   to: string;
@@ -94,6 +98,14 @@ const SURFACE_ALIASES: Record<string, string> = {
   settings: 'settings preferences currency export delete billing plan profile',
 };
 
+/** What Enter does, on a command row. */
+const COMMAND_VERB: Record<CommandKind, string> = {
+  create: 'Create',
+  navigate: 'Go to',
+  filter: 'Show',
+  answer: 'Answer',
+};
+
 export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
   const { user } = useAuthContext();
@@ -140,6 +152,17 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
     const term = query.trim();
     if (!term) return [];
 
+    // Commands first: "add lead", "overdue payments", "what changed". Each lands
+    // on the surface that owns the answer - see utils/commandRegistry.ts.
+    const commands: Hit[] = matchCommands(term).map((command) => ({
+      id: `command:${command.id}`,
+      kind: 'command',
+      commandKind: command.kind,
+      label: command.label,
+      detail: command.detail,
+      to: command.to,
+    }));
+
     const accounts: Hit[] = (workspace?.accounts || [])
       .filter((account) => matchesSearchQuery(account.accountName, term))
       .slice(0, 5)
@@ -157,13 +180,19 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
         term,
       ))
       .slice(0, 5)
-      .map((opportunity) => ({
-        id: `opportunity:${opportunity.id}`,
-        kind: 'opportunity',
-        label: opportunity.opportunityName,
-        detail: `${opportunity.accountName} · ${opportunity.stage}`,
-        to: `/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}`,
-      }));
+      .map((opportunity) => {
+        // A lead is found by name like any deal, labelled for what it is, and
+        // closing it returns to the lead queue rather than to a pipeline list
+        // it is not in.
+        const lead = isLeadStage(opportunity.stage);
+        return {
+          id: `opportunity:${opportunity.id}`,
+          kind: lead ? 'lead' as const : 'opportunity' as const,
+          label: opportunity.opportunityName,
+          detail: `${opportunity.accountName} · ${opportunity.stage}`,
+          to: `/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}${lead ? '&from=leads' : ''}`,
+        };
+      });
 
     const surfaces: Hit[] = featureRegistry
       .filter((feature) => feature.route && (feature.status === 'core' || feature.status === 'global'))
@@ -180,7 +209,7 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
         to: feature.route as string,
       }));
 
-    return [...accounts, ...opportunities, ...surfaces];
+    return [...commands, ...accounts, ...opportunities, ...surfaces];
   }, [query, workspace]);
 
   // A question is longer than a lookup, and the deterministic insight engine
@@ -246,7 +275,7 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
         <div className="max-h-[52vh] overflow-y-auto overscroll-contain p-2">
           {!query.trim() && (
             <p className="px-3 py-6 text-center text-sm leading-6 text-gray-500">
-              Type a customer, a deal, or where you want to go.
+              Type a customer, a deal, where you want to go, or what to do - "add lead", "overdue payments".
               <br />
               <span className="text-xs">Everything is searched on this device.</span>
             </p>
@@ -270,7 +299,7 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
               }`}
             >
               <span className="w-[86px] shrink-0 text-[11px] font-bold uppercase tracking-wide text-gray-400">
-                {hit.kind === 'surface' ? 'Go to' : hit.kind}
+                {hit.kind === 'surface' ? 'Go to' : hit.kind === 'command' ? COMMAND_VERB[hit.commandKind || 'navigate'] : hit.kind}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold text-navy">{hit.label}</span>

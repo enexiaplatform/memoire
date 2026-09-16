@@ -226,7 +226,7 @@ type OpportunitySortKey =
   | 'quality'
   | 'meddic'
   | 'updatedAt';
-type OpportunityQuickFilter = 'all' | 'imported' | 'stageInferred' | 'fy26' | 'fy27' | 'needsAction' | 'goingSilent';
+type OpportunityQuickFilter = 'all' | 'imported' | 'stageInferred' | 'fy26' | 'fy27' | 'needsAction' | 'goingSilent' | 'noChampion';
 
 const allFilter = 'All';
 const defaultPageSize = 25;
@@ -593,7 +593,7 @@ export function OpportunitiesPage() {
     }
 
     const requestedFilter = searchParams.get('filter');
-    if (requestedFilter && ['all', 'imported', 'stageInferred', 'fy26', 'fy27', 'needsAction', 'goingSilent'].includes(requestedFilter)) {
+    if (requestedFilter && ['all', 'imported', 'stageInferred', 'fy26', 'fy27', 'needsAction', 'goingSilent', 'noChampion'].includes(requestedFilter)) {
       setQuickFilter(requestedFilter as OpportunityQuickFilter);
       setSearchParams({}, { replace: true });
       return;
@@ -1240,6 +1240,7 @@ export function OpportunitiesPage() {
             ['fy27', 'FY27 value'],
             ['needsAction', 'Needs action'],
             ['goingSilent', goingSilentCount > 0 ? `Going silent (${goingSilentCount})` : 'Going silent'],
+            ['noChampion', 'No champion'],
           ].map(([value, label]) => (
             <button
               key={value}
@@ -5930,6 +5931,12 @@ function matchesOpportunityQuickFilter(row: OpportunityMasterRow, filter: Opport
       return !opportunity.nextAction.trim();
     case 'goingSilent':
       return row.silence.status === 'silent' || row.silence.status === 'at-risk';
+    // MEDDIC's own reading of the champion, from the people and touches on the
+    // deal - not a second definition. Open deals only: a closed deal no longer
+    // needs one.
+    case 'noChampion':
+      return opportunity.status === 'Active'
+        && (row.qualification.elements.find((element) => element.key === 'champion')?.points ?? 0) === 0;
     case 'all':
       return true;
   }
