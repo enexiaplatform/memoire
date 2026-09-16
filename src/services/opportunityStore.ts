@@ -339,8 +339,8 @@ export async function deleteOpportunity(opportunity: CrmLiteOpportunity, userId?
 /**
  * A saved deal, as the input that would re-save it unchanged.
  *
- * Written as a rest spread rather than as a list of fields, and that is the
- * whole point of it.
+ * Written as a copy with metadata removed rather than as a list of fields.
+ * That is the whole point of it.
  *
  * This function used to name twenty fields by hand, which meant it carried
  * twenty of the thirty-odd a deal has. Everything it did not name was blanked
@@ -350,13 +350,16 @@ export async function deleteOpportunity(opportunity: CrmLiteOpportunity, userId?
  * absent here, was being nulled by a drag; the brand had already been fixed the
  * same way once, one field at a time.
  *
- * A rest spread cannot forget a field. `OpportunityFormInput` is defined as the
+ * Copying the record cannot forget a field. `OpportunityFormInput` is the
  * record minus its identity and storage columns, so removing exactly those and
  * keeping the rest is the definition restated in code rather than a list that
  * has to be maintained beside it.
  */
 export function opportunityToFormInput(opportunity: CrmLiteOpportunity): OpportunityFormInput {
-  const { id, userId, createdAt, updatedAt, storageMode, source, isSample, ...input } = opportunity;
+  const input = { ...opportunity };
+  for (const key of ['id', 'userId', 'createdAt', 'updatedAt', 'storageMode', 'source', 'isSample']) {
+    Reflect.deleteProperty(input, key);
+  }
   return {
     ...input,
     // Normalised rather than carried raw: an undefined brand on an imported
