@@ -134,12 +134,19 @@ type PricingPlan = {
 };
 
 /** The same feature list under both phases: only the price line moves. */
+/*
+ * No "daily digest email" here since 2026-09-16. The sender exists in code and
+ * in Settings, and it is not configured on the live deployment - no email key,
+ * no sender address, no cron secret - so the plan was advertising an email
+ * nobody could receive. It comes back to this list the day it sends.
+ */
 const PERSONAL_ITEMS = [
   'Unlimited capture and unlimited records',
+  'Leads, from first conversation to qualified deal - the same record all the way',
   'Search & Insights over everything you have written down',
-  'Orders, Cash Collection and Cost Analysis',
-  'MEDDIC scoring on every deal, from what you have already recorded',
-  'Business Vault, daily digest email and full data export',
+  'Orders, Cash Collection, Cost Analysis and money at risk',
+  'MEDDIC scoring on every qualified deal, from what you have already recorded',
+  'Business Vault and full data export',
 ];
 
 const TEAM_PLAN: PricingPlan = {
@@ -406,13 +413,16 @@ export function LandingPage() {
 
               <div className="absolute -bottom-10 -left-6 hidden w-60 rounded-xl border border-white/10 bg-navy-light p-4 shadow-2xl shadow-black/50 lg:block">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-200">Review pack</p>
-                  <span className="rounded-full bg-emerald-400/15 px-2.5 py-0.5 text-[10px] font-bold text-emerald-300">Ready</span>
+                  {/* Was a "Review pack" of defend / rescue / downgrade - a brief the
+                      product removed on 2026-09-15. What Review opens on now is
+                      what changed since the last one. */}
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-200">Since last review</p>
+                  <span className="rounded-full bg-emerald-400/15 px-2.5 py-0.5 text-[10px] font-bold text-emerald-300">This week</span>
                 </div>
                 <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                  <ReviewStat label="Defend" value="3" className="text-emerald-300" />
-                  <ReviewStat label="Rescue" value="2" className="text-amber-300" />
-                  <ReviewStat label="Downgrade" value="1" className="text-rose-300" />
+                  <ReviewStat label="Leads in" value="3" className="text-emerald-300" />
+                  <ReviewStat label="Qualified" value="2" className="text-amber-300" />
+                  <ReviewStat label="Slipped" value="1" className="text-rose-300" />
                 </div>
               </div>
             </div>

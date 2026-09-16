@@ -95,11 +95,16 @@ Settings
 
 PRIMARY NAVIGATION
 Today
+Plan
+
+Leads
 Accounts
 Opportunities
 Money
-Timeline
+
 Review
 ```
 
-Six primary destinations, enforced by `src/config/featureRegistry.ts` and `scripts/verify-navigation-contract.mjs`. There is no seventh.
+Seven primary destinations, enforced by `src/config/featureRegistry.ts` and `scripts/verify-navigation-contract.mjs`. Seven is the ceiling: the lifecycle (lead, account, deal, money) and the three rhythms that run it (today, the week, the review) each have one. Leads became the seventh on 2026-09-16; a lead is an opportunity at the Lead stage, not a second record type, so qualifying one changes its stage and nothing else.
+
+Leads is seller work, not marketing automation: no campaigns, no scoring, no attribution model. Its readiness is evidence the seller recorded - fit, contact, need, engagement, next move - and the way to improve a lead is to learn something about it, not to edit a number.

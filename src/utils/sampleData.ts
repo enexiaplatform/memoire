@@ -381,6 +381,80 @@ export function buildSampleDataset(): SampleDataset {
       pipelineProbability: 0,
       createdAt: addDays(now, -80).toISOString(),
     }),
+    // Three leads, one per state worth showing: a conversation nobody has
+    // followed up, an existing customer with enough evidence to qualify, and a
+    // good prospect parked until its budget opens - whose revisit is due now.
+    sampleLead({
+      id: 'demo-lead-harbor-diagnostics',
+      accountName: 'Harbor Diagnostics',
+      opportunityName: 'New microbiology lab',
+      estimatedValue: null,
+      expectedClosePeriod: '',
+      productOrSolution: '',
+      decisionMaker: '',
+      budgetOwner: '',
+      procurementPath: '',
+      technicalCriteria: '',
+      nextAction: '',
+      nextActionDate: '',
+      evidence: '',
+      missingContext: '',
+      objectionDebt: '',
+      leadSource: 'Trade show',
+      leadSourceDetail: 'Lab expo stand visit',
+      forecastEvidenceCategory: 'Unsupported',
+      decisionRecommendation: 'Monitor',
+      status: 'Active',
+      createdAt: addDays(now, -9).toISOString(),
+    }),
+    sampleLead({
+      id: 'demo-lead-delta-second-qc-line',
+      accountName: 'Delta Nutrition',
+      opportunityName: 'Second QC line',
+      estimatedValue: null,
+      expectedClosePeriod: '',
+      productOrSolution: 'Rapid microbial testing',
+      decisionMaker: '',
+      budgetOwner: '',
+      procurementPath: '',
+      technicalCriteria: '',
+      nextAction: 'Send the rapid testing overview',
+      nextActionDate: friday,
+      evidence: 'Building a second QC line next year. Asked how rapid microbial testing would shorten release times.',
+      missingContext: '',
+      objectionDebt: '',
+      leadSource: 'Existing account',
+      leadSourceDetail: 'Starter package customer',
+      forecastEvidenceCategory: 'Unsupported',
+      decisionRecommendation: 'Monitor',
+      status: 'Active',
+      createdAt: addDays(now, -5).toISOString(),
+    }),
+    sampleLead({
+      id: 'demo-lead-riverside-foods',
+      accountName: 'Riverside Foods',
+      opportunityName: 'Allergen testing',
+      estimatedValue: null,
+      expectedClosePeriod: '',
+      productOrSolution: 'Allergen test kits',
+      decisionMaker: '',
+      budgetOwner: '',
+      procurementPath: '',
+      technicalCriteria: '',
+      nextAction: '',
+      nextActionDate: '',
+      evidence: 'Wants in-house allergen screening once the new fiscal year budget opens.',
+      missingContext: '',
+      objectionDebt: '',
+      leadSource: 'Referral',
+      leadSourceDetail: 'Referred by the Northstar Foods QA team',
+      nurturedUntil: toDateKey(addDays(now, 2)),
+      nurtureReason: 'Budget opens in the new fiscal year',
+      forecastEvidenceCategory: 'Unsupported',
+      decisionRecommendation: 'Monitor',
+      status: 'Active',
+      createdAt: addDays(now, -60).toISOString(),
+    }),
   ];
 
   const accounts: AccountMemoryRecord[] = [
@@ -452,6 +526,15 @@ export function buildSampleDataset(): SampleDataset {
   ];
 
   const activities: SalesActivityRecord[] = [
+    sampleActivity({
+      id: 'demo-activity-delta-second-line',
+      note: 'Check-in call with Ms. Quinn at Delta Nutrition. They are building a second QC line next year and asked about rapid microbial testing. Will send the overview by Friday.',
+      activityDate: twoDaysAgo,
+      linkedOpportunityId: 'demo-lead-delta-second-qc-line',
+      linkedOpportunityName: 'Second QC line',
+      linkedAccountName: 'Delta Nutrition',
+      createdAt: addDays(now, -2).toISOString(),
+    }),
     sampleActivity({
       id: 'demo-activity-apex-budget',
       note: 'Met with Dr. Avery at Apex Labs today. They confirmed budget approval for Validation Expansion next quarter. Need to send revised quote by Friday and follow up with procurement next Tuesday. Competitor Incumbent Vendor still in the loop.',
@@ -562,6 +645,22 @@ export function buildSampleDataset(): SampleDataset {
   ];
 
   const stakeholders: StakeholderRecord[] = [
+    sampleStakeholder({
+      id: 'demo-stakeholder-delta-qa',
+      accountName: 'Delta Nutrition',
+      opportunityId: 'demo-lead-delta-second-qc-line',
+      opportunityName: 'Second QC line',
+      name: 'Ms. Quinn',
+      roleTitle: 'QA manager',
+      stakeholderRole: 'Unknown',
+      influenceLevel: 'Unknown',
+      relationshipStrength: 'Developing',
+      stance: 'Supportive',
+      notes: 'Raised the second QC line on a check-in call.',
+      tags: ['demo-data'],
+      lastInteractionDate: twoDaysAgo,
+      createdAt: timestamp,
+    }),
     sampleStakeholder({
       id: 'demo-stakeholder-dr-linh',
       accountName: 'Apex Labs',
@@ -1253,6 +1352,16 @@ function sampleEmailThreadActivity(input: {
     updatedAt: input.createdAt,
     storageMode: 'local',
   });
+}
+
+/**
+ * A demo lead: an opportunity at the Lead stage, like every lead in the product.
+ * Its own factory only so the demo contract can count qualified deals and leads
+ * separately - the record is the same shape, and the same store holds it.
+ */
+function sampleLead(input: Omit<CrmLiteOpportunity, 'currency' | 'updatedAt' | 'storageMode' | 'stage'>): CrmLiteOpportunity {
+  const lead: Omit<CrmLiteOpportunity, 'currency' | 'updatedAt' | 'storageMode'> = { ...input, stage: 'Lead' };
+  return sampleOpportunity(lead);
 }
 
 function sampleOpportunity(input: Omit<CrmLiteOpportunity, 'currency' | 'updatedAt' | 'storageMode'>): CrmLiteOpportunity {

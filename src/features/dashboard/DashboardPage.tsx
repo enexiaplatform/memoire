@@ -143,7 +143,7 @@ import {
   type DailyExecutionStatus,
 } from '../../utils/dailyExecution';
 import { buildUnifiedTodayCommandCenter, type TodayCommandAction } from '../../utils/todayCommandCenter.ts';
-import { buildLeadQueue, buildLeadSignals, disqualifiedLeadIds, selectQualifiedPipeline } from '../../utils/leadQueue.ts';
+import { buildLeadQueue, buildLeadSignals, disqualifiedLeadIds, selectQualifiedPipeline, type LeadSignal } from '../../utils/leadQueue.ts';
 import { loadAccountHygienePreferences } from '../../utils/accountHygiene.ts';
 import {
   buildProactiveNudges,
@@ -1034,7 +1034,17 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
                   where quoted money is sitting - the context a move is decided
                   in, not a second list of things to do. */}
               <div className="grid grid-cols-1 gap-[18px] xl:grid-cols-[minmax(0,1.62fr)_minmax(0,1fr)] xl:items-start">
-                <TodayTopThreeActions actions={todayCenter.topActions} dealCount={pipelinePicture.dealCount} />
+                <div className="flex min-w-0 flex-col gap-[18px]">
+                  <TodayTopThreeActions actions={todayCenter.topActions} dealCount={pipelinePicture.dealCount} />
+                  {/* Lead exceptions compete for the three moves on rank, and on a
+                      busy book overdue money rightly wins. They are not allowed to
+                      vanish for that: whatever did not make the three is named
+                      here, one line each, from the same queue Leads draws. */}
+                  <TodayLeadExceptions
+                    signals={leadSignals}
+                    shownActionIds={todayCenter.topActions.map((action) => action.id)}
+                  />
+                </div>
                 <div className="flex min-w-0 flex-col gap-[18px]">
                   <BusinessCockpitStrip
                     answers={businessCockpit}
@@ -1412,6 +1422,45 @@ const moveButtonClass: Record<DaylightTone, { solid: string; ghost: string }> = 
   violet: { solid: 'bg-spectrum-purple text-white', ghost: 'border border-line bg-white text-tint-violet-ink' },
   cyan: { solid: 'bg-tint-cyan-ink text-white', ghost: 'border border-line bg-white text-tint-cyan-ink' },
 };
+
+/**
+ * The lead exceptions that did not make the three moves.
+ *
+ * Exceptions, not a count of leads: each line is one signal's headline - what
+ * happened - and a link to the queue filtered to exactly those leads. Renders
+ * nothing when every lead signal is already a move, or when there are none.
+ */
+function TodayLeadExceptions({ signals, shownActionIds }: { signals: LeadSignal[]; shownActionIds: string[] }) {
+  const remaining = signals.filter((signal) => !shownActionIds.includes(`lead-${signal.kind}`));
+  if (remaining.length === 0) return null;
+  return (
+    <Panel aria-label="Leads that need you" className="min-w-0 animate-rise px-5 py-4 sm:px-6" style={delay(260)}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="font-display text-[15px] font-bold text-ink">Leads that need you</h2>
+        <Link to="/app/leads" data-quick-look-exempt="true" className="text-[12.5px] font-semibold text-brand-blue hover:underline">
+          Open Leads
+        </Link>
+      </div>
+      <ul className="mt-2.5 flex flex-col gap-1.5">
+        {remaining.map((signal) => (
+          <li key={signal.kind}>
+            <Link
+              to={signal.href}
+              data-quick-look-exempt="true"
+              className={`flex items-center justify-between gap-3 rounded-2xl px-3.5 py-2.5 transition hover:translate-x-[2px] ${tintSurface[signal.urgency === 'High' ? 'amber' : 'neutral'].ground}`}
+            >
+              <span className="min-w-0">
+                <span className="block text-[13.5px] font-semibold text-ink">{signal.headline}</span>
+                <span className="block truncate text-xs text-tint-neutral-ink">{signal.action}</span>
+              </span>
+              <ArrowRight className="h-3.5 w-3.5 shrink-0 text-tint-neutral-ink" aria-hidden="true" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </Panel>
+  );
+}
 
 function TodayTopThreeActions({ actions, dealCount }: { actions: TodayCommandAction[]; dealCount: number }) {
   return (

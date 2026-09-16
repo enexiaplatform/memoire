@@ -6,6 +6,7 @@ import { SAMPLE_DATA_UPDATED_EVENT } from '../../utils/sampleData';
 import { getCachedSalesWorkspaceData } from '../../services/workspaceData';
 import { useWorkspaceRefresh } from '../../hooks/useWorkspaceRefresh';
 import { scorePipelineQualification, summariseQualification } from '../../utils/dealQualificationScore';
+import { selectQualifiedPipeline, disqualifiedLeadIds } from '../../utils/leadQueue';
 
 export type RailSignals = {
   /** Deals still in play. Null until a workspace has been read at all. */
@@ -57,7 +58,10 @@ export function useRailSignals(): RailSignals {
       return false;
     }
 
-    const openDeals = workspace.opportunities.filter((opportunity) => opportunity.status === 'Active').length;
+    // The Opportunities row counts the qualified pipeline, which is what that
+    // page lists. Counting leads here put "8" beside a page that shows five.
+    const pipeline = selectQualifiedPipeline(workspace.opportunities, disqualifiedLeadIds(workspace.opportunityOutcomes));
+    const openDeals = pipeline.filter((opportunity) => opportunity.status === 'Active').length;
     setSignals((current) => (current.openDeals === openDeals ? current : { ...current, openDeals }));
 
     const inputs = [workspace.opportunities, workspace.stakeholders, workspace.objections, workspace.activities, workspace.quotes];
@@ -74,7 +78,9 @@ export function useRailSignals(): RailSignals {
       // switch that cleared the rail. Its answer is about a book no longer shown.
       if (scoredFrom.current !== inputs) return;
       const summary = summariseQualification(scorePipelineQualification({
-        opportunities: workspace.opportunities,
+        // MEDDIC grades qualified deals. A lead at "a stage its evidence does
+        // not reach" is every lead, and the sentence would count them all.
+        opportunities: pipeline,
         stakeholders: workspace.stakeholders,
         objections: workspace.objections,
         activities: workspace.activities,

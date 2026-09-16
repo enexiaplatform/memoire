@@ -298,7 +298,11 @@ export function scorePipelineQualification(input: {
   quotes?: QuoteRecord[];
 }): DealQualification[] {
   return input.opportunities
-    .filter((opportunity) => opportunity.status === 'Active')
+    // Leads are not graded on MEDDIC (2026-09-16). Every lead sits "at a stage
+    // its evidence does not reach" by definition, so counting them made the
+    // weekly review, the rail and the policy engine report the lead queue as
+    // over-stated pipeline. A lead has its own readiness; see utils/leadQueue.ts.
+    .filter((opportunity) => opportunity.status === 'Active' && (opportunity.stage || '').trim().toLowerCase() !== 'lead')
     .map((opportunity) => scoreDealQualification({
       opportunity,
       stakeholders: input.stakeholders,

@@ -8,6 +8,7 @@ import {
   describeStageGap,
   deriveEvidenceStage,
   scoreDealQualification,
+  scorePipelineQualification,
   scoreForStatus,
   summariseQualification,
 } from '../../src/utils/dealQualificationScore.ts';
@@ -306,5 +307,14 @@ describe('forecast coverage, gated on qualification', () => {
     });
     assert.equal(report.unbackedQuarters, 0);
     assert.equal(report.unbackedValue, 0);
+  });
+});
+
+describe('what the pipeline score covers', () => {
+  test('a lead is not graded on MEDDIC, and a qualified deal is', () => {
+    const scores = scorePipelineQualification({
+      opportunities: [deal({ id: 'lead', stage: 'Lead' }), deal({ id: 'qualified', stage: 'Discovery' })],
+    });
+    assert.deepEqual(scores.map((score) => score.opportunityId), ['qualified']);
   });
 });

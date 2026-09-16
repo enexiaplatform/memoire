@@ -57,6 +57,10 @@ export function LeadQueueList({
   caption: string;
   actions: LeadQueueActions;
 }) {
+  // Most leads are not sized, and a column of "Not sized" on every row is the
+  // widest thing on the table saying nothing. It appears once any lead has a
+  // value - the same rule the pipeline table uses for its optional columns.
+  const showValue = rows.some((row) => Boolean(row.opportunity.estimatedValue));
   return (
     <Panel className="min-w-0 overflow-hidden" aria-label="Leads">
       <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-5 py-4">
@@ -72,7 +76,7 @@ export function LeadQueueList({
       {/* Desktop: the record table language every other book in the product
           uses. `lg` rather than `md`, because eight columns need the room. */}
       <div className="record-table-scroller hidden lg:block">
-        <table className="w-full min-w-[1040px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[960px] border-collapse text-left text-sm">
           <caption className="sr-only">{caption}</caption>
           <thead className="sticky top-0 z-10 bg-bar text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">
             <tr>
@@ -82,15 +86,15 @@ export function LeadQueueList({
               <th scope="col" className="border-b border-line px-3 py-2.5">Last touch</th>
               <th scope="col" className="border-b border-line px-3 py-2.5">Evidence</th>
               <th scope="col" className="border-b border-line px-3 py-2.5">Next step</th>
-              <th scope="col" className="border-b border-line px-3 py-2.5 text-right">Value</th>
-              <th scope="col" className="border-b border-line px-5 py-2.5 text-right">
+              {showValue && <th scope="col" className="border-b border-line px-3 py-2.5 text-right">Value</th>}
+              <th scope="col" className="border-b border-line py-2.5 pl-2 pr-4 text-right">
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line-soft">
             {rows.map((row) => (
-              <LeadTableRow key={row.opportunity.id} row={row} actions={actions} />
+              <LeadTableRow key={row.opportunity.id} row={row} actions={actions} showValue={showValue} />
             ))}
           </tbody>
         </table>
@@ -108,7 +112,7 @@ export function LeadQueueList({
   );
 }
 
-function LeadTableRow({ row, actions }: { row: LeadRow; actions: LeadQueueActions }) {
+function LeadTableRow({ row, actions, showValue }: { row: LeadRow; actions: LeadQueueActions; showValue: boolean }) {
   const { opportunity } = row;
   return (
     <tr
@@ -135,12 +139,14 @@ function LeadTableRow({ row, actions }: { row: LeadRow; actions: LeadQueueAction
       <td className="px-3 py-3">
         <LeadNextStepCell row={row} />
       </td>
-      <td className="whitespace-nowrap px-3 py-3 text-right font-mono text-xs font-bold text-ink">
-        {opportunity.estimatedValue
-          ? formatCurrencyAmount(opportunity.estimatedValue, opportunity.currency)
-          : <span className="text-muted">Not sized</span>}
-      </td>
-      <td className="px-5 py-3 text-right">
+      {showValue && (
+        <td className="whitespace-nowrap px-3 py-3 text-right font-mono text-xs font-bold text-ink">
+          {opportunity.estimatedValue
+            ? formatCurrencyAmount(opportunity.estimatedValue, opportunity.currency)
+            : <span className="text-muted">Not sized</span>}
+        </td>
+      )}
+      <td className="py-3 pl-2 pr-4 text-right">
         <LeadRowActions row={row} actions={actions} align="end" />
       </td>
     </tr>
@@ -201,17 +207,17 @@ function LeadIdentity({ row, onOpen }: { row: LeadRow; onOpen?: () => void }) {
           <button
             type="button"
             onClick={(event) => { event.stopPropagation(); onOpen(); }}
-            className="block max-w-full truncate text-left lg:max-w-[240px] font-bold text-ink underline-offset-2 hover:underline"
+            className="block max-w-full truncate text-left lg:max-w-[200px] font-bold text-ink underline-offset-2 hover:underline"
             title={opportunity.accountName}
           >
             {accountLabel}
           </button>
         ) : (
-          <p className="truncate font-bold text-ink lg:max-w-[240px]" title={opportunity.accountName}>
+          <p className="truncate font-bold text-ink lg:max-w-[200px]" title={opportunity.accountName}>
             {accountLabel}
           </p>
         )}
-        <p className="truncate text-xs text-tint-neutral-ink lg:max-w-[240px]" title={opportunity.opportunityName}>
+        <p className="truncate text-xs text-tint-neutral-ink lg:max-w-[200px]" title={opportunity.opportunityName}>
           {opportunity.opportunityName || 'Untitled'}
         </p>
         <p className={`text-[11px] ${row.contactName ? 'text-muted' : 'font-semibold text-tint-amber-solid'}`}>
@@ -233,7 +239,7 @@ function LeadStateCell({ row }: { row: LeadRow }) {
       <MicroPill tone={STATE_TONE[row.state]}>{leadQueueStateLabels[row.state]}</MicroPill>
       {/* The reason sits under the pill on desktop and beside it on a card, so
           colour is never the only thing carrying the state. */}
-      <p className="mt-1 hidden max-w-[190px] text-[11px] leading-4 text-muted lg:block">{row.stateReason}</p>
+      <p className="mt-1 hidden max-w-[160px] text-[11px] leading-4 text-muted lg:block">{row.stateReason}</p>
     </>
   );
 }
@@ -248,7 +254,7 @@ function LeadSourceCell({ row }: { row: LeadRow }) {
         {row.source.label}
       </span>
       {row.source.detail && (
-        <p className="mt-0.5 max-w-[170px] truncate text-[11px] text-muted" title={row.source.detail}>
+        <p className="mt-0.5 max-w-[140px] truncate text-[11px] text-muted" title={row.source.detail}>
           {row.source.detail}
         </p>
       )}
@@ -257,7 +263,9 @@ function LeadSourceCell({ row }: { row: LeadRow }) {
 }
 
 function LeadTouchCell({ row }: { row: LeadRow }) {
-  const quiet = row.silence.status === 'silent' || row.silence.status === 'at-risk';
+  // A parked lead is quiet on purpose. Flagging it red beside "Revisit
+  // Dec 1" would call the plan a problem.
+  const quiet = !row.nurture.nurturing && (row.silence.status === 'silent' || row.silence.status === 'at-risk');
   return (
     <>
       <p className={`text-xs font-semibold ${row.lastTouchDate ? 'text-ink' : 'text-tint-amber-solid'}`}>
@@ -320,7 +328,7 @@ function LeadNextStepCell({ row }: { row: LeadRow }) {
           Revisit {formatSafeBusinessDate(row.nurture.revisitDate)}
         </p>
         {row.nurture.reason && (
-          <p className="max-w-[200px] truncate text-[11px] text-muted" title={row.nurture.reason}>
+          <p className="max-w-[170px] truncate text-[11px] text-muted" title={row.nurture.reason}>
             {row.nurture.reason}
           </p>
         )}
@@ -330,7 +338,7 @@ function LeadNextStepCell({ row }: { row: LeadRow }) {
   return (
     <>
       <p
-        className={`line-clamp-2 text-xs font-semibold lg:max-w-[200px] ${opportunity.nextAction ? 'text-ink' : 'text-tint-amber-solid'}`}
+        className={`line-clamp-2 text-xs font-semibold lg:max-w-[170px] ${opportunity.nextAction ? 'text-ink' : 'text-tint-amber-solid'}`}
         title={opportunity.nextAction}
       >
         {opportunity.nextAction || 'No next step'}
@@ -370,7 +378,7 @@ function LeadRowActions({
 
   return (
     <div
-      className={`flex flex-wrap gap-2 ${align === 'end' ? 'justify-end' : 'justify-start'} ${className}`}
+      className={`flex gap-1.5 ${align === 'end' ? 'flex-nowrap justify-end' : 'flex-wrap justify-start'} ${className}`}
       onClick={(event) => event.stopPropagation()}
     >
       <button
@@ -384,25 +392,27 @@ function LeadRowActions({
         <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
         <span className="sr-only">{name}</span>
       </button>
+      {/* On a wide row the two quieter answers are icon pills with their name
+          on hover and to assistive tech; on a card there is room to say them. */}
       <button
         type="button"
         onClick={() => actions.onNurture(opportunity)}
-        className={`${ghostPillClass} px-3 py-1.5 text-xs`}
-        title="Park it until a date. It comes back on its own."
+        className={`${ghostPillClass} py-1.5 text-xs ${align === 'end' ? '!px-2.5' : '!px-3'}`}
+        title={row.nurture.nurturing ? 'Reschedule the revisit' : 'Nurture: park it until a date. It comes back on its own.'}
+        aria-label={`${row.nurture.nurturing ? 'Reschedule revisit for' : 'Nurture'} ${name}`}
       >
         <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
-        {row.nurture.nurturing ? 'Reschedule' : 'Nurture'}
-        <span className="sr-only">{name}</span>
+        <span className={align === 'end' ? 'sr-only' : ''}>{row.nurture.nurturing ? 'Reschedule' : 'Nurture'}</span>
       </button>
       <button
         type="button"
         onClick={() => actions.onDisqualify(opportunity)}
-        className={`${ghostPillClass} px-3 py-1.5 text-xs`}
-        title="Close it, with the reason."
+        className={`${ghostPillClass} py-1.5 text-xs ${align === 'end' ? '!px-2.5' : '!px-3'}`}
+        title="Disqualify: close it, with the reason."
+        aria-label={`Disqualify ${name}`}
       >
         <XCircle className="h-3.5 w-3.5" aria-hidden="true" />
-        Disqualify
-        <span className="sr-only">{name}</span>
+        <span className={align === 'end' ? 'sr-only' : ''}>Disqualify</span>
       </button>
     </div>
   );

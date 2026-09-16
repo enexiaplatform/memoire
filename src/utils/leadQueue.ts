@@ -798,7 +798,9 @@ export function buildLeadSignals(queue: LeadQueue): LeadSignal[] {
       kind: 'revisit-due',
       rows: revisitDue,
       headline: revisitDue.length === 1
-        ? `${nameOf(soonest)} was parked until ${formatSafeBusinessDate(soonest.nurture.revisitDate)}`
+        ? (soonest.nurture.daysUntilRevisit ?? 0) < 0
+          ? `${nameOf(soonest)} was parked until ${formatSafeBusinessDate(soonest.nurture.revisitDate)}, and that date has passed`
+          : `${nameOf(soonest)} is due for its revisit on ${formatSafeBusinessDate(soonest.nurture.revisitDate)}`
         : `${revisitDue.length} nurtured leads are due to be revisited`,
       detail: overdue.length
         ? `${overdue.length === revisitDue.length ? 'The date you set has passed' : `${overdue.length} of them passed the date you set`}. You parked ${revisitDue.length === 1 ? 'it' : 'them'} because the timing was wrong - the timing has arrived${soonest.nurture.reason ? ` (${soonest.nurture.reason})` : ''}.`

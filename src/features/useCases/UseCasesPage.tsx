@@ -57,7 +57,7 @@ const useCases: UseCase[] = [
     moves: [
       { surface: 'Capture', does: 'Paste the thread. The account, amount, objection and next action come out and get filed against the deal.' },
       { surface: 'Today', does: 'Opens on the deals going silent and the promises you have not kept, ranked, with the reason attached.' },
-      { surface: 'Review', does: 'Builds the defend / rescue / downgrade brief from what you captured, and shares it as a read-only link.' },
+      { surface: 'Review', does: 'Opens on what changed since the last review - what moved, what slipped, what went quiet - with every line traced to a record.' },
     ],
     proof: 'Walk into the forecast review with the answer already written.',
   },
@@ -73,7 +73,7 @@ const useCases: UseCase[] = [
     moves: [
       { surface: 'Plan', does: 'One ledger of what is coming and what already happened, so the week has a shape you did not have to build.' },
       { surface: 'Proactive nudges', does: 'Capped at five. The few things that could embarrass you, not a second inbox.' },
-      { surface: 'Daily digest', does: 'One email each morning with what needs you, so the loop survives the days you never open the app.' },
+      { surface: 'Leads', does: 'The conversations that are not deals yet: who has never been contacted, who went quiet, who is ready to qualify, and who is parked until a date.' },
     ],
     proof: 'The follow-up happens on the weeks you are too busy to remember it.',
   },

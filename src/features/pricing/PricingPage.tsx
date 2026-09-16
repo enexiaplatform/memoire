@@ -62,12 +62,15 @@ const paidPlans: Plan[] = [
     description: 'For one operator running the whole commercial loop - capture, quote, deliver, collect, review.',
     items: [
       'Unlimited capture and unlimited records',
+      'Leads: a work queue from first conversation to qualified deal',
       'Search & Insights over everything you have written down',
       'Cost Analysis: landed cost and margin before you quote',
       'Cash Collection: aging from the payment terms on the quote',
+      'Money at risk: won with no PO, delivered and not invoiced, promises to pay missed',
       'Business Vault: your accounts, people and deals as one map',
-      'MEDDIC scoring on every deal, from what you have already recorded',
-      'Daily digest email',
+      'MEDDIC scoring on every qualified deal, from what you have already recorded',
+      // "Daily digest email" was listed here. It is not configured on the live
+      // deployment, so nobody on this plan could receive it; see LandingPage.
     ],
     note: 'Cancel anytime - you keep everything until the period you already paid for runs out.',
     highlighted: true,

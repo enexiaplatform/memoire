@@ -10,29 +10,36 @@ Positioning and boundaries: [`docs/positioning.md`](docs/positioning.md). Curren
 
 ## Launch status
 
-Single-user private beta. The question this phase answers is whether one individual B2B seller repeatedly gets value from the core loop. Search indexing stays disabled until that is answered.
+Single-user beta, in a free preview. The question this phase answers is whether one individual B2B seller repeatedly gets value from the core loop. The public marketing pages are indexed; everything under `/app` is not.
 
 ## The operating loop
 
 ```text
-Capture → Commercial Thread → Commitment → Silence and Risk → Today → Review → Measured Commercial Value
+Capture → Lead → (qualify) → Account ↔ Opportunity → Money
+
+Today   what needs attention now
+Plan    who owes what, by when
+Review  what changed, and what it taught
 ```
 
 ## Information architecture
 
 ```text
-GLOBAL          + Capture · Search & Insights · Settings
-PRIMARY         Today · Accounts · Opportunities · Money · Timeline · Review
+GLOBAL          + Capture · Search & Insights (Cmd/Ctrl+K, with commands) · Settings
+PRIMARY         Today · Plan · Leads · Accounts · Opportunities · Money · Review
 ```
 
-Six primary destinations. There is no seventh: navigation renders from `src/config/featureRegistry.ts`, and `scripts/verify-navigation-contract.mjs` fails the build if that changes.
+Seven primary destinations, and seven is the ceiling. Leads became the seventh on 2026-09-16 as a recorded product decision. Navigation renders from `src/config/featureRegistry.ts`, and `scripts/verify-navigation-contract.mjs` fails the build if the seven change.
 
-- **Today** - what must be done, what is overdue, which threads are going silent, what was captured but not yet linked.
-- **Accounts** - who the customer is, what happened, who the stakeholders are, what is open.
-- **Opportunities** - the commercial objective, its real stage, the evidence for it, what is blocking it.
-- **Money** - where commercial value is sitting: quote, customer decision, PO, delivery, invoice, paid, and what is stuck.
-- **Timeline** - Upcoming (open commitments and dated work) and History (everything that happened).
-- **Review** - the weekly loop, the Pipeline Defense artifact, and analytics.
+- **Today** - the business picture, the three moves worth making first (money, deals, leads and captures ranked together), and a capped watch-list. Every move says what happened, why it matters and what to do.
+- **Plan** (route `/app/timeline`) - Upcoming (the week, and the commitment ledger read by who owes it) and History (everything that happened).
+- **Leads** - a work queue, not a list: New, Needs action, Going quiet, Ready to qualify, Nurture. Readiness is five named pieces of evidence (fit, contact, need, engagement, next move), never a score. Qualify, Nurture until a date, or Disqualify with a reason.
+- **Accounts** - what matters about this customer now, then the memory behind it.
+- **Opportunities** - the qualified pipeline only: its real stage, the MEDDIC evidence for it, what changed, what is blocking it.
+- **Money** - Orders, Collections and Margin, opened on the money at risk between a won deal and the bank.
+- **Review** - changes since the last review, the scoreboard, the week's commitments, and what leads and outcomes taught.
+
+A lead is not a second record type. It is an opportunity at the Lead stage, and qualifying it moves the stage and nothing else, so its touches, people, evidence and source are the same record in Opportunities.
 
 ## Signature mechanisms
 
@@ -81,7 +88,7 @@ Apply the migrations in `supabase/migrations/` in filename order.
 npm run check
 ```
 
-Runs the build, the API typecheck, lint, and the full contract suite. Unit tests run separately:
+Runs the build, the API typecheck, lint, the unit tests and the full contract suite. The unit tests alone:
 
 ```bash
 npm test
@@ -91,7 +98,8 @@ CI runs both on every push and pull request (`.github/workflows/ci.yml`): a fast
 
 The contracts that protect the product boundaries:
 
-- `verify:navigation` - six primary destinations, three global actions, no orphaned deep links.
+- `verify:navigation` - seven primary destinations, every one reachable on a phone, Leads and Opportunities partition the book, no orphaned deep links.
+- `verify:record-field-coverage` - every reader that rebuilds a record field by field carries every field, including the cloud reader and the save round-trip.
 - `verify:commercial-kernel` - relational tables, RLS, indexes, explainable rules, threads derived not migrated.
 - `verify:kernel-surface` - one thread component and one ledger across every surface.
 - `verify:product-analytics` - one taxonomy in three places, five fields, no customer content.

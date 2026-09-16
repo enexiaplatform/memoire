@@ -110,6 +110,11 @@ assert.equal(checklist.includes('Open Assets'), false, 'First-run checklist shou
 assert.equal(checklist.includes('Open Opportunities'), false, 'First-run checklist should not push CRM-like opportunity setup before proof path');
 
 const sampleOpportunityCount = (sampleData.match(/sampleOpportunity\(\{/g) || []).length;
+// Leads are counted apart from deals (2026-09-16): the demo carries a few, one
+// per state worth showing, and they are not pipeline.
+const sampleLeadCount = (sampleData.match(/sampleLead\(\{/g) || []).length;
+assert.ok(sampleLeadCount >= 2 && sampleLeadCount <= 4, 'Demo needs a handful of leads, not a second pipeline');
+assert.ok(/sampleLead\(\{[\s\S]*?nurturedUntil:/.test(sampleData), 'Demo needs a nurtured lead so the revisit reaches Today');
 const sampleAccountCount = (sampleData.match(/sampleAccount\(\{/g) || []).length;
 assert.equal(sampleOpportunityCount >= 3 && sampleOpportunityCount <= 7, true, 'Demo sample data should have 3-5 active opportunities plus at most one won and one lost outcome');
 assert.ok(sampleData.includes("decisionRecommendation: 'Defend'"), 'Demo needs a defendable deal');
