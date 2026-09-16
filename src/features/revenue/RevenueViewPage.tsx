@@ -8,6 +8,7 @@ import { ThreadsSection } from '../threads/ThreadsSection';
 import { CoveragePanel } from './CoveragePanel';
 import { TargetPlanPanel } from './TargetPlanPanel';
 import { OrderBookPanel } from './OrderBookPanel';
+import { MoneyAtRiskPanel } from './MoneyAtRiskPanel';
 import { loadOrderCostsForWorkspace } from '../../services/orderCostStore';
 import type { OrderTermRecord } from '../../utils/orderToCash';
 import { SupplierCommitmentsPanel } from './SupplierCommitmentsPanel';
@@ -201,6 +202,18 @@ export function RevenueViewPage({ tabs }: { tabs?: ReactNode } = {}) {
               and each of those was a full-height panel between the operator
               and the orders they came to chase. They are still here, folded,
               in the order somebody actually reaches for them. */}
+          {/* The exceptions first: what is late, missing or stuck between a won
+              deal and money in the bank. Each is another engine's answer - the
+              order book, collections, margin, the commitment ledger - read as a
+              warning; the order book below is where each one is worked. */}
+          <MoneyAtRiskPanel
+            opportunities={data.opportunities}
+            quotes={data.quotes}
+            outcomes={data.opportunityOutcomes}
+            dataUserId={dataUserId}
+            sampleDataActive={sampleDataActive}
+          />
+
           <OrderBookPanel
             opportunities={data.opportunities}
             quotes={data.quotes}
