@@ -900,3 +900,145 @@ export function extractLeadNeedSentences(note: string, limit = 3): string[] {
     .filter((sentence) => !/^(?:follow[ -]?up|call(?: back)?|send|email|remind|need to (?:call|send|email|follow))\b/iu.test(sentence))
     .slice(0, limit);
 }
+
+/* ------------------------------------------------------------------------- */
+/* What leads taught - Review's lead funnel                                   */
+/* ------------------------------------------------------------------------- */
+
+/**
+ * The minimum number of leads a source needs before its conversion is quoted.
+ *
+ * Below it, "Referral converts 100%" is one lead that worked. The row is still
+ * listed, with its counts, and says there is not enough to call it a rate.
+ */
+export const MIN_LEADS_FOR_RATE = 5;
+
+export type LeadFunnelSourceRow = {
+  label: string;
+  leads: number;
+  qualified: number;
+  won: number;
+  /** Null below MIN_LEADS_FOR_RATE. */
+  qualifiedRate: number | null;
+};
+
+export type LeadFunnel = {
+  /** Every record that has ever been a lead, as far as the records can prove. */
+  leads: number;
+  /** Leads with at least one recorded touch. */
+  engaged: number;
+  qualified: number;
+  /** Qualified leads still in the pipeline or closed from it. */
+  won: number;
+  disqualified: number;
+  /** Median days from a lead's creation to its first touch. */
+  medianDaysToFirstTouch: number | null;
+  /** Median days from creation to the observed qualification. */
+  medianDaysToQualify: number | null;
+  qualifiedRate: number | null;
+  bySource: LeadFunnelSourceRow[];
+  disqualifyReasons: { reason: string; count: number }[];
+  /** Why a number is missing, when it is: the event log started after the leads. */
+  notes: string[];
+};
+
+type FunnelEvent = { eventType: string; opportunityId?: string | null; occurredAt: string; structuredPayload?: Record<string, unknown> };
+type FunnelOutcome = { opportunityId: string; outcome: string; stageBeforeOutcome: string; reasonText: string; createdAt: string };
+
+/**
+ * Lead to pipeline, as seller learning rather than a marketing funnel.
+ *
+ * A record counts as a lead when the records prove it was one: it is at the
+ * Lead stage now, an observed stage change moved it off Lead, or it was closed
+ * out of Lead. A deal that was qualified before stage changes were observed is
+ * not counted - there is no way to know it started as a lead, and counting every
+ * Discovery deal as a former lead would invent a conversion rate.
+ */
+export function buildLeadFunnel(input: {
+  opportunities: CrmLiteOpportunity[];
+  activities: SalesActivityRecord[];
+  events: FunnelEvent[];
+  outcomes: FunnelOutcome[];
+  includeSampleRecords?: boolean;
+}): LeadFunnel {
+  const include = input.includeSampleRecords === true;
+  const opportunities = input.opportunities.filter((record) => include || record.isSample !== true);
+  const qualifiedAt = new Map<string, string>();
+  for (const event of input.events) {
+    if (event.eventType !== 'opportunity_stage_changed' || !event.opportunityId) continue;
+    const from = String(event.structuredPayload?.from || '');
+    const to = String(event.structuredPayload?.to || '');
+    if (!isLeadStage(from) || !to || isLeadStage(to) || to === 'Lost' || to === 'Won') continue;
+    const current = qualifiedAt.get(event.opportunityId);
+    if (!current || event.occurredAt < current) qualifiedAt.set(event.opportunityId, event.occurredAt);
+  }
+  const disqualified = new Map(input.outcomes.filter(isDisqualifiedLeadOutcome).map((outcome) => [outcome.opportunityId, outcome]));
+
+  const leads = opportunities.filter((record) => isLeadStage(record.stage) || qualifiedAt.has(record.id) || disqualified.has(record.id));
+  const firstTouchDays: number[] = [];
+  const qualifyDays: number[] = [];
+  let engaged = 0;
+  let won = 0;
+  const sources = new Map<string, LeadFunnelSourceRow>();
+
+  for (const lead of leads) {
+    const created = timestampToLocalDateKey(lead.createdAt);
+    const touches = activitiesForOpportunityStrict(lead, input.activities)
+      .map((activity) => sanitizeBusinessDate(activity.activityDate))
+      .filter(Boolean)
+      .sort();
+    if (touches.length) {
+      engaged += 1;
+      const days = daysBetweenBusinessDates(created, touches[0]);
+      if (days !== null && days >= 0) firstTouchDays.push(days);
+    }
+    const qualifiedOn = qualifiedAt.get(lead.id);
+    if (qualifiedOn) {
+      const days = daysBetweenBusinessDates(created, timestampToLocalDateKey(qualifiedOn));
+      if (days !== null && days >= 0) qualifyDays.push(days);
+      if (lead.status === 'Won') won += 1;
+    }
+    const source = resolveLeadSource(lead).label || 'Not recorded';
+    const row = sources.get(source) || { label: source, leads: 0, qualified: 0, won: 0, qualifiedRate: null };
+    row.leads += 1;
+    if (qualifiedOn) row.qualified += 1;
+    if (qualifiedOn && lead.status === 'Won') row.won += 1;
+    sources.set(source, row);
+  }
+
+  const reasons = new Map<string, number>();
+  for (const outcome of disqualified.values()) {
+    const reason = (outcome.reasonText || '').split(' - ')[0].trim() || 'No reason given';
+    reasons.set(reason, (reasons.get(reason) || 0) + 1);
+  }
+
+  const notes: string[] = [];
+  if (leads.length > 0 && qualifiedAt.size === 0) {
+    notes.push('No qualification has been observed yet. A deal qualified before stage changes were recorded cannot be shown to have started as a lead, so it is not counted here.');
+  }
+
+  return {
+    leads: leads.length,
+    engaged,
+    qualified: qualifiedAt.size,
+    won,
+    disqualified: disqualified.size,
+    medianDaysToFirstTouch: median(firstTouchDays),
+    medianDaysToQualify: median(qualifyDays),
+    qualifiedRate: leads.length >= MIN_LEADS_FOR_RATE ? qualifiedAt.size / leads.length : null,
+    bySource: [...sources.values()]
+      .map((row) => ({ ...row, qualifiedRate: row.leads >= MIN_LEADS_FOR_RATE ? row.qualified / row.leads : null }))
+      .sort((left, right) => right.leads - left.leads || left.label.localeCompare(right.label)),
+    disqualifyReasons: [...reasons.entries()]
+      .map(([reason, count]) => ({ reason, count }))
+      .sort((left, right) => right.count - left.count || left.reason.localeCompare(right.reason)),
+    notes,
+  };
+}
+
+function median(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : Math.round((sorted[middle - 1] + sorted[middle]) / 2);
+}

@@ -247,3 +247,33 @@ function shiftQuarter(quarter: 1 | 2 | 3 | 4, year: number, count: number) {
     year: year + Math.floor(zeroBased / 4),
   };
 }
+
+/**
+ * Whether an expected-close move is a slip, a pull-in, or neither.
+ *
+ * Compared on the calendar, not the alphabet. The first version wrote
+ * `from < to`, which is right for "Q3" -> "Q4" and for ISO dates, and wrong the
+ * moment a year is written: "Q4 2026" -> "Q1 2027" is a slip into next year, and
+ * "Q1 2027" sorts before "Q4 2026", so the deal that slipped a quarter was
+ * reported as having improved. The close-period reader is the one the pipeline
+ * table already orders by, so "later" means the same thing in both.
+ *
+ * Relative phrases are read against the day the move happened, not today - "next
+ * quarter" written in August is Q4, whatever month this is read in. A period
+ * nobody can place on the calendar says neither, rather than guessing.
+ *
+ * Lives here rather than in Delta because Review's "changes since last review"
+ * asks the same question of the same events, and two readings of "later" is
+ * how two surfaces come to disagree about whether a deal slipped.
+ */
+export function closePeriodMoveDirection(from: string, to: string, occurredAt: string): 'weakened' | 'improved' | 'neutral' {
+  const day = sanitizeBusinessDate((occurredAt || '').slice(0, 10)) || undefined;
+  const before = resolveClosePeriod(from, day);
+  const after = resolveClosePeriod(to, day);
+  const unplaceable = (rank: number) => rank === UNKNOWN_RANK;
+  if (unplaceable(before.rank) || unplaceable(after.rank)) return 'neutral';
+  // "Later" is a real statement about distance even without a quarter.
+  if (before.rank === LATER_RANK && after.rank === LATER_RANK) return 'neutral';
+  const order = compareClosePeriod(before, after);
+  return order < 0 ? 'weakened' : order > 0 ? 'improved' : 'neutral';
+}

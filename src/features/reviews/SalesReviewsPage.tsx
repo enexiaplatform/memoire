@@ -5,6 +5,7 @@ import { Copy, Loader2 } from 'lucide-react';
 import { ReviewAnalyticsSection } from './ReviewAnalyticsSection';
 import { ReviewScoreboardPanel } from './ReviewScoreboardPanel';
 import { BrandPerformancePanel } from './BrandPerformancePanel';
+import { ChangesSinceReviewPanel, LeadFunnelPanel } from './ChangesSinceReviewPanel';
 import { CommercialRiskPanel } from '../threads/CommercialRiskPanel';
 import { ThreadsSection } from '../threads/ThreadsSection';
 import { useCommercialThreads } from '../threads/useCommercialThreads';
@@ -121,7 +122,7 @@ export function SalesReviewsPage() {
     <PageContainer>
       <PageHeader
         title="Review"
-        description="Close the week: what actually happened, what it cost, and what you commit to next."
+        description="Close the week: what moved, what slipped, what went quiet, where money is stuck - and what you commit to next."
         actions={
           <div className="inline-flex flex-wrap rounded-full border border-gray-200 bg-gray-50 p-1" role="tablist" aria-label="Review section">
             {reviewTabs.map((option) => (
@@ -152,6 +153,11 @@ export function SalesReviewsPage() {
               had to assemble the story themselves. */}
           <ReviewNarrativeLabel label="What happened?" hint="What closed, what moved, and what you promised" />
 
+          {/* The movement first: what the records prove changed since the week
+              was last closed. The scoreboard below is the outcome of a period;
+              this is the news, and it is what a review opens on. */}
+          <ChangesSinceReviewPanel />
+
           {/* The outcome, first and above everything else. What closed in this
               window, how that compares with the one before, and what it leaves
               of the quarter and the year. */}
@@ -173,6 +179,11 @@ export function SalesReviewsPage() {
             hint="What the week was made of, and what Memoire has learned from it"
           />
           <WeeklyReviewSection periodType={periodType} period={period} />
+
+          {/* The start of the lifecycle, read as learning: how fast leads are
+              touched, how many become pipeline, which sources are worth the
+              time. Renders nothing on a workspace with no leads. */}
+          <LeadFunnelPanel />
 
           {/* Which line is carrying the number.
               The brand field has been on every deal, the rollup has been

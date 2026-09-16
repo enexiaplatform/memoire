@@ -155,6 +155,23 @@ describe('deriveCommercialDelta - observed transitions', () => {
     assert.equal(change.dimension, 'money');
   });
 
+  test('3b. a slip into next year is a slip, not an improvement', () => {
+    // Compared as strings, "Q1 2027" sorts before "Q4 2026", and the first
+    // version reported a quarter's slip as the deal getting better.
+    const slipped = derive({
+      events: [event({ eventType: 'opportunity_close_period_changed', structuredPayload: { from: 'Q4 2026', to: 'Q1 2027' } })],
+    });
+    assert.equal(slipped.changes[0].direction, 'weakened');
+    const pulledIn = derive({
+      events: [event({ eventType: 'opportunity_close_period_changed', structuredPayload: { from: '2027-03-31', to: '2026-12-15' } })],
+    });
+    assert.equal(pulledIn.changes[0].direction, 'improved');
+    const unreadable = derive({
+      events: [event({ eventType: 'opportunity_close_period_changed', structuredPayload: { from: 'when budget lands', to: 'Q2 2027' } })],
+    });
+    assert.equal(unreadable.changes[0].direction, 'neutral', 'a period nobody can place is not guessed at');
+  });
+
   test('4. a close period held only as a current value produces no transition', () => {
     // No event: the workspace knows the deal says Q4, and nothing more.
     const delta = derive({ events: [] });

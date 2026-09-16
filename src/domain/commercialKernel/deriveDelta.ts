@@ -20,6 +20,7 @@ import {
   type CommercialEvidence,
 } from './commercialEvidence.ts';
 import { formatCompactCurrencyAmount } from '../../utils/money.ts';
+import { closePeriodMoveDirection } from '../../utils/closePeriod.ts';
 import {
   opportunityStages as canonicalStages,
   toCanonicalOpportunityStage,
@@ -508,7 +509,7 @@ function eventChanges(
           transition: { from, to },
           occurredAt: event.occurredAt,
           dimension: 'money' as const,
-          direction: from < to ? 'weakened' : 'improved',
+          direction: closePeriodMoveDirection(from, to, event.occurredAt),
           significance: 'high' as Severity,
           sourceRecordIds: [event.opportunityId || event.id],
         }];
@@ -1261,3 +1262,4 @@ export { CONDITION_BY_REASON as deltaConditionByReason };
 
 /** Exported so a contract can hold the ranking's copy of this in step. */
 export { DIMENSION_BY_OBJECTION as deltaObjectionDimension };
+
