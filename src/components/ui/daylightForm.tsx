@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 
 /**
  * The Daylight form controls.
@@ -18,11 +18,19 @@ import type { ReactNode } from 'react';
 const CONTROL =
   'mt-1.5 w-full rounded-xl border border-line bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10';
 
-function Label({ children, hint }: { children: ReactNode; hint?: string }) {
+/**
+ * The label and its hint, associated by id rather than by nesting alone.
+ *
+ * Wrapping an input in a <label> names it in most browsers, but the hint then
+ * becomes part of the name, and some assistive tech computes nothing at all for
+ * a select nested that way - it announced the selected option instead of the
+ * question. An explicit for/id and aria-describedby say which is which.
+ */
+function Label({ htmlFor, hintId, children, hint }: { htmlFor: string; hintId: string; children: ReactNode; hint?: string }) {
   return (
     <>
-      <span className="text-[12.5px] font-bold text-ink">{children}</span>
-      {hint && <span className="mt-0.5 block text-[11.5px] leading-4 text-muted">{hint}</span>}
+      <label htmlFor={htmlFor} className="block text-[12.5px] font-bold text-ink">{children}</label>
+      {hint && <span id={hintId} className="mt-0.5 block text-[11.5px] leading-4 text-muted">{hint}</span>}
     </>
   );
 }
@@ -52,10 +60,15 @@ export function Field({
   hint?: string;
   autoFocus?: boolean;
 }) {
+  const id = useId();
+  const hintId = `${id}-hint`;
   return (
-    <label className="block">
-      <Label hint={hint}>{label}{required ? ' *' : ''}</Label>
+    <div>
+      <Label htmlFor={id} hintId={hintId} hint={hint}>{label}{required ? ' *' : ''}</Label>
       <input
+        id={id}
+        aria-describedby={hint ? hintId : undefined}
+        aria-required={required || undefined}
         type={type}
         value={value}
         list={listId}
@@ -66,7 +79,7 @@ export function Field({
         onChange={(event) => onChange(event.target.value)}
         className={CONTROL}
       />
-    </label>
+    </div>
   );
 }
 
@@ -86,10 +99,14 @@ export function SelectField<Value extends string>({
   /** The "not stated" row, when an empty value is a legitimate answer. */
   placeholderOption?: string;
 }) {
+  const id = useId();
+  const hintId = `${id}-hint`;
   return (
-    <label className="block">
-      <Label hint={hint}>{label}</Label>
+    <div>
+      <Label htmlFor={id} hintId={hintId} hint={hint}>{label}</Label>
       <select
+        id={id}
+        aria-describedby={hint ? hintId : undefined}
         value={value}
         onChange={(event) => onChange(event.target.value as Value | '')}
         className={CONTROL}
@@ -97,7 +114,7 @@ export function SelectField<Value extends string>({
         {placeholderOption !== undefined && <option value="">{placeholderOption}</option>}
         {options.map((option) => <option key={option} value={option}>{option}</option>)}
       </select>
-    </label>
+    </div>
   );
 }
 
@@ -117,15 +134,19 @@ export function TextArea({
   /** A Tailwind min-height, for the short notes that do not need five lines. */
   rows?: string;
 }) {
+  const id = useId();
+  const hintId = `${id}-hint`;
   return (
-    <label className="block">
-      <Label hint={hint}>{label}</Label>
+    <div>
+      <Label htmlFor={id} hintId={hintId} hint={hint}>{label}</Label>
       <textarea
+        id={id}
+        aria-describedby={hint ? hintId : undefined}
         value={value}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
         className={`${CONTROL} ${rows} leading-6`}
       />
-    </label>
+    </div>
   );
 }

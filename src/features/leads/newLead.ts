@@ -8,6 +8,7 @@ export type NewLeadInput = {
   accountName: string;
   opportunityName: string;
   contactName: string;
+  contactRole: string;
   leadSource: LeadSource | '';
   leadSourceDetail: string;
   nextAction: string;
@@ -18,6 +19,7 @@ export const emptyNewLead: NewLeadInput = {
   accountName: '',
   opportunityName: '',
   contactName: '',
+  contactRole: '',
   leadSource: '',
   leadSourceDetail: '',
   nextAction: '',

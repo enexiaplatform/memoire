@@ -116,7 +116,9 @@ function LeadTableRow({ row, actions }: { row: LeadRow; actions: LeadQueueAction
       className="group cursor-pointer align-top transition hover:bg-canvas"
     >
       <td className="px-5 py-3">
-        <LeadIdentity row={row} />
+        {/* The name is a real button so the row is reachable from a keyboard;
+            the row click is the pointer shortcut for the same thing. */}
+        <LeadIdentity row={row} onOpen={() => actions.onOpen(opportunity)} />
       </td>
       <td className="px-3 py-3">
         <LeadStateCell row={row} />
@@ -145,16 +147,21 @@ function LeadTableRow({ row, actions }: { row: LeadRow; actions: LeadQueueAction
   );
 }
 
+/**
+ * One lead on a phone.
+ *
+ * Not one big button: a button may only contain phrasing content, and wrapping a
+ * definition list in one produced markup a screen reader flattens into a single
+ * run-on label. The customer name is the link into the record, the fields are
+ * a plain list, and the actions sit underneath - the same three things the
+ * table row offers, in the same order.
+ */
 function LeadCard({ row, actions }: { row: LeadRow; actions: LeadQueueActions }) {
   const { opportunity } = row;
   return (
     <div className="px-4 py-4">
-      <button
-        type="button"
-        onClick={() => actions.onOpen(opportunity)}
-        className="w-full rounded-lg text-left"
-      >
-        <LeadIdentity row={row} />
+      <div>
+        <LeadIdentity row={row} onOpen={() => actions.onOpen(opportunity)} />
         <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
           <LeadStateCell row={row} />
         </div>
@@ -177,21 +184,33 @@ function LeadCard({ row, actions }: { row: LeadRow; actions: LeadQueueActions })
             <dd className="mt-0.5"><LeadNextStepCell row={row} /></dd>
           </div>
         </dl>
-      </button>
+      </div>
       <LeadRowActions row={row} actions={actions} align="start" className="mt-3" />
     </div>
   );
 }
 
-function LeadIdentity({ row }: { row: LeadRow }) {
+function LeadIdentity({ row, onOpen }: { row: LeadRow; onOpen?: () => void }) {
   const { opportunity } = row;
+  const accountLabel = opportunity.accountName || 'No account named';
   return (
     <div className="flex items-start gap-3">
       <Monogram name={opportunity.accountName || opportunity.opportunityName || '?'} size={32} />
       <div className="min-w-0">
-        <p className="truncate font-bold text-ink lg:max-w-[240px]" title={opportunity.accountName}>
-          {opportunity.accountName || 'No account named'}
-        </p>
+        {onOpen ? (
+          <button
+            type="button"
+            onClick={(event) => { event.stopPropagation(); onOpen(); }}
+            className="block max-w-full truncate text-left lg:max-w-[240px] font-bold text-ink underline-offset-2 hover:underline"
+            title={opportunity.accountName}
+          >
+            {accountLabel}
+          </button>
+        ) : (
+          <p className="truncate font-bold text-ink lg:max-w-[240px]" title={opportunity.accountName}>
+            {accountLabel}
+          </p>
+        )}
         <p className="truncate text-xs text-tint-neutral-ink lg:max-w-[240px]" title={opportunity.opportunityName}>
           {opportunity.opportunityName || 'Untitled'}
         </p>
@@ -250,7 +269,9 @@ function LeadTouchCell({ row }: { row: LeadRow }) {
         </p>
       )}
       {!row.lastTouchDate && row.ageDays !== null && (
-        <p className="text-[11px] text-muted">Added {row.ageDays}d ago</p>
+        <p className="text-[11px] text-muted">
+          {row.ageDays === 0 ? 'Added today' : `Added ${row.ageDays}d ago`}
+        </p>
       )}
     </>
   );

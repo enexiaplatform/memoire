@@ -215,10 +215,10 @@ export function DisqualifyLeadDrawer({
 /* ----------------------------------------------------------------- add lead */
 
 /**
- * A new lead, in seven fields and no more.
+ * A new lead, in eight short fields and no more.
  *
  * Everything here is either identity or the thing that makes the lead come back
- * to you. There is no value, no close date, no stage, no forecast category: a
+ * to you. Only the customer is required. There is no value, no close date, no stage, no forecast category: a
  * lead that has not shown a need cannot honestly carry any of them, and asking
  * for them at the door is how a queue ends up full of invented numbers.
  */
@@ -284,12 +284,20 @@ export function AddLeadDrawer({
         onChange={(value) => update('opportunityName', value)}
         placeholder="The project, line or need in a few words"
       />
-      <Field
-        label="Who you spoke to"
-        value={form.contactName}
-        onChange={(value) => update('contactName', value)}
-        hint="A name and, if you have it, their job. Recorded on the lead until they become a stakeholder."
-      />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field
+          label="Who you spoke to"
+          value={form.contactName}
+          onChange={(value) => update('contactName', value)}
+          hint="Saved as a person on the lead, with no role assumed."
+        />
+        <Field
+          label="Their job"
+          value={form.contactRole}
+          onChange={(value) => update('contactRole', value)}
+          placeholder="As they described it"
+        />
+      </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <SelectField

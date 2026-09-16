@@ -19,6 +19,7 @@ import { createLead, disqualifyLead, nurtureLead, qualifyLead } from '../../serv
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { PlanRecord } from '../../utils/weeklyPlan';
 import { hasLocalSampleData } from '../../utils/dataMode';
+import { formatSafeBusinessDate } from '../../utils/safeDate';
 import { getReportingCurrency } from '../../utils/money';
 import { formatCount } from '../../utils/numberFormat';
 import { matchesSearchQuery } from '../../utils/textSearch';
@@ -158,9 +159,14 @@ export function LeadsPage() {
     });
   }, [filter, queue.rows, search]);
 
+  // A state with nothing in it is offered only while it is the one selected - a
+  // row of six pills, four reading "0", is the dashboard this page is not, and
+  // on a phone it wrapped into three lines above the first lead.
   const filterOptions: SegmentOption<QueueFilter>[] = [
     { value: 'all', label: 'All open', count: queue.total },
-    ...leadQueueStates.map((state) => ({ value: state, label: leadQueueStateLabels[state], count: queue.counts[state] })),
+    ...leadQueueStates
+      .filter((state) => queue.counts[state] > 0 || filter === state)
+      .map((state) => ({ value: state, label: leadQueueStateLabels[state], count: queue.counts[state] })),
     ...(queue.closedCount > 0 ? [{ value: 'closed' as const, label: 'Disqualified', count: queue.closedCount }] : []),
   ];
 
@@ -216,7 +222,7 @@ export function LeadsPage() {
       setMessage({
         tone: result.warning ? 'red' : 'neutral',
         text: result.warning || (input.nurturedUntil
-          ? `${opportunity.accountName || 'The lead'} is parked. It comes back into the queue before ${input.nurturedUntil}.`
+          ? `${opportunity.accountName || 'The lead'} is parked. It comes back into the queue before ${formatSafeBusinessDate(input.nurturedUntil)}.`
           : `${opportunity.accountName || 'The lead'} is back in the working queue.`),
       });
     } catch {
@@ -304,7 +310,9 @@ export function LeadsPage() {
       />
 
       <PageHeader
-        title={loading ? 'Leads' : queue.total === 0 ? 'No leads waiting' : `${formatCount(queue.total)} ${queue.total === 1 ? 'lead' : 'leads'}`}
+        // The empty panel below already says "No leads waiting."; a headline
+        // saying it too is the same sentence twice, one above the other.
+        title={loading || queue.total === 0 ? 'Leads' : `${formatCount(queue.total)} ${queue.total === 1 ? 'lead' : 'leads'}`}
         titleAccent={!loading && worst.accent ? { text: `, ${worst.accent}`, tone: worst.tone === 'green' ? 'green' : worst.tone === 'red' ? 'red' : 'amber' } : undefined}
         documentTitle="Leads"
         description={queue.total > 0

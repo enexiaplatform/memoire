@@ -14,6 +14,7 @@ import {
 } from './proactiveNudges.ts';
 import {
   daysBetweenBusinessDates,
+  formatSafeBusinessDate,
   isValidBusinessDate,
   sanitizeBusinessDate,
   timestampToLocalDateKey,
@@ -478,7 +479,7 @@ export function qualifyLeadEvidence(input: LeadQualificationInput): LeadQualific
       present: nextMovePresent,
       detail: nextMovePresent
         ? opportunity.nextActionDate
-          ? `${opportunity.nextAction || 'Next step'} - ${opportunity.nextActionDate}`
+          ? `${opportunity.nextAction || 'Next step'} - ${formatSafeBusinessDate(opportunity.nextActionDate)}`
           : opportunity.nextAction
         : 'Nothing is scheduled, so nothing will bring this back to you.',
     },
@@ -680,8 +681,8 @@ function classifyLeadQueueState(input: {
     return {
       state: 'nurture',
       reason: nurture.reason
-        ? `Parked until ${nurture.revisitDate} - ${nurture.reason}`
-        : `Parked until ${nurture.revisitDate}.`,
+        ? `Parked until ${formatSafeBusinessDate(nurture.revisitDate)} - ${nurture.reason}`
+        : `Parked until ${formatSafeBusinessDate(nurture.revisitDate)}.`,
     };
   }
   if (qualification.readiness === 'Ready to qualify') {
