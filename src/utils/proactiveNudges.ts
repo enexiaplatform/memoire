@@ -16,7 +16,7 @@ import { convertMoney, formatMoneyWithBase } from './money.ts';
 import { analyzePersonalSalesLearning } from './personalSalesLearning.ts';
 import { buildRetentionSignals } from './retentionSignals.ts';
 import { readInitiativeExperiment } from './initiativeExperiment.ts';
-import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate, sanitizeBusinessDate, todayDateKey, timestampToLocalDateKey } from './safeDate.ts';
+import { compareSafeBusinessDate, daysBetweenBusinessDates, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate, sanitizeBusinessDate, todayDateKey, timestampToLocalDateKey } from './safeDate.ts';
 
 export type ProactiveNudgeInput = {
   revenueActions?: RevenueActionItem[];
@@ -483,12 +483,6 @@ function findLastTouchDate(opportunity: CrmLiteOpportunity, activities: SalesAct
     .filter(isValidBusinessDate)
     .sort(compareSafeBusinessDate)
     .at(-1) || '';
-}
-
-function daysBetweenBusinessDates(start: string, end: string) {
-  if (!isValidBusinessDate(start) || !isValidBusinessDate(end)) return null;
-  const elapsed = Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`);
-  return Math.floor(elapsed / 86_400_000);
 }
 
 function buildObjectionNudges(objections: ObjectionRecord[]) {

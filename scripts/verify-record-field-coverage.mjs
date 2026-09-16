@@ -103,6 +103,16 @@ const ALLOWED_OMISSIONS = {
 
 const TARGETS = [
   { file: 'src/services/opportunityStore.ts', type: 'CrmLiteOpportunity', fn: 'loadLocalOpportunities' },
+  // The cloud reader. It was not listed here, so the lead fields added on
+  // 2026-09-16 could have been read locally and dropped from every signed-in
+  // workspace with this check still green.
+  { file: 'src/services/opportunityStore.ts', type: 'CrmLiteOpportunity', fn: 'rowToOpportunity' },
+  // The save round-trip. Four write paths rebuild a deal through this before
+  // saving it, and while it named fields by hand it blanked closed_on on a plan
+  // board drag. It is a rest spread now, which this check accepts as carrying
+  // everything by construction - and fails on the day somebody turns it back
+  // into a list.
+  { file: 'src/services/opportunityStore.ts', type: 'CrmLiteOpportunity', fn: 'opportunityToFormInput', requireSpread: true },
   { file: 'src/services/salesActivityStore.ts', type: 'SalesActivityRecord', fn: 'rowToRecord' },
   { file: 'src/services/planItemStore.ts', type: 'PlanRecord', fn: 'sanitizePlanRecord', typeFile: 'src/utils/weeklyPlan.ts' },
   { file: 'src/services/quoteStore.ts', type: 'QuoteRecord', fn: 'sanitizeQuote' },
@@ -119,6 +129,9 @@ for (const target of TARGETS) {
   assert.ok(declared.length > 4, `${target.type} should declare more than four fields`);
 
   const { keys, spread } = returnedKeys(source, target.fn);
+  if (target.requireSpread) {
+    assert.ok(spread, `${key} must build its result from a rest spread of the record, so no field can be forgotten`);
+  }
   // A spread carries everything by construction, so there is nothing to forget.
   if (spread) continue;
 

@@ -10,6 +10,7 @@ import {
 import { BASE_CURRENCY, convertMoney, sumMoneyInBase } from './money.ts';
 import { buildQuotedOpportunityIds } from './opportunityResolution.ts';
 import { isBusinessDateOverdue, todayDateKey } from './safeDate.ts';
+import { hasScheduledNextAction } from './nextAction.ts';
 
 export type RevenueRiskKind =
   | 'Weak pipeline'
@@ -53,18 +54,9 @@ export type RevenueActionItem = {
   clearedBy?: string;
 };
 
-/**
- * Whether anything at all is scheduled to move this deal.
- *
- * Either half counts: a line of text says what happens next, a date says when.
- * One shared predicate because the flag, the plan suggestions and the deal
- * drawer each used to decide this for themselves, and they disagreed.
- */
-export function hasScheduledNextAction(
-  opportunity: Pick<CrmLiteOpportunity, 'nextAction' | 'nextActionDate'>,
-): boolean {
-  return Boolean(opportunity.nextAction?.trim() || opportunity.nextActionDate?.trim());
-}
+// Moved to its own module so the lead rules can read it without importing the
+// money model. Re-exported here so every existing import keeps working.
+export { hasScheduledNextAction };
 
 /**
  * Why this deal is in the weak-pipeline list, and what clears it.

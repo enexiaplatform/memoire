@@ -177,3 +177,38 @@ export function isBusinessDateInRange(date: unknown, start: unknown, end: unknow
     && compareSafeBusinessDate(date, start) >= 0
     && compareSafeBusinessDate(date, end) <= 0;
 }
+
+/**
+ * Whole days from one business date to another. Negative when `end` is earlier,
+ * null when either date is not readable.
+ *
+ * Lived privately inside proactiveNudges.ts, where the silence thresholds are
+ * measured, until the lead queue needed the same subtraction for "days until
+ * the revisit". Two copies of date arithmetic is how two surfaces come to
+ * disagree about how many days something has been quiet, so there is one.
+ *
+ * UTC midnight on both sides deliberately: a local-time subtraction across a
+ * daylight-saving boundary returns 6.958 days and floors to 6.
+ */
+export function daysBetweenBusinessDates(start: unknown, end: unknown): number | null {
+  if (!isValidBusinessDate(start) || !isValidBusinessDate(end)) return null;
+  const elapsed = Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`);
+  return Math.floor(elapsed / 86_400_000);
+}
+
+/**
+ * A business date shifted by whole days.
+ *
+ * Adding days rather than months, and in UTC, because both of the obvious
+ * alternatives have already cost this codebase a bug: `setMonth` on the 31st
+ * rolls into the month after next, and local-time arithmetic loses or gains an
+ * hour at a daylight-saving boundary and can land on the previous day.
+ *
+ * Returns '' for an unreadable input, like every other function here - never a
+ * date computed from nothing.
+ */
+export function addDaysToBusinessDate(date: unknown, days: number): string {
+  if (!isValidBusinessDate(date)) return '';
+  const shifted = new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000);
+  return shifted.toISOString().slice(0, 10);
+}

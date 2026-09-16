@@ -46,6 +46,7 @@ const OperatingSystemPage = lazy(() =>
 const DailyCapturePage = lazy(() =>
   import('./features/dailyCapture/DailyCapturePage').then((module) => ({ default: module.DailyCapturePage })),
 );
+const LeadsPage = lazy(() => import('./features/leads/LeadsPage').then((module) => ({ default: module.LeadsPage })));
 const OpportunitiesPage = lazy(() =>
   import('./features/opportunities/OpportunitiesPage').then((module) => ({ default: module.OpportunitiesPage })),
 );
@@ -153,11 +154,14 @@ function App() {
           >
             <Route index element={<Navigate to="/app/today" replace />} />
 
-            {/* The six primary destinations. See src/config/featureRegistry.ts -
-                nothing may be added here without a registry entry. */}
+            {/* The seven primary destinations. See src/config/featureRegistry.ts -
+                nothing may be added here without a registry entry. Leads became
+                the seventh on 2026-09-16; /app/opportunities?view=leads, the tab
+                it replaced, forwards to it from inside OpportunitiesPage. */}
             <Route path="today" element={<TodayPage />} />
+            <Route path="leads" element={<LeadsPage />} />
             <Route path="accounts" element={<AccountsPage />} />
-            <Route path="opportunities" element={<OpportunitiesPage />} />
+            <Route path="opportunities" element={<OpportunitiesRouteEntry />} />
             {/* Money owns Orders, Collections and Margin. The canonical URL is
                 unchanged so every existing bookmark, digest link and manager
                 link still lands here; `?view=` picks which of the three. */}
@@ -333,6 +337,23 @@ function ActivityRouteEntry() {
   const hasRecordId = new URLSearchParams(location.search).has('activityId');
   if (hasRecordId) return <LegacyRedirect to="/app/timeline" params={{ view: 'history' }} />;
   return <LegacyRedirect to="/app/reviews" params={{ view: 'analytics' }} />;
+}
+
+/**
+ * `/app/opportunities?view=leads` was the Leads tab for one day (2026-09-15)
+ * before Leads became its own destination. The link still exists in anything
+ * shared or bookmarked in that window, and it is a request for the leads, so it
+ * lands on them - carrying any other parameter it had.
+ */
+function OpportunitiesRouteEntry() {
+  const location = useLocation();
+  const search = new URLSearchParams(location.search);
+  if (search.get('view') === 'leads') {
+    search.delete('view');
+    const query = search.toString();
+    return <Navigate to={`/app/leads${query ? `?${query}` : ''}${location.hash}`} replace />;
+  }
+  return <OpportunitiesPage />;
 }
 
 function LegacyAccountRouteRedirect() {

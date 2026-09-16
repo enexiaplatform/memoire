@@ -416,7 +416,7 @@ const scope = (patch = {}) => resolveCommercialScope({
   const block = registry.match(/export const PRIMARY_DESTINATION_IDS = \[([\s\S]*?)\] as const;/);
   assert.ok(block, 'featureRegistry must declare PRIMARY_DESTINATION_IDS');
   const destinations = [...block[1].matchAll(/'([a-z-]+)'/g)].map((match) => match[1]);
-  assert.equal(destinations.length, 6, 'Memoire has six primary destinations');
+  assert.equal(destinations.length, 7, 'Memoire has seven primary destinations (Leads became the seventh on 2026-09-16)');
   assert.ok(!destinations.some((id) => /linkage|data|quality|cleanup/.test(id)));
 
   // And it did not become a spreadsheet.

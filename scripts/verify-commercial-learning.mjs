@@ -440,7 +440,9 @@ function commitmentBook(exposedWins, exposedLosses, plainWins, plainLosses) {
   const block = registry.match(/export const PRIMARY_DESTINATION_IDS = \[([\s\S]*?)\] as const;/);
   assert.ok(block, 'featureRegistry must declare PRIMARY_DESTINATION_IDS');
   const destinations = [...block[1].matchAll(/'([a-z-]+)'/g)].map((match) => match[1]);
-  assert.equal(destinations.length, 6, 'Memoire has six primary destinations; learning is not a seventh');
+  // Seven since Leads (2026-09-16). Lead learning lives in Review's lead funnel,
+  // not on a destination of its own.
+  assert.equal(destinations.length, 7, 'Memoire has seven primary destinations; learning is not an eighth');
   assert.ok(!destinations.some((id) => /learn|insight|analytic/.test(id)));
 
   assert.ok(

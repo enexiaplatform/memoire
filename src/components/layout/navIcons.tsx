@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Activity, BarChart3, BookOpen, Banknote, CalendarDays, ClipboardList, Coins, Network, Package, Search, Settings, Sun, Target, UsersRound } from 'lucide-react';
+import { Activity, BarChart3, BookOpen, Banknote, CalendarDays, ClipboardList, Coins, Network, Package, Search, Settings, Sun, Target, UserPlus, UsersRound } from 'lucide-react';
 
 /**
  * One icon per rail destination, shared by the sidebar and the phone tab bar so
@@ -15,6 +15,10 @@ export function navIcon(featureId: string, className = 'h-[18px] w-[18px]'): Rea
     case 'timeline': return <CalendarDays className={className} />;
     case 'business-lens': return <BarChart3 className={className} />;
     case 'review': return <ClipboardList className={className} />;
+    // The person who is not yet a customer. Deliberately a person rather than a
+    // funnel: Leads is a queue of conversations, and a funnel glyph would
+    // promise the marketing-automation product this is not.
+    case 'leads': return <UserPlus className={className} />;
     case 'accounts': return <BookOpen className={className} />;
     case 'stakeholders': return <UsersRound className={className} />;
     case 'opportunities': return <Target className={className} />;

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ThreadsSection } from '../threads/ThreadsSection';
 import { DeltaPanel } from '../threads/DeltaPanel';
 import {
@@ -38,6 +38,10 @@ import {
   forecastEvidenceCategories,
   opportunityStages,
   opportunityStatuses,
+  // The one round-trip. This page carried its own copy that named twenty fields
+  // and therefore blanked everything else on save; see the note on the store's
+  // version for what that cost.
+  opportunityToFormInput as opportunityToForm,
   updateOpportunity,
   type CrmLiteOpportunity,
   type OpportunityFormInput,
@@ -139,8 +143,7 @@ import { checkAccountName, type AccountNameCheck } from '../../utils/accountDupl
 import { analyzeStakeholderCoverage, getStakeholdersForOpportunity } from '../../utils/stakeholderGraph';
 import { normalizeMeddicRole } from '../../utils/meddicStakeholderMap';
 import { MeddicInsightPanel, MeddicScoreCell } from './MeddicInsight';
-import { LeadsEmptyState, LeadsTable } from './LeadsTable';
-import { Segmented } from '../../components/ui/daylight';
+import { disqualifiedLeadIds, isLeadRecord, isLeadStage } from '../../utils/leadQueue';
 import { buildMeddicStakeholderMap, formatMeddicStakeholderDate } from '../../utils/meddicStakeholderMap.ts';
 import { getObjectionsForOpportunity, objectionStatusTone } from '../../utils/objectionLedger';
 import { analyzeOpportunityOutcomeLoop } from '../../utils/actionOutcomeLoop';
@@ -232,6 +235,7 @@ const founderCoreSourceSystem = 'founder_core_fy26';
 export function OpportunitiesPage() {
   const { user } = useAuthContext();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>([]);
@@ -255,20 +259,17 @@ export function OpportunitiesPage() {
   const [closeFilter, setCloseFilter] = useState(allFilter);
   const [quickFilter, setQuickFilter] = useState<OpportunityQuickFilter>('all');
   /**
-   * Leads or the pipeline. A lead is a deal at the Lead stage, and it is kept
-   * out of the pipeline list because it answers a different question - "is this
-   * worth qualifying?" - rather than "where is this going and when".
+   * Where a drawer opened from another destination hands the operator back to.
    *
-   * Held in state, read once from `?view=leads`: this page treats its query
-   * parameters as one-shot entry points and clears them, and opening a deal
-   * rewrites the URL to `?opportunityId=`, so a view kept only in the URL would
-   * fall back to the pipeline every time a lead was opened.
+   * Leads opens a lead in this page's editor - there is one deal editor in the
+   * product, and a lead is a deal - and closing it has to return to the queue
+   * rather than strand the operator on a pipeline list the lead is not in. Read
+   * once, like the retired view switch was, because opening a record rewrites
+   * the URL.
    */
-  const [view, setView] = useState<'pipeline' | 'leads'>(() => (
-    new URLSearchParams(window.location.search).get('view') === 'leads' ? 'leads' : 'pipeline'
+  const [returnTo] = useState(() => (
+    new URLSearchParams(window.location.search).get('from') === 'leads' ? '/app/leads' : ''
   ));
-  const [leadBusyId, setLeadBusyId] = useState('');
-  const [leadMessage, setLeadMessage] = useState('');
   // Opens on "what closes soonest", which is the question a pipeline list is
   // for. Was "last update, newest first" - an order that answers "what did I
   // type most recently".
@@ -405,11 +406,27 @@ export function OpportunitiesPage() {
   const importedEnrichment = useMemo(() => summarizeImportedOpportunityEnrichment(opportunities), [opportunities]);
   const importedPipelineSummary = useMemo(() => buildImportedPipelineSummary(opportunities), [opportunities]);
 
+  /**
+   * The qualified pipeline: every record that is not a lead.
+   *
+   * Leads became their own destination on 2026-09-16. Nothing is deleted or
+   * hidden - `opportunities` still holds every record, so a lead opened from the
+   * Leads queue still resolves here by id - but the list, its counts and its
+   * quality read only what has been qualified. A disqualified lead is excluded
+   * too: its stage reads Lost, and counting it among lost deals would record a
+   * conversation that never qualified as pipeline that was lost.
+   */
+  const disqualifiedLeads = useMemo(() => disqualifiedLeadIds(opportunityOutcomes), [opportunityOutcomes]);
+  const pipelineOpportunities = useMemo(
+    () => opportunities.filter((opportunity) => !isLeadRecord(opportunity, disqualifiedLeads)),
+    [disqualifiedLeads, opportunities],
+  );
+
   const opportunityRows = useMemo(
-    () => opportunities.map((opportunity) => buildOpportunityMasterRow(opportunity, activities, quotes, stakeholders, objections)),
+    () => pipelineOpportunities.map((opportunity) => buildOpportunityMasterRow(opportunity, activities, quotes, stakeholders, objections)),
     // Stakeholders and objections are inputs to the row - who decides, and the
     // MEDDIC score - so a person mapped or an objection logged has to redraw it.
-    [activities, objections, opportunities, quotes, stakeholders],
+    [activities, objections, pipelineOpportunities, quotes, stakeholders],
   );
 
   const goingSilentCount = useMemo(
@@ -445,7 +462,6 @@ export function OpportunitiesPage() {
       ].join(' ').toLowerCase();
 
       return (
-        (view === 'leads') === isLeadStage(opportunity.stage) &&
         matchesSearchQuery(searchable, query) &&
         matchesOpportunityQuickFilter(row, quickFilter) &&
         (stageFilter === allFilter || opportunity.stage === stageFilter) &&
@@ -456,9 +472,9 @@ export function OpportunitiesPage() {
         (closeFilter === allFilter || closeFilterOptionsFor(row.closePeriod).includes(closeFilter))
       );
     }).sort((left, right) => compareOpportunityRows(left, right, sortKey, sortDirection));
-  }, [brandFilter, closeFilter, forecastFilter, opportunityRows, quickFilter, recommendationFilter, search, sortDirection, sortKey, stageFilter, statusFilter, view]);
+  }, [brandFilter, closeFilter, forecastFilter, opportunityRows, quickFilter, recommendationFilter, search, sortDirection, sortKey, stageFilter, statusFilter]);
 
-  const leadCount = useMemo(() => opportunities.filter((opportunity) => isLeadStage(opportunity.stage)).length, [opportunities]);
+  const leadCount = opportunities.length - pipelineOpportunities.length;
 
   const visibleOpportunities = useMemo(
     () => visibleOpportunityRows.map((row) => row.opportunity),
@@ -478,42 +494,7 @@ export function OpportunitiesPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [brandFilter, forecastFilter, pageSize, quickFilter, recommendationFilter, search, stageFilter, statusFilter, view]);
-
-  /** A lead that has shown a real need joins the pipeline at Discovery - the stage, and nothing else, changes. */
-  const qualifyLead = async (opportunity: CrmLiteOpportunity) => {
-    if (leadBusyId) return;
-    setLeadBusyId(opportunity.id);
-    setLeadMessage('');
-    try {
-      const result = await updateOpportunity(opportunity, { ...opportunityToForm(opportunity), stage: 'Discovery' }, dataUserId);
-      setOpportunities((current) => current.map((item) => (item.id === result.opportunity.id ? result.opportunity : item)));
-      setLeadMessage(result.warning || `${opportunity.accountName || 'The lead'} is qualified and now in the pipeline at Discovery.`);
-    } catch {
-      setLeadMessage('Could not move it. Nothing was changed - try again.');
-    } finally {
-      setLeadBusyId('');
-    }
-  };
-
-  /**
-   * Out, with the reason. Opens the deal with its status set to Lost, which is
-   * what puts the close-out form in front of the operator: a lead closed without
-   * a reason teaches the book nothing about which leads are worth having.
-   */
-  const disqualifyLead = (opportunity: CrmLiteOpportunity) => {
-    setEditingOpportunity(opportunity);
-    setForm({ ...opportunityToForm(opportunity), status: 'Lost' });
-    setPanelMode('edit');
-    setSaveState('idle');
-    setMessage('Say why this lead is out in the close-out, then save it.');
-    // Brings the close-out into view with the cursor in it, the same nudge a
-    // refused save gives - the drawer opens at its head, well above the form.
-    window.setTimeout(() => setCloseOutNudge((count) => count + 1), 0);
-    // Deliberately not written to the URL, unlike opening a deal: the
-    // `?opportunityId=` entry point reloads the form from the saved record,
-    // which would put the status back to Active before the close-out appeared.
-  };
+  }, [brandFilter, forecastFilter, pageSize, quickFilter, recommendationFilter, search, stageFilter, statusFilter]);
 
   useEffect(() => {
     if (page > pageCount) setPage(pageCount);
@@ -541,8 +522,6 @@ export function OpportunitiesPage() {
       currency: getReportingCurrency(),
       accountName: seed?.accountName || '',
       brand: seed?.brand || '',
-      // Adding from the leads list adds a lead.
-      ...(view === 'leads' ? { stage: 'Lead' as const } : {}),
     });
     setPanelMode('add');
     setSaveState('idle');
@@ -991,6 +970,12 @@ export function OpportunitiesPage() {
     setEditingOpportunity(null);
     setSaveState('idle');
     setMessage('');
+    // Opened from the Leads queue: go back to it. The lead is not in this list,
+    // and leaving the operator here would read as the record having vanished.
+    if (returnTo) {
+      navigate(returnTo);
+      return;
+    }
     // Only clear it if it is ours, so closing the drawer does not wipe an
     // import or filter param that arrived on the same URL.
     if (searchParams.get('opportunityId')) setSearchParams({}, { replace: true });
@@ -1136,32 +1121,25 @@ export function OpportunitiesPage() {
           with, and it now starts within the first screen. The analysis is
           still here, one fold below the rows it describes. */}
       <PageHeader
-        title={view === 'leads' ? 'Leads' : 'Opportunities'}
+        title="Opportunities"
         documentTitle="Opportunities"
         meta={
           <>
             {loading
               ? 'Loading pipeline...'
-              : `${formatCount(visibleOpportunityRows.length)} shown of ${formatCount(view === 'leads' ? leadCount : opportunities.length - leadCount)}`}
+              : `${formatCount(visibleOpportunityRows.length)} shown of ${formatCount(pipelineOpportunities.length)}`}
             {lastWorkspaceRefreshAt ? ` · synced ${formatOpportunityDate(lastWorkspaceRefreshAt)}` : ''}
           </>
         }
-        tabs={(
-          <Segmented
-            label="Opportunities view"
-            value={view}
-            onChange={(next) => {
-              setView(next);
-              setLeadMessage('');
-              // The stage cut belongs to the pipeline; a lead is one stage.
-              setStageFilter(allFilter);
-            }}
-            options={[
-              { value: 'pipeline', label: 'Opportunities', count: opportunities.length - leadCount },
-              { value: 'leads', label: 'Leads', count: leadCount },
-            ]}
-          />
-        )}
+        description={leadCount > 0 ? (
+          <>
+            Qualified pipeline.{' '}
+            <Link to="/app/leads" className="font-semibold text-brand-blue-dark hover:underline">
+              {formatCount(leadCount)} {leadCount === 1 ? 'lead is' : 'leads are'} on Leads
+            </Link>
+            {' '}until qualified.
+          </>
+        ) : undefined}
         actions={
           /*
            * One primary, one secondary, the rest behind "More".
@@ -1180,7 +1158,7 @@ export function OpportunitiesPage() {
               className="inline-flex items-center justify-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-sm font-bold text-white hover:bg-navy/90"
             >
               <Plus className="h-4 w-4" />
-              {view === 'leads' ? 'Add lead' : 'Add'}
+              Add
             </button>
             <details className="relative">
               <summary className="inline-flex cursor-pointer list-none items-center justify-center gap-1.5 rounded-full border border-gray-300 bg-white px-3.5 py-1.5 text-sm font-bold text-gray-700 transition hover:border-brand-blue hover:text-brand-blue">
@@ -1229,9 +1207,10 @@ export function OpportunitiesPage() {
             />
           </label>
           <div className="grid flex-1 grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
-            {view === 'pipeline' && (
-              <FilterSelect label="Stage" value={stageFilter} onChange={setStageFilter} options={[allFilter, ...opportunityStages.filter((stage) => !isLeadStage(stage))]} />
-            )}
+            {/* Lead is not offered: leads are on their own destination, and a stage
+                cut that could select a stage this list never holds would always
+                answer with nothing. */}
+            <FilterSelect label="Stage" value={stageFilter} onChange={setStageFilter} options={[allFilter, ...opportunityStages.filter((stage) => !isLeadStage(stage))]} />
             <FilterSelect label="Status" value={statusFilter} onChange={setStatusFilter} options={[allFilter, ...opportunityStatuses]} />
             <FilterSelect label="Forecast" value={forecastFilter} onChange={setForecastFilter} options={[allFilter, ...forecastEvidenceCategories]} />
             <FilterSelect label="Decision" value={recommendationFilter} onChange={setRecommendationFilter} options={[allFilter, ...decisionRecommendations]} />
@@ -1281,11 +1260,6 @@ export function OpportunitiesPage() {
       {workspaceLoadError && (
         <p className="rounded-lg bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-800">
           Cloud refresh issue: {workspaceLoadError}
-        </p>
-      )}
-      {leadMessage && (
-        <p role="status" className="rounded-[13px] bg-tint-green-bg px-4 py-2.5 text-sm font-semibold text-tint-green-ink">
-          {leadMessage}
         </p>
       )}
 
@@ -1338,18 +1312,8 @@ export function OpportunitiesPage() {
           <SkeletonScreen label="Loading your opportunity master">
             <SkeletonTable rows={8} columns={6} />
           </SkeletonScreen>
-        ) : opportunities.length === 0 ? (
-          <EmptyState onAdd={openAddPanel} onImport={openCsvImport} />
-        ) : view === 'leads' && leadCount === 0 ? (
-          <LeadsEmptyState onAdd={() => openAddPanel()} />
-        ) : view === 'leads' && visibleOpportunities.length > 0 ? (
-          <LeadsTable
-            rows={visibleOpportunityRows}
-            busyId={leadBusyId}
-            onOpen={(opportunity) => openEditPanel(opportunity)}
-            onQualify={(opportunity) => { void qualifyLead(opportunity); }}
-            onDisqualify={disqualifyLead}
-          />
+        ) : pipelineOpportunities.length === 0 ? (
+          <EmptyState onAdd={openAddPanel} onImport={openCsvImport} leadCount={leadCount} />
         ) : visibleOpportunities.length === 0 ? (
           <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
             <p className="text-sm font-semibold text-gray-900">No opportunities match these filters.</p>
@@ -4839,9 +4803,20 @@ function ActionOutcomeHistory({
  * the new user to make a decision they have no basis for. One primary way in,
  * one quieter alternative for the person who has nothing to import.
  */
-function EmptyState({ onAdd, onImport }: { onAdd: () => void; onImport: () => void }) {
+function EmptyState({ onAdd, onImport, leadCount = 0 }: { onAdd: () => void; onImport: () => void; leadCount?: number }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+      {/* Leads live on their own destination now. A workspace whose whole book
+          is leads is not an empty workspace, and saying "import your deals" to
+          it without pointing at them would read as data loss. */}
+      {leadCount > 0 && (
+        <p className="mx-auto mb-4 max-w-md rounded-[13px] bg-tint-blue-bg px-4 py-2.5 text-sm font-semibold text-tint-blue-ink">
+          Nothing is qualified yet.{' '}
+          <Link to="/app/leads" className="underline">
+            {leadCount} {leadCount === 1 ? 'lead is' : 'leads are'} waiting on Leads.
+          </Link>
+        </p>
+      )}
       <p className="text-base font-bold text-navy">Import the deals you are already working.</p>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
         Opportunities are the deals you want to track and defend. Bring in a CSV from wherever they live now - Memoire
@@ -5771,11 +5746,6 @@ function formatBatchDate(value: string) {
 /** MEDDIC roles that actually decide. A champion is an ally, not a signatory. */
 const DECIDING_ROLES = new Set(['Economic Buyer', 'Decision Committee']);
 
-/** A lead is an opportunity at the Lead stage - there is no separate record type. */
-function isLeadStage(stage: string) {
-  return (stage || '').trim().toLowerCase() === 'lead';
-}
-
 function buildOpportunityMasterRow(
   opportunity: CrmLiteOpportunity,
   activities: SalesActivityRecord[],
@@ -6062,32 +6032,6 @@ function formatOpportunityDate(value: string) {
 
 function isPastDate(value: string) {
   return isBusinessDateOverdue(value);
-}
-
-function opportunityToForm(opportunity: CrmLiteOpportunity): OpportunityFormInput {
-  return {
-    accountName: opportunity.accountName,
-    opportunityName: opportunity.opportunityName,
-    stage: opportunity.stage,
-    estimatedValue: opportunity.estimatedValue,
-    currency: opportunity.currency,
-    expectedClosePeriod: opportunity.expectedClosePeriod,
-    productOrSolution: opportunity.productOrSolution,
-    decisionMaker: opportunity.decisionMaker,
-    budgetOwner: opportunity.budgetOwner,
-    procurementPath: opportunity.procurementPath,
-    technicalCriteria: opportunity.technicalCriteria,
-    nextAction: opportunity.nextAction,
-    nextActionDate: opportunity.nextActionDate,
-    evidence: opportunity.evidence,
-    missingContext: opportunity.missingContext,
-    objectionDebt: opportunity.objectionDebt,
-    forecastEvidenceCategory: opportunity.forecastEvidenceCategory,
-    decisionRecommendation: opportunity.decisionRecommendation,
-    status: opportunity.status,
-    // Opening a deal in the editor must not quietly drop the line it sells.
-    brand: opportunity.brand || '',
-  };
 }
 
 /**

@@ -100,21 +100,53 @@ const deal = (overrides = {}) => ({
   assert.match(page, /<MeddicInsightPanel[\s\S]{0,40}qualification=\{scoreDealQualification\(/, 'the open deal explains it letter by letter');
 }
 
-// 2c. Leads are the Lead stage, listed apart (2026-09-15).
+// 2c. Leads are the Lead stage, on their own destination (2026-09-16).
 //
-//    A lead is an opportunity at the Lead stage - no second record type - and the
-//    two views partition the book: every deal is in exactly one of them.
-//    Qualifying changes the stage and nothing else; disqualifying goes through
-//    the close-out, because a lead closed with no reason teaches nothing.
+//    Was a tab inside Opportunities for one day (2026-09-15); the rule that tab
+//    asserted survives and is now stated against the two surfaces instead.
+//
+//    A lead is an opportunity at the Lead stage - no second record type - and
+//    the two destinations partition the book: every record is on exactly one of
+//    them. Qualifying changes the stage and nothing else; disqualifying writes a
+//    reason, because a lead closed with no reason teaches nothing. A lead is not
+//    graded on MEDDIC - that score belongs to the qualified pipeline.
 {
-  const page = read('src/features/opportunities/OpportunitiesPage.tsx');
-  assert.match(page, /\(view === 'leads'\) === isLeadStage\(opportunity\.stage\)/, 'the two views split the book on the Lead stage, with no deal in both or neither');
-  const qualify = page.slice(page.indexOf('const qualifyLead'), page.indexOf('const disqualifyLead'));
-  assert.match(qualify, /updateOpportunity\(opportunity, \{ \.\.\.opportunityToForm\(opportunity\), stage: 'Discovery' \}/, 'qualifying moves a lead to Discovery and changes nothing else');
-  const disqualify = page.slice(page.indexOf('const disqualifyLead'), page.indexOf('const disqualifyLead') + 1400);
-  assert.match(disqualify, /status: 'Lost'/, 'disqualifying opens the close-out by setting the status to Lost');
-  assert.doesNotMatch(disqualify, /^\s*setSearchParams\(/m, 'disqualifying must not reload the form from the URL, which would put the status back');
-  assert.match(page, /<LeadsTable[\s/>]/, 'the leads view has its own list');
+  const opportunitiesPage = read('src/features/opportunities/OpportunitiesPage.tsx');
+  const leadsPage = read('src/features/leads/LeadsPage.tsx');
+  const leadList = read('src/features/leads/LeadQueueList.tsx');
+  const commands = read('src/services/leadCommands.ts');
+  const rules = read('src/utils/leadQueue.ts');
+
+  assert.match(
+    opportunitiesPage,
+    /opportunities\.filter\(\(opportunity\) => !isLeadRecord\(opportunity, disqualifiedLeads\)\)/,
+    'Opportunities lists everything that is not a lead record - the other half of the partition',
+  );
+  // Sliced to the one function: a pattern allowed to run on finds the pipeline
+  // selector's `!isLeadRecord(...)` below it, and passes on a Leads selector
+  // that reads something else entirely.
+  const selectLeadsBody = rules.slice(rules.indexOf('export function selectLeads'), rules.indexOf('export function selectQualifiedPipeline'));
+  assert.match(
+    selectLeadsBody,
+    /return opportunities\.filter\(\(opportunity\) => isLeadRecord\(opportunity, disqualified\)\);/,
+    'Leads selects exactly the lead records, with the same predicate',
+  );
+
+  const qualify = commands.slice(commands.indexOf('export async function qualifyLead'), commands.indexOf('export async function nurtureLead'));
+  assert.match(qualify, /\.\.\.opportunityToFormInput\(opportunity\),\s*stage: QUALIFIED_STAGE,/, 'qualifying moves a lead to Discovery through the full round-trip, so nothing else changes');
+
+  const disqualify = commands.slice(commands.indexOf('export async function disqualifyLead'), commands.indexOf('export type CreateLeadInput'));
+  assert.match(disqualify, /createOpportunityOutcomeFromOpportunity\(/, 'disqualifying writes a close-out through the outcome store');
+  assert.match(disqualify, /reasonCategory: outcomeReasonCategoryForLead\(input\.reason\)/, 'the close-out carries the lead reason');
+  assert.ok(
+    disqualify.indexOf('createOpportunityOutcomeFromOpportunity(') < disqualify.indexOf('updateOpportunity('),
+    'the reason is written before the record closes, so a failed save can never leave a closed lead with no reason',
+  );
+  assert.match(read('src/features/leads/LeadActionDrawers.tsx'), /disabled=\{saving \|\| !reason\}/, 'Disqualify cannot be pressed without a reason');
+
+  assert.match(leadsPage, /<LeadQueueList[\s/>]/, 'Leads has its own list');
+  assert.doesNotMatch(leadList, /MeddicScoreCell|scoreDealQualification/, 'a lead is not graded on MEDDIC - that belongs to the qualified pipeline');
+  assert.match(leadList, /<SegmentMeter/, 'a lead shows its evidence as named cells, not a score');
 }
 
 // 3. An unscored workspace backs nothing.

@@ -419,7 +419,9 @@ const parse = (raw, patch = {}) => parseCapture({
   const block = registry.match(/export const PRIMARY_DESTINATION_IDS = \[([\s\S]*?)\] as const;/);
   assert.ok(block, 'featureRegistry must declare PRIMARY_DESTINATION_IDS');
   const destinations = [...block[1].matchAll(/'([a-z-]+)'/g)].map((match) => match[1]);
-  assert.equal(destinations.length, 6, 'Memoire has six primary destinations; evidence is not a seventh');
+  // Seven since Leads (2026-09-16), and seven is recorded as the ceiling - the
+  // count is asserted exactly so evidence can never arrive as an eighth.
+  assert.equal(destinations.length, 7, 'Memoire has seven primary destinations; evidence is not an eighth');
   assert.ok(
     !destinations.some((id) => id.includes('evidence')),
     `evidence became a navigation destination: ${destinations.join(', ')}`,

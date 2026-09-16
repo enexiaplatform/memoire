@@ -1,11 +1,17 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
-// Memoire is a Personal Commercial Control Tower with exactly six primary
+// Memoire is a Personal Commercial Control Tower with exactly seven primary
 // destinations. This contract is the guard against the failure mode that
 // produced the previous surface sprawl: a page reappears in the rail, the
 // product stops being describable in one sentence, and nobody notices because
 // each individual addition looked reasonable.
+//
+// It said six until 2026-09-16. Leads became the seventh as a product decision,
+// recorded in featureRegistry.ts, and this file was changed to say so rather
+// than worked around - which is the only way this contract is meant to move.
+// Seven is recorded as the ceiling: the lifecycle (lead, account, deal, money)
+// and the three rhythms (today, the week, the review) each have one.
 
 const registry = readFileSync('src/config/featureRegistry.ts', 'utf8');
 const sidebar = readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
@@ -13,19 +19,19 @@ const tabBar = readFileSync('src/components/layout/MobileTabBar.tsx', 'utf8');
 const topNav = readFileSync('src/components/layout/TopNav.tsx', 'utf8');
 const app = readFileSync('src/App.tsx', 'utf8');
 
-// 1. Exactly six primary destinations, in the approved order.
+// 1. Exactly seven primary destinations, in the approved order.
 {
   const block = registry.match(/export const PRIMARY_DESTINATION_IDS = \[([\s\S]*?)\] as const;/);
   assert.ok(block, 'featureRegistry must declare PRIMARY_DESTINATION_IDS');
   const ids = [...block[1].matchAll(/'([a-z-]+)'/g)].map((match) => match[1]);
   assert.deepEqual(
     ids,
-    ['today', 'accounts', 'opportunities', 'money', 'timeline', 'review'],
-    'the six primary destinations, in order, are the product',
+    ['today', 'leads', 'accounts', 'opportunities', 'money', 'timeline', 'review'],
+    'the seven primary destinations, in order, are the product',
   );
 }
 
-// 2. The rail renders from the registry, and it is exactly the six primary
+// 2. The rail renders from the registry, and it is exactly the seven primary
 // destinations.
 //
 // It used to be the six plus the eight routed global surfaces, interleaved into
@@ -55,9 +61,16 @@ const app = readFileSync('src/App.tsx', 'utf8');
   assert.deepEqual(
     [...railIds].sort(),
     [...primaryIds].sort(),
-    'the rail is exactly the six primary destinations - a seventh row means editing the product decision',
+    'the rail is exactly the seven primary destinations - an eighth row means editing the product decision',
   );
-  assert.equal(railIds.length, 6, 'six destinations is the product; a seventh needs a reason in PRIMARY_DESTINATION_IDS');
+  assert.equal(railIds.length, 7, 'seven destinations is the product and the ceiling; an eighth needs a reason in PRIMARY_DESTINATION_IDS');
+
+  // Leads sits in the rail in lifecycle order: after the two rhythm rows and
+  // before the books it feeds.
+  assert.ok(
+    railIds.indexOf('leads') > railIds.indexOf('timeline') && railIds.indexOf('leads') < railIds.indexOf('accounts'),
+    'Leads sits between Plan and Accounts in the rail - the order the work happens in',
+  );
 
   // And the eight that left the rail are still routed, still global, and still
   // reachable. Removing a row must never remove a capability.
@@ -84,6 +97,13 @@ const app = readFileSync('src/App.tsx', 'utf8');
   }
 
   // The phone gets a subset of the same rail, declared in the same file.
+  //
+  // Every primary destination must be reachable on a phone. The tab bar is a
+  // four-item shortcut, and the drawer behind "More" is this same rail - so a
+  // destination is reachable when it is in the rail and the bar can open the
+  // drawer. Asserted rather than assumed because Leads, the seventh, is
+  // deliberately not on the bar (see MOBILE_TAB_IDS), and "not on the bar" must
+  // never quietly become "not on the phone".
   const mobileBlock = registry.match(/export const MOBILE_TAB_IDS = \[([\s\S]*?)\] as const;/);
   assert.ok(mobileBlock, 'featureRegistry must declare MOBILE_TAB_IDS');
   const mobileIds = [...mobileBlock[1].matchAll(/'([a-z-]+)'/g)].map((match) => match[1]);
@@ -92,6 +112,18 @@ const app = readFileSync('src/App.tsx', 'utf8');
     assert.ok(railIds.includes(id), `mobile tab ${id} is not in the rail`);
   }
   assert.ok(tabBar.includes('mobileTabs'), 'MobileTabBar must render the registry list');
+  // The call site, not the prop name: the name also appears in the component's
+  // signature, and a check that matches the signature passes on a bar whose
+  // More button does nothing.
+  assert.ok(tabBar.includes('onClick={onOpenMenu}'), 'the tab bar must open the full rail, or destinations off the bar are unreachable on a phone');
+  const primaryForPhone = registry.match(/export const PRIMARY_DESTINATION_IDS = \[([\s\S]*?)\] as const;/);
+  for (const id of [...primaryForPhone[1].matchAll(/'([a-z-]+)'/g)].map((match) => match[1])) {
+    assert.ok(
+      mobileIds.includes(id) || railIds.includes(id),
+      `primary destination ${id} is not reachable on a phone - neither on the tab bar nor in the drawer`,
+    );
+  }
+  assert.ok(railIds.includes('leads'), 'Leads must be in the rail, which is the phone drawer');
 }
 
 // 3. Retired destinations stay retired - checked by id rather than by label.
@@ -132,8 +164,8 @@ for (const retiredId of [
 
 // 4. Capture, Search & Insights, Activity, the Dashboard lens, the Business
 // Vault and Settings stay globally reachable - and the three lenses stay lenses.
-// Activity, the Dashboard lens and the Vault are ways of seeing the six
-// destinations, not seventh, eighth and ninth places to work: none owns a
+// Activity, the Dashboard lens and the Vault are ways of seeing the seven
+// destinations, not eighth, ninth and tenth places to work: none owns a
 // record, all three read what the six already wrote, and all three may sit
 // anywhere in the rail. None may ever appear in PRIMARY_DESTINATION_IDS.
 //
@@ -153,7 +185,7 @@ for (const retiredId of [
     assert.equal(
       primaries[1].includes(lens),
       false,
-      `${lens} is a lens over the six destinations and must not become a primary one`,
+      `${lens} is a lens over the seven destinations and must not become a primary one`,
     );
   }
 }
@@ -167,7 +199,7 @@ for (const retiredId of [
     assert.equal(
       page.includes(writer),
       false,
-      `the Business lens must not write records - found ${writer}. A lens that writes is a seventh destination.`,
+      `the Business lens must not write records - found ${writer}. A lens that writes is an eighth destination.`,
     );
   }
   assert.ok(
@@ -192,6 +224,7 @@ for (const retiredId of [
 {
   const surfaces = [
     ['Today', 'src/features/dashboard/DashboardPage.tsx'],
+    ['Leads', 'src/features/leads/LeadsPage.tsx'],
     ['Accounts', 'src/features/accounts/AccountsPage.tsx'],
     ['Opportunities', 'src/features/opportunities/OpportunitiesPage.tsx'],
     ['Money', 'src/features/revenue/MoneyPage.tsx'],
@@ -256,7 +289,7 @@ for (const retiredId of [
 // 5. Every primary destination has a route, and every retired destination still
 // resolves. Deep links, bookmarks and shared links must never 404.
 {
-  for (const route of ['today', 'accounts', 'opportunities', 'revenue', 'timeline', 'reviews']) {
+  for (const route of ['today', 'leads', 'accounts', 'opportunities', 'revenue', 'timeline', 'reviews']) {
     assert.ok(
       new RegExp(`<Route path="${route}"`).test(app),
       `primary destination has no route: /app/${route}`,
@@ -390,4 +423,32 @@ for (const removed of [
   );
 }
 
-console.log('Navigation contract verified: six primary destinations, six global surfaces, no orphaned deep links.');
+// 10. Leads is one continuous record with Opportunities, not a second book.
+//
+// The destination exists; the table must not. Leads reads opportunities through
+// the one lead rule set, Opportunities lists the other half of the same
+// partition, and the one-day-old ?view=leads link still lands on the leads.
+{
+  const leadsPage = readFileSync('src/features/leads/LeadsPage.tsx', 'utf8');
+  const opportunitiesPage = readFileSync('src/features/opportunities/OpportunitiesPage.tsx', 'utf8');
+  assert.ok(leadsPage.includes('buildLeadQueue('), 'Leads must read the canonical lead queue, not re-derive it');
+  assert.ok(
+    !/from '\.\.\/\.\.\/services\/leadStore'/.test(leadsPage) && !existsSync('src/services/leadStore.ts'),
+    'a lead is an opportunity at the Lead stage - there must be no separate lead store',
+  );
+  assert.ok(
+    opportunitiesPage.includes('isLeadRecord(opportunity, disqualifiedLeads)'),
+    'Opportunities must list the qualified pipeline only - the other half of the lead partition',
+  );
+  assert.equal(
+    /view === 'leads'/.test(opportunitiesPage),
+    false,
+    'the Leads tab inside Opportunities is retired; Leads is its own destination',
+  );
+  assert.ok(
+    /function OpportunitiesRouteEntry\(\)[\s\S]*?get\('view'\) === 'leads'[\s\S]*?\/app\/leads/.test(app),
+    '/app/opportunities?view=leads must still land on the leads',
+  );
+}
+
+console.log('Navigation contract verified: seven primary destinations, every one reachable on a phone, no orphaned deep links.');

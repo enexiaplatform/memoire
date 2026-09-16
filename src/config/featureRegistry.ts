@@ -4,15 +4,30 @@
  *
  * Memoire is a Personal Commercial Control Tower. Its promise is "from
  * conversation to cash, nothing goes silent", and its whole operating loop runs
- * through six primary destinations. Every previous surface that grew its own
+ * through seven primary destinations. Every previous surface that grew its own
  * page has been re-classified here rather than deleted piecemeal, because the
- * failure mode this file exists to prevent is the slow return of a seventh nav
+ * failure mode this file exists to prevent is the slow return of an eighth nav
  * item: a page reappears, the sidebar grows, and the product stops being
  * describable in one sentence.
  *
+ * It was six until 2026-09-16, and the seventh arrived the way this file says a
+ * destination must arrive: as a product decision written down here, with the
+ * contract changed rather than worked around. Leads had been a tab inside
+ * Opportunities since 2026-09-15, which was already the admission that a lead
+ * asks a different question - "is this worth qualifying?" rather than "where is
+ * this going and when". A tab inside the pipeline cannot carry that answer: the
+ * commercial lifecycle starts before the pipeline, and the surface that owns
+ * the start of it is not a view of the middle.
+ *
+ * Seven is the ceiling. The lifecycle - lead, account, deal, money - now has a
+ * destination for each of its four states, and the three rhythms that operate
+ * it - today, the week, the review - have one each. There is no eighth question
+ * left over, so an eighth row would be a capability that belongs inside one of
+ * these seven.
+ *
  * The navigation renders from `navigationGroups`, which is assembled here from
  * `primaryNavigation` and `globalActions`. Nothing else may add a nav item, and
- * `scripts/verify-navigation-contract.mjs` fails the build if the six primary
+ * `scripts/verify-navigation-contract.mjs` fails the build if the seven primary
  * destinations change, if a hidden feature becomes visible, or if a rail item
  * exists that no group claims.
  *
@@ -89,8 +104,18 @@ export type FeatureRecord = {
   killOrActivationCondition: string;
 };
 
+/**
+ * The seven primary destinations, as the product decision rather than as the
+ * order of the rail - `NAVIGATION_GROUP_IDS` owns that.
+ *
+ * Read as the commercial lifecycle plus the rhythms that operate it:
+ *
+ *   leads -> accounts <-> opportunities -> money   what the business is made of
+ *   today / timeline / review                      how it gets run
+ */
 export const PRIMARY_DESTINATION_IDS = [
   'today',
+  'leads',
   'accounts',
   'opportunities',
   'money',
@@ -127,6 +152,35 @@ export const featureRegistry: FeatureRecord[] = [
     killOrActivationCondition: 'Never - a canonical kernel entity surface.',
   },
   {
+    id: 'leads',
+    label: 'Leads',
+    // The seventh primary destination, 2026-09-16.
+    //
+    // A lead is not a second record type and this is not a second database. It
+    // is an opportunity at the Lead stage, and everything on it - the touches,
+    // the people, the evidence, the source, the dates - is the same record that
+    // appears in Opportunities the moment it is qualified. Qualifying changes
+    // the stage and nothing else, which is what makes "one continuous
+    // commercial record" true rather than aspirational.
+    //
+    // It is a destination rather than a tab because the question is different.
+    // Opportunities answers "where is this going and when"; Leads answers "who
+    // is worth progressing, nurturing or dropping". Sorting a lead into the
+    // pipeline's quarters, counting it in the pipeline's forecast and grading
+    // it against the pipeline's MEDDIC score answered the first question about
+    // records that had not yet earned it.
+    status: 'core',
+    ownerSurface: 'leads',
+    route: '/app/leads',
+    routeBehavior: 'primary',
+    navVisible: true,
+    analytics: 'active',
+    dataRetention:
+      'Owns no table of its own. Presents opportunities at the Lead stage, plus the lead-specific fields on them: source, source detail, and the nurture revisit date and reason.',
+    killOrActivationCondition:
+      'Retire it only if leads stop being a distinct state of the business - that would mean every conversation arrives already qualified, and the queue has nothing to hold.',
+  },
+  {
     id: 'opportunities',
     label: 'Opportunities',
     // "Opportunities" truncates to "Opportuniti..." in a five-up tab bar. Deals
@@ -138,7 +192,11 @@ export const featureRegistry: FeatureRecord[] = [
     routeBehavior: 'primary',
     navVisible: true,
     analytics: 'active',
-    dataRetention: 'Source of truth for opportunities and their stage evidence.',
+    // Qualified pipeline only since 2026-09-16. Lead-stage records are not
+    // deleted, hidden or copied - they are the same rows, listed on the surface
+    // that asks their question, and they reappear here the moment they are
+    // qualified.
+    dataRetention: 'Source of truth for opportunities and their stage evidence. Lists the qualified pipeline; Lead-stage records are listed on Leads.',
     killOrActivationCondition: 'Never - a canonical kernel entity surface.',
   },
   {
@@ -679,7 +737,7 @@ export function isFeatureVisible(id: string): boolean {
   return byId.get(id)?.navVisible === true;
 }
 
-/** The six primary destinations, in navigation order. */
+/** The seven primary destinations, in navigation order. */
 export const primaryNavigation: FeatureRecord[] = PRIMARY_DESTINATION_IDS.map((id) => {
   const feature = byId.get(id);
   if (!feature) throw new Error(`Feature registry is missing primary destination "${id}"`);
@@ -730,7 +788,12 @@ const NAVIGATION_GROUP_IDS: { id: NavGroupId; label: string; itemIds: string[] }
     // glance does not need to be filed.
     id: 'run',
     label: '',
-    itemIds: ['today', 'timeline', 'accounts', 'opportunities', 'money', 'review'],
+    // In lifecycle order after the two rhythm rows: what is on today, what the
+    // week holds, then the book read from the first conversation to the cash.
+    // Leads sits above Accounts because that is the order the work happens in,
+    // and a rail that reads in the order of the work is one fewer thing to
+    // learn.
+    itemIds: ['today', 'timeline', 'leads', 'accounts', 'opportunities', 'money', 'review'],
   },
 ];
 
@@ -755,11 +818,20 @@ export const navigationGroups: NavGroup[] = NAVIGATION_GROUP_IDS.map((group) => 
 /**
  * The phone's bottom tab bar.
  *
- * Four destinations plus a "More" button that opens the same rail. Chosen from
- * what a distributor actually does away from the desk: what is on today, what
- * the week holds, and looking up a customer or a deal before walking into a
- * meeting. Capture is not here because it is already the primary button in the
- * top bar on every screen width.
+ * Four destinations plus a "More" button that opens the same rail - which now
+ * carries seven. Leads deliberately stayed off the bar when it became the
+ * seventh destination: the bar is a subset by construction, its selection rule
+ * is "what you open standing in a customer's lobby", and none of the four it
+ * holds is less that than Leads is. Creating a lead away from the desk is
+ * already possible from anywhere:
+ * Capture's job, and Capture is the primary button in the top bar on every
+ * screen width. `verify-navigation-contract.mjs` asserts that every primary
+ * destination is reachable on a phone, which is the contract that matters -
+ * being on the bar is a shortcut, not access.
+ *
+ * The four were chosen from what a distributor actually does away from the
+ * desk: what is on today, what the week holds, and looking up a customer or a
+ * deal before walking into a meeting.
  *
  * Everything else stays one tap away in the drawer. The point of the bar is
  * that the four things people open twenty times a day never require opening a

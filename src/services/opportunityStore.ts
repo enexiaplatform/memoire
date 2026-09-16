@@ -76,6 +76,35 @@ export interface CrmLiteOpportunity {
   evidence: string;
   missingContext: string;
   objectionDebt: string;
+  /**
+   * How the lead arrived, from the controlled list in utils/leadQueue.ts.
+   *
+   * Additive and optional, and deliberately a new field rather than a rename of
+   * `channel`. `channel`, `opportunityType` and `sourceSystem` already carry
+   * acquisition context on every imported book, and rewriting them would be a
+   * migration over somebody's data to satisfy a vocabulary. `resolveLeadSource`
+   * reads this first and falls back to those three, so an imported lead reports
+   * a source on the day this ships with nothing re-entered.
+   */
+  leadSource?: string;
+  /** The free-text qualifier: "Pharmedi 2026", "Samil / Mr Kim". */
+  leadSourceDetail?: string;
+  /**
+   * The day a nurtured lead comes back.
+   *
+   * Nurture is the third answer a lead needs and the only one that had no home:
+   * qualify and disqualify both already existed as stage and status moves, and
+   * "good prospect, wrong year" had to be written as either a lie (disqualified)
+   * or nothing (left to rot in the queue). Set means parked; the queue brings it
+   * back on its own as the date approaches.
+   *
+   * Deliberately not a plan item or a commitment. The commitment ledger has one
+   * writer by design, and a promise to yourself to look at a lead in December is
+   * not a commercial commitment to anybody.
+   */
+  nurturedUntil?: string;
+  /** Why it is parked. Optional - "budget next FY" is worth a sentence. */
+  nurtureReason?: string;
   forecastEvidenceCategory: ForecastEvidenceCategory;
   decisionRecommendation: DecisionRecommendation;
   status: OpportunityStatus;
@@ -126,6 +155,10 @@ type OpportunityRow = {
   evidence: string | null;
   missing_context: string | null;
   objection_debt: string | null;
+  lead_source?: string | null;
+  lead_source_detail?: string | null;
+  nurtured_until?: string | null;
+  nurture_reason?: string | null;
   blocker?: string | null;
   forecast_evidence_category: string | null;
   decision_recommendation: string | null;
@@ -303,31 +336,32 @@ export async function deleteOpportunity(opportunity: CrmLiteOpportunity, userId?
   invalidateWorkspaceCollection('opportunities');
 }
 
+/**
+ * A saved deal, as the input that would re-save it unchanged.
+ *
+ * Written as a rest spread rather than as a list of fields, and that is the
+ * whole point of it.
+ *
+ * This function used to name twenty fields by hand, which meant it carried
+ * twenty of the thirty-odd a deal has. Everything it did not name was blanked
+ * on every cloud save that went through it - and four of the app's write paths
+ * go through it, including dragging a deal to another day on the plan board and
+ * ticking a follow-up on Today. `closed_on`, written by `opportunityToRow` and
+ * absent here, was being nulled by a drag; the brand had already been fixed the
+ * same way once, one field at a time.
+ *
+ * A rest spread cannot forget a field. `OpportunityFormInput` is defined as the
+ * record minus its identity and storage columns, so removing exactly those and
+ * keeping the rest is the definition restated in code rather than a list that
+ * has to be maintained beside it.
+ */
 export function opportunityToFormInput(opportunity: CrmLiteOpportunity): OpportunityFormInput {
+  const { id, userId, createdAt, updatedAt, storageMode, source, isSample, ...input } = opportunity;
   return {
-    accountName: opportunity.accountName,
-    opportunityName: opportunity.opportunityName,
-    stage: opportunity.stage,
-    estimatedValue: opportunity.estimatedValue,
-    currency: opportunity.currency,
-    expectedClosePeriod: opportunity.expectedClosePeriod,
-    productOrSolution: opportunity.productOrSolution,
-    decisionMaker: opportunity.decisionMaker,
-    budgetOwner: opportunity.budgetOwner,
-    procurementPath: opportunity.procurementPath,
-    technicalCriteria: opportunity.technicalCriteria,
-    nextAction: opportunity.nextAction,
-    nextActionDate: opportunity.nextActionDate,
-    evidence: opportunity.evidence,
-    missingContext: opportunity.missingContext,
-    objectionDebt: opportunity.objectionDebt,
-    forecastEvidenceCategory: opportunity.forecastEvidenceCategory,
-    decisionRecommendation: opportunity.decisionRecommendation,
-    status: opportunity.status,
-    // Carried through the form round-trip. Without this, opening a deal in the
-    // editor and saving it - or dragging it to another day on the plan board,
-    // which uses this same round-trip - silently blanked the brand it was
-    // imported with, and with it the deal's line in the brand rollup.
+    ...input,
+    // Normalised rather than carried raw: an undefined brand on an imported
+    // deal has to reach the editor as an empty string, or the controlled input
+    // it feeds flips from uncontrolled to controlled on first keystroke.
     brand: opportunity.brand || '',
   };
 }
@@ -364,6 +398,14 @@ function loadLocalOpportunities(): CrmLiteOpportunity[] {
         evidence: item.evidence || '',
         missingContext: item.missingContext || '',
         objectionDebt: item.objectionDebt || '',
+        // The lead fields. Read here as well as in the cloud reader for the
+        // reason written at length above: this reader rebuilds the whole local
+        // mirror, so a field it forgets is deleted from every record on the
+        // device the next time any one of them is edited.
+        leadSource: item.leadSource || '',
+        leadSourceDetail: item.leadSourceDetail || '',
+        nurturedUntil: sanitizeBusinessDate(item.nurturedUntil || '') || '',
+        nurtureReason: item.nurtureReason || '',
         forecastEvidenceCategory: normalizeForecastCategory(item.forecastEvidenceCategory),
         decisionRecommendation: normalizeDecisionRecommendation(item.decisionRecommendation),
         status: outcome.status,
@@ -519,6 +561,10 @@ function rowToOpportunity(row: OpportunityRow): CrmLiteOpportunity {
     evidence: row.evidence || '',
     missingContext: row.missing_context || '',
     objectionDebt: row.objection_debt || row.blocker || '',
+    leadSource: row.lead_source || '',
+    leadSourceDetail: row.lead_source_detail || '',
+    nurturedUntil: sanitizeBusinessDate(row.nurtured_until) || '',
+    nurtureReason: row.nurture_reason || '',
     forecastEvidenceCategory: normalizeForecastCategory(row.forecast_evidence_category),
     decisionRecommendation: normalizeDecisionRecommendation(row.decision_recommendation),
     status: outcome.status,
@@ -598,6 +644,10 @@ function opportunityToRow(input: OpportunityFormInput) {
     evidence: input.evidence || null,
     missing_context: input.missingContext || null,
     objection_debt: input.objectionDebt || null,
+    lead_source: input.leadSource?.trim() || null,
+    lead_source_detail: input.leadSourceDetail?.trim() || null,
+    nurtured_until: sanitizeBusinessDate(input.nurturedUntil || '') || null,
+    nurture_reason: input.nurtureReason?.trim() || null,
     forecast_evidence_category: input.forecastEvidenceCategory,
     decision_recommendation: input.decisionRecommendation,
     status: input.status,

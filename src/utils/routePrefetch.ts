@@ -2,6 +2,7 @@
 // destination would keep a removed page's chunk in the bundle graph forever.
 const routePrefetchers: Record<string, () => Promise<unknown>> = {
   '/app/today': () => import('../features/dashboard/DashboardPage'),
+  '/app/leads': () => import('../features/leads/LeadsPage'),
   '/app/accounts': () => import('../features/accounts/AccountsPage'),
   '/app/opportunities': () => import('../features/opportunities/OpportunitiesPage'),
   '/app/revenue': () => import('../features/revenue/RevenueViewPage'),
@@ -48,6 +49,7 @@ export function prefetchPrimaryAppRoutes() {
 
   const routes = [
     '/app/capture',
+    '/app/leads',
     '/app/accounts',
     '/app/opportunities',
     '/app/revenue',
