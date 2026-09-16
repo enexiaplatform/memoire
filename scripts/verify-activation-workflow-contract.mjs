@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = process.cwd();
@@ -57,14 +57,14 @@ for (const marker of [
   "brand: searchParams.get('brand') || undefined,",
   'setSearchParams({}, { replace: true });',
   'markTrialActivationChecklistItemComplete(\'load-demo-or-import-csv\')',
-  'markTrialActivationChecklistItemComplete(\'generate-defense-brief\')',
-  "trackProductEvent('review_completed'",
-  'Generate Pipeline Defense Brief',
-  'Ready to create a new Pipeline Defense Brief.',
 ]) {
   requireIncludes(opportunities, marker, `opportunities activation entry missing marker: ${marker}`);
 }
 
+// Two of this checklist's six steps ended on the Pipeline Defense brief, and
+// both went with it on 2026-09-16. A step nobody can complete is worse than a
+// missing one - it holds the checklist at four of six forever - so the
+// contract now also states what must not come back.
 const trialChecklist = read('src/utils/trialActivationChecklist.ts');
 for (const marker of [
   'TRIAL_ACTIVATION_CHECKLIST_KEY',
@@ -72,71 +72,55 @@ for (const marker of [
   "'review-opportunity'",
   "'capture-update'",
   "'import-starter-asset-pack'",
-  "'generate-defense-brief'",
-  "'copy-manager-summary'",
   'title: \'Capture first evidence\'',
   'href: \'/app/capture?mode=email\'',
   'title: \'Review Today command center\'',
-  'title: \'Prepare Pipeline Defense Brief\'',
-  'description: \'Open the review artifact and check defend, rescue, downgrade, MEDDIC, and missing evidence.\'',
-  'title: \'Copy manager-ready answer\'',
-  'href: \'/app/pipeline-defense\'',
 ]) {
   requireIncludes(trialChecklist, marker, `trial activation checklist missing marker: ${marker}`);
 }
-
-const reviewPacks = read('src/utils/reviewPacks.ts');
-for (const marker of [
-  'export async function loadReviewPacksForUser(userId: string)',
-  "loadCloudJsonCollection<ReviewPackSnapshot>('review_packs', userId)",
-  "claimLocalCollectionForUser('review_packs', userId) ? local.filter(isUserReviewPack) : []",
-  'mergeCloudJsonRecords(recordsToMerge, cloud)',
-  'await upsertCloudJsonCollection(\'review_packs\', userId, merged)',
-  'export async function loadReviewPacksForWorkspace(userId?: string | null, sampleDataActive = false)',
-  'if (!userId || sampleDataActive) return loadReviewPacks();',
-  'return await loadReviewPacksForUser(userId);',
-  'return loadReviewPacks();',
-  'export function saveReviewPack(pack: ReviewPackSnapshot, options: { syncCloud?: boolean } = {})',
-  'if (options.syncCloud !== false) deleteCloudJsonRecordForCurrentUser(\'review_packs\', packId);',
-  'pack.managerSummary || \'No manager summary captured.\'',
+for (const retired of [
+  "'generate-defense-brief'",
+  "'copy-manager-summary'",
+  '/app/pipeline-defense',
 ]) {
-  requireIncludes(reviewPacks, marker, `review pack store missing activation marker: ${marker}`);
+  requireExcludes(trialChecklist, retired, `the checklist offers a step nobody can finish: ${retired}`);
 }
 
-const pipelineDefense = read('src/features/pipeline/PipelineReviewDefenseBriefPage.tsx');
+// The activation artifact is gone.
+//
+// Three surfaces stood here: the Review Pack store, the Pipeline Defense brief
+// page that wrote to it, and the direct review-pack route that read one back.
+// All three were removed on 2026-09-16. They were not removed on taste: the
+// `pipeline_defense_briefs` and `review_packs` tables held zero rows across
+// every workspace, and the route had not been opened since 2026-07-27. What
+// they were guarding - that a demo record can never reach a live workspace, and
+// that a signed-in user finds their own work when they come back - still holds,
+// and is pinned against the stores that do hold rows by
+// `scripts/verify-data-isolation-contract.mjs` and
+// `scripts/verify-sample-live-separation.mjs`.
+//
+// What activation needs from this file now is that the loop still closes and is
+// still measured: confirming the week is the act that ends a review, and it is
+// the only emitter of `review_completed`. Without that the admin funnel draws a
+// "Ran a review" step that can only read zero, which is the failure this file
+// exists to prevent.
+const weeklyCommitmentPanel = read('src/features/reviews/WeeklyCommitmentPanel.tsx');
 for (const marker of [
-  'loadReviewPacksForWorkspace(user?.id, sampleDataActive)',
-  'const sampleDataActive = hasLocalSampleData();',
-  'const cloudSyncReady = Boolean(user && !sampleDataActive',
-  "trackProductEvent('review_completed', sampleDataActive ? 'demo-local' : 'cloud-synced')",
-  "trackProductEvent('review_completed', sampleDataActive ? 'demo-local' : 'browser-only')",
-  'source: sampleDataActive ? \'demo\' : \'user\'',
+  'const confirmWeek = useCallback(',
+  "source: sampleDataActive ? 'demo' : 'user'",
   'isSample: sampleDataActive',
-  'setReviewPacks(saveReviewPack(pack, { syncCloud: !sampleDataActive }))',
-  "setReviewPackMessage(isAuthenticated && !sampleDataActive ? 'Review pack saved and syncing to your workspace.' : 'Review pack saved in this browser.')",
-  "trackProductEvent('review_completed', sampleDataActive ? 'demo-local' : isAuthenticated ? 'cloud-synced' : 'browser-only')",
-  'setReviewPacks(updateReviewPack(currentWeekReviewPack.id, pack, { syncCloud: !sampleDataActive }))',
-  'setReviewPacks(deleteReviewPack(packId, { syncCloud: !sampleDataActive }))',
-  'Save Review Pack',
-  'Saved Review Packs',
-  'to={`/app/pipeline-defense/review-pack/${pack.id}`}',
+  "trackProductEvent('review_completed', sampleDataActive ? 'demo-local' : undefined)",
 ]) {
-  requireIncludes(pipelineDefense, marker, `Pipeline Defense activation flow missing marker: ${marker}`);
+  requireIncludes(weeklyCommitmentPanel, marker, `weekly commitment activation flow missing marker: ${marker}`);
 }
-
-const reviewPackPage = read('src/features/pipeline/PipelineReviewPackPage.tsx');
-for (const marker of [
-  'loadReviewPacksForWorkspace(user?.id, hasLocalSampleData())',
-  'Checking this browser and your workspace sync.',
-  'Review pack not found',
-  'This saved snapshot may have been deleted from your workspace.',
-  'Copy Manager Summary',
-  'Copy Review Pack Markdown',
-  "markPipelineReviewHabitStepComplete('copiedManagerSummaryAt')",
-  'deleteReviewPack(pack.id, { syncCloud: !sampleDataActive });',
-  "navigate('/app/pipeline-defense');",
+for (const gone of [
+  'src/utils/reviewPacks.ts',
+  'src/features/pipeline/PipelineReviewDefenseBriefPage.tsx',
+  'src/features/pipeline/PipelineReviewPackPage.tsx',
 ]) {
-  requireIncludes(reviewPackPage, marker, `direct Review Pack page missing activation marker: ${marker}`);
+  if (existsSync(resolve(root, gone))) {
+    fail(`${gone} is back - a saved activation artifact must earn its place with rows, not intent`);
+  }
 }
 
 const firstRunDoc = read('docs/product/first-run-activation-hardening-2026-06-16.md');

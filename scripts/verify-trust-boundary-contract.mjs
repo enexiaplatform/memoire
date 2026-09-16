@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = process.cwd();
@@ -147,14 +147,19 @@ for (const marker of [
   requireIncludes(dailyCapture, marker, `Daily Capture missing on-device disclosure marker: ${marker}`);
 }
 
-const pipelineDefense = read('src/features/pipeline/PipelineReviewDefenseBriefPage.tsx');
-for (const marker of [
-  'Mock AI draft',
-  'Deterministic local drafting only. No AI API or network request is used.',
-  'Draft provider: {providerLabel}',
-  'Generating local draft...',
+// The one place in the app that offered to draft text for you was the Pipeline
+// Defense brief, and it carried a visible "Mock AI draft / no AI API or network
+// request is used" boundary. Both went on 2026-09-16. The guarantee is now
+// structural rather than disclosed: there is no drafting surface and no draft
+// provider to point at a model later without somebody deleting this check.
+for (const gone of [
+  'src/services/draftAssistProvider.ts',
+  'src/utils/pipelineDefenseDraftAssist.ts',
+  'src/features/pipeline/PipelineReviewDefenseBriefPage.tsx',
 ]) {
-  requireIncludes(pipelineDefense, marker, `Pipeline Defense draft boundary missing marker: ${marker}`);
+  if (existsSync(resolve(root, gone))) {
+    fail(`${gone} is back - a drafting surface must re-declare its boundary before it ships`);
+  }
 }
 
 // A dated review record, kept as written. What this now checks is that it

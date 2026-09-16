@@ -160,7 +160,7 @@ export function answerFromDealPosition(snapshot: CommercialJourneySnapshot, oppo
         { label: 'Evidence', value: snapshot.evidence || 'Not captured yet' },
       ],
       ctas: [
-        { label: 'Open Pipeline Defense', href: '/app/pipeline-defense' },
+        { label: 'Open the deal', href: '/app/opportunities' },
         { label: 'Open Activity Ledger', href: '/app/timeline?view=history' },
       ],
     }],
@@ -637,7 +637,7 @@ export function answerFromForecastCalibration(calibration: ForecastCalibration):
         ...calibration.warnings.map((warning, index) => ({ label: index === 0 ? 'Calibration warning' : 'Also', value: warning.message, tone: 'warning' as const })),
         { label: 'Basis', value: 'Your own closed outcomes. History, not prediction.' },
       ],
-      ctas: [{ label: 'Open Pipeline Defense', href: '/app/pipeline-defense', note: 'The full calibration table lives on Pipeline Defense.' }],
+      ctas: [{ label: 'Open Review analytics', href: '/app/reviews?view=analytics', note: 'The full calibration table lives on Review.' }],
     }],
   };
 }

@@ -190,9 +190,14 @@ for (const marker of [
   'Previous forecast snapshot',
 ]) assert.ok(opportunityUi.includes(marker), `Opportunity outcome UI missing ${marker}`);
 
-const pipelineUi = readFileSync('src/features/pipeline/PipelineReviewDefenseBriefPage.tsx', 'utf8');
-assert.ok(pipelineUi.includes('Outcome learning risk signal'));
-assert.ok(pipelineUi.includes('Record outcome retro'));
+// The per-deal outcome-learning signal and the retro that feeds it used to be
+// read on the Pipeline Defense brief, removed 2026-09-16. The retro is written
+// where the deal is closed, and read back where the week is reviewed - which is
+// where it was always most useful: you learn from a closed deal in the weekly
+// read, not in a document about the open ones.
+assert.ok(opportunityUi.includes('Save outcome retro'), 'the retro must be writable where a deal is closed');
+const reviewLearningUi = readFileSync('src/features/reviews/SalesReviewsPage.tsx', 'utf8');
+assert.ok(reviewLearningUi.includes('Record outcome'), 'Review must offer the retro for a deal that closed without one');
 
 const todayUi = readFileSync('src/features/dashboard/DashboardPage.tsx', 'utf8');
 assert.ok(todayUi.includes('Personal learning from outcomes'));
@@ -264,9 +269,9 @@ assert.equal((sidebar.match(/to: '\/app\//g) || []).length, 0, 'A navigation ite
     'a band under the minimum sample must stay unrated rather than invent a track record',
   );
 
-  const pipelineCalibrationUi = readFileSync('src/features/pipeline/PipelineReviewDefenseBriefPage.tsx', 'utf8');
+  const reviewCalibrationUi = readFileSync('src/features/reviews/ReviewAnalyticsSection.tsx', 'utf8');
   assert.ok(
-    pipelineCalibrationUi.includes('<ProbabilityCalibrationPanel'),
+    reviewCalibrationUi.includes('<ProbabilityCalibrationPanel'),
     'the calibration must be rendered, not just computed',
   );
 }

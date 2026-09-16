@@ -27,7 +27,7 @@ import { buildFirstWeekPath } from '../../src/utils/firstWeekPath.ts';
  */
 
 describe('every step of the first week has an event behind it', () => {
-  const steps = buildFirstWeekPath({ activities: [], opportunities: [], briefs: [] }).steps.map((step) => step.id);
+  const steps = buildFirstWeekPath({ activities: [], opportunities: [] }).steps.map((step) => step.id);
 
   test('the path is still the five steps these events were written for', () => {
     assert.deepEqual(steps, ['capture', 'link', 'commit', 'close', 'review']);

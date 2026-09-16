@@ -28,6 +28,10 @@ const CALL_SITES = {
   commitment_rescheduled: 'src/features/commitments/useCommitmentLedger.ts',
   commercial_risk_viewed: 'src/features/threads/CommercialRiskPanel.tsx',
   commercial_risk_acted_on: 'src/features/threads/CommercialRiskPanel.tsx',
+  // Moved here from the Pipeline Defense brief when that surface was removed on
+  // 2026-09-16. Confirming the week is now the only act that closes a review,
+  // so it is the only place this may be emitted from.
+  review_completed: 'src/features/reviews/WeeklyCommitmentPanel.tsx',
   backup_exported: 'src/features/settings/ExportTab.tsx',
   restore_completed: 'src/features/settings/ExportTab.tsx',
 };

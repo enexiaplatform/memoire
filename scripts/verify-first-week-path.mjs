@@ -28,14 +28,16 @@ const opportunity = (patch = {}) => ({
   missingContext: '', objectionDebt: '', forecastEvidenceCategory: '', decisionRecommendation: 'Monitor',
   status: 'Active', createdAt: '', updatedAt: '', storageMode: 'local', ...patch,
 });
-const brief = (patch = {}) => ({
-  id: `b-${Math.random().toString(36).slice(2)}`, title: 'Brief', weekLabel: 'W', salesOwner: 'S', scope: 'x',
-  createdAt: '', updatedAt: '', storageMode: 'local', deals: [{ id: 'd1' }], ...patch,
+// A week confirmed in Review. This used to be a saved Pipeline Defense brief,
+// and that is exactly why the fifth step never completed on a real book: no
+// workspace ever saved one. The brief was removed on 2026-09-16.
+const weeklyReview = (patch = {}) => ({
+  id: `w-${Math.random().toString(36).slice(2)}`, weekId: '2026-08-17', confirmedAt: '2026-08-17T09:00:00.000Z', ...patch,
 });
 
 // 1. The five-step journey, in order: capture, link, commit, close, review.
 {
-  const path = buildFirstWeekPath({ activities: [], opportunities: [], briefs: [] });
+  const path = buildFirstWeekPath({ activities: [], opportunities: [] });
   assert.equal(path.done, 0);
   assert.equal(path.total, 5);
   assert.equal(path.complete, false);
@@ -52,10 +54,10 @@ const brief = (patch = {}) => ({
   const path = buildFirstWeekPath({
     activities: [],
     opportunities: [],
-    briefs: [brief({ isSample: true })],
+    weeklyReviews: [weeklyReview({ isSample: true })],
     commitments: [{ done: true, isSample: true }, { status: 'completed', source: 'demo' }],
   });
-  assert.equal(path.steps.find((s) => s.id === 'review')?.done, false, 'a sample brief is not a real review');
+  assert.equal(path.steps.find((s) => s.id === 'review')?.done, false, 'a demo week is not a real review');
   assert.equal(path.steps.find((s) => s.id === 'commit')?.done, false, 'a demo commitment is not a real promise');
   assert.equal(path.steps.find((s) => s.id === 'close')?.done, false, 'a demo completion is not a kept promise');
 }
@@ -65,11 +67,10 @@ const brief = (patch = {}) => ({
   const captured = buildFirstWeekPath({
     activities: [activity({ accountName: '' })],
     opportunities: [],
-    briefs: [],
   });
   assert.equal(captured.nextStep?.id, 'link', 'a capture linked to nothing is the silence Memoire watches for');
 
-  const linked = buildFirstWeekPath({ activities: [activity()], opportunities: [], briefs: [] });
+  const linked = buildFirstWeekPath({ activities: [activity()], opportunities: [] });
   assert.equal(linked.nextStep?.id, 'commit', 'after linking, the next commitment is the gap');
 
   // A next action with no date does not advance the path. The step promises
@@ -80,14 +81,12 @@ const brief = (patch = {}) => ({
   const undated = buildFirstWeekPath({
     activities: [activity({ nextAction: 'Send revised quote' })],
     opportunities: [opportunity()],
-    briefs: [],
   });
   assert.equal(undated.nextStep?.id, 'commit', 'an undated next action is not a promise Memoire can watch');
 
   const committed = buildFirstWeekPath({
     activities: [activity({ nextAction: 'Send revised quote', dueDate: '2026-08-21' })],
     opportunities: [opportunity()],
-    briefs: [],
   });
   assert.equal(committed.nextStep?.id, 'close', 'a promise made is not yet a promise kept');
 }
@@ -97,7 +96,7 @@ const brief = (patch = {}) => ({
   const path = buildFirstWeekPath({
     activities: [activity({ nextAction: 'Send revised quote', dueDate: '2026-08-21' })],
     opportunities: [opportunity()],
-    briefs: [brief()],
+    weeklyReviews: [weeklyReview()],
     commitments: [{ status: 'completed' }],
   });
   assert.equal(path.done, 5);

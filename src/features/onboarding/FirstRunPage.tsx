@@ -76,7 +76,7 @@ export function FirstRunPage() {
     setCurrency(next as typeof currency);
   };
 
-  const loop = useMemo(() => buildFirstWeekPath({ activities: [], opportunities: [], briefs: [] }).steps, []);
+  const loop = useMemo(() => buildFirstWeekPath({ activities: [], opportunities: [] }).steps, []);
   const actIndex = ACTS.indexOf(act);
 
   useEffect(() => {

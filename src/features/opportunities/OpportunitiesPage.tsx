@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ThreadsSection } from '../threads/ThreadsSection';
 import { DeltaPanel } from '../threads/DeltaPanel';
 import {
@@ -61,7 +61,6 @@ import {
   type ClosePeriod,
 } from '../../utils/closePeriod';
 import { classifyOpportunitySilence, type OpportunitySilenceState } from '../../utils/proactiveNudges';
-import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { FollowUpComposerPanel } from '../v31/FollowUpComposerPanel';
 import { buildReviveFollowUpContext } from '../../utils/followUpFromOpportunity';
 import type { FollowUpContext } from '../../types/v31';
@@ -152,17 +151,7 @@ import {
   type OpportunityActionPriority,
   type OpportunityRecommendedAction,
 } from '../../utils/opportunityActionPlan';
-import {
-  createPipelineDefenseBrief,
-  loadPipelineDefenseBriefStore,
-  savePipelineDefenseBriefStore,
-  type PipelineDefenseBrief,
-} from '../../utils/pipelineDefenseStorage';
-import { canUsePipelineDefenseCloudStore, createCloudBrief } from '../../services/pipelineDefenseCloudStore';
-import {
-  generatePipelineDefenseBriefFromOpportunities,
-  mapOpportunitiesToPipelineDefenseDeals,
-} from '../../utils/opportunityToPipelineBrief';
+import { mapOpportunitiesToPipelineDefenseDeals } from '../../utils/opportunityToPipelineBrief';
 import { analyzePipelineDefenseDeal } from '../../utils/pipelineDefenseRules';
 import {
   composeRetroAnswer,
@@ -175,7 +164,6 @@ import {
   suggestSalesAssetsForOpportunity,
 } from '../../utils/salesAssetSuggestions';
 import { generateSalesPlaybookPatterns } from '../../utils/salesPlaybook';
-import { getUserDisplayName as getWorkspaceUserDisplayName } from '../../utils/userDisplay';
 import {
   OPPORTUNITY_CSV_TEMPLATE,
   buildCsvMappingReview,
@@ -206,7 +194,6 @@ import {
   type OpportunityRefreshPreviewItem,
   type PipelineRefreshPreview,
 } from '../../utils/opportunityCsvImport';
-import { markFirstPipelineReviewStepComplete } from '../../utils/firstPipelineReviewOnboarding';
 import { markPipelineReviewHabitStepComplete } from '../../utils/pipelineReviewHabit';
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
 import {
@@ -220,12 +207,6 @@ import { useModalDrawer } from '../../hooks/useModalDrawer';
 import { matchesSearchQuery } from '../../utils/textSearch';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
-type BriefPreviewMetadata = {
-  title: string;
-  weekLabel: string;
-  salesOwner: string;
-  scope: string;
-};
 type SortDirection = 'asc' | 'desc';
 type OpportunitySortKey =
   | 'account'
@@ -250,7 +231,6 @@ const founderCoreSourceSystem = 'founder_core_fy26';
 
 export function OpportunitiesPage() {
   const { user } = useAuthContext();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
@@ -303,12 +283,6 @@ export function OpportunitiesPage() {
   const [panelMode, setPanelMode] = useState<'closed' | 'add' | 'edit'>('closed');
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [message, setMessage] = useState('');
-  const [selectedOpportunityIds, setSelectedOpportunityIds] = useState<string[]>([]);
-  const [previewOpportunities, setPreviewOpportunities] = useState<CrmLiteOpportunity[]>([]);
-  const [briefMetadata, setBriefMetadata] = useState<BriefPreviewMetadata>(() => buildDefaultBriefMetadata(null));
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [briefCreateState, setBriefCreateState] = useState<SaveState>('idle');
-  const [briefCreateMessage, setBriefCreateMessage] = useState('');
   const [csvImportOpen, setCsvImportOpen] = useState(false);
   const [csvMode, setCsvMode] = useState<OpportunityCsvImportMode>('import');
   const [csvInput, setCsvInput] = useState('');
@@ -430,11 +404,6 @@ export function OpportunitiesPage() {
   const quality = useMemo(() => analyzePipelineQuality(opportunities, activities, objections), [activities, objections, opportunities]);
   const importedEnrichment = useMemo(() => summarizeImportedOpportunityEnrichment(opportunities), [opportunities]);
   const importedPipelineSummary = useMemo(() => buildImportedPipelineSummary(opportunities), [opportunities]);
-
-  const selectedOpportunities = useMemo(() => {
-    const selectedIds = new Set(selectedOpportunityIds);
-    return opportunities.filter((opportunity) => selectedIds.has(opportunity.id));
-  }, [opportunities, selectedOpportunityIds]);
 
   const opportunityRows = useMemo(
     () => opportunities.map((opportunity) => buildOpportunityMasterRow(opportunity, activities, quotes, stakeholders, objections)),
@@ -627,10 +596,6 @@ export function OpportunitiesPage() {
       : 'Review the suggested mapping before previewing or refreshing.');
     return review;
   };
-
-  useEffect(() => {
-    markFirstPipelineReviewStepComplete('hasReviewedOpportunities');
-  }, []);
 
   useEffect(() => {
     if (searchParams.get('import') === 'csv') {
@@ -874,7 +839,6 @@ export function OpportunitiesPage() {
     }));
     setSaveState(results.some((result) => result.warning) ? 'error' : 'saved');
     setMessage(results.find((result) => result.warning)?.warning || 'CSV import saved. Memoire keeps this as a read-only CRM copy; no CRM is updated.');
-    markFirstPipelineReviewStepComplete('hasImportedOrAddedOpportunities');
     markTrialActivationChecklistItemComplete('load-demo-or-import-csv');
     markPipelineReviewHabitStepComplete('refreshedPipelineAt');
     trackProductEvent(
@@ -958,7 +922,6 @@ export function OpportunitiesPage() {
     setCsvImportMessage(`Refresh applied: ${createResults.length} new, ${updateResults.length} updated, ${skipped} skipped. Memoire never writes back to CRM.`);
     setSaveState(warning ? 'error' : 'saved');
     setMessage(warning || 'Pipeline refresh applied to your private working copy. CRM/source data was not updated.');
-    markFirstPipelineReviewStepComplete('hasImportedOrAddedOpportunities');
     markTrialActivationChecklistItemComplete('load-demo-or-import-csv');
     markPipelineReviewHabitStepComplete('refreshedPipelineAt');
     trackProductEvent(
@@ -1111,9 +1074,6 @@ export function OpportunitiesPage() {
     setForm(opportunityToForm(result.opportunity));
     setSaveState(result.warning ? 'error' : 'saved');
     setMessage(result.warning || (result.mode === 'cloud' ? 'Synced to your account.' : 'Saved locally in this browser.'));
-    if (panelMode !== 'edit') {
-      markFirstPipelineReviewStepComplete('hasImportedOrAddedOpportunities');
-    }
   };
 
   const handleSaveOpportunityOutcome = async (opportunity: CrmLiteOpportunity, draft: OpportunityOutcomeDraft) => {
@@ -1154,7 +1114,6 @@ export function OpportunitiesPage() {
     try {
       await deleteOpportunity(opportunity, dataUserId);
       setOpportunities((current) => current.filter((item) => item.id !== opportunity.id));
-      setSelectedOpportunityIds((current) => current.filter((id) => id !== opportunity.id));
       if (editingOpportunity?.id === opportunity.id) closePanel();
       setSaveState('saved');
       setMessage('Opportunity deleted.');
@@ -1164,77 +1123,6 @@ export function OpportunitiesPage() {
       }
       setSaveState('error');
       setMessage('Cloud sync issue - your local copy is preserved.');
-    }
-  };
-
-  const toggleOpportunitySelection = (opportunityId: string) => {
-    setSelectedOpportunityIds((current) => (
-      current.includes(opportunityId)
-        ? current.filter((id) => id !== opportunityId)
-        : [...current, opportunityId]
-    ));
-  };
-
-  const openDefenseBriefPreview = (items = selectedOpportunities) => {
-    if (items.length === 0) {
-      setBriefCreateState('error');
-      setBriefCreateMessage('Select at least one opportunity to generate a brief.');
-      return;
-    }
-
-    setPreviewOpportunities(items);
-    setBriefMetadata(buildDefaultBriefMetadata(user));
-    setBriefCreateState('idle');
-    setBriefCreateMessage('');
-    setIsPreviewOpen(true);
-  };
-
-  const closeDefenseBriefPreview = () => {
-    setIsPreviewOpen(false);
-    setPreviewOpportunities([]);
-    setBriefCreateState('idle');
-    setBriefCreateMessage('');
-  };
-
-  const createDefenseBriefFromPreview = async () => {
-    if (previewOpportunities.length === 0) {
-      setBriefCreateState('error');
-      setBriefCreateMessage('Select at least one opportunity to generate a brief.');
-      return;
-    }
-
-    setBriefCreateState('saving');
-    setBriefCreateMessage('Creating Pipeline Defense Brief...');
-    const draftBrief = generatePipelineDefenseBriefFromOpportunities(previewOpportunities, briefMetadata, objections, stakeholders, activities, actionOutcomes, salesAssets);
-
-    try {
-      const createdBrief = dataUserId && canUsePipelineDefenseCloudStore()
-        ? await createCloudBrief(draftBrief, dataUserId)
-        : createPipelineDefenseBrief(draftBrief);
-
-      persistCreatedBriefLocally(createdBrief);
-      setSelectedOpportunityIds([]);
-      setBriefCreateState('saved');
-      setBriefCreateMessage('Brief created. Opening Pipeline Defense...');
-      markFirstPipelineReviewStepComplete('hasGeneratedPipelineDefense');
-      markTrialActivationChecklistItemComplete('generate-defense-brief');
-      markPipelineReviewHabitStepComplete('generatedBriefAt');
-      trackProductEvent('review_completed', getAnalyticsDataMode());
-      window.setTimeout(() => navigate('/app/pipeline-defense'), 150);
-    } catch (error) {
-      const localBrief = createPipelineDefenseBrief(draftBrief);
-      persistCreatedBriefLocally(localBrief);
-      setSelectedOpportunityIds([]);
-      setBriefCreateState('error');
-      markFirstPipelineReviewStepComplete('hasGeneratedPipelineDefense');
-      markTrialActivationChecklistItemComplete('generate-defense-brief');
-      markPipelineReviewHabitStepComplete('generatedBriefAt');
-      trackProductEvent('review_completed', getAnalyticsDataMode(true));
-      if (import.meta.env.DEV) {
-        console.debug('[Opportunities] defense brief cloud create failed', { message: error instanceof Error ? error.message : 'Unknown error' });
-      }
-      setBriefCreateMessage('Cloud sync issue - your local copy is preserved.');
-      window.setTimeout(() => navigate('/app/pipeline-defense'), 700);
     }
   };
 
@@ -1282,8 +1170,8 @@ export function OpportunitiesPage() {
            * Defense brief and a refresh disc - three of them filled, so the
            * page offered three equally emphatic things to do before the reader
            * had seen a single deal. Adding a deal is what this page is for;
-           * producing a defense brief is the second most common; importing a
-           * CSV happens once.
+           * importing a CSV happens once. The Defense brief button went with the
+           * brief on 2026-09-15.
            */
           <>
             <button
@@ -1293,15 +1181,6 @@ export function OpportunitiesPage() {
             >
               <Plus className="h-4 w-4" />
               {view === 'leads' ? 'Add lead' : 'Add'}
-            </button>
-            <button
-              type="button"
-              onClick={() => openDefenseBriefPreview()}
-              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-gray-300 bg-white px-3.5 py-1.5 text-sm font-bold text-gray-700 transition hover:border-brand-blue hover:text-brand-blue"
-              title="Generate Pipeline Defense Brief from the selected deals"
-            >
-              <FileText className="h-4 w-4" />
-              Defense brief{selectedOpportunities.length > 0 ? ` (${selectedOpportunities.length})` : ''}
             </button>
             <details className="relative">
               <summary className="inline-flex cursor-pointer list-none items-center justify-center gap-1.5 rounded-full border border-gray-300 bg-white px-3.5 py-1.5 text-sm font-bold text-gray-700 transition hover:border-brand-blue hover:text-brand-blue">
@@ -1399,13 +1278,6 @@ export function OpportunitiesPage() {
         </div>
       </section>
 
-      {briefCreateMessage && !isPreviewOpen && (
-        <p className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-          briefCreateState === 'error' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
-        }`}>
-          {briefCreateMessage}
-        </p>
-      )}
       {workspaceLoadError && (
         <p className="rounded-lg bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-800">
           Cloud refresh issue: {workspaceLoadError}
@@ -1503,13 +1375,11 @@ export function OpportunitiesPage() {
             page={page}
             pageCount={pageCount}
             pageSize={pageSize}
-            selectedIds={selectedOpportunityIds}
             sortKey={sortKey}
             sortDirection={sortDirection}
             onSort={handleSort}
             onPageChange={setPage}
             onPageSizeChange={setPageSize}
-            onToggleSelection={toggleOpportunitySelection}
             onOpen={(opportunity) => openEditPanel(opportunity)}
             onDraftFollowUp={(opportunity) => {
               setFollowUpOpportunity(opportunity);
@@ -1624,25 +1494,7 @@ export function OpportunitiesPage() {
         onSave={handleSave}
         onClose={closePanel}
         onDelete={editingOpportunity ? () => handleDelete(editingOpportunity) : undefined}
-        onCreateDefenseBrief={editingOpportunity ? () => openDefenseBriefPreview([editingOpportunity]) : undefined}
       />
-
-      {isPreviewOpen && (
-        <DefenseBriefPreviewModal
-          opportunities={previewOpportunities}
-          objections={objections}
-          stakeholders={stakeholders}
-          activities={activities}
-          actionOutcomes={actionOutcomes}
-          salesAssets={salesAssets}
-          metadata={briefMetadata}
-          onMetadataChange={setBriefMetadata}
-          createState={briefCreateState}
-          message={briefCreateMessage}
-          onCreate={createDefenseBriefFromPreview}
-          onClose={closeDefenseBriefPreview}
-        />
-      )}
     </PageContainer>
   );
 }
@@ -1846,7 +1698,7 @@ function OpportunityCsvImportPanel({
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Read-only CRM import</p>
           <h2 className="mt-1 text-xl font-bold text-navy">Import or Refresh Opportunities from CSV</h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-gray-500">
-            Refresh from your CRM/Excel export. Memoire updates your private working copy and never writes back. Use refresh before weekly review to compare what changed and prepare your Pipeline Defense Brief.
+            Refresh from your CRM/Excel export. Memoire updates your private working copy and never writes back. Use refresh before weekly review to compare what changed and see where each deal's evidence stands.
           </p>
         </div>
         <button type="button" onClick={onClose} className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">
@@ -2096,7 +1948,7 @@ function RefreshAssistantPanel() {
     'Confirm mapping',
     'Preview new, changed, and skipped rows',
     'Apply safe refresh',
-    'Generate Pipeline Defense Brief',
+    "Check each deal's MEDDIC score",
   ];
 
   return (
@@ -2759,13 +2611,11 @@ function OpportunityMasterTable({
   page,
   pageCount,
   pageSize,
-  selectedIds,
   sortKey,
   sortDirection,
   onSort,
   onPageChange,
   onPageSizeChange,
-  onToggleSelection,
   onOpen,
   onDraftFollowUp,
 }: {
@@ -2781,20 +2631,18 @@ function OpportunityMasterTable({
   page: number;
   pageCount: number;
   pageSize: number;
-  selectedIds: string[];
   sortKey: OpportunitySortKey;
   sortDirection: SortDirection;
   onSort: (key: OpportunitySortKey) => void;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
-  onToggleSelection: (opportunityId: string) => void;
   onOpen: (opportunity: CrmLiteOpportunity) => void;
   onDraftFollowUp: (opportunity: CrmLiteOpportunity) => void;
 }) {
   const optionalCount = Number(columns.fy26) + Number(columns.fy27) + Number(columns.probability) + Number(columns.brand);
-  // Ten base columns fit a laptop without horizontal scroll; each optional one
+  // Nine base columns fit a laptop without horizontal scroll; each optional one
   // adds its own width back rather than the table reserving space for all four.
-  const minWidth = 1250 + optionalCount * 110;
+  const minWidth = 1210 + optionalCount * 110;
   /**
    * Two passes on purpose.
    *
@@ -2816,7 +2664,7 @@ function OpportunityMasterTable({
     () => new Map(groupRowsByClosePeriod(allRows).map((group) => [group.key, group])),
     [allRows],
   );
-  const columnCount = 10 + optionalCount;
+  const columnCount = 9 + optionalCount;
 
   return (
     <section className="min-w-0 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
@@ -2825,7 +2673,6 @@ function OpportunityMasterTable({
           <h2 className="text-base font-bold text-navy">Opportunity Master List</h2>
           <p className="mt-1 text-xs text-gray-500">
             {formatCount(totalRows)} after filters / {formatCount(totalOpportunities)} total
-            {selectedIds.length > 0 ? ` / ${selectedIds.length} selected` : ''}
             {' · '}
             {/* Said out loud, because an ordering rule the operator cannot see is
                 one they will read as a bug the first time a won deal is not
@@ -2852,11 +2699,7 @@ function OpportunityMasterTable({
         <table className="w-full border-collapse text-left text-sm" style={{ minWidth }}>
           <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
             <tr>
-              <th className="sticky left-0 z-20 w-10 border-b border-gray-200 bg-gray-50 px-2 py-2.5 text-center">
-                <span className="sr-only">Select</span>
-                <span aria-hidden="true">·</span>
-              </th>
-              <OpportunitySortableHeader label="Deal" sortKey="account" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="sticky left-10 z-20 border-r border-gray-200 bg-gray-50" />
+              <OpportunitySortableHeader label="Deal" sortKey="account" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="sticky left-0 z-20 border-r border-gray-200 bg-gray-50" />
               <OpportunitySortableHeader label="Close" sortKey="closePeriod" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Stage" sortKey="stage" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="MEDDIC" sortKey="meddic" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
@@ -2906,36 +2749,19 @@ function OpportunityMasterTable({
 
               {group.rows.map((row) => {
                 const { opportunity, quality, closePeriod } = row;
-                const selected = selectedIds.includes(opportunity.id);
                 const flow = buildOpportunitySalesFlowGuidance(opportunity);
                 const quiet = row.silence.status === 'silent' || row.silence.status === 'at-risk';
                 return (
                   <tr
                     key={opportunity.id}
                     onClick={() => onOpen(opportunity)}
-                    className={`group cursor-pointer align-top transition hover:bg-blue-50/60 ${selected ? 'bg-blue-50/40' : 'bg-white'}`}
+                    className="group cursor-pointer bg-white align-top transition hover:bg-blue-50/60"
                   >
-                    <td className={`sticky left-0 z-10 px-2 py-2.5 text-center group-hover:bg-blue-50 ${selected ? 'bg-blue-50' : 'bg-white'}`}>
-                      <input
-                        type="checkbox"
-                        checked={selected}
-                        onClick={(event) => event.stopPropagation()}
-                        onChange={() => onToggleSelection(opportunity.id)}
-                        aria-label={`Select ${opportunity.accountName} / ${opportunity.opportunityName}`}
-                        // 16px of box measured 20x20 with the browser's own
-                        // border, which is under the WCAG 2.5.8 floor of 24 and
-                        // was the only failure left on this route at 390px. The
-                        // tick itself stays the size it was; the target does not.
-                        className="h-4 w-4 cursor-pointer accent-brand-blue outline-offset-2 [transform:scale(1.15)]"
-                        style={{ minWidth: 24, minHeight: 24, padding: 2 }}
-                      />
-                    </td>
-
                     {/* Account and opportunity were two columns showing nearly the
                         same words - "Apex Labs / Validation Expansion decontamination
                         expansion" beside "Validation Expansion". One column, customer
                         first, because that is how an operator looks a deal up. */}
-                    <td className={`sticky left-10 z-10 border-r border-gray-100 px-3 py-2.5 group-hover:bg-blue-50 ${selected ? 'bg-blue-50' : 'bg-white'}`}>
+                    <td className="sticky left-0 z-10 border-r border-gray-100 bg-white px-3 py-2.5 group-hover:bg-blue-50">
                       <p className="max-w-[clamp(230px,17vw,420px)] truncate font-bold text-navy" title={opportunity.accountName}>
                         {opportunity.accountName || 'No account'}
                       </p>
@@ -3242,7 +3068,6 @@ function OpportunityPanel({
   onSave,
   onClose,
   onDelete,
-  onCreateDefenseBrief,
 }: {
   mode: 'closed' | 'add' | 'edit';
   form: OpportunityFormInput;
@@ -3286,7 +3111,6 @@ function OpportunityPanel({
   onSave: () => void;
   onClose: () => void;
   onDelete?: () => void;
-  onCreateDefenseBrief?: () => void;
 }) {
   // Declared before the early return below: a hook after a conditional return is
   // a different hook order on every open and close of this panel.
@@ -3853,16 +3677,6 @@ function OpportunityPanel({
             Delete
           </button>
         )}
-        {onCreateDefenseBrief && (
-          <button
-            type="button"
-            onClick={onCreateDefenseBrief}
-            className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue"
-          >
-            <FileText className="h-4 w-4" />
-            Create Defense Brief from this Opportunity
-          </button>
-        )}
       </div>
       </aside>
     </>
@@ -4065,140 +3879,6 @@ function OpportunityCommercialPanel({
         </p>
       )}
     </section>
-  );
-}
-
-function DefenseBriefPreviewModal({
-  opportunities,
-  objections,
-  stakeholders,
-  activities,
-  actionOutcomes,
-  salesAssets,
-  metadata,
-  onMetadataChange,
-  createState,
-  message,
-  onCreate,
-  onClose,
-}: {
-  opportunities: CrmLiteOpportunity[];
-  objections: ObjectionRecord[];
-  stakeholders: StakeholderRecord[];
-  activities: SalesActivityRecord[];
-  actionOutcomes: ActionOutcomeRecord[];
-  salesAssets: SalesAssetRecord[];
-  metadata: BriefPreviewMetadata;
-  onMetadataChange: (metadata: BriefPreviewMetadata) => void;
-  createState: SaveState;
-  message: string;
-  onCreate: () => void;
-  onClose: () => void;
-}) {
-  const generatedDeals = mapOpportunitiesToPipelineDefenseDeals(opportunities, { objections, stakeholders, activities, actionOutcomes, salesAssets });
-  const updateMetadata = <Key extends keyof BriefPreviewMetadata>(
-    key: Key,
-    value: BriefPreviewMetadata[Key],
-  ) => {
-    onMetadataChange({ ...metadata, [key]: value });
-  };
-
-  useEscapeToClose(onClose);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/60 p-4">
-      <section role="dialog" aria-modal="true" aria-label="Pipeline Defense Brief preview" className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
-        <header className="flex items-start justify-between gap-4 border-b border-gray-200 p-5">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Pipeline Defense Preview</p>
-            <h2 className="mt-2 text-2xl font-bold text-navy">Generate Defense Brief</h2>
-            <p className="mt-1 text-sm leading-6 text-gray-500">
-              Review the generated draft before creating a new Pipeline Defense Brief. This will not overwrite existing briefs.
-            </p>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="rounded-full border border-gray-200 p-2 text-gray-500 hover:bg-gray-50">
-            <X className="h-4 w-4" />
-          </button>
-        </header>
-
-        <div className="overflow-y-auto p-5">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Field label="Brief title" value={metadata.title} onChange={(value) => updateMetadata('title', value)} />
-            <Field label="Week label" value={metadata.weekLabel} onChange={(value) => updateMetadata('weekLabel', value)} />
-            <Field label="Sales owner" value={metadata.salesOwner} onChange={(value) => updateMetadata('salesOwner', value)} />
-            <Field label="Scope" value={metadata.scope} onChange={(value) => updateMetadata('scope', value)} />
-          </div>
-
-          <div className="mt-5 rounded-lg border border-blue-100 bg-blue-50/70 p-4">
-            <p className="text-sm font-bold text-blue-950">{opportunities.length} selected opportunities</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {opportunities.map((opportunity) => (
-                <span key={opportunity.id} className="rounded-full border border-blue-100 bg-white px-3 py-1 text-xs font-bold text-brand-blue">
-                  {opportunity.accountName} / {opportunity.opportunityName}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-5 space-y-3">
-            {generatedDeals.map((deal) => (
-              <article key={deal.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{deal.account}</p>
-                    <h3 className="mt-1 text-lg font-bold text-navy">{deal.opportunity}</h3>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge label={deal.forecastEvidenceCategory} tone={forecastTone(deal.forecastEvidenceCategory)} />
-                    <Badge label={deal.decisionRecommendation} tone={decisionTone(deal.decisionRecommendation)} />
-                  </div>
-                </div>
-                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <Fact label="Pipeline context" value={deal.pipelineContext} />
-                  <Fact label="Recommended action" value={deal.recommendedAction} />
-                  <Fact label="Missing context" value={deal.missingContext.join(', ')} />
-                  <Fact label="Objection debt" value={deal.objectionDebt.objection} />
-                </div>
-                <div className="mt-3 rounded-lg bg-gray-50 p-3">
-                  <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Deal truth</p>
-                  <p className="mt-1 text-sm leading-6 text-gray-700">{deal.dealTruth}</p>
-                </div>
-                <div className="mt-3 rounded-lg bg-gray-50 p-3">
-                  <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Pipeline review answer</p>
-                  <p className="mt-1 text-sm leading-6 text-gray-700">{deal.pipelineReviewAnswer}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-
-        <footer className="flex flex-col gap-3 border-t border-gray-200 p-5 md:flex-row md:items-center md:justify-between">
-          <p className={`text-sm font-semibold ${
-            createState === 'error' ? 'text-amber-700' : createState === 'saved' ? 'text-emerald-700' : 'text-gray-500'
-          }`}>
-            {message || 'Ready to create a new Pipeline Defense Brief.'}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={onCreate}
-              disabled={createState === 'saving'}
-              className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <FileText className="h-4 w-4" />
-              {createState === 'saving' ? 'Creating...' : 'Create Brief'}
-            </button>
-          </div>
-        </footer>
-      </section>
-    </div>
   );
 }
 
@@ -5332,8 +5012,8 @@ function buildCloseFilterOptions(rows: { closePeriod: ClosePeriod }[]): string[]
  * of that was visible from two bare dropdowns, so they read as vocabulary.
  *
  * Worse, the workspace already *computes* what both should be, from this deal's
- * own evidence, stakeholders and objections - the same rules the Pipeline
- * Defense brief runs. That answer existed and was never shown at the field
+ * own evidence, stakeholders and objections - the same rules Today ranks its
+ * forecast-evidence moves with. That answer existed and was never shown at the field
  * where the operator is being asked to give it. So it is shown here, with the
  * reasons behind it, and one press to accept it.
  *
@@ -6019,17 +5699,6 @@ function Metric({ label, value, tone = 'blue' }: { label: string; value: string 
   );
 }
 
-function Fact({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
-  return (
-    <div className="rounded-lg bg-gray-50 p-3">
-      <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
-      <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-gray-800">
-        {icon}
-        {value}
-      </p>
-    </div>
-  );
-}
 
 function Badge({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green' | 'amber' | 'red' | 'gray' }) {
   const toneClass = {
@@ -6421,48 +6090,6 @@ function opportunityToForm(opportunity: CrmLiteOpportunity): OpportunityFormInpu
   };
 }
 
-function persistCreatedBriefLocally(brief: PipelineDefenseBrief) {
-  const currentStore = loadPipelineDefenseBriefStore();
-  const nextStore = {
-    activeBriefId: brief.id,
-    briefs: [
-      brief,
-      ...currentStore.briefs.filter((item) => item.id !== brief.id),
-    ],
-  };
-
-  savePipelineDefenseBriefStore(nextStore);
-}
-
-function buildDefaultBriefMetadata(user: Parameters<typeof getWorkspaceUserDisplayName>[0]): BriefPreviewMetadata {
-  const now = new Date();
-  return {
-    title: `Pipeline Defense Brief - Opportunities - ${formatDate(now)}`,
-    weekLabel: buildCurrentWeekLabel(now),
-    salesOwner: getWorkspaceUserDisplayName(user) || 'Sales owner',
-    scope: 'Selected opportunities',
-  };
-}
-
-function buildCurrentWeekLabel(date: Date) {
-  const start = new Date(date);
-  const day = start.getDay();
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  start.setDate(start.getDate() + diffToMonday);
-
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  return `${formatDate(start)} - ${formatDate(end)}`;
-}
-
-function formatDate(date: Date) {
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
 /**
  * The touches on a deal.
  *
@@ -6487,19 +6114,6 @@ function getLinkedActivities(opportunity: CrmLiteOpportunity, activities: SalesA
         && normalizeEntityName(activity.opportunityName || '') === opportunityKey;
     })
     .sort((a, b) => compareBusinessDateDesc(a.activityDate, b.activityDate) || b.createdAt.localeCompare(a.createdAt));
-}
-
-function forecastTone(category: string) {
-  if (category === 'Defensible') return 'green';
-  if (category === 'Weak but recoverable') return 'amber';
-  return 'red';
-}
-
-function decisionTone(decision: string) {
-  if (decision === 'Defend') return 'green';
-  if (decision === 'Monitor') return 'blue';
-  if (decision === 'Deprioritize') return 'gray';
-  return 'red';
 }
 
 function meddicCategoryTone(category: MeddicLiteDealCategory) {

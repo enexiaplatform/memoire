@@ -8,20 +8,17 @@ import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
 import type { StakeholderRecord } from '../services/stakeholderStore.ts';
-import type { PipelineDefenseBrief } from './pipelineDefenseStorage.ts';
 import type { RevenueActionItem } from './revenueView.ts';
 import { classifyAccountEngagement, type AccountHygienePreference } from './accountHygiene.ts';
 import { readLinkedActivityIds } from './initiativeActivityLink.ts';
 import { buildMeddicStakeholderMap } from './meddicStakeholderMap.ts';
 import { convertMoney, formatMoneyWithBase } from './money.ts';
 import { analyzePersonalSalesLearning } from './personalSalesLearning.ts';
-import { buildManagerReadyDealBrief } from './pipelineDefenseCenter.ts';
 import { buildRetentionSignals } from './retentionSignals.ts';
 import { readInitiativeExperiment } from './initiativeExperiment.ts';
 import { compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate, sanitizeBusinessDate, todayDateKey, timestampToLocalDateKey } from './safeDate.ts';
 
 export type ProactiveNudgeInput = {
-  briefs?: PipelineDefenseBrief[];
   revenueActions?: RevenueActionItem[];
   opportunities?: CrmLiteOpportunity[];
   activities?: SalesActivityRecord[];
@@ -68,7 +65,6 @@ export function buildProactiveNudges(input: ProactiveNudgeInput): ProactiveNudge
     ...buildOpportunityNudges(input.opportunities || [], today),
     ...buildSilenceRiskNudges(input, today),
     ...buildMeddicStakeholderNudges(input, today),
-    ...buildPipelineDefenseNudges(input.briefs || [], today),
     ...buildObjectionNudges(input.objections || []),
     ...(input.captureInboxShown ? [] : buildCaptureNudges(input.activities || [], today)),
     ...buildAccountSignalNudges(input, today),
@@ -294,7 +290,7 @@ function buildOpportunityNudges(opportunities: CrmLiteOpportunity[], today: stri
         accountName,
         opportunityName,
         title: `${opportunity.decisionRecommendation} before review`,
-        reason: `Pipeline Defense marks this deal as ${opportunity.decisionRecommendation.toLowerCase()} before review.`,
+        reason: `You marked this deal ${opportunity.decisionRecommendation.toLowerCase()} - that decision is still open.`,
         recommendedAction: opportunity.decisionRecommendation === 'Rescue'
           ? 'Collect missing evidence or create a rescue action before the review.'
           : 'Prepare a clean downgrade answer and de-risk the forecast.',
@@ -495,91 +491,6 @@ function daysBetweenBusinessDates(start: string, end: string) {
   return Math.floor(elapsed / 86_400_000);
 }
 
-/**
- * The opening sentence of a longer text, and nothing else.
- *
- * The manager-ready brief is several hundred words - stakeholder evidence,
- * missing evidence, execution learning, playbook patterns, proof assets - and
- * it was being used verbatim as a nudge reason. A watch-list row that runs for
- * twelve lines stops being a list, and the operator scrolls past the four
- * one-line warnings underneath it. The full answer already has a home: the
- * Pipeline Defense brief the row links to.
- */
-function firstSentence(text: string | undefined, maxLength = 180) {
-  const trimmed = (text || '').trim().replace(/\s+/g, ' ');
-  if (!trimmed) return '';
-  const stop = trimmed.search(/[.!?](\s|$)/);
-  const sentence = stop >= 0 ? trimmed.slice(0, stop + 1) : trimmed;
-  if (sentence.length <= maxLength) return sentence;
-  // No sentence break inside the budget: cut on a word so the row never ends
-  // mid-token.
-  const cut = sentence.slice(0, maxLength);
-  const lastSpace = cut.lastIndexOf(' ');
-  return `${(lastSpace > 40 ? cut.slice(0, lastSpace) : cut).trimEnd()}...`;
-}
-
-function buildPipelineDefenseNudges(briefs: PipelineDefenseBrief[], today: string) {
-  return briefs.flatMap((brief) => (brief.deals || []).flatMap((deal) => {
-    const item = buildManagerReadyDealBrief(deal, today);
-    const nudges: NudgeRecord[] = [];
-    const entityId = deal.sourceOpportunityId || deal.id;
-    const moneyAmount = typeof deal.estimatedValue === 'number' ? deal.estimatedValue : undefined;
-    if (item.decision === 'Rescue' || item.decision === 'Downgrade') {
-      nudges.push(createNudge({
-        source: 'pipeline-defense',
-        entityType: 'opportunity',
-        entityId,
-        accountName: item.account,
-        opportunityName: item.opportunity,
-        title: `${item.decision} before review`,
-        reason: firstSentence(item.pipelineReviewAnswer)
-          || `${item.opportunity} needs a ${item.decision.toLowerCase()} decision before review.`,
-        recommendedAction: item.nextAction,
-        urgency: item.decision === 'Downgrade' ? 'high' : 'medium',
-        dueDate: deal.nextActionDate,
-        moneyAmount,
-        moneyCurrency: deal.currency,
-        today,
-      }));
-    }
-    if (item.missingContext.length > 0) {
-      nudges.push(createNudge({
-        source: 'pipeline-defense',
-        entityType: 'opportunity',
-        entityId,
-        accountName: item.account,
-        opportunityName: item.opportunity,
-        title: 'Evidence missing from manager brief',
-        reason: `Missing context: ${item.missingContext.slice(0, 3).join(', ')}${item.missingContext.length > 3 ? ' and more' : ''}.`,
-        recommendedAction: 'Fill the missing evidence before copying the manager brief.',
-        urgency: 'medium',
-        dueDate: deal.nextActionDate,
-        moneyAmount,
-        moneyCurrency: deal.currency,
-        today,
-      }));
-    }
-    if (isBusinessDateOverdue(deal.nextActionDate, today)) {
-      nudges.push(createNudge({
-        source: 'pipeline-defense',
-        entityType: 'opportunity',
-        entityId,
-        accountName: item.account,
-        opportunityName: item.opportunity,
-        title: 'Defense action overdue',
-        reason: `The review action for ${item.account} / ${item.opportunity} is overdue.`,
-        recommendedAction: item.nextAction,
-        urgency: 'critical',
-        dueDate: deal.nextActionDate,
-        moneyAmount,
-        moneyCurrency: deal.currency,
-        today,
-      }));
-    }
-    return nudges;
-  }));
-}
-
 function buildObjectionNudges(objections: ObjectionRecord[]) {
   return objections.flatMap((objection) => {
     if (objection.status !== 'Open') return [];
@@ -684,11 +595,13 @@ function buildRetentionNudges(input: ProactiveNudgeInput, today: string) {
 }
 
 function buildOutcomeLearningNudges(input: ProactiveNudgeInput, today: string) {
-  const deals = (input.briefs || []).flatMap((brief) => brief.deals || []);
+  // The saved Pipeline Defense brief used to supply `deals` here. It was
+  // removed on 2026-09-15 with no brief ever saved, so the learning reads the
+  // outcomes and the live opportunities, which is all it ever had in practice.
   const learning = analyzePersonalSalesLearning({
     outcomes: input.opportunityOutcomes || [],
     opportunities: input.opportunities || [],
-    deals,
+    deals: [],
     limit: 6,
   });
   const warning = learning.warnings[0];

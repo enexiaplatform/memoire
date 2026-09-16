@@ -51,8 +51,10 @@ for (const [label, file] of [
   ['stakeholders', 'src/services/stakeholderStore.ts'],
   ['objections', 'src/services/objectionStore.ts'],
   ['commitments', 'src/services/weeklyCommitmentStore.ts'],
-  ['pipeline briefs', 'src/utils/pipelineDefenseStorage.ts'],
-  ['review packs', 'src/utils/reviewPacks.ts'],
+  // 'pipeline briefs' and 'review packs' were here until 2026-09-16. Both
+  // stores went with the Pipeline Defense brief; neither had ever held a row
+  // in any workspace, so there was nothing whose loss would be data loss.
+  ['knowledge notes', 'src/services/knowledgeNoteStore.ts'],
 ]) {
   const source = readFileSync(file, 'utf8');
   assert.ok(

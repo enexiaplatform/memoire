@@ -248,7 +248,7 @@ export function ValidationFeedbackPage() {
         {feedback.length === 0 ? (
           <div className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-6 text-center">
             <p className="text-sm font-bold text-navy">No validation feedback captured yet.</p>
-            <p className="mt-2 text-sm text-gray-500">Submit feedback from Pipeline Defense after a real user conversation.</p>
+            <p className="mt-2 text-sm text-gray-500">The in-app form lived on the Pipeline Defense brief and went with it. Record what a user said here by hand, or read it from the interview script above.</p>
           </div>
         ) : (
           <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -366,8 +366,8 @@ const COHORT_VERDICT_STYLE: Record<CohortVerdict, { label: string; tone: string 
 const COHORT_FUNNEL_FIELDS: { id: keyof CohortFunnelInput; label: string }[] = [
   { id: 'participants', label: 'Active participants' },
   { id: 'finishedLoop', label: 'Finished the 14-day loop' },
-  { id: 'createdOrReviewedBrief', label: 'Created / reviewed a brief' },
-  { id: 'savedPackOrCopiedSummary', label: 'Saved pack / copied summary' },
+  { id: 'createdOrReviewedBrief', label: "Acted on a deal's MEDDIC gap" },
+  { id: 'savedPackOrCopiedSummary', label: 'Closed a week on Review' },
   { id: 'wouldUseWeeklyOrBeforeReview', label: 'Would use weekly / before review' },
   { id: 'paidIntent', label: 'Showed paid intent' },
 ];

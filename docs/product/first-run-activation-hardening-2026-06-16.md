@@ -2,6 +2,15 @@
 
 Date: 2026-06-16
 
+> **Superseded 2026-09-16: there is no Pipeline Defense Brief.** Steps 3 and 4 of
+> the activation path below describe a surface that was removed. No workspace had
+> ever saved a brief or a review pack, and the route had not been opened since
+> 2026-07-27. The path a new account now walks is the First Week Path
+> (`src/utils/firstWeekPath.ts`), and what the brief used to say about a deal -
+> defend, rescue, downgrade, missing evidence - is a MEDDIC score on the deal
+> itself. This record is kept as written; read it as history, not as a
+> description of the product.
+
 Roadmap session: Session 5 - First-Run Activation Hardening
 
 ## Decision

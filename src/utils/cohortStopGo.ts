@@ -1,5 +1,15 @@
 export const COHORT_FUNNEL_KEY = 'memoire.cohortFunnel.v1';
 
+/**
+ * The founder's own count of what the cohort did, typed on the validation
+ * console. The field names are the storage contract and do not move; two of
+ * their labels do. `createdOrReviewedBrief` and `savedPackOrCopiedSummary` were
+ * named for the Pipeline Defense brief, and that surface was removed on
+ * 2026-09-16 - nobody can create a brief now, so a gate worded that way could
+ * only ever read zero and would have flagged Pause on every cohort. What the
+ * brief was a proxy for survives: looking at a deal's evidence and deciding
+ * about it, and carrying that decision into a real conversation.
+ */
 export type CohortFunnelInput = {
   participants: number;
   finishedLoop: number;
@@ -68,13 +78,13 @@ export function evaluateCohortStopGo(input: CohortFunnelInput): CohortStopGo {
     },
     {
       id: 'brief',
-      label: 'At least 4/5 create or review a Pipeline Defense Brief',
+      label: "At least 4/5 look at a deal's MEDDIC score and act on the gap",
       met: finishers > 0 && input.createdOrReviewedBrief >= need(BRIEF_FRACTION, finishers),
       detail: `${input.createdOrReviewedBrief} of ${finishers} (need ${need(BRIEF_FRACTION, finishers)})`,
     },
     {
       id: 'pack',
-      label: 'At least 3/5 save a pack, copy a summary, or use it in a real review',
+      label: 'At least 3/5 close a week on Review, or use it in a real pipeline review',
       met: finishers > 0 && input.savedPackOrCopiedSummary >= need(PACK_FRACTION, finishers),
       detail: `${input.savedPackOrCopiedSummary} of ${finishers} (need ${need(PACK_FRACTION, finishers)})`,
     },
@@ -102,7 +112,7 @@ export function evaluateCohortStopGo(input: CohortFunnelInput): CohortStopGo {
   const pauseFlags: CohortCondition[] = [
     {
       id: 'reach',
-      label: 'Fewer than 2/5 reach the Pipeline Defense moment',
+      label: 'Fewer than 2/5 reach a deal-evidence decision',
       met: participants > 0 && input.createdOrReviewedBrief < need(REACH_FRACTION, participants),
       detail: `${input.createdOrReviewedBrief} of ${participants} reached (pause below ${need(REACH_FRACTION, participants)})`,
     },
@@ -115,7 +125,7 @@ export function evaluateCohortStopGo(input: CohortFunnelInput): CohortStopGo {
   const summary = verdict === 'go'
     ? 'All measured Go conditions are met. Confirm the qualitative trust/fit signals, then move to paid-offer design.'
     : verdict === 'pause'
-      ? 'A pause signal is flagged: too few reached the Pipeline Defense moment. Check whether the pain is really pipeline review before continuing.'
+      ? "A pause signal is flagged: too few reached a decision about a deal's evidence. Check whether the pain is really pipeline review before continuing."
       : 'Not yet a Go. Close the unmet conditions below; the qualitative Iterate signals (trust for manager use, one repeated missing capability) still need your read.';
 
   return { verdict, goConditions, pauseFlags, summary };

@@ -11,7 +11,6 @@ const routePrefetchers: Record<string, () => Promise<unknown>> = {
   '/app/ask': () => import('../features/v31/AskMemoirePage'),
   '/app/settings': () => import('../features/settings/SettingsPage'),
   '/app/quotes': () => import('../features/quotes/QuotesPage'),
-  '/app/pipeline-defense': () => import('../features/pipeline/PipelineReviewDefenseBriefPage'),
   // These three are in the nav rail but were missing here, so hovering them
   // prefetched nothing and the click paid for the chunk.
   '/app/business': () => import('../features/business/BusinessLensPage'),

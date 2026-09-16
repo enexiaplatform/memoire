@@ -5,7 +5,6 @@ import { loadObjections, type ObjectionRecord } from './objectionStore';
 import { loadOpportunityOutcomes, loadOpportunityOutcomesForUser, type OpportunityOutcomeRecord } from './opportunityOutcomeStore';
 import { loadOpportunities, type CrmLiteOpportunity } from './opportunityStore';
 import { loadOperatingContext, type OperatingContextRecord } from './operatingContextStore';
-import { canUsePipelineDefenseCloudStore, loadCloudBriefs } from './pipelineDefenseCloudStore';
 import { loadQuotes, loadQuotesForUser, type QuoteRecord } from './quoteStore';
 import { loadExpenses, loadExpensesForUser, type ExpenseRecord } from './expenseStore';
 import { loadSalesActivities, type SalesActivityRecord } from './salesActivityStore';
@@ -21,8 +20,6 @@ import type {
   CommercialThread,
   CommercialValueOutcome,
 } from '../domain/commercialKernel/types';
-import type { PipelineDefenseBrief } from '../utils/pipelineDefenseStorage';
-import { loadPipelineDefenseBriefStore } from '../utils/pipelineDefenseStorage';
 import {
   clearCachedWorkspacePromise,
   getCachedWorkspacePromise,
@@ -44,7 +41,6 @@ export type SalesWorkspaceData = {
   activities: SalesActivityRecord[];
   opportunities: CrmLiteOpportunity[];
   accounts: AccountMemoryRecord[];
-  briefs: PipelineDefenseBrief[];
   objections: ObjectionRecord[];
   stakeholders: StakeholderRecord[];
   actionOutcomes: ActionOutcomeRecord[];
@@ -109,7 +105,6 @@ const collectionLoaders = {
   activities: (userId?: string | null) => loadSalesActivities(userId),
   opportunities: (userId?: string | null) => loadOpportunities(userId),
   accounts: (userId?: string | null) => loadAccounts(userId),
-  briefs: (userId?: string | null) => loadPipelineBriefs(userId),
   objections: (userId?: string | null) => loadObjections(userId),
   stakeholders: (userId?: string | null) => loadStakeholders(userId),
   actionOutcomes: (userId?: string | null) =>
@@ -400,16 +395,4 @@ export function getCachedSalesWorkspaceData(userId?: string | null): SalesWorksp
 /** True when any collection has aged past the freshness window. */
 function isSalesWorkspaceStale(userId?: string | null) {
   return WORKSPACE_COLLECTIONS.some((name) => isCachedWorkspaceValueStale(collectionCacheKey(userId, name)));
-}
-
-async function loadPipelineBriefs(userId?: string | null) {
-  if (userId && canUsePipelineDefenseCloudStore()) {
-    try {
-      return await loadCloudBriefs(userId as string);
-    } catch {
-      return loadPipelineDefenseBriefStore().briefs;
-    }
-  }
-
-  return loadPipelineDefenseBriefStore().briefs;
 }

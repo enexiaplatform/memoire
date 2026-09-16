@@ -20,6 +20,10 @@ function requireIncludes(text, marker, label) {
   if (!text.includes(marker)) fail(label);
 }
 
+function requireExcludes(text, marker, label) {
+  if (text.includes(marker)) fail(label);
+}
+
 function requireCondition(condition, label) {
   if (!condition) fail(label);
 }
@@ -139,7 +143,7 @@ requireIncludes(
   'the telemetry reporter must not be able to throw into the failure path it is reporting on',
 );
 
-for (const eventName of ['cloud_json_sync_failed', 'pipeline_defense_cloud_sync_failed']) {
+for (const eventName of ['cloud_json_sync_failed', 'client_render_error', 'local_write_failed']) {
   requireIncludes(clientLog, eventName, `client telemetry missing allowlisted event ${eventName}`);
 }
 
@@ -163,9 +167,14 @@ for (const marker of [
   requireIncludes(clientLogEndpoint, marker, `client-log endpoint missing contract marker: ${marker}`);
 }
 
-for (const eventName of ['cloud_json_sync_failed', 'pipeline_defense_cloud_sync_failed']) {
+for (const eventName of ['cloud_json_sync_failed', 'client_render_error', 'local_write_failed']) {
   requireIncludes(clientLogEndpoint, eventName, `client-log endpoint missing allowlisted event ${eventName}`);
 }
+requireExcludes(
+  clientLogEndpoint,
+  'pipeline_defense_cloud_sync_failed',
+  'the endpoint still accepts the retired Pipeline Defense sync event',
+);
 
 for (const dataMode of ['demo-local', 'cloud-browser', 'browser-only', 'sync-issue', 'unknown']) {
   requireIncludes(clientLogEndpoint, dataMode, `client-log endpoint missing data mode ${dataMode}`);
@@ -291,10 +300,10 @@ assert.equal(methodLog.headers.Allow, 'POST', 'unsupported client-log methods sh
 let quietLimitResponse;
 for (let i = 0; i < 31; i += 1) {
   quietLimitResponse = await invokeClientLog(clientLogHandler, 'POST', {
-    eventName: 'pipeline_defense_cloud_sync_failed',
-    route: '/app/pipeline-defense',
+    eventName: 'cloud_json_sync_failed',
+    route: '/app/opportunities',
     dataMode: 'cloud-browser',
-    component: 'PipelineDefenseCloudStore',
+    component: 'CloudJsonCollectionStore',
     operation: 'load',
     severity: 'warning',
   }, '198.51.100.77');

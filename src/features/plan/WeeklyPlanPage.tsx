@@ -68,6 +68,7 @@ import {
   type PlanItemEditDraft,
 } from '../../utils/planItemEdit';
 import { PlanItemDetailDrawer, type PlanContactOption } from './PlanItemDetailDrawer';
+import { markDemoJourneyStepComplete } from '../../utils/demoJourney';
 import type { PlanBoardWindow } from '../../domain/commercialKernel/derivePlanCommitments';
 import type { StakeholderRecord } from '../../services/stakeholderStore';
 import { buildActivityLedgerContext, resolvePlanItemSubject } from '../../utils/activityLedger';
@@ -492,6 +493,9 @@ export function WeeklyPlanPage({
           trackProductEvent('commitment_completed');
         }
       }
+      // Step 3 of the demo path: the promise was kept and the conversation
+      // behind it is on the record. Nothing happens outside the sandbox.
+      if (sampleDataActive) markDemoJourneyStepComplete('record-the-week', 'Recorded a finished promise on the plan');
       setBoardMessage(result.warning || planCompletionLogMessage(log.accountName, log.activity.activityChannel, personName));
       closeRecord();
     } catch {

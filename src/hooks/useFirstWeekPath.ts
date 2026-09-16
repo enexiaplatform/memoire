@@ -10,6 +10,8 @@ import {
   type SalesWorkspaceData,
 } from '../services/workspaceData';
 import type { PlanRecord } from '../utils/weeklyPlan';
+import { loadWeeklyCommitmentsForWorkspace } from '../services/weeklyCommitmentStore';
+import type { WeeklyCommitmentSnapshot } from '../utils/weeklyCommitment';
 
 /**
  * How far into the operating loop this workspace has actually got.
@@ -33,6 +35,7 @@ export function useFirstWeekPath(): { path: FirstWeekPath; loaded: boolean } {
 
   const [workspace, setWorkspace] = useState<SalesWorkspaceData | null>(() => getCachedSalesWorkspaceData(dataUserId));
   const [planItems, setPlanItems] = useState<PlanRecord[]>([]);
+  const [weeklyReviews, setWeeklyReviews] = useState<WeeklyCommitmentSnapshot[]>([]);
 
   const refresh = useCallback(() => {
     let cancelled = false;
@@ -48,6 +51,10 @@ export function useFirstWeekPath(): { path: FirstWeekPath; loaded: boolean } {
       });
     void loadPlanItemsForWorkspace(dataUserId, sampleDataActive)
       .then((records) => { if (!cancelled) setPlanItems(records); })
+      .catch(() => undefined);
+    // The weeks confirmed in Review, which is what the fifth step asks about.
+    void loadWeeklyCommitmentsForWorkspace(dataUserId, sampleDataActive)
+      .then((snapshots) => { if (!cancelled) setWeeklyReviews(snapshots); })
       .catch(() => undefined);
     return () => { cancelled = true; };
   }, [dataUserId, sampleDataActive]);
@@ -74,9 +81,9 @@ export function useFirstWeekPath(): { path: FirstWeekPath; loaded: boolean } {
   const path = useMemo(() => buildFirstWeekPath({
     activities: workspace?.activities || [],
     opportunities: workspace?.opportunities || [],
-    briefs: workspace?.briefs || [],
+    weeklyReviews,
     commitments: planItems,
-  }), [planItems, workspace]);
+  }), [planItems, weeklyReviews, workspace]);
 
   return { path, loaded: workspace !== null };
 }

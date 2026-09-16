@@ -11,7 +11,6 @@ import {
   ChevronDown,
   Clock3,
   ClipboardList,
-  FileCheck2,
   FileText,
   MessageCircle,
   NotebookPen,
@@ -73,6 +72,8 @@ import { loadOrderCostsForWorkspace } from '../../services/orderCostStore';
 import type { OrderCostRecord } from '../../utils/orderMargin';
 import { loadOrderMilestonesForWorkspace } from '../../services/orderMilestoneStore';
 import { loadSupplierCommitmentsForWorkspace } from '../../services/supplierCommitmentStore';
+import { loadWeeklyCommitmentsForWorkspace } from '../../services/weeklyCommitmentStore';
+import type { WeeklyCommitmentSnapshot } from '../../utils/weeklyCommitment';
 import { buildOrderBook, type OrderMilestoneRecord } from '../../utils/orderToCash';
 import { buildReceivables, type OrderReceivableRecord } from '../../utils/receivables';
 import { buildOwnObligations } from '../../utils/ownObligations';
@@ -96,7 +97,6 @@ import { buildBusinessCockpit, nudgeEntityHref } from '../../utils/businessCockp
 import { buildMorningBrief } from '../../utils/morningBrief';
 import { buildReviveFollowUpContext } from '../../utils/followUpFromOpportunity';
 import type { FollowUpContext } from '../../types/v31';
-import { type PipelineDefenseBrief } from '../../utils/pipelineDefenseStorage';
 import {
   buildTodayCommandCenter,
   type AccountTouchItem,
@@ -127,7 +127,6 @@ import {
 } from '../../utils/salesPlaybook';
 import { summarizeAssetGaps } from '../../utils/salesAssetSuggestions';
 import { buildCaptureNudges, type CaptureNudge } from '../../utils/captureNudges';
-import { buildPipelineReviewDashboardSignal } from '../../utils/shareablePipelineDefenseBrief';
 import {
   dismissTrialActivationChecklist,
   loadTrialActivationChecklistState,
@@ -157,7 +156,6 @@ type DashboardData = {
   activities: SalesActivityRecord[];
   opportunities: CrmLiteOpportunity[];
   accounts: AccountMemoryRecord[];
-  briefs: PipelineDefenseBrief[];
   objections: ObjectionRecord[];
   stakeholders: StakeholderRecord[];
   actionOutcomes: ActionOutcomeRecord[];
@@ -205,7 +203,6 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
     activities: [],
     opportunities: [],
     accounts: [],
-    briefs: [],
     objections: [],
     stakeholders: [],
     actionOutcomes: [],
@@ -266,6 +263,8 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
     costs: OrderCostRecord[];
     milestones: OrderMilestoneRecord[];
     supplierCommitments: SupplierCommitmentRecord[];
+    /** Weeks confirmed in Review - the first-week path's fifth step. */
+    weeklyReviews: WeeklyCommitmentSnapshot[];
   } | null>(null);
 
   const refreshDashboard = useCallback(async (options: DashboardLoadOptions = {}) => {
@@ -372,7 +371,6 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
     commercialActions: revenueView.actionItems,
     executionDecisions: dailyExecutionState.decisions,
   }) : null), [commandCenterNeeded, dailyExecutionState.decisions, data, revenueView.actionItems]);
-  const pipelineReviewSignal = useMemo(() => buildPipelineReviewDashboardSignal(data.briefs), [data.briefs]);
   // Readiness comes from the live pipeline, not the latest saved brief - the
   // same reading Opportunities and a freshly generated brief would give.
   const livePipelineHealth = useMemo(() => buildLivePipelineHealth({
@@ -384,8 +382,11 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
     salesAssets: data.assets,
     opportunityOutcomes: data.opportunityOutcomes,
   }), [data.actionOutcomes, data.activities, data.assets, data.objections, data.opportunities, data.opportunityOutcomes, data.stakeholders]);
+  // The review signal the deeper reading shows, read from the live pipeline.
+  // It came from the latest saved Pipeline Defense brief until the brief was
+  // removed; no workspace had saved one, so it always said "no brief yet".
+  const pipelineReviewSignal = useMemo(() => buildLiveReviewSignal(livePipelineHealth), [livePipelineHealth]);
   const todayCenter = useMemo(() => buildUnifiedTodayCommandCenter({
-    briefs: data.briefs,
     revenueActions: revenueView.actionItems,
     opportunities: data.opportunities,
     activities: data.activities,
@@ -397,7 +398,7 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
     accountPreferences: accountHygienePreferences,
     opportunityOutcomes: data.opportunityOutcomes,
     pipelineHealth: livePipelineHealth,
-  }), [accountHygienePreferences, data.accounts, data.activities, data.briefs, data.expenses, data.objections, data.opportunities, data.opportunityOutcomes, data.quotes, data.stakeholders, livePipelineHealth, revenueView.actionItems]);
+  }), [accountHygienePreferences, data.accounts, data.activities, data.expenses, data.objections, data.opportunities, data.opportunityOutcomes, data.quotes, data.stakeholders, livePipelineHealth, revenueView.actionItems]);
   // The dated promises this workspace already holds - Plan board items and the
   // ones made inside a capture. Handed to the nudge engine so a deal with a
   // booked follow-up is not called silent: Today was showing the commitment in
@@ -412,7 +413,6 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
     [data.activities, firstWeekPlanRecords, sampleDataActive],
   );
   const proactiveNudges = useMemo(() => buildProactiveNudges({
-    briefs: data.briefs,
     revenueActions: revenueView.actionItems,
     opportunities: data.opportunities,
     activities: data.activities,
@@ -429,7 +429,7 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
     // "what Memoire would start with". A third card in the watch-list was the
     // same note a third time, with a third opinion about how urgent it is.
     captureInboxShown: true,
-  }), [accountHygienePreferences, data.accounts, data.activities, data.briefs, data.objections, data.operatingContext, data.opportunities, data.opportunityOutcomes, data.quotes, data.stakeholders, nudgeState, plannedCommitments, revenueView.actionItems]);
+  }), [accountHygienePreferences, data.accounts, data.activities, data.objections, data.operatingContext, data.opportunities, data.opportunityOutcomes, data.quotes, data.stakeholders, nudgeState, plannedCommitments, revenueView.actionItems]);
   const decidedActionIds = useMemo(() => (
     new Set(dailyExecutionState.decisions.map((decision) => decision.actionId))
   ), [dailyExecutionState.decisions]);
@@ -489,9 +489,9 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
   const firstWeekPath = useMemo(() => buildFirstWeekPath({
     activities: data.activities,
     opportunities: data.opportunities,
-    briefs: data.briefs,
+    weeklyReviews: pictureRecords?.weeklyReviews || [],
     commitments: firstWeekPlanRecords,
-  }), [data, firstWeekPlanRecords]);
+  }), [data, firstWeekPlanRecords, pictureRecords]);
 
   // The picture. Each figure is another surface's number, read by that
   // surface's engine - see utils/todayPicture.ts for why none of them is new.
@@ -558,8 +558,9 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
       loadOrderCostsForWorkspace(dataUserId, sampleDataActive),
       loadOrderMilestonesForWorkspace(dataUserId, sampleDataActive),
       loadSupplierCommitmentsForWorkspace(dataUserId, sampleDataActive),
-    ]).then(([receivables, costs, milestones, supplierCommitments]) => {
-      if (active) setPictureRecords({ receivables, costs, milestones, supplierCommitments });
+      loadWeeklyCommitmentsForWorkspace(dataUserId, sampleDataActive),
+    ]).then(([receivables, costs, milestones, supplierCommitments, weeklyReviews]) => {
+      if (active) setPictureRecords({ receivables, costs, milestones, supplierCommitments, weeklyReviews });
     }).catch(() => {
       // The cash card says it is still reading rather than showing a zero it
       // does not know to be true.
@@ -1156,7 +1157,26 @@ function buildDashboardInsights(data: DashboardData) {
       objections: data.objections,
       activities: data.activities,
     }),
-    pipelineReviewSignal: buildPipelineReviewDashboardSignal(data.briefs),
+  };
+}
+
+type LiveReviewSignal = {
+  dealsNeedingReview: number;
+  rescueDowngradeCandidates: number;
+  topReason: string;
+  href: string;
+};
+
+/** How much of the live pipeline a review would have to talk about, and why. */
+function buildLiveReviewSignal(health: ReturnType<typeof buildLivePipelineHealth>): LiveReviewSignal {
+  const gap = health.topMissingEvidenceGaps[0];
+  return {
+    dealsNeedingReview: health.items.filter((item) => item.decision !== 'Defend' || item.missingContext.length > 0).length,
+    rescueDowngradeCandidates: health.rescueDeals + health.downgradeCandidates,
+    topReason: gap
+      ? `${gap.label} is missing on ${gap.count} ${gap.count === 1 ? 'deal' : 'deals'}.`
+      : 'Every live deal has its evidence recorded.',
+    href: '/app/opportunities',
   };
 }
 
@@ -1290,8 +1310,8 @@ function ForecastDefenseReadiness({ center }: { center: ReturnType<typeof buildU
             The score reflects whether each deal has a manager-ready position, evidence, money, date, objection context, and next action.
           </p>
         </div>
-        <Link to="/app/pipeline-defense" className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2.5 text-sm font-bold text-white">
-          Prepare pipeline review
+        <Link to="/app/opportunities" className="inline-flex shrink-0 rounded-full bg-navy px-4 py-2.5 text-sm font-bold text-white">
+          Review deal evidence
         </Link>
       </div>
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
@@ -1538,7 +1558,7 @@ function ProactiveNudgesPanel({
       {message && <p className="mt-3 rounded-xl bg-tint-blue-bg px-3 py-2 text-sm font-semibold text-tint-blue-ink">{message}</p>}
       {center.todayNudges.length === 0 ? (
         <p className="mt-4 rounded-2xl bg-tint-green-bg px-4 py-4 text-sm font-semibold text-tint-green-ink">
-          No active proactive nudge right now. Capture updates and Pipeline Defense will refresh the signal.
+          No active proactive nudge right now. Capture updates and the watch-list will refresh the signal.
         </p>
       ) : (
         /* One card per customer, not per alarm.
@@ -1677,7 +1697,7 @@ function TodayPipelineReadiness({ center }: { center: ReturnType<typeof buildUni
     <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Pipeline Review Readiness</p><h2 className="mt-1 text-xl font-bold text-navy">The forecast position, without the theatre.</h2></div>
-        <Link to="/app/pipeline-defense" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Open Pipeline Defense</Link>
+        <Link to="/app/opportunities" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Open deals</Link>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {center.pipelineReadiness.groups.filter((group) => visibleCategories.includes(group.category)).map((group) => (
@@ -1828,7 +1848,7 @@ function StartHerePanel({
   onOpenDemoSandbox,
 }: {
   commandCenter: CommandCenter;
-  signal: DashboardInsights['pipelineReviewSignal'];
+  signal: LiveReviewSignal;
   commercialAction: DashboardCommercialAction | null;
   sampleDataActive: boolean;
   onOpenDemoSandbox: () => void;
@@ -1850,7 +1870,7 @@ function StartHerePanel({
   const primaryLabel = topActionIsCommercial
     ? 'Review commercial risk'
     : activeBlock?.id === 'pipeline-defense'
-    ? 'Open defense mode'
+    ? 'Review deal evidence'
     : activeBlock?.id === 'capture-closeout'
       ? 'Capture update'
       : 'Open supporting detail';
@@ -1870,8 +1890,8 @@ function StartHerePanel({
             <Link to="/app/capture?mode=quick" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
               2. Capture activity
             </Link>
-            <Link to="/app/pipeline-defense" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
-              3. Open defense brief
+            <Link to="/app/reviews" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
+              3. Run the weekly review
             </Link>
           </div>
         </div>
@@ -1936,14 +1956,14 @@ function StartHerePanel({
             <Link to="/app/opportunities" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
               Review deals
             </Link>
-            <Link to="/app/pipeline-defense" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
-              Pipeline Defense
+            <Link to="/app/reviews" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
+              Weekly review
             </Link>
           </div>
         </div>
 
         <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-4">
-          <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">Pipeline defense</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">Deal evidence</p>
           <p className="mt-2 text-sm font-bold text-navy">
             {signal.dealsNeedingReview > 0
               ? `${signal.dealsNeedingReview} deal(s) need review`
@@ -1965,7 +1985,7 @@ function DashboardPrimaryWork({
   signal,
 }: {
   commandCenter: CommandCenter;
-  signal: DashboardInsights['pipelineReviewSignal'];
+  signal: LiveReviewSignal;
 }) {
   const actionMap = new Map<string, CommandActionItem>();
   [...commandCenter.overdueActions, ...commandCenter.todayActions, ...commandCenter.priorityActions].forEach((action) => {
@@ -2012,8 +2032,8 @@ function DashboardPrimaryWork({
       </div>
 
       <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Defense drill-down</p>
-        <h2 className="mt-1 text-xl font-bold text-navy">Open the supporting brief</h2>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Evidence drill-down</p>
+        <h2 className="mt-1 text-xl font-bold text-navy">Where the evidence is short</h2>
         <p className="mt-2 text-sm leading-6 text-blue-900/75">{signal.topReason}</p>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <Metric label="Review" value={signal.dealsNeedingReview} tone={signal.dealsNeedingReview ? 'amber' : 'green'} />
@@ -2021,7 +2041,7 @@ function DashboardPrimaryWork({
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link to={signal.href} className="inline-flex rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-            Open Pipeline Defense
+            Open deals
           </Link>
           <Link to="/app/reviews" className="inline-flex rounded-full border border-blue-100 bg-white px-4 py-2 text-sm font-bold text-brand-blue">
             Weekly Brief
@@ -2072,8 +2092,8 @@ function DailyOperatingPlan({
             Memoire turns sales-flow checkpoints, account memory, and forecast risk into one calm daily rhythm.
           </p>
         </div>
-        <Link to="/app/pipeline-defense" className="inline-flex w-fit rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
-          Open defense mode
+        <Link to="/app/opportunities" className="inline-flex w-fit rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          Review deal evidence
         </Link>
       </div>
 
@@ -2436,7 +2456,6 @@ function ThisWeekSummary({ commandCenter }: { commandCenter: CommandCenter }) {
         <Metric label="Opp movement" value={summary.opportunitiesWithMovement} />
         <Metric label="Open actions" value={summary.openNextActions} tone={summary.openNextActions ? 'amber' : 'green'} />
         <Metric label="Objections" value={summary.objectionsCaptured} tone={summary.objectionsCaptured ? 'red' : 'green'} />
-        <Metric label="Defense briefs" value={summary.pipelineDefenseBriefsCreated} />
       </div>
     </section>
   );
@@ -2861,7 +2880,7 @@ function AtRiskOpportunities({ items }: { items: AtRiskOpportunityItem[] }) {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Link to={item.href} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-gray-700 ring-1 ring-amber-100">Open Opportunity</Link>
-                  <Link to="/app/opportunities" className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">Generate Defense Brief</Link>
+                  <Link to={item.href} className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">Check its evidence</Link>
                 </div>
               </div>
               <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
@@ -2952,7 +2971,6 @@ function QuickActions() {
     { label: 'Add Account', href: '/app/accounts', icon: <BookOpen className="h-4 w-4" /> },
     { label: 'Open Plan', href: '/app/timeline?view=upcoming', icon: <CalendarCheck className="h-4 w-4" /> },
     { label: 'Weekly Review', href: '/app/reviews', icon: <ClipboardList className="h-4 w-4" /> },
-    { label: 'Pipeline Defense Brief', href: '/app/reviews?view=defense', icon: <FileCheck2 className="h-4 w-4" /> },
   ];
 
   return (

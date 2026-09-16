@@ -121,10 +121,10 @@ assert.equal(sumMoney([{ amount: 100, currency: 'XYZ' }, { amount: 5, currency: 
 }
 
 // 6. The four surfaces share one money formatter - the duplication is how the
-// mislabel reached Today, nudges, Pipeline Defense, and retros at once.
+// mislabel reached Today, nudges, the deal's risk lines and retros at once.
 for (const [file, label] of [
   ['src/utils/todayCommandCenter.ts', 'Today'],
-  ['src/utils/pipelineDefenseCenter.ts', 'Pipeline Defense'],
+  ['src/utils/pipelineDefenseCenter.ts', 'the deal risk engine'],
   ['src/utils/proactiveNudges.ts', 'nudges'],
   ['src/utils/personalSalesLearning.ts', 'outcome retros'],
 ]) {

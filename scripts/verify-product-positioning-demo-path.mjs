@@ -69,14 +69,35 @@ for (const file of ['src/pages/LandingPage.tsx', 'src/features/pricing/PricingPa
 // a new account. It is now `DEMO_JOURNEY_PATH_SUMMARY`, declared beside the
 // steps it describes and rendered on the demo card, so this check reads one
 // file instead of two and the string has a reader rather than only a test.
+//
+// The last two steps changed on 2026-09-16, when the Pipeline Defense brief was
+// removed: both of them ended on that page, so a sandbox opened after the
+// removal could have reached two of four and stopped. The path now ends where
+// the product's own week ends - a promise recorded on the Plan, a week closed
+// on Review - and every step is completed by doing the thing rather than by
+// visiting a page.
 for (const marker of [
   'review-today',
   'paste-evidence',
-  'open-defense',
-  'finish-review-pack',
-  'Today - Capture - Pipeline Defense',
+  'record-the-week',
+  'finish-review',
+  'Today - Capture - Plan - Review',
 ]) {
   assert.ok(demoJourney.includes(marker), `Demo path missing ${marker}`);
+}
+// Every step must be completable, which means something in the app has to mark
+// it. The two that went dark did so because their only emitters lived on the
+// deleted page and nobody noticed the card could no longer finish.
+for (const [stepId, file] of [
+  ['review-today', 'src/features/dashboard/DashboardPage.tsx'],
+  ['paste-evidence', 'src/features/dailyCapture/DailyCapturePage.tsx'],
+  ['record-the-week', 'src/features/plan/WeeklyPlanPage.tsx'],
+  ['finish-review', 'src/features/reviews/WeeklyCommitmentPanel.tsx'],
+]) {
+  assert.ok(
+    read(file).includes(`markDemoJourneyStepComplete('${stepId}'`),
+    `demo step ${stepId} has no emitter in ${file} - the sandbox could never finish it`,
+  );
 }
 assert.ok(
   read('src/components/demo/DemoJourneyCard.tsx').includes('DEMO_JOURNEY_PATH_SUMMARY'),
@@ -84,7 +105,7 @@ assert.ok(
 );
 
 assert.ok(checklist.indexOf('Capture first evidence') < checklist.indexOf('Review Today command center'), 'Onboarding checklist must point to Capture before Today');
-assert.ok(checklist.indexOf('Review Today command center') < checklist.indexOf('Prepare Pipeline Defense Brief'), 'Onboarding checklist must point to Today before Pipeline Defense');
+assert.equal(checklist.includes('Prepare Pipeline Defense Brief'), false, 'the retired brief must not come back as an onboarding step');
 assert.equal(checklist.includes('Open Assets'), false, 'First-run checklist should not push starter assets before proof path');
 assert.equal(checklist.includes('Open Opportunities'), false, 'First-run checklist should not push CRM-like opportunity setup before proof path');
 
@@ -101,8 +122,12 @@ assert.ok(sampleData.includes('sampleEmailThreadActivity') && sampleData.include
 assert.ok((sampleData.match(/sampleActionOutcome\(\{/g) || []).length >= 1, 'Demo needs outcome learning examples');
 assert.equal(sampleAccountCount <= 5, true, 'Demo should not contain large imported-only account noise');
 assert.equal(sampleData.includes('imported-only'), false, 'Default demo should not include imported-only account noise');
-assert.ok(sampleData.includes('generatePipelineDefenseBriefFromOpportunities(opportunities.slice(0, 5)'), 'Demo brief should be generated from the focused 3-5 opportunity set');
-assert.ok(sampleData.includes('actionOutcomes'), 'Demo brief should include outcome learning inputs');
+// The demo used to seed a Pipeline Defense brief over the first five deals.
+// That surface is gone; what the brief said about each deal - defend, rescue,
+// downgrade, missing evidence - is a field on the deal itself and is asserted
+// above, so the sandbox still shows all four states without a document.
+assert.equal(sampleData.includes('generatePipelineDefenseBriefFromOpportunities'), false, 'the demo must not seed a brief for a surface that no longer exists');
+assert.ok(sampleData.includes('actionOutcomes'), 'Demo needs outcome learning inputs');
 
 for (const marker of [
   'I can defend this deal',

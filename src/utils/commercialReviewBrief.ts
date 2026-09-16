@@ -3,8 +3,6 @@ import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import { getQuoteRisk, summarizeQuotes, type QuoteRecord } from '../services/quoteStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import { formatBaseCurrencyAmount as formatBaseMoney } from './money';
-import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
-import { buildPipelineReviewDashboardSignal } from './shareablePipelineDefenseBrief';
 import { buildRevenueView, type RevenueViewSummary } from './revenueView';
 import { buildTodayCommandCenter, type CommandCenter } from './salesCommandCenter';
 import type { WeeklyExecutionReview } from './weeklyExecutionReview';
@@ -33,7 +31,6 @@ export function buildCommercialReviewBrief(input: {
   activities: SalesActivityRecord[];
   opportunities: CrmLiteOpportunity[];
   accounts: AccountMemoryRecord[];
-  briefs: PipelineDefenseBrief[];
   quotes: QuoteRecord[];
   executionReview: WeeklyExecutionReview;
 }): CommercialReviewBrief {
@@ -42,10 +39,17 @@ export function buildCommercialReviewBrief(input: {
     activities: input.activities,
     opportunities: input.opportunities,
     accounts: input.accounts,
-    briefs: input.briefs,
     commercialActions: revenue.actionItems,
   });
-  const pipeline = buildPipelineReviewDashboardSignal(input.briefs);
+  // The live pipeline, read by the same rules as the rest of the command
+  // center. This line used to be the latest saved Pipeline Defense brief, which
+  // no workspace ever saved, so it reported a quiet pipeline on every review.
+  const pipeline = {
+    dealsNeedingReview: commandCenter.atRiskOpportunities.length,
+    topReason: commandCenter.atRiskOpportunities[0]
+      ? `Top: ${commandCenter.atRiskOpportunities[0].accountName} - ${commandCenter.atRiskOpportunities[0].reason}.`
+      : '',
+  };
   const quoteSummary = summarizeQuotes(input.quotes);
   const expiringOrExpired = input.quotes.filter((quote) => {
     const risk = getQuoteRisk(quote);
@@ -63,8 +67,8 @@ export function buildCommercialReviewBrief(input: {
   });
 
   const pipelineLine = pipeline.dealsNeedingReview > 0
-    ? `${pipeline.dealsNeedingReview} deal(s) need defense review. ${pipeline.topReason}`
-    : 'Pipeline defense is quiet. Keep evidence current before manager review.';
+    ? `${pipeline.dealsNeedingReview} deal(s) are short of evidence. ${pipeline.topReason}`
+    : 'No active deal is short of evidence. Keep it current before the next review.';
   const quoteLine = quoteSummary.topActionQuote
     ? `${quoteSummary.topActionQuote.accountName}: ${quoteSummary.topActionQuote.title} needs ${quoteSummary.topActionQuote.nextAction || getQuoteRisk(quoteSummary.topActionQuote).toLowerCase()}.`
     : 'No quote follow-up is blocking this review.';
@@ -76,7 +80,7 @@ export function buildCommercialReviewBrief(input: {
     : 'No delivered revenue is waiting for payment.';
 
   const summary = [
-    pipeline.dealsNeedingReview > 0 ? `${pipeline.dealsNeedingReview} pipeline item(s) need defense.` : 'Pipeline defense is under control.',
+    pipeline.dealsNeedingReview > 0 ? `${pipeline.dealsNeedingReview} deal(s) are short of evidence.` : 'Pipeline evidence is under control.',
     expiringOrExpired.length > 0 ? `${expiringOrExpired.length} quote(s) are expiring or expired.` : 'Quote risk is quiet.',
     revenue.topAction ? 'Revenue has action needed this week.' : 'No urgent revenue block detected.',
   ].join(' ');
@@ -114,7 +118,6 @@ export function buildCommercialReviewBrief(input: {
     topAccounts,
     nextActions,
     revenue,
-    pipelineTitle: pipeline.briefTitle,
     quoteSummary,
   });
 
@@ -164,7 +167,6 @@ function generateCommercialReviewMarkdown(input: {
   topAccounts: string[];
   nextActions: string[];
   revenue: RevenueViewSummary;
-  pipelineTitle: string;
   quoteSummary: ReturnType<typeof summarizeQuotes>;
 }) {
   return [
@@ -175,9 +177,8 @@ function generateCommercialReviewMarkdown(input: {
     '## Summary',
     `- ${input.summary}`,
     '',
-    '## Pipeline Defense',
+    '## Pipeline Evidence',
     `- ${input.pipelineLine}`,
-    `- Source brief: ${input.pipelineTitle}`,
     '',
     '## Quote Risk',
     `- ${input.quoteLine}`,

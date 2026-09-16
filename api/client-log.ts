@@ -14,9 +14,12 @@ type ClientLogResponse = {
   setHeader: (name: string, value: string) => void;
 };
 
+// The Pipeline Defense brief had its own cloud store and its own sync-failure
+// event. Both went on 2026-09-16; the event name went with them rather than
+// staying on the allowlist, because an accepted event nobody can send is a
+// promise this endpoint cannot keep.
 const ALLOWED_EVENTS = new Set([
   'cloud_json_sync_failed',
-  'pipeline_defense_cloud_sync_failed',
   'client_render_error',
   'local_write_failed',
 ]);

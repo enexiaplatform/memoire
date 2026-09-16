@@ -45,7 +45,11 @@ const center = buildUnifiedTodayCommandCenter({
 });
 assert.equal(center.hasMeaningfulData, true);
 assert.equal(center.topActions.length, 3);
-assert.deepEqual(center.topActions.map((action) => action.source), ['Revenue', 'Opportunity', 'Pipeline Defense']);
+// 'Forecast evidence' was 'Pipeline Defense' until the brief was removed on
+// 2026-09-16. The label names the question the move answers - is the evidence
+// behind this deal good enough - rather than a page the operator can no longer
+// open.
+assert.deepEqual(center.topActions.map((action) => action.source), ['Revenue', 'Opportunity', 'Forecast evidence']);
 assert.equal(center.topActions[0].urgency, 'Critical');
 assert.ok(center.topActions[0].dueDateLabel.includes('Jun 18, 2026'));
 assert.ok(center.topActions[0].moneyLabel.includes('200,000 SGD'));

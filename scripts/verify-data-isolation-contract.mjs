@@ -152,16 +152,22 @@ for (const marker of [
   requireIncludes(cloudJson, marker, `cloud JSON store missing isolation marker: ${marker}`);
 }
 
-const reviewPacks = read('src/utils/reviewPacks.ts');
+// The Review Pack was the review's saved artifact and carried this guard. It
+// was removed with the Pipeline Defense brief on 2026-09-16; what a week now
+// leaves behind is the confirmed commitment snapshot, so the guard follows it.
+// The table itself stays in the migration below - it is empty and dropping a
+// table is not free - but nothing writes to it any more.
+const weeklyCommitmentType = read('src/utils/weeklyCommitment.ts');
+for (const marker of ["source?: 'demo' | 'user'", 'isSample?: boolean']) {
+  requireIncludes(weeklyCommitmentType, marker, `weekly commitment record missing workspace tag: ${marker}`);
+}
+const weeklyCommitments = read('src/services/weeklyCommitmentStore.ts');
 for (const marker of [
-  "source?: 'demo' | 'user'",
-  'isSample?: boolean',
-  'local.filter(isUserReviewPack)',
-  "pack.source === 'demo'",
-  'pack.isSample === true',
-  'deleteCloudJsonRecordForCurrentUser',
+  "candidate.source === 'demo' ? 'demo'",
+  'candidate.isSample === true',
+  "snapshot.source !== 'demo' && snapshot.isSample !== true",
 ]) {
-  requireIncludes(reviewPacks, marker, `review pack store missing demo isolation marker: ${marker}`);
+  requireIncludes(weeklyCommitments, marker, `weekly commitment store missing demo isolation marker: ${marker}`);
 }
 
 const cloudMigration = read('supabase/migrations/20260615132000_cloud_browser_collections.sql');

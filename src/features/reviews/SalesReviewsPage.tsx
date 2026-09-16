@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { normalizeEntityName } from '../../utils/accountIdentity.ts';
-import { ArrowRight, Copy, Loader2 } from 'lucide-react';
+import { Copy, Loader2 } from 'lucide-react';
 import { ReviewAnalyticsSection } from './ReviewAnalyticsSection';
 import { ReviewScoreboardPanel } from './ReviewScoreboardPanel';
 import { BrandPerformancePanel } from './BrandPerformancePanel';
@@ -47,7 +47,6 @@ import {
   type CommercialReviewBrief,
   type CommercialReviewMetric,
 } from '../../utils/commercialReviewBrief';
-import { type PipelineDefenseBrief } from '../../utils/pipelineDefenseStorage';
 import {
   generatePipelineOpportunityActions,
   type OpportunityRecommendedAction,
@@ -79,11 +78,10 @@ import {
   type SalesRecapRange,
 } from '../../utils/salesActivityRecap';
 
-export type ReviewTab = 'review' | 'defense' | 'analytics';
+export type ReviewTab = 'review' | 'analytics';
 
 const reviewTabs: { value: ReviewTab; label: string }[] = [
   { value: 'review', label: 'Weekly review' },
-  { value: 'defense', label: 'Pipeline Defense' },
   // Named for both halves: the charts are the analytics, and what the book is
   // starting to show about how this seller wins is the learning.
   { value: 'analytics', label: 'Learning & Analytics' },
@@ -92,16 +90,17 @@ const reviewTabs: { value: ReviewTab; label: string }[] = [
 /**
  * Review is one destination that closes the weekly loop.
  *
- * Pipeline Defense used to be its own top-level workflow, which forced a second
- * mental model on top of the review the user was already doing; it is an
- * artifact produced by Review, so it is a tab here and a shareable export, not
- * a destination. Analytics is what remains of the Dashboard: trend and history,
+ * Pipeline Defense was a tab here, producing a brief to take into a manager's
+ * pipeline review, until 2026-09-15: no workspace ever saved one, and what it
+ * answered deal by deal - is the evidence behind this stage - is on every deal
+ * now as its MEDDIC score. Analytics is what remains of the Dashboard: trend and history,
  * a weekly question, answered where the weekly work happens.
  */
 export function SalesReviewsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('view');
-  const tab: ReviewTab = rawTab === 'defense' || rawTab === 'analytics' ? rawTab : 'review';
+  // ?view=defense was the retired Pipeline Defense tab; it opens the review.
+  const tab: ReviewTab = rawTab === 'analytics' ? rawTab : 'review';
   const { rankedRecommendations: reviewRecommendations } = useCommercialThreads();
 
   // One period for the whole tab. The scoreboard declares it and the recap
@@ -209,7 +208,6 @@ export function SalesReviewsPage() {
           </details>
         </>
       )}
-      {tab === 'defense' && <PipelineDefenseArtifactSection />}
       {tab === 'analytics' && <ReviewAnalyticsSection />}
     </PageContainer>
   );
@@ -229,34 +227,6 @@ function ReviewNarrativeLabel({ label, hint }: { label: string; hint: string }) 
       <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-gray-400">{label}</h2>
       <p className="text-xs font-medium text-gray-400">{hint}</p>
     </div>
-  );
-}
-
-/**
- * Pipeline Defense as a Review output. The brief builder itself is a large
- * surface with its own printable and shareable forms, so it stays on its own
- * contextual route; what belongs in Review is the decision to produce one and
- * the record that you did.
- */
-function PipelineDefenseArtifactSection() {
-  return (
-    <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-      <h2 className="text-xl font-bold text-navy">Pipeline Defense Brief</h2>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
-        The deal-by-deal story you can defend in a pipeline review: what each opportunity is worth, what evidence supports
-        its stage, what is blocking it, and what you will do next. It is an output of this review - generate it here,
-        share it as a link, or export it.
-      </p>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Link
-          to="/app/pipeline-defense"
-          className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90"
-        >
-          Generate / view Pipeline Defense Brief
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
-    </section>
   );
 }
 
@@ -281,7 +251,6 @@ function WeeklyReviewSection({
   const [opportunityOutcomes, setOpportunityOutcomes] = useState<OpportunityOutcomeRecord[]>([]);
   const [assets, setAssets] = useState<SalesAssetRecord[]>([]);
   const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
-  const [briefs, setBriefs] = useState<PipelineDefenseBrief[]>([]);
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
   // The two kernel collections the learning patterns need. Loaded here with
   // everything else rather than fetched by the panel, so the section cannot
@@ -363,11 +332,10 @@ function WeeklyReviewSection({
       activities,
       opportunities,
       accounts,
-      briefs,
       quotes,
       executionReview,
     }),
-    [period.label, activities, opportunities, accounts, briefs, quotes, executionReview]
+    [period.label, activities, opportunities, accounts, quotes, executionReview]
   );
   const playbookLearnings = useMemo(
     () => generateSalesPlaybookPatterns({
@@ -513,7 +481,6 @@ function WeeklyReviewSection({
       setOpportunityOutcomes(cachedData.opportunityOutcomes);
       setAssets(cachedData.assets);
       setAccounts(cachedData.accounts);
-      setBriefs(cachedData.briefs);
       setQuotes(cachedData.quotes);
       setOperatingContexts(cachedData.operatingContext);
       setLearningCommitments(cachedData.commitments);
@@ -532,7 +499,6 @@ function WeeklyReviewSection({
     setOpportunityOutcomes(workspaceData.opportunityOutcomes);
     setAssets(workspaceData.assets);
     setAccounts(workspaceData.accounts);
-    setBriefs(workspaceData.briefs);
     setQuotes(workspaceData.quotes);
     setOperatingContexts(workspaceData.operatingContext);
     setLearningCommitments(workspaceData.commitments);
@@ -1006,7 +972,7 @@ function CommercialReviewBriefPanel({
           <p className="text-xs font-bold uppercase tracking-wide text-gray-400">This review needs</p>
           <p className="mt-2 text-sm font-bold text-navy">{brief.nextActions[0] || 'Pick one commercial action and capture the outcome.'}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Link to="/app/pipeline-defense" className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-bold text-brand-blue">Pipeline defense</Link>
+            <Link to="/app/opportunities" className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-bold text-brand-blue">Deal evidence</Link>
             <Link to="/app/quotes" className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700">Quotes</Link>
             <Link to="/app/revenue" className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">Revenue</Link>
           </div>

@@ -1,7 +1,6 @@
 type ClientOperationalEvent = {
   eventName:
     | 'cloud_json_sync_failed'
-    | 'pipeline_defense_cloud_sync_failed'
     | 'client_render_error'
     // A write this browser refused: the record did not land locally either.
     | 'local_write_failed'

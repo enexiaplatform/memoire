@@ -7,7 +7,6 @@ import type { QuoteRecord } from '../services/quoteStore';
 import type { ExpenseRecord } from '../services/expenseStore';
 import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore';
 import type { RevenueActionItem } from './revenueView';
-import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
 import { buildPipelineDefenseCenter, type ManagerReadyDealBrief } from './pipelineDefenseCenter.ts';
 import { convertMoney, formatMoneyWithBase } from './money.ts';
 import { compareBusinessDateDesc,
@@ -20,7 +19,13 @@ import { buildOwnObligations, type OwnObligation } from './ownObligations.ts';
 import { formatCompactBaseAmount } from './money.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
 
-export type TodayActionSource = 'Pipeline Defense' | 'Revenue' | 'Opportunity' | 'Capture' | 'Customer' | 'Obligation';
+/**
+ * Where a move came from. `Forecast evidence` was `Pipeline Defense` until the
+ * brief of that name was removed (2026-09-15): the rules that find a deal to
+ * defend, rescue or downgrade still read every live deal, and the label now
+ * names what they read rather than a page that no longer exists.
+ */
+export type TodayActionSource = 'Forecast evidence' | 'Revenue' | 'Opportunity' | 'Capture' | 'Customer' | 'Obligation';
 export type TodayActionUrgency = 'Critical' | 'High' | 'Medium' | 'Low';
 
 export type TodayCommandAction = {
@@ -66,7 +71,6 @@ export type TodayCaptureInboxItem = {
 };
 
 export function buildUnifiedTodayCommandCenter(input: {
-  briefs: PipelineDefenseBrief[];
   revenueActions: RevenueActionItem[];
   opportunities: CrmLiteOpportunity[];
   activities: SalesActivityRecord[];
@@ -88,7 +92,6 @@ export function buildUnifiedTodayCommandCenter(input: {
   today?: string;
 }) {
   const today = isValidBusinessDate(input.today) ? input.today : todayDateKey();
-  const latestBrief = [...input.briefs].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
   const pipelineReadiness = input.pipelineHealth
     || buildPipelineDefenseCenter([], today, input.opportunityOutcomes || []);
   const personalLearning = analyzePersonalSalesLearning({
@@ -175,11 +178,8 @@ export function buildUnifiedTodayCommandCenter(input: {
     importedAccountsHidden,
     learningNudge: personalLearning.todayNudge,
     learningLowDataMessage: personalLearning.hasEnoughData ? '' : personalLearning.lowDataMessage,
-    // The starter sample brief is a template, not the user's work - it must
-    // not count as real data, or a brand-new workspace never sees Start here.
     hasMeaningfulData: Boolean(
-      (latestBrief && !latestBrief.isSample && latestBrief.deals.length)
-      || input.opportunities.some((opportunity) => opportunity.status === 'Active')
+      input.opportunities.some((opportunity) => opportunity.status === 'Active')
       || input.revenueActions.length
       || input.activities.length
     ),
@@ -202,11 +202,11 @@ function buildPipelineAction(item: ManagerReadyDealBrief): TodayCommandAction[] 
     reason: item.missingContext[0]
       ? `${item.category}: ${item.missingContext[0]} is still unresolved.`
       : `${item.category}: the forecast position needs review.` ,
-    source: 'Pipeline Defense',
+    source: 'Forecast evidence',
     urgency,
-    // Deep-link to the exact deal card - the alarm's job is to land the user
-    // on the handling spot, never on a page top.
-    href: `/app/pipeline-defense?dealId=${encodeURIComponent(item.deal.id)}`,
+    // Deep-link to the deal itself - the alarm's job is to land the user on the
+    // handling spot, never on a page top. On Today it opens in the quick look.
+    href: `/app/opportunities?opportunityId=${encodeURIComponent(item.deal.id.replace(/^opp-/, ''))}`,
     dueDate: sanitizeBusinessDate(item.deal.nextActionDate),
     dueDateLabel: item.dueDateLabel,
     moneyLabel: item.moneyLabel,

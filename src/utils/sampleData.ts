@@ -15,16 +15,9 @@ import { QUOTE_STORAGE_KEY, type QuoteRecord } from '../services/quoteStore';
 import { EXPENSE_STORAGE_KEY, type ExpenseRecord, type ExpenseCategory, type ExpenseStatus } from '../services/expenseStore';
 import { invalidateWorkspaceDataCache } from '../services/workspaceDataCache';
 import { classifySalesActivity } from './salesActivityClassifier';
-import { generatePipelineDefenseBriefFromOpportunities } from './opportunityToPipelineBrief';
 import { buildEmailThreadIngestion, buildIngestionSourceTags, composeIngestionParserText } from './ingestionSource.ts';
 import { clearDemoJourneyCompletion } from './demoJourney';
 import { clearDailyExecutionState } from './dailyExecution';
-import {
-  MULTI_BRIEF_STORAGE_KEY,
-  loadPipelineDefenseBriefStore,
-  type PipelineDefenseBrief,
-  type PipelineDefenseBriefStore,
-} from './pipelineDefenseStorage';
 
 import { WEEKLY_COMMITMENT_STORAGE_KEY } from '../services/weeklyCommitmentStore';
 // Deliberately cleared by tag only (removeSampleRecords), never added to
@@ -98,7 +91,6 @@ export type SampleDataset = {
   salesAssets: SalesAssetRecord[];
   quotes: QuoteRecord[];
   expenses: ExpenseRecord[];
-  briefs: PipelineDefenseBrief[];
   weeklyCommitments: WeeklyCommitmentSnapshot[];
 };
 
@@ -147,20 +139,13 @@ export function loadSampleDataset(): SampleDataset {
   writeLocalArray(QUOTE_STORAGE_KEY, dataset.quotes);
   writeLocalArray(EXPENSE_STORAGE_KEY, dataset.expenses);
   writeLocalArray(WEEKLY_COMMITMENT_STORAGE_KEY, dataset.weeklyCommitments);
-  writeLocalBriefs(dataset.briefs);
   markSampleDataLoaded();
   invalidateWorkspaceDataCache();
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(SAMPLE_DATA_UPDATED_EVENT));
   }
 
-  return {
-    ...dataset,
-    briefs: [
-      ...dataset.briefs,
-      ...loadPipelineDefenseBriefStore().briefs.filter((brief) => !isSampleRecord(brief)),
-    ],
-  };
+  return dataset;
 }
 
 export function clearSampleDataset() {
@@ -203,7 +188,6 @@ export function clearSampleDataset() {
   removeSampleRecords(KNOWLEDGE_NOTE_STORAGE_KEY);
   removeSampleRecords(ACCOUNT_MERGE_STORAGE_KEY);
   removeSampleRecords(NUDGE_STORAGE_KEY);
-  removeSampleBriefs();
   clearDemoJourneyCompletion();
   clearDailyExecutionState('demo');
   clearSampleDataFlag();
@@ -219,7 +203,6 @@ export function sanitizeLegacySampleDataset() {
   try {
     if (!hasLegacySampleTerms()) return false;
     SAMPLE_ARRAY_STORAGE_KEYS.forEach(removeLegacySampleRecords);
-    removeLegacySampleBriefs();
     clearDemoJourneyCompletion();
     loadSampleDataset();
     return true;
@@ -1004,16 +987,6 @@ export function buildSampleDataset(): SampleDataset {
     sampleExpense({ id: 'demo-expense-supplier-overdue', label: 'Supplier invoice (reagent distributor)', category: 'Cost of goods', amount: 48000000, status: 'Upcoming', dueDate: sixDaysAgo, vendor: 'Reagent distributor' }),
   ];
 
-  const brief = {
-    ...generatePipelineDefenseBriefFromOpportunities(opportunities.slice(0, 5), {
-      title: `Demo Defense Brief - ${today}`,
-      weekLabel: 'Demo week',
-      salesOwner: 'Demo Sales Owner',
-      scope: 'Demo sandbox opportunities',
-    }, objections, stakeholders, activities, actionOutcomes, salesAssets),
-    id: 'demo-brief-pipeline-defense',
-  } as PipelineDefenseBrief;
-
   // Closed-outcome history powers the demo's forecast calibration ("your
   // Defensible deals win 67%") and outcome learning. Two of the deals exist
   // above (Won line audit, Lost LIMS expansion); the other two are retired
@@ -1135,7 +1108,6 @@ export function buildSampleDataset(): SampleDataset {
     salesAssets,
     quotes,
     expenses,
-    briefs: [markSampleBrief(brief)],
     weeklyCommitments: [buildSampleWeeklyCommitment(now)],
   };
 }
@@ -1398,14 +1370,6 @@ function markSampleRecord<T extends object>(record: T): T {
   };
 }
 
-function markSampleBrief(brief: PipelineDefenseBrief): PipelineDefenseBrief {
-  return markSampleRecord({
-    ...brief,
-    source: SAMPLE_DATA_NAMESPACE,
-    isSample: true,
-  }) as PipelineDefenseBrief;
-}
-
 function writeLocalArray<T extends { id: string }>(key: string, records: T[]) {
   if (typeof window === 'undefined') return;
   try {
@@ -1415,17 +1379,6 @@ function writeLocalArray<T extends { id: string }>(key: string, records: T[]) {
   } catch {
     window.localStorage.setItem(key, JSON.stringify(records));
   }
-}
-
-function writeLocalBriefs(briefs: PipelineDefenseBrief[]) {
-  if (typeof window === 'undefined') return;
-  const currentStore = readRawBriefStore();
-  const cleanBriefs = currentStore.briefs.filter((brief) => !isSampleRecord(brief as SampleRecord));
-  const nextStore: PipelineDefenseBriefStore = {
-    activeBriefId: briefs[0]?.id || cleanBriefs[0]?.id || '',
-    briefs: [...briefs, ...cleanBriefs],
-  };
-  window.localStorage.setItem(MULTI_BRIEF_STORAGE_KEY, JSON.stringify(nextStore));
 }
 
 function removeSampleRecords(key: string) {
@@ -1448,61 +1401,19 @@ function removeLegacySampleRecords(key: string) {
   }
 }
 
-function removeSampleBriefs() {
-  if (typeof window === 'undefined') return;
-  const currentStore = readRawBriefStore();
-  const briefs = currentStore.briefs.filter((brief) => !isSampleRecord(brief as SampleRecord));
-  if (briefs.length === 0) {
-    window.localStorage.removeItem(MULTI_BRIEF_STORAGE_KEY);
-    return;
-  }
-  window.localStorage.setItem(MULTI_BRIEF_STORAGE_KEY, JSON.stringify({
-    activeBriefId: briefs.some((brief) => brief.id === currentStore.activeBriefId) ? currentStore.activeBriefId : briefs[0].id,
-    briefs,
-  }));
-}
-
-function removeLegacySampleBriefs() {
-  if (typeof window === 'undefined') return;
-  const currentStore = readRawBriefStore();
-  const briefs = currentStore.briefs.filter((brief) => !containsLegacySampleTerm(brief));
-  if (briefs.length === 0) {
-    window.localStorage.removeItem(MULTI_BRIEF_STORAGE_KEY);
-    return;
-  }
-  window.localStorage.setItem(MULTI_BRIEF_STORAGE_KEY, JSON.stringify({
-    activeBriefId: briefs.some((brief) => brief.id === currentStore.activeBriefId) ? currentStore.activeBriefId : briefs[0].id,
-    briefs,
-  }));
-}
-
-function readRawBriefStore(): PipelineDefenseBriefStore {
-  if (typeof window === 'undefined') return { activeBriefId: '', briefs: [] };
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(MULTI_BRIEF_STORAGE_KEY) || '{}') as Partial<PipelineDefenseBriefStore>;
-    return {
-      activeBriefId: typeof parsed.activeBriefId === 'string' ? parsed.activeBriefId : '',
-      briefs: Array.isArray(parsed.briefs) ? parsed.briefs as PipelineDefenseBrief[] : [],
-    };
-  } catch {
-    return { activeBriefId: '', briefs: [] };
-  }
-}
-
-function isSampleRecord(record: SampleRecord | PipelineDefenseBrief) {
+function isSampleRecord(record: SampleRecord) {
   const maybeRecord = record as SampleRecord;
   return (
     maybeRecord.isSample === true ||
     maybeRecord.source === SAMPLE_DATA_NAMESPACE ||
     Boolean(maybeRecord.id?.startsWith('demo-')) ||
-    maybeRecord.tags?.includes('demo-data') ||
-    maybeRecord.title?.toLowerCase().includes('demo defense brief')
+    maybeRecord.tags?.includes('demo-data')
   );
 }
 
 function hasLegacySampleTerms() {
   if (typeof window === 'undefined') return false;
-  return [...SAMPLE_ARRAY_STORAGE_KEYS, MULTI_BRIEF_STORAGE_KEY].some((key) => {
+  return SAMPLE_ARRAY_STORAGE_KEYS.some((key) => {
     const value = window.localStorage.getItem(key);
     return value ? containsLegacySampleTerm(value) : false;
   });

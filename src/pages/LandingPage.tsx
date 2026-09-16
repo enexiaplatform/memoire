@@ -138,7 +138,7 @@ const PERSONAL_ITEMS = [
   'Unlimited capture and unlimited records',
   'Search & Insights over everything you have written down',
   'Orders, Cash Collection and Cost Analysis',
-  'Pipeline Defense Briefs and shareable review packs',
+  'MEDDIC scoring on every deal, from what you have already recorded',
   'Business Vault, daily digest email and full data export',
 ];
 
@@ -384,7 +384,7 @@ export function LandingPage() {
                   <RankedAction
                     rank="#2"
                     severity="Critical"
-                    category="Pipeline Defense"
+                    category="Forecast evidence"
                     title="De-risk the platform rollout."
                     subject="Caldera Systems / Platform rollout"
                     reason="Downgrade: decision maker is still unresolved."
@@ -560,9 +560,9 @@ export function LandingPage() {
             eyebrow="Learn — what is making you win?"
             icon={FileText}
             title="Walk in with answers."
-            text="Sort every deal into defend, rescue, or downgrade — with the proof, the gaps and the next actions attached. Share the pack as a read-only link instead of rebuilding it in a slide, then log what actually happened."
+            text="Every deal is sorted into defend, rescue, or downgrade and scored against MEDDIC — from what you already recorded, with the proof, the gaps and the next actions attached. Then log what actually happened."
             bullets={[
-              'Pipeline Defense Brief: manager-ready answers in minutes',
+              'A MEDDIC score on every deal, and the gap that is holding it down',
               'MEDDIC stakeholder map built from real evidence, not guessed labels',
               'Win/loss and objection history — what your follow-ups actually revived',
             ]}
@@ -1039,7 +1039,7 @@ function NudgeMock() {
         <div className="divide-y divide-slate-100">
           <NudgeRow severity="Critical" kind="revenue" flag="Payment overdue" detail="Confirm the payment release date with finance." amount="$186,000" />
           <NudgeRow severity="Critical" kind="opportunity" flag="Deal going silent" detail="No customer touch since Jul 25, and no next action scheduled." amount="$186,000" />
-          <NudgeRow severity="High" kind="pipeline-defense" flag="Missing forecast evidence" detail="Evidence is not strong enough to defend in review." amount="$186,000" />
+          <NudgeRow severity="High" kind="forecast evidence" flag="Missing forecast evidence" detail="Evidence is not strong enough to defend in review." amount="$186,000" />
         </div>
       </div>
 
@@ -1195,7 +1195,7 @@ function OrderRow({
 
 function DefenseMock() {
   return (
-    <MockFrame label="Review · pipeline defense brief">
+    <MockFrame label="Opportunities · MEDDIC and decision">
       <div className="grid grid-cols-3 gap-2 text-center">
         {[
           ['Defend', '3', 'border-emerald-200 bg-emerald-50 text-emerald-700'],
@@ -1250,7 +1250,7 @@ function DefenseMock() {
 
       <div className="mt-3 flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-600">
         <FileText className="h-3.5 w-3.5 flex-none text-brand-blue" />
-        Copy the summary, export it, or share a read-only link
+        Scored out of 32 - champion and economic buyer hold it at zero
       </div>
     </MockFrame>
   );

@@ -1,6 +1,5 @@
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
-import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
 
 export type FirstWeekStepId = 'capture' | 'link' | 'commit' | 'close' | 'review';
 
@@ -48,7 +47,11 @@ export type FirstWeekCommitment = {
 export function buildFirstWeekPath(input: {
   activities: SalesActivityRecord[];
   opportunities: CrmLiteOpportunity[];
-  briefs: PipelineDefenseBrief[];
+  /**
+   * Weeks the operator has confirmed in Review - the weekly review as it is run
+   * now. Sample and demo snapshots never count.
+   */
+  weeklyReviews?: { isSample?: boolean; source?: string }[];
   /**
    * Dated promises. Plan items today; the commercial commitment ledger once a
    * workspace has one. Sample and demo records never count.
@@ -82,9 +85,11 @@ export function buildFirstWeekPath(input: {
     (commitment) => commitment.done === true || commitment.status === 'completed',
   );
 
-  // The starter brief is a template (isSample) - only a real brief with deals
-  // counts as a prepared review, the same rule Today uses for meaningful data.
-  const reviewed = input.briefs.some((brief) => !brief.isSample && brief.deals.length > 0);
+  // A review is a week confirmed in Review. This step used to be ticked by a
+  // saved Pipeline Defense brief, and no workspace ever saved one - so on the
+  // live book the fifth step could not be completed and the path never closed.
+  // The brief was removed on 2026-09-15; the week you confirm is the review.
+  const reviewed = (input.weeklyReviews || []).some((review) => !review.isSample && review.source !== 'demo');
 
   const steps: FirstWeekStep[] = [
     {

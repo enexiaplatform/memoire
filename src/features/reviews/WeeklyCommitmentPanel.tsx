@@ -20,6 +20,7 @@ import {
 } from '../../services/weeklyCommitmentStore';
 import { getCurrentPipelineReviewWeekId } from '../../utils/pipelineReviewHabit';
 import { trackProductEvent } from '../../utils/productAnalytics';
+import { markDemoJourneyStepComplete } from '../../utils/demoJourney';
 import { formatSafeBusinessDate } from '../../utils/safeDate.ts';
 import type { SalesActivityRecord } from '../../services/salesActivityStore';
 
@@ -118,6 +119,18 @@ export function WeeklyCommitmentPanel({
 
     setSnapshots(saveWeeklyCommitment(snapshot));
     setReconfirming(false);
+    // The week is closed here. `review_completed` used to fire from the Pipeline
+    // Defense brief, and when that surface went it took the last emitter of this
+    // event with it - which would have left the activation funnel on /admin
+    // drawing a "Ran a review" step that could only ever read zero. Confirming
+    // next week's commitments is the act the brief was standing in for: it is
+    // the moment the operator has looked at the week and decided what happens
+    // next. Demo confirmations are tagged `demo-local` so they never count as
+    // activation.
+    trackProductEvent('review_completed', sampleDataActive ? 'demo-local' : undefined);
+    // And the last step of the demo path, for the same reason: this is where
+    // the sandbox's loop closes.
+    if (sampleDataActive) markDemoJourneyStepComplete('finish-review', 'Confirmed next week from the review');
   }, [customLabels, period.end, period.start, priorSnapshot, sampleDataActive, selectedIds, suggestions, weekId]);
 
   const setResolution = useCallback((snapshot: WeeklyCommitmentSnapshot, itemId: string, resolution: CommitmentResolution) => {

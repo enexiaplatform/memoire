@@ -4,11 +4,13 @@ import { buildFirstWeekPath } from '../../src/utils/firstWeekPath.ts';
 
 const activity = (patch = {}) => ({ id: `a${Math.random()}`, activityDate: '2026-07-10', ...patch });
 const opportunity = () => ({ id: `o${Math.random()}`, status: 'Active' });
-const brief = (patch = {}) => ({ id: `b${Math.random()}`, deals: [{ id: 'd' }], ...patch });
+// A week confirmed in Review - what the fifth step now reads. It was a saved
+// Pipeline Defense brief until 2026-09-16, and no workspace ever saved one.
+const weeklyReview = (patch = {}) => ({ id: `w${Math.random()}`, weekId: '2026-08-17', ...patch });
 
 describe('buildFirstWeekPath', () => {
   test('empty workspace: nothing done, capture is next', () => {
-    const path = buildFirstWeekPath({ activities: [], opportunities: [], briefs: [] });
+    const path = buildFirstWeekPath({ activities: [], opportunities: [] });
     assert.equal(path.done, 0);
     assert.equal(path.total, 5);
     assert.equal(path.complete, false);
@@ -19,8 +21,7 @@ describe('buildFirstWeekPath', () => {
     const path = buildFirstWeekPath({
       activities: [activity({ accountName: '', linkedAccountName: '', linkedOpportunityId: '' })],
       opportunities: [],
-      briefs: [],
-    });
+      });
     assert.equal(path.steps.find((step) => step.id === 'capture').done, true);
     assert.equal(path.nextStep?.id, 'link', 'an unlinked capture is exactly the silence Memoire watches for');
   });
@@ -29,8 +30,7 @@ describe('buildFirstWeekPath', () => {
     const path = buildFirstWeekPath({
       activities: [activity({ accountName: 'Northstar Foods' })],
       opportunities: [],
-      briefs: [],
-    });
+      });
     assert.equal(path.steps.find((step) => step.id === 'link').done, true);
     assert.equal(path.nextStep?.id, 'commit');
   });
@@ -39,8 +39,7 @@ describe('buildFirstWeekPath', () => {
     const path = buildFirstWeekPath({
       activities: [activity({ accountName: 'Northstar', nextAction: 'Send revised quote' })],
       opportunities: [],
-      briefs: [],
-    });
+      });
     assert.equal(
       path.steps.find((step) => step.id === 'commit').done,
       false,
@@ -53,8 +52,7 @@ describe('buildFirstWeekPath', () => {
     const path = buildFirstWeekPath({
       activities: [activity({ accountName: 'Northstar', nextAction: 'Send revised quote', dueDate: '2026-07-17' })],
       opportunities: [],
-      briefs: [],
-    });
+      });
     assert.equal(path.steps.find((step) => step.id === 'commit').done, true);
     assert.equal(path.nextStep?.id, 'close');
   });
@@ -63,8 +61,7 @@ describe('buildFirstWeekPath', () => {
     const path = buildFirstWeekPath({
       activities: [activity({ accountName: 'Northstar', nextAction: 'Send revised quote', dueDate: '2026-07-17' })],
       opportunities: [opportunity()],
-      briefs: [],
-      commitments: [{ done: true }],
+        commitments: [{ done: true }],
     });
     assert.equal(path.steps.find((step) => step.id === 'close').done, true);
     assert.equal(path.nextStep?.id, 'review');
@@ -74,15 +71,14 @@ describe('buildFirstWeekPath', () => {
     const path = buildFirstWeekPath({
       activities: [],
       opportunities: [],
-      briefs: [],
-      commitments: [{ done: true, isSample: true }, { status: 'completed', source: 'demo' }],
+        commitments: [{ done: true, isSample: true }, { status: 'completed', source: 'demo' }],
     });
     assert.equal(path.steps.find((step) => step.id === 'commit').done, false);
     assert.equal(path.steps.find((step) => step.id === 'close').done, false);
   });
 
-  test('a sample starter brief does not count as a prepared review', () => {
-    const path = buildFirstWeekPath({ activities: [], opportunities: [], briefs: [brief({ isSample: true })] });
+  test('a demo week does not count as a real review', () => {
+    const path = buildFirstWeekPath({ activities: [], opportunities: [], weeklyReviews: [weeklyReview({ isSample: true })] });
     assert.equal(path.steps.find((step) => step.id === 'review').done, false);
   });
 
@@ -90,7 +86,7 @@ describe('buildFirstWeekPath', () => {
     const path = buildFirstWeekPath({
       activities: [activity({ accountName: 'Northstar', nextAction: 'Send revised quote', dueDate: '2026-07-17' })],
       opportunities: [opportunity()],
-      briefs: [brief()],
+      weeklyReviews: [weeklyReview()],
       commitments: [{ status: 'completed' }],
     });
     assert.equal(path.done, 5);

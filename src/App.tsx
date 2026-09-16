@@ -32,7 +32,6 @@ const EarlyAccessRequestPage = lazy(() =>
   import('./features/earlyAccess/EarlyAccessRequestPage').then((module) => ({ default: module.EarlyAccessRequestPage })),
 );
 const LegalPage = lazy(() => import('./features/legal/LegalPage').then((module) => ({ default: module.LegalPage })));
-const SharedBriefPage = lazy(() => import('./features/pipeline/SharedBriefPage').then((module) => ({ default: module.SharedBriefPage })));
 const ValidationFeedbackPage = lazy(() =>
   import('./features/validation/ValidationFeedbackPage').then((module) => ({ default: module.ValidationFeedbackPage })),
 );
@@ -66,12 +65,6 @@ const AccountsPage = lazy(() => import('./features/accounts/AccountsPage').then(
 const StakeholdersPage = lazy(() => import('./features/stakeholders/StakeholdersPage').then((module) => ({ default: module.StakeholdersPage })));
 const ObjectionsPage = lazy(() => import('./features/objections/ObjectionsPage').then((module) => ({ default: module.ObjectionsPage })));
 const AskMemoirePage = lazy(() => import('./features/v31/AskMemoirePage').then((module) => ({ default: module.AskMemoirePage })));
-const PipelineReviewDefenseBriefPage = lazy(() =>
-  import('./features/pipeline/PipelineReviewDefenseBriefPage').then((module) => ({ default: module.PipelineReviewDefenseBriefPage })),
-);
-const PipelineReviewPackPage = lazy(() =>
-  import('./features/pipeline/PipelineReviewPackPage').then((module) => ({ default: module.PipelineReviewPackPage })),
-);
 const FounderImportReviewPage = lazy(() =>
   import('./features/imports/FounderImportReviewPage').then((module) => ({ default: module.FounderImportReviewPage })),
 );
@@ -109,7 +102,10 @@ function App() {
           <Route path="/privacy" element={<Navigate to="/legal/privacy" replace />} />
           <Route path="/terms" element={<Navigate to="/legal/terms" replace />} />
           <Route path="/legal/:document" element={<LegalPage />} />
-          <Route path="/share/brief" element={<SharedBriefPage />} />
+          {/* Shared Pipeline Defense brief links, retired with the brief on
+              2026-09-15. None was ever opened; an old one lands on the home
+              page rather than on a 404. */}
+          <Route path="/share/brief" element={<Navigate to="/" replace />} />
 
           {/* The welcome. Protected like the rest of `/app`, but deliberately
               outside the shell: a first-run screen framed by a navigation rail
@@ -206,8 +202,12 @@ function App() {
                 editor behind Review; only the standalone destination and the
                 "we are an operating system" framing are gone. */}
             <Route path="operating-system" element={<OperatingSystemPage />} />
-            <Route path="pipeline-defense" element={<PipelineReviewDefenseBriefPage />} />
-            <Route path="pipeline-defense/review-pack/:id" element={<PipelineReviewPackPage />} />
+            {/* The Pipeline Defense brief was removed on 2026-09-15: no brief was
+                ever saved to the cloud, and every question it answered is on the
+                deal itself now - MEDDIC scored from the records, and the move
+                Today ranks. A link to one deal's defense card opens that deal. */}
+            <Route path="pipeline-defense" element={<LegacyPipelineDefenseRedirect />} />
+            <Route path="pipeline-defense/review-pack/:id" element={<LegacyRedirect to="/app/reviews" />} />
 
             {/* Hidden until the workspace has real outcome evidence. The routes
                 stay resolvable so existing records are never stranded. */}
@@ -301,6 +301,17 @@ function LegacyRedirect({ to, params }: { to: string; params?: Record<string, st
   }
   const query = search.toString();
   return <Navigate to={`${to}${query ? `?${query}` : ''}${location.hash}`} replace />;
+}
+
+/**
+ * `/app/pipeline-defense?dealId=opp-<id>` was where Today's defense moves
+ * landed. The page is gone; the deal it pointed at is not.
+ */
+function LegacyPipelineDefenseRedirect() {
+  const location = useLocation();
+  const dealId = new URLSearchParams(location.search).get('dealId') || '';
+  const opportunityId = dealId.replace(/^opp-/, '');
+  return <Navigate to={opportunityId ? `/app/opportunities?opportunityId=${encodeURIComponent(opportunityId)}` : '/app/opportunities'} replace />;
 }
 
 /**

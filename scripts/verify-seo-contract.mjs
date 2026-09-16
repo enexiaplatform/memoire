@@ -189,7 +189,10 @@ const read = (path) => readFileSync(path, 'utf8');
 {
   const surfaces = {
     'src/components/layout/AppShell.tsx': 'every /app route',
-    'src/features/pipeline/SharedBriefPage.tsx': 'the shared brief link',
+    // The shared-brief link was the third private surface here. It was retired
+    // with the Pipeline Defense brief on 2026-09-16 - the app now has no
+    // public link that carries workspace records at all, which is a stronger
+    // statement than the noindex tag it used to need.
     'src/pages/NotFoundPage.tsx': 'the soft 404',
   };
   for (const [file, what] of Object.entries(surfaces)) {

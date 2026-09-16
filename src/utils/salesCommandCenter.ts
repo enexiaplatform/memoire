@@ -4,7 +4,6 @@ import type { OperatingContextRecord } from '../services/operatingContextStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import { formatCompactCurrencyAmount } from './money.ts';
 import type { DailyExecutionDecision } from './dailyExecution';
-import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
 import type { RevenueActionItem, RevenueRiskKind } from './revenueView';
 import { buildOpportunitySalesFlowGuidance } from './salesFlowGuidance.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
@@ -12,7 +11,7 @@ import { compareBusinessDateDesc,
   compareSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, isValidBusinessDate, todayDateKey, toLocalDateKey, timestampToLocalDateKey } from './safeDate.ts';
 
 export type CommandPriority = 'Critical' | 'High' | 'Medium' | 'Low';
-export type CommandActionSource = 'Activity' | 'Opportunity' | 'Operating System' | 'Sales Flow' | 'Pipeline Defense' | 'Quote';
+export type CommandActionSource = 'Activity' | 'Opportunity' | 'Operating System' | 'Sales Flow' | 'Forecast evidence' | 'Quote';
 
 export type CommandActionItem = {
   id: string;
@@ -98,7 +97,6 @@ export type CommandCenter = {
     opportunitiesWithMovement: number;
     openNextActions: number;
     objectionsCaptured: number;
-    pipelineDefenseBriefsCreated: number;
   };
   hasAnyData: boolean;
 };
@@ -107,7 +105,6 @@ export function buildTodayCommandCenter({
   activities,
   opportunities,
   accounts,
-  briefs,
   commercialActions = [],
   operatingContext = [],
   executionDecisions = [],
@@ -115,7 +112,6 @@ export function buildTodayCommandCenter({
   activities: SalesActivityRecord[];
   opportunities: CrmLiteOpportunity[];
   accounts: AccountMemoryRecord[];
-  briefs: PipelineDefenseBrief[];
   commercialActions?: RevenueActionItem[];
   operatingContext?: OperatingContextRecord[];
   executionDecisions?: DailyExecutionDecision[];
@@ -125,7 +121,6 @@ export function buildTodayCommandCenter({
   const atRiskOpportunities = getAtRiskOpportunities(opportunities);
   const accountsNeedingTouch = getAccountsNeedingTouch(accounts, activities, opportunities);
   const recentActivities = getRecentActivitySummary(activities);
-  const pipelineReadiness = getPipelineReviewReadiness(opportunities, briefs);
   const rawRiskActions = atRiskOpportunities.slice(0, 8).map(riskToAction);
   const rawSalesFlowActions = buildSalesFlowCommandActions(opportunities);
   const rawOperatingActions = buildOperatingContextCommandActions(operatingContext);
@@ -204,9 +199,8 @@ export function buildTodayCommandCenter({
       opportunitiesWithMovement: countOpportunitiesWithMovement(opportunities, activities),
       openNextActions: countOpenNextActions(opportunities, activities),
       objectionsCaptured: countObjections(opportunities, activities),
-      pipelineDefenseBriefsCreated: pipelineReadiness.briefsCreatedThisWeek,
     },
-    hasAnyData: activities.length > 0 || opportunities.length > 0 || accounts.length > 0 || operatingContext.length > 0 || rawCommercialActions.length > 0 || briefs.some(isUserCreatedBrief),
+    hasAnyData: activities.length > 0 || opportunities.length > 0 || accounts.length > 0 || operatingContext.length > 0 || rawCommercialActions.length > 0,
   };
 }
 
@@ -272,7 +266,7 @@ function buildDailyTimeblocks({
       id: 'pipeline-defense',
       startTime: '09:00',
       endTime: '10:30',
-      title: 'Pipeline Defense',
+      title: 'Forecast evidence',
       focus: defenseActions[0]?.source === 'Sales Flow'
         ? defenseActions[0].title
         : atRiskOpportunities[0]
@@ -284,7 +278,7 @@ function buildDailyTimeblocks({
         ? `${atRiskOpportunities.length} active opportunit${atRiskOpportunities.length === 1 ? 'y has' : 'ies have'} weak evidence, missing context, or rescue/downgrade signals.`
         : 'Pipeline risk is quiet; keep review evidence current before the next manager conversation.',
       priority: defenseActions[0]?.priority || (atRiskOpportunities.length ? 'High' : 'Low'),
-      href: defenseActions[0]?.href || '/app/pipeline-defense',
+      href: defenseActions[0]?.href || '/app/opportunities',
       actions: defenseActions,
     },
     {
@@ -573,15 +567,12 @@ export function getRecentActivitySummary(activities: SalesActivityRecord[]): Rec
     }));
 }
 
-export function getPipelineReviewReadiness(opportunities: CrmLiteOpportunity[], briefs: PipelineDefenseBrief[]) {
-  const week = currentWeekRange();
+export function getPipelineReviewReadiness(opportunities: CrmLiteOpportunity[]) {
   const activeAtRisk = getAtRiskOpportunities(opportunities).length;
-  const briefsCreatedThisWeek = briefs.filter((brief) => timestampToLocalDateKey(brief.createdAt) >= week.start && timestampToLocalDateKey(brief.createdAt) <= week.end).length;
 
   return {
     activeAtRisk,
-    briefsCreatedThisWeek,
-    status: activeAtRisk === 0 ? 'Ready' : briefsCreatedThisWeek > 0 ? 'Defense started' : 'Needs defense review',
+    status: activeAtRisk === 0 ? 'Ready' : 'Needs defense review',
   };
 }
 
@@ -592,7 +583,7 @@ function riskToAction(item: AtRiskOpportunityItem): CommandActionItem {
     title: item.nextAction === 'No next action captured' ? `Define next action for ${item.opportunityName}` : item.nextAction,
     accountName: item.accountName,
     opportunityName: item.opportunityName,
-    source: 'Pipeline Defense',
+    source: 'Forecast evidence',
     priority: critical ? 'Critical' : 'High',
     reason: item.reason,
     href: '/app/opportunities',
@@ -725,8 +716,4 @@ function currentWeekRange() {
     start: toLocalDateKey(start),
     end: toLocalDateKey(end),
   };
-}
-
-function isUserCreatedBrief(brief: PipelineDefenseBrief) {
-  return !brief.title.toLowerCase().includes('sample pipeline defense brief');
 }

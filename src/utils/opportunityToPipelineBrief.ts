@@ -1,5 +1,4 @@
 import type { PipelineDefenseDeal } from '../data/pipelineDefenseBrief.ts';
-import { createPipelineDefenseBrief, type PipelineDefenseBrief } from './pipelineDefenseStorage.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { ObjectionRecord } from '../services/objectionStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
@@ -19,13 +18,6 @@ import {
 } from './salesPlaybook.ts';
 import { formatRelevantProofAssetsForBrief } from './salesAssetSuggestions.ts';
 import { compareSafeBusinessDate, sanitizeBusinessDate } from './safeDate.ts';
-
-export type OpportunityBriefMetadata = {
-  title?: string;
-  weekLabel?: string;
-  salesOwner?: string;
-  scope?: string;
-};
 
 /**
  * A whole book of deals, mapped once.
@@ -198,24 +190,6 @@ function buildNextDefenseActions(actions: ReturnType<typeof generateOpportunityA
   return `Next defense actions:\n${generateOpportunityActionsMarkdown(actions.slice(0, 4))}`;
 }
 
-export function generatePipelineDefenseBriefFromOpportunities(
-  opportunities: CrmLiteOpportunity[],
-  metadata: OpportunityBriefMetadata = {},
-  objections: ObjectionRecord[] = [],
-  stakeholders: StakeholderRecord[] = [],
-  activities: SalesActivityRecord[] = [],
-  actionOutcomes: ActionOutcomeRecord[] = [],
-  salesAssets: SalesAssetRecord[] = [],
-): PipelineDefenseBrief {
-  return createPipelineDefenseBrief({
-    title: metadata.title || `Pipeline Defense Brief - Opportunities - ${formatDateLabel(new Date())}`,
-    weekLabel: metadata.weekLabel || getCurrentWeekLabel(),
-    salesOwner: metadata.salesOwner || 'Sales owner',
-    scope: metadata.scope || 'Selected opportunities',
-    deals: mapOpportunitiesToPipelineDefenseDeals(opportunities, { objections, stakeholders, activities, actionOutcomes, salesAssets }),
-  });
-}
-
 function buildPipelineContext(opportunity: CrmLiteOpportunity) {
   const parts = [
     opportunity.stage ? `Stage: ${opportunity.stage}` : '',
@@ -343,25 +317,4 @@ function firstSentence(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return '';
   return trimmed.split(/(?<=[.!?])\s+/)[0] || trimmed;
-}
-
-function getCurrentWeekLabel() {
-  const now = new Date();
-  const start = new Date(now);
-  const day = start.getDay();
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  start.setDate(start.getDate() + diffToMonday);
-
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-
-  return `${formatDateLabel(start)} - ${formatDateLabel(end)}`;
-}
-
-function formatDateLabel(date: Date) {
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
 }

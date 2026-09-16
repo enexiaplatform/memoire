@@ -223,10 +223,10 @@ const settings = readFileSync('src/features/settings/SettingsPage.tsx', 'utf8');
 // week in one place and leave the other two describing the old one.
 {
   assert.ok(
-    welcome.includes('buildFirstWeekPath({ activities: [], opportunities: [], briefs: [] }).steps'),
+    welcome.includes('buildFirstWeekPath({ activities: [], opportunities: [] }).steps'),
     'the welcome must read its five beats from the path builder rather than restating them',
   );
-  const steps = buildFirstWeekPath({ activities: [], opportunities: [], briefs: [] }).steps;
+  const steps = buildFirstWeekPath({ activities: [], opportunities: [] }).steps;
   assert.equal(steps.length, 5, 'the welcome renders whatever the builder returns; five is the product decision');
   for (const step of steps) {
     assert.ok(step.label.length > 0 && step.hint.length > 0, `step ${step.id} has nothing to show a new user`);

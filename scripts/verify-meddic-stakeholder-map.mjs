@@ -153,7 +153,7 @@ for (const marker of ['formatSafeBusinessDate', 'sanitizeBusinessDate', 'confide
 
 const pipelineMapper = readFileSync('src/utils/opportunityToPipelineBrief.ts', 'utf8');
 for (const marker of ['Stakeholder evidence', 'MEDDIC stakeholder map', 'formatStakeholderMapForBrief', 'stakeholderMap.missingRoles']) {
-  assert.ok(pipelineMapper.includes(marker), `Pipeline Defense brief integration missing ${marker}`);
+  assert.ok(pipelineMapper.includes(marker), `the risk mapper lost its stakeholder evidence: ${marker}`);
 }
 
 const opportunityUi = readFileSync('src/features/opportunities/OpportunitiesPage.tsx', 'utf8');

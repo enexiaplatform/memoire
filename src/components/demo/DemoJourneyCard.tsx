@@ -35,11 +35,11 @@ export function DemoJourneyCard({ compact = false }: { compact?: boolean }) {
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Demo Journey</p>
             <h2 className="mt-1 text-xl font-bold text-navy">
-              {completion ? "You've completed the core Memoire workflow." : '5-minute path to the Pipeline Defense aha moment'}
+              {completion ? "You've completed the core Memoire workflow." : '5-minute path through a full week of the loop'}
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
               {completion
-                ? 'You turned sample pipeline data into a manager-ready Pipeline Defense Brief.'
+                ? 'You read the day, recorded a conversation, kept a promise, and closed the week.'
                 // Counted rather than written out: the copy said "three focused
                 // steps" above a grid of four.
                 : `Follow ${demoJourneySteps.length} focused steps to see the value before exploring the wider app.`}
@@ -106,7 +106,7 @@ export function DemoJourneyCard({ compact = false }: { compact?: boolean }) {
         <div className="mt-5 rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-4 text-sm text-emerald-900">
           <p className="font-bold">You've completed the core Memoire workflow.</p>
           <p className="mt-1 leading-6">
-            You turned sample pipeline data into a manager-ready Pipeline Defense Brief. Your demo work stays in this browser only - your real pipeline deserves an account that syncs safely.
+            You read the day, recorded a conversation against the person you had it with, kept a promise on the board, and closed the week with what you commit to next. Your demo work stays in this browser only - your real pipeline deserves an account that syncs safely.
           </p>
           <p className="mt-2 text-xs font-semibold text-emerald-700">Completed from: {completion.reason}</p>
         </div>

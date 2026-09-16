@@ -1,3 +1,19 @@
+/**
+ * The Monday that owns the current week, and the weekly prep the operator does
+ * before it.
+ *
+ * `getCurrentPipelineReviewWeekId` is the load-bearing export: Plan, Review and
+ * the committed-week strip all date their week from it, so all three agree on
+ * which Monday "this week" starts on.
+ *
+ * The checklist below is smaller than it was. Two of its six steps - generate
+ * the Defense Brief, copy the manager summary - could only be completed from
+ * the Pipeline Defense brief, and that surface was removed on 2026-09-16. A
+ * step nobody can reach is worse than no step: the progress bar would have sat
+ * at four of six forever and called the week "In progress" on a week that was
+ * finished. The four that remain are all things the operator still does on
+ * pages that still exist.
+ */
 export const PIPELINE_REVIEW_HABIT_STORAGE_KEY = 'memoire.pipelineReviewHabit.v1';
 export const PIPELINE_REVIEW_HABIT_UPDATED_EVENT = 'memoire:pipeline-review-habit-updated';
 
@@ -5,9 +21,7 @@ export type PipelineReviewHabitStepKey =
   | 'refreshedPipelineAt'
   | 'capturedUpdatesAt'
   | 'reviewedWeakDealsAt'
-  | 'checkedGapsAt'
-  | 'generatedBriefAt'
-  | 'copiedManagerSummaryAt';
+  | 'checkedGapsAt';
 
 export type PipelineReviewHabitState = {
   currentWeekId: string;
@@ -15,8 +29,6 @@ export type PipelineReviewHabitState = {
   capturedUpdatesAt?: string;
   reviewedWeakDealsAt?: string;
   checkedGapsAt?: string;
-  generatedBriefAt?: string;
-  copiedManagerSummaryAt?: string;
   completedAt?: string;
   lastUpdatedAt: string;
 };
@@ -76,20 +88,6 @@ const STEP_DEFINITIONS: Array<Omit<PipelineReviewHabitStep, 'done' | 'completedA
     href: '/app/opportunities',
     cta: 'Check Gaps',
   },
-  {
-    id: 'generatedBriefAt',
-    label: 'Generate Defense Brief',
-    description: 'Create or open a Pipeline Defense brief for review mode.',
-    href: '/app/pipeline-defense',
-    cta: 'Open Brief',
-  },
-  {
-    id: 'copiedManagerSummaryAt',
-    label: 'Copy Manager Summary',
-    description: 'Copy the share-ready manager summary before pipeline review.',
-    href: '/app/pipeline-defense',
-    cta: 'Copy Summary',
-  },
 ];
 
 const toDateInputValue = (date: Date) => {
@@ -127,8 +125,6 @@ const normalizeState = (state?: Partial<PipelineReviewHabitState> | null): Pipel
     capturedUpdatesAt: state.capturedUpdatesAt,
     reviewedWeakDealsAt: state.reviewedWeakDealsAt,
     checkedGapsAt: state.checkedGapsAt,
-    generatedBriefAt: state.generatedBriefAt,
-    copiedManagerSummaryAt: state.copiedManagerSummaryAt,
     completedAt: state.completedAt,
     lastUpdatedAt: state.lastUpdatedAt ?? now.toISOString(),
   };
@@ -174,7 +170,7 @@ export const buildPipelineReviewHabitProgress = (
       ? 'Not started'
       : completedCount >= totalCount
         ? 'Review ready'
-        : completedCount >= totalCount - 2
+        : completedCount >= totalCount - 1
           ? 'Almost ready'
           : 'In progress';
 

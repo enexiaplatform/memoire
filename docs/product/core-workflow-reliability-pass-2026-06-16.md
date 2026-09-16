@@ -2,6 +2,13 @@
 
 Date: 2026-06-16
 
+> **Superseded 2026-09-16: the Review Pack no longer exists.** The return path
+> hardened below was for an artifact nobody ever saved - `review_packs` held zero
+> rows in every workspace - and it was removed with the Pipeline Defense brief.
+> What a week leaves behind now is the confirmed commitment snapshot, and its
+> demo/live isolation is pinned by `scripts/verify-data-isolation-contract.mjs`.
+> Kept as written; read it as history.
+
 Roadmap session: Session 8 - Core Workflow Reliability Pass
 
 ## Decision

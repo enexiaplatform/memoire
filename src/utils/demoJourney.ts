@@ -4,7 +4,7 @@ export const DEMO_JOURNEY_PROGRESS_KEY = 'memoire.demoJourney.progress';
 export const DEMO_JOURNEY_COMPLETED_KEY = 'memoire.demoJourney.completed';
 export const DEMO_JOURNEY_UPDATED_EVENT = 'memoire:demo-journey-updated';
 
-export type DemoJourneyStepId = 'review-today' | 'paste-evidence' | 'open-defense' | 'finish-review-pack';
+export type DemoJourneyStepId = 'review-today' | 'paste-evidence' | 'record-the-week' | 'finish-review';
 
 /**
  * The demo's route to its point, in one line.
@@ -16,7 +16,18 @@ export type DemoJourneyStepId = 'review-today' | 'paste-evidence' | 'open-defens
  * here, beside the steps it describes, and it is rendered on the demo card so
  * it is a promise to a reader rather than a string kept alive for a contract.
  */
-export const DEMO_JOURNEY_PATH_SUMMARY = 'Today - Capture - Pipeline Defense - Review Pack';
+export const DEMO_JOURNEY_PATH_SUMMARY = 'Today - Capture - Plan - Review';
+
+/**
+ * The last two steps used to be "Open Pipeline Defense" and "Copy the Manager
+ * Summary", and both of them stopped being reachable when that surface was
+ * removed on 2026-09-16. A demo that cannot finish is worse than a shorter one:
+ * the card would have sat at two of four for the length of the sandbox and
+ * `demo_completed` would never have fired again. The four steps now walk the
+ * loop the product actually runs - see the day, record what was said, promise
+ * the week, close it - and each of them is completed by doing the thing, on a
+ * page that exists.
+ */
 
 export type DemoJourneyCompletion = {
   completedAt: string;
@@ -52,18 +63,18 @@ export const demoJourneySteps: DemoJourneyStep[] = [
     cta: 'Paste email/thread',
   },
   {
-    id: 'open-defense',
-    title: 'Open Pipeline Defense',
-    description: 'Review defend, rescue, downgrade, missing evidence, MEDDIC gaps, and outcome learning risk signals.',
-    href: '/app/pipeline-defense',
-    cta: 'Open Pipeline Defense',
+    id: 'record-the-week',
+    title: 'Finish something on the Plan',
+    description: "Tick a promise on this week's board and record what actually happened - who you spoke to and what was said.",
+    href: '/app/timeline',
+    cta: 'Open the Plan',
   },
   {
-    id: 'finish-review-pack',
-    title: 'Take the review output',
-    description: 'Copy the Manager Summary or save the Review Pack to complete the demo aha moment.',
-    href: '/app/pipeline-defense#manager-summary',
-    cta: 'Copy or save output',
+    id: 'finish-review',
+    title: 'Close the week',
+    description: 'Confirm what you commit to next week. That is the review: the week has an owner and a written answer.',
+    href: '/app/reviews',
+    cta: 'Open Review',
   },
 ];
 
@@ -105,7 +116,7 @@ export function markDemoJourneyStepComplete(stepId: DemoJourneyStepId, reason: s
   const completedStepIds = current.completedStepIds.includes(stepId)
     ? current.completedStepIds
     : [...current.completedStepIds, stepId];
-  const completion = stepId === 'finish-review-pack'
+  const completion = stepId === 'finish-review'
     ? current.completion || { completedAt: new Date().toISOString(), reason }
     : current.completion;
   const progress = { completedStepIds, completion };
@@ -128,7 +139,7 @@ export function markDemoJourneyStepComplete(stepId: DemoJourneyStepId, reason: s
 }
 
 export function markDemoJourneyComplete(reason: string) {
-  return markDemoJourneyStepComplete('finish-review-pack', reason).completion;
+  return markDemoJourneyStepComplete('finish-review', reason).completion;
 }
 
 function getLegacyDemoJourneyCompletion(): DemoJourneyCompletion | null {

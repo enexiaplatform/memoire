@@ -47,7 +47,7 @@ export const validationInterviewScript = [
   'How do you currently prepare for pipeline review?',
   'What do you usually forget before review?',
   'Which deal information is hardest to keep updated?',
-  'Would a Pipeline Defense Brief save you time?',
+  'Would a MEDDIC score on every deal save you time before review?',
   'Would you import a CRM/Excel pipeline into this?',
   'Would you capture updates after meetings?',
   'What would make this worth paying for?',
@@ -166,7 +166,7 @@ function getRecommendedNextBet(records: DemoFeedbackRecord[], summary: DemoFeedb
   const unclearPositioning = summary.byUnderstanding.No || 0;
 
   if (pipelineValue > 0 && /(share|link|manager|send|export)/.test(haystack)) {
-    return 'Prioritize shareable Pipeline Defense links or cleaner manager-ready sharing.';
+    return 'Prioritize a cleaner manager-ready answer on the deal itself.';
   }
   if (/(duplicate|double entry|manual|crm|salesforce|hubspot|sync|automation)/.test(haystack)) {
     return 'Prioritize CRM sync or capture automation only after validating repeated duplicate-entry pain.';

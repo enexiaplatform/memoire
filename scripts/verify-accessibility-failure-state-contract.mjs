@@ -222,7 +222,6 @@ for (const marker of [
   'fetch(endpoint',
   '.catch(() => undefined)',
   'cloud_json_sync_failed',
-  'pipeline_defense_cloud_sync_failed',
   'client_render_error',
   // A write this browser refused: the record did not land locally either.
   'local_write_failed',
@@ -256,15 +255,6 @@ for (const marker of [
   "severity: 'error'",
 ]) {
   requireIncludes(cloudJsonStore, marker, `cloud JSON failure marker missing: ${marker}`);
-}
-
-const pipelineCloudStore = read('src/services/pipelineDefenseCloudStore.ts');
-for (const marker of [
-  'reportClientOperationalEvent({',
-  "eventName: 'pipeline_defense_cloud_sync_failed'",
-  "severity: 'error'",
-]) {
-  requireIncludes(pipelineCloudStore, marker, `pipeline cloud failure marker missing: ${marker}`);
 }
 
 for (const [file, marker] of [

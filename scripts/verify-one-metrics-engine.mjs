@@ -105,7 +105,7 @@ const deal = (patch = {}) => ({
   // Renamed 2026-08-03 when the per-deal mapper grew a plural form that
   // computes the workspace-wide playbook once instead of once per deal. The
   // requirement is unchanged: one mapper, shared with the brief generator.
-  assert.ok(live.includes('mapOpportunitiesToPipelineDefenseDeals'), 'live health must use the same mapper the brief generator uses');
+  assert.ok(live.includes('mapOpportunitiesToPipelineDefenseDeals'), 'live health must use the one mapper the deal record also reads');
   assert.ok(live.includes("opportunity.status === 'Active'"), 'only active deals are defensible');
 
   const dashboard = readFileSync('src/features/dashboard/DashboardPage.tsx', 'utf8');

@@ -1,63 +1,30 @@
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
-import {
-  createBriefFromLiveDeals,
-  createEmptyPipelineDefenseBriefStore,
-  createPipelineDefenseBrief,
-  deletePipelineDefenseBrief,
-  loadPipelineDefenseBriefStore,
-} from '../src/utils/pipelineDefenseStorage.ts';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 
 // The first real user opened Pipeline Defense on a workspace of 122 live deals
 // and was shown the hard-coded starter brief (Orion Pharma, Northstar Foods).
-// These assertions exist so that can never happen again.
+// The brief itself was removed on 2026-09-16 - no workspace had ever saved one
+// - and with it went the store, the starter data and every path that could
+// inject a fabricated deal into a live book. What survives here is the reason
+// those assertions existed: a sample record must never appear in a workspace
+// that did not ask for the demo, and every store a demo writes must be
+// sweepable.
 
-const deal = (patch = {}) => ({
-  id: 'd1', account: 'VNVC', opportunity: 'Cold chain expansion', pipelineContext: '',
-  dealTruth: '', riskType: [], evidence: [], missingContext: [],
-  objectionDebt: { objection: '', evidence: '', requiredAction: '', owner: '', status: 'Open' },
-  forecastEvidenceCategory: 'Weak but recoverable', recommendedAction: '',
-  pipelineReviewAnswer: '', decisionRecommendation: 'Monitor', ...patch,
-});
-
-// 1. No saved store => an EMPTY store. Never a fabricated sample brief.
-{
-  const store = loadPipelineDefenseBriefStore();
-  assert.deepEqual(store, { activeBriefId: '', briefs: [] }, 'an unsaved workspace has no brief, not a sample one');
-  assert.equal(store.briefs.some((brief) => brief.isSample), false);
+// 1-5. The brief store is gone rather than guarded. These files held the only
+// code that could fabricate a deal, so their absence is the guarantee.
+for (const gone of [
+  'src/utils/pipelineDefenseStorage.ts',
+  'src/services/pipelineDefenseCloudStore.ts',
+  'src/utils/reviewPacks.ts',
+  'src/features/pipeline/PipelineReviewDefenseBriefPage.tsx',
+]) {
+  assert.equal(existsSync(gone), false, `${gone} is back - a brief store must re-prove it cannot seed sample deals`);
 }
-
-// 2. A new brief starts empty - it must not default to the starter deals.
-{
-  const brief = createPipelineDefenseBrief({ title: 'New' });
-  assert.deepEqual(brief.deals, [], 'a new brief has no deals until the seller adds them');
-  assert.notEqual(brief.isSample, true);
-}
-
-// 3. Deleting the last brief leaves nothing - it must not resurrect a sample.
-{
-  const brief = createPipelineDefenseBrief({ title: 'Only', deals: [deal()] });
-  const store = { activeBriefId: brief.id, briefs: [brief] };
-  const afterDelete = deletePipelineDefenseBrief(store, brief.id);
-  assert.deepEqual(afterDelete, { activeBriefId: '', briefs: [] }, 'deleting the last brief must not create a sample');
-}
-
-// 4. The live-deal path produces the seller's own brief, never a sample.
-{
-  const store = createBriefFromLiveDeals([deal()], { title: 'From live' });
-  assert.equal(store.briefs.length, 1);
-  assert.equal(store.briefs[0].deals.length, 1);
-  assert.equal(store.briefs[0].deals[0].account, 'VNVC');
-  assert.equal(store.briefs[0].source, 'user');
-  assert.notEqual(store.briefs[0].isSample, true);
-  assert.equal(store.activeBriefId, store.briefs[0].id);
-}
-
-// 5. createEmptyPipelineDefenseBriefStore is genuinely empty.
-assert.deepEqual(createEmptyPipelineDefenseBriefStore(), { activeBriefId: '', briefs: [] });
 
 // 6. Structural guarantee: the starter sample deals no longer exist in the app,
-// so no code path can inject them by accident.
+// so no code path can inject them by accident. The data module survives as the
+// vocabulary the risk engine still speaks - the four evidence categories and
+// the five decisions - and must stay free of any named company.
 const dataModule = readFileSync('src/data/pipelineDefenseBrief.ts', 'utf8');
 for (const gone of ['createInitialPipelineDefenseDeals', 'pipelineDefenseDeals', 'initialPipelineDefenseBrief', 'recommendedPipelineActions']) {
   assert.equal(dataModule.includes(`export const ${gone}`) || dataModule.includes(`export function ${gone}`), false,
@@ -65,15 +32,16 @@ for (const gone of ['createInitialPipelineDefenseDeals', 'pipelineDefenseDeals',
 }
 assert.equal(/account: 'Orion Pharma'/.test(dataModule), false, 'sample accounts must not live in the shipped data module');
 
-const storage = readFileSync('src/utils/pipelineDefenseStorage.ts', 'utf8');
-assert.equal(storage.includes('createDefaultPipelineDefenseBriefStore'), false, 'the sample-store factory must stay removed');
-
-// 7. Pipeline Defense offers the live-deal path when there is no brief.
-const page = readFileSync('src/features/pipeline/PipelineReviewDefenseBriefPage.tsx', 'utf8');
-for (const marker of ['{!activeBrief && (', 'No brief yet', 'generateBriefFromLiveDeals', 'Generate from your ', 'createBriefFromLiveDeals']) {
-  assert.ok(page.includes(marker), `Pipeline Defense missing no-brief path marker: ${marker}`);
+// 7. The demo seeds no brief either: the sandbox shows the four decision states
+// on the deals themselves, which is what the brief was restating.
+{
+  const sample = readFileSync('src/utils/sampleData.ts', 'utf8');
+  assert.equal(
+    sample.includes('generatePipelineDefenseBriefFromOpportunities'),
+    false,
+    'the demo must not seed a brief for a surface that no longer exists',
+  );
 }
-assert.equal(page.includes('createInitialPipelineDefenseDeals'), false, 'Pipeline Defense must not seed sample deals anywhere');
 
 // 8. Every store a demo can write must be cleared when the demo is exited.
 //    Plan items were the gap: ticking a derived item during a demo stores a

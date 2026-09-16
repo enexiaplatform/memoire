@@ -45,6 +45,14 @@ export const pipelineReviewPains = [
   'Other',
 ] as const;
 
+/**
+ * The vocabulary of the requests already collected, not a menu of what the
+ * product sells today. Two of these - the Defense Brief and Review Pack History
+ * - describe a surface removed on 2026-09-16, and they stay because every
+ * stored request was written in these words: renaming them would silently
+ * re-score history against labels nobody chose. Nothing writes a new record
+ * with them; the form that did became a contact page.
+ */
 export const interestedWorkflows = [
   'Pipeline Defense Brief',
   'CSV import/refresh',

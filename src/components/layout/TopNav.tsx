@@ -7,23 +7,17 @@ import { GlobalSearch } from './GlobalSearch';
 import { useDemoWorkspaceMode } from '../../hooks/useDemoWorkspaceMode';
 import { DataModePill } from '../common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
-import { reportWorkspaceSyncError, useWorkspaceSyncStatus } from '../../services/workspaceSyncStatus';
-import { loadReviewPacksForUser } from '../../utils/reviewPacks';
+import { useWorkspaceSyncStatus } from '../../services/workspaceSyncStatus';
 import { useTopBarShell } from './topBarContext';
 
 export function TopNav({ onOpenMenu }: { onOpenMenu: () => void }) {
-  const { user, loading, isAuthenticated } = useAuthContext();
+  const { loading, isAuthenticated } = useAuthContext();
   const demoActive = useDemoWorkspaceMode();
   const syncStatus = useWorkspaceSyncStatus();
   const [searchOpen, setSearchOpen] = useState(false);
   const { leadRef, actionsRef, state: page } = useTopBarShell();
   // Capture is the page you are on; a button to open it again is noise there.
   const onCapture = useLocation().pathname.startsWith('/app/capture');
-
-  useEffect(() => {
-    if (!user || demoActive) return;
-    void loadReviewPacksForUser(user.id).catch(() => reportWorkspaceSyncError());
-  }, [demoActive, user]);
 
   // Cmd/Ctrl+K from anywhere in the app. Registered on the bar rather than in
   // each page, because the whole argument for search not being a destination is

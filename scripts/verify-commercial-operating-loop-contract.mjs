@@ -192,15 +192,18 @@ for (const marker of [
   requireIncludes(salesReviewsPage, marker, `Weekly Brief page missing marker: ${marker}`);
 }
 
-const pipelineDefensePage = read('src/features/pipeline/PipelineReviewDefenseBriefPage.tsx');
+// The handoff out of the review and into the money loop used to sit on the
+// Pipeline Defense brief, under "After defense, move the money loop." That page
+// went on 2026-09-16 and the handoff went to Review, which is the surface that
+// now closes the week - so the loop still has a visible exit into the quote and
+// the money, and it is on the page the operator is already standing on.
 for (const marker of [
-  'Commercial handoff',
-  'After defense, move the money loop.',
-  '/app/reviews',
+  'This review needs',
+  '/app/opportunities',
   '/app/quotes',
   '/app/revenue',
 ]) {
-  requireIncludes(pipelineDefensePage, marker, `Pipeline Defense commercial handoff missing marker: ${marker}`);
+  requireIncludes(salesReviewsPage, marker, `Review commercial handoff missing marker: ${marker}`);
 }
 
 // The account workspace still carries the commercial loop and still keeps every

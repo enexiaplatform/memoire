@@ -50,7 +50,6 @@ function walk(dir) {
 const FABRICATION_ALLOWED = [
   'features/v31/localStore.ts',
   'utils/sampleData.ts',
-  'utils/pipelineDefenseStorage.ts',
 ];
 
 /** Strips comments: a comment naming the bug it fixed is not a suggestion. */

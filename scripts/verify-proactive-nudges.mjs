@@ -454,8 +454,15 @@ for (const marker of [
   assert.ok(todayUi.includes(marker), `Today proactive nudge UI missing ${marker}`);
 }
 
-const pipelineUi = readFileSync('src/features/pipeline/PipelineReviewDefenseBriefPage.tsx', 'utf8');
-assert.ok(pipelineUi.includes('Proactive nudge'), 'Pipeline Defense should show per-opportunity proactive nudges');
+// The per-deal nudge used to be read on the Pipeline Defense brief. That page
+// was removed on 2026-09-16, so the deal's own record is the surface that has
+// to carry its risk line - the nudge must not be left with only Today to
+// surface it, or opening a deal would say nothing about why it is at risk.
+const opportunityUi = readFileSync('src/features/opportunities/OpportunitiesPage.tsx', 'utf8');
+assert.ok(
+  opportunityUi.includes('analyzePipelineDefenseDeal(deal)'),
+  'the deal record must read the same risk engine the nudges do',
+);
 
 const sidebar = readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
 // Navigation is owned by src/config/featureRegistry.ts and enforced by

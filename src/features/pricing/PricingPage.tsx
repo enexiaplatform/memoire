@@ -66,7 +66,7 @@ const paidPlans: Plan[] = [
       'Cost Analysis: landed cost and margin before you quote',
       'Cash Collection: aging from the payment terms on the quote',
       'Business Vault: your accounts, people and deals as one map',
-      'Pipeline Defense Briefs and shareable review packs',
+      'MEDDIC scoring on every deal, from what you have already recorded',
       'Daily digest email',
     ],
     note: 'Cancel anytime - you keep everything until the period you already paid for runs out.',

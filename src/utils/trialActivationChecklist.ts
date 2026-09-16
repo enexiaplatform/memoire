@@ -1,4 +1,3 @@
-import type { PipelineDefenseBrief } from './pipelineDefenseStorage';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { SalesAssetRecord } from '../services/salesAssetStore';
@@ -10,9 +9,7 @@ export type TrialActivationChecklistItemId =
   | 'load-demo-or-import-csv'
   | 'review-opportunity'
   | 'capture-update'
-  | 'import-starter-asset-pack'
-  | 'generate-defense-brief'
-  | 'copy-manager-summary';
+  | 'import-starter-asset-pack';
 
 export type TrialActivationChecklistState = {
   manualCompleted: Partial<Record<TrialActivationChecklistItemId, boolean>>;
@@ -91,14 +88,12 @@ export function buildTrialActivationChecklist(input: {
   activities: SalesActivityRecord[];
   opportunities: CrmLiteOpportunity[];
   assets: SalesAssetRecord[];
-  briefs: PipelineDefenseBrief[];
   sampleDataActive: boolean;
   state?: TrialActivationChecklistState;
 }): TrialActivationChecklistItem[] {
   const state = input.state || loadTrialActivationChecklistState();
   const manual = state.manualCompleted;
   const hasCsvImport = input.opportunities.some(isCsvImportedOpportunity);
-  const hasUserBrief = input.briefs.some((brief) => !brief.isSample && brief.deals.length > 0);
 
   return [
     {
@@ -125,22 +120,6 @@ export function buildTrialActivationChecklist(input: {
       cta: 'Open Today',
       done: Boolean(manual['review-opportunity'] || input.opportunities.length > 0),
     },
-    {
-      id: 'generate-defense-brief',
-      title: 'Prepare Pipeline Defense Brief',
-      description: 'Open the review artifact and check defend, rescue, downgrade, MEDDIC, and missing evidence.',
-      href: '/app/pipeline-defense',
-      cta: 'Open Pipeline Defense',
-      done: Boolean(manual['generate-defense-brief'] || hasUserBrief),
-    },
-    {
-      id: 'copy-manager-summary',
-      title: 'Copy manager-ready answer',
-      description: 'Copy a concise manager brief with evidence, missing context, next action, and due date.',
-      href: '/app/pipeline-defense',
-      cta: 'Open Brief',
-      done: Boolean(manual['copy-manager-summary']),
-    },
   ];
 }
 
@@ -151,8 +130,6 @@ function normalizeManualCompleted(value: unknown): Partial<Record<TrialActivatio
     'review-opportunity',
     'capture-update',
     'import-starter-asset-pack',
-    'generate-defense-brief',
-    'copy-manager-summary',
   ];
   return allowed.reduce<Partial<Record<TrialActivationChecklistItemId, boolean>>>((acc, id) => {
     if ((value as Partial<Record<TrialActivationChecklistItemId, boolean>>)[id] === true) acc[id] = true;

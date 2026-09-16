@@ -462,16 +462,17 @@ export const featureRegistry: FeatureRecord[] = [
   },
   {
     id: 'pipeline-defense',
-    label: 'Pipeline Defense',
-    status: 'embedded',
-    ownerSurface: 'review',
+    label: 'Pipeline Defense brief',
+    status: 'removed',
+    ownerSurface: 'none',
     route: '/app/pipeline-defense',
-    routeBehavior: 'compatibility',
+    routeBehavior: 'redirect',
     navVisible: false,
-    analytics: 'retained',
-    dataRetention: 'Briefs and review packs preserved; shared brief links keep working.',
+    analytics: 'deprecated',
+    dataRetention:
+      "The brief was a document you wrote about deals you had already recorded. Nothing it held was a fact the records did not already hold, so nothing is lost by its going: the rules that read those records survive as the engine behind Today's moves and the deal's own risk lines.",
     killOrActivationCondition:
-      'Stays an artifact produced by Review. Never a separate mental model.',
+      'Removed 2026-09-16. Not deprecated on taste: no workspace had ever saved a brief or a review pack, and the route had not been opened since 2026-07-27. A surface nobody used was asking the operator to restate, in prose, what the deal record already said - and then to keep the prose current. The route forwards to Review.',
   },
   {
     id: 'plan',

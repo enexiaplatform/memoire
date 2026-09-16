@@ -19,6 +19,9 @@ import { TodayReferenceSections } from '../dashboard/DashboardPage';
 import { BusinessLensPage } from '../business/BusinessLensPage';
 import { ActivityPage } from '../activity/ActivityPage';
 import { OperatorProfileSection } from './OperatorProfileSection';
+import { buildForecastCalibration, buildProbabilityCalibration } from '../../utils/forecastCalibration';
+import { ForecastCalibrationPanel } from './ForecastCalibrationPanel';
+import { ProbabilityCalibrationPanel } from './ProbabilityCalibrationPanel';
 
 // Chart palette: fixed hex values (not Tailwind classes) so the SVGs survive
 // serialization to PNG for the presentation export.
@@ -99,6 +102,20 @@ export function ReviewAnalyticsSection() {
     window.addEventListener(PLAN_ITEMS_UPDATED_EVENT, onUpdate);
     return () => { active = false; window.removeEventListener(PLAN_ITEMS_UPDATED_EVENT, onUpdate); };
   }, [dataUserId, sampleDataActive]);
+
+  /*
+   * How well this seller's own forecasts have held up: whether the evidence
+   * label they gave a deal matched how it closed, and whether the probability
+   * did. Both lived on the Pipeline Defense page until it was removed on
+   * 2026-09-15; a record of your own calibration is a weekly-learning question,
+   * so it lives here with the rest of what the book teaches.
+   */
+  const forecastCalibration = useMemo(() => (workspace
+    ? buildForecastCalibration({ outcomes: workspace.opportunityOutcomes, opportunities: workspace.opportunities })
+    : null), [workspace]);
+  const probabilityCalibration = useMemo(() => (workspace
+    ? buildProbabilityCalibration({ outcomes: workspace.opportunityOutcomes })
+    : null), [workspace]);
 
   const model = useMemo(
     () => (workspace ? buildMasterDashboard({ ...workspace, planRecords }) : null),
@@ -246,6 +263,8 @@ export function ReviewAnalyticsSection() {
               person: the same 40% win rate reads differently once you know it
               has been falling for a month. */}
           {workspace && <OperatorProfileSection workspace={workspace} planRecords={planRecords} />}
+          {forecastCalibration && <ForecastCalibrationPanel calibration={forecastCalibration} />}
+          {probabilityCalibration && <ProbabilityCalibrationPanel calibration={probabilityCalibration} />}
 
           <AnalyticsBand
             label="Detail"

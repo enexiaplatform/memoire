@@ -142,14 +142,19 @@ function makeOpportunity(patch = {}) {
   assert.ok(calibration.headline.includes('you win 100%'), 'healthy history must be affirmed');
 }
 
-// 6. UI contract: the panel ships on the Pipeline Defense page with honesty markers.
-const panel = readFileSync(new URL('../src/features/pipeline/ForecastCalibrationPanel.tsx', import.meta.url), 'utf8');
+// 6. UI contract: the panel ships with its honesty markers, on Review.
+// It stood on the Pipeline Defense brief until that page was removed on
+// 2026-09-16. What it says is history about how this seller's own ratings turn
+// out, which is a weekly reading, so Review's Learning & Analytics tab is where
+// it went - and it must stay attached to a surface, not become a module nobody
+// renders.
+const panel = readFileSync(new URL('../src/features/reviews/ForecastCalibrationPanel.tsx', import.meta.url), 'utf8');
 for (const marker of ['Personal forecast calibration', 'your history, not a prediction', 'Unrated', 'totalClosed === 0']) {
   assert.ok(panel.includes(marker), `ForecastCalibrationPanel missing marker: ${marker}`);
 }
-const page = readFileSync(new URL('../src/features/pipeline/PipelineReviewDefenseBriefPage.tsx', import.meta.url), 'utf8');
+const page = readFileSync(new URL('../src/features/reviews/ReviewAnalyticsSection.tsx', import.meta.url), 'utf8');
 for (const marker of ['ForecastCalibrationPanel', 'buildForecastCalibration']) {
-  assert.ok(page.includes(marker), `PipelineReviewDefenseBriefPage missing marker: ${marker}`);
+  assert.ok(page.includes(marker), `ReviewAnalyticsSection missing marker: ${marker}`);
 }
 
 console.log('Forecast calibration contract verified.');
