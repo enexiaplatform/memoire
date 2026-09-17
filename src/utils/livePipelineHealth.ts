@@ -1,3 +1,4 @@
+import { isLeadStage } from './leadIdentity.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
@@ -36,7 +37,7 @@ export type LivePipelineHealthInput = {
  * Derived, never stored.
  */
 export function buildLivePipelineHealth(input: LivePipelineHealthInput) {
-  const activeOpportunities = input.opportunities.filter((opportunity) => opportunity.status === 'Active');
+  const activeOpportunities = input.opportunities.filter((opportunity) => opportunity.status === 'Active' && !isLeadStage(opportunity.stage));
   const deals = mapOpportunitiesToPipelineDefenseDeals(activeOpportunities, {
     objections: input.objections,
     stakeholders: input.stakeholders,

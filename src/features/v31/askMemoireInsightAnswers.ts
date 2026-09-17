@@ -1,3 +1,5 @@
+import { isLeadRecord, disqualifiedLeadIds, selectLeads, selectQualifiedPipeline, type OutcomeStageFact } from '../../utils/leadIdentity.ts';
+import type { CommandDefinition } from '../../utils/commandRegistry.ts';
 import type { AskMemoireAnswer } from '../../types/v31';
 import type { SalesActivityRecord } from '../../services/salesActivityStore.ts';
 import { followUpImpactStatusLabel, type FollowUpImpactSummary } from '../../utils/followUpImpact.ts';
@@ -880,8 +882,73 @@ export function findRecords(
   };
 }
 
-export function answerFromRecordFind(find: RecordFind): AskMemoireAnswer {
-  const activeOf = (deals: CrmLiteOpportunity[]) => deals.filter((deal) => deal.status === 'Active');
+/** The Ask questions that are really "take me to the lead queue / the pipeline". */
+export function isLeadNavigationCommand(command: Pick<CommandDefinition, 'id'>): boolean {
+  return command.id === 'show-leads' || command.id === 'qualified-opportunities' || command.id.startsWith('leads-');
+}
+
+/**
+ * "Show my leads" asked on Ask.
+ *
+ * The answer is the one number this page can state exactly - how many open
+ * leads and open qualified deals there are, read with the same partition both
+ * destinations use - and a link to the surface that owns the list. The count
+ * inside a queue state is not restated: it depends on the plan and the touch
+ * history the lead queue reads, and a second count here could disagree with the
+ * page it links to.
+ */
+export function answerFromLeadCommand(
+  command: Pick<CommandDefinition, 'id' | 'label' | 'detail' | 'to'>,
+  workspace: { opportunities: CrmLiteOpportunity[]; opportunityOutcomes: OutcomeStageFact[] } | null,
+): AskMemoireAnswer {
+  const qualifiedView = command.id === 'qualified-opportunities';
+  const place = command.detail.split('·').slice(1).join('·').trim();
+  const cta = {
+    label: qualifiedView ? 'Open opportunities' : 'Open Leads',
+    href: command.to,
+    note: place ? `Filtered to ${place}.` : 'The list, with every record on it.',
+  };
+  if (!workspace) {
+    return {
+      answer: `${command.label}: ${command.detail}.`,
+      contextUsed: [qualifiedView ? 'Opportunities' : 'Leads'],
+      missingContext: [],
+      suggestedQuestions: [],
+      cards: [{ kind: 'insight', title: command.label, fields: [], ctas: [cta] }],
+    };
+  }
+  const disqualified = disqualifiedLeadIds(workspace.opportunityOutcomes);
+  const openLeads = selectLeads(workspace.opportunities, disqualified).filter((record) => record.status === 'Active');
+  const openDeals = selectQualifiedPipeline(workspace.opportunities, disqualified).filter((record) => record.status === 'Active');
+  const leadsLine = `${openLeads.length} open ${openLeads.length === 1 ? 'lead' : 'leads'}`;
+  const dealsLine = `${openDeals.length} open qualified ${openDeals.length === 1 ? 'opportunity' : 'opportunities'}`;
+  const answer = qualifiedView
+    ? `${dealsLine}. ${openLeads.length > 0 ? `${leadsLine} ${openLeads.length === 1 ? 'is' : 'are'} on Leads until qualified, and not counted here.` : 'No lead is waiting to be qualified.'}`
+    : openLeads.length === 0
+      ? 'No open leads.'
+      : `${leadsLine}${place && command.id !== 'show-leads' ? `. Leads opens filtered to ${place}.` : '.'}`;
+  return {
+    answer,
+    contextUsed: qualifiedView ? ['Opportunities', 'Leads'] : ['Leads'],
+    missingContext: [],
+    suggestedQuestions: [],
+    cards: [{
+      kind: 'insight',
+      title: command.label,
+      fields: [
+        { label: 'Open leads', value: String(openLeads.length) },
+        { label: 'Open qualified opportunities', value: String(openDeals.length) },
+        { label: 'Basis', value: 'A lead is an opportunity at the Lead stage, or one closed out of it. Qualifying moves it to Opportunities.' },
+      ],
+      ctas: [cta],
+    }],
+  };
+}
+
+export function answerFromRecordFind(find: RecordFind, outcomes: OutcomeStageFact[] = []): AskMemoireAnswer {
+  const disqualified = disqualifiedLeadIds(outcomes);
+  const leadOf = (record: CrmLiteOpportunity) => isLeadRecord(record, disqualified);
+  const activeOf = (deals: CrmLiteOpportunity[]) => deals.filter((deal) => deal.status === 'Active' && !leadOf(deal));
   const dealLine = (deal: CrmLiteOpportunity) => {
     const value = typeof deal.estimatedValue === 'number' && deal.estimatedValue > 0 && deal.currency
       ? ` - ${formatCurrencyAmount(deal.estimatedValue, deal.currency)}`
@@ -892,7 +959,7 @@ export function answerFromRecordFind(find: RecordFind): AskMemoireAnswer {
     // On a won deal the stage and the status are both "Won", and printing both
     // gave "(Won, Won)" - the same tic as "(Base: EUR)" when the reporting
     // currency already is EUR. A label repeated is not a label confirmed.
-    const state = deal.status !== 'Active' && deal.status !== deal.stage
+    const state = leadOf(deal) ? (deal.status === 'Lost' ? 'Disqualified lead' : 'Lead') : deal.status !== 'Active' && deal.status !== deal.stage
       ? `${deal.stage}, ${deal.status}`
       : deal.stage;
     return `${deal.opportunityName || 'Untitled deal'} (${state})${value}${next}`;
@@ -902,7 +969,7 @@ export function answerFromRecordFind(find: RecordFind): AskMemoireAnswer {
   if (find.accounts.length === 1 && find.deals.length === 0) {
     const open = activeOf(account.deals);
     return {
-      answer: `${account.name}: ${account.deals.length} ${account.deals.length === 1 ? 'deal' : 'deals'} on record, ${open.length} still open.`,
+      answer: `${account.name}: ${account.deals.length} ${account.deals.length === 1 ? 'commercial record' : 'commercial records'} on record, ${open.length} open qualified opportunities, ${account.deals.filter(leadOf).length} leads.`,
       contextUsed: [`Account: ${account.name}`, 'Opportunities'],
       missingContext: open.some((deal) => !deal.nextAction) ? ['A next action on every open deal'] : [],
       suggestedNextAction: open[0]?.nextAction || `Book the next step with ${account.name}.`,
@@ -911,9 +978,10 @@ export function answerFromRecordFind(find: RecordFind): AskMemoireAnswer {
         kind: 'insight',
         title: `Found: ${account.name}`,
         fields: [
-          { label: 'Open deals', value: open.length > 0 ? open.map(dealLine) : 'None open right now.' },
-          ...(account.deals.length > open.length
-            ? [{ label: 'Closed', value: account.deals.filter((deal) => deal.status !== 'Active').map(dealLine) }]
+          { label: 'Open qualified opportunities', value: open.length > 0 ? open.map(dealLine) : 'None open right now.' },
+          ...(account.deals.some(leadOf) ? [{ label: 'Leads', value: account.deals.filter(leadOf).map(dealLine) }] : []),
+          ...(account.deals.some((deal) => deal.status !== 'Active' && !leadOf(deal))
+            ? [{ label: 'Closed', value: account.deals.filter((deal) => deal.status !== 'Active' && !leadOf(deal)).map(dealLine) }]
             : []),
         ],
         ctas: [{ label: 'Open Accounts', href: '/app/accounts', note: 'The full record lives on the Accounts page.' }],
@@ -925,7 +993,7 @@ export function answerFromRecordFind(find: RecordFind): AskMemoireAnswer {
   const unique = [...new Map(hits.map((deal) => [deal.id, deal])).values()];
   const open = activeOf(unique);
   return {
-    answer: `"${find.query}" matches ${unique.length} ${unique.length === 1 ? 'record' : 'records'}${find.accounts.length > 1 ? ` across ${find.accounts.length} customers` : ''}, ${open.length} still open.`,
+    answer: `"${find.query}" matches ${unique.length} ${unique.length === 1 ? 'record' : 'records'}${find.accounts.length > 1 ? ` across ${find.accounts.length} customers` : ''}, ${open.length} open qualified opportunities, ${unique.filter(leadOf).length} leads.`,
     contextUsed: ['Opportunities', 'Accounts'],
     missingContext: [],
     suggestedNextAction: open[0]?.nextAction || 'Pick one record and book its next step.',
@@ -934,13 +1002,17 @@ export function answerFromRecordFind(find: RecordFind): AskMemoireAnswer {
       kind: 'insight',
       title: `Found: ${find.query}`,
       fields: [
-        { label: 'Open', value: open.length > 0 ? open.slice(0, 6).map(dealLine) : 'None open right now.' },
-        ...(unique.length > open.length
-          ? [{ label: 'Closed', value: unique.filter((deal) => deal.status !== 'Active').slice(0, 6).map(dealLine) }]
+        { label: 'Open qualified opportunities', value: open.length > 0 ? open.slice(0, 6).map(dealLine) : 'None open right now.' },
+        ...(unique.some(leadOf) ? [{ label: 'Leads', value: unique.filter(leadOf).slice(0, 6).map(dealLine) }] : []),
+        ...(unique.some((deal) => deal.status !== 'Active' && !leadOf(deal))
+          ? [{ label: 'Closed', value: unique.filter((deal) => deal.status !== 'Active' && !leadOf(deal)).slice(0, 6).map(dealLine) }]
           : []),
         { label: 'Basis', value: 'Names are matched after folding accents and case, so a differently written name still finds its record.' },
       ],
-      ctas: [{ label: 'Open opportunities', href: '/app/opportunities', note: 'Filter and edit the records there.' }],
+      ctas: [
+        { label: 'Open opportunities', href: '/app/opportunities', note: 'Filter and edit qualified records there.' },
+        ...(unique.some(leadOf) ? [{ label: 'Open Leads', href: '/app/leads', note: 'Open and disqualified Lead history.' }] : []),
+      ],
     }],
   };
 }

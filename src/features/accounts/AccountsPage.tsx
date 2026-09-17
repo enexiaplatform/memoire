@@ -239,8 +239,9 @@ export function AccountsPage() {
       opportunities,
       activities,
       alternateNamesFor(account.accountName, accountMerges),
+      opportunityOutcomes,
     ));
-  }, [accountMerges, activities, opportunities, visibleAccounts]);
+  }, [accountMerges, activities, opportunities, opportunityOutcomes, visibleAccounts]);
 
   const duplicateGroups = useMemo(() => findDuplicateAccountGroups({
     accounts: visibleAccounts.map((account) => ({ id: account.id, accountName: account.accountName })),
@@ -479,7 +480,7 @@ export function AccountsPage() {
 
   const selectedAccount = accounts.find((account) => account.id === selectedAccountId) || null;
   const selectedMemory = selectedAccount
-    ? buildAccountMemory(selectedAccount, opportunities, activities, alternateNamesFor(selectedAccount.accountName, accountMerges))
+    ? buildAccountMemory(selectedAccount, opportunities, activities, alternateNamesFor(selectedAccount.accountName, accountMerges), opportunityOutcomes)
     : null;
   const selectedQuotes = selectedAccount
     ? quotes.filter((quote) => sameName(quote.accountName, selectedAccount.accountName))
@@ -581,7 +582,7 @@ export function AccountsPage() {
     if (!account) return;
 
     openEditPanel(account, false);
-    openFollowUpComposer(buildAccountMemory(account, opportunities, activities, alternateNamesFor(account.accountName, accountMerges)));
+    openFollowUpComposer(buildAccountMemory(account, opportunities, activities, alternateNamesFor(account.accountName, accountMerges), opportunityOutcomes));
     setSearchParams({ accountId: account.id }, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accounts, activities, opportunities, searchParams, setSearchParams, stakeholders]);

@@ -73,7 +73,7 @@ export type AnalyticsStatus = 'active' | 'retained' | 'deprecated' | 'none';
  *   records - the three books the rhythm reads and writes.
  *   tools   - ways of searching and seeing, plus workspace settings.
  *
- * Primary destinations still exist and are still exactly six; four of them sit
+ * Primary destinations still exist and are now exactly seven; four of them sit
  * in `run` and three in `records`, and one lens (`business-lens`) sits in `run`
  * because that is where the operator looks for it, not because its status
  * changed. `PRIMARY_DESTINATION_IDS` remains the product decision;
@@ -316,7 +316,7 @@ export const featureRegistry: FeatureRecord[] = [
     ownerSurface: 'activity',
     route: '/app/activity',
     routeBehavior: 'primary',
-    // Global, not a seventh primary destination, and the distinction is real
+    // Global, not an eighth primary destination, and the distinction is real
     // rather than a dodge around this file. Activity owns no records: every row
     // on it is a captured touch or a plan item that Timeline, Capture and the
     // deal already own, resolved to the one thing it was for. You do not go
@@ -362,8 +362,8 @@ export const featureRegistry: FeatureRecord[] = [
     // The standalone Dashboard failed the feature gate in the 2026-07-26
     // refactor because it answered "what should I do now" worse than Today did.
     // This does not attempt that question - it answers "how is the business
-    // doing", which is the one thing the six destinations each answer a slice
-    // of and none of them answers whole. Promoting it to a seventh primary
+    // doing", which is the one thing the seven destinations each answer a slice
+    // of and none of them answers whole. Promoting it to an eighth primary
     // would mean editing PRIMARY_DESTINATION_IDS, which is a product decision
     // and not a side effect of shipping charts.
     navVisible: false,
@@ -440,7 +440,7 @@ export const featureRegistry: FeatureRecord[] = [
     // up a customer, and the only surface that answers it was reachable solely
     // by typing the URL.
     //
-    // Global rather than a seventh primary destination, and the distinction is
+    // Global rather than an eighth primary destination, and the distinction is
     // the same one Activity carries: you do not run the day here. The account
     // and the deal remain where stakeholder work happens; this is the index
     // over it. PRIMARY_DESTINATION_IDS is unchanged, which is the contract.
@@ -461,8 +461,8 @@ export const featureRegistry: FeatureRecord[] = [
     ownerSurface: 'business-vault',
     route: '/app/vault',
     routeBehavior: 'primary',
-    // Deliberately a global surface rather than a seventh primary destination.
-    // It is a way of seeing the six, not a seventh place to work: everything on
+    // Deliberately a global surface rather than an eighth primary destination.
+    // It is a way of seeing the seven, not an eighth place to work: everything on
     // the map is a customer, a deal or a brand that already has an owner
     // surface. Making it primary would be the exact drift this registry exists
     // to stop - and would have meant editing PRIMARY_DESTINATION_IDS, which is
@@ -476,7 +476,7 @@ export const featureRegistry: FeatureRecord[] = [
     // the thing no other surface has a field for.
     dataRetention: 'Owns knowledge notes and open questions. Every node, relation and gap is derived from existing records.',
     killOrActivationCondition:
-      'Two retirements are recorded here, and the third answer is the current one. It was a force-directed map of accounts and deals - accurate and worthless, because it showed an operator the one thing they already know. It became a customer x line coverage matrix - genuinely useful, and not a vault; that grid now lives at /app/portfolio-coverage under Accounts, unchanged. It is now business memory: what you know, how it connects, and what you still do not. Retire it if the knowledge gaps stop changing what the operator goes and asks - that would mean the six destinations already hold everything worth remembering.',
+      'Two retirements are recorded here, and the third answer is the current one. It was a force-directed map of accounts and deals - accurate and worthless, because it showed an operator the one thing they already know. It became a customer x line coverage matrix - genuinely useful, and not a vault; that grid now lives at /app/portfolio-coverage under Accounts, unchanged. It is now business memory: what you know, how it connects, and what you still do not. Retire it if the knowledge gaps stop changing what the operator goes and asks - that would mean the seven destinations already hold everything worth remembering.',
   },
   {
     id: 'portfolio-coverage',
@@ -647,7 +647,7 @@ export const featureRegistry: FeatureRecord[] = [
     ownerSurface: 'founder tooling',
     // The only route in this registry that does not begin `/app`. It is not a
     // workspace surface: it reads across every workspace on the deployment, and
-    // the six-destination product it would otherwise be the seventh member of
+    // the seven-destination product it would otherwise be the eighth member of
     // is exactly what the navigation contract protects.
     route: '/admin',
     routeBehavior: 'compatibility',
@@ -765,7 +765,7 @@ export const globalActions: FeatureRecord[] = ['capture', 'search-insights', 'ac
  */
 const NAVIGATION_GROUP_IDS: { id: NavGroupId; label: string; itemIds: string[] }[] = [
   {
-    // One block, six rows, no headings.
+    // One block, seven rows, no headings.
     //
     // The rail carried fourteen items in three labelled groups until
     // 2026-09-07. Every one of them was defensible on its own and the whole was
@@ -780,7 +780,7 @@ const NAVIGATION_GROUP_IDS: { id: NavGroupId; label: string; itemIds: string[] }
     // Capture are global actions in the top bar, because they are things you do
     // from wherever you are standing rather than places you go. Settings is
     // administration and lives under the avatar. Activity, the Dashboard lens
-    // and the Vault are ways of seeing the six destinations, and they are
+    // and the Vault are ways of seeing the seven destinations, and they are
     // reached from the surface that owns their question.
     //
     // The group labels went with them. "Run / Records / Workspace" is the

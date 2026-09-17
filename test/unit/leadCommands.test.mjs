@@ -373,3 +373,41 @@ test('current UI creation callers forward explicit workspace scope to the shared
   assert.equal(calls.length, 3, 'editor and both existing import entry paths');
   for (const call of calls) assert.match(call, /isSample: sampleDataActive/);
 });
+
+
+describe('M1 command boundaries', () => {
+  test('an invalid nurture date is rejected without clearing an existing schedule', async () => {
+    const lead = await abcPharma();
+    await nurtureLead(lead, { nurturedUntil: '2026-12-01', nurtureReason: 'Budget next year' });
+    await assert.rejects(() => nurtureLead(lead, { nurturedUntil: 'not-a-date', nurtureReason: '' }), /valid revisit date/);
+    assert.equal((await reread(lead.id)).nurturedUntil, '2026-12-01');
+  });
+  test('a controlled disqualification reason is required before any outcome is written', async () => {
+    const lead = await abcPharma();
+    for (const reason of ['', 'invented reason']) {
+      await assert.rejects(() => disqualifyLead(lead, { reason, note: '' }), /disqualification reason/);
+    }
+    assert.equal(loadOpportunityOutcomes().length, 0);
+    assert.equal((await reread(lead.id)).stage, 'Lead');
+  });
+  test('stale nurture/disqualify drawers cannot move a qualified record back to Lead or Lost', async () => {
+    const lead = await abcPharma();
+    await qualifyLead(lead);
+    await assert.rejects(() => nurtureLead(lead, { nurturedUntil: '2026-12-01', nurtureReason: 'Later' }), /saved lead/);
+    await assert.rejects(() => disqualifyLead(lead, { reason: 'No budget', note: '' }), /saved lead/);
+    assert.equal((await reread(lead.id)).stage, 'Discovery');
+    assert.equal(loadOpportunityOutcomes().length, 0);
+  });
+  test('a stage written in another case keeps its stage instead of dropping to Discovery', async () => {
+    for (const [stage, expected] of [['proposal', 'Proposal'], [' technical DISCUSSION ', 'Technical discussion'], ['Somewhere else', 'Discovery']]) {
+      const result = await createOpportunity({ ...emptyOpportunityInput, accountName: 'Legacy', opportunityName: stage, stage }, null, { source: 'user', isSample: false });
+      assert.equal((await reread(result.opportunity.id)).stage, expected, stage);
+    }
+  });
+  test('legacy prequalification stages survive store normalization as Lead', async () => {
+    for (const stage of ['new', 'Prospecting']) {
+      const result = await createOpportunity({ ...emptyOpportunityInput, accountName: 'Legacy', opportunityName: stage, stage }, null, { source: 'user', isSample: false });
+      assert.equal((await reread(result.opportunity.id)).stage, 'Lead');
+    }
+  });
+});

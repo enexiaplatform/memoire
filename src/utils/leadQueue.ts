@@ -1,4 +1,4 @@
-import type { CrmLiteOpportunity, OpportunityStage } from '../services/opportunityStore.ts';
+import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import type { StakeholderRecord } from '../services/stakeholderStore.ts';
 import type { ObjectionRecord } from '../services/objectionStore.ts';
@@ -59,66 +59,8 @@ import {
 /* The stage                                                                  */
 /* ------------------------------------------------------------------------- */
 
-export const LEAD_STAGE: OpportunityStage = 'Lead';
-
-/** The stage a qualified lead lands on. The first stage of the real pipeline. */
-export const QUALIFIED_STAGE: OpportunityStage = 'Discovery';
-
-/** A lead is an opportunity at the Lead stage - there is no separate record. */
-export function isLeadStage(stage: string | undefined | null): boolean {
-  return (stage || '').trim().toLowerCase() === 'lead';
-}
-
-type OutcomeStageFact = { opportunityId: string; outcome: string; stageBeforeOutcome: string };
-
-/**
- * A lead that was closed out rather than qualified.
- *
- * A disqualified lead's own stage reads Lost - stage and status are reconciled
- * on every write, and a closed record may not sit on an open stage - so the
- * stage cannot say it was ever a lead. Its outcome can: the close-out snapshots
- * the stage it closed from. This is the one predicate that reads it.
- */
-export function isDisqualifiedLeadOutcome(outcome: Pick<OutcomeStageFact, 'outcome' | 'stageBeforeOutcome'>): boolean {
-  return outcome.outcome === 'Lost' && isLeadStage(outcome.stageBeforeOutcome);
-}
-
-/** The ids of every record closed out of the Lead stage. */
-export function disqualifiedLeadIds(outcomes: OutcomeStageFact[] = []): Set<string> {
-  return new Set(outcomes.filter(isDisqualifiedLeadOutcome).map((outcome) => outcome.opportunityId).filter(Boolean));
-}
-
-/**
- * Whether a record belongs on Leads rather than on Opportunities.
- *
- * At the Lead stage, or closed out of it. The two surfaces partition the book on
- * this, so every record is on exactly one of them - a disqualified lead listed
- * among lost deals would count a conversation that never qualified as pipeline
- * that was lost.
- */
-export function isLeadRecord(
-  opportunity: { id: string; stage: string; status?: string },
-  disqualified: Set<string> = new Set(),
-): boolean {
-  if (isLeadStage(opportunity.stage)) return true;
-  return opportunity.status === 'Lost' && disqualified.has(opportunity.id);
-}
-
-/** The lead records. The partition Opportunities is the other half of. */
-export function selectLeads<T extends { id: string; stage: string; status?: string }>(
-  opportunities: T[],
-  disqualified: Set<string> = new Set(),
-): T[] {
-  return opportunities.filter((opportunity) => isLeadRecord(opportunity, disqualified));
-}
-
-/** The qualified pipeline: everything that is not a lead record. */
-export function selectQualifiedPipeline<T extends { id: string; stage: string; status?: string }>(
-  opportunities: T[],
-  disqualified: Set<string> = new Set(),
-): T[] {
-  return opportunities.filter((opportunity) => !isLeadRecord(opportunity, disqualified));
-}
+export { LEAD_STAGE, QUALIFIED_STAGE, isLeadStage, isDisqualifiedLeadOutcome, disqualifiedLeadIds, isLeadRecord, selectLeads, selectQualifiedPipeline } from './leadIdentity.ts';
+import { isLeadStage, isDisqualifiedLeadOutcome, disqualifiedLeadIds, selectLeads, type OutcomeStageFact } from './leadIdentity.ts';
 
 /* ------------------------------------------------------------------------- */
 /* Source                                                                     */
@@ -381,7 +323,7 @@ export const leadEvidenceLabels: Record<LeadEvidenceDimension, string> = {
  *   New               - nothing has come back yet.
  *   Engaged           - somebody real is on the other end, or a conversation has
  *                       happened.
- *   Ready to qualify  - fit, a contact, a stated need and a two-way exchange.
+ *   Ready to qualify  - fit, a contact, a stated need and a captured touch.
  *                       The four things Discovery assumes you already have.
  *
  * `nextMove` is deliberately not part of readiness: it is hygiene, not
@@ -471,7 +413,7 @@ export function qualifyLeadEvidence(input: LeadQualificationInput): LeadQualific
       present: engagementPresent,
       detail: engagementPresent
         ? `${twoWay} ${twoWay === 1 ? 'touch' : 'touches'} recorded.`
-        : 'No conversation has been captured yet.',
+        : 'No linked touch has been captured yet.',
     },
     {
       dimension: 'nextMove',
@@ -688,11 +630,11 @@ function classifyLeadQueueState(input: {
   if (qualification.readiness === 'Ready to qualify') {
     return {
       state: 'ready',
-      reason: 'Fit, a contact, a stated need and a conversation - enough to take into Discovery.',
+      reason: 'Fit, a contact, a stated need and a captured touch - enough to take into Discovery.',
     };
   }
   if (touchCount === 0) {
-    return { state: 'new', reason: 'Nobody has spoken to them yet.' };
+    return { state: 'new', reason: 'No linked touch has been captured yet.' };
   }
   if (silence.status === 'silent' || silence.status === 'at-risk') {
     return {
@@ -820,7 +762,7 @@ export function buildLeadSignals(queue: LeadQueue): LeadSignal[] {
       kind: 'ready-to-qualify',
       rows: ready,
       headline: `${ready.length === 1 ? nameOf(ready[0]) : `${ready.length} leads`} ${ready.length === 1 ? 'has' : 'have'} enough evidence to qualify`,
-      detail: 'Fit, a contact, a stated need and a two-way conversation are all on record. Until it is qualified it is not in the pipeline, the forecast or Review.',
+      detail: 'Fit, a contact, a stated need and a captured touch are all on record. Until it is qualified it is not in the pipeline, the forecast or Review.',
       action: ready.length === 1 ? `Qualify ${nameOf(ready[0])} into Discovery` : `Qualify ${namesOf(ready)}`,
       urgency: 'High',
       dueDate: '',
@@ -965,16 +907,17 @@ export function buildLeadFunnel(input: {
 }): LeadFunnel {
   const include = input.includeSampleRecords === true;
   const opportunities = input.opportunities.filter((record) => include || record.isSample !== true);
+  const visibleIds = new Set(opportunities.map((record) => record.id));
   const qualifiedAt = new Map<string, string>();
   for (const event of input.events) {
-    if (event.eventType !== 'opportunity_stage_changed' || !event.opportunityId) continue;
+    if (event.eventType !== 'opportunity_stage_changed' || !event.opportunityId || !visibleIds.has(event.opportunityId)) continue;
     const from = String(event.structuredPayload?.from || '');
     const to = String(event.structuredPayload?.to || '');
     if (!isLeadStage(from) || !to || isLeadStage(to) || to === 'Lost' || to === 'Won') continue;
     const current = qualifiedAt.get(event.opportunityId);
     if (!current || event.occurredAt < current) qualifiedAt.set(event.opportunityId, event.occurredAt);
   }
-  const disqualified = new Map(input.outcomes.filter(isDisqualifiedLeadOutcome).map((outcome) => [outcome.opportunityId, outcome]));
+  const disqualified = new Map(input.outcomes.filter((outcome) => visibleIds.has(outcome.opportunityId) && isDisqualifiedLeadOutcome(outcome)).map((outcome) => [outcome.opportunityId, outcome]));
 
   const leads = opportunities.filter((record) => isLeadStage(record.stage) || qualifiedAt.has(record.id) || disqualified.has(record.id));
   const firstTouchDays: number[] = [];

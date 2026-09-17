@@ -115,7 +115,17 @@ const deal = (overrides = {}) => ({
   const leadsPage = read('src/features/leads/LeadsPage.tsx');
   const leadList = read('src/features/leads/LeadQueueList.tsx');
   const commands = read('src/services/leadCommands.ts');
-  const rules = read('src/utils/leadQueue.ts');
+  // The partition lives in leadIdentity.ts (M1, 2026-09-17) so the store and
+  // every aggregate can read it without importing the queue. leadQueue.ts
+  // re-exports it and must not keep a second copy.
+  const rules = read('src/utils/leadIdentity.ts');
+  const queueRules = read('src/utils/leadQueue.ts');
+  assert.match(
+    queueRules,
+    /export \{[^}]*\bselectLeads\b[^}]*\} from '\.\/leadIdentity\.ts';/,
+    'the lead queue re-exports the canonical partition rather than restating it',
+  );
+  assert.doesNotMatch(queueRules, /function (isLeadStage|isLeadRecord|selectLeads|selectQualifiedPipeline)\b/, 'no second copy of the partition in the queue');
 
   assert.match(
     opportunitiesPage,

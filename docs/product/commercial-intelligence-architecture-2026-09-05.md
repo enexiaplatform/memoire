@@ -1,3 +1,5 @@
+> M1 update (2026-09-17): Leads is now a first-class primary destination. The current seven-destination contract supersedes the historical six-destination baseline below; see `docs/architecture/m1-lead-consolidation.md`.
+
 # Commercial Intelligence Architecture
 
 Date: 2026-09-05

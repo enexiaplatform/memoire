@@ -1,3 +1,4 @@
+import { isLeadStage } from './leadIdentity.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
 import { resolveProbability } from './stageProbability.ts';
@@ -22,7 +23,7 @@ export interface PipelineHealthSummary {
   } | null;
 }
 
-const isActive = (opportunity: CrmLiteOpportunity) => opportunity.status === 'Active';
+const isActive = (opportunity: CrmLiteOpportunity) => opportunity.status === 'Active' && !isLeadStage(opportunity.stage);
 
 function opportunityMoney(opportunity: CrmLiteOpportunity) {
   return { amount: opportunity.estimatedValue ?? 0, currency: opportunity.currency };

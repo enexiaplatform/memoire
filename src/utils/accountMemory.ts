@@ -1,3 +1,4 @@
+import { isLeadStage, selectQualifiedPipeline, type OutcomeStageFact, disqualifiedLeadIds } from './leadIdentity.ts';
 import type { AccountMemoryRecord } from '../services/accountStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import { sumMoneyInBase } from './money.ts';
@@ -42,6 +43,7 @@ export function buildAccountMemory(
    * how that decision reaches the numbers.
    */
   alternateNames: string[] = [],
+  outcomes: OutcomeStageFact[] = [],
 ): AccountMemory {
   // Match on the shared canonical key (diacritic- and punctuation-insensitive),
   // so a deal on "VNVC" and this "VNVC." account are the same account. Exact
@@ -70,7 +72,8 @@ export function buildAccountMemory(
       .filter((activity) => activity.activityType === 'Objection handling' || activity.tags.includes('risk-signal'))
       .map((activity) => activity.summary),
   ]);
-  const activeOpportunities = accountOpportunities.filter((opportunity) => opportunity.status === 'Active');
+  const pipeline = selectQualifiedPipeline(accountOpportunities, disqualifiedLeadIds(outcomes));
+  const activeOpportunities = pipeline.filter((opportunity) => opportunity.status === 'Active' && !isLeadStage(opportunity.stage));
   const latestActivityDate = allActivities.map((activity) => activity.activityDate).filter(isValidBusinessDate).sort(compareSafeBusinessDate).at(-1) || '';
   const memoryWithoutHealth = {
     account,
@@ -85,9 +88,9 @@ export function buildAccountMemory(
       currency: opportunity.currency,
     }))),
     activeOpportunityCount: activeOpportunities.length,
-    wonCount: accountOpportunities.filter((opportunity) => opportunity.status === 'Won').length,
-    lostCount: accountOpportunities.filter((opportunity) => opportunity.status === 'Lost').length,
-    onHoldCount: accountOpportunities.filter((opportunity) => opportunity.status === 'On hold').length,
+    wonCount: pipeline.filter((opportunity) => opportunity.status === 'Won').length,
+    lostCount: pipeline.filter((opportunity) => opportunity.status === 'Lost').length,
+    onHoldCount: pipeline.filter((opportunity) => opportunity.status === 'On hold').length,
     health: 'Healthy' as AccountHealth,
     riskSignals: [],
   };

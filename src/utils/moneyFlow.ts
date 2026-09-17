@@ -1,3 +1,4 @@
+import { isLeadStage } from './leadIdentity.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import {
@@ -68,7 +69,7 @@ export function buildMoneyFlow(input: MoneyFlowInput): MoneyFlow {
     .filter((thread): thread is MoneyFlowThread => Boolean(thread));
 
   const opportunityThreads = input.opportunities
-    .filter((opportunity) => opportunity.status === 'Active')
+    .filter((opportunity) => opportunity.status === 'Active' && !isLeadStage(opportunity.stage))
     .filter((opportunity) => !quotedOpportunityIds.has(opportunity.id)
       && !quotedAccountAndName.has(`${normalize(opportunity.accountName)}|${normalize(opportunity.opportunityName)}`))
     .map((opportunity) => ({

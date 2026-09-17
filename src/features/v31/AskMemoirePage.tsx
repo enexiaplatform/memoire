@@ -1,3 +1,5 @@
+import { matchCommands } from '../../utils/commandRegistry';
+import { selectQualifiedPipeline, disqualifiedLeadIds, isLeadStage } from '../../utils/leadIdentity';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, ExternalLink, Lock, Sparkles } from 'lucide-react';
@@ -26,6 +28,8 @@ import {
   answerFromInitiativeReview,
   answerFromAwaitingCustomer,
   answerFromRecordFind,
+  answerFromLeadCommand,
+  isLeadNavigationCommand,
   findRecords,
   namedAccountIn,
   answerFromMoneyFlow,
@@ -275,6 +279,12 @@ export function AskMemoirePage() {
     setStatusMessage('');
 
     try {
+      const command = matchCommands(nextQuestion).find(isLeadNavigationCommand);
+      if (command) {
+        setStatusMessage('Counted from your own records, on this device.');
+        setAnswer(answerFromLeadCommand(command, rawWorkspace));
+        return;
+      }
       const fallbackAnswer = withAnswerCards(answerFromMemory(nextQuestion, contextPacket), nextQuestion, contextPacket);
       if (scope === 'all' && isAttentionQuestion(nextQuestion)) {
         setStatusMessage('Answered with local rule-based deal memory.');
@@ -283,7 +293,7 @@ export function AskMemoirePage() {
           objections: scopedMemory.objections,
           context: contextPacket,
           accounts: scopedMemory.accounts,
-          opportunities: scopedMemory.opportunities,
+          opportunities: scopedMemory.opportunities.filter((opportunity) => !isLeadStage(opportunity.stage)),
           actions: scopedMemory.actions,
           brokenLoops: scopedBrokenLoops,
           memoryHealth: scopedMemoryHealth,
@@ -420,7 +430,7 @@ export function AskMemoirePage() {
       const found = rawWorkspace ? findRecords(nextQuestion, rawWorkspace.opportunities) : null;
       if (found) {
         setStatusMessage('Found in your workspace - matched by name, on this device.');
-        setAnswer(answerFromRecordFind(found));
+        setAnswer(answerFromRecordFind(found, rawWorkspace?.opportunityOutcomes));
         return;
       }
       // Answers are computed from your own workspace by rule, on this device.
@@ -476,7 +486,7 @@ export function AskMemoirePage() {
     setStatusMessage('Every answer is computed on this device from your own records.');
   };
 
-  const dealCount = rawWorkspace?.opportunities.length ?? opportunities.length;
+  const dealCount = rawWorkspace ? selectQualifiedPipeline(rawWorkspace.opportunities, disqualifiedLeadIds(rawWorkspace.opportunityOutcomes)).length : opportunities.filter((opportunity) => !isLeadStage(opportunity.stage)).length;
   const nextQuestions = (answer?.suggestedQuestions.length ? answer.suggestedQuestions : presets).slice(0, 4);
   const earlierQuestions = askedThisVisit.filter((item) => item !== askedQuestion).slice(0, 4);
   const answerParts = answer ? splitAnswer(answer) : null;

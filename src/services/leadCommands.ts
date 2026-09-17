@@ -16,6 +16,7 @@ import {
   LEAD_STAGE,
   QUALIFIED_STAGE,
   isLeadStage,
+  isLeadDisqualifyReason,
   normalizeLeadSource,
   outcomeReasonCategoryForLead,
   type LeadDisqualifyReason,
@@ -69,13 +70,24 @@ export async function qualifyLead(opportunity: CrmLiteOpportunity, userId?: stri
   );
 }
 
+/** Re-read before another Lead action so a stale drawer cannot reverse qualification. */
+async function currentLead(opportunity: CrmLiteOpportunity, userId?: string | null): Promise<CrmLiteOpportunity> {
+  if (!isLeadStage(opportunity.stage)) throw new Error('Only a lead can receive this action.');
+  const current = (await loadOpportunities(opportunity.isSample || opportunity.storageMode === 'local' ? undefined : userId))
+    .find((record) => record.id === opportunity.id);
+  if (!current || !isLeadStage(current.stage)) throw new Error('Only a saved lead can receive this action.');
+  return current;
+}
+
 /** Parks a lead until a date, or brings it back when the date is empty. */
 export async function nurtureLead(
   opportunity: CrmLiteOpportunity,
   input: { nurturedUntil: string; nurtureReason: string },
   userId?: string | null,
 ): Promise<WriteResult> {
+  opportunity = await currentLead(opportunity, userId);
   const nurturedUntil = sanitizeBusinessDate(input.nurturedUntil);
+  if (input.nurturedUntil.trim() && !nurturedUntil) throw new Error('Choose a valid revisit date.');
   return updateOpportunity(
     opportunity,
     {
@@ -106,6 +118,8 @@ export async function disqualifyLead(
   input: { reason: LeadDisqualifyReason; note: string },
   userId?: string | null,
 ): Promise<WriteResult & { outcome: OpportunityOutcomeRecord }> {
+  opportunity = await currentLead(opportunity, userId);
+  if (!isLeadDisqualifyReason(input.reason)) throw new Error('Choose a disqualification reason.');
   const today = todayDateKey();
   const note = input.note.trim();
   const outcome = createOpportunityOutcomeFromOpportunity(

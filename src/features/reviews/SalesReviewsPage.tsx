@@ -1,3 +1,4 @@
+import { selectQualifiedPipeline, disqualifiedLeadIds, isDisqualifiedLeadOutcome } from '../../utils/leadIdentity';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { normalizeEntityName } from '../../utils/accountIdentity.ts';
@@ -486,10 +487,10 @@ function WeeklyReviewSection({
     if (cachedData) {
       setActivities(cachedData.activities);
       setObjections(cachedData.objections);
-      setOpportunities(cachedData.opportunities);
+      setOpportunities(selectQualifiedPipeline(cachedData.opportunities, disqualifiedLeadIds(cachedData.opportunityOutcomes)));
       setStakeholders(cachedData.stakeholders);
       setActionOutcomes(cachedData.actionOutcomes);
-      setOpportunityOutcomes(cachedData.opportunityOutcomes);
+      setOpportunityOutcomes(cachedData.opportunityOutcomes.filter((outcome) => !isDisqualifiedLeadOutcome(outcome)));
       setAssets(cachedData.assets);
       setAccounts(cachedData.accounts);
       setQuotes(cachedData.quotes);
@@ -504,10 +505,10 @@ function WeeklyReviewSection({
     const workspaceData = await loadSalesWorkspaceData(dataUserId);
     setActivities(workspaceData.activities);
     setObjections(workspaceData.objections);
-    setOpportunities(workspaceData.opportunities);
+    setOpportunities(selectQualifiedPipeline(workspaceData.opportunities, disqualifiedLeadIds(workspaceData.opportunityOutcomes)));
     setStakeholders(workspaceData.stakeholders);
     setActionOutcomes(workspaceData.actionOutcomes);
-    setOpportunityOutcomes(workspaceData.opportunityOutcomes);
+    setOpportunityOutcomes(workspaceData.opportunityOutcomes.filter((outcome) => !isDisqualifiedLeadOutcome(outcome)));
     setAssets(workspaceData.assets);
     setAccounts(workspaceData.accounts);
     setQuotes(workspaceData.quotes);

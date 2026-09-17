@@ -7,7 +7,7 @@ import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../servi
 import { matchesSearchQuery } from '../../utils/textSearch';
 import { featureRegistry } from '../../config/featureRegistry';
 import { matchCommands, type CommandKind } from '../../utils/commandRegistry';
-import { isLeadStage } from '../../utils/leadQueue';
+import { isLeadRecord, disqualifiedLeadIds } from '../../utils/leadIdentity';
 import type { SalesWorkspaceData } from '../../services/workspaceData';
 
 /**
@@ -174,6 +174,7 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
         to: `/app/accounts?accountName=${encodeURIComponent(account.accountName)}`,
       }));
 
+    const disqualified = disqualifiedLeadIds(workspace?.opportunityOutcomes || []);
     const opportunities: Hit[] = (workspace?.opportunities || [])
       .filter((opportunity) => matchesSearchQuery(
         `${opportunity.opportunityName} ${opportunity.accountName}`,
@@ -184,7 +185,7 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
         // A lead is found by name like any deal, labelled for what it is, and
         // closing it returns to the lead queue rather than to a pipeline list
         // it is not in.
-        const lead = isLeadStage(opportunity.stage);
+        const lead = isLeadRecord(opportunity, disqualified);
         return {
           id: `opportunity:${opportunity.id}`,
           kind: lead ? 'lead' as const : 'opportunity' as const,

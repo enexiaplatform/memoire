@@ -1,3 +1,4 @@
+import { isLeadStage } from '../../utils/leadIdentity.ts';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import { recordCommercialEvent } from './commands.ts';
 import type { CommercialEvent, CommercialEventType, CommercialScope } from './types.ts';
@@ -73,7 +74,7 @@ export type OpportunityFieldChange = {
  * → Proposal" - is the same false-transition claim in a smaller font.
  */
 export function diffOpportunityState(
-  previous: Pick<CrmLiteOpportunity, OpportunityChangeField | 'opportunityName'> & { currency?: string },
+  previous: Pick<CrmLiteOpportunity, OpportunityChangeField | 'opportunityName'> & { currency?: string; nurturedUntil?: string; nurtureReason?: string },
   next: Pick<CrmLiteOpportunity, OpportunityChangeField>,
 ): OpportunityFieldChange[] {
   const changes: OpportunityFieldChange[] = [];
@@ -191,7 +192,7 @@ export function recordOpportunityStateChanges(
   previous: Pick<
     CrmLiteOpportunity,
     OpportunityChangeField | 'opportunityName' | 'id' | 'accountName' | 'updatedAt'
-  > & { currency?: string },
+  > & { currency?: string; nurturedUntil?: string; nurtureReason?: string },
   next: Pick<CrmLiteOpportunity, OpportunityChangeField>,
   options: { occurredAt?: string } = {},
 ): CommercialEvent[] {
@@ -214,6 +215,10 @@ export function recordOpportunityStateChanges(
       // with the event or an account-scoped reader can never find it.
       accountName: previous.accountName,
       ...(change.currency ? { currency: change.currency } : {}),
+      // Clearing the active schedule must not erase why this Lead was parked.
+      ...(change.field === 'stage' && isLeadStage(previous.stage) && previous.nurturedUntil
+        ? { previousNurture: { revisitDate: previous.nurturedUntil, reason: previous.nurtureReason || '' } }
+        : {}),
     },
     idempotencyKey: opportunityChangeIdempotencyKey(
       previous.id, change.field, previous.updatedAt || dayKey,

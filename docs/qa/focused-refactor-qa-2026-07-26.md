@@ -1,3 +1,5 @@
+> M1 update (2026-09-17): the current registry deliberately has seven primary destinations, including Leads. Six-destination statements below describe the dated baseline and are superseded by `docs/architecture/m1-lead-consolidation.md`.
+
 # Manual QA: Focused Refactor
 
 Date: 2026-07-26

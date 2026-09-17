@@ -1,3 +1,4 @@
+import { isLeadStage } from './leadIdentity.ts';
 import type { ActionOutcomeRecord } from '../services/actionOutcomeStore.ts';
 import { todayDateKey, timestampToLocalDateKey } from './safeDate.ts';
 import { actionOutcomeMatchesAction, getActionOutcomesForOpportunity } from '../services/actionOutcomeStore.ts';
@@ -87,7 +88,7 @@ export function analyzePipelineOutcomeLoop(input: {
   activities?: SalesActivityRecord[];
 }) {
   const analyses = input.opportunities
-    .filter((opportunity) => opportunity.status === 'Active')
+    .filter((opportunity) => opportunity.status === 'Active' && !isLeadStage(opportunity.stage))
     .map((opportunity) => ({
       opportunity,
       analysis: analyzeOpportunityOutcomeLoop({

@@ -1,3 +1,4 @@
+import { isLeadStage } from '../../utils/leadIdentity.ts';
 import type { CommercialCommitment } from './types.ts';
 import type { ResolvedThread } from './deriveThreads.ts';
 import type { CoverageReport } from './forecast.ts';
@@ -152,11 +153,12 @@ export function evaluateCommercialPolicies(input: PolicyInput): Recommendation[]
   const includeSamples = input.includeSampleRecords === true;
   const isVisible = (record: { isSample?: boolean }) => includeSamples || record.isSample !== true;
 
+  const leadIds = new Set(input.opportunities.filter((opportunity) => isLeadStage(opportunity.stage)).map((opportunity) => opportunity.id));
   const recommendations: Recommendation[] = [
     ...commitmentRules(input.commitments.filter(isVisible), todayKey, thresholds, calculatedAt),
-    ...threadRules(input.threads, thresholds, calculatedAt),
+    ...threadRules(input.threads, thresholds, calculatedAt, leadIds),
     ...opportunityRules(
-      input.opportunities.filter(isVisible),
+      input.opportunities.filter((opportunity) => isVisible(opportunity) && !isLeadStage(opportunity.stage)),
       todayKey,
       calculatedAt,
       // Indexed once for the whole run. The alternative - asking the evidence
@@ -306,16 +308,18 @@ function threadRules(
   threads: ResolvedThread[],
   thresholds: PolicyThresholds,
   calculatedAt: string,
+  leadIds: Set<string>,
 ): Recommendation[] {
   const out: Recommendation[] = [];
 
   for (const thread of threads) {
     if (isThreadClosed(thread.status)) continue;
 
+    const isLead = Boolean(thread.opportunityId && leadIds.has(thread.opportunityId));
     const waitingOnCustomer = thread.currentWaitingParty === 'customer';
     const limit = waitingOnCustomer ? thresholds.waitingThreadSilenceDays : thresholds.threadSilenceDays;
 
-    if (thread.daysSinceActivity !== null && thread.daysSinceActivity >= limit) {
+    if (!isLead && thread.daysSinceActivity !== null && thread.daysSinceActivity >= limit) {
       out.push({
         id: `${thread.id}:silent`,
         reasonCode: 'THREAD_SILENT',
@@ -336,7 +340,7 @@ function threadRules(
       });
     }
 
-    if (thread.openCommitmentCount === 0) {
+    if (!isLead && thread.openCommitmentCount === 0) {
       out.push({
         id: `${thread.id}:no-next`,
         reasonCode: 'THREAD_WITHOUT_NEXT_COMMITMENT',

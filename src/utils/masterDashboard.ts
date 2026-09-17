@@ -1,3 +1,4 @@
+import { isLeadStage, selectQualifiedPipeline, disqualifiedLeadIds } from './leadIdentity.ts';
 import type { CrmLiteOpportunity, ForecastEvidenceCategory, OpportunityStage } from '../services/opportunityStore.ts';
 import { forecastEvidenceCategories, opportunityStages } from '../services/opportunityStore.ts';
 import {
@@ -134,9 +135,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * Derived, never stored, and always reported in the reporting currency.
  */
 export function buildMasterDashboard(input: MasterDashboardInput): MasterDashboardModel {
+  const pipeline = selectQualifiedPipeline(input.opportunities, disqualifiedLeadIds(input.opportunityOutcomes));
   const todayKey = sanitizeBusinessDate(input.today) || todayDateKey();
   const reportingCurrency = getReportingCurrency();
-  const activeOpportunities = input.opportunities.filter((opportunity) => opportunity.status === 'Active');
+  const activeOpportunities = pipeline.filter((opportunity) => opportunity.status === 'Active' && !isLeadStage(opportunity.stage));
 
   const stageMix: StageMixRow[] = opportunityStages
     .map((stage) => {
@@ -202,8 +204,8 @@ export function buildMasterDashboard(input: MasterDashboardInput): MasterDashboa
   };
 
   const outcomes = {
-    won: bucketClosedDeals(input.opportunities, input.opportunityOutcomes, 'Won'),
-    lost: bucketClosedDeals(input.opportunities, input.opportunityOutcomes, 'Lost'),
+    won: bucketClosedDeals(pipeline, input.opportunityOutcomes, 'Won'),
+    lost: bucketClosedDeals(pipeline, input.opportunityOutcomes, 'Lost'),
   };
   const moneyFlow = buildMoneyFlow({ opportunities: input.opportunities, quotes: input.quotes, today: todayKey });
   const cash = buildCashPosition({

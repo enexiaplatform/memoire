@@ -1,3 +1,5 @@
+> M1 update (2026-09-17): current navigation has seven primary destinations and `/app/leads` is first-class. Six-destination and Leads-as-view statements below remain evidence of the explicitly dated M0 baseline, not current product contracts. See [M1 acceptance](../architecture/m1-lead-consolidation.md).
+
 # Commercial State Engine — Architecture Evolution Plan
 
 Date: 2026-09-16. Status: Milestone 0 design decision; future models are proposals, not implemented contracts.

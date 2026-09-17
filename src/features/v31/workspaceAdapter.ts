@@ -1,3 +1,4 @@
+import { isLeadStage } from '../../utils/leadIdentity.ts';
 import type {
   Account,
   Contact,
@@ -256,7 +257,7 @@ function getLatestActivityForOpportunity(activities: SalesActivityRecord[], oppo
 }
 
 function toLegacyStage(stage: CrmLiteOpportunity['stage']): SalesStage {
-  if (stage === 'Lead') return 'new';
+  if (isLeadStage(stage)) return 'new';
   if (stage === 'Proposal') return 'proposal';
   if (stage === 'Negotiation' || stage === 'Procurement') return 'negotiation';
   if (stage === 'Won') return 'won';

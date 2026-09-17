@@ -1,3 +1,4 @@
+import { isLeadStage } from './leadIdentity.ts';
 import type { ActionOutcomeRecord } from '../services/actionOutcomeStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import { compareBusinessDateDesc,
@@ -28,7 +29,7 @@ export function buildCaptureNudges(input: {
   limit?: number;
 }): CaptureNudge[] {
   const limit = input.limit || 5;
-  const activeOpportunities = input.opportunities.filter((opportunity) => opportunity.status === 'Active');
+  const activeOpportunities = input.opportunities.filter((opportunity) => opportunity.status === 'Active' && !isLeadStage(opportunity.stage));
   const today = todayKey();
   const nudges: CaptureNudge[] = [];
 

@@ -1,3 +1,4 @@
+import { isLeadStage } from '../utils/leadIdentity.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
@@ -708,7 +709,14 @@ function reconciledOutcome(stage: unknown, status: unknown) {
 }
 
 function normalizeStage(value: unknown): OpportunityStage {
-  return opportunityStages.includes(value as OpportunityStage) ? value as OpportunityStage : 'Discovery';
+  const text = String(value || '').trim();
+  if (isLeadStage(text)) return 'Lead';
+  // Matched without case: a live row reads `proposal`, and an exact match sent
+  // it to Discovery on every read - and wrote Discovery back on the next save,
+  // demoting a proposal nobody had touched. Only a stage that matches nothing
+  // falls through.
+  const key = text.toLowerCase();
+  return opportunityStages.find((stage) => stage.toLowerCase() === key) ?? 'Discovery';
 }
 
 function normalizeForecastCategory(value: unknown): ForecastEvidenceCategory {

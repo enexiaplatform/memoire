@@ -1,3 +1,4 @@
+import { isLeadStage } from '../../utils/leadIdentity.ts';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { ResolvedThread } from './deriveThreads.ts';
 import { convertMoney, getReportingCurrency, BASE_CURRENCY, type SupportedCurrency } from '../../utils/money.ts';
@@ -372,7 +373,7 @@ export function buildCoverage(input: {
 
   for (const opportunity of input.opportunities) {
     if (!includeSamples && opportunity.isSample) continue;
-    if (opportunity.status === 'Lost') continue;
+    if (opportunity.status === 'Lost' || isLeadStage(opportunity.stage)) continue;
 
     const amounts = quarterAmounts(opportunity, currentQuarter);
     const total = FORECAST_QUARTERS.reduce((sum, quarter) => sum + amounts[quarter], 0);

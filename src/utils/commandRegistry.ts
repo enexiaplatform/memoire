@@ -28,6 +28,18 @@ export type CommandDefinition = {
 
 export const commandRegistry: CommandDefinition[] = [
   {
+    id: 'show-leads', kind: 'navigate', label: 'Show my leads',
+    detail: 'Leads · All open', to: '/app/leads', aliases: 'all prospects',
+  },
+  {
+    id: 'leads-quiet', kind: 'filter', label: 'Show leads going quiet',
+    detail: 'Leads · Going quiet', to: '/app/leads?state=going-quiet', aliases: 'silent stale my',
+  },
+  {
+    id: 'qualified-opportunities', kind: 'navigate', label: 'Show qualified opportunities',
+    detail: 'Opportunities · Qualified pipeline', to: '/app/opportunities', aliases: 'my deals pipeline',
+  },
+  {
     id: 'add-lead',
     kind: 'create',
     label: 'Add lead',
@@ -55,9 +67,9 @@ export const commandRegistry: CommandDefinition[] = [
     id: 'leads-revisit',
     kind: 'filter',
     label: 'Show leads due for revisit',
-    detail: 'Leads · Needs action',
-    to: '/app/leads?state=needs-action',
-    aliases: 'nurture revisit due parked leads needs action',
+    detail: 'Leads · Nurture revisit approaching or due',
+    to: '/app/leads?state=needs-action&revisit=due',
+    aliases: 'nurture nurtured revisit due soon parked leads needs action my',
   },
   {
     id: 'leads-ready',

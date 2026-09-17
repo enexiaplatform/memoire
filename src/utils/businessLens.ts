@@ -1,3 +1,4 @@
+import { isLeadStage } from './leadIdentity.ts';
 import type { AccountMemoryRecord } from '../services/accountStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
@@ -88,7 +89,7 @@ export function buildBusinessLens(input: {
 
   const openByAccount = new Map<string, { accountName: string; deals: CrmLiteOpportunity[] }>();
   input.opportunities
-    .filter((opportunity) => opportunity.status === 'Active')
+    .filter((opportunity) => opportunity.status === 'Active' && !isLeadStage(opportunity.stage))
     .forEach((opportunity) => {
       const name = canonical(opportunity.accountName);
       if (!name) return;

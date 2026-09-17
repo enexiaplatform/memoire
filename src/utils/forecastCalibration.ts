@@ -1,3 +1,4 @@
+import { isLeadStage, isDisqualifiedLeadOutcome } from './leadIdentity.ts';
 import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
 import type { CrmLiteOpportunity, ForecastEvidenceCategory } from '../services/opportunityStore.ts';
@@ -54,8 +55,8 @@ type ForecastCalibrationInput = {
  * category stays explicitly unrated - history, not prediction.
  */
 export function buildForecastCalibration(input: ForecastCalibrationInput): ForecastCalibration {
-  const closedOutcomes = dedupeByOpportunity(input.outcomes);
-  const activeOpportunities = input.opportunities.filter((opportunity) => opportunity.status === 'Active');
+  const closedOutcomes = dedupeByOpportunity(input.outcomes.filter((outcome) => !isDisqualifiedLeadOutcome(outcome)));
+  const activeOpportunities = input.opportunities.filter((opportunity) => opportunity.status === 'Active' && !isLeadStage(opportunity.stage));
 
   const rows = forecastEvidenceCategoryOrder.map((category) => {
     const categoryOutcomes = closedOutcomes.filter((outcome) => outcome.forecastEvidenceCategoryBeforeOutcome === category);
@@ -159,7 +160,7 @@ export type ProbabilityCalibration = {
 export function buildProbabilityCalibration(input: {
   outcomes: OpportunityOutcomeRecord[];
 }): ProbabilityCalibration {
-  const closed = dedupeByOpportunity(input.outcomes)
+  const closed = dedupeByOpportunity(input.outcomes.filter((outcome) => !isDisqualifiedLeadOutcome(outcome)))
     .filter((outcome) => outcome.outcome === 'Won' || outcome.outcome === 'Lost')
     .map((outcome) => ({ outcome, probability: outcome.pipelineProbabilityBeforeOutcome }))
     // Deals closed before the probability was snapshotted simply have no

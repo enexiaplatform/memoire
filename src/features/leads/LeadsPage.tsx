@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2, NotebookPen, Search, Upload, UserPlus } from 'lucide-react';
+import { Loader2, NotebookPen, Search, Upload, UserPlus, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 import { TopBar } from '../../components/layout/TopBarSlot';
@@ -87,6 +87,7 @@ export function LeadsPage() {
   const [addMessage, setAddMessage] = useState('');
 
   const filter = readFilter(searchParams.get('state'));
+  const revisitOnly = searchParams.get('revisit') === 'due';
 
   const refresh = useCallback(async (options: { force?: boolean } = {}) => {
     setLoadError('');
@@ -145,6 +146,7 @@ export function LeadsPage() {
   const visibleRows = useMemo(() => {
     const query = search.trim();
     return queue.rows.filter((row) => {
+      if (revisitOnly && !row.nurture.due) return false;
       if (filter === 'closed') { if (!row.closed) return false; }
       else if (row.closed) return false;
       else if (filter !== 'all' && row.state !== filter) return false;
@@ -158,7 +160,7 @@ export function LeadsPage() {
         row.opportunity.nextAction,
       ].join(' '), query);
     });
-  }, [filter, queue.rows, search]);
+  }, [filter, queue.rows, search, revisitOnly]);
 
   // A state with nothing in it is offered only while it is the one selected - a
   // row of six pills, four reading "0", is the dashboard this page is not, and
@@ -173,8 +175,15 @@ export function LeadsPage() {
 
   const selectFilter = (next: QueueFilter) => {
     const params = new URLSearchParams(searchParams);
+    params.delete('revisit');
     if (next === 'all') params.delete('state');
     else params.set('state', next);
+    setSearchParams(params, { replace: true });
+  };
+
+  const clearRevisitOnly = () => {
+    const params = new URLSearchParams(searchParams);
+    params.delete('revisit');
     setSearchParams(params, { replace: true });
   };
 
@@ -368,22 +377,38 @@ export function LeadsPage() {
         <LeadsEmptyState onAdd={() => setDrawer({ kind: 'add' })} />
       ) : (
         <>
-          <div className="relative max-w-md">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" />
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search customer, person, source or next step"
-              aria-label="Search leads"
-              className="w-full rounded-full border border-line bg-white py-2 pl-10 pr-4 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
-            />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-0 max-w-md flex-1 basis-64">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search customer, person, source or next step"
+                aria-label="Search leads"
+                className="w-full rounded-full border border-line bg-white py-2 pl-10 pr-4 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+              />
+            </div>
+            {/* The command bar's "leads due for revisit" narrows Needs action to
+                revisits. A narrowing the page does not show is a lead that
+                silently is not there, so it is named and can be undone. */}
+            {revisitOnly && (
+              <button
+                type="button"
+                onClick={clearRevisitOnly}
+                className={`${ghostPillClass} px-3 py-1.5 text-xs`}
+                aria-label="Showing due revisits only. Show every lead that needs action."
+              >
+                Due revisits only
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            )}
           </div>
 
           {visibleRows.length > 0 ? (
             <LeadQueueList
               rows={visibleRows}
-              caption={captionFor(filter, visibleRows)}
+              caption={revisitOnly ? 'Parked leads whose revisit date has come, or comes within three days.' : captionFor(filter, visibleRows)}
               actions={{
                 busyId,
                 onOpen: openLead,
@@ -395,7 +420,11 @@ export function LeadsPage() {
           ) : (
             <Panel className="px-6 py-8 text-center">
               <p className="font-display text-base font-bold text-ink">
-                {search.trim() ? 'No lead matches that search.' : `Nothing is ${filter === 'closed' ? 'disqualified' : `in ${leadQueueStateLabels[filter as LeadQueueState] || 'this view'}`} right now.`}
+                {search.trim()
+                  ? 'No lead matches that search.'
+                  : revisitOnly
+                    ? 'No revisit is due right now.'
+                    : `Nothing is ${filter === 'closed' ? 'disqualified' : `in ${leadQueueStateLabels[filter as LeadQueueState] || 'this view'}`} right now.`}
               </p>
               <p className="mt-1 text-sm text-tint-neutral-ink">
                 {search.trim() ? 'Try the customer, the person you met, or the event.' : 'That is the good kind of empty.'}
@@ -468,7 +497,7 @@ function captionFor(filter: QueueFilter, rows: LeadRow[]) {
     case 'new': return 'Nobody has spoken to these yet. Oldest first.';
     case 'needs-action': return 'A revisit has come due, or something the lead needs is missing.';
     case 'going-quiet': return 'Contacted once, quiet since, and nothing scheduled.';
-    case 'ready': return 'Fit, a contact, a stated need and a conversation. Qualify moves them to Discovery.';
+    case 'ready': return 'Fit, a contact, a stated need and a captured touch. Qualify moves them to Discovery.';
     case 'nurture': return 'Parked until a date. Each one comes back on its own.';
     case 'closed': return 'Closed with a reason. Kept for what they teach about which leads are worth having.';
     default: return rows.length

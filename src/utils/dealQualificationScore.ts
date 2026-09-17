@@ -1,3 +1,4 @@
+import { isLeadStage } from './leadIdentity.ts';
 import type { CrmLiteOpportunity, OpportunityStage } from '../services/opportunityStore';
 import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
@@ -302,7 +303,7 @@ export function scorePipelineQualification(input: {
     // its evidence does not reach" by definition, so counting them made the
     // weekly review, the rail and the policy engine report the lead queue as
     // over-stated pipeline. A lead has its own readiness; see utils/leadQueue.ts.
-    .filter((opportunity) => opportunity.status === 'Active' && (opportunity.stage || '').trim().toLowerCase() !== 'lead')
+    .filter((opportunity) => opportunity.status === 'Active' && !isLeadStage(opportunity.stage))
     .map((opportunity) => scoreDealQualification({
       opportunity,
       stakeholders: input.stakeholders,

@@ -1,10 +1,11 @@
+import { isLeadStage } from './leadIdentity.ts';
 import type { Interaction, Objection, Opportunity as LegacyOpportunity, SalesAction } from '../types/v31';
 import type { CrmLiteOpportunity, ForecastEvidenceCategory } from '../services/opportunityStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { ObjectionRecord } from '../services/objectionStore';
-import { getObjectionsForOpportunity } from './objectionLedger';
+import { getObjectionsForOpportunity } from './objectionLedger.ts';
 import { resolveCommercialDecision } from './pipelineDefenseCenter.ts';
-import { sumMoneyInBase } from './money';
+import { sumMoneyInBase } from './money.ts';
 import { compareSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate } from './safeDate.ts';
 
 export type OpportunityQualityStatus = 'Healthy' | 'Needs cleanup' | 'High risk';
@@ -179,6 +180,9 @@ export function analyzeOpportunityQuality(opportunity: CrmLiteOpportunity, linke
 }
 
 export function analyzePipelineQuality(opportunities: CrmLiteOpportunity[], activities: SalesActivityRecord[] = [], objections: ObjectionRecord[] = []): CrmPipelineQualityAnalysis {
+  opportunities = opportunities.filter((opportunity) => !isLeadStage(opportunity.stage));
+  const pipelineIds = new Set(opportunities.map((opportunity) => opportunity.id));
+  objections = objections.filter((objection) => !objection.opportunityId || pipelineIds.has(objection.opportunityId));
   const reviews = opportunities.map((opportunity) => {
     const review = analyzeOpportunityQuality(opportunity, activities.filter((activity) => activity.linkedOpportunityId === opportunity.id));
     const openLedgerObjections = getObjectionsForOpportunity(objections, opportunity).filter((objection) => objection.status === 'Open');
@@ -269,7 +273,8 @@ interface LegacyPipelineQualityInput {
 const weakEvidenceTerms = /unclear|waiting|possible|interested|no response|not confirmed|maybe|pending/i;
 
 export function analyzeOpportunityPipelineQuality(input: LegacyPipelineQualityInput): PipelineQualityAnalysis {
-  const reviews = input.opportunities.map((opportunity) =>
+  const opportunities = input.opportunities.filter((opportunity) => !isLeadStage(opportunity.stage));
+  const reviews = opportunities.map((opportunity) =>
     analyzeLegacyOpportunityQuality(opportunity, {
       interactions: input.interactions.filter((interaction) => interaction.opportunity_id === opportunity.id),
       actions: input.actions.filter((action) => action.opportunity_id === opportunity.id),
@@ -282,7 +287,7 @@ export function analyzeOpportunityPipelineQuality(input: LegacyPipelineQualityIn
   const healthyCount = reviews.filter((review) => review.status === 'Healthy').length;
 
   return {
-    totalOpportunities: input.opportunities.length,
+    totalOpportunities: opportunities.length,
     healthyCount,
     needsCleanupCount,
     highRiskCount,

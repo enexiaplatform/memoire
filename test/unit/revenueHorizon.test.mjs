@@ -6,7 +6,8 @@ import { buildRevenueHorizon } from '../../src/utils/pipelineInsights.ts';
 /**
  * "Expected revenue: when the money lands" weighted every deal with no declared
  * probability at a flat 50%, while `resolveProbability` - which the rest of the
- * product uses - says a Lead is 5% and an On hold deal has no probability at all.
+ * product uses - gives stage-specific defaults. M1 excludes Leads from the
+ * qualified revenue horizon entirely. On hold has no probability.
  */
 const deal = (overrides = {}) => ({
   id: `o-${Math.random().toString(36).slice(2)}`,
@@ -23,10 +24,8 @@ const deal = (overrides = {}) => ({
 const bucket = (opportunities) => buildRevenueHorizon(opportunities)[0];
 
 describe('the weighted revenue horizon uses the stage ladder', () => {
-  test('a Lead is weighted at 5%, not 50%', () => {
-    const row = bucket([{ ...deal(), stage: 'Lead' }]);
-    assert.equal(row.rawValueBase, 1_000_000);
-    assert.equal(row.weightedValueBase, 50_000, 'it used to be 500,000');
+  test('a Lead has no qualified revenue horizon, even with declared probability', () => {
+    assert.deepEqual(buildRevenueHorizon([{ ...deal(), stage: 'Lead', pipelineProbability: 80 }]), []);
   });
 
   test('Discovery is 10% and Negotiation is 75%', () => {
@@ -43,7 +42,7 @@ describe('the weighted revenue horizon uses the stage ladder', () => {
   });
 
   test('a declared probability still wins over the stage', () => {
-    const row = bucket([{ ...deal(), stage: 'Lead', pipelineProbability: 80 }]);
+    const row = bucket([{ ...deal(), stage: 'Discovery', pipelineProbability: 80 }]);
     assert.equal(row.weightedValueBase, 800_000);
   });
 });

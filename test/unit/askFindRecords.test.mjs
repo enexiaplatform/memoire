@@ -38,9 +38,9 @@ describe('the Search half of Search & Insights', () => {
 
   test('the answer names the customer and separates open from closed', () => {
     const result = answerFromRecordFind(findRecords('Grupo Calvo', BOOK));
-    assert.match(result.answer, /^Grupo Calvo: 2 deals on record, 1 still open/);
+    assert.match(result.answer, /^Grupo Calvo: 2 commercial records on record, 1 open qualified opportunities, 0 leads/);
     const labels = result.cards[0].fields.map((field) => field.label);
-    assert.ok(labels.includes('Open deals'));
+    assert.ok(labels.includes('Open qualified opportunities'));
     assert.ok(labels.includes('Closed'));
   });
 

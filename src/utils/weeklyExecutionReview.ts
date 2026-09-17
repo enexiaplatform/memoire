@@ -1,3 +1,4 @@
+import { isLeadStage } from './leadIdentity.ts';
 import type { ActionOutcomeRecord } from '../services/actionOutcomeStore.ts';
 import { getActionOutcomesForOpportunity } from '../services/actionOutcomeStore.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
@@ -79,7 +80,7 @@ export function generateWeeklyExecutionReview(input: {
   objections?: ObjectionRecord[];
   activities?: SalesActivityRecord[];
 }): WeeklyExecutionReview {
-  const opportunities = input.opportunities.filter((opportunity) => opportunity.status === 'Active');
+  const opportunities = input.opportunities.filter((opportunity) => opportunity.status === 'Active' && !isLeadStage(opportunity.stage));
   const actionOutcomes = input.actionOutcomes || [];
   const stakeholders = input.stakeholders || [];
   const objections = input.objections || [];
