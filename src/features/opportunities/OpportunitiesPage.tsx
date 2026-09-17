@@ -792,7 +792,7 @@ export function OpportunitiesPage() {
     const activeMappingProfile = getActiveMappingProfileForBatch();
     const fieldMap = buildFieldMapFromReview(csvMappingReview);
     const results = await Promise.all(rows.map((row) => (
-      createOpportunity(buildImportedOpportunityInput(row, importBatchId), dataUserId)
+      createOpportunity(buildImportedOpportunityInput(row, importBatchId), dataUserId, { source: sampleDataActive ? 'demo' : 'user', isSample: sampleDataActive })
     )));
     const imported = results.map((result) => result.opportunity);
     const skipped = csvImportResult.rows.length - rows.length;
@@ -855,7 +855,7 @@ export function OpportunitiesPage() {
     }
 
     const createResults = await Promise.all(newRows.map((row) => (
-      createOpportunity(buildImportedOpportunityInput(row, importBatchId), dataUserId)
+      createOpportunity(buildImportedOpportunityInput(row, importBatchId), dataUserId, { source: sampleDataActive ? 'demo' : 'user', isSample: sampleDataActive })
     )));
 
     const updateResults = await Promise.all(changedItems.map((item) => {
@@ -1048,7 +1048,7 @@ export function OpportunitiesPage() {
     setMessage('Saving opportunity...');
     const result = panelMode === 'edit' && editingOpportunity
       ? await updateOpportunity(editingOpportunity, form, dataUserId)
-      : await createOpportunity(form, dataUserId);
+      : await createOpportunity(form, dataUserId, { source: sampleDataActive ? 'demo' : 'user', isSample: sampleDataActive });
 
     setOpportunities((current) => [
       result.opportunity,

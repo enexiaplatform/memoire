@@ -215,7 +215,7 @@ export function earliestObservedAt(events: CommercialEvent[]): string | null {
  * idempotency key is already present - the guard that lets a CSV re-import or a
  * re-run rule be safe to repeat.
  */
-export function appendEvent(record: CommercialEvent, options: { syncCloud?: boolean } = {}) {
+export function appendEvent(record: CommercialEvent, options: { syncCloud?: boolean; requireDurable?: boolean } = {}) {
   const existing = loadEvents();
   if (record.idempotencyKey && existing.some((item) => item.idempotencyKey === record.idempotencyKey)) {
     return existing;
@@ -224,11 +224,11 @@ export function appendEvent(record: CommercialEvent, options: { syncCloud?: bool
   const next = writeLocal(eventCodec, [
     record,
     ...existing.filter((item) => item.id !== record.id),
-  ]).slice(0, LOCAL_EVENT_LIMIT);
+  ], options).slice(0, LOCAL_EVENT_LIMIT);
 
   // Re-write only if the cap actually trimmed something, so the common path
   // does not pay for a second serialization.
-  const stored = next.length === existing.length + 1 ? next : writeLocal(eventCodec, next);
+  const stored = next.length === existing.length + 1 ? next : writeLocal(eventCodec, next, options);
   if (options.syncCloud !== false) syncRecordsForCurrentUser(eventCodec, [record]);
   return stored;
 }

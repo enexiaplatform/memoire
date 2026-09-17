@@ -90,7 +90,7 @@ type EventInput = {
  * a change that skips it simply does not exist as far as Timeline and Review
  * are concerned - which is the point.
  */
-export function recordCommercialEvent(scope: CommercialScope, input: EventInput): CommercialEvent {
+export function recordCommercialEvent(scope: CommercialScope, input: EventInput, options: { requireDurable?: boolean } = {}): CommercialEvent {
   const timestamp = now();
   const event: CommercialEvent = {
     id: newEventId(),
@@ -113,7 +113,7 @@ export function recordCommercialEvent(scope: CommercialScope, input: EventInput)
     ...(isSample(scope) ? { isSample: true } : {}),
   };
 
-  appendEvent(event);
+  appendEvent(event, options);
   return event;
 }
 

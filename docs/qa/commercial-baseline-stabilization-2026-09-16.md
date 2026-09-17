@@ -1,5 +1,7 @@
 # M0.1 — baseline stabilization and current Leads audit
 
+Follow-up: [M0.2 Lead data-integrity hardening](lead-data-integrity-hardening-2026-09-17.md) addresses the two forward-write blockers below. This M0.1 report remains a historical audit of its own checkpoint; see the M0.2 checkpoint's verification note for acceptance results.
+
 Scope: one behavior-preserving lint correction, review of current Leads and M0 integrity findings, and a fixed Git checkpoint. No M1 implementation, UI/navigation change, migration, ranking change or live database operation.
 
 ## Checkpoint identity and verification

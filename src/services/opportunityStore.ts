@@ -3,7 +3,7 @@ import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
 import { reconcileOpportunityOutcome } from '../utils/opportunityOutcome.ts';
-import { writeLocalRecords } from './localWriteGuard.ts';
+import { requireLocalWrite, writeLocalRecords } from './localWriteGuard.ts';
 import { fetchAllRows } from './supabasePaging.ts';
 import { recordOpportunityStateChanges } from '../domain/commercialKernel/opportunityChanges.ts';
 
@@ -222,21 +222,25 @@ export async function loadOpportunities(userId?: string | null): Promise<CrmLite
   return loadLocalOpportunities();
 }
 
+export type OpportunityWorkspaceTag = { source: 'demo' | 'user'; isSample: boolean };
+
 export async function createOpportunity(
   input: OpportunityFormInput,
-  userId?: string | null
+  userId: string | null | undefined,
+  workspace: OpportunityWorkspaceTag,
 ): Promise<{ opportunity: CrmLiteOpportunity; mode: 'local' | 'cloud'; warning?: string }> {
   const normalized = normalizeOpportunityInput(input);
 
-  if (canUseOpportunityCloudStore(userId)) {
+  // Workspace isolation is explicit and takes precedence over signed-in identity.
+  const sample = workspace.isSample || workspace.source === 'demo';
+  const tag: OpportunityWorkspaceTag = { source: sample ? 'demo' : 'user', isSample: sample };
+  if (!sample && canUseOpportunityCloudStore(userId)) {
+    let opportunity: CrmLiteOpportunity;
     try {
-      const opportunity = await createCloudOpportunity(normalized, userId as string);
-      saveLocalOpportunityRecord({ ...opportunity, storageMode: 'local' });
-      invalidateWorkspaceCollection('opportunities');
-      return { opportunity, mode: 'cloud' };
+      opportunity = await createCloudOpportunity(normalized, userId as string);
     } catch (error) {
       reportWorkspaceSyncError();
-      const opportunity = createLocalOpportunity(normalized, userId || undefined);
+      const opportunity = createLocalOpportunity(normalized, userId || undefined, tag);
       saveLocalOpportunityRecord(opportunity);
       invalidateWorkspaceCollection('opportunities');
       debugOpportunityStore('cloud create failed; local copy preserved', { message: getErrorMessage(error) });
@@ -246,9 +250,12 @@ export async function createOpportunity(
         warning: 'Cloud sync issue - your local copy is preserved.',
       };
     }
+    const warning = mirrorCloudOpportunity(opportunity);
+    invalidateWorkspaceCollection('opportunities');
+    return { opportunity, mode: 'cloud', warning };
   }
 
-  const opportunity = createLocalOpportunity(normalized, userId || undefined);
+  const opportunity = createLocalOpportunity(normalized, sample ? undefined : userId || undefined, tag);
   saveLocalOpportunityRecord(opportunity);
   invalidateWorkspaceCollection('opportunities');
   return { opportunity, mode: 'local' };
@@ -276,19 +283,17 @@ export async function updateOpportunity(
         opportunity,
         normalized,
       );
-    } catch {
-      // History is a by-product. A failure here is never allowed to surface as
-      // a failed save.
+    } catch (error) {
+      reportWorkspaceSyncError();
+      debugOpportunityStore('state saved but history append failed', { message: getErrorMessage(error) });
+      return 'The opportunity was saved, but its change history could not be saved. Do not repeat the state change.';
     }
   };
 
-  if (opportunity.storageMode === 'cloud' && canUseOpportunityCloudStore(userId)) {
+  if (!opportunity.isSample && opportunity.source !== 'demo' && opportunity.storageMode === 'cloud' && canUseOpportunityCloudStore(userId)) {
+    let updated: CrmLiteOpportunity;
     try {
-      const updated = await updateCloudOpportunity(opportunity.id, normalized, userId as string);
-      saveLocalOpportunityRecord({ ...updated, storageMode: 'local' });
-      invalidateWorkspaceCollection('opportunities');
-      noteObservedChanges();
-      return { opportunity: updated, mode: 'cloud' };
+      updated = await updateCloudOpportunity(opportunity.id, normalized, userId as string);
     } catch (error) {
       reportWorkspaceSyncError();
       const localCopy = {
@@ -300,13 +305,19 @@ export async function updateOpportunity(
       saveLocalOpportunityRecord(localCopy);
       invalidateWorkspaceCollection('opportunities');
       debugOpportunityStore('cloud update failed; local copy preserved', { message: getErrorMessage(error) });
-      noteObservedChanges();
+      const historyWarning = noteObservedChanges();
       return {
         opportunity: localCopy,
         mode: 'local',
-        warning: 'Cloud sync issue - your local copy is preserved.',
+        warning: ['Cloud sync issue - your local copy is preserved.', historyWarning].filter(Boolean).join(' '),
       };
     }
+    // A refused browser mirror must not turn an accepted cloud write into a
+    // failure or a second mutation. Cloud is authoritative on this branch.
+    const mirrorWarning = mirrorCloudOpportunity(updated);
+    invalidateWorkspaceCollection('opportunities');
+    const historyWarning = noteObservedChanges();
+    return { opportunity: updated, mode: 'cloud', warning: [mirrorWarning, historyWarning].filter(Boolean).join(' ') || undefined };
   }
 
   const updated = {
@@ -317,8 +328,8 @@ export async function updateOpportunity(
   };
   saveLocalOpportunityRecord(updated);
   invalidateWorkspaceCollection('opportunities');
-  noteObservedChanges();
-  return { opportunity: updated, mode: 'local' };
+  const warning = noteObservedChanges();
+  return { opportunity: updated, mode: 'local', warning };
 }
 
 export async function deleteOpportunity(opportunity: CrmLiteOpportunity, userId?: string | null) {
@@ -462,9 +473,16 @@ function loadLocalOpportunities(): CrmLiteOpportunity[] {
 }
 
 function saveLocalOpportunityRecord(record: CrmLiteOpportunity) {
-  if (typeof localStorage === 'undefined') return;
   const next = [record, ...loadLocalOpportunities().filter((item) => item.id !== record.id)];
-  writeLocalRecords(OPPORTUNITY_STORAGE_KEY, next.sort(sortNewestFirst));
+  requireLocalWrite(writeLocalRecords(OPPORTUNITY_STORAGE_KEY, next.sort(sortNewestFirst)));
+}
+
+function mirrorCloudOpportunity(record: CrmLiteOpportunity): string | undefined {
+  try {
+    saveLocalOpportunityRecord({ ...record, storageMode: 'local' });
+  } catch {
+    return 'Saved to your account, but the browser copy could not be saved. Offline access may be out of date.';
+  }
 }
 
 function deleteLocalOpportunity(opportunityId: string) {
@@ -522,14 +540,14 @@ async function updateCloudOpportunity(opportunityId: string, input: OpportunityF
   return rowToOpportunity(data as OpportunityRow);
 }
 
-function createLocalOpportunity(input: OpportunityFormInput, userId?: string): CrmLiteOpportunity {
+function createLocalOpportunity(input: OpportunityFormInput, userId: string | undefined, workspace: OpportunityWorkspaceTag): CrmLiteOpportunity {
   const timestamp = new Date().toISOString();
   return {
     ...input,
     id: createId(),
     userId,
-    source: 'user',
-    isSample: false,
+    source: workspace.source,
+    isSample: workspace.isSample,
     createdAt: timestamp,
     updatedAt: timestamp,
     storageMode: 'local',
@@ -732,7 +750,7 @@ function getErrorMessage(error: unknown) {
 }
 
 function debugOpportunityStore(message: string, context?: Record<string, unknown>) {
-  if (import.meta.env.DEV) {
+  if (import.meta.env?.DEV) {
     console.debug(`[OpportunityStore] ${message}`, context || {});
   }
 }

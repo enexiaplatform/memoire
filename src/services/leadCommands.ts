@@ -1,6 +1,7 @@
 import {
   createOpportunity,
   emptyOpportunityInput,
+  loadOpportunities,
   opportunityToFormInput,
   updateOpportunity,
   type CrmLiteOpportunity,
@@ -50,10 +51,15 @@ export async function qualifyLead(opportunity: CrmLiteOpportunity, userId?: stri
   if (!isLeadStage(opportunity.stage)) {
     throw new Error('Only a lead can be qualified.');
   }
+  // A stale UI retry after a saved transition must not perform it again,
+  // including when the first response carried a history warning.
+  const current = (await loadOpportunities(opportunity.isSample || opportunity.storageMode === 'local' ? undefined : userId))
+    .find((record) => record.id === opportunity.id);
+  if (!current || !isLeadStage(current.stage)) throw new Error('Only a saved lead can be qualified.');
   return updateOpportunity(
-    opportunity,
+    current,
     {
-      ...opportunityToFormInput(opportunity),
+      ...opportunityToFormInput(current),
       stage: QUALIFIED_STAGE,
       status: 'Active',
       nurturedUntil: '',
@@ -165,6 +171,8 @@ export async function createLead(
 ): Promise<CreateLeadResult> {
   const accountName = input.accountName.trim();
   if (!accountName) throw new Error('A lead needs a customer name.');
+  const sample = workspace.isSample || workspace.source === 'demo';
+  workspace = { source: sample ? 'demo' : 'user', isSample: sample };
 
   const result = await createOpportunity(
     {
@@ -187,6 +195,7 @@ export async function createLead(
       decisionRecommendation: 'Monitor',
     },
     userId,
+    workspace,
   );
 
   let stakeholder: StakeholderRecord | null = null;

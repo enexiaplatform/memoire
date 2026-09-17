@@ -1,5 +1,6 @@
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 // The lead commands write through the real localStorage-backed stores, so the
 // tests get the same minimal browser stub the kernel command tests use. What is
@@ -7,18 +8,23 @@ import assert from 'node:assert/strict';
 // - the whole promise of "one continuous commercial record".
 class MemoryStorage {
   #data = new Map();
+  refusedKeys = new Set();
   getItem(key) { return this.#data.has(key) ? this.#data.get(key) : null; }
-  setItem(key, value) { this.#data.set(key, String(value)); }
+  setItem(key, value) {
+    if (this.refusedKeys.has(key)) throw Object.assign(new Error('Storage full'), { name: 'QuotaExceededError' });
+    this.#data.set(key, String(value));
+  }
   removeItem(key) { this.#data.delete(key); }
-  clear() { this.#data.clear(); }
+  clear() { this.#data.clear(); this.refusedKeys.clear(); }
   key(index) { return [...this.#data.keys()][index] ?? null; }
   get length() { return this.#data.size; }
 }
 
 const storage = new MemoryStorage();
+const emitted = [];
 globalThis.window = {
   localStorage: storage,
-  dispatchEvent: () => true,
+  dispatchEvent: event => { emitted.push(event.type); return true; },
   addEventListener: () => {},
   removeEventListener: () => {},
 };
@@ -31,9 +37,12 @@ const { createLead, qualifyLead, nurtureLead, disqualifyLead } = await import('.
 const { loadOpportunities, opportunityToFormInput, updateOpportunity } = await import('../../src/services/opportunityStore.ts');
 const { loadOpportunityOutcomes } = await import('../../src/services/opportunityOutcomeStore.ts');
 const { loadStakeholders } = await import('../../src/services/stakeholderStore.ts');
+const { loadEvents, EVENT_STORAGE_KEY } = await import('../../src/services/commercialKernel/eventStore.ts');
+const { buildRestorePlan } = await import('../../src/utils/workspaceBackup.ts');
+const { createOpportunity, emptyOpportunityInput, OPPORTUNITY_STORAGE_KEY } = await import('../../src/services/opportunityStore.ts');
 const { buildLeadQueue, selectLeads, selectQualifiedPipeline, disqualifiedLeadIds } = await import('../../src/utils/leadQueue.ts');
 
-beforeEach(() => storage.clear());
+beforeEach(() => { storage.clear(); emitted.length = 0; });
 
 /** A fresh read from storage - never the object the command returned. */
 async function reread(id) {
@@ -232,3 +241,135 @@ function storageRecord(id) {
   const raw = JSON.parse(storage.getItem('memoire.opportunities.v1') || '[]');
   return raw.find((item) => item.id === id);
 }
+
+describe('qualification persistence failures', () => {
+  test('a refused canonical write rejects before UI success or a stage event', async () => {
+    const lead = await abcPharma();
+    const before = storage.getItem(OPPORTUNITY_STORAGE_KEY);
+    const events = storage.getItem(EVENT_STORAGE_KEY);
+    storage.refusedKeys.add(OPPORTUNITY_STORAGE_KEY);
+    emitted.length = 0;
+    let successReached = false;
+    await assert.rejects(async () => {
+      await qualifyLead(lead, null);
+      successReached = true; // The UI only replaces the record after await resolves.
+    }, /space|saved/i);
+    assert.equal(successReached, false);
+    assert.equal(storage.getItem(OPPORTUNITY_STORAGE_KEY), before);
+    assert.equal((await reread(lead.id)).stage, 'Lead');
+    assert.equal(storage.getItem(EVENT_STORAGE_KEY), events);
+    assert.equal(emitted.includes('memoire:commercial-events-updated'), false);
+    storage.refusedKeys.clear();
+    await qualifyLead(lead, null);
+    assert.equal((await reread(lead.id)).stage, 'Discovery');
+    assert.equal(loadEvents().filter(e => e.eventType === 'opportunity_stage_changed').length, 1);
+  });
+
+  test('history failure warns without rolling back state; stale retry does not transition again', async () => {
+    const lead = await abcPharma();
+    storage.refusedKeys.add(EVENT_STORAGE_KEY);
+    emitted.length = 0;
+    const result = await qualifyLead(lead, null);
+    assert.equal(result.opportunity.stage, 'Discovery');
+    assert.match(result.warning, /saved.*history/i);
+    const accepted = storage.getItem(OPPORTUNITY_STORAGE_KEY);
+    assert.equal((await reread(lead.id)).stage, 'Discovery');
+    assert.equal(loadEvents().length, 0);
+    assert.equal(emitted.includes('memoire:commercial-events-updated'), false);
+    storage.refusedKeys.clear();
+    await assert.rejects(() => qualifyLead(lead, null), /saved lead/);
+    assert.equal(storage.getItem(OPPORTUNITY_STORAGE_KEY), accepted);
+    assert.equal(loadEvents().length, 0, 'retry does not invent a second transition or silently repair history');
+  });
+
+  test('unavailable local storage rejects instead of claiming acceptance', async () => {
+    const saved = globalThis.localStorage;
+    delete globalThis.localStorage;
+    delete globalThis.window.localStorage;
+    try {
+      await assert.rejects(() => createLead({ accountName: 'Unavailable' }, null), /storage/i);
+    } finally {
+      globalThis.localStorage = saved;
+      globalThis.window.localStorage = saved;
+    }
+  });
+});
+
+describe('explicit workspace isolation for every creation entry', () => {
+  for (const sample of [false, true]) {
+    const workspace = { source: sample ? 'demo' : 'user', isSample: sample };
+    test(`Add Lead and Capture shared command: sample=${sample}`, async () => {
+      const { opportunity, stakeholder } = await createLead({
+        accountName: 'Same customer name', contactName: 'Recorded person',
+        evidence: 'Original captured need', leadSource: 'Trade show', leadSourceDetail: 'Recorded event',
+      }, 'signed-in-owner', workspace);
+      const stored = await reread(opportunity.id);
+      assert.equal(stored.isSample, sample);
+      assert.equal(stored.source, workspace.source);
+      assert.equal(stored.evidence, 'Original captured need');
+      assert.equal(stored.leadSource, 'Trade show');
+      assert.equal(stakeholder.isSample, sample);
+      assert.equal(stakeholder.source, workspace.source);
+      const plan = buildRestorePlan({ exportedAt: new Date().toISOString(), localBrowserData: { [OPPORTUNITY_STORAGE_KEY]: [stored] } });
+      assert.equal(plan.droppedSampleRecords, sample ? 1 : 0);
+      assert.equal(plan.restoredRecords, sample ? 0 : 1);
+      await qualifyLead(stored, sample ? undefined : 'signed-in-owner');
+      assert.equal((await reread(stored.id)).isSample, sample);
+      assert.equal(loadEvents()[0].isSample === true, sample);
+      assert.equal(loadEvents()[0].sourceType, 'manual', 'existing event provenance vocabulary is unchanged');
+    });
+    test(`shared Opportunity editor/import creation: sample=${sample}`, async () => {
+      const result = await createOpportunity({ ...emptyOpportunityInput, accountName: 'A', opportunityName: 'Imported lead', stage: 'Lead' }, 'owner', workspace);
+      const stored = await reread(result.opportunity.id);
+      assert.equal(stored.isSample, sample);
+      assert.equal(stored.source, workspace.source);
+      if (sample) assert.equal(stored.userId, undefined);
+    });
+  }
+
+  test('demo scope wins over a contradictory false sample flag', async () => {
+    const { opportunity, stakeholder } = await createLead({ accountName: 'A', contactName: 'Person' }, 'owner', { source: 'demo', isSample: false });
+    assert.equal(opportunity.isSample, true);
+    assert.equal(stakeholder.isSample, true);
+  });
+
+  test('failed sample creation returns no lead and does not create its person', async () => {
+    storage.refusedKeys.add(OPPORTUNITY_STORAGE_KEY);
+    await assert.rejects(() => createLead({ accountName: 'A', contactName: 'Person' }, null, { source: 'demo', isSample: true }));
+    assert.equal((await loadOpportunities(null)).length, 0);
+    assert.equal((await loadStakeholders(null)).length, 0);
+  });
+});
+
+test('qualification preserves source data and linked records byte-for-byte', async () => {
+  const lead = await abcPharma();
+  const enriched = (await updateOpportunity(lead, { ...opportunityToFormInput(lead), estimatedValue: 12345, channel: 'Referral', sourceSystem: 'import-system', externalSourceKey: 'source-row-7', nurturedUntil: '2026-12-01', nurtureReason: 'Later' }, null)).opportunity;
+  const linked = {
+    'memoire.salesActivities.v1': [{ id: 'activity-proof', linkedOpportunityId: lead.id, rawNote: 'Original customer words', linkedAccountName: lead.accountName }],
+    'memoire.commercialEvidence.v1': [{ id: 'evidence-proof', opportunityId: lead.id, sourceType: 'capture', sourceId: 'activity-proof', threadId: 'thread-proof' }],
+  };
+  for (const [key, records] of Object.entries(linked)) storage.setItem(key, JSON.stringify(records));
+  const peopleBefore = JSON.stringify(await loadStakeholders(null));
+  const eventsBefore = loadEvents();
+  const after = (await qualifyLead(enriched, null)).opportunity;
+  for (const key of ['id', 'createdAt', 'accountName', 'evidence', 'estimatedValue', 'currency', 'leadSource', 'leadSourceDetail', 'channel', 'sourceSystem', 'externalSourceKey', 'source', 'isSample']) {
+    assert.deepEqual(after[key], enriched[key], key);
+  }
+  for (const [key, records] of Object.entries(linked)) assert.equal(storage.getItem(key), JSON.stringify(records));
+  assert.equal(JSON.stringify(await loadStakeholders(null)), peopleBefore);
+  for (const event of eventsBefore) assert.ok(loadEvents().some(e => e.id === event.id));
+  assert.equal(after.nurturedUntil, '');
+  assert.equal(after.nurtureReason, '');
+});
+
+test('current UI creation callers forward explicit workspace scope to the shared services', () => {
+  for (const file of ['leads/LeadsPage.tsx', 'dailyCapture/DailyCapturePage.tsx']) {
+    const source = readFileSync(new URL(`../../src/features/${file}`, import.meta.url), 'utf8');
+    assert.match(source, /await createLead\(/, file);
+    assert.match(source, /source: sampleDataActive \? 'demo' : 'user', isSample: sampleDataActive/, file);
+  }
+  const opportunities = readFileSync(new URL('../../src/features/opportunities/OpportunitiesPage.tsx', import.meta.url), 'utf8');
+  const calls = opportunities.split('\n').filter(line => line.includes('createOpportunity('));
+  assert.equal(calls.length, 3, 'editor and both existing import entry paths');
+  for (const call of calls) assert.match(call, /isSample: sampleDataActive/);
+});

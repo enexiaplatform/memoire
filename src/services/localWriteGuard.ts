@@ -31,6 +31,11 @@ export type LocalWriteResult =
   | { ok: true }
   | { ok: false; reason: LocalWriteFailureReason; message: string };
 
+/** Canonical writers must reject instead of returning an unsaved record. */
+export function requireLocalWrite(result: LocalWriteResult): void {
+  if (!result.ok) throw new Error(result.message);
+}
+
 export type LocalWriteFailure = {
   key: string;
   reason: LocalWriteFailureReason;

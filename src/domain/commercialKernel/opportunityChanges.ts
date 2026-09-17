@@ -218,7 +218,7 @@ export function recordOpportunityStateChanges(
     idempotencyKey: opportunityChangeIdempotencyKey(
       previous.id, change.field, previous.updatedAt || dayKey,
     ),
-  }));
+  }, { requireDurable: true }));
 }
 
 function trim(value: string, max = 40) {

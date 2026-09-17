@@ -3,7 +3,7 @@ import { fetchAllRows } from '../supabasePaging.ts';
 import { reportClientOperationalEvent } from '../clientTelemetry.ts';
 import { reportWorkspaceSyncError } from '../workspaceSyncStatus.ts';
 import { invalidateWorkspaceCollection } from '../workspaceDataCache.ts';
-import { writeLocalCollection } from '../localWriteGuard.ts';
+import { requireLocalWrite, writeLocalCollection } from '../localWriteGuard.ts';
 
 export type KernelTable =
   | 'commercial_threads'
@@ -106,18 +106,22 @@ export function readLocal<T extends KernelRecord>(codec: KernelCodec<T>): T[] {
  * A write that changes nothing is not a change, so it emits no event and does
  * not invalidate the workspace cache.
  */
-export function writeLocal<T extends KernelRecord>(codec: KernelCodec<T>, records: T[]): T[] {
+export function writeLocal<T extends KernelRecord>(codec: KernelCodec<T>, records: T[], options: { requireDurable?: boolean } = {}): T[] {
   const sanitized = records
     .map(codec.sanitize)
     .filter((record): record is T => Boolean(record))
     .sort(codec.compare);
 
-  if (!canUseStorage()) return sanitized;
+  if (!canUseStorage()) {
+    if (options.requireDurable) throw new Error('This browser has no local storage available for change history.');
+    return sanitized;
+  }
 
   const serialized = JSON.stringify(sanitized);
   if (window.localStorage.getItem(codec.storageKey) === serialized) return sanitized;
 
-  writeLocalCollection(codec.storageKey, serialized);
+  const written = writeLocalCollection(codec.storageKey, serialized);
+  if (options.requireDurable) requireLocalWrite(written);
   invalidateWorkspaceCollection(workspaceCollectionForTable(codec.table));
   window.dispatchEvent(new CustomEvent(codec.updatedEvent, { detail: sanitized }));
 
