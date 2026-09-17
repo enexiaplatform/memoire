@@ -411,3 +411,13 @@ describe('M1 command boundaries', () => {
     }
   });
 });
+
+
+test('qualification clears the active nurture while keeping its context in stage history', async () => {
+  const lead = await abcPharma();
+  const parked = await nurtureLead(lead, { nurturedUntil: '2026-12-01', nurtureReason: 'Budget next FY' });
+  await qualifyLead(parked.opportunity);
+  const event = loadEvents({ userId: null, sampleDataActive: false }).find(item => item.eventType === 'opportunity_stage_changed' && item.opportunityId === lead.id);
+  assert.deepEqual(event.structuredPayload.previousNurture, { revisitDate: '2026-12-01', reason: 'Budget next FY' });
+  assert.equal((await reread(lead.id)).nurturedUntil, '');
+});

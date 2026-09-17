@@ -1,3 +1,4 @@
+import { isLeadStage } from './leadIdentity.ts';
 import type { AccountMemoryRecord } from '../services/accountStore.ts';
 import type { NudgeRecord, NudgeSource, NudgeUrgency } from '../services/nudgeStore.ts';
 import type { OperatingContextRecord } from '../services/operatingContextStore.ts';
@@ -94,7 +95,7 @@ function buildMeddicStakeholderNudges(input: ProactiveNudgeInput, today: string)
   const objections = input.objections || [];
   const activities = input.activities || [];
   return (input.opportunities || []).flatMap((opportunity) => {
-    if (opportunity.status !== 'Active') return [];
+    if (opportunity.status !== 'Active' || isLeadStage(opportunity.stage)) return [];
     const map = buildMeddicStakeholderMap({ opportunity, stakeholders, objections, activities, today });
     const accountName = opportunity.accountName || 'Needs confirmation';
     const opportunityName = opportunity.opportunityName || 'Needs confirmation';
@@ -240,7 +241,7 @@ function buildRevenueNudges(actions: RevenueActionItem[], today: string) {
 
 function buildOpportunityNudges(opportunities: CrmLiteOpportunity[], today: string) {
   return opportunities.flatMap((opportunity) => {
-    if (opportunity.status !== 'Active') return [];
+    if (opportunity.status !== 'Active' || isLeadStage(opportunity.stage)) return [];
     const nudges: NudgeRecord[] = [];
     const accountName = opportunity.accountName || 'Needs confirmation';
     const opportunityName = opportunity.opportunityName || 'Needs confirmation';
@@ -419,6 +420,7 @@ function buildSilenceRiskNudges(input: ProactiveNudgeInput, today: string) {
   const activities = input.activities || [];
   const commitments = input.plannedCommitments || [];
   return (input.opportunities || []).flatMap((opportunity) => {
+    if (isLeadStage(opportunity.stage)) return [];
     const silence = classifyOpportunitySilence(opportunity, activities, today, commitments);
     if (silence.status !== 'silent' && silence.status !== 'at-risk') return [];
     const lastTouch = silence.lastTouchDate;

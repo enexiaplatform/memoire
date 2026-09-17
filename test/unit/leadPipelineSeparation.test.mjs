@@ -118,3 +118,40 @@ test('Ask answers a Lead shortcut with the partition counts and links to the own
 
   assert.equal(answerFromLeadCommand(matchCommands('show my Leads')[0], { opportunities: [qualified], opportunityOutcomes: [] }).answer, 'No open leads.');
 });
+
+
+test('Lead thread pursuit uses the queue, while a real money commitment remains actionable', () => {
+  const thread = { id: 't', opportunityId: leads[0].id, status: 'active', title: 'Lead thread', accountName: 'ABC Pharma', daysSinceActivity: 90, openCommitmentCount: 0, currentWaitingParty: 'customer', currentMoneyState: 'none' };
+  const policies = currentMoneyState => evaluateCommercialPolicies({ opportunities: leads, commitments: [], threads: [{ ...thread, currentMoneyState }], quotes: [], today: new Date(`${today}T00:00:00Z`) });
+  assert.deepEqual(policies('none'), []);
+  assert.deepEqual(policies('awaiting_payment').map(item => item.reasonCode), ['MONEY_CHECKPOINT_STUCK']);
+});
+
+test('legacy proactive recommendations cannot bypass the shared Lead queue', async () => {
+  const { buildProactiveNudges } = await import('../../src/utils/proactiveNudges.ts');
+  const nudges = buildProactiveNudges({ opportunities: leads, activities: [], stakeholders: [], objections: [], today });
+  assert.equal(nudges.allActiveNudges.filter(item => item.entityType === 'opportunity').length, 0);
+});
+
+test('Lead funnel excludes sample and removed-record receipts from live denominators', async () => {
+  const { buildLeadFunnel } = await import('../../src/utils/leadQueue.ts');
+  const events = ['sample', 'removed'].map(opportunityId => ({ opportunityId, eventType: 'opportunity_stage_changed', occurredAt: '2026-09-15T00:00:00Z', structuredPayload: { from: 'Lead', to: 'Discovery' } }));
+  const outcomes = [{ opportunityId: 'removed', outcome: 'Lost', stageBeforeOutcome: 'Lead', reasonText: 'Poor fit' }];
+  const input = { opportunities: [leads[0], record('sample', 'Discovery', { isSample: true })], activities: [], events, outcomes };
+  const live = buildLeadFunnel(input);
+  assert.equal(live.leads, 1);
+  assert.equal(live.qualified, 0);
+  assert.equal(live.disqualified, 0);
+  assert.deepEqual(live.disqualifyReasons, []);
+  assert.equal(buildLeadFunnel({ ...input, includeSampleRecords: true }).qualified, 1);
+});
+
+
+test('disqualified Leads cannot manufacture enough lost-deal learning samples', async () => {
+  const { analyzePersonalSalesLearning } = await import('../../src/utils/personalSalesLearning.ts');
+  const outcomes = [1, 2, 3].map(id => ({ id: String(id), opportunityId: `closed-${id}`, outcome: 'Lost', stageBeforeOutcome: 'Lead', outcomeDate: today }));
+  const learning = analyzePersonalSalesLearning({ opportunities: leads, outcomes });
+  assert.equal(learning.totalOutcomes, 0);
+  assert.equal(learning.hasEnoughData, false);
+  assert.deepEqual(learning.warnings, []);
+});

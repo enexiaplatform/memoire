@@ -1,3 +1,4 @@
+import { isDisqualifiedLeadOutcome, isLeadStage } from './leadIdentity.ts';
 import type { PipelineDefenseDeal } from '../data/pipelineDefenseBrief.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
 import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore.ts';
@@ -66,7 +67,8 @@ export function analyzePersonalSalesLearning(input: {
   deals?: PipelineDefenseDeal[];
   limit?: number;
 }): PersonalSalesLearningAnalysis {
-  const outcomes = [...input.outcomes].sort((left, right) => right.outcomeDate.localeCompare(left.outcomeDate));
+  const opportunities = (input.opportunities || []).filter((opportunity) => !isLeadStage(opportunity.stage));
+  const outcomes = input.outcomes.filter((outcome) => !isDisqualifiedLeadOutcome(outcome)).sort((left, right) => right.outcomeDate.localeCompare(left.outcomeDate));
   const hasEnoughData = outcomes.length >= 3;
   const lossDelayOutcomes = outcomes.filter((outcome) => ['Lost', 'Delayed', 'No decision'].includes(outcome.outcome));
   const wonOutcomes = outcomes.filter((outcome) => outcome.outcome === 'Won');
@@ -80,12 +82,12 @@ export function analyzePersonalSalesLearning(input: {
   ].sort((left, right) => right.frequency - left.frequency || left.title.localeCompare(right.title))
     .slice(0, input.limit || 8);
   const warnings = hasEnoughData
-    ? buildLearningWarnings({ insights, outcomes: lossDelayOutcomes, opportunities: input.opportunities || [], deals: input.deals || [] })
+    ? buildLearningWarnings({ insights, outcomes: lossDelayOutcomes, opportunities, deals: input.deals || [] })
     : [];
   const topInsight = insights[0];
   const dealToApplyItTo = warnings[0]
     ? `${warnings[0].accountName} / ${warnings[0].opportunityName}`
-    : findActiveDealName(input.opportunities || [], input.deals || []);
+    : findActiveDealName(opportunities, input.deals || []);
   const lowDataMessage = 'Learning will improve after more closed outcomes';
 
   return {

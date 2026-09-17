@@ -200,8 +200,8 @@ export function resolveLeadSource(
  * lost because there was no project, nobody answered, or it was never a fit.
  * Each maps onto the outcome record's existing reason category, because the
  * disqualification is written as a Lost outcome on the same record - there is
- * no second store of lost leads, and win/loss learning reads it without being
- * taught about leads at all.
+ * no second store of lost leads. Lead Review learns from these reasons;
+ * qualified win/loss learning excludes them through the canonical predicate.
  */
 export const leadDisqualifyReasons = [
   'No project',
