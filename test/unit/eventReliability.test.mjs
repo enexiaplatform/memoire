@@ -94,7 +94,16 @@ describe('event idempotency - the same mutation once, different mutations separa
     );
   });
 
-  test('the write path really uses the revision, not the calendar day', () => {
+  test('the write path really uses the revision, not the calendar day', (context) => {
+    // The write path now requires durable storage; assert actual persisted
+    // events as well as keys instead of accepting an in-memory-only result.
+    const previousWindow = globalThis.window;
+    const records = new Map();
+    globalThis.window = {
+      localStorage: { getItem: key => records.get(key) ?? null, setItem: (key, value) => records.set(key, value) },
+      dispatchEvent: () => true,
+    };
+    context.after(() => { globalThis.window = previousWindow; });
     // The tests above exercise the key function. This one exercises the call
     // site, because keying correctly and *passing* the right thing are two
     // different mistakes - and only this test notices the second.
@@ -120,6 +129,7 @@ describe('event idempotency - the same mutation once, different mutations separa
       forwardOnce.includes('2026-09-05T09:00:00.000Z'),
       'the key must carry the revision the mutation started from',
     );
+    assert.equal(JSON.parse(records.get('memoire.commercialEvents.v1')).length, 2, 'two genuine changes persist, retry is deduplicated');
   });
 
   test('a record with no revision stamp still gets a key rather than none', () => {

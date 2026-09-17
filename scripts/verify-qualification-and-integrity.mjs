@@ -133,7 +133,8 @@ const deal = (overrides = {}) => ({
   );
 
   const qualify = commands.slice(commands.indexOf('export async function qualifyLead'), commands.indexOf('export async function nurtureLead'));
-  assert.match(qualify, /\.\.\.opportunityToFormInput\(opportunity\),\s*stage: QUALIFIED_STAGE,/, 'qualifying moves a lead to Discovery through the full round-trip, so nothing else changes');
+  assert.match(qualify, /const current = \(await loadOpportunities\(/, 'qualification rereads saved state before a stale retry can repeat it');
+  assert.match(qualify, /\.\.\.opportunityToFormInput\(current\),\s*stage: QUALIFIED_STAGE,/, 'qualifying moves the current saved lead to Discovery through the full round-trip, so nothing else changes');
 
   const disqualify = commands.slice(commands.indexOf('export async function disqualifyLead'), commands.indexOf('export type CreateLeadInput'));
   assert.match(disqualify, /createOpportunityOutcomeFromOpportunity\(/, 'disqualifying writes a close-out through the outcome store');

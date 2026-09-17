@@ -4,7 +4,7 @@
 
 Started from `317a5fb9b6273c5672f37aa406f1bde044700a00`, not the earlier verified `3badb07`. The intervening command-bar, sample-data, pipeline-count and Lead presentation changes are preserved. The affected creation/update services had not fixed either reproduced M0.1 blocker. No reset, UI redesign, navigation change, schema migration or new Lead feature.
 
-The exact checkpoint is the commit introducing this report, titled `Harden Lead persistence and explicit sample workspace isolation`. Resolve with `git log -1 --format=%H -- docs/qa/lead-data-integrity-hardening-2026-09-17.md`. Its full SHA and execution results are recorded in the final execution report and Git note attached to the tested commit. This document cannot embed its own Git hash. All final checks must run from a clean isolated checkout of that SHA, without source overlays.
+The exact final checkpoint is the last commit updating this report for M0.2. Resolve with `git log -1 --format=%H -- docs/qa/lead-data-integrity-hardening-2026-09-17.md`. Its full SHA and execution results are recorded in the final execution report and Git note attached to the tested commit. This document cannot embed its own Git hash. All final checks must run from a clean isolated checkout of that SHA, without source overlays.
 
 ## Canonical state acceptance
 
@@ -72,6 +72,8 @@ The intended current nurture behavior is unchanged: qualification clears the act
 - Every existing production creation wrapper passes explicit sample scope; record continuity remains covered.
 
 Tests use the existing in-memory browser pattern. Cloud tests substitute only the network client via Node's module hook; actual commands, stores, codecs and guards run. They do not validate deployed RLS or make external network requests. The focused files are `test/unit/leadCommands.test.mjs` and `test/unit/leadCloudIntegrity.test.mjs`.
+
+The first full verification exposed outdated harness assumptions: event-idempotency checks invoked the write path without browser storage, and source checks required a parameterless catch and the stale input variable name. `eventReliability.test.mjs` and the Delta verifier now provide storage and also assert that exactly two genuine events persist despite a retry. The Delta catch check accepts a named error; qualification wiring now requires the saved-state reread and its full form round-trip. These changes retain the existing guarantees rather than weakening durability requirements.
 
 ## Verification and acceptance
 

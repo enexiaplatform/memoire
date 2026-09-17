@@ -398,7 +398,7 @@ const panelCode = readCode('src/features/threads/DeltaPanel.tsx');
     );
   }
   assert.ok(
-    /catch\s*{[^}]*}/.test(updateBlock.slice(updateBlock.indexOf('const noteObservedChanges'))),
+    /catch(?:\s*\([^)]*\))?\s*{[^}]*}/.test(updateBlock.slice(updateBlock.indexOf('const noteObservedChanges'))),
     'a failure to record history must not surface as a failed save',
   );
 
@@ -439,6 +439,12 @@ const panelCode = readCode('src/features/threads/DeltaPanel.tsx');
 // ---------------------------------------------------------------- Contract J
 // A retry writes one event; two genuine transitions write two.
 {
+  const previousWindow = globalThis.window;
+  const persisted = new Map();
+  globalThis.window = {
+    localStorage: { getItem: key => persisted.get(key) ?? null, setItem: (key, value) => persisted.set(key, value) },
+    dispatchEvent: () => true,
+  };
   const version = (stage, updatedAt) => ({
     id: 'opp-1', accountName: ACCOUNT, opportunityName: 'Rollout',
     stage, expectedClosePeriod: 'Q4', estimatedValue: 400, status: 'Active', updatedAt,
@@ -476,6 +482,9 @@ const panelCode = readCode('src/features/threads/DeltaPanel.tsx');
       `a random idempotency key destroys retry safety: ${forbidden}`,
     );
   }
+  assert.equal(JSON.parse(persisted.get('memoire.commercialEvents.v1')).length, 2,
+    'the two genuine transitions must be persisted, with a retry deduplicated');
+  globalThis.window = previousWindow;
 }
 
 // ---------------------------------------------------------------- Contract K
@@ -521,7 +530,7 @@ const panelCode = readCode('src/features/threads/DeltaPanel.tsx');
     store.indexOf('export async function deleteOpportunity'),
   );
   assert.ok(
-    /catch\s*{[^}]*}/.test(updateBlock.slice(updateBlock.indexOf('const noteObservedChanges'))),
+    /catch(?:\s*\([^)]*\))?\s*{[^}]*}/.test(updateBlock.slice(updateBlock.indexOf('const noteObservedChanges'))),
     'a failure to record history must never surface as a failed save',
   );
 }
