@@ -187,6 +187,17 @@ test('value outcome rejection does not return a phantom record', () => {
   assert.equal(storage.getItem(kernelCodecs[4].storageKey), null);
 });
 
+test('retry cannot build a replacement from a partially rolled-back workspace', async () => {
+  storage.setItem(RESTORE_JOURNAL_KEY, JSON.stringify({ version: 1, before: { 'memoire.accounts.v1': '[{"id":"old"}]' } }));
+  const before = [...storage.data];
+  await assert.rejects(restoreWorkspace(kernelBackup()), /Reload to recover/);
+  assert.equal(undoRestore({}), false);
+  assert.deepEqual([...storage.data], before);
+  assert.equal(recoverInterruptedRestore(storage), true);
+  await restoreWorkspace(kernelBackup());
+  assert.equal(storage.getItem('memoire.accounts.v1'), null, 'the recovered old collection is cleared by replacement');
+});
+
 test('evidence supersession is identical across backup ordering, including observation-date ties', async () => {
   const records = [
     { ...fixtures[3], id: 'old', observedAt: '2026-08-01' },

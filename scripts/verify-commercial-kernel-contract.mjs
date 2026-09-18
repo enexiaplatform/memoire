@@ -208,7 +208,11 @@ const migrationSql = migrationFiles
   // Commands return a typed result. Throwing inside a click handler is how a
   // record the user just typed disappears behind a blank screen.
   assert.ok(commands.includes('CommandResult'), 'commands must return a typed result');
-  assert.equal(/\bthrow new Error\(/.test(commands), false, 'commands report failure, they do not throw');
+  const eventStart = commands.indexOf('export function recordCommercialEvent');
+  const eventEnd = commands.indexOf('function recordStateEvent', eventStart);
+  const stateCommands = commands.slice(0, eventStart) + commands.slice(eventEnd);
+  assert.equal(/\bthrow new Error\(/.test(stateCommands), false, 'state commands report failure, they do not throw');
+  assert.match(commands.slice(eventStart, eventEnd), /if \(!stored\) throw/, 'standalone history writes reject missing persistence instead of returning phantom events');
 
   // A reschedule must never overwrite the promise as made.
   assert.ok(

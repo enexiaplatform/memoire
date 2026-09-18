@@ -1,6 +1,6 @@
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { canonicalContracts, contractForKey, isSampleRecord, type RecordData } from './canonicalDurability.ts';
-import { applyLocalRestore, beginRestore, endRestore } from './restoreJournal.ts';
+import { applyLocalRestore, beginRestore, endRestore, RESTORE_JOURNAL_KEY } from './restoreJournal.ts';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache.ts';
 import { buildRestorePlan, isRestorableWorkspaceKey, type BackupEnvelope } from '../utils/workspaceBackup.ts';
 import { hasLocalSampleData } from '../utils/dataMode.ts';
@@ -40,6 +40,7 @@ export async function restoreWorkspace(
   if (hasLocalSampleData()) throw new Error('Leave the sample workspace before restoring real data.');
   const plan = buildRestorePlan(envelope);
   if (typeof window === 'undefined' || !window.localStorage) throw new Error('Browser storage is unavailable. Nothing was changed.');
+  assertNoPendingRestore();
   const cloud = envelope.cloudData as { user_id?: string; data?: Record<string, RecordData[]> } | undefined;
   if (options.userId && cloud?.user_id && cloud.user_id !== options.userId) throw new Error('This backup belongs to another account. Sign in to its original account before restoring.');
   const snapshot = snapshotWorkspace();
@@ -101,6 +102,7 @@ export async function restoreWorkspace(
 /** Local-only undo, with the same rollback boundary. Never reverses a cloud merge. */
 export function undoRestore(snapshot: Record<string, string>): boolean {
   try {
+    assertNoPendingRestore();
     const current = snapshotWorkspace();
     const desired: Record<string, string | null> = Object.fromEntries(Object.keys(current).map(key => [key, null]));
     for (const [key, value] of Object.entries(snapshot)) if (isRestorableWorkspaceKey(key)) desired[key] = value;
@@ -124,4 +126,8 @@ function countRecords(value: string | undefined): number | null {
   if (!value) return null;
   try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed.length : null; }
   catch { return null; }
+}
+
+function assertNoPendingRestore() {
+  if (window.localStorage.getItem(RESTORE_JOURNAL_KEY)) throw new Error('Reload to recover the interrupted restore before trying another restore or undo. Keep your backup and do not clear browser data.');
 }
