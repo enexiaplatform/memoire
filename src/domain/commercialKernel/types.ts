@@ -95,6 +95,7 @@ export type MoneyState = (typeof moneyStates)[number];
 
 export type CommercialThread = {
   id: string;
+  isSample?: boolean;
   userId: string | null;
   accountId: string;
   accountName: string;

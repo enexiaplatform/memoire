@@ -52,7 +52,7 @@ export type KernelCodec<T extends KernelRecord> = {
 };
 
 export function isSyncableRecord(record: KernelRecord) {
-  return record.isSample !== true;
+  return record.isSample !== true && (record as KernelRecord & { source?: string }).source !== 'demo';
 }
 
 /**
@@ -106,14 +106,17 @@ export function readLocal<T extends KernelRecord>(codec: KernelCodec<T>): T[] {
  * A write that changes nothing is not a change, so it emits no event and does
  * not invalidate the workspace cache.
  */
-export function writeLocal<T extends KernelRecord>(codec: KernelCodec<T>, records: T[], options: { requireDurable?: boolean } = {}): T[] {
+export function writeLocal<T extends KernelRecord>(codec: KernelCodec<T>, records: T[], options: { requireDurable?: boolean } = { requireDurable: true }): T[] {
+  const requireDurable = options.requireDurable !== false;
   const sanitized = records
     .map(codec.sanitize)
     .filter((record): record is T => Boolean(record))
     .sort(codec.compare);
 
+  if (requireDurable) for (const record of sanitized) validateStoredDates(record);
+  if (requireDurable && sanitized.length !== records.length) throw new Error('This record is incomplete and was not saved.');
   if (!canUseStorage()) {
-    if (options.requireDurable) throw new Error('This browser has no local storage available for change history.');
+    if (requireDurable) throw new Error('This browser has no local storage available for saving this record.');
     return sanitized;
   }
 
@@ -121,7 +124,8 @@ export function writeLocal<T extends KernelRecord>(codec: KernelCodec<T>, record
   if (window.localStorage.getItem(codec.storageKey) === serialized) return sanitized;
 
   const written = writeLocalCollection(codec.storageKey, serialized);
-  if (options.requireDurable) requireLocalWrite(written);
+  if (requireDurable) requireLocalWrite(written);
+  if (!written.ok) { reportWorkspaceSyncError(); return sanitized; }
   invalidateWorkspaceCollection(workspaceCollectionForTable(codec.table));
   window.dispatchEvent(new CustomEvent(codec.updatedEvent, { detail: sanitized }));
 
@@ -196,7 +200,7 @@ export async function upsertCloudRecords<T extends KernelRecord>(
   userId: string,
   records: T[],
 ) {
-  if (!supabaseClient) return;
+  if (!supabaseClient) throw new Error('The account connection is unavailable.');
   const rows = records.filter(isSyncableRecord).map((record) => codec.toRow(record, userId));
   if (rows.length === 0) return;
 
@@ -236,7 +240,7 @@ export async function loadMergedForUser<T extends KernelRecord>(
   }
 
   const result = Array.from(merged.values()).sort(codec.compare);
-  writeLocal(codec, result);
+  writeLocal(codec, result, { requireDurable: false });
   sendOwedCloudRecords(codec, userId, result, cloud);
   return result;
 }
@@ -370,4 +374,18 @@ export function kernelId(prefix: string): string {
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   return `${prefix}-${random}`;
+}
+
+/** A newly accepted record must remain readable by the backup preflight. */
+function validateStoredDates(record: KernelRecord) {
+  const fields = record as unknown as Record<string, unknown>;
+  for (const [name, value] of Object.entries(fields)) {
+    if ((name.endsWith('At') || name.endsWith('Date')) && value != null && value !== '') {
+      if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) throw new Error('This record has an invalid date and was not saved.');
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value) && new Date(value).toISOString().slice(0,10) !== value) throw new Error('This record has an invalid date and was not saved.');
+    }
+  }
+  if (Array.isArray(fields.dueDateHistory)) for (const item of fields.dueDateHistory) {
+    for (const value of [item.from, item.to, item.changedAt]) if (value && !Number.isFinite(Date.parse(value))) throw new Error('This commitment has invalid date history and was not saved.');
+  }
 }

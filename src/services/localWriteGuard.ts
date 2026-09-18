@@ -1,3 +1,4 @@
+import { isRestoreInProgress } from './restoreJournal.ts';
 import { reportClientOperationalEvent } from './clientTelemetry.ts';
 
 /**
@@ -60,12 +61,10 @@ export function getLastLocalWriteFailure(): LocalWriteFailure | null {
  * every existing caller is synchronous.
  */
 export function writeLocalCollection(key: string, payload: string): LocalWriteResult {
-  const storage = resolveStorage();
-  if (!storage) {
-    return { ok: false, reason: 'unavailable', message: 'This browser has no local storage available.' };
-  }
-
+  if (isRestoreInProgress()) return { ok: false, reason: 'unavailable', message: 'Workspace restore is in progress. Wait before saving changes.' };
   try {
+    const storage = resolveStorage();
+    if (!storage) return { ok: false, reason: 'unavailable', message: 'This browser has no local storage available.' };
     storage.setItem(key, payload);
     if (lastFailure) {
       lastFailure = null;

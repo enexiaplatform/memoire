@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
+import { canonicalContracts } from '../src/services/canonicalDurability.ts';
 import { buildRestorePlan, parseBackupFile } from '../src/utils/workspaceBackup.ts';
 
 /**
@@ -89,10 +90,10 @@ import { buildRestorePlan, parseBackupFile } from '../src/utils/workspaceBackup.
 {
   const service = readFileSync(new URL('../src/services/workspaceRestore.ts', import.meta.url), 'utf8');
 
-  assert.match(service, /clearWorkspaceKeys\(\)/, 'a restore replaces rather than merges');
+  assert.match(service, /applyLocalRestore\(/, 'local replacement uses a rollback journal');
   assert.match(service, /writeLocalCollection\(/, 'restore writes through the guarded path, so a full browser cannot half-land silently');
-  assert.match(service, /upsertCloudJsonCollection\(/, 'a signed-in restore reaches the account, not only the browser');
-  assert.match(service, /claimLocalCollectionForUser\(/, 'the restored collections are claimed for the user who restored them');
+  assert.match(service, /await supabaseClient.from/, 'signed-in recovery awaits canonical account writes');
+  assert.match(service, /cloud.user_id !== options.userId/, 'restore refuses another account ownership');
   assert.match(service, /export function undoRestore/, 'a restore of the wrong file has to be recoverable');
   assert.match(service, /export function snapshotWorkspace/, 'the workspace being replaced is captured before it is replaced');
 
@@ -104,7 +105,7 @@ import { buildRestorePlan, parseBackupFile } from '../src/utils/workspaceBackup.
   const tables = [...tableUnion[1].matchAll(/'([a-z_]+)'/g)].map((match) => match[1]);
   for (const table of tables) {
     assert.ok(
-      service.includes(`'${table}'`),
+      canonicalContracts.some(contract => contract.table === table),
       `restore does not know where to push ${table}; a collection with a cloud table must have a restore route`,
     );
   }

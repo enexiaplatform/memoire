@@ -1,3 +1,4 @@
+import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KEY, isSampleRecord, recordIdentity, validateCanonicalRecord, type RecordData } from '../services/canonicalDurability.ts';
 /**
  * The other half of export.
  *
@@ -10,16 +11,8 @@
  * backup, what never comes back in - can be tested without a browser.
  */
 
-/**
- * Format 2 added the Commercial Kernel stores (threads, commitments, events,
- * value outcomes). The format is key-prefixed rather than a fixed schema, so a
- * version-1 backup restores into a version-2 workspace unchanged - it simply
- * carries no kernel keys, and the kernel derives what it can from the
- * opportunities and activities that are in the file. The version number is
- * still incremented, because it is what tells a *newer* backup apart from one
- * this build can safely read.
- */
-export const BACKUP_FORMAT_VERSION = 2;
+/** Format 3 adds cloud decoding and strict preflight. Versions 1 and 2 remain readable. */
+export const BACKUP_FORMAT_VERSION = 3;
 export const BACKUP_KEY_PREFIX = 'memoire.';
 
 export type BackupEnvelope = {
@@ -28,6 +21,7 @@ export type BackupEnvelope = {
   formatVersion?: number;
   localBrowserData: Record<string, unknown>;
   cloudData?: unknown;
+  localBrowserRawData?: Record<string, string>;
 };
 
 export type BackupEntry = {
@@ -58,7 +52,8 @@ export type BackupRejectionReason =
   | 'not-an-object'
   | 'not-a-memoire-backup'
   | 'unsupported-version'
-  | 'no-workspace-data';
+  | 'no-workspace-data'
+  | 'invalid-records';
 
 /**
  * Deliberately strict. A restore overwrites the workspace, so anything we are
@@ -88,8 +83,8 @@ export function parseBackupFile(raw: string): BackupParseResult {
     };
   }
 
-  const formatVersion = typeof candidate.formatVersion === 'number' ? candidate.formatVersion : 1;
-  if (formatVersion > BACKUP_FORMAT_VERSION) {
+  const formatVersion = candidate.formatVersion === undefined ? 1 : candidate.formatVersion;
+  if (!Number.isInteger(formatVersion) || formatVersion < 1 || formatVersion > BACKUP_FORMAT_VERSION) {
     return {
       ok: false,
       reason: 'unsupported-version',
@@ -98,7 +93,7 @@ export function parseBackupFile(raw: string): BackupParseResult {
   }
 
   const workspaceKeys = Object.keys(local).filter(isWorkspaceKey);
-  if (workspaceKeys.length === 0) {
+  if (workspaceKeys.length === 0 && !candidate.cloudData) {
     return {
       ok: false,
       reason: 'no-workspace-data',
@@ -112,24 +107,24 @@ export function parseBackupFile(raw: string): BackupParseResult {
     formatVersion,
     localBrowserData: local as Record<string, unknown>,
     cloudData: candidate.cloudData,
+    localBrowserRawData: candidate.localBrowserRawData,
   };
 
-  return { ok: true, envelope, summary: summarizeBackup(envelope) };
+  try {
+    buildRestorePlan(envelope);
+    return { ok: true, envelope, summary: summarizeBackup(envelope) };
+  } catch (error) {
+    return { ok: false, reason: 'invalid-records', message: `${error instanceof Error ? error.message : String(error)} Nothing was changed.` };
+  }
 }
 
 export function summarizeBackup(envelope: BackupEnvelope): BackupSummary {
-  const entries = Object.keys(envelope.localBrowserData)
-    .filter(isWorkspaceKey)
-    .sort()
-    .map((key) => {
-      const value = envelope.localBrowserData[key];
-      if (!Array.isArray(value)) return { key, recordCount: null, sampleCount: 0 };
-      return {
-        key,
-        recordCount: value.length,
-        sampleCount: value.filter(isSampleRecord).length,
-      };
-    });
+  const plan = buildRestorePlan(envelope);
+  const entries = plan.writes.map(({ key, value }) => {
+    let records: unknown;
+    try { records = JSON.parse(value); } catch { records = value; }
+    return { key, recordCount: Array.isArray(records) ? records.length : null, sampleCount: 0 };
+  });
 
   return {
     exportedAt: envelope.exportedAt,
@@ -138,7 +133,7 @@ export function summarizeBackup(envelope: BackupEnvelope): BackupSummary {
     entries,
     totalKeys: entries.length,
     totalRecords: entries.reduce((total, entry) => total + (entry.recordCount || 0), 0),
-    totalSampleRecords: entries.reduce((total, entry) => total + entry.sampleCount, 0),
+    totalSampleRecords: plan.droppedSampleRecords,
     hadCloudData: Boolean(envelope.cloudData),
   };
 }
@@ -157,26 +152,99 @@ export type RestorePlan = {
  * is enforced here too - and the count is reported rather than swallowed.
  */
 export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
+  const version = envelope.formatVersion === undefined ? 1 : envelope.formatVersion;
+  if (!Number.isInteger(version) || version < 1 || version > BACKUP_FORMAT_VERSION) throw new Error('Unsupported backup version.');
+  if (!Number.isFinite(Date.parse(envelope.exportedAt))) throw new Error('Invalid backup timestamp.');
+  if (!envelope.localBrowserData || typeof envelope.localBrowserData !== 'object' || Array.isArray(envelope.localBrowserData)) throw new Error('Invalid workspace section.');
+  if (describeCloudExportGaps(envelope.cloudData)) throw new Error('This cloud export is incomplete. Export again before replacing a workspace.');
   let droppedSampleRecords = 0;
   let restoredRecords = 0;
-
-  const writes = Object.keys(envelope.localBrowserData)
-    .filter(isWorkspaceKey)
-    .sort()
-    .map((key) => {
-      const value = envelope.localBrowserData[key];
-
-      if (Array.isArray(value)) {
-        const live = value.filter((record) => !isSampleRecord(record));
-        droppedSampleRecords += value.length - live.length;
-        restoredRecords += live.length;
-        return { key, value: JSON.stringify(live) };
+  const normalized: Record<string, unknown> = {};
+  const cloud = envelope.cloudData as { data?: Record<string, unknown>; user_id?: string; manifest?: { tables?: Record<string, { rows?: number }> } } | null;
+  if (cloud != null && (!cloud || typeof cloud !== 'object' || !cloud.data || typeof cloud.data !== 'object' || Array.isArray(cloud.data))) throw new Error('Invalid cloud backup section.');
+  if (cloud?.data) {
+    for (const [table, entry] of Object.entries(cloud.manifest?.tables || {})) {
+      if (!Array.isArray(cloud.data[table]) || (typeof entry.rows === 'number' && entry.rows !== (cloud.data[table] as unknown[]).length)) throw new Error(`${table}: the export manifest does not match its data.`);
+    }
+    for (const [table, rows] of Object.entries(cloud.data)) {
+      if (!Array.isArray(rows)) throw new Error(`${table}: expected a list of cloud rows.`);
+      const contract = canonicalContracts.find(c => c.table === table);
+      if (!contract) {
+        if (!(archiveOnlyTables as readonly string[]).includes(table)) throw new Error(`Unsupported cloud dataset: ${table}.`);
+        continue;
       }
-
-      return { key, value: JSON.stringify(value) };
-    });
-
+      const seen = new Set<string>();
+      const records: RecordData[] = [];
+      for (const row of rows) {
+        if (!row || typeof row !== 'object' || Array.isArray(row)) throw new Error(`${table}: malformed cloud row.`);
+        if (isSampleRecord(row) || isSampleRecord(row.payload)) { droppedSampleRecords++; continue; }
+        if (cloud.user_id && row.user_id !== cloud.user_id) throw new Error(`${table}: mixed account ownership.`);
+        // Validate source enums and dates before the normal read codec can default them.
+        if (contract.kind !== 'json') validateCanonicalRecord(contract, Object.fromEntries(Object.entries(row).map(([k,v]) => [k.replace(/_([a-z])/g, (_,c: string) => c.toUpperCase()),v])));
+        const decoded = contract.decode(row);
+        validateCanonicalRecord(contract, decoded);
+        if (contract.kind !== 'target' && decoded.id !== row.id) throw new Error(`${table}: payload identity does not match its row.`);
+        const id = recordIdentity(contract, decoded);
+        if (seen.has(id)) throw new Error(`${table}: duplicate record identity ${id}.`);
+        seen.add(id);
+        records.push(decoded);
+      }
+      const key = contract.table === 'operating_context' ? `${contract.key}:${cloud.user_id || 'guest'}` : contract.key;
+      normalized[key] = records;
+    }
+    // Preserve non-canonical audit/legacy rows and fields not represented by today's UI.
+    normalized[CLOUD_ARCHIVE_KEY] = { ...cloud, data: Object.fromEntries(Object.entries(cloud.data).map(([table, rows]) => [table, (rows as RecordData[]).filter(row => !isSampleRecord(row) && !isSampleRecord(row.payload))])) };
+  }
+  for (const [key, value] of Object.entries(envelope.localBrowserData)) {
+    if (!isRestorableWorkspaceKey(key)) continue;
+    const contract = contractForKey(key);
+    if (contract && !Array.isArray(value)) throw new Error(`${key}: expected a record collection.`);
+    if (!Array.isArray(value)) { if (key !== CLOUD_ARCHIVE_KEY || !cloud) normalized[key] = value; continue; }
+    const seen = new Set<string>();
+    const local: RecordData[] = [];
+    for (const record of value) {
+      if (isSampleRecord(record)) { droppedSampleRecords++; continue; }
+      if (contract) {
+        validateCanonicalRecord(contract, record);
+        const id = recordIdentity(contract, record);
+        if (seen.has(id)) throw new Error(`${key}: duplicate record identity ${id}.`);
+        seen.add(id);
+      }
+      local.push(record);
+    }
+    if (contract) {
+      const merged = new Map<string, RecordData>();
+      for (const record of [...(normalized[key] as RecordData[] || []), ...local]) {
+        const id = recordIdentity(contract, record);
+        const previous = merged.get(id);
+        const stamp = (r: RecordData) => Date.parse(String(r.updatedAt || r.recordedAt || r.createdAt || '')) || 0;
+        if (!previous || stamp(record) >= stamp(previous)) merged.set(id, { ...previous, ...record });
+      }
+      normalized[key] = Array.from(merged.values());
+    } else normalized[key] = local;
+  }
+  const writes = Object.keys(normalized).sort().map(key => {
+    const value = normalized[key];
+    if (Array.isArray(value)) restoredRecords += value.length;
+    const raw = envelope.localBrowserRawData?.[key];
+    if (raw !== undefined && !Array.isArray(value) && !contractForKey(key) && key !== CLOUD_ARCHIVE_KEY) {
+      if (typeof raw !== 'string') throw new Error(`${key}: invalid original browser value.`);
+      let decoded: unknown;
+      try { decoded = JSON.parse(raw); } catch { decoded = raw; }
+      if (JSON.stringify(decoded) !== JSON.stringify(value)) throw new Error(`${key}: browser value does not match its backup.`);
+      return { key, value: raw };
+    }
+    // These preferences have always used bare strings/numbers, not JSON strings.
+    if ((LEGACY_WORKSPACE_KEYS as readonly string[]).includes(key)) return { key, value: String(value) };
+    return { key, value: JSON.stringify(value) };
+  });
+  if (!writes.length) throw new Error('This backup contains no recoverable workspace data.');
   return { writes, droppedSampleRecords, restoredRecords };
+}
+
+/** Session, owner, sample and recovery-control keys are never imported from a file. */
+export function isRestorableWorkspaceKey(key: string) {
+  return isWorkspaceKey(key) && !/(?:cloud-owner|local-workspace-owner|sampleData|demo|auth|restoreJournal)/i.test(key);
 }
 
 /**
@@ -253,10 +321,4 @@ export const LEGACY_WORKSPACE_KEYS = [
 export function isWorkspaceKey(key: string) {
   if ((LEGACY_WORKSPACE_KEYS as readonly string[]).includes(key)) return true;
   return key.startsWith(BACKUP_KEY_PREFIX);
-}
-
-function isSampleRecord(value: unknown) {
-  if (!value || typeof value !== 'object') return false;
-  const record = value as { source?: unknown; isSample?: unknown };
-  return record.isSample === true || record.source === 'demo';
 }

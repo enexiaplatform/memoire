@@ -91,16 +91,13 @@ describe('workspace restore: replacing a browser copy', () => {
   test('a refused write is reported as a failure, not counted as a restore', async () => {
     globalThis.window.localStorage.failFor = (key) => key === 'memoire.quotes.v1';
 
-    const result = await restore.restoreWorkspace(envelope({
+    await assert.rejects(restore.restoreWorkspace(envelope({
       'memoire.accounts.v1': [{ id: 'a' }],
       'memoire.quotes.v1': [{ id: 'q' }],
-    }));
+    })), /previous workspace was restored/);
+    assert.equal(globalThis.window.localStorage.getItem('memoire.accounts.v1'), null);
+    assert.equal(globalThis.window.localStorage.getItem('memoire.quotes.v1'), null);
 
-    assert.equal(result.ok, false);
-    const quotes = result.collections.find((entry) => entry.key === 'memoire.quotes.v1');
-    assert.equal(quotes.localWritten, false);
-    assert.match(quotes.message, /run out of space|could not save/i);
-    assert.match(result.summary, /part-restored/);
   });
 
   test('the workspace it replaced can be put back', async () => {
@@ -126,17 +123,16 @@ describe('workspace restore: reaching the account', () => {
 
     assert.equal(result.cloudPushedCount, 0);
     assert.equal(result.collections[0].cloudPushed, null);
-    assert.match(result.summary, /This browser only/);
+    assert.match(result.summary, /Browser recovery only/);
   });
 
   test('a collection with no cloud table is reported as browser-only rather than pushed', async () => {
     const result = await restore.restoreWorkspace(
-      envelope({ 'memoire.accounts.v1': [{ id: 'a' }] }),
+      envelope({ 'memoire.settings.v1': { theme: 'light' } }),
       { userId: 'user-1' },
     );
 
-    // Accounts sync through their own store and table, not the JSON collection
-    // registry - the restore says so instead of implying the account has it.
+    // Browser preferences have no canonical cloud record to acknowledge.
     assert.equal(result.collections[0].cloudPushed, null);
   });
 });

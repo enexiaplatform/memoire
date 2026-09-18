@@ -308,7 +308,7 @@ function createLocalObjection(input: ObjectionFormInput, userId?: string): Objec
   };
 }
 
-function rowToObjection(row: ObjectionRow): ObjectionRecord {
+export function rowToObjection(row: ObjectionRow): ObjectionRecord {
   return {
     id: row.id,
     userId: row.user_id,
@@ -346,7 +346,7 @@ function objectionToUpdate(input: ObjectionFormInput) {
   return { ...objectionToRow(input), updated_at: new Date().toISOString() };
 }
 
-function objectionToRow(input: ObjectionFormInput) {
+export function objectionToRow(input: ObjectionFormInput) {
   return {
     account_id: toUuidOrNull(input.accountId),
     account_name: input.accountName || null,

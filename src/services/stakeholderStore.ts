@@ -332,7 +332,7 @@ function createLocalStakeholder(input: StakeholderFormInput, userId: string | un
   };
 }
 
-function rowToStakeholder(row: StakeholderRow): StakeholderRecord {
+export function rowToStakeholder(row: StakeholderRow): StakeholderRecord {
   return {
     id: row.id,
     userId: row.user_id,
@@ -367,7 +367,7 @@ function stakeholderToUpdate(input: StakeholderFormInput) {
   return { ...stakeholderToRow(input), updated_at: new Date().toISOString() };
 }
 
-function stakeholderToRow(input: StakeholderFormInput) {
+export function stakeholderToRow(input: StakeholderFormInput) {
   return {
     account_id: toUuidOrNull(input.accountId),
     account_name: input.accountName || null,

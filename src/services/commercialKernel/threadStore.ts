@@ -96,6 +96,7 @@ export const threadCodec: KernelCodec<CommercialThread> = {
       sourceUpdatedAt: optionalText(raw.sourceUpdatedAt),
       createdAt: isoOrNow(raw.createdAt),
       updatedAt: isoOrNow(raw.updatedAt),
+      ...(raw.isSample === true || raw.source === 'demo' ? { isSample: true } : {}),
     };
   },
 };
@@ -115,8 +116,9 @@ export function saveThread(record: CommercialThread, options: { syncCloud?: bool
 }
 
 export function deleteThread(recordId: string, options: { syncCloud?: boolean } = {}) {
+  const removed = loadThreads().find((item) => item.id === recordId);
   const next = writeLocal(threadCodec, loadThreads().filter((item) => item.id !== recordId));
-  if (options.syncCloud !== false) deleteRecordForCurrentUser(threadCodec, recordId);
+  if (options.syncCloud !== false && removed?.isSample !== true) deleteRecordForCurrentUser(threadCodec, recordId);
   return next;
 }
 

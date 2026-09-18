@@ -162,7 +162,7 @@ export const commitmentCodec: KernelCodec<CommercialCommitment> = {
       sourceUpdatedAt: optionalText(raw.sourceUpdatedAt),
       createdAt: isoOrNow(raw.createdAt),
       updatedAt: isoOrNow(raw.updatedAt),
-      ...(raw.isSample === true ? { isSample: true } : {}),
+      ...(raw.isSample === true || raw.source === 'demo' ? { isSample: true } : {}),
     };
   },
 };
@@ -185,8 +185,9 @@ export function saveCommitment(record: CommercialCommitment, options: { syncClou
 }
 
 export function deleteCommitment(recordId: string, options: { syncCloud?: boolean } = {}) {
+  const removed = loadCommitments().find((item) => item.id === recordId);
   const next = writeLocal(commitmentCodec, loadCommitments().filter((item) => item.id !== recordId));
-  if (options.syncCloud !== false) deleteRecordForCurrentUser(commitmentCodec, recordId);
+  if (options.syncCloud !== false && removed?.isSample !== true) deleteRecordForCurrentUser(commitmentCodec, recordId);
   return next;
 }
 

@@ -1,3 +1,4 @@
+import { kernelCodecs } from '../../src/services/canonicalDurability.ts';
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -28,7 +29,7 @@ test('a valid export parses and summarizes', () => {
   const result = parseBackupFile(JSON.stringify(validBackup));
   assert.equal(result.ok, true);
   assert.equal(result.summary.totalKeys, 3, 'only memoire.* keys count');
-  assert.equal(result.summary.totalRecords, 3);
+  assert.equal(result.summary.totalRecords, 2);
   assert.equal(result.summary.totalSampleRecords, 1);
 });
 
@@ -66,8 +67,8 @@ describe('what counts as a workspace key', () => {
 
     const plan = buildRestorePlan(parsed.envelope);
     const written = Object.fromEntries(plan.writes.map((write) => [write.key, write.value]));
-    assert.equal(written.memoire_reporting_currency, '"SGD"');
-    assert.equal(written.memoire_opening_cash_balance, '"250000"');
+    assert.equal(written.memoire_reporting_currency, 'SGD');
+    assert.equal(written.memoire_opening_cash_balance, '250000');
   });
 });
 
@@ -97,11 +98,11 @@ test('a backup with no formatVersion is treated as version 1, not rejected', () 
   assert.equal(result.summary.formatVersion, 1);
 });
 
-test('a version-1 backup still restores after the kernel raised the format to 2', () => {
+test('a version-1 backup still restores after the kernel raised the format to 3', () => {
   // The format is key-prefixed, not a fixed schema, so an older file is missing
   // kernel keys rather than being incompatible. It must restore everything it
   // does carry.
-  assert.equal(BACKUP_FORMAT_VERSION, 2, 'the kernel stores raised the backup format');
+  assert.equal(BACKUP_FORMAT_VERSION, 3, 'cloud decoding and preflight raised the backup format');
 
   const v1 = { ...validBackup, formatVersion: 1 };
   const parsed = parseBackupFile(JSON.stringify(v1));
@@ -115,7 +116,7 @@ test('a version-1 backup still restores after the kernel raised the format to 2'
   );
 });
 
-test('kernel stores ride the same prefix, so export and restore carry them without a list to maintain', () => {
+test('registered kernel stores retain identities, timestamps and sample exclusion', () => {
   const withKernel = {
     ...validBackup,
     formatVersion: 2,
@@ -131,6 +132,10 @@ test('kernel stores ride the same prefix, so export and restore carry them witho
     },
   };
 
+  for (const codec of kernelCodecs) {
+    const records = withKernel.localBrowserData[codec.storageKey];
+    if (records) withKernel.localBrowserData[codec.storageKey] = records.map(r => codec.sanitize({ ...r, createdAt: validBackup.exportedAt, updatedAt: validBackup.exportedAt, recordedAt: validBackup.exportedAt, occurredAt: validBackup.exportedAt }));
+  }
   const parsed = parseBackupFile(JSON.stringify(withKernel));
   assert.equal(parsed.ok, true);
 
@@ -186,8 +191,8 @@ test('non-array stores are restored whole', () => {
 test('summary counts records per store for the preview', () => {
   const summary = summarizeBackup(validBackup);
   const activities = summary.entries.find((entry) => entry.key === 'memoire.salesActivities.v1');
-  assert.equal(activities.recordCount, 2);
-  assert.equal(activities.sampleCount, 1);
+  assert.equal(activities.recordCount, 1);
+  assert.equal(summary.totalSampleRecords, 1);
 
   const settings = summary.entries.find((entry) => entry.key === 'memoire.settings.v1');
   assert.equal(settings.recordCount, null, 'a non-collection has no record count to claim');

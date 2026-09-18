@@ -59,10 +59,11 @@ export function SavedByMemoirePrompt({ recommendation }: { recommendation: Recom
   );
 
   const [open, setOpen] = useState(false);
+  const [message, setMessage] = useState('');
   const [recorded, setRecorded] = useState(false);
 
   if (recorded) {
-    return <span className="text-[11px] font-semibold text-emerald-700">Thanks — recorded.</span>;
+    return <span className="text-[11px] font-semibold text-emerald-700">{message || 'Thanks — recorded.'}</span>;
   }
 
   if (!open) {
@@ -82,13 +83,17 @@ export function SavedByMemoirePrompt({ recommendation }: { recommendation: Recom
       ? 'no_material_impact'
       : OUTCOME_BY_REASON[recommendation.reasonCode];
 
-    recordValueOutcome(scope, {
+    const result = recordValueOutcome(scope, {
       outcomeType,
       userAssessment: assessment,
       threadId: recommendation.threadId,
       opportunityId: recommendation.opportunityId,
       recommendationId: recommendation.id,
     });
+
+    if (!result.ok) { setMessage(result.error); return; }
+    setMessage(result.warning || '');
+    setRecorded(true);
 
     // The value events mirror the ledger, so "did Memoire help?" is answerable
     // in aggregate without reading anyone's commercial records. A
@@ -102,6 +107,7 @@ export function SavedByMemoirePrompt({ recommendation }: { recommendation: Recom
 
   return (
     <div className="flex w-full flex-wrap gap-1.5 rounded-lg bg-white/80 p-1.5 ring-1 ring-gray-100">
+      {message && <p role="alert" className="w-full text-xs text-amber-800">{message}</p>}
       {(Object.keys(assessmentLabels) as ValueAssessment[]).map((assessment) => (
         <button
           key={assessment}

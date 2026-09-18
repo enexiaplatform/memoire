@@ -23,14 +23,7 @@ import { reportWorkspaceSyncError } from '../workspaceSyncStatus.ts';
 export const EVENT_STORAGE_KEY = 'memoire.commercialEvents.v1';
 export const EVENTS_UPDATED_EVENT = 'memoire:commercial-events-updated';
 
-/**
- * How many events one workspace keeps locally.
- *
- * The cloud copy is unbounded; this cap only stops localStorage from filling up
- * on a long-running workspace and taking every other store down with it. The
- * events dropped locally are the oldest, which are also the ones no surface
- * queries without going to the cloud anyway.
- */
+/** Default query window; accepted local history is never truncated. */
 export const LOCAL_EVENT_LIMIT = 2000;
 
 export const eventCodec: KernelCodec<CommercialEvent> = {
@@ -112,7 +105,7 @@ export const eventCodec: KernelCodec<CommercialEvent> = {
       sourceUrl: optionalText(raw.sourceUrl),
       sourceUpdatedAt: optionalText(raw.sourceUpdatedAt),
       createdAt: isoOrNow(raw.createdAt),
-      ...(raw.isSample === true ? { isSample: true } : {}),
+      ...(raw.isSample === true || raw.source === 'demo' ? { isSample: true } : {}),
     };
   },
 };
@@ -185,8 +178,9 @@ export async function loadRecentEvents(
   const window = [...merged.values()].sort(eventCodec.compare).slice(0, limit);
 
   // Local keeps its out-of-window history; only the window is refreshed.
-  const outsideWindow = local.filter((event) => event.occurredAt < since);
-  writeLocal(eventCodec, [...window, ...outsideWindow].slice(0, LOCAL_EVENT_LIMIT));
+  // The read window is a UI bound, never a retention policy for accepted history.
+  const retained = new Map([...local, ...cloud].map((event) => [event.id, event]));
+  writeLocal(eventCodec, [...retained.values()], { requireDurable: false });
 
   const owed = selectOwedCloudRecords(localInWindow, cloud);
   if (owed.length > 0) syncRecordsForCurrentUser(eventCodec, owed);
@@ -224,11 +218,9 @@ export function appendEvent(record: CommercialEvent, options: { syncCloud?: bool
   const next = writeLocal(eventCodec, [
     record,
     ...existing.filter((item) => item.id !== record.id),
-  ], options).slice(0, LOCAL_EVENT_LIMIT);
+  ], { requireDurable: true });
 
-  // Re-write only if the cap actually trimmed something, so the common path
-  // does not pay for a second serialization.
-  const stored = next.length === existing.length + 1 ? next : writeLocal(eventCodec, next, options);
+  const stored = next;
   if (options.syncCloud !== false) syncRecordsForCurrentUser(eventCodec, [record]);
   return stored;
 }

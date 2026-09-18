@@ -1,3 +1,4 @@
+import { reportWorkspaceSyncError } from '../../services/workspaceSyncStatus.ts';
 import {
   canTransitionCommitment,
   canTransitionThread,
@@ -54,10 +55,10 @@ import { sanitizeBusinessDate } from '../../utils/safeDate.ts';
  */
 
 export type CommandResult<T> =
-  | { ok: true; value: T; event?: CommercialEvent }
+  | { ok: true; value: T; event?: CommercialEvent; warning?: string }
   | { ok: false; error: string };
 
-const ok = <T>(value: T, event?: CommercialEvent): CommandResult<T> => ({ ok: true, value, event });
+const ok = <T>(value: T, event?: CommercialEvent, warning?: string): CommandResult<T> => ({ ok: true, value, event, ...(warning ? { warning } : {}) });
 const fail = <T>(error: string): CommandResult<T> => ({ ok: false, error });
 
 function now() {
@@ -71,6 +72,7 @@ function isSample(scope: CommercialScope) {
 // ------------------------------------------------------------------ events
 
 type EventInput = {
+  id?: string;
   eventType: CommercialEventType;
   summary: string;
   occurredAt?: string;
@@ -93,7 +95,7 @@ type EventInput = {
 export function recordCommercialEvent(scope: CommercialScope, input: EventInput, options: { requireDurable?: boolean } = {}): CommercialEvent {
   const timestamp = now();
   const event: CommercialEvent = {
-    id: newEventId(),
+    id: input.id || newEventId(),
     userId: scope.userId,
     eventType: input.eventType,
     occurredAt: input.occurredAt || timestamp,
@@ -113,8 +115,20 @@ export function recordCommercialEvent(scope: CommercialScope, input: EventInput,
     ...(isSample(scope) ? { isSample: true } : {}),
   };
 
-  appendEvent(event, options);
-  return event;
+  const records = appendEvent(event, options);
+  const stored = records.find((item) => item.id === event.id || (event.idempotencyKey && item.idempotencyKey === event.idempotencyKey));
+  if (!stored) throw new Error('Change history was not saved.');
+  return stored;
+}
+
+/** State has already landed. History failure is degraded success, never rollback. */
+function recordStateEvent(scope: CommercialScope, input: EventInput) {
+  try { return { event: recordCommercialEvent(scope, input), warning: undefined }; }
+  catch {
+    const warning = 'Saved in this browser, but change history could not be saved. Do not repeat the state change.';
+    reportWorkspaceSyncError(warning);
+    return { event: undefined, warning };
+  }
 }
 
 // ----------------------------------------------------------------- threads
@@ -135,107 +149,123 @@ export function createCommercialThread(
   scope: CommercialScope,
   input: CreateThreadInput,
 ): CommandResult<CommercialThread> {
-  const title = input.title.trim();
-  if (!title) return fail('A commercial thread needs a title.');
-  if (!input.accountName.trim()) return fail('A commercial thread needs an account.');
+  try {
+    const title = input.title.trim();
+    if (!title) return fail('A commercial thread needs a title.');
+    if (!input.accountName.trim()) return fail('A commercial thread needs an account.');
 
-  const timestamp = now();
-  const thread: CommercialThread = {
-    id: newThreadId(),
-    userId: scope.userId,
-    accountId: input.accountId,
-    accountName: input.accountName.trim(),
-    opportunityId: input.opportunityId || null,
-    title,
-    objective: (input.objective || '').trim(),
-    status: 'active',
-    currentMoneyState: input.currentMoneyState || 'none',
-    currentWaitingParty: input.currentWaitingParty || 'none',
-    lastActivityAt: timestamp,
-    archivedAt: null,
-    sourceType: input.sourceType || 'manual',
-    sourceId: input.sourceId || null,
-    sourceUrl: null,
-    sourceUpdatedAt: null,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  };
+    const timestamp = now();
+    const thread: CommercialThread = {
+      id: newThreadId(),
+      userId: scope.userId,
+      accountId: input.accountId,
+      accountName: input.accountName.trim(),
+      opportunityId: input.opportunityId || null,
+      title,
+      objective: (input.objective || '').trim(),
+      status: 'active',
+      currentMoneyState: input.currentMoneyState || 'none',
+      currentWaitingParty: input.currentWaitingParty || 'none',
+      lastActivityAt: timestamp,
+      archivedAt: null,
+      sourceType: input.sourceType || 'manual',
+      sourceId: input.sourceId || null,
+      sourceUrl: null,
+      sourceUpdatedAt: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...(isSample(scope) ? { isSample: true } : {}),
+    };
 
-  saveThread(thread);
-  const event = recordCommercialEvent(scope, {
-    eventType: 'thread_created',
-    summary: `Commercial thread opened: ${title}`,
-    accountId: thread.accountId,
-    opportunityId: thread.opportunityId,
-    threadId: thread.id,
-    structuredPayload: { objective: thread.objective },
-    sourceType: thread.sourceType,
-  });
+    saveThread(thread);
+    const history = recordStateEvent(scope, {
+      eventType: 'thread_created',
+      summary: `Commercial thread opened: ${title}`,
+      accountId: thread.accountId,
+      opportunityId: thread.opportunityId,
+      threadId: thread.id,
+      structuredPayload: { objective: thread.objective },
+      sourceType: thread.sourceType,
+    });
 
-  return ok(thread, event);
+    return ok(thread, history.event, history.warning);
+
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "This change was not saved. Please try again.");
+  }
 }
 
 export function linkEventToThread(
   scope: CommercialScope,
   input: { threadId: string; eventSummary: string; occurredAt?: string; sourceId?: string | null },
 ): CommandResult<CommercialThread> {
-  const thread = loadThreads().find((item) => item.id === input.threadId);
-  if (!thread) return fail('That commercial thread no longer exists.');
+  try {
+    const thread = loadThreads().find((item) => item.id === input.threadId);
+    if (!thread) return fail('That commercial thread no longer exists.');
 
-  const occurredAt = input.occurredAt || now();
-  const updated: CommercialThread = {
-    ...thread,
-    // Linking an event is the definition of activity, so the silence clock
-    // resets here and nowhere else.
-    lastActivityAt: occurredAt > thread.lastActivityAt ? occurredAt : thread.lastActivityAt,
-    updatedAt: now(),
-  };
-  saveThread(updated);
+    const occurredAt = input.occurredAt || now();
+    const updated: CommercialThread = {
+      ...thread,
+      // Linking an event is the definition of activity, so the silence clock
+      // resets here and nowhere else.
+      lastActivityAt: occurredAt > thread.lastActivityAt ? occurredAt : thread.lastActivityAt,
+      updatedAt: now(),
+    };
+    saveThread(updated);
 
-  const event = recordCommercialEvent(scope, {
-    eventType: 'thread_linked',
-    summary: input.eventSummary,
-    accountId: updated.accountId,
-    opportunityId: updated.opportunityId,
-    threadId: updated.id,
-    occurredAt,
-    sourceId: input.sourceId,
-    sourceType: 'capture',
-  });
+    const history = recordStateEvent(scope, {
+      eventType: 'thread_linked',
+      summary: input.eventSummary,
+      accountId: updated.accountId,
+      opportunityId: updated.opportunityId,
+      threadId: updated.id,
+      occurredAt,
+      sourceId: input.sourceId,
+      sourceType: 'capture',
+    });
 
-  return ok(updated, event);
+    return ok(updated, history.event, history.warning);
+
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "This change was not saved. Please try again.");
+  }
 }
 
 export function changeThreadStatus(
   scope: CommercialScope,
   input: { threadId: string; status: ThreadStatus; reason?: string },
 ): CommandResult<CommercialThread> {
-  const thread = loadThreads().find((item) => item.id === input.threadId);
-  if (!thread) return fail('That commercial thread no longer exists.');
-  if (!canTransitionThread(thread.status, input.status)) {
-    return fail(`A ${thread.status} thread cannot become ${input.status}.`);
+  try {
+    const thread = loadThreads().find((item) => item.id === input.threadId);
+    if (!thread) return fail('That commercial thread no longer exists.');
+    if (!canTransitionThread(thread.status, input.status)) {
+      return fail(`A ${thread.status} thread cannot become ${input.status}.`);
+    }
+    if (thread.status === input.status) return ok(thread);
+
+    const timestamp = now();
+    const updated: CommercialThread = {
+      ...thread,
+      status: input.status,
+      archivedAt: input.status === 'archived' ? timestamp : thread.archivedAt || null,
+      updatedAt: timestamp,
+    };
+    saveThread(updated);
+
+    const history = recordStateEvent(scope, {
+      eventType: 'thread_status_changed',
+      summary: `${thread.title}: ${thread.status} → ${input.status}`,
+      accountId: updated.accountId,
+      opportunityId: updated.opportunityId,
+      threadId: updated.id,
+      structuredPayload: { from: thread.status, to: input.status, reason: input.reason || '' },
+    });
+
+    return ok(updated, history.event, history.warning);
+
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "This change was not saved. Please try again.");
   }
-  if (thread.status === input.status) return ok(thread);
-
-  const timestamp = now();
-  const updated: CommercialThread = {
-    ...thread,
-    status: input.status,
-    archivedAt: input.status === 'archived' ? timestamp : thread.archivedAt || null,
-    updatedAt: timestamp,
-  };
-  saveThread(updated);
-
-  const event = recordCommercialEvent(scope, {
-    eventType: 'thread_status_changed',
-    summary: `${thread.title}: ${thread.status} → ${input.status}`,
-    accountId: updated.accountId,
-    opportunityId: updated.opportunityId,
-    threadId: updated.id,
-    structuredPayload: { from: thread.status, to: input.status, reason: input.reason || '' },
-  });
-
-  return ok(updated, event);
 }
 
 /**
@@ -248,60 +278,70 @@ export function markThreadWaiting(
   _scope: CommercialScope,
   input: { threadId: string; waitingOn: WaitingParty; reason?: string },
 ): CommandResult<CommercialThread> {
-  const thread = loadThreads().find((item) => item.id === input.threadId);
-  if (!thread) return fail('That commercial thread no longer exists.');
-  if (isThreadClosed(thread.status)) return fail('A closed thread is not waiting on anyone.');
+  try {
+    const thread = loadThreads().find((item) => item.id === input.threadId);
+    if (!thread) return fail('That commercial thread no longer exists.');
+    if (isThreadClosed(thread.status)) return fail('A closed thread is not waiting on anyone.');
 
-  const updated: CommercialThread = {
-    ...thread,
-    status: input.waitingOn === 'none' ? 'active' : 'waiting',
-    currentWaitingParty: input.waitingOn,
-    updatedAt: now(),
-  };
-  saveThread(updated);
-  return ok(updated);
+    const updated: CommercialThread = {
+      ...thread,
+      status: input.waitingOn === 'none' ? 'active' : 'waiting',
+      currentWaitingParty: input.waitingOn,
+      updatedAt: now(),
+    };
+    saveThread(updated);
+    return ok(updated);
+
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "This change was not saved. Please try again.");
+  }
 }
 
 export function advanceMoneyCheckpoint(
   scope: CommercialScope,
   input: { threadId: string; moneyState: MoneyState; occurredAt?: string; amount?: number | null; currency?: string | null },
 ): CommandResult<CommercialThread> {
-  const thread = loadThreads().find((item) => item.id === input.threadId);
-  if (!thread) return fail('That commercial thread no longer exists.');
+  try {
+    const thread = loadThreads().find((item) => item.id === input.threadId);
+    if (!thread) return fail('That commercial thread no longer exists.');
 
-  const occurredAt = input.occurredAt || now();
-  const updated: CommercialThread = {
-    ...thread,
-    currentMoneyState: input.moneyState,
-    lastActivityAt: occurredAt > thread.lastActivityAt ? occurredAt : thread.lastActivityAt,
-    updatedAt: now(),
-  };
-  saveThread(updated);
+    const occurredAt = input.occurredAt || now();
+    const updated: CommercialThread = {
+      ...thread,
+      currentMoneyState: input.moneyState,
+      lastActivityAt: occurredAt > thread.lastActivityAt ? occurredAt : thread.lastActivityAt,
+      updatedAt: now(),
+    };
+    saveThread(updated);
 
-  const eventTypeByState: Partial<Record<MoneyState, CommercialEventType>> = {
-    quoted: 'quote_created',
-    awaiting_po: 'quote_sent',
-    awaiting_delivery: 'po_received',
-    awaiting_payment: 'delivery_completed',
-    paid: 'payment_received',
-  };
+    const eventTypeByState: Partial<Record<MoneyState, CommercialEventType>> = {
+      quoted: 'quote_created',
+      awaiting_po: 'quote_sent',
+      awaiting_delivery: 'po_received',
+      awaiting_payment: 'delivery_completed',
+      paid: 'payment_received',
+    };
 
-  const event = recordCommercialEvent(scope, {
-    eventType: eventTypeByState[input.moneyState] || 'thread_status_changed',
-    summary: `${thread.title}: money moved to ${input.moneyState.replace(/_/g, ' ')}`,
-    accountId: updated.accountId,
-    opportunityId: updated.opportunityId,
-    threadId: updated.id,
-    occurredAt,
-    structuredPayload: {
-      from: thread.currentMoneyState,
-      to: input.moneyState,
-      amount: input.amount ?? null,
-      currency: input.currency || null,
-    },
-  });
+    const history = recordStateEvent(scope, {
+      eventType: eventTypeByState[input.moneyState] || 'thread_status_changed',
+      summary: `${thread.title}: money moved to ${input.moneyState.replace(/_/g, ' ')}`,
+      accountId: updated.accountId,
+      opportunityId: updated.opportunityId,
+      threadId: updated.id,
+      occurredAt,
+      structuredPayload: {
+        from: thread.currentMoneyState,
+        to: input.moneyState,
+        amount: input.amount ?? null,
+        currency: input.currency || null,
+      },
+    });
 
-  return ok(updated, event);
+    return ok(updated, history.event, history.warning);
+
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "This change was not saved. Please try again.");
+  }
 }
 
 export function archiveThread(scope: CommercialScope, threadId: string) {
@@ -332,87 +372,102 @@ export function createCommitment(
   scope: CommercialScope,
   input: CreateCommitmentInput,
 ): CommandResult<CommercialCommitment> {
-  const commitmentText = input.commitmentText.trim();
-  if (!commitmentText) return fail('A commitment needs to say what was promised.');
-  if (!input.accountName.trim()) return fail('A commitment needs a customer.');
+  try {
+    const commitmentText = input.commitmentText.trim();
+    if (!commitmentText) return fail('A commitment needs to say what was promised.');
+    if (!input.accountName.trim()) return fail('A commitment needs a customer.');
 
-  const timestamp = now();
-  const dueDate = (input.dueDate || '').trim();
-  const commitment: CommercialCommitment = {
-    id: newCommitmentId(),
-    userId: scope.userId,
-    threadId: input.threadId || '',
-    accountId: input.accountId || '',
-    accountName: input.accountName.trim(),
-    opportunityId: input.opportunityId || null,
-    commitmentParty: input.commitmentParty,
-    ownerLabel: (input.ownerLabel || defaultOwnerLabel(input.commitmentParty, input.accountName)).trim(),
-    commitmentText,
-    originalDueDate: dueDate,
-    currentDueDate: dueDate,
-    silenceThresholdDays: input.silenceThresholdDays ?? DEFAULT_SILENCE_THRESHOLD_DAYS,
-    status: 'open',
-    impactType: input.impactType || 'none',
-    impactAmount: input.impactAmount ?? null,
-    impactCurrency: input.impactCurrency || null,
-    sourceEventId: input.sourceEventId || null,
-    completionEvidence: null,
-    completionEventId: null,
-    dueDateHistory: [],
-    lastRenegotiatedAt: null,
-    completedAt: null,
-    cancelledAt: null,
-    sourceType: input.sourceType || 'manual',
-    sourceId: input.sourceId || null,
-    sourceUrl: null,
-    sourceUpdatedAt: null,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-    ...(isSample(scope) ? { isSample: true } : {}),
-  };
+    const timestamp = now();
+    const dueDate = (input.dueDate || '').trim();
+    const commitment: CommercialCommitment = {
+      id: newCommitmentId(),
+      userId: scope.userId,
+      threadId: input.threadId || '',
+      accountId: input.accountId || '',
+      accountName: input.accountName.trim(),
+      opportunityId: input.opportunityId || null,
+      commitmentParty: input.commitmentParty,
+      ownerLabel: (input.ownerLabel || defaultOwnerLabel(input.commitmentParty, input.accountName)).trim(),
+      commitmentText,
+      originalDueDate: dueDate,
+      currentDueDate: dueDate,
+      silenceThresholdDays: input.silenceThresholdDays ?? DEFAULT_SILENCE_THRESHOLD_DAYS,
+      status: 'open',
+      impactType: input.impactType || 'none',
+      impactAmount: input.impactAmount ?? null,
+      impactCurrency: input.impactCurrency || null,
+      sourceEventId: input.sourceEventId || null,
+      completionEvidence: null,
+      completionEventId: null,
+      dueDateHistory: [],
+      lastRenegotiatedAt: null,
+      completedAt: null,
+      cancelledAt: null,
+      sourceType: input.sourceType || 'manual',
+      sourceId: input.sourceId || null,
+      sourceUrl: null,
+      sourceUpdatedAt: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...(isSample(scope) ? { isSample: true } : {}),
+    };
 
-  saveCommitment(commitment);
-  const event = recordCommercialEvent(scope, {
-    eventType: 'commitment_created',
-    summary: `${ownerPhrase(commitment)} ${commitmentText}`,
-    accountId: commitment.accountId,
-    opportunityId: commitment.opportunityId,
-    threadId: commitment.threadId || null,
-    commitmentId: commitment.id,
-    structuredPayload: { party: commitment.commitmentParty, dueDate: commitment.currentDueDate },
-    sourceType: commitment.sourceType,
-    sourceId: commitment.sourceId,
-  });
+    saveCommitment(commitment);
+    const history = recordStateEvent(scope, {
+      eventType: 'commitment_created',
+      summary: `${ownerPhrase(commitment)} ${commitmentText}`,
+      accountId: commitment.accountId,
+      opportunityId: commitment.opportunityId,
+      threadId: commitment.threadId || null,
+      commitmentId: commitment.id,
+      structuredPayload: { party: commitment.commitmentParty, dueDate: commitment.currentDueDate },
+      sourceType: commitment.sourceType,
+      sourceId: commitment.sourceId,
+    });
 
-  return ok(commitment, event);
+    return ok(commitment, history.event, history.warning);
+
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "This change was not saved. Please try again.");
+  }
 }
 
 export function completeCommitment(
   scope: CommercialScope,
   input: { commitmentId: string; evidence?: string; completedAt?: string },
 ): CommandResult<CommercialCommitment> {
-  return transitionCommitment(scope, input.commitmentId, 'completed', (commitment) => {
-    const completedAt = input.completedAt || now();
-    return {
-      ...commitment,
-      status: 'completed' as CommitmentStatus,
-      completedAt,
-      completionEvidence: (input.evidence || '').trim() || null,
-      updatedAt: now(),
-    };
-  }, 'commitment_completed');
+  try {
+    return transitionCommitment(scope, input.commitmentId, 'completed', (commitment) => {
+      const completedAt = input.completedAt || now();
+      return {
+        ...commitment,
+        status: 'completed' as CommitmentStatus,
+        completedAt,
+        completionEvidence: (input.evidence || '').trim() || null,
+        updatedAt: now(),
+      };
+    }, 'commitment_completed');
+
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "This change was not saved. Please try again.");
+  }
 }
 
 export function cancelCommitment(
   scope: CommercialScope,
   input: { commitmentId: string; reason?: string },
 ): CommandResult<CommercialCommitment> {
-  return transitionCommitment(scope, input.commitmentId, 'cancelled', (commitment) => ({
-    ...commitment,
-    status: 'cancelled' as CommitmentStatus,
-    cancelledAt: now(),
-    updatedAt: now(),
-  }), 'commitment_cancelled', input.reason);
+  try {
+    return transitionCommitment(scope, input.commitmentId, 'cancelled', (commitment) => ({
+      ...commitment,
+      status: 'cancelled' as CommitmentStatus,
+      cancelledAt: now(),
+      updatedAt: now(),
+    }), 'commitment_cancelled', input.reason);
+
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "This change was not saved. Please try again.");
+  }
 }
 
 /**
@@ -425,50 +480,55 @@ export function rescheduleCommitment(
   scope: CommercialScope,
   input: { commitmentId: string; newDueDate: string; reason?: string },
 ): CommandResult<CommercialCommitment> {
-  const commitment = loadCommitments().find((item) => item.id === input.commitmentId);
-  if (!commitment) return fail('That commitment no longer exists.');
-  if (commitment.status !== 'open') return fail('Only an open commitment can be rescheduled.');
+  try {
+    const commitment = loadCommitments().find((item) => item.id === input.commitmentId);
+    if (!commitment) return fail('That commitment no longer exists.');
+    if (commitment.status !== 'open') return fail('Only an open commitment can be rescheduled.');
 
-  const newDueDate = input.newDueDate.trim();
-  if (!newDueDate) return fail('A reschedule needs a new date.');
-  if (newDueDate === commitment.currentDueDate) return ok(commitment);
+    const newDueDate = input.newDueDate.trim();
+    if (!newDueDate) return fail('A reschedule needs a new date.');
+    if (newDueDate === commitment.currentDueDate) return ok(commitment);
 
-  const timestamp = now();
-  const updated: CommercialCommitment = {
-    ...commitment,
-    currentDueDate: newDueDate,
-    // Status stays 'open'. A moved promise is still a promise.
-    dueDateHistory: [
-      ...commitment.dueDateHistory,
-      {
+    const timestamp = now();
+    const updated: CommercialCommitment = {
+      ...commitment,
+      currentDueDate: newDueDate,
+      // Status stays 'open'. A moved promise is still a promise.
+      dueDateHistory: [
+        ...commitment.dueDateHistory,
+        {
+          from: commitment.currentDueDate,
+          to: newDueDate,
+          changedAt: timestamp,
+          ...(input.reason ? { reason: input.reason } : {}),
+        },
+      ],
+      lastRenegotiatedAt: timestamp,
+      updatedAt: timestamp,
+    };
+    saveCommitment(updated);
+
+    const history = recordStateEvent(scope, {
+      eventType: 'commitment_rescheduled',
+      summary: `${ownerPhrase(updated)} moved from ${commitment.currentDueDate || 'no date'} to ${newDueDate}`,
+      accountId: updated.accountId,
+      opportunityId: updated.opportunityId,
+      threadId: updated.threadId || null,
+      commitmentId: updated.id,
+      structuredPayload: {
+        originalDueDate: updated.originalDueDate,
         from: commitment.currentDueDate,
         to: newDueDate,
-        changedAt: timestamp,
-        ...(input.reason ? { reason: input.reason } : {}),
+        timesMoved: updated.dueDateHistory.length,
+        reason: input.reason || '',
       },
-    ],
-    lastRenegotiatedAt: timestamp,
-    updatedAt: timestamp,
-  };
-  saveCommitment(updated);
+    });
 
-  const event = recordCommercialEvent(scope, {
-    eventType: 'commitment_rescheduled',
-    summary: `${ownerPhrase(updated)} moved from ${commitment.currentDueDate || 'no date'} to ${newDueDate}`,
-    accountId: updated.accountId,
-    opportunityId: updated.opportunityId,
-    threadId: updated.threadId || null,
-    commitmentId: updated.id,
-    structuredPayload: {
-      originalDueDate: updated.originalDueDate,
-      from: commitment.currentDueDate,
-      to: newDueDate,
-      timesMoved: updated.dueDateHistory.length,
-      reason: input.reason || '',
-    },
-  });
+    return ok(updated, history.event, history.warning);
 
-  return ok(updated, event);
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "This change was not saved. Please try again.");
+  }
 }
 
 function transitionCommitment(
@@ -479,37 +539,41 @@ function transitionCommitment(
   eventType: CommercialEventType,
   reason?: string,
 ): CommandResult<CommercialCommitment> {
-  const commitment = loadCommitments().find((item) => item.id === commitmentId);
-  if (!commitment) return fail('That commitment no longer exists.');
-  if (!canTransitionCommitment(commitment.status, to)) {
-    return fail(`A ${commitment.status} commitment cannot become ${to}.`);
+  try {
+    const commitment = loadCommitments().find((item) => item.id === commitmentId);
+    if (!commitment) return fail('That commitment no longer exists.');
+    if (!canTransitionCommitment(commitment.status, to)) {
+      return fail(`A ${commitment.status} commitment cannot become ${to}.`);
+    }
+    if (commitment.status === to) return ok(commitment);
+
+    const updated = apply(commitment);
+    const eventId = newEventId();
+    const withEvidence: CommercialCommitment = to === 'completed' ? { ...updated, completionEventId: eventId } : updated;
+    saveCommitment(withEvidence);
+    const history = recordStateEvent(scope, {
+      id: eventId,
+      eventType,
+      summary: `${ownerPhrase(updated)} ${updated.commitmentText}`,
+      accountId: updated.accountId,
+      opportunityId: updated.opportunityId,
+      threadId: updated.threadId || null,
+      commitmentId: updated.id,
+      structuredPayload: {
+        from: commitment.status,
+        to,
+        dueDate: updated.currentDueDate,
+        originalDueDate: updated.originalDueDate,
+        timesMoved: updated.dueDateHistory.length,
+        reason: reason || '',
+      },
+    });
+
+    return ok(withEvidence, history.event, history.warning);
+
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "This change was not saved. Please try again.");
   }
-  if (commitment.status === to) return ok(commitment);
-
-  const updated = apply(commitment);
-  const event = recordCommercialEvent(scope, {
-    eventType,
-    summary: `${ownerPhrase(updated)} ${updated.commitmentText}`,
-    accountId: updated.accountId,
-    opportunityId: updated.opportunityId,
-    threadId: updated.threadId || null,
-    commitmentId: updated.id,
-    structuredPayload: {
-      from: commitment.status,
-      to,
-      dueDate: updated.currentDueDate,
-      originalDueDate: updated.originalDueDate,
-      timesMoved: updated.dueDateHistory.length,
-      reason: reason || '',
-    },
-  });
-
-  // The completion event is the evidence, so the record points back at it.
-  const withEvidence: CommercialCommitment =
-    to === 'completed' ? { ...updated, completionEventId: event.id } : updated;
-  saveCommitment(withEvidence);
-
-  return ok(withEvidence, event);
 }
 
 export function removeCommitment(commitmentId: string) {
@@ -549,46 +613,54 @@ export function setCommercialTarget(
     note?: string;
   },
 ): CommandResult<CommercialTarget> {
-  if (!Number.isFinite(input.amount) || input.amount < 0) {
-    return fail('A target needs a number that is zero or more.');
+  try {
+    if (!Number.isFinite(input.amount) || input.amount < 0) {
+      return fail('A target needs a number that is zero or more.');
+    }
+
+    const previous = loadTargets().find(
+      (target) => target.period === input.period && target.fiscalYear === input.fiscalYear && Boolean(target.isSample) === isSample(scope),
+    );
+    const timestamp = now();
+
+    const target: CommercialTarget = {
+      ...(isSample(scope) ? { isSample: true } : {}),
+      period: input.period,
+      fiscalYear: input.fiscalYear,
+      amount: input.amount,
+      currency: input.currency || 'VND',
+      fiscalYearStartMonth: input.fiscalYearStartMonth ?? previous?.fiscalYearStartMonth ?? 1,
+      note: input.note?.trim() || null,
+      createdAt: previous?.createdAt || timestamp,
+      updatedAt: timestamp,
+    };
+
+    if (previous && previous.amount === target.amount && previous.currency === target.currency
+      && previous.fiscalYearStartMonth === target.fiscalYearStartMonth && previous.note === target.note
+      && previous.isSample === target.isSample) return ok(previous);
+
+    saveTarget(target);
+
+    const history = recordStateEvent(scope, {
+      eventType: 'target_changed',
+      summary: previous
+        ? `${input.period} FY${input.fiscalYear} target moved from ${previous.amount} to ${target.amount}`
+        : `${input.period} FY${input.fiscalYear} target set to ${target.amount}`,
+      structuredPayload: {
+        period: target.period,
+        fiscalYear: target.fiscalYear,
+        from: previous?.amount ?? null,
+        to: target.amount,
+        currency: target.currency,
+        note: target.note,
+      },
+    });
+
+    return ok(target, history.event, history.warning);
+
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "This change was not saved. Please try again.");
   }
-
-  const previous = loadTargets().find(
-    (target) => target.period === input.period && target.fiscalYear === input.fiscalYear,
-  );
-  const timestamp = now();
-
-  const target: CommercialTarget = {
-    period: input.period,
-    fiscalYear: input.fiscalYear,
-    amount: input.amount,
-    currency: input.currency || 'VND',
-    fiscalYearStartMonth: input.fiscalYearStartMonth ?? previous?.fiscalYearStartMonth ?? 1,
-    note: input.note?.trim() || null,
-    createdAt: previous?.createdAt || timestamp,
-    updatedAt: timestamp,
-  };
-
-  if (previous && previous.amount === target.amount) return ok(target);
-
-  saveTarget(target);
-
-  const event = recordCommercialEvent(scope, {
-    eventType: 'target_changed',
-    summary: previous
-      ? `${input.period} FY${input.fiscalYear} target moved from ${previous.amount} to ${target.amount}`
-      : `${input.period} FY${input.fiscalYear} target set to ${target.amount}`,
-    structuredPayload: {
-      period: target.period,
-      fiscalYear: target.fiscalYear,
-      from: previous?.amount ?? null,
-      to: target.amount,
-      currency: target.currency,
-      note: target.note,
-    },
-  });
-
-  return ok(target, event);
 }
 
 // -------------------------------------------------------- value outcomes
@@ -616,41 +688,46 @@ export function recordValueOutcome(
   scope: CommercialScope,
   input: RecordValueOutcomeInput,
 ): CommandResult<CommercialValueOutcome> {
-  const timestamp = now();
-  const outcome: CommercialValueOutcome = {
-    id: newValueOutcomeId(),
-    userId: scope.userId,
-    threadId: input.threadId || null,
-    accountId: input.accountId || null,
-    opportunityId: input.opportunityId || null,
-    recommendationId: input.recommendationId || null,
-    outcomeType: input.outcomeType,
-    userAssessment: input.userAssessment,
-    impactAmount: input.impactAmount ?? null,
-    impactCurrency: input.impactCurrency || null,
-    confidence: input.confidence ?? null,
-    note: (input.note || '').trim() || null,
-    occurredAt: input.occurredAt || timestamp,
-    createdAt: timestamp,
-    ...(isSample(scope) ? { isSample: true } : {}),
-  };
+  try {
+    const timestamp = now();
+    const outcome: CommercialValueOutcome = {
+      id: newValueOutcomeId(),
+      userId: scope.userId,
+      threadId: input.threadId || null,
+      accountId: input.accountId || null,
+      opportunityId: input.opportunityId || null,
+      recommendationId: input.recommendationId || null,
+      outcomeType: input.outcomeType,
+      userAssessment: input.userAssessment,
+      impactAmount: input.impactAmount ?? null,
+      impactCurrency: input.impactCurrency || null,
+      confidence: input.confidence ?? null,
+      note: (input.note || '').trim() || null,
+      occurredAt: input.occurredAt || timestamp,
+      createdAt: timestamp,
+      ...(isSample(scope) ? { isSample: true } : {}),
+    };
 
-  saveValueOutcome(outcome);
-  const event = recordCommercialEvent(scope, {
-    eventType: 'value_outcome_recorded',
-    summary: `Outcome recorded: ${input.outcomeType.replace(/_/g, ' ')}`,
-    accountId: outcome.accountId,
-    opportunityId: outcome.opportunityId,
-    threadId: outcome.threadId,
-    structuredPayload: {
-      outcomeType: outcome.outcomeType,
-      assessment: outcome.userAssessment,
-      impactAmount: outcome.impactAmount,
-      recommendationId: outcome.recommendationId,
-    },
-  });
+    saveValueOutcome(outcome);
+    const history = recordStateEvent(scope, {
+      eventType: 'value_outcome_recorded',
+      summary: `Outcome recorded: ${input.outcomeType.replace(/_/g, ' ')}`,
+      accountId: outcome.accountId,
+      opportunityId: outcome.opportunityId,
+      threadId: outcome.threadId,
+      structuredPayload: {
+        outcomeType: outcome.outcomeType,
+        assessment: outcome.userAssessment,
+        impactAmount: outcome.impactAmount,
+        recommendationId: outcome.recommendationId,
+      },
+    });
 
-  return ok(outcome, event);
+    return ok(outcome, history.event, history.warning);
+
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "This change was not saved. Please try again.");
+  }
 }
 
 // ---------------------------------------------------- commercial evidence
@@ -690,60 +767,66 @@ export function recordCommercialEvidence(
   scope: CommercialScope,
   input: RecordCommercialEvidenceInput,
 ): CommandResult<CommercialEvidence> {
-  const accountName = input.accountName.trim();
-  if (!accountName) return fail('Evidence needs a customer.');
+  try {
+    const accountName = input.accountName.trim();
+    if (!accountName) return fail('Evidence needs a customer.');
 
-  const evidenceText = input.evidenceText.trim();
-  if (!evidenceText) return fail('Evidence needs the sentence it came from.');
+    if (input.observedAt && !sanitizeBusinessDate(input.observedAt)) return fail('Evidence needs a valid observation date.');
+    const evidenceText = input.evidenceText.trim();
+    if (!evidenceText) return fail('Evidence needs the sentence it came from.');
 
-  const timestamp = now();
-  const observedAt = sanitizeBusinessDate(input.observedAt || '') || timestamp.slice(0, 10);
-  const summary = input.summary.trim() || evidenceText.slice(0, 120);
+    const timestamp = now();
+    const observedAt = sanitizeBusinessDate(input.observedAt || '') || timestamp.slice(0, 10);
+    const summary = input.summary.trim() || evidenceText.slice(0, 120);
 
-  const record: CommercialEvidence = {
-    id: newEvidenceId(),
-    userId: scope.userId,
-    accountName,
-    accountId: input.accountId || '',
-    opportunityId: input.opportunityId || null,
-    threadId: input.threadId || null,
-    category: input.category,
-    direction: input.direction,
-    summary,
-    evidenceText,
-    observedAt,
-    recordedAt: timestamp,
-    sourceActivityId: input.sourceActivityId || null,
-    sourceType: input.sourceType || 'manual',
-    sourceId: input.sourceId || null,
-    sourceUrl: null,
-    sourceUpdatedAt: null,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-    ...(isSample(scope) ? { isSample: true } : {}),
-  };
+    const record: CommercialEvidence = {
+      id: newEvidenceId(),
+      userId: scope.userId,
+      accountName,
+      accountId: input.accountId || '',
+      opportunityId: input.opportunityId || null,
+      threadId: input.threadId || null,
+      category: input.category,
+      direction: input.direction,
+      summary,
+      evidenceText,
+      observedAt,
+      recordedAt: timestamp,
+      sourceActivityId: input.sourceActivityId || null,
+      sourceType: input.sourceType || 'manual',
+      sourceId: input.sourceId || null,
+      sourceUrl: null,
+      sourceUpdatedAt: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      ...(isSample(scope) ? { isSample: true } : {}),
+    };
 
-  saveCommercialEvidence(record);
+    saveCommercialEvidence(record);
 
-  // The event says when the claim entered the workspace. Delta reads the
-  // record instead - a record is available retroactively and this log is not -
-  // so nothing downstream maps this type, and the two cannot double-count.
-  const event = recordCommercialEvent(scope, {
-    eventType: 'evidence_recorded',
-    summary: `${evidenceCategoryLabels[record.category]}: ${summary}`,
-    accountId: record.accountId || null,
-    opportunityId: record.opportunityId,
-    threadId: record.threadId,
-    occurredAt: `${observedAt}T00:00:00.000Z`,
-    structuredPayload: {
-      category: record.category,
-      direction: record.direction,
-      evidenceId: record.id,
-      accountName: record.accountName,
-    },
-    sourceType: record.sourceType,
-    sourceId: record.sourceId,
-  });
+    // The event says when the claim entered the workspace. Delta reads the
+    // record instead - a record is available retroactively and this log is not -
+    // so nothing downstream maps this type, and the two cannot double-count.
+    const history = recordStateEvent(scope, {
+      eventType: 'evidence_recorded',
+      summary: `${evidenceCategoryLabels[record.category]}: ${summary}`,
+      accountId: record.accountId || null,
+      opportunityId: record.opportunityId,
+      threadId: record.threadId,
+      occurredAt: `${observedAt}T00:00:00.000Z`,
+      structuredPayload: {
+        category: record.category,
+        direction: record.direction,
+        evidenceId: record.id,
+        accountName: record.accountName,
+      },
+      sourceType: record.sourceType,
+      sourceId: record.sourceId,
+    });
 
-  return ok(record, event);
+    return ok(record, history.event, history.warning);
+
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "This change was not saved. Please try again.");
+  }
 }

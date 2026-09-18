@@ -1,70 +1,11 @@
-import {
-  claimLocalCollectionForUser,
-  upsertCloudJsonCollection,
-  type CloudJsonCollectionTable,
-  type CloudJsonRecord,
-} from './cloudJsonCollectionStore.ts';
-import { writeLocalCollection } from './localWriteGuard.ts';
+import { supabaseClient } from '../lib/supabaseClient.ts';
+import { canonicalContracts, contractForKey, isSampleRecord, type RecordData } from './canonicalDurability.ts';
+import { applyLocalRestore, beginRestore, endRestore } from './restoreJournal.ts';
 import { invalidateWorkspaceDataCache } from './workspaceDataCache.ts';
-import { buildRestorePlan, isWorkspaceKey, type BackupEnvelope } from '../utils/workspaceBackup.ts';
-import { formatCount } from '../utils/numberFormat.ts';
-
-/**
- * Putting a backup back, all the way back.
- *
- * Restore used to write the browser and stop there, and Settings said so:
- * "Full cloud restore - Memoire does not do this yet. If you are signed in,
- * cloud sync may overwrite a restored browser copy with what the cloud already
- * holds." The documented workaround was to sign out, restore, check, and sign
- * in again. That is a real answer to a real hazard, and it is also an admission
- * that the backup only half works - which for a tool holding a seller's entire
- * book is the difference between a bad afternoon and a lost customer.
- *
- * What made the cloud half hard is that the two halves can disagree. The
- * browser copy is authoritative for the user who just chose a file; the cloud
- * copy is authoritative for every other device. A restore has to make the cloud
- * agree with the file rather than the other way round, and it has to say what
- * it did, per collection, in records.
- *
- * Three things this does that the old path did not:
- *
- *   1. Snapshots the current workspace before touching it, so "restore the
- *      wrong file" is recoverable. The old confirmation said "this cannot be
- *      undone", which was true and did not have to be.
- *   2. Writes through the guarded path. Restoring a full backup is precisely
- *      when a browser runs out of room, and a restore that half-lands while
- *      reporting success is worse than one that refuses.
- *   3. Pushes every restored collection that has a cloud table up to the
- *      account, and claims ownership, so the next sync agrees with the file
- *      instead of overwriting it.
- */
-
-/**
- * Which local collections have somewhere to go in the cloud.
- *
- * The rest are browser-only today - accounts, opportunities, activities,
- * stakeholders and objections sync through their own stores and tables, and
- * preferences are not records. A restore does not invent a home for a
- * collection that does not have one; it reports what it could and could not
- * push, which is the honest version of the same information.
- */
-const CLOUD_TABLE_BY_KEY: Record<string, CloudJsonCollectionTable> = {
-  'memoire.reviewPacks.v1': 'review_packs',
-  'memoire.salesAssets.v1': 'sales_assets',
-  'memoire.actionOutcomes.v1': 'action_outcomes',
-  'memoire.opportunityOutcomes.v1': 'opportunity_outcomes',
-  'memoire.quotes.v1': 'quotes',
-  'memoire.nudges.v1': 'nudges',
-  'memoire.weeklyCommitments.v1': 'weekly_commitments',
-  'memoire.planItems.v1': 'plan_items',
-  'memoire.accountMerges.v1': 'account_merges',
-  'memoire.orderMilestones.v1': 'order_milestones',
-  'memoire.orderCosts.v1': 'order_costs',
-  'memoire.orderReceivables.v1': 'order_receivables',
-  'memoire.supplierCommitments.v1': 'supplier_commitments',
-  'memoire.expenses.v1': 'expenses',
-  'memoire.knowledgeNotes.v1': 'knowledge_notes',
-};
+import { buildRestorePlan, isRestorableWorkspaceKey, type BackupEnvelope } from '../utils/workspaceBackup.ts';
+import { hasLocalSampleData } from '../utils/dataMode.ts';
+import { reportClientOperationalEvent } from './clientTelemetry.ts';
+import { writeLocalCollection } from './localWriteGuard.ts';
 
 export type RestoreCollectionResult = {
   key: string;
@@ -91,177 +32,96 @@ export type RestoreResult = {
   summary: string;
 };
 
+/** Local replacement with verified rollback; cloud is an awaited, idempotent merge by stable identity. */
 export async function restoreWorkspace(
   envelope: BackupEnvelope,
   options: { userId?: string | null; clearFirst?: boolean } = {},
 ): Promise<RestoreResult> {
+  if (hasLocalSampleData()) throw new Error('Leave the sample workspace before restoring real data.');
   const plan = buildRestorePlan(envelope);
+  if (typeof window === 'undefined' || !window.localStorage) throw new Error('Browser storage is unavailable. Nothing was changed.');
+  const cloud = envelope.cloudData as { user_id?: string; data?: Record<string, RecordData[]> } | undefined;
+  if (options.userId && cloud?.user_id && cloud.user_id !== options.userId) throw new Error('This backup belongs to another account. Sign in to its original account before restoring.');
   const snapshot = snapshotWorkspace();
-
-  // Cleared before writing, not after: a backup taken from a workspace that had
-  // fewer collections must not leave the extra ones behind, or the restored
-  // workspace is a merge nobody asked for.
-  if (options.clearFirst !== false) clearWorkspaceKeys();
-
-  const collections: RestoreCollectionResult[] = [];
-  let localFailures = 0;
-
-  for (const write of plan.writes) {
-    const before = countRecords(snapshot[write.key]);
-    const after = countRecords(write.value);
-    const result = writeLocalCollection(write.key, write.value);
-    if (!result.ok) localFailures += 1;
-
-    collections.push({
-      key: write.key,
-      before,
-      after,
-      localWritten: result.ok,
-      cloudPushed: null,
-      message: result.ok ? '' : result.message,
+  const desired: Record<string, string | null> = options.clearFirst === false ? {} : Object.fromEntries(Object.keys(snapshot).map(key => [key, null]));
+  for (const write of plan.writes) desired[write.key] = write.value;
+  // Build every cloud request before the first local mutation, so a broken codec cannot half-restore.
+  const requests = plan.writes.flatMap(write => {
+    const contract = contractForKey(write.key);
+    if (!contract || !options.userId) return [];
+    const records = JSON.parse(write.value) as RecordData[];
+    const originals = cloud?.data?.[contract.table] || [];
+    const originalById = new Map(originals.map(row => [contract.kind === 'target' ? `${row.fiscal_year}:${row.period}` : row.id, row]));
+    const rows = records.filter(r => !isSampleRecord(r)).map(record => {
+      const original = originalById.get(contract.kind === 'target' ? `${record.fiscalYear}:${record.period}` : record.id);
+      return { ...original, ...contract.encode(record, options.userId!) };
     });
-  }
-
-  invalidateWorkspaceDataCache();
-
-  // The cloud half. Only for a signed-in user, only for collections with a
-  // table, and awaited - a restore that returns before the push lands is how
-  // the next sync overwrites what was just restored.
-  let cloudPushedCount = 0;
-  let cloudFailedCount = 0;
-
-  if (options.userId) {
-    for (const collection of collections) {
-      const table = CLOUD_TABLE_BY_KEY[collection.key];
-      if (!table || !collection.localWritten) continue;
-
-      const records = parseRecords(plan.writes.find((write) => write.key === collection.key)?.value);
-      if (!records) continue;
-
+    return [{ key: write.key, contract, rows }];
+  });
+  beginRestore();
+  try {
+    applyLocalRestore(window.localStorage, desired);
+    const collections: RestoreCollectionResult[] = plan.writes.map(write => ({ key: write.key,
+      before: countRecords(snapshot[write.key]), after: countRecords(write.value), localWritten: true,
+      cloudPushed: null, message: '' }));
+    let cloudPushedCount = 0;
+    let cloudFailedCount = 0;
+    for (const request of requests.sort((a,b) => canonicalContracts.indexOf(a.contract) - canonicalContracts.indexOf(b.contract))) {
+      const result = collections.find(c => c.key === request.key)!;
       try {
-        claimLocalCollectionForUser(table, options.userId);
-        await upsertCloudJsonCollection(table, options.userId, records);
-        collection.cloudPushed = true;
-        cloudPushedCount += 1;
+        if (!supabaseClient) throw new Error('The account connection is unavailable.');
+        // Bounded requests; retrying a partial cloud merge uses the same IDs, never creates replacements.
+        for (let start = 0; start < request.rows.length; start += 200) {
+          const { error } = await supabaseClient.from(request.contract.table).upsert(request.rows.slice(start, start + 200), { onConflict: request.contract.conflict });
+          if (error) throw new Error(error.message);
+        }
+        result.cloudPushed = true;
+        cloudPushedCount++;
       } catch (error) {
-        collection.cloudPushed = false;
-        collection.message = `Restored in this browser, but the account copy did not accept it: ${describeError(error)}`;
-        cloudFailedCount += 1;
+        result.cloudPushed = false;
+        result.message = 'Recovered in this browser, but this collection could not be saved to your account. Keep your backup and retry.';
+        reportClientOperationalEvent({ eventName: 'cloud_json_sync_failed', component: 'workspaceRestore', operation: 'restore', table: request.contract.table, severity: 'error', error });
+        cloudFailedCount++;
       }
     }
-  }
-
-  return {
-    ok: localFailures === 0 && cloudFailedCount === 0,
-    collections,
-    restoredRecords: plan.restoredRecords,
-    droppedSampleRecords: plan.droppedSampleRecords,
-    snapshot,
-    cloudPushedCount,
-    cloudFailedCount,
-    summary: buildSummary({
-      restoredRecords: plan.restoredRecords,
-      collectionCount: collections.length,
-      droppedSampleRecords: plan.droppedSampleRecords,
-      localFailures,
-      cloudPushedCount,
-      cloudFailedCount,
-      signedIn: Boolean(options.userId),
-    }),
-  };
+    const result: RestoreResult = {
+      ok: cloudFailedCount === 0, collections, restoredRecords: plan.restoredRecords,
+      droppedSampleRecords: plan.droppedSampleRecords, snapshot, cloudPushedCount, cloudFailedCount,
+      summary: `${plan.restoredRecords} records recovered in this browser. ` + (options.userId
+        ? `${cloudPushedCount} collections merged into your account; ${cloudFailedCount} incomplete. Existing account records outside this backup remain. Local undo does not undo account merges.`
+        : 'Browser recovery only; no account copy has been confirmed. Keep the backup before changing devices or signing in.'),
+    };
+    endRestore();
+    invalidateWorkspaceDataCache();
+    writeLocalCollection('memoire.restoreReceipt.v1', JSON.stringify({ ...result, snapshot: undefined }));
+    return result;
+  } finally { endRestore(); }
 }
 
-/** Puts back exactly what was there before a restore. */
+/** Local-only undo, with the same rollback boundary. Never reverses a cloud merge. */
 export function undoRestore(snapshot: Record<string, string>): boolean {
-  clearWorkspaceKeys();
-  let ok = true;
-  Object.entries(snapshot).forEach(([key, value]) => {
-    if (!writeLocalCollection(key, value).ok) ok = false;
-  });
-  invalidateWorkspaceDataCache();
-  return ok;
+  try {
+    const current = snapshotWorkspace();
+    const desired: Record<string, string | null> = Object.fromEntries(Object.keys(current).map(key => [key, null]));
+    for (const [key, value] of Object.entries(snapshot)) if (isRestorableWorkspaceKey(key)) desired[key] = value;
+    applyLocalRestore(window.localStorage, desired);
+    invalidateWorkspaceDataCache();
+    return true;
+  } catch { return false; }
 }
 
 export function snapshotWorkspace(): Record<string, string> {
   const snapshot: Record<string, string> = {};
   if (typeof window === 'undefined' || !window.localStorage) return snapshot;
-
-  for (let index = 0; index < window.localStorage.length; index += 1) {
-    const key = window.localStorage.key(index);
-    if (!key || !isWorkspaceKey(key)) continue;
-    snapshot[key] = window.localStorage.getItem(key) || '';
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const key = window.localStorage.key(i);
+    if (key && isRestorableWorkspaceKey(key)) snapshot[key] = window.localStorage.getItem(key) || '';
   }
   return snapshot;
 }
 
-function clearWorkspaceKeys() {
-  if (typeof window === 'undefined' || !window.localStorage) return;
-  const keys: string[] = [];
-  for (let index = 0; index < window.localStorage.length; index += 1) {
-    const key = window.localStorage.key(index);
-    if (key && isWorkspaceKey(key)) keys.push(key);
-  }
-  keys.forEach((key) => window.localStorage.removeItem(key));
-}
-
 function countRecords(value: string | undefined): number | null {
   if (!value) return null;
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.length : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * A cloud collection is keyed by record id, so a row without one cannot be
- * pushed. Dropping it here rather than letting the upsert reject the whole
- * batch keeps one malformed row from costing a collection its restore.
- */
-function parseRecords(value: string | undefined): CloudJsonRecord[] | null {
-  if (!value) return null;
-  try {
-    const parsed = JSON.parse(value);
-    if (!Array.isArray(parsed)) return null;
-    return parsed.filter((record): record is CloudJsonRecord => (
-      Boolean(record) && typeof record === 'object' && typeof (record as { id?: unknown }).id === 'string'
-    ));
-  } catch {
-    return null;
-  }
-}
-
-function describeError(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return String(error || 'unknown error');
-}
-
-function buildSummary(input: {
-  restoredRecords: number;
-  collectionCount: number;
-  droppedSampleRecords: number;
-  localFailures: number;
-  cloudPushedCount: number;
-  cloudFailedCount: number;
-  signedIn: boolean;
-}): string {
-  if (input.localFailures > 0) {
-    return `${input.localFailures} of ${input.collectionCount} collections could not be written to this browser. The workspace is part-restored - undo, free some space, and try again.`;
-  }
-
-  const base = `${formatCount(input.restoredRecords)} records restored across ${input.collectionCount} collections`;
-  const dropped = input.droppedSampleRecords > 0
-    ? `, ${input.droppedSampleRecords} demo record${input.droppedSampleRecords === 1 ? '' : 's'} left out`
-    : '';
-
-  if (!input.signedIn) {
-    return `${base}${dropped}. This browser only - sign in and Memoire will sync them to your account.`;
-  }
-
-  if (input.cloudFailedCount > 0) {
-    return `${base}${dropped}. ${input.cloudPushedCount} pushed to your account, ${input.cloudFailedCount} refused - those collections are correct here but not yet in the cloud.`;
-  }
-
-  return `${base}${dropped}. ${input.cloudPushedCount} collections pushed to your account, so your other devices will match.`;
+  try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed.length : null; }
+  catch { return null; }
 }

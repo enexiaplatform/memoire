@@ -198,12 +198,19 @@ export function projectCurrentEvidence(records: CommercialEvidence[]): EvidenceP
       latest.set(key, record);
       continue;
     }
-    const [winner, loser] = isMoreRecentObservation(record, held) ? [record, held] : [held, record];
-    latest.set(key, winner);
-    supersededIds.add(loser.id);
-    supersededBy.set(loser.id, winner.id);
+    latest.set(key, isMoreRecentObservation(record, held) ? record : held);
   }
 
+  // Resolve against the final winner, not the winner encountered halfway through
+  // a restore. Otherwise three observations produce different supersession links
+  // depending on array order even though the current observation is identical.
+  for (const record of records) {
+    const winner = latest.get(projectionKey(record))!;
+    if (record.id !== winner.id) {
+      supersededIds.add(record.id);
+      supersededBy.set(record.id, winner.id);
+    }
+  }
   const currentByScope = new Map<string, CommercialEvidence[]>();
   for (const record of latest.values()) {
     const scope = evidenceScopeKey(record);

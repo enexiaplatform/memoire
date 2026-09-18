@@ -643,7 +643,7 @@ function createLocalActivity(
   };
 }
 
-function rowToRecord(row: SalesActivityRow): SalesActivityRecord {
+export function rowToRecord(row: SalesActivityRow): SalesActivityRecord {
   const tags = Array.isArray(row.tags) ? row.tags : [];
   const sourceMetadata = parseIngestionSourceTags(tags);
   return {
@@ -682,7 +682,7 @@ function rowToRecord(row: SalesActivityRow): SalesActivityRecord {
   };
 }
 
-function activityToInsert(
+export function activityToInsert(
   activity: ClassifiedSalesActivity,
   userId: string,
   // A capture that waited three days offline was made three days ago. Stamping

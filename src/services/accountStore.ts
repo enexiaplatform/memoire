@@ -484,7 +484,7 @@ function createLocalAccounts(inputs: AccountFormInput[], userId?: string) {
   return { accounts, write };
 }
 
-function rowToAccount(row: AccountRow): AccountMemoryRecord {
+export function rowToAccount(row: AccountRow): AccountMemoryRecord {
   return {
     id: row.id,
     accountCode: normalizeAccountCode(row.account_code),
@@ -560,7 +560,7 @@ function accountToUpdateWithLegacyColumns(input: AccountFormInput) {
   };
 }
 
-function accountToRow(input: AccountFormInput) {
+export function accountToRow(input: AccountFormInput) {
   return {
     account_name: input.accountName,
     segment: input.segment || null,

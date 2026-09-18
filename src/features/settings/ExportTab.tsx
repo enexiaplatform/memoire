@@ -7,6 +7,7 @@ import {
   buildRestorePlan,
   describeCloudExportGaps,
   isWorkspaceKey,
+  isRestorableWorkspaceKey,
   parseBackupFile,
   type BackupEnvelope,
   type BackupSummary,
@@ -80,9 +81,9 @@ export function ExportTab() {
       + `${plan.restoredRecords} records will be restored across ${plan.writes.length} stores. `
       + 'Everything currently in this browser is replaced.'
       + (user
-        ? ' Collections that live in your account are pushed there too, so your other devices match this file.'
+        ? ' Supported commercial collections are merged into your account by their existing IDs. Account records outside this backup remain.'
         : '')
-      + ' You can undo it immediately afterwards.',
+      + ' Undo restores this browser only; it cannot reverse account merges.',
     );
     if (!confirmed) return;
 
@@ -94,7 +95,7 @@ export function ExportTab() {
       // would overwrite what was just restored with what the cloud still held.
       const result = await restoreWorkspace(pending.envelope, { userId: user?.id });
 
-      trackProductEvent('restore_completed');
+      if (result.ok) trackProductEvent('restore_completed');
       setLastRestore(result);
       setPending(null);
       setStatusMessage(result.ok
@@ -125,6 +126,7 @@ export function ExportTab() {
 
     try {
       const localData = collectLocalMemoireData();
+      const localBrowserRawData = Object.fromEntries(Object.keys(localData).map(key => [key, window.localStorage.getItem(key)!]));
       let cloudData: unknown = null;
       let cloudWarning = '';
 
@@ -166,6 +168,7 @@ export function ExportTab() {
         mode: user ? 'signed-in' : 'local-only',
         cloudData,
         localBrowserData: localData,
+        localBrowserRawData,
         warning: cloudWarning || undefined,
       };
 
@@ -267,6 +270,7 @@ export function ExportTab() {
               Put an export back into this browser - after a device change, or to undo a bad import.
               Memoire shows you what is in the file before anything is written. Restoring replaces
               the workspace in this browser; demo records are never restored into it.
+              Commercial records are merged into your signed-in account. Profile, usage, import logs and older records are kept as an archive, not replayed.
             </p>
           </div>
           <div className="shrink-0">
@@ -308,7 +312,7 @@ export function ExportTab() {
             <p className="mt-1 text-sm text-gray-600">
               {pending.summary.totalRecords} records across {pending.summary.totalKeys} stores
               {pending.summary.totalSampleRecords > 0
-                ? `, of which ${pending.summary.totalSampleRecords} are demo records that will not be restored`
+                ? `, of which ${pending.summary.totalSampleRecords} demo records are excluded in addition to this count`
                 : ''}
               .
             </p>
@@ -383,7 +387,7 @@ export function ExportTab() {
                 onClick={handleUndoRestore}
                 className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50"
               >
-                Undo this restore
+                Undo browser restore
               </button>
               <button
                 type="button"
@@ -502,7 +506,7 @@ function friendlyStoreName(key: string) {
     .replace(/^./, (character) => character.toUpperCase());
 }
 
-// Both of these ask `isWorkspaceKey` rather than testing the prefix themselves.
+// Export excludes session and control keys; clearing still covers the whole workspace.
 // The rule for what belongs to a workspace was written out in four places - here,
 // the clear below, and twice in workspaceBackup - and the two copies here were
 // the ones that never learned about the underscored preference keys.
@@ -510,7 +514,7 @@ function collectLocalMemoireData() {
   const data: Record<string, unknown> = {};
   for (let index = 0; index < window.localStorage.length; index += 1) {
     const key = window.localStorage.key(index);
-    if (!key || !isWorkspaceKey(key)) continue;
+    if (!key || !isRestorableWorkspaceKey(key)) continue;
     const value = window.localStorage.getItem(key);
     if (value === null) continue;
     try {
@@ -549,6 +553,10 @@ function buildExportReadme(exportedAt: string, signedIn: boolean, warning: strin
     `Mode: ${signedIn ? 'Signed in (cloud + browser data)' : 'Local browser data only'}`,
     warning ? `Warning: ${warning}` : '',
     '',
+    'Restore validates this file before replacing browser records and merges supported commercial records into the original account by ID.',
+    'Account records outside this backup remain. Browser undo does not reverse account writes.',
+    'Profile, usage, import audit and legacy records are retained as a readable archive; they are not replayed into active account tables.',
+    'If any account collection fails, keep this file and retry. This is not a database-wide transaction.',
     'This archive may contain sensitive customer and pipeline information. Store it securely.',
     'For support: share this archive only if you choose to include workspace data for troubleshooting.',
     `Support contact: ${SUPPORT_EMAIL}`,

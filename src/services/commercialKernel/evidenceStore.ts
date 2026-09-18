@@ -122,7 +122,7 @@ export const evidenceCodec: KernelCodec<CommercialEvidence> = {
       sourceUpdatedAt: optionalText(raw.sourceUpdatedAt),
       createdAt: isoOrNow(raw.createdAt),
       updatedAt: isoOrNow(raw.updatedAt),
-      ...(raw.isSample === true ? { isSample: true } : {}),
+      ...(raw.isSample === true || raw.source === 'demo' ? { isSample: true } : {}),
     };
   },
 };

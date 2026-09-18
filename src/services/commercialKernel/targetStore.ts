@@ -2,12 +2,13 @@ import { FORECAST_QUARTERS, type ForecastQuarter } from '../../domain/commercial
 import { supabaseClient } from '../../lib/supabaseClient.ts';
 import { reportWorkspaceSyncError } from '../workspaceSyncStatus.ts';
 import { invalidateWorkspaceCollection } from '../workspaceDataCache.ts';
-import { writeLocalCollection } from '../localWriteGuard.ts';
+import { requireLocalWrite, writeLocalCollection } from '../localWriteGuard.ts';
 
 export const TARGET_STORAGE_KEY = 'memoire.commercialTargets.v1';
 export const TARGETS_UPDATED_EVENT = 'memoire:commercial-targets-updated';
 
 export type CommercialTarget = {
+  isSample?: boolean;
   period: ForecastQuarter;
   fiscalYear: number;
   amount: number;
@@ -39,6 +40,7 @@ function sanitize(value: unknown): CommercialTarget | null {
   const now = new Date().toISOString();
 
   return {
+    ...(raw.isSample === true ? { isSample: true } : {}),
     period: period as ForecastQuarter,
     fiscalYear: Math.round(fiscalYear),
     amount,
@@ -51,8 +53,8 @@ function sanitize(value: unknown): CommercialTarget | null {
   };
 }
 
-const keyOf = (target: Pick<CommercialTarget, 'fiscalYear' | 'period'>) =>
-  `${target.fiscalYear}:${target.period}`;
+const keyOf = (target: Pick<CommercialTarget, 'fiscalYear' | 'period' | 'isSample'>) =>
+  `${target.isSample ? 'sample:' : ''}${target.fiscalYear}:${target.period}`;
 
 export function loadTargets(): CommercialTarget[] {
   if (!canUseStorage()) return [];
@@ -75,14 +77,19 @@ export function loadTargets(): CommercialTarget[] {
  * repository learned the hard way. Every load path ends in a write, and
  * treating an identical re-write as news made the app refetch itself forever.
  */
-function persist(targets: CommercialTarget[]): CommercialTarget[] {
+function persist(targets: CommercialTarget[], requireDurable = true): CommercialTarget[] {
   const sorted = [...targets].sort((left, right) => keyOf(left).localeCompare(keyOf(right)));
-  if (!canUseStorage()) return sorted;
+  if (!canUseStorage()) {
+    if (requireDurable) throw new Error('This browser has no local storage available.');
+    return sorted;
+  }
 
   const serialized = JSON.stringify(sorted);
   if (window.localStorage.getItem(TARGET_STORAGE_KEY) === serialized) return sorted;
 
-  writeLocalCollection(TARGET_STORAGE_KEY, serialized);
+  const result = writeLocalCollection(TARGET_STORAGE_KEY, serialized);
+  if (requireDurable) requireLocalWrite(result);
+  if (!result.ok) { reportWorkspaceSyncError(); return sorted; }
   invalidateWorkspaceCollection('commercialTargets');
   window.dispatchEvent(new CustomEvent(TARGETS_UPDATED_EVENT, { detail: sorted }));
   return sorted;
@@ -92,7 +99,7 @@ export async function loadTargetsForWorkspace(
   userId?: string | null,
   sampleDataActive = false,
 ): Promise<CommercialTarget[]> {
-  if (!userId || sampleDataActive || !supabaseClient) return loadTargets();
+  if (!userId || sampleDataActive || !supabaseClient) return loadTargets().filter(t => Boolean(t.isSample) === sampleDataActive);
 
   try {
     const { data, error } = await supabaseClient
@@ -116,12 +123,15 @@ export async function loadTargetsForWorkspace(
 
     // Newest wins per period, so a target set on another device is respected.
     const merged = new Map<string, CommercialTarget>();
-    for (const target of [...cloud, ...loadTargets()]) {
+    for (const target of [...cloud, ...loadTargets().filter(t => !t.isSample)]) {
       const existing = merged.get(keyOf(target));
       if (!existing || target.updatedAt >= existing.updatedAt) merged.set(keyOf(target), target);
     }
 
-    return persist(Array.from(merged.values()));
+    const result = Array.from(merged.values());
+    const cloudTimes = new Map(cloud.map(t => [keyOf(t), t.updatedAt]));
+    for (const target of result) if (!cloudTimes.has(keyOf(target)) || target.updatedAt > cloudTimes.get(keyOf(target))!) void syncTarget(target);
+    return persist(result, false);
   } catch {
     reportWorkspaceSyncError();
     return loadTargets();
@@ -130,7 +140,7 @@ export async function loadTargetsForWorkspace(
 
 export function saveTarget(target: CommercialTarget) {
   const clean = sanitize(target);
-  if (!clean) return loadTargets();
+  if (!clean) throw new Error('This target is invalid and was not saved.');
 
   const next = persist([
     clean,
@@ -142,7 +152,7 @@ export function saveTarget(target: CommercialTarget) {
 }
 
 async function syncTarget(target: CommercialTarget) {
-  if (!supabaseClient) return;
+  if (!supabaseClient || target.isSample) return;
   try {
     const { data, error: authError } = await supabaseClient.auth.getUser();
     if (authError) throw new Error(authError.message);

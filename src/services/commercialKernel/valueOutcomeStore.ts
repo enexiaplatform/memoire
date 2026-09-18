@@ -81,7 +81,7 @@ export const valueOutcomeCodec: KernelCodec<CommercialValueOutcome> = {
       note: optionalText(raw.note),
       occurredAt: isoOrNow(raw.occurredAt),
       createdAt: isoOrNow(raw.createdAt),
-      ...(raw.isSample === true ? { isSample: true } : {}),
+      ...(raw.isSample === true || raw.source === 'demo' ? { isSample: true } : {}),
     };
   },
 };

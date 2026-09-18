@@ -1,6 +1,6 @@
 import { supabaseClient } from '../lib/supabaseClient.ts';
-import { invalidateWorkspaceCollection } from './workspaceDataCache';
-import { reportWorkspaceSyncError } from './workspaceSyncStatus';
+import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
+import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
 
@@ -203,7 +203,7 @@ export function isOperatingContextClosed(record: OperatingContextRecord) {
   return /complete|completed|done|closed|cancel|lost/i.test(record.status);
 }
 
-function rowToOperatingContext(row: OperatingContextRow): OperatingContextRecord {
+export function rowToOperatingContext(row: OperatingContextRow): OperatingContextRecord {
   return {
     id: row.id,
     userId: row.user_id,
@@ -225,7 +225,7 @@ function rowToOperatingContext(row: OperatingContextRow): OperatingContextRecord
   };
 }
 
-function inputToRow(input: OperatingContextFormInput) {
+export function inputToRow(input: OperatingContextFormInput) {
   return {
     context_type: input.contextType,
     title: input.title,

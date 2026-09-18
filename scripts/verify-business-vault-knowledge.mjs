@@ -268,8 +268,8 @@ const registry = readFileSync('src/config/featureRegistry.ts', 'utf8');
   assert.match(migrations, /create table if not exists public\.knowledge_notes/i, 'the collection has a table');
   assert.match(migrations, /alter table public\.knowledge_notes enable row level security/i, 'one operator cannot read another\'s memory');
 
-  const restore = readFileSync('src/services/workspaceRestore.ts', 'utf8');
-  assert.match(restore, /'memoire\.knowledgeNotes\.v1': 'knowledge_notes'/, 'a restored backup puts business memory back in the cloud too');
+  const restore = readFileSync('src/services/canonicalDurability.ts', 'utf8');
+  assert.match(restore, /knowledgeNotes: 'knowledge_notes'/, 'a restored backup puts business memory back in the cloud too');
 
   const store = readFileSync('src/services/knowledgeNoteStore.ts', 'utf8');
   assert.match(store, /writeLocalRecords\(/, 'writes go through the guarded local path');

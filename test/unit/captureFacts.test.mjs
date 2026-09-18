@@ -1,4 +1,4 @@
-import { test, describe } from 'node:test';
+import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseCapture } from '../../src/domain/commercialKernel/parseCapture.ts';
 import { capturedFactKinds } from '../../src/domain/commercialKernel/capturedFacts.ts';
@@ -318,6 +318,13 @@ describe('parseCapture - dates keep their local meaning', () => {
 });
 
 describe('commitCapturedFacts - partial failure is honest and retry is safe', () => {
+  beforeEach(() => {
+    const data = new Map();
+    globalThis.window = { localStorage: { getItem: k => data.get(k) ?? null, setItem: (k,v) => data.set(k,String(v)), removeItem: k => data.delete(k) }, dispatchEvent: () => true };
+    globalThis.CustomEvent = class { constructor(type, options) { this.type = type; this.detail = options?.detail; } };
+  });
+  afterEach(() => { delete globalThis.window; delete globalThis.CustomEvent; });
+
   const target = { accountName: ACCOUNT, opportunityId: 'opp-1', opportunityName: 'QC analyser rollout' };
 
   const commitFact = (id) => ({

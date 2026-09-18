@@ -1,4 +1,5 @@
 import React from 'react';
+import { recoverInterruptedRestore } from './services/restoreJournal';
 import ReactDOM from 'react-dom/client';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './auth/AuthProvider';
@@ -7,6 +8,7 @@ import { installGlobalErrorReporter } from './lib/globalErrorReporter';
 import './index.css';
 
 installGlobalErrorReporter();
+const recoveryOk = (() => { try { return recoverInterruptedRestore(window.localStorage); } catch { return false; } })();
 
 // Hand the head back to Helmet.
 //
@@ -26,7 +28,7 @@ document.querySelectorAll('[data-prerendered-seo]').forEach((tag) => tag.remove(
 // Legacy sample-data cleanup only matters when the demo flag is set. The cheap
 // flag check keeps the heavy sampleData module (and the domain stores it pulls
 // in) out of the critical path for anonymous public-page visitors.
-if (window.localStorage.getItem('memoire.sampleData.loaded') === 'true') {
+if (recoveryOk && window.localStorage.getItem('memoire.sampleData.loaded') === 'true') {
   void import('./utils/sampleData').then((module) => module.sanitizeLegacySampleDataset());
 }
 
@@ -43,6 +45,11 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
+  !recoveryOk ? <main role="alert" style={{ padding: 32 }}>
+    <h1>Workspace recovery needs attention</h1>
+    <p>A restore was interrupted and this browser could not recover the previous data. Do not clear browser data. Keep your backup and free browser storage, then reload to retry.</p>
+    <button onClick={() => window.location.reload()}>Retry recovery</button>
+  </main> :
   <React.StrictMode>
     <HelmetProvider>
       <AuthProvider>

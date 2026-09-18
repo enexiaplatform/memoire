@@ -555,7 +555,7 @@ function createLocalOpportunity(input: OpportunityFormInput, userId: string | un
   };
 }
 
-function rowToOpportunity(row: OpportunityRow): CrmLiteOpportunity {
+export function rowToOpportunity(row: OpportunityRow): CrmLiteOpportunity {
   const linkedAccountName = row.account?.account_name || row.account?.name || '';
   const storedAccountName = row.account_name?.trim() || '';
   const opportunityName = row.opportunity_name || row.title || '';
@@ -647,7 +647,7 @@ function opportunityToUpdate(input: OpportunityFormInput) {
   };
 }
 
-function opportunityToRow(input: OpportunityFormInput) {
+export function opportunityToRow(input: OpportunityFormInput) {
   return {
     account_name: input.accountName,
     opportunity_name: input.opportunityName,
