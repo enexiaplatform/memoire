@@ -3280,7 +3280,7 @@ function OpportunityPanel({
       )}
 
       {mode === 'edit' && editingOpportunity && !isLeadStage(editingOpportunity.stage) && (
-        <CommercialStatePanel key={editingOpportunity.id} opportunity={editingOpportunity} accounts={accounts} userId={dataUserId} sampleDataActive={sampleDataActive} />
+        <CommercialStatePanel key={editingOpportunity.id} opportunity={editingOpportunity} accounts={accounts} userId={dataUserId} sampleDataActive={sampleDataActive} activities={linkedActivities} />
       )}
 
       {/* What changed. The canonical delta, scoped to this deal - an

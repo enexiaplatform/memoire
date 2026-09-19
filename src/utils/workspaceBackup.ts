@@ -3,6 +3,7 @@ import type { CommercialCondition } from '../domain/commercialKernel/commercialC
 import type { CommercialEvidence } from '../domain/commercialKernel/commercialEvidence.ts';
 import { validateRequirementReferences, requirementReferenceIndex } from '../domain/commercialKernel/requirementCommands.ts';
 import type { OutcomeRequirement } from '../domain/commercialKernel/outcomeRequirement.ts';
+import { validateDependencyGraph, type CommercialDependency } from '../domain/commercialKernel/commercialDependency.ts';
 import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KEY, isSampleRecord, recordIdentity, validateCanonicalRecord, type RecordData } from '../services/canonicalDurability.ts';
 /**
  * The other half of export.
@@ -16,8 +17,8 @@ import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KE
  * backup, what never comes back in - can be tested without a browser.
  */
 
-/** Format 5 adds canonical Outcome Requirements. Versions 1-4 remain readable. */
-export const BACKUP_FORMAT_VERSION = 5;
+/** Format 6 adds canonical Commercial Dependencies and explicit Evidence provider. Versions 1-5 remain readable. */
+export const BACKUP_FORMAT_VERSION = 6;
 export const BACKUP_KEY_PREFIX = 'memoire.';
 
 export type BackupEnvelope = {
@@ -246,6 +247,8 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
     );
     for (const requirement of requirements) validateRequirementReferences(requirement,index);
   }
+  const dependencies=normalized['memoire.commercialDependencies.v1'] as CommercialDependency[] | undefined;
+  if(dependencies?.length) validateDependencyGraph(requirements||[],dependencies);
   const writes = Object.keys(normalized).sort().map(key => {
     const value = normalized[key];
     if (Array.isArray(value)) restoredRecords += value.length;

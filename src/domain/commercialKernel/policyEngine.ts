@@ -7,6 +7,7 @@ import type { QuoteRecord } from '../../services/quoteStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import { nextBestQuestion, projectOutcomeRequirements, requirementQuestion, type OutcomeRequirement } from './outcomeRequirement.ts';
 import type { CommercialCondition } from './commercialCondition.ts';
+import { deriveKnownBlockers, type CommercialDependency } from './commercialDependency.ts';
 import {
   projectCurrentEvidence,
   supportingEvidenceFor,
@@ -75,6 +76,7 @@ export type Recommendation = {
   requirementRole?: OutcomeRequirement['role'];
   conditionState?: string;
   question?: string;
+  dependencyPath?: string[];
 };
 
 /**
@@ -149,6 +151,7 @@ export type PolicyInput = {
   evidence?: CommercialEvidence[];
   requirements?: OutcomeRequirement[];
   conditions?: CommercialCondition[];
+  dependencies?: CommercialDependency[];
 };
 
 const SEVERITY_ORDER: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -189,22 +192,35 @@ export function evaluateCommercialPolicies(input: PolicyInput): Recommendation[]
 /** One explicitly declared, unresolved required-now question per open deal.
  * A small portfolio cap keeps questions from crowding dated money work on Today. */
 function requirementQuestionRules(input: PolicyInput, calculatedAt: string, isVisible: (r:{isSample?:boolean})=>boolean, leadIds:Set<string>): Recommendation[] {
-  const opportunities = new Map(input.opportunities.filter(isVisible).map(o => [o.id,o]));
+  const inCurrentWorkspace=(r:{isSample?:boolean})=>isVisible(r) && Boolean(r.isSample)===Boolean(input.includeSampleRecords);
+  const opportunities = new Map(input.opportunities.filter(inCurrentWorkspace).map(o => [o.id,o]));
   const grouped = new Map<string, ReturnType<typeof projectOutcomeRequirements>>();
-  for (const reading of projectOutcomeRequirements((input.requirements || []).filter(isVisible), (input.conditions || []).filter(isVisible), (input.evidence || []).filter(isVisible))) {
+  const dependenciesByOpportunity=new Map<string,CommercialDependency[]>();
+  for(const edge of (input.dependencies||[]).filter(inCurrentWorkspace)) {
+    const list=dependenciesByOpportunity.get(edge.opportunityId)||[];list.push(edge);dependenciesByOpportunity.set(edge.opportunityId,list);
+  }
+  for (const reading of projectOutcomeRequirements((input.requirements || []).filter(inCurrentWorkspace), (input.conditions || []).filter(inCurrentWorkspace), (input.evidence || []).filter(inCurrentWorkspace))) {
     const r=reading.requirement; const opportunity=opportunities.get(r.opportunityId);
-    if (!opportunity || opportunity.status !== 'Active' || leadIds.has(r.opportunityId) || r.lifecycle !== 'active' || r.role !== 'required_now') continue;
+    if (!opportunity || opportunity.status !== 'Active' || leadIds.has(r.opportunityId)) continue;
     const list=grouped.get(r.opportunityId) || []; list.push(reading); grouped.set(r.opportunityId,list);
   }
   return [...grouped.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([opportunityId,readings])=>{
-    const reading=nextBestQuestion(readings); if (!reading) return null;
+    const known=deriveKnownBlockers(opportunityId,readings,dependenciesByOpportunity.get(opportunityId)||[]);
+    if(known.integrity!=='valid') return null;
+    const leafIds=new Set(known.blockers.map(b=>b.reading.requirement.id));
+    const reading=nextBestQuestion(readings.filter(r=>leafIds.has(r.requirement.id))); if (!reading) return null;
+    const blocker=known.blockers.find(b=>b.reading.requirement.id===reading.requirement.id)!;
+    const path=blocker.paths[0];
     const opportunity=opportunities.get(opportunityId)!; const r=reading.requirement;
     const status=reading.conditionState === 'contradicted' ? 'Conflicting evidence' : reading.conditionState === 'unknown' ? 'No answer is recorded' : reading.conditionState === 'assumed' ? 'Only an assumption is recorded' : 'The proposition is still being tested';
     return {id:`${r.id}:question`,reasonCode:'OUTCOME_REQUIREMENT_QUESTION' as const,
-      reasonText:`${status} for required outcome “${r.expectedOutcome}” on ${opportunity.opportunityName}.`,
-      sourceRecordIds:[r.id,...(r.conditionId?[r.conditionId]:[]),...reading.sourceEvidenceIds],threshold:0,
+      reasonText:path.requirementIds.length>1
+        ? `${opportunity.opportunityName} is waiting for “${r.expectedOutcome}”; ${path.requirementIds.slice(1).map(id=>readings.find(item=>item.requirement.id===id)?.requirement.expectedOutcome).filter(Boolean).join(' → ')} requires this prerequisite. ${status}.`
+        : `${status} for required outcome “${r.expectedOutcome}” on ${opportunity.opportunityName}.`,
+      sourceRecordIds:[r.id,...path.dependencyIds,...(r.conditionId?[r.conditionId]:[]),...reading.sourceEvidenceIds],threshold:0,
       severity:'medium' as const,recommendedAction:'Resolve this question',question:requirementQuestion(reading),calculatedAt,
       accountName:opportunity.accountName,opportunityId,requirementId:r.id,requirementRole:r.role,conditionState:reading.conditionState,
+      dependencyPath:path.requirementIds,
       href:`/app/opportunities?opportunityId=${encodeURIComponent(opportunityId)}`};
   }).filter((r):r is NonNullable<typeof r>=>r!==null);
 }

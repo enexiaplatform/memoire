@@ -745,6 +745,7 @@ export type RecordCommercialEvidenceInput = {
   /** The business day it was observed. Defaults to today. */
   observedAt?: string;
   sourceActivityId?: string | null;
+  providedBy?: CommercialEvidence['providedBy'];
   sourceType?: SourceType;
   sourceId?: string | null;
 };
@@ -770,6 +771,7 @@ export function recordCommercialEvidence(
   try {
     const accountName = input.accountName.trim();
     if (!accountName) return fail('Evidence needs a customer.');
+    if (input.providedBy != null && !['customer','self','internal'].includes(input.providedBy)) return fail('Choose who supplied the evidence.');
 
     if (input.observedAt && !sanitizeBusinessDate(input.observedAt)) return fail('Evidence needs a valid observation date.');
     const evidenceText = input.evidenceText.trim();
@@ -793,6 +795,7 @@ export function recordCommercialEvidence(
       observedAt,
       recordedAt: timestamp,
       sourceActivityId: input.sourceActivityId || null,
+      providedBy: input.providedBy || null,
       sourceType: input.sourceType || 'manual',
       sourceId: input.sourceId || null,
       sourceUrl: null,

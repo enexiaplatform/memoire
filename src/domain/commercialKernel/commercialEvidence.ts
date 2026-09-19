@@ -139,6 +139,9 @@ export type CommercialEvidence = {
   /** When Memoire learned it. Differs from `observedAt` for a back-dated note. */
   recordedAt: string;
   sourceActivityId?: string | null;
+  /** Explicitly declared provider. Absent on legacy/Capture evidence and never
+   * inferred from email, contact name, account scope or free text. */
+  providedBy?: 'customer' | 'self' | 'internal' | null;
   createdAt: string;
   updatedAt: string;
   isSample?: boolean;

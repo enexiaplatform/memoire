@@ -220,6 +220,8 @@ export const commercialEventTypes = [
   'requirement_role_changed',
   'requirement_condition_linked',
   'requirement_retired',
+  'dependency_created',
+  'dependency_retired',
   // A quota that moves mid-year is a fact about the year, not a correction to
   // be overwritten. Without this event, "I was raised in Q3" is unanswerable
   // the moment the number changes.

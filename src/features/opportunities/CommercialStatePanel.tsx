@@ -1,4 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
+import { deriveKnownBlockers, type CommercialDependency } from '../../domain/commercialKernel/commercialDependency';
+import { createCommercialDependency, retireCommercialDependency } from '../../domain/commercialKernel/dependencyCommands';
+import { DEPENDENCY_UPDATED_EVENT, loadCommercialDependencies, loadCommercialDependenciesForWorkspace } from '../../services/commercialKernel/dependencyStore';
+import { deriveBuyerProgress } from '../../domain/commercialKernel/buyerProgress';
+import { COMMITMENTS_UPDATED_EVENT, loadCommitments, loadCommitmentsForWorkspace } from '../../services/commercialKernel/commitmentStore';
+import { EVENTS_UPDATED_EVENT, loadEvents, loadRecentEvents } from '../../services/commercialKernel/eventStore';
+import type { CommercialCommitment, CommercialEvent } from '../../domain/commercialKernel/types';
+import type { SalesActivityRecord } from '../../services/salesActivityStore';
 import { conditionCategories, evidenceMatchesCondition, projectCommercialConditions, type CommercialCondition, type ConditionReading, type ConditionIntent, type ConditionEvidenceLink } from '../../domain/commercialKernel/commercialCondition';
 import { conditionReferenceIndex } from '../../domain/commercialKernel/conditionReferences';
 import { createCommercialCondition, changeCommercialCondition } from '../../domain/commercialKernel/conditionCommands';
@@ -11,7 +19,7 @@ import type { CommercialEvidence } from '../../domain/commercialKernel/commercia
 import type { AccountMemoryRecord } from '../../services/accountStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { CommercialScope } from '../../domain/commercialKernel/types';
-import type { CommandResult } from '../../domain/commercialKernel/commands';
+import { recordCommercialEvidence, type CommandResult } from '../../domain/commercialKernel/commands';
 
 const inputClass = 'mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink';
 const labels = { supported: 'Supported', assumed: 'Assumption', hypothesis: 'Being tested', contradicted: 'Conflicting evidence' };
@@ -20,12 +28,15 @@ const displayDate = (value: string) => value.slice(0, 10);
 function safeSourceUrl(url?: string | null) {
   try { const parsed = new URL(url || ''); return ['https:', 'http:'].includes(parsed.protocol) ? parsed.href : undefined; } catch { return undefined; }
 }
-export function CommercialStatePanel({ opportunity, accounts, userId, sampleDataActive }: {
-  opportunity: CrmLiteOpportunity; accounts: AccountMemoryRecord[]; userId?: string; sampleDataActive: boolean;
+export function CommercialStatePanel({ opportunity, accounts, userId, sampleDataActive, activities=[] }: {
+  opportunity: CrmLiteOpportunity; accounts: AccountMemoryRecord[]; userId?: string; sampleDataActive: boolean; activities?: SalesActivityRecord[];
 }) {
   const [conditions, setConditions] = useState<CommercialCondition[]>([]);
   const [evidence, setEvidence] = useState<CommercialEvidence[]>([]);
   const [requirements, setRequirements] = useState<OutcomeRequirement[]>([]);
+  const [dependencies,setDependencies]=useState<CommercialDependency[]>([]);
+  const [commitments,setCommitments]=useState<CommercialCommitment[]>([]);
+  const [events,setEvents]=useState<CommercialEvent[]>([]);
   const [adding, setAdding] = useState(false);
   const [statement, setStatement] = useState('');
   const [accountId, setAccountId] = useState(opportunity.accountId || '');
@@ -35,6 +46,10 @@ export function CommercialStatePanel({ opportunity, accounts, userId, sampleData
   const [evidenceId, setEvidenceId] = useState('');
   const [assessment, setAssessment] = useState<ConditionEvidenceLink['assessment']>('supports');
   const [message, setMessage] = useState('');
+  const [showEvidenceForm,setShowEvidenceForm]=useState(false);
+  const [evidenceText,setEvidenceText]=useState('');
+  const [observedAt,setObservedAt]=useState('');
+  const [providedBy,setProvidedBy]=useState<''|'customer'|'self'|'internal'>('');
   const scope: CommercialScope = { userId: userId || null, sampleDataActive };
   useEffect(() => {
     let active = true;
@@ -43,14 +58,20 @@ export function CommercialStatePanel({ opportunity, accounts, userId, sampleData
       setConditions(loadCommercialConditions().filter(r => r.userId === (userId || null) && Boolean(r.isSample) === sampleDataActive));
       setEvidence(loadCommercialEvidence().filter(r => r.userId === (userId || null) && Boolean(r.isSample) === sampleDataActive));
       setRequirements(loadOutcomeRequirements().filter(r => r.userId === (userId || null) && Boolean(r.isSample) === sampleDataActive));
+      setDependencies(loadCommercialDependencies().filter(r => r.userId === (userId || null) && Boolean(r.isSample) === sampleDataActive));
+      setCommitments(loadCommitments().filter(r => r.userId === (userId || null) && Boolean(r.isSample) === sampleDataActive));
+      setEvents(loadEvents().filter(r => r.userId === (userId || null) && Boolean(r.isSample) === sampleDataActive));
     };
     refresh();
-    void Promise.all([loadCommercialConditionsForWorkspace(userId, sampleDataActive), loadCommercialEvidenceForWorkspace(userId, sampleDataActive), loadOutcomeRequirementsForWorkspace(userId, sampleDataActive)]).then(refresh);
+    void Promise.all([loadCommercialConditionsForWorkspace(userId, sampleDataActive), loadCommercialEvidenceForWorkspace(userId, sampleDataActive), loadOutcomeRequirementsForWorkspace(userId, sampleDataActive),loadCommercialDependenciesForWorkspace(userId,sampleDataActive),loadCommitmentsForWorkspace(userId,sampleDataActive),loadRecentEvents(userId,sampleDataActive,{windowDays:365,limit:2000})]).then(refresh);
     window.addEventListener(CONDITION_UPDATED_EVENT, refresh);
     window.addEventListener(EVIDENCE_UPDATED_EVENT, refresh);
     window.addEventListener(REQUIREMENT_UPDATED_EVENT, refresh);
+    window.addEventListener(DEPENDENCY_UPDATED_EVENT,refresh);
+    window.addEventListener(COMMITMENTS_UPDATED_EVENT,refresh);
+    window.addEventListener(EVENTS_UPDATED_EVENT,refresh);
     window.addEventListener('storage', refresh);
-    return () => { active = false; window.removeEventListener(CONDITION_UPDATED_EVENT, refresh); window.removeEventListener(EVIDENCE_UPDATED_EVENT, refresh); window.removeEventListener(REQUIREMENT_UPDATED_EVENT, refresh); window.removeEventListener('storage', refresh); };
+    return () => { active = false; window.removeEventListener(CONDITION_UPDATED_EVENT, refresh); window.removeEventListener(EVIDENCE_UPDATED_EVENT, refresh); window.removeEventListener(REQUIREMENT_UPDATED_EVENT, refresh);window.removeEventListener(DEPENDENCY_UPDATED_EVENT,refresh);window.removeEventListener(COMMITMENTS_UPDATED_EVENT,refresh);window.removeEventListener(EVENTS_UPDATED_EVENT,refresh); window.removeEventListener('storage', refresh); };
   }, [userId, sampleDataActive]);
   const readings = useMemo(() => [...projectCommercialConditions(conditions.filter(c => c.opportunityId === opportunity.id), evidence).values()], [conditions, evidence, opportunity.id]);
   const references = conditionReferenceIndex(accounts, [opportunity], evidence);
@@ -61,9 +82,23 @@ export function CommercialStatePanel({ opportunity, accounts, userId, sampleData
   const choices = evidence.filter(e => (e.accountId === accountId || (!e.accountId && e.opportunityId === opportunity.id && Boolean(accountId))) && (!e.opportunityId || e.opportunityId === opportunity.id));
   const activeReadings = readings.filter(r => r.condition.lifecycle === 'active');
   const retired = readings.filter(r => r.condition.lifecycle === 'retired');
+  const requirementReadings=useMemo(()=>projectOutcomeRequirements(requirements.filter(r=>r.opportunityId===opportunity.id && r.lifecycle==='active'),conditions,evidence),[requirements,conditions,evidence,opportunity.id]);
+  const buyerProgress=useMemo(()=>deriveBuyerProgress({opportunities:[opportunity],commitments,events,evidence,requirementReadings,activities,includeSampleRecords:sampleDataActive}).get(opportunity.id),[opportunity,commitments,events,evidence,requirementReadings,activities,sampleDataActive]);
   return <section aria-label="Commercial state" className="mt-5 rounded-panel border border-line bg-white p-4">
     <RequirementSection opportunity={opportunity} accounts={accounts} userId={userId} sampleDataActive={sampleDataActive}
-      conditions={conditions} evidence={evidence} requirements={requirements} onMessage={setMessage} />
+      conditions={conditions} evidence={evidence} requirements={requirements} dependencies={dependencies} onMessage={setMessage} />
+    <div className="mb-5 border-b border-line pb-5" aria-label="Buyer progress"><h3 className="text-sm font-semibold text-ink">Buyer progress</h3>
+      <p className="mt-1 text-xs text-muted">Customer actions explicitly recorded in Memoire. This is observed progress, not a deal score.</p>
+      {buyerProgress?.signals.length ? <ul className="mt-2 space-y-2">{buyerProgress.signals.slice(0,5).map(signal=><li key={signal.id} className="text-sm"><strong>{signal.summary}</strong><span className="block text-xs text-muted">{displayDate(signal.occurredAt)} · {signal.reason} · Source: {signal.sourceRecordType}</span></li>)}</ul> : <p className="mt-2 text-sm text-muted">No qualifying customer action in the available records. Older or unattributed evidence may exist.</p>}
+      <p className="mt-2 text-xs text-muted">Seller activity recorded: {buyerProgress?.recordedActivityCount||0}{buyerProgress?.lastRecordedActivityAt?` · last ${displayDate(buyerProgress.lastRecordedActivityAt)}`:''}. Activity alone does not establish buyer progress.</p>
+      <button type="button" className="mt-3 text-sm font-semibold text-brand-blue" onClick={()=>setShowEvidenceForm(!showEvidenceForm)}>{showEvidenceForm?'Cancel evidence':'Record technical evidence'}</button>
+      {showEvidenceForm && <div className="mt-3 space-y-2 rounded-lg border border-line p-3"><p className="text-xs text-muted">Evidence becomes buyer progress only when explicitly customer-provided, linked to a condition, and that condition resolves an outcome requirement.</p>
+        <label className="block text-sm">What was observed?<textarea className={inputClass} maxLength={2000} value={evidenceText} onChange={e=>setEvidenceText(e.target.value)} /></label>
+        <label className="block text-sm">Observation date<input type="date" className={inputClass} value={observedAt} onChange={e=>setObservedAt(e.target.value)} /></label>
+        <label className="block text-sm">Who supplied this evidence?<select className={inputClass} value={providedBy} onChange={e=>setProvidedBy(e.target.value as typeof providedBy)}><option value="">Choose explicitly</option><option value="customer">Customer</option><option value="self">Seller</option><option value="internal">Internal team</option></select></label>
+        <button type="button" disabled={!evidenceText.trim()||!observedAt||!providedBy} className="text-sm font-semibold text-brand-blue disabled:opacity-40" onClick={()=>{const result=recordCommercialEvidence(scope,{accountName:opportunity.accountName,accountId:opportunity.accountId||'',opportunityId:opportunity.id,category:'technical_outcome',direction:'neutral',summary:evidenceText.trim().slice(0,120),evidenceText,observedAt,providedBy:providedBy||null,sourceType:'manual'});setMessage(result.ok?result.warning||'Evidence recorded. Link it to a condition to support an outcome.':result.error);if(result.ok){setShowEvidenceForm(false);setEvidenceText('');setObservedAt('');setProvidedBy('');}}}>Record evidence</button>
+      </div>}
+    </div>
     <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-semibold text-ink">Commercial state</h3>
       <button type="button" className="text-sm font-semibold text-brand-blue" onClick={() => setAdding(!adding)}>{adding ? 'Cancel' : 'Add condition'}</button></div>
     {!activeReadings.length && <p className="mt-2 text-sm text-muted">No active commercial conditions recorded yet. Capture a concrete proposition you rely on, are testing, or have evidence for.</p>}
@@ -126,30 +161,50 @@ export function ConditionRow({ reading, evidence, onChange }: {
 }
 
 const roleLabel: Record<RequirementRole,string> = { required_now:'Required now',required_later:'Required later',context:'Context' };
-function RequirementSection({opportunity,accounts,userId,sampleDataActive,conditions,evidence,requirements,onMessage}:{
+function RequirementSection({opportunity,accounts,userId,sampleDataActive,conditions,evidence,requirements,dependencies,onMessage}:{
   opportunity:CrmLiteOpportunity;accounts:AccountMemoryRecord[];userId?:string;sampleDataActive:boolean;
-  conditions:CommercialCondition[];evidence:CommercialEvidence[];requirements:OutcomeRequirement[];onMessage:(message:string)=>void;
+  conditions:CommercialCondition[];evidence:CommercialEvidence[];requirements:OutcomeRequirement[];dependencies:CommercialDependency[];onMessage:(message:string)=>void;
 }) {
   const [adding,setAdding]=useState(false); const [accountId,setAccountId]=useState(opportunity.accountId || '');
   const [expectedOutcome,setExpectedOutcome]=useState(''); const [question,setQuestion]=useState('');
   const [role,setRole]=useState<RequirementRole>('required_now'); const [conditionId,setConditionId]=useState('');
+  const [dependentId,setDependentId]=useState('');const [prerequisiteId,setPrerequisiteId]=useState('');const [basis,setBasis]=useState('');
   const scope:CommercialScope={userId:userId || null,sampleDataActive};
   const refs=()=>requirementReferenceIndex(accounts,[opportunity],loadCommercialConditions());
   const accept=(result:CommandResult<OutcomeRequirement>)=>{onMessage(result.ok ? result.warning || 'Requirement saved.' : result.error);return result.ok;};
   const active=requirements.filter(r=>r.opportunityId===opportunity.id && r.lifecycle==='active');
   const retired=requirements.filter(r=>r.opportunityId===opportunity.id && r.lifecycle==='retired');
-  const readings=projectOutcomeRequirements(active,conditions,evidence);
-  const next=nextBestQuestion(readings);
+  const readings=projectOutcomeRequirements(requirements.filter(r=>r.opportunityId===opportunity.id),conditions,evidence);
+  const known=deriveKnownBlockers(opportunity.id,readings,dependencies.filter(d=>d.opportunityId===opportunity.id));
+  const next=known.integrity==='valid'?nextBestQuestion(known.blockers.map(b=>b.reading)):null;
+  const nextBlocker=known.blockers.find(b=>b.reading.requirement.id===next?.requirement.id);
+  const byId=new Map(active.map(r=>[r.id,r]));
+  const activeDependencies=dependencies.filter(d=>d.opportunityId===opportunity.id && d.lifecycle==='active');
+  const retiredDependencies=dependencies.filter(d=>d.opportunityId===opportunity.id && d.lifecycle==='retired');
   const choices=conditions.filter(c=>c.lifecycle==='active' && c.accountId===accountId && (!c.opportunityId || c.opportunityId===opportunity.id));
   return <div className="mb-5 border-b border-line pb-5" aria-label="Outcome requirements">
     <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-semibold text-ink">Outcome requirements</h3>
       <button type="button" className="text-sm font-semibold text-brand-blue" onClick={()=>setAdding(!adding)}>{adding?'Cancel':'Add requirement'}</button></div>
     <p className="mt-1 text-xs text-muted">Record what this opportunity needs to establish. A missing answer stays unknown until you link a real proposition.</p>
+    {known.integrity!=='valid' && <p role="alert" className="mt-2 text-sm text-amber-700">Prerequisite records need repair ({known.integrity}). Waiting For and the next question are paused so an incorrect path is not shown.</p>}
+    {known.integrity==='valid' && known.blockers.length>0 && <div className="mt-3 rounded-lg border border-line p-3 text-sm" aria-label="Waiting For"><p className="font-semibold">Waiting For · {known.blockers.length} known blocker{known.blockers.length===1?'':'s'}</p>
+      <ul className="mt-2 space-y-2">{known.blockers.map(blocker=><li key={blocker.reading.requirement.id}><strong>{blocker.reading.requirement.expectedOutcome}</strong><span className="block text-xs text-muted">{blocker.reading.resolution} · {blocker.paths.map(path=>path.requirementIds.map(id=>byId.get(id)?.expectedOutcome||id).join(' → ')).join('; ')}</span></li>)}</ul>
+      <p className="mt-2 text-xs text-muted">Only prerequisites explicitly recorded here are included. Other real-world blockers may exist.</p></div>}
     {next && <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm"><p className="font-semibold">Next question · {roleLabel[next.requirement.role]}</p>
       <p className="mt-1">{requirementQuestion(next)}</p><p className="mt-1 text-xs text-muted">{next.conditionState==='contradicted'?'Conflicting current evidence':next.conditionState==='unknown'?'No answer recorded':next.conditionState==='assumed'?'Operating assumption':'Still being tested'} · {next.requirement.expectedOutcome}</p>
-      <p className="mt-1 text-xs text-muted">Source: requirement {next.requirement.id}{next.condition?` · condition ${next.condition.id}`:''}{next.sourceEvidenceIds.length?` · evidence ${next.sourceEvidenceIds.join(', ')}`:''}</p></div>}
+      {nextBlocker?.paths.some(path=>path.dependencyIds.length>0) && <p className="mt-1 text-xs text-muted">Prerequisite path: {nextBlocker.paths[0].requirementIds.map(id=>byId.get(id)?.expectedOutcome||id).join(' → ')}. {nextBlocker.paths[0].explanations.join(' · ')}</p>}
+      <p className="mt-1 text-xs text-muted">Based on this recorded requirement{next.condition?', its linked condition':''}{next.sourceEvidenceIds.length?' and current evidence':''}.</p></div>}
+    <details className="mt-3 text-sm"><summary className="cursor-pointer font-semibold">Prerequisites ({activeDependencies.length})</summary>
+      <p className="mt-2 text-xs text-muted">Confirm only a hard requirement: the dependent outcome cannot be completed until this prerequisite is resolved.</p>
+      {activeDependencies.map(edge=><div key={edge.id} className="mt-2 rounded-lg border border-line p-2"><p>{byId.get(edge.dependentRequirementId)?.expectedOutcome||'Retired outcome'} requires {byId.get(edge.prerequisiteRequirementId)?.expectedOutcome||'Retired prerequisite'}</p><p className="mt-1 text-xs text-muted">Why: {edge.basis} · Added manually {displayDate(edge.createdAt)}</p><button type="button" className="mt-1 text-xs text-brand-blue" onClick={()=>{const result=retireCommercialDependency(scope,edge.id,edge.updatedAt,requirements);onMessage(result.ok?result.warning||'Prerequisite retired.':result.error);}}>Retire prerequisite</button></div>)}
+      {active.length>1 && <div className="mt-3 space-y-2 rounded-lg border border-line p-3"><label className="block">Outcome that depends on another<select className={inputClass} value={dependentId} onChange={e=>setDependentId(e.target.value)}><option value="">Choose outcome</option>{active.map(r=><option key={r.id} value={r.id}>{r.expectedOutcome}</option>)}</select></label>
+        <label className="block">Required first<select className={inputClass} value={prerequisiteId} onChange={e=>setPrerequisiteId(e.target.value)}><option value="">Choose prerequisite</option>{active.filter(r=>r.id!==dependentId).map(r=><option key={r.id} value={r.id}>{r.expectedOutcome}</option>)}</select></label>
+        <label className="block">Why is this a hard prerequisite?<textarea className={inputClass} maxLength={1000} value={basis} onChange={e=>setBasis(e.target.value)} /></label>
+        <button type="button" disabled={!dependentId||!prerequisiteId||!basis.trim()} className="text-sm font-semibold text-brand-blue disabled:opacity-40" onClick={()=>{const result=createCommercialDependency(scope,{opportunityId:opportunity.id,dependentRequirementId:dependentId,prerequisiteRequirementId:prerequisiteId,basis},requirements);onMessage(result.ok?result.warning||'Prerequisite recorded.':result.error);if(result.ok){setDependentId('');setPrerequisiteId('');setBasis('');}}}>Confirm prerequisite</button></div>}
+      {retiredDependencies.length>0 && <details className="mt-3"><summary>Retired prerequisites ({retiredDependencies.length})</summary>{retiredDependencies.map(edge=><p key={edge.id} className="mt-2 text-xs text-muted">{requirements.find(r=>r.id===edge.dependentRequirementId)?.expectedOutcome||'Unavailable outcome'} required {requirements.find(r=>r.id===edge.prerequisiteRequirementId)?.expectedOutcome||'Unavailable prerequisite'} · {edge.basis}</p>)}</details>}
+    </details>
     {!active.length && <p className="mt-3 text-sm text-muted">No outcome requirements recorded for this opportunity.</p>}
-    {readings.map(reading=><RequirementRow key={reading.requirement.id} reading={reading} conditions={conditions} evidence={evidence}
+    {readings.filter(reading=>reading.requirement.lifecycle==='active').map(reading=><RequirementRow key={reading.requirement.id} reading={reading} conditions={conditions} evidence={evidence}
       onChange={change=>accept(changeOutcomeRequirement(scope,reading.requirement.id,reading.requirement.updatedAt,change,refs()))}
       onAnswer={(statement,intent,evidenceId,assessment)=>{
         const c=createCommercialCondition(scope,{accountId:reading.requirement.accountId,opportunityId:opportunity.id,

@@ -17,6 +17,7 @@ test('empty Opportunity state explains what to record and offers a contextual ac
   const html=renderToStaticMarkup(React.createElement(Panel,{opportunity:{id:'o'},accounts:[],sampleDataActive:false}));
   assert.match(html,/No active commercial conditions recorded yet/); assert.match(html,/Add condition/);
   assert.match(html,/No outcome requirements recorded/); assert.match(html,/Add requirement/);
+  for(const phrase of ['Buyer progress','No qualifying customer action','Seller activity recorded','Prerequisites']) assert.match(html,new RegExp(phrase));
 });
 test('requirement row exposes the unresolved question, role, answer flow and true Condition state',()=>{
   const requirement={id:'r',userId:null,accountId:'a',opportunityId:'o',expectedOutcome:'Know final approver',question:'Who approves?',conditionId:null,role:'required_now',lifecycle:'active',sourceType:'manual',createdAt:timestamp,updatedAt:timestamp};

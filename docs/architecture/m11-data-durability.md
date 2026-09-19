@@ -123,6 +123,8 @@ M2 may rely on the hardened Evidence/Kernel creation, temporal preservation, det
 
 ## ADDING A NEW CANONICAL COMMERCIAL ENTITY
 
+M4 applies this checklist to `commercial_dependencies`: canonical registry, export, format-6 preflight and cloud merge after Requirements; guarded browser state before audit history; sample isolation; explicit operator provenance; owner-scoped SQL and actual local Postgres/RLS tests. Restore rejects cycles and missing or foreign endpoints before mutation. Buyer Progress remains derived and has no backup collection. Evidence gains nullable `provided_by` without inferring a provider for historical records. See [M4 architecture](m4-commercial-dependency-buyer-progress.md). Target Supabase migration application remains a separate deployment check.
+
 M3's `commercial_outcome_requirements` follows this checklist. Its canonical route is `requirementCodec` → `canonicalContracts` → export manifest → format-5 restore preflight. Restore requires Account and Opportunity anchors, and a same-owner/scope Condition only when `conditionId` is present; an unlinked Requirement is valid and derives unknown. Cloud restore order places the Requirement after Conditions. Browser acceptance precedes event history and reports degraded history rather than repeating an accepted state change. Actual RLS and codec tests cover the new relation. See [M3 architecture](m3-outcome-requirements.md).
 
 - [ ] Define the type/model, closed vocabularies, identity, lifecycle and required versus historical/optional references.
