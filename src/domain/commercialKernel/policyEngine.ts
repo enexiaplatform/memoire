@@ -8,6 +8,9 @@ import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import { nextBestQuestion, projectOutcomeRequirements, requirementQuestion, type OutcomeRequirement } from './outcomeRequirement.ts';
 import type { CommercialCondition } from './commercialCondition.ts';
 import { deriveKnownBlockers, type CommercialDependency } from './commercialDependency.ts';
+import { deriveCommercialTime } from './deriveCommercialTime.ts';
+import type { CommercialTimingAssertion } from './commercialTiming.ts';
+import { todayDateKey } from '../../utils/safeDate.ts';
 import {
   projectCurrentEvidence,
   supportingEvidenceFor,
@@ -49,6 +52,7 @@ export const reasonCodes = [
   'PERIOD_COVERAGE_LOW',
   'FORECAST_NOT_SUPPORTED',
   'OUTCOME_REQUIREMENT_QUESTION',
+  'TIMING_TARGET_UNSUPPORTED',
 ] as const;
 export type ReasonCode = (typeof reasonCodes)[number];
 
@@ -77,6 +81,7 @@ export type Recommendation = {
   conditionState?: string;
   question?: string;
   dependencyPath?: string[];
+  timingDate?: string;
 };
 
 /**
@@ -152,6 +157,7 @@ export type PolicyInput = {
   requirements?: OutcomeRequirement[];
   conditions?: CommercialCondition[];
   dependencies?: CommercialDependency[];
+  timing?: CommercialTimingAssertion[];
 };
 
 const SEVERITY_ORDER: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -181,11 +187,48 @@ export function evaluateCommercialPolicies(input: PolicyInput): Recommendation[]
     ...quoteRules(input.quotes.filter(isVisible), todayKey, thresholds, calculatedAt),
     ...coverageRules(input.coverage, thresholds, calculatedAt),
     ...requirementQuestionRules(input, calculatedAt, isVisible, leadIds),
+    ...timingTargetRules(input, todayDateKey(today), calculatedAt, isVisible, leadIds),
   ];
 
   return dropDuplicateNextStepWarnings(recommendations).sort((left, right) => {
     const bySeverity = SEVERITY_ORDER[left.severity] - SEVERITY_ORDER[right.severity];
     return bySeverity !== 0 ? bySeverity : left.accountName.localeCompare(right.accountName);
+  });
+}
+
+/** Only an explicit target anchor with a complete, calculable path can raise a
+ * temporal exception. Missing durations remain visible on the deal, not Today. */
+function timingTargetRules(input:PolicyInput,todayKey:string,calculatedAt:string,
+  isVisible:(r:{isSample?:boolean})=>boolean,leadIds:Set<string>):Recommendation[]{
+  const activeAnchors=(input.timing||[]).filter(r=>r.kind==='target_anchor'&&r.lifecycle==='active'&&isVisible(r));
+  const byOpportunity=new Map<string,CommercialTimingAssertion[]>();
+  for(const row of (input.timing||[]).filter(isVisible)){
+    const list=byOpportunity.get(row.opportunityId)||[];list.push(row);byOpportunity.set(row.opportunityId,list);
+  }
+  const byOpportunityRows=<T extends {opportunityId?:string|null}>(rows:T[])=>{
+    const grouped=new Map<string,T[]>();for(const row of rows) if(row.opportunityId){const list=grouped.get(row.opportunityId)||[];list.push(row);grouped.set(row.opportunityId,list);}return grouped;
+  };
+  const requirements=byOpportunityRows((input.requirements||[]).filter(isVisible));
+  const dependencies=byOpportunityRows((input.dependencies||[]).filter(isVisible));
+  const commitments=byOpportunityRows(input.commitments.filter(isVisible));
+  const conditions=(input.conditions||[]).filter(isVisible), evidence=(input.evidence||[]).filter(isVisible);
+  const opportunities=new Map(input.opportunities.map(r=>[r.id,r]));
+  return activeAnchors.flatMap(anchor=>{
+    const o=opportunities.get(anchor.opportunityId);
+    if(!o||!isVisible(o)||o.status!=='Active'||leadIds.has(o.id))return [];
+    const reading=deriveCommercialTime({opportunity:o,requirements:requirements.get(o.id)||[],conditions,evidence,
+      dependencies:dependencies.get(o.id)||[],assertions:byOpportunity.get(o.id)||[],commitments:commitments.get(o.id)||[],
+      today:todayKey,calculatedAt});
+    if(reading.status!=='target_no_longer_supported'||!reading.lastSafeDate)return [];
+    const blocker=reading.blockers.find(r=>r.lastSafeDate===reading.lastSafeDate);
+    const sourceRecordIds=[anchor.id,...reading.timingSources.map(r=>r.id),...
+      reading.blockers.flatMap(r=>r.commitmentIds),...reading.blockers.flatMap(r=>r.pathDependencyIds)].filter(Boolean);
+    return [{id:`${o.id}:timing-target`,reasonCode:'TIMING_TARGET_UNSUPPORTED' as const,
+      reasonText:`${o.opportunityName}: the ${o.expectedClosePeriod} close target is no longer supported. ${blocker?.expectedOutcome||'A required outcome'} must finish by ${reading.lastSafeDate}; the current date or a linked promise is later.`,
+      sourceRecordIds:[...new Set(sourceRecordIds)],threshold:0,severity:'high' as const,
+      recommendedAction:'Review the blocker, promise and close target',calculatedAt,accountName:o.accountName,
+      opportunityId:o.id,requirementId:blocker?.requirementId,timingDate:reading.lastSafeDate,
+      dependencyPath:reading.constrainingPath,href:`/app/opportunities?opportunityId=${encodeURIComponent(o.id)}`}];
   });
 }
 

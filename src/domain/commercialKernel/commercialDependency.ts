@@ -90,11 +90,13 @@ export type KnownBlockers = { integrity: 'valid' | DependencyIntegrityCode; bloc
 
 /** Smallest known unresolved leaves under active, conjunctive hard edges.
  * No claim that the operator recorded every real-world prerequisite. */
-export function deriveKnownBlockers(opportunityId:string, readings:RequirementReading[], dependencies:CommercialDependency[]):KnownBlockers {
+export function deriveKnownBlockers(opportunityId:string, readings:RequirementReading[], dependencies:CommercialDependency[], rootRequirementIds?:readonly string[]):KnownBlockers {
   const scoped=readings.filter(r=>r.requirement.opportunityId===opportunityId);
   const byId=new Map(scoped.map(r=>[r.requirement.id,r]));
   const edges=dependencies.filter(d=>d.opportunityId===opportunityId);
-  const roots=scoped.filter(r=>r.requirement.lifecycle==='active' && r.requirement.role==='required_now' && r.resolution!=='resolved');
+  const selectedRoots=rootRequirementIds?new Set(rootRequirementIds):null;
+  const roots=scoped.filter(r=>r.requirement.lifecycle==='active' && r.requirement.role==='required_now' && r.resolution!=='resolved'
+    && (!selectedRoots || selectedRoots.has(r.requirement.id)));
   try {validateDependencyGraph(scoped.map(r=>r.requirement),edges);} catch(error) {
     return {integrity:error instanceof DependencyIntegrityError?error.code:'invalid_record',blockers:[],requiredNowUnresolved:roots.length};
   }

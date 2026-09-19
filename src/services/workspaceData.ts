@@ -17,9 +17,11 @@ import { loadCommercialEvidenceForWorkspace } from './commercialKernel/evidenceS
 import { loadCommercialConditionsForWorkspace } from './commercialKernel/conditionStore';
 import { loadOutcomeRequirementsForWorkspace } from './commercialKernel/requirementStore';
 import { loadCommercialDependenciesForWorkspace } from './commercialKernel/dependencyStore';
+import { loadCommercialTimingForWorkspace } from './commercialKernel/timingStore';
 import type { CommercialCondition } from '../domain/commercialKernel/commercialCondition';
 import type { OutcomeRequirement } from '../domain/commercialKernel/outcomeRequirement';
 import type { CommercialDependency } from '../domain/commercialKernel/commercialDependency';
+import type { CommercialTimingAssertion } from '../domain/commercialKernel/commercialTiming';
 import type { CommercialEvidence } from '../domain/commercialKernel/commercialEvidence';
 import type {
   CommercialCommitment,
@@ -77,6 +79,7 @@ export type SalesWorkspaceData = {
   conditions: CommercialCondition[];
   requirements: OutcomeRequirement[];
   dependencies: CommercialDependency[];
+  timing: CommercialTimingAssertion[];
 };
 
 type LoadOptions = {
@@ -132,6 +135,7 @@ const collectionLoaders = {
   conditions: (userId?: string | null) => loadCommercialConditionsForWorkspace(userId),
   requirements: (userId?: string | null) => loadOutcomeRequirementsForWorkspace(userId),
   dependencies: (userId?: string | null) => loadCommercialDependenciesForWorkspace(userId),
+  timing: (userId?: string | null) => loadCommercialTimingForWorkspace(userId),
   accountMerges: (userId?: string | null) => loadAccountMergesForWorkspace(userId),
 } satisfies { [K in keyof SalesWorkspaceData]: (userId?: string | null) => Promise<SalesWorkspaceData[K]> };
 

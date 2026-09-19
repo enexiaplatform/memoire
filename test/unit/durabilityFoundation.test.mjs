@@ -44,6 +44,7 @@ const { conditionReferenceIndex } = await import('../../src/domain/commercialKer
 const { projectCommercialConditions } = await import('../../src/domain/commercialKernel/commercialCondition.ts');
 const requirementCommands = await import('../../src/domain/commercialKernel/requirementCommands.ts');
 const dependencyCommands = await import('../../src/domain/commercialKernel/dependencyCommands.ts');
+const timingCommands = await import('../../src/domain/commercialKernel/timingCommands.ts');
 const at = '2026-08-12T10:30:00.000Z';
 const later = '2026-09-10T12:30:00.000Z';
 const base = { userId: 'owner', accountId: 'a', accountName: 'Acme', opportunityId: 'o', threadId: 't',
@@ -59,8 +60,9 @@ const fixtures = [
   { ...base, id: 'condition', statement: 'Technical fit is accepted.', conditionCategory: 'technical', intent: 'hypothesis', lifecycle: 'active', validFrom: null, evidenceLinks: [] },
   { ...base, id: 'requirement', expectedOutcome: 'Know who approves budget', question: 'Who approves budget?', conditionId: null, role: 'required_now', lifecycle: 'active' },
   { ...base, id: 'dependency', dependentRequirementId: 'requirement', prerequisiteRequirementId: 'prerequisite', basis: 'The prerequisite is needed before approval can be known.', lifecycle: 'active', sourceType:'manual' },
+  { ...base, id:'timing', kind:'duration', requirementId:'requirement', basis:'Buyer process stated', lifecycle:'active', durationDays:3, durationUnit:'calendar_days', epistemic:'supported', sourceKind:'customer_or_supplier', sourceReference:'Buyer email 73', evidenceId:null, commitmentId:null, sourceType:'manual' },
 ].map((fixture, i) => kernelCodecs[i].sanitize(fixture));
-const backup = localBrowserData => ({ formatVersion: 6, exportedAt: later, localBrowserData });
+const backup = localBrowserData => ({ formatVersion: 7, exportedAt: later, localBrowserData });
 const kernelBackup = () => backup(Object.fromEntries(kernelCodecs.slice(0, 5).map((codec, i) => [codec.storageKey, [fixtures[i]]])));
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 beforeEach(async () => { await tick(); storage.data.clear(); storage.refuse = () => false; requests.length = 0; rejectedTable = ''; });
@@ -107,16 +109,47 @@ test('Dependency rejected state emits no history; sample edge stays out of cloud
   assert.equal(accepted.ok,true);assert.equal(accepted.value.isSample,true);
   await tick();assert.equal(requests.filter(request=>request.table==='commercial_dependencies').length,0);
 });
+test('Timing command writes assertion before history, rejects quota and stale retirement',async()=>{
+  const refs={opportunities:[{id:'o',userId:'owner',accountId:'a',accountName:'Acme',expectedClosePeriod:'2026-09-30'}],
+    requirements:[fixtures[6]],commitments:[fixtures[1]],evidence:[]};
+  const scope={userId:'owner',sampleDataActive:false};
+  const input={kind:'duration',opportunityId:'o',requirementId:'requirement',basis:'Buyer email',durationDays:3,
+    durationUnit:'calendar_days',epistemic:'supported',sourceKind:'customer_or_supplier',sourceReference:'Buyer email 73'};
+  storage.refuse=key=>key===kernelCodecs[8].storageKey;
+  assert.equal(timingCommands.createCommercialTiming(scope,input,refs).ok,false);
+  assert.equal(storage.getItem(kernelCodecs[2].storageKey),null);
+  storage.refuse=()=>false;
+  const created=timingCommands.createCommercialTiming(scope,input,refs);
+  assert.equal(created.ok,true);assert.equal(JSON.parse(storage.getItem(kernelCodecs[8].storageKey)).length,1);
+  assert.equal(timingCommands.retireCommercialTiming(scope,created.value.id,'stale',refs).ok,false);
+  const retired=timingCommands.retireCommercialTiming(scope,created.value.id,created.value.updatedAt,refs);
+  assert.equal(retired.ok,true);assert.equal(retired.value.lifecycle,'retired');
+  assert.equal(JSON.parse(storage.getItem(kernelCodecs[8].storageKey))[0].id,created.value.id);
+});
+test('Timing restore rejects missing and foreign Requirement references before mutation',async()=>{
+  const parents={'memoire.accounts.v1':[{id:'a',userId:'owner',accountName:'Acme'}],
+    'memoire.opportunities.v1':[{id:'o',userId:'owner',accountId:'a',accountName:'Acme'}]};
+  for(const localBrowserData of [
+    {...parents,[kernelCodecs[8].storageKey]:[fixtures[8]]},
+    {...parents,[kernelCodecs[6].storageKey]:[{...fixtures[6],userId:'other'}],[kernelCodecs[8].storageKey]:[fixtures[8]]},
+  ]){
+    const file=backup(localBrowserData);
+    assert.equal(parseBackupFile(JSON.stringify(file)).ok,false);
+    await assert.rejects(restoreWorkspace(file));
+    assert.equal(storage.length,0);
+  }
+});
 
 for (const [i, codec] of kernelCodecs.entries()) {
   test(`${codec.table}: actual cloud codec → backup → restore → actual codec preserves history and provenance`, async () => {
     const original = fixtures[i];
     const row = codec.toRow(original, 'owner');
     const file = { ...backup({}), cloudData: { user_id: 'owner', manifest: { complete: true }, data: { [codec.table]: [row] } } };
-    if (codec.table === 'commercial_conditions' || codec.table === 'commercial_outcome_requirements' || codec.table === 'commercial_dependencies') {
+    if (codec.table === 'commercial_conditions' || codec.table === 'commercial_outcome_requirements' || codec.table === 'commercial_dependencies' || codec.table === 'commercial_timing_assertions') {
       file.localBrowserData['memoire.accounts.v1'] = [{ id: 'a', userId: 'owner', accountName: 'Acme' }];
       file.localBrowserData['memoire.opportunities.v1'] = [{ id: 'o', userId: 'owner', accountName: 'Acme' }];
       if (codec.table === 'commercial_dependencies') file.localBrowserData[kernelCodecs[6].storageKey]=[fixtures[6],{...fixtures[6],id:'prerequisite',expectedOutcome:'Know technical approver'}];
+      if (codec.table === 'commercial_timing_assertions') file.localBrowserData[kernelCodecs[6].storageKey]=[fixtures[6]];
     }
     const parsed = parseBackupFile(JSON.stringify(file));
     assert.equal(parsed.ok, true, parsed.message);

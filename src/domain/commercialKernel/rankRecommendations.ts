@@ -216,6 +216,7 @@ const RULE_SHAPE: Record<ReasonCode, {
   COMMITMENT_REPEATEDLY_RESCHEDULED: { urgency: 'soon', unblocking: 'advances', evidence: 'specific' },
   FORECAST_NOT_SUPPORTED: { urgency: 'soon', unblocking: 'advances', evidence: 'specific' },
   OUTCOME_REQUIREMENT_QUESTION: { urgency: 'soon', unblocking: 'unblocks', evidence: 'partial' },
+  TIMING_TARGET_UNSUPPORTED: { urgency: 'now', unblocking: 'unblocks', evidence: 'specific' },
   THREAD_SILENT: { urgency: 'soon', unblocking: 'advances', evidence: 'partial' },
   THREAD_WITHOUT_NEXT_COMMITMENT: { urgency: 'soon', unblocking: 'unblocks', evidence: 'absence_only' },
   OPPORTUNITY_WITHOUT_FUTURE_ACTION: { urgency: 'soon', unblocking: 'unblocks', evidence: 'absence_only' },
@@ -273,6 +274,7 @@ const RULE_CONCERNS: Record<ReasonCode, readonly CommercialDimension[]> = {
   OPPORTUNITY_WITHOUT_STAGE_EVIDENCE: ['qualification', 'technical'],
   FORECAST_NOT_SUPPORTED: ['qualification'],
   OUTCOME_REQUIREMENT_QUESTION: ['qualification'],
+  TIMING_TARGET_UNSUPPORTED: ['momentum', 'qualification'],
   QUOTE_EXPIRING: ['money', 'purchasing'],
   MONEY_CHECKPOINT_STUCK: ['money', 'purchasing'],
   PERIOD_COVERAGE_LOW: ['money'],
@@ -717,6 +719,7 @@ function concernsOf(recommendation: Recommendation, context: RankingContext): re
  * that exist, and they are the three that are read.
  */
 function resolveDueDate(recommendation: Recommendation, context: RankingContext): string {
+  if (recommendation.reasonCode === 'TIMING_TARGET_UNSUPPORTED') return recommendation.timingDate || '';
   // Only the rules that are about a promise's timing read its date. "It does
   // not say who owes it" is a tidying job about a missing name; letting it
   // inherit the promise's overdue date made a housekeeping row read as the most

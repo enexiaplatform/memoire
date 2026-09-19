@@ -4,6 +4,9 @@ import type { CommercialEvidence } from '../domain/commercialKernel/commercialEv
 import { validateRequirementReferences, requirementReferenceIndex } from '../domain/commercialKernel/requirementCommands.ts';
 import type { OutcomeRequirement } from '../domain/commercialKernel/outcomeRequirement.ts';
 import { validateDependencyGraph, type CommercialDependency } from '../domain/commercialKernel/commercialDependency.ts';
+import { validateTimingAssertions, type CommercialTimingAssertion } from '../domain/commercialKernel/commercialTiming.ts';
+import type { CommercialCommitment } from '../domain/commercialKernel/types.ts';
+import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KEY, isSampleRecord, recordIdentity, validateCanonicalRecord, type RecordData } from '../services/canonicalDurability.ts';
 /**
  * The other half of export.
@@ -17,8 +20,8 @@ import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KE
  * backup, what never comes back in - can be tested without a browser.
  */
 
-/** Format 6 adds canonical Commercial Dependencies and explicit Evidence provider. Versions 1-5 remain readable. */
-export const BACKUP_FORMAT_VERSION = 6;
+/** Format 7 adds temporal assertions. Older backups remain readable. */
+export const BACKUP_FORMAT_VERSION = 7;
 export const BACKUP_KEY_PREFIX = 'memoire.';
 
 export type BackupEnvelope = {
@@ -249,6 +252,13 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
   }
   const dependencies=normalized['memoire.commercialDependencies.v1'] as CommercialDependency[] | undefined;
   if(dependencies?.length) validateDependencyGraph(requirements||[],dependencies);
+  const timing=normalized['memoire.commercialTiming.v1'] as CommercialTimingAssertion[] | undefined;
+  if(timing?.length) validateTimingAssertions(timing,{
+    opportunities:normalized['memoire.opportunities.v1'] as CrmLiteOpportunity[] || [],
+    requirements:requirements||[],
+    commitments:normalized['memoire.commercialCommitments.v1'] as CommercialCommitment[] || [],
+    evidence:normalized['memoire.commercialEvidence.v1'] as CommercialEvidence[] || [],
+  });
   const writes = Object.keys(normalized).sort().map(key => {
     const value = normalized[key];
     if (Array.isArray(value)) restoredRecords += value.length;

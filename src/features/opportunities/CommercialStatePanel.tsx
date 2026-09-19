@@ -20,6 +20,9 @@ import type { AccountMemoryRecord } from '../../services/accountStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { CommercialScope } from '../../domain/commercialKernel/types';
 import { recordCommercialEvidence, type CommandResult } from '../../domain/commercialKernel/commands';
+import { CommercialTimingSection } from './CommercialTimingSection';
+import type { CommercialTimingAssertion } from '../../domain/commercialKernel/commercialTiming';
+import { TIMING_UPDATED_EVENT, loadCommercialTiming, loadCommercialTimingForWorkspace } from '../../services/commercialKernel/timingStore';
 
 const inputClass = 'mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink';
 const labels = { supported: 'Supported', assumed: 'Assumption', hypothesis: 'Being tested', contradicted: 'Conflicting evidence' };
@@ -35,6 +38,7 @@ export function CommercialStatePanel({ opportunity, accounts, userId, sampleData
   const [evidence, setEvidence] = useState<CommercialEvidence[]>([]);
   const [requirements, setRequirements] = useState<OutcomeRequirement[]>([]);
   const [dependencies,setDependencies]=useState<CommercialDependency[]>([]);
+  const [timing,setTiming]=useState<CommercialTimingAssertion[]>([]);
   const [commitments,setCommitments]=useState<CommercialCommitment[]>([]);
   const [events,setEvents]=useState<CommercialEvent[]>([]);
   const [adding, setAdding] = useState(false);
@@ -59,19 +63,21 @@ export function CommercialStatePanel({ opportunity, accounts, userId, sampleData
       setEvidence(loadCommercialEvidence().filter(r => r.userId === (userId || null) && Boolean(r.isSample) === sampleDataActive));
       setRequirements(loadOutcomeRequirements().filter(r => r.userId === (userId || null) && Boolean(r.isSample) === sampleDataActive));
       setDependencies(loadCommercialDependencies().filter(r => r.userId === (userId || null) && Boolean(r.isSample) === sampleDataActive));
+      setTiming(loadCommercialTiming().filter(r => r.userId === (userId || null) && Boolean(r.isSample) === sampleDataActive));
       setCommitments(loadCommitments().filter(r => r.userId === (userId || null) && Boolean(r.isSample) === sampleDataActive));
       setEvents(loadEvents().filter(r => r.userId === (userId || null) && Boolean(r.isSample) === sampleDataActive));
     };
     refresh();
-    void Promise.all([loadCommercialConditionsForWorkspace(userId, sampleDataActive), loadCommercialEvidenceForWorkspace(userId, sampleDataActive), loadOutcomeRequirementsForWorkspace(userId, sampleDataActive),loadCommercialDependenciesForWorkspace(userId,sampleDataActive),loadCommitmentsForWorkspace(userId,sampleDataActive),loadRecentEvents(userId,sampleDataActive,{windowDays:365,limit:2000})]).then(refresh);
+    void Promise.all([loadCommercialConditionsForWorkspace(userId, sampleDataActive), loadCommercialEvidenceForWorkspace(userId, sampleDataActive), loadOutcomeRequirementsForWorkspace(userId, sampleDataActive),loadCommercialDependenciesForWorkspace(userId,sampleDataActive),loadCommercialTimingForWorkspace(userId,sampleDataActive),loadCommitmentsForWorkspace(userId,sampleDataActive),loadRecentEvents(userId,sampleDataActive,{windowDays:365,limit:2000})]).then(refresh);
     window.addEventListener(CONDITION_UPDATED_EVENT, refresh);
     window.addEventListener(EVIDENCE_UPDATED_EVENT, refresh);
     window.addEventListener(REQUIREMENT_UPDATED_EVENT, refresh);
     window.addEventListener(DEPENDENCY_UPDATED_EVENT,refresh);
+    window.addEventListener(TIMING_UPDATED_EVENT,refresh);
     window.addEventListener(COMMITMENTS_UPDATED_EVENT,refresh);
     window.addEventListener(EVENTS_UPDATED_EVENT,refresh);
     window.addEventListener('storage', refresh);
-    return () => { active = false; window.removeEventListener(CONDITION_UPDATED_EVENT, refresh); window.removeEventListener(EVIDENCE_UPDATED_EVENT, refresh); window.removeEventListener(REQUIREMENT_UPDATED_EVENT, refresh);window.removeEventListener(DEPENDENCY_UPDATED_EVENT,refresh);window.removeEventListener(COMMITMENTS_UPDATED_EVENT,refresh);window.removeEventListener(EVENTS_UPDATED_EVENT,refresh); window.removeEventListener('storage', refresh); };
+    return () => { active = false; window.removeEventListener(CONDITION_UPDATED_EVENT, refresh); window.removeEventListener(EVIDENCE_UPDATED_EVENT, refresh); window.removeEventListener(REQUIREMENT_UPDATED_EVENT, refresh);window.removeEventListener(DEPENDENCY_UPDATED_EVENT,refresh);window.removeEventListener(TIMING_UPDATED_EVENT,refresh);window.removeEventListener(COMMITMENTS_UPDATED_EVENT,refresh);window.removeEventListener(EVENTS_UPDATED_EVENT,refresh); window.removeEventListener('storage', refresh); };
   }, [userId, sampleDataActive]);
   const readings = useMemo(() => [...projectCommercialConditions(conditions.filter(c => c.opportunityId === opportunity.id), evidence).values()], [conditions, evidence, opportunity.id]);
   const references = conditionReferenceIndex(accounts, [opportunity], evidence);
@@ -87,6 +93,7 @@ export function CommercialStatePanel({ opportunity, accounts, userId, sampleData
   return <section aria-label="Commercial state" className="mt-5 rounded-panel border border-line bg-white p-4">
     <RequirementSection opportunity={opportunity} accounts={accounts} userId={userId} sampleDataActive={sampleDataActive}
       conditions={conditions} evidence={evidence} requirements={requirements} dependencies={dependencies} onMessage={setMessage} />
+    <CommercialTimingSection opportunity={opportunity} requirements={requirements} conditions={conditions} evidence={evidence} dependencies={dependencies} commitments={commitments} assertions={timing} userId={userId} sampleDataActive={sampleDataActive} onMessage={setMessage} />
     <div className="mb-5 border-b border-line pb-5" aria-label="Buyer progress"><h3 className="text-sm font-semibold text-ink">Buyer progress</h3>
       <p className="mt-1 text-xs text-muted">Customer actions explicitly recorded in Memoire. This is observed progress, not a deal score.</p>
       {buyerProgress?.signals.length ? <ul className="mt-2 space-y-2">{buyerProgress.signals.slice(0,5).map(signal=><li key={signal.id} className="text-sm"><strong>{signal.summary}</strong><span className="block text-xs text-muted">{displayDate(signal.occurredAt)} · {signal.reason} · Source: {signal.sourceRecordType}</span></li>)}</ul> : <p className="mt-2 text-sm text-muted">No qualifying customer action in the available records. Older or unattributed evidence may exist.</p>}
