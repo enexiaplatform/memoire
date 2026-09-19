@@ -22,6 +22,8 @@ import { OperatorProfileSection } from './OperatorProfileSection';
 import { buildForecastCalibration, buildProbabilityCalibration } from '../../utils/forecastCalibration';
 import { ForecastCalibrationPanel } from './ForecastCalibrationPanel';
 import { ProbabilityCalibrationPanel } from './ProbabilityCalibrationPanel';
+import { deriveForecastPortfolio } from '../../domain/commercialKernel/deriveForecastDefensibility';
+import { ForecastDefensibilityReview } from './ForecastDefensibilityReview';
 
 // Chart palette: fixed hex values (not Tailwind classes) so the SVGs survive
 // serialization to PNG for the presentation export.
@@ -116,6 +118,11 @@ export function ReviewAnalyticsSection() {
   const probabilityCalibration = useMemo(() => (workspace
     ? buildProbabilityCalibration({ outcomes: workspace.opportunityOutcomes })
     : null), [workspace]);
+  const forecastArguments=useMemo(()=>(workspace?deriveForecastPortfolio({
+    opportunities:workspace.opportunities,requirements:workspace.requirements,conditions:workspace.conditions,
+    evidence:workspace.evidence,dependencies:workspace.dependencies,timingAssertions:workspace.timing,
+    commitments:workspace.commitments,today:todayDateKey(),calculatedAt:new Date().toISOString(),
+  }):new Map()),[workspace]);
 
   const model = useMemo(
     () => (workspace ? buildMasterDashboard({ ...workspace, planRecords }) : null),
@@ -230,6 +237,7 @@ export function ReviewAnalyticsSection() {
           {/* The business lens, whole. Same component as /app/business, which is
               what makes that route's redirect honest rather than a bin. */}
           <BusinessLensPage embedded />
+          {workspace&&<ForecastDefensibilityReview views={forecastArguments} opportunities={workspace.opportunities} />}
 
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Profit and cash">
             <KpiCard label="Collected revenue" value={formatCompactCurrencyAmount(model.money.collectedRevenueBase, model.reportingCurrency)} sub="Cash actually received" tone="positive" />
@@ -277,7 +285,7 @@ export function ReviewAnalyticsSection() {
             <ChartCard title="Activity trend" subtitle="Captured activities per week · last 8 weeks">
               <WeeklyActivityChart model={model} svgRef={activityChartRef} />
             </ChartCard>
-            <ChartCard title="Forecast evidence mix" subtitle="How defensible the active pipeline is">
+            <ChartCard title="Forecast evidence mix" subtitle="Operator labels on active Opportunities">
               <EvidenceMixChart model={model} svgRef={evidenceChartRef} />
             </ChartCard>
             <ChartCard title="Money out by category" subtitle={`Paid expenses · value in ${model.reportingCurrency}`}>
@@ -767,4 +775,3 @@ function downloadBlob(content: Blob, filename: string) {
   anchor.remove();
   window.URL.revokeObjectURL(url);
 }
-

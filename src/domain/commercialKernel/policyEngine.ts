@@ -11,6 +11,7 @@ import { deriveKnownBlockers, type CommercialDependency } from './commercialDepe
 import { deriveCommercialTime } from './deriveCommercialTime.ts';
 import type { CommercialTimingAssertion } from './commercialTiming.ts';
 import { todayDateKey } from '../../utils/safeDate.ts';
+import { deriveForecastPortfolio } from './deriveForecastDefensibility.ts';
 import {
   projectCurrentEvidence,
   supportingEvidenceFor,
@@ -53,6 +54,7 @@ export const reasonCodes = [
   'FORECAST_NOT_SUPPORTED',
   'OUTCOME_REQUIREMENT_QUESTION',
   'TIMING_TARGET_UNSUPPORTED',
+  'FORECAST_BASIS_DISAGREEMENT',
 ] as const;
 export type ReasonCode = (typeof reasonCodes)[number];
 
@@ -188,11 +190,43 @@ export function evaluateCommercialPolicies(input: PolicyInput): Recommendation[]
     ...coverageRules(input.coverage, thresholds, calculatedAt),
     ...requirementQuestionRules(input, calculatedAt, isVisible, leadIds),
     ...timingTargetRules(input, todayDateKey(today), calculatedAt, isVisible, leadIds),
+    ...forecastBasisRules(input, todayDateKey(today), calculatedAt, isVisible, leadIds),
   ];
 
   return dropDuplicateNextStepWarnings(recommendations).sort((left, right) => {
     const bySeverity = SEVERITY_ORDER[left.severity] - SEVERITY_ORDER[right.severity];
     return bySeverity !== 0 ? bySeverity : left.accountName.localeCompare(right.accountName);
+  });
+}
+
+/** A material disagreement between an operator's strongest forecast-evidence
+ * label and the recorded current argument. Never changes that label. */
+function forecastBasisRules(input:PolicyInput,today:string,calculatedAt:string,
+  isVisible:(r:{isSample?:boolean})=>boolean,leadIds:Set<string>):Recommendation[]{
+  const candidates=input.opportunities.filter(o=>isVisible(o)&&o.status==='Active'&&!leadIds.has(o.id)
+    &&o.forecastEvidenceCategory==='Defensible');
+  if(!candidates.length)return [];
+  const views=deriveForecastPortfolio({opportunities:candidates,requirements:(input.requirements||[]).filter(isVisible),
+    conditions:(input.conditions||[]).filter(isVisible),evidence:(input.evidence||[]).filter(isVisible),
+    dependencies:(input.dependencies||[]).filter(isVisible),timingAssertions:(input.timing||[]).filter(isVisible),
+    commitments:input.commitments.filter(isVisible),today,calculatedAt});
+  return candidates.flatMap(o=>{
+    const view=views.get(o.id);
+    if(!view?.claim||!view.categoryDisagreement||view.timingEvaluation==='unsupported')return [];
+    const reason=view.verdict==='insufficient_basis'?'no required-now outcomes are recorded'
+      :view.premises.some(p=>p.state==='contradicted')?'a required premise conflicts with current Evidence'
+      :view.premises.some(p=>p.state==='unknown')?'a required premise has no supported answer'
+      :view.coverage.unscopedLaterCount?'later required outcomes have no recorded path to the close claim'
+      :view.timingEvaluation==='incomplete'?'the close date lacks a complete timing basis'
+      :view.reasonCodes.includes('CLOSE_TARGET_ELAPSED')?'the recorded close date has passed':'the current argument remains conditional';
+    return [{id:`${o.id}:forecast-basis`,reasonCode:'FORECAST_BASIS_DISAGREEMENT' as const,
+      reasonText:`${o.opportunityName} is labelled Defensible for ${view.claim.targetDate}, but ${reason}.`,
+      sourceRecordIds:view.sourceRecordIds,threshold:0,
+      severity:view.verdict==='not_currently_supported'?'high' as const:'medium' as const,
+      recommendedAction:view.nextQuestion?'Resolve the required outcome question and review the forecast basis':'Review the forecast basis and its recorded premises',calculatedAt,
+      accountName:o.accountName,opportunityId:o.id,requirementId:view.nextQuestion?.requirementId,
+      question:view.nextQuestion?.question,
+      href:`/app/opportunities?opportunityId=${encodeURIComponent(o.id)}`}];
   });
 }
 
@@ -287,13 +321,15 @@ function dropDuplicateNextStepWarnings(recommendations: Recommendation[]): Recom
       .filter((item) => item.reasonCode === 'OPPORTUNITY_WITHOUT_FUTURE_ACTION' && item.opportunityId)
       .map((item) => item.opportunityId as string),
   );
-  if (opportunitiesAlreadyWarned.size === 0) return recommendations;
+  const forecastQuestionsCovered=new Set(recommendations.filter(item=>item.reasonCode==='FORECAST_BASIS_DISAGREEMENT'&&item.question&&item.opportunityId)
+    .map(item=>item.opportunityId as string));
+  if (opportunitiesAlreadyWarned.size === 0 && forecastQuestionsCovered.size===0) return recommendations;
 
   return recommendations.filter((item) => !(
     item.reasonCode === 'THREAD_WITHOUT_NEXT_COMMITMENT'
     && item.opportunityId
     && opportunitiesAlreadyWarned.has(item.opportunityId)
-  ));
+  ) && !(item.reasonCode==='OUTCOME_REQUIREMENT_QUESTION'&&item.opportunityId&&forecastQuestionsCovered.has(item.opportunityId)));
 }
 
 // ------------------------------------------------------------ commitments

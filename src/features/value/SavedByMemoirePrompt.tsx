@@ -40,6 +40,7 @@ const OUTCOME_BY_REASON: Record<ReasonCode, ValueOutcomeType> = {
   FORECAST_NOT_SUPPORTED: 'revenue_protected',
   OUTCOME_REQUIREMENT_QUESTION: 'no_material_impact',
   TIMING_TARGET_UNSUPPORTED: 'no_material_impact',
+  FORECAST_BASIS_DISAGREEMENT: 'no_material_impact',
 };
 
 /**

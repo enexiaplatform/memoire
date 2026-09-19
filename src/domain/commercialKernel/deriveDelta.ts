@@ -115,6 +115,7 @@ export const deltaChangeKinds = [
   'stage_without_evidence',
   'requirement_unresolved',
   'timing_target_unsupported',
+  'forecast_basis_disagreement',
   'next_action_missing',
   'quote_expiring',
   'money_checkpoint_stuck',
@@ -279,6 +280,7 @@ const CONDITION_BY_REASON: Record<ReasonCode, {
   FORECAST_NOT_SUPPORTED: { kind: 'forecast_unsupported', dimension: 'qualification', direction: 'weakened' },
   OUTCOME_REQUIREMENT_QUESTION: { kind: 'requirement_unresolved', dimension: 'qualification', direction: 'neutral' },
   TIMING_TARGET_UNSUPPORTED: { kind: 'timing_target_unsupported', dimension: 'momentum', direction: 'weakened' },
+  FORECAST_BASIS_DISAGREEMENT: { kind: 'forecast_basis_disagreement', dimension: 'qualification', direction: 'weakened' },
 };
 
 /** Which part of the deal an objection is really about. */

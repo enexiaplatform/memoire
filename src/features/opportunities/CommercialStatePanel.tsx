@@ -21,6 +21,9 @@ import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { CommercialScope } from '../../domain/commercialKernel/types';
 import { recordCommercialEvidence, type CommandResult } from '../../domain/commercialKernel/commands';
 import { CommercialTimingSection } from './CommercialTimingSection';
+import { ForecastDefensibilitySection } from './ForecastDefensibilitySection';
+import { deriveForecastDefensibility } from '../../domain/commercialKernel/deriveForecastDefensibility';
+import { todayDateKey } from '../../utils/safeDate';
 import type { CommercialTimingAssertion } from '../../domain/commercialKernel/commercialTiming';
 import { TIMING_UPDATED_EVENT, loadCommercialTiming, loadCommercialTimingForWorkspace } from '../../services/commercialKernel/timingStore';
 
@@ -90,7 +93,11 @@ export function CommercialStatePanel({ opportunity, accounts, userId, sampleData
   const retired = readings.filter(r => r.condition.lifecycle === 'retired');
   const requirementReadings=useMemo(()=>projectOutcomeRequirements(requirements.filter(r=>r.opportunityId===opportunity.id && r.lifecycle==='active'),conditions,evidence),[requirements,conditions,evidence,opportunity.id]);
   const buyerProgress=useMemo(()=>deriveBuyerProgress({opportunities:[opportunity],commitments,events,evidence,requirementReadings,activities,includeSampleRecords:sampleDataActive}).get(opportunity.id),[opportunity,commitments,events,evidence,requirementReadings,activities,sampleDataActive]);
+  const forecast=useMemo(()=>deriveForecastDefensibility({opportunity,requirements,conditions,evidence,dependencies,
+    timingAssertions:timing,commitments,today:todayDateKey(),calculatedAt:new Date().toISOString()}),
+    [opportunity,requirements,conditions,evidence,dependencies,timing,commitments]);
   return <section aria-label="Commercial state" className="mt-5 rounded-panel border border-line bg-white p-4">
+    <ForecastDefensibilitySection view={forecast} lastBuyerProgress={buyerProgress?.last} />
     <RequirementSection opportunity={opportunity} accounts={accounts} userId={userId} sampleDataActive={sampleDataActive}
       conditions={conditions} evidence={evidence} requirements={requirements} dependencies={dependencies} onMessage={setMessage} />
     <CommercialTimingSection opportunity={opportunity} requirements={requirements} conditions={conditions} evidence={evidence} dependencies={dependencies} commitments={commitments} assertions={timing} userId={userId} sampleDataActive={sampleDataActive} onMessage={setMessage} />

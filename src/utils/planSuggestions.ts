@@ -123,6 +123,7 @@ const ALERT_LABEL: Record<ReasonCode, string> = {
   FORECAST_NOT_SUPPORTED: 'Re-test the forecast that nothing backs',
   OUTCOME_REQUIREMENT_QUESTION: 'Ask the required outcome question',
   TIMING_TARGET_UNSUPPORTED: 'Review the close target and blocking promise',
+  FORECAST_BASIS_DISAGREEMENT: 'Review what supports the forecast',
 };
 
 /**
