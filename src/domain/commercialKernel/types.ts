@@ -212,6 +212,10 @@ export const commercialEventTypes = [
   // exists so the audit trail can still say when the claim entered the
   // workspace, which is a different question from when the trial happened.
   'evidence_recorded',
+  'condition_created',
+  'condition_intent_changed',
+  'condition_retired',
+  'condition_evidence_linked',
   // A quota that moves mid-year is a fact about the year, not a correction to
   // be overwritten. Without this event, "I was raised in Q3" is unanswerable
   // the moment the number changes.

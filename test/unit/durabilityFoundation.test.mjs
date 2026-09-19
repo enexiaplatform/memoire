@@ -39,6 +39,9 @@ const commands = await import('../../src/domain/commercialKernel/commands.ts');
 const { appendEvent, loadEvents } = await import('../../src/services/commercialKernel/eventStore.ts');
 const { writeLocal } = await import('../../src/services/commercialKernel/kernelRepository.ts');
 const { projectCurrentEvidence } = await import('../../src/domain/commercialKernel/commercialEvidence.ts');
+const conditionCommands = await import('../../src/domain/commercialKernel/conditionCommands.ts');
+const { conditionReferenceIndex } = await import('../../src/domain/commercialKernel/conditionReferences.ts');
+const { projectCommercialConditions } = await import('../../src/domain/commercialKernel/commercialCondition.ts');
 const at = '2026-08-12T10:30:00.000Z';
 const later = '2026-09-10T12:30:00.000Z';
 const base = { userId: 'owner', accountId: 'a', accountName: 'Acme', opportunityId: 'o', threadId: 't',
@@ -51,9 +54,10 @@ const fixtures = [
   { ...base, id: 'e', eventType: 'commitment_created', commitmentId: 'c', summary: 'Buyer promised', structuredPayload: { evidence: 'mail-73' }, idempotencyKey: 'promise-73' },
   { ...base, id: 'ev', category: 'technical_outcome', direction: 'positive', evidenceText: 'Retest passed', summary: 'Passed', observedAt: '2026-08-11', sourceActivityId: 'activity-1' },
   { ...base, id: 'v', outcomeType: 'payment_recovered', userAssessment: 'protected_revenue_or_payment', recommendationId: 'rec-1', impactAmount: 3200, impactCurrency: 'USD', confidence: 0.75, note: 'Buyer paid' },
+  { ...base, id: 'condition', statement: 'Technical fit is accepted.', conditionCategory: 'technical', intent: 'hypothesis', lifecycle: 'active', validFrom: null, evidenceLinks: [] },
 ].map((fixture, i) => kernelCodecs[i].sanitize(fixture));
-const backup = localBrowserData => ({ formatVersion: 3, exportedAt: later, localBrowserData });
-const kernelBackup = () => backup(Object.fromEntries(kernelCodecs.map((codec, i) => [codec.storageKey, [fixtures[i]]])));
+const backup = localBrowserData => ({ formatVersion: 4, exportedAt: later, localBrowserData });
+const kernelBackup = () => backup(Object.fromEntries(kernelCodecs.slice(0, 5).map((codec, i) => [codec.storageKey, [fixtures[i]]])));
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 beforeEach(async () => { await tick(); storage.data.clear(); storage.refuse = () => false; requests.length = 0; rejectedTable = ''; });
 
@@ -62,13 +66,17 @@ for (const [i, codec] of kernelCodecs.entries()) {
     const original = fixtures[i];
     const row = codec.toRow(original, 'owner');
     const file = { ...backup({}), cloudData: { user_id: 'owner', manifest: { complete: true }, data: { [codec.table]: [row] } } };
+    if (codec.table === 'commercial_conditions') {
+      file.localBrowserData['memoire.accounts.v1'] = [{ id: 'a', userId: 'owner', accountName: 'Acme' }];
+      file.localBrowserData['memoire.opportunities.v1'] = [{ id: 'o', userId: 'owner', accountName: 'Acme' }];
+    }
     const parsed = parseBackupFile(JSON.stringify(file));
     assert.equal(parsed.ok, true, parsed.message);
     const result = await restoreWorkspace(parsed.envelope, { userId: 'owner' });
     assert.equal(result.ok, true);
     const restored = codec.sanitize(JSON.parse(storage.getItem(codec.storageKey))[0]);
     assert.deepEqual(restored, original);
-    assert.deepEqual(requests[0].rows[0], row);
+    assert.deepEqual(requests.find(r => r.table === codec.table).rows[0], row);
     await restoreWorkspace(file, { userId: 'owner' });
     assert.equal(JSON.parse(storage.getItem(codec.storageKey)).length, 1, 'retry preserves identity');
   });
@@ -338,4 +346,73 @@ test('registry covers every exported dataset and all kernel/JSON table unions', 
     const union = source.match(/export type (?:KernelTable|CloudJsonCollectionTable) =\s*([\s\S]*?);/)[1];
     for (const match of union.matchAll(/'([a-z_]+)'/g)) assert.ok(canonicalContracts.some(c => c.table === match[1]), match[1]);
   }
+});
+
+
+test('Condition command accepts durable state before history; failed state creates no event or phantom record', async () => {
+  const scope = { userId: 'owner' };
+  const index = conditionReferenceIndex([{id:'a',userId:'owner'}],[{id:'o',userId:'owner',accountId:'a'}],[]);
+  const input = { accountId:'a',opportunityId:'o',statement:'QA accepts the remaining shelf life.',conditionCategory:'technical',intent:'hypothesis' };
+  const conditionKey = kernelCodecs.at(-1).storageKey, eventKey=kernelCodecs[2].storageKey;
+  storage.refuse = key => key === conditionKey;
+  const rejected=conditionCommands.createCommercialCondition(scope,input,index);
+  assert.equal(rejected.ok,false); assert.equal(storage.getItem(eventKey),null);
+  storage.refuse = key => key === eventKey;
+  const accepted=conditionCommands.createCommercialCondition(scope,input,index);
+  assert.equal(accepted.ok,true); assert.match(accepted.warning,/Do not repeat/);
+  assert.equal(JSON.parse(storage.getItem(conditionKey))[0].id,accepted.value.id);
+  assert.equal(accepted.event,undefined);
+});
+
+test('Condition explicit links survive cloud codec, backup and restore with stable IDs, provenance, dates and scope', async () => {
+  const condition=kernelCodecs.at(-1).sanitize({...fixtures.at(-1),sourceType:'email',sourceId:'mail-73',validFrom:'2026-08-01',
+    evidenceLinks:[{evidenceId:'ev',assessment:'supports',recordedAt:later}]});
+  const file=backup({ 'memoire.accounts.v1':[{id:'a',userId:'owner',accountName:'Acme'}],
+    'memoire.opportunities.v1':[{id:'o',userId:'owner',accountName:'Acme',accountId:'a'}],
+    [kernelCodecs[3].storageKey]:[fixtures[3]], [kernelCodecs.at(-1).storageKey]:[condition] });
+  const parsed=parseBackupFile(JSON.stringify(file)); assert.equal(parsed.ok,true,parsed.message);
+  const result=await restoreWorkspace(parsed.envelope,{userId:'owner'}); assert.equal(result.ok,true);
+  assert.deepEqual(JSON.parse(storage.getItem(kernelCodecs.at(-1).storageKey))[0],condition);
+  assert.equal(projectCommercialConditions([condition],[fixtures[3]]).get(condition.id).state,'supported');
+  const cloudRequest=requests.find(request=>request.table==='commercial_conditions');
+  assert.equal(cloudRequest.rows[0].evidence_links[0].evidenceId,'ev');
+  assert.equal(cloudRequest.rows[0].valid_from,'2026-08-01');
+  assert.equal(cloudRequest.rows[0].source_id,'mail-73');
+});
+
+test('Condition restore refuses missing/foreign evidence and absent canonical account before mutating anything',async()=>{
+  const original=kernelCodecs.at(-1).sanitize({...fixtures.at(-1),evidenceLinks:[{evidenceId:'ev',assessment:'supports',recordedAt:later}]});
+  const parents={'memoire.accounts.v1':[{id:'a',userId:'owner',accountName:'Acme'}],
+    'memoire.opportunities.v1':[{id:'o',userId:'owner',accountName:'Acme',accountId:'a'}]};
+  for (const localBrowserData of [
+    {...parents,[kernelCodecs.at(-1).storageKey]:[original]},
+    {...parents,[kernelCodecs[3].storageKey]:[{...fixtures[3],userId:'other'}],[kernelCodecs.at(-1).storageKey]:[original]},
+    {'memoire.opportunities.v1':parents['memoire.opportunities.v1'],[kernelCodecs[3].storageKey]:[fixtures[3]],[kernelCodecs.at(-1).storageKey]:[original]},
+  ]) {
+    const before=[...storage.data];
+    assert.equal(parseBackupFile(JSON.stringify(backup(localBrowserData))).ok,false);
+    await assert.rejects(restoreWorkspace(backup(localBrowserData)));
+    assert.deepEqual([...storage.data],before);
+  }
+});
+
+test('sample Condition and its evidence stay local and are dropped from live restore',async()=>{
+  const scope={userId:'owner',sampleDataActive:true};
+  const index=conditionReferenceIndex([{id:'a',userId:'owner',isSample:true}],[{id:'o',userId:'owner',accountId:'a',isSample:true}],[]);
+  const result=conditionCommands.createCommercialCondition(scope,{accountId:'a',opportunityId:'o',statement:'Sample proposition.',conditionCategory:'other',intent:'assumed'},index);
+  assert.equal(result.ok,true); assert.equal(result.value.isSample,true);
+  await tick(); assert.equal(requests.find(r=>r.table==='commercial_conditions'),undefined);
+  const file=backup({[kernelCodecs.at(-1).storageKey]:[result.value]});
+  const plan=buildRestorePlan(file); assert.equal(plan.droppedSampleRecords,1);
+});
+
+test('Condition command rejects an empty proposition and mismatched account without recording an event',()=>{
+  const scope={userId:'owner'};
+  const index=conditionReferenceIndex([{id:'a',userId:'owner'}],[{id:'o',userId:'owner',accountId:'a'}],[]);
+  for(const input of [
+    {accountId:'a',opportunityId:'o',statement:' ',conditionCategory:'technical',intent:'assumed'},
+    {accountId:'other',opportunityId:'o',statement:'Technical fit is accepted.',conditionCategory:'technical',intent:'assumed'},
+  ]) assert.equal(conditionCommands.createCommercialCondition(scope,input,index).ok,false);
+  assert.equal(storage.getItem(kernelCodecs.at(-1).storageKey),null);
+  assert.equal(storage.getItem(kernelCodecs[2].storageKey),null);
 });

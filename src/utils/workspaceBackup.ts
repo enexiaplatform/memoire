@@ -1,3 +1,6 @@
+import { conditionReferenceIndex, validateConditionReferences } from '../domain/commercialKernel/conditionReferences.ts';
+import type { CommercialCondition } from '../domain/commercialKernel/commercialCondition.ts';
+import type { CommercialEvidence } from '../domain/commercialKernel/commercialEvidence.ts';
 import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KEY, isSampleRecord, recordIdentity, validateCanonicalRecord, type RecordData } from '../services/canonicalDurability.ts';
 /**
  * The other half of export.
@@ -11,8 +14,8 @@ import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KE
  * backup, what never comes back in - can be tested without a browser.
  */
 
-/** Format 3 adds cloud decoding and strict preflight. Versions 1 and 2 remain readable. */
-export const BACKUP_FORMAT_VERSION = 3;
+/** Format 4 adds canonical Conditions. Versions 1-3 remain readable; older apps must refuse v4. */
+export const BACKUP_FORMAT_VERSION = 4;
 export const BACKUP_KEY_PREFIX = 'memoire.';
 
 export type BackupEnvelope = {
@@ -222,6 +225,15 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
       }
       normalized[key] = Array.from(merged.values());
     } else normalized[key] = local;
+  }
+  const conditions = normalized['memoire.commercialConditions.v1'] as CommercialCondition[] | undefined;
+  if (conditions?.length) {
+    const index = conditionReferenceIndex(
+      normalized['memoire.accounts.v1'] as { id: string }[] || [],
+      normalized['memoire.opportunities.v1'] as { id: string }[] || [],
+      normalized['memoire.commercialEvidence.v1'] as CommercialEvidence[] || [],
+    );
+    for (const condition of conditions) validateConditionReferences(condition, index);
   }
   const writes = Object.keys(normalized).sort().map(key => {
     const value = normalized[key];

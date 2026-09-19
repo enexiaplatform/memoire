@@ -10,7 +10,8 @@ export type KernelTable =
   | 'commercial_commitments'
   | 'commercial_events'
   | 'commercial_value_outcomes'
-  | 'commercial_evidence';
+  | 'commercial_evidence'
+  | 'commercial_conditions';
 
 export type KernelRecord = {
   id: string;
@@ -65,6 +66,7 @@ function workspaceCollectionForTable(table: KernelTable) {
   if (table === 'commercial_threads') return 'threads';
   if (table === 'commercial_value_outcomes') return 'valueOutcomes';
   if (table === 'commercial_evidence') return 'evidence';
+  if (table === 'commercial_conditions') return 'conditions';
   return 'commercialEvents';
 }
 
@@ -230,7 +232,9 @@ export async function loadMergedForUser<T extends KernelRecord>(
   codec: KernelCodec<T>,
   userId: string,
 ): Promise<T[]> {
-  const local = readLocal(codec);
+  const allLocal = readLocal(codec);
+  const local = allLocal.filter(r => codec.table !== 'commercial_conditions' || r.userId === userId);
+  const otherOwners = codec.table === 'commercial_conditions' ? allLocal.filter(r => r.userId !== userId) : [];
   const cloud = await loadCloudRecords(codec, userId);
 
   const merged = new Map<string, T>();
@@ -240,7 +244,7 @@ export async function loadMergedForUser<T extends KernelRecord>(
   }
 
   const result = Array.from(merged.values()).sort(codec.compare);
-  writeLocal(codec, result, { requireDurable: false });
+  writeLocal(codec, [...result, ...otherOwners], { requireDurable: false });
   sendOwedCloudRecords(codec, userId, result, cloud);
   return result;
 }
@@ -331,7 +335,9 @@ async function currentUserId() {
 }
 
 function updatedAt(record: KernelRecord) {
-  return record.updatedAt || record.createdAt || '';
+  // PostgREST may return +00:00 while browser writes Z for the same instant.
+  // Comparing strings would keep sending an unchanged record back to cloud.
+  return Date.parse(record.updatedAt || record.createdAt || '') || 0;
 }
 
 export function reportKernelSyncFailure(table: KernelTable, operation: 'load' | 'upsert' | 'delete', error: unknown) {

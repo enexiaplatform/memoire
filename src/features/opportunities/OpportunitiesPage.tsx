@@ -1,3 +1,4 @@
+import { CommercialStatePanel } from './CommercialStatePanel';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ThreadsSection } from '../threads/ThreadsSection';
@@ -1432,6 +1433,7 @@ export function OpportunitiesPage() {
       </div>
 
       <OpportunityPanel
+        accounts={accounts}
         mode={panelMode}
         form={form}
         saveState={saveState}
@@ -3018,6 +3020,7 @@ function OpportunityPanel({
   opportunityOutcomes,
   salesAssets,
   allOpportunities,
+  accounts,
   allStakeholders,
   knownAccountNames,
   accountRecordNames,
@@ -3046,6 +3049,7 @@ function OpportunityPanel({
   opportunityOutcomes: OpportunityOutcomeRecord[];
   salesAssets: SalesAssetRecord[];
   allOpportunities: CrmLiteOpportunity[];
+  accounts: AccountMemoryRecord[];
   /** Customers already in the workspace, by their surviving name. */
   /**
    * Every stakeholder in the workspace, not just the ones already on this deal.
@@ -3273,6 +3277,10 @@ function OpportunityPanel({
             aliases: accountAliases,
           })}
         />
+      )}
+
+      {mode === 'edit' && editingOpportunity && !isLeadStage(editingOpportunity.stage) && (
+        <CommercialStatePanel key={editingOpportunity.id} opportunity={editingOpportunity} accounts={accounts} userId={dataUserId} sampleDataActive={sampleDataActive} />
       )}
 
       {/* What changed. The canonical delta, scoped to this deal - an

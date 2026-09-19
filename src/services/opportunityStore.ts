@@ -52,6 +52,8 @@ export interface CrmLiteOpportunity {
   source?: 'demo' | 'user';
   isSample?: boolean;
   accountName: string;
+  /** Canonical account link when present; required to scope a Condition safely. */
+  accountId?: string;
   opportunityName: string;
   stage: OpportunityStage;
   estimatedValue: number | null;
@@ -398,6 +400,7 @@ function loadLocalOpportunities(): CrmLiteOpportunity[] {
         source: normalizeSource(item.source),
         isSample: item.isSample === true,
         accountName: item.accountName || '',
+        accountId: item.accountId || undefined,
         opportunityName: item.opportunityName || '',
         stage: outcome.stage,
         estimatedValue: normalizeNumber(item.estimatedValue),
@@ -567,6 +570,7 @@ export function rowToOpportunity(row: OpportunityRow): CrmLiteOpportunity {
     source: 'user',
     isSample: false,
     accountName: isLegacyAccountPlaceholder(storedAccountName) ? linkedAccountName : storedAccountName || linkedAccountName,
+    accountId: row.account_id || undefined,
     opportunityName,
     stage: outcome.stage,
     estimatedValue: normalizeNumber(row.estimated_value),
@@ -650,6 +654,7 @@ function opportunityToUpdate(input: OpportunityFormInput) {
 export function opportunityToRow(input: OpportunityFormInput) {
   return {
     account_name: input.accountName,
+    ...(input.accountId ? { account_id: input.accountId } : {}),
     opportunity_name: input.opportunityName,
     stage: input.stage,
     estimated_value: input.estimatedValue,

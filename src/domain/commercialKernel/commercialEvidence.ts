@@ -160,8 +160,13 @@ export function evidenceScopeKey(record: Pick<CommercialEvidence, 'opportunityId
   return `account:${normalizeEntityName(record.accountName || '')}`;
 }
 
-function projectionKey(record: CommercialEvidence): string {
-  return `${evidenceScopeKey(record)}|${record.category}`;
+function projectionKey(record: CommercialEvidence, mode: 'legacy_category' | 'same_source' = 'legacy_category'): string {
+  const key = `${evidenceScopeKey(record)}|${record.category}`;
+  // Legacy technical summaries intentionally choose one observation per category.
+  // Explicit propositions cannot use that as authority across independent sources.
+  // A stable source ID plus an explicit source revision time identifies lineage; absence means
+  // no proven lineage, so independent observations remain independent.
+  return mode === 'legacy_category' ? key : `${record.userId}|${Boolean(record.isSample)}|${record.accountId}|${key}|${record.sourceType}|${record.sourceId && record.sourceUpdatedAt ? `source:${record.sourceId}` : `record:${record.id}`}`;
 }
 
 /**
@@ -178,7 +183,7 @@ function projectionKey(record: CommercialEvidence): string {
  * day resolve the same way on every run rather than swapping between loads.
  */
 export type EvidenceProjection = {
-  /** Latest per scope+category, keyed by scope key. */
+  /** Latest per projection key; legacy mode groups by scope/category. */
   currentByScope: Map<string, CommercialEvidence[]>;
   /** Every record that a later one has replaced. */
   supersededIds: Set<string>;
@@ -186,13 +191,14 @@ export type EvidenceProjection = {
   supersededBy: Map<string, string>;
 };
 
-export function projectCurrentEvidence(records: CommercialEvidence[]): EvidenceProjection {
+/** `same_source` is for explicit Conditions; legacy Delta keeps category projection. */
+export function projectCurrentEvidence(records: CommercialEvidence[], mode: 'legacy_category' | 'same_source' = 'legacy_category'): EvidenceProjection {
   const latest = new Map<string, CommercialEvidence>();
   const supersededIds = new Set<string>();
   const supersededBy = new Map<string, string>();
 
   for (const record of records) {
-    const key = projectionKey(record);
+    const key = projectionKey(record, mode);
     const held = latest.get(key);
     if (!held) {
       latest.set(key, record);
@@ -205,7 +211,7 @@ export function projectCurrentEvidence(records: CommercialEvidence[]): EvidenceP
   // a restore. Otherwise three observations produce different supersession links
   // depending on array order even though the current observation is identical.
   for (const record of records) {
-    const winner = latest.get(projectionKey(record))!;
+    const winner = latest.get(projectionKey(record, mode))!;
     if (record.id !== winner.id) {
       supersededIds.add(record.id);
       supersededBy.set(record.id, winner.id);
