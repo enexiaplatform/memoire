@@ -67,7 +67,11 @@ export async function restoreWorkspace(
       cloudPushed: null, message: '' }));
     let cloudPushedCount = 0;
     let cloudFailedCount = 0;
-    for (const request of requests.sort((a,b) => canonicalContracts.indexOf(a.contract) - canonicalContracts.indexOf(b.contract))) {
+    // A Decision may link an existing Plan item. Restore that item before the
+    // Decision aggregate so its database scope trigger can verify the link.
+    const restoreOrder=(table:string)=>table==='commercial_decisions'?canonicalContracts.length+1
+      :canonicalContracts.findIndex(contract=>contract.table===table);
+    for (const request of requests.sort((a,b) => restoreOrder(a.contract.table) - restoreOrder(b.contract.table))) {
       const result = collections.find(c => c.key === request.key)!;
       try {
         if (!supabaseClient) throw new Error('The account connection is unavailable.');

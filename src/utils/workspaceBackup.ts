@@ -7,6 +7,8 @@ import { validateDependencyGraph, type CommercialDependency } from '../domain/co
 import { validateTimingAssertions, type CommercialTimingAssertion } from '../domain/commercialKernel/commercialTiming.ts';
 import type { CommercialCommitment } from '../domain/commercialKernel/types.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
+import type { CommercialDecision } from '../domain/commercialKernel/commercialDecision.ts';
+import type { PlanRecord } from './weeklyPlan.ts';
 import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KEY, isSampleRecord, recordIdentity, validateCanonicalRecord, type RecordData } from '../services/canonicalDurability.ts';
 /**
  * The other half of export.
@@ -20,8 +22,8 @@ import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KE
  * backup, what never comes back in - can be tested without a browser.
  */
 
-/** Format 7 adds temporal assertions. Older backups remain readable. */
-export const BACKUP_FORMAT_VERSION = 7;
+/** Format 8 adds immutable commercial decisions. Older backups remain readable. */
+export const BACKUP_FORMAT_VERSION = 8;
 export const BACKUP_KEY_PREFIX = 'memoire.';
 
 export type BackupEnvelope = {
@@ -226,6 +228,10 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
       for (const record of [...(normalized[key] as RecordData[] || []), ...local]) {
         const id = recordIdentity(contract, record);
         const previous = merged.get(id);
+        if(previous&&contract.table==='commercial_decisions'){
+          const semantic=(r:RecordData)=>JSON.stringify({...r,executionLinks:[],updatedAt:''});
+          if(semantic(previous)!==semantic(record))throw new Error('Decision history conflicts between local and cloud backup copies.');
+        }
         const stamp = (r: RecordData) => Date.parse(String(r.updatedAt || r.recordedAt || r.createdAt || '')) || 0;
         if (!previous || stamp(record) >= stamp(previous)) merged.set(id, { ...previous, ...record });
       }
@@ -259,6 +265,30 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
     commitments:normalized['memoire.commercialCommitments.v1'] as CommercialCommitment[] || [],
     evidence:normalized['memoire.commercialEvidence.v1'] as CommercialEvidence[] || [],
   });
+  const decisions=normalized['memoire.commercialDecisions.v1'] as CommercialDecision[] | undefined;
+  if(decisions?.length){
+    const accounts=normalized['memoire.accounts.v1'] as {id:string;userId?:string|null}[] || [];
+    const opportunities=normalized['memoire.opportunities.v1'] as CrmLiteOpportunity[] || [];
+    const plans=normalized['memoire.planItems.v1'] as PlanRecord[] || [];
+    const commitments=normalized['memoire.commercialCommitments.v1'] as CommercialCommitment[] || [];
+    const byId=new Map(decisions.map(d=>[d.id,d]));
+    for(const d of decisions){
+      const account=accounts.find(a=>a.id===d.accountId&&a.userId===d.userId);
+      const opportunity=opportunities.find(o=>o.id===d.opportunityId&&o.userId===d.userId&&o.accountId===d.accountId);
+      if(!account||!opportunity)throw new Error('Decision Account/Opportunity scope is missing from backup.');
+      if(d.supersedesDecisionId){const old=byId.get(d.supersedesDecisionId);
+        if(!old||old.userId!==d.userId||old.opportunityId!==d.opportunityId)throw new Error('Decision supersession scope mismatch.');}
+      if(d.intervention.targetKind==='requirement'&&!requirements?.some(r=>r.id===d.intervention.targetRequirementId
+        &&r.userId===d.userId&&r.opportunityId===d.opportunityId))throw new Error('Decision Intervention Requirement scope mismatch.');
+      for(const link of d.executionLinks){
+        if(link.kind==='action'&&!plans.some(p=>p.id===link.recordId&&p.linkedOpportunityId===d.opportunityId))
+          throw new Error('Decision execution Plan action scope mismatch.');
+        if(link.kind==='commitment'&&!commitments.some(c=>c.id===link.recordId&&c.userId===d.userId
+          &&c.accountId===d.accountId&&c.opportunityId===d.opportunityId))
+          throw new Error('Decision execution Commitment scope mismatch.');
+      }
+    }
+  }
   const writes = Object.keys(normalized).sort().map(key => {
     const value = normalized[key];
     if (Array.isArray(value)) restoredRecords += value.length;

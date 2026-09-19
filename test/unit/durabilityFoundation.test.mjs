@@ -61,8 +61,14 @@ const fixtures = [
   { ...base, id: 'requirement', expectedOutcome: 'Know who approves budget', question: 'Who approves budget?', conditionId: null, role: 'required_now', lifecycle: 'active' },
   { ...base, id: 'dependency', dependentRequirementId: 'requirement', prerequisiteRequirementId: 'prerequisite', basis: 'The prerequisite is needed before approval can be known.', lifecycle: 'active', sourceType:'manual' },
   { ...base, id:'timing', kind:'duration', requirementId:'requirement', basis:'Buyer process stated', lifecycle:'active', durationDays:3, durationUnit:'calendar_days', epistemic:'supported', sourceKind:'customer_or_supplier', sourceReference:'Buyer email 73', evidenceId:null, commitmentId:null, sourceType:'manual' },
+  { id:'decision',userId:'owner',accountId:'a',opportunityId:'o',question:'How should QA be resolved?',context:'QA acceptance is unclear.',
+    basisSnapshot:{version:1,capturedAt:later,forecast:{verdict:'conditional',claim:null,timingEvaluation:'incomplete',reasonCodes:[]},premises:[],blockers:[],openQuestions:[],nextQuestion:null,timing:null,sourceRecordIds:['o']},
+    options:[{id:'option-a',order:1,label:'Ask QA director',interventionIntent:'Resolve QA ambiguity',expectedConsequence:'Know whether acceptance is complete',tradeoffs:''}],
+    selectedOptionId:'option-a',rationale:'QA director owns acceptance.',expectedConsequence:'Know whether acceptance is complete',
+    intervention:{id:'intervention',intent:'Resolve QA ambiguity',targetKind:'opportunity',targetRequirementId:null,expectedChange:'Know whether acceptance is complete'},
+    executionLinks:[],supersedesDecisionId:null,sourceType:'manual',decidedAt:later,createdAt:later,updatedAt:later },
 ].map((fixture, i) => kernelCodecs[i].sanitize(fixture));
-const backup = localBrowserData => ({ formatVersion: 7, exportedAt: later, localBrowserData });
+const backup = localBrowserData => ({ formatVersion: 8, exportedAt: later, localBrowserData });
 const kernelBackup = () => backup(Object.fromEntries(kernelCodecs.slice(0, 5).map((codec, i) => [codec.storageKey, [fixtures[i]]])));
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 beforeEach(async () => { await tick(); storage.data.clear(); storage.refuse = () => false; requests.length = 0; rejectedTable = ''; });
@@ -145,9 +151,9 @@ for (const [i, codec] of kernelCodecs.entries()) {
     const original = fixtures[i];
     const row = codec.toRow(original, 'owner');
     const file = { ...backup({}), cloudData: { user_id: 'owner', manifest: { complete: true }, data: { [codec.table]: [row] } } };
-    if (codec.table === 'commercial_conditions' || codec.table === 'commercial_outcome_requirements' || codec.table === 'commercial_dependencies' || codec.table === 'commercial_timing_assertions') {
+    if (codec.table === 'commercial_conditions' || codec.table === 'commercial_outcome_requirements' || codec.table === 'commercial_dependencies' || codec.table === 'commercial_timing_assertions' || codec.table === 'commercial_decisions') {
       file.localBrowserData['memoire.accounts.v1'] = [{ id: 'a', userId: 'owner', accountName: 'Acme' }];
-      file.localBrowserData['memoire.opportunities.v1'] = [{ id: 'o', userId: 'owner', accountName: 'Acme' }];
+      file.localBrowserData['memoire.opportunities.v1'] = [{ id: 'o', userId: 'owner', accountId:'a',accountName: 'Acme' }];
       if (codec.table === 'commercial_dependencies') file.localBrowserData[kernelCodecs[6].storageKey]=[fixtures[6],{...fixtures[6],id:'prerequisite',expectedOutcome:'Know technical approver'}];
       if (codec.table === 'commercial_timing_assertions') file.localBrowserData[kernelCodecs[6].storageKey]=[fixtures[6]];
     }
@@ -162,6 +168,19 @@ for (const [i, codec] of kernelCodecs.entries()) {
     assert.equal(JSON.parse(storage.getItem(codec.storageKey)).length, 1, 'retry preserves identity');
   });
 }
+
+test('cloud restore sends existing Plan execution before its Decision link',async()=>{
+  const decision={...fixtures[9],executionLinks:[{kind:'action',recordId:'plan',linkedAt:later}]};
+  const file=backup({
+    'memoire.accounts.v1':[{id:'a',userId:'owner',accountName:'Acme'}],
+    'memoire.opportunities.v1':[{id:'o',userId:'owner',accountId:'a',accountName:'Acme'}],
+    'memoire.planItems.v1':[{id:'plan',date:'2026-09-20',label:'Call QA',tag:'',done:false,
+      linkedOpportunityId:'o',createdAt:at,updatedAt:later,source:'user'}],
+    [kernelCodecs[9].storageKey]:[decision],
+  });
+  const result=await restoreWorkspace(file,{userId:'owner'});assert.equal(result.ok,true);
+  assert.ok(requests.findIndex(r=>r.table==='plan_items')<requests.findIndex(r=>r.table==='commercial_decisions'));
+});
 
 test('local full kernel round-trip preserves both evidence observations and all linkages', async () => {
   const file = kernelBackup();

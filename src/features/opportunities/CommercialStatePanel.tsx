@@ -22,6 +22,7 @@ import type { CommercialScope } from '../../domain/commercialKernel/types';
 import { recordCommercialEvidence, type CommandResult } from '../../domain/commercialKernel/commands';
 import { CommercialTimingSection } from './CommercialTimingSection';
 import { ForecastDefensibilitySection } from './ForecastDefensibilitySection';
+import { CommercialDecisionSection } from './CommercialDecisionSection';
 import { deriveForecastDefensibility } from '../../domain/commercialKernel/deriveForecastDefensibility';
 import { todayDateKey } from '../../utils/safeDate';
 import type { CommercialTimingAssertion } from '../../domain/commercialKernel/commercialTiming';
@@ -98,6 +99,7 @@ export function CommercialStatePanel({ opportunity, accounts, userId, sampleData
     [opportunity,requirements,conditions,evidence,dependencies,timing,commitments]);
   return <section aria-label="Commercial state" className="mt-5 rounded-panel border border-line bg-white p-4">
     <ForecastDefensibilitySection view={forecast} lastBuyerProgress={buyerProgress?.last} />
+    <CommercialDecisionSection opportunity={opportunity} forecast={forecast} commitments={commitments} userId={userId} sampleDataActive={sampleDataActive} />
     <RequirementSection opportunity={opportunity} accounts={accounts} userId={userId} sampleDataActive={sampleDataActive}
       conditions={conditions} evidence={evidence} requirements={requirements} dependencies={dependencies} onMessage={setMessage} />
     <CommercialTimingSection opportunity={opportunity} requirements={requirements} conditions={conditions} evidence={evidence} dependencies={dependencies} commitments={commitments} assertions={timing} userId={userId} sampleDataActive={sampleDataActive} onMessage={setMessage} />

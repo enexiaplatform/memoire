@@ -2,6 +2,7 @@ import { conditionCodec } from './commercialKernel/conditionStore.ts';
 import { requirementCodec } from './commercialKernel/requirementStore.ts';
 import { dependencyCodec } from './commercialKernel/dependencyStore.ts';
 import { timingCodec } from './commercialKernel/timingStore.ts';
+import { decisionCodec } from './commercialKernel/decisionStore.ts';
 /** One inventory for backup decoding, restore routing, and future-entity checks. */
 import { threadCodec } from './commercialKernel/threadStore.ts';
 import { commitmentCodec } from './commercialKernel/commitmentStore.ts';
@@ -18,7 +19,7 @@ import * as enums from '../domain/commercialKernel/types.ts';
 import { evidenceCategories, evidenceDirections } from '../domain/commercialKernel/commercialEvidence.ts';
 
 export type RecordData = Record<string, unknown>;
-export const kernelCodecs = [threadCodec, commitmentCodec, eventCodec, evidenceCodec, valueOutcomeCodec, conditionCodec, requirementCodec, dependencyCodec, timingCodec] as const;
+export const kernelCodecs = [threadCodec, commitmentCodec, eventCodec, evidenceCodec, valueOutcomeCodec, conditionCodec, requirementCodec, dependencyCodec, timingCodec, decisionCodec] as const;
 export type CanonicalContract = {
   table: string;
   key: string;
@@ -120,9 +121,9 @@ export function validateCanonicalRecord(contract: CanonicalContract, value: unkn
   if (contract.table === 'commercial_evidence' && r.providedBy != null
     && !['customer','self','internal'].includes(String(r.providedBy))) throw new Error('commercial_evidence: unsupported provider.');
   if (contract.table === 'commercial_conditions' || contract.table === 'commercial_outcome_requirements'
-    || contract.table === 'commercial_dependencies' || contract.table === 'commercial_timing_assertions') {
+    || contract.table === 'commercial_dependencies' || contract.table === 'commercial_timing_assertions' || contract.table === 'commercial_decisions') {
     const codec=contract.table==='commercial_conditions'?conditionCodec:contract.table==='commercial_outcome_requirements'?requirementCodec
-      :contract.table==='commercial_dependencies'?dependencyCodec:timingCodec;
+      :contract.table==='commercial_dependencies'?dependencyCodec:contract.table==='commercial_timing_assertions'?timingCodec:decisionCodec;
     if (!codec.sanitize(r)) throw new Error(`${contract.table}: invalid canonical record.`);
     return;
   }
