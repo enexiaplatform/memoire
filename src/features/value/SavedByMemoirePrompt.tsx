@@ -38,6 +38,7 @@ const OUTCOME_BY_REASON: Record<ReasonCode, ValueOutcomeType> = {
   // are about to stand behind. Both are revenue protection, not follow-up.
   PERIOD_COVERAGE_LOW: 'revenue_protected',
   FORECAST_NOT_SUPPORTED: 'revenue_protected',
+  OUTCOME_REQUIREMENT_QUESTION: 'no_material_impact',
 };
 
 /**

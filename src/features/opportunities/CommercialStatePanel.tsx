@@ -4,6 +4,9 @@ import { conditionReferenceIndex } from '../../domain/commercialKernel/condition
 import { createCommercialCondition, changeCommercialCondition } from '../../domain/commercialKernel/conditionCommands';
 import { CONDITION_UPDATED_EVENT, loadCommercialConditions, loadCommercialConditionsForWorkspace } from '../../services/commercialKernel/conditionStore';
 import { EVIDENCE_UPDATED_EVENT, loadCommercialEvidence, loadCommercialEvidenceForWorkspace } from '../../services/commercialKernel/evidenceStore';
+import { REQUIREMENT_UPDATED_EVENT, loadOutcomeRequirements, loadOutcomeRequirementsForWorkspace } from '../../services/commercialKernel/requirementStore';
+import { nextBestQuestion, projectOutcomeRequirements, requirementQuestion, requirementRoles, type OutcomeRequirement, type RequirementRole } from '../../domain/commercialKernel/outcomeRequirement';
+import { changeOutcomeRequirement, createOutcomeRequirement, requirementReferenceIndex } from '../../domain/commercialKernel/requirementCommands';
 import type { CommercialEvidence } from '../../domain/commercialKernel/commercialEvidence';
 import type { AccountMemoryRecord } from '../../services/accountStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
@@ -22,6 +25,7 @@ export function CommercialStatePanel({ opportunity, accounts, userId, sampleData
 }) {
   const [conditions, setConditions] = useState<CommercialCondition[]>([]);
   const [evidence, setEvidence] = useState<CommercialEvidence[]>([]);
+  const [requirements, setRequirements] = useState<OutcomeRequirement[]>([]);
   const [adding, setAdding] = useState(false);
   const [statement, setStatement] = useState('');
   const [accountId, setAccountId] = useState(opportunity.accountId || '');
@@ -38,13 +42,15 @@ export function CommercialStatePanel({ opportunity, accounts, userId, sampleData
       if (!active) return;
       setConditions(loadCommercialConditions().filter(r => r.userId === (userId || null) && Boolean(r.isSample) === sampleDataActive));
       setEvidence(loadCommercialEvidence().filter(r => r.userId === (userId || null) && Boolean(r.isSample) === sampleDataActive));
+      setRequirements(loadOutcomeRequirements().filter(r => r.userId === (userId || null) && Boolean(r.isSample) === sampleDataActive));
     };
     refresh();
-    void Promise.all([loadCommercialConditionsForWorkspace(userId, sampleDataActive), loadCommercialEvidenceForWorkspace(userId, sampleDataActive)]).then(refresh);
+    void Promise.all([loadCommercialConditionsForWorkspace(userId, sampleDataActive), loadCommercialEvidenceForWorkspace(userId, sampleDataActive), loadOutcomeRequirementsForWorkspace(userId, sampleDataActive)]).then(refresh);
     window.addEventListener(CONDITION_UPDATED_EVENT, refresh);
     window.addEventListener(EVIDENCE_UPDATED_EVENT, refresh);
+    window.addEventListener(REQUIREMENT_UPDATED_EVENT, refresh);
     window.addEventListener('storage', refresh);
-    return () => { active = false; window.removeEventListener(CONDITION_UPDATED_EVENT, refresh); window.removeEventListener(EVIDENCE_UPDATED_EVENT, refresh); window.removeEventListener('storage', refresh); };
+    return () => { active = false; window.removeEventListener(CONDITION_UPDATED_EVENT, refresh); window.removeEventListener(EVIDENCE_UPDATED_EVENT, refresh); window.removeEventListener(REQUIREMENT_UPDATED_EVENT, refresh); window.removeEventListener('storage', refresh); };
   }, [userId, sampleDataActive]);
   const readings = useMemo(() => [...projectCommercialConditions(conditions.filter(c => c.opportunityId === opportunity.id), evidence).values()], [conditions, evidence, opportunity.id]);
   const references = conditionReferenceIndex(accounts, [opportunity], evidence);
@@ -56,6 +62,8 @@ export function CommercialStatePanel({ opportunity, accounts, userId, sampleData
   const activeReadings = readings.filter(r => r.condition.lifecycle === 'active');
   const retired = readings.filter(r => r.condition.lifecycle === 'retired');
   return <section aria-label="Commercial state" className="mt-5 rounded-panel border border-line bg-white p-4">
+    <RequirementSection opportunity={opportunity} accounts={accounts} userId={userId} sampleDataActive={sampleDataActive}
+      conditions={conditions} evidence={evidence} requirements={requirements} onMessage={setMessage} />
     <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-semibold text-ink">Commercial state</h3>
       <button type="button" className="text-sm font-semibold text-brand-blue" onClick={() => setAdding(!adding)}>{adding ? 'Cancel' : 'Add condition'}</button></div>
     {!activeReadings.length && <p className="mt-2 text-sm text-muted">No active commercial conditions recorded yet. Capture a concrete proposition you rely on, are testing, or have evidence for.</p>}
@@ -114,5 +122,78 @@ export function ConditionRow({ reading, evidence, onChange }: {
         <button type="button" disabled={!evidenceId} className="text-sm font-semibold text-brand-blue disabled:opacity-40" onClick={() => { if (onChange({ kind: 'link', link: { evidenceId, assessment, supersedesEvidenceId: supersedesEvidenceId || null } })) { setLinking(false); setEvidenceId(''); setSupersedesEvidenceId(''); } }}>Confirm evidence link</button>
       </div>}
     </div>}
+  </details>;
+}
+
+const roleLabel: Record<RequirementRole,string> = { required_now:'Required now',required_later:'Required later',context:'Context' };
+function RequirementSection({opportunity,accounts,userId,sampleDataActive,conditions,evidence,requirements,onMessage}:{
+  opportunity:CrmLiteOpportunity;accounts:AccountMemoryRecord[];userId?:string;sampleDataActive:boolean;
+  conditions:CommercialCondition[];evidence:CommercialEvidence[];requirements:OutcomeRequirement[];onMessage:(message:string)=>void;
+}) {
+  const [adding,setAdding]=useState(false); const [accountId,setAccountId]=useState(opportunity.accountId || '');
+  const [expectedOutcome,setExpectedOutcome]=useState(''); const [question,setQuestion]=useState('');
+  const [role,setRole]=useState<RequirementRole>('required_now'); const [conditionId,setConditionId]=useState('');
+  const scope:CommercialScope={userId:userId || null,sampleDataActive};
+  const refs=()=>requirementReferenceIndex(accounts,[opportunity],loadCommercialConditions());
+  const accept=(result:CommandResult<OutcomeRequirement>)=>{onMessage(result.ok ? result.warning || 'Requirement saved.' : result.error);return result.ok;};
+  const active=requirements.filter(r=>r.opportunityId===opportunity.id && r.lifecycle==='active');
+  const retired=requirements.filter(r=>r.opportunityId===opportunity.id && r.lifecycle==='retired');
+  const readings=projectOutcomeRequirements(active,conditions,evidence);
+  const next=nextBestQuestion(readings);
+  const choices=conditions.filter(c=>c.lifecycle==='active' && c.accountId===accountId && (!c.opportunityId || c.opportunityId===opportunity.id));
+  return <div className="mb-5 border-b border-line pb-5" aria-label="Outcome requirements">
+    <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-semibold text-ink">Outcome requirements</h3>
+      <button type="button" className="text-sm font-semibold text-brand-blue" onClick={()=>setAdding(!adding)}>{adding?'Cancel':'Add requirement'}</button></div>
+    <p className="mt-1 text-xs text-muted">Record what this opportunity needs to establish. A missing answer stays unknown until you link a real proposition.</p>
+    {next && <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm"><p className="font-semibold">Next question · {roleLabel[next.requirement.role]}</p>
+      <p className="mt-1">{requirementQuestion(next)}</p><p className="mt-1 text-xs text-muted">{next.conditionState==='contradicted'?'Conflicting current evidence':next.conditionState==='unknown'?'No answer recorded':next.conditionState==='assumed'?'Operating assumption':'Still being tested'} · {next.requirement.expectedOutcome}</p>
+      <p className="mt-1 text-xs text-muted">Source: requirement {next.requirement.id}{next.condition?` · condition ${next.condition.id}`:''}{next.sourceEvidenceIds.length?` · evidence ${next.sourceEvidenceIds.join(', ')}`:''}</p></div>}
+    {!active.length && <p className="mt-3 text-sm text-muted">No outcome requirements recorded for this opportunity.</p>}
+    {readings.map(reading=><RequirementRow key={reading.requirement.id} reading={reading} conditions={conditions} evidence={evidence}
+      onChange={change=>accept(changeOutcomeRequirement(scope,reading.requirement.id,reading.requirement.updatedAt,change,refs()))}
+      onAnswer={(statement,intent,evidenceId,assessment)=>{
+        const c=createCommercialCondition(scope,{accountId:reading.requirement.accountId,opportunityId:opportunity.id,
+          statement,conditionCategory:'decision',intent,validFrom:null,...(evidenceId?{evidence:{evidenceId,assessment}}:{})},
+          conditionReferenceIndex(accounts,[opportunity],loadCommercialEvidence()));
+        if (!c.ok) {onMessage(c.error);return false;}
+        if (c.warning) onMessage(c.warning);
+        return accept(changeOutcomeRequirement(scope,reading.requirement.id,reading.requirement.updatedAt,{kind:'link',conditionId:c.value.id},refs()));
+      }} />)}
+    {retired.length>0 && <details className="mt-3 text-sm"><summary>Retired requirements ({retired.length})</summary>{retired.map(r=><p key={r.id} className="mt-2 text-muted">{r.expectedOutcome}</p>)}</details>}
+    {adding && <div className="mt-4 space-y-3 border-t border-line pt-3">
+      <label className="block text-sm">Account<select className={inputClass} value={accountId} onChange={e=>{setAccountId(e.target.value);setConditionId('');}}><option value="">Choose account</option>{accounts.filter(a=>Boolean(a.isSample || a.source==='demo')===sampleDataActive && (!opportunity.accountId || a.id===opportunity.accountId)).map(a=><option key={a.id} value={a.id}>{a.accountName}</option>)}</select></label>
+      <label className="block text-sm">Required outcome or knowledge<textarea className={inputClass} maxLength={1000} value={expectedOutcome} onChange={e=>setExpectedOutcome(e.target.value)} placeholder="For example: Know who gives final financial approval" /></label>
+      <label className="block text-sm">Question to ask (optional)<input className={inputClass} maxLength={1000} value={question} onChange={e=>setQuestion(e.target.value)} placeholder="Who gives final financial approval?" /></label>
+      <label className="block text-sm">Role<select className={inputClass} value={role} onChange={e=>setRole(e.target.value as RequirementRole)}>{requirementRoles.map(r=><option key={r} value={r}>{roleLabel[r]}</option>)}</select></label>
+      <label className="block text-sm">Existing condition (optional)<select className={inputClass} value={conditionId} onChange={e=>setConditionId(e.target.value)}><option value="">No answer recorded yet</option>{choices.map(c=><option key={c.id} value={c.id}>{c.statement}</option>)}</select></label>
+      <button type="button" disabled={!accountId || !expectedOutcome.trim()} className="rounded-lg bg-brand-blue px-3 py-2 text-sm font-semibold text-white disabled:opacity-40" onClick={()=>{
+        if(accept(createOutcomeRequirement(scope,{accountId,opportunityId:opportunity.id,expectedOutcome,question,role,conditionId},refs()))) {setAdding(false);setExpectedOutcome('');setQuestion('');setConditionId('');}
+      }}>Record requirement</button>
+    </div>}
+  </div>;
+}
+export function RequirementRow({reading,conditions,evidence,onChange,onAnswer}:{reading:ReturnType<typeof projectOutcomeRequirements>[number];conditions:CommercialCondition[];evidence:CommercialEvidence[];
+  onChange:(change:Parameters<typeof changeOutcomeRequirement>[3])=>boolean;
+  onAnswer:(statement:string,intent:ConditionIntent,evidenceId:string,assessment:ConditionEvidenceLink['assessment'])=>boolean;
+}) {
+  const [answering,setAnswering]=useState(false);const [statement,setStatement]=useState('');const [intent,setIntent]=useState<ConditionIntent>('hypothesis');
+  const [evidenceId,setEvidenceId]=useState('');const [assessment,setAssessment]=useState<ConditionEvidenceLink['assessment']>('supports');
+  const r=reading.requirement;
+  const choices=conditions.filter(c=>c.lifecycle==='active' && c.accountId===r.accountId && (!c.opportunityId || c.opportunityId===r.opportunityId) && c.id!==r.conditionId);
+  const evidenceChoices=evidence.filter(e=>(e.accountId===r.accountId || (!e.accountId && e.opportunityId===r.opportunityId)) && (!e.opportunityId || e.opportunityId===r.opportunityId));
+  return <details className="mt-3 border-t border-line pt-3"><summary className="cursor-pointer text-sm"><strong className="mr-2">{roleLabel[r.role]} · {reading.resolution}</strong>{r.expectedOutcome}</summary>
+    <p className="mt-2 text-sm">{requirementQuestion(reading)}</p><p className="mt-1 text-xs text-muted">Condition: {reading.condition?.statement || 'None'} · State: {reading.conditionState} · Source: {r.sourceType}</p>
+    {reading.sourceEvidenceIds.length>0 && <p className="mt-1 text-xs text-muted">Current evidence: {reading.sourceEvidenceIds.join(', ')}</p>}
+    <div className="mt-3 space-y-3"><label className="block text-sm">Role<select className={inputClass} value={r.role} onChange={e=>onChange({kind:'role',role:e.target.value as RequirementRole})}>{requirementRoles.map(role=><option key={role} value={role}>{roleLabel[role]}</option>)}</select></label>
+      <label className="block text-sm">Link an existing condition<select className={inputClass} value="" onChange={e=>{if(e.target.value) onChange({kind:'link',conditionId:e.target.value});}}><option value="">Choose a real proposition</option>{choices.map(c=><option key={c.id} value={c.id}>{c.statement}</option>)}</select></label>
+      <button type="button" className="mr-4 text-sm text-brand-blue" onClick={()=>setAnswering(!answering)}>{answering?'Cancel answer':'Record answer as a condition'}</button>
+      <button type="button" className="text-sm text-muted" onClick={()=>onChange({kind:'retire'})}>Retire requirement</button>
+      {answering && <div className="space-y-2 rounded-lg border border-line p-3"><label className="block text-sm">What is the actual proposition?<textarea className={inputClass} maxLength={1000} value={statement} onChange={e=>setStatement(e.target.value)} /></label>
+        <label className="block text-sm">Without supporting evidence, treat as<select className={inputClass} value={intent} onChange={e=>setIntent(e.target.value as ConditionIntent)}>{Object.entries(intentLabels).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
+        <label className="block text-sm">Existing evidence (optional)<select className={inputClass} value={evidenceId} onChange={e=>setEvidenceId(e.target.value)}><option value="">No evidence linked</option>{evidenceChoices.map(e=><option key={e.id} value={e.id}>{e.summary} · {e.observedAt}</option>)}</select></label>
+        {evidenceId && <EvidenceAssessment value={assessment} onChange={setAssessment} />}
+        <button type="button" disabled={!statement.trim()} className="text-sm font-semibold text-brand-blue disabled:opacity-40" onClick={()=>{if(onAnswer(statement,intent,evidenceId,assessment)){setAnswering(false);setStatement('');setEvidenceId('');}}}>Record answer and link</button>
+      </div>}
+    </div>
   </details>;
 }

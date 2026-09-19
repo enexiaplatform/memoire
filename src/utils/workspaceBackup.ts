@@ -1,6 +1,8 @@
 import { conditionReferenceIndex, validateConditionReferences } from '../domain/commercialKernel/conditionReferences.ts';
 import type { CommercialCondition } from '../domain/commercialKernel/commercialCondition.ts';
 import type { CommercialEvidence } from '../domain/commercialKernel/commercialEvidence.ts';
+import { validateRequirementReferences, requirementReferenceIndex } from '../domain/commercialKernel/requirementCommands.ts';
+import type { OutcomeRequirement } from '../domain/commercialKernel/outcomeRequirement.ts';
 import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KEY, isSampleRecord, recordIdentity, validateCanonicalRecord, type RecordData } from '../services/canonicalDurability.ts';
 /**
  * The other half of export.
@@ -14,8 +16,8 @@ import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KE
  * backup, what never comes back in - can be tested without a browser.
  */
 
-/** Format 4 adds canonical Conditions. Versions 1-3 remain readable; older apps must refuse v4. */
-export const BACKUP_FORMAT_VERSION = 4;
+/** Format 5 adds canonical Outcome Requirements. Versions 1-4 remain readable. */
+export const BACKUP_FORMAT_VERSION = 5;
 export const BACKUP_KEY_PREFIX = 'memoire.';
 
 export type BackupEnvelope = {
@@ -234,6 +236,15 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
       normalized['memoire.commercialEvidence.v1'] as CommercialEvidence[] || [],
     );
     for (const condition of conditions) validateConditionReferences(condition, index);
+  }
+  const requirements = normalized['memoire.outcomeRequirements.v1'] as OutcomeRequirement[] | undefined;
+  if (requirements?.length) {
+    const index = requirementReferenceIndex(
+      normalized['memoire.accounts.v1'] as {id:string}[] || [],
+      normalized['memoire.opportunities.v1'] as {id:string}[] || [],
+      conditions || [],
+    );
+    for (const requirement of requirements) validateRequirementReferences(requirement,index);
   }
   const writes = Object.keys(normalized).sort().map(key => {
     const value = normalized[key];

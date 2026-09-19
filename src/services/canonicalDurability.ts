@@ -1,4 +1,5 @@
 import { conditionCodec } from './commercialKernel/conditionStore.ts';
+import { requirementCodec } from './commercialKernel/requirementStore.ts';
 /** One inventory for backup decoding, restore routing, and future-entity checks. */
 import { threadCodec } from './commercialKernel/threadStore.ts';
 import { commitmentCodec } from './commercialKernel/commitmentStore.ts';
@@ -15,7 +16,7 @@ import * as enums from '../domain/commercialKernel/types.ts';
 import { evidenceCategories, evidenceDirections } from '../domain/commercialKernel/commercialEvidence.ts';
 
 export type RecordData = Record<string, unknown>;
-export const kernelCodecs = [threadCodec, commitmentCodec, eventCodec, evidenceCodec, valueOutcomeCodec, conditionCodec] as const;
+export const kernelCodecs = [threadCodec, commitmentCodec, eventCodec, evidenceCodec, valueOutcomeCodec, conditionCodec, requirementCodec] as const;
 export type CanonicalContract = {
   table: string;
   key: string;
@@ -114,8 +115,8 @@ export function validateCanonicalRecord(contract: CanonicalContract, value: unkn
     }
   }
   if (contract.kind !== 'kernel') return;
-  if (contract.table === 'commercial_conditions') {
-    if (!conditionCodec.sanitize(r)) throw new Error('commercial_conditions: invalid proposition, references, intent or dates.');
+  if (contract.table === 'commercial_conditions' || contract.table === 'commercial_outcome_requirements') {
+    if (!(contract.table === 'commercial_conditions' ? conditionCodec : requirementCodec).sanitize(r)) throw new Error(`${contract.table}: invalid canonical record.`);
     return;
   }
   for (const [key, allowed] of Object.entries(closedEnums)) {

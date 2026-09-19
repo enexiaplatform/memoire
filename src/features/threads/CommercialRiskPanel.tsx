@@ -112,7 +112,7 @@ export function CommercialRiskPanel({
                     is labelled is a list with no first row. */}
                 {item.rank === 1 && (
                   <span className="rounded-full bg-navy px-2 py-0.5 text-[10px] font-bold uppercase text-white">
-                    Best move
+                    {item.question ? 'Next question' : 'Best move'}
                   </span>
                 )}
                 <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold uppercase text-gray-500 ring-1 ring-gray-200">
@@ -120,6 +120,8 @@ export function CommercialRiskPanel({
                 </span>
               </div>
             </div>
+
+            {item.question && <p className="mt-2 text-sm font-semibold text-ink">{item.question}</p>}
 
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
               <Link
@@ -137,7 +139,7 @@ export function CommercialRiskPanel({
                 <Info className="h-3 w-3" />
                 Why am I seeing this?
               </button>
-              <SavedByMemoirePrompt recommendation={item} />
+              {item.reasonCode !== 'OUTCOME_REQUIREMENT_QUESTION' && <SavedByMemoirePrompt recommendation={item} />}
             </div>
 
             {explaining === item.id && (
@@ -165,9 +167,10 @@ export function CommercialRiskPanel({
                   <dt className="font-bold text-gray-500">Rule:</dt>
                   <dd><code>{item.reasonCode}</code></dd>
                 </div>
+                {item.requirementId && <div className="flex gap-2"><dt className="font-bold text-gray-500">Requirement:</dt><dd>{item.requirementId} · {item.requirementRole?.replaceAll('_',' ')} · {item.conditionState}</dd></div>}
                 <div className="flex gap-2">
                   <dt className="font-bold text-gray-500">Threshold:</dt>
-                  <dd>{item.threshold}</dd>
+                  <dd>{item.reasonCode === 'OUTCOME_REQUIREMENT_QUESTION' ? 'Explicitly marked required now' : item.threshold}</dd>
                 </div>
                 <div className="flex gap-2">
                   <dt className="font-bold text-gray-500">From records:</dt>

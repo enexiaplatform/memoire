@@ -65,6 +65,7 @@ export const exportTables = [
   { table: 'commercial_value_outcomes', ownerColumn: 'user_id' },
   { table: 'commercial_evidence', ownerColumn: 'user_id' },
   { table: 'commercial_conditions', ownerColumn: 'user_id' },
+  { table: 'commercial_outcome_requirements', ownerColumn: 'user_id' },
   // The money side. A backup of a distributor's workspace that carries what they
   // sold and not what it cost them is not a backup of their business.
   { table: 'quotes', ownerColumn: 'user_id' },

@@ -113,6 +113,7 @@ export const deltaChangeKinds = [
   'thread_silent',
   'no_next_commitment',
   'stage_without_evidence',
+  'requirement_unresolved',
   'next_action_missing',
   'quote_expiring',
   'money_checkpoint_stuck',
@@ -275,6 +276,7 @@ const CONDITION_BY_REASON: Record<ReasonCode, {
   MONEY_CHECKPOINT_STUCK: { kind: 'money_checkpoint_stuck', dimension: 'money', direction: 'weakened' },
   PERIOD_COVERAGE_LOW: { kind: 'coverage_low', dimension: 'money', direction: 'weakened' },
   FORECAST_NOT_SUPPORTED: { kind: 'forecast_unsupported', dimension: 'qualification', direction: 'weakened' },
+  OUTCOME_REQUIREMENT_QUESTION: { kind: 'requirement_unresolved', dimension: 'qualification', direction: 'neutral' },
 };
 
 /** Which part of the deal an objection is really about. */
@@ -1262,4 +1264,3 @@ export { CONDITION_BY_REASON as deltaConditionByReason };
 
 /** Exported so a contract can hold the ranking's copy of this in step. */
 export { DIMENSION_BY_OBJECTION as deltaObjectionDimension };
-

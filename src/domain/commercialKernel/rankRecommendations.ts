@@ -215,6 +215,7 @@ const RULE_SHAPE: Record<ReasonCode, {
   PERIOD_COVERAGE_LOW: { urgency: 'this_week', unblocking: 'advances', evidence: 'specific' },
   COMMITMENT_REPEATEDLY_RESCHEDULED: { urgency: 'soon', unblocking: 'advances', evidence: 'specific' },
   FORECAST_NOT_SUPPORTED: { urgency: 'soon', unblocking: 'advances', evidence: 'specific' },
+  OUTCOME_REQUIREMENT_QUESTION: { urgency: 'soon', unblocking: 'unblocks', evidence: 'partial' },
   THREAD_SILENT: { urgency: 'soon', unblocking: 'advances', evidence: 'partial' },
   THREAD_WITHOUT_NEXT_COMMITMENT: { urgency: 'soon', unblocking: 'unblocks', evidence: 'absence_only' },
   OPPORTUNITY_WITHOUT_FUTURE_ACTION: { urgency: 'soon', unblocking: 'unblocks', evidence: 'absence_only' },
@@ -271,6 +272,7 @@ const RULE_CONCERNS: Record<ReasonCode, readonly CommercialDimension[]> = {
   OPPORTUNITY_WITHOUT_FUTURE_ACTION: ['momentum'],
   OPPORTUNITY_WITHOUT_STAGE_EVIDENCE: ['qualification', 'technical'],
   FORECAST_NOT_SUPPORTED: ['qualification'],
+  OUTCOME_REQUIREMENT_QUESTION: ['qualification'],
   QUOTE_EXPIRING: ['money', 'purchasing'],
   MONEY_CHECKPOINT_STUCK: ['money', 'purchasing'],
   PERIOD_COVERAGE_LOW: ['money'],
@@ -685,6 +687,9 @@ function changeIsRelevant(
   recommendation: Recommendation,
   context: RankingContext,
 ): boolean {
+  // A requirement is a declared question, not a stage or a dated commitment.
+  // Generic deal changes cannot raise its urgency without an explicit link.
+  if (recommendation.reasonCode === 'OUTCOME_REQUIREMENT_QUESTION') return false;
   if (TIMING_CHANGE_KINDS.includes(change.kind)) {
     // Timing reaches anything with a clock on it, and nothing without one.
     return RULE_SHAPE[recommendation.reasonCode].urgency !== 'whenever';

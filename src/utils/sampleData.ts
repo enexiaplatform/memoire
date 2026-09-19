@@ -1,4 +1,5 @@
 import { CONDITION_STORAGE_KEY } from '../services/commercialKernel/conditionStore';
+import { REQUIREMENT_STORAGE_KEY } from '../services/commercialKernel/requirementStore';
 import { ACCOUNT_STORAGE_KEY, type AccountMemoryRecord } from '../services/accountStore';
 import { toLocalDateKey } from './safeDate.ts';
 import { OPPORTUNITY_STORAGE_KEY, type CrmLiteOpportunity } from '../services/opportunityStore';
@@ -190,6 +191,7 @@ export function clearSampleDataset() {
   removeSampleRecords(ACCOUNT_MERGE_STORAGE_KEY);
   removeSampleRecords(NUDGE_STORAGE_KEY);
   removeSampleRecords(CONDITION_STORAGE_KEY);
+  removeSampleRecords(REQUIREMENT_STORAGE_KEY);
   clearDemoJourneyCompletion();
   clearDailyExecutionState('demo');
   clearSampleDataFlag();

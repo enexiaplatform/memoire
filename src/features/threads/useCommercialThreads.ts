@@ -22,6 +22,8 @@ import {
   type CommercialTarget,
 } from '../../services/commercialKernel/targetStore';
 import { COMMITMENTS_UPDATED_EVENT } from '../../services/commercialKernel/commitmentStore';
+import { CONDITION_UPDATED_EVENT } from '../../services/commercialKernel/conditionStore';
+import { REQUIREMENT_UPDATED_EVENT } from '../../services/commercialKernel/requirementStore';
 import { THREADS_UPDATED_EVENT } from '../../services/commercialKernel/threadStore';
 import { mergePlanCommitments } from '../../domain/commercialKernel/derivePlanCommitments';
 import { loadPlanItemsForWorkspace, PLAN_ITEMS_UPDATED_EVENT } from '../../services/planItemStore';
@@ -94,10 +96,14 @@ export function useCommercialThreads() {
     };
     window.addEventListener(COMMITMENTS_UPDATED_EVENT, bump);
     window.addEventListener(THREADS_UPDATED_EVENT, bump);
+    window.addEventListener(CONDITION_UPDATED_EVENT, bump);
+    window.addEventListener(REQUIREMENT_UPDATED_EVENT, bump);
     window.addEventListener(PLAN_ITEMS_UPDATED_EVENT, onPlanItems);
     return () => {
       window.removeEventListener(COMMITMENTS_UPDATED_EVENT, bump);
       window.removeEventListener(THREADS_UPDATED_EVENT, bump);
+      window.removeEventListener(CONDITION_UPDATED_EVENT, bump);
+      window.removeEventListener(REQUIREMENT_UPDATED_EVENT, bump);
       window.removeEventListener(PLAN_ITEMS_UPDATED_EVENT, onPlanItems);
     };
   }, []);
@@ -169,6 +175,8 @@ export function useCommercialThreads() {
       // What the seller has recorded learning. Without it, "nothing recorded
       // supports that stage" is said over a deal whose trial result is on file.
       evidence: workspace.evidence,
+      conditions: workspace.conditions,
+      requirements: workspace.requirements,
       // In the demo, the sample data is the workspace. Anywhere else, a demo
       // record must never raise a real risk.
       includeSampleRecords: sampleDataActive,

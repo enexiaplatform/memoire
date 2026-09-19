@@ -772,7 +772,7 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
         {/* The watch-list read three other ways. Each is derived from the same
             records as the alarms on Today, with the rule and the threshold
             behind them shown - which is reference, not a first action. */}
-        <CommercialRiskPanel recommendations={kernelRecommendations} />
+        <CommercialRiskPanel recommendations={kernelRecommendations} title="Commercial priorities" />
         {commercialThreads.length > 0 && (
           <section aria-label="Commercial threads">
             <div className="mb-2 flex items-baseline justify-between">

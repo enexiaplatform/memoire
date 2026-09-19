@@ -56,6 +56,7 @@ const expectedTables = [
   ['commercial_value_outcomes', 'user_id'],
   ['commercial_evidence', 'user_id'],
   ['commercial_conditions', 'user_id'],
+  ['commercial_outcome_requirements', 'user_id'],
   // The money side. An export missing these hands a distributor their pipeline
   // and nothing about what it cost them.
   ['quotes', 'user_id'],

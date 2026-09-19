@@ -123,6 +123,8 @@ M2 may rely on the hardened Evidence/Kernel creation, temporal preservation, det
 
 ## ADDING A NEW CANONICAL COMMERCIAL ENTITY
 
+M3's `commercial_outcome_requirements` follows this checklist. Its canonical route is `requirementCodec` → `canonicalContracts` → export manifest → format-5 restore preflight. Restore requires Account and Opportunity anchors, and a same-owner/scope Condition only when `conditionId` is present; an unlinked Requirement is valid and derives unknown. Cloud restore order places the Requirement after Conditions. Browser acceptance precedes event history and reports degraded history rather than repeating an accepted state change. Actual RLS and codec tests cover the new relation. See [M3 architecture](m3-outcome-requirements.md).
+
 - [ ] Define the type/model, closed vocabularies, identity, lifecycle and required versus historical/optional references.
 - [ ] Declare authoritative persistence for local, signed-in, offline and sample modes; reject a refused canonical write.
 - [ ] Add/review cloud schema, ownership predicates and RLS when cloud persistence is required; do not assume a service-role restore.

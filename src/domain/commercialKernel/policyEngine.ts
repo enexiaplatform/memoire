@@ -5,6 +5,8 @@ import type { CoverageReport } from './forecast.ts';
 import { isThreadClosed } from './types.ts';
 import type { QuoteRecord } from '../../services/quoteStore';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
+import { nextBestQuestion, projectOutcomeRequirements, requirementQuestion, type OutcomeRequirement } from './outcomeRequirement.ts';
+import type { CommercialCondition } from './commercialCondition.ts';
 import {
   projectCurrentEvidence,
   supportingEvidenceFor,
@@ -45,6 +47,7 @@ export const reasonCodes = [
   'MONEY_CHECKPOINT_STUCK',
   'PERIOD_COVERAGE_LOW',
   'FORECAST_NOT_SUPPORTED',
+  'OUTCOME_REQUIREMENT_QUESTION',
 ] as const;
 export type ReasonCode = (typeof reasonCodes)[number];
 
@@ -68,6 +71,10 @@ export type Recommendation = {
   commitmentId?: string | null;
   /** Where to go to act on it. */
   href: string;
+  requirementId?: string;
+  requirementRole?: OutcomeRequirement['role'];
+  conditionState?: string;
+  question?: string;
 };
 
 /**
@@ -140,6 +147,8 @@ export type PolicyInput = {
    * declared satisfied by evidence nobody looked for.
    */
   evidence?: CommercialEvidence[];
+  requirements?: OutcomeRequirement[];
+  conditions?: CommercialCondition[];
 };
 
 const SEVERITY_ORDER: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -168,12 +177,36 @@ export function evaluateCommercialPolicies(input: PolicyInput): Recommendation[]
     ),
     ...quoteRules(input.quotes.filter(isVisible), todayKey, thresholds, calculatedAt),
     ...coverageRules(input.coverage, thresholds, calculatedAt),
+    ...requirementQuestionRules(input, calculatedAt, isVisible, leadIds),
   ];
 
   return dropDuplicateNextStepWarnings(recommendations).sort((left, right) => {
     const bySeverity = SEVERITY_ORDER[left.severity] - SEVERITY_ORDER[right.severity];
     return bySeverity !== 0 ? bySeverity : left.accountName.localeCompare(right.accountName);
   });
+}
+
+/** One explicitly declared, unresolved required-now question per open deal.
+ * A small portfolio cap keeps questions from crowding dated money work on Today. */
+function requirementQuestionRules(input: PolicyInput, calculatedAt: string, isVisible: (r:{isSample?:boolean})=>boolean, leadIds:Set<string>): Recommendation[] {
+  const opportunities = new Map(input.opportunities.filter(isVisible).map(o => [o.id,o]));
+  const grouped = new Map<string, ReturnType<typeof projectOutcomeRequirements>>();
+  for (const reading of projectOutcomeRequirements((input.requirements || []).filter(isVisible), (input.conditions || []).filter(isVisible), (input.evidence || []).filter(isVisible))) {
+    const r=reading.requirement; const opportunity=opportunities.get(r.opportunityId);
+    if (!opportunity || opportunity.status !== 'Active' || leadIds.has(r.opportunityId) || r.lifecycle !== 'active' || r.role !== 'required_now') continue;
+    const list=grouped.get(r.opportunityId) || []; list.push(reading); grouped.set(r.opportunityId,list);
+  }
+  return [...grouped.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([opportunityId,readings])=>{
+    const reading=nextBestQuestion(readings); if (!reading) return null;
+    const opportunity=opportunities.get(opportunityId)!; const r=reading.requirement;
+    const status=reading.conditionState === 'contradicted' ? 'Conflicting evidence' : reading.conditionState === 'unknown' ? 'No answer is recorded' : reading.conditionState === 'assumed' ? 'Only an assumption is recorded' : 'The proposition is still being tested';
+    return {id:`${r.id}:question`,reasonCode:'OUTCOME_REQUIREMENT_QUESTION' as const,
+      reasonText:`${status} for required outcome “${r.expectedOutcome}” on ${opportunity.opportunityName}.`,
+      sourceRecordIds:[r.id,...(r.conditionId?[r.conditionId]:[]),...reading.sourceEvidenceIds],threshold:0,
+      severity:'medium' as const,recommendedAction:'Resolve this question',question:requirementQuestion(reading),calculatedAt,
+      accountName:opportunity.accountName,opportunityId,requirementId:r.id,requirementRole:r.role,conditionState:reading.conditionState,
+      href:`/app/opportunities?opportunityId=${encodeURIComponent(opportunityId)}`};
+  }).filter((r):r is NonNullable<typeof r>=>r!==null);
 }
 
 /**

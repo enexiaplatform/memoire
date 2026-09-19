@@ -121,6 +121,7 @@ const ALERT_LABEL: Record<ReasonCode, string> = {
   MONEY_CHECKPOINT_STUCK: 'Unblock the money checkpoint',
   PERIOD_COVERAGE_LOW: 'Work the coverage gap for the quarter',
   FORECAST_NOT_SUPPORTED: 'Re-test the forecast that nothing backs',
+  OUTCOME_REQUIREMENT_QUESTION: 'Ask the required outcome question',
 };
 
 /**

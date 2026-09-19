@@ -42,6 +42,7 @@ const { projectCurrentEvidence } = await import('../../src/domain/commercialKern
 const conditionCommands = await import('../../src/domain/commercialKernel/conditionCommands.ts');
 const { conditionReferenceIndex } = await import('../../src/domain/commercialKernel/conditionReferences.ts');
 const { projectCommercialConditions } = await import('../../src/domain/commercialKernel/commercialCondition.ts');
+const requirementCommands = await import('../../src/domain/commercialKernel/requirementCommands.ts');
 const at = '2026-08-12T10:30:00.000Z';
 const later = '2026-09-10T12:30:00.000Z';
 const base = { userId: 'owner', accountId: 'a', accountName: 'Acme', opportunityId: 'o', threadId: 't',
@@ -55,8 +56,9 @@ const fixtures = [
   { ...base, id: 'ev', category: 'technical_outcome', direction: 'positive', evidenceText: 'Retest passed', summary: 'Passed', observedAt: '2026-08-11', sourceActivityId: 'activity-1' },
   { ...base, id: 'v', outcomeType: 'payment_recovered', userAssessment: 'protected_revenue_or_payment', recommendationId: 'rec-1', impactAmount: 3200, impactCurrency: 'USD', confidence: 0.75, note: 'Buyer paid' },
   { ...base, id: 'condition', statement: 'Technical fit is accepted.', conditionCategory: 'technical', intent: 'hypothesis', lifecycle: 'active', validFrom: null, evidenceLinks: [] },
+  { ...base, id: 'requirement', expectedOutcome: 'Know who approves budget', question: 'Who approves budget?', conditionId: null, role: 'required_now', lifecycle: 'active' },
 ].map((fixture, i) => kernelCodecs[i].sanitize(fixture));
-const backup = localBrowserData => ({ formatVersion: 4, exportedAt: later, localBrowserData });
+const backup = localBrowserData => ({ formatVersion: 5, exportedAt: later, localBrowserData });
 const kernelBackup = () => backup(Object.fromEntries(kernelCodecs.slice(0, 5).map((codec, i) => [codec.storageKey, [fixtures[i]]])));
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 beforeEach(async () => { await tick(); storage.data.clear(); storage.refuse = () => false; requests.length = 0; rejectedTable = ''; });
@@ -66,7 +68,7 @@ for (const [i, codec] of kernelCodecs.entries()) {
     const original = fixtures[i];
     const row = codec.toRow(original, 'owner');
     const file = { ...backup({}), cloudData: { user_id: 'owner', manifest: { complete: true }, data: { [codec.table]: [row] } } };
-    if (codec.table === 'commercial_conditions') {
+    if (codec.table === 'commercial_conditions' || codec.table === 'commercial_outcome_requirements') {
       file.localBrowserData['memoire.accounts.v1'] = [{ id: 'a', userId: 'owner', accountName: 'Acme' }];
       file.localBrowserData['memoire.opportunities.v1'] = [{ id: 'o', userId: 'owner', accountName: 'Acme' }];
     }
@@ -353,7 +355,7 @@ test('Condition command accepts durable state before history; failed state creat
   const scope = { userId: 'owner' };
   const index = conditionReferenceIndex([{id:'a',userId:'owner'}],[{id:'o',userId:'owner',accountId:'a'}],[]);
   const input = { accountId:'a',opportunityId:'o',statement:'QA accepts the remaining shelf life.',conditionCategory:'technical',intent:'hypothesis' };
-  const conditionKey = kernelCodecs.at(-1).storageKey, eventKey=kernelCodecs[2].storageKey;
+  const conditionKey = kernelCodecs[5].storageKey, eventKey=kernelCodecs[2].storageKey;
   storage.refuse = key => key === conditionKey;
   const rejected=conditionCommands.createCommercialCondition(scope,input,index);
   assert.equal(rejected.ok,false); assert.equal(storage.getItem(eventKey),null);
@@ -365,14 +367,14 @@ test('Condition command accepts durable state before history; failed state creat
 });
 
 test('Condition explicit links survive cloud codec, backup and restore with stable IDs, provenance, dates and scope', async () => {
-  const condition=kernelCodecs.at(-1).sanitize({...fixtures.at(-1),sourceType:'email',sourceId:'mail-73',validFrom:'2026-08-01',
+  const condition=kernelCodecs[5].sanitize({...fixtures[5],sourceType:'email',sourceId:'mail-73',validFrom:'2026-08-01',
     evidenceLinks:[{evidenceId:'ev',assessment:'supports',recordedAt:later}]});
   const file=backup({ 'memoire.accounts.v1':[{id:'a',userId:'owner',accountName:'Acme'}],
     'memoire.opportunities.v1':[{id:'o',userId:'owner',accountName:'Acme',accountId:'a'}],
-    [kernelCodecs[3].storageKey]:[fixtures[3]], [kernelCodecs.at(-1).storageKey]:[condition] });
+    [kernelCodecs[3].storageKey]:[fixtures[3]], [kernelCodecs[5].storageKey]:[condition] });
   const parsed=parseBackupFile(JSON.stringify(file)); assert.equal(parsed.ok,true,parsed.message);
   const result=await restoreWorkspace(parsed.envelope,{userId:'owner'}); assert.equal(result.ok,true);
-  assert.deepEqual(JSON.parse(storage.getItem(kernelCodecs.at(-1).storageKey))[0],condition);
+  assert.deepEqual(JSON.parse(storage.getItem(kernelCodecs[5].storageKey))[0],condition);
   assert.equal(projectCommercialConditions([condition],[fixtures[3]]).get(condition.id).state,'supported');
   const cloudRequest=requests.find(request=>request.table==='commercial_conditions');
   assert.equal(cloudRequest.rows[0].evidence_links[0].evidenceId,'ev');
@@ -381,13 +383,13 @@ test('Condition explicit links survive cloud codec, backup and restore with stab
 });
 
 test('Condition restore refuses missing/foreign evidence and absent canonical account before mutating anything',async()=>{
-  const original=kernelCodecs.at(-1).sanitize({...fixtures.at(-1),evidenceLinks:[{evidenceId:'ev',assessment:'supports',recordedAt:later}]});
+  const original=kernelCodecs[5].sanitize({...fixtures[5],evidenceLinks:[{evidenceId:'ev',assessment:'supports',recordedAt:later}]});
   const parents={'memoire.accounts.v1':[{id:'a',userId:'owner',accountName:'Acme'}],
     'memoire.opportunities.v1':[{id:'o',userId:'owner',accountName:'Acme',accountId:'a'}]};
   for (const localBrowserData of [
-    {...parents,[kernelCodecs.at(-1).storageKey]:[original]},
-    {...parents,[kernelCodecs[3].storageKey]:[{...fixtures[3],userId:'other'}],[kernelCodecs.at(-1).storageKey]:[original]},
-    {'memoire.opportunities.v1':parents['memoire.opportunities.v1'],[kernelCodecs[3].storageKey]:[fixtures[3]],[kernelCodecs.at(-1).storageKey]:[original]},
+    {...parents,[kernelCodecs[5].storageKey]:[original]},
+    {...parents,[kernelCodecs[3].storageKey]:[{...fixtures[3],userId:'other'}],[kernelCodecs[5].storageKey]:[original]},
+    {'memoire.opportunities.v1':parents['memoire.opportunities.v1'],[kernelCodecs[3].storageKey]:[fixtures[3]],[kernelCodecs[5].storageKey]:[original]},
   ]) {
     const before=[...storage.data];
     assert.equal(parseBackupFile(JSON.stringify(backup(localBrowserData))).ok,false);
@@ -402,7 +404,7 @@ test('sample Condition and its evidence stay local and are dropped from live res
   const result=conditionCommands.createCommercialCondition(scope,{accountId:'a',opportunityId:'o',statement:'Sample proposition.',conditionCategory:'other',intent:'assumed'},index);
   assert.equal(result.ok,true); assert.equal(result.value.isSample,true);
   await tick(); assert.equal(requests.find(r=>r.table==='commercial_conditions'),undefined);
-  const file=backup({[kernelCodecs.at(-1).storageKey]:[result.value]});
+  const file=backup({[kernelCodecs[5].storageKey]:[result.value]});
   const plan=buildRestorePlan(file); assert.equal(plan.droppedSampleRecords,1);
 });
 
@@ -413,6 +415,62 @@ test('Condition command rejects an empty proposition and mismatched account with
     {accountId:'a',opportunityId:'o',statement:' ',conditionCategory:'technical',intent:'assumed'},
     {accountId:'other',opportunityId:'o',statement:'Technical fit is accepted.',conditionCategory:'technical',intent:'assumed'},
   ]) assert.equal(conditionCommands.createCommercialCondition(scope,input,index).ok,false);
-  assert.equal(storage.getItem(kernelCodecs.at(-1).storageKey),null);
+  assert.equal(storage.getItem(kernelCodecs[5].storageKey),null);
   assert.equal(storage.getItem(kernelCodecs[2].storageKey),null);
+});
+
+test('Requirement command rejects failed state before history, and warns when only history fails',()=>{
+  const scope={userId:'owner'};
+  const refs=requirementCommands.requirementReferenceIndex([{id:'a',userId:'owner'}],[{id:'o',userId:'owner',accountId:'a'}],[]);
+  const input={accountId:'a',opportunityId:'o',expectedOutcome:'Know final approver',role:'required_now'};
+  const key=kernelCodecs[6].storageKey,eventKey=kernelCodecs[2].storageKey;
+  storage.refuse=k=>k===key;
+  const rejected=requirementCommands.createOutcomeRequirement(scope,input,refs);
+  assert.equal(rejected.ok,false);assert.equal(storage.getItem(eventKey),null);
+  storage.refuse=k=>k===eventKey;
+  const accepted=requirementCommands.createOutcomeRequirement(scope,input,refs);
+  assert.equal(accepted.ok,true);assert.match(accepted.warning,/Do not repeat/);
+  assert.equal(JSON.parse(storage.getItem(key))[0].id,accepted.value.id);
+});
+
+test('Requirement restore rejects missing parent, foreign Condition and sample leakage before mutation',()=>{
+  const r={...fixtures[6],conditionId:'condition'};
+  const parents={'memoire.accounts.v1':[{id:'a',userId:'owner'}],
+    'memoire.opportunities.v1':[{id:'o',userId:'owner',accountId:'a'}]};
+  for(const data of [
+    {...parents,[kernelCodecs[6].storageKey]:[r]},
+    {...parents,[kernelCodecs[5].storageKey]:[{...fixtures[5],userId:'other'}],[kernelCodecs[6].storageKey]:[r]},
+    {'memoire.accounts.v1':parents['memoire.accounts.v1'],[kernelCodecs[6].storageKey]:[fixtures[6]]},
+  ]) assert.equal(parseBackupFile(JSON.stringify(backup(data))).ok,false);
+  const sample={...fixtures[6],isSample:true};
+  const plan=buildRestorePlan(backup({[kernelCodecs[6].storageKey]:[sample]}));
+  assert.equal(plan.droppedSampleRecords,1);
+});
+
+test('Requirement starts unknown, links a later Condition, changes role and retires without losing identity',()=>{
+  const scope={userId:'owner'};
+  const refs=requirementCommands.requirementReferenceIndex([{id:'a',userId:'owner'}],[{id:'o',userId:'owner',accountId:'a'}],[]);
+  const created=requirementCommands.createOutcomeRequirement(scope,{accountId:'a',opportunityId:'o',expectedOutcome:'Know final approver',role:'required_now'},refs);
+  assert.equal(created.ok,true);assert.equal(created.value.conditionId,null);
+  const condition=conditionCommands.createCommercialCondition(scope,{accountId:'a',opportunityId:'o',statement:'Jane approves.',conditionCategory:'decision',intent:'assumed'},
+    conditionReferenceIndex([{id:'a',userId:'owner'}],[{id:'o',userId:'owner',accountId:'a'}],[]));
+  assert.equal(condition.ok,true);
+  const linked=requirementCommands.changeOutcomeRequirement(scope,created.value.id,created.value.updatedAt,{kind:'link',conditionId:condition.value.id},
+    requirementCommands.requirementReferenceIndex([{id:'a',userId:'owner'}],[{id:'o',userId:'owner',accountId:'a'}],[condition.value]));
+  assert.equal(linked.ok,true);assert.equal(linked.value.conditionId,condition.value.id);
+  const changed=requirementCommands.changeOutcomeRequirement(scope,linked.value.id,linked.value.updatedAt,{kind:'role',role:'required_later'},
+    requirementCommands.requirementReferenceIndex([{id:'a',userId:'owner'}],[{id:'o',userId:'owner',accountId:'a'}],[condition.value]));
+  assert.equal(changed.ok,true);assert.equal(changed.value.role,'required_later');
+  const retired=requirementCommands.changeOutcomeRequirement(scope,changed.value.id,changed.value.updatedAt,{kind:'retire'},
+    requirementCommands.requirementReferenceIndex([{id:'a',userId:'owner'}],[{id:'o',userId:'owner',accountId:'a'}],[condition.value]));
+  assert.equal(retired.ok,true);assert.equal(retired.value.id,created.value.id);assert.equal(retired.value.lifecycle,'retired');
+  assert.equal(requirementCommands.changeOutcomeRequirement(scope,retired.value.id,retired.value.updatedAt,{kind:'role',role:'context'},refs).ok,false);
+});
+
+test('sample Requirement stays out of the cloud write path',async()=>{
+  const scope={userId:'owner',sampleDataActive:true};
+  const refs=requirementCommands.requirementReferenceIndex([{id:'a',userId:'owner',isSample:true}],[{id:'o',userId:'owner',accountId:'a',isSample:true}],[]);
+  const created=requirementCommands.createOutcomeRequirement(scope,{accountId:'a',opportunityId:'o',expectedOutcome:'Demo approval',role:'required_now'},refs);
+  assert.equal(created.ok,true);assert.equal(created.value.isSample,true);
+  await tick();assert.equal(requests.find(r=>r.table==='commercial_outcome_requirements'),undefined);
 });

@@ -14,6 +14,10 @@ import { loadCommitmentsForWorkspace } from './commercialKernel/commitmentStore'
 import { loadThreadsForWorkspace } from './commercialKernel/threadStore';
 import { loadValueOutcomesForWorkspace } from './commercialKernel/valueOutcomeStore';
 import { loadCommercialEvidenceForWorkspace } from './commercialKernel/evidenceStore';
+import { loadCommercialConditionsForWorkspace } from './commercialKernel/conditionStore';
+import { loadOutcomeRequirementsForWorkspace } from './commercialKernel/requirementStore';
+import type { CommercialCondition } from '../domain/commercialKernel/commercialCondition';
+import type { OutcomeRequirement } from '../domain/commercialKernel/outcomeRequirement';
 import type { CommercialEvidence } from '../domain/commercialKernel/commercialEvidence';
 import type {
   CommercialCommitment,
@@ -68,6 +72,8 @@ export type SalesWorkspaceData = {
    * itself depending on which page you are standing on.
    */
   evidence: CommercialEvidence[];
+  conditions: CommercialCondition[];
+  requirements: OutcomeRequirement[];
 };
 
 type LoadOptions = {
@@ -120,6 +126,8 @@ const collectionLoaders = {
   threads: (userId?: string | null) => loadThreadsForWorkspace(userId),
   valueOutcomes: (userId?: string | null) => loadValueOutcomesForWorkspace(userId),
   evidence: (userId?: string | null) => loadCommercialEvidenceForWorkspace(userId),
+  conditions: (userId?: string | null) => loadCommercialConditionsForWorkspace(userId),
+  requirements: (userId?: string | null) => loadOutcomeRequirementsForWorkspace(userId),
   accountMerges: (userId?: string | null) => loadAccountMergesForWorkspace(userId),
 } satisfies { [K in keyof SalesWorkspaceData]: (userId?: string | null) => Promise<SalesWorkspaceData[K]> };
 
