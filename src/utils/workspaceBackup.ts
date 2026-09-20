@@ -9,7 +9,7 @@ import type { CommercialCommitment } from '../domain/commercialKernel/types.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { CommercialDecision } from '../domain/commercialKernel/commercialDecision.ts';
 import type { PlanRecord } from './weeklyPlan.ts';
-import { HISTORICAL_REVISIONS_KEY,HISTORICAL_COVERAGE_KEY,validateHistoricalBundle,
+import { HISTORICAL_REVISIONS_KEY,HISTORICAL_COVERAGE_KEY,historicalSources,validateHistoricalBundle,
   type StateRevision,type HistoryCoverage } from '../services/historicalIntegrity.ts';
 import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KEY, isSampleRecord, recordIdentity, validateCanonicalRecord, type RecordData } from '../services/canonicalDurability.ts';
 /**
@@ -24,8 +24,8 @@ import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KE
  * backup, what never comes back in - can be tested without a browser.
  */
 
-/** Format 9 carries verified commercial history and its coverage boundary. */
-export const BACKUP_FORMAT_VERSION = 9;
+/** Format 10 carries a cloud history lineage for transactional restore. */
+export const BACKUP_FORMAT_VERSION = 10;
 export const BACKUP_KEY_PREFIX = 'memoire.';
 
 export type BackupEnvelope = {
@@ -189,7 +189,7 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
         }
         const key=table==='commercial_history_coverage'?'memoire.cloudHistoryCoverage.v1':'memoire.cloudStateRevisions.v1';
         normalized[key]=table==='commercial_history_coverage'?rows.map((r:RecordData)=>({scope:r.user_id,
-          historyGuaranteedFrom:r.history_guaranteed_from,schemaVersion:r.schema_version}))
+          historyGuaranteedFrom:r.history_guaranteed_from,schemaVersion:r.schema_version,lineageId:r.lineage_id}))
           :rows.map((r:RecordData)=>({id:r.id,scope:r.user_id,entityType:r.entity_type,entityId:r.entity_id,
             revisionNo:r.revision_no,mutationId:r.mutation_id,operation:r.operation,recordedAt:r.recorded_at,
             schemaVersion:r.schema_version,state:r.state&&typeof r.state==='object'
@@ -242,6 +242,12 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
       local.push(record);
     }
     if (contract) {
+      if(Array.isArray(cloud?.data?.commercial_history_coverage)
+        &&cloud.data.commercial_history_coverage.length>0&&contract.table in historicalSources){
+        // A complete cloud history snapshot has one matching canonical current state.
+        // A newer browser mirror cannot be spliced into that immutable lineage.
+        continue;
+      }
       const merged = new Map<string, RecordData>();
       for (const record of [...(normalized[key] as RecordData[] || []), ...local]) {
         const id = recordIdentity(contract, record);
@@ -291,6 +297,10 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
   const cloudCoverage=normalized['memoire.cloudHistoryCoverage.v1'] as HistoryCoverage[]|undefined;
   if(Boolean(cloudRevisions)!==Boolean(cloudCoverage))throw new Error('Cloud historical revisions and coverage boundary must travel together.');
   if(cloudRevisions&&cloudCoverage)validateHistoricalBundle(cloudRevisions,cloudCoverage,{});
+  if(cloudRevisions&&cloudCoverage&&cloudCoverage.length){
+    normalized[HISTORICAL_REVISIONS_KEY]=cloudRevisions;
+    normalized[HISTORICAL_COVERAGE_KEY]=cloudCoverage;
+  }
   const decisions=normalized['memoire.commercialDecisions.v1'] as CommercialDecision[] | undefined;
   if(decisions?.length){
     const accounts=normalized['memoire.accounts.v1'] as {id:string;userId?:string|null}[] || [];

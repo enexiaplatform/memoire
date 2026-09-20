@@ -102,7 +102,7 @@ test('a version-1 backup still restores after the kernel raised the format to 3'
   // The format is key-prefixed, not a fixed schema, so an older file is missing
   // kernel keys rather than being incompatible. It must restore everything it
   // does carry.
-  assert.equal(BACKUP_FORMAT_VERSION, 9, 'historical revisions require a versioned backup boundary');
+  assert.equal(BACKUP_FORMAT_VERSION, 10, 'transactional historical restore requires lineage-aware backup format');
 
   const v1 = { ...validBackup, formatVersion: 1 };
   const parsed = parseBackupFile(JSON.stringify(v1));

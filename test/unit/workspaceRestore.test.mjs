@@ -64,14 +64,14 @@ describe('workspace restore: replacing a browser copy', () => {
       'memoire.commercialConditions.v1': [],
       'memoire.historyCoverage.v1': [{ scope: 'user-1', historyGuaranteedFrom: '2026-09-01T00:00:00Z', schemaVersion: 1 }],
       'memoire.stateRevisions.v1': [],
-    }), formatVersion: 9 }, { userId: 'user-1' }), /transactional history restore/);
+    }), formatVersion: 9 }, { userId: 'user-1' }), /Transactional account history restore/);
     assert.equal(globalThis.window.localStorage.getItem('memoire.settings.v1'), JSON.stringify({ theme: 'old' }));
   });
 
   test('history-only account restore and partial browser merge cannot claim continuity', async () => {
     const marker = { scope: 'user-1', historyGuaranteedFrom: '2026-09-01T00:00:00Z', schemaVersion: 1 };
     const file = { ...envelope({ 'memoire.historyCoverage.v1': [marker], 'memoire.stateRevisions.v1': [] }), formatVersion: 9 };
-    await assert.rejects(restore.restoreWorkspace(file, { userId: 'user-1' }), /transactional history restore/);
+    await assert.rejects(restore.restoreWorkspace(file, { userId: 'user-1' }), /Transactional account history restore/);
     await assert.rejects(restore.restoreWorkspace(file, { clearFirst: false }), /must replace/);
     assert.equal(globalThis.window.localStorage.getItem('memoire.historyCoverage.v1'), null);
   });

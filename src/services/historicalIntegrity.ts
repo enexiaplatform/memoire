@@ -17,7 +17,7 @@ export const historicallyDerivedProjections = {
   nextBlockingQuestion: {sources:['commercial_outcome_requirements','commercial_conditions','commercial_evidence','commercial_dependencies'],complete:true},
   knownBlockers: {sources:['commercial_outcome_requirements','commercial_conditions','commercial_evidence','commercial_dependencies'],complete:true},
   buyerProgress: {sources:['opportunities','commercial_commitments','commercial_outcome_requirements','commercial_conditions','commercial_evidence','commercial_dependencies'],complete:false,
-    gap:'purchase-order and payment signals depend on selective Commercial Events; recorded-activity comparison needs a cutoff-safe source'},
+    gap:'PO and payment Events are not revision-covered; quote/receivable alternatives are mutable and unversioned; edited or deleted Activities cannot be reconstructed'},
   commercialTime: {sources:['opportunities','commercial_outcome_requirements','commercial_conditions','commercial_evidence','commercial_dependencies','commercial_timing_assertions','commercial_commitments'],complete:true},
   forecastDefensibility: {sources:['opportunities','commercial_outcome_requirements','commercial_conditions','commercial_evidence','commercial_dependencies','commercial_timing_assertions','commercial_commitments'],complete:true},
 } as const;
@@ -27,7 +27,7 @@ export const HISTORICAL_COVERAGE_KEY='memoire.historyCoverage.v1';
 export const REVISION_SCHEMA_VERSION=1;
 export type StateRevision={id:string;scope:string;entityType:HistoricalSource;entityId:string;revisionNo:number;
   mutationId:string;operation:'baseline'|'create'|'update'|'delete';recordedAt:string;schemaVersion:1;state:Record<string,unknown>|null};
-export type HistoryCoverage={scope:string;historyGuaranteedFrom:string;schemaVersion:1};
+export type HistoryCoverage={scope:string;historyGuaranteedFrom:string;schemaVersion:1;lineageId?:string};
 export type HistoryRead={status:'available';revision:StateRevision|null;coverage:HistoryCoverage}
   |{status:'pre_coverage'|'not_activated'|'corrupt'|'unsupported_schema'|'sequence_gap';revision:null;coverage:HistoryCoverage|null};
 type Row=Record<string,unknown>&{id:string;userId?:string|null;isSample?:boolean;source?:string};
@@ -43,9 +43,15 @@ const id=()=>typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():
 const sourceState=(type:HistoricalSource,row:Row):Record<string,unknown>=>{
   const source=historicalSources[type];
   void source;
-  const {updatedAt: _updatedAt,storageMode: _storageMode,...state}=row;
-  void _updatedAt;void _storageMode;
+  const {storageMode: _storageMode,...state}=row;
+  void _storageMode;
   return JSON.parse(JSON.stringify(state)) as Record<string,unknown>;
+};
+const semanticState=(type:HistoricalSource,row:Row)=>{
+  const {updatedAt: _updatedAt,...state}=sourceState(type,row);void _updatedAt;return state;
+};
+const semanticSnapshot=(state:Record<string,unknown>)=>{
+  const {updatedAt: _updatedAt,...semantic}=state;void _updatedAt;return semantic;
 };
 const same=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
 const stable=(value:unknown):string=>JSON.stringify(value,(_key,item)=>item&&typeof item==='object'&&!Array.isArray(item)
@@ -92,7 +98,7 @@ export function buildHistoricalBaselineFromCollections(collections:Record<string
         recordedAt:at,schemaVersion:1,state:sourceState(entityType,row)});
     }
   }
-  return {coverage:[{scope,historyGuaranteedFrom:at,schemaVersion:1}] as HistoryCoverage[],revisions};
+  return {coverage:[{scope,historyGuaranteedFrom:at,schemaVersion:1,lineageId:id()}] as HistoryCoverage[],revisions};
 }
 export function validateHistoricalBundle(revisions:StateRevision[],coverage:HistoryCoverage[],collections:Record<string,unknown>){
   if(!Array.isArray(revisions)||!Array.isArray(coverage))throw new Error('Historical bundle must contain revision and coverage lists.');
@@ -119,7 +125,7 @@ export function validateHistoricalBundle(revisions:StateRevision[],coverage:Hist
   for(const rows of grouped.values()){
     rows.sort((a,b)=>a.revisionNo-b.revisionNo);
     for(let i=0;i<rows.length;i++){
-      if(rows[i].revisionNo!==i+1||i&&rows[i].recordedAt<rows[i-1].recordedAt)
+      if(rows[i].revisionNo!==i+1||i&&Date.parse(rows[i].recordedAt)<Date.parse(rows[i-1].recordedAt))
         throw new Error('Historical revision sequence is incomplete or out of order.');
     }
     if(!['baseline','create'].includes(rows[0].operation))throw new Error('Historical entity has no baseline or creation.');
@@ -133,7 +139,7 @@ export function validateHistoricalBundle(revisions:StateRevision[],coverage:Hist
       live.add(key);
       if(!scopes.has(scopeOf(row)))continue;
       const latest=grouped.get(key)?.at(-1);
-      if(!latest||latest.state===null||stable(latest.state)!==stable(sourceState(entityType,row)))
+      if(!latest||latest.state===null||stable(semanticSnapshot(latest.state))!==stable(semanticState(entityType,row)))
         throw new Error(`Historical revision does not match current ${entityType} state.`);
     }
     for(const [key,revisions] of grouped){
@@ -150,7 +156,7 @@ export function activateLocalHistoricalIntegrity(scope:string,storage:Storage=br
   const revisions=parse<StateRevision[]>(storage,HISTORICAL_REVISIONS_KEY,[]);
   const found=coverage.find(c=>c.scope===scope);if(found){validateChain(revisions,coverage,scope);return found;}
   if(revisions.some(r=>r.scope===scope))throw new Error('Orphan historical revisions require recovery.');
-  const at=clock();const marker:HistoryCoverage={scope,historyGuaranteedFrom:at,schemaVersion:1};
+  const at=clock();const marker:HistoryCoverage={scope,historyGuaranteedFrom:at,schemaVersion:1,lineageId:id()};
   const baseline=baselineFor(storage,scope,at);
   applyLocalRestore(storage,{
     [HISTORICAL_REVISIONS_KEY]:JSON.stringify([...revisions,...baseline]),
@@ -167,7 +173,7 @@ export function commitLocalHistoricalCollection(type:HistoricalSource,nextRows:R
   const oldById=new Map(previous.map(row=>[identity(row),row]));
   const newById=new Map(nextRows.map(row=>[identity(row),row]));
   const changed=[...new Set([...oldById.keys(),...newById.keys()])].filter(k=>!same(
-    oldById.get(k)?sourceState(type,oldById.get(k)!):null,newById.get(k)?sourceState(type,newById.get(k)!):null));
+    oldById.get(k)?semanticState(type,oldById.get(k)!):null,newById.get(k)?semanticState(type,newById.get(k)!):null));
   if(changed.length===0){
     // Cosmetic writes are still canonical; no reconstruction-relevant revision is needed.
     applyLocalRestore(storage,{[key]:JSON.stringify(nextRows)});return;
@@ -177,7 +183,7 @@ export function commitLocalHistoricalCollection(type:HistoricalSource,nextRows:R
     validateChain(all,active,scope);
     if(!active.some(c=>c.scope===scope)){
       if(all.some(r=>r.scope===scope))throw new Error('Orphan historical revisions require recovery.');
-      const at=clock();active.push({scope,historyGuaranteedFrom:at,schemaVersion:1});
+      const at=clock();active.push({scope,historyGuaranteedFrom:at,schemaVersion:1,lineageId:id()});
       all.push(...baselineFor(storage,scope,at));
     }
   }

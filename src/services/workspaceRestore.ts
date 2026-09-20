@@ -8,6 +8,7 @@ import { reportClientOperationalEvent } from './clientTelemetry.ts';
 import { writeLocalCollection } from './localWriteGuard.ts';
 import { buildHistoricalBaselineFromCollections, HISTORICAL_COVERAGE_KEY, HISTORICAL_REVISIONS_KEY,
   historicalSources } from './historicalIntegrity.ts';
+import { restoreCloudHistoricalScope } from './historicalCloudRestore.ts';
 
 export type RestoreCollectionResult = {
   key: string;
@@ -53,17 +54,11 @@ export async function restoreWorkspace(
   for (const write of plan.writes) desired[write.key] = write.value;
   const coveredKeys = new Set<string>(Object.values(historicalSources).map(source => source.key));
   const hasCoveredData = plan.writes.some(write => coveredKeys.has(write.key));
-  if (options.userId && (plan.writes.some(write => [HISTORICAL_REVISIONS_KEY,HISTORICAL_COVERAGE_KEY,
-    'memoire.cloudStateRevisions.v1','memoire.cloudHistoryCoverage.v1'].includes(write.key))))
-    throw new Error('Account restore of historical revisions needs a transactional history restore. Nothing was changed. Keep this backup.');
-  if (options.userId && hasCoveredData && supabaseClient) {
-    const table = supabaseClient.from('commercial_history_coverage');
-    if (typeof table.select === 'function') {
-      const { error } = await table.select('user_id', { head: true }).limit(1);
-      if (!error) throw new Error('Account history is active; this restore needs a transactional history restore. Nothing was changed. Keep this backup.');
-      if (error.code !== '42P01') throw new Error(`Cannot verify account history before restore: ${error.message}. Nothing was changed.`);
-    }
-  }
+  const hasArchivedHistory=plan.writes.some(write=>[HISTORICAL_REVISIONS_KEY,HISTORICAL_COVERAGE_KEY,
+    'memoire.cloudStateRevisions.v1','memoire.cloudHistoryCoverage.v1'].includes(write.key));
+  const restoreAccountHistory=Boolean(options.userId&&(hasCoveredData||hasArchivedHistory)&&supabaseClient?.rpc);
+  if(options.userId&&hasArchivedHistory&&!restoreAccountHistory)
+    throw new Error('Transactional account history restore is unavailable. Nothing was changed. Keep this backup.');
   const hasHistory = desired[HISTORICAL_REVISIONS_KEY] !== undefined || desired[HISTORICAL_COVERAGE_KEY] !== undefined;
   if (!hasHistory) {
     const collections = Object.fromEntries(plan.writes.filter(write => coveredKeys.has(write.key))
@@ -94,11 +89,27 @@ export async function restoreWorkspace(
       cloudPushed: null, message: '' }));
     let cloudPushedCount = 0;
     let cloudFailedCount = 0;
+    if(restoreAccountHistory){
+      try{
+        await restoreCloudHistoricalScope(envelope,plan,options.userId!);
+        for(const collection of collections.filter(c=>coveredKeys.has(c.key)||c.key==='memoire.accounts.v1')){
+          collection.cloudPushed=true;cloudPushedCount++;
+        }
+      }catch(error){
+        const current=snapshotWorkspace();
+        const rollback:Record<string,string|null>=Object.fromEntries(Object.keys(current).map(key=>[key,null]));
+        for(const [key,value] of Object.entries(snapshot))rollback[key]=value;
+        try{applyLocalRestore(window.localStorage,rollback);}
+        catch{throw new Error('Account history restore failed and browser rollback needs recovery. Reload before retrying; keep the backup.');}
+        throw error;
+      }
+    }
     // A Decision may link an existing Plan item. Restore that item before the
     // Decision aggregate so its database scope trigger can verify the link.
     const restoreOrder=(table:string)=>table==='commercial_decisions'?canonicalContracts.length+1
       :canonicalContracts.findIndex(contract=>contract.table===table);
     for (const request of requests.sort((a,b) => restoreOrder(a.contract.table) - restoreOrder(b.contract.table))) {
+      if(restoreAccountHistory&&(request.contract.table in historicalSources||request.contract.table==='accounts'))continue;
       const result = collections.find(c => c.key === request.key)!;
       try {
         if (!supabaseClient) throw new Error('The account connection is unavailable.');
@@ -120,7 +131,9 @@ export async function restoreWorkspace(
       ok: cloudFailedCount === 0, collections, restoredRecords: plan.restoredRecords,
       droppedSampleRecords: plan.droppedSampleRecords, snapshot, cloudPushedCount, cloudFailedCount,
       summary: `${plan.restoredRecords} records recovered in this browser. ` + (options.userId
-        ? `${cloudPushedCount} collections merged into your account; ${cloudFailedCount} incomplete. Existing account records outside this backup remain. Local undo does not undo account merges.`
+        ? restoreAccountHistory
+          ? `Historical account state restored as one transaction; ${cloudFailedCount} other collections incomplete. Keep the backup. Local undo does not undo account changes.`
+          : `${cloudPushedCount} collections merged into your account; ${cloudFailedCount} incomplete. Existing account records outside this backup remain. Local undo does not undo account merges.`
         : 'Browser recovery only; no account copy has been confirmed. Keep the backup before changing devices or signing in.'),
     };
     endRestore();

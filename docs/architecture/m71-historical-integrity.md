@@ -1,5 +1,7 @@
 # M7.1 — Historical integrity foundation
 
+M7.2 adds the transactional cloud restore and cutoff composition described in [m72-historical-readiness.md](m72-historical-readiness.md). The restore limitations below describe the M7.1 state at that milestone.
+
 Starting source SHA: `d8caf55ec3298be0033367ab1a757c171ce9d7c3`. The intended M2–M5 and M7 target Supabase migrations were not verified as deployed. This migration is code and local database verification only.
 
 ## Contract and boundary

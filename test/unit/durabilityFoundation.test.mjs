@@ -15,15 +15,12 @@ class Storage {
 const storage = new Storage();
 const requests = [];
 let rejectedTable = '';
-let historicalSchemaActive = false;
 globalThis.window = { localStorage: storage, dispatchEvent: () => true, addEventListener: () => {}, removeEventListener: () => {} };
 globalThis.localStorage = storage;
 globalThis.CustomEvent = class { constructor(type, options) { this.type = type; this.detail = options?.detail; } };
 globalThis.__durabilityCloud = {
   auth: { getUser: async () => ({ data: { user: { id: 'owner' } }, error: null }) },
-  from(table) { if (table === 'commercial_history_coverage') return {
-    select: () => ({ limit: async () => ({ error: historicalSchemaActive ? null : { code: '42P01', message: 'relation missing' } }) }),
-  }; return { async upsert(rows, options) {
+  from(table) { return { async upsert(rows, options) {
     requests.push({ table, rows: Array.isArray(rows) ? rows : [rows], options });
     return { error: table === rejectedTable ? { message: 'Account write refused' } : null };
   } }; },
@@ -74,14 +71,26 @@ const fixtures = [
 const backup = localBrowserData => ({ formatVersion: 8, exportedAt: later, localBrowserData });
 const kernelBackup = () => backup(Object.fromEntries(kernelCodecs.slice(0, 5).map((codec, i) => [codec.storageKey, [fixtures[i]]])));
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
-beforeEach(async () => { await tick(); storage.data.clear(); storage.refuse = () => false; requests.length = 0; rejectedTable = ''; historicalSchemaActive = false; });
+beforeEach(async () => { await tick(); storage.data.clear(); storage.refuse = () => false; requests.length = 0; rejectedTable = ''; delete globalThis.__durabilityCloud.rpc; });
 
-test('historical account schema rejects legacy covered restore before local or cloud mutation', async () => {
-  historicalSchemaActive = true;
+test('diverged account history rejects covered restore and rolls back the browser copy', async () => {
+  globalThis.__durabilityCloud.rpc=async()=>({data:{status:'diverged'},error:null});
   storage.setItem('memoire.accounts.v1', '[{"id":"original"}]');
-  await assert.rejects(restoreWorkspace(kernelBackup(), { userId: 'owner' }), /Account history is active/);
+  await assert.rejects(restoreWorkspace(kernelBackup(), { userId: 'owner' }), /newer or different accepted revisions/);
   assert.equal(storage.getItem('memoire.accounts.v1'), '[{"id":"original"}]');
   assert.equal(requests.length, 0);
+});
+test('transactional account history restore handles covered rows through one RPC without replaying Events', async () => {
+  const calls=[];
+  globalThis.__durabilityCloud.rpc=async(name,args)=>{calls.push({name,args});return {data:{status:'restored',lineage_id:'lineage'},error:null};};
+  const result=await restoreWorkspace(kernelBackup(),{userId:'owner'});
+  assert.equal(result.ok,true);
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].name,'restore_commercial_history');
+  assert.equal(calls[0].args.payload.sources.commercial_commitments.length,1);
+  assert.equal(requests.some(request=>request.table==='commercial_commitments'),false);
+  assert.equal(requests.some(request=>request.table==='commercial_events'),true,
+    'the legacy Event archive is merged as data but no new mutation Event is emitted');
 });
 
 test('Dependency restore rejects cycles, missing endpoints and cross-owner endpoints before any write', async()=>{
