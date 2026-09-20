@@ -4,6 +4,8 @@ import { reportClientOperationalEvent } from '../clientTelemetry.ts';
 import { reportWorkspaceSyncError } from '../workspaceSyncStatus.ts';
 import { invalidateWorkspaceCollection } from '../workspaceDataCache.ts';
 import { requireLocalWrite, writeLocalCollection } from '../localWriteGuard.ts';
+import { commitLocalHistoricalCollection, historicalSources, type HistoricalSource } from '../historicalIntegrity.ts';
+import { requireCloudHistoricalIntegrity } from '../historicalCloudGate.ts';
 
 export type KernelTable =
   | 'commercial_threads'
@@ -133,9 +135,13 @@ export function writeLocal<T extends KernelRecord>(codec: KernelCodec<T>, record
   const serialized = JSON.stringify(sanitized);
   if (window.localStorage.getItem(codec.storageKey) === serialized) return sanitized;
 
-  const written = writeLocalCollection(codec.storageKey, serialized);
-  if (requireDurable) requireLocalWrite(written);
-  if (!written.ok) { reportWorkspaceSyncError(); return sanitized; }
+  if(requireDurable&&codec.table in historicalSources){
+    commitLocalHistoricalCollection(codec.table as HistoricalSource,sanitized as KernelRecord[] as {id:string;userId?:string|null;isSample?:boolean}[]);
+  }else{
+    const written = writeLocalCollection(codec.storageKey, serialized);
+    if (requireDurable) requireLocalWrite(written);
+    if (!written.ok) { reportWorkspaceSyncError(); return sanitized; }
+  }
   invalidateWorkspaceCollection(workspaceCollectionForTable(codec.table));
   window.dispatchEvent(new CustomEvent(codec.updatedEvent, { detail: sanitized }));
 
@@ -211,6 +217,7 @@ export async function upsertCloudRecords<T extends KernelRecord>(
   records: T[],
 ) {
   if (!supabaseClient) throw new Error('The account connection is unavailable.');
+  if(codec.table in historicalSources)await requireCloudHistoricalIntegrity(userId);
   const rows = records.filter(isSyncableRecord).map((record) => codec.toRow(record, userId));
   if (rows.length === 0) return;
 
@@ -223,6 +230,7 @@ export async function upsertCloudRecords<T extends KernelRecord>(
 
 export async function deleteCloudRecord(codec: KernelCodec<never>, userId: string, recordId: string) {
   if (!supabaseClient) return;
+  if(codec.table in historicalSources)await requireCloudHistoricalIntegrity(userId);
   const { error } = await supabaseClient
     .from(codec.table)
     .delete()

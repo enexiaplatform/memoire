@@ -9,6 +9,8 @@ import type { CommercialCommitment } from '../domain/commercialKernel/types.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { CommercialDecision } from '../domain/commercialKernel/commercialDecision.ts';
 import type { PlanRecord } from './weeklyPlan.ts';
+import { HISTORICAL_REVISIONS_KEY,HISTORICAL_COVERAGE_KEY,validateHistoricalBundle,
+  type StateRevision,type HistoryCoverage } from '../services/historicalIntegrity.ts';
 import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KEY, isSampleRecord, recordIdentity, validateCanonicalRecord, type RecordData } from '../services/canonicalDurability.ts';
 /**
  * The other half of export.
@@ -22,8 +24,8 @@ import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KE
  * backup, what never comes back in - can be tested without a browser.
  */
 
-/** Format 8 adds immutable commercial decisions. Older backups remain readable. */
-export const BACKUP_FORMAT_VERSION = 8;
+/** Format 9 carries verified commercial history and its coverage boundary. */
+export const BACKUP_FORMAT_VERSION = 9;
 export const BACKUP_KEY_PREFIX = 'memoire.';
 
 export type BackupEnvelope = {
@@ -179,6 +181,21 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
     }
     for (const [table, rows] of Object.entries(cloud.data)) {
       if (!Array.isArray(rows)) throw new Error(`${table}: expected a list of cloud rows.`);
+      if(table==='commercial_history_coverage'||table==='commercial_state_revisions'){
+        for(const row of rows){
+          if(!row||typeof row!=='object'||Array.isArray(row)||
+            (cloud.user_id&&(row as RecordData).user_id!==cloud.user_id))
+            throw new Error(`${table}: malformed or mixed-account history row.`);
+        }
+        const key=table==='commercial_history_coverage'?'memoire.cloudHistoryCoverage.v1':'memoire.cloudStateRevisions.v1';
+        normalized[key]=table==='commercial_history_coverage'?rows.map((r:RecordData)=>({scope:r.user_id,
+          historyGuaranteedFrom:r.history_guaranteed_from,schemaVersion:r.schema_version}))
+          :rows.map((r:RecordData)=>({id:r.id,scope:r.user_id,entityType:r.entity_type,entityId:r.entity_id,
+            revisionNo:r.revision_no,mutationId:r.mutation_id,operation:r.operation,recordedAt:r.recorded_at,
+            schemaVersion:r.schema_version,state:r.state&&typeof r.state==='object'
+              ?Object.fromEntries(Object.entries(r.state as RecordData).map(([k,v])=>[k.replace(/_([a-z])/g,(_,c:string)=>c.toUpperCase()),v])):null}));
+        continue;
+      }
       const contract = canonicalContracts.find(c => c.table === table);
       if (!contract) {
         if (!(archiveOnlyTables as readonly string[]).includes(table)) throw new Error(`Unsupported cloud dataset: ${table}.`);
@@ -214,7 +231,8 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
     const seen = new Set<string>();
     const local: RecordData[] = [];
     for (const record of value) {
-      if (isSampleRecord(record)) { droppedSampleRecords++; continue; }
+      if (isSampleRecord(record)||([HISTORICAL_REVISIONS_KEY,HISTORICAL_COVERAGE_KEY].includes(key)
+        &&(record as RecordData)?.scope==='sample')) { droppedSampleRecords++; continue; }
       if (contract) {
         validateCanonicalRecord(contract, record);
         const id = recordIdentity(contract, record);
@@ -265,6 +283,14 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
     commitments:normalized['memoire.commercialCommitments.v1'] as CommercialCommitment[] || [],
     evidence:normalized['memoire.commercialEvidence.v1'] as CommercialEvidence[] || [],
   });
+  const localRevisions=normalized[HISTORICAL_REVISIONS_KEY] as StateRevision[]|undefined;
+  const localCoverage=normalized[HISTORICAL_COVERAGE_KEY] as HistoryCoverage[]|undefined;
+  if(Boolean(localRevisions)!==Boolean(localCoverage))throw new Error('Historical revisions and coverage boundary must travel together.');
+  if(localRevisions&&localCoverage)validateHistoricalBundle(localRevisions,localCoverage,cloud?{}:normalized);
+  const cloudRevisions=normalized['memoire.cloudStateRevisions.v1'] as StateRevision[]|undefined;
+  const cloudCoverage=normalized['memoire.cloudHistoryCoverage.v1'] as HistoryCoverage[]|undefined;
+  if(Boolean(cloudRevisions)!==Boolean(cloudCoverage))throw new Error('Cloud historical revisions and coverage boundary must travel together.');
+  if(cloudRevisions&&cloudCoverage)validateHistoricalBundle(cloudRevisions,cloudCoverage,{});
   const decisions=normalized['memoire.commercialDecisions.v1'] as CommercialDecision[] | undefined;
   if(decisions?.length){
     const accounts=normalized['memoire.accounts.v1'] as {id:string;userId?:string|null}[] || [];

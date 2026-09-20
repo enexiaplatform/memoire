@@ -20,7 +20,7 @@ export function recoverInterruptedRestore(storage: Storage): boolean {
     if (entries.some(([key, value]) => !safeKey(key) || (value !== null && typeof value !== 'string'))) return false;
     // Free newly-created keys before putting old values back, to reduce quota pressure.
     for (const [key, value] of entries) if (value === null) storage.removeItem(key);
-    for (const [key, value] of entries) if (value !== null) storage.setItem(key, value);
+    for (const [key, value] of entries) if (value !== null && storage.getItem(key) !== value) storage.setItem(key, value);
     if (entries.some(([key, value]) => storage.getItem(key) !== value)) return false;
     storage.removeItem(RESTORE_JOURNAL_KEY);
     return true;

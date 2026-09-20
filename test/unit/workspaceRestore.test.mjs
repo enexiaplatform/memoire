@@ -48,6 +48,58 @@ afterEach(() => {
 });
 
 describe('workspace restore: replacing a browser copy', () => {
+  test('a legacy backup starts a new verified boundary at restore time', async () => {
+    const result = await restore.restoreWorkspace(envelope({ 'memoire.commercialConditions.v1': [] }));
+    assert.equal(result.ok, true);
+    const marker = JSON.parse(globalThis.window.localStorage.getItem('memoire.historyCoverage.v1'));
+    assert.equal(marker.length, 1);
+    assert.equal(marker[0].scope, 'guest');
+    assert.ok(Date.parse(marker[0].historyGuaranteedFrom) > Date.parse('2026-08-01T00:00:00.000Z'));
+    assert.deepEqual(JSON.parse(globalThis.window.localStorage.getItem('memoire.stateRevisions.v1')), []);
+  });
+
+  test('a signed-in historical backup is refused before replacing local state', async () => {
+    globalThis.window.localStorage.setItem('memoire.settings.v1', JSON.stringify({ theme: 'old' }));
+    await assert.rejects(restore.restoreWorkspace({ ...envelope({
+      'memoire.commercialConditions.v1': [],
+      'memoire.historyCoverage.v1': [{ scope: 'user-1', historyGuaranteedFrom: '2026-09-01T00:00:00Z', schemaVersion: 1 }],
+      'memoire.stateRevisions.v1': [],
+    }), formatVersion: 9 }, { userId: 'user-1' }), /transactional history restore/);
+    assert.equal(globalThis.window.localStorage.getItem('memoire.settings.v1'), JSON.stringify({ theme: 'old' }));
+  });
+
+  test('history-only account restore and partial browser merge cannot claim continuity', async () => {
+    const marker = { scope: 'user-1', historyGuaranteedFrom: '2026-09-01T00:00:00Z', schemaVersion: 1 };
+    const file = { ...envelope({ 'memoire.historyCoverage.v1': [marker], 'memoire.stateRevisions.v1': [] }), formatVersion: 9 };
+    await assert.rejects(restore.restoreWorkspace(file, { userId: 'user-1' }), /transactional history restore/);
+    await assert.rejects(restore.restoreWorkspace(file, { clearFirst: false }), /must replace/);
+    assert.equal(globalThis.window.localStorage.getItem('memoire.historyCoverage.v1'), null);
+  });
+
+  test('a local historical backup retains its original boundary and deleted-entity sequence', async () => {
+    const marker = { scope: 'guest', historyGuaranteedFrom: '2026-09-01T00:00:00Z', schemaVersion: 1 };
+    const base = { id: 'rev-1', scope: 'guest', entityType: 'commercial_conditions', entityId: 'gone',
+      revisionNo: 1, mutationId: 'mutation-1', operation: 'baseline', recordedAt: '2026-09-01T00:00:00Z',
+      schemaVersion: 1, state: { id: 'gone' } };
+    const deleted = { ...base, id: 'rev-2', revisionNo: 2, mutationId: 'mutation-2',
+      operation: 'delete', recordedAt: '2026-09-02T00:00:00Z', state: null };
+    await restore.restoreWorkspace({ ...envelope({ 'memoire.commercialConditions.v1': [],
+      'memoire.historyCoverage.v1': [marker], 'memoire.stateRevisions.v1': [base, deleted] }), formatVersion: 9 });
+    assert.deepEqual(JSON.parse(globalThis.window.localStorage.getItem('memoire.historyCoverage.v1')), [marker]);
+    assert.deepEqual(JSON.parse(globalThis.window.localStorage.getItem('memoire.stateRevisions.v1')), [base, deleted]);
+  });
+
+  test('a revision gap in a backup is rejected before replacing the workspace', async () => {
+    globalThis.window.localStorage.setItem('memoire.settings.v1', JSON.stringify({ theme: 'old' }));
+    const file = { ...envelope({
+      'memoire.historyCoverage.v1': [{ scope: 'guest', historyGuaranteedFrom: '2026-09-01T00:00:00Z', schemaVersion: 1 }],
+      'memoire.stateRevisions.v1': [{ id: 'rev-2', scope: 'guest', entityType: 'commercial_conditions',
+        entityId: 'condition', revisionNo: 2, mutationId: 'mutation-2', operation: 'update',
+        recordedAt: '2026-09-02T00:00:00Z', schemaVersion: 1, state: { id: 'condition' } }],
+    }), formatVersion: 9 };
+    await assert.rejects(restore.restoreWorkspace(file), /sequence/);
+    assert.equal(globalThis.window.localStorage.getItem('memoire.settings.v1'), JSON.stringify({ theme: 'old' }));
+  });
   test('replaces rather than merges, and reports before and after per collection', async () => {
     globalThis.window.localStorage = new FakeStorage({
       'memoire.accounts.v1': JSON.stringify([{ id: 'old-1' }, { id: 'old-2' }]),

@@ -58,7 +58,7 @@ for (const [label, file] of [
 ]) {
   const source = readFileSync(file, 'utf8');
   assert.ok(
-    /writeLocalRecords\(|writeLocalCollection\(/.test(source),
+    /writeLocalRecords\(|writeLocalCollection\(|commitLocalHistoricalCollection\(/.test(source),
     `${label} must save through the local write guard (${file})`,
   );
   assert.equal(

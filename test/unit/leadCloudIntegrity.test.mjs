@@ -9,6 +9,7 @@ const calls = [];
 let rejectCloud = false;
 const client = {
   auth: { getUser: async () => ({ data: { user: null }, error: null }) },
+  rpc: async () => ({ data: '2026-09-20T00:00:00Z', error: null }),
   from(table) {
     calls.push(table);
     let payload; let inserting = false; let id;

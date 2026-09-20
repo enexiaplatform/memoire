@@ -44,6 +44,9 @@ import {
   reportWorkspaceSyncReady,
 } from './workspaceSyncStatus';
 import { describeLocalShortfall, isLocalCopyComplete, recordWorkspaceCensus } from './workspaceCensus';
+import { activateLocalHistoricalIntegrity } from './historicalIntegrity';
+import { hasLocalSampleData } from '../utils/dataMode';
+import { requireCloudHistoricalIntegrity } from './historicalCloudGate';
 
 export type SalesWorkspaceData = {
   activities: SalesActivityRecord[];
@@ -217,6 +220,13 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
     names.forEach((name, index) => {
       (workspace as Record<string, unknown>)[name] = results[index];
     });
+    if(userId){void requireCloudHistoricalIntegrity(userId).catch(()=>{
+      reportWorkspaceSyncError('Historical baseline is not active on the account. New covered changes will stay in this browser.');
+    });}
+    else{
+      try{activateLocalHistoricalIntegrity(hasLocalSampleData()?'sample':'guest');}
+      catch{reportWorkspaceSyncError('Historical baseline could not be saved. Current records remain usable; retry before historical queries.');}
+    }
     // What the cloud actually held, so the next first paint can tell a complete
     // browser copy from a fragment of one.
     if (userId) recordWorkspaceCensus(userId, workspace as unknown as Record<string, unknown>);

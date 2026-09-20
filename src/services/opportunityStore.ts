@@ -4,9 +4,10 @@ import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
 import { reconcileOpportunityOutcome } from '../utils/opportunityOutcome.ts';
-import { requireLocalWrite, writeLocalRecords } from './localWriteGuard.ts';
 import { fetchAllRows } from './supabasePaging.ts';
 import { recordOpportunityStateChanges } from '../domain/commercialKernel/opportunityChanges.ts';
+import { commitLocalHistoricalCollection } from './historicalIntegrity.ts';
+import { requireCloudHistoricalIntegrity } from './historicalCloudGate.ts';
 
 export const OPPORTUNITY_STORAGE_KEY = 'memoire.opportunities.v1';
 
@@ -240,6 +241,7 @@ export async function createOpportunity(
   if (!sample && canUseOpportunityCloudStore(userId)) {
     let opportunity: CrmLiteOpportunity;
     try {
+      await requireCloudHistoricalIntegrity(userId as string);
       opportunity = await createCloudOpportunity(normalized, userId as string);
     } catch (error) {
       reportWorkspaceSyncError();
@@ -296,6 +298,7 @@ export async function updateOpportunity(
   if (!opportunity.isSample && opportunity.source !== 'demo' && opportunity.storageMode === 'cloud' && canUseOpportunityCloudStore(userId)) {
     let updated: CrmLiteOpportunity;
     try {
+      await requireCloudHistoricalIntegrity(userId as string);
       updated = await updateCloudOpportunity(opportunity.id, normalized, userId as string);
     } catch (error) {
       reportWorkspaceSyncError();
@@ -337,6 +340,7 @@ export async function updateOpportunity(
 
 export async function deleteOpportunity(opportunity: CrmLiteOpportunity, userId?: string | null) {
   if (opportunity.storageMode === 'cloud' && canUseOpportunityCloudStore(userId)) {
+    await requireCloudHistoricalIntegrity(userId as string);
     const { error } = await supabaseClient!
       .from(TABLE_NAME)
       .delete()
@@ -478,7 +482,7 @@ function loadLocalOpportunities(): CrmLiteOpportunity[] {
 
 function saveLocalOpportunityRecord(record: CrmLiteOpportunity) {
   const next = [record, ...loadLocalOpportunities().filter((item) => item.id !== record.id)];
-  requireLocalWrite(writeLocalRecords(OPPORTUNITY_STORAGE_KEY, next.sort(sortNewestFirst)));
+  commitLocalHistoricalCollection('opportunities',next.sort(sortNewestFirst) as unknown as Parameters<typeof commitLocalHistoricalCollection>[1]);
 }
 
 function mirrorCloudOpportunity(record: CrmLiteOpportunity): string | undefined {
@@ -492,7 +496,7 @@ function mirrorCloudOpportunity(record: CrmLiteOpportunity): string | undefined 
 function deleteLocalOpportunity(opportunityId: string) {
   if (typeof localStorage === 'undefined') return;
   const next = loadLocalOpportunities().filter((item) => item.id !== opportunityId);
-  writeLocalRecords(OPPORTUNITY_STORAGE_KEY, next);
+  commitLocalHistoricalCollection('opportunities',next as unknown as Parameters<typeof commitLocalHistoricalCollection>[1]);
 }
 
 async function loadCloudOpportunities(userId: string): Promise<CrmLiteOpportunity[]> {

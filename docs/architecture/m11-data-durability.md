@@ -141,3 +141,5 @@ M3's `commercial_outcome_requirements` follows this checklist. Its canonical rou
 - [ ] Test actual codecs/repositories, failed storage/cloud operations, rollback, sample separation, references, provenance and temporal fields.
 - [ ] Check performance and storage growth, query windows versus retention, payload/batch bounds, and build/bundle budgets.
 - [ ] Pass the exported-table/Kernel-table registry coverage test and the entire required suite on one clean final SHA.
+- [ ] For mutable commercial sources needed by historical derivations, register State Revision coverage, a verified `historyGuaranteedFrom` boundary, and an atomic canonical/revision write in every local and cloud writer. Do not substitute selective Commercial Events or backdate the baseline.
+- [ ] Verify cutoff reads, gap/schema handling, sample isolation, revision-aware backup/restore, and source-to-derived-projection coverage before claiming historical reconstruction. A cloud restore that cannot preserve both original revisions and the boundary must fail before mutation.

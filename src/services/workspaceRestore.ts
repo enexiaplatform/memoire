@@ -6,6 +6,8 @@ import { buildRestorePlan, isRestorableWorkspaceKey, type BackupEnvelope } from 
 import { hasLocalSampleData } from '../utils/dataMode.ts';
 import { reportClientOperationalEvent } from './clientTelemetry.ts';
 import { writeLocalCollection } from './localWriteGuard.ts';
+import { buildHistoricalBaselineFromCollections, HISTORICAL_COVERAGE_KEY, HISTORICAL_REVISIONS_KEY,
+  historicalSources } from './historicalIntegrity.ts';
 
 export type RestoreCollectionResult = {
   key: string;
@@ -39,6 +41,9 @@ export async function restoreWorkspace(
 ): Promise<RestoreResult> {
   if (hasLocalSampleData()) throw new Error('Leave the sample workspace before restoring real data.');
   const plan = buildRestorePlan(envelope);
+  if (options.clearFirst === false && plan.writes.some(write => write.key === HISTORICAL_REVISIONS_KEY ||
+    write.key === HISTORICAL_COVERAGE_KEY || Object.values(historicalSources).some(source => source.key === write.key)))
+    throw new Error('Historical restore must replace the covered browser workspace so its revision chain remains complete. Nothing was changed.');
   if (typeof window === 'undefined' || !window.localStorage) throw new Error('Browser storage is unavailable. Nothing was changed.');
   assertNoPendingRestore();
   const cloud = envelope.cloudData as { user_id?: string; data?: Record<string, RecordData[]> } | undefined;
@@ -46,6 +51,28 @@ export async function restoreWorkspace(
   const snapshot = snapshotWorkspace();
   const desired: Record<string, string | null> = options.clearFirst === false ? {} : Object.fromEntries(Object.keys(snapshot).map(key => [key, null]));
   for (const write of plan.writes) desired[write.key] = write.value;
+  const coveredKeys = new Set<string>(Object.values(historicalSources).map(source => source.key));
+  const hasCoveredData = plan.writes.some(write => coveredKeys.has(write.key));
+  if (options.userId && (plan.writes.some(write => [HISTORICAL_REVISIONS_KEY,HISTORICAL_COVERAGE_KEY,
+    'memoire.cloudStateRevisions.v1','memoire.cloudHistoryCoverage.v1'].includes(write.key))))
+    throw new Error('Account restore of historical revisions needs a transactional history restore. Nothing was changed. Keep this backup.');
+  if (options.userId && hasCoveredData && supabaseClient) {
+    const table = supabaseClient.from('commercial_history_coverage');
+    if (typeof table.select === 'function') {
+      const { error } = await table.select('user_id', { head: true }).limit(1);
+      if (!error) throw new Error('Account history is active; this restore needs a transactional history restore. Nothing was changed. Keep this backup.');
+      if (error.code !== '42P01') throw new Error(`Cannot verify account history before restore: ${error.message}. Nothing was changed.`);
+    }
+  }
+  const hasHistory = desired[HISTORICAL_REVISIONS_KEY] !== undefined || desired[HISTORICAL_COVERAGE_KEY] !== undefined;
+  if (!hasHistory) {
+    const collections = Object.fromEntries(plan.writes.filter(write => coveredKeys.has(write.key))
+      .map(write => [write.key, JSON.parse(write.value) as unknown]));
+    const scope = options.userId || 'guest';
+    const baseline = buildHistoricalBaselineFromCollections(collections, scope, new Date().toISOString());
+    desired[HISTORICAL_REVISIONS_KEY] = JSON.stringify(baseline.revisions);
+    desired[HISTORICAL_COVERAGE_KEY] = JSON.stringify(baseline.coverage);
+  }
   // Build every cloud request before the first local mutation, so a broken codec cannot half-restore.
   const requests = plan.writes.flatMap(write => {
     const contract = contractForKey(write.key);
