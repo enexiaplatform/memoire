@@ -119,7 +119,7 @@ export function validateHistoricalBundle(revisions:StateRevision[],coverage:Hist
       throw new Error('Invalid historical revision.');
     ids.add(row.id);mutations.add(`${row.scope}:${row.mutationId}`);
     const marker=coverage.find(c=>c.scope===row.scope)!;
-    if(row.recordedAt<marker.historyGuaranteedFrom)throw new Error('Revision precedes verified history boundary.');
+    if(Date.parse(row.recordedAt)<Date.parse(marker.historyGuaranteedFrom))throw new Error('Revision precedes verified history boundary.');
     const key=`${row.scope}:${row.entityType}:${row.entityId}`;const group=grouped.get(key)||[];group.push(row);grouped.set(key,group);
   }
   for(const rows of grouped.values()){

@@ -35,7 +35,8 @@ export async function getCloudEntityRevisionAt(type:HistoricalSource,entityId:st
     const decoded=decodeCloudRevision(row);if(!decoded)return {status:'corrupt',revision:null,coverage};
     if(decoded.revisionNo!==revisions.length+1)return {status:'sequence_gap',revision:null,coverage};
     if(!Number.isFinite(Date.parse(decoded.recordedAt))
-      ||revisions.length&&decoded.recordedAt<revisions.at(-1)!.recordedAt)return {status:'corrupt',revision:null,coverage};
+      ||revisions.length&&Date.parse(decoded.recordedAt)<Date.parse(revisions.at(-1)!.recordedAt))
+      return {status:'corrupt',revision:null,coverage};
     revisions.push(decoded);
   }
   return {status:'available',revision:revisions.filter(r=>Date.parse(r.recordedAt)<=cutoffTime).at(-1)||null,coverage};
@@ -58,11 +59,15 @@ export function composeHistoricalSourcesAt(revisions:StateRevision[],markers:His
   if(!Number.isFinite(at)||!Number.isFinite(Date.parse(marker.historyGuaranteedFrom)))return {status:'corrupt',coverage:marker};
   if(at<Date.parse(marker.historyGuaranteedFrom))return {status:'pre_coverage',coverage:marker};
   try{
-    const rows=revisions.filter(row=>row.scope===scope);
+    const rows=revisions.filter(row=>row.scope===scope).filter(row=>{
+      const recorded=Date.parse(row.recordedAt);
+      if(!Number.isFinite(recorded))throw new Error('Invalid revision time.');
+      return recorded<=at;
+    });
     validateHistoricalBundle(rows,[marker],{});
     const latest=new Map<string,StateRevision>();
     for(const row of rows.sort((a,b)=>a.revisionNo-b.revisionNo)){
-      if(Date.parse(row.recordedAt)<=at)latest.set(`${row.entityType}:${row.entityId}`,row);
+      latest.set(`${row.entityType}:${row.entityId}`,row);
     }
     const records=emptySources();
     const selectedRevisions=[...latest.values()].filter(row=>row.state!==null);
@@ -89,6 +94,7 @@ export function getLocalHistoricalSourcesAt(scope:string,cutoff:string,storage:S
 
 /** One paginated history read for the scope, never one request per entity. */
 export async function getCloudHistoricalSourcesAt(scope:string,cutoff:string):Promise<HistoricalSourceComposition>{
+  if(!Number.isFinite(Date.parse(cutoff)))return {status:'corrupt',coverage:null};
   if(!supabaseClient)return {status:'not_activated',coverage:null};
   const {data:marker,error}=await supabaseClient.from('commercial_history_coverage').select('*').eq('user_id',scope).maybeSingle();
   if(error)throw new Error(error.message);
@@ -97,7 +103,7 @@ export async function getCloudHistoricalSourcesAt(scope:string,cutoff:string):Pr
     schemaVersion:marker.schema_version,lineageId:marker.lineage_id};
   if(Date.parse(cutoff)<Date.parse(coverage.historyGuaranteedFrom))return {status:'pre_coverage',coverage};
   const raw=await fetchAllRows<Record<string,unknown>>((from,to)=>supabaseClient!.from('commercial_state_revisions').select('*')
-    .eq('user_id',scope).order('entity_type',{ascending:true}).order('entity_id',{ascending:true})
+    .eq('user_id',scope).lte('recorded_at',cutoff).order('entity_type',{ascending:true}).order('entity_id',{ascending:true})
     .order('revision_no',{ascending:true}).range(from,to) as never);
   const decoded:StateRevision[]=[];
   for(const row of raw){

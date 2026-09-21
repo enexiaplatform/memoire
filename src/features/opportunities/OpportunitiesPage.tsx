@@ -1,4 +1,5 @@
 import { CommercialStatePanel } from './CommercialStatePanel';
+import { HistoricalOpportunityDrawer } from './HistoricalOpportunityDrawer';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ThreadsSection } from '../threads/ThreadsSection';
@@ -617,13 +618,13 @@ export function OpportunitiesPage() {
     const opportunityId = searchParams.get('opportunityId');
     if (opportunityId && !loading) {
       const opportunity = opportunities.find((item) => item.id === opportunityId);
-      if (opportunity) {
-        setEditingOpportunity(opportunity);
-        setForm(opportunityToForm(opportunity));
+      if (opportunity || searchParams.has('asOf')) {
+        setEditingOpportunity(opportunity || null);
+        if(opportunity)setForm(opportunityToForm(opportunity));
         setPanelMode('edit');
         setSaveState('idle');
         setMessage('');
-      }
+      }else{setEditingOpportunity(null);setPanelMode('closed');}
       // Deliberately left in the URL: it is what makes the open drawer a link
       // somebody can send. `closePanel` clears it.
       return;
@@ -1432,7 +1433,20 @@ export function OpportunitiesPage() {
         />
       </div>
 
-      <OpportunityPanel
+      {panelMode==='edit'&&searchParams.has('asOf')&&searchParams.get('opportunityId')
+        ? <HistoricalOpportunityDrawer
+          opportunityId={searchParams.get('opportunityId')!}
+          scope={dataUserId||'guest'} cutoff={searchParams.get('asOf')||''}
+          sampleDataActive={sampleDataActive} activities={activities.filter(activity=>
+            activity.linkedOpportunityId===searchParams.get('opportunityId'))}
+          onCutoffChange={cutoff=>setSearchParams({opportunityId:searchParams.get('opportunityId')!,asOf:cutoff})}
+          onReturnToCurrent={()=>{
+            const id=searchParams.get('opportunityId')!;
+            if(opportunities.some(opportunity=>opportunity.id===id))setSearchParams({opportunityId:id});
+            else closePanel();
+          }}
+          onClose={closePanel} />
+        : <OpportunityPanel
         accounts={accounts}
         mode={panelMode}
         form={form}
@@ -1460,8 +1474,10 @@ export function OpportunitiesPage() {
         onSaveOpportunityOutcome={handleSaveOpportunityOutcome}
         onSave={handleSave}
         onClose={closePanel}
+        onViewHistory={editingOpportunity?()=>setSearchParams({opportunityId:editingOpportunity.id,
+          asOf:new Date().toISOString()}):undefined}
         onDelete={editingOpportunity ? () => handleDelete(editingOpportunity) : undefined}
-      />
+      />}
     </PageContainer>
   );
 }
@@ -3035,6 +3051,7 @@ function OpportunityPanel({
   onSaveOpportunityOutcome,
   onSave,
   onClose,
+  onViewHistory,
   onDelete,
 }: {
   mode: 'closed' | 'add' | 'edit';
@@ -3079,6 +3096,7 @@ function OpportunityPanel({
   onSaveOpportunityOutcome: (opportunity: CrmLiteOpportunity, draft: OpportunityOutcomeDraft) => void;
   onSave: () => void;
   onClose: () => void;
+  onViewHistory?: () => void;
   onDelete?: () => void;
 }) {
   // Declared before the early return below: a hook after a conditional return is
@@ -3222,6 +3240,8 @@ function OpportunityPanel({
           {mode === 'edit' && editingOpportunity && (
             <RecordStamp className="mt-1" createdAt={editingOpportunity.createdAt} updatedAt={editingOpportunity.updatedAt} />
           )}
+          {mode==='edit'&&editingOpportunity&&!isLeadStage(editingOpportunity.stage)&&onViewHistory&&
+            <button type="button" onClick={onViewHistory} className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-brand-blue">As understood on…</button>}
           {editingOpportunity?.accountName && (
             <div className="mt-3 flex flex-wrap gap-2">
               <Link

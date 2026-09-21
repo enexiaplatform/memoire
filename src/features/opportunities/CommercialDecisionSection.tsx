@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import {Link} from 'react-router-dom';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { ForecastDefensibility } from '../../domain/commercialKernel/deriveForecastDefensibility';
 import type { CommercialCommitment } from '../../domain/commercialKernel/types';
@@ -49,6 +50,9 @@ export function CommercialDecisionSection({opportunity,forecast,commitments,user
       <p className="mt-1">Chosen approach: {latest.options.find(o=>o.id===latest.selectedOptionId)?.label}</p>
       <p className="mt-1 text-muted">Intervention: {latest.intervention.intent}</p>
       <p className="mt-1 text-xs text-muted">Why: {latest.rationale}</p>
+      <Link className="mt-2 inline-block text-xs font-semibold text-brand-blue underline" to={`/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}&asOf=${encodeURIComponent(latest.decidedAt)}`}>
+        View commercial state as understood when this Decision was recorded
+      </Link>
       <p className="mt-1 text-xs text-muted">Expected change: {latest.expectedConsequence}</p>
       <p className="mt-1 text-xs text-muted">Execution: {latest.executionLinks.length?latest.executionLinks.map(l=>`${l.kind} ${l.recordId}`).join(' · '):'None linked yet'}</p>
       <div className="mt-3 flex gap-2"><select aria-label="Existing execution" className={field} value={linkChoice} onChange={e=>setLinkChoice(e.target.value)}>
@@ -64,6 +68,9 @@ export function CommercialDecisionSection({opportunity,forecast,commitments,user
         <p className="mt-1 text-xs text-muted">Basis at decision: {d.basisSnapshot.forecast.verdict}; {d.basisSnapshot.blockers.map(b=>b.label).join(', ')||'no recorded blockers'}</p>
         <div className="mt-1 text-xs text-muted">Options considered:{d.options.map(o=><p key={o.id} className="mt-1">{o.label}{o.id===d.selectedOptionId?' (chosen)':''} · Intended change: {o.expectedConsequence}{o.tradeoffs?` · Tradeoff: ${o.tradeoffs}`:''}</p>)}</div>
         <p className="mt-1 text-xs text-muted">Why: {d.rationale}</p>
+        <Link className="mt-2 inline-block text-xs font-semibold text-brand-blue underline" to={`/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}&asOf=${encodeURIComponent(d.decidedAt)}`}>
+          View state at this Decision
+        </Link>
         {d.supersedesDecisionId&&<p className="mt-1 text-xs text-muted">Supersedes {d.supersedesDecisionId}</p>}
       </article>)}</details>}
     {open&&<div className="mt-3 space-y-3 rounded-lg border border-line p-3 text-sm">
