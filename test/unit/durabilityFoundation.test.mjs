@@ -45,6 +45,7 @@ const { projectCommercialConditions } = await import('../../src/domain/commercia
 const requirementCommands = await import('../../src/domain/commercialKernel/requirementCommands.ts');
 const dependencyCommands = await import('../../src/domain/commercialKernel/dependencyCommands.ts');
 const timingCommands = await import('../../src/domain/commercialKernel/timingCommands.ts');
+const moneyGateCommands = await import('../../src/domain/commercialKernel/moneyGateCommands.ts');
 const at = '2026-08-12T10:30:00.000Z';
 const later = '2026-09-10T12:30:00.000Z';
 const base = { userId: 'owner', accountId: 'a', accountName: 'Acme', opportunityId: 'o', threadId: 't',
@@ -61,6 +62,8 @@ const fixtures = [
   { ...base, id: 'requirement', expectedOutcome: 'Know who approves budget', question: 'Who approves budget?', conditionId: null, role: 'required_now', lifecycle: 'active' },
   { ...base, id: 'dependency', dependentRequirementId: 'requirement', prerequisiteRequirementId: 'prerequisite', basis: 'The prerequisite is needed before approval can be known.', lifecycle: 'active', sourceType:'manual' },
   { ...base, id:'timing', kind:'duration', requirementId:'requirement', basis:'Buyer process stated', lifecycle:'active', durationDays:3, durationUnit:'calendar_days', epistemic:'supported', sourceKind:'customer_or_supplier', sourceReference:'Buyer email 73', evidenceId:null, commitmentId:null, sourceType:'manual' },
+  { ...base,id:'money-gate',moneySourceType:'opportunity_value',moneySourceId:'o',requirementId:'requirement',
+    basisKind:'operator_confirmed_structure',basis:'Buyer process requires approval',lifecycle:'active',sourceType:'manual' },
   { id:'decision',userId:'owner',accountId:'a',opportunityId:'o',question:'How should QA be resolved?',context:'QA acceptance is unclear.',
     basisSnapshot:{version:1,capturedAt:later,forecast:{verdict:'conditional',claim:null,timingEvaluation:'incomplete',reasonCodes:[]},premises:[],blockers:[],openQuestions:[],nextQuestion:null,timing:null,sourceRecordIds:['o']},
     options:[{id:'option-a',order:1,label:'Ask QA director',interventionIntent:'Resolve QA ambiguity',expectedConsequence:'Know whether acceptance is complete',tradeoffs:''}],
@@ -166,16 +169,45 @@ test('Timing restore rejects missing and foreign Requirement references before m
   }
 });
 
+test('Money Gate command persists canonical state before Event and enforces stale retirement',()=>{
+  const refs={opportunities:[{id:'o',userId:'owner',accountId:'a',accountName:'Acme',status:'Active',estimatedValue:1200,currency:'USD'}],
+    quotes:[],requirements:[fixtures[6]]};
+  const scope={userId:'owner',sampleDataActive:false};
+  const input={opportunityId:'o',moneySourceType:'opportunity_value',moneySourceId:'o',requirementId:'requirement',
+    basisKind:'operator_confirmed_structure',basis:'Buyer process requires approval'};
+  storage.refuse=key=>key===kernelCodecs[9].storageKey;
+  assert.equal(moneyGateCommands.createCommercialMoneyGate(scope,input,refs).ok,false);
+  assert.equal(storage.getItem(kernelCodecs[2].storageKey),null);
+  storage.refuse=key=>key===kernelCodecs[2].storageKey;
+  const created=moneyGateCommands.createCommercialMoneyGate(scope,input,refs);
+  assert.equal(created.ok,true);assert.match(created.warning,/Do not repeat/);
+  assert.equal(JSON.parse(storage.getItem(kernelCodecs[9].storageKey)).length,1);
+  assert.equal(moneyGateCommands.retireCommercialMoneyGate(scope,created.value.id,'stale',refs).ok,false);
+  storage.refuse=()=>false;
+  assert.equal(moneyGateCommands.retireCommercialMoneyGate(scope,created.value.id,created.value.updatedAt,refs).ok,true);
+});
+
+test('sample Money Gate remains in its sample workspace and never reaches cloud',async()=>{
+  const sampleRequirement={...fixtures[6],isSample:true};
+  const refs={opportunities:[{id:'o',userId:'owner',accountId:'a',accountName:'Acme',status:'Active',estimatedValue:1200,currency:'USD',isSample:true}],
+    quotes:[],requirements:[sampleRequirement]};
+  const result=moneyGateCommands.createCommercialMoneyGate({userId:'owner',sampleDataActive:true},{opportunityId:'o',moneySourceType:'opportunity_value',
+    moneySourceId:'o',requirementId:'requirement',basisKind:'customer_process',basis:'Buyer process'},refs);
+  assert.equal(result.ok,true);assert.equal(result.value.isSample,true);await tick();
+  assert.equal(requests.some(request=>request.table==='commercial_money_gates'),false);
+});
+
 for (const [i, codec] of kernelCodecs.entries()) {
   test(`${codec.table}: actual cloud codec → backup → restore → actual codec preserves history and provenance`, async () => {
     const original = fixtures[i];
     const row = codec.toRow(original, 'owner');
     const file = { ...backup({}), cloudData: { user_id: 'owner', manifest: { complete: true }, data: { [codec.table]: [row] } } };
-    if (codec.table === 'commercial_conditions' || codec.table === 'commercial_outcome_requirements' || codec.table === 'commercial_dependencies' || codec.table === 'commercial_timing_assertions' || codec.table === 'commercial_decisions') {
+    if (codec.table === 'commercial_conditions' || codec.table === 'commercial_outcome_requirements' || codec.table === 'commercial_dependencies' || codec.table === 'commercial_timing_assertions' || codec.table === 'commercial_money_gates' || codec.table === 'commercial_decisions') {
       file.localBrowserData['memoire.accounts.v1'] = [{ id: 'a', userId: 'owner', accountName: 'Acme' }];
       file.localBrowserData['memoire.opportunities.v1'] = [{ id: 'o', userId: 'owner', accountId:'a',accountName: 'Acme' }];
       if (codec.table === 'commercial_dependencies') file.localBrowserData[kernelCodecs[6].storageKey]=[fixtures[6],{...fixtures[6],id:'prerequisite',expectedOutcome:'Know technical approver'}];
       if (codec.table === 'commercial_timing_assertions') file.localBrowserData[kernelCodecs[6].storageKey]=[fixtures[6]];
+      if (codec.table === 'commercial_money_gates') file.localBrowserData[kernelCodecs[6].storageKey]=[fixtures[6]];
     }
     const parsed = parseBackupFile(JSON.stringify(file));
     assert.equal(parsed.ok, true, parsed.message);
@@ -190,13 +222,13 @@ for (const [i, codec] of kernelCodecs.entries()) {
 }
 
 test('cloud restore sends existing Plan execution before its Decision link',async()=>{
-  const decision={...fixtures[9],executionLinks:[{kind:'action',recordId:'plan',linkedAt:later}]};
+  const decision={...fixtures[10],executionLinks:[{kind:'action',recordId:'plan',linkedAt:later}]};
   const file=backup({
     'memoire.accounts.v1':[{id:'a',userId:'owner',accountName:'Acme'}],
     'memoire.opportunities.v1':[{id:'o',userId:'owner',accountId:'a',accountName:'Acme'}],
     'memoire.planItems.v1':[{id:'plan',date:'2026-09-20',label:'Call QA',tag:'',done:false,
       linkedOpportunityId:'o',createdAt:at,updatedAt:later,source:'user'}],
-    [kernelCodecs[9].storageKey]:[decision],
+    [kernelCodecs[10].storageKey]:[decision],
   });
   const result=await restoreWorkspace(file,{userId:'owner'});assert.equal(result.ok,true);
   assert.ok(requests.findIndex(r=>r.table==='plan_items')<requests.findIndex(r=>r.table==='commercial_decisions'));

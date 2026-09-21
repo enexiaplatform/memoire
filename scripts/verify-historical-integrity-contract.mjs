@@ -3,7 +3,10 @@ import { readFileSync } from 'node:fs';
 import { historicalSources, historicallyDerivedProjections } from '../src/services/historicalIntegrity.ts';
 import { canonicalContracts } from '../src/services/canonicalDurability.ts';
 
-const sql = readFileSync(new URL('../supabase/migrations/20260920120000_commercial_state_revisions.sql', import.meta.url), 'utf8');
+const sql = [
+  '../supabase/migrations/20260920120000_commercial_state_revisions.sql',
+  '../supabase/migrations/20260921190000_commercial_money_gates.sql',
+].map(path=>readFileSync(new URL(path,import.meta.url),'utf8')).join('\n');
 const exporter = readFileSync(new URL('../api/export.ts', import.meta.url), 'utf8');
 const tables = new Set(canonicalContracts.map(contract => contract.table));
 for (const [table, source] of Object.entries(historicalSources)) {

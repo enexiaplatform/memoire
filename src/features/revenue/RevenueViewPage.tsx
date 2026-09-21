@@ -39,6 +39,8 @@ import {
   type ExpenseRecord,
 } from '../../services/expenseStore';
 import { matchesSearchQuery } from '../../utils/textSearch';
+import {deriveMoneyConsequences,aggregateMoneyConsequences} from '../../domain/commercialKernel/deriveMoneyConsequences';
+import {todayDateKey} from '../../utils/safeDate';
 
 type RevenueData = {
   opportunities: CrmLiteOpportunity[];
@@ -76,6 +78,7 @@ export function RevenueViewPage({ tabs }: { tabs?: ReactNode } = {}) {
     getCachedSalesWorkspaceData(hasLocalSampleData() ? undefined : user?.id),
   );
   const [data, setData] = useState<RevenueData>(initialRevenueData || emptyRevenueData);
+  const [workspace,setWorkspace]=useState<SalesWorkspaceData|null>(getCachedSalesWorkspaceData(hasLocalSampleData()?undefined:user?.id));
   const [expenses, setExpenses] = useState<ExpenseRecord[]>(() => loadExpenses());
   const [loading, setLoading] = useState(!initialRevenueData);
   const [syncing, setSyncing] = useState(false);
@@ -110,6 +113,7 @@ export function RevenueViewPage({ tabs }: { tabs?: ReactNode } = {}) {
     try {
       const workspace = await loadSalesWorkspaceData(dataUserId, { force });
       setData(revenueDataFrom(workspace) || emptyRevenueData);
+      setWorkspace(workspace);
     } finally {
       setLoading(false);
       setSyncing(false);
@@ -134,6 +138,10 @@ export function RevenueViewPage({ tabs }: { tabs?: ReactNode } = {}) {
     [moneyFlow.threads],
   );
   const routeHealth = useMemo(() => buildRouteHealth({ opportunities: data.opportunities }), [data.opportunities]);
+  const consequences=useMemo(()=>workspace?deriveMoneyConsequences({opportunities:workspace.opportunities,quotes:workspace.quotes,
+    gates:workspace.moneyGates,requirements:workspace.requirements,conditions:workspace.conditions,evidence:workspace.evidence,
+    dependencies:workspace.dependencies,timingAssertions:workspace.timing,commitments:workspace.commitments,
+    today:todayDateKey(),calculatedAt:new Date().toISOString()}):null,[workspace]);
   const visibleActions = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return revenue.actionItems;
@@ -195,6 +203,7 @@ export function RevenueViewPage({ tabs }: { tabs?: ReactNode } = {}) {
           {BUSINESS_ACCOUNTING_ENABLED && (
             <ProfitAndLossStatement quotes={data.quotes} expenses={expenses} />
           )}
+          {consequences&&<CommercialValueWaitingPanel projection={consequences} opportunities={data.opportunities} />}
 
           {/* The page is the order book.
               Everything under it answers a different question - will I make
@@ -358,6 +367,24 @@ export function RevenueViewPage({ tabs }: { tabs?: ReactNode } = {}) {
       )}
     </PageContainer>
   );
+}
+
+function CommercialValueWaitingPanel({projection,opportunities}:{projection:ReturnType<typeof deriveMoneyConsequences>;opportunities:CrmLiteOpportunity[]}){
+  const rows=projection.consequences.filter(row=>row.consequenceKinds.includes('gated')||row.consequenceKinds.includes('timing_unsupported'));
+  if(!rows.length)return null;
+  const totals=aggregateMoneyConsequences(rows);
+  return <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" aria-label="Commercial value waiting on state">
+    <h2 className="text-base font-bold text-navy">Commercial value waiting on state</h2>
+    <p className="mt-1 text-sm text-gray-500">Only explicit Money Gates appear here. Amounts are not loss estimates and are never repeated per blocker.</p>
+    <div className="mt-3 space-y-3">{rows.map(row=><article key={`${row.moneySourceType}:${row.moneySourceId}`} className="rounded-lg border border-gray-100 p-3 text-sm">
+      <p><strong>{formatMoney(row.amount,row.currency)}</strong> · {row.moneySourceType==='quote_value'?'Quote value':'Opportunity potential value'} · {opportunities.find(item=>item.id===row.opportunityId)?.opportunityName||'Opportunity'}</p>
+      {row.blockers.length?<p className="mt-1">Waiting on: {row.blockers.map(blocker=>blocker.label).join('; ')}</p>:<p className="mt-1 text-gray-500">No current blocker. Gating resolved does not mean the money is realized.</p>}
+      {row.timingState==='unsupported'&&<p className="mt-1 text-amber-800">Linked commercial timing is no longer supported.</p>}
+    </article>)}</div>
+    <div className="mt-3 text-xs text-gray-500">{totals.map(total=><p key={total.currency}>{total.amount===null
+      ?`${total.currency}: no portfolio total because economic identity is duplicated or unknown.`
+      :`${formatMoney(total.amount,total.currency)} across ${total.sourceCount} structurally independent source${total.sourceCount===1?'':'s'}.`}</p>)}</div>
+  </section>;
 }
 
 /**

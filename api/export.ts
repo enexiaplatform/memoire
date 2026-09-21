@@ -68,6 +68,7 @@ export const exportTables = [
   { table: 'commercial_outcome_requirements', ownerColumn: 'user_id' },
   { table: 'commercial_dependencies', ownerColumn: 'user_id' },
   { table: 'commercial_timing_assertions', ownerColumn: 'user_id' },
+  { table: 'commercial_money_gates', ownerColumn: 'user_id' },
   { table: 'commercial_decisions', ownerColumn: 'user_id' },
   { table: 'commercial_history_coverage', ownerColumn: 'user_id' },
   { table: 'commercial_state_revisions', ownerColumn: 'user_id' },

@@ -8,6 +8,8 @@ import { validateTimingAssertions, type CommercialTimingAssertion } from '../dom
 import type { CommercialCommitment } from '../domain/commercialKernel/types.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { CommercialDecision } from '../domain/commercialKernel/commercialDecision.ts';
+import {validateMoneyGates,type CommercialMoneyGate} from '../domain/commercialKernel/moneyGate.ts';
+import type {QuoteRecord} from '../services/quoteStore.ts';
 import type { PlanRecord } from './weeklyPlan.ts';
 import { HISTORICAL_REVISIONS_KEY,HISTORICAL_COVERAGE_KEY,historicalSources,validateHistoricalBundle,
   type StateRevision,type HistoryCoverage } from '../services/historicalIntegrity.ts';
@@ -289,6 +291,9 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
     commitments:normalized['memoire.commercialCommitments.v1'] as CommercialCommitment[] || [],
     evidence:normalized['memoire.commercialEvidence.v1'] as CommercialEvidence[] || [],
   });
+  const moneyGates=normalized['memoire.commercialMoneyGates.v1'] as CommercialMoneyGate[]|undefined;
+  if(moneyGates?.length)validateMoneyGates(moneyGates,{opportunities:normalized['memoire.opportunities.v1'] as CrmLiteOpportunity[]||[],
+    quotes:normalized['memoire.quotes.v1'] as QuoteRecord[]||[],requirements:requirements||[]});
   const localRevisions=normalized[HISTORICAL_REVISIONS_KEY] as StateRevision[]|undefined;
   const localCoverage=normalized[HISTORICAL_COVERAGE_KEY] as HistoryCoverage[]|undefined;
   if(Boolean(localRevisions)!==Boolean(localCoverage))throw new Error('Historical revisions and coverage boundary must travel together.');

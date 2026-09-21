@@ -27,6 +27,11 @@ import { deriveForecastDefensibility } from '../../domain/commercialKernel/deriv
 import { todayDateKey } from '../../utils/safeDate';
 import type { CommercialTimingAssertion } from '../../domain/commercialKernel/commercialTiming';
 import { TIMING_UPDATED_EVENT, loadCommercialTiming, loadCommercialTimingForWorkspace } from '../../services/commercialKernel/timingStore';
+import { MONEY_GATE_UPDATED_EVENT, loadCommercialMoneyGates, loadCommercialMoneyGatesForWorkspace } from '../../services/commercialKernel/moneyGateStore';
+import type {CommercialMoneyGate,MoneyGateBasisKind} from '../../domain/commercialKernel/moneyGate';
+import {createCommercialMoneyGate,retireCommercialMoneyGate} from '../../domain/commercialKernel/moneyGateCommands';
+import {deriveMoneyConsequences} from '../../domain/commercialKernel/deriveMoneyConsequences';
+import {loadQuotes,loadQuotesForUser,type QuoteRecord} from '../../services/quoteStore';
 
 const inputClass = 'mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink';
 const labels = { supported: 'Supported', assumed: 'Assumption', hypothesis: 'Being tested', contradicted: 'Conflicting evidence' };
@@ -44,6 +49,8 @@ export function CommercialStatePanel({ opportunity, accounts, userId, sampleData
   const [dependencies,setDependencies]=useState<CommercialDependency[]>([]);
   const [timing,setTiming]=useState<CommercialTimingAssertion[]>([]);
   const [commitments,setCommitments]=useState<CommercialCommitment[]>([]);
+  const [moneyGates,setMoneyGates]=useState<CommercialMoneyGate[]>([]);
+  const [quotes,setQuotes]=useState<QuoteRecord[]>([]);
   const [events,setEvents]=useState<CommercialEvent[]>([]);
   const [adding, setAdding] = useState(false);
   const [statement, setStatement] = useState('');
@@ -69,20 +76,23 @@ export function CommercialStatePanel({ opportunity, accounts, userId, sampleData
       setDependencies(loadCommercialDependencies().filter(r => r.userId === (userId || null) && Boolean(r.isSample) === sampleDataActive));
       setTiming(loadCommercialTiming().filter(r => r.userId === (userId || null) && Boolean(r.isSample) === sampleDataActive));
       setCommitments(loadCommitments().filter(r => r.userId === (userId || null) && Boolean(r.isSample) === sampleDataActive));
+      setMoneyGates(loadCommercialMoneyGates().filter(r=>r.userId===(userId||null)&&Boolean(r.isSample)===sampleDataActive));
+      setQuotes(loadQuotes().filter(row=>row.opportunityId===opportunity.id&&Boolean(row.isSample)===sampleDataActive));
       setEvents(loadEvents().filter(r => r.userId === (userId || null) && Boolean(r.isSample) === sampleDataActive));
     };
     refresh();
-    void Promise.all([loadCommercialConditionsForWorkspace(userId, sampleDataActive), loadCommercialEvidenceForWorkspace(userId, sampleDataActive), loadOutcomeRequirementsForWorkspace(userId, sampleDataActive),loadCommercialDependenciesForWorkspace(userId,sampleDataActive),loadCommercialTimingForWorkspace(userId,sampleDataActive),loadCommitmentsForWorkspace(userId,sampleDataActive),loadRecentEvents(userId,sampleDataActive,{windowDays:365,limit:2000})]).then(refresh);
+    void Promise.all([loadCommercialConditionsForWorkspace(userId, sampleDataActive), loadCommercialEvidenceForWorkspace(userId, sampleDataActive), loadOutcomeRequirementsForWorkspace(userId, sampleDataActive),loadCommercialDependenciesForWorkspace(userId,sampleDataActive),loadCommercialTimingForWorkspace(userId,sampleDataActive),loadCommitmentsForWorkspace(userId,sampleDataActive),loadCommercialMoneyGatesForWorkspace(userId,sampleDataActive),userId?loadQuotesForUser(userId):Promise.resolve(loadQuotes()),loadRecentEvents(userId,sampleDataActive,{windowDays:365,limit:2000})]).then(refresh);
     window.addEventListener(CONDITION_UPDATED_EVENT, refresh);
     window.addEventListener(EVIDENCE_UPDATED_EVENT, refresh);
     window.addEventListener(REQUIREMENT_UPDATED_EVENT, refresh);
     window.addEventListener(DEPENDENCY_UPDATED_EVENT,refresh);
     window.addEventListener(TIMING_UPDATED_EVENT,refresh);
     window.addEventListener(COMMITMENTS_UPDATED_EVENT,refresh);
+    window.addEventListener(MONEY_GATE_UPDATED_EVENT,refresh);
     window.addEventListener(EVENTS_UPDATED_EVENT,refresh);
     window.addEventListener('storage', refresh);
-    return () => { active = false; window.removeEventListener(CONDITION_UPDATED_EVENT, refresh); window.removeEventListener(EVIDENCE_UPDATED_EVENT, refresh); window.removeEventListener(REQUIREMENT_UPDATED_EVENT, refresh);window.removeEventListener(DEPENDENCY_UPDATED_EVENT,refresh);window.removeEventListener(TIMING_UPDATED_EVENT,refresh);window.removeEventListener(COMMITMENTS_UPDATED_EVENT,refresh);window.removeEventListener(EVENTS_UPDATED_EVENT,refresh); window.removeEventListener('storage', refresh); };
-  }, [userId, sampleDataActive]);
+    return () => { active = false; window.removeEventListener(CONDITION_UPDATED_EVENT, refresh); window.removeEventListener(EVIDENCE_UPDATED_EVENT, refresh); window.removeEventListener(REQUIREMENT_UPDATED_EVENT, refresh);window.removeEventListener(DEPENDENCY_UPDATED_EVENT,refresh);window.removeEventListener(TIMING_UPDATED_EVENT,refresh);window.removeEventListener(COMMITMENTS_UPDATED_EVENT,refresh);window.removeEventListener(MONEY_GATE_UPDATED_EVENT,refresh);window.removeEventListener(EVENTS_UPDATED_EVENT,refresh); window.removeEventListener('storage', refresh); };
+  }, [userId, sampleDataActive,opportunity.id]);
   const readings = useMemo(() => [...projectCommercialConditions(conditions.filter(c => c.opportunityId === opportunity.id), evidence).values()], [conditions, evidence, opportunity.id]);
   const references = conditionReferenceIndex(accounts, [opportunity], evidence);
   const accepted = (result: CommandResult<CommercialCondition>) => {
@@ -97,8 +107,13 @@ export function CommercialStatePanel({ opportunity, accounts, userId, sampleData
   const forecast=useMemo(()=>deriveForecastDefensibility({opportunity,requirements,conditions,evidence,dependencies,
     timingAssertions:timing,commitments,today:todayDateKey(),calculatedAt:new Date().toISOString()}),
     [opportunity,requirements,conditions,evidence,dependencies,timing,commitments]);
+  const money=useMemo(()=>deriveMoneyConsequences({opportunities:[opportunity],quotes,gates:moneyGates.filter(g=>g.opportunityId===opportunity.id),
+    requirements,conditions,evidence,dependencies,timingAssertions:timing,commitments,today:todayDateKey(),calculatedAt:new Date().toISOString()}),
+    [opportunity,quotes,moneyGates,requirements,conditions,evidence,dependencies,timing,commitments]);
   return <section aria-label="Commercial state" className="mt-5 rounded-panel border border-line bg-white p-4">
     <ForecastDefensibilitySection view={forecast} lastBuyerProgress={buyerProgress?.last} />
+    <MoneyConsequenceSection opportunity={opportunity} requirements={requirements} quotes={quotes} gates={moneyGates}
+      projection={money} scope={scope} onMessage={setMessage} />
     <CommercialDecisionSection opportunity={opportunity} forecast={forecast} commitments={commitments} userId={userId} sampleDataActive={sampleDataActive} />
     <RequirementSection opportunity={opportunity} accounts={accounts} userId={userId} sampleDataActive={sampleDataActive}
       conditions={conditions} evidence={evidence} requirements={requirements} dependencies={dependencies} onMessage={setMessage} />
@@ -174,6 +189,42 @@ export function ConditionRow({ reading, evidence, onChange }: {
       </div>}
     </div>}
   </details>;
+}
+function MoneyConsequenceSection({opportunity,requirements,quotes,gates,projection,scope,onMessage}:{
+  opportunity:CrmLiteOpportunity;requirements:OutcomeRequirement[];quotes:QuoteRecord[];gates:CommercialMoneyGate[];
+  projection:ReturnType<typeof deriveMoneyConsequences>;scope:CommercialScope;onMessage:(message:string)=>void;
+}){
+  const [adding,setAdding]=useState(false),[requirementId,setRequirementId]=useState(''),[basis,setBasis]=useState('');
+  const [sourceChoice,setSourceChoice]=useState(`opportunity_value:${opportunity.id}`);
+  const [basisKind,setBasisKind]=useState<MoneyGateBasisKind>('operator_confirmed_structure');
+  useEffect(()=>{if((typeof opportunity.estimatedValue!=='number'||opportunity.status!=='Active')&&sourceChoice.startsWith('opportunity_value:')){
+    const quote=quotes.find(row=>typeof row.amount==='number'&&['Sent','Revised','Accepted'].includes(row.status)&&row.paymentStatus!=='Paid');
+    if(quote)setSourceChoice(`quote_value:${quote.id}`);
+  }},[opportunity.estimatedValue,opportunity.status,quotes,sourceChoice]);
+  const activeRequirements=requirements.filter(row=>row.opportunityId===opportunity.id&&row.lifecycle==='active');
+  const active=gates.filter(row=>row.opportunityId===opportunity.id&&row.lifecycle==='active');
+  const refs={opportunities:[opportunity],quotes,requirements};
+  return <div className="mb-5 border-b border-line pb-5" aria-label="Money consequence">
+    <div className="flex items-center justify-between gap-3"><div><h3 className="text-sm font-semibold text-ink">Money consequence</h3>
+      <p className="mt-1 text-xs text-muted">Recorded value stays context until you explicitly confirm what commercial outcome it depends on.</p></div>
+      {((opportunity.status==='Active'&&typeof opportunity.estimatedValue==='number')||quotes.some(row=>typeof row.amount==='number'&&['Sent','Revised','Accepted'].includes(row.status)&&row.paymentStatus!=='Paid'))&&activeRequirements.length>0&&<button type="button" className="text-sm font-semibold text-brand-blue" onClick={()=>setAdding(!adding)}>{adding?'Cancel':'This value depends on…'}</button>}
+    </div>
+    {typeof opportunity.estimatedValue==='number'&&<p className="mt-2 text-sm"><strong>{opportunity.estimatedValue.toLocaleString()} {opportunity.currency}</strong> · Opportunity potential value</p>}
+    {!active.length&&projection.contexts[0]?.blockerLabels.length>0&&<p className="mt-2 text-sm text-muted">Current known blocker: {projection.contexts[0].blockerLabels.join('; ')}. No Money Gate is recorded, so the value is not attributed to this blocker.</p>}
+    {projection.consequences.map(row=><div key={row.moneySourceId} className="mt-3 rounded-lg border border-line p-3 text-sm">
+      {row.blockers.length?<><p><strong>Currently waiting on:</strong> {row.blockers.map(blocker=>blocker.label).join('; ')}</p>
+        {row.blockers.map(blocker=>blocker.paths.map((path,index)=><p key={`${blocker.requirementId}:${index}`} className="mt-1 text-xs text-muted">Path: {path.requirementIds.map(id=>requirements.find(r=>r.id===id)?.expectedOutcome||id).join(' → ')}</p>))}</>:<p>No current blocker on the recorded gate. This does not mean the value is realized.</p>}
+      {row.timingState==='unsupported'&&<p className="mt-1 text-amber-800">The linked commercial target timing is no longer supported.</p>}
+    </div>)}
+    {adding&&<div className="mt-3 space-y-2 rounded-lg border border-line p-3">
+      <label className="block text-sm">Money source<select className={inputClass} value={sourceChoice} onChange={event=>setSourceChoice(event.target.value)}>{opportunity.status==='Active'&&typeof opportunity.estimatedValue==='number'&&<option value={`opportunity_value:${opportunity.id}`}>Opportunity potential value · {opportunity.estimatedValue.toLocaleString()} {opportunity.currency}</option>}{quotes.filter(row=>typeof row.amount==='number'&&['Sent','Revised','Accepted'].includes(row.status)&&row.paymentStatus!=='Paid').map(row=><option key={row.id} value={`quote_value:${row.id}`}>Quote {row.quoteId} · {row.amount!.toLocaleString()} {row.currency}</option>)}</select></label>
+      <label className="block text-sm">Required commercial outcome<select className={inputClass} value={requirementId} onChange={event=>setRequirementId(event.target.value)}><option value="">Choose a Requirement</option>{activeRequirements.map(row=><option key={row.id} value={row.id}>{row.expectedOutcome}</option>)}</select></label>
+      <label className="block text-sm">Basis<select className={inputClass} value={basisKind} onChange={event=>setBasisKind(event.target.value as MoneyGateBasisKind)}><option value="operator_confirmed_structure">Operator-confirmed commercial structure</option><option value="customer_process">Customer process</option><option value="contractual_requirement">Contractual requirement</option></select></label>
+      <label className="block text-sm">Why does this value depend on that outcome?<textarea className={inputClass} maxLength={1000} value={basis} onChange={event=>setBasis(event.target.value)} /></label>
+      <button type="button" disabled={!sourceChoice||!requirementId||!basis.trim()} className="text-sm font-semibold text-brand-blue disabled:opacity-40" onClick={()=>{const separator=sourceChoice.indexOf(':');const moneySourceType=sourceChoice.slice(0,separator) as 'opportunity_value'|'quote_value';const moneySourceId=sourceChoice.slice(separator+1);const result=createCommercialMoneyGate(scope,{opportunityId:opportunity.id,moneySourceType,moneySourceId,requirementId,basisKind,basis},refs);onMessage(result.ok?result.warning||'Money Gate recorded.':result.error);if(result.ok){setAdding(false);setRequirementId('');setBasis('');}}}>Confirm relationship</button>
+    </div>}
+    {active.map(gate=><p key={gate.id} className="mt-2 text-xs text-muted">Linked to {requirements.find(row=>row.id===gate.requirementId)?.expectedOutcome||'Requirement'} · {gate.basis}<button type="button" className="ml-2 text-brand-blue" onClick={()=>{const result=retireCommercialMoneyGate(scope,gate.id,gate.updatedAt,refs);onMessage(result.ok?result.warning||'Money Gate retired.':result.error);}}>Retire</button></p>)}
+  </div>;
 }
 
 const roleLabel: Record<RequirementRole,string> = { required_now:'Required now',required_later:'Required later',context:'Context' };

@@ -115,6 +115,14 @@ export function HistoricalOpportunityDrawer({opportunityId,scope,cutoff,sampleDa
           <ForecastDefensibilitySection view={asOf.forecast} historical />
           {asOf.forecast.timing&&<p>Recovery window at cutoff: {asOf.forecast.timing.recoveryWindowDays??'unknown'} days · Last safe date: {asOf.forecast.timing.lastSafeDate||'unknown'}.</p>}
         </section>}
+        <section className="rounded-panel border border-line p-4"><h3 className="font-semibold text-ink">Money consequence then</h3>
+          <p className="mt-1 text-xs text-muted">Current M9 rules over recorded Opportunity value and Money Gates at this cutoff. Coverage is partial because mutable Quote and Receivable history is unavailable.</p>
+          {asOf.moneyConsequences?.consequences.length?<ul className="mt-2 space-y-2">{asOf.moneyConsequences.consequences.map(row=><li key={`${row.moneySourceType}:${row.moneySourceId}`}>
+            <strong>{row.amount.toLocaleString()} {row.currency}</strong> · Recorded value then
+            {row.blockers.length?<p>Waiting on then: {row.blockers.map(blocker=>blocker.label).join('; ')}</p>:<p>No current blocker in the recorded path then. This does not mean the money was realized.</p>}
+            {row.timingState==='unsupported'&&<p>Timing then: the linked commercial target was no longer supported.</p>}
+          </li>)}</ul>:<p className="mt-2 text-muted">No explicit Opportunity-value Gate was recorded by this cutoff. Recorded value and blockers remain context only.</p>}
+        </section>
         <section className="rounded-panel border border-line p-4"><h3 className="font-semibold text-ink">Buyer Progress · partial historical coverage</h3>
           <p className="mt-1 text-xs text-muted">Verified customer signals are shown. PO/payment Events and edited or deleted Activity history are unavailable.</p>
           {asOf.buyerProgress?.projection?.get(opportunityId)?.signals.length?<ul className="mt-2 space-y-2">{asOf.buyerProgress.projection.get(opportunityId)!.signals.map(signal=><li key={signal.id}>

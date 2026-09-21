@@ -16,6 +16,7 @@ const KERNEL_TABLES = [
   'commercial_outcome_requirements',
   'commercial_dependencies',
   'commercial_timing_assertions',
+  'commercial_money_gates',
   'commercial_decisions',
 ];
 
@@ -48,7 +49,7 @@ const migrationSql = migrationFiles
       `public.${table} must be revoked from anon`,
     );
     assert.ok(
-      new RegExp(table === 'commercial_conditions' || table === 'commercial_outcome_requirements' || table === 'commercial_dependencies' || table === 'commercial_timing_assertions' || table === 'commercial_decisions'
+      new RegExp(table === 'commercial_conditions' || table === 'commercial_outcome_requirements' || table === 'commercial_dependencies' || table === 'commercial_timing_assertions' || table === 'commercial_money_gates' || table === 'commercial_decisions'
         ? `grant select, insert, update on table public\\.${table} to authenticated`
         : `grant select, insert, update, delete on table public\\.${table} to authenticated`).test(migrationSql),
       `public.${table} must be granted only to authenticated`,

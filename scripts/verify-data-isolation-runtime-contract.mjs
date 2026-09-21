@@ -59,6 +59,7 @@ const expectedTables = [
   ['commercial_outcome_requirements', 'user_id'],
   ['commercial_dependencies', 'user_id'],
   ['commercial_timing_assertions', 'user_id'],
+  ['commercial_money_gates', 'user_id'],
   ['commercial_decisions', 'user_id'],
   ['commercial_history_coverage', 'user_id'],
   ['commercial_state_revisions', 'user_id'],

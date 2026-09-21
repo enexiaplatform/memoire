@@ -10,11 +10,13 @@ import type {CommercialDecision} from '../domain/commercialKernel/commercialDeci
 import type {CrmLiteOpportunity} from './opportunityStore.ts';
 import type {SalesActivityRecord} from './salesActivityStore.ts';
 import type {HistoricalSourceComposition} from './historicalQuery.ts';
+import {deriveMoneyConsequences,type MoneyConsequenceProjection} from '../domain/commercialKernel/deriveMoneyConsequences.ts';
+import type {CommercialMoneyGate} from '../domain/commercialKernel/moneyGate.ts';
 
 export const coreHistoricalProjections=['opportunity','conditions','requirements','nextQuestion',
   'blockers','commercialTime','forecastDefensibility','decisions'] as const;
 export type HistoricalCoverageStatus='full'|'partial'|'unavailable'|'pre_coverage'|'corrupt';
-export type HistoricalProjectionCoverage=Record<typeof coreHistoricalProjections[number]|'buyerProgress',HistoricalCoverageStatus>;
+export type HistoricalProjectionCoverage=Record<typeof coreHistoricalProjections[number]|'buyerProgress'|'moneyConsequences',HistoricalCoverageStatus>;
 export type HistoricalCommercialState=ReturnType<typeof deriveForecastDefensibility>;
 export type CommercialAsOfResult={status:'available'|'verified_absent'|'pre_coverage'|'unavailable'|'corrupt';
   cutoff:string;boundary:string|null;coreCoverage:HistoricalCoverageStatus;
@@ -26,6 +28,7 @@ export type CommercialAsOfResult={status:'available'|'verified_absent'|'pre_cove
   blockers:ReturnType<typeof deriveKnownBlockers>|null;
   forecast:HistoricalCommercialState|null;
   buyerProgress:ReturnType<typeof deriveBuyerProgressAsOf>|null;
+  moneyConsequences:MoneyConsequenceProjection|null;
   decisions:CommercialDecision[];evidence:CommercialEvidence[];
   recordedAtBySource:Map<string,string>};
 
@@ -37,15 +40,15 @@ export function commercialDayAt(cutoff:string,timeZone:string):string{
   return `${value('year')}-${value('month')}-${value('day')}`;
 }
 const coverageFor=(status:HistoricalCoverageStatus):HistoricalProjectionCoverage=>Object.fromEntries(
-  [...coreHistoricalProjections,'buyerProgress'].map(key=>[key,status])) as HistoricalProjectionCoverage;
+  [...coreHistoricalProjections,'buyerProgress','moneyConsequences'].map(key=>[key,status])) as HistoricalProjectionCoverage;
 const empty=(status:CommercialAsOfResult['status'],cutoff:string,boundary:string|null,gap:string|null):CommercialAsOfResult=>{
   const coreCoverage=status==='verified_absent'?'full':status==='pre_coverage'?'pre_coverage':
     status==='corrupt'?'corrupt':'unavailable';
   return {status,cutoff,boundary,gap,coreCoverage,coverage:{...coverageFor(coreCoverage),
-    ...(status==='verified_absent'?{buyerProgress:'unavailable' as const}:{})},
+    ...(status==='verified_absent'?{buyerProgress:'unavailable' as const,moneyConsequences:'unavailable' as const}:{})},
   derivedWithCurrentRules:true,metadataInferred:false,
   opportunity:null,conditions:new Map(),requirementReadings:[],nextQuestion:null,blockers:null,forecast:null,
-  buyerProgress:null,decisions:[],evidence:[],recordedAtBySource:new Map(),
+  buyerProgress:null,moneyConsequences:null,decisions:[],evidence:[],recordedAtBySource:new Map(),
   };
 };
 
@@ -90,6 +93,8 @@ export function composeCommercialStateAsOf(input:{sources:HistoricalSourceCompos
       .filter(row=>sameScope(row)&&row.opportunityId===opportunityId);
     const commitments=(sources.records.commercial_commitments as unknown as CommercialCommitment[])
       .filter(row=>sameScope(row)&&row.opportunityId===opportunityId);
+    const moneyGates=(sources.records.commercial_money_gates as unknown as CommercialMoneyGate[])
+      .filter(row=>sameScope(row)&&row.opportunityId===opportunityId&&row.moneySourceType==='opportunity_value');
     const conditionReadings=projectCommercialConditions(conditions,evidence);
     const requirementReadings=projectOutcomeRequirements(requirements,conditions,evidence);
     const nextQuestion=nextBestQuestion(requirementReadings);
@@ -98,6 +103,9 @@ export function composeCommercialStateAsOf(input:{sources:HistoricalSourceCompos
     const forecast=deriveForecastDefensibility({opportunity,requirements,conditions,evidence,dependencies,
       timingAssertions:timing,commitments,today,calculatedAt:cutoff});
     const buyerProgress=deriveBuyerProgressAsOf({sources,cutoff,activities:input.activities});
+    const moneyConsequences=deriveMoneyConsequences({opportunities:[opportunity],quotes:[],gates:moneyGates,
+      requirements,conditions,evidence,dependencies,timingAssertions:timing,commitments,today,calculatedAt:cutoff,
+      historicalQuoteCoverage:'unavailable'});
     // Decision basis is immutable. Execution links may be added later, so the
     // historical presentation excludes them instead of claiming their old state.
     const decisions=(input.decisions||[]).filter(row=>row.userId===(opportunity.userId??null)
@@ -106,9 +114,9 @@ export function composeCommercialStateAsOf(input:{sources:HistoricalSourceCompos
       .map(row=>({...row,executionLinks:row.executionLinks.filter(link=>Date.parse(link.linkedAt)<=at)}))
       .sort((a,b)=>b.decidedAt.localeCompare(a.decidedAt)||a.id.localeCompare(b.id));
     return {status:'available',cutoff,boundary,coreCoverage:'full',
-      coverage:{...coverageFor('full'),buyerProgress:buyerProgress.coverage.status},
+      coverage:{...coverageFor('full'),buyerProgress:buyerProgress.coverage.status,moneyConsequences:'partial'},
       gap:null,derivedWithCurrentRules:true,metadataInferred:sources.metadataInferred,opportunity,
-      conditions:conditionReadings,requirementReadings,nextQuestion,blockers,forecast,buyerProgress,
+      conditions:conditionReadings,requirementReadings,nextQuestion,blockers,forecast,buyerProgress,moneyConsequences,
       decisions,evidence,recordedAtBySource};
   }catch(error){return empty('corrupt',cutoff,boundary,error instanceof Error?error.message:'Historical source is invalid.');}
 }

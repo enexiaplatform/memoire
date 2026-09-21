@@ -8,6 +8,7 @@ export const historicalSources = {
   commercial_outcome_requirements: {key:'memoire.outcomeRequirements.v1'},
   commercial_dependencies: {key:'memoire.commercialDependencies.v1'},
   commercial_timing_assertions: {key:'memoire.commercialTiming.v1'},
+  commercial_money_gates: {key:'memoire.commercialMoneyGates.v1'},
   commercial_commitments: {key:'memoire.commercialCommitments.v1'},
 } as const;
 /** Reconstruction coverage, separate from selective semantic Commercial Events. */
@@ -20,6 +21,8 @@ export const historicallyDerivedProjections = {
     gap:'PO and payment Events are not revision-covered; quote/receivable alternatives are mutable and unversioned; edited or deleted Activities cannot be reconstructed'},
   commercialTime: {sources:['opportunities','commercial_outcome_requirements','commercial_conditions','commercial_evidence','commercial_dependencies','commercial_timing_assertions','commercial_commitments'],complete:true},
   forecastDefensibility: {sources:['opportunities','commercial_outcome_requirements','commercial_conditions','commercial_evidence','commercial_dependencies','commercial_timing_assertions','commercial_commitments'],complete:true},
+  moneyConsequences: {sources:['opportunities','commercial_money_gates','commercial_outcome_requirements','commercial_conditions','commercial_evidence','commercial_dependencies','commercial_timing_assertions','commercial_commitments'],complete:false,
+    gap:'Opportunity value and Money Gates are covered; mutable Quotes and Receivables remain unavailable historically'},
 } as const;
 export type HistoricalSource = keyof typeof historicalSources;
 export const HISTORICAL_REVISIONS_KEY='memoire.stateRevisions.v1';

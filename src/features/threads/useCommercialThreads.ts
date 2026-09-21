@@ -30,6 +30,8 @@ import { THREADS_UPDATED_EVENT } from '../../services/commercialKernel/threadSto
 import { mergePlanCommitments } from '../../domain/commercialKernel/derivePlanCommitments';
 import { loadPlanItemsForWorkspace, PLAN_ITEMS_UPDATED_EVENT } from '../../services/planItemStore';
 import type { PlanRecord } from '../../utils/weeklyPlan';
+import {attachMoneyConsequenceContext,deriveMoneyConsequences} from '../../domain/commercialKernel/deriveMoneyConsequences';
+import {todayDateKey} from '../../utils/safeDate';
 
 /**
  * Resolves the workspace's commercial threads and the recommendations the
@@ -170,9 +172,13 @@ export function useCommercialThreads() {
     });
   }, [qualification, sampleDataActive, targets, threads, workspace]);
 
+  const moneyConsequences=useMemo(()=>workspace?deriveMoneyConsequences({opportunities:workspace.opportunities,
+    quotes:workspace.quotes,gates:workspace.moneyGates,requirements:workspace.requirements,conditions:workspace.conditions,
+    evidence:workspace.evidence,dependencies:workspace.dependencies,timingAssertions:workspace.timing,commitments,
+    today:todayDateKey(),calculatedAt:new Date().toISOString()}):null,[commitments,workspace]);
   const recommendations = useMemo<Recommendation[]>(() => {
     if (!workspace) return [];
-    return evaluateCommercialPolicies({
+    const current=evaluateCommercialPolicies({
       threads,
       commitments,
       opportunities: workspace.opportunities,
@@ -189,7 +195,8 @@ export function useCommercialThreads() {
       // record must never raise a real risk.
       includeSampleRecords: sampleDataActive,
     });
-  }, [commitments, coverage, sampleDataActive, threads, workspace]);
+    return moneyConsequences?attachMoneyConsequenceContext(current,moneyConsequences):current;
+  }, [commitments, coverage, moneyConsequences, sampleDataActive, threads, workspace]);
 
   /**
    * The same recommendations, in the order they are worth doing.
@@ -259,6 +266,7 @@ export function useCommercialThreads() {
     rankedRecommendations: ranking?.ranked || [],
     suppressedRecommendations: ranking?.suppressed || [],
     coverage,
+    moneyConsequences,
     qualification,
     /** What the closed deals show. Evidence for Review; never a recommendation. */
     bookLearning,
