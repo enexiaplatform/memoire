@@ -29,6 +29,7 @@ export type CommercialAsOfResult={status:'available'|'verified_absent'|'pre_cove
   forecast:HistoricalCommercialState|null;
   buyerProgress:ReturnType<typeof deriveBuyerProgressAsOf>|null;
   moneyConsequences:MoneyConsequenceProjection|null;
+  commitments:CommercialCommitment[];
   decisions:CommercialDecision[];evidence:CommercialEvidence[];
   recordedAtBySource:Map<string,string>};
 
@@ -48,7 +49,7 @@ const empty=(status:CommercialAsOfResult['status'],cutoff:string,boundary:string
     ...(status==='verified_absent'?{buyerProgress:'unavailable' as const,moneyConsequences:'unavailable' as const}:{})},
   derivedWithCurrentRules:true,metadataInferred:false,
   opportunity:null,conditions:new Map(),requirementReadings:[],nextQuestion:null,blockers:null,forecast:null,
-  buyerProgress:null,moneyConsequences:null,decisions:[],evidence:[],recordedAtBySource:new Map(),
+  buyerProgress:null,moneyConsequences:null,commitments:[],decisions:[],evidence:[],recordedAtBySource:new Map(),
   };
 };
 
@@ -116,7 +117,7 @@ export function composeCommercialStateAsOf(input:{sources:HistoricalSourceCompos
     return {status:'available',cutoff,boundary,coreCoverage:'full',
       coverage:{...coverageFor('full'),buyerProgress:buyerProgress.coverage.status,moneyConsequences:'partial'},
       gap:null,derivedWithCurrentRules:true,metadataInferred:sources.metadataInferred,opportunity,
-      conditions:conditionReadings,requirementReadings,nextQuestion,blockers,forecast,buyerProgress,moneyConsequences,
+      conditions:conditionReadings,requirementReadings,nextQuestion,blockers,forecast,buyerProgress,moneyConsequences,commitments,
       decisions,evidence,recordedAtBySource};
   }catch(error){return empty('corrupt',cutoff,boundary,error instanceof Error?error.message:'Historical source is invalid.');}
 }

@@ -8,6 +8,7 @@ import { validateTimingAssertions, type CommercialTimingAssertion } from '../dom
 import type { CommercialCommitment } from '../domain/commercialKernel/types.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { CommercialDecision } from '../domain/commercialKernel/commercialDecision.ts';
+import type { DecisionObservation } from '../domain/commercialKernel/decisionLearning.ts';
 import {validateMoneyGates,type CommercialMoneyGate} from '../domain/commercialKernel/moneyGate.ts';
 import type {QuoteRecord} from '../services/quoteStore.ts';
 import type { PlanRecord } from './weeklyPlan.ts';
@@ -26,8 +27,8 @@ import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KE
  * backup, what never comes back in - can be tested without a browser.
  */
 
-/** Format 10 carries a cloud history lineage for transactional restore. */
-export const BACKUP_FORMAT_VERSION = 10;
+/** Format 11 carries immutable post-Decision observations. */
+export const BACKUP_FORMAT_VERSION = 11;
 export const BACKUP_KEY_PREFIX = 'memoire.';
 
 export type BackupEnvelope = {
@@ -254,7 +255,7 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
       for (const record of [...(normalized[key] as RecordData[] || []), ...local]) {
         const id = recordIdentity(contract, record);
         const previous = merged.get(id);
-        if(previous&&contract.table==='commercial_decisions'){
+        if(previous&&(contract.table==='commercial_decisions'||contract.table==='commercial_decision_observations')){
           const semantic=(r:RecordData)=>JSON.stringify({...r,executionLinks:[],updatedAt:''});
           if(semantic(previous)!==semantic(record))throw new Error('Decision history conflicts between local and cloud backup copies.');
         }
@@ -328,6 +329,20 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
           &&c.accountId===d.accountId&&c.opportunityId===d.opportunityId))
           throw new Error('Decision execution Commitment scope mismatch.');
       }
+    }
+  }
+  const observations=normalized['memoire.decisionObservations.v1'] as DecisionObservation[]|undefined;
+  if(observations?.length){
+    const byDecision=new Map((decisions||[]).map(row=>[row.id,row]));
+    for(const observation of observations){
+      const decision=byDecision.get(observation.decisionId);
+      if(!decision||decision.userId!==observation.userId||decision.accountId!==observation.accountId
+        ||decision.opportunityId!==observation.opportunityId)throw new Error('Decision Observation scope mismatch in backup.');
+      const elapsed=Math.floor((Date.parse(observation.observationCutoff)-Date.parse(decision.decidedAt))/86400000);
+      if(elapsed!==observation.elapsedDays)throw new Error('Decision Observation horizon mismatch in backup.');
+      for(const execution of observation.snapshot.execution)if(!decision.executionLinks.some(link=>link.kind===execution.kind
+        &&link.recordId===execution.recordId&&Date.parse(link.linkedAt)<=Date.parse(observation.observationCutoff)))
+        throw new Error('Decision Observation execution reference mismatch in backup.');
     }
   }
   const writes = Object.keys(normalized).sort().map(key => {

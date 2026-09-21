@@ -107,6 +107,7 @@ export async function restoreWorkspace(
     // A Decision may link an existing Plan item. Restore that item before the
     // Decision aggregate so its database scope trigger can verify the link.
     const restoreOrder=(table:string)=>table==='commercial_decisions'?canonicalContracts.length+1
+      :table==='commercial_decision_observations'?canonicalContracts.length+2
       :canonicalContracts.findIndex(contract=>contract.table===table);
     for (const request of requests.sort((a,b) => restoreOrder(a.contract.table) - restoreOrder(b.contract.table))) {
       if(restoreAccountHistory&&(request.contract.table in historicalSources||request.contract.table==='accounts'))continue;

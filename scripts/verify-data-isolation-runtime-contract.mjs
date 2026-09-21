@@ -61,6 +61,7 @@ const expectedTables = [
   ['commercial_timing_assertions', 'user_id'],
   ['commercial_money_gates', 'user_id'],
   ['commercial_decisions', 'user_id'],
+  ['commercial_decision_observations', 'user_id'],
   ['commercial_history_coverage', 'user_id'],
   ['commercial_state_revisions', 'user_id'],
   // The money side. An export missing these hands a distributor their pipeline

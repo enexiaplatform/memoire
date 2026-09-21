@@ -70,6 +70,12 @@ const fixtures = [
     selectedOptionId:'option-a',rationale:'QA director owns acceptance.',expectedConsequence:'Know whether acceptance is complete',
     intervention:{id:'intervention',intent:'Resolve QA ambiguity',targetKind:'opportunity',targetRequirementId:null,expectedChange:'Know whether acceptance is complete'},
     executionLinks:[],supersedesDecisionId:null,sourceType:'manual',decidedAt:later,createdAt:later,updatedAt:later },
+  {id:'observation',userId:'owner',accountId:'a',opportunityId:'o',decisionId:'decision',observationCutoff:later,elapsedDays:0,
+    snapshot:{version:1,derivedWithCurrentRules:true,opportunity:{id:'o',name:'Renewal',stage:'Proposal',status:'Active',targetDate:null,value:1000,currency:'USD'},
+      target:{kind:'opportunity',requirementId:null,label:null,role:null,state:'unavailable',conditionState:null,sourceEvidenceIds:[]},
+      blockers:[],forecast:{verdict:'conditional',timingEvaluation:'incomplete',reasonCodes:[]},timing:null,money:[],execution:[],buyerProgress:null,
+      sourceRecordIds:['o'],coverage:{core:'full',target:'unavailable',buyerProgress:'partial',moneyConsequences:'partial'}},
+    operatorNote:'Reviewed later state.',sourceType:'manual',finalizedAt:later,createdAt:later},
 ].map((fixture, i) => kernelCodecs[i].sanitize(fixture));
 const backup = localBrowserData => ({ formatVersion: 8, exportedAt: later, localBrowserData });
 const kernelBackup = () => backup(Object.fromEntries(kernelCodecs.slice(0, 5).map((codec, i) => [codec.storageKey, [fixtures[i]]])));
@@ -202,12 +208,13 @@ for (const [i, codec] of kernelCodecs.entries()) {
     const original = fixtures[i];
     const row = codec.toRow(original, 'owner');
     const file = { ...backup({}), cloudData: { user_id: 'owner', manifest: { complete: true }, data: { [codec.table]: [row] } } };
-    if (codec.table === 'commercial_conditions' || codec.table === 'commercial_outcome_requirements' || codec.table === 'commercial_dependencies' || codec.table === 'commercial_timing_assertions' || codec.table === 'commercial_money_gates' || codec.table === 'commercial_decisions') {
+    if (codec.table === 'commercial_conditions' || codec.table === 'commercial_outcome_requirements' || codec.table === 'commercial_dependencies' || codec.table === 'commercial_timing_assertions' || codec.table === 'commercial_money_gates' || codec.table === 'commercial_decisions' || codec.table === 'commercial_decision_observations') {
       file.localBrowserData['memoire.accounts.v1'] = [{ id: 'a', userId: 'owner', accountName: 'Acme' }];
       file.localBrowserData['memoire.opportunities.v1'] = [{ id: 'o', userId: 'owner', accountId:'a',accountName: 'Acme' }];
       if (codec.table === 'commercial_dependencies') file.localBrowserData[kernelCodecs[6].storageKey]=[fixtures[6],{...fixtures[6],id:'prerequisite',expectedOutcome:'Know technical approver'}];
       if (codec.table === 'commercial_timing_assertions') file.localBrowserData[kernelCodecs[6].storageKey]=[fixtures[6]];
       if (codec.table === 'commercial_money_gates') file.localBrowserData[kernelCodecs[6].storageKey]=[fixtures[6]];
+      if (codec.table === 'commercial_decision_observations') file.localBrowserData[kernelCodecs[10].storageKey]=[fixtures[10]];
     }
     const parsed = parseBackupFile(JSON.stringify(file));
     assert.equal(parsed.ok, true, parsed.message);

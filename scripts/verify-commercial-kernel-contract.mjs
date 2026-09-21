@@ -18,6 +18,7 @@ const KERNEL_TABLES = [
   'commercial_timing_assertions',
   'commercial_money_gates',
   'commercial_decisions',
+  'commercial_decision_observations',
 ];
 
 const migrationsDir = 'supabase/migrations';
@@ -49,7 +50,7 @@ const migrationSql = migrationFiles
       `public.${table} must be revoked from anon`,
     );
     assert.ok(
-      new RegExp(table === 'commercial_conditions' || table === 'commercial_outcome_requirements' || table === 'commercial_dependencies' || table === 'commercial_timing_assertions' || table === 'commercial_money_gates' || table === 'commercial_decisions'
+      new RegExp(table === 'commercial_conditions' || table === 'commercial_outcome_requirements' || table === 'commercial_dependencies' || table === 'commercial_timing_assertions' || table === 'commercial_money_gates' || table === 'commercial_decisions' || table === 'commercial_decision_observations'
         ? `grant select, insert, update on table public\\.${table} to authenticated`
         : `grant select, insert, update, delete on table public\\.${table} to authenticated`).test(migrationSql),
       `public.${table} must be granted only to authenticated`,
