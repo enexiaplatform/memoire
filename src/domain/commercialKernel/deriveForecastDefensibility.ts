@@ -6,7 +6,7 @@ import type { CommercialEvidence } from './commercialEvidence.ts';
 import { deriveKnownBlockers, type CommercialDependency } from './commercialDependency.ts';
 import { deriveCommercialTime, type CommercialTimeResult } from './deriveCommercialTime.ts';
 import type { CommercialTimingAssertion } from './commercialTiming.ts';
-import { nextBestQuestion, projectOutcomeRequirements, requirementQuestion, type OutcomeRequirement, type RequirementReading } from './outcomeRequirement.ts';
+import { nextBestQuestion, projectOutcomeRequirements, requirementQuestion, type OutcomeRequirement, type RequirementReading, type RequirementResolutionOverride } from './outcomeRequirement.ts';
 import type { CommercialCommitment } from './types.ts';
 
 export type ForecastVerdict = 'no_claim'|'insufficient_basis'|'defensible'|'conditional'|'incomplete'|'not_currently_supported';
@@ -29,10 +29,11 @@ export type ForecastDefensibility = {
 };
 export type ForecastDefensibilityInput = {opportunity:CrmLiteOpportunity; requirements:OutcomeRequirement[];
   conditions:CommercialCondition[];evidence:CommercialEvidence[];dependencies:CommercialDependency[];
-  timingAssertions:CommercialTimingAssertion[];commitments:CommercialCommitment[];today:string;calculatedAt:string};
+  timingAssertions:CommercialTimingAssertion[];commitments:CommercialCommitment[];today:string;calculatedAt:string;
+  requirementResolutionOverrides?:ReadonlyMap<string,RequirementResolutionOverride>};
 
 const unique=(values:string[])=>[...new Set(values.filter(Boolean))].sort();
-const stateOf=(reading:RequirementReading):PremiseState=>reading.conditionState;
+const stateOf=(reading:RequirementReading):PremiseState=>reading.projection?'assumed':reading.conditionState;
 
 /** Current-state argument only. A verdict is about the recorded premises of a
  * dated close claim, never an estimated win probability or a historical fact. */
@@ -63,7 +64,7 @@ export function deriveForecastDefensibility(input:ForecastDefensibilityInput):Fo
     base.reasonCodes=['NO_REQUIRED_NOW_BASIS',...(base.categoryDisagreement?['OPERATOR_CATEGORY_DISAGREES']:[])];
     base.whatWouldHaveToBeTrue=[{kind:'scope',text:'Record the required-now commercial outcomes that this close claim depends on.',sourceRecordIds:[o.id]}];
     return base;}
-  const readings=projectOutcomeRequirements(requirements,conditions,evidence);
+  const readings=projectOutcomeRequirements(requirements,conditions,evidence,{resolutionOverrides:input.requirementResolutionOverrides});
   const byReading=new Map(readings.map(r=>[r.requirement.id,r]));
   const byEvidence=new Map(evidence.map(r=>[r.id,r]));
   const edges=dependencies.filter(e=>e.lifecycle==='active');
@@ -99,11 +100,14 @@ export function deriveForecastDefensibility(input:ForecastDefensibilityInput):Fo
   const blockerReadings=base.blockers.map(b=>byReading.get(b.requirementId)).filter((r):r is RequirementReading=>Boolean(r));
   const question=nextBestQuestion(blockerReadings.length?blockerReadings:readings.filter(r=>relevant.has(r.requirement.id)));
   if(question)base.nextQuestion={requirementId:question.requirement.id,question:requirementQuestion(question)};
-  const unresolved=base.premises.some(p=>p.state!=='supported');
+  // A scenario-resolved premise is still labelled `assumed`, but is resolved
+  // for dependency/timing purposes. Its epistemic status is handled below by
+  // the conditional verdict rather than by pretending timing is incomplete.
+  const unresolved=[...relevant].some(id=>byReading.get(id)?.resolution!=='resolved');
   if(!unresolved)base.timingEvaluation='not_needed';
   else {
     base.timing=deriveCommercialTime({opportunity:o,requirements,conditions,evidence,dependencies,assertions:timingAssertions,
-      commitments,today:input.today,calculatedAt:input.calculatedAt});
+      commitments,today:input.today,calculatedAt:input.calculatedAt,requirementResolutionOverrides:input.requirementResolutionOverrides});
     base.timingEvaluation=base.timing.status==='target_no_longer_supported'?'unsupported'
       :base.timing.status==='known'?(base.timing.assumptionsUsed?'conditional':'supported'):'incomplete';
   }

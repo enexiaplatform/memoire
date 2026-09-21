@@ -32,6 +32,7 @@ import type {CommercialMoneyGate,MoneyGateBasisKind} from '../../domain/commerci
 import {createCommercialMoneyGate,retireCommercialMoneyGate} from '../../domain/commercialKernel/moneyGateCommands';
 import {deriveMoneyConsequences} from '../../domain/commercialKernel/deriveMoneyConsequences';
 import {loadQuotes,loadQuotesForUser,type QuoteRecord} from '../../services/quoteStore';
+import {WhatIfScenarioPanel} from './WhatIfScenarioPanel';
 
 const inputClass = 'mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink';
 const labels = { supported: 'Supported', assumed: 'Assumption', hypothesis: 'Being tested', contradicted: 'Conflicting evidence' };
@@ -114,6 +115,8 @@ export function CommercialStatePanel({ opportunity, accounts, userId, sampleData
     <ForecastDefensibilitySection view={forecast} lastBuyerProgress={buyerProgress?.last} />
     <MoneyConsequenceSection opportunity={opportunity} requirements={requirements} quotes={quotes} gates={moneyGates}
       projection={money} scope={scope} onMessage={setMessage} />
+    <WhatIfScenarioPanel opportunity={opportunity} requirements={requirements} conditions={conditions} evidence={evidence}
+      dependencies={dependencies} timingAssertions={timing} commitments={commitments} moneyGates={moneyGates} quotes={quotes} />
     <CommercialDecisionSection opportunity={opportunity} forecast={forecast} commitments={commitments} userId={userId} sampleDataActive={sampleDataActive} />
     <RequirementSection opportunity={opportunity} accounts={accounts} userId={userId} sampleDataActive={sampleDataActive}
       conditions={conditions} evidence={evidence} requirements={requirements} dependencies={dependencies} onMessage={setMessage} />

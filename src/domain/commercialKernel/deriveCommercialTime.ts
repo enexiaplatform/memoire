@@ -1,6 +1,6 @@
 import { isValidBusinessDate } from '../../utils/safeDate.ts';
 import { deriveKnownBlockers, type CommercialDependency } from './commercialDependency.ts';
-import { projectOutcomeRequirements, type OutcomeRequirement } from './outcomeRequirement.ts';
+import { projectOutcomeRequirements, type OutcomeRequirement, type RequirementResolutionOverride } from './outcomeRequirement.ts';
 import { validateTimingAssertions, type CommercialTimingAssertion } from './commercialTiming.ts';
 import type { CommercialCondition } from './commercialCondition.ts';
 import type { CommercialEvidence } from './commercialEvidence.ts';
@@ -50,6 +50,7 @@ export type CommercialTimeInput = {
   /** A local commercial date key, explicitly supplied by the caller. */
   today: string;
   calculatedAt: string;
+  requirementResolutionOverrides?: ReadonlyMap<string,RequirementResolutionOverride>;
 };
 
 const dayNumber = (date: string) => Math.floor(Date.UTC(Number(date.slice(0,4)),Number(date.slice(5,7))-1,Number(date.slice(8,10)))/86_400_000);
@@ -82,7 +83,7 @@ export function deriveCommercialTime(input: CommercialTimeInput): CommercialTime
   }
   if(!isValidBusinessDate(input.today)) {result.unknownTimingSegments=['Current commercial day is invalid.'];return result;}
   result.targetDate=o.expectedClosePeriod;
-  const readings=projectOutcomeRequirements(requirements,conditions,evidence);
+  const readings=projectOutcomeRequirements(requirements,conditions,evidence,{resolutionOverrides:input.requirementResolutionOverrides});
   const known=deriveKnownBlockers(o.id,readings,dependencies,[anchor.requirementId]);
   if(known.integrity!=='valid') {result.status='conflicted';result.conflictingTimingSegments=[`Dependency graph: ${known.integrity}`];return result;}
   if(!known.blockers.length){result.unknownTimingSegments=['The anchored outcome has no unresolved current blocker.'];return result;}

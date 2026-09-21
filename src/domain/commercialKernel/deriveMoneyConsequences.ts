@@ -5,7 +5,7 @@ import type {CommercialEvidence} from './commercialEvidence.ts';
 import {deriveKnownBlockers,type CommercialDependency} from './commercialDependency.ts';
 import {deriveForecastDefensibility} from './deriveForecastDefensibility.ts';
 import type {CommercialTimingAssertion} from './commercialTiming.ts';
-import {projectOutcomeRequirements,type OutcomeRequirement} from './outcomeRequirement.ts';
+import {projectOutcomeRequirements,type OutcomeRequirement,type RequirementResolutionOverride} from './outcomeRequirement.ts';
 import type {CommercialCommitment} from './types.ts';
 import {validateMoneyGates,type CommercialMoneyGate,type MoneySourceType} from './moneyGate.ts';
 
@@ -28,7 +28,8 @@ export type MoneyConsequenceProjection={contexts:MoneyContext[];consequences:Mon
 export type MoneyConsequenceInput={opportunities:CrmLiteOpportunity[];quotes:QuoteRecord[];gates:CommercialMoneyGate[];
   requirements:OutcomeRequirement[];conditions:CommercialCondition[];evidence:CommercialEvidence[];
   dependencies:CommercialDependency[];timingAssertions:CommercialTimingAssertion[];commitments:CommercialCommitment[];
-  receivables?:MoneyReceivableFact[];today:string;calculatedAt:string;historicalQuoteCoverage?:'full'|'partial'|'unavailable'};
+  receivables?:MoneyReceivableFact[];today:string;calculatedAt:string;historicalQuoteCoverage?:'full'|'partial'|'unavailable';
+  requirementResolutionOverrides?:ReadonlyMap<string,RequirementResolutionOverride>};
 
 const quoteState=(quote:QuoteRecord):MoneyRealizationState=>quote.paymentStatus==='Paid'?'cash_received'
   :quote.paymentStatus==='Due'?'cash_due':quote.deliveryStatus==='Delivered'?'delivered'
@@ -39,7 +40,7 @@ const unique=<T,>(values:T[])=>[...new Set(values)];
 export function deriveMoneyConsequences(input:MoneyConsequenceInput):MoneyConsequenceProjection{
   validateMoneyGates(input.gates,{opportunities:input.opportunities,quotes:input.quotes,requirements:input.requirements});
   const opportunities=new Map(input.opportunities.map(row=>[row.id,row])),quotes=new Map(input.quotes.map(row=>[row.id,row]));
-  const readings=projectOutcomeRequirements(input.requirements,input.conditions,input.evidence);
+  const readings=projectOutcomeRequirements(input.requirements,input.conditions,input.evidence,{resolutionOverrides:input.requirementResolutionOverrides});
   const byOpportunity=<T extends {opportunityId?:string|null}>(rows:T[])=>{const map=new Map<string,T[]>();for(const row of rows){if(!row.opportunityId)continue;const list=map.get(row.opportunityId)||[];list.push(row);map.set(row.opportunityId,list);}return map;};
   const requirementByOpportunity=byOpportunity(input.requirements),dependencyByOpportunity=byOpportunity(input.dependencies);
   const timingByOpportunity=byOpportunity(input.timingAssertions),commitmentByOpportunity=byOpportunity(input.commitments);
@@ -74,7 +75,7 @@ export function deriveMoneyConsequences(input:MoneyConsequenceInput):MoneyConseq
     const forecast=deriveForecastDefensibility({opportunity,requirements:requirementByOpportunity.get(gate.opportunityId)||[],
       conditions:input.conditions,evidence:input.evidence,dependencies:dependencyByOpportunity.get(gate.opportunityId)||[],
       timingAssertions:timingByOpportunity.get(gate.opportunityId)||[],commitments:commitmentByOpportunity.get(gate.opportunityId)||[],
-      today:input.today,calculatedAt:input.calculatedAt});
+      today:input.today,calculatedAt:input.calculatedAt,requirementResolutionOverrides:input.requirementResolutionOverrides});
     const timingState=forecast.timingEvaluation==='unsupported'?'unsupported':forecast.timingEvaluation==='incomplete'?'incomplete'
       :forecast.timingEvaluation==='conditional'?'conditional':forecast.timingEvaluation==='supported'?'supported':'not_applicable';
     const gateBlockers=blockers.blockers.map(item=>({requirementId:item.reading.requirement.id,

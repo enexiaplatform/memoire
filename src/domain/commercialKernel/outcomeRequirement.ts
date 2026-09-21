@@ -38,10 +38,17 @@ export type RequirementReading = {
   conditionState: ConditionState;
   resolution: 'resolved' | 'unresolved' | 'conflicted';
   sourceEvidenceIds: string[];
-  reasonCode: 'REQUIREMENT_UNKNOWN' | 'REQUIREMENT_ASSUMED' | 'REQUIREMENT_HYPOTHESIS' | 'REQUIREMENT_CONTRADICTED' | 'REQUIREMENT_RESOLVED';
+  reasonCode: 'REQUIREMENT_UNKNOWN' | 'REQUIREMENT_ASSUMED' | 'REQUIREMENT_HYPOTHESIS' | 'REQUIREMENT_CONTRADICTED' | 'REQUIREMENT_RESOLVED'
+    | 'REQUIREMENT_PROJECTED_RESOLVED' | 'REQUIREMENT_PROJECTED_UNRESOLVED';
+  /** Counterfactual only: this does not alter the Condition reading or claim
+   * that Evidence supports the projected resolution. */
+  projection?: {kind:'scenario_assumption';assumptionId:string;resolution:'resolved'|'unresolved'};
 };
+export type RequirementResolutionOverride={assumptionId:string;resolution:'resolved'|'unresolved'};
+export type RequirementProjectionOptions={resolutionOverrides?:ReadonlyMap<string,RequirementResolutionOverride>};
 /** One indexed projection for a book; no persisted health flag or fake unknown Condition. */
-export function projectOutcomeRequirements(requirements: OutcomeRequirement[], conditions: CommercialCondition[], evidence: CommercialEvidence[]): RequirementReading[] {
+export function projectOutcomeRequirements(requirements: OutcomeRequirement[], conditions: CommercialCondition[], evidence: CommercialEvidence[],
+  options:RequirementProjectionOptions={}): RequirementReading[] {
   const byCondition = projectCommercialConditions(conditions, evidence);
   return requirements.map(requirement => {
     const candidate: ConditionReading | undefined = requirement.conditionId ? byCondition.get(requirement.conditionId) : undefined;
@@ -54,6 +61,11 @@ export function projectOutcomeRequirements(requirements: OutcomeRequirement[], c
     const conditionState = reading?.state || 'unknown';
     const reasonCode = ({ unknown: 'REQUIREMENT_UNKNOWN', assumed: 'REQUIREMENT_ASSUMED', hypothesis: 'REQUIREMENT_HYPOTHESIS',
       contradicted: 'REQUIREMENT_CONTRADICTED', supported: 'REQUIREMENT_RESOLVED' } as const)[conditionState];
+    const projected=options.resolutionOverrides?.get(requirement.id);
+    if(projected)return {requirement,condition:reading?.condition||null,conditionState,
+      resolution:projected.resolution,sourceEvidenceIds:reading?[...reading.supporting,...reading.conflicting].map(e=>e.id):[],
+      reasonCode:projected.resolution==='resolved'?'REQUIREMENT_PROJECTED_RESOLVED':'REQUIREMENT_PROJECTED_UNRESOLVED',
+      projection:{kind:'scenario_assumption',assumptionId:projected.assumptionId,resolution:projected.resolution}};
     return { requirement, condition: reading?.condition || null, conditionState,
       resolution: conditionState === 'supported' ? 'resolved' as const : conditionState === 'contradicted' ? 'conflicted' as const : 'unresolved' as const,
       sourceEvidenceIds: reading ? [...reading.supporting, ...reading.conflicting].map(e => e.id) : [], reasonCode };
