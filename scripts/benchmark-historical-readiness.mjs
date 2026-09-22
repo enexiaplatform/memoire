@@ -1,5 +1,7 @@
 import {performance} from 'node:perf_hooks';
 import {composeHistoricalSourcesAt} from '../src/services/historicalQuery.ts';
+import {buildRestorePlan,parseBackupFile,BACKUP_FORMAT_VERSION} from '../src/utils/workspaceBackup.ts';
+import {HISTORICAL_COVERAGE_KEY,HISTORICAL_REVISIONS_KEY} from '../src/services/historicalIntegrity.ts';
 
 const scope='benchmark-owner';
 const boundary='2023-01-01T00:00:00.000Z';
@@ -26,6 +28,15 @@ const started=performance.now();
 const result=composeHistoricalSourcesAt(revisions,markers,scope,'2025-12-31T23:59:59.000Z');
 const milliseconds=performance.now()-started;
 if(result.status!=='verified'||result.selectedRevisions.length!==2100)throw new Error('Benchmark composition failed');
+const envelope={exportedAt:'2026-09-22T00:00:00.000Z',formatVersion:BACKUP_FORMAT_VERSION,mode:'local-only',
+  localBrowserData:{[HISTORICAL_COVERAGE_KEY]:markers,[HISTORICAL_REVISIONS_KEY]:revisions}};
+let backupStarted=performance.now();const backup=JSON.stringify(envelope);const backupGenerationMs=performance.now()-backupStarted;
+backupStarted=performance.now();const parsed=parseBackupFile(backup);const backupValidationMs=performance.now()-backupStarted;
+if(!parsed.ok)throw new Error(`Benchmark backup validation failed: ${parsed.message}`);
+backupStarted=performance.now();const restore=buildRestorePlan(parsed.envelope);const restorePlanningMs=performance.now()-backupStarted;
+if(restore.restoredRecords!==revisions.length+markers.length)throw new Error('Benchmark restore plan lost historical records');
 console.log(JSON.stringify({opportunities:300,years:3,revisions:revisions.length,bytes,
   mebibytes:Number((bytes/1024/1024).toFixed(2)),compositionMs:Number(milliseconds.toFixed(1)),
-  selectedRecords:result.selectedRevisions.length}));
+  selectedRecords:result.selectedRevisions.length,backupBytes:Buffer.byteLength(backup),
+  backupGenerationMs:Number(backupGenerationMs.toFixed(1)),backupValidationMs:Number(backupValidationMs.toFixed(1)),
+  restorePlanningMs:Number(restorePlanningMs.toFixed(1))}));

@@ -17,6 +17,9 @@ try{
       operation:'baseline',recordedAt:at,schemaVersion:1,state:opportunity}]));
   });
   const page=await context.newPage();
+  const browserErrors=[];
+  page.on('console',message=>{if(message.type()==='error')browserErrors.push(message.text());});
+  page.on('pageerror',error=>browserErrors.push(error.message));
   const url=`${base}/app/opportunities?opportunityId=browser-smoke&asOf=2026-09-20T12%3A00%3A00Z`;
   await page.goto(url);
   await page.getByText('As understood then',{exact:true}).waitFor({timeout:15000});
@@ -49,5 +52,6 @@ try{
   await page.getByRole('button',{name:'Return to current'}).click();
   if(await page.getByRole('dialog',{name:'Opportunity details'}).count())
     throw new Error('Deleted historical Opportunity opened an empty current editor');
+  if(browserErrors.length)throw new Error(`Browser console errors: ${browserErrors.join(' | ')}`);
   console.log('Historical URL, reload, read-only drawer, pre-coverage timezone, invalid cutoff and return-to-current browser smoke passed.');
 }finally{await browser.close();}

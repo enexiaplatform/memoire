@@ -65,6 +65,9 @@ export function FirstRunPage() {
   // meant an operator outside this product's original market could not name
   // their own currency on the first screen they ever saw, while Settings and the
   // quote form offered all of them.
+  // The values deliberately invalidate the list after a choice/rate change;
+  // listSelectableCurrencies reads the persisted rate registry itself.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const selectableCurrencies = useMemo(() => listSelectableCurrencies(), [pendingCurrency, currency]);
 
   const chooseCurrency = (next: string) => {

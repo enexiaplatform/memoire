@@ -704,7 +704,7 @@ export function AskMemoirePage() {
               onChange={(event) => setQuestion(event.target.value)}
               aria-label="Find a record by name, or ask a supported question"
               placeholder="Find a customer or deal by name, or ask about a deal, an account, or a week..."
-              className="min-w-0 flex-1 bg-transparent text-[13.5px] text-ink outline-none placeholder:text-muted"
+              className="min-h-6 min-w-0 flex-1 bg-transparent text-[13.5px] text-ink outline-none placeholder:text-muted"
             />
             <button
               type="submit"

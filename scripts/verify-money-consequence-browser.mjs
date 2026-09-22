@@ -14,6 +14,9 @@ try{
       question:'Has QA accepted?',conditionId:null,role:'required_now',lifecycle:'active',sourceType:'manual',createdAt:at,updatedAt:at}]));
   });
   const page=await context.newPage();
+  const browserErrors=[];
+  page.on('console',message=>{if(message.type()==='error')browserErrors.push(message.text());});
+  page.on('pageerror',error=>browserErrors.push(error.message));
   await page.goto(`${base}/app/opportunities?opportunityId=o`);
   const panel=page.getByRole('dialog',{name:'Opportunity details'});await panel.getByRole('heading',{name:'Commercial value smoke',exact:true}).waitFor({timeout:15000});
   await panel.getByRole('button',{name:'This value depends on…'}).click();
@@ -27,5 +30,6 @@ try{
   const money=page.getByRole('region',{name:'Commercial value waiting on state'});
   await money.getByText('1,200,000,000 VND',{exact:true}).waitFor({timeout:15000});
   await money.getByText(/Waiting on: QA acceptance/).waitFor({timeout:15000});
+  if(browserErrors.length)throw new Error(`Browser console errors: ${browserErrors.join(' | ')}`);
   console.log('Money Gate creation, canonical Opportunity projection and shared Money surface passed.');
 }finally{await browser.close();}

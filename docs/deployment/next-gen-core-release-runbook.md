@@ -1,0 +1,27 @@
+# Next-Gen Core production migration runbook
+
+Run this from the exact release SHA with one deployment operator. Keep staging and production project references separate. Supabase applies migration files in timestamp order and records versions in `supabase_migrations.schema_migrations`; a dry run lists pending files but does not execute their SQL.
+
+1. Take and retain a target database backup. Record the restore point, project ref, release SHA, Supabase CLI version and operator.
+2. Record current migration state with `supabase migration list --linked`. Query `supabase_migrations.schema_migrations` and save the result. If dashboard-managed drift exists, stop and reconcile it with `supabase db pull`; do not guess or edit the ledger casually.
+3. Run the repository verification: `npm ci`, `npm run check`, then the browser R1 smoke command documented with the release evidence. Confirm a clean working tree at the release SHA.
+4. Link deliberately: `supabase link --project-ref <target-ref>`. Run `supabase db push --linked --dry-run` and compare its ordered output with the manifest. Never use `--include-seed` in production. The chain-repair migration is timestamped before migrations that may already be recorded on an older target. If `20260615131500` is absent from the ledger, inspect `pipeline_defense_briefs` first. When its full table/policy/index shape is already present, record the evidence and reconcile only that version with `supabase migration repair --status applied 20260615131500`. When it is absent, use `supabase db push --linked --include-all`; do not mark absent objects as applied.
+5. Apply once with `supabase db push --linked` (or the evidenced `--include-all` path above). Do not run concurrent pushes.
+6. Re-run `supabase migration list --linked`. Verify every applied version, the nine M2-M11 files and the chain-repair table where pending. Inspect tables, FKs, check constraints, indexes, RLS flags, policies, functions and revision triggers using the manifest checks.
+7. Execute the two-user RLS matrix with disposable users: owner reads/writes succeed; cross-owner reads return no rows; cross-owner insert/update/restore attempts fail. Cover Conditions, Evidence, Requirements, Dependencies, Timing, Decisions, Observations, Money Gates, coverage and Revisions.
+8. Activate history through `activate_commercial_history()` for an existing disposable workspace. Confirm one coverage row, one baseline per existing covered record, an honest `history_guaranteed_from`, no duplicate baseline on retry, and no activation marker after a forced failure.
+9. Perform representative canonical writes for every revision-covered source. Confirm sequential Revisions. Force a Revision failure in the safe test scope and confirm the canonical mutation rolls back.
+10. Run the historical restore matrix in a safe empty scope: identical restore is idempotent; wrong owner, different lineage and newer divergent history are rejected; any failure rolls back; restore triggers do not manufacture Revisions.
+11. Run one exact-cutoff Time Machine query containing late Evidence, late Activity, later Dependency retirement and later target change. None may leak backward. Confirm historical mode is read-only.
+12. Export a rich workspace, restore it into a compatible empty test scope, compare semantic source records and historical cutoffs, then mutate one restored covered entity and verify the next Revision number.
+13. Run the browser smoke at desktop and narrow viewport. Check Opportunity current state, Condition, Requirement, Dependency, Timing, Forecast, Decision, Time Machine, Money Gate, What-if, Observation and comparable cases. Treat any console error as a failed gate.
+14. Record actual query latency for Opportunity load, paged Time Machine history, Decision cases and Money. Inspect request count for N+1 behavior.
+15. Declare the gate. Production may be `GO — PRODUCTION VERIFIED` only when all target evidence above is attached to the exact SHA.
+
+## Failure and recovery
+
+Normal Supabase CLI migrations run inside a transaction unless a file explicitly opts out with `-- pg-delta: transaction=false` or uses a statement such as concurrent index creation that requires a transaction boundary. None of the R1 Next-Gen migration files opts out. A failed transactional file should leave that file unapplied; confirm both schema objects and the migration ledger before retrying. Never assume `--dry-run` validates SQL.
+
+If a migration fails, stop writes if the failure could expose a mixed application/schema version, capture the exact error and current ledger, and determine whether the failed file rolled back completely. Do not manually edit canonical rows, Revisions, coverage markers, lineage IDs, immutable Decisions/Observations or the migration ledger. Use `supabase migration repair` only after proving the live schema and ledger disagree and recording why. For a destructive or ambiguous partial state, restore the pre-deployment backup into a safe environment, validate it, and follow the provider's database restore process rather than inventing reverse SQL. The repository does not promise one-click rollback.
+
+Diagnose release failures using migration-list/schema diffs, Postgres/RPC error codes, missing Revision sequence numbers, restore status reason codes and unknown snapshot-version errors. Logs should contain IDs and reason codes, never Evidence bodies, Decision rationales or customer commercial details.

@@ -380,7 +380,7 @@ export function ActivityPage({ variant = 'page' }: { variant?: 'page' | 'analyti
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="inline-flex rounded-full border border-gray-200 bg-gray-50 p-1" role="tablist" aria-label="Period">
+        <div className="flex w-full max-w-full overflow-x-auto rounded-full border border-gray-200 bg-gray-50 p-1 sm:inline-flex sm:w-auto" role="tablist" aria-label="Period">
           {periods.map((option) => (
             <button
               key={option.id}

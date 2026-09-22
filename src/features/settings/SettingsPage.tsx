@@ -80,6 +80,9 @@ export function SettingsPage() {
   const [currencySave, setCurrencySave] = useState<PreferenceSaveResult | null>(null);
   /** A currency chosen before it has a rate: held here until one is given. */
   const [pendingCurrency, setPendingCurrency] = useState('');
+  // The values deliberately invalidate the list after a choice/rate change;
+  // listSelectableCurrencies reads the persisted rate registry itself.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const selectableCurrencies = useMemo(() => listSelectableCurrencies(), [pendingCurrency, reportingCurrency]);
   const [openingBalance, setOpeningBalanceState] = useState(() => {
     const stored = getOpeningCashBalance();
