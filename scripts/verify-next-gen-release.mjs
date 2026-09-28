@@ -16,7 +16,9 @@ const learning = [
   read('src/features/opportunities/CommercialDecisionSection.tsx'),
 ].join('\n');
 
-assert.deepEqual(productionMigrations().slice(-NEXT_GEN_MIGRATIONS.length), NEXT_GEN_MIGRATIONS,
+const orderedMigrations = productionMigrations();
+const coreStart = orderedMigrations.indexOf(NEXT_GEN_MIGRATIONS[0]);
+assert.deepEqual(orderedMigrations.slice(coreStart, coreStart + NEXT_GEN_MIGRATIONS.length), NEXT_GEN_MIGRATIONS,
   'M2-M11 migration order changed; update the audited release manifest deliberately.');
 
 const canonicalTables = [

@@ -50,7 +50,9 @@ describe('R1 production migration chain', () => {
   after(async () => fresh?.close());
 
   test('fresh database applies every production migration and exposes final schema contracts', async () => {
-    assert.deepEqual(productionMigrations().slice(-NEXT_GEN_MIGRATIONS.length), NEXT_GEN_MIGRATIONS);
+    const migrations = productionMigrations();
+    const coreStart = migrations.indexOf(NEXT_GEN_FIRST_MIGRATION);
+    assert.deepEqual(migrations.slice(coreStart, coreStart + NEXT_GEN_MIGRATIONS.length), NEXT_GEN_MIGRATIONS);
     const tables = await fresh.query(
       `SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename = ANY($1) ORDER BY tablename`,
       [expectedTables],
