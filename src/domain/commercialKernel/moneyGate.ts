@@ -51,7 +51,6 @@ export function validateMoneyGates(gates:CommercialMoneyGate[],refs:MoneyGateRef
         throw new Error('Quote value Gate must reference a Quote on this Opportunity.');
     }
     if(gate.lifecycle!=='active')continue;
-    if(requirement.lifecycle!=='active')throw new Error('Only an active Requirement can receive a Money Gate.');
     const key=`${gate.userId}:${gate.moneySourceType}:${gate.moneySourceId}`;
     if(active.has(key))throw new Error('This money source already has an active Money Gate.');active.add(key);
   }

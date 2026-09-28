@@ -34,8 +34,14 @@ export async function restoreCloudHistoricalScope(envelope:BackupEnvelope,plan:R
     const local=byKey.get(contract.key);
     return local?(JSON.parse(local) as RecordData[]).map(record=>contract.encode(record,userId)):[];
   })();
+  const quoteContract=canonicalContracts.find(item=>item.table==='quotes')!;
+  const localQuotes=byKey.get(quoteContract.key);
+  const quotes=cloud?.data?.quotes||(localQuotes?(JSON.parse(localQuotes) as RecordData[]).map(record=>quoteContract.encode(record,userId)):[]);
+  const requiredQuoteIds=new Set(sources.commercial_money_gates.filter(gate=>gate.money_source_type==='quote_value').map(gate=>gate.money_source_id));
+  const quoteParents=quotes.filter(quote=>requiredQuoteIds.has(quote.id));
+  if(quoteParents.length!==requiredQuoteIds.size)throw new Error('The backup is missing a Quote referenced by a Money Gate. Nothing was restored to the account.');
   const payload={user_id:userId,format_version:envelope.formatVersion||1,exported_at:envelope.exportedAt,
-    coverage:coverage?.[0]||null,revisions:revisions||[],sources,parents:accounts};
+    coverage:coverage?.[0]||null,revisions:revisions||[],sources,parents:accounts,quote_parents:quoteParents};
   const {data,error}=await supabaseClient.rpc('restore_commercial_history',{payload});
   if(error)throw new Error(`Account history restore failed; no covered account state was applied. ${error.message}`);
   const result=data as HistoricalCloudRestoreResult|{status?:string}|null;

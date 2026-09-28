@@ -25,6 +25,8 @@ function persist(scope:CommercialScope,row:CommercialMoneyGate,eventType:'money_
 export function createCommercialMoneyGate(scope:CommercialScope,input:{opportunityId:string;moneySourceType:MoneySourceType;
   moneySourceId:string;requirementId:string;basisKind:MoneyGateBasisKind;basis:string},refs:MoneyGateReferences):CommandResult<CommercialMoneyGate>{
   const opportunity=refs.opportunities.find(item=>item.id===input.opportunityId);
+  if(!refs.requirements.some(item=>item.id===input.requirementId&&item.lifecycle==='active'))
+    return {ok:false,error:'Only an active Requirement can receive a Money Gate.'};
   const quote=input.moneySourceType==='quote_value'?refs.quotes.find(item=>item.id===input.moneySourceId):null;
   if(input.moneySourceType==='opportunity_value'&&(!opportunity||opportunity.status!=='Active'
     ||typeof opportunity.estimatedValue!=='number'))return {ok:false,error:'Opportunity value must be active and recorded before it can be gated.'};

@@ -125,6 +125,8 @@ test('backup validates Money Gate references and preserves revision-covered stat
     'memoire.outcomeRequirements.v1':[requirement('a','Order readiness')],'memoire.commercialMoneyGates.v1':[gate()]};
   const plan=buildRestorePlan({exportedAt:at,formatVersion:10,localBrowserData:local});
   assert.ok(plan.writes.some(row=>row.key==='memoire.commercialMoneyGates.v1'));
+  const laterState={...local,'memoire.outcomeRequirements.v1':[{...requirement('a','Order readiness'),lifecycle:'retired'}]};
+  assert.ok(buildRestorePlan({exportedAt:at,formatVersion:11,localBrowserData:laterState}).writes.some(row=>row.key==='memoire.commercialMoneyGates.v1'));
   assert.throws(()=>buildRestorePlan({exportedAt:at,formatVersion:10,localBrowserData:{...local,'memoire.commercialMoneyGates.v1':[gate({requirementId:'missing'})]}}),/endpoints/);
 });
 
