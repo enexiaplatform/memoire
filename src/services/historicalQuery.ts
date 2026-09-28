@@ -3,6 +3,7 @@ import { fetchAllRows } from './supabasePaging.ts';
 import { historicalSources, readLocalHistoryAt, type HistoricalSource, type HistoryRead,
   type StateRevision, type HistoryCoverage, validateHistoricalBundle,
   HISTORICAL_COVERAGE_KEY,HISTORICAL_REVISIONS_KEY } from './historicalIntegrity.ts';
+import { decodeHistoricalStorage } from './historicalStorageCodec.ts';
 
 const camel=(value:string)=>value.replace(/_([a-z])/g,(_,c:string)=>c.toUpperCase());
 function decodeCloudRevision(row:Record<string,unknown>):StateRevision|null{
@@ -87,7 +88,7 @@ export function composeHistoricalSourcesAt(revisions:StateRevision[],markers:His
 export function getLocalHistoricalSourcesAt(scope:string,cutoff:string,storage:Storage):HistoricalSourceComposition{
   try{
     return composeHistoricalSourcesAt(
-      JSON.parse(storage.getItem(HISTORICAL_REVISIONS_KEY)||'[]') as StateRevision[],
+      JSON.parse(decodeHistoricalStorage(storage.getItem(HISTORICAL_REVISIONS_KEY)||'[]')) as StateRevision[],
       JSON.parse(storage.getItem(HISTORICAL_COVERAGE_KEY)||'[]') as HistoryCoverage[],scope,cutoff);
   }catch{return {status:'corrupt',coverage:null};}
 }

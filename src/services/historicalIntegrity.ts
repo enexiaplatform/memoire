@@ -1,4 +1,5 @@
 import { applyLocalRestore } from './restoreJournal.ts';
+import { decodeHistoricalStorage, encodeHistoricalStorage } from './historicalStorageCodec.ts';
 
 /** M8 source manifest. Derived projections and the M7 Decision snapshot are not revisions. */
 export const historicalSources = {
@@ -34,7 +35,9 @@ export type HistoryCoverage={scope:string;historyGuaranteedFrom:string;schemaVer
 export type HistoryRead={status:'available';revision:StateRevision|null;coverage:HistoryCoverage}
   |{status:'pre_coverage'|'not_activated'|'corrupt'|'unsupported_schema'|'sequence_gap';revision:null;coverage:HistoryCoverage|null};
 type Row=Record<string,unknown>&{id:string;userId?:string|null;isSample?:boolean;source?:string};
-const parse=<T,>(storage:Storage,key:string,fallback:T):T=>{const raw=storage.getItem(key);return raw?JSON.parse(raw) as T:fallback;};
+const parse=<T,>(storage:Storage,key:string,fallback:T):T=>{const raw=storage.getItem(key);
+  return raw?JSON.parse(key===HISTORICAL_REVISIONS_KEY?decodeHistoricalStorage(raw):raw) as T:fallback;};
+const storedRevisions=(rows:StateRevision[])=>encodeHistoricalStorage(JSON.stringify(rows));
 const browserStorage=():Storage=>{
   const storage=(typeof window!=='undefined'?window.localStorage:undefined)||(typeof localStorage!=='undefined'?localStorage:undefined);
   if(!storage)throw new Error('This browser has no local storage available for historical state.');
@@ -162,7 +165,7 @@ export function activateLocalHistoricalIntegrity(scope:string,storage:Storage=br
   const at=clock();const marker:HistoryCoverage={scope,historyGuaranteedFrom:at,schemaVersion:1,lineageId:id()};
   const baseline=baselineFor(storage,scope,at);
   applyLocalRestore(storage,{
-    [HISTORICAL_REVISIONS_KEY]:JSON.stringify([...revisions,...baseline]),
+    [HISTORICAL_REVISIONS_KEY]:storedRevisions([...revisions,...baseline]),
     [HISTORICAL_COVERAGE_KEY]:JSON.stringify([...coverage,marker]),
   });
   return marker;
@@ -198,7 +201,7 @@ export function commitLocalHistoricalCollection(type:HistoricalSource,nextRows:R
     all.push({id:id(),scope,entityType:type,entityId:row.id,revisionNo:(last?.revisionNo||0)+1,mutationId:id(),
       operation:!next?'delete':!old?'create':'update',recordedAt,schemaVersion:1,state:next?sourceState(type,next):null});
   }
-  applyLocalRestore(storage,{[HISTORICAL_REVISIONS_KEY]:JSON.stringify(all),
+  applyLocalRestore(storage,{[HISTORICAL_REVISIONS_KEY]:storedRevisions(all),
     [HISTORICAL_COVERAGE_KEY]:JSON.stringify(active),[key]:JSON.stringify(nextRows)});
 }
 export function readLocalHistoryAt(type:HistoricalSource,entityId:string,scope:string,at:string,
@@ -224,5 +227,5 @@ export function readLocalHistoryAt(type:HistoricalSource,entityId:string,scope:s
 export function removeSampleHistoricalIntegrity(storage:Storage=browserStorage()){
   const rows=parse<StateRevision[]>(storage,HISTORICAL_REVISIONS_KEY,[]).filter(r=>r.scope!=='sample');
   const coverage=parse<HistoryCoverage[]>(storage,HISTORICAL_COVERAGE_KEY,[]).filter(c=>c.scope!=='sample');
-  applyLocalRestore(storage,{[HISTORICAL_REVISIONS_KEY]:JSON.stringify(rows),[HISTORICAL_COVERAGE_KEY]:JSON.stringify(coverage)});
+  applyLocalRestore(storage,{[HISTORICAL_REVISIONS_KEY]:storedRevisions(rows),[HISTORICAL_COVERAGE_KEY]:JSON.stringify(coverage)});
 }

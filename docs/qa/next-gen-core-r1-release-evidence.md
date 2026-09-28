@@ -22,24 +22,27 @@ Measurements are tripwires rather than service-level guarantees and vary by host
 
 | Workload | Measured result |
 |---|---:|
-| Today/master dashboard, 300 Opportunities / 900 Activities | 14.2 ms |
+| Today/master dashboard, 300 Opportunities / 900 Activities | 15.6 ms |
 | Opportunity Money derivation, representative deal | 0.2 ms |
 | Money portfolio, 300 Opportunities / 900 Requirements / 300 Dependencies / 300 Gates | 7.0 ms |
 | Historical Money composition | 8.8 ms |
 | Time Machine, dense Opportunity with 53 Revisions | 4.4 ms total (0.7 ms source composition) |
-| Multi-year history, 300 Opportunities / 11,400 Revisions / 2,100 selected records | 26.6 ms |
-| Format-11 history backup generation, 6.64 MiB payload | 8.6 ms |
-| Format-11 backup parse and integrity validation | 84.9 ms |
-| Format-11 restore planning, 11,401 history records | 26.5 ms |
+| Multi-year history, 300 Opportunities / 11,400 Revisions / 2,100 selected records | 53.3 ms |
+| Format-11 history backup generation, 6.64 MiB payload | 14.4 ms |
+| Format-11 backup parse and integrity validation | 144.0 ms |
+| Format-11 restore planning, 11,401 history records | 45.0 ms |
+| Browser history compression / decompression | 88.5 ms / 36.6 ms |
 | Decision case retrieval | bounded scan of 300 Decisions, 20 returned, under the 250 ms test budget |
 | Scenario | three projections over a 12-Requirement graph, under the 250 ms test budget |
 | Browser current-state fixture | 2.05 MB |
 | Three-year State Revision JSON | 6.64 MiB |
 | Dense single-Opportunity Time Machine payload | 33,104 bytes |
 
-Measured surface render times were 526-874 ms across Today, Opportunities, Accounts, Money, Review, Timeline, Business and Activity, below the 2,000 ms budget. The largest observed long frames were 262 ms on Money, 272 ms on Business and 268 ms on Activity; these are follow-up performance work, not functional release blockers.
+Measured production-preview surface render times were 432-773 ms across Today, Opportunities, Accounts, Money, Review, Timeline, Business and Activity, below the 2,000 ms budget. The largest observed long frames were 109 ms on Money, 104 ms on Business and 103 ms on Activity; these are follow-up performance work, not functional release blockers.
 
-The current architecture stores local canonical collections and history in browser local storage. A 2.05 MB current workspace plus 6.64 MiB of revision JSON is a measured planning envelope, not a universal quota guarantee. The export/restore tests validate backup format 1 through 11, current canonical truth, immutable artifacts, history pairs, sample exclusion, corrupt input rejection and semantic codec round trips.
+The uncompressed three-year Revision JSON is 6.64 MiB, which was unsafe beside the 2.05 MB current workspace on browsers with a roughly 5 MiB Web Storage ceiling. R1 now losslessly stores mature Revision collections in a versioned zlib/base64 representation and compacts the rollback journal too. A real Chromium write measured 1,182,168 bytes for stored history, 3.17 MiB steady-state for the full 300-Opportunity workspace and 3.83 MiB at the rollback-journal peak. Small and legacy JSON remains directly readable. Export decodes the full chain, restore compacts it again, and a corrupt compressed value fails explicitly. Backup format 1 through 11 remains compatible.
+
+`npm audit fix` removed every high-severity and development-tool advisory available without a breaking upgrade. Two moderate React Router advisories remain because the available fix requires the v6-to-v7 migration. Memoire is a client-rendered app (the SSR hydration path is unused), and login redirects accept only internal `/app/` locations originating from the route guard. The controlled Router 7 upgrade remains follow-up work.
 
 ## Responsive and accessibility sanity
 

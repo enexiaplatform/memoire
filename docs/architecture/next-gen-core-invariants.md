@@ -18,4 +18,4 @@ These statements are the compact correctness boundary for R1.
 - Sample data never enters live cloud persistence, live Forecast Defensibility, verified history, Money totals, Scenario bases or the Decision Learning corpus.
 - Date-only commercial facts and UTC system timestamps remain distinct. Pure domain derivations receive their clock, cutoff and timezone explicitly.
 - User ownership is enforced twice where practical: by owner-scoped application queries and PostgreSQL RLS/RPC validation.
-
+- Browser history compression is a storage representation only. Export and every historical read decode the same complete Revision chain; corruption fails explicitly and never becomes empty history.

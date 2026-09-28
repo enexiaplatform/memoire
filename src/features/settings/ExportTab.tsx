@@ -12,6 +12,8 @@ import {
   type BackupEnvelope,
   type BackupSummary,
 } from '../../utils/workspaceBackup';
+import { decodeHistoricalStorage } from '../../services/historicalStorageCodec';
+import { HISTORICAL_REVISIONS_KEY } from '../../services/historicalIntegrity';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { trackProductEvent } from '../../utils/productAnalytics';
 import { recordBackupExport } from '../../services/syncRecoveryLog';
@@ -518,7 +520,7 @@ function collectLocalMemoireData() {
     const value = window.localStorage.getItem(key);
     if (value === null) continue;
     try {
-      data[key] = JSON.parse(value);
+      data[key] = JSON.parse(key === HISTORICAL_REVISIONS_KEY ? decodeHistoricalStorage(value) : value);
     } catch {
       data[key] = value;
     }

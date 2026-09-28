@@ -1,3 +1,5 @@
+import { decodeHistoricalStorage, encodeHistoricalStorage } from './historicalStorageCodec.ts';
+
 /** A local rollback journal, not a transaction spanning browser and cloud. */
 export const RESTORE_JOURNAL_KEY = 'memoire.restoreJournal.v1';
 let applying = false;
@@ -14,7 +16,7 @@ export function recoverInterruptedRestore(storage: Storage): boolean {
   const raw = storage.getItem(RESTORE_JOURNAL_KEY);
   if (!raw) return true;
   try {
-    const journal = JSON.parse(raw) as Journal;
+    const journal = JSON.parse(decodeHistoricalStorage(raw)) as Journal;
     if (journal.version !== 1 || !journal.before || typeof journal.before !== 'object') return false;
     const entries = Object.entries(journal.before);
     if (entries.some(([key, value]) => !safeKey(key) || (value !== null && typeof value !== 'string'))) return false;
@@ -36,7 +38,7 @@ export function applyLocalRestore(storage: Storage, desired: Record<string, stri
   }
   const journal: Journal = { version: 1, before };
   // If the browser cannot hold the rollback copy, refuse before touching any records.
-  try { storage.setItem(RESTORE_JOURNAL_KEY, JSON.stringify(journal)); }
+  try { storage.setItem(RESTORE_JOURNAL_KEY, encodeHistoricalStorage(JSON.stringify(journal))); }
   catch { throw new Error('Restore could not start because this browser could not save a recovery copy. Free browser storage and retry. Nothing was changed.'); }
   try {
     for (const [key, value] of Object.entries(desired)) {

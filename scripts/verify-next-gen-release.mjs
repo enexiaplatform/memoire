@@ -7,6 +7,9 @@ const durability = read('src/services/canonicalDurability.ts');
 const history = read('src/services/historicalIntegrity.ts');
 const exportsApi = read('api/export.ts');
 const navigation = read('src/config/featureRegistry.ts');
+const historicalStorage = read('src/services/historicalStorageCodec.ts');
+const exportSurface = read('src/features/settings/ExportTab.tsx');
+const restoreSurface = read('src/services/workspaceRestore.ts');
 const learning = [
   read('src/domain/commercialKernel/decisionLearning.ts'),
   read('src/domain/commercialKernel/decisionObservationCommands.ts'),
@@ -56,12 +59,18 @@ for (const path of [
   assert.equal(/\bDate\.now\s*\(/.test(read(path)), false, `${path} reads ambient time in a pure derivation.`);
 }
 
+assert.match(history, /encodeHistoricalStorage/, 'Revision writes must use the bounded historical storage codec.');
+assert.match(exportSurface, /decodeHistoricalStorage/, 'Browser export must decode compressed Revisions.');
+assert.match(restoreSurface, /encodeHistoricalStorage/, 'Browser restore must store mature Revision history compactly.');
+assert.match(historicalStorage, /zlibSync[\s\S]*level:\s*1/, 'Historical storage must keep the measured fast compression path.');
+
 for (const path of [
   'docs/architecture/next-gen-core-index.md',
   'docs/architecture/next-gen-core-invariants.md',
   'docs/architecture/next-gen-core-release-scope.md',
   'docs/deployment/next-gen-core-migration-manifest.md',
   'docs/deployment/next-gen-core-release-runbook.md',
+  'docs/qa/next-gen-core-r1-release-evidence.md',
 ]) assert.ok(read(path).length > 200, `${path} is missing or empty.`);
 
-console.log(`Next-Gen R1 contract verified: ${NEXT_GEN_MIGRATIONS.length} ordered migrations, ${canonicalTables.length} canonical R1 entities, seven primary destinations, export/history coverage, temporal purity and descriptive M11 language.`);
+console.log(`Next-Gen R1 contract verified: ${NEXT_GEN_MIGRATIONS.length} ordered migrations, ${canonicalTables.length} canonical R1 entities, seven primary destinations, export/history coverage, bounded browser history, temporal purity and descriptive M11 language.`);

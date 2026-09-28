@@ -9,6 +9,7 @@ import { writeLocalCollection } from './localWriteGuard.ts';
 import { buildHistoricalBaselineFromCollections, HISTORICAL_COVERAGE_KEY, HISTORICAL_REVISIONS_KEY,
   historicalSources } from './historicalIntegrity.ts';
 import { restoreCloudHistoricalScope } from './historicalCloudRestore.ts';
+import { decodeHistoricalStorage, encodeHistoricalStorage } from './historicalStorageCodec.ts';
 
 export type RestoreCollectionResult = {
   key: string;
@@ -68,6 +69,8 @@ export async function restoreWorkspace(
     desired[HISTORICAL_REVISIONS_KEY] = JSON.stringify(baseline.revisions);
     desired[HISTORICAL_COVERAGE_KEY] = JSON.stringify(baseline.coverage);
   }
+  if (typeof desired[HISTORICAL_REVISIONS_KEY] === 'string')
+    desired[HISTORICAL_REVISIONS_KEY] = encodeHistoricalStorage(desired[HISTORICAL_REVISIONS_KEY]);
   // Build every cloud request before the first local mutation, so a broken codec cannot half-restore.
   const requests = plan.writes.flatMap(write => {
     const contract = contractForKey(write.key);
@@ -169,7 +172,7 @@ export function snapshotWorkspace(): Record<string, string> {
 
 function countRecords(value: string | undefined): number | null {
   if (!value) return null;
-  try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed.length : null; }
+  try { const parsed = JSON.parse(decodeHistoricalStorage(value)); return Array.isArray(parsed) ? parsed.length : null; }
   catch { return null; }
 }
 
