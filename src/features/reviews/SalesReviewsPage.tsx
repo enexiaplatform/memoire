@@ -1,3 +1,4 @@
+import {TeamCoordinationPanel} from './TeamCoordinationPanel';
 import { selectQualifiedPipeline, disqualifiedLeadIds, isDisqualifiedLeadOutcome } from '../../utils/leadIdentity';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -103,7 +104,10 @@ export function SalesReviewsPage() {
   const rawTab = searchParams.get('view');
   // ?view=defense was the retired Pipeline Defense tab; it opens the review.
   const tab: ReviewTab = rawTab === 'analytics' ? rawTab : 'review';
-  const { rankedRecommendations: reviewRecommendations, attentionError, attentionScope } = useCommercialThreads();
+  const { user: reviewUser } = useAuthContext();
+  const reviewSample = hasLocalSampleData();
+  const reviewScope = useMemo(() => ({userId:reviewSample?null:reviewUser?.id||null,sampleDataActive:reviewSample}),[reviewSample,reviewUser?.id]);
+  const { rankedRecommendations: reviewRecommendations, attentionError, attentionScope, commitments: teamCommitments, workspace: teamWorkspace } = useCommercialThreads();
 
   // One period for the whole tab. The scoreboard declares it and the recap
   // below reads it: two period pickers on one page meant the headline and the
@@ -215,6 +219,7 @@ export function SalesReviewsPage() {
             </summary>
             <div className="flex flex-col gap-4 border-t border-gray-100 p-5">
               <CommercialRiskPanel key={attentionScope} recommendations={reviewRecommendations} attention loadError={attentionError} title="Commercial attention" />
+              <TeamCoordinationPanel key={attentionScope} scope={reviewScope} commitments={teamCommitments} opportunities={teamWorkspace?.opportunities||[]}/>
               <ThreadsSection title="Threads to look at" description="Quietest first" limit={4} />
             </div>
           </details>
