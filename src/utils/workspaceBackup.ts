@@ -11,6 +11,7 @@ import type { CommercialDecision } from '../domain/commercialKernel/commercialDe
 import type { DecisionObservation } from '../domain/commercialKernel/decisionLearning.ts';
 import {validateMoneyGates,type CommercialMoneyGate} from '../domain/commercialKernel/moneyGate.ts';
 import {validatePolicyReferences,type CommercialPolicy} from '../domain/commercialKernel/commercialPolicy.ts';
+import {validateIncidentReferences,type CommercialIncident} from '../domain/commercialKernel/commercialIncident.ts';
 import type {QuoteRecord} from '../services/quoteStore.ts';
 import type { PlanRecord } from './weeklyPlan.ts';
 import { HISTORICAL_REVISIONS_KEY,HISTORICAL_COVERAGE_KEY,historicalSources,validateHistoricalBundle,
@@ -29,7 +30,7 @@ import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KE
  */
 
 /** Format 11 carries immutable post-Decision observations. */
-export const BACKUP_FORMAT_VERSION = 12;
+export const BACKUP_FORMAT_VERSION = 13;
 export const BACKUP_KEY_PREFIX = 'memoire.';
 
 export type BackupEnvelope = {
@@ -268,6 +269,8 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
   }
   for(const policy of (normalized['memoire.commercialPolicies.v1']||[]) as CommercialPolicy[])
     validatePolicyReferences(policy,normalized['memoire.opportunities.v1'] as CrmLiteOpportunity[]||[],normalized['memoire.outcomeRequirements.v1'] as OutcomeRequirement[]||[]);
+  for(const incident of (normalized['memoire.commercialIncidents.v1']||[]) as CommercialIncident[])
+    validateIncidentReferences(incident,normalized['memoire.opportunities.v1'] as CrmLiteOpportunity[]||[],normalized['memoire.commercialPolicies.v1'] as CommercialPolicy[]||[]);
   const conditions = normalized['memoire.commercialConditions.v1'] as CommercialCondition[] | undefined;
   if (conditions?.length) {
     const index = conditionReferenceIndex(

@@ -6,7 +6,7 @@ import { createSupabaseCompatibleDatabase, applyMigrations, productionMigrations
 
 const formatVersion = Number(readFileSync('src/utils/workspaceBackup.ts','utf8').match(/BACKUP_FORMAT_VERSION = (\d+)/)[1]);
 const sourceTables = ['opportunities','commercial_conditions','commercial_evidence','commercial_outcome_requirements',
-  'commercial_dependencies','commercial_timing_assertions','commercial_commitments','commercial_money_gates','commercial_policies'];
+  'commercial_dependencies','commercial_timing_assertions','commercial_commitments','commercial_money_gates','commercial_policies','commercial_incidents'];
 let db;
 before(async () => { db = await createSupabaseCompatibleDatabase(); await applyMigrations(db); });
 after(async () => db?.close());

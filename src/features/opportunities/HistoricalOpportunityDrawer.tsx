@@ -10,6 +10,7 @@ import type {CommercialDecision} from '../../domain/commercialKernel/commercialD
 import type {SalesActivityRecord} from '../../services/salesActivityStore.ts';
 import {ForecastDefensibilitySection} from './ForecastDefensibilitySection.tsx';
 import {PolicyCheckList} from './PolicyCheckList.tsx';
+import {IncidentReadings} from './IncidentReadings.tsx';
 
 const localValue=(value:string)=>{
   const date=new Date(value);if(!Number.isFinite(date.getTime()))return '';
@@ -120,6 +121,8 @@ export function HistoricalOpportunityDrawer({opportunityId,scope,cutoff,sampleDa
           <p className="mt-1 text-xs text-muted">Published rules and Requirement evidence recorded by this cutoff, evaluated with current rules.</p>
           {asOf.policyChecks.length?<PolicyCheckList checks={asOf.policyChecks}/>:<p className="mt-2 text-muted">No active policy recorded by this cutoff.</p>}
         </section>
+        {asOf.incidents.length>0&&<section className="rounded-panel border border-line p-4"><h3 className="font-semibold text-ink">Incident response then</h3>
+          <IncidentReadings incidents={asOf.incidents} checks={asOf.policyChecks}/></section>}
         <section className="rounded-panel border border-line p-4"><h3 className="font-semibold text-ink">Money consequence then</h3>
           <p className="mt-1 text-xs text-muted">Current M9 rules over recorded Opportunity value and Money Gates at this cutoff. Coverage is partial because mutable Quote and Receivable history is unavailable.</p>
           {asOf.moneyConsequences?.consequences.length?<ul className="mt-2 space-y-2">{asOf.moneyConsequences.consequences.map(row=><li key={`${row.moneySourceType}:${row.moneySourceId}`}>

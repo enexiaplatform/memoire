@@ -1,4 +1,5 @@
 import {PolicyCheckList} from './PolicyCheckList.tsx';
+import {CommercialIncidentSection} from './CommercialIncidentSection.tsx';
 import {useEffect,useState} from 'react';
 import {evaluateCommercialPolicies,type CommercialPolicy} from '../../domain/commercialKernel/commercialPolicy.ts';
 import {publishCommercialPolicy} from '../../domain/commercialKernel/policyCommands.ts';
@@ -62,5 +63,6 @@ export function CommercialPolicySection({opportunity,scope,requirements,readings
         <button type="button" className="text-sm text-muted" onClick={()=>setDraft(null)}>Cancel</button></div>
     </div>}
     {message&&<p role="status" className="mt-2 text-sm text-ink">{message}</p>}
+    <CommercialIncidentSection checks={checks} opportunity={opportunity} scope={scope} readings={readings}/>
   </section>;
 }

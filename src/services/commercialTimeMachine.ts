@@ -13,6 +13,7 @@ import type {HistoricalSourceComposition} from './historicalQuery.ts';
 import {deriveMoneyConsequences,type MoneyConsequenceProjection} from '../domain/commercialKernel/deriveMoneyConsequences.ts';
 import type {CommercialMoneyGate} from '../domain/commercialKernel/moneyGate.ts';
 import {evaluateCommercialPolicies,type CommercialPolicy,type PolicyCheck} from '../domain/commercialKernel/commercialPolicy.ts';
+import {isCommercialIncident,type CommercialIncident} from '../domain/commercialKernel/commercialIncident.ts';
 
 export const coreHistoricalProjections=['opportunity','conditions','requirements','nextQuestion',
   'blockers','commercialTime','forecastDefensibility','decisions'] as const;
@@ -31,6 +32,7 @@ export type CommercialAsOfResult={status:'available'|'verified_absent'|'pre_cove
   buyerProgress:ReturnType<typeof deriveBuyerProgressAsOf>|null;
   moneyConsequences:MoneyConsequenceProjection|null;
   policyChecks:PolicyCheck[];
+  incidents:CommercialIncident[];
   commitments:CommercialCommitment[];
   decisions:CommercialDecision[];evidence:CommercialEvidence[];
   recordedAtBySource:Map<string,string>};
@@ -51,7 +53,7 @@ const empty=(status:CommercialAsOfResult['status'],cutoff:string,boundary:string
     ...(status==='verified_absent'?{buyerProgress:'unavailable' as const,moneyConsequences:'unavailable' as const}:{})},
   derivedWithCurrentRules:true,metadataInferred:false,
   opportunity:null,conditions:new Map(),requirementReadings:[],nextQuestion:null,blockers:null,forecast:null,
-  buyerProgress:null,moneyConsequences:null,policyChecks:[],commitments:[],decisions:[],evidence:[],recordedAtBySource:new Map(),
+  buyerProgress:null,moneyConsequences:null,policyChecks:[],incidents:[],commitments:[],decisions:[],evidence:[],recordedAtBySource:new Map(),
   };
 };
 
@@ -101,6 +103,9 @@ export function composeCommercialStateAsOf(input:{sources:HistoricalSourceCompos
     const conditionReadings=projectCommercialConditions(conditions,evidence);
     const requirementReadings=projectOutcomeRequirements(requirements,conditions,evidence);
     const policyChecks=evaluateCommercialPolicies((sources.records.commercial_policies||[]) as unknown as CommercialPolicy[],opportunity,requirementReadings);
+    const incidents=(sources.records.commercial_incidents||[]).filter(row=>sameScope(row)&&row.opportunityId===opportunityId).map(row=>{
+      if(!isCommercialIncident(row))throw new Error('Incident history is unreadable.');return row;
+    });
     const nextQuestion=nextBestQuestion(requirementReadings);
     const blockers=deriveKnownBlockers(opportunityId,requirementReadings,dependencies);
     if(blockers.integrity!=='valid')throw new Error(`Dependency history has ${blockers.integrity}.`);
@@ -121,6 +126,6 @@ export function composeCommercialStateAsOf(input:{sources:HistoricalSourceCompos
       coverage:{...coverageFor('full'),buyerProgress:buyerProgress.coverage.status,moneyConsequences:'partial'},
       gap:null,derivedWithCurrentRules:true,metadataInferred:sources.metadataInferred,opportunity,
       conditions:conditionReadings,requirementReadings,nextQuestion,blockers,forecast,buyerProgress,moneyConsequences,commitments,
-      decisions,evidence,policyChecks,recordedAtBySource};
+      decisions,evidence,policyChecks,incidents,recordedAtBySource};
   }catch(error){return empty('corrupt',cutoff,boundary,error instanceof Error?error.message:'Historical source is invalid.');}
 }

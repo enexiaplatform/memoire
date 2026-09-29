@@ -78,6 +78,9 @@ const fixtures = [
     operatorNote:'Reviewed later state.',sourceType:'manual',finalizedAt:later,createdAt:later},
   {id:'policy',userId:'owner',opportunityId:'o',version:1,title:'Approval required',rationale:'Explicit customer process',requirementId:'requirement',
     appliesWhen:'always',amount:null,currency:null,lifecycle:'active',sourceType:'manual',createdAt:at,updatedAt:later},
+  {id:'incident',userId:'owner',opportunityId:'o',policyId:'policy',version:1,summary:'Approval deviation',materialImpact:'Finance and sales need to coordinate',coordinator:'Recorded coordinator',responseNote:'',status:'open',disposition:null,closedAt:null,
+    basisSnapshot:{version:1,capturedAt:later,policy:{id:'policy',userId:'owner',opportunityId:'o',version:1,title:'Approval required',rationale:'Explicit customer process',requirementId:'requirement',
+      appliesWhen:'always',amount:null,currency:null,lifecycle:'active',sourceType:'manual',createdAt:at,updatedAt:later},reason:'Required outcome is unresolved',sourceRecordIds:['policy','o','requirement']},sourceType:'manual',createdAt:later,updatedAt:later},
 ].map((fixture, i) => kernelCodecs[i].sanitize(fixture));
 const backup = localBrowserData => ({ formatVersion: 8, exportedAt: later, localBrowserData });
 const kernelBackup = () => backup(Object.fromEntries(kernelCodecs.slice(0, 5).map((codec, i) => [codec.storageKey, [fixtures[i]]])));
@@ -210,11 +213,12 @@ for (const [i, codec] of kernelCodecs.entries()) {
     const original = fixtures[i];
     const row = codec.toRow(original, 'owner');
     const file = { ...backup({}), cloudData: { user_id: 'owner', manifest: { complete: true }, data: { [codec.table]: [row] } } };
-    if (codec.table === 'commercial_conditions' || codec.table === 'commercial_outcome_requirements' || codec.table === 'commercial_dependencies' || codec.table === 'commercial_timing_assertions' || codec.table === 'commercial_money_gates' || codec.table === 'commercial_decisions' || codec.table === 'commercial_decision_observations' || codec.table === 'commercial_policies') {
+    if (codec.table === 'commercial_conditions' || codec.table === 'commercial_outcome_requirements' || codec.table === 'commercial_dependencies' || codec.table === 'commercial_timing_assertions' || codec.table === 'commercial_money_gates' || codec.table === 'commercial_decisions' || codec.table === 'commercial_decision_observations' || codec.table === 'commercial_policies' || codec.table === 'commercial_incidents') {
       file.localBrowserData['memoire.accounts.v1'] = [{ id: 'a', userId: 'owner', accountName: 'Acme' }];
       file.localBrowserData['memoire.opportunities.v1'] = [{ id: 'o', userId: 'owner', accountId:'a',accountName: 'Acme' }];
       if (codec.table === 'commercial_dependencies') file.localBrowserData[kernelCodecs[6].storageKey]=[fixtures[6],{...fixtures[6],id:'prerequisite',expectedOutcome:'Know technical approver'}];
       if (codec.table === 'commercial_timing_assertions') file.localBrowserData[kernelCodecs[6].storageKey]=[fixtures[6]];
+      if (codec.table === 'commercial_incidents') { file.localBrowserData[kernelCodecs[12].storageKey]=[fixtures[12]]; file.localBrowserData[kernelCodecs[6].storageKey]=[fixtures[6]]; }
       if (codec.table === 'commercial_policies') file.localBrowserData[kernelCodecs[6].storageKey]=[fixtures[6]];
       if (codec.table === 'commercial_money_gates') file.localBrowserData[kernelCodecs[6].storageKey]=[fixtures[6]];
       if (codec.table === 'commercial_decision_observations') file.localBrowserData[kernelCodecs[10].storageKey]=[fixtures[10]];
