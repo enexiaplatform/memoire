@@ -6,7 +6,7 @@ import { createSupabaseCompatibleDatabase, applyMigrations, productionMigrations
 
 const formatVersion = Number(readFileSync('src/utils/workspaceBackup.ts','utf8').match(/BACKUP_FORMAT_VERSION = (\d+)/)[1]);
 const sourceTables = ['opportunities','commercial_conditions','commercial_evidence','commercial_outcome_requirements',
-  'commercial_dependencies','commercial_timing_assertions','commercial_commitments','commercial_money_gates'];
+  'commercial_dependencies','commercial_timing_assertions','commercial_commitments','commercial_money_gates','commercial_policies'];
 let db;
 before(async () => { db = await createSupabaseCompatibleDatabase(); await applyMigrations(db); });
 after(async () => db?.close());
@@ -82,7 +82,7 @@ test('upgrade from the exact R1 chain fixes format 11 without changing existing 
     const owner=randomUUID();
     await legacy.query('INSERT INTO auth.users(id,email) VALUES ($1,$2)',[owner,`${owner}@example.test`]);
     await setAuthenticatedOwner(legacy,owner);
-    const payload=envelope(owner,{user_id:owner,history_guaranteed_from:'2026-09-20T00:00:00Z',schema_version:1,lineage_id:randomUUID()});
+    const payload={...envelope(owner,{user_id:owner,history_guaranteed_from:'2026-09-20T00:00:00Z',schema_version:1,lineage_id:randomUUID()}),format_version:11};
     const invoke=async p=>(await legacy.query('SELECT public.restore_commercial_history($1::jsonb) AS result',[JSON.stringify(p)])).rows[0].result;
     assert.equal((await invoke({...payload,format_version:10})).status,'restored');
     await assert.rejects(invoke(payload),/Unsupported historical backup format/);

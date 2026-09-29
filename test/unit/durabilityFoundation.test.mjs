@@ -76,6 +76,8 @@ const fixtures = [
       blockers:[],forecast:{verdict:'conditional',timingEvaluation:'incomplete',reasonCodes:[]},timing:null,money:[],execution:[],buyerProgress:null,
       sourceRecordIds:['o'],coverage:{core:'full',target:'unavailable',buyerProgress:'partial',moneyConsequences:'partial'}},
     operatorNote:'Reviewed later state.',sourceType:'manual',finalizedAt:later,createdAt:later},
+  {id:'policy',userId:'owner',opportunityId:'o',version:1,title:'Approval required',rationale:'Explicit customer process',requirementId:'requirement',
+    appliesWhen:'always',amount:null,currency:null,lifecycle:'active',sourceType:'manual',createdAt:at,updatedAt:later},
 ].map((fixture, i) => kernelCodecs[i].sanitize(fixture));
 const backup = localBrowserData => ({ formatVersion: 8, exportedAt: later, localBrowserData });
 const kernelBackup = () => backup(Object.fromEntries(kernelCodecs.slice(0, 5).map((codec, i) => [codec.storageKey, [fixtures[i]]])));
@@ -208,11 +210,12 @@ for (const [i, codec] of kernelCodecs.entries()) {
     const original = fixtures[i];
     const row = codec.toRow(original, 'owner');
     const file = { ...backup({}), cloudData: { user_id: 'owner', manifest: { complete: true }, data: { [codec.table]: [row] } } };
-    if (codec.table === 'commercial_conditions' || codec.table === 'commercial_outcome_requirements' || codec.table === 'commercial_dependencies' || codec.table === 'commercial_timing_assertions' || codec.table === 'commercial_money_gates' || codec.table === 'commercial_decisions' || codec.table === 'commercial_decision_observations') {
+    if (codec.table === 'commercial_conditions' || codec.table === 'commercial_outcome_requirements' || codec.table === 'commercial_dependencies' || codec.table === 'commercial_timing_assertions' || codec.table === 'commercial_money_gates' || codec.table === 'commercial_decisions' || codec.table === 'commercial_decision_observations' || codec.table === 'commercial_policies') {
       file.localBrowserData['memoire.accounts.v1'] = [{ id: 'a', userId: 'owner', accountName: 'Acme' }];
       file.localBrowserData['memoire.opportunities.v1'] = [{ id: 'o', userId: 'owner', accountId:'a',accountName: 'Acme' }];
       if (codec.table === 'commercial_dependencies') file.localBrowserData[kernelCodecs[6].storageKey]=[fixtures[6],{...fixtures[6],id:'prerequisite',expectedOutcome:'Know technical approver'}];
       if (codec.table === 'commercial_timing_assertions') file.localBrowserData[kernelCodecs[6].storageKey]=[fixtures[6]];
+      if (codec.table === 'commercial_policies') file.localBrowserData[kernelCodecs[6].storageKey]=[fixtures[6]];
       if (codec.table === 'commercial_money_gates') file.localBrowserData[kernelCodecs[6].storageKey]=[fixtures[6]];
       if (codec.table === 'commercial_decision_observations') file.localBrowserData[kernelCodecs[10].storageKey]=[fixtures[10]];
     }

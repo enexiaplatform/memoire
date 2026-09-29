@@ -10,10 +10,12 @@ export const historicalSources = {
   commercial_dependencies: {key:'memoire.commercialDependencies.v1'},
   commercial_timing_assertions: {key:'memoire.commercialTiming.v1'},
   commercial_money_gates: {key:'memoire.commercialMoneyGates.v1'},
+  commercial_policies: {key:'memoire.commercialPolicies.v1'},
   commercial_commitments: {key:'memoire.commercialCommitments.v1'},
 } as const;
 /** Reconstruction coverage, separate from selective semantic Commercial Events. */
 export const historicallyDerivedProjections = {
+  policyChecks: {sources:['commercial_policies','opportunities','commercial_outcome_requirements','commercial_conditions','commercial_evidence'],complete:true},
   conditionEpistemics: {sources:['commercial_conditions','commercial_evidence'],complete:true},
   requirementResolution: {sources:['commercial_outcome_requirements','commercial_conditions','commercial_evidence'],complete:true},
   nextBlockingQuestion: {sources:['commercial_outcome_requirements','commercial_conditions','commercial_evidence','commercial_dependencies'],complete:true},

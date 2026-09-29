@@ -102,7 +102,7 @@ test('a version-1 backup still restores after the kernel raised the format to 3'
   // The format is key-prefixed, not a fixed schema, so an older file is missing
   // kernel keys rather than being incompatible. It must restore everything it
   // does carry.
-  assert.equal(BACKUP_FORMAT_VERSION, 11, 'post-Decision observations require the immutable learning-artifact backup format');
+  assert.equal(BACKUP_FORMAT_VERSION, 12, 'published policy versions require their canonical and historical backup format');
 
   const v1 = { ...validBackup, formatVersion: 1 };
   const parsed = parseBackupFile(JSON.stringify(v1));

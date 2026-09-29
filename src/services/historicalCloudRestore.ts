@@ -17,6 +17,7 @@ export async function restoreCloudHistoricalScope(envelope:BackupEnvelope,plan:R
   for(const table of coveredTables){
     const raw=cloud?.data?.[table];
     if(raw){sources[table]=raw;continue;}
+    if(table==='commercial_policies'&&(envelope.formatVersion||1)<12){sources[table]=[];continue;}
     if(cloud?.data)throw new Error(`The cloud backup is missing ${table}; historical restore was not started.`);
     const contract=canonicalContracts.find(item=>item.table===table)!;
     const local=byKey.get(contract.key);

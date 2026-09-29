@@ -71,6 +71,7 @@ export const exportTables = [
   { table: 'commercial_money_gates', ownerColumn: 'user_id' },
   { table: 'commercial_decisions', ownerColumn: 'user_id' },
   { table: 'commercial_decision_observations', ownerColumn: 'user_id' },
+  { table: 'commercial_policies', ownerColumn: 'user_id' },
   { table: 'commercial_history_coverage', ownerColumn: 'user_id' },
   { table: 'commercial_state_revisions', ownerColumn: 'user_id' },
   // The money side. A backup of a distributor's workspace that carries what they

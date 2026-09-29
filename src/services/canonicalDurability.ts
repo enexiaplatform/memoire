@@ -1,4 +1,5 @@
 import { conditionCodec } from './commercialKernel/conditionStore.ts';
+import { policyCodec } from './commercialKernel/policyStore.ts';
 import { requirementCodec } from './commercialKernel/requirementStore.ts';
 import { dependencyCodec } from './commercialKernel/dependencyStore.ts';
 import { timingCodec } from './commercialKernel/timingStore.ts';
@@ -21,7 +22,7 @@ import * as enums from '../domain/commercialKernel/types.ts';
 import { evidenceCategories, evidenceDirections } from '../domain/commercialKernel/commercialEvidence.ts';
 
 export type RecordData = Record<string, unknown>;
-export const kernelCodecs = [threadCodec, commitmentCodec, eventCodec, evidenceCodec, valueOutcomeCodec, conditionCodec, requirementCodec, dependencyCodec, timingCodec, moneyGateCodec, decisionCodec,decisionObservationCodec] as const;
+export const kernelCodecs = [threadCodec, commitmentCodec, eventCodec, evidenceCodec, valueOutcomeCodec, conditionCodec, requirementCodec, dependencyCodec, timingCodec, moneyGateCodec, decisionCodec,decisionObservationCodec,policyCodec] as const;
 export type CanonicalContract = {
   table: string;
   key: string;
@@ -121,6 +122,10 @@ export function validateCanonicalRecord(contract: CanonicalContract, value: unkn
     }
   }
   if (contract.kind !== 'kernel') return;
+  if(contract.table==='commercial_policies'){
+    if(!policyCodec.sanitize(r))throw new Error('commercial_policies: invalid canonical record.');
+    return;
+  }
   if (contract.table === 'commercial_evidence' && r.providedBy != null
     && !['customer','self','internal'].includes(String(r.providedBy))) throw new Error('commercial_evidence: unsupported provider.');
   if (contract.table === 'commercial_conditions' || contract.table === 'commercial_outcome_requirements'
