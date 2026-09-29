@@ -208,6 +208,7 @@ const RULE_SHAPE: Record<ReasonCode, {
   unblocking: UnblockingBand;
   evidence: EvidenceBand;
 }> = {
+  INCIDENT_RESPONSE_OPEN: { urgency: 'whenever', unblocking: 'advances', evidence: 'specific' },
   CUSTOMER_COMMITMENT_OVERDUE: { urgency: 'now', unblocking: 'unblocks', evidence: 'specific' },
   SELF_COMMITMENT_OVERDUE: { urgency: 'now', unblocking: 'unblocks', evidence: 'specific' },
   MONEY_CHECKPOINT_STUCK: { urgency: 'now', unblocking: 'unblocks', evidence: 'specific' },
@@ -264,6 +265,7 @@ const NOTHING_SCHEDULED_RULES: ReasonCode[] = [
  *   pretending otherwise would be the exact failure this map prevents.
  */
 const RULE_CONCERNS: Record<ReasonCode, readonly CommercialDimension[]> = {
+  INCIDENT_RESPONSE_OPEN: ['momentum'],
   CUSTOMER_COMMITMENT_OVERDUE: ['momentum'],
   SELF_COMMITMENT_OVERDUE: ['momentum'],
   COMMITMENT_REPEATEDLY_RESCHEDULED: ['momentum'],
@@ -470,7 +472,7 @@ function findContradiction(
 
   // A deal that is not running cannot have live work on it. `Active` is the
   // only status that leaves it open; Won, Lost and On hold all end the sentence.
-  if (opportunity && opportunity.status !== 'Active') {
+  if (opportunity && opportunity.status !== 'Active' && recommendation.reasonCode !== 'INCIDENT_RESPONSE_OPEN') {
     return { reason: 'opportunity_closed', contradictedBy: [opportunity.id] };
   }
 
@@ -693,7 +695,7 @@ function changeIsRelevant(
 ): boolean {
   // A requirement is a declared question, not a stage or a dated commitment.
   // Generic deal changes cannot raise its urgency without an explicit link.
-  if (recommendation.reasonCode === 'OUTCOME_REQUIREMENT_QUESTION') return false;
+  if (recommendation.reasonCode === 'OUTCOME_REQUIREMENT_QUESTION' || recommendation.reasonCode === 'INCIDENT_RESPONSE_OPEN') return false;
   if (TIMING_CHANGE_KINDS.includes(change.kind)) {
     // Timing reaches anything with a clock on it, and nothing without one.
     return RULE_SHAPE[recommendation.reasonCode].urgency !== 'whenever';
@@ -721,6 +723,7 @@ function concernsOf(recommendation: Recommendation, context: RankingContext): re
  * that exist, and they are the three that are read.
  */
 function resolveDueDate(recommendation: Recommendation, context: RankingContext): string {
+  if (recommendation.reasonCode === 'INCIDENT_RESPONSE_OPEN') return '';
   if (recommendation.reasonCode === 'TIMING_TARGET_UNSUPPORTED') return recommendation.timingDate || '';
   // Only the rules that are about a promise's timing read its date. "It does
   // not say who owes it" is a tidying job about a missing name; letting it

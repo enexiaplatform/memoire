@@ -103,7 +103,7 @@ export function SalesReviewsPage() {
   const rawTab = searchParams.get('view');
   // ?view=defense was the retired Pipeline Defense tab; it opens the review.
   const tab: ReviewTab = rawTab === 'analytics' ? rawTab : 'review';
-  const { rankedRecommendations: reviewRecommendations } = useCommercialThreads();
+  const { rankedRecommendations: reviewRecommendations, attentionError, attentionScope } = useCommercialThreads();
 
   // One period for the whole tab. The scoreboard declares it and the recap
   // below reads it: two period pickers on one page meant the headline and the
@@ -214,7 +214,7 @@ export function SalesReviewsPage() {
               </span>
             </summary>
             <div className="flex flex-col gap-4 border-t border-gray-100 p-5">
-              <CommercialRiskPanel recommendations={reviewRecommendations} limit={10} title="Commercial threads at risk" />
+              <CommercialRiskPanel key={attentionScope} recommendations={reviewRecommendations} attention loadError={attentionError} title="Commercial attention" />
               <ThreadsSection title="Threads to look at" description="Quietest first" limit={4} />
             </div>
           </details>

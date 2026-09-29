@@ -1,3 +1,5 @@
+import type { CommercialIncident } from '../../domain/commercialKernel/commercialIncident';
+import { loadCommercialIncidents, loadCommercialIncidentsForWorkspace, INCIDENT_UPDATED_EVENT } from '../../services/commercialKernel/incidentStore';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuthContext } from '../../auth/authContext';
 import { hasLocalSampleData } from '../../utils/dataMode';
@@ -50,6 +52,10 @@ export function useCommercialThreads() {
   const [loading, setLoading] = useState(() => !getCachedSalesWorkspaceData(dataUserId));
   const [refreshToken, setRefreshToken] = useState(0);
   const [targets, setTargets] = useState<CommercialTarget[]>(() => loadTargets());
+  const [incidentState, setIncidentState] = useState<{scope: string; rows: CommercialIncident[]; error: string} | null>(null);
+  const incidentScope = `${dataUserId || 'local'}:${sampleDataActive}`;
+  const incidents = useMemo(() => incidentState?.scope === incidentScope ? incidentState.rows : [], [incidentState, incidentScope]);
+  const attentionError = incidentState?.scope === incidentScope ? incidentState.error : '';
   const [planItems, setPlanItems] = useState<PlanRecord[]>([]);
 
   useEffect(() => {
@@ -78,6 +84,25 @@ export function useCommercialThreads() {
     // workspace without changing the user id, and without this the thread list
     // stayed empty over a demo pipeline full of deals.
   }, [dataUserId, sampleDataActive, refreshToken]);
+
+  useEffect(() => {
+    let active = true;
+    void loadCommercialIncidentsForWorkspace(dataUserId, sampleDataActive)
+      .then(rows => { if (active) setIncidentState({scope: incidentScope, rows, error: ''}); })
+      .catch(() => { if (active) setIncidentState({scope: incidentScope, rows: [], error: 'Incident responses could not be loaded. This review is incomplete.'}); });
+    return () => { active = false; };
+  }, [dataUserId, sampleDataActive, incidentScope, refreshToken]);
+
+  useEffect(() => {
+    const onIncidents = () => {
+      try {
+        const rows = loadCommercialIncidents().filter(row => row.userId === (dataUserId || null) && Boolean(row.isSample) === sampleDataActive);
+        setIncidentState({scope: incidentScope, rows, error: ''});
+      } catch { setIncidentState({scope: incidentScope, rows: [], error: 'Incident responses could not be loaded. This review is incomplete.'}); }
+    };
+    window.addEventListener(INCIDENT_UPDATED_EVENT, onIncidents);
+    return () => window.removeEventListener(INCIDENT_UPDATED_EVENT, onIncidents);
+  }, [dataUserId, sampleDataActive, incidentScope]);
 
   // The Plan holds the promises a capture made, and the ledger holds the ones
   // recorded by hand. A thread that asks "what is scheduled to move this?" has
@@ -181,6 +206,7 @@ export function useCommercialThreads() {
     const current=evaluateCommercialPolicies({
       threads,
       commitments,
+      incidents,
       opportunities: workspace.opportunities,
       quotes: workspace.quotes,
       coverage,
@@ -196,7 +222,7 @@ export function useCommercialThreads() {
       includeSampleRecords: sampleDataActive,
     });
     return moneyConsequences?attachMoneyConsequenceContext(current,moneyConsequences):current;
-  }, [commitments, coverage, moneyConsequences, sampleDataActive, threads, workspace]);
+  }, [commitments, coverage, incidents, moneyConsequences, sampleDataActive, threads, workspace]);
 
   /**
    * The same recommendations, in the order they are worth doing.
@@ -253,6 +279,8 @@ export function useCommercialThreads() {
   // hook already loaded rather than fetching it a second time.
   return {
     threads,
+    attentionError,
+    attentionScope: incidentScope,
     recommendations,
     /**
      * The ledger plus the promises derived from the Plan and from captures.

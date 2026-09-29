@@ -1,3 +1,4 @@
+import { allocateAttention } from '../../domain/commercialKernel/attentionBudget';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { trackProductEvent } from '../../utils/productAnalytics';
@@ -59,6 +60,8 @@ export function CommercialRiskPanel({
   recommendations,
   limit = 5,
   title = 'Going silent',
+  attention = false,
+  loadError = '',
 }: {
   /**
    * Ranked by the kernel, and rendered in the order it hands them over. This
@@ -68,8 +71,14 @@ export function CommercialRiskPanel({
   recommendations: RankedRecommendation[];
   limit?: number;
   title?: string;
+  attention?: boolean;
+  loadError?: string;
 }) {
   const [explaining, setExplaining] = useState('');
+  const [capacity, setCapacity] = useState(3);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [showAll, setShowAll] = useState(false);
+  const budget = allocateAttention(recommendations, capacity, selected);
 
   // Measured once per mount, and only when there is something to see: the pair
   // that matters is risks shown against risks acted on, and counting empty
@@ -79,7 +88,7 @@ export function CommercialRiskPanel({
     if (shown > 0) trackProductEvent('commercial_risk_viewed');
   }, [shown]);
 
-  if (recommendations.length === 0) {
+  if (recommendations.length === 0 && !attention) {
     return (
       <section className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 shadow-sm" aria-label={title}>
         <h2 className="text-sm font-bold text-navy">Nothing is going silent</h2>
@@ -90,7 +99,8 @@ export function CommercialRiskPanel({
     );
   }
 
-  const visible = recommendations.slice(0, limit);
+  const included = new Set([...budget.chosen, ...budget.suggested].map(item => item.id));
+  const visible = attention ? (showAll ? recommendations : recommendations.filter(item => included.has(item.id))) : recommendations.slice(0, limit);
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm" aria-label={title}>
@@ -102,9 +112,26 @@ export function CommercialRiskPanel({
         </span>
       </div>
 
+      {loadError && <p role="alert" className="mt-2 text-sm text-tint-amber-ink">{loadError}</p>}
+      {attention && <div className="mt-3 space-y-2 text-sm text-muted">
+        <p>Choose what you have room to review. Selection lasts while this panel is open and does not assign, schedule or complete work.</p>
+        <label className="flex items-center gap-2">Attention budget
+          <select aria-label="Attention budget" value={capacity} onChange={event => setCapacity(Number(event.target.value))} className="rounded-lg border border-line bg-white p-2 text-ink">
+            {[0,1,2,3,5,10,20].map(value => <option key={value} value={value}>{value} items</option>)}
+          </select>
+        </label>
+        <p aria-live="polite">{budget.chosen.length} chosen · {budget.suggested.length} suggested · {budget.outside.length} outside this budget</p>
+        {budget.overCapacity > 0 && <p role="alert">Your choices exceed the budget by {budget.overCapacity}. Remove a choice or increase your budget.</p>}
+        {budget.unavailableIds.length > 0 && <p role="status">{budget.unavailableIds.length} earlier choices are no longer in the current reading. No completion is implied.</p>}
+        <details><summary className="cursor-pointer text-brand-blue">How the order works</summary><p>Urgency, then unblocking, then evidence, then recorded value. Dates break remaining ties. An open incident without its own due date gets no invented deadline. Suggestions are never selected for you.</p></details>
+        <button type="button" className="font-semibold text-brand-blue" onClick={() => setShowAll(!showAll)}>{showAll ? 'Show this budget' : 'Review all candidates'}</button>
+        {recommendations.length === 0 && <p>No review candidates in the loaded records.</p>}
+      </div>}
       <ul className="mt-3 space-y-2">
         {visible.map((item) => (
           <li key={item.id} className={`rounded-lg border p-3 ${severityTone[item.severity]}`}>
+            {attention && <label className="mb-2 flex items-center gap-2 text-sm text-ink"><input type="checkbox" checked={budget.chosen.some(row => row.id === item.id)}
+              onChange={event => setSelected(previous => event.target.checked ? [...previous, item.id] : previous.filter(id => id !== item.id))} />Choose for this review: {item.candidateAction || item.recommendedAction}</label>}
             <div className="flex flex-wrap items-start justify-between gap-2">
               <p className="min-w-0 flex-1 text-sm leading-5 text-gray-900">{item.reasonText}</p>
               <div className="flex shrink-0 items-center gap-1.5">
@@ -139,7 +166,7 @@ export function CommercialRiskPanel({
                 <Info className="h-3 w-3" />
                 Why am I seeing this?
               </button>
-              {item.reasonCode !== 'OUTCOME_REQUIREMENT_QUESTION' && <SavedByMemoirePrompt recommendation={item} />}
+              {item.reasonCode !== 'OUTCOME_REQUIREMENT_QUESTION' && item.reasonCode !== 'INCIDENT_RESPONSE_OPEN' && <SavedByMemoirePrompt recommendation={item} />}
             </div>
 
             {explaining === item.id && (
@@ -191,7 +218,7 @@ export function CommercialRiskPanel({
         ))}
       </ul>
 
-      {recommendations.length > visible.length && (
+      {!attention && recommendations.length > visible.length && (
         <p className="mt-2 text-[11px] text-gray-400">
           +{recommendations.length - visible.length} more, in Review.
         </p>

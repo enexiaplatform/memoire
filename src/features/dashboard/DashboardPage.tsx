@@ -505,7 +505,7 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
   ), [variant, data]);
   // The Commercial Kernel view of the same workspace: threads derived from the
   // records already loaded, and the deterministic recommendations about them.
-  const { threads: commercialThreads, rankedRecommendations: kernelRecommendations } = useCommercialThreads();
+  const { threads: commercialThreads, rankedRecommendations: kernelRecommendations, attentionError, attentionScope } = useCommercialThreads();
 
   // The quietest threads are the point of a control tower - a thread that has
   // been moving does not need watching.
@@ -772,7 +772,7 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
         {/* The watch-list read three other ways. Each is derived from the same
             records as the alarms on Today, with the rule and the threshold
             behind them shown - which is reference, not a first action. */}
-        <CommercialRiskPanel recommendations={kernelRecommendations} title="Commercial priorities" />
+        <CommercialRiskPanel key={attentionScope} recommendations={kernelRecommendations} attention loadError={attentionError} title="Commercial attention" />
         {commercialThreads.length > 0 && (
           <section aria-label="Commercial threads">
             <div className="mb-2 flex items-baseline justify-between">

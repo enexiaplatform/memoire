@@ -116,6 +116,7 @@ export const deltaChangeKinds = [
   'requirement_unresolved',
   'timing_target_unsupported',
   'forecast_basis_disagreement',
+  'incident_response_open',
   'next_action_missing',
   'quote_expiring',
   'money_checkpoint_stuck',
@@ -265,6 +266,7 @@ const CONDITION_BY_REASON: Record<ReasonCode, {
   dimension: CommercialDimension;
   direction: DeltaDirection;
 }> = {
+  INCIDENT_RESPONSE_OPEN: { kind: 'incident_response_open', dimension: 'momentum', direction: 'neutral' },
   CUSTOMER_COMMITMENT_OVERDUE: { kind: 'commitment_overdue', dimension: 'momentum', direction: 'weakened' },
   SELF_COMMITMENT_OVERDUE: { kind: 'commitment_overdue', dimension: 'momentum', direction: 'weakened' },
   COMMITMENT_REPEATEDLY_RESCHEDULED: { kind: 'commitment_unreliable', dimension: 'momentum', direction: 'weakened' },

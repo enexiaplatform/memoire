@@ -108,6 +108,7 @@ const ALERT_DAY_OFFSET: Record<Severity, number> = {
  * same thing has to read like a line someone wrote for themselves.
  */
 const ALERT_LABEL: Record<ReasonCode, string> = {
+  INCIDENT_RESPONSE_OPEN: 'Review the open incident response',
   CUSTOMER_COMMITMENT_OVERDUE: 'Chase what the customer owes',
   SELF_COMMITMENT_OVERDUE: 'Deliver what you promised',
   COMMITMENT_REPEATEDLY_RESCHEDULED: 'Settle the promise that keeps moving',

@@ -22,6 +22,7 @@ const assessmentLabels: Record<ValueAssessment, string> = {
  * the user is asked one question ("was this worth it?") rather than two.
  */
 const OUTCOME_BY_REASON: Record<ReasonCode, ValueOutcomeType> = {
+  INCIDENT_RESPONSE_OPEN: 'no_material_impact',
   CUSTOMER_COMMITMENT_OVERDUE: 'commitment_caught',
   SELF_COMMITMENT_OVERDUE: 'commitment_caught',
   COMMITMENT_REPEATEDLY_RESCHEDULED: 'commitment_caught',

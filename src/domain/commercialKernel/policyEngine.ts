@@ -1,3 +1,4 @@
+import type { CommercialIncident } from './commercialIncident.ts';
 import { isLeadStage } from '../../utils/leadIdentity.ts';
 import type { CommercialCommitment } from './types.ts';
 import type { ResolvedThread } from './deriveThreads.ts';
@@ -55,6 +56,7 @@ export const reasonCodes = [
   'OUTCOME_REQUIREMENT_QUESTION',
   'TIMING_TARGET_UNSUPPORTED',
   'FORECAST_BASIS_DISAGREEMENT',
+  'INCIDENT_RESPONSE_OPEN',
 ] as const;
 export type ReasonCode = (typeof reasonCodes)[number];
 
@@ -160,6 +162,7 @@ export type PolicyInput = {
   conditions?: CommercialCondition[];
   dependencies?: CommercialDependency[];
   timing?: CommercialTimingAssertion[];
+  incidents?: CommercialIncident[];
 };
 
 const SEVERITY_ORDER: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -191,6 +194,7 @@ export function evaluateCommercialPolicies(input: PolicyInput): Recommendation[]
     ...requirementQuestionRules(input, calculatedAt, isVisible, leadIds),
     ...timingTargetRules(input, todayDateKey(today), calculatedAt, isVisible, leadIds),
     ...forecastBasisRules(input, todayDateKey(today), calculatedAt, isVisible, leadIds),
+    ...incidentResponseRules(input, calculatedAt),
   ];
 
   return dropDuplicateNextStepWarnings(recommendations).sort((left, right) => {
@@ -738,4 +742,20 @@ function formatMoney(value: number) {
   if (Math.abs(rounded) >= 1_000_000) return `${(rounded / 1_000_000).toFixed(1)}M`;
   if (Math.abs(rounded) >= 1_000) return `${(rounded / 1_000).toFixed(0)}K`;
   return String(rounded);
+}
+
+/** A review suggestion about a recorded response, never a new incident or task. */
+function incidentResponseRules(input: PolicyInput, calculatedAt: string): Recommendation[] {
+  const opportunities = new Map(input.opportunities.map(row => [row.id, row]));
+  return (input.incidents || []).flatMap(incident => {
+    const opportunity = opportunities.get(incident.opportunityId);
+    if (incident.status !== 'open' || !opportunity || incident.userId !== (opportunity.userId || null)
+      || Boolean(incident.isSample) !== Boolean(opportunity.isSample)
+      || (incident.isSample && input.includeSampleRecords !== true)) return [];
+    return [{id: incident.id + ':response-review', reasonCode: 'INCIDENT_RESPONSE_OPEN' as const,
+      reasonText: incident.summary + ': ' + incident.materialImpact + ' Response coordinated by ' + incident.coordinator + '.',
+      sourceRecordIds: [incident.id, incident.policyId, opportunity.id], threshold: 1, severity: 'medium' as const,
+      recommendedAction: 'Review the open incident response', calculatedAt, accountName: opportunity.accountName,
+      opportunityId: opportunity.id, href: '/app/opportunities?opportunityId=' + encodeURIComponent(opportunity.id)}];
+  });
 }
