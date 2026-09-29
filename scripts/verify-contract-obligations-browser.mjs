@@ -1,0 +1,22 @@
+import {chromium} from 'playwright';import assert from 'node:assert/strict';
+const browser=await chromium.launch({headless:true}),base=process.env.MEMOIRE_BROWSER_BASE||'http://127.0.0.1:5173';
+try{const context=await browser.newContext({viewport:{width:1400,height:1000}});await context.addInitScript(()=>{
+ if(localStorage.getItem('contract-seeded'))return;localStorage.setItem('contract-seeded','yes');localStorage.setItem('memoire_demo_workspace','interactive-demo');
+ const at='2026-09-01T00:00:00.000Z',o={id:'o',userId:null,accountId:'a',accountName:'Acme',opportunityName:'Contract check',stage:'Proposal',status:'Active',createdAt:at,updatedAt:at,storageMode:'local'};
+ const r={id:'r',userId:null,accountId:'a',opportunityId:'o',expectedOutcome:'Delivery accepted',question:null,conditionId:null,role:'required_now',lifecycle:'active',sourceType:'manual',createdAt:at,updatedAt:at};
+ const c={id:'c',userId:null,accountId:'a',accountName:'Acme',opportunityId:'o',threadId:'t',commitmentParty:'self',ownerLabel:'Operator',commitmentText:'Deliver scope',originalDueDate:'2026-10-01',currentDueDate:'2026-10-01',silenceThresholdDays:3,status:'open',impactType:'delivery',dueDateHistory:[],sourceType:'manual',createdAt:at,updatedAt:at};
+ for(const [key,rows] of [['accounts',[{id:'a',accountName:'Acme',createdAt:at,updatedAt:at}]],['opportunities',[o]],['outcomeRequirements',[r]],['commercialCommitments',[c]]])localStorage.setItem('memoire.'+key+'.v1',JSON.stringify(rows));
+ });
+ const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/app/opportunities?opportunityId=o');
+ const panel=page.getByRole('dialog',{name:'Opportunity details'}).getByRole('region',{name:'Contract obligations'});await panel.getByRole('button',{name:'Link accepted clause'}).click();
+ for(const [label,value] of [['Contract reference','Contract 42'],['Accepted contract version','Signed v1'],['Accepted on','2026-09-01'],['Acceptance evidence reference','Signed copy 42'],['Operational clause','Deliver agreed scope'],['Reason for this mapping','Confirmed by operator']])await panel.getByLabel(label,{exact:true}).fill(value);
+ await panel.getByLabel('Contractual required outcome').selectOption('r');await panel.getByLabel('Operational promise').selectOption('c');assert.equal(await panel.getByRole('button',{name:'Save contract obligation'}).isDisabled(),true);
+ const before=await page.evaluate(()=>localStorage.getItem('memoire.commercialCommitments.v1'));await panel.getByRole('checkbox').check();await panel.getByRole('button',{name:'Save contract obligation'}).click();await panel.getByText('Clause: Deliver agreed scope',{exact:true}).waitFor();
+ assert.equal(await page.evaluate(()=>localStorage.getItem('memoire.commercialCommitments.v1')),before);
+ const cutoff=await page.evaluate(async()=>{const {decodeHistoricalStorage}=await import('/src/services/historicalStorageCodec.ts');return JSON.parse(decodeHistoricalStorage(localStorage.getItem('memoire.stateRevisions.v1'))).find(r=>r.entityType==='commercial_contract_obligations').recordedAt;});
+ await panel.getByRole('button',{name:'Revise mapping: Contract 42'}).click();assert.equal(await panel.getByLabel('Accepted contract version',{exact:true}).isDisabled(),true);await panel.getByLabel('Operational clause',{exact:true}).fill('Later interpretation');await panel.getByLabel('Mapping status').selectOption('retired');await panel.getByRole('checkbox').check();await panel.getByRole('button',{name:'Save contract obligation'}).click();await panel.getByText('Clause: Later interpretation',{exact:true}).waitFor();
+ await page.reload();await panel.getByText('Clause: Later interpretation',{exact:true}).waitFor();await page.goto(base+'/app/opportunities?opportunityId=o&asOf='+encodeURIComponent(cutoff));
+ const history=page.getByRole('dialog',{name:'Opportunity as understood then'});await history.getByText('Clause: Deliver agreed scope',{exact:true}).waitFor();assert.equal(await history.getByText('Clause: Later interpretation',{exact:true}).count(),0);assert.equal(await history.getByRole('button',{name:'Save contract obligation'}).count(),0);
+ await page.setViewportSize({width:390,height:844});const bounds=await history.boundingBox();assert.ok(bounds&&bounds.x>=0&&bounds.x+bounds.width<=391);assert.deepEqual(errors,[]);
+ console.log('Contract browser passed: accepted clause confirmation, no promise mutation, immutable acceptance reference, revision, reload and cutoff-safe read-only narrow history.');
+}finally{await browser.close();}

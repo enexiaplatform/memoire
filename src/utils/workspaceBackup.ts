@@ -1,3 +1,4 @@
+import {validateContractObligation,type ContractObligation} from '../domain/commercialKernel/contractObligation.ts';
 import { conditionReferenceIndex, validateConditionReferences } from '../domain/commercialKernel/conditionReferences.ts';
 import type { CommercialCondition } from '../domain/commercialKernel/commercialCondition.ts';
 import type { CommercialEvidence } from '../domain/commercialKernel/commercialEvidence.ts';
@@ -30,7 +31,7 @@ import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KE
  */
 
 /** Format 11 carries immutable post-Decision observations. */
-export const BACKUP_FORMAT_VERSION = 13;
+export const BACKUP_FORMAT_VERSION = 14;
 export const BACKUP_KEY_PREFIX = 'memoire.';
 
 export type BackupEnvelope = {
@@ -267,6 +268,8 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
       normalized[key] = Array.from(merged.values());
     } else normalized[key] = local;
   }
+  for(const obligation of (normalized['memoire.contractObligations.v1']||[]) as ContractObligation[])
+    validateContractObligation(obligation,{opportunities:normalized['memoire.opportunities.v1'] as CrmLiteOpportunity[]||[],requirements:normalized['memoire.outcomeRequirements.v1'] as OutcomeRequirement[]||[],commitments:normalized['memoire.commercialCommitments.v1'] as CommercialCommitment[]||[]});
   for(const policy of (normalized['memoire.commercialPolicies.v1']||[]) as CommercialPolicy[])
     validatePolicyReferences(policy,normalized['memoire.opportunities.v1'] as CrmLiteOpportunity[]||[],normalized['memoire.outcomeRequirements.v1'] as OutcomeRequirement[]||[]);
   for(const incident of (normalized['memoire.commercialIncidents.v1']||[]) as CommercialIncident[])

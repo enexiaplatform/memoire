@@ -1,3 +1,4 @@
+import {ContractObligationSection} from './ContractObligationSection';
 import { useEffect, useMemo, useState } from 'react';
 import { deriveKnownBlockers, type CommercialDependency } from '../../domain/commercialKernel/commercialDependency';
 import { createCommercialDependency, retireCommercialDependency } from '../../domain/commercialKernel/dependencyCommands';
@@ -119,6 +120,7 @@ export function CommercialStatePanel({ opportunity, accounts, userId, sampleData
     <WhatIfScenarioPanel opportunity={opportunity} requirements={requirements} conditions={conditions} evidence={evidence}
       dependencies={dependencies} timingAssertions={timing} commitments={commitments} moneyGates={moneyGates} quotes={quotes} />
     <CommercialDecisionSection opportunity={opportunity} forecast={forecast} commitments={commitments} userId={userId} sampleDataActive={sampleDataActive} />
+    <ContractObligationSection key={opportunity.id+scope.userId+scope.sampleDataActive} opportunity={opportunity} scope={scope} refs={{opportunities:[opportunity],requirements:requirements.filter(r=>r.opportunityId===opportunity.id),commitments:commitments.filter(r=>r.opportunityId===opportunity.id)}} readings={requirementReadings} timing={timing} gates={moneyGates}/>
     <CommercialPolicySection opportunity={opportunity} scope={scope} requirements={requirements} readings={projectOutcomeRequirements(requirements,conditions,evidence)} />
     <RequirementSection opportunity={opportunity} accounts={accounts} userId={userId} sampleDataActive={sampleDataActive}
       conditions={conditions} evidence={evidence} requirements={requirements} dependencies={dependencies} onMessage={setMessage} />

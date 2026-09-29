@@ -23,7 +23,7 @@ const expectedTables = [
   'commercial_state_revisions',
   'commercial_money_gates',
   'commercial_policies',
-  'commercial_incidents',
+  'commercial_incidents','commercial_contract_obligations',
   'commercial_decision_observations',
 ];
 const coveredTables = [
@@ -36,7 +36,7 @@ const coveredTables = [
   'commercial_commitments',
   'commercial_money_gates',
   'commercial_policies',
-  'commercial_incidents',
+  'commercial_incidents','commercial_contract_obligations',
 ];
 
 async function scalar(db, sql, params = []) {

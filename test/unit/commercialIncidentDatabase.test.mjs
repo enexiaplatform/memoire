@@ -2,8 +2,7 @@ import {before,after,test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {createSupabaseCompatibleDatabase,applyMigrations,productionMigrations,setAuthenticatedOwner} from '../../scripts/release-database-harness.mjs';
-import {historicalSources} from '../../src/services/historicalIntegrity.ts';
-const tables=Object.keys(historicalSources),migration='20260929010336_commercial_incidents.sql';
+const tables=['opportunities','commercial_conditions','commercial_evidence','commercial_outcome_requirements','commercial_dependencies','commercial_timing_assertions','commercial_commitments','commercial_money_gates','commercial_policies','commercial_incidents'],migration='20260929010336_commercial_incidents.sql';
 let db,legacyPayload,legacyMarker,existingPolicy,existingHistory,existingCoverage;
 const restore=async(database,payload)=>(await database.query('SELECT restore_commercial_history($1::jsonb) AS result',[JSON.stringify(payload)])).rows[0].result;
 before(async()=>{

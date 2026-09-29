@@ -21,6 +21,7 @@ export type KernelTable =
   | 'commercial_decisions'
   | 'commercial_policies'
   | 'commercial_incidents'
+  | 'commercial_contract_obligations'
   | 'commercial_decision_observations';
 
 export type KernelRecord = {
@@ -84,6 +85,7 @@ function workspaceCollectionForTable(table: KernelTable) {
   if (table === 'commercial_decisions') return 'decisions';
   if (table === 'commercial_decision_observations') return 'decisionObservations';
   if (table === 'commercial_policies') return 'policies';
+  if (table === 'commercial_contract_obligations') return 'contractObligations';
   if (table === 'commercial_incidents') return 'incidents';
   return 'commercialEvents';
 }
@@ -260,7 +262,7 @@ export async function loadMergedForUser<T extends KernelRecord>(
   const ownerScoped = codec.table === 'commercial_conditions' || codec.table === 'commercial_outcome_requirements'
     || codec.table === 'commercial_dependencies' || codec.table === 'commercial_timing_assertions'
     || codec.table === 'commercial_money_gates' || codec.table === 'commercial_decisions'
-    || codec.table === 'commercial_decision_observations' || codec.table === 'commercial_policies' || codec.table === 'commercial_incidents';
+    || codec.table === 'commercial_decision_observations' || codec.table === 'commercial_policies' || codec.table === 'commercial_incidents' || codec.table === 'commercial_contract_obligations';
   const local = allLocal.filter(r => !ownerScoped || r.userId === userId);
   const otherOwners = ownerScoped ? allLocal.filter(r => r.userId !== userId) : [];
   const cloud = await loadCloudRecords(codec, userId);

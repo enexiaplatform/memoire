@@ -1,3 +1,4 @@
+import {ContractObligationReadings} from './ContractObligationReadings';
 import {useEffect,useState} from 'react';
 import {X} from 'lucide-react';
 import {useModalDrawer} from '../../hooks/useModalDrawer.ts';
@@ -121,6 +122,7 @@ export function HistoricalOpportunityDrawer({opportunityId,scope,cutoff,sampleDa
           <p className="mt-1 text-xs text-muted">Published rules and Requirement evidence recorded by this cutoff, evaluated with current rules.</p>
           {asOf.policyChecks.length?<PolicyCheckList checks={asOf.policyChecks}/>:<p className="mt-2 text-muted">No active policy recorded by this cutoff.</p>}
         </section>
+        {asOf.contractObligations.length>0&&<section className="rounded-panel border border-line p-4"><h3 className="font-semibold text-ink">Contract obligations then</h3><ContractObligationReadings readings={asOf.contractObligations}/></section>}
         {asOf.incidents.length>0&&<section className="rounded-panel border border-line p-4"><h3 className="font-semibold text-ink">Incident response then</h3>
           <IncidentReadings incidents={asOf.incidents} checks={asOf.policyChecks}/></section>}
         <section className="rounded-panel border border-line p-4"><h3 className="font-semibold text-ink">Money consequence then</h3>

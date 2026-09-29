@@ -8,6 +8,7 @@ const sql = [
   '../supabase/migrations/20260921190000_commercial_money_gates.sql',
   '../supabase/migrations/20260928161744_commercial_policies.sql',
   '../supabase/migrations/20260929010336_commercial_incidents.sql',
+  '../supabase/migrations/20260929101027_contract_obligations.sql',
 ].map(path=>readFileSync(new URL(path,import.meta.url),'utf8')).join('\n');
 const exporter = readFileSync(new URL('../api/export.ts', import.meta.url), 'utf8');
 const tables = new Set(canonicalContracts.map(contract => contract.table));
