@@ -1,0 +1,15 @@
+import {chromium} from 'playwright';import assert from 'node:assert/strict';
+const browser=await chromium.launch({headless:true});
+try{const context=await browser.newContext();await context.addInitScript(()=>localStorage.setItem('memoire_demo_workspace','interactive-demo'));const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto((process.env.MEMOIRE_BROWSER_BASE||'http://127.0.0.1:5173')+'/app/capture');await page.locator('summary').filter({hasText:'External source observations'}).click();await page.locator('summary').filter({hasText:'Review a connector export'}).click();
+ const panel=page.getByRole('region',{name:'Connector export review'}),document={format:'memoire.connector-export',version:1,kind:'finance',namespace:'ledger',records:[{id:'invoice-1',version:'1',reportedAt:null,title:'Source reports paid',text:'Unaccepted payment report'}]};
+ const upload=async value=>panel.getByLabel('Source export',{exact:true}).setInputFiles({name:'source.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(value))});
+ const snapshot=()=>page.evaluate(()=>['memoire.commercialEvidence.v1','memoire.stateRevisions.v1','memoire.opportunities.v1','memoire.moneyCheckpoints.v1'].map(k=>localStorage.getItem(k)));const before=await snapshot();
+ await upload(document);await panel.getByText(/1 observations to review/).waitFor();assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('memoire.commercialEvents.v1')||'[]').filter(e=>e.eventType==='external_observation_received').length),0);
+ await panel.getByRole('button',{name:'Receive reviewed observations'}).click();await panel.getByText(/1 new receipts saved in this browser/).waitFor();assert.deepEqual(await snapshot(),before);
+ await panel.getByRole('button',{name:'Receive reviewed observations'}).click();await panel.getByText(/0 new receipts saved in this browser; 1 already received/).waitFor();
+ await upload({...document,records:[{...document.records[0],id:'invoice-2'}, {...document.records[0],text:'Changed under same version'}]});await panel.getByText(/2 observations to review/).waitFor();await panel.getByRole('button',{name:'Receive reviewed observations'}).click();await panel.getByText(/1 new receipts saved; 0 already received. Import stopped/).waitFor();
+ await upload({...document,userId:'another-owner'});await panel.getByText(/fields are not supported/).waitFor();assert.equal(await panel.getByRole('button',{name:'Receive reviewed observations'}).count(),0);assert.deepEqual(await snapshot(),before);
+ await page.reload();assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('memoire.commercialEvents.v1')).filter(e=>e.eventType==='external_observation_received').length),2);await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);assert.deepEqual(errors,[]);
+ console.log('Connector browser passed: preview before receipt, retry, partial failure honesty, invalid export rejection, unchanged commercial state and reload.');
+}finally{await browser.close();}
