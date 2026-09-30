@@ -205,6 +205,7 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
       const contract = canonicalContracts.find(c => c.table === table);
       if (!contract) {
         if (!(archiveOnlyTables as readonly string[]).includes(table)) throw new Error(`Unsupported cloud dataset: ${table}.`);
+        if(table==='commercial_webhook_deliveries'&&rows.some(row=>!row||typeof row!=='object'||Array.isArray(row)||!cloud.user_id||(row as RecordData).user_id!==cloud.user_id))throw new Error('Webhook delivery archive has invalid ownership.');
         continue;
       }
       const seen = new Set<string>();

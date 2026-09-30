@@ -53,6 +53,7 @@ const expectedTables = [
   ['commercial_threads', 'user_id'],
   ['commercial_commitments', 'user_id'],
   ['commercial_events', 'user_id'],
+  ['commercial_webhook_deliveries', 'user_id'],
   ['commercial_value_outcomes', 'user_id'],
   ['commercial_evidence', 'user_id'],
   ['commercial_conditions', 'user_id'],

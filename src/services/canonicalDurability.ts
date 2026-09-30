@@ -89,7 +89,7 @@ export const canonicalContracts: CanonicalContract[] = [
 /** Exported for retention, never replayed as commercial commands or privileged writes. */
 export const archiveOnlyTables = ['user_profiles', 'usage_monthly', 'pipeline_defense_briefs', 'captures', 'entities',
   'relationships', 'contacts', 'interactions', 'actions', 'activity_log', 'import_batches', 'import_row_results',
-  'commercial_history_coverage', 'commercial_state_revisions'] as const;
+  'commercial_history_coverage', 'commercial_state_revisions', 'commercial_webhook_deliveries'] as const;
 export const CLOUD_ARCHIVE_KEY = 'memoire.backup.cloudArchive.v1';
 
 export function contractForKey(key: string) {

@@ -1,0 +1,13 @@
+# M20 — signed commercial change notifications
+
+Starting green SHA: `e84b9d02ff97464546a307ce935f54bf55efe940`.
+
+The audit found canonical State Revisions and existing scheduler authentication, but no outbound commercial delivery system. M20 derives minimal notifications from accepted non-baseline revisions. Notification identity is stable across retries and reconstruction. The envelope contains record kind/identity, revision, operation and recorded time; private commercial values and source text are absent. Delivery acknowledgement never establishes commercial truth.
+
+The new `commercial_webhook_deliveries` table holds only operational delivery state. It is not a Kernel aggregate or historical source. Owners have read-only RLS access; privileged scheduler RPCs enqueue, lease and finish work. Target identity is locked per configured endpoint. Leases and stable notification identity support at-least-once delivery, stale-worker rejection and bounded retries. HMAC signatures bind the exact body and timestamp. The HTTPS transport pins public IPv4 DNS, preserves TLS hostname validation, limits time and refuses redirects/private addresses.
+
+No destination, scheduler configuration or live delivery was enabled. Explicit deployment configuration binds each destination to one owner and secret reference. The existing app navigation is unchanged. Delivery records join account export and are retained as a non-executable audit archive on browser restore. Canonical history can reconstruct notifications after operational recovery; receivers must retain deduplication identities. Secrets and destination configuration remain deployment responsibilities.
+
+Eight tests cover signatures, replay-window rejection, private-network denial, pinned transport, actual queue/RLS/retry semantics, stale leases, attempt exhaustion, exports and populated-schema upgrade. The full fresh migration chain is also exercised. Browser HTTP verification passed scheduler authorization, signed fixture delivery, acknowledgement and suppression of completed work. No external network receiver was contacted. Full `npm run check` passed with **1,946 tests**, build, API typecheck, lint and all repository contracts; the export inventory was extended to cover delivery rows.
+
+**GO for M21** from this report's commit. Production remains **PRODUCTION DEPLOYMENT PENDING**. Limitations are explicit: deployment-managed destinations, IPv4-only outbound transport, at-least-once delivery with receiver deduplication, manual investigation of exhausted jobs and separate backup of deployment secrets/configuration. See `docs/architecture/commercial-webhooks-v1.md` for the protocol and recovery contract.
