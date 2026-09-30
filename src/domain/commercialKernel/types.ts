@@ -181,6 +181,8 @@ export type CommercialCommitment = {
 
 export const commercialEventTypes = [
   'external_observation_received',
+  'workspace_access_responded',
+  'workspace_review_recorded',
   'activity_captured',
   'account_created',
   'thread_created',

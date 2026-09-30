@@ -22,6 +22,7 @@ export type KernelTable =
   | 'commercial_policies'
   | 'commercial_incidents'
   | 'commercial_contract_obligations'
+  | 'commercial_workspaces'
   | 'commercial_decision_observations';
 
 export type KernelRecord = {
@@ -86,6 +87,7 @@ function workspaceCollectionForTable(table: KernelTable) {
   if (table === 'commercial_decision_observations') return 'decisionObservations';
   if (table === 'commercial_policies') return 'policies';
   if (table === 'commercial_contract_obligations') return 'contractObligations';
+  if (table === 'commercial_workspaces') return 'commercialWorkspaces';
   if (table === 'commercial_incidents') return 'incidents';
   return 'commercialEvents';
 }

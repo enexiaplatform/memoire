@@ -13,6 +13,7 @@ export const historicalSources = {
   commercial_policies: {key:'memoire.commercialPolicies.v1'},
   commercial_incidents: {key:'memoire.commercialIncidents.v1'},
   commercial_contract_obligations: {key:'memoire.contractObligations.v1'},
+  commercial_workspaces: {key:'memoire.commercialWorkspaces.v1'},
   commercial_commitments: {key:'memoire.commercialCommitments.v1'},
 } as const;
 /** Reconstruction coverage, separate from selective semantic Commercial Events. */

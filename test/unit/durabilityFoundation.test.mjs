@@ -82,6 +82,7 @@ const fixtures = [
     basisSnapshot:{version:1,capturedAt:later,policy:{id:'policy',userId:'owner',opportunityId:'o',version:1,title:'Approval required',rationale:'Explicit customer process',requirementId:'requirement',
       appliesWhen:'always',amount:null,currency:null,lifecycle:'active',sourceType:'manual',createdAt:at,updatedAt:later},reason:'Required outcome is unresolved',sourceRecordIds:['policy','o','requirement']},sourceType:'manual',createdAt:later,updatedAt:later},
   {id:'contract-obligation',userId:'owner',opportunityId:'o',version:1,contractReference:'Contract 42',contractVersion:'Signed v1',acceptedOn:'2026-01-01',acceptanceReference:'Signed copy 42',clause:'Deliver accepted scope',requirementId:'requirement',commitmentId:'c',revisionReason:'Confirmed mapping',lifecycle:'active',sourceType:'manual',createdAt:at,updatedAt:later},
+  {id:'workspace',userId:'owner',version:1,name:'Shared review',members:[],commitmentIds:[],revisionReason:'Confirmed sharing',lifecycle:'active',sourceType:'manual',createdAt:at,updatedAt:later},
 ].map((fixture, i) => kernelCodecs[i].sanitize(fixture));
 const backup = localBrowserData => ({ formatVersion: 8, exportedAt: later, localBrowserData });
 const kernelBackup = () => backup(Object.fromEntries(kernelCodecs.slice(0, 5).map((codec, i) => [codec.storageKey, [fixtures[i]]])));

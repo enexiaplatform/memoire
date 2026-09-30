@@ -1,4 +1,5 @@
 import {contractObligationCodec} from './commercialKernel/contractObligationStore.ts';
+import {commercialWorkspaceCodec} from './commercialKernel/commercialWorkspaceStore.ts';
 import { conditionCodec } from './commercialKernel/conditionStore.ts';
 import { policyCodec } from './commercialKernel/policyStore.ts';
 import { incidentCodec } from './commercialKernel/incidentStore.ts';
@@ -24,7 +25,7 @@ import * as enums from '../domain/commercialKernel/types.ts';
 import { evidenceCategories, evidenceDirections } from '../domain/commercialKernel/commercialEvidence.ts';
 
 export type RecordData = Record<string, unknown>;
-export const kernelCodecs = [threadCodec, commitmentCodec, eventCodec, evidenceCodec, valueOutcomeCodec, conditionCodec, requirementCodec, dependencyCodec, timingCodec, moneyGateCodec, decisionCodec,decisionObservationCodec,policyCodec,incidentCodec,contractObligationCodec] as const;
+export const kernelCodecs = [threadCodec, commitmentCodec, eventCodec, evidenceCodec, valueOutcomeCodec, conditionCodec, requirementCodec, dependencyCodec, timingCodec, moneyGateCodec, decisionCodec,decisionObservationCodec,policyCodec,incidentCodec,contractObligationCodec,commercialWorkspaceCodec] as const;
 export type CanonicalContract = {
   table: string;
   key: string;
@@ -124,6 +125,10 @@ export function validateCanonicalRecord(contract: CanonicalContract, value: unkn
     }
   }
   if (contract.kind !== 'kernel') return;
+  if(contract.table==='commercial_workspaces'){
+    if(!commercialWorkspaceCodec.sanitize(r))throw new Error('Invalid shared workspace.');
+    return;
+  }
   if(contract.table==='commercial_contract_obligations'){
     if(!contractObligationCodec.sanitize(r))throw new Error('Invalid contract obligation.');
     return;

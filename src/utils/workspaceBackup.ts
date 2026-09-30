@@ -1,4 +1,5 @@
 import {validateContractObligation,type ContractObligation} from '../domain/commercialKernel/contractObligation.ts';
+import {validateWorkspaceReferences,type CommercialWorkspace} from '../domain/commercialKernel/commercialWorkspace.ts';
 import { conditionReferenceIndex, validateConditionReferences } from '../domain/commercialKernel/conditionReferences.ts';
 import type { CommercialCondition } from '../domain/commercialKernel/commercialCondition.ts';
 import type { CommercialEvidence } from '../domain/commercialKernel/commercialEvidence.ts';
@@ -30,8 +31,8 @@ import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KE
  * backup, what never comes back in - can be tested without a browser.
  */
 
-/** Format 11 carries immutable post-Decision observations. */
-export const BACKUP_FORMAT_VERSION = 14;
+/** Format 15 adds versioned shared-workspace configuration, without restoring live access grants. */
+export const BACKUP_FORMAT_VERSION = 15;
 export const BACKUP_KEY_PREFIX = 'memoire.';
 
 export type BackupEnvelope = {
@@ -269,6 +270,8 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
       normalized[key] = Array.from(merged.values());
     } else normalized[key] = local;
   }
+  for(const workspace of (normalized['memoire.commercialWorkspaces.v1']||[]) as CommercialWorkspace[])
+    validateWorkspaceReferences(workspace,normalized['memoire.commercialCommitments.v1'] as CommercialCommitment[]||[]);
   for(const obligation of (normalized['memoire.contractObligations.v1']||[]) as ContractObligation[])
     validateContractObligation(obligation,{opportunities:normalized['memoire.opportunities.v1'] as CrmLiteOpportunity[]||[],requirements:normalized['memoire.outcomeRequirements.v1'] as OutcomeRequirement[]||[],commitments:normalized['memoire.commercialCommitments.v1'] as CommercialCommitment[]||[]});
   for(const policy of (normalized['memoire.commercialPolicies.v1']||[]) as CommercialPolicy[])

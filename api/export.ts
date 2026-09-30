@@ -63,6 +63,7 @@ export const exportTables = [
   { table: 'commercial_commitments', ownerColumn: 'user_id' },
   { table: 'commercial_events', ownerColumn: 'user_id' },
   { table: 'commercial_webhook_deliveries', ownerColumn: 'user_id' },
+  { table: 'commercial_workspaces', ownerColumn: 'user_id' },
   { table: 'commercial_value_outcomes', ownerColumn: 'user_id' },
   { table: 'commercial_evidence', ownerColumn: 'user_id' },
   { table: 'commercial_conditions', ownerColumn: 'user_id' },

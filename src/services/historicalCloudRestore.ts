@@ -19,6 +19,7 @@ export async function restoreCloudHistoricalScope(envelope:BackupEnvelope,plan:R
     if(raw){sources[table]=raw;continue;}
     if(table==='commercial_policies'&&(envelope.formatVersion||1)<12){sources[table]=[];continue;}
     if(table==='commercial_contract_obligations'&&(envelope.formatVersion||1)<14){sources[table]=[];continue;}
+    if(table==='commercial_workspaces'&&(envelope.formatVersion||1)<15){sources[table]=[];continue;}
     if(table==='commercial_incidents'&&(envelope.formatVersion||1)<13){sources[table]=[];continue;}
     if(cloud?.data)throw new Error(`The cloud backup is missing ${table}; historical restore was not started.`);
     const contract=canonicalContracts.find(item=>item.table===table)!;
