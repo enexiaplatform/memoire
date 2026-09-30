@@ -116,7 +116,8 @@ export function recordCommercialEvent(scope: CommercialScope, input: EventInput,
   };
 
   const records = appendEvent(event, options);
-  const stored = records.find((item) => item.id === event.id || (event.idempotencyKey && item.idempotencyKey === event.idempotencyKey));
+  const stored = records.find((item) => (item.userId ?? null) === (event.userId ?? null) && Boolean(item.isSample) === Boolean(event.isSample)
+    && (item.id === event.id || (event.idempotencyKey && item.idempotencyKey === event.idempotencyKey)));
   if (!stored) throw new Error('Change history was not saved.');
   return stored;
 }

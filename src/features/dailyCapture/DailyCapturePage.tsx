@@ -1,3 +1,4 @@
+import {ExternalObservationIntake} from './ExternalObservationIntake';
 import { useCallback, useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, Building2, CalendarDays, Check, ChevronDown, Clipboard, Clock, Copy, Link2 as LinkIcon, Loader2, Lock, Mail, Mic, MicOff, NotebookPen, Save, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
@@ -1229,6 +1230,7 @@ export function DailyCapturePage() {
          */
       />
 
+      <ExternalObservationIntake key={(dataUserId||'local')+sampleDataActive} scope={{userId:dataUserId||null,sampleDataActive}}/>
       {/* The review closes itself once everything ticked is saved, which also
           took its confirmation away with it - the count of what landed was set
           and then unmounted in the same moment. It is said here instead. */}

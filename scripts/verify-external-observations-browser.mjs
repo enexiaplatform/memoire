@@ -1,0 +1,14 @@
+import {chromium} from 'playwright';import assert from 'node:assert/strict';
+const browser=await chromium.launch({headless:true}),base=process.env.MEMOIRE_BROWSER_BASE||'http://127.0.0.1:5173';
+try{const context=await browser.newContext({timezoneId:'UTC',viewport:{width:1400,height:1000}});await context.addInitScript(()=>localStorage.setItem('memoire_demo_workspace','interactive-demo'));
+ const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/app/capture');await page.locator('summary').filter({hasText:'External source observations'}).click();
+ const panel=page.getByRole('region',{name:'External source observations'});await panel.getByLabel('Source kind',{exact:true}).selectOption('crm');
+ for(const [label,value] of [['Source system or mailbox','CRM workspace'],['Source record reference','change-42'],['Source version','1'],['Source reported time (your local time, optional)','2026-09-01T10:00'],['Source summary','Reported signed contract'],['Original source text','Source says the buyer signed. This is not accepted Evidence.']])await panel.getByLabel(label,{exact:true}).fill(value);
+ const snapshot=()=>page.evaluate(()=>['memoire.opportunities.v1','memoire.commercialEvidence.v1','memoire.commercialCommitments.v1','memoire.commercialDecisions.v1','memoire.stateRevisions.v1','memoire.planItems.v1'].map(k=>localStorage.getItem(k)));const before=await snapshot();
+ await panel.getByRole('button',{name:'Receive observation'}).click();await panel.getByText(/Observation received in this browser/).waitFor();assert.deepEqual(await snapshot(),before);
+ await panel.getByRole('button',{name:'Receive observation'}).click();await panel.getByText(/already received/).waitFor();assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('memoire.commercialEvents.v1')).filter(e=>e.eventType==='external_observation_received').length),1);
+ await panel.getByLabel('Original source text',{exact:true}).fill('Changed meaning under the same source version');await panel.getByRole('button',{name:'Receive observation'}).click();await panel.getByText(/reused with different content/).waitFor();
+ await page.reload();await page.locator('summary').filter({hasText:'External source observations'}).click();await panel.getByText('Reported signed contract · unaccepted observation',{exact:true}).click();await panel.getByText('Source says the buyer signed. This is not accepted Evidence.',{exact:true}).waitFor();
+ await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);assert.deepEqual(errors,[]);
+ console.log('External observation browser passed: source receipt, unchanged commercial truth, duplicate retry, changed-content rejection, reload and narrow view.');
+}finally{await browser.close();}

@@ -228,7 +228,9 @@ export async function upsertCloudRecords<T extends KernelRecord>(
 ) {
   if (!supabaseClient) throw new Error('The account connection is unavailable.');
   if(codec.table in historicalSources)await requireCloudHistoricalIntegrity(userId);
-  const rows = records.filter(isSyncableRecord).map((record) => codec.toRow(record, userId));
+  const syncable = records.filter(isSyncableRecord);
+  if (syncable.some(record => record.userId !== userId)) throw new Error('Kernel records cannot be reassigned to the signed-in account.');
+  const rows = syncable.map((record) => codec.toRow(record, userId));
   if (rows.length === 0) return;
 
   const { error } = await supabaseClient
@@ -258,14 +260,12 @@ export async function loadMergedForUser<T extends KernelRecord>(
   codec: KernelCodec<T>,
   userId: string,
 ): Promise<T[]> {
-  const allLocal = readLocal(codec);
-  const ownerScoped = codec.table === 'commercial_conditions' || codec.table === 'commercial_outcome_requirements'
-    || codec.table === 'commercial_dependencies' || codec.table === 'commercial_timing_assertions'
-    || codec.table === 'commercial_money_gates' || codec.table === 'commercial_decisions'
-    || codec.table === 'commercial_decision_observations' || codec.table === 'commercial_policies' || codec.table === 'commercial_incidents' || codec.table === 'commercial_contract_obligations';
-  const local = allLocal.filter(r => !ownerScoped || r.userId === userId);
-  const otherOwners = ownerScoped ? allLocal.filter(r => r.userId !== userId) : [];
   const cloud = await loadCloudRecords(codec, userId);
+  if (cloud.some(record => record.userId !== userId || record.isSample)) throw new Error('Account records are outside the requested scope.');
+  const allLocal = readLocal(codec);
+  const local = allLocal.filter(record => record.userId === userId && !record.isSample);
+  const otherOwners = allLocal.filter(record => record.userId !== userId || record.isSample);
+  if (otherOwners.some(record => cloud.some(row => row.id === record.id))) throw new Error('Kernel identities conflict across browser workspaces.');
 
   const merged = new Map<string, T>();
   for (const record of [...cloud, ...local]) {
@@ -329,13 +329,14 @@ export async function loadForWorkspace<T extends KernelRecord>(
   userId?: string | null,
   sampleDataActive = false,
 ): Promise<T[]> {
-  if (!userId || sampleDataActive) return readLocal(codec);
+  const scopedLocal = () => readLocal(codec).filter(record => (record.userId ?? null) === (sampleDataActive ? null : userId || null) && Boolean(record.isSample) === sampleDataActive);
+  if (!userId || sampleDataActive) return scopedLocal();
   try {
     return await loadMergedForUser(codec, userId);
   } catch (error) {
     reportWorkspaceSyncError();
     reportKernelSyncFailure(codec.table, 'load', error);
-    return readLocal(codec);
+    return scopedLocal();
   }
 }
 

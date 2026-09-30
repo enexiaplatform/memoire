@@ -1,3 +1,4 @@
+import {isExternalObservationReceipt} from '../../domain/commercialKernel/externalObservation.ts';
 import {
   commercialEventTypes,
   sourceTypes,
@@ -83,6 +84,7 @@ export const eventCodec: KernelCodec<CommercialEvent> = {
     // nothing can interpret is noise, and keeping it would let a typo become a
     // permanent phantom row in Timeline.
     if (!id || !(commercialEventTypes as readonly string[]).includes(eventType)) return null;
+    if (eventType === 'external_observation_received' && !isExternalObservationReceipt(raw as CommercialEvent)) return null;
 
     return {
       id,
@@ -158,13 +160,15 @@ export async function loadRecentEvents(
   const since = new Date(now.getTime() - windowDays * 86_400_000).toISOString();
 
   const local = loadEvents();
-  const localInWindow = local.filter((event) => event.occurredAt >= since);
+  const inScope = (event: CommercialEvent) => event.userId === (sampleDataActive ? null : userId || null) && Boolean(event.isSample) === sampleDataActive;
+  const localInWindow = local.filter((event) => inScope(event) && event.occurredAt >= since);
 
   if (!userId || sampleDataActive) return localInWindow.slice(0, limit);
 
   let cloud: CommercialEvent[] = [];
   try {
     cloud = await loadCloudRecordsSince(eventCodec, userId, 'occurred_at', since, limit);
+    if (cloud.some(event => !inScope(event)) || local.some(event => !inScope(event) && cloud.some(row => row.id === event.id))) throw new Error('Event history conflicts with another workspace.');
   } catch (error) {
     reportWorkspaceSyncError();
     reportKernelSyncFailure(eventCodec.table, 'load', error);
@@ -211,7 +215,8 @@ export function earliestObservedAt(events: CommercialEvent[]): string | null {
  */
 export function appendEvent(record: CommercialEvent, options: { syncCloud?: boolean; requireDurable?: boolean } = {}) {
   const existing = loadEvents();
-  if (record.idempotencyKey && existing.some((item) => item.idempotencyKey === record.idempotencyKey)) {
+  if (existing.some(item => item.id === record.id && ((item.userId ?? null) !== (record.userId ?? null) || Boolean(item.isSample) !== Boolean(record.isSample)))) throw new Error('Event identity belongs to another workspace.');
+  if (record.idempotencyKey && existing.some((item) => item.idempotencyKey === record.idempotencyKey && (item.userId ?? null) === (record.userId ?? null) && Boolean(item.isSample) === Boolean(record.isSample))) {
     return existing;
   }
 
