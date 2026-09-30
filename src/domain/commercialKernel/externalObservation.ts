@@ -1,4 +1,4 @@
-import type {CommercialEvent} from './types.ts';
+import type {CommercialEvent,CommercialScope} from './types.ts';
 import {isValidBusinessDate} from '../../utils/safeDate.ts';
 export const observationSourceKinds=['email','calendar','crm','erp','csv_import'] as const;
 export type ExternalObservation={schemaVersion:1;sourceKind:typeof observationSourceKinds[number];sourceNamespace:string;sourceEventId:string;sourceVersion:string;observedAt:string|null;summary:string;rawText:string};
@@ -16,6 +16,14 @@ export function normalizeExternalObservation(value:unknown):ExternalObservation{
 export async function observationIdentity(observation:ExternalObservation,owner:string|null,sample:boolean){
  const data=JSON.stringify([owner,sample,observation.sourceKind,observation.sourceNamespace,observation.sourceEventId,observation.sourceVersion]);
  const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(data));return 'observation:'+Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,'0')).join('');
+}
+/** Shared command preparation for local and authenticated server receipt transports. */
+export async function prepareExternalObservationReceipt(scope:CommercialScope,value:unknown):Promise<CommercialEvent>{
+ const observation=normalizeExternalObservation(value),owner=scope.userId??null,sample=Boolean(scope.sampleDataActive);
+ const id=await observationIdentity(observation,owner,sample),at=new Date().toISOString();
+ return {id,userId:owner,eventType:'external_observation_received',occurredAt:at,recordedAt:at,createdAt:at,
+  summary:'Source observation received: '+observation.summary,structuredPayload:observation,idempotencyKey:id,sourceType:observation.sourceKind,sourceId:observation.sourceEventId,
+  accountId:null,opportunityId:null,threadId:null,commitmentId:null,sourceUrl:null,sourceUpdatedAt:null,...(sample?{isSample:true}:{})};
 }
 /** Receipt is an event about ingestion. Source-reported content remains unaccepted. */
 export function isExternalObservationReceipt(event:CommercialEvent){
