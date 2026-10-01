@@ -53,7 +53,8 @@ test('opening basis is immutable, versions are consecutive, and closed history c
  const f=await fixture();await insert(f);
  await assert.rejects(db.query("UPDATE commercial_incidents SET version=2,material_impact='Rewrite opening',updated_at=clock_timestamp() WHERE id='i'"),/opening basis/i);
  await assert.rejects(db.query("UPDATE commercial_incidents SET version=3,response_note='Skip version',updated_at=clock_timestamp() WHERE id='i'"),/version conflict/i);
- await db.query("UPDATE commercial_incidents SET version=2,response_note='Coordination no longer needed',status='closed',disposition='dismissed',closed_at=clock_timestamp(),updated_at=clock_timestamp() WHERE id='i'");
+ // Closing and updating describe the same transition; use one stable statement time.
+ await db.query("UPDATE commercial_incidents SET version=2,response_note='Coordination no longer needed',status='closed',disposition='dismissed',closed_at=statement_timestamp(),updated_at=statement_timestamp() WHERE id='i'");
  await assert.rejects(db.query("UPDATE commercial_incidents SET version=3,response_note='Rewrite closure',updated_at=clock_timestamp() WHERE id='i'"),/closed history/i);
  assert.deepEqual((await db.query("SELECT state->>'status' status FROM commercial_state_revisions WHERE entity_type='commercial_incidents' ORDER BY revision_no")).rows.map(r=>r.status),['open','closed']);
 });
@@ -76,7 +77,7 @@ test('RLS denies cross-owner and anonymous operations, direct deletion and fake 
 test('format 13 restores an old opening policy version after that policy was revised and the incident closed',async()=>{
  const f=await fixture();await insert(f);
  await db.query("UPDATE commercial_policies SET version=2,title='Later policy',updated_at=clock_timestamp() WHERE id='p'");
- await db.query("UPDATE commercial_incidents SET version=2,response_note='Superseded coordination',status='closed',disposition='dismissed',closed_at=clock_timestamp(),updated_at=clock_timestamp() WHERE id='i'");
+ await db.query("UPDATE commercial_incidents SET version=2,response_note='Superseded coordination',status='closed',disposition='dismissed',closed_at=statement_timestamp(),updated_at=statement_timestamp() WHERE id='i'");
  const sources={};for(const table of tables)sources[table]=(await db.query(`SELECT * FROM ${table}`)).rows;
  const payload={user_id:f.owner,format_version:13,exported_at:new Date().toISOString(),sources,parents:(await db.query('SELECT * FROM accounts')).rows,
   coverage:(await db.query('SELECT * FROM commercial_history_coverage')).rows[0],revisions:(await db.query('SELECT * FROM commercial_state_revisions')).rows};
