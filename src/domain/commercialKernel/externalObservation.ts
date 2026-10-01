@@ -18,7 +18,7 @@ export async function observationIdentity(observation:ExternalObservation,owner:
  const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(data));return 'observation:'+Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,'0')).join('');
 }
 /** Bounded exchange namespaces preserve the complete declared issuer identity without truncation. */
-export async function exchangeSourceNamespace(kind:'shared-commitment'|'trust-capsule'|'federated-thread'|'cross-company-state',issuerReference:string){
+export async function exchangeSourceNamespace(kind:'shared-commitment'|'trust-capsule'|'federated-thread'|'cross-company-state'|'commercial-protocol',issuerReference:string){
  const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(issuerReference));
  return kind+':'+Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,'0')).join('');
 }

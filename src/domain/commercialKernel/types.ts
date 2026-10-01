@@ -1,7 +1,9 @@
 /**
  * The Commercial Kernel: the canonical vocabulary of Memoire.
  *
- * Everything the product shows is one of these eight things, or a view of them.
+ * These eight foundational concepts anchor the product. Explicit canonical
+ * extensions (Evidence, Requirements, policy, decisions and sharing) retain
+ * their own contracts in the same Kernel and durability registry.
  * The rule this file exists to enforce is that no page invents its own meaning
  * for a shared concept - the reason "next action", "follow-up", "commitment"
  * and "plan item" all used to mean four slightly different things depending on
@@ -16,8 +18,8 @@
  *   Action             - a concrete thing to do. A self-owned commitment is one.
  *   Outcome            - a recorded commercial result, or a recorded product-value result.
  *
- * Anything else is a view, a derived recommendation, an artifact, a UI state,
- * an adapter, or a cached projection. Specifically:
+ * Surfaces reuse those contracts. Derived recommendations, artifacts, UI state,
+ * adapters and cached projections do not create alternate business truth:
  *
  *   Objection       -> context on a thread or opportunity, carried by an event.
  *   Stakeholder     -> a participant related to an account, thread or opportunity.
@@ -33,11 +35,11 @@
 /**
  * Who the work belongs to.
  *
- * Domain rules take a scope rather than reading a global "current user", so the
- * day this becomes a team product the shape grows a `workspaceId` and an
- * `actorId` without every rule in the codebase having to be found and rewritten.
- * There is deliberately no workspace table and no unused abstraction behind
- * this - it is an interface prepared for a future, not a feature half-built.
+ * Domain rules receive the canonical owner's scope instead of reading a global
+ * current user. M21 sharing configurations and actor-authorized RPCs grant
+ * bounded views/reviews separately; membership never relabels owner records or
+ * expands this personal scope. Cross-company protocol parties are declarations,
+ * not authenticated actors or permissions.
  */
 export type CommercialScope = {
   userId: string | null;

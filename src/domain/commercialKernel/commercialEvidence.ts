@@ -13,11 +13,11 @@ import type { CommercialDimension } from './deriveDelta.ts';
  * ## Why this is not a CommercialEvent
  *
  * The kernel already has a record called "something that happened", and the
- * temptation to reuse it here is strong and wrong. Every event type in the
- * kernel is written by a command *as a side effect of a state change Memoire
- * itself made*: a stage moved under `updateOpportunity`, a promise was ticked,
- * a quote was sent. Their truth is guaranteed by construction - Memoire was
- * holding the record when it changed.
+ * temptation to reuse it here is strong and wrong. Commands record local facts:
+ * a stage changed, a promise was ticked, an observation was received or a public
+ * statement was issued. Receipt/issuance proves that local operation; external
+ * payloads remain attributed claims. Events are not State Revisions and do not
+ * automatically confer accepted Evidence on their contents.
  *
  * "The trial passed" is a different kind of claim. Nothing in the workspace
  * changed; the seller is reporting the outside world, and the claim rests on

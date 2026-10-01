@@ -6,7 +6,9 @@
 
 Memoire is a personal commercial control tower for complex B2B sellers. It turns every customer interaction into a continuous commercial thread - from conversation and quotation to delivery and cash - so no commitment, follow-up, or revenue opportunity goes silent.
 
-Positioning and boundaries: [`docs/positioning.md`](docs/positioning.md). Current architecture and the decisions behind it: [`docs/product/focused-refactor-2026-07-26.md`](docs/product/focused-refactor-2026-07-26.md).
+Positioning and boundaries: [`docs/positioning.md`](docs/positioning.md). Current implemented architecture: [M28 system map](docs/architecture/memoire-final-system-map.md). Earlier product decisions: [`docs/product/focused-refactor-2026-07-26.md`](docs/product/focused-refactor-2026-07-26.md).
+
+M12–M28 local roadmap implementation and the [final development gate](docs/qa/master-roadmap-final-completion-2026-10-01.md) are complete. [Commercial Protocol v1](docs/protocol/commercial-v1.md) defines the bounded external exchange contract. **Production deployment remains pending P1**; local verification does not certify the target database or a live release.
 
 ## Launch status
 

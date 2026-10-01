@@ -1,0 +1,133 @@
+{
+  "protocol": "memoire.commercial",
+  "version": 1,
+  "messageId": "44444444-4444-4444-8444-444444444444",
+  "issuedAt": "2026-10-01T00:00:00.000Z",
+  "issuerReference": "org-a",
+  "recipientReference": "org-b",
+  "sample": false,
+  "body": {
+    "parties": [
+      {
+        "reference": "org-a",
+        "label": "Issuer"
+      },
+      {
+        "reference": "org-b",
+        "label": "Recipient"
+      }
+    ],
+    "outcome": {
+      "reference": "PUBLIC-THREAD",
+      "statement": "Delivery",
+      "assessedBy": "org-a",
+      "sharedAcceptance": false
+    },
+    "conditions": [],
+    "requirements": [
+      {
+        "reference": "DELIVERY",
+        "partyReference": "org-a",
+        "outcomeReference": "PUBLIC-THREAD",
+        "conditionReference": null,
+        "expectedOutcome": "Delivery confirmed",
+        "localAssessment": "unresolved",
+        "assessedBy": "org-a",
+        "commitmentStatementIds": []
+      },
+      {
+        "reference": "SHIPMENT",
+        "partyReference": "org-b",
+        "outcomeReference": "PUBLIC-THREAD",
+        "conditionReference": null,
+        "expectedOutcome": "Shipment independently confirmed",
+        "localAssessment": "unresolved",
+        "assessedBy": "org-a",
+        "commitmentStatementIds": [
+          "33333333-3333-4333-8333-333333333333"
+        ]
+      }
+    ],
+    "commitments": [
+      {
+        "statementId": "33333333-3333-4333-8333-333333333333",
+        "capsuleDigest": "10a962432e99c7e7c75b8682ac52ee2fc66d3a510b71ec5fe5f456cf53f8c63d"
+      }
+    ],
+    "dependencies": [
+      {
+        "dependentReference": "DELIVERY",
+        "prerequisiteReference": "SHIPMENT",
+        "basis": "Declared prerequisite",
+        "assertedBy": "org-a"
+      }
+    ],
+    "evidenceReferences": [
+      {
+        "reference": "completion:33333333-3333-4333-8333-333333333333",
+        "partyReference": "org-b",
+        "sourceStatementId": "33333333-3333-4333-8333-333333333333",
+        "kind": "completion-claim",
+        "recipientAccepted": false
+      }
+    ],
+    "moneyReferences": [],
+    "decisionBoundary": {
+      "canonicalMutationAllowed": false,
+      "humanConfirmationRequired": true,
+      "eachPartyControlsItsOwnDecisions": true
+    },
+    "change": {
+      "kind": "snapshot",
+      "previousMessageDigest": null
+    },
+    "provenance": {
+      "sourceStateId": "44444444-4444-4444-8444-444444444444",
+      "sourceStateFingerprint": "4dd84277b84a49b698235ec9fc1a58d1b5a1443b751940e335496aa729071703",
+      "capsules": [
+        {
+          "format": "memoire.trust-capsule",
+          "version": 1,
+          "statement": {
+            "format": "memoire.shared-commitment",
+            "version": 1,
+            "statementId": "33333333-3333-4333-8333-333333333333",
+            "issuedAt": "2026-10-01T00:00:00.000Z",
+            "issuer": {
+              "reference": "org-b",
+              "label": "Recipient"
+            },
+            "recipient": {
+              "reference": "org-a",
+              "label": "Issuer"
+            },
+            "commitmentRef": "REMOTE",
+            "promise": {
+              "responsiblePerson": "Person",
+              "text": "Ship goods",
+              "dueDate": null,
+              "status": "completed",
+              "completionEvidence": "Issuer-reported signed receipt"
+            },
+            "sourceUpdatedAt": "2026-10-01T00:00:00.000Z",
+            "sample": false,
+            "authority": {
+              "kind": "issuer-declaration",
+              "recipientAccepted": false
+            }
+          },
+          "integrity": {
+            "algorithm": "SHA-256",
+            "digest": "10a962432e99c7e7c75b8682ac52ee2fc66d3a510b71ec5fe5f456cf53f8c63d"
+          },
+          "signature": null
+        }
+      ]
+    }
+  },
+  "integrity": {
+    "algorithm": "SHA-256",
+    "digest": "42d117fad1319b18029e4a0ffae13f14dda82cfd4aaff9230567b3abee071ffe"
+  },
+  "signature": null
+}

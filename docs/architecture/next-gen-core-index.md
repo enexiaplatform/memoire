@@ -2,6 +2,8 @@
 
 **Release boundary:** Memoire Next-Gen Core ends at M11. This index points to the canonical implementation and the existing architecture decisions; it does not introduce another engine.
 
+For the subsequent M12–M28 implementation, authority boundaries and current deployment limits, see the [final system map](memoire-final-system-map.md) and [final development gate](../qa/master-roadmap-final-completion-2026-10-01.md). This R1 index retains its original release boundary.
+
 | Milestone | Canonical source truth | Derived projection | Persistence boundary | Architecture record |
 |---|---|---|---|---|
 | M2 Condition | `commercial_conditions`; Evidence stays a separate `commercial_evidence` record | Condition epistemics | Kernel codec, browser mirror, owner-scoped cloud table | [M2 Condition](m2-commercial-condition.md) |
