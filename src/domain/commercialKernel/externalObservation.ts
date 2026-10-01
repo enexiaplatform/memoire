@@ -17,6 +17,11 @@ export async function observationIdentity(observation:ExternalObservation,owner:
  const data=JSON.stringify([owner,sample,observation.sourceKind,observation.sourceNamespace,observation.sourceEventId,observation.sourceVersion]);
  const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(data));return 'observation:'+Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,'0')).join('');
 }
+/** Bounded exchange namespaces preserve the complete declared issuer identity without truncation. */
+export async function exchangeSourceNamespace(kind:'shared-commitment'|'trust-capsule'|'federated-thread',issuerReference:string){
+ const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(issuerReference));
+ return kind+':'+Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,'0')).join('');
+}
 /** Shared command preparation for local and authenticated server receipt transports. */
 export async function prepareExternalObservationReceipt(scope:CommercialScope,value:unknown):Promise<CommercialEvent>{
  const observation=normalizeExternalObservation(value),owner=scope.userId??null,sample=Boolean(scope.sampleDataActive);

@@ -1,0 +1,11 @@
+# M25 — Trust capsules
+
+Starting green SHA: `3ab4b090ba96f62c6c0f1f8ce3a0da83b609cb77`.
+
+The audit identified the M24 allowlisted statement and M17 immutable observation receipt as the existing privacy and durability boundaries. M25 adds a pure capsule representation with scope/version provenance, deterministic content integrity and optional host-managed ECDSA signatures. Signature verification and independent issuer-key matching remain distinct from organization identity and acceptance of commercial truth.
+
+Capsules are derived artifacts. Confirmed intake retains the complete capsule in an existing owner-scoped unaccepted observation Event; no mutable canonical entity, migration, RLS expansion, backup format or private-key persistence is introduced. Review adds integrity-capsule download and check/confirm intake inside its existing external-statement panel. Ordinary UI exports are explicitly unsigned; callers with managed signing keys may use the domain module. A configured fingerprint refuses missing or mismatched signatures.
+
+Nine focused tests cover normalized identity, bounded scope, tampered content, unknown fields/algorithms, valid signatures, independent-key mismatch, recomputed-digest forgery, mismatched signing pairs, confirmed/idempotent intake, complete backup provenance, sample isolation, maximum-size issuer references without truncation and receipt-time treatment of future issuer claims. Actual migrated database/API tests verify immutable existing receipt persistence, owner RLS, anonymous denial and no business Revisions. Browser verification covers unsigned download/check/receipt, tampered rejection and actual Chromium signature/key matching. Full repository verification passed after the namespace-boundary repair: build, SDK/runtime declarations, API type checking, lint, all 1,992 unit/database tests and every contract check. Product browser verification also passed. **GO for M26**.
+
+Production remains **PRODUCTION DEPLOYMENT PENDING**. Independent organizational identity, certificate trust, signing-key custody/rotation/revocation, legal signature semantics and automatic claim acceptance remain outside the bounded implementation. No integrity check grants canonical authority. Detailed wire/signature/privacy contracts are in `docs/architecture/trust-capsules.md`.
