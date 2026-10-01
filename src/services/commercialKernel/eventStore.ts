@@ -1,6 +1,7 @@
 import {isExternalObservationReceipt} from '../../domain/commercialKernel/externalObservation.ts';
 import {isSharedCommitmentPublication} from '../../domain/commercialKernel/sharedCommitment.ts';
 import {isFederatedThreadPublication} from '../../domain/commercialKernel/federatedThread.ts';
+import {isCrossCompanyPublication} from '../../domain/commercialKernel/crossCompanyState.ts';
 import {
   commercialEventTypes,
   sourceTypes,
@@ -89,6 +90,7 @@ export const eventCodec: KernelCodec<CommercialEvent> = {
     if (eventType === 'external_observation_received' && !isExternalObservationReceipt(raw as CommercialEvent)) return null;
     if (eventType === 'shared_commitment_issued' && !isSharedCommitmentPublication(raw as CommercialEvent)) return null;
     if (eventType === 'federated_thread_issued' && !isFederatedThreadPublication(raw as CommercialEvent)) return null;
+    if (eventType === 'cross_company_state_issued' && !isCrossCompanyPublication(raw as CommercialEvent)) return null;
 
     return {
       id,
