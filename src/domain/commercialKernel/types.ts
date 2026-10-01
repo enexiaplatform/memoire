@@ -180,6 +180,7 @@ export type CommercialCommitment = {
 // ------------------------------------------------------ commercial events
 
 export const commercialEventTypes = [
+  'shared_commitment_issued',
   'external_observation_received',
   'workspace_access_responded',
   'workspace_review_recorded',

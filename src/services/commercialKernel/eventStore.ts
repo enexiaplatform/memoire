@@ -1,4 +1,5 @@
 import {isExternalObservationReceipt} from '../../domain/commercialKernel/externalObservation.ts';
+import {isSharedCommitmentPublication} from '../../domain/commercialKernel/sharedCommitment.ts';
 import {
   commercialEventTypes,
   sourceTypes,
@@ -85,6 +86,7 @@ export const eventCodec: KernelCodec<CommercialEvent> = {
     // permanent phantom row in Timeline.
     if (!id || !(commercialEventTypes as readonly string[]).includes(eventType)) return null;
     if (eventType === 'external_observation_received' && !isExternalObservationReceipt(raw as CommercialEvent)) return null;
+    if (eventType === 'shared_commitment_issued' && !isSharedCommitmentPublication(raw as CommercialEvent)) return null;
 
     return {
       id,

@@ -1,0 +1,11 @@
+# M24 — External shared commitments
+
+Starting green SHA: `e3c2be5437cb87f7cc6eed8c98259163933eb8ac`.
+
+The audit found canonical promises already contain who owes what, the current due date, completion state and evidence text. M24 preserves that source and adds immutable, human-confirmed issuance snapshots for declared external parties. Recipient intake reuses M17's unaccepted observation command. Each party retains local canonical authority; a disclosed assertion never writes the other party's promise or accepted truth.
+
+Only issuance Events are new persisted facts. The strict statement codec, owner Event RLS, database immutability guard, current backup format, sample partition and receipt-time history provide the persistence/privacy boundary. There is no new mutable entity or State Revision. Review gains a folded preview/issue/download/receive flow. Internal account, Opportunity, source and local commitment IDs are omitted from exchange files; completion evidence requires explicit selection. Success language distinguishes issuance, file production and unverified delivery/acceptance.
+
+Validation includes bounded schema/privacy, source ownership, human confirmation, stale preview refusal, immutable retries, source receipt idempotency, personal/sample backup behavior and failed durable writes. Database verification covers populated upgrade, fresh migration chain, immutable recovery replay, private RLS, anonymous denial, invalid evidence/authority/date fields and no spurious canonical Revisions. Browser verification exercises the actual product preview, confirmed issuance, file download, recipient receipt/retry, reload and narrow layout. Full repository verification passed: build, SDK/runtime declarations, API type checking, lint, all 1,983 unit/database tests and every contract check. Product browser verification also passed. **GO for M25**.
+
+Production remains **PRODUCTION DEPLOYMENT PENDING**. Party labels are declared rather than authenticated company identities; disclosed evidence is issuer-attributed rather than independently verified completion. Transport is manual JSON exchange. Statements do not claim consensus, automatic supersession, legal signature or recipient acceptance. See `docs/architecture/external-shared-commitments.md`.
