@@ -43,6 +43,8 @@ import { NUDGE_STORAGE_KEY } from '../services/nudgeStore';
 // this group: a knowledge note is free text an operator could genuinely repeat
 // word for word, so the legacy term sweep must never see it.
 import { KNOWLEDGE_NOTE_STORAGE_KEY } from '../services/knowledgeNoteStore';
+import { PORTFOLIO_STORAGE_KEY } from '../services/portfolioStore';
+import { REPORT_STORAGE_KEY } from '../services/reportStore';
 import type { WeeklyCommitmentSnapshot } from './weeklyCommitment';
 import { getCurrentPipelineReviewWeekId } from './pipelineReviewHabit';
 
@@ -192,6 +194,8 @@ export function clearSampleDataset() {
   // the sandbox, and a dismissal surviving into a real workspace would silently
   // suppress a gap the new operator never saw.
   removeSampleRecords(KNOWLEDGE_NOTE_STORAGE_KEY);
+  removeSampleRecords(PORTFOLIO_STORAGE_KEY);
+  removeSampleRecords(REPORT_STORAGE_KEY);
   removeSampleRecords(ACCOUNT_MERGE_STORAGE_KEY);
   removeSampleRecords(NUDGE_STORAGE_KEY);
   removeSampleRecords(CONDITION_STORAGE_KEY);

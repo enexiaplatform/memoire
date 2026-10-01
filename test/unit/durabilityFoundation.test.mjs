@@ -2,6 +2,7 @@ import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 import { readFileSync } from 'node:fs';
+import { reportTemplate } from '../../src/domain/reports/reportDefinition.ts';
 
 class Storage {
   data = new Map();
@@ -447,8 +448,15 @@ test('target sample edits preserve the live period and rejected targets emit no 
 
 test('all JSON collections retain payloads, money/outcome links and tombstones through cloud recovery', async () => {
   for (const contract of canonicalContracts.filter(c => c.kind === 'json')) {
-    const record = { id: `record-${contract.table}`, createdAt: at, updatedAt: later, source: 'user',
-      accountId: 'a', opportunityId: 'o', quoteId: 'q', outcomeId: 'outcome-1', __deleted: true };
+    const record = contract.table === 'report_definitions'
+      ? { id: 'record-report_definitions', schemaVersion: 1, version: 1, definition: reportTemplate('portfolio'), archived: false,
+        source: 'user', isSample: false, createdAt: at, updatedAt: later, history: [] }
+      : contract.table === 'portfolio_records'
+      ? { id: 'record-portfolio_records', schemaVersion: 1, version: 1, kind: 'brand', name: 'Brand',
+        code: '', description: '', status: 'retired', parentId: null, brandId: null, groupId: null, aliases: [],
+        source: 'user', isSample: false, createdAt: at, updatedAt: later, history: [] }
+      : { id: `record-${contract.table}`, createdAt: at, updatedAt: later, source: 'user',
+        accountId: 'a', opportunityId: 'o', quoteId: 'q', outcomeId: 'outcome-1', __deleted: true };
     const cloudRow = contract.encode(record, 'owner');
     const file = { ...backup({}), cloudData: { user_id: 'owner', data: { [contract.table]: [cloudRow] } } };
     assert.equal((await restoreWorkspace(file, { userId: 'owner' })).ok, true);

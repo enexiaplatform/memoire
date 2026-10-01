@@ -231,6 +231,8 @@ export function isCommittedToOrder(opportunity: CrmLiteOpportunity): boolean {
 export function buildOrderBook(input: {
   opportunities: CrmLiteOpportunity[];
   quotes: QuoteRecord[];
+  /** Reports require accepted ID links; existing order UI retains its legacy-name compatibility. */
+  linkage?: 'legacy-names' | 'explicit-id';
   milestoneRecords: OrderMilestoneRecord[];
   /**
    * The buy side, which is also where terms are worked out before a quote
@@ -270,7 +272,7 @@ export function buildOrderBook(input: {
   const orders = input.opportunities
     .filter(isCommittedToOrder)
     .map((opportunity) => {
-      const quotes = linkedQuotes(opportunity, input.quotes);
+      const quotes = linkedQuotes(opportunity, input.quotes, input.linkage === 'explicit-id');
       const manual = manualByOrder.get(opportunity.id);
       // An order on net terms has no deposit, so it cannot be waiting for one.
       // The deposit is a fixed step in the road to cash and nothing can prove
@@ -431,7 +433,7 @@ function sanitize(value: string | undefined | null): string {
  * before linking existed - the same account and opportunity name. Freshest
  * first, so the newest quote speaks for the order's terms.
  */
-function linkedQuotes(opportunity: CrmLiteOpportunity, quotes: QuoteRecord[]): QuoteRecord[] {
+function linkedQuotes(opportunity: CrmLiteOpportunity, quotes: QuoteRecord[], explicitOnly = false): QuoteRecord[] {
   const name = normalize(opportunity.opportunityName);
   const account = normalize(opportunity.accountName);
   return quotes
@@ -439,8 +441,9 @@ function linkedQuotes(opportunity: CrmLiteOpportunity, quotes: QuoteRecord[]): Q
     .filter((quote) => quote.status !== 'Rejected')
     .filter((quote) =>
       quote.opportunityId === opportunity.id
-      || (account && name && normalize(quote.accountName) === account && normalize(quote.opportunityName || '') === name))
-    .sort((a, b) => (b.quoteDate || b.createdAt || '').localeCompare(a.quoteDate || a.createdAt || ''));
+      || (!explicitOnly && account && name && normalize(quote.accountName) === account && normalize(quote.opportunityName || '') === name))
+    .sort((a, b) => (b.quoteDate || b.createdAt || '').localeCompare(a.quoteDate || a.createdAt || '')
+      || (explicitOnly ? (b.updatedAt || b.createdAt || '').localeCompare(a.updatedAt || a.createdAt || '') || a.id.localeCompare(b.id) : 0));
 }
 
 /** The terms this order actually runs on: the freshest quote's, or the one recorded against the order. */

@@ -1,4 +1,6 @@
 import {validateContractObligation,type ContractObligation} from '../domain/commercialKernel/contractObligation.ts';
+import { mergePortfolioRecord, parsePortfolioRecord, validatePortfolioCatalog } from '../domain/portfolio/portfolioCatalog.ts';
+import { mergeSavedReport, parseSavedReport } from '../domain/reports/reportRecord.ts';
 import {validateWorkspaceReferences,type CommercialWorkspace} from '../domain/commercialKernel/commercialWorkspace.ts';
 import { conditionReferenceIndex, validateConditionReferences } from '../domain/commercialKernel/conditionReferences.ts';
 import type { CommercialCondition } from '../domain/commercialKernel/commercialCondition.ts';
@@ -31,8 +33,8 @@ import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KE
  * backup, what never comes back in - can be tested without a browser.
  */
 
-/** Format 15 adds versioned shared-workspace configuration, without restoring live access grants. */
-export const BACKUP_FORMAT_VERSION = 15;
+/** Format 17 adds saved report definitions; runtime access grants remain excluded. */
+export const BACKUP_FORMAT_VERSION = 17;
 export const BACKUP_KEY_PREFIX = 'memoire.';
 
 export type BackupEnvelope = {
@@ -260,6 +262,15 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
       for (const record of [...(normalized[key] as RecordData[] || []), ...local]) {
         const id = recordIdentity(contract, record);
         const previous = merged.get(id);
+        if (previous && contract.table === 'report_definitions') {
+          merged.set(id, mergeSavedReport(parseSavedReport(record), parseSavedReport(previous)) as unknown as RecordData);
+          continue;
+        }
+        if (previous && contract.table === 'portfolio_records') {
+          const winner = mergePortfolioRecord(parsePortfolioRecord(record), parsePortfolioRecord(previous));
+          merged.set(id, winner as unknown as RecordData);
+          continue;
+        }
         if(previous&&(contract.table==='commercial_decisions'||contract.table==='commercial_decision_observations')){
           const semantic=(r:RecordData)=>JSON.stringify({...r,executionLinks:[],updatedAt:''});
           if(semantic(previous)!==semantic(record))throw new Error('Decision history conflicts between local and cloud backup copies.');
@@ -299,6 +310,13 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
   const dependencies=normalized['memoire.commercialDependencies.v1'] as CommercialDependency[] | undefined;
   if(dependencies?.length) validateDependencyGraph(requirements||[],dependencies);
   const timing=normalized['memoire.commercialTiming.v1'] as CommercialTimingAssertion[] | undefined;
+  const portfolio = normalized['memoire.portfolioRecords.v1'];
+  if (Array.isArray(portfolio)) {
+    const parsedPortfolio = portfolio.map(parsePortfolioRecord);
+    validatePortfolioCatalog(parsedPortfolio);
+    const opportunityIds = new Set((normalized['memoire.opportunities.v1'] as CrmLiteOpportunity[] || []).map(row => row.id));
+    if (parsedPortfolio.some(row => row.kind === 'assignment' && !opportunityIds.has(row.opportunityId))) throw new Error('Portfolio classification source opportunity is missing from backup.');
+  }
   if(timing?.length) validateTimingAssertions(timing,{
     opportunities:normalized['memoire.opportunities.v1'] as CrmLiteOpportunity[] || [],
     requirements:requirements||[],

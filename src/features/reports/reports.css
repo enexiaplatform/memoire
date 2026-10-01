@@ -1,0 +1,16 @@
+.report-table th, .report-table td { padding: .6rem; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+.report-table th { color: #16283c; font-weight: 700; }
+.report-table td { max-width: 24rem; overflow-wrap: anywhere; }
+.report-table a { color: #2563eb; font-weight: 600; }
+.report-print { display: none; }
+@media print {
+  body:has(> .report-print) > #root { display: none !important; }
+  body:has(.report-print) .report-print { display: block; color: #111827; font-size: 9pt; }
+  .report-print h1 { font-size: 20pt; margin-bottom: 8mm; }
+  .report-print p, .report-print footer { margin: 3mm 0; overflow-wrap: anywhere; }
+  .report-print .report-table { table-layout: fixed; width: 100%; font-size: 8pt; }
+  .report-print thead { display: table-header-group; }
+  .report-print tr { break-inside: avoid; }
+  .report-print footer { font-size: 8pt; border-top: 1px solid #ccc; padding-top: 4mm; }
+  @page { size: A4 landscape; margin: 12mm; }
+}

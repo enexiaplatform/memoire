@@ -260,7 +260,7 @@ export const featureRegistry: FeatureRecord[] = [
     routeBehavior: 'primary',
     navVisible: true,
     analytics: 'active',
-    dataRetention: 'Owns review packs and saved briefs as artifacts.',
+    dataRetention: 'Owns review artifacts, contextual portfolio master data, primary deal classifications and versioned saved report definitions.',
     killOrActivationCondition: 'Never - the weekly loop closes here.',
   },
 

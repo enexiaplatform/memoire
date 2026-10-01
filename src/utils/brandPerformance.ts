@@ -2,6 +2,8 @@ import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import { isCommittedToOrder } from './orderToCash.ts';
 import { sumMoneyInBase } from './money.ts';
 import { canonicalBrandName } from './brandIdentity.ts';
+import { disqualifiedLeadIds, selectQualifiedPipeline } from './leadIdentity.ts';
+import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore.ts';
 
 /**
  * Which brand is carrying the number.
@@ -54,7 +56,8 @@ export type BrandPerformanceReport = {
   coverageMessage: string;
 };
 
-export function buildBrandPerformance(input: { opportunities: CrmLiteOpportunity[] }): BrandPerformanceReport {
+export function buildBrandPerformance(input: { opportunities: CrmLiteOpportunity[]; outcomes?: OpportunityOutcomeRecord[] }): BrandPerformanceReport {
+  const qualified = selectQualifiedPipeline(input.opportunities, disqualifiedLeadIds(input.outcomes || []));
   /*
    * Grouped on the canonical key rather than the typed string.
    *
@@ -64,9 +67,9 @@ export function buildBrandPerformance(input: { opportunities: CrmLiteOpportunity
    * a genuine second name for the same principal is a judgement, and
    * `brandIdentity` deliberately leaves that one to a person.
    */
-  const allSpellings = input.opportunities.map((opportunity) => opportunity.brand || '');
+  const allSpellings = qualified.map((opportunity) => opportunity.brand || '');
   const groups = new Map<string, CrmLiteOpportunity[]>();
-  input.opportunities.forEach((opportunity) => {
+  qualified.forEach((opportunity) => {
     const typed = (opportunity.brand || '').trim();
     const brand = typed ? canonicalBrandName(typed, allSpellings) : UNBRANDED_LABEL;
     const list = groups.get(brand) || [];

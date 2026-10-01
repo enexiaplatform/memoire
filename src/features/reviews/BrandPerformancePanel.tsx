@@ -5,6 +5,7 @@ import { useAuthContext } from '../../auth/authContext';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
+import type { OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore';
 import {
   buildBrandPerformance,
   MIN_DECIDED_FOR_BRAND_RATE,
@@ -22,18 +23,19 @@ import { formatBaseCurrencyAmount } from '../../utils/money';
 export function BrandPerformancePanel() {
   const { user } = useAuthContext();
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
+  const [outcomes, setOutcomes] = useState<OpportunityOutcomeRecord[]>([]);
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
 
   useEffect(() => {
     let cancelled = false;
     void loadSalesWorkspaceData(dataUserId).then((workspace) => {
-      if (!cancelled) setOpportunities(workspace.opportunities);
+      if (!cancelled) { setOpportunities(workspace.opportunities); setOutcomes(workspace.opportunityOutcomes); }
     });
     return () => { cancelled = true; };
   }, [dataUserId]);
 
-  const report = useMemo(() => buildBrandPerformance({ opportunities }), [opportunities]);
+  const report = useMemo(() => buildBrandPerformance({ opportunities, outcomes }), [opportunities, outcomes]);
 
   if (!report.hasBrands) return null;
 

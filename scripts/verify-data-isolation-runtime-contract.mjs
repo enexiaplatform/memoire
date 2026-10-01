@@ -87,6 +87,8 @@ const expectedTables = [
   // `CloudJsonCollectionTable` rather than restating them. This file's job is the
   // owner column and the contamination guard.
   ['knowledge_notes', 'user_id'],
+  ['portfolio_records', 'user_id'],
+  ['report_definitions', 'user_id'],
   ['account_merges', 'user_id'],
   ['nudges', 'user_id'],
   ['operating_context', 'user_id'],

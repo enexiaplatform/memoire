@@ -17,6 +17,18 @@ describe('brand performance: which line is carrying the number', () => {
     ...overrides,
   });
 
+  test('qualified brand pipeline and win rate exclude open and disqualified leads', () => {
+    const report = buildBrandPerformance({ opportunities: [
+      opportunity('qualified'), opportunity('lead', { stage: 'Lead', estimatedValue: 900 }),
+      opportunity('rejected-lead', { stage: 'Lost', status: 'Lost' }),
+      opportunity('won', { stage: 'Won', status: 'Won' }),
+    ], outcomes: [{ opportunityId: 'rejected-lead', outcome: 'Lost', stageBeforeOutcome: 'Lead' }] });
+    assert.equal(report.totalActiveBase, 100);
+    assert.equal(report.brands[0].activeCount, 1);
+    assert.equal(report.brands[0].lostCount, 0);
+    assert.equal(report.brands[0].decidedCount, 1);
+  });
+
   test('the panel stays hidden until a brand is actually recorded', () => {
     const report = buildBrandPerformance({
       opportunities: [opportunity('a', { brand: '' })],

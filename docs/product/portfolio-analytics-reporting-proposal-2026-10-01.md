@@ -1,6 +1,6 @@
 # Memoire: Portfolio Management, Dashboards và Reports
 
-Ngày: 2026-10-01. Trạng thái: đề xuất sản phẩm để review; chưa phải phạm vi release được duyệt, chưa triển khai tính năng.
+Ngày: 2026-10-01. Trạng thái: đề xuất định hướng; người dùng đã yêu cầu triển khai từng bước. Products & Brands và Reports nền tảng đã triển khai cục bộ trong [bản ghi bước 1](portfolio-foundation-implementation-2026-10-01.md) và [bản ghi bước 2](reports-foundation-implementation-2026-10-01.md). Dashboard builder và các phần mở rộng tiếp theo chưa triển khai. Chưa release Production. Phần dưới là định hướng toàn bộ; hai bản ghi triển khai xác định chính xác phần đã làm và giới hạn hiện tại.
 
 ## 1. Khuyến nghị
 
