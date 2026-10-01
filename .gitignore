@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.memoire-server/
 *.local
 
 # The SSR bundle scripts/prerender.mjs builds and then deletes. It only

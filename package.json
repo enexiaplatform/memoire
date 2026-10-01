@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && npm run prerender",
+    "build": "npm run build:server && tsc -b && vite build && npm run prerender",
+    "build:server": "node scripts/build-commercial-server.mjs",
     "prerender": "node scripts/prerender.mjs",
     "generate:favicons": "node scripts/generate-favicons.mjs",
     "generate:social-card": "node scripts/generate-social-card.mjs",
-    "typecheck:api": "tsc -p tsconfig.api.json",
+    "typecheck:api": "npm run build:server && tsc -p tsconfig.api.json",
     "lint": "eslint .",
     "test": "node --test \"test/unit/*.test.mjs\"",
     "test:coverage": "node --test --experimental-test-coverage \"test/unit/*.test.mjs\"",
@@ -137,7 +138,7 @@
     "fetch:fonts": "node scripts/fetch-fonts.mjs",
     "verify:legal-entity": "node scripts/verify-legal-entity-contract.mjs",
     "build:sdk": "tsc -p packages/memoire-sdk/tsconfig.json",
-    "pretest": "npm run build:sdk"
+    "pretest": "npm run build:sdk && npm run build:server"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.3",

@@ -1,6 +1,6 @@
 import {test,before,after} from 'node:test';import assert from 'node:assert/strict';
 import {createSupabaseCompatibleDatabase,applyMigrations,seedAuthUsers,OWNER_A,OWNER_B,setAuthenticatedOwner} from '../../scripts/release-database-harness.mjs';
-import {createCommercialHandler} from '../../api/_commercial.js';
+import {createCommercialHandler} from '../../.memoire-server/commercial.mjs';
 import {databaseClient,callHandler} from '../support/commercialApiDatabase.mjs';
 let db,handler;const tokens={'owner-a':OWNER_A,'owner-b':OWNER_B};
 const observation={schemaVersion:1,sourceKind:'crm',sourceNamespace:'CRM1',sourceEventId:'42',sourceVersion:'1',observedAt:null,summary:'Reported signature',rawText:'Unaccepted source claim.'};

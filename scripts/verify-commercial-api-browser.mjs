@@ -1,5 +1,5 @@
 import {createServer} from 'node:http';import {chromium} from 'playwright';import assert from 'node:assert/strict';
-import {createCommercialHandler} from '../api/_commercial.js';
+import {createCommercialHandler} from '../.memoire-server/commercial.mjs';
 import {createSupabaseCompatibleDatabase,applyMigrations,seedAuthUsers,OWNER_A} from './release-database-harness.mjs';
 import {databaseClient} from '../test/support/commercialApiDatabase.mjs';
 const db=await createSupabaseCompatibleDatabase();await applyMigrations(db);await seedAuthUsers(db);

@@ -1,2 +1,2 @@
-import {createCommercialHandler} from './_commercial.js';
+import {createCommercialHandler} from '../.memoire-server/commercial.mjs';
 export default createCommercialHandler();
