@@ -1,5 +1,6 @@
+import { PageHeader } from '../../components/layout/PageFrame';
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import JSZip from 'jszip';
 import { useAuthContext } from '../../auth/authContext';
@@ -35,6 +36,7 @@ function SummaryTable({ groups, definition, onGroup }: { groups: ReportGroup[]; 
     <tbody>{groups.map(group => <tr key={group.key}>{group.labels.map((label, i) => <td key={i}>{label}</td>)}{definition.metrics.map(key => <td key={key}>{metricLabel(key, group.metrics[key])}</td>)}{onGroup && <td><button type="button" className="font-semibold text-brand-blue" onClick={() => onGroup(group.key)}>View {group.sourceIds.length} records</button></td>}</tr>)}</tbody></table>;
 }
 export function ReportsPage() {
+  const [reportParams] = useSearchParams(), requestedReport = reportParams.get('report');
   const { user, loading: authLoading } = useAuthContext(), demo = useDemoWorkspaceMode(), sample = demo || hasLocalSampleData();
   const scope = useMemo<PortfolioScope>(() => ({ userId: sample ? null : user?.id || null, sampleDataActive: sample }), [sample, user?.id]);
   const scopeKey = `${scope.userId || 'local'}:${sample}`;
@@ -50,11 +52,17 @@ export function ReportsPage() {
     let cancelled = false;
     setLibrary(null); setRun(null); setEditing(null); setDefinition(reportTemplate('portfolio')); setError(''); setMessage(''); setBusy('library');
     void Promise.all([loadSavedReports(scope), loadPortfolio(scope)]).then(([value, catalog]) => {
-      if (!cancelled) setLibrary({ scopeKey, value, nodes: portfolioNodes(catalog.records) });
+      if (!cancelled) {
+        setLibrary({ scopeKey, value, nodes: portfolioNodes(catalog.records) });
+        if (requestedReport) { const record = value.records.find(row => row.id === requestedReport);
+          if (!record || record.archived) setError('This saved report is unavailable or archived. Restore it or choose another report.');
+          else { setDefinition(record.definition); setEditing({ id: record.id, version: record.version }); }
+        }
+      }
     }).catch(failure => { if (!cancelled) setError(failure instanceof Error ? failure.message : 'Could not load reports.'); })
       .finally(() => { if (!cancelled) setBusy(''); });
     return () => { cancelled = true; };
-  }, [scope, scopeKey, authLoading, reload]);
+  }, [scope, scopeKey, authLoading, reload, requestedReport]);
   const current = library?.scopeKey === scopeKey ? library : null;
   const visibleRun = run?.scopeKey === scopeKey && JSON.stringify(run.definition) === JSON.stringify(definition) ? run : null;
   const fields = fieldsForDataset(definition.dataset), metrics = (Object.keys(reportMetricDefinitions) as ReportMetric[]).filter(key => reportMetricDefinitions[key].datasets.includes(definition.dataset));
@@ -101,33 +109,33 @@ export function ReportsPage() {
   const updateFilter = (index: number, filter: ReportFilter) => change({ ...definition, filters: definition.filters.map((old, i) => i === index ? filter : old) });
   return <div className="reports-page min-w-0" data-testid="reports-page">
     <div className="report-screen flex min-w-0 flex-col gap-5">
-      <header className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl font-bold text-navy">Reports</h2><p className="mt-1 text-sm text-gray-500">Ask a repeatable question, inspect the source records, then export the same result.</p></div><button type="button" className={secondary} disabled={Boolean(busy)} onClick={() => setReload(value => value + 1)}>Reload library</button></header>
+      <PageHeader title="Reports" description="Ask a repeatable question, inspect the source records, then export the same result." actions={<button type="button" className={secondary} disabled={Boolean(busy)} onClick={() => setReload(value => value + 1)}>Reload library</button>} />
       {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}
       {message && <p role="status" className="rounded-lg bg-blue-50 p-3 text-sm text-navy">{message}</p>}
       {!current ? <p>{busy || authLoading ? 'Loading reports…' : 'Reload the library to try again.'}</p> : <>
         <p className="rounded-lg bg-blue-50 p-3 text-sm text-navy">{current.value.message}</p>
         <section className="grid min-w-0 gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
-          <aside className="min-w-0 rounded-xl border border-gray-200 bg-white p-4"><h3 className="font-bold text-navy">Start from a template</h3>
+          <aside className="min-w-0 rounded-xl border border-gray-200 bg-white p-4"><h2 className="font-bold text-navy">Start from a template</h2>
             <div className="mt-3 flex flex-col gap-2">{(['portfolio', 'collections'] as const).map(key => <button key={key} className={secondary} disabled={Boolean(busy)} onClick={() => { change(reportTemplate(key)); setEditing(null); setRun(null); }}>{reportTemplate(key).name}</button>)}</div>
-            <h3 className="mt-5 font-bold text-navy">Saved reports</h3><label className="mt-2 flex gap-2 text-xs"><input type="checkbox" checked={archived} onChange={event => setArchived(event.target.checked)} />Show archived reports</label>
+            <h2 className="mt-5 font-bold text-navy">Saved reports</h2><label className="mt-2 flex min-h-11 items-center gap-2 text-xs"><input type="checkbox" checked={archived} onChange={event => setArchived(event.target.checked)} />Show archived reports</label>
             <ul className="mt-3 space-y-3">{current.value.records.filter(record => record.archived === archived).map(record => <li key={record.id} className="break-words rounded-lg border border-gray-200 p-3"><button className="text-left text-sm font-semibold text-brand-blue" disabled={Boolean(busy)} onClick={() => selectSaved(record)}>{record.definition.name}</button><p className="mt-1 text-xs text-gray-500">{record.definition.dataset} · version {record.version}</p><button className="mt-2 text-xs font-semibold text-gray-600" disabled={Boolean(busy)} onClick={() => void save(record, !record.archived)}>{record.archived ? 'Restore report' : 'Archive report'}</button></li>)}</ul>
             {!current.value.records.some(record => record.archived === archived) && <p className="mt-3 text-sm text-gray-500">No saved reports here yet.</p>}
           </aside>
           <fieldset disabled={Boolean(busy)} className="flex min-w-0 flex-col gap-4 rounded-xl border border-gray-200 bg-white p-5">
-            <legend className="sr-only">Report builder</legend><h3 className="font-bold text-navy">{editing ? 'Edit saved report' : 'Customize report'}</h3>
+            <legend className="sr-only">Report builder</legend><h2 className="font-bold text-navy">{editing ? 'Edit saved report' : 'Customize report'}</h2>
             <label className="text-sm">Report name<input className={control} value={definition.name} maxLength={200} onChange={event => change({ ...definition, name: event.target.value })} /></label>
             <label className="text-sm">Purpose<textarea className={control} value={definition.description} maxLength={2000} onChange={event => change({ ...definition, description: event.target.value })} /></label>
             <p className="text-xs text-gray-500">Dataset: {definition.dataset === 'opportunities' ? 'One opportunity per row' : 'One committed qualified order per row'}. Current classification and current planning values; no historical reconstruction.</p>
             <div className="grid gap-3 sm:grid-cols-3"><label className="text-sm">Population<select aria-label="Population" className={control} value={definition.population} disabled={definition.dataset === 'collections'} onChange={event => change({ ...definition, population: event.target.value as ReportDefinition['population'] })}><option value="qualified">Qualified opportunities</option><option value="leads">Leads only</option><option value="all">All opportunities</option></select></label>
               <label className="text-sm">Result view<select aria-label="Result view" className={control} value={definition.view} onChange={event => change({ ...definition, view: event.target.value as ReportDefinition['view'] })}><option value="details">Details</option><option value="summary">Grouped summary</option></select></label>
               <label className="text-sm">Sort field<select aria-label="Sort field" className={control} value={definition.sort.field} onChange={event => change({ ...definition, sort: { ...definition.sort, field: event.target.value as ReportField } })}>{fields.map(key => <option key={key} value={key}>{reportFields[key].label}</option>)}</select></label></div>
-            <label className="flex gap-2 text-sm"><input type="checkbox" checked={definition.sort.direction === 'desc'} onChange={event => change({ ...definition, sort: { ...definition.sort, direction: event.target.checked ? 'desc' : 'asc' } })} />Sort descending (missing values stay last)</label>
+            <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={definition.sort.direction === 'desc'} onChange={event => change({ ...definition, sort: { ...definition.sort, direction: event.target.checked ? 'desc' : 'asc' } })} />Sort descending (missing values stay last)</label>
             <details className="rounded-lg border border-gray-200 p-3"><summary className="cursor-pointer font-semibold text-navy">Columns ({definition.columns.length})</summary>
               <label className="mt-3 block text-sm">Find a field<input className={control} value={columnSearch} onChange={event => setColumnSearch(event.target.value)} /></label>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">{fields.filter(key => reportFields[key].label.toLowerCase().includes(columnSearch.toLowerCase())).map(key => <label key={key} className="flex gap-2 text-sm"><input type="checkbox" checked={definition.columns.some(column => column.field === key)} onChange={event => change({ ...definition, columns: event.target.checked ? [...definition.columns, { field: key, label: reportFields[key].label }] : definition.columns.filter(column => column.field !== key) })} />{reportFields[key].label}</label>)}</div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">{fields.filter(key => reportFields[key].label.toLowerCase().includes(columnSearch.toLowerCase())).map(key => <label key={key} className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={definition.columns.some(column => column.field === key)} onChange={event => change({ ...definition, columns: event.target.checked ? [...definition.columns, { field: key, label: reportFields[key].label }] : definition.columns.filter(column => column.field !== key) })} />{reportFields[key].label}</label>)}</div>
               <ol className="mt-4 space-y-2">{definition.columns.map((column, index) => <li key={column.field} className="flex flex-wrap items-center gap-2"><span className="w-40 text-xs text-gray-500">{reportFields[column.field].label}</span><input aria-label={`Label for ${reportFields[column.field].label}`} className={`${control} max-w-52`} value={column.label} maxLength={120} onChange={event => change({ ...definition, columns: definition.columns.map((old, i) => i === index ? { ...old, label: event.target.value } : old) })} />{[-1, 1].map(offset => <button key={offset} type="button" className={secondary} aria-label={`Move ${reportFields[column.field].label} ${offset < 0 ? 'up' : 'down'}`} disabled={index + offset < 0 || index + offset >= definition.columns.length} onClick={() => { const columns = [...definition.columns]; [columns[index], columns[index + offset]] = [columns[index + offset], columns[index]]; change({ ...definition, columns }); }}>{offset < 0 ? '↑' : '↓'}</button>)}</li>)}</ol>
             </details>
-            <div className="flex flex-col gap-3"><h4 className="font-semibold text-navy">Filters</h4><label className="text-sm">Match conditions<select aria-label="Match conditions" className={control} value={definition.filterMode} onChange={event => change({ ...definition, filterMode: event.target.value as 'all' | 'any' })}><option value="all">All conditions (AND)</option><option value="any">Any condition (OR)</option></select></label>
+            <div className="flex flex-col gap-3"><h3 className="font-semibold text-navy">Filters</h3><label className="text-sm">Match conditions<select aria-label="Match conditions" className={control} value={definition.filterMode} onChange={event => change({ ...definition, filterMode: event.target.value as 'all' | 'any' })}><option value="all">All conditions (AND)</option><option value="any">Any condition (OR)</option></select></label>
               {definition.filters.map((filter, index) => <div key={index} className="grid gap-2 rounded-lg bg-gray-50 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
                 <select aria-label={`Filter ${index + 1} field`} className={control} value={filter.field} onChange={event => updateFilter(index, { field: event.target.value as ReportField, operator: 'equals', value: '' })}>{fields.map(key => <option key={key} value={key}>{reportFields[key].label}</option>)}</select>
                 <select aria-label={`Filter ${index + 1} operator`} className={control} value={filter.operator} onChange={event => updateFilter(index, { ...filter, operator: event.target.value as ReportFilter['operator'] })}>{operatorsForField(filter.field).map(operator => <option key={operator} value={operator}>{({ equals: 'Equals', contains: 'Contains', gte: 'At least / on or after', lte: 'At most / on or before', empty: 'Missing / unassigned', notEmpty: 'Present / assigned' })[operator]}</option>)}</select>
@@ -138,7 +146,7 @@ export function ReportsPage() {
               </div>)}<button type="button" className={`${secondary} self-start`} disabled={definition.filters.length >= 20} onClick={() => change({ ...definition, filters: [...definition.filters, { field: 'status', operator: 'equals', value: 'Active' }] })}>Add filter</button>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">{[0, 1].map(index => <label key={index} className="text-sm">Group {index + 1}<select aria-label={`Group ${index + 1}`} className={control} value={definition.groupBy[index] || ''} disabled={index === 1 && !definition.groupBy.length} onChange={event => { const groupBy = [...definition.groupBy]; if (!event.target.value) groupBy.splice(index); else groupBy[index] = event.target.value as ReportField; change({ ...definition, groupBy }); }}><option value="">No grouping</option>{fields.filter(key => reportFields[key].type !== 'number').map(key => <option key={key} value={key}>{reportFields[key].label}</option>)}</select></label>)}</div>
-            <div><h4 className="font-semibold text-navy">Measures</h4><div className="mt-2 flex flex-wrap gap-4">{metrics.map(key => <label key={key} className="flex gap-2 text-sm"><input type="checkbox" checked={definition.metrics.includes(key)} onChange={event => change({ ...definition, metrics: event.target.checked ? [...definition.metrics, key] : definition.metrics.filter(metric => metric !== key) })} />{reportMetricDefinitions[key].label}</label>)}</div></div>
+            <div><h3 className="font-semibold text-navy">Measures</h3><div className="mt-2 flex flex-wrap gap-4">{metrics.map(key => <label key={key} className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={definition.metrics.includes(key)} onChange={event => change({ ...definition, metrics: event.target.checked ? [...definition.metrics, key] : definition.metrics.filter(metric => metric !== key) })} />{reportMetricDefinitions[key].label}</label>)}</div></div>
             <p className="text-xs text-gray-500">Amounts use reporting currency except Original value. Partial totals show missing records. Won value is not cash; win rate needs 3 decided deals. Collections use recorded receipts and planning schedules; missing dates do not mean not overdue.</p>
             <div className="flex flex-wrap gap-2"><button type="button" className={button} onClick={() => void execute()}>Run report</button><button type="button" className={secondary} onClick={() => void save()}>{editing ? 'Save changes' : 'Save report'}</button><button type="button" className={secondary} onClick={() => { setEditing(null); setRun(null); change({ ...definition, name: `${definition.name} (copy)` }); }}>Duplicate as new report</button></div>
           </fieldset>
@@ -146,7 +154,7 @@ export function ReportsPage() {
         {busy === 'run' && <p role="status">Loading current report sources…</p>}
         {run && !visibleRun && <p className="text-sm text-amber-800">Configuration changed. Run the report again to preview or export.</p>}
         {visibleRun && <section className="min-w-0 rounded-xl border border-gray-200 bg-white p-5" data-testid="report-result">
-          <h3 className="text-lg font-bold text-navy">{visibleRun.definition.name}</h3><p className="mt-2 text-sm text-gray-500">{visibleRun.rows.length} matching records from {visibleRun.sourceCount} loaded source records · {visibleRun.money.currency} · run {visibleRun.runAt}</p>
+          <h2 className="text-lg font-bold text-navy">{visibleRun.definition.name}</h2><p className="mt-2 text-sm text-gray-500">{visibleRun.rows.length} matching records from {visibleRun.sourceCount} loaded source records · {visibleRun.money.currency} · run {visibleRun.runAt}</p>
           <p className="mt-1 text-xs text-gray-500">{visibleRun.grain}. {visibleRun.sourceStatus} Timezone: {visibleRun.timezone}; planning FX {visibleRun.money.ratesAsOf}, workspace overrides captured.</p>
           {definition.dataset === 'collections' && <p className="mt-2 text-xs text-gray-500">Only quotes linked by ID are used; legacy name-only quotes are excluded. Open a row’s source deal or <Link className="font-semibold text-brand-blue" to="/app/money?view=collections">open Collections</Link> to manage payments.</p>}
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{visibleRun.definition.metrics.map(key => <div key={key} className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-500">{reportMetricDefinitions[key].label}</p><p className="mt-1 font-bold text-navy">{metricLabel(key, visibleRun.totals[key])}</p></div>)}</div>

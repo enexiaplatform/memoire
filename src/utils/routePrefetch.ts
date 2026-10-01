@@ -7,6 +7,9 @@ const routePrefetchers: Record<string, () => Promise<unknown>> = {
   '/app/opportunities': () => import('../features/opportunities/OpportunitiesPage'),
   '/app/revenue': () => import('../features/revenue/RevenueViewPage'),
   '/app/timeline': () => import('../features/timeline/TimelinePage'),
+  '/app/products': () => import('../features/portfolio/PortfolioPage'),
+  '/app/reports': () => import('../features/reports/ReportsPage'),
+  '/app/dashboards': () => import('../features/dashboards/DashboardsPage'),
   '/app/reviews': () => import('../features/reviews/SalesReviewsPage'),
   '/app/capture': () => import('../features/dailyCapture/DailyCapturePage'),
   '/app/ask': () => import('../features/v31/AskMemoirePage'),
@@ -42,7 +45,7 @@ export function prefetchAppRoute(route: string) {
  * a tab, on every device, paid for its own chunk at click time.
  */
 export function prefetchPrimaryAppRoutes() {
-  // Warming nine route chunks is a good trade on a desktop connection and a bad
+  // Warming route chunks is a good trade on a desktop connection and a bad
   // one on a metered phone, where it is bandwidth spent on tabs that may never
   // be opened. Where the browser will say, ask it.
   if (prefersLessData()) return;
@@ -55,6 +58,9 @@ export function prefetchPrimaryAppRoutes() {
     '/app/revenue',
     '/app/timeline',
     '/app/reviews',
+    '/app/products',
+    '/app/reports',
+    '/app/dashboards',
     '/app/business',
     '/app/activity',
     '/app/ask',

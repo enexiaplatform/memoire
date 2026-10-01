@@ -1,6 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Route, Routes } from 'react-router-dom';
-import { StaticRouter } from 'react-router-dom/server';
+import { Route, Routes, StaticRouter } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthContext, type AuthContextValue } from './auth/authContext';
 import { LandingPage } from './pages/LandingPage';

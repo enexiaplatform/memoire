@@ -9,8 +9,6 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { normalizeEntityName } from '../../utils/accountIdentity.ts';
 import { Copy, Loader2 } from 'lucide-react';
 import { ReviewAnalyticsSection } from './ReviewAnalyticsSection';
-import { PortfolioPage } from '../portfolio/PortfolioPage';
-import { ReportsPage } from '../reports/ReportsPage';
 import { ReviewScoreboardPanel } from './ReviewScoreboardPanel';
 import { BrandPerformancePanel } from './BrandPerformancePanel';
 import { ChangesSinceReviewPanel, LeadFunnelPanel } from './ChangesSinceReviewPanel';
@@ -87,15 +85,13 @@ import {
   type SalesRecapRange,
 } from '../../utils/salesActivityRecap';
 
-export type ReviewTab = 'review' | 'analytics' | 'portfolio' | 'reports';
+export type ReviewTab = 'review' | 'analytics';
 
 const reviewTabs: { value: ReviewTab; label: string }[] = [
   { value: 'review', label: 'Weekly review' },
   // Named for both halves: the charts are the analytics, and what the book is
   // starting to show about how this seller wins is the learning.
   { value: 'analytics', label: 'Learning & Analytics' },
-  { value: 'portfolio', label: 'Products & Brands' },
-  { value: 'reports', label: 'Reports' },
 ];
 
 /**
@@ -111,7 +107,7 @@ export function SalesReviewsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('view');
   // ?view=defense was the retired Pipeline Defense tab; it opens the review.
-  const tab: ReviewTab = rawTab === 'analytics' || rawTab === 'portfolio' || rawTab === 'reports' ? rawTab : 'review';
+  const tab: ReviewTab = rawTab === 'analytics' ? rawTab : 'review';
   const { user: reviewUser } = useAuthContext();
   const reviewSample = hasLocalSampleData();
   const reviewScope = useMemo(() => ({userId:reviewSample?null:reviewUser?.id||null,sampleDataActive:reviewSample}),[reviewSample,reviewUser?.id]);
@@ -156,8 +152,6 @@ export function SalesReviewsPage() {
         }
       />
 
-      {tab === 'portfolio' && <PortfolioPage />}
-      {tab === 'reports' && <ReportsPage />}
       {tab === 'review' && (
         <>
           {/* The week as four questions, in the order somebody closing a week

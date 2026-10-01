@@ -10,13 +10,15 @@ import { runReport, type ReportRun } from '../domain/reports/reportEngine.ts';
 import type { ReportDefinition } from '../domain/reports/reportDefinition.ts';
 import { getWorkspaceSyncStatus } from './workspaceSyncStatus.ts';
 import { todayDateKey } from '../utils/safeDate.ts';
-export async function executeWorkspaceReport(scope: PortfolioScope, definition: ReportDefinition, scopeKey: string): Promise<ReportRun> {
+export type WorkspaceReportContext = Omit<Parameters<typeof runReport>[0], 'definition'>;
+/** One current workspace read and captured FX basis, shared by every report in a dashboard. */
+export async function captureWorkspaceReportContext(scope: PortfolioScope, collections: boolean, scopeKey: string): Promise<WorkspaceReportContext> {
   assertReportScope(scope);
   const [workspace, catalog, milestones, costs, receivables] = await Promise.all([
     loadSalesWorkspaceData(scope.userId, { force: true }), loadPortfolio(scope),
-    definition.dataset === 'collections' ? loadOrderMilestonesForWorkspace(scope.userId, scope.sampleDataActive) : Promise.resolve([]),
-    definition.dataset === 'collections' ? loadOrderCostsForWorkspace(scope.userId, scope.sampleDataActive) : Promise.resolve([]),
-    definition.dataset === 'collections' ? loadOrderReceivablesForWorkspace(scope.userId, scope.sampleDataActive) : Promise.resolve([]),
+    collections ? loadOrderMilestonesForWorkspace(scope.userId, scope.sampleDataActive) : Promise.resolve([]),
+    collections ? loadOrderCostsForWorkspace(scope.userId, scope.sampleDataActive) : Promise.resolve([]),
+    collections ? loadOrderReceivablesForWorkspace(scope.userId, scope.sampleDataActive) : Promise.resolve([]),
   ]);
   assertReportScope(scope);
   const money = capturePortfolioMoneyBasis([...workspace.opportunities.map(row => row.currency), ...workspace.quotes.map(row => row.currency),
@@ -27,6 +29,9 @@ export async function executeWorkspaceReport(scope: PortfolioScope, definition: 
   const status = getWorkspaceSyncStatus();
   const sourceStatus = scope.sampleDataActive ? 'Demo sources; no live cloud data.' : !scope.userId ? 'Browser workspace sources.'
     : `Current workspace view. ${catalog.message} ${status.state === 'error' ? status.message : 'Source loaders may use browser copies; cloud/accounting completeness is not certified.'}`;
-  return runReport({ definition, sources, money, scopeKey, runAt: new Date().toISOString(), today,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, sourceStatus });
+  return { sources, money, scopeKey, runAt: new Date().toISOString(), today,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, sourceStatus };
+}
+export async function executeWorkspaceReport(scope: PortfolioScope, definition: ReportDefinition, scopeKey: string): Promise<ReportRun> {
+  return runReport({ ...await captureWorkspaceReportContext(scope, definition.dataset === 'collections', scopeKey), definition });
 }

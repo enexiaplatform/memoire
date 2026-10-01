@@ -2,13 +2,15 @@
 
 This map describes the implemented local roadmap through M28. Production deployment is pending P1. Earlier R1 architecture records retain their M2–M11 release boundary; this document adds the later layers without changing that historical scope.
 
-Addendum 2026-10-01: user-authorized portfolio work adds an owner/sample-scoped Products & Brands catalog under Review, primary opportunity classification and backup format 16. See [implementation scope](../product/portfolio-foundation-implementation-2026-10-01.md). This is separate from the M12–M28 completion record and has not been deployed to Production.
+Addendum 2026-10-01: user-authorized portfolio work adds an owner/sample-scoped Products & Brands catalog at `/app/products`, primary opportunity classification and backup format 16. See [implementation scope](../product/portfolio-foundation-implementation-2026-10-01.md). This is separate from the M12–M28 completion record and has not been deployed to Production.
 
-The next user-authorized step adds typed Reports under Review: current opportunity/collections datasets, saved versioned definitions, shared portfolio metrics and order-to-cash derivations, source drill-through, CSV/metadata export and bounded browser printing. `report_definitions` has owner-only RLS and revision-chain checks; backup format 17 includes definitions/history. Run results are transient captured current views, not transactionally complete or historical snapshots. See [Reports implementation scope](../product/reports-foundation-implementation-2026-10-01.md). Dashboard builder remains the next step; these migrations have not been applied to Production.
+The next user-authorized step adds typed Reports at `/app/reports`: current opportunity/collections datasets, saved versioned definitions, shared portfolio metrics and order-to-cash derivations, source drill-through, CSV/metadata export and bounded browser printing. `report_definitions` has owner-only RLS and revision-chain checks; backup format 17 includes definitions/history. Run results are transient captured current views, not transactionally complete or historical snapshots. See [Reports implementation scope](../product/reports-foundation-implementation-2026-10-01.md).
+
+Step 3 adds owner/sample-scoped saved Dashboards at `/app/dashboards`: up to 12 ordered metric/bar/summary widgets referring to saved reports, global catalog filters intersecting report queries, one captured workspace/FX context per refresh, current report revision checks, stale/unavailable states, source drill-through and full CSV/metadata export. `dashboard_definitions` retains revision history and owner RLS; backup format 18 now covers layouts/references. Learning & Analytics keeps its period/learning remit. This step has not been deployed to Production; see [Dashboard implementation scope](../product/dashboards-foundation-implementation-2026-10-01.md).
 
 ```mermaid
 flowchart TD
-  UI[Today / Leads / Accounts / Opportunity / Money / Plan / Review]
+  UI[Commercial pages / Products and Brands / Reports / Dashboards]
   Human[Explicit human commands and confirmations]
   Kernel[Canonical Commercial Kernel]
   Local[Durable owner/sample-scoped browser stores]
@@ -16,7 +18,7 @@ flowchart TD
   Revs[12 source revision chains and coverage lineage]
   Views[Existing pure business projections]
   TM[Time Machine and read-only simulation]
-  Backup[Format 17 export and verified restore]
+  Backup[Format 18 export and verified restore]
   Sources[File connector observations]
   Receipts[Immutable unaccepted receipt Events]
   API[Authenticated API v1]
@@ -76,7 +78,7 @@ Private owner RLS is not widened for shared-workspace members or declared extern
 
 ## Surfaces and deployment
 
-Seven primary destinations remain Today, Leads, Accounts, Opportunities, Money, Plan and Review. Rich domain controls live in contextual folded sections; history and simulation remain contextual. Sharing, exchange and protocol add no new primary destination or giant platform UI.
+Ten primary destinations now comprise the original Today, Leads, Accounts, Opportunities, Money, Plan and Review plus Products & Brands, Reports and Dashboards, following the explicit user navigation decision on 2026-10-01. Review retains Weekly review and Learning & Analytics. Legacy Review links for the new capabilities redirect while preserving query parameters and hashes. Rich domain controls live in contextual folded sections; history and simulation remain contextual. Sharing, exchange and protocol add no new primary destination or giant platform UI.
 
 Vercel application deployment and Supabase schema deployment are separate gates. The configured Supabase target was identified as `mlmpcpkucurylkrobain`, with Memoire and Helm coexisting in public schema, in the September 28 audit. That catalog is not a backup and is not re-certified by local tests. October 1 CLI access still lacks a token/link and recovery tooling. No production mutations, migration-ledger repairs, pushes or deployments were performed by this completion run. See [P1 audit and recovery path](../deployment/p1-production-audit-2026-09-28.md).
 

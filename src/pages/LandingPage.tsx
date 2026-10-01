@@ -504,7 +504,7 @@ export function LandingPage() {
             eyebrow="Understand, then decide — what matters next?"
             icon={Sun}
             title="Start where the risk is."
-            text="Today has three sections and nothing else: the picture, your three moves, and the watch-list. The watch-list is capped at five, because a list that grows without limit is a list nobody reads."
+            text="Today starts with the picture, your three moves, and the watch-list, with additional readings for leads and money. The watch-list is capped at five, because a list that grows without limit is a list nobody reads."
             bullets={[
               'Three ranked moves, each with the reason it is first',
               'Silence detection on every deal, customer and initiative',

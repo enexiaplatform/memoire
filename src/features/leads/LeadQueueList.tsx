@@ -87,7 +87,7 @@ export function LeadQueueList({
               <th scope="col" className="border-b border-line px-3 py-2.5">Evidence</th>
               <th scope="col" className="border-b border-line px-3 py-2.5">Next step</th>
               {showValue && <th scope="col" className="border-b border-line px-3 py-2.5 text-right">Value</th>}
-              <th scope="col" className="border-b border-line py-2.5 pl-2 pr-4 text-right">
+              <th scope="col" className="sticky right-0 z-20 border-b border-line bg-bar py-2.5 pl-2 pr-4 text-right">
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
@@ -146,7 +146,7 @@ function LeadTableRow({ row, actions, showValue }: { row: LeadRow; actions: Lead
             : <span className="text-muted">Not sized</span>}
         </td>
       )}
-      <td className="py-3 pl-2 pr-4 text-right">
+      <td className="sticky right-0 bg-white py-3 pl-2 pr-4 text-right">
         <LeadRowActions row={row} actions={actions} align="end" />
       </td>
     </tr>

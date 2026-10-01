@@ -1,17 +1,8 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
-// Memoire is a Personal Commercial Control Tower with exactly seven primary
-// destinations. This contract is the guard against the failure mode that
-// produced the previous surface sprawl: a page reappears in the rail, the
-// product stops being describable in one sentence, and nobody notices because
-// each individual addition looked reasonable.
-//
-// It said six until 2026-09-16. Leads became the seventh as a product decision,
-// recorded in featureRegistry.ts, and this file was changed to say so rather
-// than worked around - which is the only way this contract is meant to move.
-// Seven is recorded as the ceiling: the lifecycle (lead, account, deal, money)
-// and the three rhythms (today, the week, the review) each have one.
+// The ten approved destinations include three standalone workspaces explicitly
+// requested on 2026-10-01. Registry changes remain deliberate product decisions.
 
 const registry = readFileSync('src/config/featureRegistry.ts', 'utf8');
 const sidebar = readFileSync('src/components/layout/Sidebar.tsx', 'utf8');
@@ -19,19 +10,19 @@ const tabBar = readFileSync('src/components/layout/MobileTabBar.tsx', 'utf8');
 const topNav = readFileSync('src/components/layout/TopNav.tsx', 'utf8');
 const app = readFileSync('src/App.tsx', 'utf8');
 
-// 1. Exactly seven primary destinations, in the approved order.
+// 1. Exactly ten primary destinations, in the approved order.
 {
   const block = registry.match(/export const PRIMARY_DESTINATION_IDS = \[([\s\S]*?)\] as const;/);
   assert.ok(block, 'featureRegistry must declare PRIMARY_DESTINATION_IDS');
   const ids = [...block[1].matchAll(/'([a-z-]+)'/g)].map((match) => match[1]);
   assert.deepEqual(
     ids,
-    ['today', 'leads', 'accounts', 'opportunities', 'money', 'timeline', 'review'],
-    'the seven primary destinations, in order, are the product',
+    ['today', 'leads', 'accounts', 'opportunities', 'money', 'timeline', 'review', 'products', 'reports', 'dashboards'],
+    'the approved primary destinations, in order, are the product',
   );
 }
 
-// 2. The rail renders from the registry, and it is exactly the seven primary
+// 2. The rail renders from the registry, and it is exactly the approved primary
 // destinations.
 //
 // It used to be the six plus the eight routed global surfaces, interleaved into
@@ -61,9 +52,9 @@ const app = readFileSync('src/App.tsx', 'utf8');
   assert.deepEqual(
     [...railIds].sort(),
     [...primaryIds].sort(),
-    'the rail is exactly the seven primary destinations - an eighth row means editing the product decision',
+    'the rail is exactly the approved primary destinations; additions require editing the product decision',
   );
-  assert.equal(railIds.length, 7, 'seven destinations is the product and the ceiling; an eighth needs a reason in PRIMARY_DESTINATION_IDS');
+  assert.equal(railIds.length, 10, 'Ten destinations were explicitly approved on 2026-10-01');
 
   // Leads sits in the rail in lifecycle order: after the two rhythm rows and
   // before the books it feeds.
@@ -451,4 +442,4 @@ for (const removed of [
   );
 }
 
-console.log('Navigation contract verified: seven primary destinations, every one reachable on a phone, no orphaned deep links.');
+console.log('Navigation contract verified: ten primary destinations, every one reachable on a phone, no orphaned deep links.');

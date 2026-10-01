@@ -97,6 +97,7 @@ export const exportTables = [
   { table: 'knowledge_notes', ownerColumn: 'user_id' },
   { table: 'portfolio_records', ownerColumn: 'user_id' },
   { table: 'report_definitions', ownerColumn: 'user_id' },
+  { table: 'dashboard_definitions', ownerColumn: 'user_id' },
   // Judgements the operator made that no other row records: which names are the
   // same customer, which nudges they have already answered, how they work.
   { table: 'account_merges', ownerColumn: 'user_id' },

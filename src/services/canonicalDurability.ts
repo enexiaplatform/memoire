@@ -25,6 +25,7 @@ import * as enums from '../domain/commercialKernel/types.ts';
 import { evidenceCategories, evidenceDirections } from '../domain/commercialKernel/commercialEvidence.ts';
 import { parsePortfolioRecord } from '../domain/portfolio/portfolioCatalog.ts';
 import { parseSavedReport } from '../domain/reports/reportRecord.ts';
+import { parseSavedDashboard } from '../domain/dashboards/dashboardRecord.ts';
 
 export type RecordData = Record<string, unknown>;
 export const kernelCodecs = [threadCodec, commitmentCodec, eventCodec, evidenceCodec, valueOutcomeCodec, conditionCodec, requirementCodec, dependencyCodec, timingCodec, moneyGateCodec, decisionCodec,decisionObservationCodec,policyCodec,incidentCodec,contractObligationCodec,commercialWorkspaceCodec] as const;
@@ -75,7 +76,7 @@ export const canonicalContracts: CanonicalContract[] = [
     opportunityOutcomes: 'opportunity_outcomes', quotes: 'quotes', nudges: 'nudges',
     weeklyCommitments: 'weekly_commitments', planItems: 'plan_items', accountMerges: 'account_merges',
     orderMilestones: 'order_milestones', orderCosts: 'order_costs', orderReceivables: 'order_receivables',
-    supplierCommitments: 'supplier_commitments', expenses: 'expenses', knowledgeNotes: 'knowledge_notes', portfolioRecords: 'portfolio_records', reportDefinitions: 'report_definitions',
+    supplierCommitments: 'supplier_commitments', expenses: 'expenses', knowledgeNotes: 'knowledge_notes', portfolioRecords: 'portfolio_records', reportDefinitions: 'report_definitions', dashboardDefinitions: 'dashboard_definitions',
   }).map(([name, table]) => ({ table, key: `memoire.${name}.v1`, kind: 'json' as const,
     conflict: 'user_id,id', decode: (row: RecordData) => row.payload,
     encode: (record: RecordData, userId: string) => ({ user_id: userId, id: record.id, payload: record,
@@ -119,6 +120,7 @@ export function validateCanonicalRecord(contract: CanonicalContract, value: unkn
   const r = value as RecordData;
   if (contract.table === 'portfolio_records') parsePortfolioRecord(value);
   if (contract.table === 'report_definitions') parseSavedReport(value);
+  if (contract.table === 'dashboard_definitions') parseSavedDashboard(value);
   if (contract.kind !== 'target' && (typeof r.id !== 'string' || !r.id.trim())) throw new Error(`${contract.table}: missing stable record id.`);
   if (contract.kind === 'target' && (!Number.isInteger(r.fiscalYear) || !['Q1','Q2','Q3','Q4'].includes(String(r.period))
     || typeof r.amount !== 'number' || !Number.isFinite(r.amount) || r.amount < 0)) throw new Error('Invalid commercial target.');

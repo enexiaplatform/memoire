@@ -103,8 +103,13 @@ Opportunities
 Money
 
 Review
+Products & Brands
+Reports
+Dashboards
 ```
 
-Seven primary destinations, enforced by `src/config/featureRegistry.ts` and `scripts/verify-navigation-contract.mjs`. Seven is the ceiling: the lifecycle (lead, account, deal, money) and the three rhythms that run it (today, the week, the review) each have one. Leads became the seventh on 2026-09-16; a lead is an opportunity at the Lead stage, not a second record type, so qualifying one changes its stage and nothing else.
+Ten approved primary destinations in the current checkout, enforced by `src/config/featureRegistry.ts` and `scripts/verify-navigation-contract.mjs`. The user explicitly requested independent Products & Brands, Reports and Dashboards pages on 2026-10-01, replacing the initial design that placed them in Review tabs. Review retains Weekly review and Learning & Analytics; the seven commercial destinations remain available. These additions share source records, scope and metric definitions. This navigation change has not been deployed to Production.
+
+Leads became the seventh commercial destination on 2026-09-16; a lead is an opportunity at the Lead stage, so qualifying one changes its stage and nothing else.
 
 Leads is seller work, not marketing automation: no campaigns, no scoring, no attribution model. Its readiness is evidence the seller recorded - fit, contact, need, engagement, next move - and the way to improve a lead is to learn something about it, not to edit a number.

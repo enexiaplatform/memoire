@@ -4,7 +4,7 @@ Ngày: 2026-10-01. Trạng thái: hoàn tất phạm vi bước 2 trong checkout
 
 ## Kết quả sử dụng được
 
-Điểm vào: **Review → Reports**, hoặc **Settings → Workspace → Build reports**. Đường dẫn trực tiếp: `/app/reviews?view=reports`.
+Điểm vào: **Reports trên menu chính**, hoặc **Settings → Workspace → Build reports**. Đường dẫn trực tiếp: `/app/reports`.
 
 - Hai template: **Portfolio Performance** và **Collections & Blockers**. Chọn dataset Opportunities hoặc Collections để bắt đầu câu hỏi khác.
 - Chọn trường thuộc dataset, tìm trường, đổi nhãn cột và đổi thứ tự cột. Dữ liệu deal, danh mục chuẩn, thông tin người mua, blocker, đơn hàng và khoản thu có registry với kiểu rõ ràng.
@@ -57,5 +57,7 @@ Migration đã chạy trong kiểm tra database cục bộ, **chưa áp dụng P
 Kiểm tra PDF từ trình duyệt: **9 trang, đủ 131 deal nguồn, tiêu đề lặp mỗi trang, không lẫn nút điều hướng của ứng dụng**. Đã kiểm tra trực quan trang đầu, giữa và cuối, cùng ảnh giao diện desktop/mobile. Đây là bằng chứng local, không chứng nhận rollout Production hoặc tính đầy đủ của dữ liệu kế toán.
 
 ## Bước 3
+
+Cập nhật sau bước 2: [Dashboard builder nền tảng đã triển khai cục bộ ở bước 3](dashboards-foundation-implementation-2026-10-01.md), với backup hiện tại format 18. Bản ghi bước 2 phía trên giữ đúng scope/format 17 và kiểm chứng tại thời điểm hoàn tất Reports.
 
 Xây Dashboard builder với widget tham chiếu saved report, chọn cách biểu diễn phù hợp kiểu dữ liệu, cùng scope và cùng lần chạy cho các con số được so sánh. Drill-through mở report/bản ghi nguồn. Tiếp tục tránh chart trùng Analytics hiện tại và trend lịch sử không có bằng chứng. Widget không tự nhập lại số hoặc tạo công thức cạnh tranh với Reports.

@@ -89,6 +89,7 @@ const expectedTables = [
   ['knowledge_notes', 'user_id'],
   ['portfolio_records', 'user_id'],
   ['report_definitions', 'user_id'],
+  ['dashboard_definitions', 'user_id'],
   ['account_merges', 'user_id'],
   ['nudges', 'user_id'],
   ['operating_context', 'user_id'],

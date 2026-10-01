@@ -32,7 +32,7 @@ const deals = Number(option('deals', '300'));
 const budgetMs = Number(option('budget', '2000'));
 const headed = args.includes('--headed');
 
-const SURFACES = ['today', 'opportunities', 'accounts', 'revenue', 'reviews', 'timeline', 'business', 'activity'];
+const SURFACES = ['today', 'leads', 'opportunities', 'accounts', 'revenue', 'reviews', 'timeline', 'products', 'reports', 'dashboards', 'business', 'activity'];
 
 const workspace = buildScaleWorkspace({
   opportunities: deals,
@@ -86,8 +86,12 @@ for (const surface of SURFACES) {
   const started = Date.now();
   let elapsed = null;
   for (let attempt = 0; attempt < 80; attempt += 1) {
-    const length = await page.evaluate(() => (document.getElementById('app-main-content')?.innerText || '').length);
-    if (length > 700) { elapsed = Date.now() - started; break; }
+    const ready = await page.evaluate(() => {
+      const main = document.getElementById('app-main-content');
+      return Boolean(main?.querySelector('h1') && !main.querySelector('[aria-busy="true"]') &&
+        !/Loading (?:portfolio|reports|dashboards)/.test(main.innerText));
+    });
+    if (ready) { elapsed = Date.now() - started; break; }
     await page.waitForTimeout(100);
   }
   // A long task after paint is what a frozen scroll actually is.

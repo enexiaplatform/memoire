@@ -29,9 +29,10 @@ Review  what changed, and what it taught
 ```text
 GLOBAL          + Capture · Search & Insights (Cmd/Ctrl+K, with commands) · Settings
 PRIMARY         Today · Plan · Leads · Accounts · Opportunities · Money · Review
+                Products & Brands · Reports · Dashboards
 ```
 
-Seven primary destinations, and seven is the ceiling. Leads became the seventh on 2026-09-16 as a recorded product decision. Navigation renders from `src/config/featureRegistry.ts`, and `scripts/verify-navigation-contract.mjs` fails the build if the seven change.
+Ten approved primary destinations in this checkout. The seven commercial destinations are retained; Products & Brands, Reports and Dashboards open as separate pages following the explicit user decision on 2026-10-01. Navigation renders from `src/config/featureRegistry.ts`, and `scripts/verify-navigation-contract.mjs` checks the approved list. This navigation change is locally verified and has not been deployed to Production.
 
 - **Today** - the business picture, the three moves worth making first (money, deals, leads and captures ranked together), and a capped watch-list. Every move says what happened, why it matters and what to do.
 - **Plan** (route `/app/timeline`) - Upcoming (the week, and the commitment ledger read by who owes it) and History (everything that happened).
@@ -39,7 +40,10 @@ Seven primary destinations, and seven is the ceiling. Leads became the seventh o
 - **Accounts** - what matters about this customer now, then the memory behind it.
 - **Opportunities** - the qualified pipeline only: its real stage, the MEDDIC evidence for it, what changed, what is blocking it.
 - **Money** - Orders, Collections and Margin, opened on the money at risk between a won deal and the bank.
-- **Review** - changes since the last review, the scoreboard, the week's commitments, and what leads and outcomes taught.
+- **Review** - changes since the last review, the scoreboard, the week's commitments, and what leads and outcomes taught. Retains Weekly review and Learning & Analytics.
+- **Products & Brands** (`/app/products`) - portfolio catalog and primary opportunity classifications.
+- **Reports** (`/app/reports`) - typed custom reports, saved definitions, source inspection and export.
+- **Dashboards** (`/app/dashboards`) - saved report widgets, shared portfolio filters and source drill-through.
 
 A lead is not a second record type. It is an opportunity at the Lead stage, and qualifying it moves the stage and nothing else, so its touches, people, evidence and source are the same record in Opportunities.
 
@@ -100,7 +104,7 @@ CI runs both on every push and pull request (`.github/workflows/ci.yml`): a fast
 
 The contracts that protect the product boundaries:
 
-- `verify:navigation` - seven primary destinations, every one reachable on a phone, Leads and Opportunities partition the book, no orphaned deep links.
+- `verify:navigation` - ten approved primary destinations, every one reachable on a phone, Leads and Opportunities partition the book, no orphaned deep links.
 - `verify:record-field-coverage` - every reader that rebuilds a record field by field carries every field, including the cloud reader and the save round-trip.
 - `verify:commercial-kernel` - relational tables, RLS, indexes, explainable rules, threads derived not migrated.
 - `verify:kernel-surface` - one thread component and one ledger across every surface.

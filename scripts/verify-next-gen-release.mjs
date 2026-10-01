@@ -39,10 +39,10 @@ for (const table of ['commercial_history_coverage', 'commercial_state_revisions'
   assert.match(exportsApi, new RegExp(`table: ['\"]${table}['\"]`), `${table} missing from account export`);
 }
 
-const expectedDestinations = ['today', 'leads', 'accounts', 'opportunities', 'money', 'timeline', 'review'];
+const expectedDestinations = ['today', 'leads', 'accounts', 'opportunities', 'money', 'timeline', 'review', 'products', 'reports', 'dashboards'];
 const primaryBlock = navigation.match(/PRIMARY_DESTINATION_IDS = \[([\s\S]*?)\] as const/)?.[1] || '';
 const actualDestinations = [...primaryBlock.matchAll(/'([^']+)'/g)].map(match => match[1]);
-assert.deepEqual(actualDestinations, expectedDestinations, 'R1 cannot add a top-level destination.');
+assert.deepEqual(actualDestinations, expectedDestinations, 'Navigation must match the explicitly approved standalone workspaces.');
 
 for (const phrase of ['success rate', 'best strategy', 'recovered value', 'saved value', 'winning strategy']) {
   assert.equal(learning.toLowerCase().includes(phrase), false, `M11 generated language contains prohibited phrase: ${phrase}`);
@@ -75,4 +75,4 @@ for (const path of [
   'docs/qa/next-gen-core-r1-release-evidence.md',
 ]) assert.ok(read(path).length > 200, `${path} is missing or empty.`);
 
-console.log(`Next-Gen R1 contract verified: ${NEXT_GEN_MIGRATIONS.length} ordered migrations, ${canonicalTables.length} canonical R1 entities, seven primary destinations, export/history coverage, bounded browser history, temporal purity and descriptive M11 language.`);
+console.log(`Next-Gen R1 contract verified: ${NEXT_GEN_MIGRATIONS.length} ordered migrations, ${canonicalTables.length} canonical R1 entities, ${expectedDestinations.length} approved primary destinations, export/history coverage, bounded browser history, temporal purity and descriptive M11 language.`);

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { reportTemplate } from '../../src/domain/reports/reportDefinition.ts';
+import { newDashboard } from '../../src/domain/dashboards/dashboardDefinition.ts';
 
 class Storage {
   data = new Map();
@@ -448,7 +449,10 @@ test('target sample edits preserve the live period and rejected targets emit no 
 
 test('all JSON collections retain payloads, money/outcome links and tombstones through cloud recovery', async () => {
   for (const contract of canonicalContracts.filter(c => c.kind === 'json')) {
-    const record = contract.table === 'report_definitions'
+    const record = contract.table === 'dashboard_definitions'
+      ? { id: 'record-dashboard_definitions', schemaVersion: 1, version: 1, definition: newDashboard(), archived: false,
+        source: 'user', isSample: false, createdAt: at, updatedAt: later, history: [] }
+      : contract.table === 'report_definitions'
       ? { id: 'record-report_definitions', schemaVersion: 1, version: 1, definition: reportTemplate('portfolio'), archived: false,
         source: 'user', isSample: false, createdAt: at, updatedAt: later, history: [] }
       : contract.table === 'portfolio_records'

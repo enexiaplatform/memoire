@@ -29,7 +29,7 @@ const width = Number(option('width', '390'));
 
 const DESTINATIONS = [
   'today', 'timeline', 'business', 'reviews',
-  'accounts', 'opportunities', 'revenue',
+  'leads', 'accounts', 'opportunities', 'revenue', 'products', 'reports', 'dashboards',
   'ask', 'activity', 'vault', 'settings', 'capture',
 ];
 

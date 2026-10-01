@@ -1130,7 +1130,7 @@ export function OpportunitiesPage() {
             {loading
               ? 'Loading pipeline...'
               : `${formatCount(visibleOpportunityRows.length)} shown of ${formatCount(pipelineOpportunities.length)}`}
-            {lastWorkspaceRefreshAt ? ` · synced ${formatOpportunityDate(lastWorkspaceRefreshAt)}` : ''}
+            {lastWorkspaceRefreshAt ? ` · loaded ${formatOpportunityDate(lastWorkspaceRefreshAt)}` : ''}
           </>
         }
         description={leadCount > 0 ? (
@@ -2857,7 +2857,7 @@ function OpportunityMasterTable({
                       <p
                         className="text-[11px] text-gray-500"
                         title={quality.issues.length
-                          ? `Missing on the record: ${quality.issues.join(', ')}. ${quality.primaryAction}`
+                          ? `Missing on the record: ${quality.issues.map(issue => issue.label).join(', ')}. ${quality.primaryAction}`
                           : quality.primaryAction}
                       >
                         {quality.issues.length} record gap{quality.issues.length === 1 ? '' : 's'} · {row.linkedActivityCount} {row.linkedActivityCount === 1 ? 'touch' : 'touches'}

@@ -40,6 +40,7 @@ dist-ssr
 .audit/
 .codex-portfolio-qa/
 .codex-reports-qa/
+.codex-dashboards-qa/
 
 # Local product-validation baselines. `npm run report:product-validation --json`
 # writes counts only, but it is a snapshot of one workspace's shape and belongs

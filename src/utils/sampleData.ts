@@ -45,6 +45,7 @@ import { NUDGE_STORAGE_KEY } from '../services/nudgeStore';
 import { KNOWLEDGE_NOTE_STORAGE_KEY } from '../services/knowledgeNoteStore';
 import { PORTFOLIO_STORAGE_KEY } from '../services/portfolioStore';
 import { REPORT_STORAGE_KEY } from '../services/reportStore';
+import { DASHBOARD_STORAGE_KEY } from '../services/dashboardStore';
 import type { WeeklyCommitmentSnapshot } from './weeklyCommitment';
 import { getCurrentPipelineReviewWeekId } from './pipelineReviewHabit';
 
@@ -196,6 +197,7 @@ export function clearSampleDataset() {
   removeSampleRecords(KNOWLEDGE_NOTE_STORAGE_KEY);
   removeSampleRecords(PORTFOLIO_STORAGE_KEY);
   removeSampleRecords(REPORT_STORAGE_KEY);
+  removeSampleRecords(DASHBOARD_STORAGE_KEY);
   removeSampleRecords(ACCOUNT_MERGE_STORAGE_KEY);
   removeSampleRecords(NUDGE_STORAGE_KEY);
   removeSampleRecords(CONDITION_STORAGE_KEY);

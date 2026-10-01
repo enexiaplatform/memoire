@@ -15,7 +15,7 @@ import { navIcon } from './navIcons';
  *
  * Four destinations sit on the bar because they are what somebody standing in a
  * customer's lobby actually opens; the fifth button is the same rail as before,
- * for the other seven. Capture stays in the top bar rather than taking a tab:
+ * for all remaining destinations. Capture stays in the top bar rather than taking a tab:
  * it is an action, not a place, and it is already reachable from the home
  * screen shortcut.
  *

@@ -4,7 +4,7 @@ Ngày: 2026-10-01. Phạm vi: triển khai cục bộ trong checkout; chưa depl
 
 ## Kết quả sử dụng được
 
-Điểm vào: **Review → Products & Brands**, hoặc **Settings → Workspace → Manage portfolio**. Đường dẫn trực tiếp: `/app/reviews?view=portfolio`.
+Điểm vào: **Products & Brands trên menu chính**, hoặc **Settings → Workspace → Manage portfolio**. Đường dẫn trực tiếp: `/app/products`.
 
 - Tạo và sửa Business unit, Brand, Product group, Product / solution; danh mục chưa có deal vẫn hiện.
 - BU và nhóm sản phẩm có cây cha/con riêng. Product có brand/group mặc định; brand không tự cấp hoặc ngụ ý quyền BU.

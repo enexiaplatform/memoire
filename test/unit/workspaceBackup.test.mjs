@@ -102,7 +102,7 @@ test('a version-1 backup still restores after the kernel raised the format to 3'
   // The format is key-prefixed, not a fixed schema, so an older file is missing
   // kernel keys rather than being incompatible. It must restore everything it
   // does carry.
-  assert.equal(BACKUP_FORMAT_VERSION, 17, 'portfolio and saved report definitions require a versioned backup format');
+  assert.equal(BACKUP_FORMAT_VERSION, 18, 'portfolio and report/dashboard definitions require a versioned backup format');
 
   const v1 = { ...validBackup, formatVersion: 1 };
   const parsed = parseBackupFile(JSON.stringify(v1));

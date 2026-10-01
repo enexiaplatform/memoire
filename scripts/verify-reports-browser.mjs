@@ -34,7 +34,7 @@ try {
   const page = await context.newPage(), errors = [], cloudRequests = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('request', request => { if (/\/rest\/v1\/(report_definitions|portfolio_records)/.test(request.url())) cloudRequests.push(request.url()); });
-  await page.goto(`${base}/app/reviews?view=reports`);
+  await page.goto(`${base}/app/reports`);
   const panel = page.getByTestId('reports-page'), result = panel.getByTestId('report-result');
   await panel.getByText(/Demo report library/).waitFor();
   await panel.getByRole('button', { name: 'Run report', exact: true }).click();

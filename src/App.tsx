@@ -5,6 +5,7 @@ import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { isFounderWorkspaceEnabled } from './lib/demoMode';
 import { WebAnalytics } from './lib/webAnalytics';
 import { LibraryGate } from './features/library/LibraryGate';
+import { PageContainer } from './components/layout/PageFrame';
 
 const AppShell = lazy(() => import('./components/layout/AppShell').then((module) => ({ default: module.AppShell })));
 const LandingPage = lazy(() => import('./pages/LandingPage').then((module) => ({ default: module.LandingPage })));
@@ -59,6 +60,9 @@ const SettingsPage = lazy(() => import('./features/settings/SettingsPage').then(
 const SalesReviewsPage = lazy(() =>
   import('./features/reviews/SalesReviewsPage').then((module) => ({ default: module.SalesReviewsPage })),
 );
+const PortfolioPage = lazy(() => import('./features/portfolio/PortfolioPage').then((module) => ({ default: module.PortfolioPage })));
+const ReportsPage = lazy(() => import('./features/reports/ReportsPage').then((module) => ({ default: module.ReportsPage })));
+const DashboardsPage = lazy(() => import('./features/dashboards/DashboardsPage').then((module) => ({ default: module.DashboardsPage })));
 const SalesPlaybookPage = lazy(() =>
   import('./features/playbook/SalesPlaybookPage').then((module) => ({ default: module.SalesPlaybookPage })),
 );
@@ -81,7 +85,7 @@ const FirstRunPage = lazy(() =>
 
 function App() {
   return (
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <BrowserRouter>
       <AppErrorBoundary>
       {/* Inside the router so a client-side navigation counts as a pageview,
           and outside Suspense so a lazy chunk still loading never delays it. */}
@@ -154,10 +158,9 @@ function App() {
           >
             <Route index element={<Navigate to="/app/today" replace />} />
 
-            {/* The seven primary destinations. See src/config/featureRegistry.ts -
-                nothing may be added here without a registry entry. Leads became
-                the seventh on 2026-09-16; /app/opportunities?view=leads, the tab
-                it replaced, forwards to it from inside OpportunitiesPage. */}
+            {/* Primary destinations declared in src/config/featureRegistry.ts.
+                Products, Reports and Dashboards are independent workspaces
+                following the explicit navigation decision on 2026-10-01. */}
             <Route path="today" element={<TodayPage />} />
             <Route path="leads" element={<LeadsPage />} />
             <Route path="accounts" element={<AccountsPage />} />
@@ -167,7 +170,10 @@ function App() {
                 link still lands here; `?view=` picks which of the three. */}
             <Route path="revenue" element={<MoneyPage />} />
             <Route path="timeline" element={<TimelinePage />} />
-            <Route path="reviews" element={<SalesReviewsPage />} />
+            <Route path="reviews" element={<ReviewsRouteEntry />} />
+            <Route path="products" element={<PageContainer><PortfolioPage /></PageContainer>} />
+            <Route path="reports" element={<PageContainer><ReportsPage /></PageContainer>} />
+            <Route path="dashboards" element={<PageContainer><DashboardsPage /></PageContainer>} />
 
             {/* Global actions: reachable everywhere, not destinations. */}
             <Route path="capture" element={<DailyCapturePage />} />
@@ -354,6 +360,23 @@ function OpportunitiesRouteEntry() {
     return <Navigate to={`/app/leads${query ? `?${query}` : ''}${location.hash}`} replace />;
   }
   return <OpportunitiesPage />;
+}
+
+function ReviewsRouteEntry() {
+  const location = useLocation();
+  const search = new URLSearchParams(location.search);
+  const destinations = new Map([
+    ['portfolio', '/app/products'],
+    ['reports', '/app/reports'],
+    ['dashboards', '/app/dashboards'],
+  ]);
+  const destination = destinations.get(search.get('view') || '');
+  if (destination) {
+    search.delete('view');
+    const query = search.toString();
+    return <Navigate to={`${destination}${query ? `?${query}` : ''}${location.hash}`} replace />;
+  }
+  return <SalesReviewsPage />;
 }
 
 function LegacyAccountRouteRedirect() {

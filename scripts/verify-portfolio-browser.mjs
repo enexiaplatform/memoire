@@ -27,7 +27,7 @@ try {
   const pageErrors = [], portfolioRequests = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   page.on('request', request => { if (request.url().includes('/rest/v1/portfolio_records')) portfolioRequests.push(request.url()); });
-  await page.goto(`${base}/app/reviews?view=portfolio`);
+  await page.goto(`${base}/app/products`);
   const panel = page.getByTestId('portfolio-page');
   await panel.getByRole('heading', { name: 'Products & Brands', exact: true }).waitFor();
   await panel.getByText(/Demo catalog/).waitFor();

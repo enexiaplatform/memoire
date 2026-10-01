@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Activity, BarChart3, BookOpen, Banknote, CalendarDays, ClipboardList, Coins, Network, Package, Search, Settings, Sun, Target, UserPlus, UsersRound } from 'lucide-react';
+import { Activity, Boxes, FileText, BarChart3, BookOpen, Banknote, CalendarDays, ClipboardList, Coins, Network, Package, Search, Settings, Sun, Target, UserPlus, UsersRound } from 'lucide-react';
 
 /**
  * One icon per rail destination, shared by the sidebar and the phone tab bar so
@@ -14,6 +14,9 @@ export function navIcon(featureId: string, className = 'h-[18px] w-[18px]'): Rea
     case 'today': return <Sun className={className} />;
     case 'timeline': return <CalendarDays className={className} />;
     case 'business-lens': return <BarChart3 className={className} />;
+    case 'products': return <Boxes className={className} />;
+    case 'reports': return <FileText className={className} />;
+    case 'dashboards': return <BarChart3 className={className} />;
     case 'review': return <ClipboardList className={className} />;
     // The person who is not yet a customer. Deliberately a person rather than a
     // funnel: Leads is a queue of conversations, and a funnel glyph would

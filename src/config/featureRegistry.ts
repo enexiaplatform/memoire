@@ -2,34 +2,12 @@
  * Feature lifecycle registry - the single source of truth for what Memoire
  * exposes as a product surface.
  *
- * Memoire is a Personal Commercial Control Tower. Its promise is "from
- * conversation to cash, nothing goes silent", and its whole operating loop runs
- * through seven primary destinations. Every previous surface that grew its own
- * page has been re-classified here rather than deleted piecemeal, because the
- * failure mode this file exists to prevent is the slow return of an eighth nav
- * item: a page reappears, the sidebar grows, and the product stops being
- * describable in one sentence.
- *
- * It was six until 2026-09-16, and the seventh arrived the way this file says a
- * destination must arrive: as a product decision written down here, with the
- * contract changed rather than worked around. Leads had been a tab inside
- * Opportunities since 2026-09-15, which was already the admission that a lead
- * asks a different question - "is this worth qualifying?" rather than "where is
- * this going and when". A tab inside the pipeline cannot carry that answer: the
- * commercial lifecycle starts before the pipeline, and the surface that owns
- * the start of it is not a view of the middle.
- *
- * Seven is the ceiling. The lifecycle - lead, account, deal, money - now has a
- * destination for each of its four states, and the three rhythms that operate
- * it - today, the week, the review - have one each. There is no eighth question
- * left over, so an eighth row would be a capability that belongs inside one of
- * these seven.
- *
- * The navigation renders from `navigationGroups`, which is assembled here from
- * `primaryNavigation` and `globalActions`. Nothing else may add a nav item, and
- * `scripts/verify-navigation-contract.mjs` fails the build if the seven primary
- * destinations change, if a hidden feature becomes visible, or if a rail item
- * exists that no group claims.
+ * Memoire retains its seven commercial destinations. On 2026-10-01 the user
+ * explicitly requested three independent destinations: Products & Brands,
+ * Reports and Dashboards. They own catalog management, report definitions and
+ * dashboard layouts respectively; Review retains its weekly and learning tabs.
+ * Navigation renders only from this registry, and its contract checks the ten
+ * approved destinations and prevents accidental additions.
  *
  * Statuses:
  *   core        - a primary destination in the beta product.
@@ -56,29 +34,7 @@ export type RouteBehavior = 'primary' | 'contextual' | 'redirect' | 'compatibili
 
 export type AnalyticsStatus = 'active' | 'retained' | 'deprecated' | 'none';
 
-/**
- * The three blocks of the navigation rail.
- *
- * Status ("is this a primary destination?") and grouping ("where does it sit in
- * the rail?") used to be the same thing, and the rail read as two tiers: the six
- * primary destinations, then everything else. That is a statement about product
- * architecture, not about how the operator works. Reading it top to bottom, the
- * old order asked you to jump between rhythms - a daily surface, then a records
- * surface, then a weekly one - and the lens that answers "how is the business
- * doing" sat below the fold with Settings.
- *
- * The rail is now grouped by the question being asked, not by registry status:
- *
- *   run     - the operating rhythm: today, this week, the picture, the review.
- *   records - the three books the rhythm reads and writes.
- *   tools   - ways of searching and seeing, plus workspace settings.
- *
- * Primary destinations still exist and are now exactly seven; four of them sit
- * in `run` and three in `records`, and one lens (`business-lens`) sits in `run`
- * because that is where the operator looks for it, not because its status
- * changed. `PRIMARY_DESTINATION_IDS` remains the product decision;
- * `NAVIGATION_GROUPS` is only the shape of the rail.
- */
+/** Registry status owns visibility; navigation groups own display order. */
 export type NavGroupId = 'run' | 'records' | 'tools';
 
 export type FeatureRecord = {
@@ -105,7 +61,7 @@ export type FeatureRecord = {
 };
 
 /**
- * The seven primary destinations, as the product decision rather than as the
+ * The approved primary destinations, as the product decision rather than as the
  * order of the rail - `NAVIGATION_GROUP_IDS` owns that.
  *
  * Read as the commercial lifecycle plus the rhythms that operate it:
@@ -121,6 +77,9 @@ export const PRIMARY_DESTINATION_IDS = [
   'money',
   'timeline',
   'review',
+  'products',
+  'reports',
+  'dashboards',
 ] as const;
 
 export type PrimaryDestinationId = (typeof PRIMARY_DESTINATION_IDS)[number];
@@ -260,8 +219,45 @@ export const featureRegistry: FeatureRecord[] = [
     routeBehavior: 'primary',
     navVisible: true,
     analytics: 'active',
-    dataRetention: 'Owns review artifacts, contextual portfolio master data, primary deal classifications and versioned saved report definitions.',
+    dataRetention: 'Owns review artifacts. Learning and analytics derive from existing commercial records.',
     killOrActivationCondition: 'Never - the weekly loop closes here.',
+  },
+
+  {
+    id: 'products',
+    label: 'Products & Brands',
+    status: 'core',
+    ownerSurface: 'products',
+    route: '/app/products',
+    routeBehavior: 'primary',
+    navVisible: true,
+    analytics: 'active',
+    dataRetention: 'Owns portfolio master data and versioned primary deal classifications.',
+    killOrActivationCondition: 'Retire only through an explicit product decision preserving existing records and links.',
+  },
+  {
+    id: 'reports',
+    label: 'Reports',
+    status: 'core',
+    ownerSurface: 'reports',
+    route: '/app/reports',
+    routeBehavior: 'primary',
+    navVisible: true,
+    analytics: 'active',
+    dataRetention: 'Owns versioned report definitions. Executed results are transient.',
+    killOrActivationCondition: 'Retire only through an explicit product decision preserving existing records and links.',
+  },
+  {
+    id: 'dashboards',
+    label: 'Dashboards',
+    status: 'core',
+    ownerSurface: 'dashboards',
+    route: '/app/dashboards',
+    routeBehavior: 'primary',
+    navVisible: true,
+    analytics: 'active',
+    dataRetention: 'Owns versioned dashboard layouts and saved report references. Executed results are transient.',
+    killOrActivationCondition: 'Retire only through an explicit product decision preserving existing records and links.',
   },
 
   // ---------------------------------------------------------------- global
@@ -737,7 +733,7 @@ export function isFeatureVisible(id: string): boolean {
   return byId.get(id)?.navVisible === true;
 }
 
-/** The seven primary destinations, in navigation order. */
+/** The approved primary destinations, in navigation order. */
 export const primaryNavigation: FeatureRecord[] = PRIMARY_DESTINATION_IDS.map((id) => {
   const feature = byId.get(id);
   if (!feature) throw new Error(`Feature registry is missing primary destination "${id}"`);
@@ -765,27 +761,8 @@ export const globalActions: FeatureRecord[] = ['capture', 'search-insights', 'ac
  */
 const NAVIGATION_GROUP_IDS: { id: NavGroupId; label: string; itemIds: string[] }[] = [
   {
-    // One block, seven rows, no headings.
-    //
-    // The rail carried fourteen items in three labelled groups until
-    // 2026-09-07. Every one of them was defensible on its own and the whole was
-    // not: a seller opening Memoire had to choose between Today, Plan,
-    // Dashboard, Review, Accounts, Stakeholders, Opportunities, Orders, Cash
-    // Collection, Cost Analysis, Activity, Search, Vault and Settings before
-    // doing any commercial work at all. Fourteen doors is not fourteen
-    // capabilities; it is one capability and thirteen ways to be lost.
-    //
-    // What is gone from the rail is not gone from the product. Money now owns
-    // Orders, Collections and Margin as three views of one question. Search and
-    // Capture are global actions in the top bar, because they are things you do
-    // from wherever you are standing rather than places you go. Settings is
-    // administration and lives under the avatar. Activity, the Dashboard lens
-    // and the Vault are ways of seeing the seven destinations, and they are
-    // reached from the surface that owns their question.
-    //
-    // The group labels went with them. "Run / Records / Workspace" is the
-    // product's own filing taxonomy, and a rail short enough to read in one
-    // glance does not need to be filed.
+    // Seven commercial destinations plus the three standalone workspaces
+    // explicitly requested on 2026-10-01. Global actions stay in the top bar.
     id: 'run',
     label: '',
     // In lifecycle order after the two rhythm rows: what is on today, what the
@@ -793,7 +770,7 @@ const NAVIGATION_GROUP_IDS: { id: NavGroupId; label: string; itemIds: string[] }
     // Leads sits above Accounts because that is the order the work happens in,
     // and a rail that reads in the order of the work is one fewer thing to
     // learn.
-    itemIds: ['today', 'timeline', 'leads', 'accounts', 'opportunities', 'money', 'review'],
+    itemIds: ['today', 'timeline', 'leads', 'accounts', 'opportunities', 'money', 'review', 'products', 'reports', 'dashboards'],
   },
 ];
 
@@ -819,7 +796,7 @@ export const navigationGroups: NavGroup[] = NAVIGATION_GROUP_IDS.map((group) => 
  * The phone's bottom tab bar.
  *
  * Four destinations plus a "More" button that opens the same rail - which now
- * carries seven. Leads deliberately stayed off the bar when it became the
+ * carries all ten destinations. Leads deliberately stayed off the bar when it became the
  * seventh destination: the bar is a subset by construction, its selection rule
  * is "what you open standing in a customer's lobby", and none of the four it
  * holds is less that than Leads is. Creating a lead away from the desk is

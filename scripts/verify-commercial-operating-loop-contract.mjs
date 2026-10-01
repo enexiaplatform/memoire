@@ -167,8 +167,10 @@ requireIncludes(packageJson, 'npm run verify:commercial-operating-loop', 'npm ru
 // Review is one of the six primary destinations and lives at /app/reviews. The
 // old /app/weekly-brief URL redirects there rather than 404ing.
 const appRoutes = read('src/App.tsx');
-requireIncludes(appRoutes, 'path="reviews" element={<SalesReviewsPage />}',
+requireIncludes(appRoutes, 'path="reviews" element={<ReviewsRouteEntry />}',
   'App route missing the Review destination');
+requireIncludes(appRoutes, 'return <SalesReviewsPage />;',
+  'Review route entry must retain the original review page after handling legacy feature links');
 requireIncludes(appRoutes, 'path="weekly-brief" element={<LegacyRedirect to="/app/reviews" />}',
   'the old /app/weekly-brief URL must still resolve');
 

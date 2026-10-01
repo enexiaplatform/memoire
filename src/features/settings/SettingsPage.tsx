@@ -212,8 +212,9 @@ export function SettingsPage() {
         <div className="rounded-panel bg-white p-5 shadow-panel">
           <p className="text-sm font-semibold text-navy">Products & Brands</p>
           <p className="mt-1 text-sm text-gray-500">Manage business units, brands and products; classify deals without changing their original text.</p>
-            <a href="/app/reviews?view=portfolio" className="mt-2 inline-block text-sm font-bold text-brand-blue">Manage portfolio</a>
-            <a href="/app/reviews?view=reports" className="ml-4 mt-2 inline-block text-sm font-bold text-brand-blue">Build reports</a>
+            <a href="/app/products" className="mt-2 inline-block text-sm font-bold text-brand-blue">Manage portfolio</a>
+            <a href="/app/reports" className="ml-4 mt-2 inline-block text-sm font-bold text-brand-blue">Build reports</a>
+            <a href="/app/dashboards" className="ml-4 mt-2 inline-block text-sm font-bold text-brand-blue">Build dashboards</a>
         </div>
         <div className="rounded-panel bg-white p-5 shadow-panel">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

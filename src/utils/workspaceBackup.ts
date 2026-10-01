@@ -1,6 +1,7 @@
 import {validateContractObligation,type ContractObligation} from '../domain/commercialKernel/contractObligation.ts';
 import { mergePortfolioRecord, parsePortfolioRecord, validatePortfolioCatalog } from '../domain/portfolio/portfolioCatalog.ts';
 import { mergeSavedReport, parseSavedReport } from '../domain/reports/reportRecord.ts';
+import { mergeSavedDashboard, parseSavedDashboard } from '../domain/dashboards/dashboardRecord.ts';
 import {validateWorkspaceReferences,type CommercialWorkspace} from '../domain/commercialKernel/commercialWorkspace.ts';
 import { conditionReferenceIndex, validateConditionReferences } from '../domain/commercialKernel/conditionReferences.ts';
 import type { CommercialCondition } from '../domain/commercialKernel/commercialCondition.ts';
@@ -33,8 +34,8 @@ import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KE
  * backup, what never comes back in - can be tested without a browser.
  */
 
-/** Format 17 adds saved report definitions; runtime access grants remain excluded. */
-export const BACKUP_FORMAT_VERSION = 17;
+/** Format 18 adds dashboard layouts/report references; runtime access grants remain excluded. */
+export const BACKUP_FORMAT_VERSION = 18;
 export const BACKUP_KEY_PREFIX = 'memoire.';
 
 export type BackupEnvelope = {
@@ -262,6 +263,10 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
       for (const record of [...(normalized[key] as RecordData[] || []), ...local]) {
         const id = recordIdentity(contract, record);
         const previous = merged.get(id);
+        if (previous && contract.table === 'dashboard_definitions') {
+          merged.set(id, mergeSavedDashboard(parseSavedDashboard(record), parseSavedDashboard(previous)) as unknown as RecordData);
+          continue;
+        }
         if (previous && contract.table === 'report_definitions') {
           merged.set(id, mergeSavedReport(parseSavedReport(record), parseSavedReport(previous)) as unknown as RecordData);
           continue;

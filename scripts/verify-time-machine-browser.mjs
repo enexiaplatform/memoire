@@ -5,6 +5,8 @@ const browser=await chromium.launch({headless:true});
 try{
   const context=await browser.newContext({timezoneId:'Asia/Ho_Chi_Minh'});
   await context.addInitScript(()=>{
+    if(localStorage.getItem('memoire.historyBrowserFixture'))return;
+    localStorage.setItem('memoire.historyBrowserFixture','true');
     const at='2026-09-20T00:00:00Z';
     const opportunity={id:'browser-smoke',userId:null,accountId:'account',accountName:'Account',
       opportunityName:'Historical browser smoke',stage:'Discovery',status:'Active',
@@ -50,6 +52,7 @@ try{
   await page.reload();
   await page.getByRole('dialog',{name:'Opportunity as understood then'}).getByText(/Full core historical coverage/).waitFor({timeout:15000});
   await page.getByRole('button',{name:'Return to current'}).click();
+  await page.waitForURL(candidate=>!candidate.searchParams.has('asOf'));
   if(await page.getByRole('dialog',{name:'Opportunity details'}).count())
     throw new Error('Deleted historical Opportunity opened an empty current editor');
   if(browserErrors.length)throw new Error(`Browser console errors: ${browserErrors.join(' | ')}`);

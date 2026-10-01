@@ -1,6 +1,6 @@
 # Memoire: Portfolio Management, Dashboards và Reports
 
-Ngày: 2026-10-01. Trạng thái: đề xuất định hướng; người dùng đã yêu cầu triển khai từng bước. Products & Brands và Reports nền tảng đã triển khai cục bộ trong [bản ghi bước 1](portfolio-foundation-implementation-2026-10-01.md) và [bản ghi bước 2](reports-foundation-implementation-2026-10-01.md). Dashboard builder và các phần mở rộng tiếp theo chưa triển khai. Chưa release Production. Phần dưới là định hướng toàn bộ; hai bản ghi triển khai xác định chính xác phần đã làm và giới hạn hiện tại.
+Ngày: 2026-10-01. Trạng thái: người dùng đã yêu cầu triển khai từng bước; ba năng lực đã có bản nền tảng trong [bước 1 Products & Brands](portfolio-foundation-implementation-2026-10-01.md), [bước 2 Reports](reports-foundation-implementation-2026-10-01.md) và [bước 3 Dashboards](dashboards-foundation-implementation-2026-10-01.md). Dashboard mới hoàn tất cục bộ, chưa release Production. Phần dưới là định hướng toàn bộ; ba bản ghi triển khai xác định phần đã làm và giới hạn, không phải cam kết đã hoàn tất toàn bộ các giai đoạn mở rộng.
 
 ## 1. Khuyến nghị
 
@@ -206,17 +206,19 @@ Dashboard template đầu: **Portfolio Overview**, gồm kết quả đơn hàng
 
 ## 8. Điểm vào và alignment với Memoire
 
-Giữ bảy điểm đến chính cho đề xuất đầu. Đây là lựa chọn thiết kế phù hợp với sản phẩm hiện tại, có thể thay đổi bằng một quyết định IA rõ ràng khi kiểm chứng chứng minh cần thiết; không phải lý do để giấu tính năng mới.
+Cập nhật theo yêu cầu trực tiếp của người dùng ngày 2026-10-01: mở ba năng lực thành ba trang và mục điều hướng riêng. Quyết định này thay thế đề xuất ban đầu đặt chúng trong Review. Giữ bảy điểm đến hiện có và bổ sung ba điểm đến, tổng cộng mười mục chính.
 
-- **Review**: các tab Review, Dashboards, Reports. Analytics hiện tại trở thành dashboard mặc định và chuyển dần sang định nghĩa chung; tránh giữ hai bộ analytics tương đương.
-- **Portfolio**: nút có nhãn rõ “Products & Brands” ở Review và quản lý cấu trúc trong Settings; các record cho phép mở thẳng danh mục đã liên kết.
+- **Products & Brands** (`/app/products`): quản lý danh mục và liên kết deal; không nằm trong tab Review.
+- **Reports** (`/app/reports`): tạo, lưu và xuất report tùy chỉnh ở trang riêng.
+- **Dashboards** (`/app/dashboards`): tùy chỉnh biểu diễn từ saved reports ở trang riêng.
+- **Review**: giữ Weekly review và Learning & Analytics hiện tại. Dashboard builder dùng lại metric/report chung, không thay thế chức năng learning đang có.
 - **Accounts**: giữ Portfolio Coverage trong ngữ cảnh cross-sell, lấy danh mục chuẩn thay vì chỉ suy từ brand trên deal.
 - **Opportunities/Leads**: nhập phạm vi danh mục một lần; bộ lọc và drill-through dùng lại liên kết đó.
 - **Money**: mở report collections/margin đã lọc, tái dùng dữ liệu Orders, Collections và Margin.
 - **Today/Plan**: chứa hành động từ bản ghi/rủi ro; không bị thay thành một trang dashboard tự do. Pin một KPI có thể thử sau khi chứng minh giúp công việc hằng ngày.
 - **Search**: tìm danh mục và report/dashboard đã lưu, không tạo entity khách hàng/deal thứ hai.
 
-Danh mục Products & Brands là một màn hình quản lý có công việc riêng, không chỉ là một dropdown. Dashboard builder và report builder có chỗ làm việc đủ rộng, nhưng không cần thêm ba mục primary nav chỉ vì có ba tên tính năng.
+Ba công việc có điểm vào độc lập trên desktop và trong menu More trên điện thoại. Liên kết Review cũ tự chuyển đến trang tương ứng, giữ ID report/dashboard, bộ lọc và hash. Dữ liệu, quyền và các liên kết bản ghi vẫn dùng chung nền tảng Memoire.
 
 ## 9. Dữ liệu, quyền và độ bền
 

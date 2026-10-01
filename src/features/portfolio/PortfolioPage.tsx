@@ -1,3 +1,4 @@
+import { PageHeader } from '../../components/layout/PageFrame';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../auth/authContext';
@@ -72,10 +73,7 @@ export function PortfolioPage() {
   const candidates = (kind: PortfolioNodeData['kind']) => nodes.filter(node => node.kind === kind);
   const options = (kind: PortfolioNodeData['kind']) => candidates(kind).map(node => <option key={node.id} value={node.id}>{node.name}{node.status === 'retired' ? ' (retired)' : ''}</option>);
   return <div className="flex min-w-0 flex-col gap-5" data-testid="portfolio-page">
-    <header className="flex flex-wrap items-start justify-between gap-3">
-      <div><h2 className="text-xl font-bold text-navy">Products & Brands</h2><p className="mt-1 text-sm text-gray-500">Organize the lines you carry and link each deal once. Business units classify your own records.</p></div>
-      <button className={button} disabled={busy || authLoading} onClick={() => void refresh()}>Reload catalog</button>
-    </header>
+    <PageHeader title="Products & Brands" description="Organize the lines you carry and link each deal once. Business units classify your own records." actions={<button className={button} disabled={busy || authLoading} onClick={() => void refresh()}>Reload catalog</button>} />
     {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}
     {!current ? <p className="text-sm text-gray-500">{busy || authLoading ? 'Loading portfolio…' : 'Reload to try again.'}</p> : <>
       <p role="status" className={`rounded-lg p-3 text-sm ${current.catalog.cloud === 'unavailable' ? 'bg-amber-50 text-amber-900' : 'bg-blue-50 text-navy'}`}>{current.catalog.message}</p>
@@ -91,7 +89,7 @@ export function PortfolioPage() {
           event.preventDefault();
           if (await apply(editing?.id || `portfolio-${crypto.randomUUID()}`, form, editing?.version || 0)) { setForm(blank); setEditing(null); }
         }}>
-          <h3 className="font-bold text-navy">{editing ? 'Edit catalog entry' : 'Add catalog entry'}</h3>
+          <h2 className="font-bold text-navy">{editing ? 'Edit catalog entry' : 'Add catalog entry'}</h2>
           <label className="text-sm">Type<select aria-label="Type" className={control} value={form.kind} disabled={Boolean(editing)} onChange={event => setForm({ ...blank, kind: event.target.value as PortfolioNodeData['kind'] })}>{portfolioKinds.map(kind => <option key={kind} value={kind}>{kinds[kind]}</option>)}</select></label>
           <label className="text-sm">Name<input required maxLength={200} className={control} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label>
           <label className="text-sm">Code (optional)<input maxLength={100} className={control} value={form.code} onChange={event => setForm({ ...form, code: event.target.value })} /></label>
@@ -101,7 +99,7 @@ export function PortfolioPage() {
           {form.kind === 'product' && <><label className="text-sm">Default brand<select aria-label="Default brand" className={control} value={form.brandId || ''} onChange={event => setForm({ ...form, brandId: event.target.value || null })}><option value="">No default</option>{options('brand')}</select></label><label className="text-sm">Default product group<select aria-label="Default product group" className={control} value={form.groupId || ''} onChange={event => setForm({ ...form, groupId: event.target.value || null })}><option value="">No default</option>{options('group')}</select></label></>}
           <div className="flex flex-wrap gap-2"><button className={button} disabled={busy}>Save entry</button>{editing && <button type="button" className="text-sm font-semibold text-gray-600" onClick={() => { setEditing(null); setForm(blank); }}>Cancel edit</button>}</div>
         </form>
-        <div className="min-w-0 rounded-xl border border-gray-200 bg-white p-5"><h3 className="font-bold text-navy">Catalog ({nodes.length})</h3>{!nodes.length && <p className="mt-3 text-sm text-gray-500">Start with one brand or business unit. Entries stay visible before their first deal.</p>}
+        <div className="min-w-0 rounded-xl border border-gray-200 bg-white p-5"><h2 className="font-bold text-navy">Catalog ({nodes.length})</h2>{!nodes.length && <p className="mt-3 text-sm text-gray-500">Start with one brand or business unit. Entries stay visible before their first deal.</p>}
           <ul className="mt-3 max-h-[38rem] space-y-3 overflow-y-auto">{nodes.map(node => {
             const linked = facts.filter(fact => [fact.businessUnitId, fact.brandId, fact.groupId, fact.productId].includes(node.id));
             const reading = summarizePortfolio(linked);
@@ -110,7 +108,7 @@ export function PortfolioPage() {
         </div>
       </section>
       <section className="min-w-0 rounded-xl border border-gray-200 bg-white p-5">
-        <h3 className="font-bold text-navy">Classify existing deals</h3><p className="mt-1 text-sm text-gray-500">Original brand/product text is preserved. Suggested matches need your choice. Bundle amounts are not split between products.</p>
+        <h2 className="font-bold text-navy">Classify existing deals</h2><p className="mt-1 text-sm text-gray-500">Original brand/product text is preserved. Suggested matches need your choice. Bundle amounts are not split between products.</p>
         <label className="mt-3 block text-sm">Find a deal<input className={control} value={search} onChange={event => setSearch(event.target.value)} placeholder="Account, deal, original brand or product" /></label>
         <label className="mt-3 block text-sm">Deal<select aria-label="Deal" className={control} value={assignmentId} onChange={event => chooseAssignment(event.target.value)}><option value="">Choose a deal</option>{opportunities.map(row => <option key={row.id} value={row.id}>{row.account} — {row.opportunity}</option>)}</select></label>
         {selected && <form className="mt-4 flex flex-col gap-3" onSubmit={async event => {
