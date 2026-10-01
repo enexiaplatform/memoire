@@ -1,6 +1,7 @@
 import {TeamCoordinationPanel} from './TeamCoordinationPanel';
 import {SharedWorkspacesPanel} from './SharedWorkspacesPanel';
 import {ExternalPromisesPanel} from './ExternalPromisesPanel';
+import {FederatedThreadsPanel} from './FederatedThreadsPanel';
 import { selectQualifiedPipeline, disqualifiedLeadIds, isDisqualifiedLeadOutcome } from '../../utils/leadIdentity';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -224,6 +225,7 @@ export function SalesReviewsPage() {
               <TeamCoordinationPanel key={attentionScope} scope={reviewScope} commitments={teamCommitments} opportunities={teamWorkspace?.opportunities||[]}/>
               <SharedWorkspacesPanel key={'shared-'+attentionScope} scope={reviewScope} commitments={teamCommitments}/>
               <ExternalPromisesPanel key={'external-'+attentionScope} scope={reviewScope} commitments={teamCommitments}/>
+              <FederatedThreadsPanel key={'federated-'+attentionScope} scope={reviewScope}/>
               <ThreadsSection title="Threads to look at" description="Quietest first" limit={4} />
             </div>
           </details>

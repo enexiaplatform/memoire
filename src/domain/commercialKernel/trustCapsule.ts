@@ -10,7 +10,7 @@ function decode(value:unknown,max:number){
  if(typeof value!=='string'||value.length>max||!value)throw new Error('Invalid capsule signature encoding.');
  const decoded=atob(value);if(btoa(decoded)!==value)throw new Error('Invalid capsule signature encoding.');return Uint8Array.from(decoded,c=>c.charCodeAt(0));
 }
-function normalize(value:unknown):TrustCapsule{
+export function normalizeTrustCapsule(value:unknown):TrustCapsule{
  if(!exact(value,['format','version','statement','integrity','signature'])||value.format!=='memoire.trust-capsule'||value.version!==1
   ||!exact(value.integrity,['algorithm','digest'])||value.integrity.algorithm!=='SHA-256'||typeof value.integrity.digest!=='string'||!/^[a-f0-9]{64}$/.test(value.integrity.digest))throw new Error('Unsupported trust capsule schema or integrity algorithm.');
  const statement=normalizeSharedCommitment(value.statement);let signature:TrustCapsule['signature']=null;
@@ -27,7 +27,7 @@ export async function createTrustCapsule(value:unknown,signer?:{privateKey:Crypt
  return capsule;
 }
 export async function verifyTrustCapsule(value:unknown,options:{expectedRecipientReference?:string;expectedIssuerKeyFingerprint?:string}={}){
- const capsule=normalize(value);
+ const capsule=normalizeTrustCapsule(value);
  if(options.expectedRecipientReference!==undefined&&capsule.statement.recipient.reference!==options.expectedRecipientReference)throw new Error('Capsule recipient scope does not match.');
  if(options.expectedIssuerKeyFingerprint!==undefined&&!/^[a-f0-9]{64}$/.test(options.expectedIssuerKeyFingerprint))throw new Error('Provide the agreed issuer key fingerprint.');
  const digest=await sha256Hex(bytes(JSON.stringify(core(capsule.statement))));if(digest!==capsule.integrity.digest)throw new Error('Capsule content or scope failed its integrity check.');
