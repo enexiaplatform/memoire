@@ -24,7 +24,7 @@ export function TeamCoordinationPanel({scope,commitments,opportunities}:{scope:C
     {(['ownerLabel','promise','dueDate','agreementReference'] as const).map(key=><label key={key} className="block text-sm">{{ownerLabel:'Who agreed',promise:'Agreed internal promise',dueDate:'Agreed due date',agreementReference:'Agreement reference'}[key]}
      <input className={field} type={key==='dueDate'?'date':'text'} maxLength={key==='ownerLabel'?200:key==='promise'?2000:1000} value={draft[key]} onChange={e=>setDraft({...draft,[key]:e.target.value})}/></label>)}
     <label className="flex gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/>I confirm this agreed promise and its reference.</label>
-    <button type="button" disabled={!confirmed} onClick={save} className="rounded-lg bg-brand-blue px-3 py-2 text-sm text-white disabled:opacity-40">Record internal agreement</button>
+    <button type="button" disabled={!confirmed} onClick={save} className="rounded-full bg-brand-blue px-3 py-2 text-sm text-white disabled:opacity-40">Record internal agreement</button>
    </div>}
    {!rows.length&&<p className="text-sm text-muted">No open internal promises are recorded in this workspace.</p>}
    <ul className="space-y-2">{rows.map(row=><li key={row.id} className="rounded-lg border border-line p-3 text-sm">

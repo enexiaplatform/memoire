@@ -79,7 +79,7 @@ export function HistoricalOpportunityDrawer({opportunityId,scope,cutoff,sampleDa
         <div className="mt-3 flex flex-wrap items-end gap-2"><label className="text-xs font-semibold text-ink">As understood on
           <input aria-label="Historical cutoff" type="datetime-local" step="1" value={picker} onChange={event=>setPicker(event.target.value)}
             className="mt-1 block rounded-lg border border-line bg-white px-3 py-2 text-sm" /></label>
-          <button type="button" onClick={apply} className="rounded-lg bg-brand-blue px-3 py-2 text-sm font-semibold text-white">View</button>
+          <button type="button" onClick={apply} className="rounded-full bg-brand-blue px-3 py-2 text-sm font-semibold text-white">View</button>
           <button type="button" onClick={onReturnToCurrent} className="rounded-lg border border-line bg-white px-3 py-2 text-sm font-semibold text-brand-blue">Return to current</button>
         </div>
       </div>

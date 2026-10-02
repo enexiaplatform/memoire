@@ -190,7 +190,7 @@ export function OperatingSystemPage() {
           <button
             type="button"
             onClick={openAdd}
-            className="inline-flex items-center gap-2 rounded-lg bg-navy px-4 py-2 text-sm font-bold text-white"
+            className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
           >
             <Plus className="h-4 w-4" />
             Add priority
@@ -275,7 +275,7 @@ function OperatingFocus({ record, onOpen }: { record: OperatingContextRecord; on
           <h2 className="mt-3 text-xl font-bold text-ink">{action}</h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-emerald-900/75">{record.title}{record.summary ? ` / ${record.summary}` : ''}</p>
         </div>
-        <button type="button" onClick={onOpen} className="inline-flex w-fit items-center gap-2 rounded-lg bg-navy px-4 py-2 text-sm font-bold text-white">
+        <button type="button" onClick={onOpen} className="inline-flex w-fit items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
           Work priority
           <ArrowRight className="h-4 w-4" />
         </button>
@@ -421,7 +421,7 @@ function OperatingPanel({
         )}
 
         <div className="mt-5 flex flex-wrap gap-2">
-          <button type="button" onClick={onSave} disabled={saveState === 'saving'} className="inline-flex items-center gap-2 rounded-lg bg-navy px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
+          <button type="button" onClick={onSave} disabled={saveState === 'saving'} className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
             <Save className="h-4 w-4" />
             {saveState === 'saving' ? 'Saving...' : 'Save priority'}
           </button>
@@ -444,7 +444,7 @@ function OperatingEmptyState({ onAdd }: { onAdd: () => void }) {
       <h2 className="mt-4 text-xl font-bold text-ink">No operating priority yet.</h2>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">Add one must-win initiative or import the Operation System workbook, then Memoire can place it into Today.</p>
       <div className="mt-5 flex flex-wrap justify-center gap-2">
-        <button type="button" onClick={onAdd} className="inline-flex items-center gap-2 rounded-lg bg-navy px-4 py-2 text-sm font-bold text-white">
+        <button type="button" onClick={onAdd} className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
           <Plus className="h-4 w-4" />
           Add priority
         </button>

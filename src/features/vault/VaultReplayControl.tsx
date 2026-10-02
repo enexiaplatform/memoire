@@ -66,7 +66,7 @@ export function VaultReplayControl({
           if (atEnd && !playing) onChange(timeline.steps[0]);
           onPlayingChange(!playing);
         }}
-        className="inline-flex items-center gap-1.5 rounded-md bg-navy px-3 py-1.5 text-xs font-bold text-white hover:bg-navy/90"
+        className="inline-flex items-center gap-1.5 rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white hover:bg-navy/90"
         aria-label={playing ? 'Pause the replay' : 'Play how this business memory was built'}
       >
         {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}

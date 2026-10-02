@@ -1281,7 +1281,7 @@ export function WeeklyPlanPage({
                     <button
                       type="button"
                       onClick={() => addPersonalItem(day.date)}
-                      className="shrink-0 rounded-md bg-brand-blue px-2 py-1 text-xs font-bold text-white hover:bg-brand-blue-dark"
+                      className="shrink-0 rounded-full bg-brand-blue px-2 py-1 text-xs font-bold text-white hover:bg-brand-blue-dark"
                     >
                       Add
                     </button>

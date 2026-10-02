@@ -14,7 +14,7 @@ export function ExternalObservationIntake({scope}:{scope:CommercialScope}){
   {(['sourceNamespace','sourceEventId','sourceVersion','observedAt','summary'] as const).map(key=><label className="block text-sm" key={key}>{{sourceNamespace:'Source system or mailbox',sourceEventId:'Source record reference',sourceVersion:'Source version',observedAt:'Source reported time (your local time, optional)',summary:'Source summary'}[key]}
    <input className="mt-1 w-full rounded-lg border border-line p-2" type={key==='observedAt'?'datetime-local':'text'} maxLength={key==='summary'?500:key==='sourceVersion'?100:200} value={draft[key]} onChange={e=>setDraft({...draft,[key]:e.target.value})}/></label>)}
   <label className="block text-sm">Original source text<textarea aria-label="Original source text" rows={5} maxLength={20000} className="mt-1 w-full rounded-lg border border-line p-3 text-sm" value={draft.rawText} onChange={e=>setDraft({...draft,rawText:e.target.value})}/></label>
-  <button type="button" disabled={busy||!draft.rawText.trim()} onClick={()=>{void receive();}} className="rounded-lg bg-brand-blue px-3 py-2 text-sm text-white disabled:opacity-40">Receive observation</button>
+  <button type="button" disabled={busy||!draft.rawText.trim()} onClick={()=>{void receive();}} className="rounded-full bg-brand-blue px-3 py-2 text-sm text-white disabled:opacity-40">Receive observation</button>
   {message&&<p role="status" className="text-sm">{message}</p>}
   <ConnectorExportIntake scope={scope}/>
   <p className="text-xs text-muted">{receipts.length} receipts in this browser · most recent 20 shown</p>

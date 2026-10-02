@@ -656,7 +656,7 @@ function MoneyOutSection({
             </label>
           </div>
           <div className="flex items-end gap-2">
-            <button type="button" onClick={handleAdd} className="rounded-lg bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90 disabled:opacity-50" disabled={!form.label.trim() || form.amount === null}>
+            <button type="button" onClick={handleAdd} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90 disabled:opacity-50" disabled={!form.label.trim() || form.amount === null}>
               Save expense
             </button>
             <button type="button" onClick={() => { setShowForm(false); setForm({ ...emptyExpenseInput }); }} className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50">

@@ -110,7 +110,7 @@ export function CommercialDecisionSection({opportunity,forecast,commitments,user
       <input aria-label="Observation cutoff" type="datetime-local" className={field} value={reviewCutoff} onChange={e=>setReviewCutoff(e.target.value)} />
       <textarea aria-label="Observation note" className={field} maxLength={2000} value={reviewNote} onChange={e=>setReviewNote(e.target.value)} placeholder="Optional factual note" />
       <button type="button" disabled={!reviewDecisionId||reviewing||sampleDataActive} onClick={()=>void recordObservation()}
-        className="mt-2 rounded-lg bg-brand-blue px-3 py-2 text-sm font-semibold text-white disabled:opacity-40">{reviewing?'Reconstructing…':'Finalize observation'}</button>
+        className="mt-2 rounded-full bg-brand-blue px-3 py-2 text-sm font-semibold text-white disabled:opacity-40">{reviewing?'Reconstructing…':'Finalize observation'}</button>
       {sampleDataActive&&<p className="mt-2 text-xs text-muted">Sample Decisions stay isolated and are not added to real learning.</p>}</div>}
     {scopedObservations.length>0&&<details className="mt-3 text-sm"><summary className="cursor-pointer">Observed outcome reviews ({scopedObservations.length})</summary>
       {scopedObservations.map(o=><article key={o.id} className="mt-2 rounded-lg border border-line p-3"><p className="font-semibold">{o.elapsedDays}-day observation · {o.observationCutoff.slice(0,10)}</p>
@@ -161,7 +161,7 @@ export function CommercialDecisionSection({opportunity,forecast,commitments,user
       {rows.length>0&&<label className="block">Supersedes (optional)<select className={field} value={supersedes} onChange={e=>setSupersedes(e.target.value)}><option value="">New decision without supersession</option>
         {rows.map(d=><option key={d.id} value={d.id}>{d.question} · {d.decidedAt.slice(0,10)}</option>)}</select></label>}
       <button type="button" disabled={!question.trim()||!context.trim()||!selected||!rationale.trim()||options.some(o=>!o.label.trim()||!o.interventionIntent.trim()||!o.expectedConsequence.trim())}
-        className="rounded-lg bg-brand-blue px-3 py-2 text-sm font-semibold text-white disabled:opacity-40" onClick={finalise}>Finalize decision</button>
+        className="rounded-full bg-brand-blue px-3 py-2 text-sm font-semibold text-white disabled:opacity-40" onClick={finalise}>Finalize decision</button>
     </div>}
   </section>;
 }

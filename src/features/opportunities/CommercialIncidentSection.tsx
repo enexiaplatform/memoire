@@ -52,7 +52,7 @@ export function CommercialIncidentSection({checks,opportunity,scope,readings}:{c
     <label className="block text-sm">Disposition<select aria-label="Disposition" className={inputClass} value={draft.disposition||'open'} onChange={e=>setDraft({...draft,disposition:e.target.value==='open'?null:e.target.value as 'addressed'|'dismissed'})}>
      <option value="open">Keep open</option><option value="addressed">Close — current rule is met or does not apply</option><option value="dismissed">Dismiss — record why coordination is no longer needed</option></select></label></>}
    <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/>I confirm this incident and response.</label>
-   <div className="flex gap-3"><button type="button" disabled={!confirmed||!draft.coordinator.trim()||!draft.summary.trim()||!draft.materialImpact.trim()} className="rounded-lg bg-brand-blue px-3 py-2 text-sm font-semibold text-white disabled:opacity-40" onClick={save}>Save incident response</button>
+   <div className="flex gap-3"><button type="button" disabled={!confirmed||!draft.coordinator.trim()||!draft.summary.trim()||!draft.materialImpact.trim()} className="rounded-full bg-brand-blue px-3 py-2 text-sm font-semibold text-white disabled:opacity-40" onClick={save}>Save incident response</button>
     <button type="button" className="text-sm text-muted" onClick={()=>setDraft(null)}>Cancel incident edit</button></div>
   </div>}
   {message&&<p role="status" className="mt-2 text-sm text-ink">{message}</p>}

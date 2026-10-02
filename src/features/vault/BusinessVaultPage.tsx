@@ -311,7 +311,7 @@ export function BusinessVaultPage() {
             <button
               type="button"
               onClick={() => setPrefill({ kind: 'note', subjectNodeId: selectedId || undefined })}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-blue px-3.5 py-2 text-sm font-bold text-white transition hover:bg-brand-blue-dark"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-brand-blue px-3.5 py-2 text-sm font-bold text-white transition hover:bg-brand-blue-dark"
             >
               <Plus className="h-4 w-4" /> New knowledge
             </button>

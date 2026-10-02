@@ -313,7 +313,7 @@ export function NewKnowledgeModal({ open, graph, prefill, onClose, onSave }: Pro
                   <button
                     type="button"
                     onClick={addDraftSubject}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-navy px-3 py-1.5 text-xs font-bold text-white transition hover:bg-navy/90"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white transition hover:bg-navy/90"
                   >
                     <CornerDownLeft className="h-3.5 w-3.5" />
                     Add &ldquo;{subjectQuery.trim()}&rdquo;
@@ -401,7 +401,7 @@ export function NewKnowledgeModal({ open, graph, prefill, onClose, onSave }: Pro
           <button
             type="button"
             onClick={submit}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-navy px-4 py-2 text-sm font-bold text-white transition hover:bg-navy/90"
+            className="inline-flex items-center gap-1.5 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white transition hover:bg-navy/90"
           >
             <Check className="h-4 w-4" />
             {isQuestion ? 'Add question' : 'Save knowledge'}

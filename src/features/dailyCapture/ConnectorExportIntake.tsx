@@ -18,7 +18,7 @@ export function ConnectorExportIntake({scope}:{scope:CommercialScope}){
   <label className="block text-sm">Source export<input aria-label="Source export" type="file" accept=".json,application/json" disabled={busy} onChange={event=>{void read(event.target.files?.[0]);}} className="mt-1 block w-full text-sm"/></label>
   {preview&&<><p className="text-sm">{preview.kind} · {preview.namespace} · {preview.observations.length} observations to review</p>
    {preview.observations.map(observation=><details key={JSON.stringify([observation.sourceEventId,observation.sourceVersion])} className="rounded border border-line p-2 text-sm"><summary>{observation.summary}</summary><p className="text-xs text-muted">{observation.sourceEventId} · version {observation.sourceVersion} · source-reported {observation.observedAt||'time not supplied'}</p><pre className="whitespace-pre-wrap break-words text-xs">{observation.rawText}</pre></details>)}
-   <button type="button" disabled={busy} onClick={()=>{void receive();}} className="rounded-lg bg-brand-blue px-3 py-2 text-sm text-white disabled:opacity-40">Receive reviewed observations</button></>}
+   <button type="button" disabled={busy} onClick={()=>{void receive();}} className="rounded-full bg-brand-blue px-3 py-2 text-sm text-white disabled:opacity-40">Receive reviewed observations</button></>}
   {message&&<p role="status" className="text-sm">{message}</p>}
  </section></details>;
 }

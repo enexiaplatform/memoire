@@ -329,7 +329,7 @@ function Composer({
             type="button"
             disabled={!canSave}
             onClick={() => onAdd({ brand, party, kind, label, dueDate })}
-            className="rounded-lg bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90 disabled:opacity-50"
+            className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90 disabled:opacity-50"
           >
             Save
           </button>

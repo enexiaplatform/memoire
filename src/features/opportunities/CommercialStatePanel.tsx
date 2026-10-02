@@ -152,7 +152,7 @@ export function CommercialStatePanel({ opportunity, accounts, userId, sampleData
         <label className="block text-sm">Business-effective date, if known<input type="date" className={inputClass} value={validFrom} onChange={e => setValidFrom(e.target.value)} /></label></details>
       <label className="block text-sm">Existing evidence (optional)<select className={inputClass} value={evidenceId} onChange={e => setEvidenceId(e.target.value)}><option value="">No evidence linked yet</option>{choices.map(e => <option key={e.id} value={e.id}>{e.summary} · {e.observedAt}</option>)}</select></label>
       {evidenceId && <EvidenceAssessment value={assessment} onChange={setAssessment} />}
-      <button type="button" disabled={!statement.trim() || !accountId} className="rounded-lg bg-brand-blue px-3 py-2 text-sm font-semibold text-white disabled:opacity-40" onClick={() => {
+      <button type="button" disabled={!statement.trim() || !accountId} className="rounded-full bg-brand-blue px-3 py-2 text-sm font-semibold text-white disabled:opacity-40" onClick={() => {
         const result = createCommercialCondition(scope, { accountId, opportunityId: opportunity.id, statement, conditionCategory: category, intent, validFrom: validFrom || null,
           ...(evidenceId ? { evidence: { evidenceId, assessment } } : {}) }, references);
         if (accepted(result)) { setAdding(false); setStatement(''); setEvidenceId(''); setValidFrom(''); }
@@ -295,7 +295,7 @@ function RequirementSection({opportunity,accounts,userId,sampleDataActive,condit
       <label className="block text-sm">Question to ask (optional)<input className={inputClass} maxLength={1000} value={question} onChange={e=>setQuestion(e.target.value)} placeholder="Who gives final financial approval?" /></label>
       <label className="block text-sm">Role<select className={inputClass} value={role} onChange={e=>setRole(e.target.value as RequirementRole)}>{requirementRoles.map(r=><option key={r} value={r}>{roleLabel[r]}</option>)}</select></label>
       <label className="block text-sm">Existing condition (optional)<select className={inputClass} value={conditionId} onChange={e=>setConditionId(e.target.value)}><option value="">No answer recorded yet</option>{choices.map(c=><option key={c.id} value={c.id}>{c.statement}</option>)}</select></label>
-      <button type="button" disabled={!accountId || !expectedOutcome.trim()} className="rounded-lg bg-brand-blue px-3 py-2 text-sm font-semibold text-white disabled:opacity-40" onClick={()=>{
+      <button type="button" disabled={!accountId || !expectedOutcome.trim()} className="rounded-full bg-brand-blue px-3 py-2 text-sm font-semibold text-white disabled:opacity-40" onClick={()=>{
         if(accept(createOutcomeRequirement(scope,{accountId,opportunityId:opportunity.id,expectedOutcome,question,role,conditionId},refs()))) {setAdding(false);setExpectedOutcome('');setQuestion('');setConditionId('');}
       }}>Record requirement</button>
     </div>}

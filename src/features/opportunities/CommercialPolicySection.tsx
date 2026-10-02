@@ -59,7 +59,7 @@ export function CommercialPolicySection({opportunity,scope,requirements,readings
       <label className="block text-sm">Reason for this version<textarea className={inputClass} maxLength={2000} value={draft.rationale} onChange={e=>setDraft({...draft,rationale:e.target.value})}/></label>
       {draft.version>0&&<label className="block text-sm">Rule status<select className={inputClass} value={draft.lifecycle} onChange={e=>setDraft({...draft,lifecycle:e.target.value as CommercialPolicy['lifecycle']})}><option value="active">Active</option><option value="retired">Retired</option></select></label>}
       <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/>I confirm this explicit rule and its reason.</label>
-      <div className="flex gap-3"><button type="button" className="rounded-lg bg-brand-blue px-3 py-2 text-sm font-semibold text-white disabled:opacity-40" disabled={!confirmed||!draft.title.trim()||!draft.requirementId||!draft.rationale.trim()} onClick={publish}>Publish policy version</button>
+      <div className="flex gap-3"><button type="button" className="rounded-full bg-brand-blue px-3 py-2 text-sm font-semibold text-white disabled:opacity-40" disabled={!confirmed||!draft.title.trim()||!draft.requirementId||!draft.rationale.trim()} onClick={publish}>Publish policy version</button>
         <button type="button" className="text-sm text-muted" onClick={()=>setDraft(null)}>Cancel</button></div>
     </div>}
     {message&&<p role="status" className="mt-2 text-sm text-ink">{message}</p>}

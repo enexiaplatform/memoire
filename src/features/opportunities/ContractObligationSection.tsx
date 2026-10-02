@@ -40,7 +40,7 @@ export function ContractObligationSection({opportunity,scope,refs,readings,timin
    {(!refs.requirements.length||!refs.commitments.length)&&<p className="text-xs text-muted">Record the required outcome and a Commitment on this Opportunity before linking the clause.</p>}
    {draft.version>0&&<label className="block text-sm">Mapping status<select className={field} value={draft.lifecycle} onChange={e=>setDraft({...draft,lifecycle:e.target.value as Draft['lifecycle']})}><option value="active">Active</option><option value="retired">Retired</option></select></label>}
    <label className="flex gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/>I confirm this contract was accepted and this clause mapping is my operational interpretation.</label>
-   <div className="flex gap-3"><button type="button" disabled={!confirmed} className="rounded-lg bg-brand-blue px-3 py-2 text-sm text-white disabled:opacity-40" onClick={save}>Save contract obligation</button><button type="button" className="text-sm text-muted" onClick={()=>setDraft(null)}>Cancel</button></div>
+   <div className="flex gap-3"><button type="button" disabled={!confirmed} className="rounded-full bg-brand-blue px-3 py-2 text-sm text-white disabled:opacity-40" onClick={save}>Save contract obligation</button><button type="button" className="text-sm text-muted" onClick={()=>setDraft(null)}>Cancel</button></div>
   </div>}
   {message&&<p role="status" className="mt-2 text-sm">{message}</p>}
  </section>;
