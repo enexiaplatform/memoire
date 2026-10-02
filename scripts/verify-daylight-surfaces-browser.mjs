@@ -31,6 +31,17 @@ try {
       assert.equal(reading.ink, 'rgb(11, 20, 28)', `${route}: heading ink`);
       assert.ok(reading.overflow <= 1, `${route} at ${width}px: document overflow ${reading.overflow}px`);
       if (['products', 'reports', 'dashboards'].includes(route)) {
+        if (route === 'reports') {
+          // The white report library is also an aside; only the dark rail gets a white focus ring.
+          const template = page.getByRole('button', { name: 'Portfolio Performance', exact: true });
+          await template.press('Tab');
+          const ring = await page.evaluate(() => ({
+            color: getComputedStyle(document.activeElement).outlineColor,
+            style: getComputedStyle(document.activeElement).outlineStyle,
+          }));
+          assert.equal(ring.color, 'rgb(25, 118, 210)', 'White report library keyboard focus must remain blue');
+          assert.equal(ring.style, 'solid', 'White report library keyboard focus must be visible');
+        }
         const button = page.getByRole('button', { name: route === 'products' ? 'Save entry' : route === 'reports' ? 'Run report' : 'Refresh dashboard', exact: true });
         const pill = await button.evaluate(el => ({ radius: getComputedStyle(el).borderRadius, color: getComputedStyle(el).backgroundColor }));
         assert.ok(parseFloat(pill.radius) >= 999, `${route}: primary pill`);

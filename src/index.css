@@ -256,7 +256,7 @@ code, pre, .mono {
   outline-offset: 2px;
 }
 
-aside :where(a, button):focus-visible {
+#app-navigation :where(a, button):focus-visible {
   outline-color: rgba(255, 255, 255, 0.85);
 }
 
