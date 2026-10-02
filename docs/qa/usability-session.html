@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Memoire — bài thử sử dụng</title>
+<style>body{font:17px/1.6 system-ui;background:#f5f7fb;color:#172337;margin:0}main{max-width:820px;margin:32px auto;padding:24px}section{background:white;padding:24px;border-radius:16px;margin:20px 0}button,a{min-height:44px;font:inherit;padding:10px 16px;border-radius:8px;border:1px solid #ccd3df;margin:4px;cursor:pointer}button{background:#174fa3;color:white}button:disabled{opacity:.45;cursor:default}label{display:block;margin:12px 0}textarea{display:block;width:95%;font:inherit}#clock{font-size:32px;font-variant-numeric:tabular-nums}a{display:inline-block;color:#174fa3}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:8px;border-bottom:1px solid #ddd}.muted{color:#56657a}</style>
+<main><h1>Bài thử Memoire</h1><p>Bạn trực tiếp thao tác trong ứng dụng. Trang này chỉ ghi thời gian và phản hồi bạn nhập, không tự xác nhận kết quả.</p>
+<section><h2>Chuẩn bị</h2><p>Dùng dữ liệu mẫu trên địa chỉ local riêng. Không đăng nhập tài khoản cloud, không nhập dữ liệu khách hàng. Thời gian đọc hướng dẫn và chuẩn bị không tính vào bài thử.</p>
+<button id="prepare">Chuẩn bị dữ liệu mẫu</button><a href="/app/opportunities?opportunityId=alpha" target="memoire-usability-app" rel="noopener">Mở ứng dụng</a><p id="setup" role="status"></p>
+<label>Mã người thử (không dùng email)<input id="participant" value="P01" maxlength="40"></label></section>
+<section><h2 id="task"></h2><p id="goal"></p><p id="clock" role="timer">00:00</p><p id="state" role="status"></p>
+<button id="start">Bắt đầu tính giờ</button><button id="pause" disabled>Tạm dừng</button><button id="help" disabled>Tôi cần trợ giúp</button>
+<label>Điều gì gây khó hiểu hoặc làm bạn mất thời gian?<textarea id="note" rows="3" maxlength="2000"></textarea></label>
+<button id="complete" disabled>Tôi đã đạt kết quả</button><button id="abandon" disabled>Tôi không hoàn thành</button></section>
+<section><h2>Kết quả của bạn</h2><p class="muted">Tính cả thời gian hỏi và nhận trợ giúp; chỉ tạm dừng khi có gián đoạn ngoài bài thử. Kết quả được lưu trong browser này. Xuất file sau khi hoàn tất để phân tích; không gửi tự động.</p><table><thead><tr><th>Bài</th><th>Giây</th><th>Kết quả tự báo</th><th>Lần cần trợ giúp</th></tr></thead><tbody id="results"></tbody></table><button id="download">Xuất kết quả JSON</button><p>Đây là một buổi thử của một người. Kết quả chưa chứng minh khả năng sử dụng của mọi người hoặc hiệu quả trên cloud.</p></section></main>
+<script type="module">
+import { seedLinkageDemo } from '../../scripts/fixtures/product-linkage-fixture.mjs';
+const key='memoire.usability.session.v1';
+const tasks=[
+ ['Phân loại deal','Gán Deal alpha vào Brand A và lưu. Giữ các thông tin thương mại của deal.'],
+ ['Tạo report theo brand','Tìm pipeline đủ điều kiện của Brand A; xem được các bản ghi tạo nên số đó và lưu câu hỏi để dùng lại.'],
+ ['Tạo dashboard','Tạo dashboard từ câu hỏi vừa lưu, hiển thị pipeline hiện tại và lưu dashboard.'],
+ ['Kiểm tra nguồn và mở lại','Từ dashboard, tìm các deal tạo nên pipeline. Tải lại trang và xác nhận vẫn mở đúng dashboard và câu hỏi đã lưu.'],
+ ['Theo dõi tiền còn phải thu','Tìm số tiền còn phải thu của order đã thắng, và mở nơi xử lý khoản thu từ report Collections.']
+];
+const $=id=>document.getElementById(id);
+let rows=[];try{rows=JSON.parse(localStorage.getItem(key)||'[]')}catch{rows=[]}
+let index=Math.min(rows.length,tasks.length),elapsed=0,started=null,help=0;
+const activeSeconds=()=>Math.round((elapsed+(started===null?0:performance.now()-started))/1000);
+function render(){
+ $('task').textContent=index<tasks.length?`${index+1}. ${tasks[index][0]}`:'Đã hoàn tất bài thử';
+ $('goal').textContent=tasks[index]?.[1]||'Hãy xuất kết quả. Nếu gặp khó khăn, giữ nguyên mô tả để phân tích.';
+ $('start').disabled=index===tasks.length||started!==null;
+ for(const id of ['pause','help','complete','abandon'])$(id).disabled=started===null;
+ $('pause').textContent='Tạm dừng';
+ $('results').replaceChildren();for(const row of rows){const tr=document.createElement('tr');for(const value of [row.task,row.activeSeconds,row.outcome,row.helpRequests]){const td=document.createElement('td');td.textContent=value;tr.append(td)}$('results').append(tr)}
+}
+setInterval(()=>{const s=activeSeconds();$('clock').textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`},250);
+$('prepare').onclick=()=>{
+ if(location.hostname!=='127.0.0.1'||location.port!=='5174'){ $('setup').textContent='Chỉ chuẩn bị trên http://127.0.0.1:5174 để giữ dữ liệu tách biệt.';return}
+ if(localStorage.getItem('linkage-fixture')){$('setup').textContent='Dữ liệu mẫu đã sẵn sàng. Không đặt lại công việc đang làm.';return}
+ if(Object.keys(localStorage).some(k=>k.startsWith('memoire.')&&k!==key)||Object.keys(localStorage).some(k=>k.startsWith('sb-'))){$('setup').textContent='Browser này đã có dữ liệu hoặc phiên đăng nhập. Hãy dùng browser profile riêng; không ghi đè.';return}
+ seedLinkageDemo();$('setup').textContent='Đã chuẩn bị dữ liệu mẫu riêng. Mở ứng dụng, rồi bắt đầu từng bài.';
+};
+$('start').onclick=()=>{if(!localStorage.getItem('linkage-fixture')){$('state').textContent='Chuẩn bị dữ liệu trước khi bắt đầu.';return}started=performance.now();$('state').textContent='Đang tính giờ. Bạn thao tác trong tab ứng dụng.';render()};
+$('pause').onclick=()=>{elapsed+=performance.now()-started;started=null;$('state').textContent='Đang tạm dừng. Bấm Bắt đầu tính giờ để tiếp tục.';render()};
+$('help').onclick=()=>{help++;$('state').textContent=`Đã ghi ${help} lần cần trợ giúp. Đồng hồ vẫn chạy.`};
+function finish(outcome){rows.push({participantId:$('participant').value.trim()||'P01',task:index+1,title:tasks[index][0],activeSeconds:activeSeconds(),outcome,helpRequests:help,note:$('note').value,at:new Date().toISOString(),evidence:'human_self_report',fixture:'linkage-v1',origin:location.origin});localStorage.setItem(key,JSON.stringify(rows));index++;elapsed=0;started=null;help=0;$('note').value='';$('state').textContent='Đã ghi kết quả. Đọc bài tiếp theo trước khi bấm bắt đầu.';render()}
+$('complete').onclick=()=>finish('completed_self_reported');$('abandon').onclick=()=>finish('not_completed');
+$('download').onclick=()=>{const blob=new Blob([JSON.stringify({schemaVersion:1,method:'human_task_timer',results:rows},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='memoire-usability-results.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+render();
+</script></html>

@@ -1,0 +1,43 @@
+import { chromium } from 'playwright';
+import assert from 'node:assert/strict';
+const base = process.env.MEMOIRE_BROWSER_BASE || 'http://127.0.0.1:5174';
+const browser = await chromium.launch({ headless: true });
+try {
+  const context = await browser.newContext();
+  let page = await context.newPage();
+  const errors = [], gis = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('request', request => { if (request.url().includes('accounts.google.com/gsi')) gis.push(request.url()); });
+  await context.route('**/auth/v1/authorize?**', route => route.fulfill({ status: 200, contentType: 'text/html', body: '<h1>Mock provider authorization</h1>' }));
+  await page.goto(`${base}/app/reports?report=qa-return`);
+  await page.getByRole('button', { name: 'Continue with Google', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Continue with Google', exact: true }).click();
+  await page.getByRole('heading', { name: 'Mock provider authorization' }).waitFor();
+  const authorization = new URL(page.url());
+  assert.equal(authorization.searchParams.get('provider'), 'google');
+  assert.equal(authorization.searchParams.get('redirect_to'), `${base}/app/today`);
+  assert.equal(gis.length, 0, 'unregistered origin must not initialize GIS');
+  await page.goto(`${base}/docs/qa/usability-session.html`);
+  assert.equal(await page.evaluate(() => localStorage.getItem('memoire.pipelineDefenseAuthRedirect.v1')), '/app/reports?report=qa-return');
+  await context.close();
+  const timerContext = await browser.newContext();
+  page = await timerContext.newPage();
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto(`${base}/docs/qa/usability-session.html`);
+  // This is timer software verification in an isolated browser, not a human trial.
+  await page.getByRole('button', { name: 'Chuẩn bị dữ liệu mẫu', exact: true }).click();
+  await page.getByText('Đã chuẩn bị dữ liệu mẫu riêng. Mở ứng dụng, rồi bắt đầu từng bài.', { exact: true }).waitFor();
+  assert.equal(await page.evaluate(() => localStorage.getItem('memoire.usability.session.v1')), null);
+  await page.getByRole('button', { name: 'Bắt đầu tính giờ', exact: true }).click();
+  await page.getByRole('button', { name: 'Tôi cần trợ giúp', exact: true }).click();
+  await page.getByRole('button', { name: 'Tôi đã đạt kết quả', exact: true }).click();
+  const rows = await page.evaluate(() => JSON.parse(localStorage.getItem('memoire.usability.session.v1')));
+  assert.equal(rows.length, 1); assert.equal(rows[0].evidence, 'human_self_report'); assert.equal(rows[0].helpRequests, 1);
+  assert.equal(rows[0].outcome, 'completed_self_reported');
+  await page.reload(); await page.getByRole('heading', { name: '2. Tạo report theo brand', exact: true }).waitFor();
+  const previous = await page.evaluate(() => localStorage.getItem('memoire.opportunities.v1'));
+  await page.getByRole('button', { name: 'Chuẩn bị dữ liệu mẫu', exact: true }).click();
+  assert.equal(await page.evaluate(() => localStorage.getItem('memoire.opportunities.v1')), previous);
+  assert.deepEqual(errors, []);
+  console.log('Mock OAuth verified: fixed exact callback, requested report retained, no GIS on Preview. Timer fixture, explicit start, self-report/help and reload verified in isolated context; no human measurement claimed.');
+} finally { await browser.close(); }

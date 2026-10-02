@@ -230,21 +230,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setLoading(true);
+      setError(null);
       const authDestination = getCurrentAuthDestination(redirectTo);
       setPendingAuthRedirect(authDestination);
-      const { error: signInError } = await supabaseClient.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}${authDestination}`,
-        },
-      });
-      setLoading(false);
-      if (signInError) {
-        const message = getFriendlyAuthErrorMessage(signInError, 'Could not start Google sign-in.');
-        setError(message);
-        return { error: message };
-      }
-      return { error: null };
+      try {
+        const { error: signInError } = await withTimeout(supabaseClient.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}${DEFAULT_AUTH_ROUTE}`,
+          },
+        }), 'Google sign-in timed out. Please retry.', AUTH_TIMEOUT_MS);
+        if (signInError) {
+          const message = getFriendlyAuthErrorMessage(signInError, 'Could not start Google sign-in.');
+          setError(message);
+          return { error: message };
+        }
+        return { error: null };
+      } catch (failure) {
+        const message = getFriendlyAuthErrorMessage(failure, 'Could not start Google sign-in.');
+        setError(message); return { error: message };
+      } finally { if (mountedRef.current) setLoading(false); }
     },
     requestPasswordReset: async (email: string) => {
       if (!supabaseClient) return { error: pipelineSupabaseConfigMessage };

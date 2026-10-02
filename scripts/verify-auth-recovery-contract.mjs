@@ -45,7 +45,7 @@ const authProvider = read('src/auth/AuthProvider.tsx');
 for (const marker of [
   "emailRedirectTo: `${window.location.origin}/login?verified=1`",
   "redirectTo: `${window.location.origin}/reset-password`",
-  "redirectTo: `${window.location.origin}${authDestination}`",
+  "redirectTo: `${window.location.origin}${DEFAULT_AUTH_ROUTE}`",
   'const DEFAULT_AUTH_ROUTE = \'/app/today\'',
   "requestedDestination?.startsWith('/app/')",
   "currentPath.startsWith('/app/')",
@@ -147,6 +147,8 @@ for (const marker of [
 // file and the gate green. A marker that a type declaration or a comment can
 // satisfy is not a contract, it is a spell-check.
 const googleButton = read('src/components/auth/GoogleAuthButton.tsx');
+requireIncludes(googleButton, 'await signInWithGoogle(redirectTo)', 'Preview Google sign-in must use the authenticated provider redirect flow');
+requireIncludes(googleButton, 'if (useRedirect) return;', 'Preview must not initialize GIS on an unregistered origin');
 for (const marker of [
   // 1. Sign-in goes through the ID token, not a redirect handshake.
   'signInWithIdToken',
