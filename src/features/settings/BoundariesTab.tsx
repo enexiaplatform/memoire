@@ -66,7 +66,7 @@ export function BoundariesTab({ onOpenExport }: { onOpenExport: () => void }) {
             <h3 className="font-display text-base font-bold text-ink">Your controls</h3>
             <MarkedList items={rights} marker="Yes" tone="green" />
             <div className="mt-4 border-t border-line-soft pt-3.5">
-              <Link to="/legal/boundaries" className="inline-flex items-center gap-1.5 text-[13px] font-bold text-brand-blue hover:text-navy">
+              <Link to="/legal/boundaries" className="inline-flex items-center gap-1.5 text-[13px] font-bold text-brand-blue hover:text-ink">
                 View full product boundaries
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>

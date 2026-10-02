@@ -43,12 +43,12 @@ export function PersonalLearningPanel({ learning }: { learning: PersonalLearning
 
   return (
     <section
-      className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+      className="rounded-panel bg-white shadow-panel p-5"
       aria-label="What your book is starting to show"
     >
       <div className="flex flex-wrap items-center gap-2">
         <BookOpen className="h-4 w-4 text-brand-blue" aria-hidden="true" />
-        <h2 className="text-sm font-bold text-navy">What your book is starting to show</h2>
+        <h2 className="text-sm font-bold text-ink">What your book is starting to show</h2>
       </div>
       <p className="mt-1 text-xs leading-5 text-gray-500">
         Comparisons across your own closed deals. These describe what your records contain — not what
@@ -93,9 +93,9 @@ function PatternCard({ pattern }: { pattern: PersonalLearningEvidence }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="rounded-lg border border-gray-200 p-3">
+    <div className="rounded-lg border border-line p-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-sm font-bold text-navy">{pattern.label}</p>
+        <p className="text-sm font-bold text-ink">{pattern.label}</p>
         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-gray-600">
           {evidenceStrengthLabels[pattern.strength]}
         </span>

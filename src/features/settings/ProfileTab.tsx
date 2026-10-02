@@ -30,7 +30,7 @@ export function ProfileTab() {
   if (!isAuthenticated) {
     return (
       <section className="rounded-panel bg-white p-6 shadow-panel">
-        <h2 className="text-lg font-bold text-navy">Your profile</h2>
+        <h2 className="text-lg font-bold text-ink">Your profile</h2>
         <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500">
           You are working in this browser without an account, so there is no profile to name yet. Sign in and your name
           will appear here, in the sidebar, and on anything you share.
@@ -57,7 +57,7 @@ export function ProfileTab() {
 
   return (
     <section className="rounded-panel bg-white p-6 shadow-panel">
-      <h2 className="text-lg font-bold text-navy">Your profile</h2>
+      <h2 className="text-lg font-bold text-ink">Your profile</h2>
       <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
         How Memoire refers to you — in the sidebar, on a brief you share with a manager, and at the top of your daily
         digest.
@@ -94,7 +94,7 @@ export function ProfileTab() {
             // example here was the name of the person who built the product,
             // shown to every operator who opened their own profile.
             placeholder="Your name"
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10 disabled:bg-gray-50"
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-ink outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10 disabled:bg-gray-50"
           />
           <span className="mt-1 block text-[11px] text-gray-400">
             Currently shown as <strong className="text-gray-600">{shownName}</strong>

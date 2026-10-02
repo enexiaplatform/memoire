@@ -54,19 +54,19 @@ export function LoginPage() {
           not covered by anything else - every auth screen showed the landing
           page's headline in the tab strip and to a screen reader. */}
       <NoIndex />
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-canvas flex items-center justify-center px-4">
         <div className="w-full max-w-sm">
           {/* Logo */}
           <div className="text-center mb-8">
             <Link to="/" className="inline-flex items-center gap-2" aria-label="Memoire home">
               <BrandWordmark className="text-2xl" />
             </Link>
-            <h1 className="text-[24px] font-bold font-display text-navy mt-4 tracking-tight">Welcome back</h1>
-            <p className="text-[15px] font-body text-gray-500 mt-1">Sign in to your Memoire account</p>
+            <h1 className="text-[24px] font-bold font-display text-ink mt-4 tracking-tight">Welcome back</h1>
+            <p className="text-[15px] font-body text-muted mt-1">Sign in to your Memoire account</p>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="mx-auto max-w-[440px] space-y-5 rounded-[16px] bg-white p-6 shadow-elevated sm:p-10">
+          <form onSubmit={handleSubmit} className="mx-auto max-w-[440px] space-y-5 rounded-panel bg-white p-6 shadow-panel sm:p-10">
             <GoogleAuthButton label="Continue with Google" redirectTo={destination} />
 
             <div className="flex items-center gap-3">
@@ -115,7 +115,7 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <p className="text-center text-sm text-gray-500 mt-6">
+          <p className="text-center text-sm text-muted mt-6">
             Don't have an account?{' '}
             <Link to="/signup" className="font-semibold text-brand-blue hover:text-brand-blue-dark">
               Sign up

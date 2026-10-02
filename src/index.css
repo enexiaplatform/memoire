@@ -14,14 +14,13 @@
   --navy-dark: #0F1C28;
   --brand-blue: #1976D2;
   --brand-blue-dark: #1565C0;
-  --page: #F8FAFC;
+  --page: #F4F7FA;
   --surface: #FFFFFF;
-  --border: #E5E7EB;
-  --fg1: #0F172A;
+  --border: #E7ECF2;
+  --fg1: #0B141C;
   --fg2: #374151;
-  /* Declared but currently unused. Kept in step with the gray-400/500 token so
-     the first call site to reach for it does not reintroduce a grey that fails
-     on the tinted chip backgrounds - see tailwind.config.js. */
+  /* Shared with gray-400/500 and report table headings. Keep the AA-readable
+     muted color on canvas and tinted backgrounds - see tailwind.config.js. */
   --fg3: #646B75;
   --brand-gradient: linear-gradient(135deg, #43A047, #00ACC1, #1976D2, #3949AB, #7B1FA2, #C2185B, #FF5722);
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);

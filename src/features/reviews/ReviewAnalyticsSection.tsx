@@ -175,7 +175,7 @@ export function ReviewAnalyticsSection() {
     <div className="flex w-full max-w-none flex-col gap-5">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-navy">The whole business, and how you are working it.</h2>
+          <h2 className="text-xl font-bold tracking-tight text-ink">The whole business, and how you are working it.</h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
             History and trend, in four readings: what the book is, how you worked it, what it is teaching you,
             and the detail underneath. For what to do next, use Today.
@@ -197,7 +197,7 @@ export function ReviewAnalyticsSection() {
             type="button"
             onClick={() => loadDashboard(true)}
             disabled={syncing}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700 disabled:opacity-60"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700 disabled:opacity-60"
             title="Reload analytics"
           >
             <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
@@ -210,7 +210,7 @@ export function ReviewAnalyticsSection() {
       )}
 
       {loading ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
+        <div className="rounded-panel bg-white shadow-panel p-6 text-sm font-semibold text-gray-500">
           Loading dashboard...
         </div>
       ) : !hasData || !model ? (
@@ -305,8 +305,8 @@ export function ReviewAnalyticsSection() {
                   }}
                 />
               )}
-              <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-                <h2 className="text-sm font-bold text-navy">Go deeper</h2>
+              <div className="rounded-panel bg-white shadow-panel p-5">
+                <h2 className="text-sm font-bold text-ink">Go deeper</h2>
                 <div className="mt-3 flex flex-col gap-2 text-sm font-semibold">
                   <Link to="/app/revenue" className="inline-flex items-center gap-2 text-brand-blue hover:underline">Money flow, end to end <ArrowRight className="h-4 w-4" /></Link>
                   <Link to="/app/opportunities" className="inline-flex items-center gap-2 text-brand-blue hover:underline">Opportunities <ArrowRight className="h-4 w-4" /></Link>
@@ -326,12 +326,12 @@ export function ReviewAnalyticsSection() {
               a fold at the bottom of the deepest band is disclosure, whereas a
               fold on the first screen of the day is a warehouse. */}
           <details
-            className="rounded-xl border border-gray-200 bg-white shadow-sm"
+            className="rounded-panel bg-white shadow-panel"
             onToggle={(event) => setDeeperOpen(event.currentTarget.open)}
           >
             <summary className="cursor-pointer list-none px-5 py-3">
               <span className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="text-sm font-bold text-navy">Every derivation behind Today</span>
+                <span className="text-sm font-bold text-ink">Every derivation behind Today</span>
                 <span className="text-xs font-semibold text-gray-500">
                   Risk readings, forecast readiness, follow-up history, capture inbox
                 </span>
@@ -340,7 +340,7 @@ export function ReviewAnalyticsSection() {
             {/* Mounted only when opened: this is the heaviest scan in the app
                 and nothing about the four bands above depends on it. */}
             {deeperOpen && (
-              <div className="border-t border-gray-100 p-5">
+              <div className="border-t border-line-soft p-5">
                 <TodayReferenceSections />
               </div>
             )}
@@ -377,10 +377,10 @@ function ExecutionBand({ execution }: { execution: MasterDashboardModel['executi
   const stillAhead = execution.capturedNextActions - execution.dueNextActions;
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" aria-label="How the loop is running">
+    <section className="rounded-panel bg-white shadow-panel p-5" aria-label="How the loop is running">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-sm font-bold text-navy">How the loop is running</h2>
+          <h2 className="text-sm font-bold text-ink">How the loop is running</h2>
           <p className="mt-0.5 text-xs text-gray-500">
             This week, {formatSafeBusinessDate(execution.weekStart)} – {formatSafeBusinessDate(execution.weekEnd)}. Record once; it flows all the way through.
           </p>
@@ -389,10 +389,10 @@ function ExecutionBand({ execution }: { execution: MasterDashboardModel['executi
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-4">
+        <div className="rounded-lg border border-line-soft bg-gray-50/60 p-4">
           <div className="flex items-baseline justify-between">
             <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Plan adherence</p>
-            <Link to="/app/timeline?view=upcoming" className="text-2xl font-bold text-navy hover:text-brand-blue">
+            <Link to="/app/timeline?view=upcoming" className="text-2xl font-bold text-ink hover:text-brand-blue">
               {adherencePct === null ? '—' : `${adherencePct}%`}
             </Link>
           </div>
@@ -404,10 +404,10 @@ function ExecutionBand({ execution }: { execution: MasterDashboardModel['executi
           </div>
         </div>
 
-        <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-4">
+        <div className="rounded-lg border border-line-soft bg-gray-50/60 p-4">
           <div className="flex items-baseline justify-between">
             <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Record-once funnel · last 30 days</p>
-            <span className={`text-2xl font-bold ${funnelRate !== null && funnelRate >= 60 ? 'text-emerald-700' : 'text-navy'}`}>
+            <span className={`text-2xl font-bold ${funnelRate !== null && funnelRate >= 60 ? 'text-emerald-700' : 'text-ink'}`}>
               {funnelRate === null ? '—' : `${funnelRate}%`}
             </span>
           </div>
@@ -445,9 +445,9 @@ function FunnelStep({ to, value, label, tone }: { to: string; value: number; lab
 function KpiCard({ label, value, sub, tone = 'default' }: { label: string; value: string; sub: string; tone?: 'default' | 'warn' | 'positive' }) {
   const subColor = tone === 'warn' ? 'text-amber-700' : tone === 'positive' ? 'text-emerald-700' : 'text-gray-500';
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="rounded-panel bg-white shadow-panel p-4">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
-      <p className="mt-2 text-2xl font-bold tracking-tight text-navy">{value}</p>
+      <p className="mt-2 text-2xl font-bold tracking-tight text-ink">{value}</p>
       <p className={`mt-1 text-xs font-semibold ${subColor}`}>{sub}</p>
     </div>
   );
@@ -455,8 +455,8 @@ function KpiCard({ label, value, sub, tone = 'default' }: { label: string; value
 
 function ChartCard({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h2 className="text-sm font-bold text-navy">{title}</h2>
+    <section className="rounded-panel bg-white shadow-panel p-5">
+      <h2 className="text-sm font-bold text-ink">{title}</h2>
       <p className="mt-0.5 text-xs text-gray-500">{subtitle}</p>
       <div className="mt-3">{children}</div>
     </section>
@@ -611,8 +611,8 @@ function OutcomesCard({ model }: { model: MasterDashboardModel }) {
   const total = won.count + lost.count;
   const winRate = total > 0 ? Math.round((won.count / total) * 100) : null;
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h2 className="text-sm font-bold text-navy">Win / loss record</h2>
+    <section className="rounded-panel bg-white shadow-panel p-5">
+      <h2 className="text-sm font-bold text-ink">Win / loss record</h2>
       <p className="mt-0.5 text-xs text-gray-500">Closed outcomes recorded in Memoire</p>
       <div className="mt-3 grid grid-cols-3 gap-3 text-center">
         <div className="rounded-lg bg-emerald-50 p-3">
@@ -624,7 +624,7 @@ function OutcomesCard({ model }: { model: MasterDashboardModel }) {
           <p className="text-xs font-semibold text-red-700">Lost · {formatCompactCurrencyAmount(lost.totalBase, model.reportingCurrency)}</p>
         </div>
         <div className="rounded-lg bg-gray-50 p-3">
-          <p className="text-xl font-bold text-navy">{winRate === null ? '—' : `${winRate}%`}</p>
+          <p className="text-xl font-bold text-ink">{winRate === null ? '—' : `${winRate}%`}</p>
           <p className="text-xs font-semibold text-gray-500">Win rate</p>
         </div>
       </div>
@@ -645,7 +645,7 @@ function DigestCard({
     <section className="rounded-xl border border-brand-blue/20 bg-blue-50/40 p-5 shadow-sm">
       <div className="flex items-center gap-2">
         <Mail className="h-4 w-4 text-brand-blue" />
-        <h2 className="text-sm font-bold text-navy">Daily digest</h2>
+        <h2 className="text-sm font-bold text-ink">Daily digest</h2>
       </div>
       <p className="mt-1 text-xs text-gray-500">{digest.headline}</p>
       <p className="mt-2 text-xs leading-5 text-gray-400">
@@ -678,14 +678,14 @@ function DigestCard({
 
 function DashboardEmptyState() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-10 text-center shadow-sm">
-      <h2 className="text-lg font-bold text-navy">No data to chart yet</h2>
+    <div className="rounded-panel bg-white shadow-panel p-10 text-center">
+      <h2 className="text-lg font-bold text-ink">No data to chart yet</h2>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">
         Capture activity and add opportunities, and the dashboard builds itself. Start from Today or Capture.
       </p>
       <div className="mt-4 flex justify-center gap-2">
         <Link to="/app/today" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90">Go to Today</Link>
-        <Link to="/app/capture" className="rounded-full border border-gray-200 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">Capture activity</Link>
+        <Link to="/app/capture" className="rounded-full border border-line px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">Capture activity</Link>
       </div>
     </div>
   );

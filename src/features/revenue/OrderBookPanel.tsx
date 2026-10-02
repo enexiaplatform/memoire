@@ -119,12 +119,12 @@ export function OrderBookPanel({
     // by 590px. The table's own overflow-x container clips the paint but not
     // the layout, which is why the two other master tables in this app carry
     // the same pair.
-    <section className="min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+    <section className="min-w-0 overflow-hidden rounded-panel bg-white shadow-panel">
       <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5">
         <div>
           <div className="flex items-center gap-2">
             <PackageCheck className="h-4 w-4 text-brand-blue" />
-            <h2 className="text-lg font-bold text-navy">Order book</h2>
+            <h2 className="text-lg font-bold text-ink">Order book</h2>
           </div>
           <p className="mt-1 max-w-2xl text-sm text-gray-500">
             Deals the customer has committed to ({COMMIT_PROBABILITY_THRESHOLD}%+, procurement, or won), each one
@@ -159,7 +159,7 @@ export function OrderBookPanel({
       </div>
 
       {book.orders.length === 0 ? (
-        <p className="m-5 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-5 text-sm text-gray-500">
+        <p className="m-5 rounded-lg border border-dashed border-line bg-gray-50 px-4 py-5 text-sm text-gray-500">
           No committed orders yet. When a deal reaches {COMMIT_PROBABILITY_THRESHOLD}% probability, enters procurement,
           or is won, it lands here with its road to cash laid out.
         </p>
@@ -168,7 +168,7 @@ export function OrderBookPanel({
           {/* The pipeline of the order book itself. Each counter is a filter,
               because seeing that three orders are waiting to be invoiced and
               not being able to list them is worse than not knowing. */}
-          <div className="mt-4 grid grid-cols-2 gap-px border-y border-gray-200 bg-gray-200 sm:grid-cols-4 lg:grid-cols-7">
+          <div className="mt-4 grid grid-cols-2 gap-px border-y border-line bg-gray-200 sm:grid-cols-4 lg:grid-cols-7">
             <StageCell
               label="All orders"
               count={book.totalCount}
@@ -227,13 +227,13 @@ export function OrderBookPanel({
             <table className="w-full min-w-[980px] border-collapse text-left text-sm">
               <thead className="bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
                 <tr>
-                  <th className="border-y border-gray-200 px-4 py-2">Order</th>
-                  <th className="border-y border-gray-200 px-3 py-2">Ordered</th>
-                  <th className="border-y border-gray-200 px-3 py-2 text-right">Value</th>
-                  <th className="border-y border-gray-200 px-3 py-2">Status</th>
-                  <th className="border-y border-gray-200 px-3 py-2">Next step</th>
-                  <th className="border-y border-gray-200 px-3 py-2">Waiting</th>
-                  <th className="border-y border-gray-200 px-3 py-2 text-right">Steps</th>
+                  <th className="border-y border-line px-4 py-2">Order</th>
+                  <th className="border-y border-line px-3 py-2">Ordered</th>
+                  <th className="border-y border-line px-3 py-2 text-right">Value</th>
+                  <th className="border-y border-line px-3 py-2">Status</th>
+                  <th className="border-y border-line px-3 py-2">Next step</th>
+                  <th className="border-y border-line px-3 py-2">Waiting</th>
+                  <th className="border-y border-line px-3 py-2 text-right">Steps</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -255,7 +255,7 @@ export function OrderBookPanel({
                         }`}
                       >
                         <td className="px-4 py-2">
-                          <p className="max-w-[clamp(280px,21vw,540px)] truncate font-bold text-navy" title={`${order.accountName} / ${order.orderName}`}>
+                          <p className="max-w-[clamp(280px,21vw,540px)] truncate font-bold text-ink" title={`${order.accountName} / ${order.orderName}`}>
                             {order.accountName}
                           </p>
                           <p className="max-w-[clamp(280px,21vw,540px)] line-clamp-2 text-xs text-gray-500">
@@ -335,7 +335,7 @@ export function OrderBookPanel({
                                         ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
                                         : milestone.overdue
                                           ? 'border-red-200 bg-white text-red-700 hover:bg-red-50'
-                                          : 'border-gray-200 bg-white text-gray-500 hover:border-brand-blue/50 hover:text-brand-blue'
+                                          : 'border-line bg-white text-gray-500 hover:border-brand-blue/50 hover:text-brand-blue'
                                     } ${milestone.evidence === 'quote' ? 'cursor-default' : ''}`}
                                   >
                                     {milestone.done && <Check className="h-3 w-3" />}
@@ -390,7 +390,7 @@ function StageCell({
       onClick={onClick}
       aria-pressed={active}
       className={`px-3 py-2 text-left transition ${
-        active ? 'bg-navy text-white' : count === 0 ? 'bg-gray-50 text-gray-400 hover:bg-white' : 'bg-white text-navy hover:bg-blue-50/60'
+        active ? 'bg-navy text-white' : count === 0 ? 'bg-gray-50 text-gray-400 hover:bg-white' : 'bg-white text-ink hover:bg-blue-50/60'
       }`}
     >
       <p className={`truncate text-[10px] font-bold uppercase tracking-wide ${active ? 'text-white/70' : 'text-gray-400'}`} title={label}>

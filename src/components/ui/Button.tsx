@@ -20,10 +20,10 @@ export function Button({
     'inline-flex items-center justify-center font-display font-semibold rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]';
 
   const variants = {
-    primary: 'bg-brand-blue text-white hover:bg-brand-blue-dark focus:ring-brand-blue-dark',
+    primary: 'bg-brand-blue text-white shadow-btn-blue hover:bg-brand-blue-dark focus:ring-brand-blue-dark',
     secondary:
-      'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-brand-blue',
-    ghost: 'bg-transparent border-1.5 border-gray-200 text-gray-600 hover:bg-gray-100 focus:ring-brand-blue',
+      'bg-white text-gray-700 border border-line hover:border-line-strong hover:bg-canvas focus:ring-brand-blue',
+    ghost: 'bg-transparent border border-line text-gray-600 hover:bg-chip focus:ring-brand-blue',
     danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
   };
 

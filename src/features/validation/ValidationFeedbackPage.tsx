@@ -84,7 +84,7 @@ export function ValidationFeedbackPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">User validation</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Demo Feedback Log</h1>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight text-ink">Demo Feedback Log</h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-blue-950">
               Local-only validation notes from real B2B sales demos. Nothing is sent externally unless you copy or export it.
             </p>
@@ -126,18 +126,18 @@ export function ValidationFeedbackPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-        <article className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <article className="rounded-panel bg-white shadow-panel p-5">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Recommended Next Bet</p>
-          <h2 className="mt-2 text-xl font-bold text-navy">{summary.recommendedNextBet}</h2>
+          <h2 className="mt-2 text-xl font-bold text-ink">{summary.recommendedNextBet}</h2>
           <p className="mt-3 text-sm leading-6 text-gray-600">
             This is rule-based from copied demo feedback, not analytics. Use it as a directional signal after 5-10 real user conversations.
           </p>
         </article>
 
-        <article className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <article className="rounded-panel bg-white shadow-panel p-5">
           <div className="flex items-center gap-2">
             <MessageSquareText className="h-4 w-4 text-brand-blue" />
-            <h2 className="text-lg font-bold text-navy">User Interview Script</h2>
+            <h2 className="text-lg font-bold text-ink">User Interview Script</h2>
           </div>
           <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-gray-700">
             {generateInterviewScriptText().split('\n').slice(2).map((line) => (
@@ -153,11 +153,11 @@ export function ValidationFeedbackPage() {
         <DistributionList title="Usage frequency" items={summary.byUsageFrequency} />
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-panel bg-white shadow-panel p-5">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Early access</p>
-            <h2 className="mt-2 text-xl font-bold text-navy">Local access requests</h2>
+            <h2 className="mt-2 text-xl font-bold text-ink">Local access requests</h2>
             <p className="mt-1 text-sm leading-6 text-gray-500">
               Requests are saved only in this browser. Copy or export them before clearing browser data.
             </p>
@@ -170,7 +170,7 @@ export function ValidationFeedbackPage() {
               type="button"
               onClick={() => copyText('all early access requests', generateAllEarlyAccessRequestsSummary(earlyAccessRequests))}
               disabled={earlyAccessRequests.length === 0}
-              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Copy className="h-4 w-4" />
               Copy all
@@ -179,7 +179,7 @@ export function ValidationFeedbackPage() {
               type="button"
               onClick={() => exportRequests('csv')}
               disabled={earlyAccessRequests.length === 0}
-              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Download className="h-4 w-4" />
               Export CSV
@@ -188,7 +188,7 @@ export function ValidationFeedbackPage() {
               type="button"
               onClick={() => exportRequests('json')}
               disabled={earlyAccessRequests.length === 0}
-              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Download className="h-4 w-4" />
               Export JSON
@@ -205,8 +205,8 @@ export function ValidationFeedbackPage() {
           </div>
         </div>
         {earlyAccessRequests.length === 0 ? (
-          <div className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-6 text-center">
-            <p className="text-sm font-bold text-navy">No early access requests saved locally yet.</p>
+          <div className="mt-5 rounded-lg border border-line-soft bg-gray-50 p-6 text-center">
+            <p className="text-sm font-bold text-ink">No early access requests saved locally yet.</p>
             <p className="mt-2 text-sm leading-6 text-gray-500">
               Open the request form after a demo. Requests stay local until you copy, export, or email them.
             </p>
@@ -236,18 +236,18 @@ export function ValidationFeedbackPage() {
 
       <CohortStopGoPanel input={funnelInput} stopGo={stopGo} onChange={updateFunnel} />
 
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-panel bg-white shadow-panel p-5">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Feedback entries</p>
-            <h2 className="mt-2 text-xl font-bold text-navy">Raw local feedback</h2>
+            <h2 className="mt-2 text-xl font-bold text-ink">Raw local feedback</h2>
           </div>
           <p className="text-sm font-semibold text-gray-500">{feedback.length} entr{feedback.length === 1 ? 'y' : 'ies'}</p>
         </div>
 
         {feedback.length === 0 ? (
-          <div className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-6 text-center">
-            <p className="text-sm font-bold text-navy">No validation feedback captured yet.</p>
+          <div className="mt-5 rounded-lg border border-line-soft bg-gray-50 p-6 text-center">
+            <p className="text-sm font-bold text-ink">No validation feedback captured yet.</p>
             <p className="mt-2 text-sm text-gray-500">The in-app form lived on the Pipeline Defense brief and went with it. Record what a user said here by hand, or read it from the interview script above.</p>
           </div>
         ) : (
@@ -270,7 +270,7 @@ function SummaryCard({ label, value, tone = 'blue' }: { label: string; value: nu
   }[tone];
 
   return (
-    <article className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+    <article className="rounded-panel bg-white shadow-panel p-4">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
       <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-2xl font-black ${toneClass}`}>{value}</p>
     </article>
@@ -279,8 +279,8 @@ function SummaryCard({ label, value, tone = 'blue' }: { label: string; value: nu
 
 function SignalList({ title, items, empty }: { title: string; items: { label: string; count: number }[]; empty: string }) {
   return (
-    <article className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-bold text-navy">{title}</h2>
+    <article className="rounded-panel bg-white shadow-panel p-5">
+      <h2 className="text-lg font-bold text-ink">{title}</h2>
       {items.length === 0 ? (
         <p className="mt-3 text-sm text-gray-500">{empty}</p>
       ) : (
@@ -299,8 +299,8 @@ function SignalList({ title, items, empty }: { title: string; items: { label: st
 function DistributionList({ title, items }: { title: string; items: Record<string, number> }) {
   const entries = Object.entries(items);
   return (
-    <article className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-bold text-navy">{title}</h2>
+    <article className="rounded-panel bg-white shadow-panel p-5">
+      <h2 className="text-lg font-bold text-ink">{title}</h2>
       {entries.length === 0 ? (
         <p className="mt-3 text-sm text-gray-500">No signal yet.</p>
       ) : (
@@ -319,14 +319,14 @@ function DistributionList({ title, items }: { title: string; items: Record<strin
 
 function FeedbackCard({ entry }: { entry: DemoFeedbackRecord }) {
   return (
-    <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+    <article className="rounded-lg border border-line-soft bg-gray-50 p-4">
       <div className="flex flex-wrap gap-2">
         <Badge label={entry.context} />
         <Badge label={entry.understoodIn30Seconds} />
         <Badge label={entry.likelyUsageFrequency} />
         <Badge label={`Pay: ${entry.willingnessToPay}`} />
       </div>
-      <h3 className="mt-3 text-base font-bold text-navy">{entry.userPersona || 'Unspecified user'}</h3>
+      <h3 className="mt-3 text-base font-bold text-ink">{entry.userPersona || 'Unspecified user'}</h3>
       {entry.mostValuableWorkflow && <p className="mt-2 text-sm text-gray-700"><span className="font-bold">Most valuable:</span> {entry.mostValuableWorkflow}</p>}
       {entry.topAdoptionBlocker && <p className="mt-2 text-sm text-gray-700"><span className="font-bold">Blocker:</span> {entry.topAdoptionBlocker}</p>}
       {entry.featureRequest && <p className="mt-2 text-sm text-gray-700"><span className="font-bold">Build next:</span> {entry.featureRequest}</p>}
@@ -375,11 +375,11 @@ const COHORT_FUNNEL_FIELDS: { id: keyof CohortFunnelInput; label: string }[] = [
 function CohortStopGoPanel({ input, stopGo, onChange }: { input: CohortFunnelInput; stopGo: CohortStopGo; onChange: (patch: Partial<CohortFunnelInput>) => void }) {
   const verdict = COHORT_VERDICT_STYLE[stopGo.verdict];
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Cohort stop / go</p>
-          <h2 className="mt-2 text-xl font-bold text-navy">Friday review verdict</h2>
+          <h2 className="mt-2 text-xl font-bold text-ink">Friday review verdict</h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
             Enter this week&apos;s counts from your tracker. The verdict is computed from the measured stop/go criteria - the qualitative signals still need your read.
           </p>
@@ -399,7 +399,7 @@ function CohortStopGoPanel({ input, stopGo, onChange }: { input: CohortFunnelInp
               min={0}
               value={String(input[field.id] as number)}
               onChange={(event) => onChange({ [field.id]: Number(event.target.value) } as Partial<CohortFunnelInput>)}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-bold text-navy focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-blue-100"
+              className="rounded-lg border border-line px-3 py-2 text-sm font-bold text-ink focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-blue-100"
             />
           </label>
         ))}
@@ -437,7 +437,7 @@ function CohortStopGoPanel({ input, stopGo, onChange }: { input: CohortFunnelInp
 
 function EarlyAccessRequestCard({ request, qualification, onCopy }: { request: EarlyAccessRequestRecord; qualification: CohortQualification; onCopy: () => void }) {
   return (
-    <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+    <article className="rounded-lg border border-line-soft bg-gray-50 p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-wrap gap-2">
           <Badge label={request.role} />
@@ -449,7 +449,7 @@ function EarlyAccessRequestCard({ request, qualification, onCopy }: { request: E
           <p className="text-[10px] font-bold uppercase tracking-wide">{COHORT_BUCKET_LABELS[qualification.bucket]}</p>
         </div>
       </div>
-      <h3 className="mt-3 text-base font-bold text-navy">{request.name || 'Unnamed request'}</h3>
+      <h3 className="mt-3 text-base font-bold text-ink">{request.name || 'Unnamed request'}</h3>
       <p className="mt-1 text-sm text-gray-600">{request.workEmail || 'No email provided'}</p>
       <p className="mt-2 text-sm text-gray-700"><span className="font-bold">Pain:</span> {request.biggestPain}</p>
       <p className="mt-1 text-sm text-gray-700"><span className="font-bold">Interested:</span> {request.interestedMost}</p>

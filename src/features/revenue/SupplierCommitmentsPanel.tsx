@@ -79,12 +79,12 @@ export function SupplierCommitmentsPanel({ opportunities }: { opportunities: Crm
   };
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <Factory className="h-4 w-4 text-brand-blue" />
-            <h2 className="text-lg font-bold text-navy">Your principals</h2>
+            <h2 className="text-lg font-bold text-ink">Your principals</h2>
           </div>
           <p className="mt-1 max-w-2xl text-sm text-gray-500">
             The supply side of the same order. What you owe the brand - forecasts, POs, payment - and what the brand owes
@@ -109,16 +109,16 @@ export function SupplierCommitmentsPanel({ opportunities }: { opportunities: Crm
       {composerOpen && <Composer knownBrands={knownBrands} onAdd={add} onCancel={() => setComposerOpen(false)} />}
 
       {model.groups.length === 0 ? (
-        <p className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-5 text-sm text-gray-500">
+        <p className="mt-4 rounded-lg border border-dashed border-line bg-gray-50 px-4 py-5 text-sm text-gray-500">
           Nothing recorded with a principal yet. Record the forecast you owe them, or the price you are waiting on, and it
           joins your week like any other commitment.
         </p>
       ) : (
         <div className="mt-4 space-y-3">
           {model.groups.map((group) => (
-            <div key={group.brand} className={`rounded-lg border p-3.5 ${group.overdueCount > 0 ? 'border-red-200 bg-red-50/30' : 'border-gray-100 bg-gray-50/50'}`}>
+            <div key={group.brand} className={`rounded-lg border p-3.5 ${group.overdueCount > 0 ? 'border-red-200 bg-red-50/30' : 'border-line-soft bg-gray-50/50'}`}>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="font-bold text-navy">{group.brand}</p>
+                <p className="font-bold text-ink">{group.brand}</p>
                 <p className="text-xs font-semibold text-gray-500">
                   {group.openCount} open
                   {group.overdueCount > 0 ? ` · ${group.overdueCount} overdue` : ''}
@@ -187,7 +187,7 @@ function Column({
             <li
               key={view.id}
               className={`group flex items-start gap-2 rounded-md border bg-white px-2.5 py-1.5 text-xs ${
-                view.overdue ? 'border-red-200' : 'border-gray-100'
+                view.overdue ? 'border-red-200' : 'border-line-soft'
               }`}
             >
               <div className="min-w-0 flex-1">
@@ -261,7 +261,7 @@ function Composer({
   const canSave = brand.trim().length > 0 && label.trim().length > 0;
 
   return (
-    <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+    <div className="mt-4 rounded-lg border border-line bg-gray-50 p-4">
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-gray-500">
           Principal
@@ -270,7 +270,7 @@ function Composer({
             onChange={(event) => setBrand(event.target.value)}
             list="supplier-brand-options"
             placeholder="The line this is for"
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-ink outline-none focus:border-brand-blue"
           />
           <datalist id="supplier-brand-options">
             {knownBrands.map((option) => <option key={option} value={option} />)}
@@ -282,7 +282,7 @@ function Composer({
           <select
             value={kind}
             onChange={(event) => selectKind(event.target.value as SupplierCommitmentKind)}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-ink outline-none focus:border-brand-blue"
           >
             {supplierCommitmentKinds.map((option) => <option key={option} value={option}>{option}</option>)}
           </select>
@@ -293,7 +293,7 @@ function Composer({
           <select
             value={party}
             onChange={(event) => setParty(event.target.value as SupplierCommitmentParty)}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-ink outline-none focus:border-brand-blue"
           >
             <option value="self">I owe them</option>
             <option value="supplier">They owe me</option>
@@ -306,7 +306,7 @@ function Composer({
             type="date"
             value={dueDate}
             onChange={(event) => setDueDate(event.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-ink outline-none focus:border-brand-blue"
           />
         </label>
 
@@ -320,7 +320,7 @@ function Composer({
               if (event.key === 'Escape') onCancel();
             }}
             placeholder="What was promised, in your own words"
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-ink outline-none focus:border-brand-blue"
           />
         </label>
 
@@ -337,7 +337,7 @@ function Composer({
             type="button"
             onClick={onCancel}
             aria-label="Cancel"
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-600 hover:bg-white"
+            className="rounded-lg border border-line px-3 py-2 text-sm font-semibold text-gray-600 hover:bg-white"
           >
             <X className="h-4 w-4" />
           </button>

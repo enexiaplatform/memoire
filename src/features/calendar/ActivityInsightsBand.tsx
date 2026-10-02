@@ -32,17 +32,17 @@ export function ActivityInsightsBand({ insights }: { insights: ActivityInsights 
   const ratePct = followThrough.rate === null ? null : Math.round(followThrough.rate * 100);
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-brand-blue" />
-        <h2 className="text-lg font-bold text-navy">What this period tells you</h2>
+        <h2 className="text-lg font-bold text-ink">What this period tells you</h2>
       </div>
       <p className="mt-1 text-sm leading-6 text-gray-600">{insights.headline}</p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <InsightTile label="Cadence">
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-navy">{momentum.current}</span>
+            <span className="text-2xl font-bold text-ink">{momentum.current}</span>
             <span className={`inline-flex items-center gap-0.5 text-xs font-bold ${trendTone}`}>
               <TrendIcon className="h-3.5 w-3.5" />
               {momentum.deltaPct === null ? 'new' : momentum.direction === 'flat' ? 'level' : `${Math.abs(momentum.deltaPct)}%`}
@@ -132,7 +132,7 @@ export function ActivityInsightsBand({ insights }: { insights: ActivityInsights 
       </div>
 
       {/* The counts worth keeping at a glance - the rest fold away below. */}
-      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 border-t border-gray-100 pt-3 text-[11px] text-gray-500">
+      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 border-t border-line-soft pt-3 text-[11px] text-gray-500">
         <Coverage label="accounts touched" value={insights.coverage.accountsTouched} />
         <Coverage label="opportunities" value={insights.coverage.opportunitiesTouched} />
         <Coverage label="follow-ups" value={insights.coverage.followUps} />
@@ -145,7 +145,7 @@ export function ActivityInsightsBand({ insights }: { insights: ActivityInsights 
 function Coverage({ label, value, tone = 'default' }: { label: string; value: number; tone?: 'default' | 'amber' }) {
   return (
     <span className="inline-flex items-baseline gap-1">
-      <span className={`font-bold ${tone === 'amber' ? 'text-amber-700' : 'text-navy'}`}>{value}</span>
+      <span className={`font-bold ${tone === 'amber' ? 'text-amber-700' : 'text-ink'}`}>{value}</span>
       {label}
     </span>
   );
@@ -153,7 +153,7 @@ function Coverage({ label, value, tone = 'default' }: { label: string; value: nu
 
 function InsightTile({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-3">
+    <div className="rounded-lg border border-line-soft bg-gray-50/60 p-3">
       <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{label}</p>
       <div className="mt-1.5">{children}</div>
     </div>

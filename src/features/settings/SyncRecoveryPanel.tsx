@@ -68,7 +68,7 @@ export function SyncRecoveryPanel() {
     <section className="rounded-panel bg-white p-5 shadow-panel" aria-label="Sync and recovery">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-navy">Sync &amp; recovery</h2>
+          <h2 className="text-sm font-semibold text-ink">Sync &amp; recovery</h2>
           <p className="mt-1 text-sm text-gray-500">
             Where this workspace&apos;s records actually live right now.
           </p>
@@ -114,7 +114,7 @@ export function SyncRecoveryPanel() {
           type="button"
           onClick={retry}
           disabled={retrying || !isAuthenticated}
-          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${retrying ? 'animate-spin' : ''}`} />
           Retry sync

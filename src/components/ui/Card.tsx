@@ -1,4 +1,5 @@
 import React from 'react';
+import { panelClass } from './daylightStyles';
 
 interface CardProps {
   children: React.ReactNode;
@@ -16,7 +17,7 @@ export function Card({ children, className = '', padding = 'md' }: CardProps) {
 
   return (
     <div
-      className={`bg-white rounded-xl border border-gray-200 shadow-sm ${paddings[padding]} ${className}`}
+      className={`${panelClass} ${paddings[padding]} ${className}`}
     >
       {children}
     </div>

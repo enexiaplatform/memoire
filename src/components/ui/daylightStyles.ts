@@ -8,6 +8,11 @@ import type { CSSProperties } from 'react';
 
 export type DaylightTone = 'red' | 'amber' | 'green' | 'neutral' | 'blue' | 'violet' | 'cyan';
 
+/** Shared by native builders and the Daylight form components. */
+export const controlClass = 'min-w-0 w-full rounded-xl border border-line bg-white px-3 py-2 text-sm font-body font-normal text-ink placeholder:text-muted outline-none transition focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10 disabled:cursor-not-allowed disabled:bg-canvas disabled:text-muted';
+export const fieldLabelClass = 'block text-[12.5px] font-bold text-ink';
+export const panelClass = 'rounded-panel bg-white shadow-panel';
+
 /** Entry stagger. Pair with `animate-rise` (or `animate-grow-*`) on the element. */
 export function delay(ms: number): CSSProperties {
   return { animationDelay: `${ms}ms` };

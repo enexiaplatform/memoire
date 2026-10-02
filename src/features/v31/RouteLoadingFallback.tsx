@@ -10,9 +10,9 @@ export function RouteLoadingFallback({ onRetry }: { onRetry: () => void }) {
   };
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+    <div className="rounded-panel bg-white shadow-panel p-6">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Loading fallback</p>
-      <h2 className="mt-2 text-xl font-bold text-navy">Memoire is taking longer than expected.</h2>
+      <h2 className="mt-2 text-xl font-bold text-ink">Memoire is taking longer than expected.</h2>
       <p className="mt-3 max-w-xl text-sm leading-6 text-gray-600">
         We could not finish loading your sales memory. You can retry, sign out, or open the demo workspace.
       </p>
@@ -26,7 +26,7 @@ export function RouteLoadingFallback({ onRetry }: { onRetry: () => void }) {
             await signOut();
             window.location.replace('/');
           }}
-          className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700"
+          className="rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700"
         >
           Sign out
         </button>

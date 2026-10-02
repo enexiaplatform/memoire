@@ -83,7 +83,7 @@ export function FounderImportReviewPage() {
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Founder Import</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Core Data Import Review</h1>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-ink">Core Data Import Review</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
             {/* The address is configuration now rather than a line in the
                 source, and this page is only reachable by the person it names. */}
@@ -120,15 +120,15 @@ export function FounderImportReviewPage() {
       )}
 
       {state === 'loading' && batches.length === 0 ? (
-        <section className="rounded-xl border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
+        <section className="rounded-panel bg-white shadow-panel p-6 text-sm font-semibold text-gray-500">
           Loading import audit...
         </section>
       ) : batches.length === 0 ? (
         <EmptyImportReview />
       ) : (
         <section className="grid grid-cols-1 gap-5 xl:grid-cols-[360px_1fr]">
-          <aside className="h-fit rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <h2 className="text-base font-bold text-navy">Import Batches</h2>
+          <aside className="h-fit rounded-panel bg-white shadow-panel p-4">
+            <h2 className="text-base font-bold text-ink">Import Batches</h2>
             <div className="mt-4 space-y-2">
               {batches.map((batch) => (
                 <button
@@ -136,7 +136,7 @@ export function FounderImportReviewPage() {
                   type="button"
                   onClick={() => setSelectedBatchId(batch.id)}
                   className={`block w-full rounded-lg border p-3 text-left transition ${
-                    selectedBatch?.id === batch.id ? 'border-brand-blue bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'
+                    selectedBatch?.id === batch.id ? 'border-brand-blue bg-blue-50' : 'border-line bg-white hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -153,7 +153,7 @@ export function FounderImportReviewPage() {
           <main className="space-y-5">
             {selectedBatch && (
               <>
-                <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                <section className="rounded-panel bg-white shadow-panel p-5">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <div className="flex flex-wrap gap-2">
@@ -161,14 +161,14 @@ export function FounderImportReviewPage() {
                         <Badge label={selectedBatch.scope} tone="blue" />
                         <Badge label={selectedBatch.mode} tone="gray" />
                       </div>
-                      <h2 className="mt-3 text-xl font-bold text-navy">Batch {shortId(selectedBatch.id)}</h2>
+                      <h2 className="mt-3 text-xl font-bold text-ink">Batch {shortId(selectedBatch.id)}</h2>
                       <p className="mt-1 font-mono text-xs font-bold text-gray-400">{selectedBatch.id}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <Link to="/app/accounts" className="rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50">
+                      <Link to="/app/accounts" className="rounded-full border border-line bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50">
                         Accounts
                       </Link>
-                      <Link to="/app/opportunities" className="rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50">
+                      <Link to="/app/opportunities" className="rounded-full border border-line bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50">
                         Opportunities
                       </Link>
                     </div>
@@ -198,7 +198,7 @@ export function FounderImportReviewPage() {
                   )}
 
                   {selectedBatch.status === 'completed' && (
-                    <div className="mt-5 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <div className="mt-5 rounded-lg border border-line bg-gray-50 p-4">
                       <div className="flex items-start gap-3">
                         <RotateCcw className="mt-0.5 h-4 w-4 text-gray-500" />
                         <p className="text-sm leading-6 text-gray-600">
@@ -209,11 +209,11 @@ export function FounderImportReviewPage() {
                   )}
                 </section>
 
-                <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
-                  <div className="border-b border-gray-200 p-4">
+                <section className="rounded-lg border border-line bg-white shadow-sm">
+                  <div className="border-b border-line p-4">
                     <div className="flex items-center gap-2">
                       <Database className="h-4 w-4 text-brand-blue" />
-                      <h2 className="text-base font-bold text-navy">Row Result Audit</h2>
+                      <h2 className="text-base font-bold text-ink">Row Result Audit</h2>
                     </div>
                     <p className="mt-1 text-xs text-gray-500">
                       {formatCount(rowResults.length)} safe row results loaded. {formatRowSummary(rowSummary)}
@@ -223,11 +223,11 @@ export function FounderImportReviewPage() {
                     <table className="w-full min-w-[820px] border-collapse text-left text-sm">
                       <thead className="sticky top-0 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
                         <tr>
-                          <th className="border-b border-gray-200 px-3 py-3">Source</th>
-                          <th className="border-b border-gray-200 px-3 py-3">Target</th>
-                          <th className="border-b border-gray-200 px-3 py-3">Action</th>
-                          <th className="border-b border-gray-200 px-3 py-3">Warnings</th>
-                          <th className="border-b border-gray-200 px-3 py-3">Hash</th>
+                          <th className="border-b border-line px-3 py-3">Source</th>
+                          <th className="border-b border-line px-3 py-3">Target</th>
+                          <th className="border-b border-line px-3 py-3">Action</th>
+                          <th className="border-b border-line px-3 py-3">Warnings</th>
+                          <th className="border-b border-line px-3 py-3">Hash</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -260,7 +260,7 @@ function EmptyImportReview() {
   return (
     <section className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center shadow-sm">
       <Database className="mx-auto h-8 w-8 text-gray-400" />
-      <h2 className="mt-3 text-lg font-bold text-navy">No import batches yet.</h2>
+      <h2 className="mt-3 text-lg font-bold text-ink">No import batches yet.</h2>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">
         Run the founder core importer after applying the migration to create the first audited batch.
       </p>
@@ -276,7 +276,7 @@ function Metric({ label, value, tone = 'blue' }: { label: string; value: number;
     red: 'bg-red-50 text-red-700',
   }[tone];
   return (
-    <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+    <div className="rounded-lg border border-line-soft bg-gray-50 p-3">
       <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{label}</p>
       <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-lg font-black ${toneClass}`}>{formatCount(value)}</p>
     </div>
@@ -289,7 +289,7 @@ function Badge({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green
     green: 'border-emerald-100 bg-emerald-50 text-emerald-700',
     amber: 'border-amber-100 bg-amber-50 text-amber-700',
     red: 'border-red-100 bg-red-50 text-red-700',
-    gray: 'border-gray-200 bg-gray-50 text-gray-600',
+    gray: 'border-line bg-gray-50 text-gray-600',
   }[tone];
   return <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${toneClass}`}>{label}</span>;
 }

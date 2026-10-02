@@ -123,7 +123,7 @@ export function FirstRunPage() {
             <button
               type="button"
               onClick={skip}
-              className="rounded-full px-3 py-2 text-sm font-semibold text-gray-500 hover:bg-white hover:text-navy"
+              className="rounded-full px-3 py-2 text-sm font-semibold text-gray-500 hover:bg-white hover:text-ink"
             >
               Skip for now
             </button>
@@ -145,7 +145,7 @@ export function FirstRunPage() {
             {act === 'loop' && (
               <section aria-labelledby="first-run-loop-heading">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Welcome to Memoire</p>
-                <h1 id="first-run-loop-heading" className="mt-3 font-display text-3xl font-black leading-tight tracking-tight text-navy sm:text-4xl">
+                <h1 id="first-run-loop-heading" className="mt-3 font-display text-3xl font-black leading-tight tracking-tight text-ink sm:text-4xl">
                   Record it once. Nothing goes quiet after that.
                 </h1>
                 <p className="mt-4 max-w-xl text-[15px] leading-7 text-gray-600">
@@ -156,12 +156,12 @@ export function FirstRunPage() {
 
                 <ol className="mt-8 space-y-3">
                   {loop.map((step, index) => (
-                    <li key={step.id} className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-3.5 shadow-sm">
+                    <li key={step.id} className="flex items-start gap-3 rounded-panel bg-white shadow-panel p-3.5">
                       <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-navy text-[11px] font-black text-white">
                         {index + 1}
                       </span>
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-navy">{step.label}</p>
+                        <p className="text-sm font-bold text-ink">{step.label}</p>
                         <p className="mt-0.5 text-[13px] leading-6 text-gray-500">{step.hint}</p>
                       </div>
                     </li>
@@ -178,7 +178,7 @@ export function FirstRunPage() {
             {act === 'currency' && (
               <section aria-labelledby="first-run-currency-heading">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">One question</p>
-                <h1 id="first-run-currency-heading" className="mt-3 font-display text-3xl font-black leading-tight tracking-tight text-navy sm:text-4xl">
+                <h1 id="first-run-currency-heading" className="mt-3 font-display text-3xl font-black leading-tight tracking-tight text-ink sm:text-4xl">
                   Which currency should Memoire report in?
                 </h1>
                 <p className="mt-4 max-w-xl text-[15px] leading-7 text-gray-600">
@@ -191,7 +191,7 @@ export function FirstRunPage() {
                   <select
                     value={pendingCurrency || currency}
                     onChange={(event) => chooseCurrency(event.target.value)}
-                    className="mt-2 w-full truncate rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-[15px] font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                    className="mt-2 w-full truncate rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-[15px] font-semibold text-ink outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
                   >
                     {selectableCurrencies.map((option) => (
                       <option key={option.code} value={option.code}>
@@ -218,7 +218,7 @@ export function FirstRunPage() {
             {act === 'door' && (
               <section aria-labelledby="first-run-door-heading">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Where to start</p>
-                <h1 id="first-run-door-heading" className="mt-3 font-display text-3xl font-black leading-tight tracking-tight text-navy sm:text-4xl">
+                <h1 id="first-run-door-heading" className="mt-3 font-display text-3xl font-black leading-tight tracking-tight text-ink sm:text-4xl">
                   Pick the one that matches your desk right now.
                 </h1>
                 <p className="mt-4 max-w-xl text-[15px] leading-7 text-gray-600">
@@ -257,12 +257,12 @@ export function FirstRunPage() {
             )}
           </main>
 
-          <footer className="flex items-center justify-between gap-3 border-t border-gray-200 pt-5">
+          <footer className="flex items-center justify-between gap-3 border-t border-line pt-5">
             <button
               type="button"
               onClick={() => setAct(ACTS[actIndex - 1] || 'loop')}
               disabled={actIndex === 0}
-              className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-gray-500 hover:bg-white hover:text-navy disabled:invisible"
+              className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-gray-500 hover:bg-white hover:text-ink disabled:invisible"
             >
               <ArrowLeft className="h-4 w-4" />
               Back
@@ -314,7 +314,7 @@ function DoorCard({
       // something real" rather than reading the whole paragraph as a label.
       aria-label={title}
       className={`group flex w-full items-start gap-4 rounded-xl border bg-white p-4 text-left shadow-sm transition-colors disabled:opacity-60 ${
-        recommended ? 'border-brand-blue/40 hover:border-brand-blue' : 'border-gray-200 hover:border-gray-300'
+        recommended ? 'border-brand-blue/40 hover:border-brand-blue' : 'border-line hover:border-gray-300'
       }`}
     >
       <span className={`mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
@@ -324,7 +324,7 @@ function DoorCard({
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-2">
-          <span className="text-[15px] font-bold text-navy">{title}</span>
+          <span className="text-[15px] font-bold text-ink">{title}</span>
           {recommended && (
             <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-brand-blue">
               <Check className="h-3 w-3" />

@@ -758,11 +758,11 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
   // page, and the surface that hosts it owns those.
   if (variant === 'reference') {
     if (loading) {
-      return <p className="rounded-xl border border-gray-200 bg-white p-5 text-sm font-semibold text-gray-500">Loading the deeper reading...</p>;
+      return <p className="rounded-panel bg-white shadow-panel p-5 text-sm font-semibold text-gray-500">Loading the deeper reading...</p>;
     }
     if (!todayCenter.hasMeaningfulData) {
       return (
-        <p className="rounded-xl border border-gray-200 bg-white p-5 text-sm leading-6 text-gray-500">
+        <p className="rounded-panel bg-white shadow-panel p-5 text-sm leading-6 text-gray-500">
           Nothing to analyse yet. Capture a customer conversation and this fills in.
         </p>
       );
@@ -776,7 +776,7 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
         {commercialThreads.length > 0 && (
           <section aria-label="Commercial threads">
             <div className="mb-2 flex items-baseline justify-between">
-              <h3 className="text-sm font-bold text-navy">Commercial threads</h3>
+              <h3 className="text-sm font-bold text-ink">Commercial threads</h3>
               <span className="text-xs text-gray-400">Quietest first</span>
             </div>
             <div className="grid gap-3 xl:grid-cols-2">
@@ -1093,10 +1093,10 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
               guidance survives, but only inside demo mode where it belongs. */}
           {sampleDataActive && (
             <details
-              className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+              className="rounded-panel bg-white shadow-panel p-4"
               onToggle={(event) => setSetupToolsOpen(event.currentTarget.open)}
             >
-              <summary className="cursor-pointer text-sm font-bold text-navy">
+              <summary className="cursor-pointer text-sm font-bold text-ink">
                 Demo guidance
               </summary>
               {setupToolsOpen && (
@@ -1278,9 +1278,9 @@ function PipelineGlanceSection({
 
   return (
     <section className="grid gap-4 xl:grid-cols-2">
-      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="rounded-panel bg-white shadow-panel p-5">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Pipeline health</p>
-        <h2 className="mt-1 text-xl font-bold text-navy">
+        <h2 className="mt-1 text-xl font-bold text-ink">
           {health.quietValueBase > 0
             ? `${formatCompactBaseAmount(health.quietValueBase)} is going quiet`
             : 'Every active deal has a heartbeat'}
@@ -1315,9 +1315,9 @@ function PipelineGlanceSection({
         </div>
       </div>
       {horizon.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-panel bg-white shadow-panel p-5">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Expected revenue</p>
-          <h2 className="mt-1 text-xl font-bold text-navy">When the money lands</h2>
+          <h2 className="mt-1 text-xl font-bold text-ink">When the money lands</h2>
           <div className="mt-4">
             <MiniBarChart
               ariaLabel="Expected revenue by close horizon: weighted by probability against full value"
@@ -1345,7 +1345,7 @@ function ForecastDefenseReadiness({ center }: { center: ReturnType<typeof buildU
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Forecast-defense readiness</p>
-          <h2 className="mt-2 text-2xl font-black text-navy">Know what you can defend before review starts.</h2>
+          <h2 className="mt-2 text-2xl font-black text-ink">Know what you can defend before review starts.</h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-600">
             The score reflects whether each deal has a manager-ready position, evidence, money, date, objection context, and next action.
           </p>
@@ -1773,16 +1773,16 @@ function NudgeUrgencyBadge({ urgency }: { urgency: NudgeRecord['urgency'] }) {
 function TodayPipelineReadiness({ center }: { center: ReturnType<typeof buildUnifiedTodayCommandCenter> }) {
   const visibleCategories = ['Defend now', 'Rescue before review', 'Downgrade / de-risk', 'Missing evidence'];
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Pipeline Review Readiness</p><h2 className="mt-1 text-xl font-bold text-navy">The forecast position, without the theatre.</h2></div>
+        <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Pipeline Review Readiness</p><h2 className="mt-1 text-xl font-bold text-ink">The forecast position, without the theatre.</h2></div>
         <Link to="/app/opportunities" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Open deals</Link>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {center.pipelineReadiness.groups.filter((group) => visibleCategories.includes(group.category)).map((group) => (
-          <div key={group.category} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-            <p className="text-sm font-bold text-navy">{group.category}</p>
-            <p className="mt-1 text-2xl font-black text-navy">{group.items.length}</p>
+          <div key={group.category} className="rounded-lg border border-line bg-gray-50 p-4">
+            <p className="text-sm font-bold text-ink">{group.category}</p>
+            <p className="mt-1 text-2xl font-black text-ink">{group.items.length}</p>
             <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-500">{group.items[0]?.pipelineReviewAnswer || 'No deal in this category.'}</p>
           </div>
         ))}
@@ -1794,17 +1794,17 @@ function TodayPipelineReadiness({ center }: { center: ReturnType<typeof buildUni
 function TodayCommercialRisk({ items }: { items: RevenueActionItem[] }) {
   const stuckMoney = items.reduce((total, item) => total + item.baseAmount, 0);
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Commercial Risk</p><h2 className="mt-1 text-xl font-bold text-navy">Stuck money and follow-ups.</h2><p className="mt-1 text-sm text-gray-500">Detail only—Today owns the priority order.</p></div>
+        <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Commercial Risk</p><h2 className="mt-1 text-xl font-bold text-ink">Stuck money and follow-ups.</h2><p className="mt-1 text-sm text-gray-500">Detail only—Today owns the priority order.</p></div>
         <Link to="/app/revenue" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">Commercial risk detail</Link>
       </div>
-      <p className="mt-4 text-lg font-black text-navy">{formatBaseCurrencyAmount(stuckMoney)}</p>
+      <p className="mt-4 text-lg font-black text-ink">{formatBaseCurrencyAmount(stuckMoney)}</p>
       <div className="mt-3 divide-y divide-gray-100">
         {items.length === 0 ? <p className="py-3 text-sm text-gray-500">No commercial risk needs follow-up.</p> : items.slice(0, 4).map((item) => (
           <Link key={item.id} to={item.href} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-bold text-navy">{item.nextAction}</p>
+              <p className="text-sm font-bold text-ink">{item.nextAction}</p>
               <p className="mt-1 text-xs text-gray-500">{item.accountName || 'Needs confirmation'} / {item.label || 'Needs confirmation'} · {item.risk}</p>
               {item.reason && <p className="mt-1 text-xs leading-5 text-gray-500">{item.reason}</p>}
             </div>
@@ -1818,16 +1818,16 @@ function TodayCommercialRisk({ items }: { items: RevenueActionItem[] }) {
 
 function TodayCaptureInbox({ items }: { items: ReturnType<typeof buildUnifiedTodayCommandCenter>['captureInbox'] }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Capture Inbox</p><h2 className="mt-1 text-xl font-bold text-navy">Turn recent notes into linked evidence.</h2></div>
+        <div><p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Capture Inbox</p><h2 className="mt-1 text-xl font-bold text-ink">Turn recent notes into linked evidence.</h2></div>
         <Link to="/app/capture" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Capture a sales update</Link>
       </div>
       <div className="mt-3 divide-y divide-gray-100">
         {items.length === 0 ? <p className="py-3 text-sm text-gray-500">No capture needs linking or confirmation.</p> : items.slice(0, 5).map((item) => (
           <Link key={item.id} to={item.href} className="block py-3">
             <div className="flex flex-wrap items-center gap-2"><Badge label={item.reason} tone="amber" /><span className="text-xs font-semibold text-gray-400">{item.activityDateLabel}</span></div>
-            <p className="mt-2 text-sm font-bold text-navy">{item.summary}</p>
+            <p className="mt-2 text-sm font-bold text-ink">{item.summary}</p>
             <p className="mt-1 text-xs text-gray-500">{item.accountName} / {item.opportunityName}</p>
           </Link>
         ))}
@@ -1960,13 +1960,13 @@ function StartHerePanel({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Supporting demo path</p>
-            <h2 className="mt-2 text-2xl font-black text-navy">Explore the demo in this order.</h2>
+            <h2 className="mt-2 text-2xl font-black text-ink">Explore the demo in this order.</h2>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link to="/app/opportunities" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
               1. Review pipeline
             </Link>
-            <Link to="/app/capture?mode=quick" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
+            <Link to="/app/capture?mode=quick" className="rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700">
               2. Capture activity
             </Link>
             <Link to="/app/reviews" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
@@ -1984,14 +1984,14 @@ function StartHerePanel({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Supporting setup</p>
-            <h2 className="mt-2 text-2xl font-black text-navy">Bring in your first deal.</h2>
+            <h2 className="mt-2 text-2xl font-black text-ink">Bring in your first deal.</h2>
             <p className="mt-1 text-sm text-gray-500">Import a CSV, add one opportunity, or explore with demo data before your first review.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link to="/app/opportunities?import=csv" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
               Import CSV
             </Link>
-            <Link to="/app/opportunities?new=1" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
+            <Link to="/app/opportunities?new=1" className="rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700">
               Add opportunity
             </Link>
             <button type="button" onClick={onOpenDemoSandbox} className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
@@ -2016,7 +2016,7 @@ function StartHerePanel({
               {activeBlock && <Badge label={`${activeBlock.startTime}-${activeBlock.endTime}`} tone={activeBlock.priority === 'Critical' ? 'red' : activeBlock.priority === 'High' ? 'amber' : 'blue'} />}
               {selectedCommercialAction && <Badge label="Commercial risk" tone={selectedCommercialAction.priority === 'Critical' ? 'red' : 'amber'} />}
             </div>
-            <h2 className="mt-2 text-2xl font-black text-navy">
+            <h2 className="mt-2 text-2xl font-black text-ink">
               {selectedCommercialAction ? selectedCommercialAction.title : activeBlock?.focus || topAction?.title || (topRisk ? `Review ${topRisk.accountName}` : 'No additional supporting signal.')}
             </h2>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
@@ -2032,7 +2032,7 @@ function StartHerePanel({
             <Link to={primaryHref} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
               {primaryLabel}
             </Link>
-            <Link to="/app/opportunities" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
+            <Link to="/app/opportunities" className="rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700">
               Review deals
             </Link>
             <Link to="/app/reviews" className="rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-bold text-brand-blue">
@@ -2043,7 +2043,7 @@ function StartHerePanel({
 
         <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">Deal evidence</p>
-          <p className="mt-2 text-sm font-bold text-navy">
+          <p className="mt-2 text-sm font-bold text-ink">
             {signal.dealsNeedingReview > 0
               ? `${signal.dealsNeedingReview} deal(s) need review`
               : 'No defense block is urgent'}
@@ -2074,11 +2074,11 @@ function DashboardPrimaryWork({
 
   return (
     <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
-      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="rounded-panel bg-white shadow-panel p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Supporting action signals</p>
-            <h2 className="mt-1 text-xl font-bold text-navy">Reference only—Today owns the rank.</h2>
+            <h2 className="mt-1 text-xl font-bold text-ink">Reference only—Today owns the rank.</h2>
           </div>
           <Link to="/app/capture?mode=quick" className="inline-flex w-fit rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
             Capture update
@@ -2098,7 +2098,7 @@ function DashboardPrimaryWork({
                     <PriorityBadge priority={action.priority} />
                     {action.dueDate && <Badge label={`Due ${formatSafeBusinessDate(action.dueDate)}`} tone={isBusinessDateOverdue(action.dueDate) ? 'red' : 'blue'} />}
                   </div>
-                  <h3 className="mt-2 text-sm font-bold text-navy">{action.title}</h3>
+                  <h3 className="mt-2 text-sm font-bold text-ink">{action.title}</h3>
                   <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
                     {action.accountName}{action.opportunityName ? ` / ${action.opportunityName}` : ''}
                   </p>
@@ -2112,7 +2112,7 @@ function DashboardPrimaryWork({
 
       <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-5 shadow-sm">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Evidence drill-down</p>
-        <h2 className="mt-1 text-xl font-bold text-navy">Where the evidence is short</h2>
+        <h2 className="mt-1 text-xl font-bold text-ink">Where the evidence is short</h2>
         <p className="mt-2 text-sm leading-6 text-blue-900/75">{signal.topReason}</p>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <Metric label="Review" value={signal.dealsNeedingReview} tone={signal.dealsNeedingReview ? 'amber' : 'green'} />
@@ -2166,7 +2166,7 @@ function DailyOperatingPlan({
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Today's timeblocks</p>
-          <h2 className="mt-1 text-xl font-bold text-navy">Work the current block first.</h2>
+          <h2 className="mt-1 text-xl font-bold text-ink">Work the current block first.</h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-emerald-900/75">
             Memoire turns sales-flow checkpoints, account memory, and forecast risk into one calm daily rhythm.
           </p>
@@ -2186,7 +2186,7 @@ function DailyOperatingPlan({
               </span>
               <PriorityBadge priority={activePriority} />
             </div>
-            <h3 className="mt-2 truncate text-lg font-black text-navy">{activeFocus}</h3>
+            <h3 className="mt-2 truncate text-lg font-black text-ink">{activeFocus}</h3>
             <p className="mt-1 line-clamp-2 text-sm leading-6 text-gray-500">
               {firstAction?.reason || activeBlock.reason}
             </p>
@@ -2215,7 +2215,7 @@ function DailyOperatingPlan({
               <button
                 type="button"
                 onClick={() => onDecision(firstAction, 'Deferred')}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50"
                 title="Move this action to the 16:30 closeout"
               >
                 <Clock3 className="h-4 w-4" />
@@ -2255,7 +2255,7 @@ function DailyOperatingPlan({
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2">
             <div className="flex min-w-0 items-center gap-2">
               <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-700" />
-              <span className="shrink-0 text-xs font-bold text-navy">Today progress</span>
+              <span className="shrink-0 text-xs font-bold text-ink">Today progress</span>
               <span className="truncate text-xs text-gray-500">
                 {execution.doneCount} done · {execution.deferredCount} later
               </span>
@@ -2311,7 +2311,7 @@ function DailyOperatingPlan({
                     </p>
                     {block.id === activeBlockId && <Badge label="Now" tone="green" />}
                   </div>
-                  <h3 className="mt-2 text-base font-bold text-navy">{block.title}</h3>
+                  <h3 className="mt-2 text-base font-bold text-ink">{block.title}</h3>
                 </div>
                 <PriorityBadge priority={block.priority} />
               </div>
@@ -2384,12 +2384,12 @@ function QuoteFollowUpCard({
 
   if (quotes.length === 0) {
     return (
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-panel bg-white shadow-panel p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="flex items-center gap-2">
               <ReceiptText className="h-4 w-4 text-brand-blue" />
-              <h2 className="text-lg font-bold text-navy">Quote follow-ups</h2>
+              <h2 className="text-lg font-bold text-ink">Quote follow-ups</h2>
             </div>
             <p className="mt-1 text-sm text-gray-500">Create one quote to track expiry, PO risk, and payment terms.</p>
           </div>
@@ -2407,7 +2407,7 @@ function QuoteFollowUpCard({
         <div>
           <div className="flex items-center gap-2">
             <ReceiptText className="h-4 w-4 text-cyan-700" />
-            <h2 className="text-lg font-bold text-navy">Commercial follow-ups</h2>
+            <h2 className="text-lg font-bold text-ink">Commercial follow-ups</h2>
           </div>
           <p className="mt-1 text-sm text-cyan-900/75">
             {activeTopAction
@@ -2482,7 +2482,7 @@ function TodayFocus({ commandCenter }: { commandCenter: CommandCenter }) {
     <section>
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-navy">Today Focus</h2>
+          <h2 className="text-lg font-bold text-ink">Today Focus</h2>
           <p className="text-sm text-gray-500">Start with must-win work, time-sensitive actions, and deals that need defense.</p>
         </div>
       </div>
@@ -2524,10 +2524,10 @@ function ThisWeekSummary({ commandCenter }: { commandCenter: CommandCenter }) {
   const summary = commandCenter.thisWeekSummary;
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <div className="flex items-center gap-2">
         <CalendarDays className="h-4 w-4 text-brand-blue" />
-        <h2 className="text-lg font-bold text-navy">This Week Summary</h2>
+        <h2 className="text-lg font-bold text-ink">This Week Summary</h2>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
         <Metric label="Activities" value={summary.activitiesThisWeek} />
@@ -2564,7 +2564,7 @@ function WeeklyExecutionHealth({
         <div>
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-purple-700" />
-            <h2 className="text-lg font-bold text-navy">Weekly Execution Health</h2>
+            <h2 className="text-lg font-bold text-ink">Weekly Execution Health</h2>
           </div>
           <p className="mt-1 text-sm text-purple-900/75">
             Deal execution learning for {review.periodLabel}: completed actions, unresolved critical work, unclear outcomes, and rescue signals.
@@ -2607,7 +2607,7 @@ function CaptureNudgePanel({ nudges }: { nudges: CaptureNudge[] }) {
         <div>
           <div className="flex items-center gap-2">
             <NotebookPen className="h-4 w-4 text-emerald-700" />
-            <h2 className="text-lg font-bold text-navy">Capture Nudges</h2>
+            <h2 className="text-lg font-bold text-ink">Capture Nudges</h2>
           </div>
           <p className="mt-1 text-sm text-emerald-900/75">
             Fast prompts for sales updates that would improve deal memory today.
@@ -2631,7 +2631,7 @@ function CaptureNudgePanel({ nudges }: { nudges: CaptureNudge[] }) {
                 <Badge label={nudge.sourceType} tone="blue" />
               </div>
               <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{nudge.accountName} / {nudge.opportunityName || 'No opportunity'}</p>
-              <h3 className="mt-1 text-sm font-bold text-navy">{nudge.title}</h3>
+              <h3 className="mt-1 text-sm font-bold text-ink">{nudge.title}</h3>
               <p className="mt-1 text-xs leading-5 text-gray-500">{nudge.reason}</p>
             </Link>
           ))}
@@ -2650,7 +2650,7 @@ function TopSalesPattern({ pattern }: { pattern?: SalesPlaybookPattern }) {
         <div>
           <div className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-indigo-700" />
-            <h2 className="text-lg font-bold text-navy">Top Sales Pattern</h2>
+            <h2 className="text-lg font-bold text-ink">Top Sales Pattern</h2>
           </div>
           <p className="mt-1 text-sm text-indigo-900/75">
             Highest-priority reusable learning detected from your current pipeline memory.
@@ -2666,7 +2666,7 @@ function TopSalesPattern({ pattern }: { pattern?: SalesPlaybookPattern }) {
           <Badge label={pattern.severity} tone={playbookSeverityTone(pattern)} />
           <Badge label={`${pattern.frequency}x`} tone="gray" />
         </div>
-        <h3 className="mt-3 text-base font-bold text-navy">{pattern.title}</h3>
+        <h3 className="mt-3 text-base font-bold text-ink">{pattern.title}</h3>
         <p className="mt-2 text-sm leading-6 text-gray-600">{pattern.whyItMatters}</p>
         <p className="mt-3 rounded-lg bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-900">
           {pattern.suggestedPlaybookResponse}
@@ -2695,7 +2695,7 @@ function AssetGaps({
         <div>
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-cyan-700" />
-            <h2 className="text-lg font-bold text-navy">Asset Gaps</h2>
+            <h2 className="text-lg font-bold text-ink">Asset Gaps</h2>
           </div>
           <p className="mt-1 text-sm text-cyan-900/75">
             Reusable proof, response, and proposal assets that would help current deal risks.
@@ -2709,7 +2709,7 @@ function AssetGaps({
       <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[1.2fr_220px]">
         <article className="rounded-lg bg-white p-4 ring-1 ring-cyan-100">
           <Badge label={gapSummary.topMissingAsset?.priority || 'Low'} tone={gapSummary.topMissingAsset?.priority === 'High' ? 'red' : gapSummary.topMissingAsset?.priority === 'Medium' ? 'amber' : 'blue'} />
-          <h3 className="mt-3 text-base font-bold text-navy">
+          <h3 className="mt-3 text-base font-bold text-ink">
             {gapSummary.topMissingAsset?.title || 'No urgent asset gap detected'}
           </h3>
           <p className="mt-2 text-sm leading-6 text-gray-600">
@@ -2730,12 +2730,12 @@ function AssetGaps({
 
 function PriorityActionList({ items }: { items: CommandActionItem[] }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4 text-brand-blue" />
-            <h2 className="text-lg font-bold text-navy">Priority Action List</h2>
+            <h2 className="text-lg font-bold text-ink">Priority Action List</h2>
           </div>
           <p className="mt-1 text-sm text-gray-500">Combined next actions from activities, opportunities, and pipeline risk signals.</p>
         </div>
@@ -2769,7 +2769,7 @@ function OpenObjectionSignals({ objections }: { objections: ObjectionRecord[] })
         <div>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-amber-700" />
-            <h2 className="text-lg font-bold text-navy">Open Objection Signals</h2>
+            <h2 className="text-lg font-bold text-ink">Open Objection Signals</h2>
           </div>
           <p className="mt-1 text-sm text-amber-800">
             {openHighImpact.length > 0
@@ -2785,7 +2785,7 @@ function OpenObjectionSignals({ objections }: { objections: ObjectionRecord[] })
         {(openHighImpact.length > 0 ? openHighImpact : open).slice(0, 3).map((objection) => (
           <article key={objection.id} className="rounded-lg bg-white p-3 ring-1 ring-amber-100">
             <p className="text-xs font-bold uppercase tracking-wide text-amber-700">{objection.accountName || 'No account'} / {objection.opportunityName || 'No opportunity'}</p>
-            <h3 className="mt-1 text-sm font-bold text-navy">{objection.objectionText}</h3>
+            <h3 className="mt-1 text-sm font-bold text-ink">{objection.objectionText}</h3>
             <p className="mt-1 text-xs font-semibold text-gray-500">{objection.objectionType} | {objection.impact} impact</p>
           </article>
         ))}
@@ -2809,7 +2809,7 @@ function CriticalDealActions({
         <div>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-red-700" />
-            <h2 className="text-lg font-bold text-navy">Critical Deal Actions</h2>
+            <h2 className="text-lg font-bold text-ink">Critical Deal Actions</h2>
           </div>
           <p className="mt-1 text-sm text-red-800">
             Top next-best-actions plus recent outcomes from MEDDIC gaps, stakeholder risk, objections, stale actions, and competition signals.
@@ -2835,7 +2835,7 @@ function CriticalDealActions({
               <Badge label={outcome.status} tone="gray" />
             </div>
             <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{outcome.accountName} / {outcome.opportunityName}</p>
-            <h3 className="mt-1 text-sm font-bold text-navy">{outcome.actionTitle}</h3>
+            <h3 className="mt-1 text-sm font-bold text-ink">{outcome.actionTitle}</h3>
             {outcome.outcomeNote && <p className="mt-1 text-xs leading-5 text-gray-500">{outcome.outcomeNote}</p>}
           </article>
         ))}
@@ -2846,7 +2846,7 @@ function CriticalDealActions({
               <Badge label="Completed" tone="green" />
             </div>
             <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{outcome.accountName} / {outcome.opportunityName}</p>
-            <h3 className="mt-1 text-sm font-bold text-navy">{outcome.actionTitle}</h3>
+            <h3 className="mt-1 text-sm font-bold text-ink">{outcome.actionTitle}</h3>
             {outcome.outcomeNote && <p className="mt-1 text-xs leading-5 text-gray-500">{outcome.outcomeNote}</p>}
           </article>
         ))}
@@ -2863,7 +2863,7 @@ function CriticalDealActionCard({ action }: { action: OpportunityRecommendedActi
         <Badge label={action.sourceType} tone={action.sourceType === 'Objection' || action.sourceType === 'Competition' ? 'amber' : 'blue'} />
       </div>
       <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{action.accountName} / {action.opportunityName}</p>
-      <h3 className="mt-1 text-sm font-bold text-navy">{action.title}</h3>
+      <h3 className="mt-1 text-sm font-bold text-ink">{action.title}</h3>
       <p className="mt-1 text-xs leading-5 text-gray-500">{action.reason}</p>
       {action.suggestedDueDate && <p className="mt-2 text-xs font-bold text-red-700">Suggested due: {action.suggestedDueDate}</p>}
     </article>
@@ -2880,7 +2880,7 @@ function MeddicRiskSignal({ summary }: { summary: DashboardInsights['meddicSumma
         <div>
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4 text-brand-blue" />
-            <h2 className="text-lg font-bold text-navy">MEDDIC-lite Risk Signal</h2>
+            <h2 className="text-lg font-bold text-ink">MEDDIC-lite Risk Signal</h2>
           </div>
           <p className="mt-1 text-sm text-blue-900/75">
             {summary.missingChampionCount} missing champion, {summary.missingEconomicBuyerCount} missing economic buyer, {summary.decisionProcessGapCount} unclear decision process.
@@ -2898,7 +2898,7 @@ function MeddicRiskSignal({ summary }: { summary: DashboardInsights['meddicSumma
                 <Badge label={item.category} tone={item.category === 'Unsupported' || item.category === 'Hope-based' ? 'red' : 'amber'} />
               </div>
               <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{item.accountName}</p>
-              <h3 className="mt-1 text-sm font-bold text-navy">{item.opportunityName}</h3>
+              <h3 className="mt-1 text-sm font-bold text-ink">{item.opportunityName}</h3>
               {item.gaps.length > 0 && (
                 <p className="mt-1 text-xs leading-5 text-gray-500">{item.gaps.join('; ')}</p>
               )}
@@ -2912,7 +2912,7 @@ function MeddicRiskSignal({ summary }: { summary: DashboardInsights['meddicSumma
 
 function ActionItem({ item }: { item: CommandActionItem }) {
   return (
-    <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+    <article className="rounded-lg border border-line-soft bg-gray-50 p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="flex flex-wrap gap-2">
@@ -2920,13 +2920,13 @@ function ActionItem({ item }: { item: CommandActionItem }) {
             <Badge label={item.source} />
             {item.dueDate && <Badge label={`Due ${formatSafeBusinessDate(item.dueDate)}`} tone={isBusinessDateOverdue(item.dueDate) ? 'red' : 'blue'} />}
           </div>
-          <h3 className="mt-2 text-base font-bold text-navy">{item.title}</h3>
+          <h3 className="mt-2 text-base font-bold text-ink">{item.title}</h3>
           <p className="mt-1 text-sm leading-6 text-gray-600">{item.reason}</p>
           <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">
             {item.accountName}{item.opportunityName ? ` / ${item.opportunityName}` : ''}
           </p>
         </div>
-        <Link to={item.href} className="inline-flex shrink-0 items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-bold text-gray-700 hover:text-brand-blue">
+        <Link to={item.href} className="inline-flex shrink-0 items-center gap-2 rounded-full border border-line bg-white px-3 py-1.5 text-sm font-bold text-gray-700 hover:text-brand-blue">
           Open
           <ArrowRight className="h-4 w-4" />
         </Link>
@@ -2937,10 +2937,10 @@ function ActionItem({ item }: { item: CommandActionItem }) {
 
 function AtRiskOpportunities({ items }: { items: AtRiskOpportunityItem[] }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <div className="flex items-center gap-2">
         <AlertTriangle className="h-4 w-4 text-amber-600" />
-        <h2 className="text-lg font-bold text-navy">At-Risk Opportunities</h2>
+        <h2 className="text-lg font-bold text-ink">At-Risk Opportunities</h2>
       </div>
       {items.length === 0 ? (
         <EmptyPanel title="No at-risk opportunities detected." helper="Keep opportunity evidence and next actions current." href="/app/opportunities" cta="Open opportunities" />
@@ -2951,7 +2951,7 @@ function AtRiskOpportunities({ items }: { items: AtRiskOpportunityItem[] }) {
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wide text-amber-700">{item.accountName}</p>
-                  <h3 className="mt-1 text-base font-bold text-navy">{item.opportunityName}</h3>
+                  <h3 className="mt-1 text-base font-bold text-ink">{item.opportunityName}</h3>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <Badge label={item.forecastEvidenceCategory} tone={forecastTone(item.forecastEvidenceCategory)} />
                     <Badge label={item.decisionRecommendation} tone={decisionTone(item.decisionRecommendation)} />
@@ -2978,27 +2978,27 @@ function AtRiskOpportunities({ items }: { items: AtRiskOpportunityItem[] }) {
 
 function AccountsNeedingTouch({ items }: { items: AccountTouchItem[] }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <div className="flex items-center gap-2">
         <BookOpen className="h-4 w-4 text-brand-blue" />
-        <h2 className="text-lg font-bold text-navy">Accounts Needing Touch</h2>
+        <h2 className="text-lg font-bold text-ink">Accounts Needing Touch</h2>
       </div>
       {items.length === 0 ? (
         <EmptyPanel title="No accounts need a touch right now." helper="Capture activity after customer interactions so account memory stays fresh." href="/app/capture" cta="Capture activity" />
       ) : (
         <div className="mt-4 space-y-3">
           {items.slice(0, 8).map((item) => (
-            <article key={item.id} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+            <article key={item.id} className="rounded-lg border border-line-soft bg-gray-50 p-4">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <h3 className="text-base font-bold text-navy">{item.accountName}</h3>
+                  <h3 className="text-base font-bold text-ink">{item.accountName}</h3>
                   <p className="mt-1 text-sm leading-6 text-gray-600">{item.reason}</p>
                   <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">
                     Last activity: {item.lastActivityDate} | Active opportunities: {item.activeOpportunityCount}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
-                  <Link to={item.href} className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700">Open Account</Link>
+                  <Link to={item.href} className="rounded-full border border-line bg-white px-3 py-1.5 text-xs font-bold text-gray-700">Open Account</Link>
                   <Link to={`/app/capture?mode=quick&account=${encodeURIComponent(item.accountName)}`} className="rounded-full bg-navy px-3 py-1.5 text-xs font-bold text-white">Quick Capture</Link>
                 </div>
               </div>
@@ -3012,10 +3012,10 @@ function AccountsNeedingTouch({ items }: { items: AccountTouchItem[] }) {
 
 function RecentActivityFeed({ items }: { items: RecentActivityItem[] }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-navy">Recent Activity Feed</h2>
+          <h2 className="text-lg font-bold text-ink">Recent Activity Feed</h2>
           <p className="mt-1 text-sm text-gray-500">Latest captured sales activity across accounts and opportunities.</p>
         </div>
         <Link to="/app/timeline?view=history" className="text-sm font-bold text-brand-blue">Open Calendar</Link>
@@ -3025,12 +3025,12 @@ function RecentActivityFeed({ items }: { items: RecentActivityItem[] }) {
       ) : (
         <div className="mt-4 space-y-3">
           {items.map((item) => (
-            <article key={item.id} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+            <article key={item.id} className="rounded-lg border border-line-soft bg-gray-50 p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge label={item.type} />
                 <span className="text-xs font-bold text-gray-400">{item.date}</span>
               </div>
-              <h3 className="mt-2 text-sm font-bold text-navy">{item.accountName}</h3>
+              <h3 className="mt-2 text-sm font-bold text-ink">{item.accountName}</h3>
               <p className="mt-1 text-sm leading-6 text-gray-600">{item.summary}</p>
               {item.linkedOpportunityName && (
                 <p className="mt-1 text-xs font-bold text-brand-blue">Linked: {item.linkedOpportunityName}</p>
@@ -3053,14 +3053,14 @@ function QuickActions() {
   ];
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-bold text-navy">Quick Actions</h2>
+    <section className="rounded-panel bg-white shadow-panel p-5">
+      <h2 className="text-lg font-bold text-ink">Quick Actions</h2>
       <div className="mt-4 space-y-2">
         {actions.map((action) => (
           <Link
             key={action.href}
             to={action.href}
-            className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-sm font-bold text-gray-700 hover:bg-blue-50 hover:text-brand-blue"
+            className="flex items-center justify-between rounded-lg border border-line-soft bg-gray-50 px-3 py-2 text-sm font-bold text-gray-700 hover:bg-blue-50 hover:text-brand-blue"
           >
             <span className="flex items-center gap-2">{action.icon}{action.label}</span>
             <ArrowRight className="h-4 w-4" />
@@ -3077,7 +3077,7 @@ function ValidationCta({ message, onCopyInterviewScript }: { message: string; on
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Validation mode</p>
-          <h2 className="mt-2 text-xl font-bold text-navy">Validate Memoire with a real user</h2>
+          <h2 className="mt-2 text-xl font-bold text-ink">Validate Memoire with a real user</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-emerald-950">
             Use the demo, capture feedback locally, and decide the next roadmap bet from real conversations instead of instinct.
           </p>
@@ -3105,7 +3105,7 @@ function DemoCommercializationCta({ onOpenDemoSandbox }: { onOpenDemoSandbox: ()
             <ShieldCheck className="h-4 w-4 text-brand-blue" />
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Memoire in 5 minutes</p>
           </div>
-          <h2 className="mt-2 text-xl font-bold text-navy">Run the pipeline review demo</h2>
+          <h2 className="mt-2 text-xl font-bold text-ink">Run the pipeline review demo</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
             Memoire does not replace your CRM. It helps you review and defend your pipeline with a private, read-only working copy.
           </p>
@@ -3142,9 +3142,9 @@ function DemoSandboxPrompt({
   useEscapeToClose(onCancel);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/30 px-4">
-      <section role="dialog" aria-modal="true" aria-label="Load demo sandbox" className="w-full max-w-xl rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
+      <section role="dialog" aria-modal="true" aria-label="Load demo sandbox" className="w-full max-w-xl rounded-panel bg-white shadow-panel p-6 shadow-xl">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Demo sandbox</p>
-        <h2 className="mt-2 text-2xl font-bold text-navy">Load realistic sample data?</h2>
+        <h2 className="mt-2 text-2xl font-bold text-ink">Load realistic sample data?</h2>
         <p className="mt-3 text-sm leading-6 text-gray-600">
           Demo data is stored locally in this browser and will not sync to your account. It includes healthy, weak, hope-based, and unsupported opportunities so you can see how Memoire separates risk levels.
         </p>
@@ -3159,7 +3159,7 @@ function DemoSandboxPrompt({
           </p>
         )}
         <div className="mt-6 flex flex-wrap justify-end gap-2">
-          <button type="button" onClick={onCancel} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
+          <button type="button" onClick={onCancel} className="rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700">
             Cancel
           </button>
           <button type="button" onClick={onLoad} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
@@ -3185,7 +3185,7 @@ function FocusCard({
   tone: 'blue' | 'green' | 'amber' | 'red';
 }) {
   return (
-    <Link to={href} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <Link to={href} className="rounded-panel bg-white shadow-panel p-4 transition hover:-translate-y-0.5 hover:shadow-md">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{title}</p>
       <p className={`mt-3 inline-flex rounded-full px-3 py-1 text-2xl font-black ${toneClass(tone)}`}>{value}</p>
       <p className="mt-3 line-clamp-2 text-sm leading-6 text-gray-600">{helper}</p>
@@ -3195,7 +3195,7 @@ function FocusCard({
 
 function Metric({ label, value, tone = 'blue' }: { label: string; value: string | number; tone?: 'blue' | 'green' | 'amber' | 'red' }) {
   return (
-    <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+    <div className="rounded-lg border border-line-soft bg-gray-50 p-3">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
       <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-lg font-black ${toneClass(tone)}`}>{value}</p>
     </div>
@@ -3213,8 +3213,8 @@ function MiniFact({ label, value }: { label: string; value: string }) {
 
 function EmptyPanel({ title, helper, href, cta }: { title: string; helper: string; href: string; cta: string }) {
   return (
-    <div className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-5 text-center">
-      <p className="text-sm font-bold text-navy">{title}</p>
+    <div className="mt-4 rounded-lg border border-dashed border-line bg-gray-50 p-5 text-center">
+      <p className="text-sm font-bold text-ink">{title}</p>
       <p className="mt-1 text-sm text-gray-500">{helper}</p>
       <Link to={href} className="mt-3 inline-flex rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
         {cta}
@@ -3229,7 +3229,7 @@ function Badge({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green
     green: 'border-emerald-100 bg-emerald-50 text-emerald-700',
     amber: 'border-amber-100 bg-amber-50 text-amber-700',
     red: 'border-red-100 bg-red-50 text-red-700',
-    gray: 'border-gray-200 bg-gray-50 text-gray-600',
+    gray: 'border-line bg-gray-50 text-gray-600',
     purple: 'border-indigo-100 bg-indigo-50 text-indigo-700',
   }[tone];
 

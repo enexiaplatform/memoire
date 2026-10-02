@@ -6,7 +6,7 @@ export function SkeletonBlock({ className = '' }: { className?: string }) {
 
 export function SkeletonCard({ lines = 3, className = '' }: { lines?: number; className?: string }) {
   return (
-    <div className={`rounded-xl border border-gray-200 bg-white p-5 shadow-sm ${className}`} aria-hidden="true">
+    <div className={`rounded-panel bg-white shadow-panel p-5 ${className}`} aria-hidden="true">
       <SkeletonBlock className="h-3 w-24" />
       <SkeletonBlock className="mt-3 h-6 w-2/3" />
       <div className="mt-4 space-y-2">

@@ -41,13 +41,13 @@ export function ProbabilityCalibrationPanel({ calibration }: { calibration: Prob
     }));
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <div className="flex items-start gap-3">
         <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-blue-100 bg-blue-50 text-brand-blue">
           <Target className="h-4 w-4" />
         </span>
         <div className="min-w-0">
-          <h2 className="text-lg font-bold text-navy">Were your numbers right?</h2>
+          <h2 className="text-lg font-bold text-ink">Were your numbers right?</h2>
           <p className="mt-1 text-sm leading-6 text-gray-600">{calibration.headline}</p>
         </div>
       </div>
@@ -76,7 +76,7 @@ export function ProbabilityCalibrationPanel({ calibration }: { calibration: Prob
         <div className="mt-2 overflow-x-auto">
           <table className="w-full min-w-[420px] text-left text-xs">
             <thead>
-              <tr className="border-b border-gray-200 text-[11px] uppercase tracking-wide text-gray-400">
+              <tr className="border-b border-line text-[11px] uppercase tracking-wide text-gray-400">
                 <th className="py-1.5 pr-3 font-bold">Band</th>
                 <th className="py-1.5 pr-3 font-bold">You said</th>
                 <th className="py-1.5 pr-3 font-bold">Actually won</th>
@@ -86,10 +86,10 @@ export function ProbabilityCalibrationPanel({ calibration }: { calibration: Prob
             </thead>
             <tbody>
               {calibration.rows.map((row) => (
-                <tr key={row.bandId} className="border-b border-gray-100">
+                <tr key={row.bandId} className="border-b border-line-soft">
                   <td className="py-1.5 pr-3 font-semibold text-gray-700">{row.label}</td>
                   <td className="py-1.5 pr-3 text-gray-600">{row.claimed}%</td>
-                  <td className="py-1.5 pr-3 font-bold text-navy">
+                  <td className="py-1.5 pr-3 font-bold text-ink">
                     {row.sufficientSample ? formatWinRate(row.actualWinRate) : '-'}
                   </td>
                   <td className="py-1.5 pr-3 text-gray-600">{row.won} of {row.closed}</td>

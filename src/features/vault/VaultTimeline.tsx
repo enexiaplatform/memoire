@@ -33,7 +33,7 @@ const KIND_LABELS: Record<KnowledgeMemoryEntry['kind'], string> = {
 };
 
 const KIND_STYLES: Record<KnowledgeMemoryEntry['kind'], string> = {
-  activity: 'bg-slate-100 text-navy',
+  activity: 'bg-slate-100 text-ink',
   deal: 'bg-blue-50 text-brand-blue',
   quote: 'bg-cyan-50 text-cyan-800',
   outcome: 'bg-emerald-50 text-emerald-700',
@@ -80,7 +80,7 @@ export function VaultTimeline({
   if (rows.length === 0) {
     return (
       <section className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center">
-        <h2 className="text-lg font-bold text-navy">Nothing has happened here yet</h2>
+        <h2 className="text-lg font-bold text-ink">Nothing has happened here yet</h2>
         <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">
           The timeline fills as the workspace records things: a touch captured, a deal opened, a quote sent, an
           objection raised, an outcome written down.
@@ -92,7 +92,7 @@ export function VaultTimeline({
   return (
     <div className="space-y-4">
       {focusNode && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 shadow-sm">
           <span className="text-xs font-semibold text-gray-500">Showing only</span>
           <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${nodeVisual(focusNode.type).chip}`}>
             {nodeIcon(focusNode.type, 'h-3 w-3')}
@@ -101,7 +101,7 @@ export function VaultTimeline({
           <button
             type="button"
             onClick={onClearFocus}
-            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-bold text-gray-500 transition hover:bg-gray-100 hover:text-navy"
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-bold text-gray-500 transition hover:bg-gray-100 hover:text-ink"
           >
             <X className="h-3 w-3" /> Show everything
           </button>
@@ -109,8 +109,8 @@ export function VaultTimeline({
       )}
 
       {months.map((month) => (
-        <section key={month.key} className="rounded-xl border border-gray-200 bg-white shadow-sm">
-          <h2 className="sticky top-[calc(var(--app-header-h))] z-10 rounded-t-xl border-b border-gray-100 bg-white/95 px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-gray-400 backdrop-blur">
+        <section key={month.key} className="rounded-panel bg-white shadow-panel">
+          <h2 className="sticky top-[calc(var(--app-header-h))] z-10 rounded-t-xl border-b border-line-soft bg-white/95 px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-gray-400 backdrop-blur">
             {month.label}
             <span className="ml-2 font-semibold normal-case tracking-normal text-gray-400">
               {month.rows.length} {month.rows.length === 1 ? 'entry' : 'entries'}
@@ -123,7 +123,7 @@ export function VaultTimeline({
                   {/* Day and month only - the year is the section heading above,
                       and "Aug 9, 2026" truncated to six characters read
                       "Aug 9," with a comma dangling off the end of it. */}
-                  <span className="block text-xs font-bold text-navy">{dayLabel(row.entry.date)}</span>
+                  <span className="block text-xs font-bold text-ink">{dayLabel(row.entry.date)}</span>
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
@@ -133,11 +133,11 @@ export function VaultTimeline({
                     <span className="text-[11px] font-semibold text-gray-400">{row.entry.label}</span>
                   </div>
                   {row.entry.href ? (
-                    <Link to={row.entry.href} className="mt-1 block text-sm font-bold text-navy hover:text-brand-blue hover:underline">
+                    <Link to={row.entry.href} className="mt-1 block text-sm font-bold text-ink hover:text-brand-blue hover:underline">
                       {row.entry.title}
                     </Link>
                   ) : (
-                    <p className="mt-1 text-sm font-bold text-navy">{row.entry.title}</p>
+                    <p className="mt-1 text-sm font-bold text-ink">{row.entry.title}</p>
                   )}
                   {row.entry.detail && (
                     <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-gray-500">{row.entry.detail}</p>

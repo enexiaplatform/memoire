@@ -210,7 +210,7 @@ export function SalesAssetsPage() {
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Assets</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Sales Asset Library</h1>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-ink">Sales Asset Library</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
             Reusable proof, objection responses, proposal snippets, and compliance notes for your B2B sales motion. No file storage or external CRM sync.
           </p>
@@ -254,7 +254,7 @@ export function SalesAssetsPage() {
         onImport={importStarterPack}
       />
 
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-panel bg-white shadow-panel p-5">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           <SummaryCard label="Assets" value={summary.total} />
           <SummaryCard label="Proof assets" value={summary.proofAssets} tone={summary.proofAssets ? 'green' : 'blue'} />
@@ -269,14 +269,14 @@ export function SalesAssetsPage() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm font-semibold text-gray-700 outline-none focus:border-brand-blue focus:bg-white"
+              className="w-full rounded-lg border border-line bg-gray-50 py-2 pl-9 pr-3 text-sm font-semibold text-gray-700 outline-none focus:border-brand-blue focus:bg-white"
               placeholder="Search asset, account, objection, pattern..."
             />
           </label>
           <select
             value={assetTypeFilter}
             onChange={(event) => setAssetTypeFilter(event.target.value as SalesAssetType | typeof allFilter)}
-            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-brand-blue focus:bg-white"
+            className="rounded-lg border border-line bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-brand-blue focus:bg-white"
           >
             <option value={allFilter}>All asset types</option>
             {salesAssetTypes.map((type) => <option key={type} value={type}>{type}</option>)}
@@ -284,7 +284,7 @@ export function SalesAssetsPage() {
           <input
             value={tagFilter}
             onChange={(event) => setTagFilter(event.target.value)}
-            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-brand-blue focus:bg-white"
+            className="rounded-lg border border-line bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-brand-blue focus:bg-white"
             placeholder="Filter tag/use case"
           />
         </div>
@@ -300,7 +300,7 @@ export function SalesAssetsPage() {
             <AssetsEmptyState onAdd={openAddPanel} />
           ) : visibleAssets.length === 0 ? (
             <div className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center">
-              <p className="text-sm font-bold text-navy">No asset matches this filter.</p>
+              <p className="text-sm font-bold text-ink">No asset matches this filter.</p>
               <p className="mt-2 text-sm text-gray-500">Clear search or create a new reusable proof asset.</p>
             </div>
           ) : (
@@ -345,14 +345,14 @@ function AssetCard({
   onDelete: () => void;
 }) {
   return (
-    <article className={`rounded-lg border bg-white p-4 shadow-sm ${isSelected ? 'border-brand-blue ring-2 ring-blue-100' : 'border-gray-200'}`}>
+    <article className={`rounded-lg border bg-white p-4 shadow-sm ${isSelected ? 'border-brand-blue ring-2 ring-blue-100' : 'border-line'}`}>
       <button type="button" onClick={onSelect} className="block w-full text-left">
         <div className="flex flex-wrap gap-2">
           <Badge label={asset.assetType} tone={assetTypeTone(asset.assetType)} />
           {asset.isSample && <Badge label="Demo" tone="gray" />}
           {asset.relatedObjectionType && <Badge label={asset.relatedObjectionType} tone="amber" />}
         </div>
-        <h2 className="mt-3 text-lg font-bold text-navy">{asset.title}</h2>
+        <h2 className="mt-3 text-lg font-bold text-ink">{asset.title}</h2>
         <p className="mt-2 text-sm leading-6 text-gray-600">{asset.summary || asset.useCase || 'Reusable sales asset.'}</p>
         {(asset.relatedAccountName || asset.relatedOpportunityName || asset.relatedPlaybookPatternTitle) && (
           <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">
@@ -395,7 +395,7 @@ function StarterAssetPacksSection({
         <div>
           <div className="flex items-center gap-2">
             <PackagePlus className="h-4 w-4 text-indigo-700" />
-            <h2 className="text-lg font-bold text-navy">Starter Asset Packs</h2>
+            <h2 className="text-lg font-bold text-ink">Starter Asset Packs</h2>
           </div>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-indigo-900/75">
             Import practical, industry-specific proof notes, objection responses, proposal snippets, discovery questions, and follow-up scripts. Packs are local and editable after import.
@@ -407,7 +407,7 @@ function StarterAssetPacksSection({
         {packs.map((pack) => (
           <article key={pack.id} className="rounded-lg border border-indigo-100 bg-white p-4">
             <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">{pack.industry}</p>
-            <h3 className="mt-2 text-base font-bold text-navy">{pack.name}</h3>
+            <h3 className="mt-2 text-base font-bold text-ink">{pack.name}</h3>
             <p className="mt-2 line-clamp-3 text-sm leading-6 text-gray-600">{pack.description}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Badge label={`${pack.assets.length} assets`} tone="blue" />
@@ -440,7 +440,7 @@ function StarterAssetPacksSection({
           <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">Pack preview</p>
-              <h3 className="mt-1 text-base font-bold text-navy">{previewPack.name}</h3>
+              <h3 className="mt-1 text-base font-bold text-ink">{previewPack.name}</h3>
             </div>
             <button
               type="button"
@@ -458,7 +458,7 @@ function StarterAssetPacksSection({
                   <Badge label={asset.assetType} tone={assetTypeTone(asset.assetType)} />
                   {asset.relatedObjectionType && <Badge label={asset.relatedObjectionType} tone="amber" />}
                 </div>
-                <h4 className="mt-2 text-sm font-bold text-navy">{asset.title}</h4>
+                <h4 className="mt-2 text-sm font-bold text-ink">{asset.title}</h4>
                 <p className="mt-1 text-sm leading-6 text-gray-600">{asset.summary}</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {asset.tags.slice(0, 5).map((tag) => (
@@ -493,11 +493,11 @@ function AssetPanel({
 }) {
   if (mode === 'closed') {
     return (
-      <aside className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <aside className="rounded-panel bg-white shadow-panel p-5">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-brand-blue">
           <FileText className="h-5 w-5" />
         </div>
-        <h2 className="mt-4 text-lg font-bold text-navy">Select or create an asset</h2>
+        <h2 className="mt-4 text-lg font-bold text-ink">Select or create an asset</h2>
         <p className="mt-2 text-sm leading-6 text-gray-500">
           Keep short reusable content that supports objections, proof gaps, competitor responses, procurement, and pipeline defense.
         </p>
@@ -506,13 +506,13 @@ function AssetPanel({
   }
 
   return (
-    <aside className="sticky top-6 h-fit rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <aside className="sticky top-6 h-fit rounded-panel bg-white shadow-panel p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">{mode === 'add' ? 'New Asset' : 'Edit Asset'}</p>
-          <h2 className="mt-1 text-xl font-bold text-navy">{asset?.title || 'Reusable sales asset'}</h2>
+          <h2 className="mt-1 text-xl font-bold text-ink">{asset?.title || 'Reusable sales asset'}</h2>
         </div>
-        <button type="button" onClick={onClose} aria-label="Close" className="rounded-full border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-50">
+        <button type="button" onClick={onClose} aria-label="Close" className="rounded-full border border-line p-1.5 text-gray-500 hover:bg-gray-50">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -552,14 +552,14 @@ function AssetsEmptyState({ onAdd }: { onAdd: () => void }) {
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-brand-blue">
         <FileText className="h-6 w-6" />
       </div>
-      <h2 className="mt-4 text-xl font-bold text-navy">No sales assets yet.</h2>
+      <h2 className="mt-4 text-xl font-bold text-ink">No sales assets yet.</h2>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">
         Import starter asset packs to prepare proof responses, or create a reusable proof note, objection response, proposal snippet, or competitor response.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-2">
         <button type="button" onClick={onAdd} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Create Asset</button>
         <a href="#starter-packs" className="rounded-full border border-indigo-100 bg-indigo-50 px-4 py-2 text-sm font-bold text-indigo-700">Open Starter Packs</a>
-        <Link to="/app/playbook" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">Open Playbook</Link>
+        <Link to="/app/playbook" className="rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700">Open Playbook</Link>
       </div>
     </section>
   );
@@ -567,7 +567,7 @@ function AssetsEmptyState({ onAdd }: { onAdd: () => void }) {
 
 function AssetButton({ children, onClick }: { children: ReactNode; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">
+    <button type="button" onClick={onClick} className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50">
       <Copy className="h-3.5 w-3.5" />
       {children}
     </button>
@@ -581,7 +581,7 @@ function SummaryCard({ label, value, tone = 'blue' }: { label: string; value: nu
     amber: 'bg-amber-50 text-amber-700',
   }[tone];
   return (
-    <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+    <div className="rounded-lg border border-line-soft bg-gray-50 p-4">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
       <p className={`mt-2 inline-flex rounded-full px-3 py-1 text-2xl font-black ${toneClass}`}>{value}</p>
     </div>
@@ -594,7 +594,7 @@ function Badge({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green
     green: 'border-emerald-100 bg-emerald-50 text-emerald-700',
     amber: 'border-amber-100 bg-amber-50 text-amber-700',
     red: 'border-red-100 bg-red-50 text-red-700',
-    gray: 'border-gray-200 bg-gray-50 text-gray-600',
+    gray: 'border-line bg-gray-50 text-gray-600',
   }[tone];
   return <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${toneMap}`}>{label}</span>;
 }
@@ -602,7 +602,7 @@ function Badge({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green
 function Field({ label, value, onChange, required = false }: { label: string; value: string; onChange: (value: string) => void; required?: boolean }) {
   return (
     <label className="block">
-      <span className="text-sm font-bold text-navy">{label}{required ? ' *' : ''}</span>
+      <span className="text-sm font-bold text-ink">{label}{required ? ' *' : ''}</span>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -615,7 +615,7 @@ function Field({ label, value, onChange, required = false }: { label: string; va
 function SelectField({ label, value, options, onChange }: { label: string; value: SalesAssetType; options: SalesAssetType[]; onChange: (value: SalesAssetType) => void }) {
   return (
     <label className="block">
-      <span className="text-sm font-bold text-navy">{label}</span>
+      <span className="text-sm font-bold text-ink">{label}</span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value as SalesAssetType)}
@@ -630,7 +630,7 @@ function SelectField({ label, value, options, onChange }: { label: string; value
 function TextArea({ label, value, onChange, rows = 3 }: { label: string; value: string; onChange: (value: string) => void; rows?: number }) {
   return (
     <label className="block">
-      <span className="text-sm font-bold text-navy">{label}</span>
+      <span className="text-sm font-bold text-ink">{label}</span>
       <textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}

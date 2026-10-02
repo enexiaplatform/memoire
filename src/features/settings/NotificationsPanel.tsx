@@ -123,7 +123,7 @@ export function NotificationsPanel() {
         <div className="flex items-start gap-2.5">
           <Mail className="mt-0.5 h-4 w-4 shrink-0 text-brand-blue" />
           <div>
-            <p className="text-sm font-semibold text-navy">Email reminders</p>
+            <p className="text-sm font-semibold text-ink">Email reminders</p>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
               Memoire can send a short morning digest of what is overdue, what has gone quiet and where money is
               stuck - and a Monday note on what last week produced. Both need an account, because both are sent from
@@ -140,7 +140,7 @@ export function NotificationsPanel() {
       <div className="flex items-start gap-2.5">
         <Mail className="mt-0.5 h-4 w-4 shrink-0 text-brand-blue" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-navy">Email reminders</p>
+          <p className="text-sm font-semibold text-ink">Email reminders</p>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
             Memoire only reaches you when you open it. These two emails are the exception, and they only arrive when
             there is something to say - a morning with nothing overdue sends nothing.
@@ -172,12 +172,12 @@ export function NotificationsPanel() {
 
           {(preferences.daily || preferences.weekly) && (
             <label className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-              <span className="font-semibold text-navy">Send at</span>
+              <span className="font-semibold text-ink">Send at</span>
               <select
                 value={preferences.hour}
                 disabled={loading}
                 onChange={(event) => save({ ...preferences, hour: Number(event.target.value) })}
-                className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm font-semibold text-navy"
+                className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm font-semibold text-ink"
               >
                 {Array.from({ length: 24 }, (_, hour) => (
                   <option key={hour} value={hour}>{formatHour(hour)}</option>
@@ -225,7 +225,7 @@ function Toggle({
         className="mt-0.5 h-4 w-4 shrink-0 accent-brand-blue"
       />
       <span className="min-w-0">
-        <span className="block text-sm font-semibold text-navy">{label}</span>
+        <span className="block text-sm font-semibold text-ink">{label}</span>
         <span className="block text-xs leading-5 text-gray-500">{description}</span>
       </span>
     </label>

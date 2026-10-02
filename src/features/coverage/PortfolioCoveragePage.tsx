@@ -115,7 +115,7 @@ export function PortfolioCoveragePage() {
         actions={
           <Link
             to="/app/accounts"
-            className="inline-flex rounded-lg border border-gray-300 px-3 py-2 text-sm font-bold text-navy transition hover:border-brand-blue hover:text-brand-blue"
+            className="inline-flex rounded-lg border border-gray-300 px-3 py-2 text-sm font-bold text-ink transition hover:border-brand-blue hover:text-brand-blue"
           >
             Back to Accounts
           </Link>
@@ -126,14 +126,14 @@ export function PortfolioCoveragePage() {
         <EmptyState brandCount={matrix.brands.length} />
       ) : (
         <>
-          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <section className="rounded-panel bg-white shadow-panel p-5">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <div>
                 {/* Says the consequence, not the arithmetic. "12 / 40 squares
                     filled" is a fact about a grid; "23 customers carry one line
                     of five" is a fact about the business, and it is the one
                     that starts a conversation. */}
-                <p className="text-2xl font-black text-navy">
+                <p className="text-2xl font-black text-ink">
                   {matrix.gaps.length}
                   <span className="text-base font-bold text-gray-400">
                     {' '}of {matrix.rows.length} customers buy only part of the range
@@ -157,7 +157,7 @@ export function PortfolioCoveragePage() {
                       Customer
                     </th>
                     {matrix.brands.map((brand) => (
-                      <th key={brand} className="px-1 pb-1 text-center text-[11px] font-bold text-navy">
+                      <th key={brand} className="px-1 pb-1 text-center text-[11px] font-bold text-ink">
                         <span className="block max-w-[92px] truncate" title={brand}>{brand}</span>
                       </th>
                     ))}
@@ -169,7 +169,7 @@ export function PortfolioCoveragePage() {
                 <tbody>
                   {matrix.rows.map((row) => (
                     <tr key={row.accountName}>
-                      <td className="sticky left-0 z-10 max-w-[190px] truncate bg-white pr-3 font-bold text-navy" title={row.accountName}>
+                      <td className="sticky left-0 z-10 max-w-[190px] truncate bg-white pr-3 font-bold text-ink" title={row.accountName}>
                         <Link
                           to={`/app/accounts?accountName=${encodeURIComponent(row.accountName)}`}
                           className="hover:text-brand-blue hover:underline"
@@ -192,7 +192,7 @@ export function PortfolioCoveragePage() {
 
           {matrix.gaps.length > 0 && (
             <section className="rounded-xl border border-amber-200 bg-amber-50/50 p-5 shadow-sm">
-              <h2 className="text-lg font-bold text-navy">The gaps worth closing first</h2>
+              <h2 className="text-lg font-bold text-ink">The gaps worth closing first</h2>
               <p className="mt-1 max-w-3xl text-sm text-gray-600">
                 Customers who already buy from you and carry only part of the range. A line missing at a customer who
                 already trusts you is a shorter conversation than a new logo.
@@ -203,7 +203,7 @@ export function PortfolioCoveragePage() {
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <Link
                         to={`/app/accounts?accountName=${encodeURIComponent(gap.accountName)}`}
-                        className="font-bold text-navy hover:text-brand-blue hover:underline"
+                        className="font-bold text-ink hover:text-brand-blue hover:underline"
                       >
                         {gap.accountName}
                       </Link>
@@ -287,7 +287,7 @@ function Legend() {
 function EmptyState({ brandCount }: { brandCount: number }) {
   return (
     <section className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
-      <h2 className="text-lg font-bold text-navy">
+      <h2 className="text-lg font-bold text-ink">
         {brandCount === 0 ? 'No lines recorded yet.' : 'Only one line recorded so far.'}
       </h2>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">

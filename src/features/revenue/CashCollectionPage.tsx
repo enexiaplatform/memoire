@@ -156,7 +156,7 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
             type="button"
             onClick={() => void reload()}
             disabled={syncing}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700 disabled:opacity-60"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700 disabled:opacity-60"
             title="Reload collections from cloud"
           >
             <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
@@ -230,7 +230,7 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
               <div className="flex items-start gap-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-700" />
                 <div>
-                  <p className="text-sm font-bold text-navy">Chase this one first</p>
+                  <p className="text-sm font-bold text-ink">Chase this one first</p>
                   {/* Biggest, then oldest. A small invoice 200 days late is a
                       bookkeeping problem; a large one 20 days late is a business
                       problem, and sorting by age alone puts the wrong call at
@@ -260,8 +260,8 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
 
           <AgingBand summary={summary} />
 
-          <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 p-4">
+          <section className="rounded-panel bg-white shadow-panel">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft p-4">
               <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">Orders and what they owe</h2>
               <div className="flex flex-wrap gap-1.5">
                 {(['open', 'overdue', 'all'] as const).map((option) => (
@@ -312,7 +312,7 @@ function AgingBand({ summary }: { summary: ReturnType<typeof buildReceivables> }
   if (withMoney.length === 0) return null;
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">How late the money is</h2>
       <div className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {summary.aging.map((entry) => (
@@ -321,11 +321,11 @@ function AgingBand({ summary }: { summary: ReturnType<typeof buildReceivables> }
             className={`rounded-lg border p-3 ${
               entry.amountBase > 0 && entry.bucket !== 'current' && entry.bucket !== 'due-soon'
                 ? 'border-red-100 bg-red-50/50'
-                : 'border-gray-100 bg-gray-50/60'
+                : 'border-line-soft bg-gray-50/60'
             }`}
           >
             <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">{agingBucketLabels[entry.bucket]}</p>
-            <p className="mt-1 text-lg font-bold text-navy">{formatCompactBaseAmount(entry.amountBase)}</p>
+            <p className="mt-1 text-lg font-bold text-ink">{formatCompactBaseAmount(entry.amountBase)}</p>
             <p className="text-xs text-gray-500">{entry.count} {entry.count === 1 ? 'order' : 'orders'}</p>
           </div>
         ))}
@@ -388,14 +388,14 @@ function ReceivableRow({
         className="flex w-full items-center gap-3 p-4 text-left hover:bg-gray-50"
       >
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold text-navy">{order.accountName}</p>
+          <p className="truncate text-sm font-bold text-ink">{order.accountName}</p>
           <p className="truncate text-xs text-gray-500">
             {order.orderRef} · {order.orderName}
             {order.paymentTerm ? ` · ${order.paymentTerm}` : ''}
           </p>
         </div>
         <div className="shrink-0 text-right">
-          <p className={`text-sm font-bold ${order.overdueBase > 0 ? 'text-red-700' : 'text-navy'}`}>
+          <p className={`text-sm font-bold ${order.overdueBase > 0 ? 'text-red-700' : 'text-ink'}`}>
             {formatCompactBaseAmount(order.outstandingBase)}
           </p>
           {/* The amount above is everything still owed on the order; the date
@@ -422,7 +422,7 @@ function ReceivableRow({
       </button>
 
       {expanded && (
-        <div className="space-y-4 border-t border-gray-100 bg-gray-50/50 p-4">
+        <div className="space-y-4 border-t border-line-soft bg-gray-50/50 p-4">
           {/* Where the schedule came from. A due date this product inferred and
               one the customer agreed to are different kinds of fact, and a
               collection call made on the wrong one costs a relationship. */}
@@ -442,7 +442,7 @@ function ReceivableRow({
               <tbody className="divide-y divide-gray-200">
                 {order.installments.map((installment) => (
                   <tr key={installment.id} className={installment.overdue ? 'bg-red-50/60' : ''}>
-                    <td className="py-2 pr-3 font-semibold text-navy">{installment.label}</td>
+                    <td className="py-2 pr-3 font-semibold text-ink">{installment.label}</td>
                     <td className="py-2 pr-3 text-gray-600">
                       {installment.dueDate ? formatSafeBusinessDate(installment.dueDate) : '—'}
                       {installment.overdue && (
@@ -453,7 +453,7 @@ function ReceivableRow({
                     </td>
                     <td className="py-2 pr-3 text-right text-gray-700">{formatCompactBaseAmount(installment.dueBase)}</td>
                     <td className="py-2 pr-3 text-right text-emerald-700">{formatCompactBaseAmount(installment.receivedBase)}</td>
-                    <td className="py-2 text-right font-bold text-navy">{formatCompactBaseAmount(installment.outstandingBase)}</td>
+                    <td className="py-2 text-right font-bold text-ink">{formatCompactBaseAmount(installment.outstandingBase)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -467,7 +467,7 @@ function ReceivableRow({
             </p>
           )}
 
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <div className="rounded-lg border border-line bg-white p-4">
             <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Record money that arrived</p>
             <div className="mt-3 flex flex-wrap items-end gap-3">
               <label className="flex flex-col text-xs font-semibold text-gray-600">
@@ -476,7 +476,7 @@ function ReceivableRow({
                   type="number"
                   value={amount}
                   onChange={(event) => setAmount(event.target.value)}
-                  className="mt-1 w-40 rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                  className="mt-1 w-40 rounded-lg border border-line px-3 py-2 text-sm"
                   placeholder="0"
                 />
               </label>
@@ -486,7 +486,7 @@ function ReceivableRow({
                   type="date"
                   value={receivedOn}
                   onChange={(event) => setReceivedOn(event.target.value)}
-                  className="mt-1 rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                  className="mt-1 rounded-lg border border-line px-3 py-2 text-sm"
                 />
               </label>
               <label className="flex flex-col text-xs font-semibold text-gray-600">
@@ -495,7 +495,7 @@ function ReceivableRow({
                   type="text"
                   value={method}
                   onChange={(event) => setMethod(event.target.value)}
-                  className="mt-1 w-44 rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                  className="mt-1 w-44 rounded-lg border border-line px-3 py-2 text-sm"
                   placeholder="Bank transfer"
                 />
               </label>
@@ -511,11 +511,11 @@ function ReceivableRow({
             </div>
 
             {(record?.receipts.length || 0) > 0 && (
-              <ul className="mt-4 space-y-1.5 border-t border-gray-100 pt-3">
+              <ul className="mt-4 space-y-1.5 border-t border-line-soft pt-3">
                 {record?.receipts.map((receipt) => (
                   <li key={receipt.id} className="flex items-center justify-between gap-3 text-xs">
                     <span className="text-gray-600">
-                      <span className="font-bold text-navy">{formatBaseCurrencyAmount(receipt.amount)}</span>
+                      <span className="font-bold text-ink">{formatBaseCurrencyAmount(receipt.amount)}</span>
                       {' on '}{formatSafeBusinessDate(receipt.receivedOn)}
                       {receipt.method ? ` · ${receipt.method}` : ''}
                     </span>
@@ -533,14 +533,14 @@ function ReceivableRow({
             )}
           </div>
 
-          <div className="flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-4">
+          <div className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-white p-4">
             <label className="flex flex-col text-xs font-semibold text-gray-600">
               Delivered on
               <input
                 type="date"
                 value={deliveredOn}
                 onChange={(event) => setDeliveredOn(event.target.value)}
-                className="mt-1 rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                className="mt-1 rounded-lg border border-line px-3 py-2 text-sm"
               />
             </label>
             <button
@@ -551,7 +551,7 @@ function ReceivableRow({
                 source: sampleDataActive ? 'demo' : 'user',
                 isSample: sampleDataActive,
               }))}
-              className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-navy hover:bg-gray-50"
+              className="rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-ink hover:bg-gray-50"
             >
               Save delivery date
             </button>
@@ -623,9 +623,9 @@ function Stat({
   tone?: 'default' | 'red';
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="rounded-panel bg-white shadow-panel p-4">
       <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">{label}</p>
-      <p className={`mt-1 text-xl font-bold ${tone === 'red' ? 'text-red-700' : 'text-navy'}`}>{value}</p>
+      <p className={`mt-1 text-xl font-bold ${tone === 'red' ? 'text-red-700' : 'text-ink'}`}>{value}</p>
       <p className="mt-1 text-xs leading-5 text-gray-500">{detail}</p>
     </div>
   );
@@ -633,9 +633,9 @@ function Stat({
 
 function EmptyCollection() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+    <div className="rounded-panel bg-white shadow-panel p-8 text-center">
       <Banknote className="mx-auto h-8 w-8 text-gray-300" />
-      <h2 className="mt-3 text-lg font-bold text-navy">No committed orders yet</h2>
+      <h2 className="mt-3 text-lg font-bold text-ink">No committed orders yet</h2>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
         This page fills itself from your order book. Once a deal is won — or reaches procurement — its payment terms
         become a collection schedule here, with nothing to re-enter.

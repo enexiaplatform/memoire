@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { monogramGround, monogramInitials, type DaylightTone } from './daylightStyles';
+import { monogramGround, monogramInitials, panelClass, type DaylightTone } from './daylightStyles';
 
 /**
  * Daylight - the shared vocabulary of the 2026-09-14 redesign.
@@ -28,7 +28,7 @@ export function Panel({
   id?: string;
 }) {
   return (
-    <Tag className={`rounded-panel bg-white shadow-panel ${className}`} style={style} {...rest}>
+    <Tag className={`${panelClass} ${className}`} style={style} {...rest}>
       {children}
     </Tag>
   );

@@ -171,7 +171,7 @@ export function RevenueViewPage({ tabs }: { tabs?: ReactNode } = {}) {
             type="button"
             onClick={() => loadRevenue(true)}
             disabled={syncing}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700 disabled:opacity-60"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700 disabled:opacity-60"
             title="Reload orders from cloud"
           >
             <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
@@ -190,7 +190,7 @@ export function RevenueViewPage({ tabs }: { tabs?: ReactNode } = {}) {
       />
 
       {loading ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
+        <div className="rounded-panel bg-white shadow-panel p-6 text-sm font-semibold text-gray-500">
           Loading revenue view...
         </div>
       ) : !data.opportunities.length && !data.quotes.length ? (
@@ -319,9 +319,9 @@ export function RevenueViewPage({ tabs }: { tabs?: ReactNode } = {}) {
               {moneyFlowStages.map((stage) => {
                 const lane = moneyFlow.lanes.find((item) => item.stage === stage);
                 return (
-                  <div key={stage} className={`rounded-lg border p-3 ${lane && lane.stuckThreads > 0 ? 'border-red-200 bg-red-50/50' : 'border-gray-100 bg-gray-50'}`}>
+                  <div key={stage} className={`rounded-lg border p-3 ${lane && lane.stuckThreads > 0 ? 'border-red-200 bg-red-50/50' : 'border-line-soft bg-gray-50'}`}>
                     <p className="text-xs font-bold uppercase tracking-wide text-gray-500">{stage}</p>
-                    <p className="mt-1 text-lg font-bold text-navy">{lane?.threads || 0}</p>
+                    <p className="mt-1 text-lg font-bold text-ink">{lane?.threads || 0}</p>
                     <p className="text-xs font-semibold text-gray-600">{formatBaseCurrencyAmount(lane?.totalBase || 0, true)}</p>
                     {lane && lane.stuckThreads > 0 && (
                       <p className="mt-1 text-xs font-bold text-red-700">{lane.stuckThreads} stuck</p>
@@ -373,10 +373,10 @@ function CommercialValueWaitingPanel({projection,opportunities}:{projection:Retu
   const rows=projection.consequences.filter(row=>row.consequenceKinds.includes('gated')||row.consequenceKinds.includes('timing_unsupported'));
   if(!rows.length)return null;
   const totals=aggregateMoneyConsequences(rows);
-  return <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" aria-label="Commercial value waiting on state">
-    <h2 className="text-base font-bold text-navy">Commercial value waiting on state</h2>
+  return <section className="rounded-panel bg-white shadow-panel p-5" aria-label="Commercial value waiting on state">
+    <h2 className="text-base font-bold text-ink">Commercial value waiting on state</h2>
     <p className="mt-1 text-sm text-gray-500">Only explicit Money Gates appear here. Amounts are not loss estimates and are never repeated per blocker.</p>
-    <div className="mt-3 space-y-3">{rows.map(row=><article key={`${row.moneySourceType}:${row.moneySourceId}`} className="rounded-lg border border-gray-100 p-3 text-sm">
+    <div className="mt-3 space-y-3">{rows.map(row=><article key={`${row.moneySourceType}:${row.moneySourceId}`} className="rounded-lg border border-line-soft p-3 text-sm">
       <p><strong>{formatMoney(row.amount,row.currency)}</strong> · {row.moneySourceType==='quote_value'?'Quote value':'Opportunity potential value'} · {opportunities.find(item=>item.id===row.opportunityId)?.opportunityName||'Opportunity'}</p>
       {row.blockers.length?<p className="mt-1">Waiting on: {row.blockers.map(blocker=>blocker.label).join('; ')}</p>:<p className="mt-1 text-gray-500">No current blocker. Gating resolved does not mean the money is realized.</p>}
       {row.timingState==='unsupported'&&<p className="mt-1 text-amber-800">Linked commercial timing is no longer supported.</p>}
@@ -402,14 +402,14 @@ function FoldedSection({
   children: React.ReactNode;
 }) {
   return (
-    <details className="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <details className="rounded-panel bg-white shadow-panel">
       <summary className="cursor-pointer list-none px-5 py-3">
         <span className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="text-base font-bold text-navy">{title}</span>
+          <span className="text-base font-bold text-ink">{title}</span>
           <span className="text-xs font-semibold text-gray-500">{summary}</span>
         </span>
       </summary>
-      <div className="border-t border-gray-100 p-5">{children}</div>
+      <div className="border-t border-line-soft p-5">{children}</div>
     </details>
   );
 }
@@ -420,12 +420,12 @@ function FoldedSection({
  */
 function RouteHealthSection({ report }: { report: RouteHealthReport }) {
   return (
-    <details className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <details className="rounded-panel bg-white shadow-panel p-5">
       <summary className="cursor-pointer list-none">
         <span className="flex flex-col gap-1 md:flex-row md:items-baseline md:justify-between">
           <span>
             <span className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Route intelligence</span>
-            <span className="ml-2 text-base font-bold text-navy">Which routes make money.</span>
+            <span className="ml-2 text-base font-bold text-ink">Which routes make money.</span>
           </span>
           <span className="text-xs text-gray-500">
             {report.routes.length} route{report.routes.length === 1 ? '' : 's'} · win rate and money at stake
@@ -462,7 +462,7 @@ function RouteHealthSection({ report }: { report: RouteHealthReport }) {
             <tbody className="divide-y divide-gray-100">
               {report.routes.map((route) => (
                 <tr key={route.route}>
-                  <td className="py-2.5 font-bold text-navy">{route.route}</td>
+                  <td className="py-2.5 font-bold text-ink">{route.route}</td>
                   <td className="py-2.5 text-right font-semibold text-gray-700">{route.activeCount}</td>
                   <td className="py-2.5 text-right font-semibold text-gray-700">{formatBaseMoney(route.activeValueBase)}</td>
                   <td className="py-2.5 text-right">
@@ -486,8 +486,8 @@ function RouteHealthSection({ report }: { report: RouteHealthReport }) {
 function RevenueActionTable({ items }: { items: RevenueActionItem[] }) {
   if (items.length === 0) {
     return (
-      <div className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-6 text-center">
-        <p className="text-sm font-bold text-navy">No commercial risk found.</p>
+      <div className="mt-4 rounded-lg border border-dashed border-line bg-gray-50 p-6 text-center">
+        <p className="text-sm font-bold text-ink">No commercial risk found.</p>
         <p className="mt-1 text-sm text-gray-500">Create quotes or update pipeline next actions to keep this view current.</p>
       </div>
     );
@@ -498,18 +498,18 @@ function RevenueActionTable({ items }: { items: RevenueActionItem[] }) {
       <table className="w-full min-w-[920px] border-collapse text-left text-sm">
         <thead className="bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
           <tr>
-            <th className="border-b border-gray-200 px-3 py-3">Account</th>
-            <th className="border-b border-gray-200 px-3 py-3">Item</th>
-            <th className="border-b border-gray-200 px-3 py-3">Money</th>
-            <th className="border-b border-gray-200 px-3 py-3">Risk</th>
-            <th className="border-b border-gray-200 px-3 py-3">Next action</th>
-            <th className="border-b border-gray-200 px-3 py-3 text-right">Open</th>
+            <th className="border-b border-line px-3 py-3">Account</th>
+            <th className="border-b border-line px-3 py-3">Item</th>
+            <th className="border-b border-line px-3 py-3">Money</th>
+            <th className="border-b border-line px-3 py-3">Risk</th>
+            <th className="border-b border-line px-3 py-3">Next action</th>
+            <th className="border-b border-line px-3 py-3 text-right">Open</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
           {items.map((item) => (
             <tr key={item.id} className="hover:bg-blue-50/60">
-              <td className="px-3 py-3 font-bold text-navy">{item.accountName}</td>
+              <td className="px-3 py-3 font-bold text-ink">{item.accountName}</td>
               <td className="px-3 py-3">
                 <p className="max-w-[clamp(240px,18vw,460px)] truncate font-semibold text-gray-800" title={item.label}>{item.label}</p>
                 <p className="mt-1 text-xs font-semibold text-gray-400">{item.source} / {item.status}</p>
@@ -567,12 +567,12 @@ function MoneyOutSection({
   const recent = [...expenses].sort((a, b) => (b.expenseDate || '').localeCompare(a.expenseDate || '')).slice(0, 6);
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <Wallet className="h-4 w-4 text-amber-600" />
-            <h2 className="text-lg font-bold text-navy">Costs &amp; what you owe</h2>
+            <h2 className="text-lg font-bold text-ink">Costs &amp; what you owe</h2>
           </div>
           <p className="mt-1 text-sm text-gray-500">
             Log costs and track the payments you owe. Every settled cost flows straight into the P&amp;L above.
@@ -589,14 +589,14 @@ function MoneyOutSection({
       </div>
 
       {showForm && (
-        <div className="mt-4 grid gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-4 grid gap-3 rounded-lg border border-line bg-gray-50 p-4 md:grid-cols-2 xl:grid-cols-3">
           <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-gray-500">
             What
             <input
               value={form.label}
               onChange={(event) => setForm((prev) => ({ ...prev, label: event.target.value }))}
               placeholder="e.g. Reagent restock"
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-ink outline-none focus:border-brand-blue"
             />
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -607,7 +607,7 @@ function MoneyOutSection({
                 value={form.amount ?? ''}
                 onChange={(event) => setForm((prev) => ({ ...prev, amount: event.target.value === '' ? null : Number(event.target.value.replace(/,/g, '')) }))}
                 placeholder="0"
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-ink outline-none focus:border-brand-blue"
               />
             </label>
             <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-gray-500">
@@ -615,7 +615,7 @@ function MoneyOutSection({
               <select
                 value={form.currency}
                 onChange={(event) => setForm((prev) => ({ ...prev, currency: event.target.value }))}
-                className="rounded-lg border border-gray-300 px-2 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
+                className="rounded-lg border border-gray-300 px-2 py-2 text-sm font-medium text-ink outline-none focus:border-brand-blue"
               >
                 {listSelectableCurrencies().map(({ code }) => <option key={code} value={code}>{code}</option>)}
               </select>
@@ -626,7 +626,7 @@ function MoneyOutSection({
             <select
               value={form.category}
               onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value as ExpenseRecord['category'] }))}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-ink outline-none focus:border-brand-blue"
             >
               {expenseCategories.map((category) => <option key={category} value={category}>{category}</option>)}
             </select>
@@ -637,7 +637,7 @@ function MoneyOutSection({
               <select
                 value={form.status}
                 onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value as ExpenseRecord['status'] }))}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-ink outline-none focus:border-brand-blue"
               >
                 <option value="Paid">Paid</option>
                 <option value="Upcoming">Upcoming</option>
@@ -651,7 +651,7 @@ function MoneyOutSection({
                 onChange={(event) => setForm((prev) => (prev.status === 'Upcoming'
                   ? { ...prev, dueDate: event.target.value }
                   : { ...prev, expenseDate: event.target.value }))}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-navy outline-none focus:border-brand-blue"
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-ink outline-none focus:border-brand-blue"
               />
             </label>
           </div>
@@ -659,7 +659,7 @@ function MoneyOutSection({
             <button type="button" onClick={handleAdd} className="rounded-lg bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90 disabled:opacity-50" disabled={!form.label.trim() || form.amount === null}>
               Save expense
             </button>
-            <button type="button" onClick={() => { setShowForm(false); setForm({ ...emptyExpenseInput }); }} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50">
+            <button type="button" onClick={() => { setShowForm(false); setForm({ ...emptyExpenseInput }); }} className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50">
               Cancel
             </button>
           </div>
@@ -683,7 +683,7 @@ function MoneyOutSection({
                 ? 'border-red-200 bg-red-50/60'
                 : obligation.status === 'Due soon'
                   ? 'border-amber-100 bg-amber-50/50'
-                  : 'border-gray-100 bg-gray-50';
+                  : 'border-line-soft bg-gray-50';
               return (
                 <div key={obligation.id} className={`flex flex-col gap-1 rounded-lg border ${tone} px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between`}>
                   <div>
@@ -712,7 +712,7 @@ function MoneyOutSection({
       )}
 
       {recent.length === 0 ? (
-        <p className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-4 text-center text-sm text-gray-500">
+        <p className="mt-4 rounded-lg border border-dashed border-line bg-gray-50 px-3 py-4 text-center text-sm text-gray-500">
           No expenses logged yet. Log one cost and the profit line becomes real.
         </p>
       ) : (
@@ -736,7 +736,7 @@ function MoneyOutSection({
             <tbody className="divide-y divide-gray-100">
               {recent.map((expense) => (
                 <tr key={expense.id}>
-                  <td className="py-2.5 font-semibold text-navy">{expense.label}</td>
+                  <td className="py-2.5 font-semibold text-ink">{expense.label}</td>
                   <td className="py-2.5 text-gray-600">{expense.category}</td>
                   <td className="py-2.5 text-right font-bold text-gray-800">{formatCurrencyAmount(expense.amount, expense.currency)}</td>
                   <td className="py-2.5"><Badge label={expense.status} tone={expense.status === 'Paid' ? 'green' : 'amber'} /></td>
@@ -765,18 +765,18 @@ function MoneyOutSection({
  */
 function RevenueEmptyState() {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-8 text-center">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-brand-blue">
         <ReceiptText className="h-6 w-6" />
       </div>
-      <h2 className="mt-4 text-xl font-bold text-navy">No orders yet.</h2>
+      <h2 className="mt-4 text-xl font-bold text-ink">No orders yet.</h2>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">
         An order appears here the moment a deal is won, and stays until the money is in - confirmation, deposit,
         delivery, invoice, payment. Nothing to set up: mark a deal Won on Opportunities and it arrives.
       </p>
       <div className="mt-5 flex flex-wrap justify-center gap-2">
         <Link to="/app/opportunities" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Open opportunities</Link>
-        <Link to="/app/quotes" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">Write a quote instead</Link>
+        <Link to="/app/quotes" className="rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700">Write a quote instead</Link>
       </div>
     </section>
   );
@@ -790,7 +790,7 @@ function RevenueMetric({ label, value, tone, detail }: {
   detail?: string;
 }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
+    <div className="rounded-lg border border-line bg-white px-3 py-2 shadow-sm">
       <p className="truncate text-[10px] font-bold uppercase tracking-wide text-gray-400" title={label}>{label}</p>
       <p className={`text-lg font-bold leading-tight ${textToneClass(tone)}`}>{value}</p>
       {detail && <p className="mt-0.5 text-[10px] leading-tight text-gray-500">{detail}</p>}
@@ -804,7 +804,7 @@ function Badge({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green
     green: 'border-emerald-100 bg-emerald-50 text-emerald-700',
     amber: 'border-amber-100 bg-amber-50 text-amber-700',
     red: 'border-red-100 bg-red-50 text-red-700',
-    gray: 'border-gray-200 bg-gray-50 text-gray-600',
+    gray: 'border-line bg-gray-50 text-gray-600',
   }[tone];
   return <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${classes}`}>{label}</span>;
 }
@@ -818,7 +818,7 @@ function riskTone(risk: RevenueRiskKind): 'blue' | 'green' | 'amber' | 'red' | '
 
 function textToneClass(tone: 'blue' | 'green' | 'amber' | 'red') {
   return {
-    blue: 'text-navy',
+    blue: 'text-ink',
     green: 'text-emerald-700',
     amber: 'text-amber-700',
     red: 'text-red-700',

@@ -164,7 +164,7 @@ export function SalesPlaybookPage() {
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Playbook</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Personal Sales Playbook</h1>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-ink">Personal Sales Playbook</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
             Reusable sales patterns from objections, stakeholders, MEDDIC gaps, outcomes, and captured activity. Rule-based only.
           </p>
@@ -180,7 +180,7 @@ export function SalesPlaybookPage() {
       </header>
 
       {loading ? (
-        <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
+        <div className="flex items-center gap-2 rounded-panel bg-white shadow-panel p-6 text-sm font-semibold text-gray-500">
           <Loader2 className="h-4 w-4 animate-spin" />
           Building playbook patterns...
         </div>
@@ -196,10 +196,10 @@ export function SalesPlaybookPage() {
               }}
             />
           )}
-          <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <section className="rounded-panel bg-white shadow-panel p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <h2 className="text-lg font-bold text-navy">Pattern Library</h2>
+                <h2 className="text-lg font-bold text-ink">Pattern Library</h2>
                 <p className="mt-1 text-sm text-gray-500">
                   Derived from existing Memoire data. No separate knowledge base or manual sync required.
                 </p>
@@ -225,14 +225,14 @@ export function SalesPlaybookPage() {
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm font-semibold text-gray-700 outline-none focus:border-brand-blue focus:bg-white"
+                  className="w-full rounded-lg border border-line bg-gray-50 py-2 pl-9 pr-3 text-sm font-semibold text-gray-700 outline-none focus:border-brand-blue focus:bg-white"
                   placeholder="Search pattern, account, objection, or playbook response"
                 />
               </label>
               <select
                 value={categoryFilter}
                 onChange={(event) => setCategoryFilter(event.target.value as SalesPlaybookPatternCategory | typeof allFilter)}
-                className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-brand-blue focus:bg-white"
+                className="rounded-lg border border-line bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-brand-blue focus:bg-white"
               >
                 <option value={allFilter}>All categories</option>
                 {playbookPatternCategories.map((category) => <option key={category} value={category}>{category}</option>)}
@@ -240,7 +240,7 @@ export function SalesPlaybookPage() {
               <select
                 value={severityFilter}
                 onChange={(event) => setSeverityFilter(event.target.value as SalesPlaybookSeverity | typeof allFilter)}
-                className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-brand-blue focus:bg-white"
+                className="rounded-lg border border-line bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-brand-blue focus:bg-white"
               >
                 <option value={allFilter}>All severity</option>
                 {playbookSeverities.map((severity) => <option key={severity} value={severity}>{severity}</option>)}
@@ -256,7 +256,7 @@ export function SalesPlaybookPage() {
               </div>
               {visiblePatterns.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center">
-                  <p className="text-sm font-bold text-navy">No pattern matches this filter.</p>
+                  <p className="text-sm font-bold text-ink">No pattern matches this filter.</p>
                   <p className="mt-2 text-sm text-gray-500">Clear filters or capture more activity to build the playbook.</p>
                 </div>
               ) : (
@@ -303,14 +303,14 @@ function PatternCard({
   onCopyAssetDraft: () => void;
 }) {
   return (
-    <article className={`rounded-lg border bg-white p-4 shadow-sm ${isSelected ? 'border-brand-blue ring-2 ring-blue-100' : 'border-gray-200'}`}>
+    <article className={`rounded-lg border bg-white p-4 shadow-sm ${isSelected ? 'border-brand-blue ring-2 ring-blue-100' : 'border-line'}`}>
       <button type="button" onClick={onSelect} className="block w-full text-left">
         <div className="flex flex-wrap gap-2">
           <Badge label={pattern.category} tone="blue" />
           <Badge label={pattern.severity} tone={severityTone(pattern.severity)} />
           <Badge label={`${pattern.frequency}x`} tone="gray" />
         </div>
-        <h2 className="mt-3 text-lg font-bold text-navy">{pattern.title}</h2>
+        <h2 className="mt-3 text-lg font-bold text-ink">{pattern.title}</h2>
         <p className="mt-2 text-sm leading-6 text-gray-600">{pattern.whyItMatters}</p>
         {pattern.evidence[0] && (
           <p className="mt-3 rounded-lg bg-gray-50 p-3 text-sm leading-6 text-gray-600">{pattern.evidence[0]}</p>
@@ -323,7 +323,7 @@ function PatternCard({
         <button
           type="button"
           onClick={() => onCopy('playbook response', pattern.suggestedPlaybookResponse)}
-          className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+          className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
         >
           <Copy className="h-3.5 w-3.5" />
           Copy Response
@@ -331,7 +331,7 @@ function PatternCard({
         <button
           type="button"
           onClick={() => onCopy('pattern summary', generatePlaybookPatternMarkdown(pattern))}
-          className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+          className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
         >
           <Copy className="h-3.5 w-3.5" />
           Copy Summary
@@ -347,7 +347,7 @@ function PatternCard({
         <button
           type="button"
           onClick={onCopyAssetDraft}
-          className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+          className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
         >
           <Copy className="h-3.5 w-3.5" />
           Copy Asset Draft
@@ -370,15 +370,15 @@ function PatternDetailPanel({
 }) {
   if (!pattern) {
     return (
-      <aside className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <p className="text-sm font-bold text-navy">Select a pattern</p>
+      <aside className="rounded-panel bg-white shadow-panel p-5">
+        <p className="text-sm font-bold text-ink">Select a pattern</p>
         <p className="mt-2 text-sm text-gray-500">Open a playbook pattern to see evidence and reusable action guidance.</p>
       </aside>
     );
   }
 
   return (
-    <aside className="sticky top-6 h-fit rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <aside className="sticky top-6 h-fit rounded-panel bg-white shadow-panel p-5">
       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-brand-blue">
         <BookOpen className="h-5 w-5" />
       </div>
@@ -387,7 +387,7 @@ function PatternDetailPanel({
         <Badge label={pattern.severity} tone={severityTone(pattern.severity)} />
         <Badge label={`${pattern.frequency}x`} tone="gray" />
       </div>
-      <h2 className="mt-3 text-xl font-bold text-navy">{pattern.title}</h2>
+      <h2 className="mt-3 text-xl font-bold text-ink">{pattern.title}</h2>
 
       <DetailBlock title="Evidence" items={pattern.evidence} />
       <DetailBlock title="Why it matters" items={[pattern.whyItMatters]} />
@@ -409,7 +409,7 @@ function PatternDetailPanel({
         <button
           type="button"
           onClick={() => onCopy('reusable action', pattern.reusableAction)}
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700"
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700"
         >
           <Copy className="h-4 w-4" />
           Copy Reusable Action
@@ -417,7 +417,7 @@ function PatternDetailPanel({
         <button
           type="button"
           onClick={() => onCopy('pattern summary', generatePlaybookPatternMarkdown(pattern))}
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700"
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700"
         >
           <Copy className="h-4 w-4" />
           Copy Pattern Summary
@@ -433,7 +433,7 @@ function PatternDetailPanel({
         <button
           type="button"
           onClick={onCopyAssetDraft}
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700"
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700"
         >
           <Copy className="h-4 w-4" />
           Copy Asset Draft
@@ -458,7 +458,7 @@ function DetailBlock({ title, items }: { title: string; items: string[] }) {
 
 function SummaryCard({ label, value, tone = 'blue' }: { label: string; value: number; tone?: 'blue' | 'green' | 'amber' | 'red' }) {
   return (
-    <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+    <div className="rounded-lg border border-line-soft bg-gray-50 p-4">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
       <p className={`mt-2 inline-flex rounded-full px-3 py-1 text-2xl font-black ${toneClass(tone)}`}>{value}</p>
     </div>
@@ -471,7 +471,7 @@ function Badge({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green
     green: 'border-emerald-100 bg-emerald-50 text-emerald-700',
     amber: 'border-amber-100 bg-amber-50 text-amber-700',
     red: 'border-red-100 bg-red-50 text-red-700',
-    gray: 'border-gray-200 bg-gray-50 text-gray-600',
+    gray: 'border-line bg-gray-50 text-gray-600',
   }[tone];
 
   return <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${toneMap}`}>{label}</span>;
@@ -483,13 +483,13 @@ function PlaybookEmptyState() {
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-brand-blue">
         <BookOpen className="h-6 w-6" />
       </div>
-      <h2 className="mt-4 text-xl font-bold text-navy">No playbook patterns yet.</h2>
+      <h2 className="mt-4 text-xl font-bold text-ink">No playbook patterns yet.</h2>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">
         Add opportunities, capture sales activities, record objections, and mark action outcomes. Memoire will derive reusable sales patterns from that data.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-2">
         <Link to="/app/capture" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Capture Activity</Link>
-        <Link to="/app/opportunities" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">Open opportunities</Link>
+        <Link to="/app/opportunities" className="rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700">Open opportunities</Link>
       </div>
     </section>
   );
@@ -521,7 +521,7 @@ function ObjectionLearningSection({
     <section className="rounded-lg border border-blue-100 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="flex flex-col gap-1">
-          <h2 className="text-lg font-bold text-navy">What worked against objections</h2>
+          <h2 className="text-lg font-bold text-ink">What worked against objections</h2>
           <p className="text-sm text-gray-600">{playbook.headline}</p>
           <p className="text-xs text-gray-500">
             Built from your own resolved objections and deal outcomes. The longer you capture, the sharper this gets.
@@ -548,7 +548,7 @@ function ObjectionLearningSection({
 function ObjectionInsightCard({ insight }: { insight: ObjectionPlaybookInsight }) {
   const rateTone = insight.resolutionRate >= 0.6 ? 'green' : insight.open > 0 ? 'amber' : 'blue';
   return (
-    <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+    <article className="rounded-lg border border-line-soft bg-gray-50 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-bold text-gray-900">{insight.objectionType}</p>
         <div className="flex items-center gap-2">

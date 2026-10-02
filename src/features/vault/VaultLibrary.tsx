@@ -116,8 +116,8 @@ export function VaultLibrary({
           ))}
         </div>
 
-        <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <h2 className="text-sm font-bold text-navy">
+        <section className="rounded-panel bg-white shadow-panel p-4">
+          <h2 className="text-sm font-bold text-ink">
             {results.length === 0
               ? 'Nothing here answers that yet'
               : `${results.length} ${results.length === 1 ? 'thing' : 'things'} you know`}
@@ -147,10 +147,10 @@ export function VaultLibrary({
           beside the picture rather than a banner above it, which is what stops
           the page opening on a row of numbers before it has shown anything. */}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <section className="overflow-hidden rounded-panel bg-white shadow-panel">
           <div className="flex flex-wrap items-start justify-between gap-2 px-4 pb-2 pt-4">
             <div>
-              <h2 className="flex items-center gap-2 text-sm font-bold text-navy">
+              <h2 className="flex items-center gap-2 text-sm font-bold text-ink">
                 <Network className="h-4 w-4 text-brand-blue" />
                 Your business map
               </h2>
@@ -163,7 +163,7 @@ export function VaultLibrary({
             <button
               type="button"
               onClick={() => onOpenMap()}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-bold text-navy transition hover:border-brand-blue hover:text-brand-blue"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-bold text-ink transition hover:border-brand-blue hover:text-brand-blue"
             >
               Open full map <ArrowUpRight className="h-3.5 w-3.5" />
             </button>
@@ -220,8 +220,8 @@ export function VaultLibrary({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <h2 className="flex items-center gap-2 text-sm font-bold text-navy">
+        <section className="rounded-panel bg-white shadow-panel p-4">
+          <h2 className="flex items-center gap-2 text-sm font-bold text-ink">
             <Clock className="h-4 w-4 text-brand-blue" />
             Recently changed
           </h2>
@@ -237,8 +237,8 @@ export function VaultLibrary({
         <GapsPanel graph={graph} onSelect={onSelect} onAnswerGap={onAnswerGap} onDismissGap={onDismissGap} />
       </div>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-bold text-navy">Continue exploring</h2>
+      <section className="rounded-panel bg-white shadow-panel p-4">
+        <h2 className="text-sm font-bold text-ink">Continue exploring</h2>
         <p className="mt-0.5 text-xs text-gray-500">
           The most connected things you know. Open one to see its neighbourhood.
         </p>
@@ -250,12 +250,12 @@ export function VaultLibrary({
               key={node.id}
               type="button"
               onClick={() => onSelect(node.id)}
-              className="group inline-flex shrink-0 items-center gap-2 rounded-lg border border-gray-200 py-2 pl-2.5 pr-2 text-left transition hover:border-brand-blue hover:shadow-sm"
+              className="group inline-flex shrink-0 items-center gap-2 rounded-lg border border-line py-2 pl-2.5 pr-2 text-left transition hover:border-brand-blue hover:shadow-sm"
             >
               <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${nodeVisual(node.type).chip}`}>
                 {nodeIcon(node.type, 'h-3.5 w-3.5')}
               </span>
-              <span className="max-w-[150px] truncate text-sm font-bold text-navy group-hover:text-brand-blue">
+              <span className="max-w-[150px] truncate text-sm font-bold text-ink group-hover:text-brand-blue">
                 {node.label}
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-gray-400 group-hover:text-brand-blue" />
@@ -290,13 +290,13 @@ function StatCard({
   hint: string;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-3.5 shadow-sm">
+    <div className="flex items-start gap-3 rounded-panel bg-white shadow-panel p-3.5">
       <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${STAT_TONES[tone]}`}>
         {icon}
       </span>
       <div className="min-w-0">
         <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{label}</p>
-        <p className="text-2xl font-black leading-tight tabular-nums text-navy">{value}</p>
+        <p className="text-2xl font-black leading-tight tabular-nums text-ink">{value}</p>
         <p className="text-[11px] leading-4 text-gray-500">{hint}</p>
       </div>
     </div>
@@ -345,7 +345,7 @@ function NodeRow({
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-baseline gap-x-2">
-          <span className="truncate text-sm font-bold text-navy group-hover:text-brand-blue">{node.label}</span>
+          <span className="truncate text-sm font-bold text-ink group-hover:text-brand-blue">{node.label}</span>
           <span className="text-[11px] font-bold uppercase tracking-wide text-gray-400">
             {knowledgeNodeTypeLabels[node.type]}
           </span>
@@ -359,7 +359,7 @@ function NodeRow({
       </span>
       <span className="hidden shrink-0 items-center gap-3 text-right sm:flex">
         {node.valueBase > 0 && (
-          <span className="text-xs font-bold text-navy">{formatCompactBaseAmount(node.valueBase)}</span>
+          <span className="text-xs font-bold text-ink">{formatCompactBaseAmount(node.valueBase)}</span>
         )}
         {health && (
           <span className="text-[11px] font-bold text-gray-400">
@@ -392,7 +392,7 @@ export function GapsPanel({
   return (
     <section className="rounded-xl border border-orange-200 bg-orange-50/40 p-4 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-sm font-bold text-navy">
+        <h2 className="flex items-center gap-2 text-sm font-bold text-ink">
           <CircleQuestionMark className="h-4 w-4 text-orange-500" />
           Knowledge gaps
         </h2>
@@ -420,7 +420,7 @@ export function GapsPanel({
                 {nodeIcon(gap.nodeType, 'h-3 w-3')}
                 {gap.nodeLabel}
               </button>
-              <p className="mt-0.5 text-sm font-semibold text-navy">{gap.question}</p>
+              <p className="mt-0.5 text-sm font-semibold text-ink">{gap.question}</p>
               <p className="mt-0.5 text-xs leading-5 text-gray-500">{gap.why}</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 <button
@@ -462,14 +462,14 @@ export function GapsPanel({
  */
 function CoverageCard() {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-start gap-3">
           <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-brand-blue">
             <Grid3x3 className="h-4 w-4" />
           </span>
           <div>
-            <h2 className="text-sm font-bold text-navy">Portfolio coverage</h2>
+            <h2 className="text-sm font-bold text-ink">Portfolio coverage</h2>
             <p className="mt-0.5 max-w-xl text-sm leading-6 text-gray-600">
               Every customer against every line you carry. The squares you have never filled are the business you have
               never asked for.
@@ -478,7 +478,7 @@ function CoverageCard() {
         </div>
         <Link
           to="/app/portfolio-coverage"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-xs font-bold text-navy transition hover:border-brand-blue hover:text-brand-blue"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-xs font-bold text-ink transition hover:border-brand-blue hover:text-brand-blue"
         >
           Open coverage <ArrowUpRight className="h-3.5 w-3.5" />
         </Link>

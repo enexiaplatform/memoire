@@ -130,7 +130,7 @@ export function BusinessLensPage({ embedded = false }: { embedded?: boolean } = 
 
   if (authLoading || (loading && !model)) {
     if (embedded) {
-      return <div className="rounded-xl border border-gray-200 bg-white p-5 text-sm font-semibold text-gray-500">Reading how the business is doing...</div>;
+      return <div className="rounded-panel bg-white shadow-panel p-5 text-sm font-semibold text-gray-500">Reading how the business is doing...</div>;
     }
     return (
       <SkeletonScreen label="Reading how the business is doing">
@@ -160,7 +160,7 @@ export function BusinessLensPage({ embedded = false }: { embedded?: boolean } = 
     return (
       <Frame>
         {!embedded && <Header />}
-        <p className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
+        <p className="rounded-panel bg-white shadow-panel p-8 text-center text-sm text-gray-500">
           <Loader2 className="mx-auto mb-2 h-4 w-4 animate-spin" />
           Reading your workspace.
         </p>
@@ -320,7 +320,7 @@ export function BusinessLensPage({ embedded = false }: { embedded?: boolean } = 
                    rather than feeling, so when the feeling has not been recorded
                    it says so and reads the records instead. */
                 <div className="space-y-2 text-sm">
-                  <p className="font-bold text-navy">
+                  <p className="font-bold text-ink">
                     Nothing has been graded yet.
                   </p>
                   <p className="leading-6 text-gray-600">
@@ -436,15 +436,15 @@ function Header() {
 
 function EmptyState() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-      <p className="text-base font-bold text-navy">Nothing to show yet.</p>
+    <div className="rounded-panel bg-white shadow-panel p-8 text-center">
+      <p className="text-base font-bold text-ink">Nothing to show yet.</p>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
         This page reads your workspace rather than asking you to fill it in. Capture a customer interaction and add
         a deal, and the picture builds itself.
       </p>
       <div className="mt-5 flex flex-wrap justify-center gap-2">
         <Link to="/app/capture" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Capture something</Link>
-        <Link to="/app/opportunities" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">Add a deal</Link>
+        <Link to="/app/opportunities" className="rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700">Add a deal</Link>
       </div>
     </div>
   );
@@ -452,8 +452,8 @@ function EmptyState() {
 
 function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h2 className="text-base font-bold text-navy">{title}</h2>
+    <section className="rounded-panel bg-white shadow-panel p-5">
+      <h2 className="text-base font-bold text-ink">{title}</h2>
       {subtitle && <p className="mt-1 text-sm leading-6 text-gray-600">{subtitle}</p>}
       <div className="mt-4">{children}</div>
     </section>
@@ -471,9 +471,9 @@ function Stat({
   detail?: string;
   tone?: 'default' | 'green' | 'red';
 }) {
-  const valueTone = tone === 'green' ? 'text-emerald-700' : tone === 'red' ? 'text-red-700' : 'text-navy';
+  const valueTone = tone === 'green' ? 'text-emerald-700' : tone === 'red' ? 'text-red-700' : 'text-ink';
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="rounded-panel bg-white shadow-panel p-4">
       <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{label}</p>
       <p className={`mt-1 text-xl font-bold ${valueTone}`}>{value}</p>
       {detail && <p className="mt-0.5 text-xs text-gray-500">{detail}</p>}

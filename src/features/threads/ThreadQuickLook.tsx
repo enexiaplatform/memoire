@@ -63,11 +63,11 @@ export function ThreadQuickLook({
     // width that made the card 403px inside a 358px column, and the whole page
     // scrolled sideways by 30px - on Today, Accounts and Opportunities alike.
     // Everything inside already truncates; it just never got the chance.
-    <article className="min-w-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+    <article className="min-w-0 rounded-panel bg-white shadow-panel p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-sm font-bold text-navy">{thread.title}</h3>
+            <h3 className="truncate text-sm font-bold text-ink">{thread.title}</h3>
             <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ring-1 ${statusTone[thread.status]}`}>
               {thread.status}
             </span>
@@ -107,7 +107,7 @@ export function ThreadQuickLook({
       </dl>
 
       {!compact && thread.lastEventSummary && (
-        <p className="mt-2 border-t border-gray-100 pt-2 text-xs leading-5 text-gray-500">
+        <p className="mt-2 border-t border-line-soft pt-2 text-xs leading-5 text-gray-500">
           <span className="font-semibold text-gray-600">Last:</span> {thread.lastEventSummary}
         </p>
       )}

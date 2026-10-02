@@ -185,7 +185,7 @@ export function AdminDashboardPage() {
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-500">Operator</p>
             <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <h1 className="text-2xl font-bold tracking-tight text-navy">Operator console</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-ink">Operator console</h1>
               {metrics && (
                 <p className="text-sm text-gray-500">
                   last {metrics.windowDays} days · read {new Date(metrics.generatedAt).toLocaleString()}
@@ -202,7 +202,7 @@ export function AdminDashboardPage() {
               type="button"
               onClick={load}
               disabled={state === 'loading'}
-              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700 disabled:opacity-60"
             >
               <RefreshCw className={`h-4 w-4 ${state === 'loading' ? 'animate-spin' : ''}`} />
               Refresh
@@ -333,9 +333,9 @@ export function AdminDashboardPage() {
             </Section>
 
             <Section title="Anonymous traffic">
-              <div className="rounded-lg border border-gray-200 bg-white p-4">
+              <div className="rounded-lg border border-line bg-white p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h3 className="text-sm font-bold text-navy">Landing-page visits</h3>
+                  <h3 className="text-sm font-bold text-ink">Landing-page visits</h3>
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs font-bold ${
                       isWebAnalyticsEnabled ? 'bg-emerald-50 text-emerald-800' : 'bg-gray-100 text-gray-600'
@@ -415,7 +415,7 @@ export function AdminDashboardPage() {
 function AccountList({ accounts }: { accounts: AdminMetrics['accounts']['recent'] }) {
   if (accounts.length === 0) {
     return (
-      <p className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+      <p className="mt-4 rounded-lg border border-dashed border-line bg-gray-50 px-4 py-3 text-sm text-gray-500">
         No accounts yet.
       </p>
     );
@@ -427,7 +427,7 @@ function AccountList({ accounts }: { accounts: AdminMetrics['accounts']['recent'
         Accounts, newest first
       </h3>
       {/* Its own scroller, so a long email never makes the page scroll sideways. */}
-      <div className="mt-3 overflow-x-auto rounded-lg border border-gray-200">
+      <div className="mt-3 overflow-x-auto rounded-lg border border-line">
         <table className="min-w-full text-left text-sm">
           <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
             <tr>
@@ -492,16 +492,16 @@ function LeadsSection({ leads }: { leads: AdminMetrics['leads'] }) {
       </div>
 
       {leads.recent.length === 0 ? (
-        <p className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+        <p className="mt-4 rounded-lg border border-dashed border-line bg-gray-50 px-4 py-3 text-sm text-gray-500">
           No one has used the contact form yet.
         </p>
       ) : (
         <ul className="mt-4 space-y-3">
           {leads.recent.map((lead) => (
-            <li key={lead.id} className="rounded-lg border border-gray-200 bg-white p-4">
+            <li key={lead.id} className="rounded-lg border border-line bg-white p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <div>
-                  <p className="text-sm font-bold text-navy">{lead.name || 'No name given'}</p>
+                  <p className="text-sm font-bold text-ink">{lead.name || 'No name given'}</p>
                   <a className="text-sm text-brand-blue hover:underline" href={`mailto:${lead.workEmail}`}>
                     {lead.workEmail}
                   </a>
@@ -575,9 +575,9 @@ function RevenuePanel({
     }).format(amount ?? 0);
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <div className="rounded-lg border border-line bg-white p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-sm font-bold text-navy">Revenue</h3>
+        <h3 className="text-sm font-bold text-ink">Revenue</h3>
         <span
           className={`rounded-full px-2 py-0.5 text-xs font-bold ${
             checkoutEnabled ? 'bg-emerald-50 text-emerald-800' : 'bg-gray-100 text-gray-600'
@@ -633,9 +633,9 @@ function SignupChart({ days }: { days: DayCount[] }) {
   const total = days.reduce((sum, day) => sum + day.count, 0);
 
   return (
-    <figure className="rounded-lg border border-gray-200 bg-white p-4">
+    <figure className="rounded-lg border border-line bg-white p-4">
       <figcaption className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-sm font-bold text-navy">Signups per day</h3>
+        <h3 className="text-sm font-bold text-ink">Signups per day</h3>
         <p className="text-xs font-semibold text-gray-500">
           {formatCount(total)} in {days.length} days · peak {formatCount(peak)}
         </p>
@@ -644,7 +644,7 @@ function SignupChart({ days }: { days: DayCount[] }) {
       <div
         role="img"
         aria-label={`Signups per day over the last ${days.length} days: ${formatCount(total)} in total, with a peak of ${formatCount(peak)} in one day.`}
-        className="mt-3 flex h-24 items-end gap-[2px] border-b border-gray-200"
+        className="mt-3 flex h-24 items-end gap-[2px] border-b border-line"
       >
         {days.map((day) => (
           <div
@@ -684,7 +684,7 @@ function BarList({
       {rows.map((row) => (
         <li key={row.label} className="flex flex-col gap-1">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <span className="truncate text-sm font-semibold text-navy">{row.label}</span>
+            <span className="truncate text-sm font-semibold text-ink">{row.label}</span>
             <span className="shrink-0 text-xs font-bold text-gray-600">
               {formatCount(row.value)}
               {/* Null share means nobody signed up in the window, which is not
@@ -708,7 +708,7 @@ function Section({ title, note, children }: { title: string; note?: string; chil
   return (
     <section className="flex flex-col gap-3">
       <div>
-        <h2 className="text-lg font-bold tracking-tight text-navy">{title}</h2>
+        <h2 className="text-lg font-bold tracking-tight text-ink">{title}</h2>
         {note && <p className="mt-0.5 max-w-2xl text-sm leading-6 text-gray-600">{note}</p>}
       </div>
       {children}
@@ -718,8 +718,8 @@ function Section({ title, note, children }: { title: string; note?: string; chil
 
 function SubPanel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <h3 className="mb-3 text-sm font-bold text-navy">{title}</h3>
+    <div className="rounded-lg border border-line bg-white p-4">
+      <h3 className="mb-3 text-sm font-bold text-ink">{title}</h3>
       {children}
     </div>
   );
@@ -737,9 +737,9 @@ function StatTile({
   tone?: 'default' | 'primary';
 }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3">
+    <div className="rounded-lg border border-line bg-white p-3">
       <p className="text-xs font-semibold text-gray-600">{label}</p>
-      <p className={`mt-1 text-2xl font-bold tracking-tight ${tone === 'primary' ? 'text-brand-blue' : 'text-navy'}`}>
+      <p className={`mt-1 text-2xl font-bold tracking-tight ${tone === 'primary' ? 'text-brand-blue' : 'text-ink'}`}>
         {typeof value === 'number' ? formatCount(value) : value}
       </p>
       {note && <p className="mt-0.5 text-[11px] leading-4 text-gray-500">{note}</p>}
@@ -751,7 +751,7 @@ function CardSkeleton() {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {Array.from({ length: 8 }).map((_, index) => (
-        <div key={index} className="h-20 animate-pulse rounded-lg border border-gray-200 bg-white" />
+        <div key={index} className="h-20 animate-pulse rounded-lg border border-line bg-white" />
       ))}
     </div>
   );
@@ -760,8 +760,8 @@ function CardSkeleton() {
 function CenteredNote({ title, body, action }: { title: string; body?: string; action?: React.ReactNode }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm">
-        <h1 className="text-xl font-bold text-navy">{title}</h1>
+      <div className="w-full max-w-md rounded-panel bg-white shadow-panel p-6 text-center">
+        <h1 className="text-xl font-bold text-ink">{title}</h1>
         {body && <p className="mt-2 text-sm leading-6 text-gray-600">{body}</p>}
         {action && <div className="mt-4">{action}</div>}
       </div>

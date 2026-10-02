@@ -110,14 +110,14 @@ export function ReviewScoreboardPanel({
   const wonDelta = board.won.valueBase - board.previousWon.valueBase;
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-3">
+    <section className="rounded-panel bg-white shadow-panel">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft px-5 py-3">
         <div className="flex flex-wrap items-baseline gap-x-3">
-          <h2 className="text-base font-bold text-navy">Scoreboard</h2>
+          <h2 className="text-base font-bold text-ink">Scoreboard</h2>
           <p className="text-sm font-semibold text-gray-500">{period.label}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-full border border-gray-200 bg-gray-50 p-0.5">
+          <div className="inline-flex rounded-full border border-line bg-gray-50 p-0.5">
             {([['week', 'Weekly'], ['month', 'Monthly']] as const).map(([value, label]) => (
               <button
                 key={value}
@@ -125,7 +125,7 @@ export function ReviewScoreboardPanel({
                 onClick={() => onPeriodKindChange(value)}
                 aria-pressed={periodKind === value}
                 className={`rounded-full px-3 py-1 text-xs font-bold transition ${
-                  periodKind === value ? 'bg-navy text-white' : 'text-gray-600 hover:text-navy'
+                  periodKind === value ? 'bg-navy text-white' : 'text-gray-600 hover:text-ink'
                 }`}
               >
                 {label}
@@ -135,7 +135,7 @@ export function ReviewScoreboardPanel({
           <button
             type="button"
             onClick={() => onShiftPeriod(-1)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-gray-600 hover:bg-gray-50"
             aria-label="Previous period"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -143,7 +143,7 @@ export function ReviewScoreboardPanel({
           <button
             type="button"
             onClick={onResetPeriod}
-            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             Now
@@ -151,7 +151,7 @@ export function ReviewScoreboardPanel({
           <button
             type="button"
             onClick={() => onShiftPeriod(1)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-gray-600 hover:bg-gray-50"
             aria-label="Next period"
           >
             <ChevronRight className="h-4 w-4" />
@@ -167,7 +167,7 @@ export function ReviewScoreboardPanel({
           {/* Compact and without the "(Base: VND)" tail: this is the headline
               number and the tail wrapped it onto two lines. The basis is stated
               once, under it, where it does not cost a line. */}
-          <p className="mt-1 text-3xl font-black leading-none text-navy">
+          <p className="mt-1 text-3xl font-black leading-none text-ink">
             {formatCompactBaseAmount(board.won.valueBase)}
           </p>
           <p className="mt-1 text-sm font-semibold text-gray-600">
@@ -184,7 +184,7 @@ export function ReviewScoreboardPanel({
             {formatBaseCurrencyAmount(board.won.valueBase)}
           </p>
 
-          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-gray-100 pt-3 text-xs">
+          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-line-soft pt-3 text-xs">
             <Movement label="Quotes sent" value={board.movement.quotesSent} />
             <Movement label="Quotes accepted" value={board.movement.quotesAccepted} />
             <Movement label="Touches recorded" value={board.movement.touches} />
@@ -196,7 +196,7 @@ export function ReviewScoreboardPanel({
               produce in an afternoon, and it reads like progress until the
               second line says how many of them anyone can defend. */}
           {board.quality && (
-            <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-gray-100 pt-3 text-xs">
+            <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-line-soft pt-3 text-xs">
               <Movement
                 label="Open deals"
                 value={board.quality.activeDeals}
@@ -233,7 +233,7 @@ export function ReviewScoreboardPanel({
             <>
               {board.quarter && <TargetBar progress={board.quarter} emphasis />}
               {board.year && <TargetBar progress={board.year} />}
-              <p className="rounded-lg bg-gray-50 px-3 py-2 text-sm font-semibold leading-6 text-navy">
+              <p className="rounded-lg bg-gray-50 px-3 py-2 text-sm font-semibold leading-6 text-ink">
                 {board.verdict}
               </p>
             </>
@@ -241,7 +241,7 @@ export function ReviewScoreboardPanel({
             <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4">
               <div className="flex items-center gap-2">
                 <TargetIcon className="h-4 w-4 text-brand-blue" />
-                <p className="text-sm font-bold text-navy">No target to score against yet</p>
+                <p className="text-sm font-bold text-ink">No target to score against yet</p>
               </div>
               <p className="mt-1 text-sm leading-6 text-gray-600">
                 {board.verdict} Memoire already knows what closed and when; give it the number you are measured
@@ -279,7 +279,7 @@ function Movement({
         {label}
         {of && <span className="block truncate text-[11px] text-gray-400">{of}</span>}
       </dt>
-      <dd className={`font-bold ${tone === 'warn' && value > 0 ? 'text-amber-700' : 'text-navy'}`}>
+      <dd className={`font-bold ${tone === 'warn' && value > 0 ? 'text-amber-700' : 'text-ink'}`}>
         {formatCount(value)}
       </dd>
     </div>
@@ -302,8 +302,8 @@ function TargetBar({ progress, emphasis = false }: { progress: TargetProgress; e
   return (
     <div className={`rounded-lg border p-3 ${progress.onTrack ? 'border-emerald-100 bg-emerald-50/40' : 'border-amber-100 bg-amber-50/40'}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-        <p className={`font-bold text-navy ${emphasis ? 'text-base' : 'text-sm'}`}>{progress.label}</p>
-        <p className="text-sm font-bold text-navy">
+        <p className={`font-bold text-ink ${emphasis ? 'text-base' : 'text-sm'}`}>{progress.label}</p>
+        <p className="text-sm font-bold text-ink">
           {formatCompactBaseAmount(progress.won)} <span className="font-semibold text-gray-500">of {formatCompactBaseAmount(progress.target)}</span>
         </p>
       </div>

@@ -204,13 +204,13 @@ export function WeeklyCommitmentPanel({
               disabled={atCap}
               placeholder={atCap ? `${MAX_WEEKLY_COMMITMENTS} is the cap` : 'Add your own commitment'}
               aria-label="Add your own commitment"
-              className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-xs disabled:bg-gray-50"
+              className="min-w-0 flex-1 rounded-lg border border-line px-3 py-2 text-xs disabled:bg-gray-50"
             />
             <button
               type="button"
               onClick={addCustom}
               disabled={atCap || !customDraft.trim()}
-              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-gray-200 px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-line px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-40"
             >
               <Plus className="h-3.5 w-3.5" />
               Add
@@ -306,10 +306,10 @@ function PlanVsActual({
   );
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-3">
+    <div className="rounded-panel bg-white shadow-panel p-3">
       <div className="flex items-center gap-2">
         <Check className="h-4 w-4 text-emerald-700" />
-        <h4 className="text-xs font-bold text-navy">Plan vs actual - week of {formatSafeBusinessDate(snapshot.periodStart)}</h4>
+        <h4 className="text-xs font-bold text-ink">Plan vs actual - week of {formatSafeBusinessDate(snapshot.periodStart)}</h4>
       </div>
       <p className="mt-1 text-xs text-gray-500">
         {reconciliation.committedCount} committed - {reconciliation.completedCount} completed,{' '}
@@ -345,7 +345,7 @@ function PlanVsActual({
         ))}
       </ul>
       {reconciliation.unplannedWork.length > 0 && (
-        <div className="mt-2 border-t border-gray-100 pt-2">
+        <div className="mt-2 border-t border-line-soft pt-2">
           <p className="text-xs font-bold text-gray-500">Unplanned, and still worth something</p>
           <ul className="mt-1 space-y-1 text-xs leading-5 text-gray-600">
             {reconciliation.unplannedWork.map((work) => (

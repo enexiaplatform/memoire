@@ -51,7 +51,7 @@ export class RouteErrorBoundary extends Component<{ route: string; children: Rea
 
     return (
       <div className="mx-auto max-w-xl px-4 py-16">
-        <div role="alert" className="rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm">
+        <div role="alert" className="rounded-panel bg-white shadow-panel p-6 text-center">
           <h1 className="text-xl font-bold text-navy">This screen could not be shown</h1>
           <p className="mt-3 text-sm leading-6 text-gray-600">
             Nothing you have saved is affected, and the rest of your workspace is still working — pick

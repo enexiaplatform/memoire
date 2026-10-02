@@ -285,7 +285,7 @@ export function KnowledgeGraphCanvas({ view, focusId, onSelect, summary, compact
   });
 
   return (
-    <div className={`relative h-full w-full overflow-hidden ${compact ? '' : 'rounded-xl border border-gray-200 bg-white'}`}>
+    <div className={`relative h-full w-full overflow-hidden ${compact ? '' : 'rounded-panel bg-white shadow-panel'}`}>
       {/* A faint grid gives the pan something to move against. Without it,
           dragging an empty white field feels like nothing is happening. */}
       {!compact && (
@@ -473,14 +473,14 @@ export function KnowledgeGraphCanvas({ view, focusId, onSelect, summary, compact
           with the node that ends up lowest on the ring. "Fit view" is spelled
           out rather than left as a crosshair: it is the control people reach
           for once they have panned somewhere they cannot get back from. */}
-      <div className="absolute right-3 top-3 flex items-center gap-1 rounded-lg border border-gray-200 bg-white/95 p-1 shadow-sm backdrop-blur">
+      <div className="absolute right-3 top-3 flex items-center gap-1 rounded-lg border border-line bg-white/95 p-1 shadow-sm backdrop-blur">
         <ControlButton label="Recentre on the selected node" onClick={fit}>
           <Crosshair className="h-4 w-4" />
         </ControlButton>
         <button
           type="button"
           onClick={fit}
-          className="rounded-md px-2 py-1 text-[11px] font-bold text-gray-600 transition hover:bg-gray-100 hover:text-navy"
+          className="rounded-md px-2 py-1 text-[11px] font-bold text-gray-600 transition hover:bg-gray-100 hover:text-ink"
         >
           Fit view
         </button>
@@ -504,7 +504,7 @@ function ControlButton({ label, onClick, children }: { label: string; onClick: (
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition hover:bg-gray-100 hover:text-navy"
+      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition hover:bg-gray-100 hover:text-ink"
     >
       {children}
     </button>

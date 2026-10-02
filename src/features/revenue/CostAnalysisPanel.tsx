@@ -193,12 +193,12 @@ export function CostAnalysisPanel({
   };
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+    <section className="min-w-0 overflow-hidden rounded-panel bg-white shadow-panel">
       <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5">
         <div>
           <div className="flex items-center gap-2">
             <Coins className="h-4 w-4 text-violet-600" />
-            <h2 className="text-lg font-bold text-navy">Cost analysis</h2>
+            <h2 className="text-lg font-bold text-ink">Cost analysis</h2>
           </div>
           <p className="mt-1 max-w-2xl text-sm text-gray-500">
             What each committed order landed at — goods, freight, duty and everything else — against what you sold it
@@ -272,7 +272,7 @@ export function CostAnalysisPanel({
                 onClick={() => setShowOnlyMissing(!showOnlyMissing)}
                 aria-pressed={showOnlyMissing}
                 className={`rounded-full px-3 py-1 text-xs font-bold ${
-                  showOnlyMissing ? 'bg-navy text-white' : 'border border-gray-200 bg-white text-gray-600'
+                  showOnlyMissing ? 'bg-navy text-white' : 'border border-line bg-white text-gray-600'
                 }`}
               >
                 Missing a cost ({margins.uncoveredCount})
@@ -288,19 +288,19 @@ export function CostAnalysisPanel({
             <table className="w-full min-w-[1040px] border-collapse text-left text-sm">
               <thead className="bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
                 <tr>
-                  <th className="border-y border-gray-200 px-4 py-2">Order</th>
-                  <th className="border-y border-gray-200 px-3 py-2 text-right">Sold for</th>
-                  <th className="border-y border-gray-200 px-3 py-2 text-right">Goods</th>
-                  <th className="border-y border-gray-200 px-3 py-2 text-right" title="Freight, duty and other, converted">
+                  <th className="border-y border-line px-4 py-2">Order</th>
+                  <th className="border-y border-line px-3 py-2 text-right">Sold for</th>
+                  <th className="border-y border-line px-3 py-2 text-right">Goods</th>
+                  <th className="border-y border-line px-3 py-2 text-right" title="Freight, duty and other, converted">
                     + Landed
                   </th>
-                  <th className="border-y border-gray-200 px-3 py-2">Supplier</th>
-                  <th className="border-y border-gray-200 px-3 py-2 text-right">Gross margin</th>
-                  <th className="border-y border-gray-200 px-3 py-2 text-right">Kept</th>
-                  <th className="border-y border-gray-200 px-3 py-2 text-right" title={`Money short of the ${targetPct}% target`}>
+                  <th className="border-y border-line px-3 py-2">Supplier</th>
+                  <th className="border-y border-line px-3 py-2 text-right">Gross margin</th>
+                  <th className="border-y border-line px-3 py-2 text-right">Kept</th>
+                  <th className="border-y border-line px-3 py-2 text-right" title={`Money short of the ${targetPct}% target`}>
                     vs target
                   </th>
-                  <th className="border-y border-gray-200 px-3 py-2" />
+                  <th className="border-y border-line px-3 py-2" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -317,7 +317,7 @@ export function CostAnalysisPanel({
                   return (
                     <tr key={order.opportunityId} className={margin && margin.hasCost && (margin.marginBase as number) < 0 ? 'bg-red-50/40' : 'bg-white'}>
                       <td className="px-4 py-2">
-                        <p className="max-w-[clamp(260px,19vw,480px)] truncate font-bold text-navy" title={`${order.accountName} / ${order.orderName}`}>
+                        <p className="max-w-[clamp(260px,19vw,480px)] truncate font-bold text-ink" title={`${order.accountName} / ${order.orderName}`}>
                           {order.accountName}
                         </p>
                         <p className="max-w-[clamp(260px,19vw,480px)] truncate text-xs text-gray-500">
@@ -395,7 +395,7 @@ export function CostAnalysisPanel({
               judgement, and the only person who can make it is the one who
               knows what their own trade keeps - so it is a number they set, not
               one this page learns from their data. */}
-          <p className="border-t border-gray-100 px-5 py-3 text-xs leading-5 text-gray-500">
+          <p className="border-t border-line-soft px-5 py-3 text-xs leading-5 text-gray-500">
             <span className="font-bold text-red-700">Red</span> is an order sold below what it cost — a fact, not a
             judgement.{' '}
             <span className="font-bold text-amber-700">Amber</span> is under the {targetPct}% you set as your target.
@@ -436,7 +436,7 @@ function groupKeyFor(
  */
 function NoCommittedOrders() {
   return (
-    <div className="m-5 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-5 text-sm leading-6 text-gray-500">
+    <div className="m-5 rounded-lg border border-dashed border-line bg-gray-50 px-4 py-5 text-sm leading-6 text-gray-500">
       Nothing to price yet. Cost analysis reads the committed orders from the order book — a deal at
       {' '}{COMMIT_PROBABILITY_THRESHOLD}% or more, in procurement, or already won. Once one lands there you can record
       what the goods cost you, and this works out the margin per order, per customer and per line you carry.
@@ -500,7 +500,7 @@ function TargetMarginBar({
   };
 
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-gray-200 bg-white px-5 py-3">
+    <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line bg-white px-5 py-3">
       <label className="flex items-center gap-2 text-xs font-bold text-gray-600">
         <Target className="h-4 w-4 text-violet-600" />
         Margin you aim to keep
@@ -512,7 +512,7 @@ function TargetMarginBar({
             onKeyDown={(event) => { if (event.key === 'Enter') { event.currentTarget.blur(); } }}
             inputMode="numeric"
             aria-label="Target gross margin percent"
-            className="w-14 bg-transparent px-2 py-1 text-right text-sm font-bold text-navy outline-none"
+            className="w-14 bg-transparent px-2 py-1 text-right text-sm font-bold text-ink outline-none"
           />
           <span className="text-sm font-bold text-gray-500">%</span>
         </span>
@@ -545,7 +545,7 @@ function HeadlineFigures({ margins }: { margins: OrderMarginSummary }) {
     : 0;
 
   return (
-    <div className="border-y border-gray-200 bg-violet-50/40 px-5 py-3">
+    <div className="border-y border-line bg-violet-50/40 px-5 py-3">
       <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2">
         <Figure label="Sold for" value={formatBaseCurrencyAmount(margins.revenueBase, true)} />
         <Figure label="Landed cost" value={formatBaseCurrencyAmount(margins.costBase, true)} />
@@ -597,7 +597,7 @@ function HeadlineFigures({ margins }: { margins: OrderMarginSummary }) {
 function BlindSpot({ margins, onShowMissing }: { margins: OrderMarginSummary; onShowMissing: () => void }) {
   if (margins.uncoveredCount === 0) return null;
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-amber-50/60 px-5 py-2.5">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-amber-50/60 px-5 py-2.5">
       <p className="text-xs leading-5 text-amber-900">
         <span className="font-bold">
           {margins.uncoveredCount} committed order{margins.uncoveredCount === 1 ? '' : 's'} worth{' '}
@@ -635,9 +635,9 @@ function MarginTrend({ months, targetPct }: { months: MarginPeriod[]; targetPct:
     : null;
 
   return (
-    <div className="border-b border-gray-200 px-5 py-4">
+    <div className="border-b border-line px-5 py-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-bold text-navy">Which way it is going</h3>
+        <h3 className="text-sm font-bold text-ink">Which way it is going</h3>
         {drift !== null && (
           <p className={`inline-flex items-center gap-1 text-xs font-bold ${drift < 0 ? 'text-red-700' : 'text-emerald-700'}`}>
             {drift < 0 ? <TrendingDown className="h-3.5 w-3.5" /> : <TrendingUp className="h-3.5 w-3.5" />}
@@ -715,9 +715,9 @@ function MarginByGroup({
   const noun = groupBy === 'customer' ? 'customer' : groupBy === 'brand' ? 'line' : 'supplier';
 
   return (
-    <div className="border-b border-gray-200 px-5 py-4">
+    <div className="border-b border-line px-5 py-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-bold text-navy">Where the margin comes from</h3>
+        <h3 className="text-sm font-bold text-ink">Where the margin comes from</h3>
         <div className="flex items-center gap-1 rounded-full bg-gray-100 p-0.5 text-xs font-bold">
           {(['customer', 'brand', 'supplier'] as const).map((option) => (
             <button
@@ -725,7 +725,7 @@ function MarginByGroup({
               type="button"
               onClick={() => onGroupByChange(option)}
               aria-pressed={groupBy === option}
-              className={`rounded-full px-3 py-1 ${groupBy === option ? 'bg-white text-navy shadow-sm' : 'text-gray-500'}`}
+              className={`rounded-full px-3 py-1 ${groupBy === option ? 'bg-white text-ink shadow-sm' : 'text-gray-500'}`}
             >
               {option === 'customer' ? 'By customer' : option === 'brand' ? 'By line' : 'By supplier'}
             </button>
@@ -952,7 +952,7 @@ function CostFields({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-50"
+          className="rounded-full border border-line bg-white px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-50"
         >
           Cancel
         </button>
@@ -1046,7 +1046,7 @@ function toneClass(tone: ReturnType<typeof marginTone>) {
     loss: 'text-red-700',
     thin: 'text-amber-700',
     healthy: 'text-emerald-700',
-    unknown: 'text-navy',
+    unknown: 'text-ink',
   }[tone];
 }
 

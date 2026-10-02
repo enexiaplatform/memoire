@@ -126,11 +126,11 @@ function CollapsedPill({ path, onExpand }: { path: FirstWeekPath; onExpand: () =
     <button
       type="button"
       onClick={onExpand}
-      className="ml-auto flex items-center gap-2.5 rounded-full border border-gray-200 bg-white py-2 pl-2 pr-4 shadow-lg hover:border-brand-blue/40"
+      className="ml-auto flex items-center gap-2.5 rounded-full border border-line bg-white py-2 pl-2 pr-4 shadow-lg hover:border-brand-blue/40"
     >
       <ProgressRing done={path.done} total={path.total} />
       <span className="text-left">
-        <span className="block text-[13px] font-bold text-navy">Getting started</span>
+        <span className="block text-[13px] font-bold text-ink">Getting started</span>
         <span className="block text-[11px] font-semibold text-gray-500">
           {path.nextStep ? path.nextStep.cta : 'Done'} &middot; {path.done}/{path.total}
         </span>
@@ -153,12 +153,12 @@ function ExpandedCard({
   return (
     <section
       aria-label="Getting started"
-      className="rounded-xl border border-gray-200 bg-white shadow-2xl"
+      className="rounded-panel bg-white shadow-panel shadow-2xl"
     >
-      <header className="flex items-center gap-3 border-b border-gray-100 px-4 py-2.5">
+      <header className="flex items-center gap-3 border-b border-line-soft px-4 py-2.5">
         <ProgressRing done={path.done} total={path.total} />
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-bold text-navy">Getting started</p>
+          <p className="text-[13px] font-bold text-ink">Getting started</p>
           {/* The promise this thing is built on, said where it is always
               visible: nothing below is a checkbox you can tick at yourself. */}
           <p className="text-[11px] font-semibold text-gray-500">
@@ -168,7 +168,7 @@ function ExpandedCard({
         <button
           type="button"
           onClick={onCollapse}
-          className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-navy"
+          className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-ink"
           aria-label="Collapse getting started"
         >
           <ChevronDown className="h-4 w-4" />
@@ -176,7 +176,7 @@ function ExpandedCard({
         <button
           type="button"
           onClick={onDismiss}
-          className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-navy"
+          className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-ink"
           aria-label="Hide getting started for good"
         >
           <X className="h-4 w-4" />
@@ -201,7 +201,7 @@ function ExpandedCard({
               </span>
               <div className="min-w-0 flex-1">
                 <p className={`text-[13px] leading-5 ${
-                  step.done ? 'font-semibold text-gray-500 line-through' : isNext ? 'font-bold text-navy' : 'font-semibold text-gray-500'
+                  step.done ? 'font-semibold text-gray-500 line-through' : isNext ? 'font-bold text-ink' : 'font-semibold text-gray-500'
                 }`}>
                   {step.label}
                 </p>
@@ -213,7 +213,7 @@ function ExpandedCard({
       </ol>
 
       {next && (
-        <div className="border-t border-gray-100 px-4 py-2.5">
+        <div className="border-t border-line-soft px-4 py-2.5">
           <Link
             to={next.href}
             className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-navy px-4 py-2.5 text-sm font-bold text-white hover:bg-navy/90"
@@ -235,7 +235,7 @@ function GraduationCard({ onDismiss }: { onDismiss: () => void }) {
           <PartyPopper className="h-5 w-5" />
         </span>
         <div className="min-w-0">
-          <p className="text-[15px] font-bold text-navy">You have run the whole loop.</p>
+          <p className="text-[15px] font-bold text-ink">You have run the whole loop.</p>
           <p className="mt-1 text-[13px] leading-6 text-gray-600">
             Captured, linked, promised, kept, reviewed. That is Memoire working - everything from here is the same five
             steps on more customers. This guide is finished and will not come back.
@@ -275,7 +275,7 @@ function ProgressRing({ done, total }: { done: number; total: number }) {
           strokeDashoffset={circumference * (1 - fraction)}
         />
       </svg>
-      <span className="absolute text-[10px] font-black text-navy">{done}</span>
+      <span className="absolute text-[10px] font-black text-ink">{done}</span>
     </span>
   );
 }

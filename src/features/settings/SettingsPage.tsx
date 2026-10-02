@@ -210,7 +210,7 @@ export function SettingsPage() {
         <div className="flex min-w-0 animate-rise flex-col gap-4" style={delay(100)}>
       {activeTab === 'workspace' && <>
         <div className="rounded-panel bg-white p-5 shadow-panel">
-          <p className="text-sm font-semibold text-navy">Products & Brands</p>
+          <p className="text-sm font-semibold text-ink">Products & Brands</p>
           <p className="mt-1 text-sm text-gray-500">Manage business units, brands and products; classify deals without changing their original text.</p>
             <a href="/app/products" className="mt-2 inline-block text-sm font-bold text-brand-blue">Manage portfolio</a>
             <a href="/app/reports" className="ml-4 mt-2 inline-block text-sm font-bold text-brand-blue">Build reports</a>
@@ -219,7 +219,7 @@ export function SettingsPage() {
         <div className="rounded-panel bg-white p-5 shadow-panel">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-navy">Reporting currency</p>
+              <p className="text-sm font-semibold text-ink">Reporting currency</p>
               <p className="mt-1 text-sm text-gray-500">
                 Totals and charts are shown in this currency. Each deal keeps its own currency; amounts are converted for reporting.
               </p>
@@ -236,7 +236,7 @@ export function SettingsPage() {
               <select
                 value={pendingCurrency || reportingCurrency}
                 onChange={(event) => { void handleCurrencyChange(event.target.value); }}
-                className="min-w-0 max-w-full flex-1 truncate rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                className="min-w-0 max-w-full flex-1 truncate rounded-xl border border-line bg-white px-3 py-2 text-sm font-semibold text-ink outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
               >
                 {selectableCurrencies.map((currency) => (
                   <option key={currency.code} value={currency.code}>
@@ -265,7 +265,7 @@ export function SettingsPage() {
           <div className="rounded-panel bg-white p-5 shadow-panel">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-semibold text-navy">Opening cash balance</p>
+                <p className="text-sm font-semibold text-ink">Opening cash balance</p>
                 <p className="mt-1 text-sm text-gray-500">
                   Optional. The cash you started with, in {reportingCurrency}. Set this and Money shows absolute cash on
                   hand, not just profit.
@@ -282,7 +282,7 @@ export function SettingsPage() {
                     void handleOpeningBalanceChange(next);
                   }}
                   placeholder="e.g. 100000000"
-                  className="w-44 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                  className="w-44 rounded-xl border border-line bg-white px-3 py-2 text-sm font-semibold text-ink outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
                 />
               </label>
             </div>
@@ -298,7 +298,7 @@ export function SettingsPage() {
             laptop and 15% on the phone is not an inconsistent report - it is two
             different quotes for the same order. */}
         <div className="rounded-panel bg-white p-5 shadow-panel">
-          <p className="text-sm font-semibold text-navy">Pricing assumptions</p>
+          <p className="text-sm font-semibold text-ink">Pricing assumptions</p>
           <p className="mt-1 text-sm text-gray-500">
             What every quote is priced back from. Cost Analysis on a deal uses both to work out the price that holds your
             margin after the terms you are offering.
@@ -306,7 +306,7 @@ export function SettingsPage() {
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-navy">Target margin</p>
+              <p className="text-sm font-semibold text-ink">Target margin</p>
               <p className="mt-1 text-sm text-gray-500">
                 The share of the selling price you expect to keep. Every figure is graded against it.
               </p>
@@ -320,7 +320,7 @@ export function SettingsPage() {
                   setTargetMarginState(event.target.value);
                   void handleTargetMarginChange(event.target.value);
                 }}
-                className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                className="w-24 rounded-xl border border-line bg-white px-3 py-2 text-sm font-semibold text-ink outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
               />
               <span className="text-sm font-semibold text-gray-500">%</span>
             </label>
@@ -329,7 +329,7 @@ export function SettingsPage() {
 
           <div className="mt-5 flex flex-col gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-navy">Cost of money</p>
+              <p className="text-sm font-semibold text-ink">Cost of money</p>
               <p className="mt-1 text-sm text-gray-500">
                 Your overdraft or facility rate, per year. Giving a customer 60 days to pay is lending them money at this
                 rate, and the suggested price includes what that costs you.
@@ -344,7 +344,7 @@ export function SettingsPage() {
                   setFinancingRateState(event.target.value);
                   void handleFinancingRateChange(event.target.value);
                 }}
-                className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-navy outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
+                className="w-24 rounded-xl border border-line bg-white px-3 py-2 text-sm font-semibold text-ink outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
               />
               <span className="text-sm font-semibold text-gray-500">% / yr</span>
             </label>
@@ -367,7 +367,7 @@ export function SettingsPage() {
         <div className="rounded-panel bg-white p-5 shadow-panel">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-navy">Getting started</p>
+              <p className="text-sm font-semibold text-ink">Getting started</p>
               <p className="mt-1 text-sm text-gray-500">
                 Bring back the five-step guide in the corner of the workspace. If your workspace is still empty, the
                 welcome screen comes back too.
@@ -380,7 +380,7 @@ export function SettingsPage() {
                 resetTrialActivationChecklist();
                 navigate('/app/today');
               }}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-line px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
               Show the guide again
             </button>
@@ -439,7 +439,7 @@ function ExchangeRatesCard({ reportingCurrency }: { reportingCurrency: Supported
     <div className="rounded-panel bg-white p-5 shadow-panel">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-sm font-semibold text-navy">Exchange rates</p>
+          <p className="text-sm font-semibold text-ink">Exchange rates</p>
           <p className="mt-1 text-sm text-gray-500">
             A deal in another currency is converted at these rates before it is added to any total.
             They are planning rates set on {EXCHANGE_RATES_AS_OF}, not a live feed, and they are stored
@@ -449,7 +449,7 @@ function ExchangeRatesCard({ reportingCurrency }: { reportingCurrency: Supported
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
-          className="shrink-0 rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-navy hover:bg-gray-50"
+          className="shrink-0 rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-ink hover:bg-gray-50"
         >
           {open ? 'Hide rates' : 'Show rates'}
         </button>
@@ -464,7 +464,7 @@ function ExchangeRatesCard({ reportingCurrency }: { reportingCurrency: Supported
             .filter((currency) => currency !== reportingCurrency)
             .map((currency) => (
             <label key={currency} className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2">
-              <span className="text-sm font-semibold text-navy">
+              <span className="text-sm font-semibold text-ink">
                 1 {currency}
                 {isExchangeRateOverridden(currency) && (
                   <span className="ml-1.5 text-xs font-bold text-brand-blue">yours</span>
@@ -485,7 +485,7 @@ function ExchangeRatesCard({ reportingCurrency }: { reportingCurrency: Supported
                     setExchangeRateOverride(currency, toBase);
                     setVersion((value) => value + 1);
                   }}
-                  className="w-32 rounded-md border border-gray-300 px-2 py-1 text-right text-sm font-semibold text-navy outline-none focus:border-brand-blue"
+                  className="w-32 rounded-md border border-gray-300 px-2 py-1 text-right text-sm font-semibold text-ink outline-none focus:border-brand-blue"
                   aria-label={`Rate for 1 ${currency} in ${reportingCurrency}`}
                 />
                 <span className="w-10 text-xs font-bold text-gray-500">{reportingCurrency}</span>

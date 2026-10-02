@@ -55,8 +55,8 @@ export function MapAsList({
   }
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <h2 className="flex items-center gap-2 text-sm font-bold text-navy">
+    <section className="rounded-panel bg-white shadow-panel p-4">
+      <h2 className="flex items-center gap-2 text-sm font-bold text-ink">
         <Network className="h-4 w-4 text-brand-blue" />
         {focusLabel ? `Around ${focusLabel}` : 'The most connected parts of your business'}
       </h2>
@@ -76,13 +76,13 @@ export function MapAsList({
                   <button
                     type="button"
                     onClick={() => onSelect(positioned.node.id)}
-                    className="flex w-full items-center gap-2.5 rounded-lg border border-gray-200 px-2.5 py-2 text-left transition hover:border-brand-blue"
+                    className="flex w-full items-center gap-2.5 rounded-lg border border-line px-2.5 py-2 text-left transition hover:border-brand-blue"
                   >
                     <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${nodeVisual(positioned.node.type).chip}`}>
                       {nodeIcon(positioned.node.type, 'h-3.5 w-3.5')}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-bold text-navy">{positioned.node.label}</span>
+                      <span className="block truncate text-sm font-bold text-ink">{positioned.node.label}</span>
                       <span className="block text-[11px] text-gray-500">
                         {knowledgeNodeTypeLabels[positioned.node.type]}
                         {positioned.node.connectionCount > 0

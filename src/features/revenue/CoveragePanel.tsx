@@ -63,7 +63,7 @@ export function CoveragePanel() {
       <section className="rounded-xl border border-dashed border-gray-300 bg-white p-5 shadow-sm" aria-label="Coverage">
         <div className="flex items-center gap-2">
           <TargetIcon className="h-4 w-4 text-brand-blue" />
-          <h2 className="text-lg font-bold text-navy">Set your quarterly target</h2>
+          <h2 className="text-lg font-bold text-ink">Set your quarterly target</h2>
         </div>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
           Memoire already knows what is in your pipeline and which quarter each deal lands in. Give it the number you are
@@ -82,16 +82,16 @@ export function CoveragePanel() {
   }
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" aria-label="Coverage">
+    <section className="rounded-panel bg-white shadow-panel p-5" aria-label="Coverage">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <TargetIcon className="h-4 w-4 text-brand-blue" />
-          <h2 className="text-lg font-bold text-navy">Coverage</h2>
+          <h2 className="text-lg font-bold text-ink">Coverage</h2>
         </div>
         <button
           type="button"
           onClick={() => setEditing((open) => !open)}
-          className="rounded-full border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+          className="rounded-full border border-line px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
         >
           {editing ? 'Cancel' : 'Edit targets'}
         </button>
@@ -130,7 +130,7 @@ export function CoveragePanel() {
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50/60 p-4">
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-4 w-4 text-red-700" />
-            <h3 className="text-sm font-bold text-navy">
+            <h3 className="text-sm font-bold text-ink">
               {formatCompactBaseAmount(coverage.unbackedValue)} of target with no qualified deal behind it
             </h3>
           </div>
@@ -144,7 +144,7 @@ export function CoveragePanel() {
             <ul className="mt-3 space-y-1.5">
               {coverage.unqualifiedByBrand.map((row) => (
                 <li key={row.brand} className="flex flex-wrap items-baseline gap-x-2 text-xs leading-5">
-                  <span className="font-bold text-navy">{row.brand}</span>
+                  <span className="font-bold text-ink">{row.brand}</span>
                   <span className="text-gray-500">
                     {row.deals} deal{row.deals === 1 ? '' : 's'} not yet qualified
                   </span>
@@ -162,7 +162,7 @@ export function CoveragePanel() {
         <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/60 p-4">
           <div className="flex items-center gap-2">
             <TrendingDown className="h-4 w-4 text-amber-700" />
-            <h3 className="text-sm font-bold text-navy">
+            <h3 className="text-sm font-bold text-ink">
               {formatCompactBaseAmount(coverage.unsupportedValue)} of forecast the evidence does not support
             </h3>
           </div>
@@ -206,7 +206,7 @@ function CurrentQuarterHeadline({ quarter }: { quarter: QuarterCoverage }) {
       <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-500">
         {quarter.quarter} · {days} day{days === 1 ? '' : 's'} left
       </p>
-      <p className="mt-1 text-2xl font-black text-navy">
+      <p className="mt-1 text-2xl font-black text-ink">
         {short
           ? `Short by ${formatCompactBaseAmount(quarter.gap)}`
           : `Covered — ${formatCompactBaseAmount(-quarter.gap)} clear`}
@@ -224,18 +224,18 @@ function CurrentQuarterHeadline({ quarter }: { quarter: QuarterCoverage }) {
 function QuarterCard({ quarter }: { quarter: QuarterCoverage }) {
   const percent = quarter.coverage === null ? null : Math.round(quarter.coverage * 100);
   const tone = percent === null
-    ? 'border-gray-200'
+    ? 'border-line'
     : percent >= 100 ? 'border-emerald-200 bg-emerald-50/40'
-      : percent >= 80 ? 'border-gray-200'
+      : percent >= 80 ? 'border-line'
         : 'border-amber-200 bg-amber-50/40';
 
   return (
     <div className={`rounded-lg border p-3 ${tone} ${quarter.isCurrent ? 'ring-2 ring-brand-blue/30' : ''}`}>
-      <p className="flex items-baseline justify-between text-xs font-bold text-navy">
+      <p className="flex items-baseline justify-between text-xs font-bold text-ink">
         {quarter.quarter}
         {percent !== null && <span className="text-gray-500">{percent}%</span>}
       </p>
-      <p className="mt-1 text-sm font-bold text-navy">
+      <p className="mt-1 text-sm font-bold text-ink">
         {quarter.target > 0 ? formatCompactBaseAmount(quarter.target) : 'No target'}
       </p>
       <dl className="mt-1.5 space-y-0.5 text-[11px] leading-4 text-gray-500">
@@ -271,7 +271,7 @@ function TargetEditor({
   const [values, setValues] = useState(initial);
 
   return (
-    <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+    <div className="mt-3 rounded-lg border border-line bg-gray-50 p-3">
       {/* The currency is named, because the number has no unit on it otherwise
           and the panel below prints every figure in this one. A target typed
           under one reporting currency and read under another is arithmetic on
@@ -282,7 +282,7 @@ function TargetEditor({
       <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
         {FORECAST_QUARTERS.map((quarter) => (
           <label key={quarter} className="block">
-            <span className="text-xs font-bold text-navy">{quarter}</span>
+            <span className="text-xs font-bold text-ink">{quarter}</span>
             <input
               type="text"
               inputMode="numeric"
@@ -290,7 +290,7 @@ function TargetEditor({
               onChange={(event) => setValues((current) => ({ ...current, [quarter]: event.target.value }))}
               placeholder="0"
               aria-label={`${quarter} target`}
-              className="mt-0.5 w-full rounded border border-gray-200 px-2 py-1.5 text-sm"
+              className="mt-0.5 w-full rounded border border-line px-2 py-1.5 text-sm"
             />
           </label>
         ))}

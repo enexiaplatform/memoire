@@ -43,6 +43,7 @@
     "verify:historical-integrity": "node scripts/verify-historical-integrity-contract.mjs",
     "verify:next-gen-release": "node scripts/verify-next-gen-release.mjs",
     "verify:next-gen-browser": "node scripts/verify-next-gen-browser.mjs",
+    "verify:daylight-browser": "node scripts/verify-daylight-surfaces-browser.mjs",
     "verify:money-model": "node scripts/verify-money-model.mjs",
     "verify:quote-deal-link": "node scripts/verify-quote-deal-link.mjs",
     "verify:opportunity-outcome": "node scripts/verify-opportunity-outcome.mjs",

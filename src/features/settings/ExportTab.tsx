@@ -240,7 +240,7 @@ export function ExportTab() {
       <section className="rounded-panel bg-white p-6 shadow-panel sm:p-7">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-navy">Export workspace data</h2>
+            <h2 className="text-lg font-bold text-ink">Export workspace data</h2>
             <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500">
               Download a ZIP containing Memoire records stored in this browser and available cloud records when signed in.
               Keep this file secure because it may contain customer and pipeline information.
@@ -267,7 +267,7 @@ export function ExportTab() {
       <section className="rounded-panel bg-white p-6 shadow-panel sm:p-7">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-navy">Restore from a backup</h2>
+            <h2 className="text-lg font-bold text-ink">Restore from a backup</h2>
             <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500">
               Put an export back into this browser - after a device change, or to undo a bad import.
               Memoire shows you what is in the file before anything is written. Restoring replaces
@@ -288,7 +288,7 @@ export function ExportTab() {
             <label
               htmlFor="memoire-restore-file"
               aria-disabled={sampleDataActive}
-              className={`inline-flex rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm font-bold text-navy ${
+              className={`inline-flex rounded-full border border-line bg-white px-5 py-2.5 text-sm font-bold text-ink ${
                 sampleDataActive ? 'pointer-events-none opacity-40' : 'cursor-pointer hover:bg-gray-50'
               }`}
             >
@@ -308,7 +308,7 @@ export function ExportTab() {
 
         {pending && (
           <div className="mt-5 rounded-lg border border-blue-100 bg-blue-50/50 p-4">
-            <h3 className="text-sm font-bold text-navy">
+            <h3 className="text-sm font-bold text-ink">
               {pending.fileName} - exported {formatBackupDate(pending.summary.exportedAt)}
             </h3>
             <p className="mt-1 text-sm text-gray-600">
@@ -353,7 +353,7 @@ export function ExportTab() {
             copy accepted it, so the operator can check rather than believe. */}
         {lastRestore && (
           <div className={`mt-6 rounded-lg border p-4 ${lastRestore.ok ? 'border-emerald-200 bg-emerald-50/60' : 'border-amber-200 bg-amber-50/60'}`}>
-            <p className="text-sm font-bold text-navy">
+            <p className="text-sm font-bold text-ink">
               {lastRestore.ok ? 'Restore complete' : 'Restore finished with problems'}
             </p>
             <p className="mt-1 text-sm leading-6 text-gray-700">{lastRestore.summary}</p>
@@ -372,7 +372,7 @@ export function ExportTab() {
                   <tr key={entry.key}>
                     <td className="py-1 font-semibold text-gray-800">{friendlyStoreName(entry.key)}</td>
                     <td className="py-1 text-right text-gray-600">{entry.before ?? '—'}</td>
-                    <td className={`py-1 text-right font-bold ${entry.localWritten ? 'text-navy' : 'text-red-700'}`}>
+                    <td className={`py-1 text-right font-bold ${entry.localWritten ? 'text-ink' : 'text-red-700'}`}>
                       {entry.localWritten ? (entry.after ?? '—') : 'failed'}
                     </td>
                     <td className="py-1 text-right text-gray-600">
@@ -404,7 +404,7 @@ export function ExportTab() {
       </section>
 
       <section className="rounded-panel bg-tint-blue-bg p-6 sm:p-7">
-        <h2 className="text-lg font-bold text-navy">Support package</h2>
+        <h2 className="text-lg font-bold text-ink">Support package</h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
           When you write to support, include what you were doing, the approximate time, the visible error message,
           and whether you were signed in or using local/demo mode. Download an export first if support needs
@@ -423,7 +423,7 @@ export function ExportTab() {
       </section>
 
       <section className="rounded-panel bg-white p-6 shadow-panel ring-1 ring-red-100 sm:p-7">
-        <h2 className="text-lg font-bold text-navy">Danger zone</h2>
+        <h2 className="text-lg font-bold text-ink">Danger zone</h2>
         <div className="mt-5 space-y-5">
           <DangerAction
             title="Clear this browser"
@@ -462,7 +462,7 @@ function DangerAction({
   return (
     <div className="flex flex-col gap-3 border-t border-gray-100 pt-5 first:border-t-0 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h3 className="text-sm font-bold text-navy">{title}</h3>
+        <h3 className="text-sm font-bold text-ink">{title}</h3>
         <p className="mt-1 max-w-xl text-sm leading-6 text-gray-500">{description}</p>
       </div>
       <button

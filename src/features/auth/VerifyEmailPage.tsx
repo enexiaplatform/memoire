@@ -32,7 +32,7 @@ export function VerifyEmailPage() {
           not covered by anything else - every auth screen showed the landing
           page's headline in the tab strip and to a screen reader. */}
       <NoIndex />
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-canvas flex items-center justify-center px-4">
         <div className="w-full max-w-sm text-center">
           <Link to="/" aria-label="Memoire home">
             <BrandWordmark className="mb-8 text-2xl" />

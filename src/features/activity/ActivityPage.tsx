@@ -326,7 +326,7 @@ export function ActivityPage({ variant = 'page' }: { variant?: 'page' | 'analyti
 
   if (loading) {
     if (analyticsOnly) {
-      return <div className="rounded-xl border border-gray-200 bg-white p-5 text-sm font-semibold text-gray-500">Reading your activity...</div>;
+      return <div className="rounded-panel bg-white shadow-panel p-5 text-sm font-semibold text-gray-500">Reading your activity...</div>;
     }
     return (
       <SkeletonScreen label="Reading your activity">
@@ -345,7 +345,7 @@ export function ActivityPage({ variant = 'page' }: { variant?: 'page' | 'analyti
   if (allEntries.length === 0) {
     if (analyticsOnly) {
       return (
-        <p className="rounded-xl border border-gray-200 bg-white p-5 text-sm leading-6 text-gray-500">
+        <p className="rounded-panel bg-white shadow-panel p-5 text-sm leading-6 text-gray-500">
           Nothing dated yet, so there is no rhythm to read. Capture a customer touch and this fills in.
         </p>
       );
@@ -380,7 +380,7 @@ export function ActivityPage({ variant = 'page' }: { variant?: 'page' | 'analyti
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex w-full max-w-full overflow-x-auto rounded-full border border-gray-200 bg-gray-50 p-1 sm:inline-flex sm:w-auto" role="tablist" aria-label="Period">
+        <div className="flex w-full max-w-full overflow-x-auto rounded-full border border-line bg-gray-50 p-1 sm:inline-flex sm:w-auto" role="tablist" aria-label="Period">
           {periods.map((option) => (
             <button
               key={option.id}
@@ -402,13 +402,13 @@ export function ActivityPage({ variant = 'page' }: { variant?: 'page' | 'analyti
         </span>
       </div>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-panel bg-white shadow-panel p-5">
         <p className="text-sm leading-6 text-gray-700">{analytics.headline}</p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Tile label="Dated items">
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-navy">{analytics.total}</span>
+              <span className="text-2xl font-black text-ink">{analytics.total}</span>
               <MomentumBadge
                 direction={analytics.momentum.direction}
                 deltaPct={analytics.momentum.deltaPct}
@@ -481,7 +481,7 @@ export function ActivityPage({ variant = 'page' }: { variant?: 'page' | 'analyti
               </>
             ) : (
               <>
-                <span className="text-2xl font-black text-navy">{Math.round(analytics.concentration * 100)}%</span>
+                <span className="text-2xl font-black text-ink">{Math.round(analytics.concentration * 100)}%</span>
                 <p className="mt-0.5 text-[11px] text-gray-500">
                   of the period went to its three biggest subjects
                   {analytics.subjects.length > 0 ? ` (${analytics.subjects.slice(0, 3).map((subject) => subject.name).join(', ')})` : ''}
@@ -493,9 +493,9 @@ export function ActivityPage({ variant = 'page' }: { variant?: 'page' | 'analyti
       </section>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm xl:col-span-2">
+        <section className="rounded-panel bg-white shadow-panel p-5 xl:col-span-2">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-lg font-bold text-navy">Rhythm</h2>
+            <h2 className="text-lg font-bold text-ink">Rhythm</h2>
             <span className="text-xs text-gray-500">
               {analytics.activeDays} active {analytics.activeDays === 1 ? 'day' : 'days'}
               {analytics.busiestDay ? ` · busiest ${formatSafeBusinessDate(analytics.busiestDay.date)}` : ''}
@@ -513,7 +513,7 @@ export function ActivityPage({ variant = 'page' }: { variant?: 'page' | 'analyti
           </div>
 
           {analytics.weekTrend.length > 1 && (
-            <div className="mt-5 border-t border-gray-100 pt-4">
+            <div className="mt-5 border-t border-line-soft pt-4">
               <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Per week, done in solid</p>
               <div className="mt-2">
                 <MiniBarChart
@@ -532,8 +532,8 @@ export function ActivityPage({ variant = 'page' }: { variant?: 'page' | 'analyti
           )}
         </section>
 
-        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-bold text-navy">Who it was for</h2>
+        <section className="rounded-panel bg-white shadow-panel p-5">
+          <h2 className="text-lg font-bold text-ink">Who it was for</h2>
           <p className="mt-1 text-xs text-gray-500">
             {/* Named a competitor most readers have never opened. The sentence
                 works without it. */}
@@ -552,7 +552,7 @@ export function ActivityPage({ variant = 'page' }: { variant?: 'page' | 'analyti
             />
           </div>
 
-          <div className="mt-5 border-t border-gray-100 pt-4">
+          <div className="mt-5 border-t border-line-soft pt-4">
             <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Business domain</p>
             <div className="mt-2">
               <SegmentBar
@@ -567,7 +567,7 @@ export function ActivityPage({ variant = 'page' }: { variant?: 'page' | 'analyti
             </div>
           </div>
 
-          <div className="mt-5 border-t border-gray-100 pt-4">
+          <div className="mt-5 border-t border-line-soft pt-4">
             <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Shape of the week</p>
             <div className="mt-2">
               <MiniBarChart
@@ -628,8 +628,8 @@ export function ActivityPage({ variant = 'page' }: { variant?: 'page' | 'analyti
             periodLabel={activePeriod?.label.toLowerCase() || 'this period'}
           />
           {analytics.typeMix.length > 1 && (
-            <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-bold text-navy">What kind of work</h2>
+            <section className="rounded-panel bg-white shadow-panel p-5">
+              <h2 className="text-lg font-bold text-ink">What kind of work</h2>
               <p className="mt-1 text-xs text-gray-500">Captured touch types and the four things that put work on a day.</p>
               <div className="mt-3">
                 <FunnelBars
@@ -648,10 +648,10 @@ export function ActivityPage({ variant = 'page' }: { variant?: 'page' | 'analyti
       </div>
 
       <LedgerFrame folded={analyticsOnly} shown={visibleEntries.length} total={entries.length} filtered={Boolean(focus)}>
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-panel bg-white shadow-panel p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-navy">The ledger</h2>
+            <h2 className="text-lg font-bold text-ink">The ledger</h2>
             <p className="mt-1 text-sm text-gray-600">
               {visibleEntries.length === entries.length
                 ? `All ${entries.length} dated ${entries.length === 1 ? 'item' : 'items'} in this period.`
@@ -662,7 +662,7 @@ export function ActivityPage({ variant = 'page' }: { variant?: 'page' | 'analyti
             {/* Two shapes over the same rows. Stream is grouped by state and
                 then by day, which is how you read a week; List is a sortable
                 record list, which is how you look one thing up. */}
-            <div className="inline-flex rounded-lg border border-gray-200 p-0.5" role="group" aria-label="Ledger view">
+            <div className="inline-flex rounded-lg border border-line p-0.5" role="group" aria-label="Ledger view">
               {(['stream', 'list'] as LedgerView[]).map((view) => (
                 <button
                   key={view}
@@ -670,7 +670,7 @@ export function ActivityPage({ variant = 'page' }: { variant?: 'page' | 'analyti
                   onClick={() => setLedgerView(view)}
                   aria-pressed={ledgerView === view}
                   className={`rounded-md px-3 py-1.5 text-xs font-bold capitalize ${
-                    ledgerView === view ? 'bg-navy text-white' : 'text-gray-600 hover:text-navy'
+                    ledgerView === view ? 'bg-navy text-white' : 'text-gray-600 hover:text-ink'
                   }`}
                 >
                   {view}
@@ -684,7 +684,7 @@ export function ActivityPage({ variant = 'page' }: { variant?: 'page' | 'analyti
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search subject, customer, person"
-                className="w-64 rounded-lg border border-gray-200 py-2 pl-8 pr-3 text-sm focus:border-brand-blue focus:outline-none"
+                className="w-64 rounded-lg border border-line py-2 pl-8 pr-3 text-sm focus:border-brand-blue focus:outline-none"
               />
             </label>
           </div>
@@ -723,7 +723,7 @@ export function ActivityPage({ variant = 'page' }: { variant?: 'page' | 'analyti
             <button
               type="button"
               onClick={() => { setFocus(null); setRelationFilter('all'); setDomainFilter('all'); setSearch(''); }}
-              className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 font-bold text-gray-600 hover:text-navy"
+              className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 font-bold text-gray-600 hover:text-ink"
             >
               <X className="h-3 w-3" />
               Clear
@@ -782,16 +782,16 @@ function LedgerFrame({
 }) {
   if (!folded) return <>{children}</>;
   return (
-    <details className="rounded-xl border border-gray-200 bg-white shadow-sm" open={filtered}>
+    <details className="rounded-panel bg-white shadow-panel" open={filtered}>
       <summary className="cursor-pointer list-none px-5 py-3">
         <span className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="text-sm font-bold text-navy">The rows behind this</span>
+          <span className="text-sm font-bold text-ink">The rows behind this</span>
           <span className="text-xs font-semibold text-gray-500">
             {shown === total ? `${total} dated ${total === 1 ? 'item' : 'items'}` : `${shown} of ${total} shown`}
           </span>
         </span>
       </summary>
-      <div className="border-t border-gray-100 p-5">{children}</div>
+      <div className="border-t border-line-soft p-5">{children}</div>
     </details>
   );
 }
@@ -809,15 +809,15 @@ function SubjectLeaderboard({
   const max = Math.max(...rows.map((row) => row.count), 1);
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-bold text-navy">Where the period went</h2>
+    <section className="rounded-panel bg-white shadow-panel p-5">
+      <h2 className="text-lg font-bold text-ink">Where the period went</h2>
       <p className="mt-1 text-xs text-gray-500">
         Ranked by items. The bar splits done from still-open, so a big bar that is mostly hollow is a subject you keep
         planning for and never reach.
       </p>
 
       {rows.length === 0 ? (
-        <p className="mt-3 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
+        <p className="mt-3 rounded-lg border border-dashed border-line bg-gray-50 p-4 text-sm text-gray-500">
           Nothing to rank yet.
         </p>
       ) : (
@@ -838,7 +838,7 @@ function SubjectLeaderboard({
                       {describeRecency(subject.daysSinceLast)}
                     </span>
                   </span>
-                  <span className="shrink-0 text-sm font-bold text-navy">
+                  <span className="shrink-0 text-sm font-bold text-ink">
                     {subject.count}
                     <span className="ml-1.5 text-[11px] font-semibold text-gray-400">
                       · {Math.round(subject.share * 100)}%
@@ -912,7 +912,7 @@ function UnresolvedPanel({ subjects }: { subjects: SubjectRow[] }) {
         {subjects.slice(0, 8).map((subject) => (
           <li key={subject.key} className="flex items-center justify-between gap-2 rounded-lg bg-white/70 px-2.5 py-1.5">
             <span className="min-w-0">
-              <span className="block truncate text-sm font-bold text-navy">{subject.name}</span>
+              <span className="block truncate text-sm font-bold text-ink">{subject.name}</span>
               <span className="text-[11px] text-gray-500">
                 {subject.count} {subject.count === 1 ? 'item' : 'items'} · last {formatSafeBusinessDate(subject.lastDate)}
               </span>
@@ -967,10 +967,10 @@ function GapsPanel({
   if (silent.length === 0 && gaps.length === 0) return null;
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <div className="flex items-center gap-2">
         <Radar className="h-4 w-4 text-brand-blue" />
-        <h2 className="text-lg font-bold text-navy">What went untouched</h2>
+        <h2 className="text-lg font-bold text-ink">What went untouched</h2>
       </div>
 
       {silent.length > 0 && (
@@ -990,7 +990,7 @@ function GapsPanel({
       )}
 
       {gaps.length > 0 && (
-        <div className="mt-4 border-t border-gray-100 pt-3">
+        <div className="mt-4 border-t border-line-soft pt-3">
           <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">
             Nothing at all {periodLabel}
           </p>
@@ -1019,7 +1019,7 @@ function ActivityEmptyState() {
     <PageContainer>
       <PageHeader eyebrow="Records" icon={<ActivityIcon className="h-5 w-5" />} title="Activity" />
       <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center">
-        <p className="text-base font-bold text-navy">Nothing dated yet.</p>
+        <p className="text-base font-bold text-ink">Nothing dated yet.</p>
         <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">
           This page does not ask you to fill it in - it reads every dated thing you already have and works out who it
           was for. Capture one thing that happened with a customer and the first row appears here.
@@ -1049,7 +1049,7 @@ function MomentumBadge({ direction, deltaPct }: { direction: 'up' | 'down' | 'fl
 
 function Tile({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-3">
+    <div className="rounded-lg border border-line-soft bg-gray-50/60 p-3">
       <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{label}</p>
       <div className="mt-1.5">{children}</div>
     </div>
@@ -1070,7 +1070,7 @@ function FilterChip({
       type="button"
       onClick={onClick}
       className={`rounded-full border px-2.5 py-1 text-[11px] font-bold transition ${
-        active ? 'border-navy bg-navy text-white' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+        active ? 'border-navy bg-navy text-white' : 'border-line bg-white text-gray-600 hover:border-gray-300'
       }`}
     >
       {children}

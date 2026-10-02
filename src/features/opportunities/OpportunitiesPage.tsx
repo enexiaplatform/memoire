@@ -1167,7 +1167,7 @@ export function OpportunitiesPage() {
                 More
                 <ChevronDown className="h-4 w-4" />
               </summary>
-              <div className="absolute right-0 z-30 mt-1 w-56 rounded-xl border border-gray-200 bg-white p-1 shadow-lg">
+              <div className="absolute right-0 z-30 mt-1 w-56 rounded-panel bg-white shadow-panel p-1 shadow-lg">
                 <button
                   type="button"
                   onClick={openCsvImport}
@@ -1197,7 +1197,7 @@ export function OpportunitiesPage() {
           you type and pick, then the saved cuts. Sticky, because filtering a
           long list is useless if choosing the next filter means scrolling
           back to the top. */}
-      <section className="sticky top-14 z-20 -mx-4 border-y border-gray-200 bg-page/95 px-4 py-2.5 backdrop-blur sm:-mx-5 sm:px-5 lg:-mx-6 lg:top-16 lg:px-6">
+      <section className="sticky top-14 z-20 -mx-4 border-y border-line bg-page/95 px-4 py-2.5 backdrop-blur sm:-mx-5 sm:px-5 lg:-mx-6 lg:top-16 lg:px-6">
         <div className="flex flex-col gap-2 xl:flex-row xl:items-center">
           <label className="relative xl:w-[300px]">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -1227,7 +1227,7 @@ export function OpportunitiesPage() {
             <button
               type="button"
               onClick={clearAllFilters}
-              className="shrink-0 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-600 hover:border-brand-blue hover:text-brand-blue"
+              className="shrink-0 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-bold text-gray-600 hover:border-brand-blue hover:text-brand-blue"
             >
               Clear filters
             </button>
@@ -1251,7 +1251,7 @@ export function OpportunitiesPage() {
               className={`rounded-full px-2.5 py-1 text-xs font-bold ${
                 quickFilter === value
                   ? 'bg-navy text-white'
-                  : 'border border-gray-200 bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue'
+                  : 'border border-line bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue'
               }`}
             >
               {label}
@@ -1318,7 +1318,7 @@ export function OpportunitiesPage() {
         ) : pipelineOpportunities.length === 0 ? (
           <EmptyState onAdd={openAddPanel} onImport={openCsvImport} leadCount={leadCount} />
         ) : visibleOpportunities.length === 0 ? (
-          <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+          <div className="rounded-panel bg-white shadow-panel p-8 text-center">
             <p className="text-sm font-semibold text-gray-900">No opportunities match these filters.</p>
             <p className="mt-1 text-sm text-gray-500">Clear search or filters to review your full pipeline.</p>
             {hasActiveFilters && (
@@ -1360,10 +1360,10 @@ export function OpportunitiesPage() {
           the weekly conversation about the pipeline, not the daily work in it,
           so it opens on request and stays under the rows it describes. */}
       {!loading && opportunities.length > 0 && (
-        <details className="rounded-lg border border-gray-200 bg-white shadow-sm">
+        <details className="rounded-lg border border-line bg-white shadow-sm">
           <summary className="cursor-pointer list-none px-4 py-3">
             <span className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-sm font-bold text-navy">
+              <span className="text-sm font-bold text-ink">
                 Pipeline analysis
                 <span className="ml-2 font-semibold text-gray-500">
                   quality, shape, forecast and import coverage
@@ -1373,7 +1373,7 @@ export function OpportunitiesPage() {
             </span>
           </summary>
 
-          <div className="flex flex-col gap-4 border-t border-gray-100 p-4">
+          <div className="flex flex-col gap-4 border-t border-line-soft p-4">
             <div className="flex flex-wrap gap-3">
               <button type="button" onClick={markWeakDealsReviewed} className="inline-flex items-center gap-2 text-xs font-bold text-blue-700 hover:text-brand-blue">
                 <CheckCircle2 className="h-3.5 w-3.5" />
@@ -1495,9 +1495,9 @@ function PipelineShapeCharts({
 
   return (
     <section className="grid gap-4 xl:grid-cols-2">
-      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="rounded-panel bg-white shadow-panel p-5">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Pipeline shape</p>
-        <h2 className="mt-1 text-lg font-bold text-navy">Where your deals sit</h2>
+        <h2 className="mt-1 text-lg font-bold text-ink">Where your deals sit</h2>
         <div className="mt-4">
           <FunnelBars
             ariaLabel="Active pipeline value by stage - select a stage to filter the table"
@@ -1513,9 +1513,9 @@ function PipelineShapeCharts({
         <p className="mt-3 text-xs font-semibold text-gray-400">Active deals only. Click a stage to filter the table. (Base: {getReportingCurrency()})</p>
       </div>
       {horizon.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-panel bg-white shadow-panel p-5">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Close horizon</p>
-          <h2 className="mt-1 text-lg font-bold text-navy">When the money lands</h2>
+          <h2 className="mt-1 text-lg font-bold text-ink">When the money lands</h2>
           <div className="mt-4">
             <MiniBarChart
               ariaLabel="Expected revenue by close horizon"
@@ -1539,12 +1539,12 @@ function PipelineShapeCharts({
 
 function PipelineQualitySummary({ quality }: { quality: ReturnType<typeof analyzePipelineQuality> }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4 text-brand-blue" />
-            <h2 className="text-lg font-bold text-navy">Pipeline Quality Summary</h2>
+            <h2 className="text-lg font-bold text-ink">Pipeline Quality Summary</h2>
           </div>
           <p className="mt-1 text-sm leading-6 text-gray-500">
             Rule-based checks for missing decision context, objection debt, weak evidence, stale next actions, and forecast quality.
@@ -1570,7 +1570,7 @@ function PipelineQualitySummary({ quality }: { quality: ReturnType<typeof analyz
         <Metric label="Rescue / Downgrade" value={quality.rescueDowngradeCount} tone={quality.rescueDowngradeCount ? 'red' : 'green'} />
       </div>
 
-      <div className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-4">
+      <div className="mt-5 rounded-lg border border-line-soft bg-gray-50 p-4">
         <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Recommended cleanup</p>
         <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
           {quality.cleanupActions.map((action) => (
@@ -1679,7 +1679,7 @@ function OpportunityCsvImportPanel({
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Read-only CRM import</p>
-          <h2 className="mt-1 text-xl font-bold text-navy">Import or Refresh Opportunities from CSV</h2>
+          <h2 className="mt-1 text-xl font-bold text-ink">Import or Refresh Opportunities from CSV</h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-gray-500">
             Refresh from your CRM/Excel export. Memoire updates your private working copy and never writes back. Use refresh before weekly review to compare what changed and see where each deal's evidence stands.
           </p>
@@ -1695,14 +1695,14 @@ function OpportunityCsvImportPanel({
         <button
           type="button"
           onClick={() => onModeChange('import')}
-          className={`rounded-md px-4 py-2 text-sm font-bold ${mode === 'import' ? 'bg-white text-navy shadow-sm' : 'text-blue-800 hover:bg-white/60'}`}
+          className={`rounded-md px-4 py-2 text-sm font-bold ${mode === 'import' ? 'bg-white text-ink shadow-sm' : 'text-blue-800 hover:bg-white/60'}`}
         >
           Import new pipeline
         </button>
         <button
           type="button"
           onClick={() => onModeChange('refresh')}
-          className={`rounded-md px-4 py-2 text-sm font-bold ${mode === 'refresh' ? 'bg-white text-navy shadow-sm' : 'text-blue-800 hover:bg-white/60'}`}
+          className={`rounded-md px-4 py-2 text-sm font-bold ${mode === 'refresh' ? 'bg-white text-ink shadow-sm' : 'text-blue-800 hover:bg-white/60'}`}
         >
           Refresh existing pipeline
         </button>
@@ -1774,7 +1774,7 @@ function OpportunityCsvImportPanel({
           <SavedCsvMappingProfiles profiles={mappingProfiles} onDelete={onDeleteMappingProfile} />
         </div>
 
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <div className="rounded-lg border border-line bg-gray-50 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-sm font-bold text-gray-900">{mode === 'refresh' ? 'Refresh preview' : 'Import preview'}</p>
@@ -1848,7 +1848,7 @@ function OpportunityCsvImportPanel({
             </div>
           )}
 
-          <div className="mt-4 max-h-[420px] overflow-y-auto rounded-lg border border-gray-200 bg-white">
+          <div className="mt-4 max-h-[420px] overflow-y-auto rounded-lg border border-line bg-white">
             {rows.length === 0 ? (
               <p className="p-4 text-sm text-gray-500">No preview rows yet.</p>
             ) : (
@@ -1939,7 +1939,7 @@ function RefreshAssistantPanel() {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">Refresh Assistant</p>
-          <h3 className="mt-1 text-sm font-bold text-navy">Weekly pipeline refresh workflow</h3>
+          <h3 className="mt-1 text-sm font-bold text-ink">Weekly pipeline refresh workflow</h3>
           <p className="mt-1 text-sm leading-6 text-emerald-900/75">
             Memoire updates your private working copy and never writes back to CRM.
           </p>
@@ -1987,7 +1987,7 @@ function CsvMappingReviewPanel({
   const fieldOptions = getOpportunityCsvFieldOptions();
 
   return (
-    <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
+    <div className="mt-3 rounded-panel bg-white shadow-panel p-3">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-gray-400">CSV Mapping Memory</p>
@@ -2016,7 +2016,7 @@ function CsvMappingReviewPanel({
         </p>
       ) : (
         <>
-          <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-gray-100">
+          <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-line-soft">
             <table className="min-w-full divide-y divide-gray-100 text-left text-xs">
               <thead className="bg-gray-50 text-gray-500">
                 <tr>
@@ -2033,7 +2033,7 @@ function CsvMappingReviewPanel({
                       <select
                         value={row.mappedField}
                         onChange={(event) => onMappingChange(row.normalizedHeader, event.target.value as OpportunityCsvField | '')}
-                        className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-700 outline-none focus:border-brand-blue"
+                        className="w-full rounded-md border border-line bg-white px-2 py-1.5 text-xs font-semibold text-gray-700 outline-none focus:border-brand-blue"
                       >
                         <option value="">Unmapped</option>
                         {fieldOptions.map((field) => (
@@ -2090,7 +2090,7 @@ function SavedCsvMappingProfiles({
 }) {
   if (profiles.length === 0) {
     return (
-      <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
+      <div className="mt-3 rounded-panel bg-white shadow-panel p-3">
         <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Saved CSV Mapping Profiles</p>
         <p className="mt-1 text-sm text-gray-500">No saved mappings yet. Save one after confirming your CSV columns.</p>
       </div>
@@ -2098,7 +2098,7 @@ function SavedCsvMappingProfiles({
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
+    <div className="mt-3 rounded-panel bg-white shadow-panel p-3">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Saved CSV Mapping Profiles</p>
       <div className="mt-2 space-y-2">
         {profiles.slice(0, 5).map((profile) => (
@@ -2112,7 +2112,7 @@ function SavedCsvMappingProfiles({
             <button
               type="button"
               onClick={() => onDelete(profile.id)}
-              className="rounded-full border border-gray-200 bg-white p-2 text-gray-500 hover:border-red-200 hover:text-red-600"
+              className="rounded-full border border-line bg-white p-2 text-gray-500 hover:border-red-200 hover:text-red-600"
               aria-label={`Delete ${profile.name}`}
             >
               <Trash2 className="h-4 w-4" />
@@ -2191,8 +2191,8 @@ function RefreshGroup({
   if (items.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white">
-      <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2">
+    <div className="rounded-lg border border-line bg-white">
+      <div className="flex items-center justify-between border-b border-line-soft px-3 py-2">
         <p className="text-xs font-black uppercase tracking-wide text-gray-500">{title}</p>
         <Badge label={String(items.length)} tone={tone} />
       </div>
@@ -2220,7 +2220,7 @@ function RefreshGroup({
                 {item.changes.map((change) => {
                   const checked = (selectedFields[item.id] || []).includes(change.field);
                   return (
-                    <label key={change.field} className="block rounded-lg border border-gray-100 bg-gray-50 p-2">
+                    <label key={change.field} className="block rounded-lg border border-line-soft bg-gray-50 p-2">
                       <span className="flex items-start gap-2">
                         <input
                           type="checkbox"
@@ -2263,7 +2263,7 @@ function ImportRefreshHistory({ records }: { records: OpportunityImportBatchReco
 
   const latest = records[0];
   return (
-    <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
+    <div className="mt-3 rounded-panel bg-white shadow-panel p-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Import / Refresh History</p>
@@ -2303,7 +2303,7 @@ function ImportedOpportunityEnrichmentSignal({
         <div>
           <div className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4 text-amber-700" />
-            <h2 className="text-lg font-bold text-navy">Imported Opportunities Need Enrichment</h2>
+            <h2 className="text-lg font-bold text-ink">Imported Opportunities Need Enrichment</h2>
           </div>
           <p className="mt-1 text-sm leading-6 text-amber-900/75">
             Imported CRM copies are useful for review, but they often need buyer, champion, process, evidence, and proof context before defense.
@@ -2358,7 +2358,7 @@ function ImportedPipelineForecastPanel({
         <div>
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4 text-emerald-700" />
-            <h2 className="text-lg font-bold text-navy">Imported Pipeline Forecast</h2>
+            <h2 className="text-lg font-bold text-ink">Imported Pipeline Forecast</h2>
           </div>
           <p className="mt-1 text-sm leading-6 text-emerald-900/75">
             Founder core pipeline is available as reviewable forecast data: FY value, brand/channel context, probability, and inferred-stage flags.
@@ -2650,10 +2650,10 @@ function OpportunityMasterTable({
   const columnCount = 9 + optionalCount;
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-      <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <section className="min-w-0 overflow-hidden rounded-lg border border-line bg-white shadow-sm">
+      <div className="flex flex-col gap-3 border-b border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-base font-bold text-navy">Opportunity Master List</h2>
+          <h2 className="text-base font-bold text-ink">Opportunity Master List</h2>
           <p className="mt-1 text-xs text-gray-500">
             {formatCount(totalRows)} after filters / {formatCount(totalOpportunities)} total
             {' · '}
@@ -2668,7 +2668,7 @@ function OpportunityMasterTable({
           <select
             value={pageSize}
             onChange={(event) => onPageSizeChange(Number(event.target.value))}
-            className="rounded-md border border-gray-200 bg-white px-2 py-1.5 text-sm font-bold text-gray-700"
+            className="rounded-md border border-line bg-white px-2 py-1.5 text-sm font-bold text-gray-700"
           >
             {[25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
           </select>
@@ -2682,7 +2682,7 @@ function OpportunityMasterTable({
         <table className="w-full border-collapse text-left text-sm" style={{ minWidth }}>
           <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
             <tr>
-              <OpportunitySortableHeader label="Deal" sortKey="account" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="sticky left-0 z-20 border-r border-gray-200 bg-gray-50" />
+              <OpportunitySortableHeader label="Deal" sortKey="account" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="sticky left-0 z-20 border-r border-line bg-gray-50" />
               <OpportunitySortableHeader label="Close" sortKey="closePeriod" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Stage" sortKey="stage" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="MEDDIC" sortKey="meddic" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
@@ -2690,11 +2690,11 @@ function OpportunityMasterTable({
               {columns.fy26 && <OpportunitySortableHeader label="FY26" sortKey="fy26" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="text-right" />}
               {columns.fy27 && <OpportunitySortableHeader label="FY27" sortKey="fy27" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="text-right" />}
               {columns.probability && <OpportunitySortableHeader label="Prob." sortKey="probability" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="text-right" />}
-              {columns.brand && <th className="border-b border-gray-200 px-3 py-2.5">Brand</th>}
+              {columns.brand && <th className="border-b border-line px-3 py-2.5">Brand</th>}
               <OpportunitySortableHeader label="Health" sortKey="quality" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Next action" sortKey="nextActionDate" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <OpportunitySortableHeader label="Last touch" sortKey="updatedAt" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <th className="border-b border-gray-200 px-2 py-2.5 text-right">
+              <th className="border-b border-line px-2 py-2.5 text-right">
                 <span className="sr-only">Open</span>
                 <span aria-hidden="true">·</span>
               </th>
@@ -2705,9 +2705,9 @@ function OpportunityMasterTable({
             <tbody key={group.key} className="divide-y divide-gray-100">
               {grouped && (
                 <tr className="bg-gray-50/80">
-                  <td colSpan={columnCount} className="sticky left-0 border-y border-gray-200 px-3 py-1.5">
+                  <td colSpan={columnCount} className="sticky left-0 border-y border-line px-3 py-1.5">
                     <span className="flex flex-wrap items-baseline gap-x-2 text-[11px]">
-                      <span className="font-bold uppercase tracking-wide text-navy">{group.label}</span>
+                      <span className="font-bold uppercase tracking-wide text-ink">{group.label}</span>
                       <span className="font-semibold text-gray-500">
                         {groupTotals.get(group.key)?.rows.length !== group.rows.length
                           ? `${group.rows.length} of ${groupTotals.get(group.key)?.rows.length ?? group.rows.length}`
@@ -2744,8 +2744,8 @@ function OpportunityMasterTable({
                         same words - "Apex Labs / Validation Expansion decontamination
                         expansion" beside "Validation Expansion". One column, customer
                         first, because that is how an operator looks a deal up. */}
-                    <td className="sticky left-0 z-10 border-r border-gray-100 bg-white px-3 py-2.5 group-hover:bg-blue-50">
-                      <p className="max-w-[clamp(230px,17vw,420px)] truncate font-bold text-navy" title={opportunity.accountName}>
+                    <td className="sticky left-0 z-10 border-r border-line-soft bg-white px-3 py-2.5 group-hover:bg-blue-50">
+                      <p className="max-w-[clamp(230px,17vw,420px)] truncate font-bold text-ink" title={opportunity.accountName}>
                         {opportunity.accountName || 'No account'}
                       </p>
                       <p
@@ -2917,7 +2917,7 @@ function OpportunityMasterTable({
                           onOpen(opportunity);
                         }}
                         title="Open opportunity details"
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-line bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue"
                       >
                         <Eye className="h-4 w-4" />
                       </button>
@@ -2930,7 +2930,7 @@ function OpportunityMasterTable({
         </table>
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-t border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-gray-500">
           Showing {totalRows === 0 ? 0 : ((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, totalRows)} of {formatCount(totalRows)}
         </p>
@@ -2939,7 +2939,7 @@ function OpportunityMasterTable({
             type="button"
             onClick={() => onPageChange(Math.max(1, page - 1))}
             disabled={page === 1}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600 disabled:opacity-40"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-line text-gray-600 disabled:opacity-40"
             title="Previous page"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -2949,7 +2949,7 @@ function OpportunityMasterTable({
             type="button"
             onClick={() => onPageChange(Math.min(pageCount, page + 1))}
             disabled={page === pageCount}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600 disabled:opacity-40"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-line text-gray-600 disabled:opacity-40"
             title="Next page"
           >
             <ChevronRight className="h-4 w-4" />
@@ -3013,8 +3013,8 @@ function OpportunitySortableHeader({
 }) {
   const active = sortKey === activeKey;
   return (
-    <th className={`border-b border-gray-200 px-3 py-3 ${className}`}>
-      <button type="button" onClick={() => onSort(sortKey)} className="inline-flex min-h-[24px] items-center gap-1 hover:text-navy">
+    <th className={`border-b border-line px-3 py-3 ${className}`}>
+      <button type="button" onClick={() => onSort(sortKey)} className="inline-flex min-h-[24px] items-center gap-1 hover:text-ink">
         {label}
         <ArrowUpDown className={`h-3.5 w-3.5 ${active ? 'text-brand-blue' : 'text-gray-300'}`} />
         <span className="sr-only">{active ? `Sorted ${direction}` : 'Not sorted'}</span>
@@ -3230,11 +3230,11 @@ function OpportunityPanel({
         onClick={onClose}
         className="fixed inset-y-0 left-0 right-0 top-16 z-40 bg-slate-950/25 backdrop-blur-[1px] lg:left-[220px]"
       />
-      <aside ref={drawerRef} {...dialogProps} className="fixed bottom-0 right-0 top-16 z-50 w-full overflow-y-auto border-l border-gray-200 bg-white p-5 shadow-2xl sm:max-w-[760px]">
+      <aside ref={drawerRef} {...dialogProps} className="fixed bottom-0 right-0 top-16 z-50 w-full overflow-y-auto border-l border-line bg-white p-5 shadow-2xl sm:max-w-[760px]">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">{mode === 'add' ? 'Add Opportunity' : 'Edit Opportunity'}</p>
-          <h2 className="mt-2 text-xl font-bold text-navy">
+          <h2 className="mt-2 text-xl font-bold text-ink">
             {mode === 'add' ? 'New deal record' : editingOpportunity?.opportunityName}
           </h2>
           {mode === 'edit' && editingOpportunity && (
@@ -3259,7 +3259,7 @@ function OpportunityPanel({
             </div>
           )}
         </div>
-        <button type="button" onClick={onClose} aria-label="Close" className="rounded-full border border-gray-200 p-2 text-gray-500 hover:bg-gray-50">
+        <button type="button" onClick={onClose} aria-label="Close" className="rounded-full border border-line p-2 text-gray-500 hover:bg-gray-50">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -3536,8 +3536,8 @@ function OpportunityPanel({
       </div>
 
       {mode === 'edit' && (
-        <details className="mt-5 rounded-xl border border-gray-200 bg-gray-50/60 p-4">
-          <summary className="cursor-pointer text-sm font-bold text-navy">
+        <details className="mt-5 rounded-xl border border-line bg-gray-50/60 p-4">
+          <summary className="cursor-pointer text-sm font-bold text-ink">
             Full deal analysis — stakeholders, MEDDIC, quotes, objections, action plan, retro, assets, activity
           </summary>
           <div className="mt-4 space-y-4">
@@ -3651,7 +3651,7 @@ function OpportunityPanel({
        * `-mx-5 -mb-5` cancels the drawer's own p-5 so the bar spans its full
        * width and the rows scroll under an opaque edge rather than beside it.
        */}
-      <div className="sticky bottom-0 -mx-5 -mb-5 mt-5 flex flex-wrap gap-2 border-t border-gray-200 bg-white px-5 py-3">
+      <div className="sticky bottom-0 -mx-5 -mb-5 mt-5 flex flex-wrap gap-2 border-t border-line bg-white px-5 py-3">
         <button
           type="button"
           onClick={onSave}
@@ -3729,7 +3729,7 @@ function DealFirstThingHead({
         <p className="mt-1.5 text-xs font-semibold leading-5 text-red-700">{integrityNote}</p>
       )}
       <p className="mt-3 text-xs font-bold uppercase tracking-wide text-brand-blue">Do this first</p>
-      <p className="mt-1 text-sm font-bold leading-6 text-navy">
+      <p className="mt-1 text-sm font-bold leading-6 text-ink">
         {snapshot.nextCommitment ? commitment : 'No next action set — decide the first move and add it below.'}
       </p>
       <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -3773,7 +3773,7 @@ function OpportunitySalesFlowCard({
             <Badge label={guidance.step.label} tone="blue" />
             <Badge label={guidance.status} tone={tone} />
           </div>
-          <h3 className="mt-2 text-base font-bold text-navy">{guidance.suggestedAction}</h3>
+          <h3 className="mt-2 text-base font-bold text-ink">{guidance.suggestedAction}</h3>
           <p className="mt-1 text-sm leading-6 text-gray-600">{guidance.reason}</p>
           <div className="mt-3 flex gap-1" aria-label={`Sales flow progress: ${guidance.step.label}`}>
             {salesFlowSteps.map((step, index) => (
@@ -3832,7 +3832,7 @@ function OpportunityCommercialPanel({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-cyan-700">Commercial status</p>
-          <p className="mt-1 text-sm font-bold text-navy">
+          <p className="mt-1 text-sm font-bold text-ink">
             {topQuote
               ? `${topQuote.title}: ${topQuote.nextAction || commercial.topRisk || 'review quote status'}`
               : 'No quote is linked to this opportunity yet.'}
@@ -3912,7 +3912,7 @@ function RelevantSalesAssetsPanel({
             <FileText className="h-4 w-4 text-cyan-700" />
             <p className="text-xs font-bold uppercase tracking-wide text-cyan-700">Relevant Sales Assets</p>
           </div>
-          <h3 className="mt-1 text-base font-bold text-navy">Proof and snippets for this deal</h3>
+          <h3 className="mt-1 text-base font-bold text-ink">Proof and snippets for this deal</h3>
           <p className="mt-1 text-sm leading-6 text-cyan-900/75">
             Assets are reusable text blocks for objections, proof, proposals, procurement, and pipeline defense.
           </p>
@@ -3934,7 +3934,7 @@ function RelevantSalesAssetsPanel({
                 <Badge label={asset.assetType} tone="blue" />
                 {asset.relatedObjectionType && <Badge label={asset.relatedObjectionType} tone="amber" />}
               </div>
-              <p className="mt-2 text-sm font-bold text-navy">{asset.title}</p>
+              <p className="mt-2 text-sm font-bold text-ink">{asset.title}</p>
               <p className="mt-1 text-xs leading-5 text-gray-500">{asset.summary || asset.useCase}</p>
             </article>
           ))}
@@ -3945,7 +3945,7 @@ function RelevantSalesAssetsPanel({
                 <Badge label={need.assetType} tone="blue" />
                 <Badge label={need.priority} tone={need.priority === 'High' ? 'red' : need.priority === 'Medium' ? 'amber' : 'green'} />
               </div>
-              <p className="mt-2 text-sm font-bold text-navy">{need.title}</p>
+              <p className="mt-2 text-sm font-bold text-ink">{need.title}</p>
               <p className="mt-1 text-xs leading-5 text-gray-500">{need.reason}</p>
             </article>
           ))}
@@ -3957,7 +3957,7 @@ function RelevantSalesAssetsPanel({
 
 function LinkedActivitiesTimeline({ activities }: { activities: SalesActivityRecord[] }) {
   return (
-    <section className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-4">
+    <section className="mt-5 rounded-lg border border-line-soft bg-gray-50 p-4">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Linked Activities</p>
       {activities.length === 0 ? (
         <p className="mt-3 text-sm text-gray-500">No activities linked to this opportunity yet.</p>
@@ -3965,7 +3965,7 @@ function LinkedActivitiesTimeline({ activities }: { activities: SalesActivityRec
         <div className="mt-3 space-y-2">
           {activities.map((activity) => (
             <details key={activity.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
-              <summary className="cursor-pointer text-sm font-bold text-navy">
+              <summary className="cursor-pointer text-sm font-bold text-ink">
                 {formatSafeBusinessDate(activity.activityDate)} | {activity.activityType}
               </summary>
               <p className="mt-2 text-sm leading-6 text-gray-700">{activity.summary}</p>
@@ -3995,7 +3995,7 @@ function StakeholderMap({
   const coverage = analyzeStakeholderCoverage(stakeholders, opportunity);
   const meddicMap = buildMeddicStakeholderMap({ opportunity, stakeholders, objections, activities });
   return (
-    <section className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-4">
+    <section className="mt-5 rounded-lg border border-line-soft bg-gray-50 p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-gray-400">MEDDIC Stakeholder Map</p>
@@ -4040,7 +4040,7 @@ function StakeholderMap({
           {meddicMap.missingRoles.map((missing) => (
             <div key={missing.role} className="rounded-lg border border-orange-100 bg-white p-3">
               <p className="text-xs font-bold uppercase tracking-wide text-orange-700">Missing evidence</p>
-              <p className="mt-1 text-sm font-bold text-navy">{missing.role}</p>
+              <p className="mt-1 text-sm font-bold text-ink">{missing.role}</p>
               <p className="mt-1 text-xs leading-5 text-gray-500">{missing.reason}</p>
             </div>
           ))}
@@ -4053,7 +4053,7 @@ function StakeholderMap({
           {meddicMap.items.slice(0, 8).map((stakeholder) => (
             <div key={stakeholder.stakeholderId || stakeholder.name} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-bold text-navy">{stakeholder.name}</p>
+                <p className="text-sm font-bold text-ink">{stakeholder.name}</p>
                 <Badge label={stakeholder.role} tone={stakeholder.role === 'Blocker' ? 'red' : stakeholder.role === 'Champion' ? 'green' : 'blue'} />
                 <Badge label={stakeholder.confidence} tone={stakeholder.confidence === 'confirmed' ? 'green' : stakeholder.confidence === 'inferred' ? 'amber' : 'gray'} />
               </div>
@@ -4114,7 +4114,7 @@ function OpportunityObjectionLedger({ opportunity, objections }: { opportunity: 
   ].filter(Boolean);
 
   return (
-    <section className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-4">
+    <section className="mt-5 rounded-lg border border-line-soft bg-gray-50 p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Objection Ledger</p>
         <Link
@@ -4144,7 +4144,7 @@ function OpportunityObjectionLedger({ opportunity, objections }: { opportunity: 
                 <Badge label={objection.impact} tone={objection.impact === 'High' ? 'red' : objection.impact === 'Medium' ? 'amber' : 'gray'} />
                 <Badge label={objection.status} tone={objectionStatusTone(objection.status)} />
               </div>
-              <p className="mt-2 text-sm font-bold text-navy">{objection.objectionText}</p>
+              <p className="mt-2 text-sm font-bold text-ink">{objection.objectionText}</p>
               {objection.requiredProof && <p className="mt-1 text-xs leading-5 text-gray-500">Proof: {objection.requiredProof}</p>}
             </div>
           ))}
@@ -4178,7 +4178,7 @@ function MeddicLitePanel({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">MEDDIC-lite Review</p>
-          <h3 className="mt-1 text-base font-bold text-navy">Deal evidence check</h3>
+          <h3 className="mt-1 text-base font-bold text-ink">Deal evidence check</h3>
           <p className="mt-1 text-sm leading-6 text-blue-900/75">
             Nine elements, each scored from records you already keep — the stakeholder map, the objection ledger,
             captured touches and the quote book. Nothing here is graded by hand, so the way to raise a score is to
@@ -4197,7 +4197,7 @@ function MeddicLitePanel({
           <FieldOwnership owner="derived" />
         </p>
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          <p className="text-2xl font-black tabular-nums text-navy">
+          <p className="text-2xl font-black tabular-nums text-ink">
             {qualification.weighted}<span className="text-base font-bold text-gray-400">/{qualification.max}</span>
           </p>
           <p className="text-sm font-bold text-gray-600">{Math.round(qualification.percentOfMax * 100)}% of maximum</p>
@@ -4207,7 +4207,7 @@ function MeddicLitePanel({
               : `Below the ${Math.round(FORECAST_GATE * 100)}% gate — counted at zero in forecast coverage.`}
           </p>
         </div>
-        <p className="mt-2 text-sm leading-6 text-navy">
+        <p className="mt-2 text-sm leading-6 text-ink">
           Evidence supports <strong>{qualification.evidenceStage}</strong>; you have it at{' '}
           <strong>{qualification.claimedStage}</strong>.
         </p>
@@ -4222,7 +4222,7 @@ function MeddicLitePanel({
         {review.fields.map((field) => (
           <details key={field.key} className="rounded-lg bg-white p-3 ring-1 ring-blue-100">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-              <span className="text-sm font-bold text-navy">
+              <span className="text-sm font-bold text-ink">
                 {field.label}
                 {/* Weight beside the name, because "Champion is Missing" and
                     "Competition is Missing" cost three points and one, and a
@@ -4268,7 +4268,7 @@ function MeddicLitePanel({
         </div>
       )}
 
-      <div className="mt-4 rounded-lg border border-gray-100 bg-white p-3">
+      <div className="mt-4 rounded-lg border border-line-soft bg-white p-3">
         <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Recommended defense answer</p>
         <p className="mt-1 text-sm leading-6 text-gray-700">{review.defenseAnswer}</p>
       </div>
@@ -4391,7 +4391,7 @@ function RecommendedActionPlanPanel({
             <ClipboardList className="h-4 w-4 text-emerald-700" />
             <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">Recommended Action Plan</p>
           </div>
-          <h3 className="mt-1 text-base font-bold text-navy">Next best actions for this deal</h3>
+          <h3 className="mt-1 text-base font-bold text-ink">Next best actions for this deal</h3>
           <p className="mt-1 text-sm leading-6 text-emerald-900/75">
             Actions are generated from MEDDIC-lite gaps, stakeholder risk, objection debt, stale follow-up, timeline, and competition signals.
           </p>
@@ -4422,7 +4422,7 @@ function RecommendedActionPlanPanel({
               <Badge label={action.sourceType} tone={action.sourceType === 'Objection' || action.sourceType === 'Competition' ? 'amber' : 'blue'} />
               {action.suggestedDueDate && <Badge label={`Due ${action.suggestedDueDate}`} tone="gray" />}
             </div>
-            <h4 className="mt-2 text-sm font-bold text-navy">{action.title}</h4>
+            <h4 className="mt-2 text-sm font-bold text-ink">{action.title}</h4>
             <p className="mt-1 text-sm leading-6 text-gray-600">{action.reason}</p>
             {action.relatedGap && <p className="mt-1 text-xs font-semibold text-amber-700">Gap: {action.relatedGap}</p>}
             {action.relatedStakeholderName && <p className="mt-1 text-xs font-semibold text-gray-500">Stakeholder: {action.relatedStakeholderName}</p>}
@@ -4430,7 +4430,7 @@ function RecommendedActionPlanPanel({
               <button
                 type="button"
                 onClick={() => copyAction(action)}
-                className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+                className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
               >
                 <Copy className="h-3.5 w-3.5" />
                 Copy Action
@@ -4459,7 +4459,7 @@ function RecommendedActionPlanPanel({
               <button
                 type="button"
                 onClick={() => dismissAction(action)}
-                className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-100"
+                className="rounded-full border border-line bg-gray-50 px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-100"
               >
                 Dismiss
               </button>
@@ -4473,9 +4473,9 @@ function RecommendedActionPlanPanel({
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Add Outcome</p>
-              <h4 className="mt-1 text-sm font-bold text-navy">{outcomeAction.title}</h4>
+              <h4 className="mt-1 text-sm font-bold text-ink">{outcomeAction.title}</h4>
             </div>
-            <button type="button" onClick={() => setOutcomeAction(null)} className="rounded-full border border-gray-200 p-1 text-gray-500">
+            <button type="button" onClick={() => setOutcomeAction(null)} className="rounded-full border border-line p-1 text-gray-500">
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -4630,7 +4630,7 @@ function OpportunityOutcomeRetroPanel({
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-700">
             {closing ? `Close this deal — ${opportunity.status}` : 'Closed-loop learning'}
           </p>
-          <h3 className="mt-1 text-base font-bold text-navy">
+          <h3 className="mt-1 text-base font-bold text-ink">
             {closing ? 'Say why, and this closes' : 'Record win/loss/delay retro'}
           </h3>
           <p className="mt-1 text-sm leading-6 text-indigo-900/75">
@@ -4765,7 +4765,7 @@ function OpportunityOutcomeRetroPanel({
                 <Badge label={formatSafeBusinessDate(outcome.outcomeDate)} tone="gray" />
                 <Badge label={outcome.reasonCategory} tone="blue" />
               </div>
-              <p className="mt-2 font-semibold text-navy">{outcome.reasonText || 'Retro note not captured yet.'}</p>
+              <p className="mt-2 font-semibold text-ink">{outcome.reasonText || 'Retro note not captured yet.'}</p>
               {outcome.lessonLearned && <p className="mt-1 text-gray-600">Lesson: {outcome.lessonLearned}</p>}
             </div>
           ))}
@@ -4794,7 +4794,7 @@ function ActionOutcomeHistory({
     .slice(0, 6);
 
   return (
-    <section className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-4">
+    <section className="mt-5 rounded-lg border border-line-soft bg-gray-50 p-4">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Action Outcome History</p>
       <p className="mt-1 text-sm leading-6 text-gray-600">
         {analysis.lastActionOutcomeSummary}
@@ -4815,7 +4815,7 @@ function ActionOutcomeHistory({
                 <Badge label={outcome.outcomeType} tone={outcomeTone(outcome.outcomeType)} />
                 {(outcome.completedAt || outcome.updatedAt) && <Badge label={outcome.completedAt || outcome.updatedAt.slice(0, 10)} tone="gray" />}
               </div>
-              <p className="mt-2 text-sm font-bold text-navy">{outcome.actionTitle}</p>
+              <p className="mt-2 text-sm font-bold text-ink">{outcome.actionTitle}</p>
               {outcome.outcomeNote && <p className="mt-1 text-xs leading-5 text-gray-500">{outcome.outcomeNote}</p>}
               {outcome.relatedGap && <p className="mt-1 text-xs font-semibold text-amber-700">Gap: {outcome.relatedGap}</p>}
             </article>
@@ -4835,7 +4835,7 @@ function ActionOutcomeHistory({
  */
 function EmptyState({ onAdd, onImport, leadCount = 0 }: { onAdd: () => void; onImport: () => void; leadCount?: number }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+    <div className="rounded-panel bg-white shadow-panel p-8 text-center">
       {/* Leads live on their own destination now. A workspace whose whole book
           is leads is not an empty workspace, and saying "import your deals" to
           it without pointing at them would read as data loss. */}
@@ -4847,7 +4847,7 @@ function EmptyState({ onAdd, onImport, leadCount = 0 }: { onAdd: () => void; onI
           </Link>
         </p>
       )}
-      <p className="text-base font-bold text-navy">Import the deals you are already working.</p>
+      <p className="text-base font-bold text-ink">Import the deals you are already working.</p>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
         Opportunities are the deals you want to track and defend. Bring in a CSV from wherever they live now - Memoire
         shows you what it read before it creates anything - and the evidence, risk and next-action views fill in behind it.
@@ -4857,7 +4857,7 @@ function EmptyState({ onAdd, onImport, leadCount = 0 }: { onAdd: () => void; onI
           <Upload className="h-4 w-4" />
           Import CSV
         </button>
-        <button type="button" onClick={onAdd} className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
+        <button type="button" onClick={onAdd} className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700">
           <Plus className="h-4 w-4" />
           Add one deal instead
         </button>
@@ -4933,7 +4933,7 @@ function ProbabilityField({ value, onChange }: { value: number | null; onChange:
 
   return (
     <label className="block">
-      <span className="text-sm font-bold text-navy">Probability %</span>
+      <span className="text-sm font-bold text-ink">Probability %</span>
       <select
         value={value === null ? '' : String(value)}
         onChange={(event) => onChange(event.target.value === '' ? null : Number(event.target.value))}
@@ -5134,7 +5134,7 @@ function SuggestedCall({ label, value, differs, onApply }: {
     <div className="flex items-center justify-between gap-2 rounded-lg bg-white px-2.5 py-1.5 ring-1 ring-blue-100">
       <div className="min-w-0">
         <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">{label}</p>
-        <p className="truncate text-xs font-bold text-navy">{value}</p>
+        <p className="truncate text-xs font-bold text-ink">{value}</p>
       </div>
       {differs ? (
         <button
@@ -5215,7 +5215,7 @@ function ProcurementPathField({
   return (
     <div>
       <label className="block">
-        <span className="text-sm font-bold text-navy">Procurement path</span>
+        <span className="text-sm font-bold text-ink">Procurement path</span>
         <select
           value={legacy || trimmed || 'Not known yet'}
           onChange={(event) => onChange(event.target.value)}
@@ -5229,8 +5229,8 @@ function ProcurementPathField({
       </label>
 
       {readiness && (
-        <div className="mt-2 overflow-hidden rounded-lg border border-gray-200 bg-white">
-          <div className="border-b border-gray-100 bg-gray-50 px-3 py-2.5">
+        <div className="mt-2 overflow-hidden rounded-lg border border-line bg-white">
+          <div className="border-b border-line-soft bg-gray-50 px-3 py-2.5">
             <p className="text-xs font-semibold leading-5 text-gray-700">{readiness.guide.meaning}</p>
             <p className="mt-1 text-[11px] font-semibold text-gray-500">{readiness.guide.typicalDuration}</p>
           </div>
@@ -5276,12 +5276,12 @@ function ProcurementPathField({
             </ul>
           </div>
 
-          <div className="border-t border-gray-100 bg-blue-50/50 px-3 py-2.5">
+          <div className="border-t border-line-soft bg-blue-50/50 px-3 py-2.5">
             <p className="text-[11px] font-bold uppercase tracking-wide text-brand-blue">Ask this week</p>
             <p className="mt-0.5 text-xs leading-5 text-gray-700">&ldquo;{readiness.guide.askThisWeek}&rdquo;</p>
           </div>
 
-          <p className="border-t border-gray-100 px-3 py-2 text-[11px] leading-5 text-amber-800">
+          <p className="border-t border-line-soft px-3 py-2 text-[11px] leading-5 text-amber-800">
             {readiness.guide.risk}
           </p>
         </div>
@@ -5313,7 +5313,7 @@ function SelectField<Value extends string>({
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-bold text-navy">{label}</span>
+      <span className="text-sm font-bold text-ink">{label}</span>
       {hint && <span className="mt-0.5 block text-xs font-normal leading-5 text-gray-500">{hint}</span>}
       <select
         value={value}
@@ -5436,7 +5436,7 @@ function Field({
   const listId = suggestions && suggestions.length > 0 ? `field-${label.replace(/\W+/g, '-').toLowerCase()}` : undefined;
   return (
     <label className="block">
-      <span className="text-sm font-bold text-navy">{label}{required ? ' *' : ''}</span>
+      <span className="text-sm font-bold text-ink">{label}{required ? ' *' : ''}</span>
       {/* The asterisk in the label was the only thing saying "required": the
           input carried no `required` attribute, so nothing enforced it and no
           screen reader announced it. An asterisk is a convention, not a
@@ -5494,7 +5494,7 @@ function StageProgress({ stage, status, onPick }: {
   const stageDefault = defaultProbabilityForStage(stage);
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-3">
+    <div className="rounded-panel bg-white shadow-panel p-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">Where this deal stands</p>
         <p className={`text-[11px] font-semibold ${closedTone ? closedTone.text : 'text-gray-500'}`}>
@@ -5528,7 +5528,7 @@ function StageProgress({ stage, status, onPick }: {
                   reachable by hover, title and the select beside it. */}
               <span
                 className={`mt-1 block truncate text-[9px] leading-3 ${
-                  current ? 'font-bold text-navy' : 'text-transparent group-hover:text-gray-500'
+                  current ? 'font-bold text-ink' : 'text-transparent group-hover:text-gray-500'
                 }`}
               >
                 {step}
@@ -5580,7 +5580,7 @@ function QuickPickField({
 
   return (
     <div className="block">
-      <span className="text-sm font-bold text-navy">{label}</span>
+      <span className="text-sm font-bold text-ink">{label}</span>
       {hint && <span className="mt-0.5 block text-xs font-normal leading-5 text-gray-500">{hint}</span>}
       <div className="mt-2 flex flex-wrap gap-1.5">
         {options.map((option) => {
@@ -5634,7 +5634,7 @@ function PickOrTypeField({ label, options, value, onChange }: {
 
   return (
     <label className="block">
-      <span className="text-sm font-bold text-navy">{label}</span>
+      <span className="text-sm font-bold text-ink">{label}</span>
       {options.length > 0 && (
         <select
           value={showText ? OTHER : value}
@@ -5675,7 +5675,7 @@ function TextArea({ label, value, onChange, hint, inputRef }: {
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-bold text-navy">{label}</span>
+      <span className="text-sm font-bold text-ink">{label}</span>
       {hint && <span className="mt-0.5 block text-xs font-normal leading-5 text-gray-500">{hint}</span>}
       <textarea
         ref={inputRef}
@@ -5697,7 +5697,7 @@ function Metric({ label, value, tone = 'blue' }: { label: string; value: string 
   }[tone];
 
   return (
-    <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+    <div className="rounded-lg border border-line-soft bg-gray-50 p-3">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
       <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-lg font-black ${toneClass}`}>{value}</p>
     </div>
@@ -5711,7 +5711,7 @@ function Badge({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green
     green: 'border-emerald-100 bg-emerald-50 text-emerald-700',
     amber: 'border-amber-100 bg-amber-50 text-amber-700',
     red: 'border-red-100 bg-red-50 text-red-700',
-    gray: 'border-gray-200 bg-gray-50 text-gray-600',
+    gray: 'border-line bg-gray-50 text-gray-600',
   }[tone];
 
   return <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${toneClass}`}>{label}</span>;

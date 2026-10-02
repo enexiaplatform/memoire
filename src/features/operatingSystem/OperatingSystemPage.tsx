@@ -172,7 +172,7 @@ export function OperatingSystemPage() {
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-gray-400">Opened from Review</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-navy">Must-win work</h1>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink">Must-win work</h1>
           <p className="mt-1.5 max-w-2xl text-sm leading-6 text-gray-600">
             The initiatives and account plays you are betting on this quarter. Review reads them back; Today stays the
             single ranked action queue.
@@ -199,7 +199,7 @@ export function OperatingSystemPage() {
       </header>
 
       {loading ? (
-        <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-500 shadow-sm">
+        <div className="flex items-center gap-2 rounded-panel bg-white shadow-panel p-6 text-sm font-semibold text-gray-500">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading operating priorities...
         </div>
@@ -216,10 +216,10 @@ export function OperatingSystemPage() {
             <Metric label="No next action" value={missingActionCount} tone={missingActionCount ? 'amber' : 'green'} />
           </section>
 
-          <section className="min-w-0 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-            <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <section className="min-w-0 overflow-hidden rounded-lg border border-line bg-white shadow-sm">
+            <div className="flex flex-col gap-3 border-b border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-base font-bold text-navy">Operating priorities</h2>
+                <h2 className="text-base font-bold text-ink">Operating priorities</h2>
                 <p className="mt-1 text-xs text-gray-500">{visibleRecords.length} visible</p>
               </div>
               <div className="inline-flex w-fit rounded-lg bg-gray-100 p-1" aria-label="Operating priority filter">
@@ -228,7 +228,7 @@ export function OperatingSystemPage() {
                     key={value}
                     type="button"
                     onClick={() => setFilter(value)}
-                    className={`rounded-md px-3 py-1.5 text-xs font-bold capitalize ${filter === value ? 'bg-white text-navy shadow-sm' : 'text-gray-500'}`}
+                    className={`rounded-md px-3 py-1.5 text-xs font-bold capitalize ${filter === value ? 'bg-white text-ink shadow-sm' : 'text-gray-500'}`}
                   >
                     {value === 'play' ? 'Plays' : value === 'initiative' ? 'Initiatives' : value}
                   </button>
@@ -272,7 +272,7 @@ function OperatingFocus({ record, onOpen }: { record: OperatingContextRecord; on
             <Badge label={record.contextType === 'initiative' ? 'Initiative' : 'Account play'} tone="blue" />
             {record.nextDate && <Badge label={`Due ${formatSafeBusinessDate(record.nextDate)}`} tone={isBusinessDateOverdue(record.nextDate) || record.nextDate === todayKey() ? 'red' : 'gray'} />}
           </div>
-          <h2 className="mt-3 text-xl font-bold text-navy">{action}</h2>
+          <h2 className="mt-3 text-xl font-bold text-ink">{action}</h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-emerald-900/75">{record.title}{record.summary ? ` / ${record.summary}` : ''}</p>
         </div>
         <button type="button" onClick={onOpen} className="inline-flex w-fit items-center gap-2 rounded-lg bg-navy px-4 py-2 text-sm font-bold text-white">
@@ -292,7 +292,7 @@ function OperatingRow({ record, onOpen }: { record: OperatingContextRecord; onOp
           <Badge label={record.contextType === 'initiative' ? 'Initiative' : 'Play'} tone={record.contextType === 'initiative' ? 'green' : 'blue'} />
           {record.status && <Badge label={record.status} tone={isOperatingContextClosed(record) ? 'gray' : /block|risk|late/i.test(record.status) ? 'red' : 'amber'} />}
         </div>
-        <p className="mt-2 truncate text-sm font-bold text-navy" title={record.title}>{record.title}</p>
+        <p className="mt-2 truncate text-sm font-bold text-ink" title={record.title}>{record.title}</p>
         <p className="mt-1 truncate text-xs text-gray-500" title={record.summary}>{record.summary || record.period || 'No summary captured'}</p>
       </div>
       <div className="min-w-0">
@@ -306,7 +306,7 @@ function OperatingRow({ record, onOpen }: { record: OperatingContextRecord; onOp
       <button
         type="button"
         onClick={onOpen}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-blue-50 hover:text-brand-blue"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line text-gray-600 hover:bg-blue-50 hover:text-brand-blue"
         title={`Open ${record.title}`}
         aria-label={`Open ${record.title}`}
       >
@@ -350,13 +350,13 @@ function OperatingPanel({
   return (
     <>
       <button type="button" aria-label="Close operating priority" onClick={onClose} className="fixed inset-y-0 left-0 right-0 top-16 z-40 bg-slate-950/25 lg:left-[220px]" />
-      <aside ref={drawerRef} {...dialogProps} className="fixed bottom-0 right-0 top-16 z-50 w-full overflow-y-auto border-l border-gray-200 bg-white p-5 shadow-2xl sm:max-w-[620px]">
+      <aside ref={drawerRef} {...dialogProps} className="fixed bottom-0 right-0 top-16 z-50 w-full overflow-y-auto border-l border-line bg-white p-5 shadow-2xl sm:max-w-[620px]">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">{mode === 'add' ? 'New priority' : 'Operating priority'}</p>
-            <h2 className="mt-2 text-xl font-bold text-navy">{mode === 'add' ? 'Add must-win work' : record?.title}</h2>
+            <h2 className="mt-2 text-xl font-bold text-ink">{mode === 'add' ? 'Add must-win work' : record?.title}</h2>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 p-2 text-gray-500 hover:bg-gray-50" title="Close">
+          <button type="button" onClick={onClose} className="rounded-lg border border-line p-2 text-gray-500 hover:bg-gray-50" title="Close">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -370,7 +370,7 @@ function OperatingPanel({
                   key={type}
                   type="button"
                   onClick={() => update('contextType', type)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-bold ${form.contextType === type ? 'bg-white text-navy shadow-sm' : 'text-gray-500'}`}
+                  className={`rounded-md px-3 py-1.5 text-xs font-bold ${form.contextType === type ? 'bg-white text-ink shadow-sm' : 'text-gray-500'}`}
                 >
                   {contextTypeLabel(type)}
                 </button>
@@ -400,8 +400,8 @@ function OperatingPanel({
           )}
 
           {details.length > 0 && (
-            <details className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <summary className="cursor-pointer text-sm font-bold text-navy">Imported details</summary>
+            <details className="rounded-lg border border-line bg-gray-50 p-4">
+              <summary className="cursor-pointer text-sm font-bold text-ink">Imported details</summary>
               <dl className="mt-3 space-y-3">
                 {details.map(([label, value]) => (
                   <div key={label}>
@@ -441,14 +441,14 @@ function OperatingEmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <section className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center shadow-sm">
       <Flag className="mx-auto h-8 w-8 text-brand-blue" />
-      <h2 className="mt-4 text-xl font-bold text-navy">No operating priority yet.</h2>
+      <h2 className="mt-4 text-xl font-bold text-ink">No operating priority yet.</h2>
       <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-gray-500">Add one must-win initiative or import the Operation System workbook, then Memoire can place it into Today.</p>
       <div className="mt-5 flex flex-wrap justify-center gap-2">
         <button type="button" onClick={onAdd} className="inline-flex items-center gap-2 rounded-lg bg-navy px-4 py-2 text-sm font-bold text-white">
           <Plus className="h-4 w-4" />
           Add priority
         </button>
-        <Link to="/app/imports" className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">
+        <Link to="/app/imports" className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700">
           Import review
         </Link>
       </div>
@@ -486,7 +486,7 @@ function Field({ label, value, onChange, type = 'text', required = false }: { la
   return (
     <label className="block">
       <span className="text-xs font-bold uppercase tracking-wide text-gray-500">{label}{required ? ' *' : ''}</span>
-      <input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-brand-blue focus:bg-white" />
+      <input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 w-full rounded-lg border border-line bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-brand-blue focus:bg-white" />
     </label>
   );
 }
@@ -495,7 +495,7 @@ function TextArea({ label, value, onChange }: { label: string; value: string; on
   return (
     <label className="block">
       <span className="text-xs font-bold uppercase tracking-wide text-gray-500">{label}</span>
-      <textarea value={value} onChange={(event) => onChange(event.target.value)} rows={3} className="mt-2 w-full resize-y rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-semibold leading-6 text-gray-800 outline-none focus:border-brand-blue focus:bg-white" />
+      <textarea value={value} onChange={(event) => onChange(event.target.value)} rows={3} className="mt-2 w-full resize-y rounded-lg border border-line bg-gray-50 px-3 py-2 text-sm font-semibold leading-6 text-gray-800 outline-none focus:border-brand-blue focus:bg-white" />
     </label>
   );
 }
@@ -559,7 +559,7 @@ function ExperimentSection({
 
   return (
     <section className="rounded-lg border border-violet-100 bg-violet-50/40 p-4">
-      <p className="text-sm font-bold text-navy">Experiment & learning</p>
+      <p className="text-sm font-bold text-ink">Experiment & learning</p>
       <p className="mt-1 text-xs leading-5 text-gray-500">
         What are you testing, what should happen, and what is the verdict? Answer these once and the weekly review can hold you to them.
       </p>
@@ -613,9 +613,9 @@ function RelatedActivitiesSection({
     .slice(0, 30);
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+    <section className="rounded-lg border border-line bg-gray-50 p-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-bold text-navy">Related activity ({related.length})</p>
+        <p className="text-sm font-bold text-ink">Related activity ({related.length})</p>
         <Link to="/app/timeline?view=history" className="text-xs font-bold text-brand-blue hover:underline">Open ledger</Link>
       </div>
       {related.length === 0 ? (
@@ -638,7 +638,7 @@ function RelatedActivitiesSection({
               <button
                 type="button"
                 onClick={() => toggle(activity.id)}
-                className="shrink-0 rounded-full border border-gray-200 px-2.5 py-1 font-bold text-gray-600 hover:bg-gray-50"
+                className="shrink-0 rounded-full border border-line px-2.5 py-1 font-bold text-gray-600 hover:bg-gray-50"
               >
                 {source === 'linked' ? 'Unlink' : 'Link'}
               </button>
@@ -654,7 +654,7 @@ function RelatedActivitiesSection({
             onChange={(event) => {
               if (event.target.value) toggle(event.target.value);
             }}
-            className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700"
+            className="mt-1 w-full rounded-lg border border-line bg-white px-3 py-2 text-xs text-gray-700"
           >
             <option value="">Pick a captured activity...</option>
             {linkable.map((activity) => (

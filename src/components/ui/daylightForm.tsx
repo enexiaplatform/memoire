@@ -1,3 +1,4 @@
+import { controlClass } from './daylightStyles';
 import { useId, type ReactNode } from 'react';
 
 /**
@@ -15,8 +16,7 @@ import { useId, type ReactNode } from 'react';
  * delete and an import rather than a redesign.
  */
 
-const CONTROL =
-  'mt-1.5 w-full rounded-xl border border-line bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10';
+const CONTROL = `${controlClass} mt-1.5`;
 
 /**
  * The label and its hint, associated by id rather than by nesting alone.

@@ -68,11 +68,11 @@ export function OperatorProfileSection({
   const notable = trends.filter((trend) => trend.notable);
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm" aria-label="How you sell">
+    <section className="rounded-panel bg-white shadow-panel p-5" aria-label="How you sell">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <Fingerprint className="h-4 w-4 text-brand-blue" />
-          <h2 className="text-lg font-bold text-navy">How you sell</h2>
+          <h2 className="text-lg font-bold text-ink">How you sell</h2>
         </div>
         <p className="text-[11px] font-semibold text-gray-400">
           Read back from your own records. No benchmarks, no model.
@@ -108,8 +108,8 @@ export function OperatorProfileSection({
       )}
 
       {profile.unusuallyQuiet.length > 0 && (
-        <div className="mt-5 rounded-lg border border-gray-200 bg-gray-50/60 p-4">
-          <h3 className="text-sm font-bold text-navy">Quiet against their own rhythm</h3>
+        <div className="mt-5 rounded-lg border border-line bg-gray-50/60 p-4">
+          <h3 className="text-sm font-bold text-ink">Quiet against their own rhythm</h3>
           <p className="mt-0.5 text-xs leading-5 text-gray-500">
             Measured against how often you normally speak to each of these customers, not against the shared silence
             threshold on Today. A customer you speak to weekly is already unusual at day ten.
@@ -119,7 +119,7 @@ export function OperatorProfileSection({
               <li key={entry.account} className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
                 <Link
                   to={`/app/accounts?accountName=${encodeURIComponent(entry.account)}`}
-                  className="font-bold text-navy hover:text-brand-blue hover:underline"
+                  className="font-bold text-ink hover:text-brand-blue hover:underline"
                 >
                   {entry.account}
                 </Link>
@@ -134,13 +134,13 @@ export function OperatorProfileSection({
 
       {profile.gaps.length > 0 && (
         <details className="mt-4 rounded-lg border border-dashed border-gray-300 bg-white p-4">
-          <summary className="cursor-pointer text-sm font-bold text-navy">
+          <summary className="cursor-pointer text-sm font-bold text-ink">
             {profile.gaps.length} reading{profile.gaps.length === 1 ? '' : 's'} Memoire has not earned yet
           </summary>
           <ul className="mt-2.5 flex flex-col gap-2">
             {profile.gaps.map((gap) => (
               <li key={gap.id} className="text-sm leading-6 text-gray-600">
-                <span className="font-bold text-navy">{gap.label}</span>
+                <span className="font-bold text-ink">{gap.label}</span>
                 {' — '}
                 {gap.have} of {gap.need} records. Reaching {gap.need} tells you {gap.unlocks}.
               </li>
@@ -154,7 +154,7 @@ export function OperatorProfileSection({
 
 function TraitCard({ trait }: { trait: ProfileTrait }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
+    <div className="rounded-panel bg-white shadow-panel p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{trait.label}</p>
         <span
@@ -168,7 +168,7 @@ function TraitCard({ trait }: { trait: ProfileTrait }) {
           {trait.confidence === 'reliable' ? 'solid' : 'early read'} · {trait.sample}
         </span>
       </div>
-      <p className="mt-1.5 text-sm font-semibold leading-6 text-navy">{trait.reading}</p>
+      <p className="mt-1.5 text-sm font-semibold leading-6 text-ink">{trait.reading}</p>
       {trait.soWhat && <p className="mt-1 text-xs leading-5 text-gray-600">{trait.soWhat}</p>}
     </div>
   );
@@ -183,7 +183,7 @@ function TrendTile({ trend }: { trend: MetricTrend }) {
     .map((point) => ({ label: '', value: point.value as number }));
 
   return (
-    <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-3.5">
+    <div className="rounded-lg border border-line-soft bg-gray-50/60 p-3.5">
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{trend.label}</p>
         <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold ${tone}`}>
@@ -191,7 +191,7 @@ function TrendTile({ trend }: { trend: MetricTrend }) {
           {phraseFor(trend)}
         </span>
       </div>
-      <p className="mt-0.5 text-xl font-bold text-navy">{formatValue(trend)}</p>
+      <p className="mt-0.5 text-xl font-bold text-ink">{formatValue(trend)}</p>
       {points.length > 1 && (
         <div className="mt-1">
           <Sparkline points={points} height={28} ariaLabel={`${trend.label} over the last ${points.length} weeks`} />

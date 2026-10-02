@@ -704,7 +704,7 @@ export function AccountsPage() {
                 More
                 <ChevronDown className="h-4 w-4" />
               </summary>
-              <div className="absolute right-0 z-30 mt-1 w-56 rounded-xl border border-gray-200 bg-white p-1 shadow-lg">
+              <div className="absolute right-0 z-30 mt-1 w-56 rounded-panel bg-white shadow-panel p-1 shadow-lg">
                 <button
                   type="button"
                   onClick={() => setImportOpen((open) => !open)}
@@ -762,7 +762,7 @@ export function AccountsPage() {
 
       {!loading && <AccountMemorySummary summary={summary} />}
 
-      <section className="sticky top-14 z-20 -mx-4 border-y border-gray-200 bg-page/95 px-4 py-2.5 backdrop-blur sm:-mx-5 sm:px-5 lg:-mx-6 lg:top-16 lg:px-6">
+      <section className="sticky top-14 z-20 -mx-4 border-y border-line bg-page/95 px-4 py-2.5 backdrop-blur sm:-mx-5 sm:px-5 lg:-mx-6 lg:top-16 lg:px-6">
         {/*
           * Search, the two questions people actually arrive with, and a door to
           * the rest.
@@ -792,7 +792,7 @@ export function AccountsPage() {
             className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
               hygieneFilter === 'Needs follow-up'
                 ? 'border-amber-300 bg-amber-50 text-amber-800'
-                : 'border-gray-200 bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue'
+                : 'border-line bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue'
             }`}
           >
             Needs attention
@@ -804,7 +804,7 @@ export function AccountsPage() {
             className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
               quickFilter === 'keyAccounts'
                 ? 'border-brand-blue bg-blue-50 text-brand-blue'
-                : 'border-gray-200 bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue'
+                : 'border-line bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue'
             }`}
           >
             Strategic
@@ -814,7 +814,7 @@ export function AccountsPage() {
             aria-expanded={allFiltersOpen}
             onClick={() => setAllFiltersOpen((open) => !open)}
             className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-              allFiltersOpen ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-gray-200 bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue'
+              allFiltersOpen ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-line bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue'
             }`}
           >
             <Filter className="h-3.5 w-3.5" />
@@ -827,7 +827,7 @@ export function AccountsPage() {
             <button
               type="button"
               onClick={() => { clearAllFilters(); setAllFiltersOpen(false); }}
-              className="shrink-0 rounded-full px-2 py-1.5 text-xs font-bold text-gray-500 underline hover:text-navy"
+              className="shrink-0 rounded-full px-2 py-1.5 text-xs font-bold text-gray-500 underline hover:text-ink"
             >
               Clear
             </button>
@@ -835,7 +835,7 @@ export function AccountsPage() {
         </div>
 
         {allFiltersOpen && (
-          <div className="mt-2 flex flex-col gap-2 border-t border-gray-200 pt-2">
+          <div className="mt-2 flex flex-col gap-2 border-t border-line pt-2">
             <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
               <FilterSelect label="Segment" value={segmentFilter} options={segments} onChange={setSegmentFilter} />
               <FilterSelect label="Potential" value={potentialFilter} options={[allFilter, ...accountPotentials]} onChange={setPotentialFilter} />
@@ -865,7 +865,7 @@ export function AccountsPage() {
         ) : accounts.length === 0 ? (
           <EmptyState onAdd={openAddPanel} onImport={() => setImportOpen(true)} />
         ) : visibleRows.length === 0 ? (
-          <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+          <div className="rounded-panel bg-white shadow-panel p-8 text-center">
             <p className="text-sm font-semibold text-gray-900">No accounts match these filters.</p>
             <p className="mt-1 text-sm text-gray-500">Clear search or filters to review all account records.</p>
             {hasActiveFilters && (
@@ -1009,7 +1009,7 @@ function QuietWonCustomersCard({
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <ArchiveRestore className="h-4 w-4 text-amber-700" />
-          <h2 className="text-lg font-bold text-navy">Won customers going quiet</h2>
+          <h2 className="text-lg font-bold text-ink">Won customers going quiet</h2>
         </div>
         <p className="text-sm text-amber-900/80">
           {postWon.quietCustomers.length} of {postWon.wonCustomerCount} won {postWon.wonCustomerCount === 1 ? 'customer has' : 'customers have'} no deal in flight and no recent touch. Repeat business starts with the next contact.
@@ -1019,7 +1019,7 @@ function QuietWonCustomersCard({
         {postWon.quietCustomers.slice(0, 6).map((customer) => (
           <div key={customer.accountName} className="flex flex-col gap-2 rounded-lg border border-amber-100 bg-white px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="font-bold text-navy">{customer.accountName}</p>
+              <p className="font-bold text-ink">{customer.accountName}</p>
               <p className="text-xs font-semibold text-amber-800">
                 Quiet {customer.daysSinceTouch} days{customer.wonValueBase > 0 ? ` · won ${formatCompactBaseAmount(customer.wonValueBase)}` : ''}{customer.wonDealCount > 1 ? ` · ${customer.wonDealCount} deals` : ''}
               </p>
@@ -1071,10 +1071,10 @@ function AccountMemorySummary({ summary }: { summary: ReturnType<typeof buildAcc
   return (
     <section className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7" aria-label="Account book summary">
       {stats.map((stat) => (
-        <div key={stat.label} className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
+        <div key={stat.label} className="rounded-lg border border-line bg-white px-3 py-2 shadow-sm">
           <p className="truncate text-[10px] font-bold uppercase tracking-wide text-gray-400" title={stat.label}>{stat.label}</p>
           <p className={`text-lg font-bold leading-tight ${
-            stat.tone === 'green' ? 'text-emerald-700' : stat.tone === 'amber' ? 'text-amber-700' : 'text-navy'
+            stat.tone === 'green' ? 'text-emerald-700' : stat.tone === 'amber' ? 'text-amber-700' : 'text-ink'
           }`}>
             {formatCount(stat.value)}
           </p>
@@ -1108,7 +1108,7 @@ function AccountHygieneTabs({
             key={option}
             type="button"
             onClick={() => onChange(option)}
-            className={`rounded-full border px-2.5 py-1 text-xs font-bold ${value === option ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-gray-200 bg-white text-gray-600'}`}
+            className={`rounded-full border px-2.5 py-1 text-xs font-bold ${value === option ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-line bg-white text-gray-600'}`}
           >
             {option} <span className="ml-1 text-[10px] opacity-70">{count}</span>
           </button>
@@ -1138,7 +1138,7 @@ function QuickFilterBar({
             type="button"
             onClick={() => onChange(option.value)}
             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold transition ${
-              active ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+              active ? 'border-brand-blue bg-blue-50 text-brand-blue' : 'border-line bg-white text-gray-600 hover:bg-gray-50'
             }`}
           >
             <span>{option.label}</span>
@@ -1233,15 +1233,15 @@ function AccountMasterTable({
   onOpen: (memory: AccountMemory) => void;
 }) {
   return (
-    <section className="min-w-0 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-2">
+    <section className="min-w-0 overflow-hidden rounded-lg border border-line bg-white shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-2">
         <p className="text-xs font-semibold text-gray-500">{formatCount(totalRows)} {totalRows === 1 ? 'account' : 'accounts'} after filters</p>
         <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500">
           Rows
           <select
             value={pageSize}
             onChange={(event) => onPageSizeChange(Number(event.target.value))}
-            className="rounded-md border border-gray-200 bg-white px-1.5 py-1 text-xs font-bold text-gray-700"
+            className="rounded-md border border-line bg-white px-1.5 py-1 text-xs font-bold text-gray-700"
           >
             {[25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
           </select>
@@ -1266,11 +1266,11 @@ function AccountMasterTable({
               <SortableHeader label="Account" sortKey="accountName" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <SortableHeader label="Exposure" sortKey="activeValue" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <SortableHeader label="Changed" sortKey="lastUpdated" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <th className="border-b border-gray-200 px-3 py-2">Next move</th>
+              <th className="border-b border-line px-3 py-2">Next move</th>
               <SortableHeader label="Profile" sortKey="relationship" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <SortableHeader label="Potential" sortKey="potential" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
               <SortableHeader label="Code" sortKey="accountCode" activeKey={sortKey} direction={sortDirection} onSort={onSort} />
-              <th className="border-b border-gray-200 px-3 py-2 text-right">Open</th>
+              <th className="border-b border-line px-3 py-2 text-right">Open</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -1283,7 +1283,7 @@ function AccountMasterTable({
                   className="cursor-pointer bg-white transition hover:bg-blue-50/60"
                 >
                   <td className="px-3 py-2">
-                    <p className="max-w-[clamp(220px,16vw,420px)] truncate font-bold text-navy" title={memory.account.accountName}>{memory.account.accountName}</p>
+                    <p className="max-w-[clamp(220px,16vw,420px)] truncate font-bold text-ink" title={memory.account.accountName}>{memory.account.accountName}</p>
                     <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                       {/* Nowrap on purpose: at this column width "Needs
                           follow-up" broke over two lines and set the height of
@@ -1354,7 +1354,7 @@ function AccountMasterTable({
                         onOpen(memory);
                       }}
                       title="Open account details"
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-line bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue"
                     >
                       <Eye className="h-4 w-4" />
                     </button>
@@ -1366,7 +1366,7 @@ function AccountMasterTable({
         </table>
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-t border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-gray-500">
           Showing {totalRows === 0 ? 0 : ((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, totalRows)} of {formatCount(totalRows)}
         </p>
@@ -1375,7 +1375,7 @@ function AccountMasterTable({
             type="button"
             onClick={() => onPageChange(Math.max(1, page - 1))}
             disabled={page === 1}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600 disabled:opacity-40"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-line text-gray-600 disabled:opacity-40"
             title="Previous page"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -1385,7 +1385,7 @@ function AccountMasterTable({
             type="button"
             onClick={() => onPageChange(Math.min(pageCount, page + 1))}
             disabled={page === pageCount}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600 disabled:opacity-40"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-line text-gray-600 disabled:opacity-40"
             title="Next page"
           >
             <ChevronRight className="h-4 w-4" />
@@ -1411,8 +1411,8 @@ function SortableHeader({
 }) {
   const active = sortKey === activeKey;
   return (
-    <th className="border-b border-gray-200 px-3 py-3">
-      <button type="button" onClick={() => onSort(sortKey)} className="inline-flex min-h-[24px] items-center gap-1 hover:text-navy">
+    <th className="border-b border-line px-3 py-3">
+      <button type="button" onClick={() => onSort(sortKey)} className="inline-flex min-h-[24px] items-center gap-1 hover:text-ink">
         {label}
         <ArrowUpDown className={`h-3.5 w-3.5 ${active ? 'text-brand-blue' : 'text-gray-300'}`} />
         <span className="sr-only">{active ? `Sorted ${direction}` : 'Not sorted'}</span>
@@ -1488,11 +1488,11 @@ function AccountDetailPanel({
         onClick={onClose}
         className="fixed inset-y-0 left-0 right-0 top-16 z-40 bg-slate-950/25 backdrop-blur-[1px] lg:left-[220px]"
       />
-      <aside ref={drawerRef} {...dialogProps} className="fixed bottom-0 right-0 top-16 z-50 w-full overflow-y-auto border-l border-gray-200 bg-white p-5 shadow-2xl sm:max-w-[620px]">
+      <aside ref={drawerRef} {...dialogProps} className="fixed bottom-0 right-0 top-16 z-50 w-full overflow-y-auto border-l border-line bg-white p-5 shadow-2xl sm:max-w-[620px]">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">{mode === 'add' ? 'Add Account' : 'Account Memory'}</p>
-          <h2 className="mt-2 text-xl font-bold text-navy">{mode === 'add' ? 'New account' : selectedMemory?.account.accountName}</h2>
+          <h2 className="mt-2 text-xl font-bold text-ink">{mode === 'add' ? 'New account' : selectedMemory?.account.accountName}</h2>
           {selectedMemory && (
             <p className="mt-1 font-mono text-xs font-bold text-gray-400">{getAccountCode(selectedMemory.account)}</p>
           )}
@@ -1504,7 +1504,7 @@ function AccountDetailPanel({
             />
           )}
         </div>
-        <button type="button" onClick={onClose} aria-label="Close" className="rounded-full border border-gray-200 p-2 text-gray-500 hover:bg-gray-50">
+        <button type="button" onClick={onClose} aria-label="Close" className="rounded-full border border-line p-2 text-gray-500 hover:bg-gray-50">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -1567,12 +1567,12 @@ function AccountDetailPanel({
           ) : (
             <MemorySections memory={selectedMemory} stakeholders={stakeholders} objections={objections} quotes={quotes} outcomes={outcomes} />
           )}
-          <details className="group mt-5 rounded-lg border border-gray-200 bg-gray-50">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-navy">
+          <details className="group mt-5 rounded-lg border border-line bg-gray-50">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-ink">
               Edit account details
               <ChevronDown className="h-4 w-4 text-gray-400 transition-transform group-open:rotate-180" />
             </summary>
-            <div className="border-t border-gray-200 bg-white p-4">
+            <div className="border-t border-line bg-white p-4">
               <AccountEditFields form={form} update={update} />
               <ImportedAccountMetadata account={selectedMemory.account} />
               <AccountSaveMessage message={message} saveState={saveState} />
@@ -1667,7 +1667,7 @@ function AccountHygieneControls({
   onMarkStrategic?: () => void;
 }) {
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+    <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-gray-50 p-3">
       <Badge label={status} tone={status === 'Needs follow-up' ? 'amber' : status === 'Active' || status === 'Strategic' ? 'green' : 'gray'} />
       {status !== 'Strategic' && status !== 'Archived' && onMarkStrategic && (
         <button type="button" onClick={onMarkStrategic} className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-bold text-brand-blue"><Star className="h-3.5 w-3.5" /> Mark strategic</button>
@@ -1675,7 +1675,7 @@ function AccountHygieneControls({
       {status === 'Archived' && onUnarchive ? (
         <button type="button" onClick={onUnarchive} className="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-white px-3 py-1.5 text-xs font-bold text-emerald-700"><ArchiveRestore className="h-3.5 w-3.5" /> Unarchive account</button>
       ) : onArchive ? (
-        <button type="button" onClick={onArchive} className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-600"><Archive className="h-3.5 w-3.5" /> Archive account</button>
+        <button type="button" onClick={onArchive} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-bold text-gray-600"><Archive className="h-3.5 w-3.5" /> Archive account</button>
       ) : null}
     </div>
   );
@@ -1697,7 +1697,7 @@ function ImportedOnlyAccountState({
   return (
     <section className="mt-4 rounded-xl border border-blue-100 bg-blue-50/60 p-5">
       <p className="text-xs font-bold uppercase tracking-wide text-brand-blue">{archived ? 'Archived account' : 'Imported account'}</p>
-      <h3 className="mt-2 text-lg font-bold text-navy">{archived ? 'Archived — hidden from active work' : 'Imported account — no sales memory yet'}</h3>
+      <h3 className="mt-2 text-lg font-bold text-ink">{archived ? 'Archived — hidden from active work' : 'Imported account — no sales memory yet'}</h3>
       <p className="mt-2 text-sm leading-6 text-blue-900/70">This record remains searchable. It will not create follow-up urgency until real sales evidence or an explicit action is captured.</p>
       <div className="mt-4 flex flex-wrap gap-2">
         <Link to={`/app/capture?mode=quick&account=${encodeURIComponent(accountName)}`} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Capture update</Link>
@@ -1705,7 +1705,7 @@ function ImportedOnlyAccountState({
         {!archived && onMarkStrategic && <button type="button" onClick={onMarkStrategic} className="rounded-full border border-blue-100 bg-white px-4 py-2 text-sm font-bold text-brand-blue">Mark strategic</button>}
         {archived && onUnarchive
           ? <button type="button" onClick={onUnarchive} className="rounded-full border border-emerald-100 bg-white px-4 py-2 text-sm font-bold text-emerald-700">Unarchive account</button>
-          : onArchive && <button type="button" onClick={onArchive} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-600">Archive</button>}
+          : onArchive && <button type="button" onClick={onArchive} className="rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-600">Archive</button>}
       </div>
     </section>
   );
@@ -1742,7 +1742,7 @@ function AccountEditFields({
           It is the single input that decides which customers the weekly plan
           proposes out of a book of a thousand, which makes "you cannot edit it
           here" the wrong answer. */}
-      <label className="flex items-start gap-2.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+      <label className="flex items-start gap-2.5 rounded-lg border border-line bg-gray-50 px-3 py-2.5">
         <input
           type="checkbox"
           checked={form.kaFlag === true}
@@ -1750,7 +1750,7 @@ function AccountEditFields({
           className="mt-0.5 h-4 w-4 shrink-0"
         />
         <span className="min-w-0">
-          <span className="block text-sm font-bold text-navy">Key account</span>
+          <span className="block text-sm font-bold text-ink">Key account</span>
           <span className="block text-xs leading-5 text-gray-500">
             Plan suggestions put risks on key accounts first. With a large book, this is what stops the week being
             proposed by alphabet.
@@ -1818,11 +1818,11 @@ function AccountCommercialLoop({ memory, quotes }: { memory: AccountMemory; quot
   ];
 
   return (
-    <section className="mt-4 overflow-hidden rounded-lg border border-gray-200 bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3">
+    <section className="mt-4 overflow-hidden rounded-lg border border-line bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-soft px-4 py-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Commercial loop</p>
-          <p className="mt-1 text-sm font-bold text-navy">Opportunity to revenue</p>
+          <p className="mt-1 text-sm font-bold text-ink">Opportunity to revenue</p>
         </div>
         <Badge
           label={riskyQuotes.length ? `${riskyQuotes.length} quote risk${riskyQuotes.length === 1 ? '' : 's'}` : 'Flow clear'}
@@ -1833,12 +1833,12 @@ function AccountCommercialLoop({ memory, quotes }: { memory: AccountMemory; quot
         {steps.map((step) => (
           <div key={step.label} className="min-h-[76px] px-4 py-3">
             <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{step.label}</p>
-            <p className="mt-1 text-lg font-black text-navy">{step.value}</p>
+            <p className="mt-1 text-lg font-black text-ink">{step.value}</p>
             <p className="text-xs text-gray-500">{step.hint}</p>
           </div>
         ))}
       </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-gray-100 px-4 py-3 text-xs font-bold">
+      <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-line-soft px-4 py-3 text-xs font-bold">
         <Link to="/app/opportunities" className="text-brand-blue hover:underline">Open opportunities</Link>
         <Link to={`/app/quotes?accountName=${encodeURIComponent(memory.account.accountName)}`} className="text-brand-blue hover:underline">Open quotes</Link>
         <Link to="/app/revenue" className="text-brand-blue hover:underline">Open revenue</Link>
@@ -1862,7 +1862,7 @@ function AccountNextActionCard({
             <p className="text-xs font-bold uppercase tracking-wide">Account next action</p>
             <Badge label={action.badge} tone={action.tone} />
           </div>
-          <h3 className="mt-2 text-base font-bold text-navy">{action.title}</h3>
+          <h3 className="mt-2 text-base font-bold text-ink">{action.title}</h3>
           <p className="mt-1 text-sm leading-6 text-gray-600">{action.reason}</p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
@@ -2004,7 +2004,7 @@ function ImportedAccountMetadata({ account }: { account: AccountMemoryRecord }) 
           {metadata.map((item) => (
             <div key={item.label} className="rounded-lg bg-white p-3 ring-1 ring-blue-100">
               <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{item.label}</p>
-              <p className="mt-1 text-sm font-bold text-navy">{item.value}</p>
+              <p className="mt-1 text-sm font-bold text-ink">{item.value}</p>
             </div>
           ))}
         </div>
@@ -2062,7 +2062,7 @@ function MemorySections({
 
   return (
     <div className="mt-5">
-      <div className="inline-flex flex-wrap rounded-full border border-gray-200 bg-gray-50 p-1" role="tablist" aria-label="Account detail">
+      <div className="inline-flex flex-wrap rounded-full border border-line bg-gray-50 p-1" role="tablist" aria-label="Account detail">
         {accountDetailTabs.map((option) => (
           <button
             key={option.value}
@@ -2109,7 +2109,7 @@ function MemorySections({
 /** The deals on this customer. Overview's answer to "which of these matter". */
 function AccountOpportunitiesSection({ memory }: { memory: AccountMemory }) {
   return (
-    <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+    <section className="rounded-lg border border-line-soft bg-gray-50 p-4">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Open opportunities</p>
       {memory.opportunities.length === 0 ? (
         <p className="mt-2 text-sm text-gray-500">No opportunities connected to this account yet.</p>
@@ -2121,7 +2121,7 @@ function AccountOpportunitiesSection({ memory }: { memory: AccountMemory }) {
               to={`/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}`}
               className="block rounded-lg bg-white p-3 ring-1 ring-gray-100 hover:ring-brand-blue/40"
             >
-              <p className="text-sm font-bold text-navy">{opportunity.opportunityName}</p>
+              <p className="text-sm font-bold text-ink">{opportunity.opportunityName}</p>
               <p className="mt-1 text-xs font-semibold text-gray-500">{opportunity.stage} | {opportunity.status} | {formatMoney(opportunity.estimatedValue || 0, opportunity.currency)}</p>
             </Link>
           ))}
@@ -2155,7 +2155,7 @@ function AccountPeopleTab({
   const missing = ['Champion', 'Economic Buyer', 'Technical Buyer', 'Procurement'].filter((role) => !covered.has(role));
 
   return (
-    <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+    <section className="rounded-lg border border-line-soft bg-gray-50 p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs font-bold uppercase tracking-wide text-gray-400">
           {stakeholders.length} {stakeholders.length === 1 ? 'person' : 'people'} recorded
@@ -2177,7 +2177,7 @@ function AccountPeopleTab({
           {stakeholders.map((stakeholder) => (
             <div key={stakeholder.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="text-sm font-bold text-navy">{stakeholder.name}</p>
+                <p className="text-sm font-bold text-ink">{stakeholder.name}</p>
                 <Badge label={stakeholder.stakeholderRole} tone={stakeholder.stakeholderRole === 'Blocker' ? 'red' : 'blue'} />
               </div>
               {stakeholder.roleTitle && <p className="mt-0.5 text-xs text-gray-500">{stakeholder.roleTitle}</p>}
@@ -2192,7 +2192,7 @@ function AccountPeopleTab({
 
       {missing.length > 0 && stakeholders.length > 0 && (
         <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs leading-5 text-gray-600 ring-1 ring-gray-100">
-          Nobody is recorded here as: <span className="font-bold text-navy">{missing.join(', ')}</span>. That may be
+          Nobody is recorded here as: <span className="font-bold text-ink">{missing.join(', ')}</span>. That may be
           right for this customer - it is what the records say, not a verdict on the deal.
         </p>
       )}
@@ -2220,9 +2220,9 @@ function AccountMemoryTab({
 }) {
   return (
     <>
-      <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+      <section className="rounded-lg border border-line-soft bg-gray-50 p-4">
         <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Account health / risk signals</p>
-        <p className="mt-2 text-sm font-bold text-navy">{memory.health}</p>
+        <p className="mt-2 text-sm font-bold text-ink">{memory.health}</p>
         {memory.riskSignals.length > 0 ? (
           <ul className="mt-2 space-y-1 text-sm leading-6 text-gray-700">
             {memory.riskSignals.map((signal) => <li key={signal}>- {signal}</li>)}
@@ -2232,7 +2232,7 @@ function AccountMemoryTab({
         )}
       </section>
 
-      <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+      <section className="rounded-lg border border-line-soft bg-gray-50 p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Objections</p>
           <Link
@@ -2256,7 +2256,7 @@ function AccountMemoryTab({
                   <Badge label={objection.impact} tone={objection.impact === 'High' ? 'red' : objection.impact === 'Medium' ? 'amber' : 'blue'} />
                   <Badge label={objection.status} tone={objectionStatusTone(objection.status)} />
                 </div>
-                <p className="mt-2 text-sm font-bold text-navy">{objection.objectionText}</p>
+                <p className="mt-2 text-sm font-bold text-ink">{objection.objectionText}</p>
                 {objection.requiredProof && <p className="mt-1 text-xs leading-5 text-gray-500">Proof: {objection.requiredProof}</p>}
               </div>
             ))}
@@ -2267,7 +2267,7 @@ function AccountMemoryTab({
       <ListSection title="Open next actions" items={memory.openNextActions} empty="No open next actions captured." />
       <ListSection title="Objection debt" items={memory.objectionDebt} empty="No objection debt captured." />
 
-      <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+      <section className="rounded-lg border border-line-soft bg-gray-50 p-4">
         <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Everything recorded here</p>
         {activities.length === 0 ? (
           <p className="mt-2 text-sm text-gray-500">No activities linked to this account yet.</p>
@@ -2275,7 +2275,7 @@ function AccountMemoryTab({
           <div className="mt-3 space-y-2">
             {activities.map((activity) => (
               <details key={activity.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
-                <summary className="cursor-pointer text-sm font-bold text-navy">
+                <summary className="cursor-pointer text-sm font-bold text-ink">
                   {formatDate(activity.activityDate)} · {activity.activityType}
                   {getActivityContact(activity) ? ` · ${getActivityContact(activity)}` : ''}
                 </summary>
@@ -2297,7 +2297,7 @@ function AccountMemoryTab({
           It is a tool, not a module you have to understand to use Memoire. */}
       <Link
         to={`/app/vault?accountName=${encodeURIComponent(memory.account.accountName)}`}
-        className="inline-flex w-fit items-center gap-2 rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-xs font-bold text-gray-700 hover:border-brand-blue hover:text-brand-blue"
+        className="inline-flex w-fit items-center gap-2 rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-bold text-gray-700 hover:border-brand-blue hover:text-brand-blue"
       >
         Explore business memory
       </Link>
@@ -2315,7 +2315,7 @@ function AccountMemoryTab({
  */
 function AccountCoverageTab({ accountName }: { accountName: string }) {
   return (
-    <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+    <section className="rounded-lg border border-line-soft bg-gray-50 p-4">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Line coverage</p>
       <p className="mt-2 text-sm leading-6 text-gray-600">
         Which of your lines this customer has been quoted, has bought, and has never been offered.
@@ -2346,7 +2346,7 @@ function AccountQuotesSection({ accountName, quotes }: { accountName: string; qu
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-cyan-700">Commercial quotes</p>
-          <p className="mt-1 text-sm font-bold text-navy">
+          <p className="mt-1 text-sm font-bold text-ink">
             {topQuote
               ? `${topQuote.title}: ${topQuote.nextAction || topRisk || 'review quote status'}`
               : 'No quote action is linked to this account yet.'}
@@ -2385,7 +2385,7 @@ function AccountQuotesSection({ accountName, quotes }: { accountName: string; qu
                   {risk !== 'None' && <Badge label={risk} tone={quoteRiskTone(risk)} />}
                   {quote.validUntil && <Badge label={`Valid until ${formatDate(quote.validUntil)}`} tone={risk === 'Expired' ? 'red' : risk === 'Expiring soon' ? 'amber' : 'gray'} />}
                 </div>
-                <p className="mt-2 text-sm font-bold text-navy">{quote.title}</p>
+                <p className="mt-2 text-sm font-bold text-ink">{quote.title}</p>
                 <p className="mt-1 text-xs font-semibold text-gray-500">
                   {[quote.opportunityName, formatMoney(quote.amount || 0, quote.currency)].filter(Boolean).join(' | ')}
                 </p>
@@ -2419,7 +2419,7 @@ function DuplicateAccountsSection({
 }) {
   return (
     <section className="rounded-lg border border-amber-200 bg-amber-50/50 p-5 shadow-sm">
-      <h2 className="text-base font-bold text-navy">These look like the same account</h2>
+      <h2 className="text-base font-bold text-ink">These look like the same account</h2>
       <p className="mt-1 text-sm text-gray-600">
         Split records split the memory. Merging keeps every deal and activity exactly where it is -
         it only records that these names are one account, so it can be undone.
@@ -2440,7 +2440,7 @@ function DuplicateAccountsSection({
 
             <ul className="mt-3 space-y-2">
               {group.members.map((member) => (
-                <li key={member.accountId} className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-2 first:border-t-0 first:pt-0">
+                <li key={member.accountId} className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft pt-2 first:border-t-0 first:pt-0">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold text-gray-900">{member.accountName}</p>
                     <p className="text-xs text-gray-500">
@@ -2453,7 +2453,7 @@ function DuplicateAccountsSection({
                   <button
                     type="button"
                     onClick={() => onMerge(group, member.accountName)}
-                    className="shrink-0 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-navy hover:bg-gray-50"
+                    className="shrink-0 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-bold text-ink hover:bg-gray-50"
                   >
                     Keep this name
                   </button>
@@ -2498,16 +2498,16 @@ function MergedAccountsNote({
   defaultOpen?: boolean;
 }) {
   return (
-    <details open={defaultOpen} className="rounded-lg border border-gray-200 bg-white shadow-sm">
+    <details open={defaultOpen} className="rounded-lg border border-line bg-white shadow-sm">
       <summary className="cursor-pointer list-none px-4 py-2.5">
         <span className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="text-sm font-bold text-navy">Merged names</span>
+          <span className="text-sm font-bold text-ink">Merged names</span>
           <span className="text-xs font-semibold text-gray-500">
             {merges.length} {merges.length === 1 ? 'name is' : 'names are'} filed under another account
           </span>
         </span>
       </summary>
-      <ul className="space-y-1.5 border-t border-gray-100 px-4 py-3 text-xs leading-5">
+      <ul className="space-y-1.5 border-t border-line-soft px-4 py-3 text-xs leading-5">
         {merges.map((record) => (
           <li key={record.id} className="flex flex-wrap items-center justify-between gap-2">
             <span className="min-w-0 text-gray-600">
@@ -2602,7 +2602,7 @@ function CandidateSection({
       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
         {visible.map((candidate) => (
           <div key={candidate.accountName} className="rounded-lg bg-white p-3 ring-1 ring-amber-100">
-            <p className="font-bold text-navy">{candidate.accountName}</p>
+            <p className="font-bold text-ink">{candidate.accountName}</p>
             <p className="mt-1 text-xs font-semibold text-gray-500">
               {candidate.opportunityCount} opportunities | {candidate.activityCount} activities | {candidate.source}
             </p>
@@ -2628,8 +2628,8 @@ function CandidateSection({
 
 function EmptyState({ onAdd, onImport }: { onAdd: () => void; onImport: () => void }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-      <p className="text-base font-bold text-navy">No accounts yet.</p>
+    <div className="rounded-panel bg-white shadow-panel p-8 text-center">
+      <p className="text-base font-bold text-ink">No accounts yet.</p>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
         Accounts remember the relationship context behind your deals: stakeholders, notes, linked activity, open next actions, and objection debt.
       </p>
@@ -2637,8 +2637,8 @@ function EmptyState({ onAdd, onImport }: { onAdd: () => void; onImport: () => vo
           at a time is the reason a trial ends on day one. Import leads. */}
       <div className="mt-5 flex flex-wrap justify-center gap-2">
         <button type="button" onClick={onImport} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">Import your customer list</button>
-        <button type="button" onClick={onAdd} className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">Add one account</button>
-        <Link to="/app/opportunities" className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700">Go to Opportunities</Link>
+        <button type="button" onClick={onAdd} className="rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700">Add one account</button>
+        <Link to="/app/opportunities" className="rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700">Go to Opportunities</Link>
       </div>
     </div>
   );
@@ -2659,7 +2659,7 @@ function FilterSelect({ label, value, options, onChange }: { label: string; valu
 function SelectField<Value extends string>({ label, value, options, onChange }: { label: string; value: Value; options: readonly Value[]; onChange: (value: Value) => void }) {
   return (
     <label className="block">
-      <span className="text-sm font-bold text-navy">{label}</span>
+      <span className="text-sm font-bold text-ink">{label}</span>
       <select value={value} onChange={(event) => onChange(event.target.value as Value)} className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10">
         {options.map((option) => <option key={option} value={option}>{option}</option>)}
       </select>
@@ -2670,7 +2670,7 @@ function SelectField<Value extends string>({ label, value, options, onChange }: 
 function Field({ label, value, onChange, required = false }: { label: string; value: string; onChange: (value: string) => void; required?: boolean }) {
   return (
     <label className="block">
-      <span className="text-sm font-bold text-navy">{label}{required ? ' *' : ''}</span>
+      <span className="text-sm font-bold text-ink">{label}{required ? ' *' : ''}</span>
       <input value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10" />
     </label>
   );
@@ -2679,7 +2679,7 @@ function Field({ label, value, onChange, required = false }: { label: string; va
 function TextArea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return (
     <label className="block">
-      <span className="text-sm font-bold text-navy">{label}</span>
+      <span className="text-sm font-bold text-ink">{label}</span>
       <textarea value={value} onChange={(event) => onChange(event.target.value)} rows={4} className="mt-2 w-full resize-y rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10" />
     </label>
   );
@@ -2705,14 +2705,14 @@ function Badge({ label, tone = 'blue' }: { label: string; tone?: 'blue' | 'green
     green: 'border-emerald-100 bg-emerald-50 text-emerald-700',
     amber: 'border-amber-100 bg-amber-50 text-amber-700',
     red: 'border-red-100 bg-red-50 text-red-700',
-    gray: 'border-gray-200 bg-gray-50 text-gray-600',
+    gray: 'border-line bg-gray-50 text-gray-600',
   }[tone];
   return <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${toneClass}`}>{label}</span>;
 }
 
 function ListSection({ title, items, empty }: { title: string; items: string[]; empty: string }) {
   return (
-    <section className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+    <section className="rounded-lg border border-line-soft bg-gray-50 p-4">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{title}</p>
       {items.length === 0 ? <p className="mt-2 text-sm text-gray-500">{empty}</p> : (
         <ul className="mt-2 space-y-1 text-sm leading-6 text-gray-700">
@@ -3040,8 +3040,8 @@ function AccountHistorySection({
 
   if (timeline.totalCount === 0) {
     return (
-      <section className="rounded-xl border border-gray-200 bg-white p-4">
-        <p className="text-sm font-bold text-navy">History</p>
+      <section className="rounded-panel bg-white shadow-panel p-4">
+        <p className="text-sm font-bold text-ink">History</p>
         <p className="mt-1 text-xs text-gray-500">
           Nothing recorded for this customer yet. Captures, deals and quotes appear here in the order they happen.
         </p>
@@ -3050,9 +3050,9 @@ function AccountHistorySection({
   }
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-4">
+    <section className="rounded-panel bg-white shadow-panel p-4">
       <div className="flex flex-wrap items-baseline gap-2">
-        <p className="text-sm font-bold text-navy">History</p>
+        <p className="text-sm font-bold text-ink">History</p>
         <p className="text-xs text-gray-500">
           {timeline.totalCount} {timeline.totalCount === 1 ? 'event' : 'events'}
           {timeline.firstDate ? ` since ${formatDate(timeline.firstDate)}` : ''}
@@ -3061,13 +3061,13 @@ function AccountHistorySection({
 
       <ol className="mt-3 space-y-2">
         {timeline.entries.map((entry) => (
-          <li key={entry.id} className="border-l-2 border-gray-200 pl-3">
+          <li key={entry.id} className="border-l-2 border-line pl-3">
             <div className="flex flex-wrap items-baseline gap-2">
               <span className="font-mono text-[11px] font-bold text-gray-400">{formatDate(entry.date)}</span>
               <span className={`rounded px-1 py-0.5 text-[10px] font-bold ${TIMELINE_TONE[entry.kind]}`}>
                 {TIMELINE_KIND_LABEL[entry.kind]}
               </span>
-              <Link to={entry.href} className="text-sm font-bold text-navy hover:underline">{entry.title}</Link>
+              <Link to={entry.href} className="text-sm font-bold text-ink hover:underline">{entry.title}</Link>
               <span className="text-[11px] font-semibold text-gray-500">{entry.label}</span>
             </div>
             {entry.detail && <p className="mt-0.5 text-xs leading-5 text-gray-600">{entry.detail}</p>}

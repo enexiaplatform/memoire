@@ -100,7 +100,7 @@ export function AccountMenu({ variant = 'bar' }: {
         <div
           role="menu"
           aria-label="Account"
-          className={`absolute z-50 w-56 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg ${
+          className={`absolute z-50 w-56 overflow-hidden rounded-panel bg-white shadow-panel py-1 shadow-lg ${
             inRail ? 'bottom-10 left-0' : 'right-0 top-10'
           }`}
         >

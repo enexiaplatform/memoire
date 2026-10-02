@@ -132,7 +132,7 @@ export function SalesReviewsPage() {
         title="Review"
         description="Close the week: what moved, what slipped, what went quiet, where money is stuck - and what you commit to next."
         actions={
-          <div className="inline-flex flex-wrap rounded-full border border-gray-200 bg-gray-50 p-1" role="tablist" aria-label="Review section">
+          <div className="inline-flex flex-wrap rounded-full border border-line bg-gray-50 p-1" role="tablist" aria-label="Review section">
             {reviewTabs.map((option) => (
               <button
                 key={option.value}
@@ -206,16 +206,16 @@ export function SalesReviewsPage() {
               two panels Review used to open on; they are what to do about the
               period rather than what the period produced, and Today owns the
               daily version of the same list. */}
-          <details className="rounded-xl border border-gray-200 bg-white shadow-sm">
+          <details className="rounded-panel bg-white shadow-panel">
             <summary className="cursor-pointer list-none px-5 py-3">
               <span className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="text-base font-bold text-navy">What this leaves for next week</span>
+                <span className="text-base font-bold text-ink">What this leaves for next week</span>
                 <span className="text-xs font-semibold text-gray-500">
                   {reviewRecommendations.length} thread{reviewRecommendations.length === 1 ? '' : 's'} at risk
                 </span>
               </span>
             </summary>
-            <div className="flex flex-col gap-4 border-t border-gray-100 p-5">
+            <div className="flex flex-col gap-4 border-t border-line-soft p-5">
               <CommercialRiskPanel key={attentionScope} recommendations={reviewRecommendations} attention loadError={attentionError} title="Commercial attention" />
               <TeamCoordinationPanel key={attentionScope} scope={reviewScope} commitments={teamCommitments} opportunities={teamWorkspace?.opportunities||[]}/>
               <SharedWorkspacesPanel key={'shared-'+attentionScope} scope={reviewScope} commitments={teamCommitments}/>
@@ -596,9 +596,9 @@ function WeeklyReviewSection({
         </div>
       </header>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-panel bg-white shadow-panel p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-          <h2 className="text-base font-bold text-navy">What the period was made of</h2>
+          <h2 className="text-base font-bold text-ink">What the period was made of</h2>
           <p className="text-xs font-semibold text-gray-500">{period.label}</p>
         </div>
 
@@ -607,7 +607,7 @@ function WeeklyReviewSection({
             type="button"
             onClick={generateRecap}
             disabled={loadingActivities}
-            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
           >
             {loadingActivities ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Generate activity recap
@@ -615,13 +615,13 @@ function WeeklyReviewSection({
           <button
             type="button"
             onClick={refreshActivities}
-            className="rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50"
+            className="rounded-full border border-line bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50"
           >
             Refresh activities
           </button>
           <Link
             to="/app/timeline?view=history"
-            className="rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50"
+            className="rounded-full border border-line bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50"
           >
             Open activity calendar
           </Link>
@@ -722,7 +722,7 @@ function WeeklyReviewSection({
             {periodObjections.slice(0, 4).map((objection) => (
               <div key={objection.id} className="rounded-lg bg-white p-3 ring-1 ring-amber-100">
                 <p className="text-xs font-bold uppercase tracking-wide text-amber-700">{objection.accountName || 'No account'} / {objection.opportunityName || 'No opportunity'}</p>
-                <p className="mt-1 text-sm font-bold text-navy">{objection.objectionText}</p>
+                <p className="mt-1 text-sm font-bold text-ink">{objection.objectionText}</p>
                 <p className="mt-1 text-xs font-semibold text-gray-500">{objection.objectionType} | {objection.impact} | {objection.status}</p>
               </div>
             ))}
@@ -787,7 +787,7 @@ function WeeklyReviewSection({
         <RecapContent recap={recap} onCopy={copyRecap} copyMessage={copyMessage} activities={periodActivities} />
       ) : (
         <div className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center">
-          <p className="text-sm font-bold text-navy">Activities are ready for review.</p>
+          <p className="text-sm font-bold text-ink">Activities are ready for review.</p>
           <p className="mt-2 text-sm text-gray-500">Generate a recap to see insights, next actions, objections, and follow-ups.</p>
         </div>
       )}
@@ -807,14 +807,14 @@ function WeeklyReviewSection({
  */
 function ReviewFold({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
   return (
-    <details className="rounded-lg border border-gray-200 bg-white shadow-sm">
+    <details className="rounded-lg border border-line bg-white shadow-sm">
       <summary className="cursor-pointer list-none px-5 py-3">
         <span className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="text-base font-bold text-navy">{title}</span>
+          <span className="text-base font-bold text-ink">{title}</span>
           <span className="text-xs font-semibold text-gray-500">{hint}</span>
         </span>
       </summary>
-      <div className="space-y-5 border-t border-gray-100 p-5">{children}</div>
+      <div className="space-y-5 border-t border-line-soft p-5">{children}</div>
     </details>
   );
 }
@@ -841,9 +841,9 @@ function ExecutionRhythmCharts({
   return (
     <section className="grid gap-4 xl:grid-cols-2">
       {hasTouches && (
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-panel bg-white shadow-panel p-5">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Follow-up rhythm</p>
-          <h2 className="mt-1 text-lg font-bold text-navy">
+          <h2 className="mt-1 text-lg font-bold text-ink">
             {thisWeek} customer touch{thisWeek === 1 ? '' : 'es'} this week
             {weeklyAverage > 0 && thisWeek < weeklyAverage ? ' - below your usual pace' : ''}
           </h2>
@@ -857,9 +857,9 @@ function ExecutionRhythmCharts({
         </div>
       )}
       {hasOutcomes && (
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-panel bg-white shadow-panel p-5">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Win / loss</p>
-          <h2 className="mt-1 text-lg font-bold text-navy">How the last quarters closed</h2>
+          <h2 className="mt-1 text-lg font-bold text-ink">How the last quarters closed</h2>
           <div className="mt-4 grid grid-cols-2 gap-4">
             <div>
               <MiniBarChart
@@ -900,10 +900,10 @@ function ActivityTimelinePanel({ activities, periodLabel }: { activities: SalesA
   if (groups.size === 0) return null;
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
         <div>
-          <p className="text-sm font-bold text-navy">Activity timeline</p>
+          <p className="text-sm font-bold text-ink">Activity timeline</p>
           <p className="mt-1 text-sm text-gray-500">Every recorded customer touch in {periodLabel}, grouped by day.</p>
         </div>
         <Link to="/app/timeline?view=history" className="text-sm font-bold text-brand-blue hover:underline">
@@ -916,7 +916,7 @@ function ActivityTimelinePanel({ activities, periodLabel }: { activities: SalesA
             <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{formatSafeBusinessDate(date)}</p>
             <ul className="mt-2 space-y-2">
               {dayActivities.map((activity) => (
-                <li key={activity.id} className="flex flex-col gap-1 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                <li key={activity.id} className="flex flex-col gap-1 rounded-lg border border-line-soft bg-gray-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-gray-800" title={activity.summary || activity.rawNote}>
                       {activity.summary || activity.rawNote || 'Activity recorded'}
@@ -989,7 +989,7 @@ function CommercialReviewBriefPanel({
       <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1.2fr_1fr]">
         <div className="rounded-lg bg-white p-4 ring-1 ring-blue-100">
           <p className="text-xs font-bold uppercase tracking-wide text-gray-400">This review needs</p>
-          <p className="mt-2 text-sm font-bold text-navy">{brief.nextActions[0] || 'Pick one commercial action and capture the outcome.'}</p>
+          <p className="mt-2 text-sm font-bold text-ink">{brief.nextActions[0] || 'Pick one commercial action and capture the outcome.'}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Link to="/app/opportunities" className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-bold text-brand-blue">Deal evidence</Link>
             <Link to="/app/quotes" className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700">Quotes</Link>
@@ -1012,7 +1012,7 @@ function CommercialReviewBriefPanel({
       </div>
 
       <details className="mt-4 rounded-lg bg-white p-4 ring-1 ring-blue-100">
-        <summary className="cursor-pointer text-sm font-bold text-navy">More signals</summary>
+        <summary className="cursor-pointer text-sm font-bold text-ink">More signals</summary>
         <div className="mt-3 grid grid-cols-1 gap-3 text-sm leading-6 text-gray-600 lg:grid-cols-2">
           <p>{brief.pipelineLine}</p>
           <p>{brief.quoteLine}</p>
@@ -1038,7 +1038,7 @@ function CommercialMetricCard({ metric }: { metric: CommercialReviewMetric }) {
   }[metric.tone];
 
   return (
-    <div className="rounded-lg border border-gray-100 bg-white p-4">
+    <div className="rounded-lg border border-line-soft bg-white p-4">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{metric.label}</p>
       <p className={`mt-2 inline-flex max-w-full rounded-full px-3 py-1 text-sm font-black ${toneClass}`}>{metric.value}</p>
     </div>
@@ -1061,18 +1061,18 @@ function RecapContent({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-panel bg-white shadow-panel p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-bold text-navy">{capitalize(recap.periodType)} recap</p>
-            <h2 className="mt-1 text-2xl font-bold text-navy">{recap.periodLabel}</h2>
+            <p className="text-sm font-bold text-ink">{capitalize(recap.periodType)} recap</p>
+            <h2 className="mt-1 text-2xl font-bold text-ink">{recap.periodLabel}</h2>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {copyMessage && <span className="text-xs font-bold text-emerald-700">{copyMessage === 'Copied recap.' ? copyMessage : 'Copy failed - recap shown in message.'}</span>}
             <button
               type="button"
               onClick={onCopy}
-              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50"
+              className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50"
             >
               <Copy className="h-3.5 w-3.5" />
               Copy Recap
@@ -1102,16 +1102,16 @@ function RecapContent({
           having and is not worth scrolling past every week to reach the end of
           the page. Opening it is one click; being made to read it was the
           reason the page felt long. */}
-      <details className="rounded-lg border border-gray-200 bg-white shadow-sm">
+      <details className="rounded-lg border border-line bg-white shadow-sm">
         <summary className="cursor-pointer list-none px-5 py-3">
           <span className="flex flex-wrap items-baseline justify-between gap-2">
-            <span className="text-base font-bold text-navy">The detail behind these numbers</span>
+            <span className="text-base font-bold text-ink">The detail behind these numbers</span>
             <span className="text-xs font-semibold text-gray-500">
               Breakdowns, open next actions, objections and follow-ups
             </span>
           </span>
         </summary>
-        <div className="space-y-5 border-t border-gray-100 p-5">
+        <div className="space-y-5 border-t border-line-soft p-5">
           <section className="grid grid-cols-1 gap-5 lg:grid-cols-3">
             <BreakdownPanel title="By activity type" data={recap.activityTypeBreakdown} />
             <AccountBreakdownPanel accounts={accountCounts} />
@@ -1154,7 +1154,7 @@ function RecommendedDealActionsPanel({ actions }: { actions: OpportunityRecommen
               {action.suggestedDueDate && <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-bold text-gray-600">Due {formatSafeBusinessDate(action.suggestedDueDate)}</span>}
             </div>
             <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{action.accountName} / {action.opportunityName}</p>
-            <p className="mt-1 text-sm font-bold text-navy">{action.title}</p>
+            <p className="mt-1 text-sm font-bold text-ink">{action.title}</p>
             <p className="mt-1 text-xs leading-5 text-gray-500">{action.reason}</p>
           </div>
         ))}
@@ -1241,7 +1241,7 @@ function ActionOutcomesPanel({
               <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-bold text-gray-600">{outcome.status}</span>
             </div>
             <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{outcome.accountName} / {outcome.opportunityName}</p>
-            <p className="mt-1 text-sm font-bold text-navy">{outcome.actionTitle}</p>
+            <p className="mt-1 text-sm font-bold text-ink">{outcome.actionTitle}</p>
             {outcome.outcomeNote && <p className="mt-1 text-xs leading-5 text-gray-500">{outcome.outcomeNote}</p>}
           </div>
         ))}
@@ -1249,7 +1249,7 @@ function ActionOutcomesPanel({
           <div key={action.id} className="rounded-lg bg-white p-3 ring-1 ring-red-100">
             <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">Unresolved critical</span>
             <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">{action.accountName} / {action.opportunityName}</p>
-            <p className="mt-1 text-sm font-bold text-navy">{action.title}</p>
+            <p className="mt-1 text-sm font-bold text-ink">{action.title}</p>
             <p className="mt-1 text-xs leading-5 text-gray-500">{action.reason}</p>
           </div>
         ))}
@@ -1310,7 +1310,7 @@ function ExecutionReviewPanel({
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr]">
         <div className="rounded-lg bg-white p-4 ring-1 ring-purple-100">
-          <h3 className="text-sm font-bold text-navy">Deal Movement Summary</h3>
+          <h3 className="text-sm font-bold text-ink">Deal Movement Summary</h3>
           {priorityMovements.length === 0 ? (
             <p className="mt-3 text-sm text-gray-500">No urgent deal movement detected for this period.</p>
           ) : (
@@ -1363,7 +1363,7 @@ function SuggestedPlaybookLearningsPanel({ patterns }: { patterns: SalesPlaybook
               <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${pattern.severity === 'High' ? 'bg-red-50 text-red-700' : pattern.severity === 'Medium' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>{pattern.severity}</span>
               <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-bold text-gray-600">{pattern.frequency}x</span>
             </div>
-            <p className="mt-2 text-sm font-bold text-navy">{pattern.title}</p>
+            <p className="mt-2 text-sm font-bold text-ink">{pattern.title}</p>
             <p className="mt-1 text-xs leading-5 text-gray-500">{pattern.reusableAction}</p>
           </article>
         ))}
@@ -1395,7 +1395,7 @@ function AssetNeedsPanel({ needs }: { needs: SalesAssetNeed[] }) {
                 {need.priority}
               </span>
             </div>
-            <p className="mt-2 text-sm font-bold text-navy">{need.title}</p>
+            <p className="mt-2 text-sm font-bold text-ink">{need.title}</p>
             <p className="mt-1 text-xs leading-5 text-gray-500">{need.reason}</p>
             {(need.relatedAccountName || need.relatedOpportunityName) && (
               <p className="mt-2 text-xs font-bold uppercase tracking-wide text-gray-400">
@@ -1412,7 +1412,7 @@ function AssetNeedsPanel({ needs }: { needs: SalesAssetNeed[] }) {
 function MiniLearningPanel({ title, items }: { title: string; items: string[] }) {
   return (
     <div className="rounded-lg bg-white p-4 ring-1 ring-purple-100">
-      <h3 className="text-sm font-bold text-navy">{title}</h3>
+      <h3 className="text-sm font-bold text-ink">{title}</h3>
       <ul className="mt-3 space-y-2 text-sm leading-6 text-gray-600">
         {items.map((item) => (
           <li key={item}>- {item}</li>
@@ -1437,7 +1437,7 @@ function MetricCard({ label, value, tone = 'blue' }: { label: string; value: num
   }[tone];
 
   return (
-    <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+    <div className="rounded-lg border border-line-soft bg-gray-50 p-4">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
       <p className={`mt-2 inline-flex rounded-full px-3 py-1 text-2xl font-black ${toneClass}`}>{value}</p>
     </div>
@@ -1448,7 +1448,7 @@ function Panel({ title, items, tone }: { title: string; items: string[]; tone: '
   const toneClass = tone === 'blue' ? 'border-blue-100 bg-blue-50/70 text-blue-950' : 'border-amber-100 bg-amber-50/70 text-amber-950';
   return (
     <section className={`rounded-lg border p-5 ${toneClass}`}>
-      <h3 className="text-sm font-bold text-navy">{title}</h3>
+      <h3 className="text-sm font-bold text-ink">{title}</h3>
       <ul className="mt-3 space-y-2 text-sm leading-6">
         {items.map((item) => (
           <li key={item}>- {item}</li>
@@ -1461,8 +1461,8 @@ function Panel({ title, items, tone }: { title: string; items: string[]; tone: '
 function BreakdownPanel({ title, data }: { title: string; data: Record<string, number> }) {
   const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h3 className="text-sm font-bold text-navy">{title}</h3>
+    <section className="rounded-panel bg-white shadow-panel p-5">
+      <h3 className="text-sm font-bold text-ink">{title}</h3>
       {entries.length === 0 ? (
         <p className="mt-3 text-sm text-gray-500">No data captured.</p>
       ) : (
@@ -1481,8 +1481,8 @@ function BreakdownPanel({ title, data }: { title: string; data: Record<string, n
 
 function AccountBreakdownPanel({ accounts }: { accounts: { accountName: string; count: number }[] }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h3 className="text-sm font-bold text-navy">By account</h3>
+    <section className="rounded-panel bg-white shadow-panel p-5">
+      <h3 className="text-sm font-bold text-ink">By account</h3>
       {accounts.length === 0 ? (
         <p className="mt-3 text-sm text-gray-500">No account names captured.</p>
       ) : (
@@ -1551,8 +1551,8 @@ function ListPanel({
   items: { id: string; title: string; detail: string }[];
 }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h3 className="text-sm font-bold text-navy">{title}</h3>
+    <section className="rounded-panel bg-white shadow-panel p-5">
+      <h3 className="text-sm font-bold text-ink">{title}</h3>
       {items.length === 0 ? (
         <p className="mt-3 text-sm text-gray-500">{empty}</p>
       ) : (
@@ -1572,7 +1572,7 @@ function ListPanel({
 function EmptyReviewsState() {
   return (
     <div className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center">
-      <p className="text-sm font-bold text-navy">No activities captured for this period.</p>
+      <p className="text-sm font-bold text-ink">No activities captured for this period.</p>
       <p className="mt-2 text-sm leading-6 text-gray-500">Capture activity before generating a recap.</p>
       <Link to="/app/capture" className="mt-4 inline-flex rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
         Capture activity

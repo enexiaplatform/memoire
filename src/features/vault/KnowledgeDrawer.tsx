@@ -93,7 +93,7 @@ export function KnowledgeDrawer({
 
   const body = (
     <>
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-5 py-4">
+      <header className="sticky top-0 z-10 border-b border-line bg-white px-5 py-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -102,12 +102,12 @@ export function KnowledgeDrawer({
                 {knowledgeNodeTypeLabels[node.type]}
               </span>
               {node.openDealCount > 0 && (
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-navy">
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-ink">
                   {node.openDealCount} live deal{node.openDealCount === 1 ? '' : 's'}
                 </span>
               )}
             </div>
-            <h2 className="mt-1.5 truncate text-lg font-bold tracking-tight text-navy" title={node.label}>
+            <h2 className="mt-1.5 truncate text-lg font-bold tracking-tight text-ink" title={node.label}>
               {node.label}
             </h2>
             {node.subtitle && <p className="mt-0.5 truncate text-xs text-gray-500" title={node.subtitle}>{node.subtitle}</p>}
@@ -116,7 +116,7 @@ export function KnowledgeDrawer({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="shrink-0 rounded-md p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-navy"
+            className="shrink-0 rounded-md p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-ink"
           >
             <X className="h-4 w-4" />
           </button>
@@ -134,20 +134,20 @@ export function KnowledgeDrawer({
           <button
             type="button"
             onClick={() => onAddKnowledge(node)}
-            className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-bold text-navy transition hover:border-brand-blue hover:text-brand-blue"
+            className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-bold text-ink transition hover:border-brand-blue hover:text-brand-blue"
           >
             <Plus className="h-3.5 w-3.5" /> Add knowledge
           </button>
           <Link
             to={`/app/ask?question=${encodeURIComponent(question)}`}
-            className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-bold text-navy transition hover:border-brand-blue hover:text-brand-blue"
+            className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-bold text-ink transition hover:border-brand-blue hover:text-brand-blue"
           >
             <Search className="h-3.5 w-3.5" /> Ask about this
           </Link>
           <button
             type="button"
             onClick={() => onShowOnMap(node.id)}
-            className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-bold text-navy transition hover:border-brand-blue hover:text-brand-blue"
+            className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-bold text-ink transition hover:border-brand-blue hover:text-brand-blue"
           >
             <Sparkles className="h-3.5 w-3.5" /> Centre the map
           </button>
@@ -219,13 +219,13 @@ export function KnowledgeDrawer({
             <ul className="space-y-2">
               {gaps.map((gap) => (
                 <li key={gap.key} className="rounded-lg border border-orange-200 bg-orange-50/60 px-3 py-2.5">
-                  <p className="text-sm font-semibold text-navy">{gap.question}</p>
+                  <p className="text-sm font-semibold text-ink">{gap.question}</p>
                   <p className="mt-0.5 text-xs leading-5 text-gray-600">{gap.why}</p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <button
                       type="button"
                       onClick={() => onAnswerGap(gap)}
-                      className="rounded-md bg-white px-2 py-1 text-[11px] font-bold text-navy ring-1 ring-inset ring-orange-300 transition hover:bg-orange-100"
+                      className="rounded-md bg-white px-2 py-1 text-[11px] font-bold text-ink ring-1 ring-inset ring-orange-300 transition hover:bg-orange-100"
                     >
                       Write what you know
                     </button>
@@ -281,7 +281,7 @@ export function KnowledgeDrawer({
           <Section title={`Recent memory (${memory.length})`}>
             <ol className="space-y-2.5">
               {memory.slice(0, 8).map((entry) => (
-                <li key={entry.id} className="border-l-2 border-gray-200 pl-3">
+                <li key={entry.id} className="border-l-2 border-line pl-3">
                   <div className="flex flex-wrap items-baseline gap-2">
                     <span className="text-[11px] font-bold uppercase tracking-wide text-gray-400">
                       {entry.date ? formatSafeBusinessDate(entry.date) : 'Undated'}
@@ -289,11 +289,11 @@ export function KnowledgeDrawer({
                     <span className="text-[11px] font-semibold text-gray-500">{entry.label}</span>
                   </div>
                   {entry.href ? (
-                    <Link to={entry.href} className="mt-0.5 block text-sm font-semibold text-navy hover:text-brand-blue hover:underline">
+                    <Link to={entry.href} className="mt-0.5 block text-sm font-semibold text-ink hover:text-brand-blue hover:underline">
                       {entry.title}
                     </Link>
                   ) : (
-                    <p className="mt-0.5 text-sm font-semibold text-navy">{entry.title}</p>
+                    <p className="mt-0.5 text-sm font-semibold text-ink">{entry.title}</p>
                   )}
                   {entry.detail && <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-gray-500">{entry.detail}</p>}
                 </li>
@@ -324,7 +324,7 @@ export function KnowledgeDrawer({
     return (
       <aside
         aria-label={`${node.label} - business memory`}
-        className="hidden h-full w-[360px] shrink-0 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-sm 2xl:block"
+        className="hidden h-full w-[360px] shrink-0 overflow-y-auto rounded-panel bg-white shadow-panel 2xl:block"
       >
         {body}
       </aside>
@@ -367,7 +367,7 @@ function BacklinkRow({ record, onSelect }: { record: KnowledgeRecord; onSelect: 
       onClick={() => onSelect(nodeId)}
       className="w-full rounded-md px-2 py-1.5 text-left transition hover:bg-gray-50"
     >
-      <span className="text-sm font-semibold text-navy">{record.title}</span>
+      <span className="text-sm font-semibold text-ink">{record.title}</span>
       <span className="ml-2 text-[11px] font-semibold text-gray-400">{record.relation}</span>
     </button>
   );

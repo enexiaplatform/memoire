@@ -165,11 +165,11 @@ function AppContentLoading() {
     <PageContainer>
       <div className="space-y-4" aria-label="Loading workspace">
         <div className="h-7 w-56 animate-pulse rounded bg-gray-200" />
-        <div className="h-28 w-full animate-pulse rounded-xl border border-gray-200 bg-white" />
+        <div className="h-28 w-full animate-pulse rounded-panel bg-white shadow-panel" />
         <div className="grid gap-4 lg:grid-cols-3">
-          <div className="h-36 animate-pulse rounded-xl border border-gray-200 bg-white" />
-          <div className="h-36 animate-pulse rounded-xl border border-gray-200 bg-white" />
-          <div className="h-36 animate-pulse rounded-xl border border-gray-200 bg-white" />
+          <div className="h-36 animate-pulse rounded-panel bg-white shadow-panel" />
+          <div className="h-36 animate-pulse rounded-panel bg-white shadow-panel" />
+          <div className="h-36 animate-pulse rounded-panel bg-white shadow-panel" />
         </div>
       </div>
     </PageContainer>

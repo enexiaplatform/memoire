@@ -40,12 +40,12 @@ export function BrandPerformancePanel() {
   if (!report.hasBrands) return null;
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <Layers className="h-4 w-4 text-brand-blue" />
-            <h3 className="text-lg font-bold text-navy">Original brand text on deals</h3>
+            <h3 className="text-lg font-bold text-ink">Original brand text on deals</h3>
           </div>
           <p className="mt-1 max-w-2xl text-sm text-gray-500">
             Current pipeline and all-time closed outcomes grouped by the original brand text.
@@ -78,9 +78,9 @@ function BrandRow({ row }: { row: BrandPerformance }) {
   const sharePercent = Math.round(row.shareOfActive * 100);
 
   return (
-    <div className={`rounded-lg border p-3 ${row.unbranded ? 'border-dashed border-gray-200 bg-gray-50/60' : 'border-gray-100 bg-gray-50/40'}`}>
+    <div className={`rounded-lg border p-3 ${row.unbranded ? 'border-dashed border-line bg-gray-50/60' : 'border-line-soft bg-gray-50/40'}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className={`font-bold ${row.unbranded ? 'text-gray-500' : 'text-navy'}`}>{row.brand}</p>
+        <p className={`font-bold ${row.unbranded ? 'text-gray-500' : 'text-ink'}`}>{row.brand}</p>
         <p className="text-xs font-semibold text-gray-500">
           {row.activeCount} active
           {row.committedCount > 0 ? ` · ${row.committedCount} committed to order` : ''}
@@ -102,7 +102,7 @@ function BrandRow({ row }: { row: BrandPerformance }) {
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-        <span className="font-bold text-navy">{formatBaseCurrencyAmount(row.activeValueBase, true)} in play</span>
+        <span className="font-bold text-ink">{formatBaseCurrencyAmount(row.activeValueBase, true)} in play</span>
         {row.committedValueBase > 0 && (
           <span className="font-semibold text-violet-700">
             {formatBaseCurrencyAmount(row.committedValueBase, true)} committed

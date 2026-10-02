@@ -52,17 +52,17 @@ export function ResetPasswordPage() {
           not covered by anything else - every auth screen showed the landing
           page's headline in the tab strip and to a screen reader. */}
       <NoIndex />
-      <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+      <main className="flex min-h-screen items-center justify-center bg-canvas px-4">
         <div className="w-full max-w-sm">
           <div className="mb-8 text-center">
             <Link to="/" aria-label="Memoire home">
               <BrandWordmark className="text-2xl" />
             </Link>
-            <h1 className="mt-4 text-2xl font-bold tracking-tight text-navy">Choose a new password</h1>
-            <p className="mt-1 text-sm text-gray-500">Use a password you have not used for this account.</p>
+            <h1 className="mt-4 text-2xl font-bold tracking-tight text-ink">Choose a new password</h1>
+            <p className="mt-1 text-sm text-muted">Use a password you have not used for this account.</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5 rounded-[16px] bg-white p-6 shadow-elevated sm:p-10">
+          <form onSubmit={handleSubmit} className="space-y-5 rounded-panel bg-white p-6 shadow-panel sm:p-10">
             {!loading && !isAuthenticated ? (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
                 This reset link is invalid or expired. Request a new link to continue.

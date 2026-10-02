@@ -160,7 +160,7 @@ export function BillingTab() {
     <Panel>
       <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
         <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Current plan</p>
-        <p className="mt-1 text-lg font-bold text-navy">{planHeadline(entitlement, status)}</p>
+        <p className="mt-1 text-lg font-bold text-ink">{planHeadline(entitlement, status)}</p>
         {/* Cancelling is not the same as losing access: the period is paid for.
             The webhook keeps the tier until Lemon Squeezy sends the expiry, so
             this screen has to say the same thing or it reads as a bug. */}
@@ -173,9 +173,9 @@ export function BillingTab() {
         <div className="mt-5 space-y-3">
           {status.checkoutEnabled ? (
             status.plans.map((plan) => (
-              <div key={plan} className="flex flex-col gap-3 rounded-lg border border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div key={plan} className="flex flex-col gap-3 rounded-lg border border-line p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-bold text-navy">{PLAN_COPY[plan].name}</p>
+                  <p className="text-sm font-bold text-ink">{PLAN_COPY[plan].name}</p>
                   <p className="mt-1 max-w-md text-sm leading-6 text-gray-500">{PLAN_COPY[plan].description}</p>
                   <p className="mt-1 max-w-md text-xs leading-5 text-gray-400">
                     {TRIAL_DAYS} days free first. Your card is taken now and charged when the trial ends —
@@ -196,7 +196,7 @@ export function BillingTab() {
               </div>
             ))
           ) : (
-            <p className="rounded-lg border border-gray-200 px-4 py-3 text-sm leading-6 text-gray-500">
+            <p className="rounded-lg border border-line px-4 py-3 text-sm leading-6 text-gray-500">
               Paid plans are configured but checkout is not open yet, so your workspace stays fully open until it is.
               Nothing gets locked behind a button you cannot press.
             </p>
@@ -211,7 +211,7 @@ export function BillingTab() {
       {status.hasBillingAccount && (
         <div className="mt-5 flex flex-col gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-navy">Payment method, invoices and cancellation</p>
+            <p className="text-sm font-semibold text-ink">Payment method, invoices and cancellation</p>
             <p className="mt-1 max-w-md text-sm leading-6 text-gray-500">
               All of it lives in Lemon Squeezy's portal. The link is issued fresh each time and expires, so it is not
               one you can bookmark.
@@ -221,7 +221,7 @@ export function BillingTab() {
             type="button"
             disabled={Boolean(busyAction)}
             onClick={() => { void run('portal', openBillingPortal); }}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-gray-200 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           >
             {busyAction === 'portal' && <Loader2 className="h-4 w-4 animate-spin" />}
             {busyAction === 'portal' ? 'Opening...' : 'Manage billing'}
@@ -241,7 +241,7 @@ export function BillingTab() {
 function Panel({ children }: { children: React.ReactNode }) {
   return (
     <section className="rounded-panel bg-white p-6 shadow-panel">
-      <h2 className="text-lg font-bold text-navy">Plan &amp; billing</h2>
+      <h2 className="text-lg font-bold text-ink">Plan &amp; billing</h2>
       <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
         What you are on, and what it costs. Payment is handled by Lemon Squeezy.
       </p>

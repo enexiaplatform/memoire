@@ -50,7 +50,7 @@ export function StoragePanel() {
         <div className="flex items-start gap-2.5">
           <Database className="mt-0.5 h-4 w-4 shrink-0 text-brand-blue" />
           <div>
-            <p className="text-sm font-semibold text-navy">Storage in this browser</p>
+            <p className="text-sm font-semibold text-ink">Storage in this browser</p>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
               Every record is written here first. Browsers cap this at around 5 MB and give no warning of their own -
               the first sign is a save that fails.
@@ -60,14 +60,14 @@ export function StoragePanel() {
         <button
           type="button"
           onClick={() => setUsage(measureLocalStorageUsage())}
-          className="shrink-0 rounded-full border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+          className="shrink-0 rounded-full border border-line px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
         >
           Recheck
         </button>
       </div>
 
       <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <p className={`text-2xl font-bold ${tone === 'red' ? 'text-red-700' : tone === 'amber' ? 'text-amber-700' : 'text-navy'}`}>
+        <p className={`text-2xl font-bold ${tone === 'red' ? 'text-red-700' : tone === 'amber' ? 'text-amber-700' : 'text-ink'}`}>
           {formatBytes(usage.memoireBytes)}
         </p>
         <p className="text-sm font-semibold text-gray-500">

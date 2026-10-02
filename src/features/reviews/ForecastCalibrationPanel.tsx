@@ -11,13 +11,13 @@ export function ForecastCalibrationPanel({ calibration }: { calibration: Forecas
   if (calibration.totalClosed === 0) return null;
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <div className="flex items-start gap-3">
         <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-blue-100 bg-blue-50 text-brand-blue">
           <Scale className="h-4 w-4" />
         </span>
         <div className="min-w-0">
-          <h2 className="text-lg font-bold text-navy">Personal forecast calibration</h2>
+          <h2 className="text-lg font-bold text-ink">Personal forecast calibration</h2>
           <p className="mt-1 text-sm leading-6 text-gray-600">{calibration.headline}</p>
           <p className="mt-1 text-xs text-gray-500">
             Win rates come from your own {calibration.totalClosed} closed {calibration.totalClosed === 1 ? 'outcome' : 'outcomes'}. This is your history, not a prediction.
@@ -38,7 +38,7 @@ export function ForecastCalibrationPanel({ calibration }: { calibration: Forecas
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-xs font-bold uppercase tracking-wide text-gray-500">
+            <tr className="border-b border-line text-xs font-bold uppercase tracking-wide text-gray-500">
               <th className="py-2 pr-3">Evidence label</th>
               <th className="py-2 pr-3">Closed</th>
               <th className="py-2 pr-3">Won / Lost / Stalled</th>
@@ -69,7 +69,7 @@ export function ForecastCalibrationPanel({ calibration }: { calibration: Forecas
 
 function CalibrationRow({ row }: { row: ForecastCalibrationRow }) {
   return (
-    <tr className="border-b border-gray-100">
+    <tr className="border-b border-line-soft">
       <td className="py-2.5 pr-3 font-semibold text-gray-900">{row.category}</td>
       <td className="py-2.5 pr-3 text-gray-700">{row.closed}</td>
       <td className="py-2.5 pr-3 text-gray-700">

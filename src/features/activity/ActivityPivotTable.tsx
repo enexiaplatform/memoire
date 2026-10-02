@@ -34,12 +34,12 @@ export function ActivityPivotTable({
   const rowMeta = activityDimensions.find((dimension) => dimension.id === pivot.rowDimension);
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+    <section className="rounded-panel bg-white shadow-panel p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <Table2 className="h-4 w-4 text-brand-blue" />
-            <h2 className="text-lg font-bold text-navy">Pivot</h2>
+            <h2 className="text-lg font-bold text-ink">Pivot</h2>
           </div>
           <p className="mt-1 text-sm text-gray-600">
             {dimensionLabel(pivot.rowDimension)} down, {dimensionLabel(pivot.columnDimension)} across.
@@ -54,7 +54,7 @@ export function ActivityPivotTable({
       </div>
 
       {pivot.grandTotal === 0 ? (
-        <p className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
+        <p className="mt-4 rounded-lg border border-dashed border-line bg-gray-50 p-4 text-sm text-gray-500">
           Nothing to cross-tabulate in this period yet.
         </p>
       ) : (
@@ -62,19 +62,19 @@ export function ActivityPivotTable({
           <table className="w-full min-w-[560px] border-separate border-spacing-0 text-sm">
             <thead>
               <tr>
-                <th className="sticky left-0 z-10 border-b border-gray-200 bg-white pb-2 pr-3 text-left text-[11px] font-bold uppercase tracking-wide text-gray-400">
+                <th className="sticky left-0 z-10 border-b border-line bg-white pb-2 pr-3 text-left text-[11px] font-bold uppercase tracking-wide text-gray-400">
                   {dimensionLabel(pivot.rowDimension)}
                 </th>
                 {pivot.columns.map((column) => (
                   <th
                     key={column.key}
-                    className="border-b border-gray-200 px-1.5 pb-2 text-center text-[11px] font-bold text-navy"
+                    className="border-b border-line px-1.5 pb-2 text-center text-[11px] font-bold text-ink"
                     title={column.label}
                   >
                     <span className="block max-w-[86px] truncate">{column.label}</span>
                   </th>
                 ))}
-                <th className="border-b border-gray-200 pb-2 pl-3 text-right text-[11px] font-bold uppercase tracking-wide text-gray-400">
+                <th className="border-b border-line pb-2 pl-3 text-right text-[11px] font-bold uppercase tracking-wide text-gray-400">
                   Total
                 </th>
               </tr>
@@ -82,7 +82,7 @@ export function ActivityPivotTable({
             <tbody>
               {pivot.rows.map((row) => (
                 <tr key={row.key} className="group">
-                  <th className="sticky left-0 z-10 max-w-[clamp(190px,14vw,360px)] border-b border-gray-100 bg-white py-1.5 pr-3 text-left align-middle font-semibold text-gray-800 group-hover:bg-blue-50/40">
+                  <th className="sticky left-0 z-10 max-w-[clamp(190px,14vw,360px)] border-b border-line-soft bg-white py-1.5 pr-3 text-left align-middle font-semibold text-gray-800 group-hover:bg-blue-50/40">
                     <span className="block truncate" title={row.label}>{row.label}</span>
                     {row.note && <span className="block text-[10px] font-medium text-gray-400">{row.note}</span>}
                   </th>
@@ -90,7 +90,7 @@ export function ActivityPivotTable({
                     const column = pivot.columns[index];
                     const isSelected = selected?.rowKey === row.key && selected?.columnKey === column.key;
                     return (
-                      <td key={column.key} className="border-b border-gray-100 p-0.5 text-center">
+                      <td key={column.key} className="border-b border-line-soft p-0.5 text-center">
                         <button
                           type="button"
                           disabled={cell.count === 0 || !onSelectCell}
@@ -108,7 +108,7 @@ export function ActivityPivotTable({
                       </td>
                     );
                   })}
-                  <td className="border-b border-gray-100 pl-3 text-right font-bold text-navy">{row.total}</td>
+                  <td className="border-b border-line-soft pl-3 text-right font-bold text-ink">{row.total}</td>
                 </tr>
               ))}
             </tbody>
@@ -122,7 +122,7 @@ export function ActivityPivotTable({
                     {total}
                   </td>
                 ))}
-                <td className="pt-2 pl-3 text-right text-sm font-black text-navy">{pivot.grandTotal}</td>
+                <td className="pt-2 pl-3 text-right text-sm font-black text-ink">{pivot.grandTotal}</td>
               </tr>
             </tfoot>
           </table>
@@ -154,7 +154,7 @@ function DimensionSelect({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value as ActivityDimension)}
-        className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm font-semibold text-navy focus:border-brand-blue focus:outline-none"
+        className="rounded-lg border border-line bg-white px-2.5 py-1.5 text-sm font-semibold text-ink focus:border-brand-blue focus:outline-none"
       >
         {activityDimensions.map((dimension) => (
           <option key={dimension.id} value={dimension.id}>{dimension.label}</option>

@@ -86,14 +86,14 @@ const activityTypeTone: Record<SalesActivityType, string> = {
   'Tender / procurement': 'border-cyan-100 bg-cyan-50 text-cyan-700',
   'Internal coordination': 'border-slate-100 bg-slate-50 text-slate-700',
   'Objection handling': 'border-amber-100 bg-amber-50 text-amber-700',
-  'Admin / CRM': 'border-gray-200 bg-gray-50 text-gray-700',
+  'Admin / CRM': 'border-line bg-gray-50 text-gray-700',
   'Payment / invoice': 'border-emerald-200 bg-emerald-50 text-emerald-800',
   'Delivery / fulfillment': 'border-violet-200 bg-violet-50 text-violet-800',
   Partnership: 'border-blue-200 bg-blue-50 text-blue-800',
   'Marketing / content': 'border-pink-100 bg-pink-50 text-pink-700',
   'Product / build': 'border-indigo-200 bg-indigo-50 text-indigo-800',
   'Learning / research': 'border-amber-200 bg-amber-50 text-amber-800',
-  Other: 'border-gray-200 bg-white text-gray-700',
+  Other: 'border-line bg-white text-gray-700',
 };
 
 /**
@@ -295,7 +295,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
         {!embedded && (
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Activity Ledger</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-navy">Everything that happened in your business, in one timeline.</h1>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight text-ink">Everything that happened in your business, in one timeline.</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
               Sales, money, delivery, marketing, product, and learning activity - all captured through Capture, classified by business domain.
               No Google Calendar, Gmail, CRM sync, or AI integration is connected.
@@ -320,14 +320,14 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
         </div>
       </header>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-panel bg-white shadow-panel p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-bold text-navy">Selected period</p>
-            <h2 className="mt-1 text-2xl font-bold text-navy">{range.label}</h2>
+            <p className="text-sm font-bold text-ink">Selected period</p>
+            <h2 className="mt-1 text-2xl font-bold text-ink">{range.label}</h2>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex w-full max-w-full overflow-x-auto rounded-full border border-gray-200 bg-gray-50 p-1 sm:inline-flex sm:w-auto">
+            <div className="flex w-full max-w-full overflow-x-auto rounded-full border border-line bg-gray-50 p-1 sm:inline-flex sm:w-auto">
               {viewOptions.map((option) => (
                 <button
                   key={option.value}
@@ -344,7 +344,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
             <button
               type="button"
               onClick={() => shiftPeriod(-1)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white text-gray-600 hover:bg-gray-50"
               aria-label={`Previous ${viewMode}`}
             >
               <ChevronLeft className="h-4 w-4" />
@@ -352,7 +352,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
             <button
               type="button"
               onClick={() => setAnchorDate(new Date())}
-              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50"
+              className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               Today
@@ -360,7 +360,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
             <button
               type="button"
               onClick={() => shiftPeriod(1)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white text-gray-600 hover:bg-gray-50"
               aria-label={`Next ${viewMode}`}
             >
               <ChevronRight className="h-4 w-4" />
@@ -374,8 +374,8 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
       {!loadingActivities && <ActivityInsightsBand insights={insights} />}
 
       {!loadingActivities && visibleActivities.length > 0 && (
-        <details className="rounded-lg border border-gray-200 bg-white px-5 py-3 shadow-sm">
-          <summary className="cursor-pointer text-sm font-bold text-navy">All period metrics</summary>
+        <details className="rounded-lg border border-line bg-white px-5 py-3 shadow-sm">
+          <summary className="cursor-pointer text-sm font-bold text-ink">All period metrics</summary>
           <div className="mt-3">
             {viewMode === 'month' ? (
               <MonthlySummaryPanel summary={summary} />
@@ -386,13 +386,13 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
         </details>
       )}
 
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-panel bg-white shadow-panel p-5">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setDomainFilter('All')}
             className={`rounded-full border px-3 py-1.5 text-xs font-bold ${
-              domainFilter === 'All' ? 'border-navy bg-navy text-white' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+              domainFilter === 'All' ? 'border-navy bg-navy text-white' : 'border-line bg-white text-gray-700 hover:bg-gray-50'
             }`}
           >
             All ({periodActivities.length})
@@ -416,13 +416,13 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
         </div>
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-navy">Activities</h2>
+            <h2 className="text-lg font-bold text-ink">Activities</h2>
             <p className="mt-1 text-sm text-gray-500">Grouped by activity date. Filter by business domain above.</p>
           </div>
           <button
             type="button"
             onClick={refreshActivities}
-            className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+            className="rounded-full border border-line bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
           >
             Refresh
           </button>
@@ -435,7 +435,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
         )}
 
         {loadingActivities ? (
-          <div className="flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 p-6 text-sm font-semibold text-gray-500">
+          <div className="flex items-center gap-2 rounded-lg border border-line-soft bg-gray-50 p-6 text-sm font-semibold text-gray-500">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading sales activities...
           </div>
@@ -448,10 +448,10 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
               if (records.length === 0 && viewMode !== 'day') return null;
 
               return (
-                <section key={dateKey} className="rounded-xl border border-gray-200 bg-white p-4">
+                <section key={dateKey} className="rounded-panel bg-white shadow-panel p-4">
                   <div className="mb-3 flex items-center gap-2">
                     <CalendarDays className="h-4 w-4 text-gray-400" />
-                    <h3 className="text-sm font-bold text-navy">{formatDateHeading(dateKey)}</h3>
+                    <h3 className="text-sm font-bold text-ink">{formatDateHeading(dateKey)}</h3>
                   </div>
                   {records.length === 0 ? (
                     <p className="rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-500">No activity captured on this day.</p>
@@ -540,7 +540,7 @@ function MetricCard({ label, value, tone = 'blue' }: { label: string; value: num
   }[tone];
 
   return (
-    <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+    <div className="rounded-lg border border-line-soft bg-gray-50 p-4">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
       <p className={`mt-2 inline-flex rounded-full px-3 py-1 text-2xl font-black ${toneClass}`}>{value}</p>
     </div>
@@ -549,9 +549,9 @@ function MetricCard({ label, value, tone = 'blue' }: { label: string; value: num
 
 function MetricTextCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+    <div className="rounded-lg border border-line-soft bg-gray-50 p-4">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
-      <p className="mt-2 text-sm font-bold leading-6 text-navy">{value}</p>
+      <p className="mt-2 text-sm font-bold leading-6 text-ink">{value}</p>
     </div>
   );
 }
@@ -574,7 +574,7 @@ function ActivityCard({
   onCopy: () => void;
 }) {
   return (
-    <article className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+    <article className="rounded-lg border border-line-soft bg-gray-50 p-4">
       <button type="button" onClick={onOpen} className="block w-full text-left">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -593,7 +593,7 @@ function ActivityCard({
                   is why it is conditional rather than a chip reading "Unknown"
                   on nine months of history. */}
               {activity.activityChannel && (
-                <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-bold text-gray-600">
+                <span className="inline-flex rounded-full border border-line bg-gray-50 px-2.5 py-1 text-xs font-bold text-gray-600">
                   {activity.activityChannel}
                 </span>
               )}
@@ -614,7 +614,7 @@ function ActivityCard({
                 {classifyBusinessDomain(activity)}
               </span>
             </span>
-            <h4 className="mt-2 text-sm font-bold text-navy">{activity.summary}</h4>
+            <h4 className="mt-2 text-sm font-bold text-ink">{activity.summary}</h4>
           </div>
           <span className={`w-fit rounded-full px-2.5 py-1 text-xs font-bold ${
             activity.storageMode === 'cloud' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
@@ -636,7 +636,7 @@ function ActivityCard({
         <button
           type="button"
           onClick={onCopy}
-          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+          className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
         >
           <Copy className="h-3.5 w-3.5" />
           {copied ? 'Copied' : 'Copy summary'}
@@ -709,7 +709,7 @@ function ActivityDetailModal({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">Activity detail</p>
-            <h2 className="mt-2 text-xl font-bold text-navy">{activity.summary}</h2>
+            <h2 className="mt-2 text-xl font-bold text-ink">{activity.summary}</h2>
           </div>
           <button type="button" onClick={onClose} className="rounded-full p-2 text-gray-500 hover:bg-gray-100" aria-label="Close detail">
             <X className="h-5 w-5" />
@@ -721,7 +721,7 @@ function ActivityDetailModal({
             {activity.activityType}
           </span>
           {activity.activityChannel && (
-            <span className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-bold text-gray-600">
+            <span className="rounded-full border border-line bg-gray-50 px-2.5 py-1 text-xs font-bold text-gray-600">
               {activity.activityChannel}
             </span>
           )}
@@ -749,7 +749,7 @@ function ActivityDetailModal({
         {journey && linkedOpportunity && (
           <section className="mt-5 rounded-lg border border-blue-100 bg-blue-50/40 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-bold text-navy">Where this deal stands</p>
+              <p className="text-sm font-bold text-ink">Where this deal stands</p>
               <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-brand-blue ring-1 ring-blue-100">
                 {journey.position}{journey.positionSource === 'money-flow' ? ' (money flow)' : ''}
               </span>
@@ -787,7 +787,7 @@ function ActivityDetailModal({
           />
         </div>
 
-        <div className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-4">
+        <div className="mt-5 rounded-lg border border-line-soft bg-gray-50 p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Raw note</p>
           <p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-800">{activity.rawNote}</p>
         </div>
@@ -800,7 +800,7 @@ function ActivityDetailModal({
           <button
             type="button"
             onClick={onCopy}
-            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50"
           >
             <Copy className="h-4 w-4" />
             {copied ? 'Copied' : 'Copy summary'}
@@ -822,7 +822,7 @@ function ActivityDetailModal({
 function EmptyCalendarState() {
   return (
     <div className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center">
-      <p className="text-sm font-bold text-navy">No sales activities captured for this period.</p>
+      <p className="text-sm font-bold text-ink">No sales activities captured for this period.</p>
       <p className="mt-2 text-sm leading-6 text-gray-500">Capture activity to populate your sales calendar.</p>
       <Link
         to="/app/capture?mode=quick"
@@ -1025,7 +1025,7 @@ function ActivityExtractionDetail({ activity }: { activity: SalesActivityRecord 
   if (rows.length === 0 && (!activity.nextActions || activity.nextActions.length === 0)) return null;
 
   return (
-    <div className="mt-5 rounded-lg border border-gray-100 bg-gray-50 p-4">
+    <div className="mt-5 rounded-lg border border-line-soft bg-gray-50 p-4">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Extraction v2</p>
       {activity.nextActions && activity.nextActions.length > 0 && (
         <div className="mt-3">

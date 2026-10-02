@@ -46,12 +46,12 @@ export function CommercialLinkagePanel({
 
   return (
     <section
-      className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+      className="rounded-panel bg-white shadow-panel p-5"
       aria-label="What Memoire can compare"
     >
       <div className="flex flex-wrap items-center gap-2">
         <Link2 className="h-4 w-4 text-brand-blue" aria-hidden="true" />
-        <h2 className="text-sm font-bold text-navy">What Memoire can compare</h2>
+        <h2 className="text-sm font-bold text-ink">What Memoire can compare</h2>
       </div>
 
       {headline && <p className="mt-2 text-sm leading-5 text-gray-700">{headline}</p>}
@@ -70,7 +70,7 @@ export function CommercialLinkagePanel({
             type="button"
             onClick={() => setOpen((value) => !value)}
             aria-expanded={open}
-            className="mt-3 rounded-full border border-gray-200 px-3 py-1.5 text-xs font-bold text-brand-blue"
+            className="mt-3 rounded-full border border-line px-3 py-1.5 text-xs font-bold text-brand-blue"
           >
             {open ? 'Close' : `Review ${review.suggestions.length} possible ${review.suggestions.length === 1 ? 'link' : 'links'}`}
           </button>
@@ -85,7 +85,7 @@ export function CommercialLinkagePanel({
                 {review.suggestions.slice(0, 20).map((suggestion) => (
                   <li
                     key={suggestion.activityId}
-                    className="rounded-lg border border-gray-200 p-2.5"
+                    className="rounded-lg border border-line p-2.5"
                   >
                     <p className="text-xs text-gray-500">
                       {formatSafeBusinessDate(suggestion.activityDate)} · {suggestion.accountName}
@@ -115,7 +115,7 @@ export function CommercialLinkagePanel({
                         type="button"
                         disabled={applying === suggestion.activityId}
                         onClick={() => onIgnore(suggestion.activityId)}
-                        className="rounded-full border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-700 disabled:opacity-60"
+                        className="rounded-full border border-line px-3 py-1.5 text-xs font-bold text-gray-700 disabled:opacity-60"
                       >
                         Not this one
                       </button>

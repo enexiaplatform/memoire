@@ -61,12 +61,12 @@ export function DeltaPanel({
 
   return (
     <section
-      className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+      className="rounded-panel bg-white shadow-panel p-4"
       aria-label={`What changed · ${delta.subject.name}`}
     >
       <div className="flex flex-wrap items-center gap-2">
         <History className="h-4 w-4 text-brand-blue" aria-hidden="true" />
-        <h2 className="text-sm font-bold text-navy">{heading}</h2>
+        <h2 className="text-sm font-bold text-ink">{heading}</h2>
       </div>
 
       {changes.length > 0 && (
@@ -145,7 +145,7 @@ export function DeltaPanel({
       )}
 
       {delta.recommendation && (
-        <div className="mt-3 rounded-lg border border-gray-200 px-3 py-2">
+        <div className="mt-3 rounded-lg border border-line px-3 py-2">
           <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">Now what</p>
           {/* The kernel's own answer, ranked by the kernel. This panel does not
               score, weight or write recommendations - there is one engine, and
@@ -187,7 +187,7 @@ export function DeltaPanel({
           must never let a short list of changes read as "nothing else happened"
           when the truth is "nothing else was recorded". */}
       {!delta.historyCoverage.complete && (
-        <div className="mt-3 border-t border-gray-100 pt-2">
+        <div className="mt-3 border-t border-line-soft pt-2">
           <button
             type="button"
             onClick={() => setShowingCoverage((open) => !open)}
