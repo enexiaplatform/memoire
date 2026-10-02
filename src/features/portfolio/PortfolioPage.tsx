@@ -1,6 +1,6 @@
 import { PageHeader } from '../../components/layout/PageFrame';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '../../auth/authContext';
 import { useDemoWorkspaceMode } from '../../hooks/useDemoWorkspaceMode';
 import { loadSalesWorkspaceData, type SalesWorkspaceData } from '../../services/workspaceData';
@@ -9,6 +9,8 @@ import { portfolioAssignments, portfolioKinds, portfolioNodes, suggestPortfolioN
 import { buildPortfolioFacts, capturePortfolioMoneyBasis, summarizePortfolio } from '../../domain/portfolio/portfolioAnalytics';
 import { EXCHANGE_RATES_CHANGED_EVENT, REPORTING_CURRENCY_CHANGED_EVENT } from '../../utils/money';
 import { hasLocalSampleData } from '../../utils/dataMode';
+import { portfolioReportHref } from '../../domain/reports/reportHandoffs';
+import { BrandPerformancePanel } from '../reviews/BrandPerformancePanel';
 
 const kinds = { unit: 'Business unit', brand: 'Brand', group: 'Product group', product: 'Product / solution' };
 const blank: PortfolioNodeData = { kind: 'brand', name: '', code: '', description: '', status: 'active', parentId: null, brandId: null, groupId: null, aliases: [] };
@@ -16,6 +18,8 @@ const control = 'min-w-0 w-full rounded-lg border border-gray-300 bg-white px-3 
 const button = 'rounded-lg bg-navy px-4 py-2 text-sm font-bold text-white disabled:opacity-50';
 
 export function PortfolioPage() {
+  const [params] = useSearchParams(), requestedDeal = params.get('opportunityId');
+  const handledDeal = useRef('');
   const { user, loading: authLoading } = useAuthContext();
   const demo = useDemoWorkspaceMode();
   const sample = demo || hasLocalSampleData();
@@ -26,6 +30,7 @@ export function PortfolioPage() {
   const [form, setForm] = useState<PortfolioNodeData>(blank);
   const [editing, setEditing] = useState<{ id: string; version: number } | null>(null);
   const [search, setSearch] = useState('');
+  const [showOriginalBrands, setShowOriginalBrands] = useState(false);
   const [assignmentId, setAssignmentId] = useState('');
   const [assignment, setAssignment] = useState({ businessUnitId: '', brandId: '', groupId: '', productId: '' });
   const [assignmentVersion, setAssignmentVersion] = useState(0);
@@ -46,6 +51,16 @@ export function PortfolioPage() {
     return () => { window.removeEventListener(EXCHANGE_RATES_CHANGED_EVENT, onMoney); window.removeEventListener(REPORTING_CURRENCY_CHANGED_EVENT, onMoney); };
   }, []);
   const current = loaded?.scope === scopeKey ? loaded : null;
+  useEffect(() => {
+    const key = JSON.stringify([scopeKey, requestedDeal || '']);
+    if (!current || !requestedDeal || handledDeal.current === key) return;
+    handledDeal.current = key;
+    const target = current.workspace.opportunities.find(row => row.id === requestedDeal);
+    if (!target) { setError('This deal is unavailable in this workspace. Choose another deal.'); return; }
+    const old = portfolioAssignments(current.catalog.records).find(row => row.opportunityId === requestedDeal);
+    setAssignmentId(requestedDeal); setAssignmentVersion(old?.version || 0);
+    setAssignment({ businessUnitId: old?.businessUnitId || '', brandId: old?.brandId || '', groupId: old?.groupId || '', productId: old?.productId || '' });
+  }, [current, requestedDeal, scopeKey]);
   const records = useMemo(() => current?.catalog.records || [], [current]);
   const nodes = useMemo(() => portfolioNodes(records), [records]);
   const money = capturePortfolioMoneyBasis(current?.workspace.opportunities.map(row => row.currency) || []);
@@ -84,6 +99,7 @@ export function PortfolioPage() {
           <div key={title} className="rounded-xl border border-gray-200 bg-white p-4"><p className="text-sm text-gray-500">{title}</p><p className="mt-1 text-xl font-bold text-navy">{value}</p><p className="mt-1 text-xs text-gray-500">{detail}</p></div>)}
       </div>
       <p className="text-xs text-gray-500">Current pipeline and all-time won/lost outcomes. Partial totals exclude missing amounts/rates. Planning FX dated {money.ratesAsOf}, with workspace overrides. Won value is not cash or accounting revenue. {totals.unmapped} qualified deals have no portfolio classification.</p>
+      {facts.some(row => row.qualified && row.originalBrand.trim()) && <details className="rounded-xl border border-gray-200 bg-white p-4" onToggle={event => setShowOriginalBrands(event.currentTarget.open)}><summary className="min-h-11 cursor-pointer py-2 font-semibold text-navy">Check original brand text before classification</summary><p className="mb-3 text-sm text-gray-500">Original deal text can differ from accepted catalog classifications. Use this reading to find naming gaps; Reports and Dashboards use the catalog IDs you confirm below.</p>{showOriginalBrands && <BrandPerformancePanel />}</details>}
       <section className="grid min-w-0 gap-5 lg:grid-cols-2">
         <form className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-5" onSubmit={async event => {
           event.preventDefault();
@@ -103,12 +119,13 @@ export function PortfolioPage() {
           <ul className="mt-3 max-h-[38rem] space-y-3 overflow-y-auto">{nodes.map(node => {
             const linked = facts.filter(fact => [fact.businessUnitId, fact.brandId, fact.groupId, fact.productId].includes(node.id));
             const reading = summarizePortfolio(linked);
-            return <li key={node.id} className="rounded-lg border border-gray-200 p-3"><p className="break-words font-bold text-navy">{node.name}</p><p className="text-xs text-gray-500">{kinds[node.kind]} · {node.status} · {linked.length} linked records · version {node.version}{node.parentId ? ` · parent: ${nodes.find(parent => parent.id === node.parentId)?.name}` : ''}</p><p className="mt-1 text-sm">Pipeline: {moneyLabel(reading.pipeline)}{reading.pipelineMissing ? ` (partial: ${reading.pipelineMissing} missing)` : ''}</p><div className="mt-2 flex flex-wrap gap-3"><button type="button" disabled={busy} className="text-sm font-bold text-brand-blue" onClick={() => { setEditing({ id: node.id, version: node.version }); setForm({ kind: node.kind, name: node.name, code: node.code, description: node.description, status: node.status, parentId: node.parentId, brandId: node.brandId, groupId: node.groupId, aliases: node.aliases }); }}>Edit</button><button type="button" disabled={busy} className="text-sm font-semibold text-gray-600" onClick={() => void apply(node.id, { kind: node.kind, name: node.name, code: node.code, description: node.description, parentId: node.parentId, brandId: node.brandId, groupId: node.groupId, aliases: node.aliases, status: node.status === 'active' ? 'retired' : 'active' }, node.version)}>{node.status === 'active' ? 'Retire' : 'Reactivate'}</button></div></li>;
+            return <li key={node.id} className="rounded-lg border border-gray-200 p-3"><p className="break-words font-bold text-navy">{node.name}</p><p className="text-xs text-gray-500">{kinds[node.kind]} · {node.status} · {linked.length} linked records · version {node.version}{node.parentId ? ` · parent: ${nodes.find(parent => parent.id === node.parentId)?.name}` : ''}</p><p className="mt-1 text-sm">Pipeline: {moneyLabel(reading.pipeline)}{reading.pipelineMissing ? ` (partial: ${reading.pipelineMissing} missing)` : ''}</p><div className="mt-2 flex flex-wrap gap-3"><button type="button" disabled={busy} className="text-sm font-bold text-brand-blue" onClick={() => { setEditing({ id: node.id, version: node.version }); setForm({ kind: node.kind, name: node.name, code: node.code, description: node.description, status: node.status, parentId: node.parentId, brandId: node.brandId, groupId: node.groupId, aliases: node.aliases }); }}>Edit</button><button type="button" disabled={busy} className="text-sm font-semibold text-gray-600" onClick={() => void apply(node.id, { kind: node.kind, name: node.name, code: node.code, description: node.description, parentId: node.parentId, brandId: node.brandId, groupId: node.groupId, aliases: node.aliases, status: node.status === 'active' ? 'retired' : 'active' }, node.version)}>{node.status === 'active' ? 'Retire' : 'Reactivate'}</button><Link className="inline-flex min-h-11 items-center text-sm font-bold text-brand-blue" to={portfolioReportHref(node.kind, node.id)}>View performance report</Link></div></li>;
           })}</ul>
         </div>
       </section>
       <section className="min-w-0 rounded-xl border border-gray-200 bg-white p-5">
         <h2 className="font-bold text-navy">Classify existing deals</h2><p className="mt-1 text-sm text-gray-500">Original brand/product text is preserved. Suggested matches need your choice. Bundle amounts are not split between products.</p>
+        <p className="mt-1 text-xs text-gray-500">Catalog counts and totals use direct deal classifications. Parent links organize entries; child totals are not rolled up.</p>
         <label className="mt-3 block text-sm">Find a deal<input className={control} value={search} onChange={event => setSearch(event.target.value)} placeholder="Account, deal, original brand or product" /></label>
         <label className="mt-3 block text-sm">Deal<select aria-label="Deal" className={control} value={assignmentId} onChange={event => chooseAssignment(event.target.value)}><option value="">Choose a deal</option>{opportunities.map(row => <option key={row.id} value={row.id}>{row.account} — {row.opportunity}</option>)}</select></label>
         {selected && <form className="mt-4 flex flex-col gap-3" onSubmit={async event => {

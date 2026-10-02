@@ -1,10 +1,21 @@
 import { reportMetricDefinitions, type ReportMetric } from '../reports/reportDefinition.ts';
+import type { SavedReport } from '../reports/reportRecord.ts';
 export const dashboardDimensions = { businessUnit: 'Business unit', brand: 'Brand', productGroup: 'Product group', product: 'Product / solution' } as const;
 export type DashboardDimension = keyof typeof dashboardDimensions;
 export type DashboardFilter = { field: DashboardDimension; id: string | null };
 export type DashboardWidget = { id: string; title: string; reportId: string; type: 'metric' | 'bar' | 'table'; metric: ReportMetric };
 export type DashboardDefinition = { schemaVersion: 1; name: string; description: string; filters: DashboardFilter[]; widgets: DashboardWidget[] };
 export function newDashboard(): DashboardDefinition { return { schemaVersion: 1, name: 'My dashboard', description: '', filters: [], widgets: [] }; }
+export function dashboardFromReport(report: SavedReport, widgetId: string): DashboardDefinition {
+  if (report.archived) throw new Error('Restore this report before using it in a dashboard.');
+  const preferred: ReportMetric = report.definition.dataset === 'collections' ? 'outstanding' : 'pipeline';
+  const metric = report.definition.metrics.includes(preferred) ? preferred : report.definition.metrics[0];
+  const compareGroups = report.definition.groupBy.some(field => report.definition.filterMode !== 'all'
+    || !report.definition.filters.some(filter => filter.field === field && filter.operator === 'equals'));
+  return parseDashboardDefinition({ ...newDashboard(), name: `${report.definition.name} dashboard`.slice(0, 200),
+    widgets: [{ id: widgetId, title: reportMetricDefinitions[metric].label, reportId: report.id,
+      type: compareGroups ? 'bar' : 'metric', metric }] });
+}
 export function parseDashboardDefinition(value: unknown): DashboardDefinition {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid dashboard definition.');
   const raw = value as DashboardDefinition;

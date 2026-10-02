@@ -1,5 +1,5 @@
 import { PageHeader } from '../../components/layout/PageFrame';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import JSZip from 'jszip';
@@ -14,6 +14,8 @@ import { parseReportDefinition, fieldsForDataset, operatorsForField, reportField
   type ReportCell, type ReportDefinition, type ReportField, type ReportFilter, type ReportMetric } from '../../domain/reports/reportDefinition';
 import { reportCsv, reportMetadata, type ReportRun, type ReportRow, type ReportGroup, type ReportMeasure } from '../../domain/reports/reportEngine';
 import type { SavedReport } from '../../domain/reports/reportRecord';
+import { portfolioReportDraft } from '../../domain/reports/reportHandoffs';
+import { moneyViewHref } from '../revenue/moneyViews';
 import './reports.css';
 const control = 'min-w-0 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-navy';
 const button = 'rounded-lg bg-navy px-4 py-2 text-sm font-bold text-white disabled:opacity-50';
@@ -36,7 +38,9 @@ function SummaryTable({ groups, definition, onGroup }: { groups: ReportGroup[]; 
     <tbody>{groups.map(group => <tr key={group.key}>{group.labels.map((label, i) => <td key={i}>{label}</td>)}{definition.metrics.map(key => <td key={key}>{metricLabel(key, group.metrics[key])}</td>)}{onGroup && <td><button type="button" className="font-semibold text-brand-blue" onClick={() => onGroup(group.key)}>View {group.sourceIds.length} records</button></td>}</tr>)}</tbody></table>;
 }
 export function ReportsPage() {
-  const [reportParams] = useSearchParams(), requestedReport = reportParams.get('report');
+  const [reportParams, setReportParams] = useSearchParams(), requestedReport = reportParams.get('report');
+  const catalogKind = reportParams.get('catalogKind'), catalogId = reportParams.get('catalogId');
+  const handledSelection = useRef('');
   const { user, loading: authLoading } = useAuthContext(), demo = useDemoWorkspaceMode(), sample = demo || hasLocalSampleData();
   const scope = useMemo<PortfolioScope>(() => ({ userId: sample ? null : user?.id || null, sampleDataActive: sample }), [sample, user?.id]);
   const scopeKey = `${scope.userId || 'local'}:${sample}`;
@@ -47,35 +51,48 @@ export function ReportsPage() {
   const [page, setPage] = useState(0), [columnSearch, setColumnSearch] = useState(''), [archived, setArchived] = useState(false);
   const [busy, setBusy] = useState(''), [error, setError] = useState(''), [message, setMessage] = useState('');
   const [reload, setReload] = useState(0);
+  const selectionKey = JSON.stringify([scopeKey, requestedReport || '', catalogKind || '', catalogId || '', reload]);
+  const [linkBlocked, setLinkBlocked] = useState(false);
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || handledSelection.current === selectionKey) return;
     let cancelled = false;
-    setLibrary(null); setRun(null); setEditing(null); setDefinition(reportTemplate('portfolio')); setError(''); setMessage(''); setBusy('library');
+    setLibrary(null); setRun(null); setEditing(null); setDefinition(reportTemplate('portfolio')); setError(''); setMessage(''); setLinkBlocked(false); setBusy('library');
     void Promise.all([loadSavedReports(scope), loadPortfolio(scope)]).then(([value, catalog]) => {
       if (!cancelled) {
         setLibrary({ scopeKey, value, nodes: portfolioNodes(catalog.records) });
-        if (requestedReport) { const record = value.records.find(row => row.id === requestedReport);
-          if (!record || record.archived) setError('This saved report is unavailable or archived. Restore it or choose another report.');
+        if (requestedReport && requestedReport !== 'new') { const record = value.records.find(row => row.id === requestedReport);
+          if (!record || record.archived) { setError('This saved report is unavailable or archived. Restore it or choose another report.'); setLinkBlocked(true); }
           else { setDefinition(record.definition); setEditing({ id: record.id, version: record.version }); }
+        } else if (catalogKind !== null || catalogId !== null) {
+          try { setDefinition(portfolioReportDraft(catalogKind, catalogId, portfolioNodes(catalog.records))); }
+          catch (failure) { setError(failure instanceof Error ? failure.message : 'Portfolio report unavailable.'); setLinkBlocked(true); }
         }
+        handledSelection.current = selectionKey;
       }
     }).catch(failure => { if (!cancelled) setError(failure instanceof Error ? failure.message : 'Could not load reports.'); })
       .finally(() => { if (!cancelled) setBusy(''); });
     return () => { cancelled = true; };
-  }, [scope, scopeKey, authLoading, reload, requestedReport]);
+  }, [scope, scopeKey, authLoading, reload, requestedReport, catalogKind, catalogId, selectionKey]);
   const current = library?.scopeKey === scopeKey ? library : null;
   const visibleRun = run?.scopeKey === scopeKey && JSON.stringify(run.definition) === JSON.stringify(definition) ? run : null;
   const fields = fieldsForDataset(definition.dataset), metrics = (Object.keys(reportMetricDefinitions) as ReportMetric[]).filter(key => reportMetricDefinitions[key].datasets.includes(definition.dataset));
   const change = (next: ReportDefinition) => { setDefinition(next); setDrillGroup(null); setPage(0); setMessage(''); };
-  const selectSaved = (record: SavedReport) => { if (record.archived) { setMessage('Restore the archived report before editing it.'); return; } change(record.definition); setEditing({ id: record.id, version: record.version }); setRun(null); };
+  const identify = (id: string, replace = false) => {
+    const next = new URLSearchParams(reportParams); next.set('report', id); next.delete('catalogKind'); next.delete('catalogId');
+    handledSelection.current = JSON.stringify([scopeKey, id, '', '', reload]); setReportParams(next, { replace }); setLinkBlocked(false); setError('');
+  };
+  const selectSaved = (record: SavedReport) => { if (record.archived) { setMessage('Restore the archived report before editing it.'); return; } change(record.definition); setEditing({ id: record.id, version: record.version }); setRun(null); identify(record.id); };
+  const savedDefinition = current?.value.records.find(record => record.id === editing?.id && !record.archived);
+  const dashboardReady = Boolean(savedDefinition && JSON.stringify(savedDefinition.definition) === JSON.stringify(definition));
   const save = async (record?: SavedReport, archive?: boolean) => {
     setBusy('save'); setError(''); setMessage('');
     try {
-      const value = await saveReportDefinition(scope, { id: record?.id || editing?.id || `report-${crypto.randomUUID()}`,
+      const id = record?.id || editing?.id || `report-${crypto.randomUUID()}`;
+      const value = await saveReportDefinition(scope, { id,
         expectedVersion: record?.version || editing?.version || 0, state: { definition: parseReportDefinition(record?.definition || definition), archived: archive ?? false } });
       setLibrary(previous => previous?.scopeKey === scopeKey ? { ...previous, value } : previous);
-      if (!record) { const saved = value.records.find(row => row.id === editing?.id) || value.records.at(-1)!; setEditing({ id: saved.id, version: saved.version }); }
-      if (record?.id === editing?.id) { setEditing(null); setRun(null); }
+      if (!record) { const saved = value.records.find(row => row.id === id)!; setEditing({ id: saved.id, version: saved.version }); identify(saved.id, true); }
+      if (record && record.id === editing?.id) { setEditing(null); setRun(null); identify('new', true); }
       setMessage(value.message);
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not save this report.'); }
     finally { setBusy(''); }
@@ -116,12 +133,12 @@ export function ReportsPage() {
         <p className="rounded-lg bg-blue-50 p-3 text-sm text-navy">{current.value.message}</p>
         <section className="grid min-w-0 gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
           <aside className="min-w-0 rounded-xl border border-gray-200 bg-white p-4"><h2 className="font-bold text-navy">Start from a template</h2>
-            <div className="mt-3 flex flex-col gap-2">{(['portfolio', 'collections'] as const).map(key => <button key={key} className={secondary} disabled={Boolean(busy)} onClick={() => { change(reportTemplate(key)); setEditing(null); setRun(null); }}>{reportTemplate(key).name}</button>)}</div>
+            <div className="mt-3 flex flex-col gap-2">{(['portfolio', 'collections'] as const).map(key => <button key={key} className={secondary} disabled={Boolean(busy)} onClick={() => { change(reportTemplate(key)); setEditing(null); setRun(null); identify('new'); }}>{reportTemplate(key).name}</button>)}</div>
             <h2 className="mt-5 font-bold text-navy">Saved reports</h2><label className="mt-2 flex min-h-11 items-center gap-2 text-xs"><input type="checkbox" checked={archived} onChange={event => setArchived(event.target.checked)} />Show archived reports</label>
             <ul className="mt-3 space-y-3">{current.value.records.filter(record => record.archived === archived).map(record => <li key={record.id} className="break-words rounded-lg border border-gray-200 p-3"><button className="text-left text-sm font-semibold text-brand-blue" disabled={Boolean(busy)} onClick={() => selectSaved(record)}>{record.definition.name}</button><p className="mt-1 text-xs text-gray-500">{record.definition.dataset} · version {record.version}</p><button className="mt-2 text-xs font-semibold text-gray-600" disabled={Boolean(busy)} onClick={() => void save(record, !record.archived)}>{record.archived ? 'Restore report' : 'Archive report'}</button></li>)}</ul>
             {!current.value.records.some(record => record.archived === archived) && <p className="mt-3 text-sm text-gray-500">No saved reports here yet.</p>}
           </aside>
-          <fieldset disabled={Boolean(busy)} className="flex min-w-0 flex-col gap-4 rounded-xl border border-gray-200 bg-white p-5">
+          <fieldset disabled={Boolean(busy) || linkBlocked} className="flex min-w-0 flex-col gap-4 rounded-xl border border-gray-200 bg-white p-5">
             <legend className="sr-only">Report builder</legend><h2 className="font-bold text-navy">{editing ? 'Edit saved report' : 'Customize report'}</h2>
             <label className="text-sm">Report name<input className={control} value={definition.name} maxLength={200} onChange={event => change({ ...definition, name: event.target.value })} /></label>
             <label className="text-sm">Purpose<textarea className={control} value={definition.description} maxLength={2000} onChange={event => change({ ...definition, description: event.target.value })} /></label>
@@ -148,7 +165,8 @@ export function ReportsPage() {
             <div className="grid gap-3 sm:grid-cols-2">{[0, 1].map(index => <label key={index} className="text-sm">Group {index + 1}<select aria-label={`Group ${index + 1}`} className={control} value={definition.groupBy[index] || ''} disabled={index === 1 && !definition.groupBy.length} onChange={event => { const groupBy = [...definition.groupBy]; if (!event.target.value) groupBy.splice(index); else groupBy[index] = event.target.value as ReportField; change({ ...definition, groupBy }); }}><option value="">No grouping</option>{fields.filter(key => reportFields[key].type !== 'number').map(key => <option key={key} value={key}>{reportFields[key].label}</option>)}</select></label>)}</div>
             <div><h3 className="font-semibold text-navy">Measures</h3><div className="mt-2 flex flex-wrap gap-4">{metrics.map(key => <label key={key} className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={definition.metrics.includes(key)} onChange={event => change({ ...definition, metrics: event.target.checked ? [...definition.metrics, key] : definition.metrics.filter(metric => metric !== key) })} />{reportMetricDefinitions[key].label}</label>)}</div></div>
             <p className="text-xs text-gray-500">Amounts use reporting currency except Original value. Partial totals show missing records. Won value is not cash; win rate needs 3 decided deals. Collections use recorded receipts and planning schedules; missing dates do not mean not overdue.</p>
-            <div className="flex flex-wrap gap-2"><button type="button" className={button} onClick={() => void execute()}>Run report</button><button type="button" className={secondary} onClick={() => void save()}>{editing ? 'Save changes' : 'Save report'}</button><button type="button" className={secondary} onClick={() => { setEditing(null); setRun(null); change({ ...definition, name: `${definition.name} (copy)` }); }}>Duplicate as new report</button></div>
+            <div className="flex flex-wrap gap-2"><button type="button" className={button} onClick={() => void execute()}>Run report</button><button type="button" className={secondary} onClick={() => void save()}>{editing ? 'Save changes' : 'Save report'}</button><button type="button" className={secondary} onClick={() => { setEditing(null); setRun(null); change({ ...definition, name: `${definition.name} (copy)` }); identify('new'); }}>Duplicate as new report</button></div>
+            {dashboardReady && !busy ? <Link className="inline-flex min-h-11 items-center self-start font-semibold text-brand-blue" to={`/app/dashboards?${new URLSearchParams({ dashboard: 'new', report: editing!.id })}`}>Create dashboard from this report</Link> : <p className="text-xs text-gray-500">Save this report before using it in a dashboard. Dashboard widgets use the saved definition.</p>}
           </fieldset>
         </section>
         {busy === 'run' && <p role="status">Loading current report sources…</p>}
@@ -156,7 +174,7 @@ export function ReportsPage() {
         {visibleRun && <section className="min-w-0 rounded-xl border border-gray-200 bg-white p-5" data-testid="report-result">
           <h2 className="text-lg font-bold text-navy">{visibleRun.definition.name}</h2><p className="mt-2 text-sm text-gray-500">{visibleRun.rows.length} matching records from {visibleRun.sourceCount} loaded source records · {visibleRun.money.currency} · run {visibleRun.runAt}</p>
           <p className="mt-1 text-xs text-gray-500">{visibleRun.grain}. {visibleRun.sourceStatus} Timezone: {visibleRun.timezone}; planning FX {visibleRun.money.ratesAsOf}, workspace overrides captured.</p>
-          {definition.dataset === 'collections' && <p className="mt-2 text-xs text-gray-500">Only quotes linked by ID are used; legacy name-only quotes are excluded. Open a row’s source deal or <Link className="font-semibold text-brand-blue" to="/app/money?view=collections">open Collections</Link> to manage payments.</p>}
+          {definition.dataset === 'collections' && <p className="mt-2 text-xs text-gray-500">Only quotes linked by ID are used; legacy name-only quotes are excluded. Open a row’s source deal or <Link className="font-semibold text-brand-blue" to={moneyViewHref('collections')}>open Collections</Link> to manage payments.</p>}
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{visibleRun.definition.metrics.map(key => <div key={key} className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-500">{reportMetricDefinitions[key].label}</p><p className="mt-1 font-bold text-navy">{metricLabel(key, visibleRun.totals[key])}</p></div>)}</div>
           <div className="my-4 flex flex-wrap gap-2"><button type="button" className={button} disabled={Boolean(busy)} onClick={() => void download()}>Export CSV pack</button><button type="button" className={secondary} disabled={!printAllowed || Boolean(busy)} onClick={() => { assertReportScope(scope); window.print(); }}>Print / save PDF</button>{activeGroup && <button type="button" className={secondary} onClick={() => { setDrillGroup(null); setPage(0); }}>Back to summary</button>}</div>
           {!printAllowed && <p className="mb-3 text-xs text-gray-500">Print supports up to 8 detail columns and 2,000 rows/groups. Reduce columns or use grouped summary; CSV includes every matching row.</p>}

@@ -1,5 +1,7 @@
 # Memoire — bước 2: Reports tùy chỉnh
 
+Đối chiếu liên kết 2026-10-01: catalog entry mở draft đúng phạm vi ID; chọn/lưu report giữ ID trong URL cho reload/Back. Report đã lưu và không còn thay đổi chưa lưu có thể tạo dashboard draft dùng chính report đó. Liên kết thiếu/sai phạm vi không chạy một report mặc định khác. Xem [audit logic và công sức sử dụng](../qa/product-logic-linkage-audit-2026-10-01.md).
+
 Ngày: 2026-10-01. Trạng thái: hoàn tất phạm vi bước 2 trong checkout; chưa deploy ứng dụng hoặc áp dụng migration lên Production. Tiếp nối [Products & Brands](portfolio-foundation-implementation-2026-10-01.md) và [đề xuất phát triển ba năng lực](portfolio-analytics-reporting-proposal-2026-10-01.md).
 
 ## Kết quả sử dụng được

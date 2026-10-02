@@ -10,7 +10,6 @@ import { normalizeEntityName } from '../../utils/accountIdentity.ts';
 import { Copy, Loader2 } from 'lucide-react';
 import { ReviewAnalyticsSection } from './ReviewAnalyticsSection';
 import { ReviewScoreboardPanel } from './ReviewScoreboardPanel';
-import { BrandPerformancePanel } from './BrandPerformancePanel';
 import { ChangesSinceReviewPanel, LeadFunnelPanel } from './ChangesSinceReviewPanel';
 import { CommercialRiskPanel } from '../threads/CommercialRiskPanel';
 import { ThreadsSection } from '../threads/ThreadsSection';
@@ -194,15 +193,10 @@ export function SalesReviewsPage() {
               time. Renders nothing on a workspace with no leads. */}
           <LeadFunnelPanel />
 
-          {/* Which line is carrying the number.
-              The brand field has been on every deal, the rollup has been
-              computed and this panel has been written since the brand round -
-              and it was mounted nowhere, so a distributor filled in Brand on
-              deal after deal and the product never once answered with it.
-              Renders nothing until the workspace actually carries brands, so a
-              single-line seller does not get a chart that says "one brand,
-              100%". */}
-          <BrandPerformancePanel />
+          {/* Products owns current/all-time portfolio readings; Review keeps
+              its selected-period story. Original brand text remains available
+              as an explicit classification check in Products. */}
+          <Link to="/app/products" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand-blue">Review product and brand performance</Link>
 
           <ReviewNarrativeLabel
             label="What changes next week?"

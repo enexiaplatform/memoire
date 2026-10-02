@@ -45,10 +45,10 @@ export function BrandPerformancePanel() {
         <div>
           <div className="flex items-center gap-2">
             <Layers className="h-4 w-4 text-brand-blue" />
-            <h2 className="text-lg font-bold text-navy">Which brand is carrying the number</h2>
+            <h3 className="text-lg font-bold text-navy">Original brand text on deals</h3>
           </div>
           <p className="mt-1 max-w-2xl text-sm text-gray-500">
-            Every line you distribute, by the money it has in play and the money it has closed.
+            Current pipeline and all-time closed outcomes grouped by the original brand text.
             {report.leader ? ` ${report.leader.brand} is carrying the most right now.` : ''}
           </p>
         </div>

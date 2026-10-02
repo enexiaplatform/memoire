@@ -105,6 +105,8 @@ try {
   await panel.getByRole('button', { name: 'Archive dashboard', exact: true }).click();
   await panel.locator('summary').filter({ hasText: 'Archived dashboards' }).click(); await panel.getByRole('button', { name: 'Restore dashboard', exact: true }).click();
   await panel.getByRole('button', { name: 'New dashboard', exact: true }).click(); await panel.getByRole('button', { name: 'Save dashboard', exact: true }).waitFor();
+  assert.equal(await panel.getByRole('button', { name: 'Save dashboard', exact: true }).isDisabled(), true, 'empty dashboards should not create meaningless saved entries');
+  await panel.getByRole('button', { name: 'Add widget', exact: true }).click();
   await panel.getByLabel('Dashboard name', { exact: true }).fill('Unsaved dashboard');
   await page.evaluate(() => { const original = Storage.prototype.setItem; Storage.prototype.setItem = function (key, value) { if (key === 'memoire.dashboardDefinitions.v1') throw new DOMException('Full', 'QuotaExceededError'); return original.call(this, key, value); }; });
   await panel.getByRole('button', { name: 'Save dashboard', exact: true }).click(); await panel.getByRole('alert').filter({ hasText: /not saved/ }).waitFor();

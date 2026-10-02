@@ -1,5 +1,5 @@
 import { PageHeader } from '../../components/layout/PageFrame';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import JSZip from 'jszip';
 import { useAuthContext } from '../../auth/authContext';
@@ -10,7 +10,7 @@ import { portfolioNodes, type PortfolioNode } from '../../domain/portfolio/portf
 import { loadSavedReports, type ReportLibrary } from '../../services/reportStore';
 import { assertDashboardScope, loadSavedDashboards, saveDashboardDefinition, type DashboardLibrary } from '../../services/dashboardStore';
 import { executeWorkspaceDashboard } from '../../services/dashboardData';
-import { dashboardDimensions, newDashboard, parseDashboardDefinition, type DashboardDefinition, type DashboardDimension, type DashboardWidget } from '../../domain/dashboards/dashboardDefinition';
+import { dashboardDimensions, dashboardFromReport, newDashboard, parseDashboardDefinition, type DashboardDefinition, type DashboardDimension, type DashboardWidget } from '../../domain/dashboards/dashboardDefinition';
 import { barGroups, measureText, widgetError, type DashboardRun } from '../../domain/dashboards/dashboardEngine';
 import type { SavedDashboard } from '../../domain/dashboards/dashboardRecord';
 import { reportFields, reportMetricDefinitions } from '../../domain/reports/reportDefinition';
@@ -47,26 +47,35 @@ export function DashboardsPage() {
   const scope = useMemo<PortfolioScope>(() => ({ userId: sample ? null : user?.id || null, sampleDataActive: sample }), [sample, user?.id]);
   const scopeKey = `${scope.userId || 'local'}:${sample}`;
   const [params, setParams] = useSearchParams(), requested = params.get('dashboard') || '';
+  const requestedReport = params.get('report') || '', handledSelection = useRef('');
   const [library, setLibrary] = useState<{ scopeKey: string; boards: DashboardLibrary; reports: ReportLibrary; nodes: PortfolioNode[] } | null>(null);
   const [definition, setDefinition] = useState<DashboardDefinition>(newDashboard), [editing, setEditing] = useState<{ id: string; version: number } | null>(null);
   const [run, setRun] = useState<DashboardRun | null>(null), [stale, setStale] = useState(false), [openEditor, setOpenEditor] = useState(true), [archived, setArchived] = useState(false);
   const [busy, setBusy] = useState(''), [error, setError] = useState(''), [message, setMessage] = useState(''), [reload, setReload] = useState(0), [detailPage, setDetailPage] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 640px)').matches);
+  const selectionKey = JSON.stringify([scopeKey, requested, requestedReport, reload]);
   useEffect(() => { const media = window.matchMedia('(min-width: 640px)'), adapt = () => setFiltersOpen(media.matches); media.addEventListener('change', adapt); return () => media.removeEventListener('change', adapt); }, []);
   useEffect(() => {
-    if (loading) return;
+    if (loading || handledSelection.current === selectionKey) return;
     let cancelled = false;
     setLibrary(null); setRun(null); setEditing(null); setDefinition(newDashboard()); setError(''); setMessage(''); setBusy('library');
     void Promise.all([loadSavedDashboards(scope), loadSavedReports(scope), loadPortfolio(scope)]).then(([boards, reports, catalog]) => {
       if (cancelled) return;
       setLibrary({ scopeKey, boards, reports, nodes: portfolioNodes(catalog.records) });
+      handledSelection.current = selectionKey;
       const record = requested === 'new' ? undefined : requested ? boards.records.find(row => row.id === requested) : boards.records.find(row => !row.archived);
       if (requested && requested !== 'new' && (!record || record.archived)) { setError('This dashboard is unavailable or archived. Choose an active dashboard or restore it.'); return; }
       if (record) { setDefinition(record.definition); setEditing({ id: record.id, version: record.version }); }
+      else if (requestedReport) {
+        const report = reports.records.find(row => row.id === requestedReport && !row.archived);
+        if (!report) { setError('This source report is unavailable or archived. Choose an active saved report.'); return; }
+        setDefinition(dashboardFromReport(report, `widget-${crypto.randomUUID()}`));
+        setMessage('Dashboard draft prepared from your saved report. Review or refresh it, then save when ready.');
+      }
     }).catch(failure => { if (!cancelled) setError(failure instanceof Error ? failure.message : 'Dashboard library unavailable.'); })
       .finally(() => { if (!cancelled) setBusy(''); });
     return () => { cancelled = true; };
-  }, [scope, scopeKey, loading, requested, reload]);
+  }, [scope, scopeKey, loading, requested, requestedReport, reload, selectionKey]);
   const current = library?.scopeKey === scopeKey ? library : null;
   const filterParam = params.get('dashboardFilters');
   const effective = useMemo(() => {
@@ -85,7 +94,8 @@ export function DashboardsPage() {
     next.delete('widget'); next.delete('group'); setParams(next); setDetailPage(0);
   };
   const select = (record: SavedDashboard) => {
-    const next = new URLSearchParams(params); next.set('dashboard', record.id); next.delete('dashboardFilters'); next.delete('widget'); next.delete('group'); setParams(next);
+    const next = new URLSearchParams(params); next.set('dashboard', record.id); next.delete('report'); next.delete('dashboardFilters'); next.delete('widget'); next.delete('group');
+    handledSelection.current = JSON.stringify([scopeKey, record.id, '', reload]); setParams(next);
     setDefinition(record.definition); setEditing({ id: record.id, version: record.version }); setRun(null); setOpenEditor(true);
   };
   const save = async (record?: SavedDashboard, archive?: boolean) => {
@@ -95,8 +105,8 @@ export function DashboardsPage() {
       const boards = await saveDashboardDefinition(scope, { id, expectedVersion: record?.version || editing?.version || 0,
         state: { definition: parseDashboardDefinition(record?.definition || effective), archived: archive ?? false } });
       setLibrary(old => old?.scopeKey === scopeKey ? { ...old, boards } : old);
-      if (!record) { const saved = boards.records.find(row => row.id === id)!; setEditing({ id, version: saved.version }); setDefinition(saved.definition); if (!editing) { const next = new URLSearchParams(params); next.set('dashboard', id); setParams(next, { replace: true }); } }
-      if (record?.id === editing?.id) { setEditing(null); setRun(null); setDefinition(newDashboard()); }
+      if (!record) { const saved = boards.records.find(row => row.id === id)!; setEditing({ id, version: saved.version }); setDefinition(saved.definition); if (!editing) { const next = new URLSearchParams(params); next.set('dashboard', id); next.delete('report'); handledSelection.current = JSON.stringify([scopeKey, id, '', reload]); setParams(next, { replace: true }); } }
+      if (record && record.id === editing?.id) { setEditing(null); setRun(null); setDefinition(newDashboard()); }
       setMessage(boards.message);
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Dashboard was not saved.'); }
     finally { setBusy(''); }
@@ -141,7 +151,7 @@ export function DashboardsPage() {
     {!current ? <p>{busy || loading ? 'Loading dashboards…' : 'Reload the library to try again.'}</p> : <>
       <p className="rounded-lg bg-blue-50 p-3 text-sm text-navy">{current.boards.message}</p>
       <div className="flex flex-wrap items-end gap-3"><label className="w-full min-w-0 text-sm font-semibold sm:w-auto sm:min-w-64 sm:flex-1">Saved dashboard<select aria-label="Saved dashboard" className={control} value={editing?.id || ''} disabled={Boolean(busy)} onChange={event => { const record = current.boards.records.find(row => row.id === event.target.value); if (record) select(record); }}><option value="">Unsaved dashboard</option>{current.boards.records.filter(row => !row.archived).map(row => <option key={row.id} value={row.id}>{row.definition.name}</option>)}</select></label>
-        <button className={secondary} disabled={Boolean(busy)} onClick={() => { const next = new URLSearchParams(params); ['dashboardFilters', 'widget', 'group'].forEach(key => next.delete(key)); next.set('dashboard', 'new'); setParams(next); setDefinition(newDashboard()); setEditing(null); setRun(null); setOpenEditor(true); }}>New dashboard</button>
+        <button className={secondary} disabled={Boolean(busy)} onClick={() => { const next = new URLSearchParams(params); ['dashboardFilters', 'widget', 'group', 'report'].forEach(key => next.delete(key)); next.set('dashboard', 'new'); handledSelection.current = JSON.stringify([scopeKey, 'new', '', reload]); setParams(next); setDefinition(newDashboard()); setError(''); setMessage(''); setEditing(null); setRun(null); setOpenEditor(true); }}>New dashboard</button>
         <button className={primary} disabled={Boolean(busy) || !effective?.widgets.length} onClick={() => void execute()}>{busy === 'run' ? 'Refreshing…' : 'Refresh dashboard'}</button>
         <button className={secondary} disabled={Boolean(busy) || !visible || stale} onClick={() => void download()}>Export dashboard data</button>
       </div>
@@ -168,12 +178,12 @@ export function DashboardsPage() {
         {!activeReports.length && <p className="text-sm">No active saved reports. <Link className="font-semibold text-brand-blue" to="/app/reports">Create and save a report first.</Link></p>}
         <ol className="space-y-4">{definition.widgets.map((widget, index) => { const report = activeReports.find(row => row.id === widget.reportId); return <li key={widget.id} className="min-w-0 rounded-lg border border-gray-200 p-3"><div className="grid min-w-0 gap-3 sm:grid-cols-2">
           <label className="min-w-0 text-sm">Widget {index + 1} title<input className={control} value={widget.title} onChange={event => updateWidget(index, { ...widget, title: event.target.value })} /></label>
-          <label className="min-w-0 text-sm">Widget {index + 1} report<select aria-label={`Widget ${index + 1} report`} className={control} value={widget.reportId} onChange={event => { const next = activeReports.find(row => row.id === event.target.value)!; updateWidget(index, { ...widget, reportId: next.id, metric: next.definition.metrics[0] }); }}>
+          <label className="min-w-0 text-sm">Widget {index + 1} report<select aria-label={`Widget ${index + 1} report`} className={control} value={widget.reportId} onChange={event => { const next = activeReports.find(row => row.id === event.target.value)!; updateWidget(index, { ...widget, reportId: next.id, metric: next.definition.metrics.includes(widget.metric) ? widget.metric : dashboardFromReport(next, widget.id).widgets[0].metric, type: widget.type === 'bar' && !next.definition.groupBy.length ? 'metric' : widget.type }); }}>
             {!report && <option value={widget.reportId}>Unavailable report</option>}{activeReports.map(row => <option key={row.id} value={row.id}>{row.definition.name}</option>)}</select></label>
-          <label className="min-w-0 text-sm">Widget {index + 1} view<select aria-label={`Widget ${index + 1} view`} className={control} value={widget.type} onChange={event => updateWidget(index, { ...widget, type: event.target.value as DashboardWidget['type'] })}><option value="metric">Metric card</option><option value="bar">Horizontal bar chart</option><option value="table">Summary table</option></select></label>
+          <label className="min-w-0 text-sm">Widget {index + 1} view<select aria-label={`Widget ${index + 1} view`} className={control} value={widget.type} onChange={event => updateWidget(index, { ...widget, type: event.target.value as DashboardWidget['type'] })}><option value="metric">Metric card</option><option value="bar" disabled={!report?.definition.groupBy.length}>Horizontal bar chart</option><option value="table">Summary table</option></select></label>
           <label className="min-w-0 text-sm">Widget {index + 1} measure<select aria-label={`Widget ${index + 1} measure`} className={control} value={widget.metric} onChange={event => updateWidget(index, { ...widget, metric: event.target.value as DashboardWidget['metric'] })}>{!report?.definition.metrics.includes(widget.metric) && <option value={widget.metric}>Unavailable measure</option>}{report?.definition.metrics.map(metric => <option key={metric} value={metric}>{reportMetricDefinitions[metric].label}</option>)}</select></label>
         </div><div className="mt-3 flex flex-wrap gap-2"><button className={secondary} aria-label={`Move widget ${index + 1} up`} disabled={!index} onClick={() => { const widgets = [...definition.widgets]; [widgets[index - 1], widgets[index]] = [widgets[index], widgets[index - 1]]; change({ ...definition, widgets }); }}>Move up</button><button className={secondary} aria-label={`Move widget ${index + 1} down`} disabled={index === definition.widgets.length - 1} onClick={() => { const widgets = [...definition.widgets]; [widgets[index + 1], widgets[index]] = [widgets[index], widgets[index + 1]]; change({ ...definition, widgets }); }}>Move down</button><button className={secondary} aria-label={`Remove widget ${index + 1}`} onClick={() => change({ ...definition, widgets: definition.widgets.filter(row => row.id !== widget.id) })}>Remove</button></div></li>; })}</ol>
-        <div className="flex flex-wrap gap-2"><button className={secondary} disabled={!activeReports.length || definition.widgets.length >= 12} onClick={() => { const report = activeReports[0]; change({ ...definition, widgets: [...definition.widgets, { id: `widget-${crypto.randomUUID()}`, title: report.definition.name, reportId: report.id, type: 'metric', metric: report.definition.metrics[0] }] }); }}>Add widget</button><button className={primary} onClick={() => void save()}>{editing ? 'Save dashboard changes' : 'Save dashboard'}</button><button className={secondary} onClick={() => { change({ ...definition, name: `${definition.name} (copy)` }); setEditing(null); }}>Duplicate as new dashboard</button>{editing && <button className={secondary} onClick={() => { const record = current.boards.records.find(row => row.id === editing.id); if (record) void save(record, true); }}>Archive dashboard</button>}</div>
+        <div className="flex flex-wrap gap-2"><button className={secondary} disabled={!activeReports.length || definition.widgets.length >= 12} onClick={() => { const report = activeReports[0]; change({ ...definition, widgets: [...definition.widgets, { ...dashboardFromReport(report, `widget-${crypto.randomUUID()}`).widgets[0], title: report.definition.name, type: 'metric' }] }); }}>Add widget</button><button className={primary} disabled={!definition.widgets.length} onClick={() => void save()}>{editing ? 'Save dashboard changes' : 'Save dashboard'}</button><button className={secondary} onClick={() => { change({ ...definition, name: `${definition.name} (copy)` }); setEditing(null); }}>Duplicate as new dashboard</button>{editing && <button className={secondary} onClick={() => { const record = current.boards.records.find(row => row.id === editing.id); if (record) void save(record, true); }}>Archive dashboard</button>}</div>
         <p className="text-xs text-gray-500">Up to 12 widgets. Layout follows widget order; charts use report groupings. Save includes the current dashboard filters. Refresh reads current report revisions.</p>
       </fieldset></details>
       <details className="rounded-xl border border-gray-200 bg-white p-4"><summary className="min-h-11 cursor-pointer py-3 font-semibold text-navy" onClick={() => setArchived(!archived)}>Archived dashboards</summary>{archived && <ul className="space-y-2">{current.boards.records.filter(row => row.archived).map(record => <li key={record.id} className="flex flex-wrap items-center justify-between gap-2 text-sm"><span>{record.definition.name}</span><button className={secondary} disabled={Boolean(busy)} onClick={() => void save(record, false)}>Restore dashboard</button></li>)}</ul>}</details>

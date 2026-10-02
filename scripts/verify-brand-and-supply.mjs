@@ -47,9 +47,12 @@ import {
 {
   const panel = 'src/features/reviews/BrandPerformancePanel.tsx';
   assert.ok(existsSync(panel), 'the brand rollup panel must exist');
-  const mounted = ['src/features/reviews/SalesReviewsPage.tsx', 'src/features/reviews/ReviewAnalyticsSection.tsx']
-    .some((file) => existsSync(file) && readFileSync(file, 'utf8').includes('<BrandPerformancePanel'));
-  assert.ok(mounted, 'the brand rollup must be rendered on Review, not just written');
+  const products = readFileSync('src/features/portfolio/PortfolioPage.tsx', 'utf8');
+  assert.ok(products.includes('<BrandPerformancePanel'), 'original deal-brand reading remains available under Products');
+  assert.match(products, /showOriginalBrands && <BrandPerformancePanel/, 'legacy brand reading loads only when explicitly opened');
+  const review = readFileSync('src/features/reviews/SalesReviewsPage.tsx', 'utf8');
+  assert.ok(!review.includes('<BrandPerformancePanel'), 'all-time original brand totals must not duplicate the weekly review');
+  assert.match(review, /to="\/app\/products"/, 'Review links to the standalone owner of product performance');
 
   const field = readFileSync('src/features/opportunities/OpportunitiesPage.tsx', 'utf8');
   assert.ok(field.includes('Brand / principal'), 'and the deal editor must still be where a brand is set');

@@ -641,7 +641,7 @@ function EmptyCollection() {
         become a collection schedule here, with nothing to re-enter.
       </p>
       <Link
-        to="/app/money"
+        to="/app/revenue"
         className="mt-4 inline-flex rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
       >
         Open Orders

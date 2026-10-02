@@ -3460,6 +3460,7 @@ function OpportunityPanel({
           onChange={(value) => update('productOrSolution', value)}
           options={productOptions}
         />
+        {mode === 'edit' && editingOpportunity && !isLeadStage(editingOpportunity.stage) && <p className="text-sm text-gray-500">Classifications feed Reports and Dashboards. <Link className="inline-flex min-h-11 items-center font-semibold text-brand-blue" to={`/app/products?opportunityId=${encodeURIComponent(editingOpportunity.id)}`}>Classify this deal</Link><span className="block text-xs">Save any deal changes before opening classification.</span></p>}
         {/* The principal whose line this deal sells. It arrived with the CSV
             import and had no way in by hand, so a deal added manually could
             never join a brand - which made the brand rollup a report on the
