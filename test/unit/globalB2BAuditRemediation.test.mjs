@@ -31,6 +31,13 @@ test('only an accepted revision changes the contract amount, currency, terms and
   const after = calculate(f).book.orders.find(o => o.opportunityId === accepted.opportunityId);
   assert.equal(after.amount, 20000); assert.equal(after.currency, 'EUR'); assert.equal(after.paymentTerm, 'Net 60');
   assert.equal(after.fullyCollected, false);
+  // Same-day revisions must resolve identically in Orders and strict ID-linked reports.
+  const sameDay = { ...accepted, id: 'same-day-revision', amount: 17000, updatedAt: '2026-10-02T12:00:00Z' };
+  f.quotes = [accepted, sameDay];
+  for (const linkage of ['legacy-names', 'explicit-id']) {
+    const same = buildOrderBook({ opportunities: f.opportunities, quotes: f.quotes, milestoneRecords: [], linkage, today });
+    assert.equal(same.orders.find(o => o.opportunityId === accepted.opportunityId).amount, 17000);
+  }
 });
 
 test('retrying a receipt identity is idempotent; distinct identical transfers remain separate', () => {

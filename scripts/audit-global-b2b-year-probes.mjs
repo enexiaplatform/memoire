@@ -4,17 +4,21 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import JSZip from 'jszip';
 import { createClient } from '@supabase/supabase-js';
-const root=process.env.MEMOIRE_YEAR_AUDIT_DIR||'.audit/global-b2b-year-2026-10-03';
+const source=process.env.MEMOIRE_YEAR_AUDIT_DIR||'.audit/global-b2b-year-2026-10-03';
+const root=process.env.MEMOIRE_YEAR_PROBE_ARTIFACT_DIR||source;
+fs.mkdirSync(root,{recursive:true});
+const expectFixed=process.argv.includes('--expect-fixed');
 if(!process.argv.includes('--production-qc'))throw Error('Explicit --production-qc required');
-const credentials=JSON.parse(fs.readFileSync(`${root}/credentials.private.json`));
-const fixture=JSON.parse(fs.readFileSync(`${root}/fixture.json`));
+const credentials=JSON.parse(fs.readFileSync(`${source}/credentials.private.json`));
+const fixture=JSON.parse(fs.readFileSync(`${source}/fixture.json`));
+assert.match(credentials.email,/^northstar-qc-\d+@example\.invalid$/);
 const env=Object.fromEntries(fs.readFileSync('.env','utf8').split(/\r?\n/).filter(l=>l.includes('=')&&!l.startsWith('#')).map(l=>{let i=l.indexOf('=');return[l.slice(0,i).trim(),l.slice(i+1).trim().replace(/^['"]|['"]$/g,'')];}));
 assert.equal(env.VITE_SUPABASE_URL,'https://mlmpcpkucurylkrobain.supabase.co');
 const db=createClient(env.VITE_SUPABASE_URL,env.VITE_SUPABASE_ANON_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 const {data:auth,error}=await db.auth.signInWithPassword({email:credentials.email,password:credentials.password});assert.ifError(error);
 const browser=await chromium.launch({headless:true}),evidence={at:new Date().toISOString(),userId:credentials.userId,probes:[],restored:[],ui:[],errors:[]};
 const save=()=>fs.writeFileSync(`${root}/probe-evidence.json`,JSON.stringify(evidence,null,2));
-const base='https://www.memoire-official.com';
+const base=process.env.MEMOIRE_BROWSER_BASE||'https://www.memoire-official.com';
 async function pageFor(route) {
   const context=await browser.newContext({viewport:{width:1440,height:1000},timezoneId:'Asia/Ho_Chi_Minh'});await context.addInitScript(s=>localStorage.setItem('memoire.supabase.auth',JSON.stringify(s)),auth.session);
   const page=await context.newPage();page.setDefaultTimeout(30000);await page.goto(base+route);return {page,context};
@@ -61,6 +65,13 @@ try{
   const marginText=await margin.page.getByRole('main').innerText();assert.match(marginText,/33%/);fs.writeFileSync(`${root}/margin.txt`,marginText);await margin.page.screenshot({path:`${root}/margin.png`,fullPage:true});evidence.ui.push({name:'48 cloud landed costs visible in Margin',coverage:48,marginPct:33,oracleGrossMargin:fixture.oracle.grossMargin,oracleLandedCost:fixture.oracle.landedCost});await margin.context.close();
   const backup=await pageFor('/app/settings?tab=export');
   try{if(!await backup.page.getByRole('button',{name:'Download ZIP',exact:true}).count()){const btn=backup.page.getByRole('button',{name:'Export & restore',exact:true});if(await btn.count())await btn.click();}await backup.page.getByRole('button',{name:'Download ZIP',exact:true}).waitFor();const downloaded=backup.page.waitForEvent('download');await backup.page.getByRole('button',{name:'Download ZIP',exact:true}).click();const d=await downloaded;await d.saveAs(`${root}/northstar-workspace-backup.zip`);const z=await JSZip.loadAsync(fs.readFileSync(`${root}/northstar-workspace-backup.zip`));evidence.ui.push({name:'Full workspace ZIP exported in UI',files:Object.keys(z.files)});}catch(e){evidence.errors.push(`Workspace export: ${e.message}`);}finally{await backup.context.close();}
-  evidence.finished=true;save();console.log(JSON.stringify(evidence));
+  if(expectFixed){
+    for(const probe of evidence.probes)assert.equal(probe.defectConfirmed,false,probe.name);
+    assert.equal(evidence.ui.find(p=>p.name==='Collection deep link preserves view and opens the target order').collectionsHeading,1);
+    assert.equal(evidence.ui.find(p=>p.name==='Future date accepted by real Collection form').accepted,false);
+    assert.equal(evidence.ui.find(p=>p.name==='EUR receipt displayed as USD without converting the original amount').mislabelledTextCount,0);
+    assert.deepEqual(evidence.errors,[]);
+  }
+  evidence.finished=true;evidence.expectFixed=expectFixed;save();console.log(JSON.stringify(evidence));
 }catch(e){evidence.errors.push(e.message);save();console.error(e.message);process.exitCode=1;}
 finally{await browser.close();db.auth.stopAutoRefresh();}

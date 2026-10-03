@@ -483,7 +483,7 @@ function linkedQuotes(opportunity: CrmLiteOpportunity, quotes: QuoteRecord[], ex
       quote.opportunityId === opportunity.id
       || (!explicitOnly && account && name && normalize(quote.accountName) === account && normalize(quote.opportunityName || '') === name))
     .sort((a, b) => (b.quoteDate || b.createdAt || '').localeCompare(a.quoteDate || a.createdAt || '')
-      || (explicitOnly ? (b.updatedAt || b.createdAt || '').localeCompare(a.updatedAt || a.createdAt || '') || a.id.localeCompare(b.id) : 0));
+      || (b.updatedAt || b.createdAt || '').localeCompare(a.updatedAt || a.createdAt || '') || a.id.localeCompare(b.id));
 }
 
 /** The terms this order actually runs on: the freshest quote's, or the one recorded against the order. */

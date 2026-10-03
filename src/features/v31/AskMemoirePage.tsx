@@ -464,6 +464,7 @@ export function AskMemoirePage() {
     }
   }, [
     canSearch,
+    user,
     question,
     scope,
     selectedAccountId,
