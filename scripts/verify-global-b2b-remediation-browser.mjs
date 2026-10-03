@@ -79,7 +79,7 @@ try {
   const orders = await open('/app/revenue'), paidRef = ref(fixture.receivables[0]);
   const paidRow = orders.page.getByRole('row').filter({ has: orders.page.getByText(paidRef, { exact: true }) });
   await paidRow.getByText('Collected', { exact: true }).waitFor();
-  assert.match(await paidRow.innerText(), /5\s*\/\s*5/);
+  assert.match(await paidRow.innerText(), /5 of 5 steps done/);
   assert.doesNotMatch(await paidRow.innerText(), /Deposit due|Stalled|Late/);
   await paidRow.click();
   await orders.page.getByRole('button', { name: 'Collected', exact: true, disabled: true }).waitFor();
