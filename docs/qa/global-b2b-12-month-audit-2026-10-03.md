@@ -1,5 +1,7 @@
 # Memoire — Strict QC: doanh nghiệp B2B global trong 12 tháng
 
+> **Cập nhật sau sửa lỗi:** 7/7 phát hiện bên dưới đã được đóng cho bản Production `153fd60`. Xem [kết quả sửa và kiểm chứng sau phát hành](global-b2b-audit-remediation-2026-10-03.md). Phần còn lại giữ nguyên kết quả và bằng chứng của bản audit trước khi sửa.
+
 Ngày audit: **03/10/2026**, múi giờ Asia/Saigon. Mã nguồn nền: `9ab5df28ea15e36503cde9aff5beda82158f1429`. Ứng dụng kiểm tra: https://www.memoire-official.com. Backend: `mlmpcpkucurylkrobain`.
 
 ## Kết luận
