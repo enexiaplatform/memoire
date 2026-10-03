@@ -22,6 +22,8 @@ import {
 import { formatBaseCurrencyAmount, formatCompactBaseAmount, formatCurrencyAmount } from '../../utils/money';
 import { formatSafeBusinessDate } from '../../utils/safeDate';
 import { matchesSearchQuery } from '../../utils/textSearch';
+import { loadOrderReceivablesForWorkspace } from '../../services/orderReceivableStore';
+import type { OrderReceivableRecord } from '../../utils/receivables';
 
 /**
  * The order book, read the way an ERP reads one.
@@ -69,14 +71,20 @@ export function OrderBookPanel({
   sampleDataActive: boolean;
 }) {
   const [milestoneRecords, setMilestoneRecords] = useState<OrderMilestoneRecord[]>([]);
+  const [receivableRecords, setReceivableRecords] = useState<OrderReceivableRecord[]>([]);
+  const [loadError, setLoadError] = useState('');
   const [stageFilter, setStageFilter] = useState<OrderStage | 'all' | 'overdue'>('all');
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState('');
 
   useEffect(() => {
     let cancelled = false;
-    void loadOrderMilestonesForWorkspace(dataUserId, sampleDataActive).then((records) => {
-      if (!cancelled) setMilestoneRecords(records);
+    setLoadError('');
+    void Promise.all([loadOrderMilestonesForWorkspace(dataUserId, sampleDataActive),
+      loadOrderReceivablesForWorkspace(dataUserId, sampleDataActive)]).then(([records, receivables]) => {
+      if (!cancelled) { setMilestoneRecords(records); setReceivableRecords(receivables); }
+    }).catch(error => {
+      if (!cancelled) setLoadError(error instanceof Error ? error.message : 'Order collection records could not be loaded.');
     });
     return () => { cancelled = true; };
   }, [dataUserId, sampleDataActive]);
@@ -86,8 +94,8 @@ export function OrderBookPanel({
     // owed. The engine has always honoured it; this caller used to omit it, so
     // the order book printed "No payment term" for terms that were saved and
     // built the road to cash from that blank.
-    () => buildOrderBook({ opportunities, quotes, milestoneRecords, costRecords: termRecords, outcomes }),
-    [termRecords, milestoneRecords, opportunities, quotes, outcomes],
+    () => buildOrderBook({ opportunities, quotes, milestoneRecords, costRecords: termRecords, outcomes, receivableRecords }),
+    [termRecords, milestoneRecords, opportunities, quotes, outcomes, receivableRecords],
   );
 
   const visibleOrders = useMemo(() => {
@@ -103,7 +111,7 @@ export function OrderBookPanel({
   const toggle = (order: CommittedOrder, milestone: OrderMilestoneState) => {
     // A quote-proven milestone is not arguable from here - it changes when the
     // quote changes. Only the hand-made ticks toggle.
-    if (milestone.evidence === 'quote') return;
+    if (milestone.evidence === 'quote' || milestone.evidence === 'collection') return;
     setMilestoneRecords(toggleOrderMilestone({
       opportunityId: order.opportunityId,
       milestone: milestone.key,
@@ -112,6 +120,8 @@ export function OrderBookPanel({
       isSample: sampleDataActive,
     }));
   };
+
+  if (loadError) return <p role="alert" className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{loadError}</p>;
 
   return (
     // `min-w-0` is not decoration: without it the 980px order table grows the
@@ -322,9 +332,11 @@ export function OrderBookPanel({
                                   <button
                                     type="button"
                                     onClick={(event) => { event.stopPropagation(); toggle(order, milestone); }}
-                                    disabled={milestone.evidence === 'quote'}
+                                    disabled={milestone.evidence === 'quote' || milestone.evidence === 'collection'}
                                     title={
-                                      milestone.evidence === 'quote'
+                                      milestone.evidence === 'collection'
+                                        ? 'Based on collection records - it changes when receipts or fulfilment dates change.'
+                                        : milestone.evidence === 'quote'
                                         ? 'Proven by the linked quote - it changes when the quote changes.'
                                         : milestone.done
                                           ? 'Ticked by you. Click to untick.'
@@ -336,7 +348,7 @@ export function OrderBookPanel({
                                         : milestone.overdue
                                           ? 'border-red-200 bg-white text-red-700 hover:bg-red-50'
                                           : 'border-line bg-white text-gray-500 hover:border-brand-blue/50 hover:text-brand-blue'
-                                    } ${milestone.evidence === 'quote' ? 'cursor-default' : ''}`}
+                                    } ${milestone.evidence === 'quote' || milestone.evidence === 'collection' ? 'cursor-default' : ''}`}
                                   >
                                     {milestone.done && <Check className="h-3 w-3" />}
                                     {milestone.label}

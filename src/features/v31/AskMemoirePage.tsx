@@ -42,6 +42,9 @@ import {
 } from './askMemoireInsightAnswers';
 import { buildMoneyFlow } from '../../utils/moneyFlow';
 import { buildOrderBook } from '../../utils/orderToCash';
+import { loadOrderReceivablesForWorkspace } from '../../services/orderReceivableStore';
+import { loadOrderMilestonesForWorkspace } from '../../services/orderMilestoneStore';
+import { loadOrderCostsForWorkspace } from '../../services/orderCostStore';
 import { buildOwnObligations } from '../../utils/ownObligations';
 import { buildRetentionSignals } from '../../utils/retentionSignals';
 import { buildCommitmentLedger } from '../../utils/weeklyBusinessReview';
@@ -337,6 +340,12 @@ export function AskMemoirePage() {
       }
       if (insightKind && insightKind !== 'deal_position' && rawWorkspace) {
         setStatusMessage('Answered from your measured history (no AI involved).');
+        const sample = hasLocalSampleData();
+        const dataUserId = sample ? undefined : user?.id;
+        const [receivableRecords, milestoneRecords, costRecords] = insightKind === 'money_state' || insightKind === 'awaiting_customer'
+          ? await Promise.all([loadOrderReceivablesForWorkspace(dataUserId, sample),
+            loadOrderMilestonesForWorkspace(dataUserId, sample), loadOrderCostsForWorkspace(dataUserId, sample)])
+          : [[], [], []];
         if (insightKind === 'follow_up_impact') {
           setAnswer(answerFromFollowUpImpact(buildFollowUpImpact({
             activities: rawWorkspace.activities,
@@ -358,7 +367,7 @@ export function AskMemoirePage() {
             buildOrderBook({
               opportunities: rawWorkspace.opportunities,
               quotes: rawWorkspace.quotes,
-              milestoneRecords: [],
+              milestoneRecords, receivableRecords, costRecords,
               outcomes: rawWorkspace.opportunityOutcomes,
             }),
           ));
@@ -392,7 +401,7 @@ export function AskMemoirePage() {
             buildOrderBook({
               opportunities: rawWorkspace.opportunities,
               quotes: rawWorkspace.quotes,
-              milestoneRecords: [],
+              milestoneRecords, receivableRecords, costRecords,
               outcomes: rawWorkspace.opportunityOutcomes,
             }),
             buildMoneyFlow({ opportunities: rawWorkspace.opportunities, quotes: rawWorkspace.quotes }),

@@ -1,11 +1,14 @@
 import {
   createOrderReceivableRecord,
   sanitizeReceipts,
+  validatePaymentReceiptDate,
+  uniquePaymentReceipts,
+  ReceiptIntegrityError,
   type OrderReceivableRecord,
   type PaymentReceipt,
-} from '../utils/receivables';
-import { sanitizeInstallments, type PaymentInstallment } from '../utils/paymentTerms';
-import { sanitizeBusinessDate } from '../utils/safeDate';
+} from '../utils/receivables.ts';
+import { sanitizeInstallments, type PaymentInstallment } from '../utils/paymentTerms.ts';
+import { sanitizeBusinessDate } from '../utils/safeDate.ts';
 import {
   claimLocalCollectionForUser,
   deleteCloudJsonRecordForCurrentUser,
@@ -13,8 +16,8 @@ import {
   mergeCloudJsonRecords,
   sendOwedCloudJsonRecords,
   syncCloudJsonCollectionForCurrentUser,
-} from './cloudJsonCollectionStore';
-import { invalidateWorkspaceCollection } from './workspaceDataCache';
+} from './cloudJsonCollectionStore.ts';
+import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
 
 export const ORDER_RECEIVABLE_STORAGE_KEY = 'memoire.orderReceivables.v1';
@@ -48,7 +51,8 @@ export function loadOrderReceivables(): OrderReceivableRecord[] {
     return parsed
       .map(sanitizeOrderReceivableRecord)
       .filter((record): record is OrderReceivableRecord => Boolean(record));
-  } catch {
+  } catch (error) {
+    if (error instanceof ReceiptIntegrityError) throw error;
     return [];
   }
 }
@@ -67,7 +71,8 @@ export async function loadOrderReceivablesForWorkspace(userId?: string | null, s
     persistOrderReceivables(merged, false);
     sendOwedCloudJsonRecords('order_receivables', userId, merged, cloud);
     return merged;
-  } catch {
+  } catch (error) {
+    if (error instanceof ReceiptIntegrityError) throw error;
     return loadOrderReceivables();
   }
 }
@@ -86,8 +91,13 @@ export function recordPaymentReceipt(input: {
   source?: 'demo' | 'user';
   isSample?: boolean;
 }): OrderReceivableRecord[] {
+  validatePaymentReceiptDate(input.receipt.receivedOn);
   const existingRecords = loadOrderReceivables();
   const existing = existingRecords.find((record) => record.opportunityId === input.opportunityId);
+  if (existing?.receipts.some(receipt => receipt.id === input.receipt.id)) {
+    uniquePaymentReceipts([...existing.receipts, input.receipt]);
+    return existingRecords;
+  }
   const next = createOrderReceivableRecord({
     opportunityId: input.opportunityId,
     receipts: [...(existing?.receipts || []), input.receipt],

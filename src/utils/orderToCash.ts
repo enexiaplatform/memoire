@@ -3,6 +3,7 @@ import type { QuoteRecord } from '../services/quoteStore';
 import { compareSafeBusinessDate, isValidBusinessDate, timestampToLocalDateKey, todayDateKey } from './safeDate.ts';
 import { sumMoneyInBase } from './money.ts';
 import { parsePaymentTerm } from './paymentTerms.ts';
+import { buildOneReceivable, uniquePaymentReceipts, type OrderReceivableRecord } from './receivables.ts';
 
 /**
  * The order book: every opportunity the customer has committed to order, walked
@@ -15,9 +16,9 @@ import { parsePaymentTerm } from './paymentTerms.ts';
  * "where is the money": contract signed, deposit in, delivered, invoiced,
  * collected.
  *
- * Milestones are derived from the linked quotes wherever a quote already proves
- * them (a received PO, a delivery, a payment), and can be ticked by hand where
- * no record would ever prove them (a deposit). A hand tick never overwrites
+ * Milestones are derived from the accepted quote and collection records wherever
+ * they prove them (a received PO, a delivery, a payment), and can be ticked by hand
+ * where no record proves them. A hand tick never overwrites
  * quote evidence - it fills the gaps between records, the same contract the
  * plan board has with the deals it mirrors.
  */
@@ -97,8 +98,8 @@ export type OrderMilestoneState = {
   key: OrderMilestoneKey;
   label: string;
   done: boolean;
-  /** What proves it: a linked quote's own state, or the operator's tick. */
-  evidence: 'quote' | 'manual' | null;
+  /** What proves it: quote, collection records, or the operator's tick. */
+  evidence: 'quote' | 'manual' | 'collection' | null;
   /** When this step is expected, where a quote carries a date for it. */
   dueDate: string;
   /** When it actually happened, for a step somebody ticked by hand. */
@@ -248,9 +249,16 @@ export function buildOrderBook(input: {
    * exactly the behaviour it always did.
    */
   outcomes?: OrderOutcomeRecord[];
+  receivableRecords?: OrderReceivableRecord[];
   today?: string;
 }): OrderBook {
   const today = input.today || todayDateKey();
+  const collectionsByOrder = new Map<string, OrderReceivableRecord>();
+  for (const record of input.receivableRecords || []) {
+    if (record.__deleted) continue;
+    if (collectionsByOrder.has(record.opportunityId)) throw new Error('Duplicate collection record for an order. Resolve it before calculating orders.');
+    collectionsByOrder.set(record.opportunityId, record);
+  }
   const outcomeDateByOrder = new Map(
     (input.outcomes || [])
       .filter((record) => record.__deleted !== true && sanitize(record.outcomeDate))
@@ -273,25 +281,26 @@ export function buildOrderBook(input: {
     .filter(isCommittedToOrder)
     .map((opportunity) => {
       const quotes = linkedQuotes(opportunity, input.quotes, input.linkage === 'explicit-id');
+      // A proposed revision cannot change the accepted contract or prove its fulfilment.
+      const freshestQuote = quotes.find(quote => quote.status === 'Accepted') || quotes[0];
+      const contractQuotes = freshestQuote?.status === 'Accepted' ? [freshestQuote] : quotes;
       const manual = manualByOrder.get(opportunity.id);
       // An order on net terms has no deposit, so it cannot be waiting for one.
-      // The deposit is a fixed step in the road to cash and nothing can prove
-      // it, so every Net 30 order - the ordinary shape of B2B outside
+      // The deposit is otherwise a fixed step in the road to cash, so every
+      // Net 30 order - the ordinary shape of B2B outside
       // deposit-heavy markets - sat at "Deposit due" from the day it was won,
       // counted in the deposit bucket, with Today proposing a deposit that was
       // never part of the deal. The terms are already parsed for the collection
       // schedule; this reads the same answer.
-      const term = freshestPaymentTerm(quotes, termByOrder.get(opportunity.id));
+      const term = freshestPaymentTerm(contractQuotes, termByOrder.get(opportunity.id));
       const expectsDeposit = term ? parsePaymentTerm(term).installments.some((part) => part.trigger === 'order') : true;
       const milestones = orderMilestoneKeys
         .filter((key) => key !== 'deposit' || expectsDeposit)
-        .map((key) => deriveMilestone(key, quotes, manual?.get(key), today));
+        .map((key) => deriveMilestone(key, contractQuotes, manual?.get(key), today));
 
-      const doneCount = milestones.filter((milestone) => milestone.done).length;
-      const nextMilestone = milestones.find((milestone) => !milestone.done) || null;
-      const freshestQuote = quotes[0];
-      const amount = freshestQuote?.amount ?? opportunity.estimatedValue;
+      const amount = freshestQuote ? freshestQuote.amount : opportunity.estimatedValue;
       const currency = freshestQuote?.currency || opportunity.currency || 'VND';
+      const amountBase = typeof amount === 'number' ? sumMoneyInBase([{ amount, currency }]) : 0;
 
       /**
        * When the order was actually placed.
@@ -335,6 +344,37 @@ export function buildOrderBook(input: {
         || sanitize(timestampToLocalDateKey(freshestQuote?.createdAt))
         || sanitize(timestampToLocalDateKey(opportunity.updatedAt))
         || '';
+      const collection = collectionsByOrder.get(opportunity.id);
+      if (collection) {
+        const cash = buildOneReceivable({ opportunityId: opportunity.id,
+          accountName: opportunity.accountName, orderName: opportunity.opportunityName,
+          orderRef: freshestQuote?.quoteId || fallbackOrderRef(opportunity.id), orderDate,
+          amount, currency, amountBase, paymentTerm: term }, collection, today);
+        const depositIds = new Set((collection.installments.length ? collection.installments : parsePaymentTerm(term).installments)
+          .filter(part => part.trigger === 'order').map(part => part.id));
+        const deposits = cash.installments.filter(part => depositIds.has(part.id));
+        const receiptDate = uniquePaymentReceipts(collection.receipts).map(receipt => receipt.receivedOn)
+          .filter(date => isValidBusinessDate(date) && date <= today).sort().pop() || '';
+        for (const milestone of milestones) {
+          const date = milestone.key === 'delivery' ? sanitize(collection.deliveredOn)
+            : milestone.key === 'invoice' ? sanitize(collection.invoicedOn) : receiptDate;
+          const proven = milestone.key === 'paid' ? cash.settled && Boolean(receiptDate)
+            : milestone.key === 'deposit' ? !cash.valueUnavailable && Boolean(receiptDate)
+              && deposits.length > 0 && deposits.every(part => part.settled)
+            : (milestone.key === 'delivery' || milestone.key === 'invoice') && Boolean(date) && date <= today;
+          // Once collection records exist, their balance owns paid/deposit status; a manual
+          // tick or an old quote must not conceal a later correction or refund.
+          const authoritative = milestone.key === 'paid' || milestone.key === 'deposit';
+          if (proven || authoritative) {
+            milestone.done = proven;
+            milestone.evidence = proven || authoritative ? 'collection' : null;
+            milestone.doneAt = proven ? date : '';
+            milestone.overdue = !proven && Boolean(milestone.dueDate) && milestone.dueDate < today;
+          }
+        }
+      }
+      const doneCount = milestones.filter((milestone) => milestone.done).length;
+      const nextMilestone = milestones.find((milestone) => !milestone.done) || null;
       // The freshest dated thing that happened *on this order*, so aging is
       // measured from real movement rather than from when the row was created.
       const lastMovedAt = milestones
@@ -354,7 +394,7 @@ export function buildOrderBook(input: {
         probability: typeof opportunity.pipelineProbability === 'number' ? opportunity.pipelineProbability : null,
         amount,
         currency,
-        amountBase: typeof amount === 'number' ? sumMoneyInBase([{ amount, currency }]) : 0,
+        amountBase,
         // A quote the customer has seen outranks a working assumption, but an
         // assumption the operator recorded outranks nothing at all.
         paymentTerm: freshestQuote?.paymentTerm?.trim() || termByOrder.get(opportunity.id) || '',
@@ -481,7 +521,7 @@ function quoteEvidence(key: OrderMilestoneKey, quotes: QuoteRecord[]): { done: b
         dueDate: '',
       };
     case 'deposit':
-      // No record proves a deposit - it is the one purely manual milestone.
+      // Quotes alone do not prove a deposit; collection records may prove it.
       return { done: false, dueDate: '' };
     case 'delivery':
       return {

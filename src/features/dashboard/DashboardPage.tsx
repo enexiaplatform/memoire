@@ -543,6 +543,7 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
       quotes: data.quotes,
       milestoneRecords: pictureRecords.milestones,
       costRecords: pictureRecords.costs,
+      receivableRecords: pictureRecords.receivables,
       outcomes: data.opportunityOutcomes,
       today: todayKey,
     });

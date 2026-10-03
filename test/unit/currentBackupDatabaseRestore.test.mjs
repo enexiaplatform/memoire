@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { createSupabaseCompatibleDatabase, applyMigrations, productionMigrations, setAuthenticatedOwner } from '../../scripts/release-database-harness.mjs';
+import { exportTables, exportOrderColumns } from '../../api/export.ts';
 
 const formatVersion = Number(readFileSync('src/utils/workspaceBackup.ts','utf8').match(/BACKUP_FORMAT_VERSION = (\d+)/)[1]);
 const sourceTables = ['opportunities','commercial_conditions','commercial_evidence','commercial_outcome_requirements',
@@ -22,6 +23,20 @@ function envelope(owner, coverage = null) {
     sources:Object.fromEntries(sourceTables.map(table=>[table,[]])), parents:[]};
 }
 const restore = async payload => (await db.query('SELECT public.restore_commercial_history($1::jsonb) AS result', [JSON.stringify(payload)])).rows[0].result;
+
+test('every export orders by real unique key columns in the current database schema', async () => {
+  await db.exec('RESET ROLE');
+  for (const { table, ownerColumn } of exportTables) {
+    const columns = exportOrderColumns[table] || ['id'];
+    // The query must resolve the columns even when the table is empty.
+    await db.query(`SELECT * FROM "${table}" ORDER BY ${columns.map(c => `"${c}"`).join(',')} LIMIT 1`);
+    const keys = (await db.query(`SELECT array_agg(a.attname ORDER BY a.attname) AS columns FROM pg_index i
+      JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=ANY(i.indkey)
+      WHERE i.indrelid=$1::regclass AND i.indisunique GROUP BY i.indexrelid`, [table])).rows;
+    const queryKeys = new Set([ownerColumn, ...columns]);
+    assert.ok(keys.some(key => key.columns.every(c => queryKeys.has(c))), `${table}: pagination needs a unique total order`);
+  }
+});
 
 test('the format emitted by export restores verified history and retries without changing its boundary', async () => {
   const owner = await workspace();

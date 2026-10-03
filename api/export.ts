@@ -135,6 +135,7 @@ export const exportTables = [
  */
 export const exportOrderColumns: Record<string, readonly string[]> = {
   commercial_targets: ['fiscal_year', 'period'],
+  commercial_history_coverage: ['user_id'],
 };
 
 function orderColumnsFor(table: string) {

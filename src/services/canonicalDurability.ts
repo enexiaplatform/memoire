@@ -26,6 +26,7 @@ import { evidenceCategories, evidenceDirections } from '../domain/commercialKern
 import { parsePortfolioRecord } from '../domain/portfolio/portfolioCatalog.ts';
 import { parseSavedReport } from '../domain/reports/reportRecord.ts';
 import { parseSavedDashboard } from '../domain/dashboards/dashboardRecord.ts';
+import { uniquePaymentReceipts, type PaymentReceipt } from '../utils/receivables.ts';
 
 export type RecordData = Record<string, unknown>;
 export const kernelCodecs = [threadCodec, commitmentCodec, eventCodec, evidenceCodec, valueOutcomeCodec, conditionCodec, requirementCodec, dependencyCodec, timingCodec, moneyGateCodec, decisionCodec,decisionObservationCodec,policyCodec,incidentCodec,contractObligationCodec,commercialWorkspaceCodec] as const;
@@ -118,6 +119,10 @@ const closedEnums: Record<string, readonly string[]> = {
 export function validateCanonicalRecord(contract: CanonicalContract, value: unknown): asserts value is RecordData {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${contract.table}: record must be an object.`);
   const r = value as RecordData;
+  if (contract.table === 'order_receivables' && r.receipts !== undefined) {
+    if (!Array.isArray(r.receipts)) throw new Error('order_receivables: payment receipts must be an array.');
+    uniquePaymentReceipts(r.receipts as PaymentReceipt[]);
+  }
   if (contract.table === 'portfolio_records') parsePortfolioRecord(value);
   if (contract.table === 'report_definitions') parseSavedReport(value);
   if (contract.table === 'dashboard_definitions') parseSavedDashboard(value);

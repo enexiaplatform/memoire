@@ -252,8 +252,8 @@ export function buildReceivables(input: {
   };
 }
 
-function buildOneReceivable(
-  order: CommittedOrder,
+export function buildOneReceivable(
+  order: Pick<CommittedOrder, 'opportunityId' | 'accountName' | 'orderName' | 'orderRef' | 'orderDate' | 'amount' | 'amountBase' | 'currency' | 'paymentTerm'>,
   record: OrderReceivableRecord | undefined,
   today: string,
 ): OrderReceivable {
@@ -264,9 +264,10 @@ function buildOneReceivable(
 
   // Asked of the currency rather than inferred from a zero, so an order that is
   // genuinely worth nothing is not mistaken for one that cannot be valued.
-  const valueUnavailable = typeof order.amount === 'number'
-    && order.amount !== 0
-    && !hasExchangeRate(order.currency);
+  const receipts = uniquePaymentReceipts(record?.receipts || []);
+  const valueUnavailable = typeof order.amount !== 'number' || !Number.isFinite(order.amount)
+    || !hasExchangeRate(order.currency)
+    || receipts.some(receipt => !hasExchangeRate(receipt.currency || order.currency));
 
   const deliveredOn = sanitizeBusinessDate(record?.deliveredOn) || '';
   const invoicedOn = sanitizeBusinessDate(record?.invoicedOn) || '';
@@ -349,8 +350,9 @@ function buildOneReceivable(
   scheduled.sort((left, right) => compareDueDates(left.dueDate, right.dueDate));
 
   const receivedBase = sumMoneyInBase(
-    (record?.receipts || [])
+    receipts
       .filter((receipt) => typeof receipt?.amount === 'number' && Number.isFinite(receipt.amount))
+      .filter((receipt) => Boolean(sanitizeBusinessDate(receipt.receivedOn)) && receipt.receivedOn <= today)
       .map((receipt) => ({ amount: receipt.amount, currency: receipt.currency || order.currency })),
   );
 
@@ -536,19 +538,41 @@ export function createPaymentReceipt(input: {
 
 export function sanitizeReceipts(value: unknown): PaymentReceipt[] {
   if (!Array.isArray(value)) return [];
-  return value.flatMap((entry) => {
+  return uniquePaymentReceipts(value.flatMap((entry) => {
     if (!entry || typeof entry !== 'object') return [];
     const raw = entry as Record<string, unknown>;
     const amount = Number(raw.amount);
     // A receipt with no money in it is not a payment record, it is a typo.
     if (!Number.isFinite(amount) || amount === 0) return [];
-    return [createPaymentReceipt({
+    return [{ ...createPaymentReceipt({
       id: typeof raw.id === 'string' ? raw.id : undefined,
       amount,
       currency: typeof raw.currency === 'string' ? raw.currency : 'VND',
       receivedOn: typeof raw.receivedOn === 'string' ? raw.receivedOn : undefined,
       method: typeof raw.method === 'string' ? raw.method : '',
       note: typeof raw.note === 'string' ? raw.note : '',
-    })];
-  });
+    }), receivedOn: sanitizeBusinessDate(raw.receivedOn) || '' }];
+  }));
+}
+
+/** Identity, not amount/date, makes a payment retry idempotent. */
+export class ReceiptIntegrityError extends Error {}
+
+export function uniquePaymentReceipts(receipts: PaymentReceipt[]): PaymentReceipt[] {
+  const byId = new Map<string, PaymentReceipt>();
+  for (const receipt of receipts) {
+    if (!receipt.id) throw new ReceiptIntegrityError('Payment receipt identity is missing. Resolve it before calculating collections.');
+    const previous = byId.get(receipt.id);
+    if (previous && (['amount', 'currency', 'receivedOn', 'method', 'note'] as const)
+      .some(key => previous[key] !== receipt[key])) {
+      throw new ReceiptIntegrityError('Conflicting payment receipt identity. Resolve it before calculating collections.');
+    }
+    if (!previous) byId.set(receipt.id, receipt);
+  }
+  return [...byId.values()];
+}
+
+export function validatePaymentReceiptDate(receivedOn: string, today = todayDateKey()): void {
+  if (!sanitizeBusinessDate(receivedOn)) throw new Error('Enter a valid date for the payment.');
+  if (receivedOn > today) throw new Error('A payment cannot be received in the future. Enter the date the money arrived.');
 }

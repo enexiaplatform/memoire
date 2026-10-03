@@ -24,12 +24,13 @@ import {
   agingBucketLabels,
   buildReceivables,
   createPaymentReceipt,
+  validatePaymentReceiptDate,
   type OrderReceivable,
   type OrderReceivableRecord,
 } from '../../utils/receivables';
 import { describeInstallment, parsePaymentTerm } from '../../utils/paymentTerms';
-import { formatBaseCurrencyAmount, formatCompactBaseAmount, getReportingCurrency } from '../../utils/money';
-import { formatSafeBusinessDate, todayDateKey } from '../../utils/safeDate';
+import { formatBaseCurrencyAmount, formatCurrencyAmount, formatCompactBaseAmount, getReportingCurrency } from '../../utils/money';
+import { formatSafeBusinessDate, isValidBusinessDate, todayDateKey } from '../../utils/safeDate';
 import { pluralizeCount } from '../../utils/numberFormat';
 
 /**
@@ -67,6 +68,7 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
   const [milestoneRecords, setMilestoneRecords] = useState<OrderMilestoneRecord[]>([]);
   const [loading, setLoading] = useState(!cached);
   const [syncing, setSyncing] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [filter, setFilter] = useState<'open' | 'overdue' | 'all'>('open');
   const [searchParams, setSearchParams] = useSearchParams();
   const [expandedId, setExpandedId] = useState(searchParams.get('orderId') || '');
@@ -75,6 +77,7 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
     if (authLoading) return;
     let cancelled = false;
     setLoading(!getCachedSalesWorkspaceData(dataUserId));
+    setLoadError('');
     void Promise.all([
       loadSalesWorkspaceData(dataUserId),
       loadOrderReceivablesForWorkspace(dataUserId, sampleDataActive),
@@ -96,6 +99,8 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
       setCostRecords(costs);
       setMilestoneRecords(milestones);
       setLoading(false);
+    }).catch(error => {
+      if (!cancelled) { setLoadError(error instanceof Error ? error.message : 'Collections could not be loaded.'); setLoading(false); }
     });
     return () => { cancelled = true; };
   }, [authLoading, dataUserId, sampleDataActive]);
@@ -104,15 +109,21 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
   // the parameter, so a refresh does not keep re-opening a row the operator has
   // since closed.
   useEffect(() => {
-    if (!searchParams.get('orderId')) return;
-    setSearchParams({}, { replace: true });
+    const orderId = searchParams.get('orderId');
+    if (!orderId) return;
+    setExpandedId(orderId);
+    setFilter('all');
+    const next = new URLSearchParams(searchParams);
+    next.delete('orderId');
+    setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
   const today = todayDateKey();
   const summary = useMemo(() => {
-    const book = buildOrderBook({ opportunities, quotes, milestoneRecords, costRecords, outcomes, today });
+    if (loadError) return buildReceivables({ orders: [], records: [], today });
+    const book = buildOrderBook({ opportunities, quotes, milestoneRecords, costRecords, outcomes, receivableRecords: records, today });
     return buildReceivables({ orders: book.orders, records, today });
-  }, [costRecords, milestoneRecords, opportunities, outcomes, quotes, records, today]);
+  }, [costRecords, milestoneRecords, opportunities, outcomes, quotes, records, today, loadError]);
 
   const reload = async () => {
     setSyncing(true);
@@ -125,6 +136,9 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
       setQuotes(workspace.quotes);
       setOutcomes(workspace.opportunityOutcomes);
       setRecords(receivableRecords);
+      setLoadError('');
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Collections could not be loaded.');
     } finally {
       setSyncing(false);
     }
@@ -142,6 +156,9 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
     if (filter === 'overdue') return order.overdueBase > 0;
     return !order.settled;
   });
+
+  if (loadError) return <PageContainer><PageHeader tabs={tabs} title="Collections" description="Resolve the collection data before using totals." />
+    <p role="alert" className="text-sm text-red-700">{loadError}</p></PageContainer>;
 
   return (
     <PageContainer>
@@ -364,20 +381,27 @@ function ReceivableRow({
   const [amount, setAmount] = useState('');
   const [receivedOn, setReceivedOn] = useState(todayDateKey());
   const [method, setMethod] = useState('');
+  const [paymentError, setPaymentError] = useState('');
   const [deliveredOn, setDeliveredOn] = useState(record?.deliveredOn || '');
 
   const bank = () => {
+    setPaymentError('');
     const parsed = Number(amount);
     if (!Number.isFinite(parsed) || parsed === 0) return;
-    const next = recordPaymentReceipt({
-      opportunityId: order.opportunityId,
-      receipt: createPaymentReceipt({ amount: parsed, currency: order.currency, receivedOn, method }),
-      source: sampleDataActive ? 'demo' : 'user',
-      isSample: sampleDataActive,
-    });
-    onRecordsChanged(next);
-    setAmount('');
-    setMethod('');
+    try {
+      validatePaymentReceiptDate(receivedOn);
+      const next = recordPaymentReceipt({
+        opportunityId: order.opportunityId,
+        receipt: createPaymentReceipt({ amount: parsed, currency: order.currency, receivedOn, method }),
+        source: sampleDataActive ? 'demo' : 'user',
+        isSample: sampleDataActive,
+      });
+      onRecordsChanged(next);
+      setAmount('');
+      setMethod('');
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : 'The payment could not be recorded.');
+    }
   };
 
   return (
@@ -485,6 +509,7 @@ function ReceivableRow({
                 <input
                   type="date"
                   value={receivedOn}
+                  max={todayDateKey()}
                   onChange={(event) => setReceivedOn(event.target.value)}
                   className="mt-1 rounded-lg border border-line px-3 py-2 text-sm"
                 />
@@ -509,14 +534,17 @@ function ReceivableRow({
                 Record
               </button>
             </div>
+            {paymentError && <p role="alert" className="mt-2 text-xs font-semibold text-red-700">{paymentError}</p>}
 
             {(record?.receipts.length || 0) > 0 && (
               <ul className="mt-4 space-y-1.5 border-t border-line-soft pt-3">
                 {record?.receipts.map((receipt) => (
                   <li key={receipt.id} className="flex items-center justify-between gap-3 text-xs">
                     <span className="text-gray-600">
-                      <span className="font-bold text-ink">{formatBaseCurrencyAmount(receipt.amount)}</span>
+                      <span className="font-bold text-ink">{formatCurrencyAmount(receipt.amount, receipt.currency || order.currency)}</span>
                       {' on '}{formatSafeBusinessDate(receipt.receivedOn)}
+                      {receipt.receivedOn > todayDateKey() ? ' · Future date: excluded from received totals' : ''}
+                      {!isValidBusinessDate(receipt.receivedOn) ? ' · Invalid date: excluded from received totals' : ''}
                       {receipt.method ? ` · ${receipt.method}` : ''}
                     </span>
                     <button

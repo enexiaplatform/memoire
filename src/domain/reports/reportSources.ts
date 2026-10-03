@@ -33,7 +33,7 @@ export function buildReportSources(input: {
   const receivables = inScope(input.receivables), milestones = inScope(input.milestones), costs = inScope(input.costs);
   for (const records of [receivables, costs]) if (new Set(records.map(row => row.opportunityId)).size !== records.length) throw new Error('Duplicate order-linked report source. Resolve it before running.');
   const orders = buildOrderBook({ opportunities: opportunities.filter(row => qualified.has(row.id)), quotes: inScope(input.quotes), linkage: 'explicit-id',
-    milestoneRecords: milestones, costRecords: costs, outcomes: inScope(input.outcomes), today: input.today }).orders;
+    milestoneRecords: milestones, costRecords: costs, outcomes: inScope(input.outcomes), receivableRecords: receivables, today: input.today }).orders;
   const money = buildReceivables({ orders, records: receivables, today: input.today });
   if (money.reportingCurrency !== input.money.currency) throw new Error('Reporting currency changed. Run the report again.');
   const cashByOrder = new Map(money.orders.map(row => [row.opportunityId, row]));

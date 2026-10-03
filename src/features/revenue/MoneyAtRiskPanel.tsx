@@ -70,7 +70,7 @@ export function MoneyAtRiskPanel({
   }, [dataUserId, sampleDataActive]);
 
   const risk = useMemo(() => {
-    const book = buildOrderBook({ opportunities, quotes, milestoneRecords: milestones, costRecords, outcomes });
+    const book = buildOrderBook({ opportunities, quotes, milestoneRecords: milestones, costRecords, outcomes, receivableRecords });
     return buildMoneyAtRisk({
       orders: book.orders,
       receivables: buildReceivables({ orders: book.orders, records: receivableRecords }),
