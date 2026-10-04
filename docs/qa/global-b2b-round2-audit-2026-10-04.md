@@ -1,5 +1,7 @@
 # Memoire — Vòng test và audit B2B thứ hai, 04/10/2026
 
+> Cập nhật sau vòng này: F08, F09 và sai lệch README đã được sửa; bản ứng dụng `beaa8ccde121b3e6c37a35ec84f0c4b154e1c7cf` đã qua kiểm chứng trên Production. Xem [báo cáo sửa và kiểm tra vòng thứ ba](global-b2b-round3-remediation-2026-10-04.md). Phần dưới giữ nguyên kết quả trước sửa.
+
 **Kết luận: chưa thông qua QC toàn vòng.** Các ca cơ sở và sửa lỗi F01–F07 tiếp tục qua kiểm tra; phát hiện **hai lỗi sản phẩm mới**, gồm P1 mất khoản thu khi đồng bộ và P2 lịch trả tiền vượt giá trị hợp đồng. Hai lỗi này vẫn mở; vòng này chưa sửa hoặc phát hành mã ứng dụng.
 
 Doanh nghiệp Northstar Industrial Supply và mọi giao dịch là giả lập. Phép thử ghi cloud chỉ dùng tài khoản QC đã giữ lại từ vòng trước. Mọi bản ghi công nợ đã được hoàn trả và đối soát nội dung đầy đủ sau thử nghiệm.
