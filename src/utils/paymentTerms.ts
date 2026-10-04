@@ -397,6 +397,29 @@ export function sanitizeInstallments(value: unknown): PaymentInstallment[] {
   });
 }
 
+export class PaymentScheduleIntegrityError extends Error {
+  constructor() {
+    super('The payment schedule exceeds the order value. Correct the instalments before using this collection record.');
+    this.name = 'PaymentScheduleIntegrityError';
+  }
+}
+
+/** Validate effective shares: a fixed amount takes precedence over its percentage. */
+export function validatePaymentSchedule(value: unknown, orderAmount?: number | null): void {
+  if (Array.isArray(value) && value.some(part => part && typeof part === 'object'
+    && !(Number(part.amount) > 0) && Number(part.percent) > 100)) throw new PaymentScheduleIntegrityError();
+  const installments = sanitizeInstallments(value);
+  const percent = installments.reduce((sum, part) => sum + (part.amount === null ? part.percent || 0 : 0), 0);
+  if (percent > 100 + 1e-8) throw new PaymentScheduleIntegrityError();
+  if (typeof orderAmount === 'number' && Number.isFinite(orderAmount) && orderAmount >= 0) {
+    const scheduled = installments.reduce((sum, part) => sum + installmentAmount(part, orderAmount), 0);
+    // Each rounded slice can leave half a minor unit; larger excess is not rounding.
+    if (scheduled - orderAmount > Math.max(0.005, installments.length * 0.005) + 1e-8) {
+      throw new PaymentScheduleIntegrityError();
+    }
+  }
+}
+
 /** One line of plain English per installment, for a screen or a brief. */
 export function describeInstallment(installment: PaymentInstallment): string {
   const share = typeof installment.percent === 'number' ? `${round2(installment.percent)}%` : 'A fixed amount';

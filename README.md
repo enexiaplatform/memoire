@@ -8,7 +8,7 @@ Memoire is a personal commercial control tower for complex B2B sellers. It turns
 
 Positioning and boundaries: [`docs/positioning.md`](docs/positioning.md). Current implemented architecture: [M28 system map](docs/architecture/memoire-final-system-map.md). Earlier product decisions: [`docs/product/focused-refactor-2026-07-26.md`](docs/product/focused-refactor-2026-07-26.md).
 
-M12–M28 local roadmap implementation and the [final development gate](docs/qa/master-roadmap-final-completion-2026-10-01.md) are complete. [Commercial Protocol v1](docs/protocol/commercial-v1.md) defines the bounded external exchange contract. **Production deployment remains pending P1**; local verification does not certify the target database or a live release.
+M12–M28 roadmap implementation and the [final development gate](docs/qa/master-roadmap-final-completion-2026-10-01.md) are complete. [Commercial Protocol v1](docs/protocol/commercial-v1.md) defines the bounded external exchange contract. Production deployment and the first seven B2B audit fixes are [verified](docs/qa/global-b2b-audit-remediation-2026-10-03.md). The [second audit](docs/qa/global-b2b-round2-audit-2026-10-04.md) records the newly found collection defects; their repair and subsequent verification are tracked [separately](docs/qa/global-b2b-round3-remediation-2026-10-04.md). Application readiness and database readiness are verified independently.
 
 ## Launch status
 
@@ -32,7 +32,7 @@ PRIMARY         Today · Plan · Leads · Accounts · Opportunities · Money · 
                 Products & Brands · Reports · Dashboards
 ```
 
-Ten approved primary destinations in this checkout. The seven commercial destinations are retained; Products & Brands, Reports and Dashboards open as separate pages following the explicit user decision on 2026-10-01. Navigation renders from `src/config/featureRegistry.ts`, and `scripts/verify-navigation-contract.mjs` checks the approved list. This navigation change is locally verified and has not been deployed to Production.
+Ten approved primary destinations in this checkout and on Production. The seven commercial destinations are retained; Products & Brands, Reports and Dashboards open as separate pages following the explicit user decision on 2026-10-01. Navigation renders from `src/config/featureRegistry.ts`, and `scripts/verify-navigation-contract.mjs` checks the approved list. The live release evidence is recorded in the audit reports linked above.
 
 - **Today** - the business picture, the three moves worth making first (money, deals, leads and captures ranked together), and a capped watch-list. Every move says what happened, why it matters and what to do.
 - **Plan** (route `/app/timeline`) - Upcoming (the week, and the commitment ledger read by who owes it) and History (everything that happened).

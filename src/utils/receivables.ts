@@ -7,12 +7,13 @@ import {
   type SupportedCurrency,
 } from './money.ts';
 import { sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
+import type { ReceivableChange } from './receivableChanges.ts';
 import {
   DEFAULT_INSTALLMENT_LABEL,
-  installmentAmount,
   installmentDueDate,
   parsePaymentTerm,
   sanitizeInstallments,
+  validatePaymentSchedule,
   type PaymentInstallment,
   type ParsedPaymentTerm,
 } from './paymentTerms.ts';
@@ -81,6 +82,12 @@ export type OrderReceivableRecord = {
   source?: 'demo' | 'user';
   isSample?: boolean;
   __deleted?: boolean;
+  /** Durable commands and their original state, stored only on this device until acknowledged. */
+  pendingChanges?: ReceivableChange[];
+  syncBase?: OrderReceivableRecord;
+  syncError?: string;
+  /** Unique token for an atomic conditional cloud write, independent of device clocks. */
+  syncVersion?: string;
 };
 
 export type ReceivableInstallmentState = {
@@ -259,6 +266,7 @@ export function buildOneReceivable(
 ): OrderReceivable {
   const parsed = parsePaymentTerm(order.paymentTerm);
   const override = sanitizeInstallments(record?.installments);
+  validatePaymentSchedule(override, order.amount);
   const installments = override.length > 0 ? override : parsed.installments;
   const orderValueBase = order.amountBase;
 
@@ -296,7 +304,9 @@ export function buildOneReceivable(
    */
   const dueBaseOf = (installment: PaymentInstallment) => {
     if (typeof installment.amount !== 'number' || !Number.isFinite(installment.amount)) {
-      return installmentAmount(installment, orderValueBase);
+      // Preserve the canonical order's full money basis for percentage slices.
+      // Rounding each reporting-currency projection biases a large book of debt.
+      return orderValueBase * (installment.percent || 0) / 100;
     }
     const converted = convertMoney(installment.amount, order.currency);
     // Unconvertible means the order is in a currency nobody has priced. The
@@ -329,6 +339,16 @@ export function buildOneReceivable(
    * schedule, including the ones that do not exist yet.
    */
   const scheduledTotal = scheduled.reduce((sum, entry) => sum + entry.dueBase, 0);
+  // Valid shares can exceed the contract by rounding alone. Remove only that
+  // validated residue, never turn it into a second debt.
+  if (scheduledTotal > orderValueBase && !valueUnavailable && scheduled.length) {
+    let residue = scheduledTotal - orderValueBase;
+    for (let index = scheduled.length - 1; index >= 0 && residue > 0; index--) {
+      const deduction = Math.min(residue, scheduled[index].dueBase);
+      scheduled[index].dueBase -= deduction;
+      residue -= deduction;
+    }
+  }
   if (orderValueBase > 0 && scheduledTotal < orderValueBase - 0.005) {
     const remainder: PaymentInstallment = {
       id: `pt-remainder-${scheduled.length + 1}`,
@@ -420,7 +440,7 @@ export function buildOneReceivable(
     // Not clamped to zero. A customer who has paid more than the order is worth
     // is a fact somebody has to deal with, and hiding it is how it survives to
     // the next audit.
-    overpaidBase: Math.max(0, receivedBase - states.reduce((sum, state) => sum + state.dueBase, 0)),
+    overpaidBase: Math.max(0, receivedBase - orderValueBase),
     valueUnavailable,
     href: `/app/cash-collection?orderId=${encodeURIComponent(order.opportunityId)}`,
   };

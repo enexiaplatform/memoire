@@ -11,10 +11,13 @@ import type { OpportunityOutcomeRecord } from '../../services/opportunityOutcome
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import {
   loadOrderReceivablesForWorkspace,
+  loadOrderReceivables,
   recordPaymentReceipt,
   removePaymentReceipt,
   saveOrderReceivableTerms,
+  resolveOrderReceivableTerms,
 } from '../../services/orderReceivableStore';
+import { RECEIVABLES_SYNCED_EVENT } from '../../services/orderReceivableSync';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { loadOrderCostsForWorkspace } from '../../services/orderCostStore';
 import type { OrderCostRecord } from '../../utils/orderMargin';
@@ -119,11 +122,22 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
   }, [searchParams, setSearchParams]);
 
   const today = todayDateKey();
-  const summary = useMemo(() => {
-    if (loadError) return buildReceivables({ orders: [], records: [], today });
-    const book = buildOrderBook({ opportunities, quotes, milestoneRecords, costRecords, outcomes, receivableRecords: records, today });
-    return buildReceivables({ orders: book.orders, records, today });
+  const { summary, calculationError } = useMemo(() => {
+    const empty = buildReceivables({ orders: [], records: [], today });
+    if (loadError) return { summary: empty, calculationError: '' };
+    try {
+      const book = buildOrderBook({ opportunities, quotes, milestoneRecords, costRecords, outcomes, receivableRecords: records, today });
+      return { summary: buildReceivables({ orders: book.orders, records, today }), calculationError: '' };
+    } catch (error) {
+      return { summary: empty, calculationError: error instanceof Error ? error.message : 'Resolve the collection data before using totals.' };
+    }
   }, [costRecords, milestoneRecords, opportunities, outcomes, quotes, records, today, loadError]);
+
+  useEffect(() => {
+    const refresh = () => { try { setRecords(loadOrderReceivables()); } catch (error) { setLoadError(error instanceof Error ? error.message : 'Collections could not be loaded.'); } };
+    window.addEventListener(RECEIVABLES_SYNCED_EVENT, refresh);
+    return () => window.removeEventListener(RECEIVABLES_SYNCED_EVENT, refresh);
+  }, [dataUserId]);
 
   const reload = async () => {
     setSyncing(true);
@@ -157,8 +171,8 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
     return !order.settled;
   });
 
-  if (loadError) return <PageContainer><PageHeader tabs={tabs} title="Collections" description="Resolve the collection data before using totals." />
-    <p role="alert" className="text-sm text-red-700">{loadError}</p></PageContainer>;
+  if (loadError || calculationError) return <PageContainer><PageHeader tabs={tabs} title="Collections" description="Resolve the collection data before using totals." />
+    <p role="alert" className="text-sm text-red-700">{loadError || calculationError}</p></PageContainer>;
 
   return (
     <PageContainer>
@@ -493,6 +507,20 @@ function ReceivableRow({
 
           <div className="rounded-lg border border-line bg-white p-4">
             <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Record money that arrived</p>
+            {(record?.pendingChanges?.length || record?.syncError) && <p role="status" className="mt-2 text-xs text-amber-800">
+              {record.syncError ? `Saved on this device. ${record.syncError}` : 'Saved on this device; waiting for account sync.'}
+            </p>}
+            {record?.syncError && record.pendingChanges?.some(change => change.kind === 'terms') && <div className="mt-2 space-y-2 text-xs">
+              <p>Collection dates or terms changed on another device. Choose which version to use. Pending payments are kept.</p>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="rounded-full border border-line px-3 py-1.5" onClick={() => {
+                  void resolveOrderReceivableTerms(order.opportunityId, false).then(onRecordsChanged).catch(error => setPaymentError(error instanceof Error ? error.message : 'Could not resolve the change.'));
+                }}>Use account version</button>
+                <button type="button" className="rounded-full border border-line px-3 py-1.5" onClick={() => {
+                  void resolveOrderReceivableTerms(order.opportunityId, true).then(onRecordsChanged).catch(error => setPaymentError(error instanceof Error ? error.message : 'Could not resolve the change.'));
+                }}>Keep my changes</button>
+              </div>
+            </div>}
             <div className="mt-3 flex flex-wrap items-end gap-3">
               <label className="flex flex-col text-xs font-semibold text-gray-600">
                 Amount ({order.currency})
@@ -573,12 +601,12 @@ function ReceivableRow({
             </label>
             <button
               type="button"
-              onClick={() => onRecordsChanged(saveOrderReceivableTerms({
+              onClick={() => { try { onRecordsChanged(saveOrderReceivableTerms({
                 opportunityId: order.opportunityId,
                 deliveredOn,
                 source: sampleDataActive ? 'demo' : 'user',
                 isSample: sampleDataActive,
-              }))}
+              })); } catch (error) { setPaymentError(error instanceof Error ? error.message : 'The delivery date could not be saved.'); } }}
               className="rounded-full border border-line bg-white px-4 py-2 text-sm font-bold text-ink hover:bg-gray-50"
             >
               Save delivery date

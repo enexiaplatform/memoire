@@ -26,7 +26,9 @@ import { evidenceCategories, evidenceDirections } from '../domain/commercialKern
 import { parsePortfolioRecord } from '../domain/portfolio/portfolioCatalog.ts';
 import { parseSavedReport } from '../domain/reports/reportRecord.ts';
 import { parseSavedDashboard } from '../domain/dashboards/dashboardRecord.ts';
-import { uniquePaymentReceipts, type PaymentReceipt } from '../utils/receivables.ts';
+import { uniquePaymentReceipts, type PaymentReceipt, type OrderReceivableRecord } from '../utils/receivables.ts';
+import { validatePaymentSchedule } from '../utils/paymentTerms.ts';
+import { receivableCloudPayload, validateReceivableChanges } from '../utils/receivableChanges.ts';
 
 export type RecordData = Record<string, unknown>;
 export const kernelCodecs = [threadCodec, commitmentCodec, eventCodec, evidenceCodec, valueOutcomeCodec, conditionCodec, requirementCodec, dependencyCodec, timingCodec, moneyGateCodec, decisionCodec,decisionObservationCodec,policyCodec,incidentCodec,contractObligationCodec,commercialWorkspaceCodec] as const;
@@ -80,7 +82,7 @@ export const canonicalContracts: CanonicalContract[] = [
     supplierCommitments: 'supplier_commitments', expenses: 'expenses', knowledgeNotes: 'knowledge_notes', portfolioRecords: 'portfolio_records', reportDefinitions: 'report_definitions', dashboardDefinitions: 'dashboard_definitions',
   }).map(([name, table]) => ({ table, key: `memoire.${name}.v1`, kind: 'json' as const,
     conflict: 'user_id,id', decode: (row: RecordData) => row.payload,
-    encode: (record: RecordData, userId: string) => ({ user_id: userId, id: record.id, payload: record,
+    encode: (record: RecordData, userId: string) => ({ user_id: userId, id: record.id, payload: table === 'order_receivables' ? receivableCloudPayload(record as unknown as OrderReceivableRecord) : record,
       created_at: record.createdAt, updated_at: record.updatedAt }),
   })),
   { table: 'commercial_targets', key: 'memoire.commercialTargets.v1', kind: 'target', conflict: 'user_id,fiscal_year,period',
@@ -122,6 +124,10 @@ export function validateCanonicalRecord(contract: CanonicalContract, value: unkn
   if (contract.table === 'order_receivables' && r.receipts !== undefined) {
     if (!Array.isArray(r.receipts)) throw new Error('order_receivables: payment receipts must be an array.');
     uniquePaymentReceipts(r.receipts as PaymentReceipt[]);
+  }
+  if (contract.table === 'order_receivables') {
+    validatePaymentSchedule(r.installments);
+    validateReceivableChanges(r as unknown as OrderReceivableRecord);
   }
   if (contract.table === 'portfolio_records') parsePortfolioRecord(value);
   if (contract.table === 'report_definitions') parseSavedReport(value);

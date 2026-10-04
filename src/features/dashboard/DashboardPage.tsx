@@ -536,8 +536,10 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
     commitments: plannedCommitments,
     today: todayKey,
   }), [data.activities, pipelineOpportunities, plannedCommitments, todayKey]);
-  const cashPicture = useMemo(() => {
-    if (!pictureRecords) return null;
+  const [cashLoadError, setCashLoadError] = useState('');
+  const { cashPicture, cashCalculationError } = useMemo(() => {
+    if (!pictureRecords) return { cashPicture: null, cashCalculationError: '' };
+    try {
     const book = buildOrderBook({
       opportunities: data.opportunities,
       quotes: data.quotes,
@@ -547,7 +549,10 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
       outcomes: data.opportunityOutcomes,
       today: todayKey,
     });
-    return summariseOverdueCash(buildReceivables({ orders: book.orders, records: pictureRecords.receivables, today: todayKey }));
+    return { cashPicture: summariseOverdueCash(buildReceivables({ orders: book.orders, records: pictureRecords.receivables, today: todayKey })), cashCalculationError: '' };
+    } catch (error) {
+      return { cashPicture: null, cashCalculationError: error instanceof Error ? error.message : 'Resolve the collection data before using cash figures.' };
+    }
   }, [data.opportunities, data.opportunityOutcomes, data.quotes, pictureRecords, todayKey]);
   const promisesPicture = useMemo(() => summariseWeekPromises(buildPlanBoard({
     periodType: 'week',
@@ -583,6 +588,7 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
   useEffect(() => {
     if (variant === 'reference' || authLoading) return;
     let active = true;
+    setCashLoadError('');
     const dataUserId = sampleDataActive ? undefined : user?.id;
     void Promise.all([
       loadOrderReceivablesForWorkspace(dataUserId, sampleDataActive),
@@ -592,9 +598,8 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
       loadWeeklyCommitmentsForWorkspace(dataUserId, sampleDataActive),
     ]).then(([receivables, costs, milestones, supplierCommitments, weeklyReviews]) => {
       if (active) setPictureRecords({ receivables, costs, milestones, supplierCommitments, weeklyReviews });
-    }).catch(() => {
-      // The cash card says it is still reading rather than showing a zero it
-      // does not know to be true.
+    }).catch(error => {
+      if (active) { setPictureRecords(null); setCashLoadError(error instanceof Error ? error.message : 'The collection data could not be loaded.'); }
     });
     return () => { active = false; };
   }, [authLoading, sampleDataActive, user?.id, variant]);
@@ -1026,9 +1031,10 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
               <TodayMetricCards
                 pipeline={pipelinePicture}
                 silence={silencePicture}
-                cash={cashPicture}
+                cash={cashLoadError ? null : cashPicture}
                 promises={promisesPicture}
               />
+              {(cashLoadError || cashCalculationError) && <p role="alert" className="text-sm text-red-700">{cashLoadError || cashCalculationError}</p>}
 
               {/* The moves are the page's one Level 1 object, so they take the
                   wide column. Beside them, the cockpit's five questions and

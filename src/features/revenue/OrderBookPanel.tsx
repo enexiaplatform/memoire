@@ -89,12 +89,15 @@ export function OrderBookPanel({
     return () => { cancelled = true; };
   }, [dataUserId, sampleDataActive]);
 
-  const book = useMemo(
+  const { book, calculationError } = useMemo(
     // `termRecords` is what stops a Net 30 order keeping a Deposit step it never
     // owed. The engine has always honoured it; this caller used to omit it, so
     // the order book printed "No payment term" for terms that were saved and
     // built the road to cash from that blank.
-    () => buildOrderBook({ opportunities, quotes, milestoneRecords, costRecords: termRecords, outcomes, receivableRecords }),
+    () => {
+      try { return { book: buildOrderBook({ opportunities, quotes, milestoneRecords, costRecords: termRecords, outcomes, receivableRecords }), calculationError: '' }; }
+      catch (error) { return { book: buildOrderBook({ opportunities: [], quotes: [], milestoneRecords: [] }), calculationError: error instanceof Error ? error.message : 'Resolve the collection data before using totals.' }; }
+    },
     [termRecords, milestoneRecords, opportunities, quotes, outcomes, receivableRecords],
   );
 
@@ -121,7 +124,7 @@ export function OrderBookPanel({
     }));
   };
 
-  if (loadError) return <p role="alert" className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{loadError}</p>;
+  if (loadError || calculationError) return <p role="alert" className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{loadError || calculationError}</p>;
 
   return (
     // `min-w-0` is not decoration: without it the 980px order table grows the

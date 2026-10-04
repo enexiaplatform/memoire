@@ -19,6 +19,10 @@ import {validatePolicyReferences,type CommercialPolicy} from '../domain/commerci
 import {validateIncidentReferences,type CommercialIncident} from '../domain/commercialKernel/commercialIncident.ts';
 import type {QuoteRecord} from '../services/quoteStore.ts';
 import type { PlanRecord } from './weeklyPlan.ts';
+import { buildOrderBook } from './orderToCash.ts';
+import { sanitizeInstallments, validatePaymentSchedule } from './paymentTerms.ts';
+import type { OrderReceivableRecord } from './receivables.ts';
+import { applyReceivableChanges } from './receivableChanges.ts';
 import { HISTORICAL_REVISIONS_KEY,HISTORICAL_COVERAGE_KEY,historicalSources,validateHistoricalBundle,
   type StateRevision,type HistoryCoverage } from '../services/historicalIntegrity.ts';
 import { canonicalContracts, contractForKey, archiveOnlyTables, CLOUD_ARCHIVE_KEY, isSampleRecord, recordIdentity, validateCanonicalRecord, type RecordData } from '../services/canonicalDurability.ts';
@@ -280,11 +284,27 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
           const semantic=(r:RecordData)=>JSON.stringify({...r,executionLinks:[],updatedAt:''});
           if(semantic(previous)!==semantic(record))throw new Error('Decision history conflicts between local and cloud backup copies.');
         }
+        if (previous && contract.table === 'order_receivables' && (record.pendingChanges as unknown[])?.length) {
+          const local = record as unknown as OrderReceivableRecord;
+          merged.set(id, { ...applyReceivableChanges(previous as unknown as OrderReceivableRecord, local), pendingChanges: local.pendingChanges, syncBase: local.syncBase } as unknown as RecordData);
+          continue;
+        }
         const stamp = (r: RecordData) => Date.parse(String(r.updatedAt || r.recordedAt || r.createdAt || '')) || 0;
         if (!previous || stamp(record) >= stamp(previous)) merged.set(id, { ...previous, ...record });
       }
       normalized[key] = Array.from(merged.values());
     } else normalized[key] = local;
+  }
+  const receivableRecords = (normalized['memoire.orderReceivables.v1'] || []) as OrderReceivableRecord[];
+  if (receivableRecords.some(record => sanitizeInstallments(record.installments).some(part => typeof part.amount === 'number'))) {
+    const orders = buildOrderBook({ opportunities: normalized['memoire.opportunities.v1'] as CrmLiteOpportunity[] || [],
+      quotes: normalized['memoire.quotes.v1'] as QuoteRecord[] || [], milestoneRecords: [], linkage: 'explicit-id' }).orders;
+    for (const record of receivableRecords) {
+      if (!sanitizeInstallments(record.installments).some(part => typeof part.amount === 'number')) continue;
+      const order = orders.find(order => order.opportunityId === record.opportunityId);
+      if (typeof order?.amount !== 'number' || !Number.isFinite(order.amount)) throw new Error('The order value is required to validate a fixed payment schedule before restoring it.');
+      validatePaymentSchedule(record.installments, order.amount);
+    }
   }
   for(const workspace of (normalized['memoire.commercialWorkspaces.v1']||[]) as CommercialWorkspace[])
     validateWorkspaceReferences(workspace,normalized['memoire.commercialCommitments.v1'] as CommercialCommitment[]||[]);

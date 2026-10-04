@@ -46,7 +46,7 @@ function useReviewChangeRecords() {
       // A year, not the 90-day default: the funnel measures days to qualify,
       // and a lead worked over a quarter would otherwise lose its start.
       loadRecentEvents(dataUserId, sampleDataActive, { windowDays: 365, limit: 2000 }),
-      loadOrderReceivablesForWorkspace(dataUserId, sampleDataActive).catch(() => [] as OrderReceivableRecord[]),
+      loadOrderReceivablesForWorkspace(dataUserId, sampleDataActive),
       loadWeeklyCommitmentsForWorkspace(dataUserId, sampleDataActive).catch(() => [] as WeeklyCommitmentSnapshot[]),
     ])
       .then(([workspace, events, receivables, weeklyReviews]) => {

@@ -51,12 +51,14 @@ export function MoneyAtRiskPanel({
     () => getCachedSalesWorkspaceData(dataUserId)?.commitments || [],
   );
   const [expanded, setExpanded] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
+    setLoadError('');
     void Promise.all([
       loadOrderMilestonesForWorkspace(dataUserId, sampleDataActive).catch(() => [] as OrderMilestoneRecord[]),
-      loadOrderReceivablesForWorkspace(dataUserId, sampleDataActive).catch(() => [] as OrderReceivableRecord[]),
+      loadOrderReceivablesForWorkspace(dataUserId, sampleDataActive),
       loadOrderCostsForWorkspace(dataUserId, sampleDataActive).catch(() => [] as OrderCostRecord[]),
       loadSalesWorkspaceData(dataUserId).then((workspace) => workspace.commitments).catch(() => [] as CommercialCommitment[]),
     ]).then(([nextMilestones, nextReceivables, nextCosts, nextCommitments]) => {
@@ -65,20 +67,26 @@ export function MoneyAtRiskPanel({
       setReceivableRecords(nextReceivables);
       setCostRecords(nextCosts);
       setCommitments(nextCommitments);
-    });
+    }).catch(error => { if (!cancelled) setLoadError(error instanceof Error ? error.message : 'The collection data could not be loaded.'); });
     return () => { cancelled = true; };
   }, [dataUserId, sampleDataActive]);
 
-  const risk = useMemo(() => {
+  const { risk, calculationError } = useMemo(() => {
+    if (loadError) return { risk: null, calculationError: loadError };
+    try {
     const book = buildOrderBook({ opportunities, quotes, milestoneRecords: milestones, costRecords, outcomes, receivableRecords });
-    return buildMoneyAtRisk({
+    return { risk: buildMoneyAtRisk({
       orders: book.orders,
       receivables: buildReceivables({ orders: book.orders, records: receivableRecords }),
       margins: buildOrderMargins({ orders: book.orders, costRecords, targetPct: getTargetMarginPct() }),
       commitments: commitments.filter((commitment) => sampleDataActive || commitment.isSample !== true),
-    });
-  }, [commitments, costRecords, milestones, opportunities, outcomes, quotes, receivableRecords, sampleDataActive]);
+    }), calculationError: '' };
+    } catch (error) {
+      return { risk: null, calculationError: error instanceof Error ? error.message : 'Resolve the collection data before using totals.' };
+    }
+  }, [commitments, costRecords, milestones, opportunities, outcomes, quotes, receivableRecords, sampleDataActive, loadError]);
 
+  if (!risk) return <Panel className="px-5 py-5 sm:px-6"><p role="alert" className="text-sm text-red-700">{calculationError}</p></Panel>;
   const visible = expanded ? risk.items : risk.items.slice(0, VISIBLE_ITEMS);
 
   return (
