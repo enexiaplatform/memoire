@@ -48,7 +48,7 @@ Export xác thực: complete, 56 tables, 1.436 rows trước phát hành. Hai as
 
 ## Kiểm tra phát hành
 
-Build/prerender, lint, API typecheck đạt. Các hợp đồng trong `npm run check` được chạy đủ 113 nhóm, 113 đạt; full unit suite cuối 2.116/2.116 đạt, 0 fail/skip, chạy với concurrency 2 để phù hợp máy QC. Ca bổ sung kiểm tra relational write trả lỗi sau khi đọc thành công: recovery đợi đúng lỗi trước khi kết luận. Deployment acceptance được cập nhật bên dưới.
+Build/prerender, lint, API typecheck đạt. Các hợp đồng trong `npm run check` được chạy đủ 113 nhóm, 113 đạt; full unit suite cuối 2.117/2.117 đạt, 0 fail/skip, chạy với concurrency 2 để phù hợp máy QC. Ca bổ sung kiểm tra relational write trả lỗi sau khi đọc thành công: recovery đợi đúng lỗi trước khi kết luận. Evidence legacy thiếu account ID được phục hồi chỉ khi có đúng một account cùng owner; trường hợp trùng hoặc chỉ có account của owner khác bị từ chối. Deployment acceptance được cập nhật bên dưới.
 
 Bằng chứng riêng trong `.audit/round4-remediation-2026-10-04/`: `unit-final.log`, `contracts.json`, `contracts.log`, `build-final.log`, `lint-final.log`, `api-final.log`, `plan-completion.dom.txt`, `ask-unsupported.dom.txt`, `capture-confirmed.dom.txt`, `review-cash.dom.txt`, `forecast-period.dom.txt`, `coverage-catalog.dom.txt`, `report-restored.dom.txt`, screenshots experiment/sync/merge. `.audit/full-product-user-2026-10-04/` giữ export trước/sau và integrity evidence. Credentials và full private export không được đưa vào Git hoặc deployment.
 
@@ -63,3 +63,5 @@ Chưa có valid signed federation/trust roundtrip hai doanh nghiệp, multi-owne
 Đang chờ kết quả phát hành artifact đã kiểm tra và smoke test live. Chưa dùng phần này để tuyên bố Production đã được sửa.
 
 Bản đầu `38e3c43` đã Ready, export xác thực và đối soát tiền đạt, rồi promote tới domain chính thức. Browser acceptance trên phiên cũ phát hiện phần F12 còn sót: pending relational writes chưa được drain, và thông báo success còn tồn tại khi lỗi đến muộn. Không coi lần acceptance đó là hoàn tất. Bản bổ sung đợi kernel writes, nêu nguyên nhân cụ thể và thay thông báo success bằng failure nếu trạng thái thay đổi. Đồng thời sửa duplicate sibling keys ở Review được phát hiện trong console localhost.
+
+Bản `59470b6f` đã chỉ rõ lỗi của phiên cũ: `commercial_evidence.account_id` bị null. Retry báo failure chính xác và giữ lần sync thành công cũ, không che lỗi bằng success. Bản tiếp theo bổ sung phục hồi liên kết canonical cho evidence account-only có tên khách hàng duy nhất trong cùng owner; không tạo khách hàng mới, không gán liên kết mơ hồ và không thay nội dung evidence.

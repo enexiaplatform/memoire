@@ -3,7 +3,7 @@ class Storage{data=new Map();get length(){return this.data.size;}key(i){return [
 const storage=new Storage(),writes=[];let fail=false,cloud=[],writeGate=null,writeError=null;
 globalThis.window={localStorage:storage,dispatchEvent:()=>true};globalThis.localStorage=storage;globalThis.CustomEvent=class{};
 globalThis.__ownerCloud={auth:{getUser:async()=>({data:{user:{id:'owner-b'}},error:null})},rpc:async()=>({data:'2026-09-01T00:00:00Z',error:null}),from(){return {select(){return this;},eq(){return this;},gte(){return this;},order(){return this;},range:async()=>({data:cloud,error:fail?{message:'Offline'}:null}),limit:async()=>({data:cloud,error:fail?{message:'Offline'}:null}),upsert:async rows=>{if(writeGate)await writeGate;writes.push(...rows);return {error:writeError};}};}};
-registerHooks({load(url,context,next){if(url.endsWith('/lib/supabaseClient.ts'))return {format:'module',shortCircuit:true,source:'export const supabaseClient=globalThis.__ownerCloud;export const isPipelineSupabaseConfigured=true;'};return next(url,context);}});
+registerHooks({load(url,context,next){if(url.endsWith('/lib/supabaseClient.ts'))return {format:'module',shortCircuit:true,source:'export const supabaseClient=globalThis.__ownerCloud;export const isPipelineSupabaseConfigured=true;'};if(url.endsWith('/services/accountStore.ts'))return {format:'module',shortCircuit:true,source:'export async function loadAccounts(){return globalThis.__ownerAccounts || [];}'};return next(url,context);}});
 const {eventCodec,loadRecentEvents,EVENT_STORAGE_KEY}=await import('../../src/services/commercialKernel/eventStore.ts');
 const {loadForWorkspace,loadMergedForUser,upsertCloudRecords,sendOwedCloudRecords,flushPendingKernelWrites}=await import('../../src/services/commercialKernel/kernelRepository.ts');
 const at='2026-09-29T00:00:00.000Z';
@@ -42,4 +42,15 @@ test('recovery waits for a late relational write failure instead of declaring th
  release();await drained;assert.equal(settled,true);
  assert.equal(getWorkspaceSyncStatus().state,'error');assert.match(getWorkspaceSyncStatus().message,/commercial_events.*Rejected late write/);
  writeGate=null;writeError=null;
+});
+
+test('legacy account-only evidence recovers a unique canonical owner account and refuses an ambiguous or foreign one',async()=>{
+ const {evidenceCodec}=await import('../../src/services/commercialKernel/evidenceStore.ts');
+ const record={id:'legacy-evidence',userId:'owner-b',accountId:'',accountName:'Atlas',category:'technical_outcome',direction:'supports',summary:'Recorded response',evidenceText:'A recorded customer response.',observedAt:'2026-09-29',recordedAt:at,sourceType:'manual',createdAt:at,updatedAt:at};
+ globalThis.__ownerAccounts=[{id:'atlas-b',userId:'owner-b',accountName:'Atlas'},{id:'atlas-a',userId:'owner-a',accountName:'Atlas'}];
+ await upsertCloudRecords(evidenceCodec,'owner-b',[record]);assert.equal(writes.at(-1).account_id,'atlas-b');assert.equal(record.accountId,'');
+ globalThis.__ownerAccounts.push({id:'atlas-duplicate',userId:'owner-b',accountName:'Atlas'});
+ const count=writes.length;await assert.rejects(upsertCloudRecords(evidenceCodec,'owner-b',[record]),/Choose one existing account/);assert.equal(writes.length,count);
+ globalThis.__ownerAccounts=[{id:'atlas-a',userId:'owner-a',accountName:'Atlas'}];
+ await assert.rejects(upsertCloudRecords(evidenceCodec,'owner-b',[record]),/Choose one existing account/);
 });

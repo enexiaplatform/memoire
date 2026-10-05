@@ -6,6 +6,8 @@ import { invalidateWorkspaceCollection } from '../workspaceDataCache.ts';
 import { requireLocalWrite, writeLocalCollection } from '../localWriteGuard.ts';
 import { commitLocalHistoricalCollection, historicalSources, type HistoricalSource } from '../historicalIntegrity.ts';
 import { requireCloudHistoricalIntegrity } from '../historicalCloudGate.ts';
+import { loadAccounts } from '../accountStore.ts';
+import { canonicalAccountId } from '../../utils/canonicalAccountLink.ts';
 
 const pendingKernelWrites = new Set<Promise<void>>();
 
@@ -250,6 +252,17 @@ export async function upsertCloudRecords<T extends KernelRecord>(
   if (syncable.some(record => record.userId !== userId)) throw new Error('Kernel records cannot be reassigned to the signed-in account.');
   const rows = syncable.map((record) => codec.toRow(record, userId));
   if (rows.length === 0) return;
+  // Older account-only captures can have a real customer name but no account ID.
+  // Evidence requires the canonical owner-scoped ID in the current schema.
+  if (codec.table === 'commercial_evidence' && rows.some(row => !row.account_id)) {
+    const accounts = await loadAccounts(userId);
+    for (const row of rows) {
+      if (row.account_id) continue;
+      const accountId = canonicalAccountId(String(row.account_name || ''), accounts, userId);
+      if (!accountId) throw new Error('Choose one existing account before syncing this evidence.');
+      row.account_id = accountId;
+    }
+  }
 
   const { error } = await supabaseClient
     .from(codec.table)
