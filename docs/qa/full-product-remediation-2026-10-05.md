@@ -29,7 +29,7 @@ Bắt đầu ngày 05/10/2026, cập nhật ngày 06/10/2026. Báo cáo này ti�
 | F28 (mới) | Playbook không khẳng định “repeat across deals” khi các objection chỉ liên kết account; dùng “captured records”. | Hai account-level objections tạo pattern; title chính xác; asset draft chỉ nêu captured evidence, không biến thành acceptance. |
 | F29 (mới) | Phủ định payment/delivery không trở thành positive buying signal; clause khẳng định độc lập vẫn được giữ. | UI “No delivery or payment happened” có buyingSignals rỗng; unit kiểm tra no/not/didn't và clause payment received độc lập. Đây là xử lý phủ định tiếng Anh theo rule, không phải hiểu mọi ngôn ngữ. |
 | F30 (mới) | Tiến độ/summary/day counters của Plan dùng cùng scope với việc đang hiển thị. Today và Review tính tuần hiện tại riêng; Today vẫn nêu overdue incl. backlog. | Trước sửa: 2/410 dù backlog ẩn. Sau sửa: 2/2, 100%, Monday 1/1; bật backlog 2/410. Test 408 overdue records bảo toàn source và mọi counter. Test Review có thêm future work cũng xác nhận weekly 2/2, personal 2 và không đổi source. |
-| F31 (mới) | Recovery đang kiểm tra hiển thị “Sync in progress - checking pending changes”, không nói “nothing is syncing”. | Phát hiện trong Retry live; giữ riêng thông báo failed và thành công. |
+| F31 (mới) | Recovery đang kiểm tra hiển thị “Sync in progress - checking pending changes”, không nói “nothing is syncing”. | Retry live trên bản cuối xác nhận trạng thái checking và copy mới, sau đó cloud-synced và “None known”; lần thành công 06:45:29 ngày 06/10/2026. |
 
 ## Đối chiếu cloud và tiền
 
@@ -51,7 +51,7 @@ Export xác thực: complete, 56 tables, 1.436 rows trước phát hành. Hai as
 
 Build/prerender, lint, API typecheck đạt. Các hợp đồng trong `npm run check` được chạy đủ 113 nhóm, 113 đạt; full unit suite cuối 2.118/2.118 đạt, 0 fail/skip, chạy với concurrency 2 để phù hợp máy QC. Ca bổ sung kiểm tra relational write trả lỗi sau khi đọc thành công: recovery đợi đúng lỗi trước khi kết luận. Evidence legacy thiếu account ID được phục hồi chỉ khi có đúng một account cùng owner; trường hợp trùng hoặc chỉ có account của owner khác bị từ chối. Review weekly adherence dùng cùng scope hiện tại như Plan, không cộng backlog. Deployment acceptance được cập nhật bên dưới.
 
-Bằng chứng riêng trong `.audit/round4-remediation-2026-10-04/`: `unit-final.log`, `contracts.json`, `contracts.log`, `build-final.log`, `lint-final.log`, `api-final.log`, `plan-completion.dom.txt`, `ask-unsupported.dom.txt`, `capture-confirmed.dom.txt`, `review-cash.dom.txt`, `forecast-period.dom.txt`, `coverage-catalog.dom.txt`, `report-restored.dom.txt`, screenshots experiment/sync/merge. `.audit/full-product-user-2026-10-04/` giữ export trước/sau và integrity evidence. Credentials và full private export không được đưa vào Git hoặc deployment.
+Bằng chứng riêng trong `.audit/round4-remediation-2026-10-04/`: `unit-release-final.log`, `contracts.json`, `contracts.log`, `build-release-final.log`, `lint-release-final.log`, `api-release-final.log`, `plan-completion.dom.txt`, `ask-unsupported.dom.txt`, `capture-confirmed.dom.txt`, `review-cash.dom.txt`, `forecast-period.dom.txt`, `coverage-catalog.dom.txt`, `report-restored.dom.txt`, `production-final-pending.dom.txt`, `production-release-final-sync.dom.txt`, `production-release-final-review.dom.txt`, `production-release-final-sync.png`, `evidence-recovery-acceptance.json`. `.audit/full-product-user-2026-10-04/` giữ export trước/sau và integrity evidence. Credentials và full private export không được đưa vào Git hoặc deployment. Một lần chạy contract đồng thời với build đã gặp artifact chưa sẵn sàng và timing scale nhiễu; chạy lại sau build đạt đủ 113/113, không bỏ check hoặc nới threshold.
 
 ## Giới hạn còn lại của chứng nhận
 
@@ -61,7 +61,11 @@ Chưa có valid signed federation/trust roundtrip hai doanh nghiệp, multi-owne
 
 ## Chấp nhận Production
 
-Artifact `7ee1ec9876c357ebe84ede0b23151a7369c1da74`, deployment `dpl_9w61UZRUSaKoPmV2VvyKuiHUM1qA`, đã Ready và promote lên domain chính thức. Health live: 5 required pass, 0 failure, 0 warning. Phiên cũ không bị xóa cache hoặc sign out: reload và Retry thành công, “None known”, không có lỗi muộn; lần thành công 21:53:55 ngày 05/10/2026, reload tiếp vẫn cloud-synced. F31 là chỉnh copy bổ sung, đang chờ chấp nhận bản cuối.
+Artifact phục hồi `7ee1ec9876c357ebe84ede0b23151a7369c1da74`, deployment `dpl_9w61UZRUSaKoPmV2VvyKuiHUM1qA`, đã Ready và promote lên domain chính thức. Phiên cũ không bị xóa cache hoặc sign out: reload và Retry thành công, “None known”, không có lỗi muộn; lần thành công 21:53:55 ngày 05/10/2026, reload tiếp vẫn cloud-synced.
+
+Bản code cuối `b8535439443ce634f112fbb28b9de88abed43c9c`, deployment `dpl_3eTEXqdWSaAbJguZEDCda3A58i9s`, Ready và gắn domain chính thức ngày 06/10/2026 qua kết nối Vercel/GitHub sau khi CLI trả Not authorized. Không đổi quyền hoặc tắt bảo vệ. Health live: 5 required pass, 0 failure, 0 warning. Browser mở lại sau khi tab cũ không còn, session QC vẫn khôi phục được; Retry xác nhận cả trạng thái đang kiểm tra và thành công 06:45:29, không còn lỗi muộn. Review live: 2/2, 100%, 0 pipeline + 1 capture + 1 personal; collected cash 441,4K USD, projected net flow 359,1K. Export cuối complete 56 tables, 1.442 rows, financial integrity và evidence recovery đều đạt. Hai refinements F30/F31 được chấp nhận trên Production.
+
+Code đã kiểm tra cùng tài liệu closeout được cập nhật nhánh `master` bằng fast-forward, giữ lịch sử hiện có; các thay đổi ngoài phạm vi của người dùng không được đưa vào release.
 
 Bản đầu `38e3c43` đã Ready, export xác thực và đối soát tiền đạt, rồi promote tới domain chính thức. Browser acceptance trên phiên cũ phát hiện phần F12 còn sót: pending relational writes chưa được drain, và thông báo success còn tồn tại khi lỗi đến muộn. Không coi lần acceptance đó là hoàn tất. Bản bổ sung đợi kernel writes, nêu nguyên nhân cụ thể và thay thông báo success bằng failure nếu trạng thái thay đổi. Đồng thời sửa duplicate sibling keys ở Review được phát hiện trong console localhost.
 
