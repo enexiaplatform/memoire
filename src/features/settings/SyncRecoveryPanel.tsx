@@ -130,7 +130,8 @@ export function SyncRecoveryPanel() {
           label="Unsynced changes"
           value={failed
             ? 'Changes since the last successful sync are in this browser only'
-            : dataMode === 'cloud-synced' ? 'None known' : 'Everything - nothing is syncing'}
+            : syncStatus.state === 'checking' ? 'Sync in progress - checking pending changes'
+              : dataMode === 'cloud-synced' ? 'None known' : 'Everything - nothing is syncing'}
         />
       </dl>
 

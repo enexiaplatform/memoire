@@ -1,8 +1,8 @@
 # Memoire — sửa lỗi và tái kiểm tra audit B2B global
 
-Ngày 05/10/2026. Báo cáo này tiếp nối [audit vòng 4](full-product-user-audit-2026-10-04.md), dùng cùng doanh nghiệp giả lập Northstar Industrial Supply và dữ liệu vận hành 10/2025–09/2026, cộng chu kỳ QC-R4 tháng 10/2026. Mô phỏng không phải 12 tháng sử dụng thật, bằng chứng khách hàng thật hay sổ kế toán được chứng nhận.
+Bắt đầu ngày 05/10/2026, cập nhật ngày 06/10/2026. Báo cáo này tiếp nối [audit vòng 4](full-product-user-audit-2026-10-04.md), dùng cùng doanh nghiệp giả lập Northstar Industrial Supply và dữ liệu vận hành 10/2025–09/2026, cộng chu kỳ QC-R4 tháng 10/2026. Mô phỏng không phải 12 tháng sử dụng thật, bằng chứng khách hàng thật hay sổ kế toán được chứng nhận.
 
-Đã sửa 17 phát hiện F10–F26 và 4 vấn đề bổ sung được phát hiện trong vòng tái kiểm tra. Có kiểm tra hành vi người dùng, đối chiếu cloud, kiểm tra thuật toán và hợp đồng tích hợp. Phát hành và chấp nhận Production được ghi ở phần cuối; việc kiểm tra localhost dùng database thật của tài khoản QC không tự xác nhận code đã được phát hành.
+Đã sửa 17 phát hiện F10–F26 và 5 vấn đề bổ sung được phát hiện trong vòng tái kiểm tra. Có kiểm tra hành vi người dùng, đối chiếu cloud, kiểm tra thuật toán và hợp đồng tích hợp. Phát hành và chấp nhận Production được ghi ở phần cuối; việc kiểm tra localhost dùng database thật của tài khoản QC không tự xác nhận code đã được phát hành.
 
 ## Các phát hiện và bằng chứng sửa
 
@@ -28,7 +28,8 @@ Ngày 05/10/2026. Báo cáo này tiếp nối [audit vòng 4](full-product-user-
 | F27 (mới) | Date input Operating System giữ ngày khi chuyển focus và ghi lên cloud. | Experiment next date 2026-10-20 còn nguyên sau reload và trong cloud. |
 | F28 (mới) | Playbook không khẳng định “repeat across deals” khi các objection chỉ liên kết account; dùng “captured records”. | Hai account-level objections tạo pattern; title chính xác; asset draft chỉ nêu captured evidence, không biến thành acceptance. |
 | F29 (mới) | Phủ định payment/delivery không trở thành positive buying signal; clause khẳng định độc lập vẫn được giữ. | UI “No delivery or payment happened” có buyingSignals rỗng; unit kiểm tra no/not/didn't và clause payment received độc lập. Đây là xử lý phủ định tiếng Anh theo rule, không phải hiểu mọi ngôn ngữ. |
-| F30 (mới) | Tiến độ/summary/day counters của Plan dùng cùng scope với việc đang hiển thị. Today tính tuần hiện tại riêng, vẫn nêu overdue incl. backlog. | Trước sửa: 2/410 dù backlog ẩn. Sau sửa: 2/2, 100%, Monday 1/1; bật backlog 2/410. Test 408 overdue records bảo toàn source và mọi counter. |
+| F30 (mới) | Tiến độ/summary/day counters của Plan dùng cùng scope với việc đang hiển thị. Today và Review tính tuần hiện tại riêng; Today vẫn nêu overdue incl. backlog. | Trước sửa: 2/410 dù backlog ẩn. Sau sửa: 2/2, 100%, Monday 1/1; bật backlog 2/410. Test 408 overdue records bảo toàn source và mọi counter. Test Review có thêm future work cũng xác nhận weekly 2/2, personal 2 và không đổi source. |
+| F31 (mới) | Recovery đang kiểm tra hiển thị “Sync in progress - checking pending changes”, không nói “nothing is syncing”. | Phát hiện trong Retry live; giữ riêng thông báo failed và thành công. |
 
 ## Đối chiếu cloud và tiền
 
@@ -48,7 +49,7 @@ Export xác thực: complete, 56 tables, 1.436 rows trước phát hành. Hai as
 
 ## Kiểm tra phát hành
 
-Build/prerender, lint, API typecheck đạt. Các hợp đồng trong `npm run check` được chạy đủ 113 nhóm, 113 đạt; full unit suite cuối 2.117/2.117 đạt, 0 fail/skip, chạy với concurrency 2 để phù hợp máy QC. Ca bổ sung kiểm tra relational write trả lỗi sau khi đọc thành công: recovery đợi đúng lỗi trước khi kết luận. Evidence legacy thiếu account ID được phục hồi chỉ khi có đúng một account cùng owner; trường hợp trùng hoặc chỉ có account của owner khác bị từ chối. Deployment acceptance được cập nhật bên dưới.
+Build/prerender, lint, API typecheck đạt. Các hợp đồng trong `npm run check` được chạy đủ 113 nhóm, 113 đạt; full unit suite cuối 2.118/2.118 đạt, 0 fail/skip, chạy với concurrency 2 để phù hợp máy QC. Ca bổ sung kiểm tra relational write trả lỗi sau khi đọc thành công: recovery đợi đúng lỗi trước khi kết luận. Evidence legacy thiếu account ID được phục hồi chỉ khi có đúng một account cùng owner; trường hợp trùng hoặc chỉ có account của owner khác bị từ chối. Review weekly adherence dùng cùng scope hiện tại như Plan, không cộng backlog. Deployment acceptance được cập nhật bên dưới.
 
 Bằng chứng riêng trong `.audit/round4-remediation-2026-10-04/`: `unit-final.log`, `contracts.json`, `contracts.log`, `build-final.log`, `lint-final.log`, `api-final.log`, `plan-completion.dom.txt`, `ask-unsupported.dom.txt`, `capture-confirmed.dom.txt`, `review-cash.dom.txt`, `forecast-period.dom.txt`, `coverage-catalog.dom.txt`, `report-restored.dom.txt`, screenshots experiment/sync/merge. `.audit/full-product-user-2026-10-04/` giữ export trước/sau và integrity evidence. Credentials và full private export không được đưa vào Git hoặc deployment.
 
@@ -60,8 +61,10 @@ Chưa có valid signed federation/trust roundtrip hai doanh nghiệp, multi-owne
 
 ## Chấp nhận Production
 
-Đang chờ kết quả phát hành artifact đã kiểm tra và smoke test live. Chưa dùng phần này để tuyên bố Production đã được sửa.
+Artifact `7ee1ec9876c357ebe84ede0b23151a7369c1da74`, deployment `dpl_9w61UZRUSaKoPmV2VvyKuiHUM1qA`, đã Ready và promote lên domain chính thức. Health live: 5 required pass, 0 failure, 0 warning. Phiên cũ không bị xóa cache hoặc sign out: reload và Retry thành công, “None known”, không có lỗi muộn; lần thành công 21:53:55 ngày 05/10/2026, reload tiếp vẫn cloud-synced. F31 là chỉnh copy bổ sung, đang chờ chấp nhận bản cuối.
 
 Bản đầu `38e3c43` đã Ready, export xác thực và đối soát tiền đạt, rồi promote tới domain chính thức. Browser acceptance trên phiên cũ phát hiện phần F12 còn sót: pending relational writes chưa được drain, và thông báo success còn tồn tại khi lỗi đến muộn. Không coi lần acceptance đó là hoàn tất. Bản bổ sung đợi kernel writes, nêu nguyên nhân cụ thể và thay thông báo success bằng failure nếu trạng thái thay đổi. Đồng thời sửa duplicate sibling keys ở Review được phát hiện trong console localhost.
 
 Bản `59470b6f` đã chỉ rõ lỗi của phiên cũ: `commercial_evidence.account_id` bị null. Retry báo failure chính xác và giữ lần sync thành công cũ, không che lỗi bằng success. Bản tiếp theo bổ sung phục hồi liên kết canonical cho evidence account-only có tên khách hàng duy nhất trong cùng owner; không tạo khách hàng mới, không gán liên kết mơ hồ và không thay nội dung evidence.
+
+Export sau recovery: complete, 56 tables, 1.442 rows. Evidence `evidence-e675b493-7508-4b2d-bd86-c5e12909fe80` đã lên cloud với account Atlas `37c703f3-109f-4faa-9785-b3e87acd1be4`, owner QC, observed date 2026-10-04; evidence đã có trên cloud được giữ nguyên. Financial integrity đối chiếu snapshot gốc đạt, các tổng tiền trong bảng giữ nguyên. Today live xác nhận overdue cash 359,1K, 8 going silent và planned 2/2, 100%, backlog 408.

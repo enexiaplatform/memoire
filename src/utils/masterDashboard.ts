@@ -12,6 +12,7 @@ import { buildMoneyFlow } from './moneyFlow.ts';
 import { buildCashPosition, getOpeningCashBalance, type CategorySpendRow } from './cashPosition.ts';
 import { buildOwnObligations } from './ownObligations.ts';
 import { buildPlanBoard, buildCaptureDerivedKey, getDatedCaptureActions, type PlanRecord } from './weeklyPlan.ts';
+import { planBoardWithoutBacklog } from './planBoardSummary.ts';
 import { getReportingCurrency, sumMoney, type SupportedCurrency } from './money.ts';
 import { isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
@@ -284,7 +285,7 @@ function buildExecution(input: {
   thirtyDaysAgo: Date;
 }): MasterDashboardModel['execution'] {
   const obligations = buildOwnObligations({ expenses: input.expenses, quotes: input.quotes, today: input.todayKey }).obligations;
-  const board = buildPlanBoard({
+  const board = planBoardWithoutBacklog(buildPlanBoard({
     periodType: 'week',
     anchorDate: input.todayDate,
     opportunities: input.opportunities,
@@ -292,7 +293,7 @@ function buildExecution(input: {
     activities: input.activities,
     records: input.planRecords,
     today: input.todayKey,
-  });
+  }));
 
   const doneKeys = new Set(
     input.planRecords
