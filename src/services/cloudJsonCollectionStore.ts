@@ -9,7 +9,8 @@ const pendingWrites = new Set<Promise<void>>();
 
 function trackWrite(table: CloudJsonCollectionTable, operation: 'upsert' | 'delete', write: Promise<unknown>) {
   const pending = write.then(() => undefined).catch((error) => {
-    reportWorkspaceSyncError();
+    const reason = error instanceof Error ? error.message : 'The account did not accept the change.';
+    reportWorkspaceSyncError(`Collection sync is incomplete (${table}): ${reason}`);
     reportCloudJsonSyncFailure(table, operation, error);
   });
   pendingWrites.add(pending);

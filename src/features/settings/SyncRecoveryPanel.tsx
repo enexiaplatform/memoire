@@ -11,6 +11,7 @@ import { flushPendingCloudJsonWrites } from '../../services/cloudJsonCollectionS
 import { loadOrderReceivablesForWorkspace } from '../../services/orderReceivableStore';
 import { requireCloudHistoricalIntegrity } from '../../services/historicalCloudGate';
 import { captureLocalWorkspaceScope } from '../../services/localWorkspaceOwner';
+import { flushPendingKernelWrites } from '../../services/commercialKernel/kernelRepository';
 import { resolveAnalyticsDataMode } from '../../utils/productAnalytics';
 import {
   readLastBackupExport,
@@ -63,6 +64,7 @@ export function SyncRecoveryPanel() {
       }
       beginWorkspaceSyncRetry();
       await flushPendingCloudJsonWrites();
+      await flushPendingKernelWrites();
       await requireCloudHistoricalIntegrity(user.id);
       await Promise.all([syncPendingObjections(user.id), syncPendingOperatingContext(user.id)]);
       const receivables = await loadOrderReceivablesForWorkspace(user.id);
@@ -71,6 +73,7 @@ export function SyncRecoveryPanel() {
       }
       await loadSalesWorkspaceData(user.id, { force: true });
       await flushPendingCloudJsonWrites();
+      await flushPendingKernelWrites();
       if (!sameWorkspace()) return;
       if (getWorkspaceSyncStatus().state === 'error') throw new Error(getWorkspaceSyncStatus().message);
       reportWorkspaceSyncReady();
@@ -132,7 +135,7 @@ export function SyncRecoveryPanel() {
       </dl>
 
       {message && (
-        <p className="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800">{message}</p>
+        <p className="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800">{failed && message === 'Synced. Your workspace is up to date.' ? `A later sync failed: ${syncStatus.message} Your browser copy remains available.` : message}</p>
       )}
 
       <div className="mt-3 flex flex-wrap gap-2">

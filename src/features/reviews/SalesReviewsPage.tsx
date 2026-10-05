@@ -217,7 +217,7 @@ export function SalesReviewsPage() {
             </summary>
             <div className="flex flex-col gap-4 border-t border-line-soft p-5">
               <CommercialRiskPanel key={attentionScope} recommendations={reviewRecommendations} attention loadError={attentionError} title="Commercial attention" />
-              <TeamCoordinationPanel key={attentionScope} scope={reviewScope} commitments={teamCommitments} opportunities={teamWorkspace?.opportunities||[]}/>
+              <TeamCoordinationPanel key={'team-'+attentionScope} scope={reviewScope} commitments={teamCommitments} opportunities={teamWorkspace?.opportunities||[]}/>
               <SharedWorkspacesPanel key={'shared-'+attentionScope} scope={reviewScope} commitments={teamCommitments}/>
               <ExternalPromisesPanel key={'external-'+attentionScope} scope={reviewScope} commitments={teamCommitments}/>
               <FederatedThreadsPanel key={'federated-'+attentionScope} scope={reviewScope}/>

@@ -18,6 +18,7 @@ import { loadCommercialConditionsForWorkspace } from './commercialKernel/conditi
 import { loadOutcomeRequirementsForWorkspace } from './commercialKernel/requirementStore';
 import { loadCommercialDependenciesForWorkspace } from './commercialKernel/dependencyStore';
 import { loadCommercialTimingForWorkspace } from './commercialKernel/timingStore';
+import { flushPendingKernelWrites } from './commercialKernel/kernelRepository';
 import { loadCommercialMoneyGatesForWorkspace } from './commercialKernel/moneyGateStore';
 import type { CommercialCondition } from '../domain/commercialKernel/commercialCondition';
 import type { OutcomeRequirement } from '../domain/commercialKernel/outcomeRequirement';
@@ -244,6 +245,7 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
       catch{reportWorkspaceSyncError('Historical baseline could not be saved. Current records remain usable; retry before historical queries.');}
     }
     await flushPendingCloudJsonWrites();
+    await flushPendingKernelWrites();
     if (userId && getWorkspaceSyncStatus().state !== 'error') reportWorkspaceSyncReady();
     // What the cloud actually held, so the next first paint can tell a complete
     // browser copy from a fragment of one.

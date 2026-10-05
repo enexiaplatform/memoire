@@ -7,6 +7,22 @@ import { requireLocalWrite, writeLocalCollection } from '../localWriteGuard.ts';
 import { commitLocalHistoricalCollection, historicalSources, type HistoricalSource } from '../historicalIntegrity.ts';
 import { requireCloudHistoricalIntegrity } from '../historicalCloudGate.ts';
 
+const pendingKernelWrites = new Set<Promise<void>>();
+
+function trackKernelWrite(table: KernelTable, operation: 'upsert' | 'delete', write: Promise<unknown>) {
+  const pending = write.then(() => undefined).catch(error => {
+    const reason = error instanceof Error ? error.message : 'The account did not accept the change.';
+    reportWorkspaceSyncError(`Commercial record sync is incomplete (${table}): ${reason}`);
+    reportKernelSyncFailure(table, operation, error);
+  });
+  pendingKernelWrites.add(pending);
+  void pending.finally(() => pendingKernelWrites.delete(pending));
+}
+
+export async function flushPendingKernelWrites() {
+  while (pendingKernelWrites.size) await Promise.all([...pendingKernelWrites]);
+}
+
 export type KernelTable =
   | 'commercial_threads'
   | 'commercial_commitments'
@@ -303,10 +319,7 @@ export function sendOwedCloudRecords<T extends KernelRecord>(
   const owed = selectOwedCloudRecords(merged, cloud);
   if (owed.length === 0) return;
 
-  void upsertCloudRecords(codec, userId, owed).catch((error) => {
-    reportWorkspaceSyncError();
-    reportKernelSyncFailure(codec.table, 'upsert', error);
-  });
+  trackKernelWrite(codec.table, 'upsert', upsertCloudRecords(codec, userId, owed));
 }
 
 /**
@@ -336,28 +349,20 @@ export async function loadForWorkspace<T extends KernelRecord>(
   try {
     return await loadMergedForUser(codec, userId);
   } catch (error) {
-    reportWorkspaceSyncError();
+    reportWorkspaceSyncError(`Commercial records could not load (${codec.table}): ${error instanceof Error ? error.message : 'The account did not answer.'}`);
     reportKernelSyncFailure(codec.table, 'load', error);
     return scopedLocal();
   }
 }
 
 export function syncRecordsForCurrentUser<T extends KernelRecord>(codec: KernelCodec<T>, records: T[]) {
-  void currentUserId()
-    .then((userId) => (userId ? upsertCloudRecords(codec, userId, records) : undefined))
-    .catch((error) => {
-      reportWorkspaceSyncError();
-      reportKernelSyncFailure(codec.table, 'upsert', error);
-    });
+  trackKernelWrite(codec.table, 'upsert', currentUserId()
+    .then((userId) => (userId ? upsertCloudRecords(codec, userId, records) : undefined)));
 }
 
 export function deleteRecordForCurrentUser<T extends KernelRecord>(codec: KernelCodec<T>, recordId: string) {
-  void currentUserId()
-    .then((userId) => (userId ? deleteCloudRecord(codec as unknown as KernelCodec<never>, userId, recordId) : undefined))
-    .catch((error) => {
-      reportWorkspaceSyncError();
-      reportKernelSyncFailure(codec.table, 'delete', error);
-    });
+  trackKernelWrite(codec.table, 'delete', currentUserId()
+    .then((userId) => (userId ? deleteCloudRecord(codec as unknown as KernelCodec<never>, userId, recordId) : undefined)));
 }
 
 async function currentUserId() {
