@@ -16,6 +16,7 @@ import {
 import { formatBaseCurrencyAmount } from '../../utils/money';
 import { SkeletonCard, SkeletonScreen } from '../../components/common/Skeleton';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
+import type { PortfolioRecord } from '../../domain/portfolio/portfolioCatalog';
 
 /**
  * Portfolio Coverage: every customer against every line you carry.
@@ -74,6 +75,7 @@ export function PortfolioCoveragePage() {
     cachedWorkspace?.opportunities || null,
   );
   const [accountMerges, setAccountMerges] = useState<AccountMergeRecord[]>(cachedWorkspace?.accountMerges || []);
+  const [portfolioRecords, setPortfolioRecords] = useState<PortfolioRecord[]>(cachedWorkspace?.portfolioRecords || []);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +83,7 @@ export function PortfolioCoveragePage() {
       if (cancelled) return;
       setOpportunities(workspace.opportunities);
       setAccountMerges(workspace.accountMerges);
+      setPortfolioRecords(workspace.portfolioRecords || []);
     });
     return () => { cancelled = true; };
   }, [dataUserId]);
@@ -91,9 +94,10 @@ export function PortfolioCoveragePage() {
   const matrix = useMemo(
     () => buildCoverageMatrix({
       opportunities: opportunities || [],
+      portfolioRecords,
       accountAliases: buildAccountAliasIndex(accountMerges),
     }),
-    [opportunities, accountMerges],
+    [opportunities, accountMerges, portfolioRecords],
   );
 
   if (!opportunities) {

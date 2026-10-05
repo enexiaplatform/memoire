@@ -4,7 +4,13 @@ import { useAuthContext } from '../../auth/authContext';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { loadSalesWorkspaceData } from '../../services/workspaceData';
-import { useWorkspaceSyncStatus } from '../../services/workspaceSyncStatus';
+import { useWorkspaceSyncStatus, beginWorkspaceSyncRetry, getWorkspaceSyncStatus, reportWorkspaceSyncReady, reportWorkspaceSyncError } from '../../services/workspaceSyncStatus';
+import { syncPendingObjections } from '../../services/objectionStore';
+import { syncPendingOperatingContext } from '../../services/operatingContextStore';
+import { flushPendingCloudJsonWrites } from '../../services/cloudJsonCollectionStore';
+import { loadOrderReceivablesForWorkspace } from '../../services/orderReceivableStore';
+import { requireCloudHistoricalIntegrity } from '../../services/historicalCloudGate';
+import { captureLocalWorkspaceScope } from '../../services/localWorkspaceOwner';
 import { resolveAnalyticsDataMode } from '../../utils/productAnalytics';
 import {
   readLastBackupExport,
@@ -40,22 +46,42 @@ export function SyncRecoveryPanel() {
   const dataMode = resolveAnalyticsDataMode();
 
   useEffect(() => {
-    if (syncStatus.state === 'ready') {
+    if (syncStatus.state === 'ready' && user?.id && !sampleDataActive && !retrying) {
       recordSuccessfulSync();
       setLastSync(readLastSuccessfulSync());
     }
-  }, [syncStatus.state]);
+  }, [syncStatus.state, user?.id, sampleDataActive, retrying]);
 
   const retry = async () => {
+    const sameWorkspace = captureLocalWorkspaceScope();
     setRetrying(true);
     setMessage('');
     try {
-      await loadSalesWorkspaceData(sampleDataActive ? undefined : user?.id, { force: true });
+      if (!user?.id || sampleDataActive || !isSupabaseConfigured) {
+        setMessage('This workspace is browser only. Export a backup to keep a copy.');
+        return;
+      }
+      beginWorkspaceSyncRetry();
+      await flushPendingCloudJsonWrites();
+      await requireCloudHistoricalIntegrity(user.id);
+      await Promise.all([syncPendingObjections(user.id), syncPendingOperatingContext(user.id)]);
+      const receivables = await loadOrderReceivablesForWorkspace(user.id);
+      if (receivables.some(record => record.syncError || record.pendingChanges?.length)) {
+        throw new Error('Some collection changes still need review.');
+      }
+      await loadSalesWorkspaceData(user.id, { force: true });
+      await flushPendingCloudJsonWrites();
+      if (!sameWorkspace()) return;
+      if (getWorkspaceSyncStatus().state === 'error') throw new Error(getWorkspaceSyncStatus().message);
+      reportWorkspaceSyncReady();
       recordSuccessfulSync();
       setLastSync(readLastSuccessfulSync());
       setMessage('Synced. Your workspace is up to date.');
-    } catch {
-      setMessage('Still cannot reach the cloud. Your browser copy is unchanged - export a backup before switching devices.');
+    } catch (error) {
+      if (!sameWorkspace()) return;
+      const reason = error instanceof Error ? error.message : 'Some changes have not reached the cloud.';
+      reportWorkspaceSyncError(reason);
+      setMessage(`Sync is incomplete: ${reason} Your browser copy remains available. Export a backup before switching devices.`);
     } finally {
       setRetrying(false);
       setLastBackup(readLastBackupExport());

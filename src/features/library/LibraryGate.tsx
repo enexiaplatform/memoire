@@ -61,8 +61,9 @@ export function LibraryGate({ title, children }: { title: string; children: Reac
         <h1 className="mt-4 text-xl font-bold text-navy">{title} is not open yet</h1>
         <p className="mt-3 text-sm leading-6 text-gray-500">{activation.blockedReason}</p>
         <p className="mt-3 text-sm leading-6 text-gray-400">
-          Nothing is missing and nothing was deleted - a library built from templates instead of your own outcomes would
-          teach you nothing. Keep running the loop and it opens on its own.
+          This evidence gate is separate from billing and the free preview. Your records remain available.
+          Progress: {activation.realEventCount} captured activities, {activation.decidedOpportunityCount} won/lost deals,
+          {activation.repeatedObjectionCount} repeated objection themes with a recorded response.
         </p>
         <div className="mt-5 flex flex-wrap justify-center gap-2">
           <Link to="/app/capture" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90">
@@ -71,6 +72,7 @@ export function LibraryGate({ title, children }: { title: string; children: Reac
           <Link to="/app/today" className="rounded-full border border-gray-200 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50">
             Back to Today
           </Link>
+          <Link to="/app/objections" className="rounded-full border border-gray-200 px-4 py-2 text-sm font-bold text-gray-700">Record objection responses</Link>
         </div>
       </section>
     </div>

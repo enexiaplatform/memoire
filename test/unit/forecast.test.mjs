@@ -157,7 +157,7 @@ describe('quarter allocation', () => {
     // Number(null) is 0, so nulls have to be skipped before the finite check
     // or every blank quarter would look like a deliberate zero.
     const amounts = quarterAmounts(opp({ quarterValues: { Q1: null, Q2: null, Q3: null, Q4: null }, estimatedValue: 500 }), 'Q3');
-    assert.equal(amounts.Q3, 500, 'falls back to the whole value in the current quarter');
+    assert.deepEqual(amounts, { Q1: 0, Q2: 0, Q3: 0, Q4: 0 }, 'missing dates do not invent a commitment in the current quarter');
   });
 
   test('falls back to the named close period', () => {
@@ -165,10 +165,9 @@ describe('quarter allocation', () => {
     assert.deepEqual(amounts, { Q1: 0, Q2: 300, Q3: 0, Q4: 0 });
   });
 
-  test('an untidily dated opportunity still lands somewhere', () => {
-    // Never silently dropped out of the forecast for having a messy period.
+  test('an unreadable period does not inflate the current quarter', () => {
     const amounts = quarterAmounts(opp({ estimatedValue: 300, expectedClosePeriod: 'sometime' }), 'Q4');
-    assert.equal(amounts.Q4, 300);
+    assert.deepEqual(amounts, { Q1: 0, Q2: 0, Q3: 0, Q4: 0 });
   });
 
   test('an opportunity worth nothing contributes nothing', () => {

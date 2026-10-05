@@ -457,7 +457,7 @@ export function KnowledgeGraphCanvas({ view, focusId, onSelect, summary, compact
                   selected={positioned.node.id === focusId}
                   dimmed={Boolean(lit) && !lit!.has(positioned.node.id)}
                   motion={nodeMotionFor(
-                    { updatedAt: positioned.node.updatedAt, ring: positioned.ring, focused: positioned.node.id === focusId },
+                    { updatedAt: positioned.node.lastInteractionAt, ring: positioned.ring, focused: positioned.node.id === focusId },
                     health?.get(positioned.node.id),
                   )}
                   onSelect={onSelect}

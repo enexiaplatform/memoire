@@ -5,9 +5,11 @@ import {
   getCommercialCheckpointRisk,
   getQuoteCommercialStage,
 } from './commercialFulfillment.ts';
-import { convertMoney, sumMoneyInBase } from './money.ts';
+import { convertMoney, getReportingCurrency, sumMoneyInBase, type SupportedCurrency } from './money.ts';
 import { compareSafeBusinessDate, isBusinessDateOverdue, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
+import { buildOrderBook, type OrderMilestoneRecord } from './orderToCash.ts';
+import { buildReceivables, type OrderReceivableRecord } from './receivables.ts';
 
 export const moneyFlowStages = ['Opportunity', 'Quoted', 'Pending PO', 'Pending delivery', 'Pending payment', 'Paid'] as const;
 
@@ -40,6 +42,8 @@ export type MoneyFlow = {
 };
 
 type MoneyFlowInput = {
+  receivableRecords?: OrderReceivableRecord[];
+  milestoneRecords?: OrderMilestoneRecord[];
   opportunities: CrmLiteOpportunity[];
   quotes: QuoteRecord[];
   today?: string;
@@ -55,6 +59,12 @@ type MoneyFlowInput = {
  */
 export function buildMoneyFlow(input: MoneyFlowInput): MoneyFlow {
   const today = sanitizeBusinessDate(input.today) || todayDateKey();
+  const book = input.receivableRecords === undefined ? null : buildOrderBook({
+    opportunities: input.opportunities, quotes: input.quotes, linkage: 'explicit-id',
+    milestoneRecords: input.milestoneRecords || [], receivableRecords: input.receivableRecords, today,
+  });
+  const orders = new Map(book?.orders.map(order => [order.opportunityId, order]));
+  const collections = new Map(book ? buildReceivables({ orders: book.orders, records: input.receivableRecords || [], today }).orders.map(order => [order.opportunityId, order]) : []);
 
   const quotedOpportunityIds = new Set(
     input.quotes.map((quote) => quote.opportunityId).filter(Boolean) as string[],
@@ -65,8 +75,23 @@ export function buildMoneyFlow(input: MoneyFlowInput): MoneyFlow {
 
   const quoteThreads = input.quotes
     .filter((quote) => !quote.__deleted && quote.status !== 'Rejected' && quote.status !== 'Expired')
+    // Quote revisions belong to one canonical order; they cannot duplicate its cash.
+    .filter((quote) => !quote.opportunityId || !orders.has(quote.opportunityId))
     .map((quote) => buildQuoteThread(quote, today))
     .filter((thread): thread is MoneyFlowThread => Boolean(thread));
+
+  const orderThreads: MoneyFlowThread[] = (book?.orders || []).map(order => {
+      const collection = collections.get(order.opportunityId)!;
+      const stage: MoneyFlowStage = collection.settled ? 'Paid'
+        : order.orderStage === 'To confirm' ? 'Pending PO'
+          : order.orderStage === 'To deliver' ? 'Pending delivery' : 'Pending payment';
+      const receiptRisk = collection.overdueBase > 0 ? 'Payment overdue' : '';
+      return { id: `order-${order.opportunityId}`, accountName: order.accountName, label: order.orderName,
+        amount: stage === 'Paid' ? order.amount : collection.valueUnavailable ? null : convertMoney(collection.outstandingBase, getReportingCurrency(), order.currency as SupportedCurrency),
+        currency: order.currency, stage, stuck: Boolean(receiptRisk || order.overdue || order.stalled),
+        stuckReason: receiptRisk || (order.overdue ? 'Order checkpoint overdue' : order.stalled ? 'Order has not moved' : ''),
+        nextAction: defaultNextAction(stage) };
+    });
 
   const opportunityThreads = input.opportunities
     .filter((opportunity) => opportunity.status === 'Active' && !isLeadStage(opportunity.stage))
@@ -84,7 +109,7 @@ export function buildMoneyFlow(input: MoneyFlowInput): MoneyFlow {
       nextAction: opportunity.nextAction || 'Confirm the next customer-facing step.',
     }));
 
-  const threads = [...opportunityThreads, ...quoteThreads]
+  const threads = [...opportunityThreads, ...quoteThreads, ...orderThreads]
     .sort((a, b) => Number(b.stuck) - Number(a.stuck) || stageRank(b.stage) - stageRank(a.stage));
 
   const lanes = moneyFlowStages.map((stage) => {

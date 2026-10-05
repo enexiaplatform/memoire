@@ -323,6 +323,7 @@ assert.equal(classifyOpportunitySilence(silentOpportunity, [oldActivity], today)
 assert.equal(classifyOpportunitySilence(warmingOpportunity, [], today).status, 'at-risk');
 assert.equal(classifyOpportunitySilence(recentTouchOpportunity, [recentTouchActivity], today).status, 'quiet-ok');
 assert.equal(classifyOpportunitySilence(plannedOpportunity, [], today).status, 'planned');
+assert.equal(classifyOpportunitySilence(overdueOpportunity, [], today).status, 'silent', 'a past-due action must not hide an actually silent deal from the rollup');
 assert.equal(classifyOpportunitySilence({ ...silentOpportunity, status: 'Won' }, [oldActivity], today).status, 'inactive');
 
 const opportunitiesUi = readFileSync('src/features/opportunities/OpportunitiesPage.tsx', 'utf8');

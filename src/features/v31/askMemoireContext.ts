@@ -231,7 +231,7 @@ export function answerFromMemory(question: string, context: AskMemoireContext): 
     const account = accounts[0]?.name || 'there';
     const concern = openObjections[0]?.title || activeOpportunity?.blocker || '';
     return response({
-      answer: `Hi ${account},\n\nFollowing up on our recent conversation${concern ? ` regarding ${concern}` : ''}. ${suggestedNextAction ? `The next step I noted is ${suggestedNextAction}.` : 'Please let me know the best next step from your side.'}\n\nBest regards,`,
+      answer: `Hi ${account},\n\n${latestInteraction ? 'Following up on our recorded conversation' : 'I would like to check in'}${concern ? ` regarding ${concern}` : ''}. ${suggestedNextAction ? `The next step on my plan is ${suggestedNextAction}.` : 'Please let me know the best next step from your side.'}\n\nBest regards,`,
       context,
       suggestedNextAction,
     });
@@ -289,7 +289,9 @@ export function answerFromMemory(question: string, context: AskMemoireContext): 
   }
 
   return response({
-    answer: summarizeContext(accounts, opportunities, interactions, objections, actions),
+    answer: /\b(summary|summarize|overview|workspace|memory)\b/i.test(question)
+      ? summarizeContext(accounts, opportunities, interactions, objections, actions)
+      : 'Memoire cannot answer this question from the recorded workspace. Ask about a customer, deal, next action, commitments or recorded money. General advice and external facts require another source.',
     context,
     suggestedNextAction,
   });

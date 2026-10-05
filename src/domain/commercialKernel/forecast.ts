@@ -2,6 +2,7 @@ import { isLeadStage } from '../../utils/leadIdentity.ts';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { ResolvedThread } from './deriveThreads.ts';
 import { convertMoney, getReportingCurrency, BASE_CURRENCY, type SupportedCurrency } from '../../utils/money.ts';
+import { resolveClosePeriod } from '../../utils/closePeriod.ts';
 
 /**
  * Forecast coverage: "am I going to make the number, and is there still time?"
@@ -147,19 +148,25 @@ export function evidenceAdjustedProbability(
 export function quarterAmounts(
   opportunity: CrmLiteOpportunity,
   currentQuarter: ForecastQuarter,
+  options: { today?: Date; fiscalYear?: number; fiscalYearStartMonth?: number } = {},
 ): Record<ForecastQuarter, number> {
+  const today = options.today || new Date();
+  const fiscalStart = options.fiscalYearStartMonth || 1;
+  const fiscalYear = options.fiscalYear ?? today.getFullYear() - (today.getMonth() + 1 < fiscalStart ? 1 : 0);
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const period = resolveClosePeriod(opportunity.expectedClosePeriod, todayKey);
   const currency = (opportunity.currency || BASE_CURRENCY) as SupportedCurrency;
   const reporting = getReportingCurrency();
-  // An unrecognised currency converts to null. Treating that as zero would drop
-  // the opportunity out of the forecast silently, so it is carried at face
-  // value instead - visibly wrong beats invisibly missing.
-  const toBase = (value: number) => convertMoney(value, currency, reporting) ?? value;
+  // Unknown rates cannot contribute to a total in another currency.
+  // buildCoverage separately reports the excluded records.
+  const toBase = (value: number) => convertMoney(value, currency, reporting) ?? 0;
 
   const split = opportunity.quarterValues;
   const result = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 } as Record<ForecastQuarter, number>;
   let placed = false;
 
-  if (split && typeof split === 'object') {
+  const splitYear = typeof opportunity.fy26Value === 'number' ? 2026 : period.year ?? fiscalYear;
+  if (split && typeof split === 'object' && splitYear === fiscalYear) {
     for (const quarter of FORECAST_QUARTERS) {
       const raw = (split as Record<string, unknown>)[quarter];
       // The imported split stores an explicit null for an empty quarter, and
@@ -176,10 +183,19 @@ export function quarterAmounts(
 
   if (placed) return result;
 
-  const total = opportunity.fy26Value ?? opportunity.estimatedValue ?? 0;
+  const total = opportunity.estimatedValue ?? opportunity.fy26Value ?? 0;
   if (!total) return result;
 
-  result[quarterFromPeriodLabel(opportunity.expectedClosePeriod) || currentQuarter] = toBase(total);
+  if (!period.quarter || !period.year) return result;
+  let quarter = `Q${period.quarter}` as ForecastQuarter;
+  let year = period.year;
+  if (period.basis === 'date') {
+    const month = period.month ?? (period.quarter - 1) * 3 + 1;
+    quarter = FORECAST_QUARTERS[Math.floor(((month - fiscalStart + 12) % 12) / 3)];
+    year -= month < fiscalStart ? 1 : 0;
+  }
+  if (year === fiscalYear) result[quarter] = toBase(total);
+  void currentQuarter;
   return result;
 }
 
@@ -215,6 +231,7 @@ export function daysLeftInQuarter(date: Date, fiscalYearStartMonth = 1): number 
 }
 
 export type ForecastTarget = {
+  fiscalYear?: number;
   quarter: ForecastQuarter;
   amount: number;
   /**
@@ -273,6 +290,9 @@ export type QuarterCoverage = {
 };
 
 export type CoverageReport = {
+  fiscalYear: number;
+  excludedUndatedCount: number;
+  excludedCurrencyCount: number;
   quarters: QuarterCoverage[];
   currentQuarter: ForecastQuarter;
   hasTargets: boolean;
@@ -332,6 +352,9 @@ export function buildCoverage(input: {
   const today = input.today || new Date();
   const fiscalStart = input.fiscalYearStartMonth || 1;
   const currentQuarter = quarterForDate(today, fiscalStart);
+  const fiscalYear = today.getFullYear() - (today.getMonth() + 1 < fiscalStart ? 1 : 0);
+  let excludedUndatedCount = 0;
+  let excludedCurrencyCount = 0;
   const includeSamples = input.includeSampleRecords === true;
 
   const threadByOpportunity = new Map<string, ResolvedThread>();
@@ -352,10 +375,12 @@ export function buildCoverage(input: {
   const reportingCurrency = getReportingCurrency();
   const targetByQuarter = new Map<ForecastQuarter, number>();
   for (const target of input.targets) {
+    if (target.fiscalYear !== undefined && target.fiscalYear !== fiscalYear) continue;
     const from = (target.currency || reportingCurrency) as SupportedCurrency;
     const amount = from === reportingCurrency
       ? target.amount
-      : convertMoney(target.amount, from, reportingCurrency) ?? target.amount;
+      : convertMoney(target.amount, from, reportingCurrency);
+    if (amount === null) { excludedCurrencyCount += 1; continue; }
     targetByQuarter.set(target.quarter, amount);
   }
 
@@ -375,7 +400,10 @@ export function buildCoverage(input: {
     if (!includeSamples && opportunity.isSample) continue;
     if (opportunity.status === 'Lost' || isLeadStage(opportunity.stage)) continue;
 
-    const amounts = quarterAmounts(opportunity, currentQuarter);
+    if (convertMoney(1, opportunity.currency || BASE_CURRENCY, reportingCurrency) === null) { excludedCurrencyCount += 1; continue; }
+    const period = resolveClosePeriod(opportunity.expectedClosePeriod, `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`);
+    if (!period.quarter && !FORECAST_QUARTERS.some(quarter => Number(opportunity.quarterValues?.[quarter]) > 0)) excludedUndatedCount += 1;
+    const amounts = quarterAmounts(opportunity, currentQuarter, { today, fiscalYear, fiscalYearStartMonth: fiscalStart });
     const total = FORECAST_QUARTERS.reduce((sum, quarter) => sum + amounts[quarter], 0);
     if (total === 0) continue;
 
@@ -465,6 +493,7 @@ export function buildCoverage(input: {
   });
 
   return {
+    fiscalYear, excludedUndatedCount, excludedCurrencyCount,
     quarters,
     currentQuarter,
     hasTargets: targetByQuarter.size > 0,

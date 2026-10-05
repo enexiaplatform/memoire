@@ -3,6 +3,9 @@ import type { ExpenseRecord, ExpenseCategory } from '../services/expenseStore.ts
 import { expenseCategories } from '../services/expenseStore.ts';
 import { getReportingCurrency, sumMoney, type SupportedCurrency } from './money.ts';
 import { sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
+import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
+import { buildOrderBook, type OrderMilestoneRecord } from './orderToCash.ts';
+import { buildReceivables, uniquePaymentReceipts, type OrderReceivableRecord } from './receivables.ts';
 
 export type CategorySpendRow = {
   category: ExpenseCategory;
@@ -30,6 +33,9 @@ export type CashPositionModel = {
 };
 
 type CashPositionInput = {
+  opportunities?: CrmLiteOpportunity[];
+  receivableRecords?: OrderReceivableRecord[];
+  milestoneRecords?: OrderMilestoneRecord[];
   quotes: QuoteRecord[];
   expenses: ExpenseRecord[];
   openingBalanceBase?: number | null;
@@ -40,7 +46,7 @@ const OPENING_BALANCE_KEY = 'memoire_opening_cash_balance';
 
 /**
  * The money-out companion to buildMoneyFlow. "Collected revenue" is cash truly
- * received (a quote whose payment status is Paid), never forecast pipeline -
+ * received from the canonical receipt book, never forecast pipeline -
  * so realized profit can never be inflated by deals that have not paid. Every
  * figure is in the reporting currency; unknown currencies are excluded, not
  * guessed. Derived, never stored.
@@ -62,9 +68,17 @@ export function buildCashPosition(input: CashPositionInput): CashPositionModel {
       && (quote.status === 'Accepted' || quote.poStatus === 'Received' || quote.deliveryStatus === 'Delivered'),
   );
 
-  const collectedRevenueBase = sumMoney(paidQuotes.map((quote) => ({ amount: quote.amount, currency: quote.currency })));
+  const orderBook = input.receivableRecords === undefined ? null : buildOrderBook({
+    opportunities: input.opportunities || [], quotes: input.quotes, linkage: 'explicit-id',
+    milestoneRecords: input.milestoneRecords || [], receivableRecords: input.receivableRecords, today: todayKey,
+  });
+  const canonical = orderBook ? buildReceivables({ orders: orderBook.orders, records: input.receivableRecords || [], today: todayKey }) : null;
+  const eligibleOrderIds = new Set(orderBook?.orders.map(order => order.opportunityId));
+  const receipts = (input.receivableRecords || []).filter(record => !record.__deleted && eligibleOrderIds.has(record.opportunityId))
+    .flatMap(record => uniquePaymentReceipts(record.receipts));
+  const collectedRevenueBase = canonical?.totalReceivedBase ?? sumMoney(paidQuotes.map((quote) => ({ amount: quote.amount, currency: quote.currency })));
   const paidExpensesBase = sumMoney(paidExpenses.map((expense) => ({ amount: expense.amount, currency: expense.currency })));
-  const upcomingInBase = sumMoney(awaitingPaymentQuotes.map((quote) => ({ amount: quote.amount, currency: quote.currency })));
+  const upcomingInBase = canonical?.totalOutstandingBase ?? sumMoney(awaitingPaymentQuotes.map((quote) => ({ amount: quote.amount, currency: quote.currency })));
   const upcomingOutBase = sumMoney(upcomingExpenses.map((expense) => ({ amount: expense.amount, currency: expense.currency })));
 
   const realizedProfitBase = collectedRevenueBase - paidExpensesBase;
@@ -87,7 +101,7 @@ export function buildCashPosition(input: CashPositionInput): CashPositionModel {
   const monthPaidExpensesBase = sumMoney(
     paidExpenses.filter((expense) => (expense.expenseDate || '').startsWith(monthPrefix)).map((expense) => ({ amount: expense.amount, currency: expense.currency })),
   );
-  const monthCollectedRevenueBase = sumMoney(
+  const monthCollectedRevenueBase = canonical ? sumMoney(receipts.filter(receipt => receipt.receivedOn?.startsWith(monthPrefix))) : sumMoney(
     paidQuotes.filter((quote) => (quote.paymentDueDate || quote.quoteDate || '').startsWith(monthPrefix)).map((quote) => ({ amount: quote.amount, currency: quote.currency })),
   );
 

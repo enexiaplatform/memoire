@@ -36,11 +36,11 @@ export const FADING_DAYS = 120;
 export type MemoryAge = 'fresh' | 'settling' | 'fading' | 'cold' | 'undated';
 
 export const memoryAgeLabels: Record<MemoryAge, string> = {
-  fresh: 'Touched in the last two weeks',
-  settling: 'Touched in the last six weeks',
-  fading: 'Nothing new for months',
-  cold: 'Not touched since before last quarter',
-  undated: 'No readable date on this record',
+  fresh: 'Interaction recorded in the last two weeks',
+  settling: 'Interaction recorded in the last six weeks',
+  fading: 'No interaction recorded for months',
+  cold: 'No interaction recorded since before last quarter',
+  undated: 'No dated interaction recorded; record edits are shown separately in the library',
 };
 
 /**

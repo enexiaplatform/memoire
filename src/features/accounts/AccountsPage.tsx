@@ -26,6 +26,11 @@ import { type OpportunityOutcomeRecord } from '../../services/opportunityOutcome
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { useWorkspaceRefresh } from '../../hooks/useWorkspaceRefresh';
 import { useWorkspaceSyncStatus } from '../../services/workspaceSyncStatus';
+import { getWorkspaceSyncStatus } from '../../services/workspaceSyncStatus';
+import { flushPendingCloudJsonWrites } from '../../services/cloudJsonCollectionStore';
+import { buildMoneyFlow, type MoneyFlow } from '../../utils/moneyFlow';
+import type { OrderReceivableRecord } from '../../utils/receivables';
+import type { OrderMilestoneRecord } from '../../utils/orderToCash';
 import { buildPostWonCustomers } from '../../utils/postWonCustomers';
 import {
   buildAccountMemory,
@@ -128,6 +133,8 @@ export function AccountsPage() {
   const [stakeholders, setStakeholders] = useState<StakeholderRecord[]>(cachedWorkspace?.stakeholders || []);
   const [objections, setObjections] = useState<ObjectionRecord[]>(cachedWorkspace?.objections || []);
   const [quotes, setQuotes] = useState<QuoteRecord[]>(cachedWorkspace?.quotes || []);
+  const [receivableRecords, setReceivableRecords] = useState<OrderReceivableRecord[] | undefined>(cachedWorkspace?.receivableRecords);
+  const [milestoneRecords, setMilestoneRecords] = useState<OrderMilestoneRecord[] | undefined>(cachedWorkspace?.milestoneRecords);
   const [opportunityOutcomes, setOpportunityOutcomes] = useState<OpportunityOutcomeRecord[]>(
     cachedWorkspace?.opportunityOutcomes || [],
   );
@@ -190,6 +197,8 @@ export function AccountsPage() {
       setStakeholders(workspaceData.stakeholders);
       setObjections(workspaceData.objections);
       setQuotes(workspaceData.quotes);
+      setReceivableRecords(workspaceData.receivableRecords);
+      setMilestoneRecords(workspaceData.milestoneRecords);
       setOpportunityOutcomes(workspaceData.opportunityOutcomes);
       setLastLoadedAt(new Date().toISOString());
     } catch (error) {
@@ -373,9 +382,10 @@ export function AccountsPage() {
     }));
   };
 
-  const handleUndoMerge = (recordId: string) => {
+  const handleUndoMerge = async (recordId: string) => {
     setAccountMerges(deleteAccountMerge(recordId));
-    setMessage('Merge undone.');
+    await flushPendingCloudJsonWrites();
+    setMessage(getWorkspaceSyncStatus().state === 'error' ? 'Merge undone in this browser. Cloud sync is incomplete; Retry sync before switching devices.' : 'Merge undone.');
   };
 
   const segments = useMemo(() => {
@@ -971,6 +981,7 @@ export function AccountsPage() {
         stakeholders={selectedAccount ? getStakeholdersForAccount(stakeholders, { id: selectedAccount.id, accountName: selectedAccount.accountName }) : []}
         objections={selectedAccount ? getObjectionsForAccount(objections, { id: selectedAccount.id, accountName: selectedAccount.accountName }) : []}
         quotes={selectedQuotes}
+        commercialFlow={selectedMemory ? buildMoneyFlow({ opportunities: selectedMemory.opportunities, quotes: selectedQuotes, receivableRecords, milestoneRecords }) : undefined}
         hygieneStatus={selectedHygiene?.status || null}
         nameCheck={accountNameCheck}
         outcomes={selectedAccount
@@ -1428,6 +1439,7 @@ function AccountDetailPanel({
   stakeholders,
   objections,
   quotes,
+  commercialFlow,
   hygieneStatus,
   saveState,
   message,
@@ -1448,6 +1460,7 @@ function AccountDetailPanel({
   stakeholders: StakeholderRecord[];
   objections: ObjectionRecord[];
   quotes: QuoteRecord[];
+  commercialFlow?: MoneyFlow;
   hygieneStatus: AccountEngagementStatus | null;
   saveState: SaveState;
   message: string;
@@ -1546,7 +1559,7 @@ function AccountDetailPanel({
         />
       )}
 
-      {selectedMemory && hygieneStatus !== 'Imported only' && hygieneStatus !== 'Archived' && <AccountCommercialLoop memory={selectedMemory} quotes={quotes} />}
+      {selectedMemory && hygieneStatus !== 'Imported only' && hygieneStatus !== 'Archived' && <AccountCommercialLoop memory={selectedMemory} quotes={quotes} flow={commercialFlow} />}
 
       {mode === 'add' ? (
         <>
@@ -1800,7 +1813,7 @@ function AccountSaveActions({
   );
 }
 
-function AccountCommercialLoop({ memory, quotes }: { memory: AccountMemory; quotes: QuoteRecord[] }) {
+function AccountCommercialLoop({ memory, quotes, flow }: { memory: AccountMemory; quotes: QuoteRecord[]; flow?: MoneyFlow }) {
   const activeQuotes = quotes.filter((quote) => quote.status === 'Sent' || quote.status === 'Revised');
   const pendingPoQuotes = quotes.filter((quote) => getQuoteCommercialStage(quote) === 'Pending PO');
   const pendingDeliveryQuotes = quotes.filter((quote) => getQuoteCommercialStage(quote) === 'Pending delivery');
@@ -1811,10 +1824,10 @@ function AccountCommercialLoop({ memory, quotes }: { memory: AccountMemory; quot
     // Qualified deals only; leads have their own count in the glance above.
     { label: 'Opportunity', value: memory.opportunities.filter((opportunity) => opportunity.status === 'Active' && !isLeadStage(opportunity.stage)).length, hint: 'active, qualified' },
     { label: 'Quote', value: activeQuotes.length, hint: 'sent / revised' },
-    { label: 'PO', value: pendingPoQuotes.length, hint: 'waiting' },
-    { label: 'Delivery', value: pendingDeliveryQuotes.length, hint: 'in progress' },
-    { label: 'Payment', value: pendingPaymentQuotes.length, hint: 'waiting' },
-    { label: 'Paid', value: paidQuotes.length, hint: 'complete' },
+    { label: 'PO', value: flow?.lanes.find(lane => lane.stage === 'Pending PO')?.threads ?? pendingPoQuotes.length, hint: 'waiting' },
+    { label: 'Delivery', value: flow?.lanes.find(lane => lane.stage === 'Pending delivery')?.threads ?? pendingDeliveryQuotes.length, hint: 'in progress' },
+    { label: 'Payment', value: flow?.lanes.find(lane => lane.stage === 'Pending payment')?.threads ?? pendingPaymentQuotes.length, hint: 'waiting' },
+    { label: 'Paid', value: flow?.lanes.find(lane => lane.stage === 'Paid')?.threads ?? paidQuotes.length, hint: 'complete' },
   ];
 
   return (

@@ -3,6 +3,22 @@ import { fetchAllRows } from './supabasePaging.ts';
 import { reportClientOperationalEvent } from './clientTelemetry.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { writeLocalCollection } from './localWriteGuard.ts';
+import { getLocalWorkspaceOwner } from './localWorkspaceOwner.ts';
+
+const pendingWrites = new Set<Promise<void>>();
+
+function trackWrite(table: CloudJsonCollectionTable, operation: 'upsert' | 'delete', write: Promise<unknown>) {
+  const pending = write.then(() => undefined).catch((error) => {
+    reportWorkspaceSyncError();
+    reportCloudJsonSyncFailure(table, operation, error);
+  });
+  pendingWrites.add(pending);
+  void pending.finally(() => pendingWrites.delete(pending));
+}
+
+export async function flushPendingCloudJsonWrites() {
+  while (pendingWrites.size) await Promise.all([...pendingWrites]);
+}
 
 export type CloudJsonCollectionTable = 'review_packs' | 'sales_assets' | 'action_outcomes' | 'opportunity_outcomes' | 'quotes' | 'nudges' | 'weekly_commitments' | 'plan_items' | 'account_merges' | 'order_milestones' | 'order_costs' | 'order_receivables' | 'supplier_commitments' | 'expenses' | 'knowledge_notes' | 'portfolio_records' | 'report_definitions' | 'dashboard_definitions';
 
@@ -116,10 +132,7 @@ export function sendOwedCloudJsonRecords<T extends CloudJsonRecord>(
   const owed = selectOwedCloudJsonRecords(merged, cloud);
   if (owed.length === 0) return;
 
-  void upsertCloudJsonCollection(table, userId, owed).catch((error) => {
-    reportWorkspaceSyncError();
-    reportCloudJsonSyncFailure(table, 'upsert', error);
-  });
+  trackWrite(table, 'upsert', upsertCloudJsonCollection(table, userId, owed));
 }
 
 /**
@@ -142,32 +155,28 @@ export function syncCloudJsonCollectionForCurrentUser<T extends CloudJsonRecord>
   table: CloudJsonCollectionTable,
   records: T[],
 ) {
-  void getCurrentUserId()
+  const owner = getLocalWorkspaceOwner();
+  trackWrite(table, 'upsert', getCurrentUserId()
     .then((userId) => {
-      if (!userId) return undefined;
+      if (!userId || owner !== userId || getLocalWorkspaceOwner() !== owner) return undefined;
       setLocalCollectionOwner(table, userId);
       return upsertCloudJsonCollection(table, userId, records);
     })
-    .catch((error) => {
-      reportWorkspaceSyncError();
-      reportCloudJsonSyncFailure(table, 'upsert', error);
-    });
+    );
 }
 
 export function deleteCloudJsonRecordForCurrentUser(
   table: CloudJsonCollectionTable,
   recordId: string,
 ) {
-  void getCurrentUserId()
+  const owner = getLocalWorkspaceOwner();
+  trackWrite(table, 'delete', getCurrentUserId()
     .then((userId) => {
-      if (!userId) return undefined;
+      if (!userId || owner !== userId || getLocalWorkspaceOwner() !== owner) return undefined;
       setLocalCollectionOwner(table, userId);
       return deleteCloudJsonRecord(table, userId, recordId);
     })
-    .catch((error) => {
-      reportWorkspaceSyncError();
-      reportCloudJsonSyncFailure(table, 'delete', error);
-    });
+    );
 }
 
 export function mergeCloudJsonRecords<T extends CloudJsonRecord>(local: T[], cloud: T[]) {

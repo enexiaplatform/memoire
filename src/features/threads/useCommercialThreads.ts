@@ -190,7 +190,7 @@ export function useCommercialThreads() {
     return buildCoverage({
       opportunities: workspace.opportunities,
       threads,
-      targets: targets.map((target) => ({ quarter: target.period, amount: target.amount, currency: target.currency })),
+      targets: targets.map((target) => ({ quarter: target.period, amount: target.amount, currency: target.currency, fiscalYear: target.fiscalYear })),
       qualification,
       fiscalYearStartMonth: targets[0]?.fiscalYearStartMonth || 1,
       includeSampleRecords: sampleDataActive,

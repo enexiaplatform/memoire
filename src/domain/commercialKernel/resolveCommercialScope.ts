@@ -213,7 +213,7 @@ export function resolveCommercialScope(input: {
 /** Whether this scope may be written without the operator confirming it. */
 export function isPreselectable(scope: CommercialScope): boolean {
   return scope.opportunityId !== null
-    && (scope.resolution === 'exact' || scope.resolution === 'strong_match');
+    && scope.resolution === 'exact';
 }
 
 // ------------------------------------------------------------------- helpers

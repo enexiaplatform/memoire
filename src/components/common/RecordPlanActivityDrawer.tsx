@@ -25,6 +25,7 @@ import { ghostPillClass, primaryPillClass } from '../ui/daylightStyles';
 export type PlanPersonOption = { name: string; roleTitle: string; accountName: string };
 
 export type RecordPlanActivityValues = {
+  fulfillmentCommitmentId?: string;
   note: string;
   channel: ActivityChannel | '';
   person: PlanCompletionPerson | null;
@@ -52,6 +53,7 @@ export function RecordPlanActivityDrawer({
   error,
   onSave,
   onClose,
+  promises = [],
 }: {
   item: PlanItem;
   opportunities: CrmLiteOpportunity[];
@@ -61,6 +63,7 @@ export function RecordPlanActivityDrawer({
   error: string;
   onSave: (values: RecordPlanActivityValues) => void;
   onClose: () => void;
+  promises?: { id: string; label: string }[];
 }) {
   const accountName = planItemAccountName(item, opportunities);
   const candidates = useMemo(
@@ -69,6 +72,7 @@ export function RecordPlanActivityDrawer({
   );
   const [channel, setChannel] = useState<ActivityChannel | ''>(normalizeActivityChannel(item.channel));
   const [note, setNote] = useState('');
+  const [fulfillmentCommitmentId, setFulfillmentCommitmentId] = useState('');
   // The person already named on the line is who it was most likely with.
   const [choice, setChoice] = useState(() => {
     const named = candidates.find((person) => person.name === item.contactName);
@@ -90,10 +94,11 @@ export function RecordPlanActivityDrawer({
       ? (newName.trim() ? { name: newName.trim(), roleTitle: newRoleTitle.trim() } : null)
       : chosen ? { name: chosen.name, roleTitle: chosen.roleTitle } : null;
   const problems = planCompletionProblems({ item, note, channel, person, opportunities, activityDate: item.date });
+  if (fulfillmentCommitmentId && !note.trim()) problems.push('Describe the outcome that fulfills the promise.');
 
   const save = () => {
     if (problems.length > 0 || saving) return;
-    onSave({ note: note.trim(), channel, person, personIsNew: needsPerson && choice === NEW_PERSON });
+    onSave({ note: note.trim(), channel, person, personIsNew: needsPerson && choice === NEW_PERSON, fulfillmentCommitmentId });
   };
 
   return (
@@ -129,6 +134,12 @@ export function RecordPlanActivityDrawer({
         </>
       )}
     >
+      <p className="mb-3 text-xs leading-5 text-muted">This records a completed task. A commercial promise is kept only when you explicitly confirm its outcome.</p>
+      {promises.length > 0 && <label className="mb-4 block text-sm font-semibold">Also fulfill a commercial promise
+        <select aria-label="Promise to fulfill" value={fulfillmentCommitmentId} onChange={event => setFulfillmentCommitmentId(event.target.value)} className="mt-1 block w-full rounded-xl border border-line p-2">
+          <option value="">Leave promises open</option>{promises.map(promise => <option key={promise.id} value={promise.id}>{promise.label}</option>)}
+        </select><span className="mt-1 block text-xs font-normal text-muted">Your account of what happened below will be recorded as completion evidence.</span>
+      </label>}
       <label className="block">
         <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted">How it happened</span>
         <select

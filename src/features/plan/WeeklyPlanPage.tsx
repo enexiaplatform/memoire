@@ -26,6 +26,7 @@ import {
 } from '../../utils/supplierCommitments';
 import { buildPlanSuggestions, type PlanSuggestion } from '../../utils/planSuggestions';
 import { useCommercialThreads } from '../threads/useCommercialThreads';
+import { useCommitmentLedger } from '../commitments/useCommitmentLedger';
 import { todayDateKey, formatSafeBusinessDate, isMoreRecentBusinessDate } from '../../utils/safeDate';
 import { PlanSuggestionsPanel } from './PlanSuggestionsPanel';
 import { PlanTagAccountsPanel } from './PlanTagAccountsPanel';
@@ -109,6 +110,7 @@ import { delay, ghostPillClass } from '../../components/ui/daylightStyles';
 import {
   formatPlanPeriodEyebrow,
   NOT_STATED_CHANNEL,
+  planBoardWithoutBacklog,
   summarisePlanBoard,
   type PlanBoardSummary,
 } from '../../utils/planBoardSummary';
@@ -172,6 +174,9 @@ export function WeeklyPlanPage({
   // them rather than recomputing, so a risk cannot say one thing on one page
   // and something else on another.
   const { recommendations } = useCommercialThreads();
+  const promiseLedger = useCommitmentLedger();
+  const [showBacklog, setShowBacklog] = useState(false);
+  const [dayLimits, setDayLimits] = useState<Record<string, number>>({});
   const [periodType, setPeriodType] = useState<PlanPeriod>('week');
   const [showWeekend, setShowWeekend] = useState(false);
   const [anchorDate, setAnchorDate] = useState(() => new Date());
@@ -325,7 +330,8 @@ export function WeeklyPlanPage({
     records,
     brands: knownBrands,
   }), [activities, anchorDate, knownBrands, obligations, opportunities, periodType, records]);
-  const summary = useMemo(() => summarisePlanBoard(board, previousBoard), [board, previousBoard]);
+  const displayedBoard = useMemo(() => showBacklog ? board : planBoardWithoutBacklog(board), [board, showBacklog]);
+  const summary = useMemo(() => summarisePlanBoard(displayedBoard, showBacklog ? previousBoard : planBoardWithoutBacklog(previousBoard)), [displayedBoard, previousBoard, showBacklog]);
 
   useEffect(() => {
     onHeadingChange?.({ eyebrow: formatPlanPeriodEyebrow(board), done: summary.done, total: summary.total });
@@ -496,13 +502,15 @@ export function WeeklyPlanPage({
       // Step 3 of the demo path: the promise was kept and the conversation
       // behind it is on the record. Nothing happens outside the sandbox.
       if (sampleDataActive) markDemoJourneyStepComplete('record-the-week', 'Recorded a finished promise on the plan');
-      setBoardMessage(result.warning || planCompletionLogMessage(log.accountName, log.activity.activityChannel, personName));
+      const fulfilled = values.fulfillmentCommitmentId
+        ? promiseLedger.complete(values.fulfillmentCommitmentId, `${values.note.trim()} (activity ${result.record.id})`) : false;
+      setBoardMessage(result.warning || `${planCompletionLogMessage(log.accountName, log.activity.activityChannel, personName)} ${fulfilled ? 'Selected commercial promise marked kept with this evidence.' : 'Task done. Commercial promises remain open until their outcome is confirmed.'}`);
       closeRecord();
     } catch {
       setRecordSaving(false);
       setRecordError('Could not save it. What you wrote is still here - try again.');
     }
-  }, [closeRecord, dataUserId, opportunities, recordSaving, recordingItem, records, sampleDataActive, stakeholders]);
+  }, [closeRecord, dataUserId, opportunities, promiseLedger, recordSaving, recordingItem, records, sampleDataActive, stakeholders]);
 
   /**
    * Rewrites the completion stub for a derived item whose date is changing, so
@@ -878,11 +886,11 @@ export function WeeklyPlanPage({
   // anything onto them, while the suggestion list below happily offered
   // "Sun Aug 16" as a date. The toggle is the missing half.
   const hiddenWeekendDays = periodType === 'week'
-    ? board.days.filter((day) => day.isWeekend && day.items.length === 0).length
+    ? displayedBoard.days.filter((day) => day.isWeekend && day.items.length === 0).length
     : 0;
   const visibleDays = periodType === 'week' && !showWeekend
-    ? board.days.filter((day) => !day.isWeekend || day.items.length > 0)
-    : board.days;
+    ? displayedBoard.days.filter((day) => !day.isWeekend || day.items.length > 0)
+    : displayedBoard.days;
   const today = todayDateKey();
 
   return (
@@ -912,6 +920,7 @@ export function WeeklyPlanPage({
       />
 
       {beforeBoard}
+      <label className="flex min-h-11 items-center gap-2 text-sm text-muted"><input type="checkbox" checked={showBacklog} onChange={event => setShowBacklog(event.target.checked)} />Include overdue backlog ({board.days.flatMap(day => day.items).filter(item => item.carriedFrom).length} carried items). Current-period work is shown by default.</label>
 
       <header className={`flex flex-col gap-3 sm:flex-row sm:items-center ${embedded ? 'sm:justify-between' : 'sm:justify-between'}`}>
         {!embedded && (
@@ -978,34 +987,34 @@ export function WeeklyPlanPage({
           every line without a customer used to read as the same
           undifferentiated admin. */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-tint-neutral-ink">
-        {board.totalCount > 0 && (
+        {displayedBoard.totalCount > 0 && (
           <>
             {/* Label first, count second - the same shape as the filter chips on
                 Accounts and Opportunities. Written the other way round these read
                 "2 customer", which is a count looking for a plural it never gets:
                 the word is the kind of work, not the thing being counted. */}
             <MicroLabel>This week serves</MicroLabel>
-            {board.workSplit.customer > 0 && (
-              <MicroPill tone="blue" className="!normal-case !tracking-normal !text-[11.5px]">Customer {board.workSplit.customer}</MicroPill>
+            {displayedBoard.workSplit.customer > 0 && (
+              <MicroPill tone="blue" className="!normal-case !tracking-normal !text-[11.5px]">Customer {displayedBoard.workSplit.customer}</MicroPill>
             )}
-            {board.workSplit.principal > 0 && (
-              <MicroPill tone="violet" className="!normal-case !tracking-normal !text-[11.5px]">Principal {board.workSplit.principal}</MicroPill>
+            {displayedBoard.workSplit.principal > 0 && (
+              <MicroPill tone="violet" className="!normal-case !tracking-normal !text-[11.5px]">Principal {displayedBoard.workSplit.principal}</MicroPill>
             )}
-            {board.workSplit.internal > 0 && (
+            {displayedBoard.workSplit.internal > 0 && (
               <MicroPill tone="neutral" className="!normal-case !tracking-normal !text-[11.5px]">
-                Internal {board.workSplit.internal}
+                Internal {displayedBoard.workSplit.internal}
                 {/* The domain breakdown only earns its place when it says
                     something the count did not. A week whose internal work is all
                     admin would otherwise read "3 internal - 3 internal". */}
-                {describeInternalDomains(board.workSplit.internalByDomain)}
+                {describeInternalDomains(displayedBoard.workSplit.internalByDomain)}
               </MicroPill>
             )}
           </>
         )}
-        {board.captureCount > 0 && (
+        {displayedBoard.captureCount > 0 && (
           <span className="inline-flex items-center gap-1.5">
             <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-tint-green-solid" />
-            {board.captureCount} pulled in from your captures
+            {displayedBoard.captureCount} pulled in from your captures
           </span>
         )}
         {periodType === 'week' && (hiddenWeekendDays > 0 || showWeekend) && (
@@ -1091,7 +1100,7 @@ export function WeeklyPlanPage({
             </header>
 
             <div className="flex flex-1 flex-col gap-2 p-[11px]">
-              {day.items.map((item) => {
+              {day.items.filter(item => showBacklog || !item.carriedFrom).slice(0, dayLimits[day.date] || 12).map((item) => {
                 const editable = item.kind !== 'obligation';
                 const isEditing = editingId === item.id;
                 const state = item.done ? 'done' : item.overdue ? 'late' : 'open';
@@ -1262,6 +1271,7 @@ export function WeeklyPlanPage({
                 );
               })}
 
+              {day.items.filter(item => showBacklog || !item.carriedFrom).length > (dayLimits[day.date] || 12) && <button type="button" className="p-2 text-xs font-bold text-brand-blue" onClick={() => setDayLimits(current => ({ ...current, [day.date]: (current[day.date] || 12) + 12 }))}>Show 12 more ({day.items.filter(item => showBacklog || !item.carriedFrom).length - (dayLimits[day.date] || 12)} remaining)</button>}
               {composerDate === day.date ? (
                 <div className="rounded-[11px] bg-white p-2 ring-1 ring-line">
                   <div className="flex items-center gap-1">
@@ -1405,6 +1415,9 @@ export function WeeklyPlanPage({
           people={contactOptions}
           saving={recordSaving}
           error={recordError}
+          promises={promiseLedger.commitments.filter(promise => promise.status === 'open' && promise.commitmentParty === 'self' && promise.sourceType !== 'system_rule'
+            && accountKey(promise.accountName) === accountKey(planItemAccountName(recordingItem, opportunities)))
+            .map(promise => ({ id: promise.id, label: promise.commitmentText }))}
           onSave={(values) => { void recordCompletion(values); }}
           onClose={closeRecord}
         />

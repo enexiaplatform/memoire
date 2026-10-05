@@ -362,7 +362,9 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
   const revenueView = useMemo(() => buildRevenueView({
     opportunities: data.opportunities,
     quotes: data.quotes,
-  }), [data.opportunities, data.quotes]);
+    receivableRecords: pictureRecords?.receivables,
+    milestoneRecords: pictureRecords?.milestones,
+  }), [data.opportunities, data.quotes, pictureRecords]);
   const accountHygienePreferences = useMemo(() => loadAccountHygienePreferences(user?.id), [user?.id]);
   // The legacy command-center model only feeds the Supporting-execution fold
   // and the demo prompt - keep its heavy scan off the initial render path.
@@ -567,8 +569,8 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
     today: todayKey,
   })), [data.activities, data.expenses, data.opportunities, data.quotes, firstWeekPlanRecords, pictureRecords, todayKey]);
   const moneyInMotion = useMemo(
-    () => summariseMoneyInMotion(buildMoneyFlow({ opportunities: data.opportunities, quotes: data.quotes, today: todayKey })),
-    [data.opportunities, data.quotes, todayKey],
+    () => summariseMoneyInMotion(buildMoneyFlow({ opportunities: data.opportunities, quotes: data.quotes, receivableRecords: pictureRecords?.receivables, milestoneRecords: pictureRecords?.milestones, today: todayKey })),
+    [data.opportunities, data.quotes, pictureRecords, todayKey],
   );
 
 

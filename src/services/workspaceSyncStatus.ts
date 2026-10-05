@@ -29,6 +29,11 @@ export function beginWorkspaceSyncCheck() {
   setStatus({ state: 'checking', message: '' });
 }
 
+/** Only an explicit retry clears a failed check; ordinary reads cannot erase it. */
+export function beginWorkspaceSyncRetry() {
+  setStatus({ state: 'checking', message: '' });
+}
+
 export function reportWorkspaceSyncReady() {
   hasAnswered = true;
   if (status.state === 'error') return;
@@ -63,7 +68,7 @@ export function useWorkspaceSyncStatus() {
 
 function setStatus(next: WorkspaceSyncStatus) {
   status = next;
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
     window.dispatchEvent(new CustomEvent(WORKSPACE_SYNC_STATUS_EVENT, { detail: next }));
   }
 }

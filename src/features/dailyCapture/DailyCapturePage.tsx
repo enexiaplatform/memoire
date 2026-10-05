@@ -444,7 +444,7 @@ export function DailyCapturePage() {
     : rawNote.trim();
 
   const localPreview = useMemo(() => {
-    return captureMode !== 'quick' && activeCaptureText.trim().length >= 8
+    const parsed = captureMode !== 'quick' && activeCaptureText.trim().length >= 8
       ? classifySalesActivity(activeCaptureText, activeActivityDate, {
         accounts,
         opportunities,
@@ -453,6 +453,9 @@ export function DailyCapturePage() {
         ...(activeSourceItem ? { source: activeSourceItem } : {}),
       })
       : null;
+    if (!parsed) return null;
+    const scope = resolveCommercialScope({ accountName: parsed.accountName, rawNote: activeCaptureText, captureDate: activeActivityDate, opportunities, origin: { kind: 'global' } });
+    return { ...parsed, opportunityName: isPreselectable(scope) ? scope.opportunityName : '' };
   }, [accountAliases, accounts, activeActivityDate, activeCaptureText, activeSourceItem, captureCorrections, captureMode, opportunities]);
   const preview = structuredDraft || localPreview;
   const needsConfirmation = !preview?.accountName;
@@ -621,6 +624,7 @@ export function DailyCapturePage() {
    * link at all until somebody chooses.
    */
   const activeScope = useMemo<CommercialScope>(() => {
+    if (scopeCorrected && !scopeOverrideId) return { ...resolvedScope, opportunityId: null, opportunityName: '' };
     if (!scopeOverrideId) {
       return isPreselectable(resolvedScope)
         ? resolvedScope
@@ -634,7 +638,7 @@ export function DailyCapturePage() {
       opportunityName: chosen.opportunityName,
       resolution: 'exact',
     };
-  }, [resolvedScope, scopeOverrideId]);
+  }, [resolvedScope, scopeOverrideId, scopeCorrected]);
 
   const scopeLinkTarget = activeScope.opportunityId
     ? {
@@ -652,9 +656,12 @@ export function DailyCapturePage() {
   const chooseScope = useCallback((opportunityId: string | null) => {
     setScopeOverrideId(opportunityId);
     setScopeCorrected(true);
+    const name = opportunityId ? resolvedScope.candidates.find(item => item.opportunityId === opportunityId)?.opportunityName || '' : '';
+    if (preview) setStructuredDraft({ ...preview, opportunityName: name });
+    setQuickForm(current => ({ ...current, opportunityName: name }));
     // Picking a deal answers the question the lead option was asking.
     if (opportunityId) setLeadDraft((current) => ({ ...current, enabled: false }));
-  }, [setScopeOverrideId, setScopeCorrected]);
+  }, [preview, resolvedScope.candidates]);
 
   /**
    * The link the save writes: the confirmed deal, or - when the operator said
@@ -745,7 +752,7 @@ export function DailyCapturePage() {
       // customer and the reason is said out loud.
       setMessage('Could not create the lead - the note is saved with the customer instead.');
     }
-    const result = await saveSalesActivity(classified, dataUserId, {
+    const result = await saveSalesActivity({ ...classified, opportunityName: linkTarget?.linkedOpportunityName || '' }, dataUserId, {
       source: sampleDataActive ? 'demo' : 'user',
       isSample: sampleDataActive,
     }, linkTarget);
@@ -799,7 +806,7 @@ export function DailyCapturePage() {
     } catch {
       setMessage('Could not create the lead - the note is saved with the customer instead.');
     }
-    const result = await saveSalesActivity(prepared, dataUserId, {
+    const result = await saveSalesActivity({ ...prepared, opportunityName: linkTarget?.linkedOpportunityName || '' }, dataUserId, {
       source: sampleDataActive ? 'demo' : 'user',
       isSample: sampleDataActive,
     }, linkTarget);
@@ -853,6 +860,8 @@ export function DailyCapturePage() {
       rawNote: activeCaptureText.trim(),
       activityDate: activeActivityDate,
       [key]: value,
+      ...(key === 'activityType' && preview.summary.startsWith(preview.activityType)
+        ? { summary: `${String(value)}${preview.summary.slice(preview.activityType.length)}` } : {}),
     });
     setSaveState('idle');
     setMessage('');

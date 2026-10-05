@@ -66,7 +66,7 @@ export type AccountMergeRecord = {
   __deleted?: boolean;
 };
 
-export function loadAccountMerges(): AccountMergeRecord[] {
+export function loadAccountMerges(includeDeleted = false): AccountMergeRecord[] {
   if (!canUseStorage()) return [];
   try {
     const raw = window.localStorage.getItem(ACCOUNT_MERGE_STORAGE_KEY);
@@ -75,24 +75,27 @@ export function loadAccountMerges(): AccountMergeRecord[] {
     if (!Array.isArray(parsed)) return [];
     return parsed
       .map(sanitize)
-      .filter((record): record is AccountMergeRecord => Boolean(record));
+      .filter((record): record is AccountMergeRecord => Boolean(record) && (includeDeleted || record?.__deleted !== true));
   } catch {
     return [];
   }
 }
 
 export async function loadAccountMergesForUser(userId: string) {
-  const local = loadAccountMerges();
+  const local = loadAccountMerges(true);
   const cloud = await loadCloudJsonCollection<AccountMergeRecord>('account_merges', userId);
   const recordsToMerge = claimLocalCollectionForUser('account_merges', userId)
     ? local.filter((record) => record.source !== 'demo' && record.isSample !== true)
     : [];
-  const merged = mergeCloudJsonRecords(recordsToMerge, cloud)
-    .map(sanitize)
-    .filter((record): record is AccountMergeRecord => Boolean(record));
-  persist(merged, false);
-  sendOwedCloudJsonRecords('account_merges', userId, merged, cloud);
-  return merged;
+  const byId = new Map<string, AccountMergeRecord>();
+  for (const record of [...cloud, ...recordsToMerge]) {
+    const previous = byId.get(record.id);
+    if (!previous || record.updatedAt >= previous.updatedAt) byId.set(record.id, record);
+  }
+  const records = [...byId.values()];
+  persist(records, false);
+  sendOwedCloudJsonRecords('account_merges', userId, records, cloud);
+  return mergeCloudJsonRecords([], records).map(sanitize).filter((record): record is AccountMergeRecord => Boolean(record));
 }
 
 export async function loadAccountMergesForWorkspace(userId?: string | null, sampleDataActive = false) {
@@ -105,12 +108,15 @@ export async function loadAccountMergesForWorkspace(userId?: string | null, samp
 }
 
 export function saveAccountMerge(record: AccountMergeRecord) {
-  const existing = loadAccountMerges().filter((item) => item.id !== record.id);
+  const existing = loadAccountMerges(true).filter((item) => item.id !== record.id);
   return persist([record, ...existing]);
 }
 
 export function deleteAccountMerge(recordId: string) {
-  return persist(loadAccountMerges().filter((record) => record.id !== recordId));
+  const records = loadAccountMerges(true);
+  return persist(records.map(record => record.id === recordId
+    ? { ...record, __deleted: true, updatedAt: new Date(Math.max(Date.now(), Date.parse(record.updatedAt) + 1)).toISOString() }
+    : record));
 }
 
 /** Every name that has been folded into another account. */
@@ -146,9 +152,9 @@ function persist(records: AccountMergeRecord[], syncCloud = true) {
       syncCloudJsonCollectionForCurrentUser('account_merges', sanitized);
       invalidateWorkspaceCollection('accountMerges');
     }
-    window.dispatchEvent(new CustomEvent(ACCOUNT_MERGES_UPDATED_EVENT, { detail: sanitized }));
+    window.dispatchEvent(new CustomEvent(ACCOUNT_MERGES_UPDATED_EVENT, { detail: sanitized.filter(record => record.__deleted !== true) }));
   }
-  return sanitized;
+  return sanitized.filter(record => record.__deleted !== true);
 }
 
 function sanitize(value: unknown): AccountMergeRecord | null {

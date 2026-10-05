@@ -3,6 +3,7 @@ import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
+import { getLocalWorkspaceOwner } from './localWorkspaceOwner.ts';
 
 export const OPERATING_CONTEXT_STORAGE_KEY = 'memoire.operatingContext.v1';
 export const operatingContextTypes = ['initiative', 'play', 'offer', 'experiment'] as const;
@@ -68,7 +69,7 @@ export const emptyOperatingContextInput: OperatingContextFormInput = {
   payload: {},
 };
 
-export async function loadOperatingContext(userId?: string | null): Promise<OperatingContextRecord[]> {
+export async function loadOperatingContext(userId?: string | null, options: { retryPending?: boolean } = {}): Promise<OperatingContextRecord[]> {
   if (userId && supabaseClient) {
     try {
       const { data, error } = await supabaseClient
@@ -78,7 +79,16 @@ export async function loadOperatingContext(userId?: string | null): Promise<Oper
         .order('updated_at', { ascending: false });
 
       if (error) throw new Error(error.message);
-      return ((data || []) as OperatingContextRow[]).map(rowToOperatingContext);
+      const cloud = ((data || []) as OperatingContextRow[]).map(rowToOperatingContext);
+      const result = new Map(cloud.map(record => [record.id, record]));
+      for (const record of loadLocalOperatingContext(userId)) {
+        const stored = result.get(record.id);
+        if (!stored || Date.parse(record.updatedAt) > Date.parse(stored.updatedAt)) {
+          result.set(record.id, record);
+          if (record.storageMode === 'local' && !options.retryPending) reportWorkspaceSyncError('Operating context changes are saved in this browser and waiting for Retry sync.');
+        }
+      }
+      return [...result.values()].sort(sortNewestFirst);
     } catch (error) {
       reportWorkspaceSyncError();
       debugOperatingContext('cloud load failed; falling back to user-scoped local copy', error);
@@ -207,7 +217,7 @@ export function rowToOperatingContext(row: OperatingContextRow): OperatingContex
   return {
     id: row.id,
     userId: row.user_id,
-    contextType: normalizeContextType(row.context_type),
+    contextType: normalizeContextType(row.payload?.memoireContextType || row.context_type),
     title: row.title || '',
     status: row.status || '',
     period: row.period || '',
@@ -227,7 +237,7 @@ export function rowToOperatingContext(row: OperatingContextRow): OperatingContex
 
 export function inputToRow(input: OperatingContextFormInput) {
   return {
-    context_type: input.contextType,
+    context_type: input.contextType === 'offer' ? 'play' : input.contextType === 'experiment' ? 'initiative' : input.contextType,
     title: input.title,
     status: input.status || null,
     period: input.period || null,
@@ -236,7 +246,7 @@ export function inputToRow(input: OperatingContextFormInput) {
     next_action: input.nextAction || null,
     next_date: sanitizeBusinessDate(input.nextDate) || null,
     summary: input.summary || null,
-    payload: input.payload,
+    payload: { ...input.payload, memoireContextType: input.contextType },
   };
 }
 
@@ -288,7 +298,7 @@ function loadLocalOperatingContext(userId: string): OperatingContextRecord[] {
     if (!raw) return [];
     const records = JSON.parse(raw) as OperatingContextRecord[];
     return Array.isArray(records)
-      ? records.map((record) => ({ ...record, nextDate: sanitizeBusinessDate(record.nextDate), storageMode: 'local' as const })).sort(sortNewestFirst)
+      ? records.filter(record => record.userId === userId).map((record) => ({ ...record, nextDate: sanitizeBusinessDate(record.nextDate), storageMode: record.storageMode === 'cloud' ? 'cloud' as const : 'local' as const })).sort(sortNewestFirst)
       : [];
   } catch {
     return [];
@@ -311,6 +321,18 @@ function normalizeContextType(value: unknown): OperatingContextType {
   return operatingContextTypes.includes(value as OperatingContextType)
     ? value as OperatingContextType
     : 'initiative';
+}
+
+export async function syncPendingOperatingContext(userId: string) {
+  const pending = (await loadOperatingContext(userId, { retryPending: true })).filter(record => record.storageMode === 'local');
+  for (const record of pending) {
+    const { data, error } = await supabaseClient!.from(TABLE_NAME)
+      .upsert({ id: record.id, user_id: userId, ...inputToRow(operatingContextToForm(record)), source_system: record.sourceSystem || 'memoire', external_source_key: record.externalSourceKey || `memoire:${record.id}`, created_at: record.createdAt, updated_at: record.updatedAt }, { onConflict: 'id' })
+      .select('*').single();
+    if (error) throw new Error(error.message);
+    if (getLocalWorkspaceOwner() === userId) saveLocalOperatingContext(rowToOperatingContext(data as OperatingContextRow), userId);
+  }
+  invalidateWorkspaceCollection('operatingContext');
 }
 
 function normalizeNumber(value: unknown) {

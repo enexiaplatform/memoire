@@ -1,5 +1,25 @@
 import { ACTIVITY_CHANNELS, type ActivityChannel } from './activityChannel.ts';
 import type { PlanBoard } from './weeklyPlan';
+import { summarisePlanWork } from './planWorkKind.ts';
+
+/** Keep displayed totals and day counters in the same scope as the visible work. */
+export function planBoardWithoutBacklog(board: PlanBoard): PlanBoard {
+  const days = board.days.map(day => {
+    const items = day.items.filter(item => !item.carriedFrom);
+    return { ...day, items, doneCount: items.filter(item => item.done).length };
+  });
+  const items = days.flatMap(day => day.items);
+  const personalCount = items.filter(item => item.kind === 'personal').length;
+  return {
+    ...board, days,
+    totalCount: items.length,
+    doneCount: items.filter(item => item.done).length,
+    personalCount,
+    derivedCount: items.length - personalCount,
+    captureCount: items.filter(item => item.kind === 'capture').length,
+    workSplit: summarisePlanWork(items.map(item => ({ kind: item.workKind, brand: item.workBrand, domain: item.workDomain }))),
+  };
+}
 
 /**
  * The week summary strip over the plan board: how much of it is done, how the

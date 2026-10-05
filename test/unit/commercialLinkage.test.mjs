@@ -57,7 +57,7 @@ describe('capture scope resolution', () => {
     assert.equal(result.opportunityId, 'only');
     assert.equal(result.resolution, 'strong_match');
     assert.equal(result.reason, 'only_open_deal_on_account');
-    assert.ok(isPreselectable(result));
+    assert.equal(isPreselectable(result), false, 'Account-only evidence proposes a deal but requires explicit confirmation.');
   });
 
   test('3. several open deals require a choice - nothing is guessed', () => {

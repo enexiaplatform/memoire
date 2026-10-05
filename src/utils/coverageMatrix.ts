@@ -4,6 +4,7 @@ import { accountKey } from './accountIdentity.ts';
 import { isCommittedToOrder } from './orderToCash.ts';
 import { sumMoneyInBase } from './money.ts';
 import { brandKey, canonicalBrandName } from './brandIdentity.ts';
+import { portfolioAssignments, portfolioNodes, type PortfolioRecord } from '../domain/portfolio/portfolioCatalog.ts';
 
 /**
  * Every customer against every line you carry, and - the point of the whole
@@ -81,15 +82,20 @@ const CELL_RANK: Record<CoverageCellState, number> = {
 };
 
 export function buildCoverageMatrix(input: {
+  portfolioRecords?: PortfolioRecord[];
   opportunities: CrmLiteOpportunity[];
   /** How many gaps to name. The panel shows a shortlist, not a backlog. */
   gapLimit?: number;
   /** Names the user has merged, so a customer merged in Accounts is one row here. */
   accountAliases?: AccountAliasIndex;
 }): CoverageMatrix {
-  const opportunities = input.opportunities.map((opportunity) => (
-    { ...opportunity, accountName: resolveAccountName(opportunity.accountName, input.accountAliases) }
-  ));
+  const assignments = new Map(portfolioAssignments(input.portfolioRecords || []).map(record => [record.opportunityId, record]));
+  const nodes = new Map(portfolioNodes(input.portfolioRecords || []).map(record => [record.id, record]));
+  const opportunities = input.opportunities.map((opportunity) => {
+    const accepted = assignments.get(opportunity.id);
+    return { ...opportunity, accountName: resolveAccountName(opportunity.accountName, input.accountAliases),
+      brand: accepted ? nodes.get(accepted.brandId || '')?.name || '' : opportunity.brand };
+  });
   const withBrand = opportunities.filter((opportunity) => (opportunity.brand || '').trim());
 
   /*

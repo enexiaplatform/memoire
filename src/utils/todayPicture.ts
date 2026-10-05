@@ -11,7 +11,7 @@ import {
   type PlannedCommitmentSignal,
 } from './proactiveNudges.ts';
 import { convertMoney } from './money.ts';
-import { summarisePlanBoard } from './planBoardSummary.ts';
+import { planBoardWithoutBacklog, summarisePlanBoard } from './planBoardSummary.ts';
 
 /**
  * Today's picture: four numbers about the state of the business, each read from
@@ -262,7 +262,7 @@ export type TodayPromisesPicture = {
 };
 
 export function summariseWeekPromises(board: PlanBoard): TodayPromisesPicture {
-  const summary = summarisePlanBoard(board);
+  const summary = summarisePlanBoard(planBoardWithoutBacklog(board));
   const overdueOpen = board.days.flatMap((day) => day.items).filter((item) => item.overdue && !item.done).length;
   return { done: summary.done, total: summary.total, percent: summary.donePercent, overdueOpen };
 }

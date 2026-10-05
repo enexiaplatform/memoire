@@ -19,6 +19,7 @@ import { applyReceivableChanges, receivableCloudPayload, resolvePendingReceivabl
 import { flushPendingReceivables, makeReceivableCloudAdapter, triggerReceivableSync } from './orderReceivableSync.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { getLocalWorkspaceOwner } from './localWorkspaceOwner.ts';
+import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 
 export const ORDER_RECEIVABLE_STORAGE_KEY = 'memoire.orderReceivables.v1';
 
@@ -52,6 +53,7 @@ export function loadOrderReceivables(): OrderReceivableRecord[] {
       .map(sanitizeOrderReceivableRecord)
       .filter((record): record is OrderReceivableRecord => Boolean(record));
   } catch (error) {
+    reportWorkspaceSyncError('Collection sync is incomplete. Browser records remain available.');
     if (error instanceof SyntaxError) throw new Error('The collection data on this device is invalid. Keep a backup and review it before using totals.');
     throw error;
   }

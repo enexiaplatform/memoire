@@ -34,6 +34,13 @@ describe('a rival named by their position, not by the word competitor', () => {
 });
 
 describe('the customer saying yes before the money moves', () => {
+  test('negated payment and delivery cannot become positive signals, while independent affirmative clauses remain', () => {
+    assert.deepEqual(extractBuyingSignals('No delivery or payment happened.'), []);
+    assert.deepEqual(extractBuyingSignals('Delivery did not happen; payment has not arrived.'), []);
+    assert.deepEqual(extractBuyingSignals("Delivery didn't happen; payment received."), ['Payment signal']);
+    assert.deepEqual(extractBuyingSignals('Payment received; no delivery happened.'), ['Payment signal']);
+    assert.deepEqual(extractBuyingSignals('Delivery completed; payment received.'), ['Payment signal', 'Delivery signal']);
+  });
   test('approved in principle', () => {
     assert.ok(extractBuyingSignals('They approved the LED and HVAC controls programme in principle.')
       .includes('Approved in principle'));

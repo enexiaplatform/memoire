@@ -98,7 +98,7 @@ export function TodayMetricCards({
         href="/app/timeline?view=upcoming"
         icon={<Check className="h-[15px] w-[15px]" strokeWidth={2.5} />}
         iconTone="bg-[#E8F8F0] text-tint-green-solid"
-        label="Promises kept"
+        label="Planned tasks done"
         figure={(
           <span className="flex items-baseline gap-[7px]">
             <span className="text-tint-green-solid">{formatCount(promises.done)}</span>
@@ -115,7 +115,7 @@ export function TodayMetricCards({
         )}
         caption={promises.total === 0
           ? 'Nothing planned this week yet'
-          : <>{promises.percent}% of this week done{promises.overdueOpen > 0 && <> · <span className="font-semibold text-tint-red-solid">{formatCount(promises.overdueOpen)} overdue</span></>}</>}
+          : <>{promises.percent}% of this week done{promises.overdueOpen > 0 && <> · <span className="font-semibold text-tint-red-solid">{formatCount(promises.overdueOpen)} overdue incl. backlog</span></>}</>}
       />
     </section>
   );
@@ -290,7 +290,7 @@ export function MoneyInMotionPanel({ motion }: { motion: TodayMoneyInMotion }) {
             <li key={lane.stage}>
               <div className="flex items-baseline justify-between gap-3 text-[12.5px]">
                 <span className={lane.stuckThreads > 0 ? 'font-semibold text-tint-amber-solid' : 'text-tint-neutral-ink'}>
-                  {lane.stage}
+                  {lane.stage === 'Paid' ? 'Paid orders' : lane.stage}
                   {lane.stuckThreads > 0 && ` · ${formatCount(lane.stuckThreads)} stuck`}
                 </span>
                 <span className="font-mono text-[13px] font-bold text-ink">
@@ -310,6 +310,7 @@ export function MoneyInMotionPanel({ motion }: { motion: TodayMoneyInMotion }) {
           ))}
         </ul>
       )}
+      {motion.hasAny && <p className="mt-2 text-xs leading-5 text-muted">Open stages show remaining cash to collect. Paid orders show settled contract value; partial receipts and overpayments are included in Review&apos;s collected cash.</p>}
       {motion.worstStuck && (
         <p className="mt-4 flex items-start gap-2.5 rounded-[13px] bg-tint-red-bg px-3.5 py-3 text-[12.5px] leading-5 text-tint-red-ink">
           <AlertTriangle className="mt-0.5 h-[15px] w-[15px] shrink-0 text-tint-red-solid" strokeWidth={2.1} />

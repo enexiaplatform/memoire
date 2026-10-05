@@ -232,7 +232,7 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
       event.preventDefault();
       const hit = hits[active];
       if (hit) go(hit.to);
-      else go(`/app/ask?q=${encodeURIComponent(query.trim())}`);
+      else go(`/app/ask?question=${encodeURIComponent(query.trim())}`);
     }
   };
 
@@ -312,7 +312,7 @@ export function GlobalSearch({ open, onClose }: { open: boolean; onClose: () => 
           {askable && (
             <button
               type="button"
-              onClick={() => go(`/app/ask?q=${encodeURIComponent(query.trim())}`)}
+              onClick={() => go(`/app/ask?question=${encodeURIComponent(query.trim())}`)}
               onMouseEnter={() => setActive(hits.length)}
               aria-current={hits.length === active}
               className={`mt-1 flex w-full items-center gap-3 rounded-lg border-t border-gray-100 px-3 py-2.5 text-left ${

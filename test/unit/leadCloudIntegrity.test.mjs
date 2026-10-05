@@ -19,7 +19,7 @@ const client = {
       select() { return query; },
       eq(key, value) { if (key === 'id') id = value; return query; },
       order() { return query; },
-      async range() { return { data: [...rows.values()], error: null }; },
+      async range() { return { data: table === 'accounts' ? [] : [...rows.values()], error: null }; },
       async single() {
         if (rejectCloud) return { data: null, error: { message: 'Cloud refused write' } };
         if (inserting) id = `cloud-${rows.size + 1}`;

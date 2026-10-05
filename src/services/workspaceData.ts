@@ -49,8 +49,18 @@ import { describeLocalShortfall, isLocalCopyComplete, recordWorkspaceCensus } fr
 import { activateLocalHistoricalIntegrity } from './historicalIntegrity';
 import { hasLocalSampleData } from '../utils/dataMode';
 import { requireCloudHistoricalIntegrity } from './historicalCloudGate';
+import { loadOrderReceivablesForWorkspace } from './orderReceivableStore';
+import { loadOrderMilestonesForWorkspace } from './orderMilestoneStore';
+import type { OrderReceivableRecord } from '../utils/receivables';
+import type { OrderMilestoneRecord } from '../utils/orderToCash';
+import { flushPendingCloudJsonWrites } from './cloudJsonCollectionStore';
+import { loadPortfolio } from './portfolioStore';
+import type { PortfolioRecord } from '../domain/portfolio/portfolioCatalog';
 
 export type SalesWorkspaceData = {
+  portfolioRecords?: PortfolioRecord[];
+  receivableRecords?: OrderReceivableRecord[];
+  milestoneRecords?: OrderMilestoneRecord[];
   activities: SalesActivityRecord[];
   opportunities: CrmLiteOpportunity[];
   accounts: AccountMemoryRecord[];
@@ -120,6 +130,9 @@ export const WORKSPACE_REFRESHED_EVENT = 'memoire:workspace-refreshed';
  * 1,738 stakeholders, about 3 MB of JSON that the edit had not touched.
  */
 const collectionLoaders = {
+  portfolioRecords: async (userId?: string | null) => (await loadPortfolio({ userId: userId || null, sampleDataActive: !userId && hasLocalSampleData() })).records,
+  receivableRecords: (userId?: string | null) => loadOrderReceivablesForWorkspace(userId),
+  milestoneRecords: (userId?: string | null) => loadOrderMilestonesForWorkspace(userId),
   activities: (userId?: string | null) => loadSalesActivities(userId),
   opportunities: (userId?: string | null) => loadOpportunities(userId),
   accounts: (userId?: string | null) => loadAccounts(userId),
@@ -218,19 +231,20 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
   const names = WORKSPACE_COLLECTIONS;
   const cloudLoad = Promise.all(
     names.map((name) => track(name, loadCollection(name, userId, Boolean(options.force)))),
-  ).then((results) => {
-    if (userId && getWorkspaceSyncStatus().state !== 'error') reportWorkspaceSyncReady();
+  ).then(async (results) => {
     const workspace = {} as SalesWorkspaceData;
     names.forEach((name, index) => {
       (workspace as Record<string, unknown>)[name] = results[index];
     });
-    if(userId){void requireCloudHistoricalIntegrity(userId).catch(()=>{
+    if(userId){await requireCloudHistoricalIntegrity(userId).catch(()=>{
       reportWorkspaceSyncError('Historical baseline is not active on the account. New covered changes will stay in this browser.');
     });}
     else{
       try{activateLocalHistoricalIntegrity(hasLocalSampleData()?'sample':'guest');}
       catch{reportWorkspaceSyncError('Historical baseline could not be saved. Current records remain usable; retry before historical queries.');}
     }
+    await flushPendingCloudJsonWrites();
+    if (userId && getWorkspaceSyncStatus().state !== 'error') reportWorkspaceSyncReady();
     // What the cloud actually held, so the next first paint can tell a complete
     // browser copy from a fragment of one.
     if (userId) recordWorkspaceCensus(userId, workspace as unknown as Record<string, unknown>);

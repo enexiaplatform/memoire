@@ -12,6 +12,7 @@ import { buildOperatorProfile } from '../../utils/operatorProfile';
 import { buildTargetPlan, joinWords } from '../../utils/targetPlan';
 import { formatCompactBaseAmount } from '../../utils/money';
 import { useCoverage } from './useCoverage';
+import { useCommercialThreads } from '../threads/useCommercialThreads';
 
 /**
  * Coverage says how far short the quarter is. This says what that shortfall
@@ -37,11 +38,12 @@ export function TargetPlanPanel({
   accountMerges: AccountMergeRecord[];
 }) {
   const { coverage } = useCoverage();
+  const { workspace } = useCommercialThreads();
 
   const plan = useMemo(() => {
     const accountAliases = buildAccountAliasIndex(accountMerges);
     const profile = buildOperatorProfile({ opportunities, opportunityOutcomes, activities, quotes, accountAliases });
-    const matrix = buildCoverageMatrix({ opportunities, accountAliases });
+    const matrix = buildCoverageMatrix({ opportunities, accountAliases, portfolioRecords: workspace?.portfolioRecords });
     return buildTargetPlan({
       quarter: coverage.quarters.find((entry) => entry.isCurrent),
       economics: profile.economics,
@@ -49,7 +51,7 @@ export function TargetPlanPanel({
       unsupportedDealCount: coverage.unsupportedDeals.length,
       whitespace: matrix.hasEnoughBrands ? matrix.gaps : [],
     });
-  }, [coverage, opportunities, opportunityOutcomes, activities, quotes, accountMerges]);
+  }, [coverage, opportunities, opportunityOutcomes, activities, quotes, accountMerges, workspace?.portfolioRecords]);
 
   // Coverage already owns the "set a target" invitation. A second copy of it
   // here would be the same empty state twice on one page.

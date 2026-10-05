@@ -246,7 +246,7 @@ function buildObjectionPatterns(objections: ObjectionRecord[], detectedAt: strin
     .filter(([, items]) => items.length > 0)
     .map(([type, items]): SalesPlaybookPattern => ({
       id: `objection-${slugify(type)}`,
-      title: `${type} objections repeat across deals`,
+      title: `${type} objections repeat in captured records`,
       category: 'Objection Pattern',
       severity: items.some((item) => item.impact === 'High') || items.length >= 3 ? 'High' : items.length >= 2 ? 'Medium' : 'Low',
       frequency: items.length,

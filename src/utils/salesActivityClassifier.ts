@@ -572,8 +572,10 @@ export function extractBuyingSignals(rawNote: string) {
   if (/\bshortlist(?:ed)?\b/i.test(rawNote)) signals.push('Shortlisted');
   if (/\btechnically\s+agreed\b|\btechnical(?:ly)?\s+approv(?:al|ed)\b|\bspec(?:ification)?\s+(?:is\s+)?approved\b/i.test(rawNote)) signals.push('Technical approval');
   if (/\bpo\b|purchase order/i.test(rawNote)) signals.push('Purchase order signal');
-  if (/\bpayment\b/i.test(rawNote)) signals.push('Payment signal');
-  if (/\bdelivery\b/i.test(rawNote)) signals.push('Delivery signal');
+  const affirmativeMention = (term: RegExp) => rawNote.split(/[.\n;]|\bbut\b/i).some(clause =>
+    term.test(clause) && !/\b(?:no|not|never|without|pending)\b|\b(?:didn|hasn|haven|won|wasn|weren)['’]t\b/i.test(clause));
+  if (affirmativeMention(/\bpayment\b/i)) signals.push('Payment signal');
+  if (affirmativeMention(/\bdelivery\b/i)) signals.push('Delivery signal');
   if (/\bquote|quotation|commercial offer\b/i.test(rawNote)) signals.push('Quote/commercial signal');
   if (/\bdecision maker (?:confirmed|identified)\b/i.test(rawNote)) signals.push('Decision maker identified');
   if (/\bconfirmed next step\b|next step confirmed/i.test(rawNote)) signals.push('Next step confirmed');
@@ -1152,4 +1154,3 @@ function hasPartialPhrase(note: string, opportunityName: string) {
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
-

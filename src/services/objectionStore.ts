@@ -4,6 +4,10 @@ import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { sanitizeBusinessDate } from '../utils/safeDate.ts';
 import { writeLocalCollection, writeLocalRecords } from './localWriteGuard.ts';
+import { loadAccounts } from './accountStore.ts';
+import { loadOpportunities } from './opportunityStore.ts';
+import { canonicalAccountId } from '../utils/canonicalAccountLink.ts';
+import { getLocalWorkspaceOwner, captureLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 
 export const OBJECTION_STORAGE_KEY = 'memoire.objections.v1';
 
@@ -109,30 +113,43 @@ export function canUseObjectionCloudStore(userId?: string | null) {
   return Boolean(userId && supabaseClient);
 }
 
-export async function loadObjections(userId?: string | null): Promise<ObjectionRecord[]> {
+export async function loadObjections(userId?: string | null, options: { retryPending?: boolean } = {}): Promise<ObjectionRecord[]> {
   if (canUseObjectionCloudStore(userId)) {
     try {
-      return await loadCloudObjections(userId as string);
+      const cloud = await loadCloudObjections(userId as string);
+      const local = loadLocalObjections().filter(record => record.userId === userId && !record.isSample && record.source !== 'demo');
+      const result = new Map(cloud.map(record => [record.id, record]));
+      for (const record of local) {
+        const stored = result.get(record.id);
+        if (!stored || Date.parse(record.updatedAt) > Date.parse(stored.updatedAt)) {
+          result.set(record.id, record);
+          if (record.storageMode === 'local' && !options.retryPending) reportWorkspaceSyncError('Objection changes are saved in this browser and waiting for Retry sync.');
+        }
+      }
+      return [...result.values()].sort(sortNewestFirst);
     } catch (error) {
       reportWorkspaceSyncError();
       debugObjectionStore('cloud load failed; falling back to local', { message: getErrorMessage(error) });
-      return loadLocalObjections();
+      return loadLocalObjections().filter(record => record.userId === userId && !record.isSample && record.source !== 'demo');
     }
   }
   return loadLocalObjections();
 }
 
 export async function createObjection(input: ObjectionFormInput, userId?: string | null): Promise<{ objection: ObjectionRecord; mode: 'local' | 'cloud'; warning?: string }> {
+  const sameWorkspace = captureLocalWorkspaceScope();
   const normalized = normalizeObjectionInput(input);
   if (canUseObjectionCloudStore(userId)) {
     try {
       const objection = await createCloudObjection(normalized, userId as string);
-      saveLocalObjectionRecord({ ...objection, storageMode: 'local' });
+      if (!sameWorkspace()) return { objection, mode: 'cloud', warning: 'Saved to the original account. The current browser workspace was not changed.' };
+      saveLocalObjectionRecord(objection);
       invalidateWorkspaceCollection('objections');
       return { objection, mode: 'cloud' };
     } catch (error) {
       reportWorkspaceSyncError();
       const objection = createLocalObjection(normalized, userId || undefined);
+      if (!sameWorkspace()) throw new Error('Workspace changed before this objection was saved.');
       saveLocalObjectionRecord(objection);
       invalidateWorkspaceCollection('objections');
       debugObjectionStore('cloud create failed; local copy preserved', { message: getErrorMessage(error) });
@@ -147,16 +164,19 @@ export async function createObjection(input: ObjectionFormInput, userId?: string
 }
 
 export async function updateObjection(objection: ObjectionRecord, input: ObjectionFormInput, userId?: string | null): Promise<{ objection: ObjectionRecord; mode: 'local' | 'cloud'; warning?: string }> {
+  const sameWorkspace = captureLocalWorkspaceScope();
   const normalized = normalizeObjectionInput(input);
   if (objection.storageMode === 'cloud' && canUseObjectionCloudStore(userId)) {
     try {
       const updated = await updateCloudObjection(objection.id, normalized, userId as string);
-      saveLocalObjectionRecord({ ...updated, storageMode: 'local' });
+      if (!sameWorkspace()) return { objection: updated, mode: 'cloud', warning: 'Saved to the original account. The current browser workspace was not changed.' };
+      saveLocalObjectionRecord(updated);
       invalidateWorkspaceCollection('objections');
       return { objection: updated, mode: 'cloud' };
     } catch (error) {
       reportWorkspaceSyncError();
       const localCopy = { ...objection, ...normalized, updatedAt: new Date().toISOString(), storageMode: 'local' as const };
+      if (!sameWorkspace()) throw new Error('Workspace changed before this objection was saved.');
       saveLocalObjectionRecord(localCopy);
       invalidateWorkspaceCollection('objections');
       debugObjectionStore('cloud update failed; local copy preserved', { message: getErrorMessage(error) });
@@ -237,7 +257,7 @@ function loadLocalObjections(): ObjectionRecord[] {
         tags: normalizeTags(item.tags),
         createdAt: item.createdAt || new Date().toISOString(),
         updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
-        storageMode: 'local',
+        storageMode: item.storageMode === 'cloud' ? 'cloud' : 'local',
       }))
       .sort(sortNewestFirst);
   } catch {
@@ -273,6 +293,7 @@ async function loadCloudObjections(userId: string) {
 }
 
 async function createCloudObjection(input: ObjectionFormInput, userId: string) {
+  input = await resolveObjectionLinks(input, userId);
   const { data, error } = await supabaseClient!
     .from(TABLE_NAME)
     .insert(objectionToInsert(input, userId))
@@ -283,6 +304,7 @@ async function createCloudObjection(input: ObjectionFormInput, userId: string) {
 }
 
 async function updateCloudObjection(objectionId: string, input: ObjectionFormInput, userId: string) {
+  input = await resolveObjectionLinks(input, userId);
   const { data, error } = await supabaseClient!
     .from(TABLE_NAME)
     .update(objectionToUpdate(input))
@@ -348,6 +370,10 @@ function objectionToUpdate(input: ObjectionFormInput) {
 
 export function objectionToRow(input: ObjectionFormInput) {
   return {
+    title: input.objectionText.slice(0, 240),
+    detail: input.objectionText,
+    category: ({ Price: 'price', 'Lead time': 'timeline', 'Local support': 'support', 'Technical fit': 'product_fit', 'Compliance / validation': 'compliance', Competitor: 'competitor', Budget: 'budget' } as Record<string, string>)[input.objectionType] || 'other',
+    severity: input.impact === 'High' ? 'high' : input.impact === 'Low' ? 'low' : 'medium',
     account_id: toUuidOrNull(input.accountId),
     account_name: input.accountName || null,
     opportunity_id: toUuidOrNull(input.opportunityId),
@@ -358,7 +384,7 @@ export function objectionToRow(input: ObjectionFormInput) {
     objection_type: input.objectionType,
     objection_text: input.objectionText,
     impact: input.impact,
-    status: input.status,
+    status: input.status === 'Parked' ? 'dismissed' : input.status.toLowerCase(),
     required_proof: input.requiredProof || null,
     response_plan: input.responsePlan || null,
     resolution_note: input.resolutionNote || null,
@@ -396,7 +422,34 @@ function normalizeImpact(value: unknown): ObjectionImpact {
 }
 
 function normalizeStatus(value: unknown): ObjectionStatus {
+  if (value === 'dismissed') return 'Parked';
+  const match = objectionStatuses.find(status => status.toLowerCase() === String(value).toLowerCase());
+  if (match) return match;
   return objectionStatuses.includes(value as ObjectionStatus) ? value as ObjectionStatus : 'Open';
+}
+
+async function resolveObjectionLinks(input: ObjectionFormInput, userId: string): Promise<ObjectionFormInput> {
+  const accounts = await loadAccounts(userId);
+  const accountId = canonicalAccountId(input.accountName, accounts, userId, input.accountId);
+  if (!accountId) throw new Error('Choose one existing account before syncing this objection.');
+  const opportunities = input.opportunityName || input.opportunityId ? await loadOpportunities(userId) : [];
+  const matches = opportunities.filter(record => record.userId === userId && record.accountId === accountId
+    && (input.opportunityId ? record.id === input.opportunityId : record.opportunityName === input.opportunityName));
+  if ((input.opportunityName || input.opportunityId) && matches.length !== 1) throw new Error('Choose one deal belonging to this account before syncing this objection.');
+  return { ...input, accountId, opportunityId: matches[0]?.id || '' };
+}
+
+export async function syncPendingObjections(userId: string) {
+  const pending = (await loadObjections(userId, { retryPending: true })).filter(record => record.storageMode === 'local');
+  for (const record of pending) {
+    const input = await resolveObjectionLinks(objectionToFormInput(record), userId);
+    const { data, error } = await supabaseClient!.from(TABLE_NAME)
+      .upsert({ id: record.id, user_id: userId, ...objectionToRow(input), created_at: record.createdAt, updated_at: record.updatedAt }, { onConflict: 'id' })
+      .select('*').single();
+    if (error) throw new Error(error.message);
+    if (getLocalWorkspaceOwner() === userId) saveLocalObjectionRecord(rowToObjection(data as ObjectionRow));
+  }
+  invalidateWorkspaceCollection('objections');
 }
 
 function normalizeTags(value: unknown) {

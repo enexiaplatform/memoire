@@ -92,8 +92,9 @@ export function ReportsPage() {
       const value = await saveReportDefinition(scope, { id,
         expectedVersion: record?.version || editing?.version || 0, state: { definition: parseReportDefinition(record?.definition || definition), archived: archive ?? false } });
       setLibrary(previous => previous?.scopeKey === scopeKey ? { ...previous, value } : previous);
+      if (record && archive === false) { setArchived(false); setDefinition(record.definition); setEditing({ id: record.id, version: value.records.find(row => row.id === record.id)!.version }); identify(record.id, true); }
       if (!record) { const saved = value.records.find(row => row.id === id)!; setEditing({ id: saved.id, version: saved.version }); identify(saved.id, true); }
-      if (record && record.id === editing?.id) { setEditing(null); setRun(null); identify('new', true); }
+      if (record && archive === true && record.id === editing?.id) { setEditing(null); setRun(null); identify('new', true); }
       setMessage(value.message);
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not save this report.'); }
     finally { setBusy(''); }
@@ -135,7 +136,7 @@ export function ReportsPage() {
         <section className="grid min-w-0 gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
           <aside className="min-w-0 rounded-panel bg-white shadow-panel p-4"><h2 className="font-bold text-ink">Start from a template</h2>
             <div className="mt-3 flex flex-col gap-2">{(['portfolio', 'collections'] as const).map(key => <button key={key} className={secondary} disabled={Boolean(busy)} onClick={() => { change(reportTemplate(key)); setEditing(null); setRun(null); identify('new'); }}>{reportTemplate(key).name}</button>)}</div>
-            <h2 className="mt-5 font-bold text-ink">Saved reports</h2><label className="mt-2 flex min-h-11 items-center gap-2 text-xs"><input type="checkbox" checked={archived} onChange={event => setArchived(event.target.checked)} />Show archived reports</label>
+            <h2 className="mt-5 font-bold text-ink">Saved reports</h2><label className="mt-2 flex min-h-11 items-center gap-2 text-xs"><input type="checkbox" checked={archived} onChange={event => setArchived(event.target.checked)} />Archived reports only</label>
             <ul className="mt-3 space-y-3">{current.value.records.filter(record => record.archived === archived).map(record => <li key={record.id} className="break-words rounded-lg border border-line p-3"><button className="text-left text-sm font-semibold text-brand-blue" disabled={Boolean(busy)} onClick={() => selectSaved(record)}>{record.definition.name}</button><p className="mt-1 text-xs text-muted">{record.definition.dataset} · version {record.version}</p><button className="mt-2 text-xs font-semibold text-gray-600" disabled={Boolean(busy)} onClick={() => void save(record, !record.archived)}>{record.archived ? 'Restore report' : 'Archive report'}</button></li>)}</ul>
             {!current.value.records.some(record => record.archived === archived) && <p className="mt-3 text-sm text-muted">No saved reports here yet.</p>}
           </aside>

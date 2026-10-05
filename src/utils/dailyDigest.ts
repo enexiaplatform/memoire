@@ -9,6 +9,8 @@ import { buildOwnObligations } from './ownObligations.ts';
 import { buildPostWonCustomers } from './postWonCustomers.ts';
 import { formatCompactBaseAmount, formatCurrencyAmount } from './money.ts';
 import { sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
+import type { OrderReceivableRecord } from './receivables.ts';
+import type { OrderMilestoneRecord } from './orderToCash.ts';
 
 export type DailyDigest = {
   subject: string;
@@ -19,6 +21,8 @@ export type DailyDigest = {
 };
 
 type DailyDigestInput = {
+  receivableRecords?: OrderReceivableRecord[];
+  milestoneRecords?: OrderMilestoneRecord[];
   opportunities: CrmLiteOpportunity[];
   quotes: QuoteRecord[];
   expenses: ExpenseRecord[];
@@ -39,8 +43,8 @@ export function buildDailyDigest(input: DailyDigestInput): DailyDigest {
   const today = sanitizeBusinessDate(input.today) || todayDateKey();
   const dateLabel = formatDateLabel(today);
 
-  const moneyFlow = buildMoneyFlow({ opportunities: input.opportunities, quotes: input.quotes, today });
-  const cash = buildCashPosition({ quotes: input.quotes, expenses: input.expenses, openingBalanceBase: getOpeningCashBalance(), today });
+  const moneyFlow = buildMoneyFlow({ ...input, today });
+  const cash = buildCashPosition({ ...input, openingBalanceBase: getOpeningCashBalance(), today });
   const obligations = buildOwnObligations({ quotes: input.quotes, expenses: input.expenses, today });
   const postWon = buildPostWonCustomers({ opportunities: input.opportunities, opportunityOutcomes: input.opportunityOutcomes, quotes: input.quotes, activities: input.activities, today });
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FREE_PREVIEW } from '../../config/launchPhase';
 import type { ChangeEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, ClipboardCheck, Copy, Mail, ShieldCheck } from 'lucide-react';
@@ -116,7 +117,7 @@ export function EarlyAccessRequestPage() {
             Tell us where your follow-up falls through.
           </h1>
           <p className="mt-4 text-sm leading-6 text-blue-950">
-            You do not need permission to use Memoire - <Link to="/signup" className="font-bold underline">create an account</Link> and the trial starts. This is the other conversation: how you handle follow-up, pipeline reviews and deal memory today, and whether this is built for it.
+            You do not need permission to use Memoire - <Link to="/signup" className="font-bold underline">create an account</Link> {FREE_PREVIEW ? 'and use the free preview, with no card or trial countdown.' : 'and the trial starts.'} This is the other conversation: how you handle follow-up, pipeline reviews and deal memory today, and whether this is built for it.
           </p>
           <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
             <div className="flex items-start gap-3">

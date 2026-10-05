@@ -147,6 +147,8 @@ export type KnowledgeNode = {
   weight: number;
   /** Last date anything about this node changed. */
   updatedAt: string;
+  /** Business date of the latest captured interaction, separate from record edits. */
+  lastInteractionAt?: string;
   valueBase: number;
   /**
    * Deals under this node that carry a value the operator actually typed.
@@ -867,6 +869,7 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraph 
     const node = nodes.get(nodeId);
     if (!node) continue;
     node.memoryCount = entries.length;
+    node.lastInteractionAt = entries.find(entry => entry.kind === 'activity' && entry.date <= today)?.date || '';
     node.updatedAt = laterDate(node.updatedAt, entries[0]?.date || '');
   }
 

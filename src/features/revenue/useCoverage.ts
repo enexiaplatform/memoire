@@ -11,6 +11,7 @@ import {
 } from '../../services/commercialKernel/targetStore';
 
 const EMPTY: CoverageReport = {
+  fiscalYear: new Date().getFullYear(), excludedUndatedCount: 0, excludedCurrencyCount: 0,
   quarters: [],
   currentQuarter: 'Q1',
   hasTargets: false,

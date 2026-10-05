@@ -59,11 +59,11 @@ describe('quarterAmounts', () => {
     assert.equal(quarterAmounts(deal(), 'Q4').Q4, 250_000_000);
   });
 
-  test('an unconvertible currency is carried at face value, never dropped', () => {
-    // Visibly wrong beats invisibly missing: a deal that vanishes from the
-    // forecast because nobody priced its currency is the worse failure.
+  test('an unconvertible currency is excluded and counted for correction', () => {
     setReporting('USD');
-    assert.equal(quarterAmounts(deal({ currency: 'ZWL' }), 'Q4').Q4, 250_000_000);
+    assert.equal(quarterAmounts(deal({ currency: 'ZWL' }), 'Q4').Q4, 0);
+    const report = buildCoverage({ opportunities: [deal({ currency: 'ZWL' })], threads: [], targets: [], today: inQ4 });
+    assert.equal(report.excludedCurrencyCount, 1);
   });
 });
 
@@ -120,9 +120,7 @@ describe('buildCoverage and the target currency', () => {
     assert.ok(inVnd.target > inUsd.target * 1000, 'and the magnitudes do differ, so the test is real');
   });
 
-  test('an unconvertible target is carried at face value rather than read as no target', () => {
-    // "No target" is the one wrong answer a coverage check must never give: it
-    // reads as nothing to be short of.
+  test('an unconvertible target is excluded with an explicit correction count', () => {
     setReporting('USD');
     const report = buildCoverage({
       opportunities: [],
@@ -130,6 +128,7 @@ describe('buildCoverage and the target currency', () => {
       targets: [{ quarter: 'Q4', amount: 90_000, currency: 'ZWL' }],
       today: inQ4,
     });
-    assert.equal(q4Of(report).target, 90_000);
+    assert.equal(q4Of(report).target, 0);
+    assert.equal(report.excludedCurrencyCount, 1);
   });
 });

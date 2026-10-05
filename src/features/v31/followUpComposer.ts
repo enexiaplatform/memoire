@@ -57,7 +57,7 @@ function buildSubject(context: FollowUpContext) {
   if (context.goal === 'confirm_next_step') return `Confirming next steps`;
   if (context.goal === 'revive_stale_deal') return `Checking in on ${context.opportunityName || context.accountName}`;
   if (context.goal === 'ask_decision_timeline') return `Decision timeline for ${context.opportunityName || context.accountName}`;
-  return `Follow-up after our conversation`;
+  return context.lastInteractionSummary ? `Follow-up after our conversation` : `Next steps for ${context.opportunityName || context.accountName || 'your team'}`;
 }
 
 function buildBodyLines({

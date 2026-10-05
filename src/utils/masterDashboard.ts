@@ -15,6 +15,8 @@ import { buildPlanBoard, buildCaptureDerivedKey, getDatedCaptureActions, type Pl
 import { getReportingCurrency, sumMoney, type SupportedCurrency } from './money.ts';
 import { isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
+import type { OrderReceivableRecord } from './receivables.ts';
+import type { OrderMilestoneRecord } from './orderToCash.ts';
 
 export type StageMixRow = {
   stage: OpportunityStage;
@@ -116,6 +118,8 @@ export type MasterDashboardModel = {
 };
 
 type MasterDashboardInput = {
+  receivableRecords?: OrderReceivableRecord[];
+  milestoneRecords?: OrderMilestoneRecord[];
   opportunities: CrmLiteOpportunity[];
   activities: SalesActivityRecord[];
   quotes: QuoteRecord[];
@@ -207,8 +211,11 @@ export function buildMasterDashboard(input: MasterDashboardInput): MasterDashboa
     won: bucketClosedDeals(pipeline, input.opportunityOutcomes, 'Won'),
     lost: bucketClosedDeals(pipeline, input.opportunityOutcomes, 'Lost'),
   };
-  const moneyFlow = buildMoneyFlow({ opportunities: input.opportunities, quotes: input.quotes, today: todayKey });
+  const moneyFlow = buildMoneyFlow({ ...input, today: todayKey });
   const cash = buildCashPosition({
+    opportunities: input.opportunities,
+    receivableRecords: input.receivableRecords,
+    milestoneRecords: input.milestoneRecords,
     quotes: input.quotes,
     expenses: input.expenses,
     openingBalanceBase: getOpeningCashBalance(),

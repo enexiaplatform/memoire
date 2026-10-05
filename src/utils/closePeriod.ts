@@ -47,6 +47,8 @@ export type ClosePeriodBasis =
   | 'none';
 
 export type ClosePeriod = {
+  /** Exact calendar month where the input supplies one, for fiscal-year allocation. */
+  month?: number;
   /** Position on the absolute axis. Smaller closes sooner. */
   rank: number;
   quarter: 1 | 2 | 3 | 4 | null;
@@ -85,7 +87,7 @@ export function resolveClosePeriod(raw: string | null | undefined, today?: strin
   // A real date beats every heuristic below it - it is the only form that says
   // which quarter without anybody guessing.
   const dated = readDate(text);
-  if (dated) return fromQuarter(dated.quarter, dated.year, 'date', false, text);
+  if (dated) return { ...fromQuarter(dated.quarter, dated.year, 'date', false, text), month: dated.month };
 
   // An explicit quarter, with or without a year written next to it.
   const quarterMatch = QUARTER_PATTERN.exec(normalized);
@@ -107,7 +109,7 @@ export function resolveClosePeriod(raw: string | null | undefined, today?: strin
     : fromQuarter(relative.quarter, relative.year, 'relative', true, text);
 
   const monthly = readMonthName(normalized, reference);
-  if (monthly) return fromQuarter(monthly.quarter, monthly.year, 'date', monthly.yearInferred, text);
+  if (monthly) return { ...fromQuarter(monthly.quarter, monthly.year, 'date', monthly.yearInferred, text), month: monthly.month };
 
   // Unreadable, but the operator wrote something. Show their words rather than
   // "No close date", which would look like the field was empty.
@@ -185,10 +187,12 @@ function readYear(normalized: string): number | null {
 }
 
 function readDate(text: string) {
+  const monthOnly = text.match(/^(\d{4})-(\d{2})$/);
+  if (monthOnly && Number(monthOnly[2]) >= 1 && Number(monthOnly[2]) <= 12) return fromParts(Number(monthOnly[2]), Number(monthOnly[1]));
   // Only accept forms that unambiguously carry a day, so "2026" alone does not
   // silently become 1 January.
   const iso = text.match(/(\d{4})-(\d{2})-(\d{2})/);
-  if (iso) return fromParts(Number(iso[2]), Number(iso[1]));
+  if (iso && sanitizeBusinessDate(iso[0])) return fromParts(Number(iso[2]), Number(iso[1]));
 
   // Day first, matching the date inputs this product renders and the way its
   // operator writes one. `Date.parse` reads a slash date as month first, so it
@@ -206,6 +210,7 @@ function readDate(text: string) {
 
 function fromParts(month: number, year: number) {
   return {
+    month,
     quarter: (Math.floor((month - 1) / 3) + 1) as 1 | 2 | 3 | 4,
     year,
   };
@@ -234,6 +239,7 @@ function readMonthName(normalized: string, reference: ReturnType<typeof referenc
   if (index < 0) return null;
   const explicitYear = readYear(normalized);
   return {
+    month: index + 1,
     quarter: (Math.floor(index / 3) + 1) as 1 | 2 | 3 | 4,
     year: explicitYear ?? (index >= reference.month ? reference.year : reference.year + 1),
     yearInferred: explicitYear === null,

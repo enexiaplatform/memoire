@@ -14,7 +14,7 @@ import { useAuthContext } from '../../auth/authContext';
 import { DataModePill } from '../../components/common/DataModePill';
 import { isSupabaseConfigured } from '../../lib/demoMode';
 import { hasLocalSampleData } from '../../utils/dataMode';
-import { formatCompactCurrencyAmount } from '../../utils/money';
+import { formatCompactCurrencyAmount, getReportingCurrency } from '../../utils/money';
 import { compareBusinessDateDesc, compareSafeBusinessDate, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate } from '../../utils/safeDate.ts';
 import {
   createOperatingContext,
@@ -94,8 +94,8 @@ export function OperatingSystemPage() {
   const activeRecords = useMemo(() => records.filter((record) => !isOperatingContextClosed(record)), [records]);
   const visibleRecords = useMemo(() => records.filter((record) => {
     if (filter === 'active') return !isOperatingContextClosed(record);
-    if (filter === 'initiative') return record.contextType === 'initiative';
-    if (filter === 'play') return record.contextType === 'play';
+    if (filter === 'initiative') return record.contextType === 'initiative' || record.contextType === 'experiment';
+    if (filter === 'play') return record.contextType === 'play' || record.contextType === 'offer';
     return true;
   }), [filter, records]);
   const focusRecord = useMemo(() => [...activeRecords].sort(operatingPrioritySort)[0] || null, [activeRecords]);
@@ -104,7 +104,7 @@ export function OperatingSystemPage() {
 
   const openAdd = () => {
     setEditingRecord(null);
-    setForm({ ...emptyOperatingContextInput, payload: {} });
+    setForm({ ...emptyOperatingContextInput, payload: { currency: getReportingCurrency() } });
     setPanelMode('add');
     setSaveState('idle');
     setMessage('');
@@ -269,7 +269,7 @@ function OperatingFocus({ record, onOpen }: { record: OperatingContextRecord; on
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <Badge label="Do next" tone="green" />
-            <Badge label={record.contextType === 'initiative' ? 'Initiative' : 'Account play'} tone="blue" />
+            <Badge label={contextTypeLabel(record.contextType)} tone="blue" />
             {record.nextDate && <Badge label={`Due ${formatSafeBusinessDate(record.nextDate)}`} tone={isBusinessDateOverdue(record.nextDate) || record.nextDate === todayKey() ? 'red' : 'gray'} />}
           </div>
           <h2 className="mt-3 text-xl font-bold text-ink">{action}</h2>
@@ -289,7 +289,7 @@ function OperatingRow({ record, onOpen }: { record: OperatingContextRecord; onOp
     <div className="grid gap-3 px-4 py-4 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_160px_44px] md:items-center">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge label={record.contextType === 'initiative' ? 'Initiative' : 'Play'} tone={record.contextType === 'initiative' ? 'green' : 'blue'} />
+          <Badge label={contextTypeLabel(record.contextType)} tone={record.contextType === 'initiative' || record.contextType === 'experiment' ? 'green' : 'blue'} />
           {record.status && <Badge label={record.status} tone={isOperatingContextClosed(record) ? 'gray' : /block|risk|late/i.test(record.status) ? 'red' : 'amber'} />}
         </div>
         <p className="mt-2 truncate text-sm font-bold text-ink" title={record.title}>{record.title}</p>
@@ -301,7 +301,7 @@ function OperatingRow({ record, onOpen }: { record: OperatingContextRecord; onOp
       </div>
       <div>
         <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Value at stake</p>
-        <p className="mt-1 text-sm font-bold text-gray-800">{record.valueAtStake === null ? 'Not set' : formatCompactCurrencyAmount(record.valueAtStake, 'SGD')}</p>
+        <p className="mt-1 text-sm font-bold text-gray-800">{record.valueAtStake === null ? 'Not set' : formatCompactCurrencyAmount(record.valueAtStake, String(record.payload.currency || 'SGD'))}</p>
       </div>
       <button
         type="button"
@@ -384,7 +384,7 @@ function OperatingPanel({
             <Field label="Period / stage" value={form.period} onChange={(value) => update('period', value)} />
             <Field label="Owner" value={form.owner} onChange={(value) => update('owner', value)} />
             <Field
-              label="Value at stake (SGD)"
+              label={`Value at stake (${String(form.payload.currency || 'SGD')})`}
               type="number"
               value={form.valueAtStake?.toString() || ''}
               onChange={(value) => update('valueAtStake', value ? Number(value) : null)}
@@ -486,7 +486,7 @@ function Field({ label, value, onChange, type = 'text', required = false }: { la
   return (
     <label className="block">
       <span className="text-xs font-bold uppercase tracking-wide text-gray-500">{label}{required ? ' *' : ''}</span>
-      <input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-2 w-full rounded-lg border border-line bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-brand-blue focus:bg-white" />
+      <input type={type} value={value} onInput={type === 'date' ? (event) => onChange(event.currentTarget.value) : undefined} onChange={(event) => onChange(event.target.value)} className="mt-2 w-full rounded-lg border border-line bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-800 outline-none focus:border-brand-blue focus:bg-white" />
     </label>
   );
 }

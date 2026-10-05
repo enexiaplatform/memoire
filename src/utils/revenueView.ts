@@ -7,7 +7,10 @@ import {
   type QuoteRecord,
   type QuoteRisk,
 } from '../services/quoteStore.ts';
-import { BASE_CURRENCY, convertMoney, sumMoneyInBase } from './money.ts';
+import { BASE_CURRENCY, convertMoney, getReportingCurrency, sumMoneyInBase, type SupportedCurrency } from './money.ts';
+import { buildOrderBook, type OrderMilestoneRecord } from './orderToCash.ts';
+import { buildReceivables, type OrderReceivableRecord } from './receivables.ts';
+import { buildMoneyFlow } from './moneyFlow.ts';
 import { buildQuotedOpportunityIds } from './opportunityResolution.ts';
 import { isBusinessDateOverdue, todayDateKey } from './safeDate.ts';
 import { hasScheduledNextAction } from './nextAction.ts';
@@ -121,11 +124,42 @@ export type RevenueViewSummary = {
 
 export function buildRevenueView({
   opportunities,
-  quotes,
+  quotes: rawQuotes,
+  receivableRecords,
+  milestoneRecords,
 }: {
   opportunities: CrmLiteOpportunity[];
   quotes: QuoteRecord[];
+  receivableRecords?: OrderReceivableRecord[];
+  milestoneRecords?: OrderMilestoneRecord[];
 }): RevenueViewSummary {
+  const book = receivableRecords === undefined ? null : buildOrderBook({ opportunities, quotes: rawQuotes, linkage: 'explicit-id', milestoneRecords: milestoneRecords || [], receivableRecords });
+  const collections = book ? buildReceivables({ orders: book.orders, records: receivableRecords || [] }) : null;
+  const ordersById = new Map(book?.orders.map(order => [order.opportunityId, order]));
+  const collectionsById = new Map(collections?.orders.map(order => [order.opportunityId, order]));
+  const selectedQuotes = new Map<string, string>();
+  for (const order of book?.orders || []) {
+    const linked = rawQuotes.filter(quote => !quote.__deleted && quote.opportunityId === order.opportunityId && quote.status !== 'Rejected')
+      .sort((a, b) => (b.quoteDate || b.createdAt || '').localeCompare(a.quoteDate || a.createdAt || '') || (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+    const selected = linked.find(quote => quote.status === 'Accepted') || linked[0];
+    if (selected) selectedQuotes.set(order.opportunityId, selected.id);
+  }
+  // Project fulfilment and remaining cash into the existing action rules without rewriting quotes.
+  const quotes = rawQuotes.filter(quote => !quote.__deleted && (!quote.opportunityId || !ordersById.has(quote.opportunityId) || selectedQuotes.get(quote.opportunityId) === quote.id))
+    .map(quote => {
+      const order = quote.opportunityId ? ordersById.get(quote.opportunityId) : undefined;
+      const collection = quote.opportunityId ? collectionsById.get(quote.opportunityId) : undefined;
+      if (!order || !collection) return quote;
+      return { ...quote,
+        poStatus: order.milestones.find(m => m.key === 'contract')?.done ? 'Received' as const : quote.poStatus,
+        deliveryStatus: order.milestones.find(m => m.key === 'delivery')?.done ? 'Delivered' as const : quote.deliveryStatus,
+        paymentStatus: collection.settled ? 'Paid' as const : 'Due' as const,
+        paymentDueDate: collection.installments.find(installment => !installment.settled && installment.dueDate)?.dueDate || quote.paymentDueDate,
+        amount: collection.settled ? order.amount : collection.valueUnavailable ? null : convertMoney(collection.outstandingBase, getReportingCurrency(), order.currency as SupportedCurrency),
+      };
+    });
+  const canonicalFlow = book ? buildMoneyFlow({ opportunities, quotes: rawQuotes, receivableRecords, milestoneRecords }) : null;
+  const laneTotal = (stage: string, fallback: number) => canonicalFlow?.lanes.find(lane => lane.stage === stage)?.totalBase ?? fallback;
   const won = sumOpportunities(opportunities.filter((opportunity) => opportunity.status === 'Won'));
   const activePipeline = sumOpportunities(opportunities.filter((opportunity) => opportunity.status === 'Active'));
   const quoted = sumQuotes(quotes.filter((quote) => quote.status === 'Sent' || quote.status === 'Revised'));
@@ -148,10 +182,10 @@ export function buildRevenueView({
     won,
     activePipeline,
     quoted,
-    pendingPo,
-    pendingDelivery,
-    pendingPayment,
-    paid,
+    pendingPo: laneTotal('Pending PO', pendingPo),
+    pendingDelivery: laneTotal('Pending delivery', pendingDelivery),
+    pendingPayment: laneTotal('Pending payment', pendingPayment),
+    paid: collections?.totalReceivedBase ?? paid,
     atRiskRevenue: sumMoneyInBase(actionItems),
     expiringQuotes: quotes.filter((quote) => getQuoteRisk(quote) === 'Expiring soon').length,
     overdueFollowUps: countOverdueFollowUps(opportunities, quotes),

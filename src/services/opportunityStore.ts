@@ -8,6 +8,10 @@ import { fetchAllRows } from './supabasePaging.ts';
 import { recordOpportunityStateChanges } from '../domain/commercialKernel/opportunityChanges.ts';
 import { commitLocalHistoricalCollection } from './historicalIntegrity.ts';
 import { requireCloudHistoricalIntegrity } from './historicalCloudGate.ts';
+import { loadAccounts } from './accountStore.ts';
+import { canonicalAccountId } from '../utils/canonicalAccountLink.ts';
+import { accountKey } from '../utils/accountIdentity.ts';
+import { captureLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 
 export const OPPORTUNITY_STORAGE_KEY = 'memoire.opportunities.v1';
 
@@ -233,9 +237,14 @@ export async function createOpportunity(
   userId: string | null | undefined,
   workspace: OpportunityWorkspaceTag,
 ): Promise<{ opportunity: CrmLiteOpportunity; mode: 'local' | 'cloud'; warning?: string }> {
+  const sameWorkspace = captureLocalWorkspaceScope();
   const normalized = normalizeOpportunityInput(input);
+  if (!workspace.isSample && workspace.source !== 'demo' && userId) {
+    normalized.accountId = canonicalAccountId(normalized.accountName, await loadAccounts(userId), userId, normalized.accountId);
+  }
 
   // Workspace isolation is explicit and takes precedence over signed-in identity.
+  if (!sameWorkspace()) throw new Error('Workspace changed. Open the current account before saving a deal.');
   const sample = workspace.isSample || workspace.source === 'demo';
   const tag: OpportunityWorkspaceTag = { source: sample ? 'demo' : 'user', isSample: sample };
   if (!sample && canUseOpportunityCloudStore(userId)) {
@@ -244,6 +253,7 @@ export async function createOpportunity(
       await requireCloudHistoricalIntegrity(userId as string);
       opportunity = await createCloudOpportunity(normalized, userId as string);
     } catch (error) {
+      if (!sameWorkspace()) throw new Error('Workspace changed before this deal was saved.');
       reportWorkspaceSyncError();
       const opportunity = createLocalOpportunity(normalized, userId || undefined, tag);
       saveLocalOpportunityRecord(opportunity);
@@ -255,7 +265,7 @@ export async function createOpportunity(
         warning: 'Cloud sync issue - your local copy is preserved.',
       };
     }
-    const warning = mirrorCloudOpportunity(opportunity);
+    const warning = sameWorkspace() ? mirrorCloudOpportunity(opportunity) : 'Saved to the original account. The current browser workspace was not changed.';
     invalidateWorkspaceCollection('opportunities');
     return { opportunity, mode: 'cloud', warning };
   }
@@ -271,16 +281,23 @@ export async function updateOpportunity(
   input: OpportunityFormInput,
   userId?: string | null
 ): Promise<{ opportunity: CrmLiteOpportunity; mode: 'local' | 'cloud'; warning?: string }> {
+  const sameWorkspace = captureLocalWorkspaceScope();
   const normalized = normalizeOpportunityInput(input);
+  if (!opportunity.isSample && opportunity.source !== 'demo' && userId) {
+    normalized.accountId = canonicalAccountId(normalized.accountName, await loadAccounts(userId), userId, normalized.accountId)
+      || (accountKey(opportunity.accountName) === accountKey(normalized.accountName) ? opportunity.accountId : undefined);
+  }
 
   /**
    * Notes which of the four watched fields actually moved.
+   *
    *
    * Called after the record is safely written, never before: the edit is the
    * canonical act, and history that fails to record must not take the operator's
    * change with it. `updated_at` moves on every save and can never answer "what
    * changed" - this is the only moment the previous value still exists.
    */
+  if (!sameWorkspace()) throw new Error('Workspace changed. Open the current account before saving a deal.');
   const noteObservedChanges = () => {
     try {
       recordOpportunityStateChanges(
@@ -301,6 +318,7 @@ export async function updateOpportunity(
       await requireCloudHistoricalIntegrity(userId as string);
       updated = await updateCloudOpportunity(opportunity.id, normalized, userId as string);
     } catch (error) {
+      if (!sameWorkspace()) throw new Error('Workspace changed before this deal was saved.');
       reportWorkspaceSyncError();
       const localCopy = {
         ...opportunity,
@@ -320,6 +338,7 @@ export async function updateOpportunity(
     }
     // A refused browser mirror must not turn an accepted cloud write into a
     // failure or a second mutation. Cloud is authoritative on this branch.
+    if (!sameWorkspace()) return { opportunity: updated, mode: 'cloud', warning: 'Saved to the original account. The current browser workspace was not changed.' };
     const mirrorWarning = mirrorCloudOpportunity(updated);
     invalidateWorkspaceCollection('opportunities');
     const historyWarning = noteObservedChanges();
@@ -511,7 +530,22 @@ async function loadCloudOpportunities(userId: string): Promise<CrmLiteOpportunit
     .order('id', { ascending: true })
     .range(from, to) as never);
 
-  return data.map(rowToOpportunity);
+  const records = data.map(rowToOpportunity);
+  const unlinked = records.filter(record => !record.accountId && record.accountName);
+  if (unlinked.length) {
+    const accounts = await loadAccounts(userId);
+    for (const record of unlinked) {
+      const accountId = canonicalAccountId(record.accountName, accounts, userId);
+      if (!accountId) continue;
+      // Repair only the missing link, never overwrite a newer link or business fields.
+      const { data: linked, error } = await supabaseClient!.from(TABLE_NAME)
+        .update({ account_id: accountId }).eq('id', record.id).eq('user_id', userId)
+        .is('account_id', null).select('account_id').maybeSingle();
+      if (error) reportWorkspaceSyncError('An account link could not be repaired. Retry before recording a decision.');
+      else if (linked) record.accountId = linked.account_id;
+    }
+  }
+  return records;
 }
 
 async function createCloudOpportunity(input: OpportunityFormInput, userId: string) {
@@ -658,7 +692,7 @@ function opportunityToUpdate(input: OpportunityFormInput) {
 export function opportunityToRow(input: OpportunityFormInput) {
   return {
     account_name: input.accountName,
-    ...(input.accountId ? { account_id: input.accountId } : {}),
+    account_id: input.accountId || null,
     opportunity_name: input.opportunityName,
     stage: input.stage,
     estimated_value: input.estimatedValue,

@@ -128,8 +128,8 @@ export function RevenueViewPage({ tabs }: { tabs?: ReactNode } = {}) {
   // Drawn from the browser copy at first paint; take the cloud answer when it lands.
   useWorkspaceRefresh(() => { void loadRevenue(); });
 
-  const revenue = useMemo(() => buildRevenueView(data), [data]);
-  const moneyFlow = useMemo(() => buildMoneyFlow(data), [data]);
+  const revenue = useMemo(() => buildRevenueView({ ...data, receivableRecords: workspace?.receivableRecords, milestoneRecords: workspace?.milestoneRecords }), [data, workspace?.receivableRecords, workspace?.milestoneRecords]);
+  const moneyFlow = useMemo(() => buildMoneyFlow({ ...data, receivableRecords: workspace?.receivableRecords, milestoneRecords: workspace?.milestoneRecords }), [data, workspace?.receivableRecords, workspace?.milestoneRecords]);
   // How many money threads have reached a quote. This is the whole difference
   // between "In motion" and "Active pipeline", and until it is above nought
   // the two tiles print the same figure.

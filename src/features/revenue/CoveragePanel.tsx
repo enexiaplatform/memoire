@@ -113,6 +113,7 @@ export function CoveragePanel() {
       )}
 
       {current && current.target > 0 && <CurrentQuarterHeadline quarter={current} />}
+      <p className="mt-3 text-xs text-gray-500">FY{coverage.fiscalYear}. {coverage.excludedUndatedCount} undated deals and {coverage.excludedCurrencyCount} records without a conversion rate excluded. Historical and future years remain in their own periods.</p>
 
       <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
         {coverage.quarters.map((quarter) => (

@@ -405,8 +405,9 @@ export function classifyOpportunitySilence(
   // is the field the deal carries; a commitment made in a capture never writes
   // it, and reading only that field is what let a deal with a booked follow-up
   // be called silent.
-  const planned = isValidBusinessDate(opportunity.nextActionDate)
-    || commitmentCoverFor(opportunity, commitments) === 'deal';
+  const planned = (isValidBusinessDate(opportunity.nextActionDate) && compareSafeBusinessDate(opportunity.nextActionDate, today) >= 0)
+    || commitments.some(commitment => commitment.opportunityId === opportunity.id && (commitment.status || 'open') === 'open'
+      && isValidBusinessDate(commitment.currentDueDate) && compareSafeBusinessDate(commitment.currentDueDate, today) >= 0);
   if (planned) return { status: 'planned', daysQuiet: null, lastTouchDate: lastTouch };
   const quietSince = lastTouch || sanitizeBusinessDate(timestampToLocalDateKey(opportunity.createdAt));
   const daysQuiet = daysBetweenBusinessDates(quietSince, sanitizeBusinessDate(today));
@@ -421,6 +422,8 @@ function buildSilenceRiskNudges(input: ProactiveNudgeInput, today: string) {
   const commitments = input.plannedCommitments || [];
   return (input.opportunities || []).flatMap((opportunity) => {
     if (isLeadStage(opportunity.stage)) return [];
+    // Silence remains visible in the rollup, while the overdue-action nudge owns this intervention.
+    if (isBusinessDateOverdue(opportunity.nextActionDate, today)) return [];
     const silence = classifyOpportunitySilence(opportunity, activities, today, commitments);
     if (silence.status !== 'silent' && silence.status !== 'at-risk') return [];
     const lastTouch = silence.lastTouchDate;

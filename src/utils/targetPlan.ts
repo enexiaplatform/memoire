@@ -191,7 +191,7 @@ function buildRoutes(input: {
     routes.push({
       id: 'recover',
       label: 'Put the evidence back under what you already forecast',
-      detail: `${input.unsupportedDealCount} deal${input.unsupportedDealCount === 1 ? '' : 's'} in this quarter are counted at a probability the records no longer support. That is forecast you already have, waiting on a touch.`,
+      detail: `Across the forecast year, ${input.unsupportedDealCount} deal${input.unsupportedDealCount === 1 ? '' : 's'} are counted at a probability the records no longer support. Review their evidence and close dates before relying on them for this quarter.`,
       valueBase: input.unsupportedValueBase,
       href: '/app/opportunities?filter=needsAction',
     });

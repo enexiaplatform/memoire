@@ -45,7 +45,7 @@ describe('how old the map says a memory is', () => {
     for (const band of ['fresh', 'settling', 'fading', 'cold', 'undated']) {
       assert.ok(memoryAgeLabels[band], `${band} needs a spoken label`);
     }
-    assert.match(memoryAgeLabels.undated, /no readable date/i);
+    assert.match(memoryAgeLabels.undated, /no dated interaction recorded/i);
   });
 
   test('the faintest band is still readable', () => {

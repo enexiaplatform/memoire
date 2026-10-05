@@ -4,6 +4,7 @@ import {
   formatPlanPeriodEyebrow,
   isoWeekNumber,
   NOT_STATED_CHANNEL,
+  planBoardWithoutBacklog,
   summarisePlanBoard,
 } from '../../src/utils/planBoardSummary.ts';
 
@@ -23,6 +24,21 @@ const board = (items, patch = {}) => ({
 });
 
 describe('plan board summary', () => {
+  test('hiding a large overdue backlog keeps current-period completion and every day counter consistent', () => {
+    const original = board([
+      ...Array.from({ length: 408 }, () => item({ kind: 'deal', carriedFrom: '2026-03-01', overdue: true, workKind: 'customer' })),
+      item({ done: true }), item({ kind: 'capture', done: true }),
+    ]);
+    const visible = planBoardWithoutBacklog(original);
+    assert.equal(visible.totalCount, 2);
+    assert.equal(visible.doneCount, 2);
+    assert.equal(visible.days[0].doneCount, 2);
+    assert.equal(visible.captureCount, 1);
+    assert.equal(visible.workSplit.customer, 0);
+    assert.equal(summarisePlanBoard(visible).donePercent, 100);
+    assert.equal(original.days[0].items.length, 410);
+    assert.equal(summarisePlanBoard(original).total, 410);
+  });
   test('done share, and the lines the records put there versus the ones typed by hand', () => {
     const summary = summarisePlanBoard(board([
       item({ done: true }),

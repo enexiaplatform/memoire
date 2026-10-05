@@ -376,6 +376,7 @@ export async function updateSalesActivityLink(
   const timestamp = new Date().toISOString();
   const updated: SalesActivityRecord = {
     ...activity,
+    opportunityName: link.linkStatus === 'Unlinked' ? '' : activity.opportunityName,
     linkedOpportunityId: link.linkStatus === 'Linked' ? link.linkedOpportunityId || '' : '',
     linkedOpportunityName: link.linkStatus === 'Linked' ? link.linkedOpportunityName || '' : '',
     linkedAccountName: link.linkStatus === 'Linked' ? link.linkedAccountName || '' : '',
@@ -396,6 +397,7 @@ export async function updateSalesActivityLink(
     const { data, error } = await supabaseClient!
       .from(TABLE_NAME)
       .update({
+        opportunity_name: updated.opportunityName || null,
         linked_opportunity_id: updated.linkedOpportunityId || null,
         linked_opportunity_name: updated.linkedOpportunityName || null,
         linked_account_name: updated.linkedAccountName || null,

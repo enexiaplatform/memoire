@@ -130,6 +130,8 @@ export function ReviewAnalyticsSection() {
   );
   const digest = useMemo(() => (workspace ? buildDailyDigest({
     opportunities: workspace.opportunities,
+    receivableRecords: workspace.receivableRecords,
+    milestoneRecords: workspace.milestoneRecords,
     quotes: workspace.quotes,
     expenses: workspace.expenses,
     activities: workspace.activities,

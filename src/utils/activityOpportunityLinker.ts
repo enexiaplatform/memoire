@@ -44,15 +44,18 @@ export function suggestOpportunityLinks(
   activity: SalesActivityRecord,
   opportunities: CrmLiteOpportunity[]
 ): OpportunityLinkSuggestion[] {
-  return opportunities
+  const ranked = opportunities
     .map((opportunity) => ({
       opportunity,
       ...calculateLinkConfidence(activity, opportunity),
     }))
     .filter((suggestion) => suggestion.score >= 2)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 4)
-    .map(({ opportunity, confidence, reason }) => ({ opportunity, confidence, reason }));
+    .slice(0, 4);
+  const ambiguous = ranked.length > 1 && ranked[0].score - ranked[1].score < 3;
+  return ranked.map(({ opportunity, confidence, reason }) => ({ opportunity,
+    confidence: ambiguous && confidence === 'High' ? 'Medium' : confidence,
+    reason: ambiguous ? `${reason}; several plausible deals - choose explicitly` : reason }));
 }
 
 export function calculateLinkConfidence(activity: SalesActivityRecord, opportunity: CrmLiteOpportunity): {
@@ -128,7 +131,9 @@ export function calculateLinkConfidence(activity: SalesActivityRecord, opportuni
     reasons.push('common opportunity phrase');
   }
 
-  const confidence: LinkConfidence = score >= 7 ? 'High' : score >= 3 ? 'Medium' : 'Low';
+  const explicitDeal = (activityOpportunity && opportunityName && activityOpportunity === opportunityName)
+    || (opportunityName && normalize(activity.rawNote).includes(opportunityName));
+  const confidence: LinkConfidence = score >= 7 && explicitDeal ? 'High' : score >= 3 ? 'Medium' : 'Low';
   return {
     confidence,
     reason: reasons.length > 0 ? reasons.join(', ') : 'weak text similarity',

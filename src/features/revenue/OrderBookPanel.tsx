@@ -142,12 +142,12 @@ export function OrderBookPanel({
           <p className="mt-1 max-w-2xl text-sm text-gray-500">
             Deals the customer has committed to ({COMMIT_PROBABILITY_THRESHOLD}%+, procurement, or won), each one
             followed from contract to cash. Status comes from what the records already prove; tick the steps no
-            document will ever prove.
+            document will ever prove. Stage totals show full order value; Collections shows receipts and remaining cash to collect.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
           <span className="rounded-full bg-blue-50 px-3 py-1 text-brand-blue">
-            Awaiting: {formatBaseCurrencyAmount(book.awaitingBase, true)}
+            Unsettled orders: {formatBaseCurrencyAmount(book.awaitingBase, true)}
           </span>
           {book.overdueCount > 0 && (
             <span className="rounded-full bg-red-50 px-3 py-1 text-red-700">{book.overdueCount} overdue</span>
@@ -166,7 +166,7 @@ export function OrderBookPanel({
             </span>
           )}
           {book.collectedCount > 0 && (
-            <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">{book.collectedCount} collected</span>
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">{book.collectedCount} settled orders</span>
           )}
         </div>
       </div>
@@ -194,7 +194,7 @@ export function OrderBookPanel({
               return (
                 <StageCell
                   key={stage}
-                  label={stage}
+                  label={stage === 'Collected' ? 'Settled orders' : stage}
                   count={summary?.count || 0}
                   valueBase={summary?.valueBase || 0}
                   overdueCount={summary?.overdueCount || 0}

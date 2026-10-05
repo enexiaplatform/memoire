@@ -16,6 +16,7 @@ import { CoverageHeatmap, OrderToCashFunnel } from '../../components/marketing/c
 import { PageSeo } from '../../components/marketing/PageSeo';
 import { breadcrumbSchema, itemListSchema } from '../../config/structuredData';
 import { TRIAL_DAYS } from '../../utils/entitlement';
+import { FREE_PREVIEW } from '../../config/launchPhase';
 
 /**
  * Who this is for, told as four jobs rather than four industries.
@@ -173,7 +174,7 @@ export function UseCasesPage() {
                 to="/signup"
                 className="group inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-3.5 font-display text-base font-bold text-navy shadow-lg shadow-black/30 transition hover:bg-slate-100 active:scale-[0.98]"
               >
-                Start your {TRIAL_DAYS}-day trial
+                {FREE_PREVIEW ? 'Start free preview' : `Start your ${TRIAL_DAYS}-day trial`}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
               <Link
@@ -249,13 +250,13 @@ export function UseCasesPage() {
               Recognise your own week in any of those?
             </h2>
             <p className="mx-auto mt-4 text-base leading-7 text-slate-300">
-              Seven days on your real work, cancel inside them and pay nothing.
+              {FREE_PREVIEW ? 'Use Memoire free during preview. No card and no trial countdown.' : 'Seven days on your real work, cancel inside them and pay nothing.'}
             </p>
             <Link
               to="/signup"
               className="group mt-8 inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-3.5 font-display text-base font-bold text-navy transition hover:bg-slate-100 active:scale-[0.98]"
             >
-              Start your {TRIAL_DAYS}-day trial
+              {FREE_PREVIEW ? 'Start free preview' : `Start your ${TRIAL_DAYS}-day trial`}
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
           </div>

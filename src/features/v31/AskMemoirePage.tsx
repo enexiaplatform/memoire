@@ -75,7 +75,7 @@ export function AskMemoirePage() {
   // The composer starts empty. It used to open holding "What should I do next?",
   // which made the box read as already asked; the suggestions beside it now do
   // that job without putting words in the operator's mouth.
-  const [question, setQuestion] = useState(() => searchParams.get('question')?.trim() || '');
+  const [question, setQuestion] = useState(() => (searchParams.get('question') || searchParams.get('q'))?.trim() || '');
   /** The question the answer on screen belongs to - drawn as the bubble above it. */
   const [askedQuestion, setAskedQuestion] = useState('');
   /**
@@ -361,8 +361,7 @@ export function AskMemoirePage() {
           // Both pools: the pipeline, and what is committed but not collected.
           setAnswer(answerFromMoneyFlow(
             buildMoneyFlow({
-              opportunities: rawWorkspace.opportunities,
-              quotes: rawWorkspace.quotes,
+              ...rawWorkspace,
             }),
             buildOrderBook({
               opportunities: rawWorkspace.opportunities,
@@ -404,7 +403,7 @@ export function AskMemoirePage() {
               milestoneRecords, receivableRecords, costRecords,
               outcomes: rawWorkspace.opportunityOutcomes,
             }),
-            buildMoneyFlow({ opportunities: rawWorkspace.opportunities, quotes: rawWorkspace.quotes }),
+            buildMoneyFlow({ ...rawWorkspace }),
           ));
         } else if (insightKind === 'own_obligations') {
           setAnswer(answerFromOwnObligations(
@@ -482,7 +481,7 @@ export function AskMemoirePage() {
   // workspace context has loaded, so the answer uses real memory.
   useEffect(() => {
     if (contextLoading || urlQuestionConsumed) return;
-    const urlQuestion = searchParams.get('question')?.trim();
+    const urlQuestion = (searchParams.get('question') || searchParams.get('q'))?.trim();
     if (!urlQuestion) return;
     setUrlQuestionConsumed(true);
     void ask(urlQuestion);
