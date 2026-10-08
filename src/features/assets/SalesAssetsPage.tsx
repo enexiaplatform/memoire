@@ -134,21 +134,28 @@ export function SalesAssetsPage() {
       return;
     }
 
-    const saved = panelMode === 'edit' && editingAsset
-      ? updateSalesAsset(editingAsset, form)
-      : createSalesAsset(form);
+    try {
+      const saved = panelMode === 'edit' && editingAsset
+        ? updateSalesAsset(editingAsset, form)
+        : createSalesAsset(form);
 
-    setAssets(loadSalesAssets());
-    setEditingAsset(saved);
-    setForm(assetToInput(saved));
-    setPanelMode('edit');
-    setMessage(isAuthenticated && !sampleDataActive ? 'Sales asset saved and syncing to your workspace.' : 'Sales asset saved in this browser.');
+      setAssets(loadSalesAssets());
+      setEditingAsset(saved);
+      setForm(assetToInput(saved));
+      setPanelMode('edit');
+      setMessage(isAuthenticated && !sampleDataActive ? 'Sales asset saved and syncing to your workspace.' : 'Sales asset saved in this browser.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Sales asset was not saved. Keep the draft and retry.');
+    }
   };
 
   const removeAsset = (asset: SalesAssetRecord) => {
     const confirmed = window.confirm(`Delete ${asset.title}?`);
     if (!confirmed) return;
-    deleteSalesAsset(asset.id);
+    if (!deleteSalesAsset(asset.id)) {
+      setMessage('Sales asset was not deleted. Browser storage is unavailable; retry when storage is available.');
+      return;
+    }
     setAssets(loadSalesAssets());
     if (editingAsset?.id === asset.id) closePanel();
     setMessage(isAuthenticated && !sampleDataActive ? 'Sales asset deleted from your workspace.' : 'Sales asset deleted from this browser.');
@@ -198,7 +205,10 @@ export function SalesAssetsPage() {
       }];
     });
 
-    saveSalesAssets([...importedAssets, ...currentAssets]);
+    if (!saveSalesAssets([...importedAssets, ...currentAssets])) {
+      setMessage('Starter pack was not imported. Browser storage is unavailable; retry when storage is available.');
+      return;
+    }
     setAssets(loadSalesAssets());
     setMessage(`Imported ${importedAssets.length} asset${importedAssets.length === 1 ? '' : 's'} from ${pack.name}. Skipped ${skipped} duplicate${skipped === 1 ? '' : 's'}.`);
     markTrialActivationChecklistItemComplete('import-starter-asset-pack');
@@ -398,7 +408,7 @@ function StarterAssetPacksSection({
             <h2 className="text-lg font-bold text-ink">Starter Asset Packs</h2>
           </div>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-indigo-900/75">
-            Import practical, industry-specific proof notes, objection responses, proposal snippets, discovery questions, and follow-up scripts. Packs are local and editable after import.
+            Import practical, industry-specific proof notes, objection responses, proposal snippets, discovery questions, and follow-up scripts. Imported assets are editable. In a signed-in workspace they sync to your account; local and demo workspaces keep them in this browser.
           </p>
         </div>
       </div>
@@ -411,7 +421,7 @@ function StarterAssetPacksSection({
             <p className="mt-2 line-clamp-3 text-sm leading-6 text-gray-600">{pack.description}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Badge label={`${pack.assets.length} assets`} tone="blue" />
-              <Badge label="Local import" tone="gray" />
+              <Badge label="Editable templates" tone="gray" />
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <button

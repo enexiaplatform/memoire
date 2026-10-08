@@ -76,3 +76,30 @@ test('classification refuses absent, foreign and sample source opportunities', a
   }
   assert.equal(storage.getItem(PORTFOLIO_STORAGE_KEY), null);
 });
+
+test('native restore preserves the accepted same-version cloud payload including retained metadata', async () => {
+  await savePortfolio(scope, { id: 'b', state, expectedVersion: 0 });
+  const local = readPortfolio(scope)[0];
+  const accepted = { ...local, userId: 'owner', importProvenance: { batch: 'synthetic-import' } };
+  const backup = { formatVersion: 18, exportedAt: new Date().toISOString(),
+    localBrowserData: { [PORTFOLIO_STORAGE_KEY]: [local] },
+    cloudData: { user_id: 'owner', data: { portfolio_records: [{ user_id: 'owner', id: 'b', payload: accepted }] } } };
+  const restored = JSON.parse(buildRestorePlan(backup).writes.find(write => write.key === PORTFOLIO_STORAGE_KEY).value);
+  assert.deepEqual(restored, [accepted], 'same-version SQL guard must receive the original accepted payload');
+  backup.localBrowserData[PORTFOLIO_STORAGE_KEY] = [{ ...local, name: 'Unversioned edit' }];
+  assert.throws(() => buildRestorePlan(backup), /conflict/);
+});
+
+test('native restore preserves the raw proven descendant without borrowing older metadata', async () => {
+  await savePortfolio(scope, { id: 'b', state, expectedVersion: 0 });
+  const original = readPortfolio(scope)[0];
+  await savePortfolio(scope, { id: 'b', state: { ...state, name: 'Renamed' }, expectedVersion: 1 });
+  const descendant = { ...readPortfolio(scope)[0], userId: 'owner', importProvenance: { batch: 'newer-import' } };
+  const backup = { formatVersion: 18, exportedAt: new Date().toISOString(),
+    localBrowserData: { [PORTFOLIO_STORAGE_KEY]: [descendant] },
+    cloudData: { user_id: 'owner', data: { portfolio_records: [{ user_id: 'owner', id: 'b', payload: original }] } } };
+  const restored = JSON.parse(buildRestorePlan(backup).writes.find(write => write.key === PORTFOLIO_STORAGE_KEY).value);
+  assert.deepEqual(restored, [descendant]);
+  backup.localBrowserData[PORTFOLIO_STORAGE_KEY] = [{ ...descendant, history: [{ ...descendant.history[0], state: { ...state, name: 'Forged prior name' } }] }];
+  assert.throws(() => buildRestorePlan(backup), /conflict/);
+});

@@ -113,7 +113,7 @@ function persistSalesAssets(assets: SalesAssetRecord[], syncCloud: boolean) {
   if (typeof window === 'undefined') return false;
   try {
     const sanitized = assets.map(sanitizeAsset).filter((asset): asset is SalesAssetRecord => Boolean(asset));
-    writeLocalRecords(SALES_ASSET_STORAGE_KEY, sanitized);
+    if (!writeLocalRecords(SALES_ASSET_STORAGE_KEY, sanitized).ok) return false;
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('sales_assets', sanitized);
       invalidateWorkspaceCollection('assets');
@@ -133,10 +133,11 @@ export function createSalesAsset(input: SalesAssetInput) {
     updatedAt: now,
   }) as SalesAssetRecord;
 
-  saveSalesAssets([
+  const saved = saveSalesAssets([
     asset,
     ...loadSalesAssets().filter((item) => item.id !== asset.id),
   ]);
+  if (!saved) throw new Error('Sales asset was not saved. Browser storage is unavailable; keep the draft and retry.');
   return asset;
 }
 
@@ -149,13 +150,15 @@ export function updateSalesAsset(asset: SalesAssetRecord, input: SalesAssetInput
     updatedAt: new Date().toISOString(),
   }) as SalesAssetRecord;
 
-  saveSalesAssets(loadSalesAssets().map((item) => (item.id === asset.id ? updated : item)));
+  if (!saveSalesAssets(loadSalesAssets().map((item) => (item.id === asset.id ? updated : item)))) {
+    throw new Error('Sales asset was not saved. Browser storage is unavailable; keep the draft and retry.');
+  }
   return updated;
 }
 
 export function deleteSalesAsset(assetId: string) {
   const saved = saveSalesAssets(loadSalesAssets().filter((item) => item.id !== assetId));
-  deleteCloudJsonRecordForCurrentUser('sales_assets', assetId);
+  if (saved) deleteCloudJsonRecordForCurrentUser('sales_assets', assetId);
   return saved;
 }
 

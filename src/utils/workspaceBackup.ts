@@ -277,11 +277,26 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
         }
         if (previous && contract.table === 'portfolio_records') {
           const winner = mergePortfolioRecord(parsePortfolioRecord(record), parsePortfolioRecord(previous));
-          merged.set(id, winner as unknown as RecordData);
+          // Parsing validates lineage but strips fields the accepted cloud payload may
+          // retain. Replay that exact payload at the same version; never rewrite it
+          // with the browser's sanitized representation and trigger a false conflict.
+          merged.set(id, winner.version === previous.version ? previous : record);
           continue;
         }
         if(previous&&(contract.table==='commercial_decisions'||contract.table==='commercial_decision_observations')){
-          const semantic=(r:RecordData)=>JSON.stringify({...r,executionLinks:[],updatedAt:''});
+          const semantic=(r:RecordData)=>{
+            const core:RecordData={...r,executionLinks:[],updatedAt:''};
+            const instantFields=contract.table==='commercial_decisions'
+              ?['decidedAt','createdAt']:['observationCutoff','finalizedAt','createdAt'];
+            for(const field of instantFields){
+              const value=core[field];
+              if(typeof value==='string'&&Number.isFinite(Date.parse(value)))core[field]=new Date(value).toISOString();
+            }
+            // SQL timestamps and JSONB key order can differ from the browser mirror.
+            // Compare only their representation; preserve every immutable value and array order.
+            return JSON.stringify(core,(_key,value)=>value&&typeof value==='object'&&!Array.isArray(value)
+              ?Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b))):value);
+          };
           if(semantic(previous)!==semantic(record))throw new Error('Decision history conflicts between local and cloud backup copies.');
         }
         if (previous && contract.table === 'order_receivables' && (record.pendingChanges as unknown[])?.length) {
